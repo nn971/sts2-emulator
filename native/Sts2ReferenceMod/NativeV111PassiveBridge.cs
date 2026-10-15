@@ -19,6 +19,7 @@ using Sts2Emulator.Core;
 using Sts2Emulator.Trace;
 using Sts2ReferenceMod.Capture;
 using Sts2ReferenceMod.Trace;
+using Sts2ReferenceMod.Transport;
 using Sts2ReferenceMod.Ui;
 using CombatState = MegaCrit.Sts2.Core.Combat.CombatState;
 using NativeGameAction = MegaCrit.Sts2.Core.GameActions.GameAction;
@@ -55,6 +56,8 @@ internal static class NativeV111PassiveBridge
     private static CombatState? _failedCombat;
     private static string? _lastGateReason;
     private static bool _hookDisabled;
+    private static NativeAgentBoundaryFeed? _agentFeed;
+    private static LocalBridgeServer? _agentBridge;
 
     // Only report changes in gate state: these diagnostics must not spam
     // every Godot frame or affect player input/RNG.
@@ -114,12 +117,55 @@ internal static class NativeV111PassiveBridge
         }
         if (_tree is not null) return;
         _tree = tree;
+        StartSpectatorIfRequested();
         tree.ProcessFrame += OnFrame;
         Godot.GD.Print("[Sts2ReferenceMod] CAPTURE_STATUS=HOOK_ENABLED; " +
             "build=" + BuildId + "; trace_dir=" +
             (System.Environment.GetEnvironmentVariable("STS2_FIDELITY_TRACE_DIR")
                 ?? Path.Combine(OS.GetUserDataDir(), "native_fidelity_traces")) +
             "; native parity NOT_TESTED.");
+    }
+
+    private static void StartSpectatorIfRequested()
+    {
+        if (System.Environment.GetEnvironmentVariable("STS2_INSPECTOR_AGENT_BRIDGE") != "1")
+            return;
+        string? token = System.Environment.GetEnvironmentVariable(
+            "STS2_INSPECTOR_AGENT_TOKEN");
+        if (string.IsNullOrWhiteSpace(token) || token.Length < 24)
+        {
+            Godot.GD.PushError("[Sts2ReferenceMod] AGENT_BRIDGE_STATUS=TOKEN_REQUIRED;" +
+                " supply a unique token of at least 24 characters.");
+            return;
+        }
+        int port = 39221;
+        var configured = System.Environment.GetEnvironmentVariable(
+            "STS2_INSPECTOR_AGENT_PORT");
+        if (configured is not null &&
+            (!int.TryParse(configured, out port) || port is < 1024 or > 65535))
+        {
+            Godot.GD.PushError("[Sts2ReferenceMod] AGENT_BRIDGE_STATUS=INVALID_PORT");
+            return;
+        }
+        try
+        {
+            var feed = new NativeAgentBoundaryFeed();
+            var server = new LocalBridgeServer(feed, token, port);
+            server.Start();
+            _agentFeed = feed;
+            _agentBridge = server;
+            Godot.GD.Print("[Sts2ReferenceMod] AGENT_BRIDGE_STATUS=SPECTATOR_READY;" +
+                " schema=" + NativeAgentBoundaryFeed.SchemaId +
+                "; address=127.0.0.1:" + port +
+                "; actions=DISABLED; read_only=true");
+        }
+        catch (Exception error)
+        {
+            _agentFeed = null;
+            _agentBridge = null;
+            Godot.GD.PushError("[Sts2ReferenceMod] AGENT_BRIDGE_STATUS=START_FAILED;" +
+                " reason=" + error.GetType().Name);
+        }
     }
 
     private static void OnFrame()
@@ -198,6 +244,13 @@ internal static class NativeV111PassiveBridge
                 _lastCapturedGeneration = _decisionGeneration;
                 _actionEnvelopes?.StableBoundary(
                     recorded.DecisionId, recorded.State);
+                try { _agentFeed?.Publish(recorded); }
+                catch (Exception error)
+                {
+                    _agentFeed?.Withhold("OBSERVATION_PROJECTION_UNAVAILABLE");
+                    Godot.GD.PushError("[Sts2ReferenceMod] AGENT_BRIDGE_STATUS=PROJECTION_FAILED;" +
+                        " reason=" + error.GetType().Name);
+                }
                 ReportGate("DECISION_CAPTURED:" + recorded.DecisionId);
             }
             else ReportGate("DECISION_NOT_RECORDED");
@@ -209,6 +262,7 @@ internal static class NativeV111PassiveBridge
             // Fail closed for this encounter, even if OpenCombat failed before
             // creating a recording. Keep the error once rather than per frame.
             _failedCombat ??= _combat;
+            _agentFeed?.Withhold("INCOMPLETE_CAPTURE");
             if (_recording is not null) EndCombat("INCOMPLETE_CAPTURE: " + error.GetType().Name);
             if (_failedCombat is null)
             {
@@ -256,6 +310,7 @@ internal static class NativeV111PassiveBridge
         _historyIndex = CombatManager.Instance.History.Entries.Count();
         _adapter = new NativeCombatAdapter(combat, () => _choiceInterrupted);
         string runId = Guid.NewGuid().ToString("N");
+        _agentFeed?.OpenCombat(runId);
         string root = System.Environment.GetEnvironmentVariable("STS2_FIDELITY_TRACE_DIR")
             ?? Path.Combine(OS.GetUserDataDir(), "native_fidelity_traces");
         Directory.CreateDirectory(root);
@@ -342,6 +397,9 @@ internal static class NativeV111PassiveBridge
 
     private static void ObserveBeforeAction(NativeGameAction action)
     {
+        // A previous stable menu is no longer safe as soon as ANY executor
+        // action (including automatic enemy or hook action) starts.
+        _agentFeed?.Withhold("ACTION_RESOLVING");
         // This callback runs for every executor action, including monster and
         // automatic actions which have no matching human legal-menu item.
         // A distinct timeline protects their evidence from strict-trace gaps.
@@ -397,6 +455,7 @@ internal static class NativeV111PassiveBridge
 
     private static void OnNestedChoice(NativeGameAction action)
     {
+        _agentFeed?.Withhold("UNSUPPORTED_NESTED_CHOICE");
         try
         {
             _actionEnvelopes?.ChoicePause(
@@ -428,6 +487,7 @@ internal static class NativeV111PassiveBridge
 
     private static void StopStrictCapture(string reason)
     {
+        _agentFeed?.Withhold("STRICT_TRACE_INCOMPLETE");
         var recording = _recording;
         if (recording is null) return;
         _recording = null;
@@ -491,6 +551,7 @@ internal static class NativeV111PassiveBridge
 
     private static void EndCombat(string reason)
     {
+        _agentFeed?.EndCombat(reason);
         NativeV111RngHook.EndCombat();
         var recording = _recording;
         var actionEnvelopes = _actionEnvelopes;
