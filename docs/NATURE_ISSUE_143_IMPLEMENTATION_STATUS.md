@@ -2,7 +2,7 @@
 
 **Tracking issue:** [#143](https://github.com/nn971/sts2-emulator/issues/143).
 **Base:** the isolated fidelity/RNG integration branch (PR [#137](https://github.com/nn971/sts2-emulator/pull/137)); the Silent all-Act gameplay snapshot in `main` is unchanged.
-**Status:** PRs #144–#152 and #155 merged into the isolated RNG/Inspector integration branch. PR #155 adds live drawn-card cost continuations and synchronizes the revised desired RNG architecture from main PR #154. Issue #143 stays OPEN for the new semantic deck/intent providers, unfinished chance sites, native parity and full terminal controlled rollouts. Issue #143 stays OPEN until remaining RNG site migration, native parity and complete controlled terminal rollouts.
+**Status:** PRs #144–#152 and #155 merged into the isolated RNG/Inspector integration branch. PR #155 adds live drawn-card cost continuations and synchronizes the revised desired RNG architecture from main PR #154. Issue #143 stays OPEN for semantic deck gameplay/JSONL integration, weighted visible intents, remaining chance sites, native parity and complete controlled terminal rollouts.
 
 ## Delivered by the event-metadata slice
 
@@ -131,3 +131,27 @@ top. See [draw-cost coverage](NATURE_DRAW_COST_143.md).
 Additional gates remain: opening/action-triggered draw-cost support,
 nested `CardDrawn` hooks, semantic deck state/forced positions, weighted
 visible intents, true native parity and 15-worker terminal rollouts.
+
+
+## Semantic deck-state kernel (opt-in, provider-owned)
+
+A new `sts2-v111-semantic-deck-v1` pure kernel implements the revised
+desired RNG state separation. Native mode stores committed exact
+top-first card identities; Nature mode stores unresolved, *shared*
+instance pools across physical position slots. A known card inserted in
+the middle splits the unknown slots without splitting their underlying
+permutation group. Subsequent draws/peeks/scry reveal a concrete card
+instance only once; earlier known/revealed cards stay forced and do not
+produce redundant Nature events. Source-triggered reshuffling creates
+a new unresolved epoch, and legacy precommitted Fisher–Yates swap
+transcripts stay on their separate `controlled-v111-playable-fixture-v1`
+protocol.
+
+Pure-state tests enumerate small constrained decks and exercise known
+top/bottom and middle placements, source-ordered candidate identities,
+peek reuse, scry/removal, snapshot/fork/tamper checks, native committed
+permutations and 15 workers. See
+[Nature semantic deck state](NATURE_SEMANTIC_DECK_143.md).
+The kernel is **not yet wired** into the normal `DrawCards`/opening-hand/
+automatic-pipeline mechanics or JSONL; integration and true native parity
+remain explicitly pending.
