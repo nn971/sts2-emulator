@@ -184,6 +184,16 @@ public sealed class ControlledPoolShuffleV111Tests
             .CurrentCardIds[0] = "missing";
         Assert.Throws<InvalidDataException>(() =>
             ControlledPlayableCombatEngineV111.VerifyStage(changed));
+        // Even a valid permutation of the same source cards is forged
+        // unless the recorded index choices reconstruct it exactly.
+        var progressed = ControlledPlayableCombatEngineV111.Resolve(
+            state, state.Fingerprint, 0);
+        var forgedPrefix = progressed.Fork();
+        var partial = forgedPrefix.Run.World!.Combat!.PendingChoice!
+            .ControlledPoolShuffle!.CurrentCardIds;
+        (partial[0], partial[1]) = (partial[1], partial[0]);
+        Assert.Throws<InvalidDataException>(() =>
+            ControlledPlayableCombatEngineV111.VerifyStage(forgedPrefix));
         var view = NatureBoundaryMetadataV111.Describe(state);
         Assert.Equal(view.Pending!.EventId,
             NatureBoundaryMetadataV111.Describe(state.Fork()).Pending!.EventId);
