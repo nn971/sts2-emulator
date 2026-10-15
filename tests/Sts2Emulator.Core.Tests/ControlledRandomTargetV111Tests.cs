@@ -96,11 +96,35 @@ public sealed class ControlledRandomTargetV111Tests
     [Fact]
     public void SlyDiscardAutoPlayHasControlledChoiceAndRecordsSelectedTarget()
     {
-        var source = WithFirstCard(Prepared("target-sly"), "proto.silent.strike", true);
-        long cardId = source.Run.World!.Combat!.Hand[0];
-        var end = new PrototypeAiEnvironment().Observe(source.Run).LegalActions
-            .Single(a => a.Kind == "end_turn");
-        var pending = ControlledPlayableCombatEngineV111.Step(source, end.ActionId);
+        var source = WithFirstCard(
+            Prepared("target-sly"), "proto.silent.storm_of_steel");
+        var combat = source.Run.World!.Combat!;
+        long cardId = combat.Hand[1];
+        source = source with
+        {
+            Run = source.Run with
+            {
+                World = source.Run.World with
+                {
+                    Combat = combat with
+                    {
+                        Cards = combat.Cards.Select(card =>
+                            card.InstanceId == cardId ? card with
+                            {
+                                CardId = "proto.silent.strike",
+                                KeywordOverrides = [
+                                    new PrototypeCardKeywordOverride(
+                                        PrototypeCardKeyword.Sly, true,
+                                        PrototypeCardKeywordOverrideExpiry.None)]
+                            } : card).ToArray()
+                    }
+                }
+            }
+        };
+        var play = new PrototypeAiEnvironment().Observe(source.Run).LegalActions
+            .Single(a => a.Kind == "play_card" &&
+                a.Payload.GetProperty("CardInstanceId").GetInt64() == combat.Hand[0]);
+        var pending = ControlledPlayableCombatEngineV111.Step(source, play.ActionId);
         var view = NatureBoundaryMetadataV111.Describe(pending);
         Assert.Equal("random_target", view.Kind);
         Assert.Equal("combat.sly_autoplay.random_enemy", view.Pending!.SiteId);
