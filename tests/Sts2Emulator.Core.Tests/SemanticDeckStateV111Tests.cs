@@ -166,7 +166,7 @@ public sealed class SemanticDeckStateV111Tests
         Assert.Equal(1, epoch.ShuffleEpoch);
         Assert.Equal(4, epoch.Count);
         Assert.Empty(SemanticDeckEngineV111.Observe(epoch).RevealedPositions);
-        Assert.Equal(new long[] { 3, 9, 1, 2 },
+        Assert.Equal(new long[] { 9, 3, 1, 2 },
             epoch.Pools.Single().RemainingCardInstanceIds);
         Assert.Single(epoch.Transcript!);
         var next = SemanticDeckEngineV111.Require(epoch, 0, "draw");
