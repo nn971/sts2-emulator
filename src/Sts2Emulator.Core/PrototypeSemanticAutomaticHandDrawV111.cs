@@ -47,12 +47,43 @@ public sealed partial class PrototypeGameEngine
             run, PrototypeContent.Rules.EndTurnPipeline[SemanticHandDrawStepIndex]);
         var after = RequireWorld(result).Combat ??
             throw new InvalidOperationException("Hand draw removed combat.");
+        // A source-committed opening order may supply the complete
+        // requested hand without a Nature ticket. This is a valid,
+        // genuinely deterministic automatic stage, not an unsupported
+        // interruption. Preserve original hooks and advance the cursor
+        // exactly once, as the surrounding ResumeAutomaticPipeline would.
+        if (!IsSemanticAutomaticHandDraw(after) &&
+            after.AutomaticPipelineContinuation?.NextStepIndex ==
+                SemanticHandDrawStepIndex &&
+            after.SemanticDeck is { Pending: null } &&
+            after.PendingChoice is null &&
+            after.PendingKnowledgeDemonChoice is null)
+        {
+            var drawn = after.CounterState.CardsDrawnThisCombat -
+                combat.CounterState.CardsDrawnThisCombat;
+            if (drawn <= 0)
+                throw new NotSupportedException(
+                    "UNSUPPORTED_SEMANTIC_DECK site=combat.DrawPlayerHand " +
+                    "operation=zero_card_uninterrupted_stage");
+            after = after with
+            {
+                AutomaticPipelineContinuation =
+                    after.AutomaticPipelineContinuation with
+                    {
+                        NextStepIndex = SemanticHandDrawStepIndex + 1
+                    }
+            };
+            return (result with
+            {
+                World = RequireWorld(result) with { Combat = after }
+            }, drawn, 0);
+        }
         if (!IsSemanticAutomaticHandDraw(after) ||
             (after.SemanticDeck?.Pending is null &&
              after.PendingChoice?.ControlledDrawCost is null))
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.DrawPlayerHand " +
-                "operation=uninterrupted_or_nested_stage");
+                "operation=unsupported_nested_stage");
         var saved = after.AutomaticPipelineContinuation!;
         return (result, saved.ControlledSemanticDrawRequested!.Value,
             saved.ControlledSemanticDrawRemaining!.Value);
