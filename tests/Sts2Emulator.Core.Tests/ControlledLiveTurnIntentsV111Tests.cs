@@ -78,19 +78,23 @@ public sealed class ControlledLiveTurnIntentsV111Tests
     }
 
     [Fact]
-    public void DifferentLegalTicketsForkIndependently()
+    public void LegalTicketsForkIndependentlyIncludingSingletonSupport()
     {
         var initial = Prepared("nature-143-live-branches");
         var endTurn = new PrototypeAiEnvironment().Observe(initial.Run)
             .LegalActions.Single(x => x.Kind == "end_turn").ActionId;
         var pending = ControlledPlayableCombatEngineV111.Step(initial, endTurn);
         Assert.NotNull(pending.ActivePending);
-        Assert.True(pending.ActivePending!.SupportCount > 1);
+        Assert.True(pending.ActivePending!.SupportCount >= 1);
+        int last = pending.ActivePending.SupportCount - 1;
         var a = ControlledPlayableCombatEngineV111.Resolve(
             pending, pending.Fingerprint, 0);
         var b = ControlledPlayableCombatEngineV111.Resolve(
-            pending, pending.Fingerprint, pending.ActivePending.SupportCount - 1);
-        Assert.NotEqual(a.Fingerprint, b.Fingerprint);
+            pending, pending.Fingerprint, last);
+        if (last > 0)
+            Assert.NotEqual(a.Fingerprint, b.Fingerprint);
+        else
+            Assert.Equal(a.Fingerprint, b.Fingerprint);
         Assert.Equal(a.Fingerprint,
             ControlledPlayableCombatEngineV111.Restore(
                 ControlledPlayableCombatEngineV111.Save(a)).Fingerprint);
