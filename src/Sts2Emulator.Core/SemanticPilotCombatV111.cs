@@ -70,7 +70,7 @@ public static class SemanticPilotCombatEngineV111
             throw new InvalidOperationException(
                 "Semantic playable entry requires a completely committed opening fixture.");
         var deck = SemanticDeckEngineV111.FromCommittedOpening(
-            combat.DrawPile.Reverse());
+            combat.DrawPile.Reverse().ToArray());
         var run = source.Run.Fork();
         run = run with
         {
