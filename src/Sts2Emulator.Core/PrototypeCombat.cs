@@ -12635,6 +12635,47 @@ public sealed partial class PrototypeGameEngine
                 "Card-selection source and destination zones coincide.");
         }
 
+        // Source card-selection movement can alter the hidden draw pile
+        // without any RNG call. Commit the SAME source-visible movement to
+        // the provider before mutating physical zones. In particular,
+        // MoveToDrawTop appends to the engine's bottom-first array: each
+        // selected card becomes a new top-first known semantic slot.
+        if (combat.SemanticDeck is { } semantic &&
+            (selection.SourceZone == PrototypeCardZone.DrawPile ||
+             destinationZone == PrototypeCardZone.DrawPile))
+        {
+            SemanticDeckEngineV111.Validate(semantic);
+            if (semantic.Pending is not null ||
+                !SemanticDeckEngineV111.AllCardInstanceIds(semantic)
+                    .Order().SequenceEqual(combat.DrawPile.Order()))
+                throw new InvalidDataException(
+                    "Semantic card-selection source has stale hidden pile state.");
+            if (selection.RemoveUnselectedFromSource &&
+                selection.SourceZone == PrototypeCardZone.DrawPile)
+                throw new NotSupportedException(
+                    "UNSUPPORTED_SEMANTIC_DECK site=combat.card_selection " +
+                    "operation=remove_unselected_hidden_draw_cards");
+
+            if (selection.SourceZone == PrototypeCardZone.DrawPile)
+            {
+                // A player-targeted physical removal is valid only once
+                // its old position has been established by an earlier
+                // peek/scry/reveal. Unknown-position removals need a
+                // separate stochastic position continuation.
+                foreach (var cardId in selected)
+                    semantic = SemanticDeckEngineV111.RemoveKnown(
+                        semantic, cardId);
+            }
+            if (selection.Resolution ==
+                PrototypeCardSelectionResolutionKind.MoveToDrawTop)
+            {
+                foreach (var cardId in selected)
+                    semantic = SemanticDeckEngineV111.PlaceTop(
+                        semantic, cardId);
+            }
+            combat = combat with { SemanticDeck = semantic };
+        }
+
         var unselected = source
             .Where(cardId => !selectedSet.Contains(cardId))
             .ToArray();
