@@ -161,7 +161,9 @@ internal static class PrototypeAiJsonlServer
                                 ControlledRecycleShuffleEngineV111.SiteId,
                                 "combat.effect.random_enemy",
                                 "combat.sly_autoplay.random_enemy",
-                                "combat.generated_card.select"
+                                "combat.generated_card.select",
+                                "combat.random_draw_attack.card_model",
+                                "combat.draw_pile.random_insert_index"
                             },
                             controlledChanceLimitations =
                                 "Opt-in HP/intents, shuffle, turn intents, hand-draw recycle, " +
