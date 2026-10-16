@@ -1,0 +1,148 @@
+namespace Sts2Emulator.Core;
+
+public sealed partial class PrototypeGameEngine
+{
+    private static string[] ControlledPotionGenerationPool() =>
+        PrototypeContent.PotionPool;
+
+    internal static bool ValidateControlledPotionGeneration(
+        CombatState combat,
+        PrototypeControlledPotionGenerationV111 choice,
+        long? sourceCardInstanceId)
+    {
+        var pending = combat.PendingChoice;
+        return choice.Operation.Kind ==
+                PrototypeCombatEffectKind.AcquireRandomCombatPotion &&
+            choice.Operation.Amount > 0 &&
+            choice.CandidatePotionIds is { Length: > 0 } &&
+            choice.CandidatePotionIds.SequenceEqual(
+                ControlledPotionGenerationPool()) &&
+            choice.CandidatePotionIds.Distinct(StringComparer.Ordinal)
+                .Count() == choice.CandidatePotionIds.Length &&
+            pending is
+            {
+                ChoiceId: "controlled_potion_generation",
+                OuterChoiceContinuation: { } continuation
+            } &&
+            pending.SourceCardInstanceId == sourceCardInstanceId &&
+            continuation.SourceCardInstanceId == sourceCardInstanceId &&
+            continuation.SourceCardDestination ==
+                pending.SourceCardDestination;
+    }
+
+    private static CombatState MakeControlledPotionGenerationChoice(
+        CombatState combat, PrototypeQueuedOperation operation,
+        PrototypeChoiceResolutionContinuationState continuation)
+    {
+        var candidates = ControlledPotionGenerationPool();
+        if (!ControlledChanceGuardV111.Active || operation.Amount <= 0 ||
+            operation.Kind !=
+                PrototypeCombatEffectKind.AcquireRandomCombatPotion ||
+            combat.PendingChoice is not null || candidates.Length == 0 ||
+            candidates.Distinct(StringComparer.Ordinal).Count() !=
+                candidates.Length)
+            throw new InvalidOperationException(
+                "Controlled potion generation requires a unique, live source pool.");
+        return combat with
+        {
+            PendingChoice = new PendingCombatChoiceState(
+                ChoiceId: "controlled_potion_generation",
+                SourceCardInstanceId: continuation.SourceCardInstanceId,
+                SourceCardDestination: continuation.SourceCardDestination,
+                Selection: new PrototypeCardSelectionSpec(
+                    PrototypeCardZone.Hand, 0, 0,
+                    PrototypeCardSelectionResolutionKind.MoveToDiscard),
+                CandidateCardInstanceIds: [],
+                Continuation: [],
+                CompletionEvents: [],
+                OuterChoiceContinuation: continuation.Fork(),
+                ControlledPotionGeneration:
+                    new PrototypeControlledPotionGenerationV111(
+                        operation with { }, (string[])candidates.Clone()))
+        };
+    }
+
+    internal static RunState ResumeControlledPotionGeneration(
+        RunState state, int selectedIndex)
+    {
+        if (!ControlledChanceGuardV111.Active)
+            throw new InvalidOperationException(
+                "Controlled potion generation requires the RNG guard.");
+        var world = RequireWorld(state);
+        var combat = world.Combat ??
+            throw new InvalidOperationException(
+                "Missing combat in potion generation.");
+        var pending = combat.PendingChoice ??
+            throw new InvalidOperationException(
+                "No random potion generation is pending.");
+        if (pending.ChoiceId != "controlled_potion_generation" ||
+            pending.ControlledPotionGeneration is not { } generation ||
+            pending.OuterChoiceContinuation is not { } continuation ||
+            !ValidateControlledPotionGeneration(
+                combat, generation, pending.SourceCardInstanceId))
+            throw new InvalidDataException(
+                "Saved potion generation is not source-reachable.");
+        if (selectedIndex < 0 ||
+            selectedIndex >= generation.CandidatePotionIds.Length)
+            throw new ArgumentOutOfRangeException(nameof(selectedIndex));
+
+        var selectedPotionId = generation.CandidatePotionIds[selectedIndex];
+        _ = PrototypeContent.Potion(selectedPotionId);
+        var slots = (PotionInstance?[])state.Player.PotionSlots.Clone();
+        var firstEmpty = Array.FindIndex(slots, potion => potion is null);
+        if (firstEmpty >= 0)
+        {
+            var potion = new PotionInstance(
+                selectedPotionId, PrototypeJson.EmptyObject());
+            slots[firstEmpty] = potion;
+            combat = combat with
+            {
+                Potions = combat.PotionStates.Append(
+                    new CombatPotionState(firstEmpty, selectedPotionId,
+                        potion.PersistentState.Clone())).ToArray()
+            };
+        }
+
+        var operation = generation.Operation;
+        var remainingOperations = operation.Amount > 1
+            ? new[] { operation with { Amount = operation.Amount - 1 } }
+                .Concat(continuation.Operations).ToArray()
+            : continuation.Operations;
+        var resumedContinuation = continuation with
+        {
+            Operations = remainingOperations
+        };
+        var resumed = ResumeChoiceResolutionContinuation(
+            state.Player with { PotionSlots = slots },
+            combat with { PendingChoice = null }, state.Rng,
+            resumedContinuation);
+        var updated = state with
+        {
+            Player = resumed.Player,
+            World = world with { Combat = resumed.Combat }
+        };
+        if (resumed.Combat.PendingChoice is null &&
+            resumed.Combat.AutomaticPipelineContinuation is { } automatic)
+        {
+            updated = updated with
+            {
+                World = updated.World! with
+                {
+                    Combat = resumed.Combat with
+                    {
+                        AutomaticPipelineContinuation = null
+                    }
+                }
+            };
+            updated = automatic.OpeningStage is { } openingStage
+                ? ResumeOpeningCombat(updated, openingStage)
+                : ResumeAutomaticPipeline(updated,
+                    automatic.NextStepIndex,
+                    automatic.PendingPostDispatchEventKind);
+        }
+        if (updated.Phase == RunPhase.Combat &&
+            updated.World?.Combat is { } live && AllEnemiesDefeated(live))
+            return EnterCombatReward(updated);
+        return updated;
+    }
+}

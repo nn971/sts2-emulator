@@ -94,6 +94,15 @@ public static class SemanticNatureEnumeratorV111
                 SemanticPilotCombatEngineV111.ResolveGeneratedCard(
                     current, currentFingerprint, generated.EventId, outcomeId);
         }
+        else if (current.PotionGenerationPending is { } potion)
+        {
+            eventKind = "random_potion_generation";
+            eventId = potion.EventId;
+            outcomeIds = (string[])potion.CandidatePotionIds.Clone();
+            resolve = outcomeId =>
+                SemanticPilotCombatEngineV111.ResolvePotionGeneration(
+                    current, currentFingerprint, potion.EventId, outcomeId);
+        }
         else if (current.CostPending is { } cost)
         {
             eventKind = cost.TargetCardInstanceId is null

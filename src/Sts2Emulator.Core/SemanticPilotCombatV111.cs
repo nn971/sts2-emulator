@@ -19,7 +19,8 @@ public sealed record SemanticPilotTransitionV111(
     SemanticHandCostSelectionDecisionV111? HandCostSelectionDecision = null,
     SemanticCardShortlistDecisionV111? CardShortlistDecision = null,
     SemanticRandomPileCardDecisionV111? RandomPileCardDecision = null,
-    SemanticDrawHookChoiceDecisionV111? DrawHookChoiceDecision = null);
+    SemanticDrawHookChoiceDecisionV111? DrawHookChoiceDecision = null,
+    SemanticPotionGenerationDecisionV111? PotionGenerationDecision = null);
 
 /// <summary>
 /// Independently replayable setup provenance. The default entry is a
@@ -80,7 +81,8 @@ public sealed record SemanticSeededEntryV111(
     bool FixtureRandomFreeAttackDrawInsertion = false,
     int? FixtureRandomizeHandCostsMaxExclusive = null,
     int? FixtureSetRandomHandCardCost = null,
-    string? FixtureSelectionPotionId = null);
+    string? FixtureSelectionPotionId = null,
+    string? FixturePotionGenerationCardId = null);
 
 /// <summary>
 /// First external playable semantic boundary. Initial opening order is
@@ -112,6 +114,10 @@ public sealed record SemanticPilotCombatV111(
         SemanticPilotCombatEngineV111.DescribePendingTargetEvent(this);
     [JsonIgnore] public SemanticGeneratedCardEventV111? GeneratedCardPending =>
         SemanticPilotCombatEngineV111.DescribePendingGeneratedCardEvent(this);
+    [JsonIgnore] public SemanticPotionGenerationEventV111?
+        PotionGenerationPending =>
+            SemanticPilotCombatEngineV111
+                .DescribePendingPotionGenerationEvent(this);
     [JsonIgnore] public SemanticCardSelectionEventV111? CardSelectionPending =>
         SemanticPilotCombatEngineV111.DescribePendingCardSelectionEvent(this);
     [JsonIgnore] public SemanticCostEventV111? CostPending =>
@@ -223,6 +229,10 @@ public sealed record SemanticPilotCombatV111(
             { GeneratedCardDecision: { } decision } => transition with
             {
                 GeneratedCardDecision = decision.Fork()
+            },
+            { PotionGenerationDecision: { } decision } => transition with
+            {
+                PotionGenerationDecision = decision.Fork()
             },
             { CardSelectionDecision: { } decision } => transition with
             {
@@ -361,9 +371,18 @@ public static class SemanticPilotCombatEngineV111
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_COST site=combat.seeded_entry " +
                 "operation=choose_one_hand_cost_fixture");
+        if (entry.FixturePotionGenerationCardId is not null &&
+            (entry.FixtureRandomTargetCardId is not null ||
+             entry.FixtureSelectionCardId is not null ||
+             entry.FixtureGeneratedDrawInsertionCardId is not null ||
+             entry.FixtureRandomFreeAttackDrawInsertion))
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_LOADOUT site=combat.seeded_entry " +
+                "operation=potion_generation_card_fixture_conflicts_with_other_card_fixture");
         if ((entry.FixtureRandomizeHandCostsMaxExclusive is not null ||
              entry.FixtureSetRandomHandCardCost is not null) &&
             (entry.FixtureRandomTargetCardId is not null ||
+             entry.FixturePotionGenerationCardId is not null ||
              entry.FixtureGenerationPotionId is not null ||
              entry.FixtureSelectionCardId is not null ||
              entry.FixtureSelectionPotionId is not null ||
@@ -385,10 +404,16 @@ public static class SemanticPilotCombatEngineV111
              entry.FixtureGeneratedDrawInsertionCardId is not null ||
              entry.FixtureRandomFreeAttackDrawInsertion ||
              entry.FixtureRandomizeHandCostsMaxExclusive is not null ||
-             entry.FixtureSetRandomHandCardCost is not null))
+             entry.FixtureSetRandomHandCardCost is not null ||
+             entry.FixturePotionGenerationCardId is not null))
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_NATIVE site=combat.seeded_entry " +
                 "operation=native_baseline_fixture_loadout_conflict");
+        if (entry.SourceRouteEntry &&
+            entry.FixturePotionGenerationCardId is not null)
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_LOADOUT site=combat.seeded_entry " +
+                "operation=potion_generation_card_requires_seeded_fixture_entry");
         if (entry.SourceRouteEntry)
             return BeginSourceRoute(entry);
         // Act 1 fixed weak entry is deliberately isolated from the
@@ -512,6 +537,8 @@ public static class SemanticPilotCombatEngineV111
             state = ApplyFixtureRandomizeHandCosts(state, maxExclusive);
         if (entry.FixtureSetRandomHandCardCost is { } setCost)
             state = ApplyFixtureSetRandomHandCardCost(state, setCost);
+        if (entry.FixturePotionGenerationCardId is { } potionCardId)
+            state = ApplyFixturePotionGenerationCard(state, potionCardId);
         Validate(state);
         return state;
     }
@@ -782,6 +809,46 @@ public static class SemanticPilotCombatEngineV111
                 {
                     Combat = combat with { Cards = cards }
                 }
+            }
+        };
+    }
+
+    private static SemanticPilotCombatV111 ApplyFixturePotionGenerationCard(
+        SemanticPilotCombatV111 state, string cardId)
+    {
+        if (cardId != "proto.colorless.alchemize")
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_LOADOUT site=combat.seeded_entry " +
+                "operation=fixture_potion_generation_card:" + cardId);
+        var world = state.Run.World ?? throw new InvalidDataException(
+            "Potion-generation card fixture is missing its combat world.");
+        var combat = world.Combat ?? throw new InvalidDataException(
+            "Potion-generation card fixture is missing combat.");
+        if (combat.Hand.Length == 0)
+            throw new InvalidOperationException(
+                "Potion-generation card fixture requires an opening-hand card.");
+        var selected = combat.Cards.Single(card =>
+            card.InstanceId == combat.Hand[0]);
+        var persistentId = selected.PersistentCardInstanceId ??
+            throw new InvalidDataException(
+                "Potion-generation fixture card has no persistent deck identity.");
+        var deckIndex = Array.FindIndex(state.Run.Player.Deck, card =>
+            card.InstanceId == persistentId);
+        if (deckIndex < 0)
+            throw new InvalidDataException(
+                "Potion-generation fixture card is absent from the player deck.");
+        var cards = combat.Cards.Select(card =>
+            card.InstanceId == selected.InstanceId
+                ? card with { CardId = cardId }
+                : card).ToArray();
+        var playerDeck = (CardInstance[])state.Run.Player.Deck.Clone();
+        playerDeck[deckIndex] = playerDeck[deckIndex] with { CardId = cardId };
+        return state with
+        {
+            Run = state.Run with
+            {
+                Player = state.Run.Player with { Deck = playerDeck },
+                World = world with { Combat = combat with { Cards = cards } }
             }
         };
     }
@@ -1297,6 +1364,9 @@ public static class SemanticPilotCombatEngineV111
                  "proto.colorless.catastrophe");
             var semanticRandomReplayCard =
                 card?.CardId == "proto.colorless.hidden_gem";
+            var semanticPotionGenerationCard = card?.CardId ==
+                current.SeededEntry?.FixturePotionGenerationCardId &&
+                card?.CardId == "proto.colorless.alchemize";
             var semanticRandomRareToHandCard =
                 card?.CardId == "proto.colorless.anointed";
             var fixtureSelectionCard = card?.CardId ==
@@ -1308,6 +1378,7 @@ public static class SemanticPilotCombatEngineV111
                  semanticDrawCard ||
                  semanticAutoplayCard ||
                  semanticRandomReplayCard ||
+                 semanticPotionGenerationCard ||
                  semanticRandomRareToHandCard ||
                  semanticSelectionCard ||
                  fixtureSelectionCard);
@@ -1621,6 +1692,57 @@ public static class SemanticPilotCombatEngineV111
                     GeneratedCardDecision: expected.Fork())).ToArray()
         };
         return NormalizeNoncontrolledCosts(next);
+    }
+
+    public static SemanticPilotCombatV111 ResolvePotionGeneration(
+        SemanticPilotCombatV111 current, string fingerprint,
+        string eventId, string potionId)
+    {
+        Validate(current);
+        if (current.Fingerprint != fingerprint)
+            throw new InvalidOperationException(
+                "Stale semantic potion-generation fingerprint.");
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(potionId);
+        var pending = current.PotionGenerationPending ??
+            throw new InvalidOperationException(
+                "No semantic potion-generation event is pending.");
+        if (pending.EventId != eventId)
+            throw new InvalidOperationException(
+                "Potion-generation event ID is stale or mismatched.");
+        var index = Array.IndexOf(pending.CandidatePotionIds, potionId);
+        if (index < 0)
+            throw new InvalidOperationException(
+                "Potion model is outside the pending source pool.");
+        var expected = new SemanticPotionGenerationDecisionV111(
+            pending, index, potionId);
+        expected.Validate();
+
+        RunState result;
+        using (ControlledChanceGuardV111.Enter())
+            result = PrototypeGameEngine.ResumeControlledPotionGeneration(
+                current.Run.Fork(), index);
+        if (result.Phase != RunPhase.Combat)
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_POTION site=combat.potion_generation " +
+                "operation=unsupported_post_generation_phase");
+        ValidateSemanticCombatBoundary(result);
+        var priorCombat = current.Run.World!.Combat!;
+        var nextCombat = result.World!.Combat!;
+        if (!priorCombat.DrawPile.SequenceEqual(nextCombat.DrawPile) ||
+            CanonicalJson.Sha256(priorCombat.SemanticDeck) !=
+                CanonicalJson.Sha256(nextCombat.SemanticDeck))
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_DECK site=combat.potion_generation " +
+                "operation=unmodeled_draw_pile_mutation");
+        return NormalizeNoncontrolledCosts(current with
+        {
+            Run = result,
+            History = current.History.Append(
+                new SemanticPilotTransitionV111(
+                    "semantic_potion_generation",
+                    PotionGenerationDecision: expected.Fork())).ToArray()
+        });
     }
 
     private static SemanticPilotCombatV111 StepNativePolicyBaseline(
@@ -2597,6 +2719,44 @@ public static class SemanticPilotCombatEngineV111
         return semanticEvent;
     }
 
+    public static SemanticPotionGenerationEventV111?
+        DescribePendingPotionGenerationEvent(SemanticPilotCombatV111 current)
+    {
+        ArgumentNullException.ThrowIfNull(current);
+        var combat = current.Run.World?.Combat;
+        var choice = combat?.PendingChoice;
+        var generation = choice?.ControlledPotionGeneration;
+        if (generation is null) return null;
+        if (current.SeededEntry?.FixturePotionGenerationCardId !=
+                "proto.colorless.alchemize")
+            throw new InvalidDataException(
+                "Potion generation lacks semantic fixture provenance.");
+        ValidatePotionGenerationBoundary(current.Run);
+        var candidates = (string[])generation.CandidatePotionIds.Clone();
+        var siteId = "combat.potion_generation.random_model";
+        var ownerId = "effect:" + generation.Operation.Kind + ":source:" +
+            (choice!.SourceCardInstanceId?.ToString() ?? "none") + ":pool:" +
+            CanonicalJson.Sha256(candidates);
+        var ordinal = current.History.Count(transition =>
+            transition.Kind == "semantic_potion_generation");
+        var supportFingerprint = CanonicalJson.Sha256(candidates);
+        var eventId = CanonicalJson.Sha256(new
+        {
+            SchemaId = SemanticPotionGenerationChoiceV111.SchemaId,
+            BoundaryFingerprint = current.Fingerprint,
+            SiteId = siteId,
+            OwnerId = ownerId,
+            Ordinal = ordinal,
+            SupportFingerprint = supportFingerprint
+        });
+        var semanticEvent = new SemanticPotionGenerationEventV111(
+            SemanticPotionGenerationChoiceV111.SchemaId, eventId, siteId,
+            "prototype.combat", ownerId, ordinal, "choose_potion_model",
+            candidates, supportFingerprint);
+        semanticEvent.Validate();
+        return semanticEvent;
+    }
+
     public static SemanticCardSelectionEventV111?
         DescribePendingCardSelectionEvent(SemanticPilotCombatV111 current)
     {
@@ -3165,6 +3325,11 @@ public static class SemanticPilotCombatEngineV111
             ValidateGeneratedCardBoundary(run);
             return;
         }
+        if (choice?.ControlledPotionGeneration is not null)
+        {
+            ValidatePotionGenerationBoundary(run);
+            return;
+        }
         if (choice?.ControlledDrawInsertion is not null)
         {
             ValidateDrawInsertionBoundary(run);
@@ -3181,6 +3346,32 @@ public static class SemanticPilotCombatEngineV111
             return;
         }
         SemanticPlayerActionEngineV111.ValidateBoundary(run);
+    }
+
+    private static void ValidatePotionGenerationBoundary(RunState run)
+    {
+        var combat = run.World?.Combat;
+        var choice = combat?.PendingChoice;
+        var generation = choice?.ControlledPotionGeneration;
+        if (run.Phase != RunPhase.Combat ||
+            combat is not { IsPlayerTurn: true,
+                AutomaticPipelineContinuation: null } ||
+            choice is not { ChoiceId: "controlled_potion_generation",
+                OuterChoiceContinuation: not null } ||
+            generation is null ||
+            !PrototypeGameEngine.ValidateControlledPotionGeneration(
+                combat, generation, choice.SourceCardInstanceId))
+            throw new InvalidDataException(
+                "Potion generation is not source-reachable.");
+        var deck = combat.SemanticDeck ?? throw new InvalidDataException(
+            "Potion generation lost the provider-owned semantic deck.");
+        SemanticDeckEngineV111.Validate(deck);
+        if (deck.Mode != SemanticDeckStateV111.NatureMode ||
+            deck.Pending is not null ||
+            !SemanticDeckEngineV111.AllCardInstanceIds(deck)
+                .Order().SequenceEqual(combat.DrawPile.Order()))
+            throw new InvalidDataException(
+                "Potion generation changed the hidden draw pile.");
     }
 
     private static void ValidateSemanticActionDrawBoundary(RunState run)
@@ -3595,6 +3786,8 @@ public static class SemanticPilotCombatEngineV111
             targetPending.Validate();
             if (state.PendingEndTurn is not null ||
                 state.PendingInitialIntents is not null ||
+                state.GeneratedCardPending is not null ||
+                state.PotionGenerationPending is not null ||
                 state.UsesNativePolicyBaseline || state.CombatTerminal)
                 throw new InvalidDataException(
                     "Random-target continuation conflicts with another boundary.");
@@ -3603,12 +3796,38 @@ public static class SemanticPilotCombatEngineV111
         {
             generatedCardPending.Validate();
             if (state.TargetPending is not null ||
+                state.PotionGenerationPending is not null ||
                 state.PendingEndTurn is not null ||
                 state.PendingInitialIntents is not null ||
                 state.UsesNativePolicyBaseline || state.CombatTerminal)
                 throw new InvalidDataException(
                     "Generated-card continuation conflicts with another boundary.");
         }
+        if (state.PotionGenerationPending is { } potionGenerationPending)
+        {
+            potionGenerationPending.Validate();
+            ValidatePotionGenerationBoundary(state.Run);
+            if (state.TargetPending is not null ||
+                state.GeneratedCardPending is not null ||
+                state.IntentPending is not null ||
+                state.DrawPending is not null ||
+                state.RandomPileCardPending is not null ||
+                state.CardSelectionPending is not null ||
+                state.CostPending is not null ||
+                state.HandCostSelectionPending is not null ||
+                state.CardShortlistPending is not null ||
+                state.PoolShufflePending is not null ||
+                state.DrawInsertionPending is not null ||
+                state.PendingEndTurn is not null ||
+                state.PendingInitialIntents is not null ||
+                state.UsesNativePolicyBaseline || state.CombatTerminal)
+                throw new InvalidDataException(
+                    "Potion-generation continuation conflicts with another boundary.");
+        }
+        else if (state.Run.World?.Combat?.PendingChoice?
+                     .ControlledPotionGeneration is not null)
+            throw new InvalidDataException(
+                "Controlled potion generation has no semantic event.");
         if (state.CardSelectionPending is { } cardSelectionPending)
         {
             cardSelectionPending.Validate();
@@ -3869,6 +4088,11 @@ public static class SemanticPilotCombatEngineV111
                     ResolveGeneratedCard(replay, replay.Fingerprint,
                         transition.GeneratedCardDecision.Event.EventId,
                         transition.GeneratedCardDecision.SelectedCardId),
+                "semantic_potion_generation" when
+                    transition.PotionGenerationDecision is not null =>
+                    ResolvePotionGeneration(replay, replay.Fingerprint,
+                        transition.PotionGenerationDecision.Event.EventId,
+                        transition.PotionGenerationDecision.SelectedPotionId),
                 "semantic_card_selection" when
                     transition.CardSelectionDecision is not null =>
                     Step(replay, replay.Fingerprint,

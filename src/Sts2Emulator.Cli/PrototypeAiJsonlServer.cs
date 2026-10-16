@@ -221,6 +221,28 @@ internal static class PrototypeAiJsonlServer
                         }).ToArray()
                 };
             }
+            if (state.PotionGenerationPending is { } potionGeneration)
+            {
+                return new
+                {
+                    kind = "potion_generation",
+                    schemaId = potionGeneration.SchemaId,
+                    eventId = potionGeneration.EventId,
+                    siteId = potionGeneration.SiteId,
+                    streamId = potionGeneration.StreamId,
+                    ownerId = potionGeneration.OwnerId,
+                    ordinal = potionGeneration.Ordinal,
+                    operationKind = potionGeneration.OperationKind,
+                    supportFingerprint = potionGeneration.SupportFingerprint,
+                    probabilityStatus = potionGeneration.ProbabilityStatus,
+                    candidates = potionGeneration.CandidatePotionIds
+                        .Select((id, index) => new
+                        {
+                            index,
+                            potionModelId = id
+                        }).ToArray()
+                };
+            }
             if (state.CardSelectionPending is { } selection)
             {
                 return new
@@ -397,6 +419,9 @@ internal static class PrototypeAiJsonlServer
                 sites.Add("random_target");
             if (state.SeededEntry?.FixtureGenerationPotionId is not null)
                 sites.Add("generated_card");
+            if (state.SeededEntry?.FixturePotionGenerationCardId is not null ||
+                state.PotionGenerationPending is not null)
+                sites.Add("random_potion_generation");
             if (state.SeededEntry?.FixtureNatureDrawCosts == true)
                 sites.Add("drawn_card_cost");
             if (state.SeededEntry?.FixturePoolGenerationPotionId is not null ||
@@ -457,6 +482,7 @@ internal static class PrototypeAiJsonlServer
                 ? "engine-owned-native-v111-policy-baseline"
                 : state.SeededEntry?.FixtureRandomTargetCardId is not null ||
                   state.SeededEntry?.FixtureGenerationPotionId is not null ||
+                  state.SeededEntry?.FixturePotionGenerationCardId is not null ||
                   state.SeededEntry?.FixtureSelectionCardId is not null ||
                   state.SeededEntry?.FixtureNatureDrawCosts == true ||
                   state.SeededEntry?.FixturePoolGenerationPotionId is not null ||
@@ -680,6 +706,8 @@ internal static class PrototypeAiJsonlServer
                                 SemanticTargetChoiceV111.SchemaId,
                             semanticGeneratedCardChoiceSchemaId =
                                 SemanticGenerationChoiceV111.SchemaId,
+                            semanticPotionGenerationChoiceSchemaId =
+                                SemanticPotionGenerationChoiceV111.SchemaId,
                             semanticCardSelectionChoiceSchemaId =
                                 SemanticCardSelectionEventV111.EventSchemaId,
                             semanticCostChoiceSchemaId =
@@ -707,7 +735,8 @@ internal static class PrototypeAiJsonlServer
                                 "random_pile_selection_shortlist",
                                 "random_pile_card", "random_auto_play_card",
                                 "random_replay_card",
-                                "random_rare_to_hand_shuffle"
+                                "random_rare_to_hand_shuffle",
+                                "random_potion_generation"
                             },
                             semanticExtendedPlayerChoices = new[]
                             {
@@ -723,6 +752,7 @@ internal static class PrototypeAiJsonlServer
                                 "combat.effect.random_enemy",
                                 "combat.sly_autoplay.random_enemy",
                                 "combat.generated_card.select",
+                                "combat.potion_generation.random_model",
                                 "combat.random_draw_attack.card_model",
                                 "combat.draw_pile.random_insert_index",
                                 "combat.generation.full_pool_shuffle.swap_index",
@@ -734,7 +764,8 @@ internal static class PrototypeAiJsonlServer
                                 "Opt-in HP/intents, shuffle, turn intents, hand-draw recycle, " +
                                 "random-enemy and Sly targeting, five generated-card " +
                                 "effects, draw insertion, full-pool generation shuffles, " +
-                                "hand-cost selection/rerolls, and random pile shortlists; " +
+                                "hand-cost selection/rerolls, random pile shortlists, " +
+                                "and per-potion model generation; " +
                                 "other chance sites fail closed; native entry and laws unverified.",
                             natureBoundaryKinds = new[] { "initial_hp", "intents" },
                             coverageSchemaId = V111Coverage.SchemaId,
@@ -1060,7 +1091,9 @@ internal static class PrototypeAiJsonlServer
                             OptionalInt(request,
                                 "fixture_set_random_hand_card_cost"),
                             OptionalString(request,
-                                "fixture_selection_potion_id"));
+                                "fixture_selection_potion_id"),
+                            OptionalString(request,
+                                "fixture_potion_generation_card_id"));
                         var next = SemanticPilotCombatEngineV111.BeginSeeded(entry);
                         var handle = StoreSemantic(next);
                         Write(new { requestId, ok = true,
@@ -1177,6 +1210,20 @@ internal static class PrototypeAiJsonlServer
                             current, RequiredString(request, "fingerprint"),
                             RequiredString(request, "event_id"),
                             RequiredString(request, "card_model_id"));
+                        var handle = StoreSemantic(next);
+                        Write(new { requestId, ok = true,
+                            result = SemanticResult(next, handle, parentHandle) });
+                        break;
+                    }
+
+                    case "semantic_resolve_potion_generation":
+                    {
+                        var parentHandle = RequiredString(request, "semantic_handle");
+                        var current = RequireSemantic(request);
+                        var next = SemanticPilotCombatEngineV111.ResolvePotionGeneration(
+                            current, RequiredString(request, "fingerprint"),
+                            RequiredString(request, "event_id"),
+                            RequiredString(request, "potion_model_id"));
                         var handle = StoreSemantic(next);
                         Write(new { requestId, ok = true,
                             result = SemanticResult(next, handle, parentHandle) });

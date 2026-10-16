@@ -33,10 +33,11 @@ public sealed record ControlledPlayableCombatV111(
     public RandomIndexDecisionV111[] PoolShuffleTranscript { get; init; } = [];
     public RandomIndexDecisionV111[] RandomCostTranscript { get; init; } = [];
     public RandomIndexDecisionV111[] DrawCostTranscript { get; init; } = [];
+    public RandomIndexDecisionV111[] PotionGenerationTranscript { get; init; } = [];
 
     [System.Text.Json.Serialization.JsonIgnore]
     public RandomIndexRequestV111? ActivePending =>
-        DrawCostPending ?? RandomCostPending ?? PoolShufflePending ?? DrawInsertionPending ??
+        DrawCostPending ?? RandomCostPending ?? PotionGenerationPending ?? PoolShufflePending ?? DrawInsertionPending ??
         GeneratedCardPending ?? TargetPending ??
         Recycle?.Pending ?? TurnIntents?.Pending ?? Pending;
     [System.Text.Json.Serialization.JsonIgnore]
@@ -153,6 +154,25 @@ public sealed record ControlledPlayableCombatV111(
         }
     }
     [System.Text.Json.Serialization.JsonIgnore]
+    public RandomIndexRequestV111? PotionGenerationPending
+    {
+        get
+        {
+            var combat = Run.World?.Combat;
+            var generation = combat?.PendingChoice?.ControlledPotionGeneration;
+            if (generation is null) return null;
+            var owner = "effect:" + generation.Operation.Kind +
+                ":source:" + (combat!.PendingChoice!.SourceCardInstanceId?
+                    .ToString() ?? "none") + ":pool:" +
+                CanonicalJson.Sha256(generation.CandidatePotionIds);
+            return new RandomIndexRequestV111(
+                "combat.potion_generation.random_model", "prototype.combat",
+                owner, PotionGenerationTranscript.Length,
+                Enumerable.Range(0, generation.CandidatePotionIds.Length)
+                    .ToArray(), OperationKind: "choose_index");
+        }
+    }
+    [System.Text.Json.Serialization.JsonIgnore]
     public RandomIndexRequestV111? TargetPending
     {
         get
@@ -199,6 +219,7 @@ public sealed record ControlledPlayableCombatV111(
         PoolShuffleTranscript = DeepCopy(PoolShuffleTranscript),
         RandomCostTranscript = DeepCopy(RandomCostTranscript),
         DrawCostTranscript = DeepCopy(DrawCostTranscript),
+        PotionGenerationTranscript = DeepCopy(PotionGenerationTranscript),
         Pending = Pending is null ? null : Pending with
         {
             OrderedCandidates = (int[])Pending.OrderedCandidates.Clone()
@@ -306,6 +327,8 @@ public static class ControlledPlayableCombatEngineV111
             return ResolveDrawCost(state, selectedIndex);
         if (state.RandomCostPending is not null)
             return ResolveRandomCost(state, selectedIndex);
+        if (state.PotionGenerationPending is not null)
+            return ResolvePotionGeneration(state, selectedIndex);
         if (state.PoolShufflePending is not null)
             return ResolvePoolShuffle(state, selectedIndex);
         if (state.DrawInsertionPending is not null)
@@ -468,6 +491,28 @@ public static class ControlledPlayableCombatEngineV111
         {
             Run = result,
             GeneratedCardTranscript = state.GeneratedCardTranscript
+                .Append(choice).ToArray(),
+            LiveTranscript = state.LiveTranscript.Append(choice).ToArray()
+        };
+        return StartPendingTurn(next);
+    }
+
+    private static ControlledPlayableCombatV111 ResolvePotionGeneration(
+        ControlledPlayableCombatV111 state, int selectedIndex)
+    {
+        var request = state.PotionGenerationPending ??
+            throw new InvalidOperationException(
+                "Missing random-potion Nature ticket.");
+        var choice = new ControlledRandomIndexProviderV111(selectedIndex)
+            .Resolve(request, state.Origin.ReferenceStreams);
+        RunState result;
+        using (ControlledChanceGuardV111.Enter())
+            result = PrototypeGameEngine.ResumeControlledPotionGeneration(
+                state.Run.Fork(), selectedIndex);
+        var next = state.Fork() with
+        {
+            Run = result,
+            PotionGenerationTranscript = state.PotionGenerationTranscript
                 .Append(choice).ToArray(),
             LiveTranscript = state.LiveTranscript.Append(choice).ToArray()
         };
@@ -676,7 +721,9 @@ public static class ControlledPlayableCombatEngineV111
             !current.DrawInsertionTranscript.SequenceEqual(stored.DrawInsertionTranscript) ||
             !current.PoolShuffleTranscript.SequenceEqual(stored.PoolShuffleTranscript) ||
             !current.RandomCostTranscript.SequenceEqual(stored.RandomCostTranscript) ||
-            !current.DrawCostTranscript.SequenceEqual(stored.DrawCostTranscript))
+            !current.DrawCostTranscript.SequenceEqual(stored.DrawCostTranscript) ||
+            !current.PotionGenerationTranscript.SequenceEqual(
+                stored.PotionGenerationTranscript))
         {
             // Records hold arrays; canonical comparison below is decisive.
             if (CanonicalJson.Sha256(current.TurnTranscript) !=
@@ -694,7 +741,9 @@ public static class ControlledPlayableCombatEngineV111
                 CanonicalJson.Sha256(current.RandomCostTranscript) !=
                     CanonicalJson.Sha256(stored.RandomCostTranscript) ||
                 CanonicalJson.Sha256(current.DrawCostTranscript) !=
-                    CanonicalJson.Sha256(stored.DrawCostTranscript))
+                    CanonicalJson.Sha256(stored.DrawCostTranscript) ||
+                CanonicalJson.Sha256(current.PotionGenerationTranscript) !=
+                    CanonicalJson.Sha256(stored.PotionGenerationTranscript))
                 throw new InvalidDataException("Chance transcripts diverged.");
         }
         if (CanonicalJson.Sha256(current) != CanonicalJson.Sha256(stored))
@@ -715,7 +764,8 @@ public static class ControlledPlayableCombatEngineV111
             state.DrawInsertionTranscript is null ||
             state.PoolShuffleTranscript is null ||
             state.RandomCostTranscript is null ||
-            state.DrawCostTranscript is null || state.Origin is null ||
+            state.DrawCostTranscript is null ||
+            state.PotionGenerationTranscript is null || state.Origin is null ||
             (state.TurnIntents is not null && state.Pending is not null) ||
             (state.Recycle is not null &&
                 (state.Pending is not null || state.TurnIntents is not null)))
@@ -727,6 +777,7 @@ public static class ControlledPlayableCombatEngineV111
             var automatic = drawnCostCombat?.AutomaticPipelineContinuation;
             if (state.Pending is not null || state.Recycle is not null ||
                 state.TurnIntents is not null ||
+                drawnCostCombat?.PendingChoice?.ControlledPotionGeneration is not null ||
                 !drawnCost.FromHandDraw ||
                 automatic is null ||
                 automatic.ControlledDrawCostRemaining != drawnCost.RemainingCount ||
@@ -743,6 +794,7 @@ public static class ControlledPlayableCombatEngineV111
              state.TurnIntents is not null ||
              costCombat?.PendingChoice?.ControlledTarget is not null ||
              costCombat?.PendingChoice?.ControlledGeneration is not null ||
+             costCombat?.PendingChoice?.ControlledPotionGeneration is not null ||
              costCombat?.PendingChoice?.ControlledDrawInsertion is not null ||
              costCombat?.PendingChoice?.ControlledPoolShuffle is not null ||
              !PrototypeGameEngine.ValidateControlledRandomCost(
@@ -756,6 +808,7 @@ public static class ControlledPlayableCombatEngineV111
              state.TurnIntents is not null ||
              poolCombat?.PendingChoice?.ControlledTarget is not null ||
              poolCombat?.PendingChoice?.ControlledGeneration is not null ||
+             poolCombat?.PendingChoice?.ControlledPotionGeneration is not null ||
              poolCombat?.PendingChoice?.ControlledDrawInsertion is not null ||
              !PrototypeGameEngine.ValidateControlledPoolShuffle(
                  poolCombat!, pool,
@@ -804,6 +857,7 @@ public static class ControlledPlayableCombatEngineV111
              state.TurnIntents is not null ||
              insertionCombat?.PendingChoice?.ControlledTarget is not null ||
              insertionCombat?.PendingChoice?.ControlledGeneration is not null ||
+             insertionCombat?.PendingChoice?.ControlledPotionGeneration is not null ||
              !PrototypeGameEngine.ValidateControlledDrawInsertion(
                  insertionCombat!, insertion)))
             throw new InvalidDataException(
@@ -813,9 +867,23 @@ public static class ControlledPlayableCombatEngineV111
             (state.Pending is not null || state.Recycle is not null ||
              state.TurnIntents is not null ||
              state.Run.World?.Combat?.PendingChoice?.ControlledTarget is not null ||
+             state.Run.World?.Combat?.PendingChoice?.ControlledPotionGeneration is not null ||
              !PrototypeGameEngine.ValidateControlledGenerationSupport(generated)))
             throw new InvalidDataException(
                 "Malformed or stale controlled generated-card candidate pool.");
+        var potionCombat = state.Run.World?.Combat;
+        var potionGeneration = potionCombat?.PendingChoice?.ControlledPotionGeneration;
+        if (potionGeneration is not null &&
+            (state.Pending is not null || state.Recycle is not null ||
+             state.TurnIntents is not null ||
+             potionCombat?.PendingChoice?.ControlledTarget is not null ||
+             potionCombat?.PendingChoice?.ControlledGeneration is not null ||
+             potionCombat?.PendingChoice?.ControlledPoolShuffle is not null ||
+             !PrototypeGameEngine.ValidateControlledPotionGeneration(
+                 potionCombat!, potionGeneration,
+                 potionCombat!.PendingChoice?.SourceCardInstanceId)))
+            throw new InvalidDataException(
+                "Malformed or stale controlled potion-generation candidate pool.");
         var controlledTarget = state.Run.World?.Combat?.PendingChoice?.ControlledTarget;
         if (controlledTarget is not null)
         {
@@ -827,6 +895,7 @@ public static class ControlledPlayableCombatEngineV111
                 .Select(enemy => enemy.InstanceId).ToArray();
             if (state.Recycle is not null || state.TurnIntents is not null ||
                 state.Pending is not null ||
+                combat.PendingChoice?.ControlledPotionGeneration is not null ||
                 controlledTarget.Kind is not ("effect_random_enemy" or "sly_auto_play") ||
                 eligible.Length == 0 ||
                 !eligible.SequenceEqual(controlledTarget.EligibleEnemyInstanceIds) ||

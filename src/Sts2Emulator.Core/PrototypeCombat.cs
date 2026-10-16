@@ -2508,6 +2508,7 @@ public sealed partial class PrototypeGameEngine
                         var pending = combat.PendingChoice;
                         if (pending.ControlledTarget is not null ||
                             pending.ControlledGeneration is not null ||
+                            pending.ControlledPotionGeneration is not null ||
                             pending.ControlledDrawCost is not null ||
                             pending.ControlledSemanticDraw is not null ||
                             pending.ControlledDrawInsertion is not null ||
@@ -5327,6 +5328,28 @@ public sealed partial class PrototypeGameEngine
                     targetEnemyId))
             {
                 continue;
+            }
+
+            if (ControlledChanceGuardV111.Active &&
+                !ControlledChanceGuardV111.EngineOwnedNativeProviderActive &&
+                operation.Kind ==
+                    PrototypeCombatEffectKind.AcquireRandomCombatPotion &&
+                operation.Amount > 0)
+            {
+                var continuation = new PrototypeChoiceResolutionContinuationState(
+                    SourceCardInstanceId: sourceCardInstanceId,
+                    SourceCardDestination: sourceCardDestination,
+                    Operations: operations.ToArray(),
+                    PendingDiscardEvents: [],
+                    PendingSlyCardInstanceIds: [],
+                    CompletionEvents: completionEvents ?? [],
+                    CardPlaySeries: cardPlaySeries,
+                    MoveSourceCardOnCompletion: moveSourceCardOnCompletion,
+                    RemoveSourceCardOnCompletion: removeSourceCardOnCompletion,
+                    SourceCardAlreadyMoved: sourceCardAlreadyMoved,
+                    EventDispatchContinuation: eventDispatchContinuation?.Fork());
+                return (player, MakeControlledPotionGenerationChoice(
+                    combat, operation, continuation));
             }
 
             // Source TakeRandom/GetDistinctForCombat shuffles its entire

@@ -91,6 +91,7 @@ public static class SemanticDrawHookChoiceEngineV111
                     Pending: null } } ||
             choice.ControlledTarget is not null ||
             choice.ControlledGeneration is not null ||
+            choice.ControlledPotionGeneration is not null ||
             choice.ControlledDrawCost is not null ||
             choice.ControlledSemanticDraw is not null ||
             choice.ControlledDrawInsertion is not null ||
@@ -188,6 +189,7 @@ public static class SemanticDrawHookChoiceEngineV111
         {
             if (nextChoice.ControlledTarget is not null ||
                 nextChoice.ControlledGeneration is not null ||
+                nextChoice.ControlledPotionGeneration is not null ||
                 nextChoice.ControlledDrawCost is not null ||
                 nextChoice.ControlledSemanticDraw is not null ||
                 nextChoice.ControlledDrawInsertion is not null ||

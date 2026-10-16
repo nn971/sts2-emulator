@@ -311,6 +311,29 @@ class SemanticCombat:
                 fingerprint=self.fingerprint, event_id=self.pending["eventId"],
                 card_model_id=card_model_id))
 
+    def resolve_potion_generation(self, potion_model_id: str):
+        """Resolve one random combat potion by its ordered source model ID."""
+        if not self.pending or self.pending.get("kind") != "potion_generation":
+            raise EmulatorError("Expected a potion_generation Nature event")
+        if self.session.capabilities.get(
+                "semanticPotionGenerationChoiceSchemaId") != (
+                    "sts2-v111-semantic-potion-generation-v1"):
+            raise EmulatorError(
+                "Emulator does not expose semantic potion-generation choices")
+        candidate_ids = [
+            candidate["potionModelId"]
+            for candidate in self.pending.get("candidates", [])]
+        if potion_model_id not in candidate_ids:
+            raise ValueError(
+                "Potion model is outside the pending generation support")
+        return SemanticCombat.from_wire(
+            self.session, self.session.call(
+                "semantic_resolve_potion_generation",
+                semantic_handle=self.handle,
+                fingerprint=self.fingerprint,
+                event_id=self.pending["eventId"],
+                potion_model_id=potion_model_id))
+
     def resolve_cost(self, cost: int):
         """Resolve an opt-in temporary card cost by its legal value."""
         if not self.pending or self.pending.get("kind") not in (
@@ -604,6 +627,7 @@ class Session:
             fixture_random_free_attack_draw_insertion: bool = False,
             fixture_randomize_hand_costs_max_exclusive: int | None = None,
             fixture_set_random_hand_card_cost: int | None = None,
+            fixture_potion_generation_card_id: str | None = None,
             replay_opening_draw_hooks: bool = False,
             native_policy_baseline: bool = False,
             source_route_entry: bool = False,
@@ -628,6 +652,8 @@ class Session:
         and insertion position stages.
         The hand-cost fixture exposes one cost event per eligible card.
         The fixed hand-cost fixture exposes the eligible card-selection event.
+        The potion-generation card fixture places Alchemize in the opening
+        hand to expose its ordered random-potion model pool.
         """
         if self.capabilities.get("semanticSeededOpeningProvider") != (
                 "engine-owned-seeded-source-shaped-unverified-v1"):
@@ -666,6 +692,8 @@ class Session:
                 fixture_randomize_hand_costs_max_exclusive,
             fixture_set_random_hand_card_cost=
                 fixture_set_random_hand_card_cost,
+            fixture_potion_generation_card_id=
+                fixture_potion_generation_card_id,
             replay_opening_draw_hooks=replay_opening_draw_hooks,
             native_policy_baseline=native_policy_baseline,
             source_route_entry=source_route_entry,

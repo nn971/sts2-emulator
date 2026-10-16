@@ -43,13 +43,16 @@ non-Nature RNG parity remain **UNVERIFIED**.
   sts2-v111-semantic-pool-shuffle-v1`.
 - `semanticDrawInsertionChoiceSchemaId =
   sts2-v111-semantic-draw-insertion-v1`.
+- `semanticPotionGenerationChoiceSchemaId =
+  sts2-v111-semantic-potion-generation-v1`.
 - `semanticEnumerationSchemaId = sts2-v111-semantic-enumeration-v1`; maximum
   support size is 256.
 - `semanticExtendedControlledSites = [random_enemy_target, generated_card_pool,
   drawn_card_cost, generated_card_pool_shuffle, generated_draw_pile_insertion,
   random_draw_attack_card_model, random_hand_card_energy_cost,
   random_hand_card_select, random_pile_selection_shortlist, random_pile_card,
-  random_auto_play_card, random_replay_card, random_rare_to_hand_shuffle]`;
+  random_auto_play_card, random_replay_card, random_rare_to_hand_shuffle,
+  random_potion_generation]`;
   fixture-specific sites require their corresponding seeded-entry options.
 - `semanticExtendedPlayerChoices = [select_cards,
   card_drawn_hook_action]`.
@@ -85,6 +88,7 @@ paths avoid that external setup chain:
 | `semantic_resolve_random_pile_card` | handle, fingerprint, pending `event_id`, legal `card_instance_id` | Child Nature / player / terminal |
 | `semantic_resolve_random_target` | handle, fingerprint, pending `event_id`, legal `enemy_instance_id` | Child Nature / player / terminal |
 | `semantic_resolve_generated_card` | handle, fingerprint, pending `event_id`, legal `card_model_id` | Child Nature / player / terminal |
+| `semantic_resolve_potion_generation` | handle, fingerprint, pending `event_id`, legal `potion_model_id` | Child Nature / player |
 | `semantic_resolve_cost` | handle, fingerprint, pending `event_id`, legal cost value | Child Nature / player / terminal |
 | `semantic_resolve_pool_shuffle` | handle, fingerprint, pending `event_id`, bounded `swap_index` | Child Nature / player / terminal |
 | `semantic_resolve_draw_insertion` | handle, fingerprint, pending `event_id`, bounded `position` | Child Nature / player / terminal |
@@ -729,3 +733,21 @@ probability laws; native reward and other non-Nature RNG parity; broader
 source-routed encounter coverage, including normal encounters; and
 `sts2-ai` consumer verification. The paired smoke is mechanics and replay
 evidence, not calibration or training evidence. Issue #143 remains open.
+
+## Random combat-potion generation continuation
+
+The seeded fixture option
+`fixture_potion_generation_card_id="proto.colorless.alchemize"` replaces the
+first opening-hand card with Alchemize. Its `AcquireRandomCombatPotion`
+operation suspends once per potion at
+`combat.potion_generation.random_model`. The pending `potion_generation`
+event lists the source-ordered potion model IDs and uses the typed resolver
+`semantic_resolve_potion_generation(potion_model_id)`; Python clients call
+`SemanticCombat.resolve_potion_generation(potion_model_id)`.
+
+Each resolution applies at most one potion to the first open slot and resumes
+the saved operation suffix. When all potion slots are occupied, the selected
+model is consumed without delivery, matching the source operation's slot
+check. The loadout is explicit fixture provenance, not a claim about how
+Alchemize entered a native deck. Candidate source law, native stream
+assignment, and cursor parity remain `UNVERIFIED`.

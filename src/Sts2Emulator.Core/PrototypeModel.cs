@@ -1849,6 +1849,19 @@ public sealed record PrototypeControlledGeneratedCardV111(
     };
 }
 
+/// <summary>Private Nature-owned random combat-potion model choice. The
+/// operation queue resumes after one selected potion has been applied.</summary>
+public sealed record PrototypeControlledPotionGenerationV111(
+    PrototypeQueuedOperation Operation,
+    string[] CandidatePotionIds)
+{
+    public PrototypeControlledPotionGenerationV111 Fork() => this with
+    {
+        Operation = Operation with { },
+        CandidatePotionIds = (string[])CandidatePotionIds.Clone()
+    };
+}
+
 /// <summary>Nature-owned source operation suspended before draw pile insertion.
 /// Pending card models are never materialized until Nature selects a position.
 /// </summary>
@@ -1999,6 +2012,7 @@ public sealed record PendingCombatChoiceState(
     PrototypeChoiceResolutionContinuationState? OuterChoiceContinuation = null,
     PrototypeControlledTargetChoiceV111? ControlledTarget = null,
     PrototypeControlledGeneratedCardV111? ControlledGeneration = null,
+    PrototypeControlledPotionGenerationV111? ControlledPotionGeneration = null,
     PrototypeControlledDrawInsertionV111? ControlledDrawInsertion = null,
     PrototypeControlledPoolShuffleV111? ControlledPoolShuffle = null,
     PrototypeControlledRandomCostV111? ControlledRandomCost = null,
@@ -2037,6 +2051,7 @@ public sealed record PendingCombatChoiceState(
         OuterChoiceContinuation = OuterChoiceContinuation?.Fork(),
         ControlledTarget = ControlledTarget?.Fork(),
         ControlledGeneration = ControlledGeneration?.Fork(),
+        ControlledPotionGeneration = ControlledPotionGeneration?.Fork(),
         ControlledDrawInsertion = ControlledDrawInsertion?.Fork(),
         ControlledPoolShuffle = ControlledPoolShuffle?.Fork(),
         ControlledRandomCost = ControlledRandomCost?.Fork(),

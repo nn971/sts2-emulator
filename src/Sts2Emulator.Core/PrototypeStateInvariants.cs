@@ -3468,6 +3468,29 @@ public static class PrototypeStateInvariants
                     throw new InvalidOperationException(
                         "Effect random-target continuation has an unexpected card identity.");
             }
+            if (pending.ControlledPotionGeneration is { } potionGeneration)
+            {
+                if (!PrototypeGameEngine.ValidateControlledPotionGeneration(
+                        combat, potionGeneration,
+                        pending.SourceCardInstanceId) ||
+                    pending.ControlledTarget is not null ||
+                    pending.ControlledGeneration is not null ||
+                    pending.ControlledDrawInsertion is not null ||
+                    pending.ControlledPoolShuffle is not null ||
+                    pending.ControlledRandomCost is not null ||
+                    pending.ControlledDrawCost is not null ||
+                    pending.ControlledCardShortlist is not null ||
+                    pending.ControlledRandomPileCard is not null ||
+                    pending.ControlledSemanticDraw is not null ||
+                    pending.Selection.SourceZone != PrototypeCardZone.Hand ||
+                    pending.Selection.MinSelections != 0 ||
+                    pending.Selection.MaxSelections != 0 ||
+                    pending.CandidateCardInstanceIds.Length != 0 ||
+                    pending.Continuation.Length != 0 ||
+                    pending.CompletionEvents.Length != 0)
+                    throw new InvalidOperationException(
+                        "Controlled potion-generation continuation is malformed.");
+            }
             if (pending.SemanticStratagemDrawSelection)
             {
                 bool hasStandaloneDraw = pending.Continuation.Any(operation =>
@@ -3558,6 +3581,7 @@ public static class PrototypeStateInvariants
                     pending.AutomaticSemanticStratagemDrawSelection ||
                     pending.ControlledTarget is not null ||
                     pending.ControlledGeneration is not null ||
+                    pending.ControlledPotionGeneration is not null ||
                     pending.ControlledDrawCost is not null ||
                     pending.ControlledSemanticDraw is not null ||
                     pending.ControlledDrawInsertion is not null ||
@@ -3625,6 +3649,7 @@ public static class PrototypeStateInvariants
                           continuation.SourceCardDestination)) ||
                     pending.ControlledTarget is not null ||
                     pending.ControlledGeneration is not null ||
+                    pending.ControlledPotionGeneration is not null ||
                     pending.ControlledDrawInsertion is not null ||
                     pending.ControlledPoolShuffle is not null ||
                     pending.ControlledRandomCost is not null ||

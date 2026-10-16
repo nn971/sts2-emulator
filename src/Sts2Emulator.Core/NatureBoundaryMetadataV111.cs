@@ -52,8 +52,11 @@ public static class NatureBoundaryMetadataV111
         var pool = state.Run.World?.Combat?.PendingChoice?.ControlledPoolShuffle;
         var insertion = state.Run.World?.Combat?.PendingChoice?.ControlledDrawInsertion;
         var generation = state.Run.World?.Combat?.PendingChoice?.ControlledGeneration;
+        var potionGeneration = state.Run.World?.Combat?.PendingChoice?
+            .ControlledPotionGeneration;
         var kind = drawCost is not null ? "drawn_card_cost"
             : randomCost is not null ? "random_card_cost"
+            : potionGeneration is not null ? "potion_generation"
             : pool is not null ? "generation_pool_shuffle"
             : insertion is not null ? "draw_insertion"
             : generation is not null ? "generated_card"
@@ -65,7 +68,8 @@ public static class NatureBoundaryMetadataV111
             state.ActivePending, history);
         var candidateModels = pool?.CurrentCardIds ??
             (insertion is { Stage: "card_model" }
-                ? insertion.CandidateCardIds : generation?.CandidateCardIds);
+                ? insertion.CandidateCardIds : generation?.CandidateCardIds ??
+                    potionGeneration?.CandidatePotionIds);
         return candidateModels is not null && view.Pending is { } pending
             ? view with
             {

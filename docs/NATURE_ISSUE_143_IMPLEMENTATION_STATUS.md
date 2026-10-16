@@ -27,7 +27,7 @@ The response includes `schemaId`, `kind`, `mode`, `natureHandle`, `fingerprint`,
 | --- | --- | --- |
 | G0: playable controlled RunState + fair observation | **PARTIAL (#145)** | A real `RunState` with starter player/deck and unchanged controlled enemy HP/intent can play deterministic actions after Nature resolves shuffle; the fixture bypasses native combat-start hooks and is not equivalent to arbitrary full-run state. |
 | G1: mechanically resumed action→chance→action | **PARTIAL (#145–#151)** | In addition to earlier live mechanics, all source-filtered card generation pools can now suspend for each full Fisher–Yates swap and resume original choice/direct-generation effects without repeating earlier hooks. |
-| G2: live chance-site coverage | **PARTIAL (#145–#152)** | Four generated-choice and distinct-card operation kinds now own full-pool shuffle tickets, including Attack/Skill/Power and Colorless Potions, Discovery and Jack of All Trades. Enemy-side insertion, random costs and nested summon/death remain. |
+| G2: live chance-site coverage | **PARTIAL (#145–#152)** | Four generated-choice and distinct-card operation kinds own full-pool shuffle tickets, including Attack/Skill/Power and Colorless Potions, Discovery and Jack of All Trades. A serialized per-potion continuation now covers `combat.potion_generation.random_model` through Alchemize. Enemy-side insertion, random costs and nested summon/death remain. |
 | G3: extended chance operations | **PARTIAL** | `choose_index` and compact `bounded_integer` exist. Other source-shaped operation types need requests and execution integration. |
 | G4: stable event IDs and transcript | **PARTIAL (#144–#151)** | Nature events include exact current eligible card-model order and bounded full-pool swaps. Every partial permutation is independently replayed against the recorded swap prefix and original eligibility, with stable source/stream identity. |
 | G5: fair player boundary | **PARTIAL (#145–#151)** | Player choices resume through original select_cards boundary after Nature completes shuffle; candidate pool is privileged Nature metadata and fair player observation remains gated. |
@@ -702,3 +702,15 @@ constraints still fails closed. The Release solution build passes with zero
 warnings or errors; tests and mechanics regressions were not run. Conditional
 probabilities remain `UNVERIFIED`; see
 [`NATURE_SEMANTIC_ANOINTED_143.md`](NATURE_SEMANTIC_ANOINTED_143.md).
+
+## 2026-10-17: random combat-potion model generation
+
+`AcquireRandomCombatPotion` now suspends on a typed ordered potion-model
+choice, applies one selected potion, and resumes the saved operation queue.
+The controlled fixture exposes the same site through its normal bounded-index
+request. The semantic JSONL/Python bridge reaches it with an explicit
+Alchemize opening-hand fixture, records replayable model-ID outcomes, and
+supports bounded semantic enumeration. The Release solution build passes with
+zero warnings or errors; tests and mechanics regressions were not run.
+Conditional probabilities, native stream assignment and cursor parity remain
+`UNVERIFIED`. See the [semantic P0 contract](NATURE_P0_SEMANTIC_JSONL_143.md).
