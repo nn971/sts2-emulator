@@ -47,6 +47,9 @@ random Power selection and native generated-card full-pool shuffle also reach
 typed native providers; controlled combat continuation for those native
 sites remains pending. The potion factory's model index is typed after its
 native float rarity roll, so tier selection is still outside the provider.
+Beautiful Bracelet's eligible-deck shuffle and Fur Coat's current-act combat
+node shuffle now use typed native swap requests as well; controlled relic
+acquisition continuation remains pending.
 An opt-in bounded
 enumerator now resolves one small semantic chance support into independent
 child sessions; it rejects supports above the requested cap instead of

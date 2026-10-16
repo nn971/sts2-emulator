@@ -7,6 +7,10 @@ namespace Sts2Emulator.Core;
 /// </summary>
 public static class NativeGloryAncientsV111
 {
+    public const string BeautifulBraceletShuffleSiteId =
+        "run.relic.beautiful_bracelet.deck_shuffle.swap_index";
+    public const string FurCoatShuffleSiteId =
+        "run.relic.fur_coat.map_node_shuffle.swap_index";
     public const string BlessedAntlerId = "proto.native.ancient.blessed_antler";
     public const string BeautifulBraceletId = "proto.native.ancient.beautiful_bracelet";
     public const string FurCoatId = "proto.native.ancient.fur_coat";
@@ -238,7 +242,11 @@ public static class NativeGloryAncientsV111
         if (nativeRunRng is null)
             PrototypeRng.Shuffle(rng, "event", shuffled);
         else
-            NativeRngV111.Shuffle(nativeRunRng, "run.niche", shuffled);
+            _ = NativeFisherYatesV111.ShuffleInPlace(
+                shuffled, nativeRunRng,
+                new NativeRandomIndexProviderV111(), "run.niche",
+                "relic:beautiful_bracelet:acquisition",
+                BeautifulBraceletShuffleSiteId);
 
         var selectedIds = shuffled.Take(Math.Min(4, shuffled.Length))
             .Select(card => card.InstanceId)
@@ -275,7 +283,10 @@ public static class NativeGloryAncientsV111
             var stream = NativeRngV111Contexts.ForPlayerContent(
                 runSeed, "FurCoat");
             var bundle = new RngBundle([stream]);
-            NativeRngV111.Shuffle(bundle, stream.StreamId, candidates);
+            _ = NativeFisherYatesV111.ShuffleInPlace(
+                candidates, bundle, new NativeRandomIndexProviderV111(),
+                stream.StreamId, $"relic:fur_coat:act:{act}",
+                FurCoatShuffleSiteId);
             snapshot = NativeRngV111.ToSnapshot(bundle.Streams[0]);
         }
         else
