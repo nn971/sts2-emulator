@@ -46,7 +46,8 @@ public static class NativeFisherYatesV111
         IRandomIndexProviderV111 provider,
         string streamId,
         string ownerId,
-        string siteId)
+        string siteId,
+        int ordinalOffset = 0)
     {
         ArgumentNullException.ThrowIfNull(values);
         ArgumentNullException.ThrowIfNull(streams);
@@ -54,13 +55,15 @@ public static class NativeFisherYatesV111
         ArgumentException.ThrowIfNullOrWhiteSpace(streamId);
         ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
         ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
+        if (ordinalOffset < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinalOffset));
         var decisions = new List<RandomIndexDecisionV111>();
         for (int end = values.Count - 1; end > 0; --end)
         {
             // Native ListExtensions.UnstableShuffle calls NextInt(end+1)
             // exactly once, including the final bound of two.
             var request = new RandomIndexRequestV111(
-                siteId, streamId, ownerId, decisions.Count,
+                siteId, streamId, ownerId, ordinalOffset + decisions.Count,
                 Array.Empty<int>(), OperationKind: "bounded_integer",
                 BoundedCount: end + 1);
             var decision = provider.Resolve(request, streams);

@@ -1,5 +1,8 @@
 namespace Sts2Emulator.Core;
 
+public sealed record NativeVakuuEventAuditV111(
+    RunState State, RandomIndexDecisionV111[] Choices, string ProviderMode);
+
 /// <summary>
 /// Source-backed three-pool offer generation for Vakuu.
 /// Source: STS2-source@706ef1c9fa2219220065849fd5265328607ece20.
@@ -7,6 +10,8 @@ namespace Sts2Emulator.Core;
 public static class NativeVakuuEventV111
 {
     public const string EventId = "proto.native.glory.vakuu";
+    public const string ShuffleSiteId =
+        "event.vakuu.relic_offer.shuffle_swap_index";
     private const string RngEventId = "VAKUU";
 
     private static readonly string[][] SourceRelicPools =
@@ -53,8 +58,24 @@ public static class NativeVakuuEventV111
         && world.Map.CurrentNodeId is null
         && world.Event?.EventId == EventId;
 
-    public static RunState BeginOpening(RunState state)
+    public static RunState BeginOpening(RunState state) =>
+        BeginOpeningWithAudit(state, new NativeRandomIndexProviderV111()).State;
+
+    /// <summary>
+    /// Resolve Vakuu's three source-ordered relic shuffles through the
+    /// supplied provider. Nonnative mode is stored with the completed offers.
+    /// </summary>
+    public static NativeVakuuEventAuditV111 BeginOpeningWithAudit(
+        RunState state, IRandomIndexProviderV111 provider)
     {
+        ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(provider);
+        var providerMode = provider.Mode;
+        if (providerMode is not ("native-v111" or "scripted-v111"
+            or "controlled-v111"))
+            throw new ArgumentException(
+                "Vakuu offer generation requires a supported random provider mode.",
+                nameof(provider));
         if (state.World is not { Act: 3, Floor: 0, Combat: null,
                 Reward: null, Event: null } world
             || world.Map.CurrentNodeId is not null
@@ -68,10 +89,14 @@ public static class NativeVakuuEventV111
             fork.RunSeed, RngEventId);
         var bundle = new RngBundle([stream]);
         var pools = RelicPools;
+        var choices = new List<RandomIndexDecisionV111>();
+        var ownerId = "event:VAKUU:act:3:floor:0";
         foreach (var pool in pools)
-            NativeRngV111.Shuffle(bundle, stream.StreamId, pool);
+            choices.AddRange(NativeFisherYatesV111.ShuffleInPlace(
+                pool, bundle, provider, stream.StreamId, ownerId,
+                ShuffleSiteId, choices.Count));
         var offers = pools.Select(pool => ChoiceId(pool[0])).ToArray();
-        return fork with
+        var result = fork with
         {
             Phase = RunPhase.Event,
             World = fork.World! with
@@ -79,10 +104,14 @@ public static class NativeVakuuEventV111
                 Event = new EventState(
                     EventId,
                     OfferedChoiceIds: offers,
-                    NativeEventRng: bundle.Streams[0]),
+                    NativeEventRng: bundle.Streams[0],
+                    NativeEventRngProviderMode: providerMode == "native-v111"
+                        ? null : providerMode),
                 EventHistory = world.EventIds.Append(EventId).ToArray()
             }
         };
+        return new NativeVakuuEventAuditV111(
+            result, choices.ToArray(), providerMode);
     }
 
     public static RunState CreateOpeningFixture(
@@ -104,22 +133,39 @@ public static class NativeVakuuEventV111
                 "Vakuu event RNG stream has the wrong native context.");
 
         var bundle = new RngBundle([initial]);
+        var pools = RelicPools;
+        if (evt.OfferedChoiceIds is not { Length: 3 } offers
+            || offers.Where((offer, index) =>
+                !pools[index].Select(ChoiceId).Contains(offer,
+                    StringComparer.Ordinal)).Any())
+            throw new InvalidOperationException(
+                "Vakuu must retain one offer from each source relic pool.");
+        if (evt.ChosenChoiceId is { } selected
+            && !offers.Contains(selected, StringComparer.Ordinal))
+            throw new InvalidOperationException(
+                "Vakuu selected a relic outside its three offers.");
+        if (evt.NativeEventRngProviderMode is { } mode)
+        {
+            if (mode is not ("scripted-v111" or "controlled-v111"))
+                throw new InvalidOperationException(
+                    "Vakuu has an unsupported persisted random provider mode.");
+            if (NativeRngV111.ToSnapshot(stream)
+                != NativeRngV111.ToSnapshot(initial))
+                throw new InvalidOperationException(
+                    "Counterfactual Vakuu providers must not advance the native event stream.");
+            return;
+        }
         var expectedOffers = new List<string>(3);
-        foreach (var sourcePool in RelicPools)
+        foreach (var sourcePool in pools)
         {
             var pool = (string[])sourcePool.Clone();
             NativeRngV111.Shuffle(bundle, initial.StreamId, pool);
             expectedOffers.Add(ChoiceId(pool[0]));
         }
 
-        if (evt.OfferedChoiceIds is not { Length: 3 } offers
-            || !offers.SequenceEqual(expectedOffers, StringComparer.Ordinal))
+        if (!offers.SequenceEqual(expectedOffers, StringComparer.Ordinal))
             throw new InvalidOperationException(
                 "Vakuu must retain one offer from each native relic pool.");
-        if (evt.ChosenChoiceId is { } chosen
-            && !offers.Contains(chosen, StringComparer.Ordinal))
-            throw new InvalidOperationException(
-                "Vakuu selected a relic outside its three offers.");
         if (NativeRngV111.ToSnapshot(stream)
             != NativeRngV111.ToSnapshot(bundle.Streams[0]))
             throw new InvalidOperationException(

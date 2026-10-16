@@ -1,5 +1,8 @@
 namespace Sts2Emulator.Core;
 
+public sealed record NativeTanxEventAuditV111(
+    RunState State, RandomIndexDecisionV111[] Choices, string ProviderMode);
+
 /// <summary>
 /// Source-backed Tanx Ancient offer generation and its named Act 3 entry
 /// fixture. The later-act route prepares normal act-local Ancient assignment.
@@ -8,6 +11,8 @@ namespace Sts2Emulator.Core;
 public static class NativeTanxEventV111
 {
     public const string EventId = "proto.native.glory.tanx";
+    public const string ShuffleSiteId =
+        "event.tanx.relic_offer.shuffle_swap_index";
     private const string RngEventId = "TANX";
 
     private static readonly string[] BaseRelicIds =
@@ -65,8 +70,24 @@ public static class NativeTanxEventV111
     /// assigned Ancient. The event samples three distinct relics using the
     /// native event-local RNG and descending Fisher-Yates shuffle.
     /// </summary>
-    public static RunState BeginOpening(RunState state)
+    public static RunState BeginOpening(RunState state) =>
+        BeginOpeningWithAudit(state, new NativeRandomIndexProviderV111()).State;
+
+    /// <summary>
+    /// Resolve Tanx's source-ordered relic shuffle through the supplied
+    /// provider. Nonnative mode is stored with the completed offers.
+    /// </summary>
+    public static NativeTanxEventAuditV111 BeginOpeningWithAudit(
+        RunState state, IRandomIndexProviderV111 provider)
     {
+        ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(provider);
+        var providerMode = provider.Mode;
+        if (providerMode is not ("native-v111" or "scripted-v111"
+            or "controlled-v111"))
+            throw new ArgumentException(
+                "Tanx offer generation requires a supported random provider mode.",
+                nameof(provider));
         if (state.World is not { Act: 3, Floor: 0, Combat: null,
                 Reward: null, Event: null } world
             || world.Map.CurrentNodeId is not null
@@ -80,9 +101,11 @@ public static class NativeTanxEventV111
         var bundle = new RngBundle([stream]);
         var includeTriBoomerang = HasTriBoomerangEligibility(fork.Player);
         var candidates = CandidateRelics(includeTriBoomerang);
-        NativeRngV111.Shuffle(bundle, stream.StreamId, candidates);
+        var choices = NativeFisherYatesV111.ShuffleInPlace(
+            candidates, bundle, provider, stream.StreamId,
+            "event:TANX:act:3:floor:0", ShuffleSiteId);
         var offers = candidates.Take(3).Select(ChoiceId).ToArray();
-        return fork with
+        var result = fork with
         {
             Phase = RunPhase.Event,
             World = fork.World! with
@@ -90,10 +113,14 @@ public static class NativeTanxEventV111
                 Event = new EventState(EventId,
                     OfferedChoiceIds: offers,
                     NativeEventRng: bundle.Streams[0],
-                    NativeTanxTriEligible: includeTriBoomerang),
+                    NativeTanxTriEligible: includeTriBoomerang,
+                    NativeEventRngProviderMode: providerMode == "native-v111"
+                        ? null : providerMode),
                 EventHistory = world.EventIds.Append(EventId).ToArray()
             }
         };
+        return new NativeTanxEventAuditV111(
+            result, choices, providerMode);
     }
 
     public static RunState CreateOpeningFixture(string seed, int ascension = 0) =>
@@ -117,15 +144,33 @@ public static class NativeTanxEventV111
         var bundle = new RngBundle([context]);
         var candidates = CandidateRelics(state.Player,
             includeTriBoomerang);
-        NativeRngV111.Shuffle(bundle, context.StreamId, candidates);
-        var expectedOffers = candidates.Take(3).Select(ChoiceId).ToArray();
+        var eligibleOffers = candidates.Select(ChoiceId).ToArray();
         if (evt.OfferedChoiceIds is not { Length: 3 } offers
-            || !offers.SequenceEqual(expectedOffers, StringComparer.Ordinal))
-            throw new InvalidOperationException("Tanx offers do not match its source pool and native event shuffle.");
+            || offers.Distinct(StringComparer.Ordinal).Count() != 3
+            || offers.Any(id => !eligibleOffers.Contains(id,
+                StringComparer.Ordinal)))
+            throw new InvalidOperationException(
+                "Tanx offers must be three distinct relics from its source pool.");
         if (evt.ChosenChoiceId is { } chosen
             && !offers.Contains(chosen, StringComparer.Ordinal))
             throw new InvalidOperationException(
                 "Tanx selected a relic that was not among its three offers.");
+        if (evt.NativeEventRngProviderMode is { } mode)
+        {
+            if (mode is not ("scripted-v111" or "controlled-v111"))
+                throw new InvalidOperationException(
+                    "Tanx has an unsupported persisted random provider mode.");
+            if (NativeRngV111.ToSnapshot(stream)
+                != NativeRngV111.ToSnapshot(context))
+                throw new InvalidOperationException(
+                    "Counterfactual Tanx providers must not advance the native event stream.");
+            return;
+        }
+        NativeRngV111.Shuffle(bundle, context.StreamId, candidates);
+        var expectedOffers = candidates.Take(3).Select(ChoiceId).ToArray();
+        if (!offers.SequenceEqual(expectedOffers, StringComparer.Ordinal))
+            throw new InvalidOperationException(
+                "Tanx offers do not match its native event shuffle.");
         if (NativeRngV111.ToSnapshot(stream)
             != NativeRngV111.ToSnapshot(bundle.Streams[0]))
             throw new InvalidOperationException("Tanx event RNG cursor does not match its completed offer shuffle.");

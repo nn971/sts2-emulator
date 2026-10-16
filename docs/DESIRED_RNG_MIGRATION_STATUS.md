@@ -34,6 +34,8 @@ reference distribution is claimed.
 | `event.pael.relic_offer.index_draw` | Pael event / `context.event.PAEL.player_0` | Yes: three ordered pools, including repeated entries as weights | Yes: typed provider; native entry preserves source draws | No: provider-specific result/cursor regression pending | Yes: one-shot generation and nonnative mode persisted | No | No |
 | `event.tezcatara.relic_offer.index_draw` | Tezcatara event / `context.event.TEZCATARA.player_0` | Yes: three ordered pools with deck-dependent first-pool filtering | Yes: typed provider; native entry preserves source draws | No: provider-specific result/cursor regression pending | Yes: one-shot generation and nonnative mode persisted | No | No |
 | `event.nonupeipe.relic_offer.shuffle_swap_index` | Nonupeipe event / `context.event.NONUPEIPE.player_0` | Yes: eligible source-ordered pool and saved Bracelet condition | Yes: typed provider at each descending swap | No: provider-specific result/cursor regression pending | Yes: one-shot generation and nonnative mode persisted | No | No |
+| `event.tanx.relic_offer.shuffle_swap_index` | Tanx event / `context.event.TANX.player_0` | Yes: entry-time eligible relic pool and saved Tri-Boomerang condition | Yes: typed provider at each descending swap | No: provider-specific result/cursor regression pending | Yes: one-shot generation and nonnative mode persisted | No | No |
+| `event.vakuu.relic_offer.shuffle_swap_index` | Vakuu event / `context.event.VAKUU.player_0` | Yes: three ordered relic pools; ordinals span all three shuffles | Yes: typed provider at each descending swap | No: provider-specific result/cursor regression pending | Yes: one-shot generation and nonnative mode persisted | No | No |
 | `combat.draw_pile.shuffle.swap` | player / `run.shuffle` | Yes, pinned Fisher–Yates and hook stages | Partial: injectable primitive, not every ordinary Step shuffle | Partial: source algorithm/cursor checks; live operation capture pending | Partial: provider supports controlled outcomes; ordinary shuffle sites remain separate | Yes, primitive-level | No |
 | `combat.draw_pile_recycle.swap_index` | player / legacy `combat` stream | Yes, recycle swap bounds | No v111 provider at this site | No | Yes: legacy controlled recycle continuation | Yes | No |
 | `combat.draw_pile.draw_card` | player / `semantic.draw_pile` | Yes, source `DrawCards` order and identity | Partial: exact native deck mode; no per-draw provider seam | No | Yes: deferred physical-card identity | Yes, actual draw segment | No |
@@ -111,8 +113,8 @@ provider integrations, not controlled summon/death continuations.
 
 **D2 remaining:** formation resolvers outside the integrated subset,
 monster-local draws, summon/death continuation mechanics,
-shuffle/targets/rewards, event sites beyond Orobas, Darv, Pael, Tezcatara and
-Nonupeipe offer generation,
+shuffle/targets/rewards, event sites beyond Orobas, Darv, Pael, Tezcatara,
+Nonupeipe, Tanx and Vakuu offer generation,
 and other audited call sites; explicit weighted
 outcome metadata at move-level instead of primitive index selections.
 The separate semantic playable API now exposes typed weighted intent events,
