@@ -18,9 +18,10 @@ COMMAND = ["dotnet", str(DLL), "prototype-ai-jsonl"]
 SEED = "nature-p0-weak-real-victory"
 
 
-def begin_combat(session, *, native_policy_baseline=False):
+def begin_combat(session, *, seed=SEED, region="Overgrowth",
+                 native_policy_baseline=False):
     return session.begin_seeded_semantic_route(
-        SEED, region="Overgrowth",
+        seed, region=region,
         native_policy_baseline=native_policy_baseline)
 
 
@@ -56,9 +57,9 @@ def without_initial_intents(observation):
     return json.dumps(view, sort_keys=True)
 
 
-def play_victory():
+def play_victory(seed=SEED, region="Overgrowth"):
     with Session(COMMAND) as session:
-        combat = begin_combat(session)
+        combat = begin_combat(session, seed=seed, region=region)
         route = combat.status()
         assert route["sourceRouteProvider"] == (
             "engine-owned-v111-native-weak-route-entry-unverified-v1")
@@ -118,10 +119,11 @@ def play_victory():
                 strikes, turns, initial_observation)
 
 
-def play_native_policy_baseline():
+def play_native_policy_baseline(seed=SEED, region="Overgrowth"):
     """Same player policy from an independently rebuilt source snapshot."""
     with Session(COMMAND) as session:
-        combat = begin_combat(session, native_policy_baseline=True)
+        combat = begin_combat(session, seed=seed, region=region,
+                              native_policy_baseline=True)
         status = combat.status()
         assert status["sourceRouteProvider"] == (
             "engine-owned-v111-native-weak-route-entry-unverified-v1")
@@ -166,9 +168,9 @@ def play_native_policy_baseline():
                 initial_observation)
 
 
-def play_comparison_pair():
-    nature = play_victory()
-    native = play_native_policy_baseline()
+def play_comparison_pair(seed=SEED, region="Overgrowth"):
+    nature = play_victory(seed=seed, region=region)
+    native = play_native_policy_baseline(seed=seed, region=region)
     assert nature[1] == native[1], (
         "Nature and native branches must start from the same source snapshot")
     assert without_initial_intents(nature[8]) == \
@@ -180,6 +182,16 @@ def play_comparison_pair():
 
 def main():
     baseline = play_comparison_pair()
+    route_cases = [
+        ("Overgrowth/Shrinker Beetle", "route-audit-01", "Overgrowth"),
+        ("Overgrowth/Fuzzy Wurm Crawler", "route-audit-02", "Overgrowth"),
+        ("Underdocks/Toadpoles", "route-audit-01", "Underdocks"),
+        ("Underdocks/Sludge Spinner", "route-audit-02", "Underdocks"),
+    ]
+    route_results = []
+    for label, seed, region in route_cases:
+        nature, native = play_comparison_pair(seed=seed, region=region)
+        route_results.append((label, nature, native))
     with ThreadPoolExecutor(max_workers=15) as pool:
         parallel = list(pool.map(lambda _: play_comparison_pair(), range(15)))
     assert all(result == baseline for result in parallel), (
@@ -189,8 +201,13 @@ def main():
           f"paired source-disjoint outcomes Nature={nature[4]}@{nature[5]}, "
           f"native-v111={native[4]}@{native[5]}; "
           f"native decisions={native[8]}, shuffles={native[9]}; "
-          "complete 1-vs-15 independent process replay; "
+          "canonical complete 1-vs-15 independent process replay; "
           "source conditional laws remain UNVERIFIED")
+    for label, nature, native in route_results:
+        print(f"PASS: paired route case {label}: "
+              f"Nature={nature[4]}@{nature[5]}, "
+              f"native-v111={native[4]}@{native[5]}; "
+              f"native decisions={native[8]}, shuffles={native[9]}")
 
 
 if __name__ == "__main__":
