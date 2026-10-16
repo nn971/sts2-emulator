@@ -3273,8 +3273,15 @@ public static class SemanticPilotCombatEngineV111
                 .CreateGeneratedCardsAtRandomDrawPositions &&
             current.SeededEntry?.FixtureGeneratedDrawInsertionCardId is null &&
             current.SeededEntry?.FixtureRandomFreeAttackDrawInsertion != true;
+        var personalHiveInsertion =
+            insertion.RequestSiteId ==
+                PrototypeControlledDrawInsertionV111.PersonalHiveDazedSiteId &&
+            insertion.Operation.Kind == PrototypeCombatEffectKind
+                .CreateGeneratedCardsAtRandomDrawPositions &&
+            insertion.Operation.CardId == "proto.status.dazed";
         if ((!fixedFixtureMatches && !randomFixtureMatches &&
-             !afterShuffleRelicMatches && !automaticPipelineInsertion) ||
+             !afterShuffleRelicMatches && !automaticPipelineInsertion &&
+             !personalHiveInsertion) ||
             current.PendingEndTurn is not null ||
             current.PendingInitialIntents is not null ||
             current.TargetPending is not null ||
@@ -3286,13 +3293,17 @@ public static class SemanticPilotCombatEngineV111
                 "Draw insertion conflicts with another semantic boundary.");
         ValidateDrawInsertionBoundary(current.Run);
         var pile = (long[])insertion.EligibleDrawPile.Clone();
-        var requestOrdinal = afterShuffleRelicMatches
+        var requestOrdinal = afterShuffleRelicMatches || personalHiveInsertion
             ? insertion.RequestOrdinal
             : current.History.Count(transition =>
                 transition.Kind == "semantic_draw_insertion");
         var requestOwnerId = afterShuffleRelicMatches
             ? insertion.RequestOwnerId + ":card:" + insertion.SelectedCardId +
                 ":draw_pile:" + CanonicalJson.Sha256(pile)
+            : personalHiveInsertion
+                ? insertion.RequestOwnerId + ":card:" +
+                    insertion.SelectedCardId + ":draw_pile:" +
+                    CanonicalJson.Sha256(pile)
             : insertion.RequestOwnerId;
         var request = new RandomIndexRequestV111(
             insertion.RequestSiteId, "prototype.combat", requestOwnerId,

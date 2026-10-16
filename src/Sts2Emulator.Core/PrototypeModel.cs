@@ -1895,8 +1895,13 @@ public sealed record PrototypeControlledDrawInsertionV111(
     PrototypeAfterShuffleRelicInsertionV111[]? RemainingAfterShuffleRelics = null,
     string RequestSiteId = "combat.draw_pile.random_insert_index",
     string RequestOwnerId = "prototype.combat",
-    int RequestOrdinal = 0)
+    int RequestOrdinal = 0,
+    PrototypePersonalHiveDamageContinuationV111?
+        PersonalHiveDamageContinuation = null)
 {
+    public const string PersonalHiveDazedSiteId =
+        "combat.effect.personal_hive.dazed.random_insert_index";
+
     public PrototypeControlledDrawInsertionV111 Fork() => this with
     {
         Operation = Operation with { },
@@ -1910,12 +1915,39 @@ public sealed record PrototypeControlledDrawInsertionV111(
                 .Select(item => item with { }).ToArray(),
         RemainingAfterShuffleRelics = RemainingAfterShuffleRelics is null
             ? null : RemainingAfterShuffleRelics
-                .Select(item => item with { }).ToArray()
+                .Select(item => item with { }).ToArray(),
+        PersonalHiveDamageContinuation =
+            PersonalHiveDamageContinuation?.Fork()
     };
 }
 
 public sealed record PrototypeAfterShuffleRelicInsertionV111(
     string RelicId, long RelicApplicationOrder, string CardId);
+
+public sealed record PrototypePersonalHiveDamageContinuationV111(
+    PrototypeQueuedOperation Operation,
+    int TargetEnemyId,
+    EnemyCombatState SplashTarget,
+    int DamageAmount,
+    int Overkill,
+    int DamageDealt,
+    bool Defeated,
+    bool FatalEligible,
+    int HiveStackCount,
+    int EventDepth)
+{
+    public PrototypePersonalHiveDamageContinuationV111 Fork() => this with
+    {
+        Operation = Operation with
+        {
+            DeferredDrawnCardInstanceIds =
+                Operation.DeferredDrawnCardInstanceIds is null
+                    ? null
+                    : (long[])Operation.DeferredDrawnCardInstanceIds.Clone()
+        },
+        SplashTarget = SplashTarget.Fork()
+    };
+}
 
 /// <summary>
 /// Source-ordered full-pool generation shuffle waiting on a Nature swap.

@@ -145,10 +145,18 @@ public sealed record ControlledPlayableCombatV111(
                     Enumerable.Range(0, choice.CandidateCardIds.Length).ToArray(),
                     OperationKind: "choose_index");
             return new RandomIndexRequestV111(
-                "combat.draw_pile.random_insert_index", "prototype.combat",
-                owner + ":model:" + choice.SelectedCardId +
-                    ":pile:" + CanonicalJson.Sha256(choice.EligibleDrawPile),
-                DrawInsertionTranscript.Length, [],
+                choice.RequestSiteId, "prototype.combat",
+                choice.PersonalHiveDamageContinuation is not null ||
+                    choice.AfterShuffleRelic is not null
+                    ? choice.RequestOwnerId + ":card:" + choice.SelectedCardId +
+                        ":draw_pile:" +
+                        CanonicalJson.Sha256(choice.EligibleDrawPile)
+                    : owner + ":model:" + choice.SelectedCardId +
+                        ":pile:" + CanonicalJson.Sha256(choice.EligibleDrawPile),
+                choice.PersonalHiveDamageContinuation is not null ||
+                    choice.AfterShuffleRelic is not null
+                    ? choice.RequestOrdinal
+                    : DrawInsertionTranscript.Length, [],
                 OperationKind: "bounded_integer",
                 BoundedCount: choice.EligibleDrawPile.Length + 1);
         }

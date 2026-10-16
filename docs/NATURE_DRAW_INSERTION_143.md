@@ -36,7 +36,10 @@ insertion uses typed `run.shuffle` sites and now resumes through the saved
 enemy-action frame. The same frame also supports legacy Fabricator summon-pool
 choices and any resulting summoned-enemy HP choice. Native summon-pool
 selection remains fail-closed pending source RNG audit; nested death/summon
-random effects remain separate continuation gaps.
+random effects remain separate continuation gaps. Personal Hive Dazed cards
+created by powered hits use the saved card-operation continuation; the hit is
+committed once, each insertion is resolved in order, the rest of that hit's
+hooks resume, and then the remaining effect queue continues.
 
 The private pending choice records the exact eligible draw-pile instance IDs, source operation, generated card ID or eligible Attack IDs, remaining repetition count in the saved queued-operation continuation, and source-card/event/card-play continuation identity. On completion, the original queue resumes without re-running earlier effects. Multiple insertions generate successive tickets and are recorded chronologically in the existing `LiveTranscript`, with independent fork outcomes and source-eligibility validation. Nature receives card models in `pending.candidateCardIds` for the model-selection stage. The ordinary fair player observation remains inaccessible during pending Nature decisions; source probability status is `UNVERIFIED`.
 

@@ -133,7 +133,10 @@ after-shuffle insertion and draw-cost stages. Ordinary source action choices
 from standalone and automatic `CardDrawn` hooks now preserve and resume their
 draw frames. Controlled nested chance boundaries in standalone and automatic
 frames, and other recycle contexts remain unsupported
-under controlled Nature pending serializable frames. Ordinary source action
+under controlled Nature pending serializable frames. Personal Hive's Dazed
+insertions after a powered hit now suspend in the saved card-operation queue,
+then resume the remaining hit hooks before the original queue continues.
+Ordinary source action
 choices from automatic `BeforeHandDraw` hooks now resume the saved dispatcher
 before the hand-draw prelude.
 Legacy combat-entry and summoned-enemy HP rolls, Overgrowth encounter-bag

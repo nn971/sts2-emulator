@@ -506,6 +506,11 @@ internal static class PrototypeAiJsonlServer
                 sites.Add("random_rare_to_hand_shuffle");
             if (state.SeededEntry?.FixtureGeneratedDrawInsertionCardId is not null)
                 sites.Add("generated_draw_pile_insertion");
+            if (state.DrawInsertionPending?.SiteId ==
+                    PrototypeControlledDrawInsertionV111
+                        .PersonalHiveDazedSiteId &&
+                !sites.Contains("generated_draw_pile_insertion"))
+                sites.Add("generated_draw_pile_insertion");
             if (state.SeededEntry?.FixtureRandomFreeAttackDrawInsertion == true)
             {
                 sites.Add("random_draw_attack_card_model");
@@ -548,6 +553,9 @@ internal static class PrototypeAiJsonlServer
                   state.SeededEntry?.FixturePoolGenerationPotionId is not null ||
                   state.SeededEntry?.FixtureGeneratedDrawInsertionCardId is not null ||
                   state.SeededEntry?.FixtureRandomFreeAttackDrawInsertion == true ||
+                  state.DrawInsertionPending?.SiteId ==
+                    PrototypeControlledDrawInsertionV111
+                        .PersonalHiveDazedSiteId ||
                   state.SeededEntry?.FixtureRandomizeHandCostsMaxExclusive is not null ||
                   state.SeededEntry?.FixtureSetRandomHandCardCost is not null ||
                   state.EnemyActionPending is not null ||
@@ -824,6 +832,8 @@ internal static class PrototypeAiJsonlServer
                                 "combat.card_transform.replacement.index_draw",
                                 "combat.random_draw_attack.card_model",
                                 "combat.draw_pile.random_insert_index",
+                                PrototypeControlledDrawInsertionV111
+                                    .PersonalHiveDazedSiteId,
                                 "combat.enemy.theft_card.select",
                                 "combat.enemy.summon_pool.select",
                                 "combat.hand_return.draw_pile.shuffle_swap_index",

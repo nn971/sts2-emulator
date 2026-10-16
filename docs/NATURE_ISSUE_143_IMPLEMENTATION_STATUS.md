@@ -774,3 +774,12 @@ RNG audit; native Tough Egg hatching uses its separate audited provider. The
 Release solution build passes with zero warnings or errors; tests and mechanics
 regressions were not run. The new nested continuation is `UNVERIFIED`; see
 [`NATURE_ENEMY_SUMMON_143.md`](NATURE_ENEMY_SUMMON_143.md).
+
+## 2026-10-17: controlled Personal Hive reactions
+
+Powered hits against Personal Hive now suspend before the first random Dazed
+insertion. Nature resolves each stack in order; the already committed hit is
+not replayed, and the original card-operation queue resumes after the final
+insertion. Candidate positions are preflighted against semantic deck state.
+The Release solution build passes with zero warnings or errors; tests and
+mechanics regressions were not run. This continuation remains `UNVERIFIED`.

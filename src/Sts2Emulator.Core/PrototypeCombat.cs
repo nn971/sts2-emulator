@@ -5717,13 +5717,87 @@ public sealed partial class PrototypeGameEngine
                     // powered hit, including a fully blocked hit. Every
                     // stack adds a generated Dazed into a random draw slot.
                     // It is a target-side reaction, not a card-play event.
+                    var personalHiveStacks = 0;
                     if (operation.IsPoweredAttack && splashTarget is { Hp: > 0 })
                     {
-                        var hiveStacks = splashTarget.PowerStates
+                        personalHiveStacks = splashTarget.PowerStates
                             .Where(power => power.PowerId ==
                                 PrototypeNativeHiveElites.PersonalHiveId)
                             .Sum(power => power.Stacks);
-                        for (var n = 0; n < hiveStacks; n++)
+                        if (personalHiveStacks > 0 &&
+                            ControlledChanceGuardV111.Active &&
+                            !ControlledChanceGuardV111
+                                .EngineOwnedNativeProviderActive)
+                        {
+                            // The hit and its earlier hooks are already
+                            // committed. Suspend before the first Dazed
+                            // insertion and retain only the remaining source
+                            // operation queue plus this damage-stage frame;
+                            // all post-hit triggers resume after insertion.
+                            if (combat.SemanticDeck is
+                                { Mode: SemanticDeckStateV111.NatureMode })
+                            {
+                                for (var position = 0;
+                                     position <= combat.DrawPile.Length;
+                                     position++)
+                                    _ = SynchronizeSemanticDrawPileAfterInsertion(
+                                        combat, position,
+                                        combat.NextCardInstanceId);
+                            }
+                            var continuation =
+                                new PrototypeChoiceResolutionContinuationState(
+                                    SourceCardInstanceId: sourceCardInstanceId,
+                                    SourceCardDestination: sourceCardDestination,
+                                    Operations: operations.ToArray(),
+                                    PendingDiscardEvents: [],
+                                    PendingSlyCardInstanceIds: [],
+                                    CompletionEvents: completionEvents ?? [],
+                                    CardPlaySeries: cardPlaySeries,
+                                    MoveSourceCardOnCompletion:
+                                        moveSourceCardOnCompletion,
+                                    RemoveSourceCardOnCompletion:
+                                        removeSourceCardOnCompletion,
+                                    SourceCardAlreadyMoved:
+                                        sourceCardAlreadyMoved,
+                                    EventDispatchContinuation:
+                                        eventDispatchContinuation?.Fork());
+                            var insertionOperation = new
+                                PrototypeQueuedOperation(
+                                    PrototypeCombatEffectKind
+                                        .CreateGeneratedCardsAtRandomDrawPositions,
+                                    personalHiveStacks,
+                                    CardId: "proto.status.dazed");
+                            var savedDamageContinuation =
+                                new PrototypePersonalHiveDamageContinuationV111(
+                                    operation with
+                                    {
+                                        TargetEnemyId = targetEnemyId.Value,
+                                        TargetMode =
+                                            PrototypeEffectTarget.ActionTargetEnemy
+                                    },
+                                    targetEnemyId.Value,
+                                    splashTarget,
+                                    damageAmount,
+                                    overkill,
+                                    damageResult.DamageDealt,
+                                    damageResult.Defeated,
+                                    fatalEligible,
+                                    personalHiveStacks,
+                                    eventDepth);
+                            var ownerId = "enemy:" +
+                                splashTarget.InstanceId +
+                                ":power:personal_hive:source:" +
+                                (sourceCardInstanceId?.ToString() ?? "none");
+                            return (player, MakeControlledDrawInsertionChoice(
+                                combat, insertionOperation, continuation,
+                                requestSiteId:
+                                    PrototypeControlledDrawInsertionV111
+                                        .PersonalHiveDazedSiteId,
+                                requestOwnerId: ownerId,
+                                personalHiveDamageContinuation:
+                                    savedDamageContinuation));
+                        }
+                        for (var n = 0; n < personalHiveStacks; n++)
                         {
                             var instance = new CombatCardInstance(
                                 combat.NextCardInstanceId, null,
@@ -5735,7 +5809,8 @@ public sealed partial class PrototypeGameEngine
                                 sourceCardInstanceId: sourceCardInstanceId,
                                 ordinal: n,
                                 siteId:
-                                    "combat.effect.personal_hive.dazed.random_insert_index",
+                                    PrototypeControlledDrawInsertionV111
+                                        .PersonalHiveDazedSiteId,
                                 requestOwnerPrefix:
                                     "enemy:" + splashTarget.InstanceId +
                                     ":power:personal_hive:source:" +
@@ -5757,185 +5832,29 @@ public sealed partial class PrototypeGameEngine
                             };
                         }
                     }
-                    // CurlUpPower records the attack's physical card source
-                    // even on a fully blocked hit, then fires AFTER that
-                    // complete card play, including all of its hit repeats.
-                    if (operation.IsPoweredAttack
-                        && sourceCardInstanceId is { } attackCardId
-                        && splashTarget is { Hp: > 0 })
-                    {
-                        combat = combat with
-                        {
-                            Enemies = combat.Enemies.Select(enemy =>
-                                enemy.InstanceId == targetEnemyId.Value
-                                && enemy.Hp > 0
-                                    ? enemy with
-                                    {
-                                        Powers = enemy.PowerStates.Select(power =>
-                                            power.PendingAttackingCardInstanceId is null
-                                            && PrototypeContent.Power(power.PowerId)
-                                                .EnemyBlockAfterAttackingCardPlayedPerStack > 0
-                                                ? power with
-                                                {
-                                                    PendingAttackingCardInstanceId =
-                                                        attackCardId
-                                                }
-                                                : power).ToArray()
-                                    } : enemy).ToArray()
-                        };
-                    }
-                    if (splashTarget is { Block: > 0 } && damageAmount >= splashTarget.Block)
-                        combat = ApplyPlayerEnemyBlockBrokenRelics(player, combat, targetEnemyId.Value);
-                    if (operation.SplashUnpoweredAttackToOtherEnemies
-                        && splashTarget is { Hp: > 0 })
-                    {
-                        // Omnislice: powered primary hit, then separate
-                        // unpowered Move-damage to the other enemies.
-                        var echoAmount = Math.Max(0, damageAmount + overkill);
-                        operations = new Queue<PrototypeQueuedOperation>(
-                            combat.Enemies
-                                .Where(enemy => enemy.Hp > 0
-                                    && enemy.InstanceId != targetEnemyId.Value)
-                                .Select(enemy => new PrototypeQueuedOperation(
-                                    PrototypeCombatEffectKind.DamageEnemy,
-                                    echoAmount, TargetEnemyId: enemy.InstanceId))
-                                .Concat(operations));
-                    }
-
-                    if (operation.GainBlockEqualToAttackDamage)
-                    {
-                        // Fisticuffs uses the attack result (including
-                        // blocked and overkill damage) as the Block source.
-                        // Target was alive before resolution of this hit.
-                        // Card enchantments modify this card-sourced Block
-                        // before player-wide Block gain rules, just as they
-                        // do for explicit Block effects.
-                        var blockAmount = Math.Max(0, damageAmount);
-                        if (sourceCardInstanceId is { } blockCardId)
-                        {
-                            var blockEnchantment = RequireCombatCard(
-                                combat, blockCardId).Enchantment;
-                            if (blockEnchantment is
-                                { Kind: PrototypeCardEnchantmentKind.Nimble
-                                    or PrototypeCardEnchantmentKind.Goopy })
+                    var damageContinuation =
+                        new PrototypePersonalHiveDamageContinuationV111(
+                            operation with
                             {
-                                blockAmount = Math.Max(0, checked(
-                                    blockAmount + blockEnchantment.Amount
-                                    - (blockEnchantment.Kind
-                                        == PrototypeCardEnchantmentKind.Goopy
-                                        ? 1 : 0)));
-                            }
-                        }
-                        var blockResult = ModifyPlayerBlockGainWithLegion(
-                            combat, blockAmount,
-                            fromCard: true, sourceCardInstanceId);
-                        combat = blockResult.Combat with
-                        {
-                            PlayerBlock = blockResult.Combat.PlayerBlock + Math.Max(0, blockResult.Amount)
-                        };
-                    }
-                    if (operation.IsPoweredAttack
-                        && sourceCardInstanceId is not null
-                        && damageResult.DamageDealt > 0)
-                    {
-                        var reactiveEnemies = combat.Enemies
-                            .Select(item => item.Fork()).ToArray();
-                        var reactiveIndex = Array.FindIndex(
-                            reactiveEnemies,
-                            item => item.InstanceId == targetEnemyId.Value);
-                        if (reactiveIndex >= 0)
-                        {
-                            var target = reactiveEnemies[reactiveIndex];
-                            if (target.Hp > 0
-                                && !target.GainedReactiveBlockThisTurn)
-                            {
-                                var reactiveBlock = target.PowerStates.Sum(power =>
-                                    power.Stacks * PrototypeContent.Power(power.PowerId)
-                                        .EnemyBlockAfterFirstUnblockedCardAttackPerStack);
-                                if (reactiveBlock > 0)
-                                {
-                                    reactiveEnemies[reactiveIndex] = target with
-                                    {
-                                        Block = target.Block + reactiveBlock,
-                                        GainedReactiveBlockThisTurn = true
-                                    };
-                                    combat = combat with { Enemies = reactiveEnemies };
-                                }
-                            }
-                        }
-                    }
-                    if (damageResult.Defeated)
-                    {
-                        combat =
-                            CleanupSourceBoundPowersForDefeatedEnemies(
-                                combat);
-                    }
-
-                    if (damageResult.DamageDealt > 0)
-                    {
-                        var damaged = DispatchCombatEvent(
-                            player,
-                            combat,
-                            new PrototypeCombatEvent(
-                                PrototypeCombatEventKind.EnemyDamaged,
-                                TargetEnemyId: targetEnemyId.Value,
-                                Amount: damageResult.DamageDealt),
-                            rng,
-                            eventDepth + 1);
-                        player = damaged.Player;
-                        combat = damaged.Combat;
-                    }
-
-                    if (damageResult.Defeated)
-                    {
-                        var defeated = DispatchCombatEvent(
-                            player,
-                            combat,
-                            new PrototypeCombatEvent(
-                                PrototypeCombatEventKind.EnemyDefeated,
-                                TargetEnemyId: targetEnemyId.Value,
-                                Amount: damageResult.DamageDealt),
-                            rng,
-                            eventDepth + 1);
-                        player = defeated.Player;
-                        combat = defeated.Combat;
-                        combat = ResolveEnemyDeathSummons(
-                            combat,
-                            rng);
-
-                        if (fatalEligible)
-                        {
-                            if (operation.GoldOnFatal > 0)
-                            {
-                                player = player with
-                                {
-                                    Gold = GoldAfterGain(
-                                        player, operation.GoldOnFatal)
-                                };
-                            }
-
-                            if (operation.ExtraCardRewardsOnFatal > 0)
-                            {
-                                combat = combat with
-                                {
-                                    ExtraCardRewardsEarned =
-                                        combat.ExtraCardRewardsEarned
-                                        + operation.ExtraCardRewardsOnFatal
-                                };
-                            }
-
-                            if (operation.PlayerPowerOnFatalId is
-                                    { } fatalPowerId
-                                && operation.PlayerPowerOnFatalAmount != 0)
-                            {
-                                combat = ApplyPlayerPower(
-                                    combat,
-                                    fatalPowerId,
-                                    operation.PlayerPowerOnFatalAmount);
-                            }
-                        }
-                    }
-
+                                TargetEnemyId = targetEnemyId.Value,
+                                TargetMode =
+                                    PrototypeEffectTarget.ActionTargetEnemy
+                            },
+                            targetEnemyId.Value,
+                            splashTarget!,
+                            damageAmount,
+                            overkill,
+                            damageResult.DamageDealt,
+                            damageResult.Defeated,
+                            fatalEligible,
+                            personalHiveStacks,
+                            eventDepth);
+                    var continuedDamage =
+                        ContinueDamageEnemyAfterPersonalHiveInsertion(
+                            player, combat, rng, damageContinuation,
+                            sourceCardInstanceId, operations);
+                    player = continuedDamage.Player;
+                    combat = continuedDamage.Combat;
                     break;
 
                 case PrototypeCombatEffectKind.DamageAllEnemiesRepeatPerKill:
@@ -8618,6 +8537,172 @@ public sealed partial class PrototypeGameEngine
                             card.InstanceId != sourceCardInstanceId.Value)
                         .ToArray()
                 };
+            }
+        }
+
+        return (player, combat);
+    }
+
+    private static (PlayerState Player, CombatState Combat)
+        ContinueDamageEnemyAfterPersonalHiveInsertion(
+            PlayerState player,
+            CombatState combat,
+            RngBundle rng,
+            PrototypePersonalHiveDamageContinuationV111 continuation,
+            long? sourceCardInstanceId,
+            Queue<PrototypeQueuedOperation> operations)
+    {
+        var operation = continuation.Operation;
+        var targetEnemyId = continuation.TargetEnemyId;
+        var splashTarget = continuation.SplashTarget;
+        var damageAmount = continuation.DamageAmount;
+        var overkill = continuation.Overkill;
+        var damageDealt = continuation.DamageDealt;
+        var defeated = continuation.Defeated;
+
+        // CurlUpPower records the attack's physical card source even on a
+        // fully blocked hit, then fires AFTER that complete card play.
+        if (operation.IsPoweredAttack &&
+            sourceCardInstanceId is { } attackCardId &&
+            splashTarget.Hp > 0)
+        {
+            combat = combat with
+            {
+                Enemies = combat.Enemies.Select(enemy =>
+                    enemy.InstanceId == targetEnemyId && enemy.Hp > 0
+                        ? enemy with
+                        {
+                            Powers = enemy.PowerStates.Select(power =>
+                                power.PendingAttackingCardInstanceId is null &&
+                                PrototypeContent.Power(power.PowerId)
+                                    .EnemyBlockAfterAttackingCardPlayedPerStack > 0
+                                    ? power with
+                                    {
+                                        PendingAttackingCardInstanceId =
+                                            attackCardId
+                                    }
+                                    : power).ToArray()
+                        }
+                        : enemy).ToArray()
+            };
+        }
+        if (splashTarget.Block > 0 && damageAmount >= splashTarget.Block)
+            combat = ApplyPlayerEnemyBlockBrokenRelics(
+                player, combat, targetEnemyId);
+        if (operation.SplashUnpoweredAttackToOtherEnemies &&
+            splashTarget.Hp > 0)
+        {
+            var echoAmount = Math.Max(0, damageAmount + overkill);
+            var echoes = combat.Enemies
+                .Where(enemy => enemy.Hp > 0 &&
+                    enemy.InstanceId != targetEnemyId)
+                .Select(enemy => new PrototypeQueuedOperation(
+                    PrototypeCombatEffectKind.DamageEnemy,
+                    echoAmount, TargetEnemyId: enemy.InstanceId));
+            var queued = echoes.Concat(operations).ToArray();
+            operations.Clear();
+            foreach (var echo in queued) operations.Enqueue(echo);
+        }
+
+        if (operation.GainBlockEqualToAttackDamage)
+        {
+            var blockAmount = Math.Max(0, damageAmount);
+            if (sourceCardInstanceId is { } blockCardId)
+            {
+                var blockEnchantment = RequireCombatCard(
+                    combat, blockCardId).Enchantment;
+                if (blockEnchantment is
+                    { Kind: PrototypeCardEnchantmentKind.Nimble
+                        or PrototypeCardEnchantmentKind.Goopy })
+                {
+                    blockAmount = Math.Max(0, checked(
+                        blockAmount + blockEnchantment.Amount
+                        - (blockEnchantment.Kind ==
+                            PrototypeCardEnchantmentKind.Goopy ? 1 : 0)));
+                }
+            }
+            var blockResult = ModifyPlayerBlockGainWithLegion(
+                combat, blockAmount,
+                fromCard: true, sourceCardInstanceId);
+            combat = blockResult.Combat with
+            {
+                PlayerBlock = blockResult.Combat.PlayerBlock +
+                    Math.Max(0, blockResult.Amount)
+            };
+        }
+        if (operation.IsPoweredAttack && sourceCardInstanceId is not null &&
+            damageDealt > 0)
+        {
+            var reactiveEnemies = combat.Enemies
+                .Select(item => item.Fork()).ToArray();
+            var reactiveIndex = Array.FindIndex(reactiveEnemies,
+                item => item.InstanceId == targetEnemyId);
+            if (reactiveIndex >= 0)
+            {
+                var target = reactiveEnemies[reactiveIndex];
+                if (target.Hp > 0 && !target.GainedReactiveBlockThisTurn)
+                {
+                    var reactiveBlock = target.PowerStates.Sum(power =>
+                        power.Stacks * PrototypeContent.Power(power.PowerId)
+                            .EnemyBlockAfterFirstUnblockedCardAttackPerStack);
+                    if (reactiveBlock > 0)
+                    {
+                        reactiveEnemies[reactiveIndex] = target with
+                        {
+                            Block = target.Block + reactiveBlock,
+                            GainedReactiveBlockThisTurn = true
+                        };
+                        combat = combat with { Enemies = reactiveEnemies };
+                    }
+                }
+            }
+        }
+        if (defeated)
+            combat = CleanupSourceBoundPowersForDefeatedEnemies(combat);
+
+        if (damageDealt > 0)
+        {
+            var damaged = DispatchCombatEvent(
+                player, combat,
+                new PrototypeCombatEvent(
+                    PrototypeCombatEventKind.EnemyDamaged,
+                    TargetEnemyId: targetEnemyId,
+                    Amount: damageDealt),
+                rng, continuation.EventDepth + 1);
+            player = damaged.Player;
+            combat = damaged.Combat;
+        }
+
+        if (defeated)
+        {
+            var defeatedResult = DispatchCombatEvent(
+                player, combat,
+                new PrototypeCombatEvent(
+                    PrototypeCombatEventKind.EnemyDefeated,
+                    TargetEnemyId: targetEnemyId,
+                    Amount: damageDealt),
+                rng, continuation.EventDepth + 1);
+            player = defeatedResult.Player;
+            combat = ResolveEnemyDeathSummons(defeatedResult.Combat, rng);
+
+            if (continuation.FatalEligible)
+            {
+                if (operation.GoldOnFatal > 0)
+                    player = player with
+                    {
+                        Gold = GoldAfterGain(player, operation.GoldOnFatal)
+                    };
+                if (operation.ExtraCardRewardsOnFatal > 0)
+                    combat = combat with
+                    {
+                        ExtraCardRewardsEarned = combat.ExtraCardRewardsEarned +
+                            operation.ExtraCardRewardsOnFatal
+                    };
+                if (operation.PlayerPowerOnFatalId is { } fatalPowerId &&
+                    operation.PlayerPowerOnFatalAmount != 0)
+                    combat = ApplyPlayerPower(
+                        combat, fatalPowerId,
+                        operation.PlayerPowerOnFatalAmount);
             }
         }
 

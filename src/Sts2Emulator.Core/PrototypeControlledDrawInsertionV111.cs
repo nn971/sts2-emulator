@@ -26,7 +26,11 @@ public sealed partial class PrototypeGameEngine
         PrototypeAfterShuffleRelicInsertionV111? afterShuffleRelic = null,
         PrototypeAfterShuffleRelicInsertionV111[]? completedAfterShuffleRelics = null,
         PrototypeAfterShuffleRelicInsertionV111[]? remainingAfterShuffleRelics = null,
-        int requestOrdinal = 0)
+        int requestOrdinal = 0,
+        string? requestSiteId = null,
+        string? requestOwnerId = null,
+        PrototypePersonalHiveDamageContinuationV111?
+            personalHiveDamageContinuation = null)
     {
         if (!ControlledChanceGuardV111.Active ||
             combat.PendingChoice is not null || operation.Amount <= 0)
@@ -86,14 +90,16 @@ public sealed partial class PrototypeGameEngine
                     RemainingAfterShuffleRelics: remainingAfterShuffleRelics is null
                         ? null : remainingAfterShuffleRelics
                             .Select(item => item with { }).ToArray(),
-                    RequestSiteId: afterShuffleRelic is null
+                    RequestSiteId: requestSiteId ?? (afterShuffleRelic is null
                         ? "combat.draw_pile.random_insert_index"
-                        : "combat.relic.after_shuffle.generated_card.random_insert_index",
-                    RequestOwnerId: afterShuffleRelic is null
+                        : "combat.relic.after_shuffle.generated_card.random_insert_index"),
+                    RequestOwnerId: requestOwnerId ?? (afterShuffleRelic is null
                         ? "prototype.combat"
                         : "relic:" + afterShuffleRelic.RelicId +
-                            ":application:" + afterShuffleRelic.RelicApplicationOrder,
-                    RequestOrdinal: requestOrdinal))
+                            ":application:" + afterShuffleRelic.RelicApplicationOrder),
+                    RequestOrdinal: requestOrdinal,
+                    PersonalHiveDamageContinuation:
+                        personalHiveDamageContinuation?.Fork()))
         };
     }
 
@@ -129,7 +135,10 @@ public sealed partial class PrototypeGameEngine
     {
         if (choice.CandidateCardIds is null ||
             choice.EligibleDrawPile is null || choice.Operation.Amount <= 0 ||
-            !combat.DrawPile.SequenceEqual(choice.EligibleDrawPile))
+            !combat.DrawPile.SequenceEqual(choice.EligibleDrawPile) ||
+            (choice.RequestSiteId ==
+                PrototypeControlledDrawInsertionV111.PersonalHiveDazedSiteId) !=
+            (choice.PersonalHiveDamageContinuation is not null))
             return false;
         if (choice.Operation.Kind ==
             PrototypeCombatEffectKind.CreateGeneratedCardsAtRandomDrawPositions)
@@ -142,12 +151,20 @@ public sealed partial class PrototypeGameEngine
             if (choice.SemanticDrawContinuation is null)
             {
                 if (choice.AfterShuffleRelic is null)
-                    return choice.CompletedAfterShuffleRelics is null &&
-                        choice.RemainingAfterShuffleRelics is null &&
-                        choice.RequestSiteId ==
+                {
+                    if (choice.CompletedAfterShuffleRelics is not null ||
+                        choice.RemainingAfterShuffleRelics is not null)
+                        return false;
+                    if (choice.RequestSiteId ==
+                        PrototypeControlledDrawInsertionV111
+                            .PersonalHiveDazedSiteId)
+                        return ValidateControlledPersonalHiveInsertion(
+                            combat, choice);
+                    return choice.RequestSiteId ==
                             "combat.draw_pile.random_insert_index" &&
                         choice.RequestOwnerId == "prototype.combat" &&
                         choice.RequestOrdinal == 0;
+                }
                 var insertion = choice.AfterShuffleRelic;
                 var afterShuffleCompleted =
                     choice.CompletedAfterShuffleRelics ?? [];
@@ -213,6 +230,7 @@ public sealed partial class PrototypeGameEngine
         }
         if (choice.Operation.Kind !=
             PrototypeCombatEffectKind.CreateRandomFreeAttacksInDrawPile ||
+            choice.PersonalHiveDamageContinuation is not null ||
             !choice.CandidateCardIds.SequenceEqual(ControlledRandomDrawAttackPool()))
             return false;
         return choice.Stage switch
@@ -222,6 +240,49 @@ public sealed partial class PrototypeGameEngine
                 choice.CandidateCardIds.Contains(choice.SelectedCardId),
             _ => false
         };
+    }
+
+    private static bool ValidateControlledPersonalHiveInsertion(
+        CombatState combat,
+        PrototypeControlledDrawInsertionV111 choice)
+    {
+        if (choice.Operation.CardId != "proto.status.dazed" ||
+            choice.Operation.Amount <= 0 || choice.RequestOrdinal < 0 ||
+            combat.PendingChoice is not { } pending ||
+            choice.PersonalHiveDamageContinuation is not { } damage)
+            return false;
+        if (damage.Operation.Kind != PrototypeCombatEffectKind.DamageEnemy ||
+            !damage.Operation.IsPoweredAttack ||
+            damage.Operation.TargetEnemyId != damage.TargetEnemyId ||
+            damage.TargetEnemyId <= 0 ||
+            damage.SplashTarget.InstanceId != damage.TargetEnemyId ||
+            damage.SplashTarget.Hp <= 0 || damage.HiveStackCount <= 0 ||
+            damage.SplashTarget.PowerStates
+                .Where(power => power.PowerId ==
+                    PrototypeNativeHiveElites.PersonalHiveId)
+                .Sum(power => power.Stacks) != damage.HiveStackCount ||
+            damage.EventDepth < 0 ||
+            (long)choice.RequestOrdinal + choice.Operation.Amount !=
+                damage.HiveStackCount)
+            return false;
+        var sourceCardId = pending.SourceCardInstanceId?.ToString() ?? "none";
+        if (pending.OuterChoiceContinuation is not { } outer ||
+            pending.SourceCardInstanceId != outer.SourceCardInstanceId ||
+            string.IsNullOrWhiteSpace(choice.RequestOwnerId))
+            return false;
+        var ownerParts = choice.RequestOwnerId.Split(':');
+        return ownerParts.Length == 6 && ownerParts[0] == "enemy" &&
+            int.TryParse(ownerParts[1],
+                System.Globalization.NumberStyles.None,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out var enemyInstanceId) &&
+            enemyInstanceId > 0 && ownerParts[2] == "power" &&
+            ownerParts[3] == "personal_hive" &&
+            ownerParts[4] == "source" &&
+            ownerParts[5] == sourceCardId &&
+            enemyInstanceId == damage.TargetEnemyId &&
+            combat.Enemies.Any(enemy =>
+                enemy.InstanceId == enemyInstanceId);
     }
 
     /// <summary>
@@ -334,6 +395,29 @@ public sealed partial class PrototypeGameEngine
             };
         }
 
+        if (choice.RequestSiteId ==
+                PrototypeControlledDrawInsertionV111
+                    .PersonalHiveDazedSiteId &&
+            choice.Operation.Amount > 1)
+        {
+            var nextCombat = MakeControlledDrawInsertionChoice(
+                combat,
+                choice.Operation with
+                {
+                    Amount = choice.Operation.Amount - 1
+                },
+                continuation,
+                requestOrdinal: choice.RequestOrdinal + 1,
+                requestSiteId: choice.RequestSiteId,
+                requestOwnerId: choice.RequestOwnerId,
+                personalHiveDamageContinuation:
+                    choice.PersonalHiveDamageContinuation);
+            return state with
+            {
+                World = world with { Combat = nextCombat }
+            };
+        }
+
         if (choice.SemanticDrawContinuation is { } semanticDraw)
         {
             if (semanticDraw.StratagemSelectionPending)
@@ -382,8 +466,25 @@ public sealed partial class PrototypeGameEngine
                     drawState, resumedDraw, semanticDraw, continuation));
         }
 
+        var resumePlayer = state.Player;
+        var resumeCombat = combat;
+        var resumeContinuation = continuation;
+        if (choice.PersonalHiveDamageContinuation is { } hiveDamage)
+        {
+            var remainingOperations = new Queue<PrototypeQueuedOperation>(
+                continuation.Operations);
+            var afterHive = ContinueDamageEnemyAfterPersonalHiveInsertion(
+                resumePlayer, resumeCombat, state.Rng, hiveDamage,
+                continuation.SourceCardInstanceId, remainingOperations);
+            resumePlayer = afterHive.Player;
+            resumeCombat = afterHive.Combat;
+            resumeContinuation = continuation with
+            {
+                Operations = remainingOperations.ToArray()
+            };
+        }
         var resolved = ResumeChoiceResolutionContinuation(
-            state.Player, combat, state.Rng, continuation);
+            resumePlayer, resumeCombat, state.Rng, resumeContinuation);
         var updated = state with
         {
             Player = resolved.Player,
