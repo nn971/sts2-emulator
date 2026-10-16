@@ -1,5 +1,8 @@
 namespace Sts2Emulator.Core;
 
+public sealed record NativeOrobasEventAuditV111(
+    RunState State, RandomIndexDecisionV111[] Choices, string ProviderMode);
+
 /// <summary>
 /// Orobas's executable Silent offers. The foreign-character Sea Glass and
 /// Prismatic Gem alternative in the first pool is deferred by scope.
@@ -9,6 +12,7 @@ public static class NativeOrobasEventV111
 {
     public const string EventId = "proto.native.hive.orobas";
     public const string LockedChoiceId = "option_pool_3_locked";
+    public const string OfferSiteId = "event.orobas.relic_offer.index_draw";
 
     private static readonly string[][] RelicPools =
     [
@@ -45,8 +49,20 @@ public static class NativeOrobasEventV111
         world.Act == 2 && world.Floor == 0 && world.Map.CurrentNodeId is null
         && world.Event?.EventId == EventId;
 
-    public static RunState BeginOpening(RunState state)
+    public static RunState BeginOpening(RunState state) =>
+        BeginOpeningWithAudit(state, new NativeRandomIndexProviderV111()).State;
+
+    /// <summary>
+    /// Resolve the three event-entry offer choices through the supplied
+    /// provider. Provider mode and decisions are returned separately; only
+    /// the compatibility <see cref="BeginOpening(RunState)"/> entry point
+    /// guarantees native-v111 mode.
+    /// </summary>
+    public static NativeOrobasEventAuditV111 BeginOpeningWithAudit(
+        RunState state, IRandomIndexProviderV111 provider)
     {
+        ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(provider);
         if (state.World is not { Act: 2, Floor: 0, Combat: null,
                 Reward: null, Event: null } world
             || world.Map.CurrentNodeId is not null
@@ -58,17 +74,22 @@ public static class NativeOrobasEventV111
         var fork = state.Fork();
         var context = NativeRngV111Contexts.ForEvent(fork.RunSeed, "OROBAS");
         var rng = new RngBundle([context]);
-        var offers = RelicPools.Select(pool =>
+        var decisions = new List<RandomIndexDecisionV111>(RelicPools.Length);
+        var offers = RelicPools.Select((pool, ordinal) =>
         {
             var eligible = pool.Select(ChoiceId)
                 .Where(id => IsChoiceEligible(fork.Player, id)).ToArray();
             if (eligible.Length == 0)
                 eligible = [LockedChoiceId];
-            return NativeRngV111.NextItem(rng, context.StreamId,
-                (IReadOnlyList<string>)eligible)
-                ?? throw new InvalidOperationException("Orobas offer pool is empty.");
+            var decision = provider.Resolve(new RandomIndexRequestV111(
+                OfferSiteId, context.StreamId,
+                "event:OROBAS:act:2:floor:0", ordinal,
+                Enumerable.Range(0, eligible.Length).ToArray()), rng);
+            decision.Validate();
+            decisions.Add(decision);
+            return eligible[decision.SelectedIndex];
         }).ToArray();
-        return fork with
+        var result = fork with
         {
             Phase = RunPhase.Event,
             World = fork.World! with
@@ -78,6 +99,8 @@ public static class NativeOrobasEventV111
                 EventHistory = world.EventIds.Append(EventId).ToArray()
             }
         };
+        return new NativeOrobasEventAuditV111(
+            result, decisions.ToArray(), provider.Mode);
     }
 
     public static RunState CreateOpeningFixture(string seed, int ascension = 0) =>

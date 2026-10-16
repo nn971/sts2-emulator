@@ -28,6 +28,7 @@ reference distribution is claimed.
 | `combat.tough_egg.hatchling_hp` | Tough Egg CombatId / `run.niche` | Yes, direct hatch range and call timing | Yes | Yes: existing seeded hatch oracle | No | No | No |
 | `combat.committed_intent.index_draw` | creature CombatId / `run.monster_ai` | Yes, supported moves | Yes, subset | Yes: seeded result/hash/cursor | Yes: isolated entry, source route and automatic turn continuation | Yes | No |
 | `combat.encounter.formation.index_draw` | encounter entry + floor / `context.encounter.*` | Partial: supported source resolvers; singleton calls preserved | Yes: native typed provider | Yes: existing seeded result/cursor regressions | No | No | No |
+| `event.orobas.relic_offer.index_draw` | Orobas event / `context.event.OROBAS.player_0` | Yes: three ordered eligible pools; singleton fallback still consumes | Yes: typed provider and opt-in audit | No: provider-specific result/cursor regression pending | Yes: one-shot offer generation accepts a provider | No | No |
 | `combat.draw_pile.shuffle.swap` | player / `run.shuffle` | Yes, pinned Fisher–Yates and hook stages | Partial: injectable primitive, not every ordinary Step shuffle | Partial: source algorithm/cursor checks; live operation capture pending | Partial: provider supports controlled outcomes; ordinary shuffle sites remain separate | Yes, primitive-level | No |
 | `combat.draw_pile_recycle.swap_index` | player / legacy `combat` stream | Yes, recycle swap bounds | No v111 provider at this site | No | Yes: legacy controlled recycle continuation | Yes | No |
 | `combat.draw_pile.draw_card` | player / `semantic.draw_pile` | Yes, source `DrawCards` order and identity | Partial: exact native deck mode; no per-draw provider seam | No | Yes: deferred physical-card identity | Yes, actual draw segment | No |
@@ -46,7 +47,7 @@ reference distribution is claimed.
 This is the migrated typed-site inventory, not a complete v0.111 RNG
 inventory. Other encounter resolvers, summon/death lifecycle effects,
 monster-local draws, enemy-side insertion, remaining cost/reward sites,
-map/event/shop/treasure selection, and native float/Gaussian/rejection
+other map/event/shop/treasure selection, and native float/Gaussian/rejection
 operations still need stable call-site identities and row-level audit. Their
 absence here is not evidence that they are deterministic or supported.
 
@@ -105,7 +106,8 @@ provider integrations, not controlled summon/death continuations.
 
 **D2 remaining:** formation resolvers outside the integrated subset,
 monster-local draws, summon/death continuation mechanics,
-shuffle/targets/rewards and other audited call sites; explicit weighted
+shuffle/targets/rewards, event sites beyond Orobas offer generation, and
+other audited call sites; explicit weighted
 outcome metadata at move-level instead of primitive index selections.
 The separate semantic playable API now exposes typed weighted intent events,
 deferred physical-card draws, random-enemy targets, generated-card model

@@ -1,6 +1,6 @@
 # RNG model
 
-> **Desired implementation:** [Interchangeable native RNG / controlled Nature architecture](DESIRED_RNG_IMPLEMENTATION.md) (proposed design; not yet implemented). It separates ordered mechanical random-choice boundaries from the provider selecting the outcome, while preserving native seeded replay as its own fidelity gate.
+> **Desired implementation:** [Interchangeable native RNG / controlled Nature architecture](DESIRED_RNG_IMPLEMENTATION.md) (partially implemented; see the [migration matrix](DESIRED_RNG_MIGRATION_STATUS.md)). It separates ordered mechanical random-choice boundaries from the provider selecting the outcome, while preserving native seeded replay as its own fidelity gate.
 
 ## Principle
 
