@@ -3081,6 +3081,15 @@ public static class PrototypeStateInvariants
                 || openingContinuation.NextStepIndex != PrototypeContent.Rules.EndTurnPipeline.Length
                 || openingContinuation.PendingPostDispatchEventKind is not null))
             throw new InvalidOperationException("Invalid suspended opening-combat stage.");
+        if (combat.AutomaticPipelineContinuation is
+                { OpeningStage: null } pipelineContinuation &&
+            (pipelineContinuation.NextStepIndex < 0 ||
+             pipelineContinuation.NextStepIndex >
+                PrototypeContent.Rules.EndTurnPipeline.Length ||
+             pipelineContinuation.PendingPostDispatchEventKind is
+                { } eventKind && !Enum.IsDefined(eventKind)))
+            throw new InvalidOperationException(
+                "Invalid suspended automatic-combat pipeline.");
         if (combat.ToricShields is { } shields
             && shields.Any(shield =>
                 shield.BlockAmount <= 0
@@ -3471,13 +3480,6 @@ public static class PrototypeStateInvariants
             if (pending.ControlledCardShortlist is { } cardShortlist)
             {
                 var automatic = combat.AutomaticPipelineContinuation;
-                var invalidAutomaticCursor = automatic is
-                    { OpeningStage: null } cursor &&
-                    (cursor.NextStepIndex < 0 ||
-                     cursor.NextStepIndex >
-                        PrototypeContent.Rules.EndTurnPipeline.Length ||
-                     cursor.PendingPostDispatchEventKind is { } eventKind &&
-                     !Enum.IsDefined(eventKind));
                 if (pending.ChoiceId != "controlled_card_shortlist" ||
                     pending.OuterChoiceContinuation is null ||
                     pending.ControlledTarget is not null ||
@@ -3494,11 +3496,39 @@ public static class PrototypeStateInvariants
                     combat.SemanticDeck is not
                         { Mode: SemanticDeckStateV111.NatureMode } ||
                     (automatic is null && !combat.IsPlayerTurn) ||
-                    invalidAutomaticCursor ||
                     !PrototypeGameEngine.ValidateControlledCardShortlist(
                         combat, cardShortlist))
                     throw new InvalidOperationException(
                         "Controlled card-shortlist continuation is malformed.");
+            }
+            if (pending.ControlledRandomCost is { } randomCost)
+            {
+                var automatic = combat.AutomaticPipelineContinuation;
+                if (pending.ChoiceId != "controlled_random_hand_cost" ||
+                    pending.OuterChoiceContinuation is null ||
+                    pending.ControlledTarget is not null ||
+                    pending.ControlledGeneration is not null ||
+                    pending.ControlledPotionGeneration is not null ||
+                    pending.ControlledCardTransform is not null ||
+                    pending.ControlledDrawInsertion is not null ||
+                    pending.ControlledPoolShuffle is not null ||
+                    pending.ControlledDrawCost is not null ||
+                    pending.ControlledCardShortlist is not null ||
+                    pending.ControlledRandomPileCard is not null ||
+                    pending.ControlledSemanticDraw is not null ||
+                    combat.PendingKnowledgeDemonChoice is not null ||
+                    combat.SemanticDeck is not
+                        { Mode: SemanticDeckStateV111.NatureMode } ||
+                    (automatic is null && !combat.IsPlayerTurn) ||
+                    randomCost.Operation.Kind is not (
+                        PrototypeCombatEffectKind
+                            .RandomizeHandCardEnergyCostsUntilTurnEndOrPlayed or
+                        PrototypeCombatEffectKind
+                            .SetRandomHandCardEnergyCostUntilTurnEndOrPlayed) ||
+                    !PrototypeGameEngine.ValidateControlledRandomCost(
+                        combat, randomCost))
+                    throw new InvalidOperationException(
+                        "Controlled random-hand-cost continuation is malformed.");
             }
             if (pending.ControlledPotionGeneration is { } potionGeneration)
             {

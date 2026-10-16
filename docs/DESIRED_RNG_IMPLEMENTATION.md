@@ -101,6 +101,9 @@ Hidden Gem's random draw-pile replay selection also resumes through the same
 card-shortlist continuation, updating the selected card's replay count while
 preserving draw-pile order and its automatic-pipeline cursor; see
 [the replay-selection note](NATURE_SEMANTIC_RANDOM_REPLAY_143.md).
+Random hand-card selection and energy-cost effects keep their automatic
+pipeline cursor while Nature resolves the selected card and any per-card cost
+tickets.
 Anointed's full shuffle over Rare draw-pile instances now resumes from each
 saved bounded swap and moves the resulting prefix into hand while updating the
 semantic deck. The player-action fixture route uses stable card-instance

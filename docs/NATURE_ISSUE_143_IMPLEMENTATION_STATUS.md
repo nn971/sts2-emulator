@@ -710,6 +710,10 @@ choices preserve the same cursor until the operation completes. The Release
 solution build passes with zero warnings or errors; tests and mechanics
 regressions were not run. Conditional probabilities remain `UNVERIFIED`.
 
+Random hand-card selection and random energy-cost effects also preserve the
+automatic-pipeline cursor while their source operation continuation resolves.
+Their Release build passes; tests and native cursor regressions were not run.
+
 ## 2026-10-17: player-action Anointed rare-card shuffle
 
 The semantic pilot now exposes Anointed's full Rare draw-pile shuffle through

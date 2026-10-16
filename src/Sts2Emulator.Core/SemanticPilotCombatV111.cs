@@ -3305,8 +3305,9 @@ public static class SemanticPilotCombatEngineV111
         var choice = combat?.PendingChoice;
         var randomCost = choice?.ControlledRandomCost;
         if (run.Phase != RunPhase.Combat ||
-            combat is not { IsPlayerTurn: true,
-                AutomaticPipelineContinuation: null } ||
+            combat is not { PendingKnowledgeDemonChoice: null } ||
+            (combat.AutomaticPipelineContinuation is null &&
+             !combat.IsPlayerTurn) ||
             choice is not { ChoiceId: "controlled_random_hand_cost",
                 OuterChoiceContinuation: not null } ||
             randomCost is null ||
@@ -3328,6 +3329,7 @@ public static class SemanticPilotCombatEngineV111
                 .Order().SequenceEqual(combat.DrawPile.Order()))
             throw new InvalidDataException(
                 "Random hand-cost continuation changed the hidden draw pile.");
+        PrototypeStateInvariants.Validate(run);
     }
 
     private static void ValidateCardShortlistBoundary(RunState run)
