@@ -98,12 +98,13 @@ public static class SemanticOtherChanceEngineV111
         var ids = state.Streams.Streams.Select(x => x.StreamId).ToArray();
         if (ids.Distinct(StringComparer.Ordinal).Count() != ids.Length)
             throw new InvalidDataException("Duplicate private RNG stream owners.");
-        foreach (var decision in state.Decisions)
+        for (int ordinal = 0; ordinal < state.Decisions.Length; ordinal++)
         {
+            var decision = state.Decisions[ordinal];
             decision.Validate();
             if (decision.ProviderMode != "native-v111" ||
                 decision.Request.StreamId != CostStreamId ||
-                decision.Request.Ordinal != Array.IndexOf(state.Decisions, decision) ||
+                decision.Request.Ordinal != ordinal ||
                 decision.Request.SiteId is not (
                     "combat.card_draw.relic_energy_cost" or
                     "combat.card_draw.slither_energy_cost") ||
