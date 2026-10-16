@@ -14,10 +14,13 @@ from pathlib import Path
 
 
 def key(obj: dict, name: str):
-    """Read either snake_case or C# PascalCase of a canonical field."""
+    """Read snake_case, camelCase, or C# PascalCase of a field."""
     if not isinstance(obj, dict):
         return None
-    return obj.get(name, obj.get("".join(x.capitalize() for x in name.split("_"))))
+    parts = name.split("_")
+    pascal = "".join(x.capitalize() for x in parts)
+    camel = parts[0] + "".join(x.capitalize() for x in parts[1:])
+    return obj.get(name, obj.get(pascal, obj.get(camel)))
 
 
 def compare_native_emulator(
@@ -39,6 +42,8 @@ def compare_native_emulator(
         "exact_native_rng_cursor_comparison": exact_native_cursors,
         "native_call_count": len(native),
         "emulator_call_count": 0,
+        "emulator_global_provider_count": 0,
+        "emulator_uncompared_provider_operations": 0,
         "compared": 0,
         "first_mismatch": None,
     }
@@ -58,9 +63,37 @@ def compare_native_emulator(
         return {**base, "status": "NATIVE_RNG_CALLSITE_UNATTRIBUTED"}
     if key(engine, "executed_actual_engine_step") is not True:
         return {**base, "status": "EMULATOR_STEP_NOT_EXECUTED"}
-    emulator = key(engine, "emulator_random_boundaries")
-    if not isinstance(emulator, list):
-        return {**base, "status": "EMULATOR_PROVIDER_JOURNAL_MISSING"}
+    ordered = key(engine, "emulator_random_transcript")
+    if ordered is not None:
+        if not isinstance(ordered, list):
+            return {**base, "status": "EMULATOR_PROVIDER_TRANSCRIPT_INVALID"}
+        emulator = []
+        for sequence, entry in enumerate(ordered, start=1):
+            if (not isinstance(entry, dict)
+                    or key(entry, "sequence") != sequence
+                    or key(entry, "schema_id") !=
+                       "sts2-v111-random-boundary-transcript-v1"
+                    or not isinstance(key(entry, "event"), dict)):
+                return {**base,
+                        "status": "EMULATOR_PROVIDER_TRANSCRIPT_INVALID"}
+            operation_kind = key(entry, "operation_kind")
+            if operation_kind == "index":
+                emulator.append(key(entry, "event"))
+            elif operation_kind in (
+                    "unit_float", "ranged_float", "ranged_double",
+                    "gaussian_int", "gaussian_double"):
+                base["emulator_uncompared_provider_operations"] += 1
+            else:
+                return {**base,
+                        "status": "EMULATOR_PROVIDER_TRANSCRIPT_INVALID"}
+        base["emulator_global_provider_count"] = len(ordered)
+    else:
+        # Backward compatibility with reports written before the mixed
+        # operation transcript was added.
+        emulator = key(engine, "emulator_random_boundaries")
+        if not isinstance(emulator, list):
+            return {**base, "status": "EMULATOR_PROVIDER_JOURNAL_MISSING"}
+        base["emulator_global_provider_count"] = len(emulator)
     base["emulator_call_count"] = len(emulator)
     if not emulator:
         return {**base, "status": "EMULATOR_RNG_PROVIDER_UNOBSERVED"}

@@ -79,7 +79,10 @@ public sealed record RandomBoundaryTranscriptEntryV111(
 public sealed class RandomBoundaryJournalV111 : IDisposable
 {
     private static readonly JsonSerializerOptions TranscriptJsonOptions =
-        new(JsonSerializerDefaults.Web);
+        new(JsonSerializerDefaults.Web)
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
+        };
     private static readonly AsyncLocal<RandomBoundaryJournalV111?> Active = new();
     private readonly RandomBoundaryJournalV111? _previous;
     private readonly List<RandomBoundaryEventV111> _events = [];
@@ -258,7 +261,10 @@ public sealed record RandomBoundaryDiffV111(
 public static class RandomBoundaryComparisonV111
 {
     private static readonly JsonSerializerOptions TranscriptJsonOptions =
-        new(JsonSerializerDefaults.Web);
+        new(JsonSerializerDefaults.Web)
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
+        };
 
     /// <summary>Compare mixed primitive operations in their actual global
     /// provider-call order while retaining each typed request comparison.</summary>

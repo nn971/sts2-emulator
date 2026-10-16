@@ -94,6 +94,14 @@ public static class NativeEngineFidelityBatchV111
                     error: ex.GetType().Name);
             }
 
+            var rngProviderBoundaryCount =
+                result.EmulatorRandomTranscript?.Length ??
+                (result.EmulatorRandomBoundaries?.Length ?? 0) +
+                (result.EmulatorRandomUnitFloatBoundaries?.Length ?? 0) +
+                (result.EmulatorRandomRangedFloatBoundaries?.Length ?? 0) +
+                (result.EmulatorRandomRangedDoubleBoundaries?.Length ?? 0) +
+                (result.EmulatorGaussianIntBoundaries?.Length ?? 0) +
+                (result.EmulatorGaussianDoubleBoundaries?.Length ?? 0);
             entries.Add(new Entry(
                 Path.GetFileName(file), card, enemy, decision,
                 result.Status, result.ExecutedActualEngineStep,
@@ -104,7 +112,7 @@ public static class NativeEngineFidelityBatchV111
                 result.UnverifiedPreconditions,
                 result.EmulatorEventJournal?.Length ?? 0,
                 result.EngineFailure,
-                result.EmulatorRandomBoundaries?.Length ?? 0));
+                rngProviderBoundaryCount));
         }
 
         int matched = entries.Count(e => e.Status == "CORE_ENGINE_CHECKPOINT_CONSISTENT");
