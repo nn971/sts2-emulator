@@ -139,29 +139,40 @@ public sealed partial class PrototypeGameEngine
                 throw new NotSupportedException(
                     "War Historian chest requires two implemented relic offers and a potion pool.");
 
+            var nativeRunRng = UsesNativeRegionalSystems(world)
+                ? state.NativeRunRng?.Fork()
+                : null;
             var offers = PickDistinct(available, 2, state.Rng, "reward");
+            int PotionIndex(int ordinal)
+            {
+                var ownerId = $"event:war_historian_repy:potion_offer:{ordinal}";
+                return nativeRunRng is { } nativeRewardRng
+                    ? NativePlayerRngV111.ChooseIndex(
+                        nativeRewardRng,
+                        "event.war_historian.repy.potion_offer.index_draw",
+                        NativePlayerRngV111.RewardsStreamId,
+                        ownerId,
+                        potions.Length)
+                    : LegacyRandomChoiceV111.ChooseIndexRange(
+                        state.Rng,
+                        "event.war_historian.repy.potion_offer.index_draw",
+                        "reward",
+                        ownerId,
+                        potions.Length).SelectedIndex;
+            }
             evt = RequireWorld(state).Event! with
             {
                 RepyChestPotionIds =
                 [
-                    potions[LegacyRandomChoiceV111.ChooseIndexRange(
-                        state.Rng,
-                        "event.war_historian.repy.potion_offer.index_draw",
-                        "reward",
-                        "event:war_historian_repy:potion_offer:0",
-                        potions.Length).SelectedIndex],
-                    potions[LegacyRandomChoiceV111.ChooseIndexRange(
-                        state.Rng,
-                        "event.war_historian.repy.potion_offer.index_draw",
-                        "reward",
-                        "event:war_historian_repy:potion_offer:1",
-                        potions.Length).SelectedIndex]
+                    potions[PotionIndex(0)],
+                    potions[PotionIndex(1)]
                 ],
                 RepyChestRelicIds = offers,
                 RepyChestGroupsResolved = 0
             };
             state = state with
             {
+                NativeRunRng = nativeRunRng ?? state.NativeRunRng,
                 World = RequireWorld(state) with { Event = evt }
             };
         }

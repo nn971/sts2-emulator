@@ -109,6 +109,8 @@ Catcher rest rewards also preserve the advanced native stream. Source-shaped
 pools remain restricted, and native result/cursor parity is unverified.
 Punch Off's relic and potion custom reward picks now use that player stream in
 configured regional runs; their source stream assignment remains unverified.
+War Historian Repy's two independent potion offers also use typed `player.rewards`
+requests under an explicit stream hypothesis, with legacy fallback retained.
 Configured Overgrowth treasure relics now use the same persistent
 `player.rewards` stream and rarity-partitioned relic queue as reward and
 merchant draws. Treasure RNG state is saved on both successful and exhausted

@@ -1496,6 +1496,11 @@ Punch Off's relic and potion custom rewards now use sequential typed index
 requests on `player.rewards` in configured regional runs, with legacy reward
 fallback retained. Native stream ownership and cursor parity remain unverified.
 
+War Historian Repy's two independent potion offers now use typed native index
+requests on the same stream hypothesis when native run RNG is present. Legacy
+reward selection remains available, and source stream/cursor validation is
+pending.
+
 Configured Overgrowth combat rewards now use the persistent `player.rewards`
 stream for potion pity, gold bounds, rarity-weighted potion selection, card
 rarity/model/upgrade draws, relic rarity, boss relic offer shuffling, and Lava
