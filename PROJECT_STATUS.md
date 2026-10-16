@@ -1443,3 +1443,9 @@ prototype-stream helper remains available for compatibility. Unlock and
 `IsAllowedAtNeow` filtering and native call-order parity are still open.
 The Release CLI build passes with zero warnings or errors; no test suite was
 run for these migrations.
+
+The first native Overgrowth merchant draw, sale-slot selection, now uses the
+existing persistent `player.shops` stream when native run RNG ownership is
+enabled. The legacy `shop` stream remains the fallback for unconfigured
+prototype runs. Merchant generation still needs the remaining card, potion,
+relic, and price draws migrated.

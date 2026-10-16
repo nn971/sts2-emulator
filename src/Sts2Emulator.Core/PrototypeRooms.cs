@@ -2405,16 +2405,28 @@ public sealed partial class PrototypeGameEngine
     {
         var world = RequireWorld(state);
         var nativeMerchant = UsesNativeRegionalSystems(world);
+        var nativeRunRng = state.NativeRunRng?.Fork();
         // MerchantInventory chooses one of the five character-card
         // slots before populating the inventory.
-        var saleIndex = nativeMerchant
-            ? ResolveLegacyRandomIndex(
-                state.Rng,
-                "shop.merchant.sale_slot.index_draw",
-                $"act:{world.Act}:floor:{world.Floor}",
-                Enumerable.Range(0, 5),
-                streamId: "shop")
-            : -1;
+        var saleIndex = -1;
+        if (nativeMerchant)
+        {
+            saleIndex = nativeRunRng is { } nativeShopRng
+                ? new NativeRandomIndexProviderV111().Resolve(
+                    new RandomIndexRequestV111(
+                        "shop.merchant.sale_slot.index_draw",
+                        "player.shops",
+                        $"merchant:act:{world.Act}:floor:{world.Floor}",
+                        0,
+                        Enumerable.Range(0, 5).ToArray()),
+                    nativeShopRng).SelectedIndex
+                : ResolveLegacyRandomIndex(
+                    state.Rng,
+                    "shop.merchant.sale_slot.index_draw",
+                    $"act:{world.Act}:floor:{world.Floor}",
+                    Enumerable.Range(0, 5),
+                    streamId: "shop");
+        }
         var cardIds = new[]
             {
                 (Type: PrototypeCardType.Attack, Count: 2),
@@ -2610,7 +2622,8 @@ public sealed partial class PrototypeGameEngine
         {
             Player = player,
             World = world,
-            Phase = RunPhase.Shop
+            Phase = RunPhase.Shop,
+            NativeRunRng = nativeRunRng ?? state.NativeRunRng
         };
         return AdvanceLordsParasolPurchases(started);
     }

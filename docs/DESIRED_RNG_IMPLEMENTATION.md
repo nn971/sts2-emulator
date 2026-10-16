@@ -92,6 +92,10 @@ Overgrowth Neow offers use a persisted `context.event.NEOW.player_0` stream
 through typed native, scripted, or controlled providers. Their legacy helper
 remains available; map and Neow source call-order parity remain open, as do
 Neow unlock and `IsAllowedAtNeow` filters.
+Merchant sale-slot selection now uses the existing persistent `player.shops`
+stream when native run RNG ownership is enabled, with the legacy `shop`
+stream retained for unconfigured prototype runs. The rest of merchant
+generation remains on its existing paths.
 The potion factory now routes its unit-float rarity
 sample and within-tier model index through separate typed providers in source
 order. Native effect-random-target and Sly auto-play selections use typed
