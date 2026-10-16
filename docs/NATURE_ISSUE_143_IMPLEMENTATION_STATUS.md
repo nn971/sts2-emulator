@@ -602,3 +602,13 @@ The Release solution build passes with zero warnings or errors; tests were not
 run for this checkpoint.
 Conditional probabilities remain `UNVERIFIED`; see
 [`NATURE_SEMANTIC_AUTOMATIC_HAND_DRAW_143.md`](NATURE_SEMANTIC_AUTOMATIC_HAND_DRAW_143.md).
+
+## 2026-10-17: end-turn relay for automatic draw choices
+
+The restricted complete `SemanticEndTurnV111` action now exposes automatic
+after-shuffle insertion events and Stratagem source selections. Snapshot replay
+consumes those transcripts in their mechanical order alongside card identity,
+draw-cost and random pile-card decisions. The Release solution build passes
+with zero warnings or errors; tests were not run for this checkpoint.
+Conditional probabilities remain `UNVERIFIED`; see
+[`NATURE_SEMANTIC_END_TURN_143.md`](NATURE_SEMANTIC_END_TURN_143.md).

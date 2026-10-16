@@ -7,8 +7,8 @@ namespace Sts2Emulator.Core;
 /// A versioned end-turn continuation: commit real next-turn intents, execute
 /// the genuine automatic hand-draw stage with deferred Nature card identities,
 /// then finish the actual automatic pipeline to the next player decision.
-/// The first supported segment starts with an exhausted draw pile, so no
-/// previously precommitted shuffle is rerandomized.
+/// A new semantic provider starts only from an exhausted draw pile; an
+/// existing provider-owned Nature deck is reused with its saved constraints.
 /// </summary>
 public sealed record SemanticEndTurnV111(
     RunState Origin,
@@ -30,6 +30,12 @@ public sealed record SemanticEndTurnV111(
     [JsonIgnore] public SemanticRandomPileCardEventV111?
         RandomPileCardPending =>
             Complete ? null : HandDraw?.RandomPileCardPending;
+    [JsonIgnore] public SemanticDrawInsertionEventV111?
+        DrawInsertionPending =>
+            Complete ? null : HandDraw?.DrawInsertionPending;
+    [JsonIgnore] public SemanticCardSelectionEventV111?
+        StratagemSelectionPending =>
+            Complete ? null : HandDraw?.StratagemSelectionPending;
     [JsonIgnore] public RandomIndexRequestV111? CostPending =>
         Complete ? null : HandDraw?.CostPending;
     [JsonIgnore] public bool AtPlayerBoundary =>
@@ -82,7 +88,7 @@ public static class SemanticEndTurnEngineV111
     /// <summary>
     /// Also execute the real legal end_turn player action under the controlled
     /// chance guard. This is the complete step -> Nature -> next-step entry
-    /// for the restricted empty-draw-pile fixture.
+    /// for the restricted source-owned semantic-deck fixture.
     /// </summary>
     public static SemanticEndTurnV111 BeginFromPlayerAction(
         RunState playerBoundary, string nativeEncounterEntry)
@@ -164,6 +170,9 @@ public static class SemanticEndTurnEngineV111
         }
         else if (state.HandDraw is { AtBoundary: false } hand)
         {
+            if (hand.StratagemSelectionPending is not null)
+                throw new InvalidOperationException(
+                    "Resolve the pending source Stratagem selection by action ID.");
             var next = SemanticCombatDrawEngineV111.Resolve(
                 hand, hand.Fingerprint, selectedIndex);
             state = state with { HandDraw = next, Run = next.Run };
@@ -172,6 +181,26 @@ public static class SemanticEndTurnEngineV111
         }
         else
             throw new InvalidOperationException("No pending semantic end-turn choice.");
+        Validate(state);
+        return state;
+    }
+
+    public static SemanticEndTurnV111 ResolveStratagemSelection(
+        SemanticEndTurnV111 source, string fingerprint, string actionId)
+    {
+        Validate(source);
+        if (!StringComparer.Ordinal.Equals(source.Fingerprint, fingerprint))
+            throw new InvalidOperationException(
+                "Stale semantic end-turn fingerprint.");
+        if (source.Complete || source.HandDraw is not { } hand ||
+            hand.StratagemSelectionPending is null)
+            throw new InvalidOperationException(
+                "No automatic Stratagem selection is pending.");
+        var nextHand = SemanticCombatDrawEngineV111.ResolveStratagemSelection(
+            hand, hand.Fingerprint, actionId);
+        var state = source with { HandDraw = nextHand, Run = nextHand.Run };
+        if (nextHand.AtBoundary)
+            state = CompleteHandDraw(state);
         Validate(state);
         return state;
     }
@@ -236,8 +265,8 @@ public static class SemanticEndTurnEngineV111
         return JsonSerializer.Serialize(state);
     }
 
-    /// <summary>Replay complete player action and both kinds of Nature
-    /// decision from their original source-shaped checkpoint.</summary>
+    /// <summary>Replay the complete player action and every saved Nature
+    /// decision or source selection from their original checkpoint.</summary>
     public static SemanticEndTurnV111 Restore(string json)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(json);
@@ -267,10 +296,14 @@ public static class SemanticEndTurnEngineV111
         }
         if (saved.HandDraw is { } savedHand)
         {
-            int card = 0, cost = 0, pileCard = 0;
+            int card = 0, cost = 0, pileCard = 0, insertion = 0,
+                stratagem = 0;
             while (card < savedHand.Transcript.Length ||
                    cost < savedHand.CostTranscript.Length ||
-                   pileCard < savedHand.RandomPileCardTranscript.Length)
+                   pileCard < savedHand.RandomPileCardTranscript.Length ||
+                   insertion < savedHand.DrawInsertionTranscript.Length ||
+                   stratagem <
+                       savedHand.StratagemSelectionTranscript.Length)
             {
                 if (reproduced.RandomPileCardPending is { } pileCardEvent)
                 {
@@ -288,6 +321,41 @@ public static class SemanticEndTurnEngineV111
                     reproduced = Resolve(
                         reproduced, reproduced.Fingerprint,
                         decision.SelectedIndex);
+                }
+                else if (reproduced.DrawInsertionPending is { } insertionEvent)
+                {
+                    if (insertion >=
+                        savedHand.DrawInsertionTranscript.Length)
+                        throw new InvalidDataException(
+                            "Missing semantic end-turn insertion decision.");
+                    var decision =
+                        savedHand.DrawInsertionTranscript[insertion++];
+                    decision.Validate();
+                    if (CanonicalJson.Sha256(decision.Event) !=
+                        CanonicalJson.Sha256(insertionEvent))
+                        throw new InvalidDataException(
+                            "Semantic end-turn insertion support changed.");
+                    reproduced = Resolve(
+                        reproduced, reproduced.Fingerprint,
+                        decision.SelectedPosition);
+                }
+                else if (reproduced.StratagemSelectionPending is
+                         { } stratagemEvent)
+                {
+                    if (stratagem >=
+                        savedHand.StratagemSelectionTranscript.Length)
+                        throw new InvalidDataException(
+                            "Missing semantic end-turn Stratagem selection.");
+                    var decision =
+                        savedHand.StratagemSelectionTranscript[stratagem++];
+                    decision.Validate();
+                    if (CanonicalJson.Sha256(decision.Event) !=
+                        CanonicalJson.Sha256(stratagemEvent))
+                        throw new InvalidDataException(
+                            "Semantic end-turn Stratagem support changed.");
+                    reproduced = ResolveStratagemSelection(
+                        reproduced, reproduced.Fingerprint,
+                        decision.ActionId);
                 }
                 else if (reproduced.CostPending is { } costRequest)
                 {
@@ -364,10 +432,11 @@ public static class SemanticEndTurnEngineV111
         }
     }
 
-    /// <summary>The first turn accepts only a truly empty, uncommitted
-    /// draw pile. Later turns reuse the existing provider-owned constraints
-    /// unchanged, including a nonempty unresolved pile. Source mechanics
-    /// must preserve physical card-instance membership exactly.</summary>
+    /// <summary>Without a provider-owned deck, accept only a truly empty,
+    /// uncommitted draw pile with a nonempty discard. Existing Nature decks
+    /// are reused unchanged, including a nonempty unresolved pile. Source
+    /// mechanics must preserve physical card-instance membership exactly.
+    /// </summary>
     private static bool IsSupportedSemanticSourceDeck(CombatState combat)
     {
         if (combat.SemanticDeck is not { } deck)
@@ -399,7 +468,8 @@ public static class SemanticEndTurnEngineV111
             combat.PendingChoice is not null ||
             combat.PendingKnowledgeDemonChoice is not null)
             throw new InvalidOperationException(
-                "Semantic end-turn requires an exhausted draw pile at the " +
-                "genuine post-enemy-action AdvanceTurn checkpoint.");
+                "Semantic end-turn requires an exhausted draw pile or an " +
+                "existing idle Nature deck at the genuine post-enemy-action " +
+                "AdvanceTurn checkpoint.");
     }
 }

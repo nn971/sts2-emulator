@@ -26,7 +26,9 @@ and statuses until the original `AdvanceTurn` intent checkpoint.
    authentic `BeforeHandDraw` / `DrawPlayerHand` stage. Source-triggered
    discard recycling produces a **new unresolved deck epoch**. Nature
    selects each card instance only when needed; Snecko/Slither cost tickets
-   and `CardDrawn` hooks execute between physical draws.
+   and `CardDrawn` hooks execute between physical draws. After-shuffle relic
+   insertions use the typed insertion event, and Stratagem uses its source
+   `select_cards` action before the remaining draw resumes.
 4. The ordinary one-time post-hand-draw power cleanup advances the
    automatic index. `ResumeSemanticAutomaticAfterHandDraw` executes
    the remaining **real pipeline**. The controller checks that combat
@@ -35,20 +37,23 @@ and statuses until the original `AdvanceTurn` intent checkpoint.
 
 `SemanticEndTurnV111` preserves the original player-action source,
 post-action AdvanceTurn source checkpoint, every enemy intent ticket,
-the complete semantic hand-draw state and cost transcript, and the
-resulting combat state. The `Restore` path **re-executes the genuine
-player action** and then each Nature ticket in the actual observed
-mechanical order before comparing the full state.
+the complete semantic hand-draw state, card, cost, insertion and Stratagem
+selection transcripts, and the resulting combat state. The `Restore` path
+**re-executes the genuine player action** and then each Nature ticket or
+source selection in the actual observed mechanical order before comparing
+the full state. `ResolveStratagemSelection` exposes the source card action
+through the end-turn wrapper.
 
 ## Critical hidden-state restriction
 
-This first implementation **requires the draw pile to be empty at the
-AdvanceTurn checkpoint** and a nonempty discard pile. Any later hand draw
-therefore triggers a *genuine fresh source-time recycle*. An earlier
+When no provider-owned Nature deck exists at the AdvanceTurn checkpoint,
+this implementation **requires the draw pile to be empty** and the discard
+pile to be nonempty. The following hand draw then triggers a *genuine fresh
+source-time recycle*. On later turns, an existing idle Nature deck is reused
+with its exact constraints and may have a nonempty draw pile. An earlier
 precommitted native or legacy-controlled shuffled order must never also
-generate new per-card Nature decisions for the same deck. Attempting
-an end-turn continuation with a nonempty precommitted draw pile fails
-before it publishes any child.
+generate new per-card Nature decisions for the same deck; the code never
+replaces that order with a newly attached semantic bag.
 
 This gate is deliberately narrow; it provides an honest nontrivial
 end-to-end real action boundary while the larger source-committed/
@@ -71,10 +76,9 @@ This slice establishes a **restricted first real action-to-action
 end-turn**, not arbitrary-turn looping or the public semantic JSONL
 contract. The next deliverables are persistent semantic deck state
 across ordinary player actions, opening-hand and card-effect draws,
-weighted candidate intent metadata, source-timed random insertions,
-Stratagem choices, nested `CardDrawn` effects, replay capability
-negotiation and terminal rollouts. Source probability law and native
-seed/cursor parity are separately `UNVERIFIED`.
+weighted candidate intent metadata, nested `CardDrawn` effects, replay
+capability negotiation and terminal rollouts. Source probability law and
+native seed/cursor parity are separately `UNVERIFIED`.
 
 Legacy controlled shuffle-ticket transcripts remain versioned and
 unchanged; frozen Silent four-Act `main` remains untouched.
