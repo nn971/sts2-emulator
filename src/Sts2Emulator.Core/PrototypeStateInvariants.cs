@@ -3350,9 +3350,13 @@ public static class PrototypeStateInvariants
                 {
                     SourceCardInstanceId: { } pendingSource,
                     SourceCardAlreadyMoved: false
-                })
+                } pendingChoice &&
+            !(pendingChoice.ControlledDrawCost is { } drawCost &&
+              pendingSource == drawCost.CardInstanceId &&
+              combat.Hand.Contains(pendingSource)))
         {
-            suspendedSources.Add(pendingSource);
+            if (!suspendedSources.Contains(pendingSource))
+                suspendedSources.Add(pendingSource);
         }
 
         for (var continuation =
@@ -3364,7 +3368,8 @@ public static class PrototypeStateInvariants
                 && continuation.SourceCardInstanceId is
                     { } continuationSource)
             {
-                suspendedSources.Add(continuationSource);
+                if (!suspendedSources.Contains(continuationSource))
+                    suspendedSources.Add(continuationSource);
             }
         }
 
@@ -3423,26 +3428,36 @@ public static class PrototypeStateInvariants
         if (combat.PendingChoice is not null)
         {
             var pending = combat.PendingChoice;
-            var isControlledSemanticDraw =
-                pending.ControlledSemanticDraw is not null;
-            if ((pending.ChoiceId == "controlled_semantic_draw") !=
-                    isControlledSemanticDraw)
+            var draw = pending.ControlledSemanticDraw;
+            var isSemanticDrawChoice =
+                pending.ChoiceId == "controlled_semantic_draw";
+            var isEffectDrawCostChoice =
+                pending.ChoiceId == "controlled_draw_cost" &&
+                pending.ControlledDrawCost is not null && draw is not null;
+            if (isSemanticDrawChoice != (draw is not null) &&
+                !isEffectDrawCostChoice)
                 throw new InvalidOperationException(
                     "Controlled semantic draw choice and continuation disagree.");
-            if (isControlledSemanticDraw)
+            if (draw is not null)
             {
-                var draw = pending.ControlledSemanticDraw!;
                 var continuation = pending.OuterChoiceContinuation;
                 var deck = combat.SemanticDeck;
                 if (combat.IsPlayerTurn is false ||
                     combat.AutomaticPipelineContinuation is not null ||
                     combat.PendingKnowledgeDemonChoice is not null ||
-                    draw.RemainingCount <= 0 || draw.EventDepth < 0 ||
+                    draw.RemainingCount < 0 || draw.EventDepth < 0 ||
+                    (isSemanticDrawChoice && draw.RemainingCount == 0) ||
+                    draw.DeferredKeywordCardInstanceIds?.Distinct().Count() !=
+                        draw.DeferredKeywordCardInstanceIds?.Length ||
+                    (draw.DeferredKeywordCardInstanceIds ?? []).Any(cardId =>
+                        !combat.Cards.Any(card =>
+                            card.InstanceId == cardId)) ||
                     continuation is null ||
-                    pending.SourceCardInstanceId !=
-                        continuation.SourceCardInstanceId ||
-                    pending.SourceCardDestination !=
-                        continuation.SourceCardDestination ||
+                    (isSemanticDrawChoice &&
+                     (pending.SourceCardInstanceId !=
+                          continuation.SourceCardInstanceId ||
+                      pending.SourceCardDestination !=
+                          continuation.SourceCardDestination)) ||
                     pending.ControlledTarget is not null ||
                     pending.ControlledGeneration is not null ||
                     pending.ControlledDrawInsertion is not null ||
@@ -3454,21 +3469,49 @@ public static class PrototypeStateInvariants
                     pending.Selection.SourceZone != PrototypeCardZone.Hand ||
                     pending.Selection.MinSelections != 0 ||
                     pending.Selection.MaxSelections != 0 ||
+                    pending.Selection.SequentialOptional ||
+                    pending.Selection.DrawEqualToSelectionsOnCompletion ||
+                    pending.Selection.RemoveUnselectedFromSource ||
+                    pending.Selection.Resolution !=
+                        (isSemanticDrawChoice
+                            ? PrototypeCardSelectionResolutionKind.Preserve
+                            : PrototypeCardSelectionResolutionKind.MoveToDiscard) ||
                     pending.CandidateCardInstanceIds.Length != 0 ||
                     pending.Continuation.Length != 0 ||
                     pending.CompletionEvents.Length != 0 ||
-                    deck is not
-                        { Mode: SemanticDeckStateV111.NatureMode,
-                            Pending: { Purpose: "draw", TopOffset: 0 } })
+                    deck is not { Mode: SemanticDeckStateV111.NatureMode } ||
+                    (isSemanticDrawChoice &&
+                     (pending.ControlledDrawCost is not null ||
+                      deck.Pending is not
+                        { Purpose: "draw", TopOffset: 0 })) ||
+                    (isEffectDrawCostChoice &&
+                     (pending.ControlledDrawCost is not { } cost ||
+                      pending.SourceCardDestination !=
+                          PrototypeCardZone.Hand ||
+                      pending.SourceCardInstanceId != cost.CardInstanceId ||
+                      cost.RemainingCount != draw.RemainingCount ||
+                      cost.FromHandDraw != draw.FromHandDraw ||
+                      cost.EventDepth != draw.EventDepth ||
+                      deck.Pending is not null ||
+                      !PrototypeGameEngine.ValidateControlledDrawCost(
+                          player, combat, cost))) ||
+                    (!isSemanticDrawChoice && !isEffectDrawCostChoice))
                     throw new InvalidOperationException(
                         "Controlled semantic draw checkpoint is malformed.");
-                var drawEvent = SemanticDeckEngineV111.Inspect(deck!);
-                if (drawEvent is null ||
-                    drawEvent.CandidateCardInstanceIds.Length == 0 ||
-                    drawEvent.CandidateCardInstanceIds.Any(cardId =>
-                        !combat.DrawPile.Contains(cardId)))
+                if (!SemanticDeckEngineV111.AllCardInstanceIds(deck!)
+                        .Order().SequenceEqual(combat.DrawPile.Order()))
                     throw new InvalidOperationException(
-                        "Controlled semantic draw has no live Nature support.");
+                        "Controlled semantic draw frame has inconsistent pile membership.");
+                if (isSemanticDrawChoice)
+                {
+                    var drawEvent = SemanticDeckEngineV111.Inspect(deck!);
+                    if (drawEvent is null ||
+                        drawEvent.CandidateCardInstanceIds.Length == 0 ||
+                        drawEvent.CandidateCardInstanceIds.Any(cardId =>
+                            !combat.DrawPile.Contains(cardId)))
+                        throw new InvalidOperationException(
+                            "Controlled semantic draw has no live Nature support.");
+                }
             }
             var sourceZone = pending.Selection.SourceZone switch
             {

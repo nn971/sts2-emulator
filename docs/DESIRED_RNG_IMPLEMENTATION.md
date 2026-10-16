@@ -28,7 +28,10 @@ weighted intent events, and replayable semantic events for deferred card
 draws, random-enemy targets, generated-card model pools and an opt-in drawn-
 card cost continuation, plus a source-authentic generated-card draw-pile
 insertion, sequential hand-cost rerolls, random hand-card selection, and
-without-replacement random pile shortlists. The
+without-replacement random pile shortlists. The semantic playable pilot now
+composes that same typed drawn-cost protocol with card-effect draw frames,
+including source event order, nested relic/Slither stages and replayable cost
+decisions. The
 semantic JSONL/Python pilot resumes the original draw, target, generation and
 cost continuations, including draw-time hooks, exposes source `select_cards`
 choices after Survivor, Hand Trick and Wish plays or the supported selection

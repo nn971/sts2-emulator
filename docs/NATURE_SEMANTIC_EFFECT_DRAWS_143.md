@@ -28,6 +28,13 @@ the choice can finish at the genuine reward boundary and records the reward RNG
 audit from the pre-reward state. If a draw or discard hook creates another
 unsupported nested boundary, the guarded action fails closed.
 
+Draw-time randomized energy costs now use the existing typed semantic cost
+event for Snecko-style relic costs and Slither overrides. The selected card
+identity is committed first, then cost choices resolve before `CardDrawn`;
+the remaining draw and source effect queue stay saved across both stages.
+Drawn-card keyword overrides are applied after the entire draw operation and
+its draw hooks complete, including when a cost event interrupts the operation.
+
 The internal choice is valid only with a pending Nature draw at the top of the
 physical and semantic draw piles. Combat and semantic-state invariants reject
 other controlled-choice metadata, missing supports, and conflicting pilot
@@ -37,11 +44,11 @@ boundaries. The event uses the existing semantic draw schema and reports
 ## Current limits
 
 For these supported cards, draw hooks must not open another choice. Draws that
-trigger randomized drawn-card costs, pile recycling, Stratagem selection,
-random post-shuffle card insertion or a nested `CardDrawn` choice still fail
-closed until those continuation stages compose with the saved draw frame.
-Arbitrary follow-up choices and multiple nested choice levels remain outside
-the current support. Native source probability laws remain unverified.
+trigger pile recycling, Stratagem selection, random post-shuffle card
+insertion or a nested `CardDrawn` choice still fail closed until those
+continuation stages compose with the saved draw frame. Arbitrary follow-up
+choices and multiple nested choice levels remain outside the current support.
+Native source probability laws remain unverified.
 
 The player-action fixture and card allowlists remain opt-in; this continuation
 does not broaden source-authentic loadout acquisition or the frozen all-Act

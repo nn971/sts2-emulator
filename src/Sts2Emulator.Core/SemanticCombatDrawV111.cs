@@ -437,6 +437,7 @@ public static class SemanticCombatDrawEngineV111
             (cost is not null &&
              (deck.Pending is not null ||
               cost.RemainingCount != state.RemainingCount ||
+              cost.FromHandDraw != state.FromHandDraw ||
               cost.EventDepth != 0 ||
               !PrototypeGameEngine.ValidateControlledDrawCost(
                   state.Run.Player, combat, cost with { FromHandDraw = true }))) ||

@@ -41,8 +41,13 @@ public sealed record SemanticCostEventV111(
             (TargetCardInstanceId is not null &&
              (TargetCardInstanceId <= 0 ||
               string.IsNullOrWhiteSpace(TargetCardModelId) ||
-              Request.SiteId != "combat.random_hand_card.energy_cost" ||
-              Request.StreamId != "prototype.combat")))
+              !((Request.SiteId ==
+                     "combat.random_hand_card.energy_cost" &&
+                 Request.StreamId == "prototype.combat") ||
+                ((Request.SiteId is
+                     "combat.card_draw.relic_energy_cost" or
+                     "combat.card_draw.slither_energy_cost") &&
+                 Request.StreamId == "semantic.combat")))))
             throw new InvalidDataException("Invalid semantic cost event.");
         var expectedSupportFingerprint = TargetCardInstanceId is null
             ? CanonicalJson.Sha256(new

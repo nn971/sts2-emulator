@@ -42,7 +42,6 @@ public sealed partial class PrototypeGameEngine
         PrototypeControlledDrawCostV111 pending)
     {
         if (pending.RemainingCount < 0 || pending.EventDepth < 0 ||
-            !pending.FromHandDraw ||
             !combat.Hand.Contains(pending.CardInstanceId) ||
             combat.PendingChoice?.ChoiceId != "controlled_draw_cost" ||
             combat.PendingChoice.SourceCardInstanceId != pending.CardInstanceId ||
@@ -64,6 +63,90 @@ public sealed partial class PrototypeGameEngine
             pending.HasSlither == slither &&
             (pending.Stage != "relic" || expectedMax > 0) &&
             (pending.Stage != "slither" || slither);
+    }
+
+    /// <summary>
+    /// Resume a drawn-card cost nested inside a player card's DrawCards
+    /// operation. The source effect queue and the draw's deferred keyword
+    /// updates remain attached until CardDrawn and every requested draw finish.
+    /// </summary>
+    internal static RunState ResumeControlledSemanticEffectDrawCost(
+        RunState state, int value)
+    {
+        if (!ControlledChanceGuardV111.Active)
+            throw new InvalidOperationException(
+                "Semantic effect-draw cost requires the RNG guard.");
+        var world = RequireWorld(state);
+        var combat = world.Combat ?? throw new InvalidOperationException(
+            "Semantic effect-draw cost has no combat.");
+        var pending = combat.PendingChoice;
+        var cost = pending?.ControlledDrawCost;
+        var draw = pending?.ControlledSemanticDraw;
+        var continuation = pending?.OuterChoiceContinuation;
+        if (state.Phase != RunPhase.Combat ||
+            combat is not { IsPlayerTurn: true,
+                AutomaticPipelineContinuation: null,
+                PendingKnowledgeDemonChoice: null } ||
+            pending is not { ChoiceId: "controlled_draw_cost" } ||
+            cost is null || draw is null || continuation is null ||
+            draw.RemainingCount != cost.RemainingCount ||
+            draw.FromHandDraw != cost.FromHandDraw ||
+            draw.EventDepth != cost.EventDepth ||
+            combat.SemanticDeck is not
+                { Mode: SemanticDeckStateV111.NatureMode, Pending: null } ||
+            !ValidateControlledDrawCost(state.Player, combat, cost))
+            throw new InvalidDataException(
+                "Semantic effect-draw cost checkpoint is inconsistent.");
+
+        int bound = cost.Stage == "relic"
+            ? cost.RelicMaxExclusive : 4;
+        if (value < 0 || value >= bound)
+            throw new ArgumentOutOfRangeException(nameof(value));
+        combat = SetCardTemporaryEnergyCost(
+            combat, cost.CardInstanceId,
+            new PrototypeTemporaryCardCost(
+                value, PrototypeTemporaryCardCostExpiry.None));
+        if (cost.Stage == "relic" && cost.HasSlither)
+            return state with
+            {
+                World = world with
+                {
+                    Combat = combat with
+                    {
+                        PendingChoice = pending! with
+                        {
+                            ControlledDrawCost = cost with
+                            {
+                                Stage = "slither"
+                            }
+                        }
+                    }
+                }
+            };
+
+        combat = combat with { PendingChoice = null };
+        var card = RequireCombatCard(combat, cost.CardInstanceId);
+        var dispatched = DispatchCombatEvent(
+            state.Player, combat,
+            new PrototypeCombatEvent(
+                PrototypeCombatEventKind.CardDrawn,
+                SourceCardInstanceId: cost.CardInstanceId,
+                CardId: card.CardId,
+                FromHandDraw: cost.FromHandDraw),
+            state.Rng, cost.EventDepth);
+        if (dispatched.Combat.PendingChoice is not null ||
+            dispatched.Combat.PendingKnowledgeDemonChoice is not null)
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_DECK site=combat.draw.CardDrawn " +
+                "operation=nested_choice_continuation");
+
+        var drawn = DrawCards(
+            dispatched.Player, dispatched.Combat, cost.RemainingCount,
+            state.Rng, cost.FromHandDraw, eventDepth: cost.EventDepth,
+            controlledDrawCostSuspension: true,
+            controlledSemanticDrawSuspension: true);
+        return ContinueControlledSemanticEffectDraw(
+            state, drawn, draw, continuation);
     }
 
     /// <summary>Advance one cost decision, then dispatch CardDrawn once and

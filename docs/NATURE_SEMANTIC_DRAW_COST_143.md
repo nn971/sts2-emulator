@@ -89,4 +89,24 @@ selection, and a relic that inserts a newly generated card at a random
 position after shuffle still need distinct continuations. The native
 reference probability law remains explicitly `UNVERIFIED` until
 source-audited.
+
+## Card-effect draw composition
+
+The semantic player-action pilot now attaches the existing
+`ControlledDrawCost` checkpoint to its saved card-effect draw continuation.
+The same `combat.card_draw.relic_energy_cost` and
+`combat.card_draw.slither_energy_cost` typed bounded-cost events are exposed
+after the physical card identity is selected. Cost choices resolve before the
+original `CardDrawn` dispatch, then the saved remaining draw count and queued
+card effects resume. Cost decisions are recorded in the pilot's existing
+`semantic_cost` action history and replay against the current card, relic
+bound, Slither stage and event support. The card-effect path permits both
+`FromHandDraw` values and nonzero event depths while the standalone conditioned
+draw envelope retains its own source constraints.
+
+The saved frame also retains card instances awaiting a `DrawnCardKeyword`
+override. The override is applied after all requested cards and their draw
+hooks finish, preserving source operation order across identity and cost
+suspensions. Nested `CardDrawn` choices and recycle continuations remain
+unsupported in the player-action path.
 The frozen Silent all-Act `main` remains unchanged.

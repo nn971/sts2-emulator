@@ -6037,17 +6037,10 @@ public sealed partial class PrototypeGameEngine
                             semanticDrawSuspension);
                     player = drawn.Player;
                     combat = drawn.Combat;
-                    if (drawn.ControlledSemanticDrawPending)
+                    if (drawn.ControlledSemanticDrawPending ||
+                        drawn.ControlledDrawCostPending)
                     {
-                        if (operation.DrawnCardKeyword is { } keyword)
-                        {
-                            foreach (var cardInstanceId in
-                                     drawn.DrawnCardInstanceIds)
-                                combat = ApplyCardKeywordOverride(
-                                    combat, cardInstanceId, keyword);
-                        }
-                        if (drawn.ControlledDrawCostPending ||
-                            drawn.ControlledRecyclePending ||
+                        if (drawn.ControlledRecyclePending ||
                             drawn.ShuffleSelectionPending)
                             throw new NotSupportedException(
                                 "UNSUPPORTED_SEMANTIC_DECK " +
@@ -6075,15 +6068,17 @@ public sealed partial class PrototypeGameEngine
                                 drawn.RemainingCount,
                                 operation.FromHandDraw,
                                 eventDepth + 1,
-                                operation.DrawnCardKeyword);
-                        return (player, MakeControlledSemanticDrawChoice(
-                            combat, suspendedDraw, continuation));
+                                operation.DrawnCardKeyword,
+                                drawn.DrawnCardInstanceIds);
+                        if (drawn.ControlledSemanticDrawPending)
+                            return (player,
+                                MakeControlledSemanticDrawChoice(
+                                    combat, suspendedDraw, continuation));
+                        if (drawn.ControlledDrawCostPending)
+                            return (player,
+                                AttachControlledSemanticDrawCost(
+                                    combat, suspendedDraw, continuation));
                     }
-                    if (drawn.ControlledDrawCostPending)
-                        throw new NotSupportedException(
-                            "UNSUPPORTED_SEMANTIC_DECK " +
-                            "site=combat.card_effect.draw " +
-                            "operation=draw_cost_requires_composed_continuation");
                     if (drawn.ShuffleSelectionPending)
                     {
                         // Suspend this draw at the exact post-shuffle point.
@@ -13433,6 +13428,37 @@ public sealed partial class PrototypeGameEngine
         };
     }
 
+    private static CombatState AttachControlledSemanticDrawCost(
+        CombatState combat, PrototypeControlledSemanticDrawV111 draw,
+        PrototypeChoiceResolutionContinuationState continuation)
+    {
+        var pending = combat.PendingChoice;
+        var cost = pending?.ControlledDrawCost;
+        var deck = combat.SemanticDeck;
+        if (!ControlledChanceGuardV111.Active ||
+            pending is not { ChoiceId: "controlled_draw_cost",
+                OuterChoiceContinuation: null,
+                ControlledSemanticDraw: null } ||
+            cost is null || draw.RemainingCount < 0 || draw.EventDepth < 0 ||
+            cost.RemainingCount != draw.RemainingCount ||
+            cost.FromHandDraw != draw.FromHandDraw ||
+            cost.EventDepth != draw.EventDepth ||
+            deck is not { Mode: SemanticDeckStateV111.NatureMode,
+                Pending: null } ||
+            !SemanticDeckEngineV111.AllCardInstanceIds(deck)
+                .Order().SequenceEqual(combat.DrawPile.Order()))
+            throw new InvalidOperationException(
+                "Semantic effect draw cost requires a matching saved draw frame.");
+        return combat with
+        {
+            PendingChoice = pending with
+            {
+                OuterChoiceContinuation = continuation.Fork(),
+                ControlledSemanticDraw = draw.Fork()
+            }
+        };
+    }
+
     private static CombatState MakeControlledRandomPileCardChoice(
         CombatState combat, long[] eligible,
         PrototypeChoiceResolutionContinuationState continuation)
@@ -13616,42 +13642,63 @@ public sealed partial class PrototypeGameEngine
             draw.FromHandDraw, eventDepth: draw.EventDepth,
             controlledDrawCostSuspension: true,
             controlledSemanticDrawSuspension: true);
-        if (drawn.ControlledDrawCostPending ||
-            drawn.ControlledRecyclePending || drawn.ShuffleSelectionPending)
+        return ContinueControlledSemanticEffectDraw(
+            state, drawn, draw, continuation);
+    }
+
+    private static RunState ContinueControlledSemanticEffectDraw(
+        RunState state, PrototypeDrawCardsResult drawn,
+        PrototypeControlledSemanticDrawV111 draw,
+        PrototypeChoiceResolutionContinuationState continuation)
+    {
+        if (drawn.ControlledRecyclePending || drawn.ShuffleSelectionPending)
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.card_effect.draw " +
-                "operation=draw_cost_or_recycle_requires_composed_continuation");
-        combat = drawn.Combat;
-        if (draw.DrawnCardKeyword is { } keyword)
+                "operation=recycle_requires_composed_continuation");
+        var deferredKeywordIds = (draw.DeferredKeywordCardInstanceIds ?? [])
+            .Concat(drawn.DrawnCardInstanceIds).Distinct().ToArray();
+        var nextDraw = draw with
         {
-            foreach (var cardInstanceId in drawn.DrawnCardInstanceIds)
-                combat = ApplyCardKeywordOverride(
-                    combat, cardInstanceId, keyword);
+            RemainingCount = drawn.RemainingCount,
+            DeferredKeywordCardInstanceIds = deferredKeywordIds
+        };
+        var combat = drawn.Combat;
+        if (drawn.ControlledDrawCostPending)
+        {
+            combat = AttachControlledSemanticDrawCost(
+                combat, nextDraw, continuation);
+            return state with
+            {
+                Player = drawn.Player,
+                World = state.World! with { Combat = combat }
+            };
         }
         if (drawn.ControlledSemanticDrawPending)
         {
-            var nextDraw = draw with
-            {
-                RemainingCount = drawn.RemainingCount
-            };
             combat = MakeControlledSemanticDrawChoice(
                 combat, nextDraw, continuation);
             return state with
             {
-                World = world with { Combat = combat }
+                Player = drawn.Player,
+                World = state.World! with { Combat = combat }
             };
         }
-
         if (drawn.RemainingCount != 0)
             throw new InvalidDataException(
                 "Semantic card-effect draw stopped without a pending boundary.");
+
+        if (draw.DrawnCardKeyword is { } keyword)
+        {
+            foreach (var cardInstanceId in deferredKeywordIds)
+                combat = ApplyCardKeywordOverride(
+                    combat, cardInstanceId, keyword);
+        }
         var resumed = ResumeChoiceResolutionContinuation(
             drawn.Player, combat, state.Rng, continuation);
-        combat = resumed.Combat;
         var result = state with
         {
             Player = resumed.Player,
-            World = world with { Combat = combat }
+            World = state.World! with { Combat = resumed.Combat }
         };
         if (result.Phase == RunPhase.Combat &&
             result.World?.Combat is { } live && AllEnemiesDefeated(live))

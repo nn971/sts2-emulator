@@ -531,9 +531,13 @@ history replay validates each selected physical card identity and source event
 transcript. The saved-state invariants bind the internal choice to one pending
 Nature draw and reject conflicting semantic boundaries.
 
-The Core and CLI Release builds pass with zero warnings or errors. Tests were
-not run for this implementation checkpoint. Draw costs, recycle-time
-continuations, Stratagem selection, random after-shuffle insertion, nested
-`CardDrawn` choices and follow-up card selection still fail closed. Conditional
-Nature probabilities remain `UNVERIFIED`; see
+Draw-time randomized costs now compose through the existing typed semantic
+cost event and `ControlledDrawCost` checkpoint, preserving relic-before-Slither
+ordering and dispatching `CardDrawn` once before resuming the remaining draw.
+Pending card keyword overrides are delayed until the complete `DrawCards`
+operation returns, across both identity and cost suspensions. The Core and CLI
+Release builds pass with zero warnings or errors. Tests were not run for this
+implementation checkpoint. Recycle-time continuations, Stratagem selection,
+random after-shuffle insertion and nested `CardDrawn` choices still fail
+closed. Conditional Nature probabilities remain `UNVERIFIED`; see
 [`NATURE_SEMANTIC_EFFECT_DRAWS_143.md`](NATURE_SEMANTIC_EFFECT_DRAWS_143.md).

@@ -166,7 +166,9 @@ public sealed record SemanticPilotCombatV111(
             if (PendingEndTurn?.DrawPending is { } endTurnDraw)
                 return endTurnDraw;
             var combat = Run.World?.Combat;
-            return combat?.PendingChoice?.ControlledSemanticDraw is not null &&
+            return combat?.PendingChoice is
+                { ChoiceId: "controlled_semantic_draw",
+                    ControlledSemanticDraw: not null } &&
                 combat.SemanticDeck is { } deck
                     ? SemanticDeckEngineV111.Inspect(deck) : null;
         }
@@ -1644,6 +1646,10 @@ public static class SemanticPilotCombatEngineV111
         var decision = new SemanticCostDecisionV111(
             pending, index, selectedCost);
         decision.Validate();
+        if (current.Run.World?.Combat?.PendingChoice?
+                .ControlledSemanticDraw is not null)
+            return Resolve(current, fingerprint, index,
+                null, null, false, decision);
         if (pending.TargetCardInstanceId is not null)
         {
             ValidateCostDecision(current.CostPending, decision, index);
@@ -2017,8 +2023,66 @@ public static class SemanticPilotCombatEngineV111
             Validate(initialState);
             return initialState;
         }
-        if (current.Run.World?.Combat?.PendingChoice?
-                .ControlledSemanticDraw is not null)
+        if (current.Run.World?.Combat?.PendingChoice is
+                { ChoiceId: "controlled_draw_cost",
+                  ControlledDrawCost: not null,
+                  ControlledSemanticDraw: not null })
+        {
+            if (costEvent is null || selectedIndex < 0 ||
+                selectedIndex >= costEvent.CandidateCosts.Length)
+                throw new InvalidDataException(
+                    "Card-effect draw cost continuation lost its Nature event.");
+            var effectCostDecision = expectedCostDecision ??
+                new SemanticCostDecisionV111(
+                    costEvent, selectedIndex,
+                    costEvent.CandidateCosts[selectedIndex]);
+            ValidateCostDecision(
+                costEvent, effectCostDecision, selectedIndex);
+            RunState effectCostResult;
+            using (ControlledChanceGuardV111.Enter())
+            using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
+                effectCostResult = PrototypeGameEngine
+                    .ResumeControlledSemanticEffectDrawCost(
+                        current.Run.Fork(), effectCostDecision.SelectedCost);
+            if (effectCostResult.Phase == RunPhase.Combat)
+            {
+                var nextChoice = effectCostResult.World?.Combat?.PendingChoice;
+                if (nextChoice is
+                        { ChoiceId: "controlled_draw_cost",
+                          ControlledSemanticDraw: not null })
+                    ValidateSemanticActionDrawCostBoundary(effectCostResult);
+                else if (nextChoice is
+                        { ChoiceId: "controlled_semantic_draw" })
+                    ValidateSemanticActionDrawBoundary(effectCostResult);
+                else if (nextChoice?.ChoiceId == "select_cards")
+                    SemanticCardSelectionEngineV111
+                        .ValidatePendingBoundary(effectCostResult);
+                else
+                    ValidateSemanticCombatBoundary(effectCostResult);
+                PrototypeStateInvariants.Validate(effectCostResult);
+            }
+            else if (effectCostResult.Phase is not (
+                RunPhase.Reward or RunPhase.Terminal))
+                throw new NotSupportedException(
+                    "UNSUPPORTED_SEMANTIC_DECK site=combat.card_draw.cost " +
+                    "operation=unsupported_post_cost_phase");
+            var effectCostState = current with
+            {
+                Run = effectCostResult,
+                RewardAudit = effectCostResult.Phase == RunPhase.Reward
+                    ? RecordRewardAudit(current.Run, effectCostResult)
+                    : current.RewardAudit,
+                History = current.History.Append(
+                    new SemanticPilotTransitionV111(
+                        "semantic_cost",
+                        CostDecision: effectCostDecision.Fork())).ToArray()
+            };
+            Validate(effectCostState);
+            return effectCostState;
+        }
+        if (current.Run.World?.Combat?.PendingChoice is
+                { ChoiceId: "controlled_semantic_draw",
+                  ControlledSemanticDraw: not null })
         {
             if (drawEvent is null)
                 throw new InvalidDataException(
@@ -2417,6 +2481,28 @@ public static class SemanticPilotCombatEngineV111
                     transition.Kind == "semantic_cost"), [],
                 OperationKind: "bounded_integer",
                 BoundedCount: maxExclusive);
+        }
+        else if (current.Run.World?.Combat?.PendingChoice is
+                    { ChoiceId: "controlled_draw_cost",
+                      ControlledDrawCost: { } drawCost,
+                      ControlledSemanticDraw: not null })
+        {
+            ValidateSemanticActionDrawCostBoundary(current.Run);
+            var combat = current.Run.World!.Combat!;
+            targetCardInstanceId = drawCost.CardInstanceId;
+            var card = combat.Cards.Single(item =>
+                item.InstanceId == drawCost.CardInstanceId);
+            targetCardModelId = card.CardId;
+            var relic = drawCost.Stage == "relic";
+            request = new RandomIndexRequestV111(
+                relic ? "combat.card_draw.relic_energy_cost"
+                      : "combat.card_draw.slither_energy_cost",
+                "semantic.combat", "card_instance:" + card.InstanceId +
+                    ":model:" + card.CardId + ":stage:" + drawCost.Stage,
+                current.History.Count(transition =>
+                    transition.Kind == "semantic_cost"), [],
+                OperationKind: "bounded_integer",
+                BoundedCount: relic ? drawCost.RelicMaxExclusive : 4);
         }
         else
             return null;
@@ -2898,6 +2984,45 @@ public static class SemanticPilotCombatEngineV111
         PrototypeStateInvariants.Validate(run);
     }
 
+    private static void ValidateSemanticActionDrawCostBoundary(
+        RunState run)
+    {
+        var combat = run.World?.Combat;
+        var choice = combat?.PendingChoice;
+        var draw = choice?.ControlledSemanticDraw;
+        var cost = choice?.ControlledDrawCost;
+        var deck = combat?.SemanticDeck;
+        if (run.Phase != RunPhase.Combat ||
+            combat is not { IsPlayerTurn: true,
+                AutomaticPipelineContinuation: null,
+                PendingKnowledgeDemonChoice: null } ||
+            choice is not { ChoiceId: "controlled_draw_cost",
+                ControlledSemanticDraw: not null,
+                ControlledDrawCost: not null,
+                OuterChoiceContinuation: not null,
+                ControlledTarget: null, ControlledGeneration: null,
+                ControlledDrawInsertion: null, ControlledPoolShuffle: null,
+                ControlledRandomCost: null, ControlledCardShortlist: null,
+                ControlledRandomPileCard: null } ||
+            draw is null || cost is null || draw.RemainingCount < 0 ||
+            draw.EventDepth < 0 ||
+            draw.RemainingCount != cost.RemainingCount ||
+            draw.FromHandDraw != cost.FromHandDraw ||
+            draw.EventDepth != cost.EventDepth ||
+            deck is not { Mode: SemanticDeckStateV111.NatureMode,
+                Pending: null } ||
+            !PrototypeGameEngine.ValidateControlledDrawCost(
+                run.Player, combat, cost))
+            throw new InvalidDataException(
+                "Card-effect draw cost is not at a source-reachable Nature boundary.");
+        SemanticDeckEngineV111.Validate(deck);
+        if (!SemanticDeckEngineV111.AllCardInstanceIds(deck)
+                .Order().SequenceEqual(combat.DrawPile.Order()))
+            throw new InvalidDataException(
+                "Card-effect draw cost diverged from its semantic pile state.");
+        PrototypeStateInvariants.Validate(run);
+    }
+
     private static void ValidateGeneratedCardBoundary(RunState run)
     {
         var combat = run.World?.Combat;
@@ -3131,8 +3256,9 @@ public static class SemanticPilotCombatEngineV111
                 throw new InvalidDataException(
                     "Initial intent continuation diverged from the source-route boundary.");
         }
-        if (state.Run.World?.Combat?.PendingChoice?
-                .ControlledSemanticDraw is not null)
+        if (state.Run.World?.Combat?.PendingChoice is
+                { ChoiceId: "controlled_semantic_draw",
+                  ControlledSemanticDraw: not null })
         {
             ValidateSemanticActionDrawBoundary(state.Run);
             if (state.PendingEndTurn is not null ||
@@ -3151,6 +3277,28 @@ public static class SemanticPilotCombatEngineV111
                 state.UsesNativePolicyBaseline || state.CombatTerminal)
                 throw new InvalidDataException(
                     "Card-effect draw conflicts with another semantic boundary.");
+        }
+        if (state.Run.World?.Combat?.PendingChoice is
+                { ChoiceId: "controlled_draw_cost",
+                  ControlledDrawCost: not null,
+                  ControlledSemanticDraw: not null })
+        {
+            ValidateSemanticActionDrawCostBoundary(state.Run);
+            if (state.PendingEndTurn is not null ||
+                state.PendingInitialIntents is not null ||
+                state.IntentPending is not null ||
+                state.DrawPending is not null || state.CostPending is null ||
+                state.RandomPileCardPending is not null ||
+                state.TargetPending is not null ||
+                state.GeneratedCardPending is not null ||
+                state.CardSelectionPending is not null ||
+                state.PoolShufflePending is not null ||
+                state.DrawInsertionPending is not null ||
+                state.CardShortlistPending is not null ||
+                state.HandCostSelectionPending is not null ||
+                state.UsesNativePolicyBaseline || state.CombatTerminal)
+                throw new InvalidDataException(
+                    "Card-effect draw cost conflicts with another semantic boundary.");
         }
         if (state.RandomPileCardPending is { } randomPileCardPending)
         {
@@ -3272,7 +3420,13 @@ public static class SemanticPilotCombatEngineV111
         {
             costPending.Validate();
             var handCost = costPending.TargetCardInstanceId is not null;
-            if (handCost)
+            var effectDrawCost = state.Run.World?.Combat?.PendingChoice is
+                { ChoiceId: "controlled_draw_cost",
+                  ControlledDrawCost: not null,
+                  ControlledSemanticDraw: not null };
+            if (effectDrawCost)
+                ValidateSemanticActionDrawCostBoundary(state.Run);
+            else if (handCost)
                 ValidateRandomHandCostBoundary(state.Run);
             if (state.IntentPending is not null || state.DrawPending is not null ||
                 state.CardSelectionPending is not null ||
@@ -3280,10 +3434,15 @@ public static class SemanticPilotCombatEngineV111
                 state.GeneratedCardPending is not null ||
                 state.PoolShufflePending is not null ||
                 state.DrawInsertionPending is not null ||
-                (handCost
+                state.CardShortlistPending is not null ||
+                state.HandCostSelectionPending is not null ||
+                (effectDrawCost
                     ? state.Run.World?.Combat?.PendingChoice?
-                        .ControlledRandomCost is null
-                    : state.PendingEndTurn?.CostPending is null))
+                        .ControlledDrawCost is null
+                    : handCost
+                        ? state.Run.World?.Combat?.PendingChoice?
+                            .ControlledRandomCost is null
+                        : state.PendingEndTurn?.CostPending is null))
                 throw new InvalidDataException(
                     "Semantic cost continuation conflicts with another boundary.");
         }

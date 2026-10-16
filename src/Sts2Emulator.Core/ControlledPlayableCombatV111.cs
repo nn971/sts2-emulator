@@ -727,6 +727,7 @@ public static class ControlledPlayableCombatEngineV111
             var automatic = drawnCostCombat?.AutomaticPipelineContinuation;
             if (state.Pending is not null || state.Recycle is not null ||
                 state.TurnIntents is not null ||
+                !drawnCost.FromHandDraw ||
                 automatic is null ||
                 automatic.ControlledDrawCostRemaining != drawnCost.RemainingCount ||
                 automatic.ControlledDrawRemaining is not null ||

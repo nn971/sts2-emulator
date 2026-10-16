@@ -1917,12 +1917,15 @@ public sealed record PrototypeControlledDrawCostV111(
 /// continuation and resumes after the selected card and its draw hooks.</summary>
 public sealed record PrototypeControlledSemanticDrawV111(
     int RemainingCount, bool FromHandDraw, int EventDepth,
-    PrototypeCardKeywordOverrideSpec? DrawnCardKeyword)
+    PrototypeCardKeywordOverrideSpec? DrawnCardKeyword,
+    long[]? DeferredKeywordCardInstanceIds = null)
 {
     public PrototypeControlledSemanticDrawV111 Fork() => this with
     {
         DrawnCardKeyword = DrawnCardKeyword is null
-            ? null : DrawnCardKeyword with { }
+            ? null : DrawnCardKeyword with { },
+        DeferredKeywordCardInstanceIds = DeferredKeywordCardInstanceIds is null
+            ? null : (long[])DeferredKeywordCardInstanceIds.Clone()
     };
 }
 
