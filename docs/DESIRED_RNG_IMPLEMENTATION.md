@@ -65,6 +65,11 @@ the legacy profile preserves `combat`. Post-shuffle relic insertion now has
 its own typed site, and enemy-side insertion now has typed sites. Their
 post-shuffle and enemy-turn continuations remain unsupported under controlled
 Nature pending serializable frames.
+Legacy combat-entry and summoned-enemy HP rolls, Overgrowth encounter-bag
+choices, weighted encounter tickets, and opening AI rotation now pass through
+the shared typed adapter while retaining their existing `combat` stream and
+draw bounds. Native summon-pool selection remains fail-closed pending source
+audit; controlled enemy and encounter-selection continuations remain open.
 Beautiful Bracelet's eligible-deck shuffle and Fur Coat's current-act combat
 node shuffle now use typed native swap requests as well; controlled relic
 acquisition continuation remains pending. Distinguished Cape's two

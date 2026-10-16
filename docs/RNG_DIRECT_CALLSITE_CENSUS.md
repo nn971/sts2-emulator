@@ -2,11 +2,11 @@
 
 Direct qualified calls to PrototypeRng, NativeRngV111, and NativeFisherYatesV111 in Sts2Emulator.Core. This does not include indirect delegates, random provider interfaces, third-party/native source callsites, or prove that every source operation is mapped.
 
-Direct call expressions: **172**.
+Direct call expressions: **162**.
 
 Counts by direct API family:
 
-- `legacy_prototype_api`: 145
+- `legacy_prototype_api`: 135
 - `native_primitive_api`: 16
 - `native_shuffle_mechanics`: 11
 
@@ -43,21 +43,11 @@ Rows distinguish legacy prototype calls, native primitive calls, generic shuffle
 | [`src/Sts2Emulator.Core/NativeVakuuEventV111.cs:95`](../src/Sts2Emulator.Core/NativeVakuuEventV111.cs#L95) | `NativeFisherYatesV111` | `ShuffleInPlace` | `choices.AddRange(NativeFisherYatesV111.ShuffleInPlace(` | `shuffle_callsite_needs_stable_site_link` |
 | [`src/Sts2Emulator.Core/NativeVakuuEventV111.cs:162`](../src/Sts2Emulator.Core/NativeVakuuEventV111.cs#L162) | `NativeRngV111` | `Shuffle` | `NativeRngV111.Shuffle(bundle, initial.StreamId, pool);` | `native_primitive_callsite_needs_site_review` |
 | [`src/Sts2Emulator.Core/PrototypeColorlessCards.cs:825`](../src/Sts2Emulator.Core/PrototypeColorlessCards.cs#L825) | `PrototypeRng` | `NextInt` | `return eligible[PrototypeRng.NextInt(rng, "shop", eligible.Length)];` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeCombat.cs:228`](../src/Sts2Emulator.Core/PrototypeCombat.cs#L228) | `PrototypeRng` | `NextInt` | `?? PrototypeRng.NextInt(` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeCombat.cs:245`](../src/Sts2Emulator.Core/PrototypeCombat.cs#L245) | `PrototypeRng` | `NextInt` | `+ PrototypeRng.NextInt(` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeCombat.cs:364`](../src/Sts2Emulator.Core/PrototypeCombat.cs#L364) | `NativeFisherYatesV111` | `ShuffleInPlace` | `_ = NativeFisherYatesV111.ShuffleInPlace(` | `shuffle_callsite_needs_stable_site_link` |
-| [`src/Sts2Emulator.Core/PrototypeCombat.cs:585`](../src/Sts2Emulator.Core/PrototypeCombat.cs#L585) | `PrototypeRng` | `NextInt` | `PrototypeRng.NextInt(` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeCombat.cs:641`](../src/Sts2Emulator.Core/PrototypeCombat.cs#L641) | `PrototypeRng` | `NextInt` | `var selectedIndex = PrototypeRng.NextInt(` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeCombat.cs:719`](../src/Sts2Emulator.Core/PrototypeCombat.cs#L719) | `PrototypeRng` | `NextInt` | `PrototypeRng.NextInt(` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeCombat.cs:826`](../src/Sts2Emulator.Core/PrototypeCombat.cs#L826) | `PrototypeRng` | `NextInt` | `var roll = PrototypeRng.NextInt(rng, "combat", totalWeight);` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeCombat.cs:3020`](../src/Sts2Emulator.Core/PrototypeCombat.cs#L3020) | `PrototypeRng` | `NextInt` | `? maxExclusive => PrototypeRng.NextInt(rng, "combat", maxExclusive)` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeCombat.cs:3117`](../src/Sts2Emulator.Core/PrototypeCombat.cs#L3117) | `PrototypeRng` | `NextInt` | `maxExclusive => PrototypeRng.NextInt(rng, "combat", maxExclusive));` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeCombat.cs:4135`](../src/Sts2Emulator.Core/PrototypeCombat.cs#L4135) | `PrototypeRng` | `NextInt` | `: range.Min + PrototypeRng.NextInt(` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeCombat.cs:4369`](../src/Sts2Emulator.Core/PrototypeCombat.cs#L4369) | `PrototypeRng` | `NextInt` | `summonId = choices[PrototypeRng.NextInt(` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeCombat.cs:4391`](../src/Sts2Emulator.Core/PrototypeCombat.cs#L4391) | `PrototypeRng` | `NextInt` | `+ PrototypeRng.NextInt(` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeCombat.cs:4788`](../src/Sts2Emulator.Core/PrototypeCombat.cs#L4788) | `PrototypeRng` | `NextInt` | `+ PrototypeRng.NextInt(` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeCombat.cs:12961`](../src/Sts2Emulator.Core/PrototypeCombat.cs#L12961) | `NativeFisherYatesV111` | `ShuffleInPlace` | `_ = NativeFisherYatesV111.ShuffleInPlace(` | `shuffle_callsite_needs_stable_site_link` |
-| [`src/Sts2Emulator.Core/PrototypeCombat.cs:14762`](../src/Sts2Emulator.Core/PrototypeCombat.cs#L14762) | `NativeFisherYatesV111` | `Execute` | `var shuffle = NativeFisherYatesV111.Execute(` | `shuffle_callsite_needs_stable_site_link` |
+| [`src/Sts2Emulator.Core/PrototypeCombat.cs:370`](../src/Sts2Emulator.Core/PrototypeCombat.cs#L370) | `NativeFisherYatesV111` | `ShuffleInPlace` | `_ = NativeFisherYatesV111.ShuffleInPlace(` | `shuffle_callsite_needs_stable_site_link` |
+| [`src/Sts2Emulator.Core/PrototypeCombat.cs:3037`](../src/Sts2Emulator.Core/PrototypeCombat.cs#L3037) | `PrototypeRng` | `NextInt` | `? maxExclusive => PrototypeRng.NextInt(rng, "combat", maxExclusive)` | `prototype_callsite_needs_semantic_site_mapping` |
+| [`src/Sts2Emulator.Core/PrototypeCombat.cs:3134`](../src/Sts2Emulator.Core/PrototypeCombat.cs#L3134) | `PrototypeRng` | `NextInt` | `maxExclusive => PrototypeRng.NextInt(rng, "combat", maxExclusive));` | `prototype_callsite_needs_semantic_site_mapping` |
+| [`src/Sts2Emulator.Core/PrototypeCombat.cs:13057`](../src/Sts2Emulator.Core/PrototypeCombat.cs#L13057) | `NativeFisherYatesV111` | `ShuffleInPlace` | `_ = NativeFisherYatesV111.ShuffleInPlace(` | `shuffle_callsite_needs_stable_site_link` |
+| [`src/Sts2Emulator.Core/PrototypeCombat.cs:14858`](../src/Sts2Emulator.Core/PrototypeCombat.cs#L14858) | `NativeFisherYatesV111` | `Execute` | `var shuffle = NativeFisherYatesV111.Execute(` | `shuffle_callsite_needs_stable_site_link` |
 | [`src/Sts2Emulator.Core/PrototypeEncounterFormationResolver.cs:46`](../src/Sts2Emulator.Core/PrototypeEncounterFormationResolver.cs#L46) | `PrototypeRng` | `NextInt` | `+ PrototypeRng.NextInt(` | `prototype_callsite_needs_semantic_site_mapping` |
 | [`src/Sts2Emulator.Core/PrototypeEventContinuations.cs:220`](../src/Sts2Emulator.Core/PrototypeEventContinuations.cs#L220) | `PrototypeRng` | `NextInt` | `_ = PrototypeRng.NextInt(state.Rng, "event", 100);` | `prototype_callsite_needs_semantic_site_mapping` |
 | [`src/Sts2Emulator.Core/PrototypeGameEngine.cs:298`](../src/Sts2Emulator.Core/PrototypeGameEngine.cs#L298) | `PrototypeRng` | `NextInt` | `PrototypeRng.NextInt(` | `prototype_callsite_needs_semantic_site_mapping` |

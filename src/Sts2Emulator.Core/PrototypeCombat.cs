@@ -225,8 +225,12 @@ public sealed partial class PrototypeGameEngine
         var openingOffset = openingAiStates is null
             ? 0
             : nativeFormation?.EncounterOpeningOffset
-                ?? PrototypeRng.NextInt(
-                    state.Rng, "combat", openingAiStates.Length);
+                ?? ResolveLegacyRandomIndex(
+                    state.Rng,
+                    "combat.encounter.formation.index_draw",
+                    "encounter:" + encounter.Id + ":floor:" + world.Floor
+                        + ":opening_rotation",
+                    Enumerable.Range(0, openingAiStates.Length));
         var enemies = enemySpecs
             .Select((enemySpec, index) =>
             {
@@ -241,11 +245,13 @@ public sealed partial class PrototypeGameEngine
                     ? hpRange.Max
                     : hpRange.Min == hpRange.Max
                         ? hpRange.Min
-                        : hpRange.Min
-                            + PrototypeRng.NextInt(
-                                state.Rng,
-                                "combat",
-                                hpRange.Max - hpRange.Min + 1);
+                        : ResolveLegacyRandomIndex(
+                            state.Rng,
+                            NativeCombatRngEntryV111.InitialUniqueHpSiteId,
+                            "creature:" + (index + 1),
+                            Enumerable.Range(
+                                hpRange.Min,
+                                checked(hpRange.Max - hpRange.Min + 1)));
                 var powers = (definition.StartingPowers ?? Array.Empty<PrototypeStartingPowerSpec>())
                     .Select(power =>
                     {
@@ -581,11 +587,13 @@ public sealed partial class PrototypeGameEngine
             eligible = remaining;
         }
 
-        var selectedId = eligible[
-            PrototypeRng.NextInt(
-                state.Rng,
-                "combat",
-                eligible.Length)];
+        var selectedIndex = ResolveLegacyRandomIndex(
+            state.Rng,
+            "combat.encounter.overgrowth_elite.index_draw",
+            "act:1:floor:" + world.Floor + ":pool:"
+                + CanonicalJson.Sha256(eligible),
+            Enumerable.Range(0, eligible.Length));
+        var selectedId = eligible[selectedIndex];
         var encounter = PrototypeContent.Encounter(
             selectedId);
         var nextRemaining = remaining
@@ -638,10 +646,12 @@ public sealed partial class PrototypeGameEngine
                 "Overgrowth weak encounter pool exhausted before three ordinary combats.");
         }
 
-        var selectedIndex = PrototypeRng.NextInt(
+        var selectedIndex = ResolveLegacyRandomIndex(
             state.Rng,
-            "combat",
-            pool.RemainingWeakEncounterIds.Length);
+            "combat.encounter.overgrowth_weak.index_draw",
+            "act:1:floor:" + world.Floor + ":pool:"
+                + CanonicalJson.Sha256(pool.RemainingWeakEncounterIds),
+            Enumerable.Range(0, pool.RemainingWeakEncounterIds.Length));
         var selectedId =
             pool.RemainingWeakEncounterIds[selectedIndex];
         var encounter = PrototypeContent.Encounter(
@@ -715,11 +725,13 @@ public sealed partial class PrototypeGameEngine
             eligible = remaining;
         }
 
-        var selectedId = eligible[
-            PrototypeRng.NextInt(
-                state.Rng,
-                "combat",
-                eligible.Length)];
+        var selectedIndex = ResolveLegacyRandomIndex(
+            state.Rng,
+            "combat.encounter.overgrowth_normal.index_draw",
+            "act:1:floor:" + world.Floor + ":pool:"
+                + CanonicalJson.Sha256(eligible),
+            Enumerable.Range(0, eligible.Length));
+        var selectedId = eligible[selectedIndex];
         var encounter = PrototypeContent.Encounter(
             selectedId);
         var nextRemaining = remaining
@@ -823,7 +835,12 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidOperationException("Eligible encounter pool has no positive weight.");
         }
 
-        var roll = PrototypeRng.NextInt(rng, "combat", totalWeight);
+        var roll = ResolveLegacyBoundedInteger(
+            rng,
+            "combat.encounter.weighted_selection.ticket",
+            "pool:" + CanonicalJson.Sha256(encounters.Select(encounter =>
+                new { encounter.Id, encounter.Weight }).ToArray()),
+            totalWeight);
         foreach (var encounter in encounters)
         {
             if (roll < encounter.Weight)
@@ -4132,8 +4149,13 @@ public sealed partial class PrototypeGameEngine
                             var range = transformed.HpRangeAt(act, ascension);
                             var maxHp = range.Min == range.Max
                                 ? range.Max
-                                : range.Min + PrototypeRng.NextInt(
-                                    rng, "combat", range.Max - range.Min + 1);
+                                : ResolveLegacyRandomIndex(
+                                    rng,
+                                    NativeCombatRngEntryV111.ToughEggHatchHpSiteId,
+                                    "creature:" + enemy.InstanceId,
+                                    Enumerable.Range(
+                                        range.Min,
+                                        checked(range.Max - range.Min + 1)));
                             // ToughEgg.Hatch preserves its instance and
                             // Minion marker, but changes the combat body.
                             enemy = enemy with
@@ -4366,8 +4388,14 @@ public sealed partial class PrototypeGameEngine
                                     id != lastSpawned).ToArray();
                                 if (choices.Length == 0)
                                     choices = pool;
-                                summonId = choices[PrototypeRng.NextInt(
-                                    rng, "combat", choices.Length)];
+                                var selectedSummonIndex = ResolveLegacyRandomIndex(
+                                    rng,
+                                    "combat.enemy.summon_pool.select",
+                                    "enemy:" + enemy.InstanceId
+                                        + ":move:" + move.Id
+                                        + ":pool:" + CanonicalJson.Sha256(choices),
+                                    Enumerable.Range(0, choices.Length));
+                                summonId = choices[selectedSummonIndex];
                             }
                             if (summonId is null)
                                 throw new InvalidOperationException(
@@ -4379,6 +4407,11 @@ public sealed partial class PrototypeGameEngine
                                 summonedDefinition.HpRangeAt(
                                     act,
                                     ascension);
+                            var nextEnemyId =
+                                enemies.Count == 0
+                                    ? 1
+                                    : enemies.Max(item =>
+                                        item.InstanceId) + 1;
                             // The native creation path rolls from
                             // run.niche after selecting a legal summon
                             // slot. Do not consume prototype combat RNG.
@@ -4387,18 +4420,14 @@ public sealed partial class PrototypeGameEngine
                                     ? hpRange.Max
                                     : hpRange.Min == hpRange.Max
                                         ? hpRange.Min
-                                        : hpRange.Min
-                                            + PrototypeRng.NextInt(
-                                                rng,
-                                                "combat",
-                                                hpRange.Max
-                                                    - hpRange.Min
-                                                    + 1);
-                            var nextEnemyId =
-                                enemies.Count == 0
-                                    ? 1
-                                    : enemies.Max(item =>
-                                        item.InstanceId) + 1;
+                                    : ResolveLegacyRandomIndex(
+                                        rng,
+                                        NativeCombatRngEntryV111.InitialUniqueHpSiteId,
+                                        "creature:" + nextEnemyId,
+                                        Enumerable.Range(
+                                            hpRange.Min,
+                                            checked(hpRange.Max
+                                                - hpRange.Min + 1)));
                             var nextPowerOrder =
                                 combat.NextPowerApplicationOrder;
                             var powers =
@@ -4779,18 +4808,23 @@ public sealed partial class PrototypeGameEngine
                 var hpRange = definition.HpRangeAt(
                     combat.Act,
                     combat.Ascension);
+                var nextEnemyId =
+                    enemies.Count == 0
+                        ? 1
+                        : enemies.Max(enemy =>
+                            enemy.InstanceId) + 1;
                 var hp =
                     combat.NativeRng is not null
                         ? hpRange.Max
                         : hpRange.Min == hpRange.Max
                             ? hpRange.Min
-                            : hpRange.Min
-                                + PrototypeRng.NextInt(
-                                    rng,
-                                    "combat",
-                                    hpRange.Max
-                                        - hpRange.Min
-                                        + 1);
+                            : ResolveLegacyRandomIndex(
+                                rng,
+                                NativeCombatRngEntryV111.InitialUniqueHpSiteId,
+                                "creature:" + nextEnemyId,
+                                Enumerable.Range(
+                                    hpRange.Min,
+                                    checked(hpRange.Max - hpRange.Min + 1)));
                 var powers =
                     (definition.StartingPowers
                         ?? Array.Empty<
@@ -4808,12 +4842,6 @@ public sealed partial class PrototypeGameEngine
                     .Where(power =>
                         power.Stacks > 0)
                     .ToArray();
-                var nextEnemyId =
-                    enemies.Count == 0
-                        ? 1
-                        : enemies.Max(enemy =>
-                            enemy.InstanceId) + 1;
-
                 var spawnedEnemy =
                     new EnemyCombatState(
                         InstanceId: nextEnemyId,
@@ -12718,6 +12746,77 @@ public sealed partial class PrototypeGameEngine
                     current.Parent,
                     parent)
             };
+
+    private static int ResolveLegacyRandomIndex(
+        RngBundle legacyRng,
+        string siteId,
+        string ownerId,
+        IEnumerable<int> orderedCandidates)
+    {
+        ArgumentNullException.ThrowIfNull(orderedCandidates);
+        var candidates = orderedCandidates.ToArray();
+        if (candidates.Length == 0)
+            throw new ArgumentException(
+                "Legacy random selection requires a nonempty ordered support.",
+                nameof(orderedCandidates));
+        return ResolveLegacyRandomOutcome(
+            legacyRng, siteId, ownerId, candidates, null);
+    }
+
+    private static int ResolveLegacyBoundedInteger(
+        RngBundle legacyRng,
+        string siteId,
+        string ownerId,
+        int boundedCount)
+    {
+        if (boundedCount <= 0)
+            throw new ArgumentOutOfRangeException(nameof(boundedCount));
+        return ResolveLegacyRandomOutcome(
+            legacyRng, siteId, ownerId, [], boundedCount);
+    }
+
+    private static int ResolveLegacyRandomOutcome(
+        RngBundle legacyRng,
+        string siteId,
+        string ownerId,
+        int[] orderedCandidates,
+        int? boundedCount)
+    {
+        ArgumentNullException.ThrowIfNull(legacyRng);
+        ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
+        if (ControlledChanceGuardV111.Active
+            && !ControlledChanceGuardV111.EngineOwnedNativeProviderActive)
+            throw new NotSupportedException(
+                $"UNSUPPORTED_CONTROLLED_CHANCE site={siteId} " +
+                "operation=" + (boundedCount is null
+                    ? "choose_index"
+                    : "bounded_integer")
+                + " requires a saved continuation.");
+
+        const string streamId = "combat";
+        var stream = legacyRng.Streams.SingleOrDefault(item =>
+            item.StreamId == streamId) ??
+            throw new InvalidOperationException(
+                "Legacy random-choice provider stream is missing.");
+        var callOrdinal = stream.CallCount ?? 0;
+        if (callOrdinal > int.MaxValue)
+            throw new NotSupportedException(
+                "Legacy random-choice provider ordinal exceeds the request range.");
+        var request = new RandomIndexRequestV111(
+            siteId,
+            streamId,
+            ownerId,
+            (int)callOrdinal,
+            orderedCandidates,
+            OperationKind: boundedCount is null
+                ? "choose_index"
+                : "bounded_integer",
+            BoundedCount: boundedCount);
+        var decision = new LegacyPrototypeRandomIndexProviderV111().Resolve(
+            request, legacyRng);
+        return decision.SelectedValue;
+    }
 
     private static (CombatState Combat, int SelectedIndex)
         ResolveRandomEnemyTarget(
