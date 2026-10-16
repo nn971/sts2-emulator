@@ -132,12 +132,18 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         var player = ConsumePotionSlot(
             state.Player,
             payload.Slot);
+        var nativeRunRng = state.NativeRunRng?.Fork();
         player = ApplyPotionRunEffects(
             player,
             definition,
-            state.Rng);
+            state.Rng,
+            nativeRunRng);
 
-        state = state with { Player = player };
+        state = state with
+        {
+            Player = player,
+            NativeRunRng = nativeRunRng ?? state.NativeRunRng
+        };
 
         // An event's full-belt potion offer is still pending when a
         // usable potion is consumed from the belt. The newly vacated
@@ -190,17 +196,20 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
     private static PlayerState ApplyPotionRunEffects(
         PlayerState player,
         PrototypePotionDefinition definition,
-        RngBundle rng) =>
+        RngBundle rng,
+        RngBundle? nativeRunRng = null) =>
         ApplyPlayerRunEffects(
             player,
             definition.RunEffects
                 ?? Array.Empty<PrototypeRunEffectSpec>(),
-            rng);
+            rng,
+            nativeRunRng);
 
     private static PlayerState ApplyPlayerRunEffects(
         PlayerState player,
         IEnumerable<PrototypeRunEffectSpec> effects,
-        RngBundle? rng = null)
+        RngBundle? rng = null,
+        RngBundle? nativeRunRng = null)
     {
         foreach (var effect in effects)
         {
@@ -293,18 +302,23 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                             continue;
                         }
 
-                        var potionId =
-                            PrototypeContent.PotionPool[
-                                ResolveLegacyRandomIndex(
-                                    rng,
-                                    "run.potion.fill_empty_slots.model",
-                                    "player:potion_slot:" + index + ":pool:"
-                                        + CanonicalJson.Sha256(
-                                            PrototypeContent.PotionPool),
-                                    Enumerable.Range(
-                                        0,
-                                        PrototypeContent.PotionPool.Length),
-                                    streamId: "reward")];
+                        var potionPool = PrototypeContent.PotionPool;
+                        var ownerId = "player:potion_slot:" + index + ":pool:"
+                            + CanonicalJson.Sha256(potionPool);
+                        var potionIndex = nativeRunRng is { } nativeRewardRng
+                            ? NativePlayerRngV111.ChooseIndex(
+                                nativeRewardRng,
+                                "run.potion.fill_empty_slots.model",
+                                NativePlayerRngV111.RewardsStreamId,
+                                ownerId,
+                                potionPool.Length)
+                            : ResolveLegacyRandomIndex(
+                                rng,
+                                "run.potion.fill_empty_slots.model",
+                                ownerId,
+                                Enumerable.Range(0, potionPool.Length),
+                                streamId: "reward");
+                        var potionId = potionPool[potionIndex];
                         slots[index] =
                             new PotionInstance(
                                 potionId,
@@ -699,7 +713,8 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                 }
 
                 default:
-                    player = ApplyPlayerRunEffects(player, [effect], rng);
+                    player = ApplyPlayerRunEffects(
+                        player, [effect], rng, nativeRunRng);
                     break;
             }
         }

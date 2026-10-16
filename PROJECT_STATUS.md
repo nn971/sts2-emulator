@@ -1487,6 +1487,11 @@ stream hypothesis over their existing ordered unowned-relic pool. Unconfigured
 runs retain the legacy reward provider, and source stream/cursor validation
 remains pending.
 
+The run-effect that fills open potion slots now advances `player.rewards`
+through a typed index provider when native run RNG is present, while retaining
+the legacy reward-stream fallback. Source stream/cursor validation remains
+pending, and the event-specific fill path remains on its separate legacy site.
+
 Configured Overgrowth combat rewards now use the persistent `player.rewards`
 stream for potion pity, gold bounds, rarity-weighted potion selection, card
 rarity/model/upgrade draws, relic rarity, boss relic offer shuffling, and Lava
