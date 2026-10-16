@@ -1,5 +1,7 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
+using System.Security.Cryptography;
+using System.Text;
 
 namespace Sts2Emulator.Core;
 
@@ -38,8 +40,9 @@ public sealed record SemanticPilotCombatV111(
     /// </summary>
     public SemanticSeededEntryV111? SeededEntry { get; init; }
     /// <summary>
-    /// Dedicated seed-owned fallback state. Source run-history synchronization
-    /// is unverified; external Nature controls only intent and physical draws.
+    /// Dedicated seed-owned fallback state. Null preserves v1 snapshots from
+    /// before this provider existed, using their historical deterministic
+    /// fallback only when replaying those already issued snapshots.
     /// </summary>
     public SemanticOtherChanceV111? OtherChance { get; init; }
     [JsonIgnore] public string Fingerprint => CanonicalJson.Sha256(this);
@@ -301,11 +304,23 @@ public static class SemanticPilotCombatEngineV111
     {
         while (current.PendingEndTurn is { CostPending: { } cost } endTurn)
         {
-            var other = current.OtherChance ??
-                throw new InvalidDataException(
-                    "Semantic session has no engine-owned chance provider.");
-            var (nextOther, index) =
-                SemanticOtherChanceEngineV111.ResolveCost(other, cost);
+            SemanticOtherChanceV111? nextOther = null;
+            int index;
+            if (current.OtherChance is { } other)
+            {
+                (nextOther, index) =
+                    SemanticOtherChanceEngineV111.ResolveCost(other, cost);
+            }
+            else
+            {
+                // Backward compatibility for old semantic v1 snapshots only.
+                // Fresh sessions always construct an engine-owned RNG state.
+                var hash = SHA256.HashData(Encoding.UTF8.GetBytes(
+                    current.OpeningSource.Seed + ":" +
+                    endTurn.Fingerprint + ":" + cost.SiteId));
+                index = (int)(BitConverter.ToUInt32(hash, 0) %
+                    (uint)cost.SupportCount);
+            }
             var resolved = SemanticEndTurnEngineV111.Resolve(
                 endTurn, endTurn.Fingerprint, index);
             current = current with
@@ -324,13 +339,13 @@ public static class SemanticPilotCombatEngineV111
         ArgumentNullException.ThrowIfNull(state);
         if (state.Mode != SemanticPilotCombatV111.SchemaId ||
             state.History is null ||
-            state.OtherChance is null ||
             state.NativeEncounterEntry != state.OpeningSource.Origin
                 .Formation.NativeEncounterEntry ||
             state.Run.Phase is not (
                 RunPhase.Combat or RunPhase.Reward or RunPhase.Terminal))
             throw new InvalidDataException("Invalid semantic playable session.");
-        SemanticOtherChanceEngineV111.Validate(state.OtherChance);
+        if (state.OtherChance is { } other)
+            SemanticOtherChanceEngineV111.Validate(other);
         if (state.PendingEndTurn is { } endTurn)
         {
             SemanticEndTurnEngineV111.Validate(endTurn);
@@ -368,6 +383,8 @@ public static class SemanticPilotCombatEngineV111
         var replay = saved.SeededEntry is { } entry
             ? BeginSeeded(entry)
             : Begin(saved.OpeningSource);
+        if (saved.OtherChance is null)
+            replay = replay with { OtherChance = null };
         foreach (var transition in saved.History)
         {
             replay = transition.Kind switch
