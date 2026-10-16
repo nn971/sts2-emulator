@@ -2,6 +2,8 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
+**Tracking:** [S1 Chance Law and ReferenceNature issue #174](https://github.com/nn971/sts2-emulator/issues/174); [Nature pilot #143](https://github.com/nn971/sts2-emulator/issues/143); [native inspector #122](https://github.com/nn971/sts2-emulator/issues/122).
+
 **Implementation scope:** `sts2-emulator`, STS2 v0.111.0, single-player. The first vertical slice is two-site Silent combat. Keep the four-Act Silent gameplay and active native inspector developments on separate tracks. Existing versioned `controlled_*`, `nature_*`, `semantic_*` and ordinary AI protocols remain supported; no historic snapshot/probability reinterpretation.
 
 ## Priorities and milestones
@@ -59,7 +61,7 @@ Run matched source-state/seed sets; frozen player policy; fair observations/lega
 
 ## Deliverables, status discipline and ownership
 
-- **S0:** docs in this PR; no code/CI claims.
+- **S0:** design/ownership documents in this PR; the complete mechanical-site and hidden-state ownership inventory remains to be assembled in the first implementation slice. No code/CI claims.
 - **S1:** core Chance Law and simple ReferenceNature implementation + independent tests; dedicated PR.
 - **S2:** #143 training-owned default/non-Nature delegation + reproducible A/B report; the AI-side trainer is in `sts2-ai`.
 - **S3–S6:** follow-up opt-in implementation PRs with versioned capabilities and targeted tests.
