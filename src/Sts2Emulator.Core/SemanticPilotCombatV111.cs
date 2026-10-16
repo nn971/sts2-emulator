@@ -192,7 +192,7 @@ public static class SemanticPilotCombatEngineV111
             if (state.Run.Player.Relics.Any(x => x.RelicId == relicId))
                 throw new InvalidOperationException("Fixture relic already owned.");
             var definition = PrototypeContent.Relic(relicId);
-            int index = combat.Relics.Length;
+            int index = (combat.Relics ?? []).Length;
             var player = state.Run.Player with
             {
                 Relics = state.Run.Player.Relics.Append(
@@ -201,7 +201,7 @@ public static class SemanticPilotCombatEngineV111
             };
             var updated = combat with
             {
-                Relics = combat.Relics.Append(
+                Relics = (combat.Relics ?? []).Append(
                     new CombatRelicState(index, relicId, index + 1L,
                         new int[(definition.Triggers ?? []).Length], false))
                     .ToArray()
