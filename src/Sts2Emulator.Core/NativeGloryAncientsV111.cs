@@ -14,6 +14,8 @@ public static class NativeGloryAncientsV111
     public const string BlessedAntlerId = "proto.native.ancient.blessed_antler";
     public const string BeautifulBraceletId = "proto.native.ancient.beautiful_bracelet";
     public const string FurCoatId = "proto.native.ancient.fur_coat";
+    public const string DistinguishedCapeCurseSiteId =
+        "run.relic.distinguished_cape.modifier_curse.index_draw";
     public const string FiddleId = "proto.native.ancient.fiddle";
     public const string WhisperingEarringId = "proto.native.ancient.whispering_earring";
     public const int WhisperingEarringMaxCards = 13;

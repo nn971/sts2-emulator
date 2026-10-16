@@ -441,13 +441,23 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                         "Distinguished Cape acquisition requires card IDs.");
                 var curseIds = NativeGloryAncientsV111
                     .ModifierGeneratedCurseIds.ToList();
+                var nativeCurseProvider = nativeRunRng is null
+                    ? null
+                    : new NativeRandomIndexProviderV111();
                 for (var i = 0; i < 2; i++)
                 {
                     var selectedIndex = nativeRunRng is null
                         ? PrototypeRng.NextInt(acquisitionRng, "event",
                             curseIds.Count)
-                        : NativeRngV111.NextInt(nativeRunRng,
-                            "run.niche", curseIds.Count);
+                        : nativeCurseProvider!.Resolve(
+                            new RandomIndexRequestV111(
+                                NativeGloryAncientsV111
+                                    .DistinguishedCapeCurseSiteId,
+                                "run.niche",
+                                "relic:distinguished_cape:acquisition",
+                                i,
+                                Enumerable.Range(0, curseIds.Count).ToArray()),
+                            nativeRunRng).SelectedIndex;
                     var curseId = curseIds[selectedIndex];
                     curseIds.RemoveAt(selectedIndex);
                     player = AppendCard(player, allocate(), curseId,

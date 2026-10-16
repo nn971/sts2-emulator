@@ -22,7 +22,7 @@ constrained random objects and select outcomes when the mechanics actually
 need them. Both providers execute the same card, enemy, relic, potion,
 visibility and trigger rules. The native stream/cursor audit remains intact.
 
-**Implementation progress (2026-10-16):** the repository now has a provider-
+**Implementation progress (2026-10-17):** the repository now has a provider-
 owned semantic deck state with committed and unresolved positions, typed
 weighted intent events, and replayable semantic events for deferred card
 draws, random-enemy targets, generated-card model pools and an opt-in drawn-
@@ -55,7 +55,10 @@ sample and within-tier model index through separate typed providers in source
 order.
 Beautiful Bracelet's eligible-deck shuffle and Fur Coat's current-act combat
 node shuffle now use typed native swap requests as well; controlled relic
-acquisition continuation remains pending. The later-act map's bounded path
+acquisition continuation remains pending. Distinguished Cape's two
+source-ordered modifier-curse selections now pass through the typed index
+provider in native mode, and Tough Egg's hatch request uses the native
+formation CombatId as its owner. The later-act map's bounded path
 starts, delta shuffles, Glory rest-count pick and room-assignment shuffles now
 also use typed native requests. Its Gaussian quota samples now use typed
 provider requests. A typed Gaussian-double adapter now wraps the native
