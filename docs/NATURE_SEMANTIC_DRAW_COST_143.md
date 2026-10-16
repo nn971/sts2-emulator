@@ -42,6 +42,12 @@ its own `semantic.combat` stream label, ticket ordering and
 shuffle-swap tickets are emitted. Under Nature no native RNG cursor
 advances for these counterfactual cost selections.
 
+Outside this Nature continuation, the ordinary `DrawCards` path now uses the
+same two stable site IDs through typed providers: `run.combat_energy_costs`
+when native combat streams are attached and legacy `combat` otherwise. Native
+stream ownership and call-order parity remain unverified. Native semantic-deck
+draws use this shared path once before `CardDrawn` dispatch.
+
 ## Saved state and replay
 
 A pending drawn-card cost is represented inside the forkable

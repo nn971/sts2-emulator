@@ -9368,43 +9368,56 @@ public sealed partial class PrototypeGameEngine
         };
     }
 
-    private static CombatState ApplyNativeDrawCardCost(
-        CombatState combat, long cardInstanceId, string cardModelId,
-        string stage, int bound)
+    private static CombatState ApplyDrawCardCost(
+        CombatState combat, RngBundle legacyRng, long cardInstanceId,
+        string cardModelId, string stage, int bound)
     {
-        var native = combat.NativeRng ?? throw new NotSupportedException(
-            "UNSUPPORTED_SEMANTIC_NATIVE site=combat.card_draw." + stage +
-            "_energy_cost operation=missing_native_stream_owner");
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(legacyRng);
+        ArgumentException.ThrowIfNullOrWhiteSpace(cardModelId);
         if (stage is not ("relic" or "slither") || bound <= 0)
             throw new ArgumentOutOfRangeException(nameof(bound));
-        var streams = native.RunStreams.Fork();
+        if (cardInstanceId <= 0)
+            throw new ArgumentOutOfRangeException(nameof(cardInstanceId));
+        var native = combat.NativeRng;
+        if (ControlledChanceGuardV111.Active &&
+            ControlledChanceGuardV111.EngineOwnedNativeProviderActive &&
+            native is null)
+            throw new NotSupportedException(
+                "UNSUPPORTED_CONTROLLED_CHANCE site=combat.card_draw." + stage +
+                "_energy_cost operation=missing_native_stream_owner");
+        var streamId = native is null
+            ? "combat"
+            : SemanticOtherChanceEngineV111.CostStreamId;
+        var streams = native?.RunStreams.Fork() ?? legacyRng;
         var stream = streams.Streams.SingleOrDefault(item =>
-            item.StreamId == SemanticOtherChanceEngineV111.CostStreamId)
-            ?? throw new NotSupportedException(
-                "UNSUPPORTED_SEMANTIC_NATIVE site=combat.card_draw." + stage +
-                "_energy_cost operation=missing_native_cost_stream");
-        var callCount = stream.CallCount ?? throw new InvalidDataException(
-            "Native draw-cost stream is missing its call counter.");
+            item.StreamId == streamId) ?? throw new NotSupportedException(
+                "Random draw-cost provider stream is missing.");
+        var callCount = stream.CallCount ?? 0;
         if (callCount > int.MaxValue)
             throw new NotSupportedException(
-                "UNSUPPORTED_SEMANTIC_NATIVE site=combat.card_draw." + stage +
-                "_energy_cost operation=native_ordinal_overflow");
+                "Random draw-cost provider ordinal exceeds the request range.");
         var request = new RandomIndexRequestV111(
             stage == "relic"
                 ? "combat.card_draw.relic_energy_cost"
                 : "combat.card_draw.slither_energy_cost",
-            SemanticOtherChanceEngineV111.CostStreamId,
+            streamId,
             "card_instance:" + cardInstanceId + ":model:" + cardModelId +
                 ":stage:" + stage,
             (int)callCount, [], OperationKind: "bounded_integer",
             BoundedCount: bound);
-        var decision = new NativeRandomIndexProviderV111().Resolve(
-            request, streams);
-        return SetCardTemporaryEnergyCost(
-            combat with
+        IRandomIndexProviderV111 provider = native is null
+            ? new LegacyPrototypeRandomIndexProviderV111()
+            : new NativeRandomIndexProviderV111();
+        var decision = provider.Resolve(request, streams);
+        var updated = native is null
+            ? combat
+            : combat with
             {
                 NativeRng = native with { RunStreams = streams }
-            }, cardInstanceId,
+            };
+        return SetCardTemporaryEnergyCost(
+            updated, cardInstanceId,
             new PrototypeTemporaryCardCost(
                 decision.SelectedIndex, PrototypeTemporaryCardCostExpiry.None));
     }
@@ -14881,27 +14894,7 @@ public sealed partial class PrototypeGameEngine
             var hasSlither = card.Enchantment is
                 { Kind: PrototypeCardEnchantmentKind.Slither };
             if (combat.SemanticDeck is
-                    { Mode: SemanticDeckStateV111.NativeMode } &&
-                (needsRelicCost || hasSlither))
-            {
-                // Resolve source-timed drawn costs through the separately
-                // owned native stream before CardDrawn dispatch. The v111
-                // stream assignment is still UNVERIFIED against the game.
-                if (needsRelicCost)
-                {
-                    combat = ApplyNativeDrawCardCost(
-                        combat, cardInstanceId, card.CardId, "relic",
-                        randomizedCostUpperBound);
-                    card = RequireCombatCard(combat, cardInstanceId);
-                }
-                if (hasSlither)
-                {
-                    combat = ApplyNativeDrawCardCost(
-                        combat, cardInstanceId, card.CardId, "slither", 4);
-                    card = RequireCombatCard(combat, cardInstanceId);
-                }
-            }
-            else if (combat.SemanticDeck is not null &&
+                    { Mode: SemanticDeckStateV111.NatureMode } &&
                      (needsRelicCost || hasSlither))
             {
                 if (!controlledSemanticDrawSuspension)
@@ -14917,7 +14910,9 @@ public sealed partial class PrototypeGameEngine
                     RemainingCount: count - drawNumber - 1,
                     ControlledDrawCostPending: true);
             }
-            if (ControlledChanceGuardV111.Active && (needsRelicCost || hasSlither))
+            if (ControlledChanceGuardV111.Active &&
+                !ControlledChanceGuardV111.EngineOwnedNativeProviderActive &&
+                (needsRelicCost || hasSlither))
             {
                 if (!controlledDrawCostSuspension)
                     throw new NotSupportedException(
@@ -14934,15 +14929,9 @@ public sealed partial class PrototypeGameEngine
             }
             if (needsRelicCost)
             {
-                combat = SetCardTemporaryEnergyCost(
-                    combat,
-                    cardInstanceId,
-                    new PrototypeTemporaryCardCost(
-                        PrototypeRng.NextInt(
-                            rng,
-                            "combat",
-                            randomizedCostUpperBound),
-                        PrototypeTemporaryCardCostExpiry.None));
+                combat = ApplyDrawCardCost(
+                    combat, rng, cardInstanceId, card.CardId, "relic",
+                    randomizedCostUpperBound);
                 card = RequireCombatCard(
                     combat,
                     cardInstanceId);
@@ -14953,12 +14942,8 @@ public sealed partial class PrototypeGameEngine
             {
                 // Slither rerolls this combat's cost every time its
                 // card is drawn, including after pile recycling.
-                combat = SetCardTemporaryEnergyCost(
-                    combat,
-                    cardInstanceId,
-                    new PrototypeTemporaryCardCost(
-                        PrototypeRng.NextInt(rng, "combat", 4),
-                        PrototypeTemporaryCardCostExpiry.None));
+                combat = ApplyDrawCardCost(
+                    combat, rng, cardInstanceId, card.CardId, "slither", 4);
                 card = RequireCombatCard(combat, cardInstanceId);
             }
 
