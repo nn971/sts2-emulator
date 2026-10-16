@@ -2,13 +2,13 @@
 
 Direct qualified calls to PrototypeRng, NativeRngV111, and NativeFisherYatesV111 in Sts2Emulator.Core. This does not include indirect delegates, random provider interfaces, third-party/native source callsites, or prove that every source operation is mapped.
 
-Direct call expressions: **35**.
+Direct call expressions: **36**.
 
 Counts by direct API family:
 
 - `legacy_prototype_api`: 3
 - `native_primitive_api`: 8
-- `native_shuffle_mechanics`: 24
+- `native_shuffle_mechanics`: 25
 
 Rows distinguish legacy prototype calls, native primitive calls, generic shuffle-helper calls, and recognized provider/fixture support. Unrecognized contexts still need manual source tracing.
 
@@ -16,6 +16,7 @@ Rows distinguish legacy prototype calls, native primitive calls, generic shuffle
 | --- | --- | --- | --- | --- |
 | [`src/Sts2Emulator.Core/NativeDarvEventV111.cs:163`](../src/Sts2Emulator.Core/NativeDarvEventV111.cs#L163) | `NativeFisherYatesV111` | `ShuffleInPlace` | `decisions.AddRange(NativeFisherYatesV111.ShuffleInPlace(` | `typed_provider_shuffle_mechanics_boundary` |
 | [`src/Sts2Emulator.Core/NativeDarvEventV111.cs:252`](../src/Sts2Emulator.Core/NativeDarvEventV111.cs#L252) | `NativeFisherYatesV111` | `ShuffleInPlace` | `_ = NativeFisherYatesV111.ShuffleInPlace(` | `typed_provider_shuffle_mechanics_boundary` |
+| [`src/Sts2Emulator.Core/NativeEventContextRngV111.cs:109`](../src/Sts2Emulator.Core/NativeEventContextRngV111.cs#L109) | `NativeFisherYatesV111` | `ShuffleInPlace` | `_ = NativeFisherYatesV111.ShuffleInPlace(` | `typed_provider_shuffle_mechanics_boundary` |
 | [`src/Sts2Emulator.Core/NativeGloryAncientsV111.cs:252`](../src/Sts2Emulator.Core/NativeGloryAncientsV111.cs#L252) | `NativeFisherYatesV111` | `ShuffleInPlace` | `_ = NativeFisherYatesV111.ShuffleInPlace(` | `typed_provider_shuffle_mechanics_boundary` |
 | [`src/Sts2Emulator.Core/NativeGloryAncientsV111.cs:293`](../src/Sts2Emulator.Core/NativeGloryAncientsV111.cs#L293) | `NativeFisherYatesV111` | `ShuffleInPlace` | `_ = NativeFisherYatesV111.ShuffleInPlace(` | `typed_provider_shuffle_mechanics_boundary` |
 | [`src/Sts2Emulator.Core/NativeNeowEventV111.cs:45`](../src/Sts2Emulator.Core/NativeNeowEventV111.cs#L45) | `NativeFisherYatesV111` | `ShuffleInPlace` | `decisions.AddRange(NativeFisherYatesV111.ShuffleInPlace(` | `typed_provider_shuffle_mechanics_boundary` |
@@ -40,7 +41,7 @@ Rows distinguish legacy prototype calls, native primitive calls, generic shuffle
 | [`src/Sts2Emulator.Core/PrototypeNativeOvergrowthMap.cs:74`](../src/Sts2Emulator.Core/PrototypeNativeOvergrowthMap.cs#L74) | `NativeFisherYatesV111` | `ShuffleInPlace` | `var choices = NativeFisherYatesV111.ShuffleInPlace(` | `typed_provider_shuffle_mechanics_boundary` |
 | [`src/Sts2Emulator.Core/PrototypeNativeRelicGrabBag.cs:145`](../src/Sts2Emulator.Core/PrototypeNativeRelicGrabBag.cs#L145) | `NativeFisherYatesV111` | `ShuffleInPlace` | `_ = NativeFisherYatesV111.ShuffleInPlace(` | `typed_provider_shuffle_mechanics_boundary` |
 | [`src/Sts2Emulator.Core/PrototypeNativeWarHammer.cs:42`](../src/Sts2Emulator.Core/PrototypeNativeWarHammer.cs#L42) | `NativeFisherYatesV111` | `ShuffleInPlace` | `_ = NativeFisherYatesV111.ShuffleInPlace(` | `typed_provider_shuffle_mechanics_boundary` |
-| [`src/Sts2Emulator.Core/PrototypeRooms.cs:4767`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L4767) | `NativeFisherYatesV111` | `ShuffleInPlace` | `_ = NativeFisherYatesV111.ShuffleInPlace(` | `typed_provider_shuffle_mechanics_boundary` |
+| [`src/Sts2Emulator.Core/PrototypeRooms.cs:4771`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L4771) | `NativeFisherYatesV111` | `ShuffleInPlace` | `_ = NativeFisherYatesV111.ShuffleInPlace(` | `typed_provider_shuffle_mechanics_boundary` |
 | [`src/Sts2Emulator.Core/RandomGaussianDoubleProvidersV111.cs:84`](../src/Sts2Emulator.Core/RandomGaussianDoubleProvidersV111.cs#L84) | `NativeRngV111` | `NextGaussianDouble` | `var value = NativeRngV111.NextGaussianDouble(` | `provider_or_codec_infrastructure` |
 | [`src/Sts2Emulator.Core/RandomGaussianIntProvidersV111.cs:79`](../src/Sts2Emulator.Core/RandomGaussianIntProvidersV111.cs#L79) | `NativeRngV111` | `NextGaussianInt` | `var value = NativeRngV111.NextGaussianInt(` | `provider_or_codec_infrastructure` |
 | [`src/Sts2Emulator.Core/RandomIndexProvidersV111.cs:97`](../src/Sts2Emulator.Core/RandomIndexProvidersV111.cs#L97) | `NativeRngV111` | `NextInt` | `int index = NativeRngV111.NextInt(streams, request.StreamId, request.SupportCount);` | `provider_or_codec_infrastructure` |

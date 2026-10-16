@@ -7,7 +7,18 @@ public static class PrototypeStateInvariants
         RunConfiguration.ValidateState(state);
         NativeRunRngV111.Validate(state);
         NativeAncientRewardsV111.ValidateEventContext(state);
-        PrototypeNativeUnderdocksTrashHeap.ValidateNativeEventRng(state);
+        NativeEventContextRngV111.Validate(
+            state,
+            PrototypeNativeUnderdocksTrashHeap.EventId,
+            PrototypeNativeUnderdocksTrashHeap.NativeRngEventId);
+        NativeEventContextRngV111.Validate(
+            state,
+            PrototypeNativeTabletOfTruth.EventId,
+            PrototypeNativeTabletOfTruth.NativeRngEventId);
+        NativeEventContextRngV111.Validate(
+            state,
+            "proto.native.underdocks.doors_of_light_and_dark",
+            "DOORS_OF_LIGHT_AND_DARK");
         if (state.Ascension < 0)
         {
             throw new InvalidOperationException(

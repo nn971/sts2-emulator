@@ -32,13 +32,16 @@ public sealed partial class PrototypeGameEngine
                 null, null, false))
             .Select(card => card.InstanceId)
             .ToList();
-        _ = LegacyFisherYatesV111.ShuffleInPlace(
+        state = NativeEventContextRngV111.ShuffleInPlace(
+            state,
+            eventState,
+            "DOORS_OF_LIGHT_AND_DARK",
             shuffled,
-            state.Rng,
-            "event",
             "event.doors_light.shuffle_swap_index",
             "event:doors_light:eligible_cards:"
                 + CanonicalJson.Sha256(shuffled));
+        world = RequireWorld(state);
+        eventState = world.Event!;
 
         var selected = shuffled.Take(2).ToHashSet();
         var player = state.Player with

@@ -826,14 +826,18 @@ public sealed partial class PrototypeGameEngine
         {
             Event = new EventState(
                 selected.Id,
-                NativeEventRng:
-                    state.NativeRunRng is not null
-                        && selected.Id
-                            == PrototypeNativeUnderdocksTrashHeap.EventId
-                        ? NativeRngV111Contexts.ForEvent(
-                            state.RunSeed,
-                            PrototypeNativeUnderdocksTrashHeap.NativeRngEventId)
-                        : null,
+                NativeEventRng: NativeEventContextRngV111.CreateAtEntry(
+                    state,
+                    selected.Id switch
+                    {
+                        PrototypeNativeUnderdocksTrashHeap.EventId =>
+                            PrototypeNativeUnderdocksTrashHeap.NativeRngEventId,
+                        PrototypeNativeTabletOfTruth.EventId =>
+                            PrototypeNativeTabletOfTruth.NativeRngEventId,
+                        "proto.native.underdocks.doors_of_light_and_dark" =>
+                            "DOORS_OF_LIGHT_AND_DARK",
+                        _ => null
+                    }),
                 NativeEventGold:
                     selected.Id switch
                     {

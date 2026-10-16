@@ -9,6 +9,7 @@ namespace Sts2Emulator.Core;
 public static class PrototypeNativeTabletOfTruth
 {
     public const string EventId = "proto.native.event.tablet_of_truth";
+    public const string NativeRngEventId = "TABLET_OF_TRUTH";
 }
 
 public sealed partial class PrototypeGameEngine
@@ -132,13 +133,19 @@ public sealed partial class PrototypeGameEngine
 
         if (eligible.Length > 0)
         {
-            var id = eligible[LegacyRandomChoiceV111.ChooseIndexRange(
-                state.Rng,
+            var draw = NativeEventContextRngV111.ResolveIndex(
+                state,
+                current,
+                PrototypeNativeTabletOfTruth.NativeRngEventId,
                 "event.tablet_of_truth.card.index_draw",
-                "event",
                 "event:tablet_of_truth:eligible_cards:"
                     + CanonicalJson.Sha256(eligible),
-                eligible.Length).SelectedIndex];
+                eligible.Length,
+                ordinal: page);
+            state = draw.State;
+            world = RequireWorld(state);
+            current = world.Event!;
+            var id = eligible[draw.SelectedIndex];
             playerAfterCost = playerAfterCost with
             {
                 Deck = playerAfterCost.Deck.Select(card =>
