@@ -854,6 +854,8 @@ public sealed partial class PrototypeGameEngine
                         PrototypeNativeGloryEvents.TrialId =>
                             PrototypeNativeGloryEvents
                                 .TrialNativeRngEventId,
+                        PrototypeNativeFutureOfPotions.EventId =>
+                            PrototypeNativeFutureOfPotions.NativeRngEventId,
                         _ => null
                     }),
                 NativeEventGold:
@@ -965,11 +967,9 @@ public sealed partial class PrototypeGameEngine
 
         if (selected.Id == PrototypeNativeFutureOfPotions.EventId)
         {
-            world = world with
-            {
-                Event = PrototypeNativeFutureOfPotions.RollOffers(
-                    world.Event!, state.Player, state.Rng)
-            };
+            state = state with { World = world };
+            state = PrototypeNativeFutureOfPotions.RollOffers(state);
+            world = state.World!;
         }
 
         return state with

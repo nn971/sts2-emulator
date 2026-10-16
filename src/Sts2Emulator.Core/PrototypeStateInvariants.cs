@@ -47,6 +47,10 @@ public static class PrototypeStateInvariants
             state,
             PrototypeNativeGloryEvents.TrialId,
             PrototypeNativeGloryEvents.TrialNativeRngEventId);
+        NativeEventContextRngV111.Validate(
+            state,
+            PrototypeNativeFutureOfPotions.EventId,
+            PrototypeNativeFutureOfPotions.NativeRngEventId);
         if (state.Ascension < 0)
         {
             throw new InvalidOperationException(

@@ -7,6 +7,7 @@ namespace Sts2Emulator.Core;
 public static class PrototypeNativeFutureOfPotions
 {
     public const string EventId = "proto.native.shared.the_future_of_potions";
+    public const string NativeRngEventId = "THE_FUTURE_OF_POTIONS";
     public const string TradeChoiceId = "trade_potion";
     public const string TradeAction = "trade_event_potion";
 
@@ -38,11 +39,16 @@ public static class PrototypeNativeFutureOfPotions
             && owned.All(potionId => TryGetCardRarity(potionId, out _));
     }
 
-    public static EventState RollOffers(
-        EventState eventState, PlayerState player, RngBundle rng)
+    public static RunState RollOffers(RunState state)
     {
+        var world = state.World
+            ?? throw new InvalidOperationException(
+                "The Future of Potions requires an active run world.");
+        var eventState = world.Event
+            ?? throw new InvalidOperationException(
+                "The Future of Potions has no active event.");
         var offers = new List<PrototypeFuturePotionOffer>(3);
-        foreach (var (potion, slot) in player.PotionSlots
+        foreach (var (potion, slot) in state.Player.PotionSlots
                      .Select((potion, slot) => (Potion: potion, Slot: slot))
                      .Where(item => item.Potion is not null))
         {
@@ -61,13 +67,18 @@ public static class PrototypeNativeFutureOfPotions
                     PrototypeCardType.Skill,
                     PrototypeCardType.Power
                 };
-            var cardType = cardTypes[LegacyRandomChoiceV111.ChooseIndexRange(
-                rng,
+            var draw = NativeEventContextRngV111.ResolveIndex(
+                state,
+                eventState,
+                NativeRngEventId,
                 "event.future_of_potions.card_type.index_draw",
-                "event",
                 $"potion_slot:{slot}:potion:{potionId}:pool:"
                     + CanonicalJson.Sha256(cardTypes),
-                cardTypes.Length).SelectedIndex];
+                cardTypes.Length);
+            state = draw.State;
+            world = state.World!;
+            eventState = world.Event!;
+            var cardType = cardTypes[draw.SelectedIndex];
             if (offers.Count < 3)
             {
                 offers.Add(new PrototypeFuturePotionOffer(
@@ -75,10 +86,14 @@ public static class PrototypeNativeFutureOfPotions
             }
         }
 
-        return eventState with
+        world = world with
         {
-            NativeFuturePotionOffers = offers.ToArray()
+            Event = eventState with
+            {
+                NativeFuturePotionOffers = offers.ToArray()
+            }
         };
+        return state with { World = world };
     }
 
     public static bool TryGetCardRarity(
