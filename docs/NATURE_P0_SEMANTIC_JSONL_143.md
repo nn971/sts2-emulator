@@ -34,7 +34,8 @@ non-Nature RNG parity remain **UNVERIFIED**.
 - `semanticDrawInsertionChoiceSchemaId =
   sts2-v111-semantic-draw-insertion-v1`.
 - `semanticExtendedControlledSites = [random_enemy_target, generated_card_pool,
-  drawn_card_cost, generated_card_pool_shuffle, generated_draw_pile_insertion]`;
+  drawn_card_cost, generated_card_pool_shuffle, generated_draw_pile_insertion,
+  random_draw_attack_card_model]`;
   fixture-specific sites require their corresponding seeded-entry options.
 - `semanticExtendedPlayerChoices = [select_cards]`.
 - `semanticPlayable = true`, scope
@@ -329,16 +330,16 @@ effect and exposes the source `select_cards` action as an ordinary
 swap and the subsequent player choice. This fixture does not claim native
 potion-acquisition provenance or source-law calibration.
 
-The fixed-card draw-pile insertion fixture uses
+The draw-pile insertion fixture can use
 `fixture_generated_draw_insertion_card_id="proto.silent.strike"` (or another
-source-valid card model). It exposes each position from zero through the
-current draw-pile count as a `generated_draw_pile_insertion` event. Resolving
-the event resumes the source insertion, preserves the unresolved hidden deck
+source-valid card model) for a bounded `generated_draw_pile_insertion` event,
+or `fixture_random_free_attack_draw_insertion=true` to expose the source
+card-model event followed by the bounded position event. Resolving the
+position resumes the source insertion, preserves the unresolved hidden deck
 pool and adds the generated card as a private known position. Python clients
-use `SemanticCombat.resolve_draw_insertion(position)`. This fixture covers
-the fixed-model path only; random-model selection remains outside this
-semantic bridge. Its probability law and fixture acquisition provenance are
-`UNVERIFIED`.
+use `SemanticCombat.resolve_draw_insertion(position)` after
+`resolve_generated_card(card_model_id)` for the random-Attack path. Probability
+laws and fixture acquisition provenance are `UNVERIFIED`.
 
 **Probability status:** these are raw weights produced by the emulator's
 source-shaped selector, **not** independently audited original-game

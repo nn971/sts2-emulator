@@ -13,15 +13,17 @@ The private pending choice records the exact eligible draw-pile instance IDs, so
 
 The semantic P0 session can opt into the fixed-card position stage with
 `fixture_generated_draw_insertion_card_id="proto.silent.strike"` (or another
-source-valid card model). It starts at the existing guarded insertion
-continuation and exposes positions from zero through the current draw-pile
-count. Resolving a position resumes the source operation and inserts the
-known card identity into the semantic deck as a private known anchor, leaving
-all unresolved positions in their existing shared pool. Python clients use
-`SemanticCombat.resolve_draw_insertion(position)`. This fixture exposes only
-the fixed-card path; the random-Attack model-selection path remains available
-in the older controlled fixture but is not bridged here. Native law and
-fixture acquisition provenance remain `UNVERIFIED`.
+source-valid card model), or into random Attack generation with
+`fixture_random_free_attack_draw_insertion=true`. Both start at the existing
+guarded insertion continuation. The fixed-card path exposes positions from
+zero through the current draw-pile count. The random-Attack path first exposes
+the source-ordered card-model event, then the bounded position event.
+Resolving a position resumes the source operation and inserts the known card
+identity into the semantic deck as a private known anchor, leaving all
+unresolved positions in their existing shared pool. Python clients use
+`SemanticCombat.resolve_draw_insertion(position)` after resolving the model
+with `resolve_generated_card(card_model_id)`. Native law and fixture
+acquisition provenance remain `UNVERIFIED`.
 
 ## Validation scope
 

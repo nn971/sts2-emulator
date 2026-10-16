@@ -288,6 +288,11 @@ internal static class PrototypeAiJsonlServer
                 sites.Add("generated_card_pool_shuffle");
             if (state.SeededEntry?.FixtureGeneratedDrawInsertionCardId is not null)
                 sites.Add("generated_draw_pile_insertion");
+            if (state.SeededEntry?.FixtureRandomFreeAttackDrawInsertion == true)
+            {
+                sites.Add("random_draw_attack_card_model");
+                sites.Add("generated_draw_pile_insertion");
+            }
             return sites.ToArray();
         }
 
@@ -299,7 +304,8 @@ internal static class PrototypeAiJsonlServer
                   state.SeededEntry?.FixtureSelectionCardId is not null ||
                   state.SeededEntry?.FixtureNatureDrawCosts == true ||
                   state.SeededEntry?.FixturePoolGenerationPotionId is not null ||
-                  state.SeededEntry?.FixtureGeneratedDrawInsertionCardId is not null
+                  state.SeededEntry?.FixtureGeneratedDrawInsertionCardId is not null ||
+                  state.SeededEntry?.FixtureRandomFreeAttackDrawInsertion == true
                     ? "nature-extended-fixture"
                     : "nature-two-site";
 
@@ -513,7 +519,8 @@ internal static class PrototypeAiJsonlServer
                             {
                                 "random_enemy_target", "generated_card_pool",
                                 "drawn_card_cost", "generated_card_pool_shuffle",
-                                "generated_draw_pile_insertion"
+                                "generated_draw_pile_insertion",
+                                "random_draw_attack_card_model"
                             },
                             semanticExtendedPlayerChoices = new[]
                             {
@@ -854,7 +861,9 @@ internal static class PrototypeAiJsonlServer
                             OptionalString(request,
                                 "fixture_pool_generation_potion_id"),
                             OptionalString(request,
-                                "fixture_generated_draw_insertion_card_id"));
+                                "fixture_generated_draw_insertion_card_id"),
+                            OptionalBool(request,
+                                "fixture_random_free_attack_draw_insertion"));
                         var next = SemanticPilotCombatEngineV111.BeginSeeded(entry);
                         var handle = StoreSemantic(next);
                         Write(new { requestId, ok = true,

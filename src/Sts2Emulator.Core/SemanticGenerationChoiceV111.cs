@@ -12,7 +12,8 @@ public sealed record SemanticGeneratedCardEventV111(
     {
         if (SchemaId != SemanticGenerationChoiceV111.SchemaId ||
             string.IsNullOrWhiteSpace(EventId) ||
-            SiteId != "combat.generated_card.select" ||
+            SiteId is not ("combat.generated_card.select" or
+                "combat.random_draw_attack.card_model") ||
             StreamId != "prototype.combat" ||
             string.IsNullOrWhiteSpace(OwnerId) || Ordinal < 0 ||
             OperationKind != "choose_card_model" ||

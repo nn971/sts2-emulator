@@ -492,6 +492,7 @@ class Session:
             fixture_nature_draw_costs: bool = False,
             fixture_pool_generation_potion_id: str | None = None,
             fixture_generated_draw_insertion_card_id: str | None = None,
+            fixture_random_free_attack_draw_insertion: bool = False,
             replay_opening_draw_hooks: bool = False,
             native_policy_baseline: bool = False,
             source_route_entry: bool = False,
@@ -510,6 +511,8 @@ class Session:
         full-pool shuffle choices followed by an ordinary card selection.
         The draw-insertion fixture begins at a source-authentic generated
         card insertion boundary for the requested card model.
+        The random-Attack insertion fixture exposes both source model choice
+        and insertion position stages.
         """
         if self.capabilities.get("semanticSeededOpeningProvider") != (
                 "engine-owned-seeded-source-shaped-unverified-v1"):
@@ -542,6 +545,8 @@ class Session:
                 fixture_pool_generation_potion_id,
             fixture_generated_draw_insertion_card_id=
                 fixture_generated_draw_insertion_card_id,
+            fixture_random_free_attack_draw_insertion=
+                fixture_random_free_attack_draw_insertion,
             replay_opening_draw_hooks=replay_opening_draw_hooks,
             native_policy_baseline=native_policy_baseline,
             source_route_entry=source_route_entry,

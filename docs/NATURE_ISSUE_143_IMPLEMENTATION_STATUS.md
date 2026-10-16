@@ -348,14 +348,15 @@ Survivor acquisition or generic nested-choice coverage. Scry/random-position
 selection, other insertion effects and card-effect draws remain separate
 integration milestones.
 
-The semantic JSONL/Python bridge also exposes the fixed-model random
-draw-pile insertion continuation through an explicit seeded card fixture.
-Each position resolves at the real `ResolveOperations` continuation, then
-adds the generated instance to the provider deck as a private known anchor
-without revealing the surrounding unresolved order. The bounded event and
-player-external setup replay from the seeded entry. Random model selection
-for draw-pile Attack insertion and native fixture acquisition remain
-uncovered; source laws are `UNVERIFIED`. See
+The semantic JSONL/Python bridge also exposes fixed-model random draw-pile
+insertion and the two-stage random-Attack insertion continuation through
+explicit seeded fixtures. The latter publishes its source-ordered card-model
+event followed by a bounded position event. Each position resolves at the
+real `ResolveOperations` continuation, then adds the generated instance to
+the provider deck as a private known anchor without revealing the surrounding
+unresolved order. The events and fixture setup replay from the seeded entry;
+native fixture acquisition remains uncovered and source laws are
+`UNVERIFIED`. See
 [the insertion contract](NATURE_DRAW_INSERTION_143.md).
 
 

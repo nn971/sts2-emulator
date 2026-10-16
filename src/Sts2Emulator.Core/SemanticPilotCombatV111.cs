@@ -72,7 +72,8 @@ public sealed record SemanticSeededEntryV111(
     string? FixtureSelectionCardId = null,
     bool FixtureNatureDrawCosts = false,
     string? FixturePoolGenerationPotionId = null,
-    string? FixtureGeneratedDrawInsertionCardId = null);
+    string? FixtureGeneratedDrawInsertionCardId = null,
+    bool FixtureRandomFreeAttackDrawInsertion = false);
 
 /// <summary>
 /// First external playable semantic boundary. Initial opening order is
@@ -291,6 +292,11 @@ public static class SemanticPilotCombatEngineV111
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_COST site=combat.seeded_entry " +
                 "operation=fixture_draw_cost_choices_require_only_snecko_fixture");
+        if (entry.FixtureGeneratedDrawInsertionCardId is not null &&
+            entry.FixtureRandomFreeAttackDrawInsertion)
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_INSERTION site=combat.seeded_entry " +
+                "operation=choose_one_draw_insertion_fixture");
         if (entry.NativePolicyBaseline &&
             (entry.OtherChanceProviderId is not null ||
              entry.FixtureDrawCostRelicId is not null ||
@@ -299,7 +305,8 @@ public static class SemanticPilotCombatEngineV111
              entry.FixtureSelectionCardId is not null ||
              entry.FixtureNatureDrawCosts ||
              entry.FixturePoolGenerationPotionId is not null ||
-             entry.FixtureGeneratedDrawInsertionCardId is not null))
+             entry.FixtureGeneratedDrawInsertionCardId is not null ||
+             entry.FixtureRandomFreeAttackDrawInsertion))
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_NATIVE site=combat.seeded_entry " +
                 "operation=native_baseline_fixture_loadout_conflict");
@@ -418,6 +425,8 @@ public static class SemanticPilotCombatEngineV111
             state = ApplyFixturePoolGenerationPotion(state, poolPotionId);
         if (entry.FixtureGeneratedDrawInsertionCardId is { } insertionCardId)
             state = ApplyFixtureGeneratedDrawInsertion(state, insertionCardId);
+        if (entry.FixtureRandomFreeAttackDrawInsertion)
+            state = ApplyFixtureRandomAttackDrawInsertion(state);
         Validate(state);
         return state;
     }
@@ -428,6 +437,20 @@ public static class SemanticPilotCombatEngineV111
         var operation = new PrototypeQueuedOperation(
             PrototypeCombatEffectKind.CreateGeneratedCardsAtRandomDrawPositions,
             Amount: 1, CardId: cardId);
+        RunState result;
+        using (ControlledChanceGuardV111.Enter())
+            result = PrototypeGameEngine.BeginControlledDrawInsertionFixture(
+                state.Run.Fork(), operation);
+        ValidateDrawInsertionBoundary(result);
+        return state with { Run = result };
+    }
+
+    private static SemanticPilotCombatV111 ApplyFixtureRandomAttackDrawInsertion(
+        SemanticPilotCombatV111 state)
+    {
+        var operation = new PrototypeQueuedOperation(
+            PrototypeCombatEffectKind.CreateRandomFreeAttacksInDrawPile,
+            Amount: 1);
         RunState result;
         using (ControlledChanceGuardV111.Enter())
             result = PrototypeGameEngine.BeginControlledDrawInsertionFixture(
@@ -595,6 +618,7 @@ public static class SemanticPilotCombatEngineV111
             entry.FixtureSelectionCardId is not null ||
             entry.FixturePoolGenerationPotionId is not null ||
             entry.FixtureGeneratedDrawInsertionCardId is not null ||
+            entry.FixtureRandomFreeAttackDrawInsertion ||
             entry.ReplayOpeningDrawHooks)
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_ROUTE site=act1.entry " +
@@ -1271,11 +1295,16 @@ public static class SemanticPilotCombatEngineV111
             pending, index, cardId);
         expected.Validate();
 
+        var drawInsertionPending = current.Run.World?.Combat?.PendingChoice?
+            .ControlledDrawInsertion is { Stage: "card_model" };
         RunState result;
         using (ControlledChanceGuardV111.Enter())
         using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
-            result = PrototypeGameEngine.ResumeControlledGeneratedCard(
-                current.Run.Fork(), index);
+            result = drawInsertionPending
+                ? PrototypeGameEngine.ResumeControlledDrawInsertion(
+                    current.Run.Fork(), index)
+                : PrototypeGameEngine.ResumeControlledGeneratedCard(
+                    current.Run.Fork(), index);
         if (result.Phase == RunPhase.Combat)
         {
             ValidateSemanticCombatBoundary(result);
@@ -1803,12 +1832,29 @@ public static class SemanticPilotCombatEngineV111
         var combat = current.Run.World?.Combat;
         var choice = combat?.PendingChoice;
         var generation = choice?.ControlledGeneration;
-        if (generation is null) return null;
-        ValidateGeneratedCardBoundary(current.Run);
-        var candidates = (string[])generation.CandidateCardIds.Clone();
+        var drawInsertion = choice?.ControlledDrawInsertion;
+        var isDrawInsertionModelChoice = generation is null &&
+            drawInsertion is { Stage: "card_model" };
+        if (generation is null && !isDrawInsertionModelChoice) return null;
+        if (isDrawInsertionModelChoice)
+        {
+            if (current.SeededEntry?.FixtureRandomFreeAttackDrawInsertion != true)
+                throw new InvalidDataException(
+                    "Random draw-Attack model choice lacks fixture provenance.");
+            ValidateDrawInsertionBoundary(current.Run);
+        }
+        else
+            ValidateGeneratedCardBoundary(current.Run);
+        var candidates = (string[])(generation?.CandidateCardIds ??
+            drawInsertion!.CandidateCardIds).Clone();
+        var siteId = isDrawInsertionModelChoice
+            ? "combat.random_draw_attack.card_model"
+            : "combat.generated_card.select";
+        var operation = generation?.Operation.Kind ??
+            drawInsertion!.Operation.Kind;
         var ownerId = choice!.SourceCardInstanceId is { } sourceCardId
             ? "card_instance:" + sourceCardId
-            : "effect:" + generation.Operation.Kind;
+            : "effect:" + operation;
         var ordinal = current.History.Count(transition =>
             transition.Kind == "semantic_generated_card");
         var supportFingerprint = CanonicalJson.Sha256(candidates);
@@ -1816,14 +1862,14 @@ public static class SemanticPilotCombatEngineV111
         {
             SchemaId = SemanticGenerationChoiceV111.SchemaId,
             BoundaryFingerprint = current.Fingerprint,
-            SiteId = "combat.generated_card.select",
+            SiteId = siteId,
             OwnerId = ownerId,
             Ordinal = ordinal,
             SupportFingerprint = supportFingerprint
         });
         var semanticEvent = new SemanticGeneratedCardEventV111(
             SemanticGenerationChoiceV111.SchemaId, eventId,
-            "combat.generated_card.select", "prototype.combat", ownerId,
+            siteId, "prototype.combat", ownerId,
             ordinal, "choose_card_model", candidates, supportFingerprint);
         semanticEvent.Validate();
         return semanticEvent;
@@ -1966,8 +2012,19 @@ public static class SemanticPilotCombatEngineV111
         var choice = combat?.PendingChoice;
         var insertion = choice?.ControlledDrawInsertion;
         if (insertion is null) return null;
-        if (current.SeededEntry?.FixtureGeneratedDrawInsertionCardId !=
-                insertion.Operation.CardId ||
+        if (insertion.Stage != "position") return null;
+        var fixedFixtureMatches =
+            insertion.Operation.Kind == PrototypeCombatEffectKind
+                .CreateGeneratedCardsAtRandomDrawPositions &&
+            current.SeededEntry?.FixtureGeneratedDrawInsertionCardId ==
+                insertion.Operation.CardId &&
+            current.SeededEntry?.FixtureRandomFreeAttackDrawInsertion != true;
+        var randomFixtureMatches =
+            insertion.Operation.Kind == PrototypeCombatEffectKind
+                .CreateRandomFreeAttacksInDrawPile &&
+            current.SeededEntry?.FixtureGeneratedDrawInsertionCardId is null &&
+            current.SeededEntry?.FixtureRandomFreeAttackDrawInsertion == true;
+        if ((!fixedFixtureMatches && !randomFixtureMatches) ||
             current.PendingEndTurn is not null ||
             current.PendingInitialIntents is not null ||
             current.TargetPending is not null ||
@@ -2014,18 +2071,31 @@ public static class SemanticPilotCombatEngineV111
         var combat = run.World?.Combat;
         var choice = combat?.PendingChoice;
         var insertion = choice?.ControlledDrawInsertion;
-        if (run.Phase != RunPhase.Combat ||
-            combat is not { IsPlayerTurn: true,
-                AutomaticPipelineContinuation: null } ||
-            choice is not { ChoiceId: "controlled_draw_insertion",
-                OuterChoiceContinuation: not null } ||
-            insertion is not
+        var supportedStage = insertion is
             {
                 Stage: "position",
                 Operation.Kind:
                     PrototypeCombatEffectKind.CreateGeneratedCardsAtRandomDrawPositions,
                 SelectedCardId: not null
-            } ||
+            } or
+            {
+                Stage: "card_model",
+                Operation.Kind:
+                    PrototypeCombatEffectKind.CreateRandomFreeAttacksInDrawPile,
+                SelectedCardId: null
+            } or
+            {
+                Stage: "position",
+                Operation.Kind:
+                    PrototypeCombatEffectKind.CreateRandomFreeAttacksInDrawPile,
+                SelectedCardId: not null
+            };
+        if (run.Phase != RunPhase.Combat ||
+            combat is not { IsPlayerTurn: true,
+                AutomaticPipelineContinuation: null } ||
+            choice is not { ChoiceId: "controlled_draw_insertion",
+                OuterChoiceContinuation: not null } ||
+            insertion is null || !supportedStage ||
             !PrototypeGameEngine.ValidateControlledDrawInsertion(
                 combat, insertion))
             throw new InvalidDataException(
@@ -2064,6 +2134,11 @@ public static class SemanticPilotCombatEngineV111
         if (choice?.ControlledGeneration is not null)
         {
             ValidateGeneratedCardBoundary(run);
+            return;
+        }
+        if (choice?.ControlledDrawInsertion is not null)
+        {
+            ValidateDrawInsertionBoundary(run);
             return;
         }
         SemanticPlayerActionEngineV111.ValidateBoundary(run);
