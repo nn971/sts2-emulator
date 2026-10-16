@@ -36,6 +36,9 @@ public sealed record SemanticEndTurnV111(
     [JsonIgnore] public SemanticCardSelectionEventV111?
         StratagemSelectionPending =>
             Complete ? null : HandDraw?.StratagemSelectionPending;
+    [JsonIgnore] public SemanticDrawHookChoiceEventV111?
+        DrawHookChoicePending =>
+            Complete ? null : HandDraw?.DrawHookChoicePending;
     [JsonIgnore] public RandomIndexRequestV111? CostPending =>
         Complete ? null : HandDraw?.CostPending;
     [JsonIgnore] public bool AtPlayerBoundary =>
@@ -170,6 +173,9 @@ public static class SemanticEndTurnEngineV111
         }
         else if (state.HandDraw is { AtBoundary: false } hand)
         {
+            if (hand.DrawHookChoicePending is not null)
+                throw new InvalidOperationException(
+                    "Resolve the pending CardDrawn hook action by action ID.");
             if (hand.StratagemSelectionPending is not null)
                 throw new InvalidOperationException(
                     "Resolve the pending source Stratagem selection by action ID.");
@@ -181,6 +187,25 @@ public static class SemanticEndTurnEngineV111
         }
         else
             throw new InvalidOperationException("No pending semantic end-turn choice.");
+        Validate(state);
+        return state;
+    }
+
+    public static SemanticEndTurnV111 ResolveDrawHookChoice(
+        SemanticEndTurnV111 source, string fingerprint, string actionId)
+    {
+        Validate(source);
+        if (!StringComparer.Ordinal.Equals(source.Fingerprint, fingerprint))
+            throw new InvalidOperationException("Stale semantic end-turn fingerprint.");
+        if (source.Complete || source.HandDraw is not { } hand ||
+            hand.DrawHookChoicePending is null)
+            throw new InvalidOperationException(
+                "No automatic CardDrawn hook action is pending.");
+        var nextHand = SemanticCombatDrawEngineV111.ResolveDrawHookChoice(
+            hand, hand.Fingerprint, actionId);
+        var state = source with { HandDraw = nextHand, Run = nextHand.Run };
+        if (nextHand.AtBoundary)
+            state = CompleteHandDraw(state);
         Validate(state);
         return state;
     }
@@ -297,15 +322,34 @@ public static class SemanticEndTurnEngineV111
         if (saved.HandDraw is { } savedHand)
         {
             int card = 0, cost = 0, pileCard = 0, insertion = 0,
-                stratagem = 0;
+                stratagem = 0, hookChoice = 0;
             while (card < savedHand.Transcript.Length ||
                    cost < savedHand.CostTranscript.Length ||
                    pileCard < savedHand.RandomPileCardTranscript.Length ||
                    insertion < savedHand.DrawInsertionTranscript.Length ||
                    stratagem <
-                       savedHand.StratagemSelectionTranscript.Length)
+                       savedHand.StratagemSelectionTranscript.Length ||
+                   hookChoice <
+                       savedHand.DrawHookChoiceTranscript.Length)
             {
-                if (reproduced.RandomPileCardPending is { } pileCardEvent)
+                if (reproduced.DrawHookChoicePending is { } hookEvent)
+                {
+                    if (hookChoice >=
+                        savedHand.DrawHookChoiceTranscript.Length)
+                        throw new InvalidDataException(
+                            "Missing semantic end-turn CardDrawn hook action.");
+                    var decision =
+                        savedHand.DrawHookChoiceTranscript[hookChoice++];
+                    decision.Validate();
+                    if (CanonicalJson.Sha256(decision.Event) !=
+                        CanonicalJson.Sha256(hookEvent))
+                        throw new InvalidDataException(
+                            "Semantic end-turn CardDrawn hook support changed.");
+                    reproduced = ResolveDrawHookChoice(
+                        reproduced, reproduced.Fingerprint,
+                        decision.ActionId);
+                }
+                else if (reproduced.RandomPileCardPending is { } pileCardEvent)
                 {
                     if (pileCard >=
                         savedHand.RandomPileCardTranscript.Length)

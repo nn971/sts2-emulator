@@ -27,6 +27,8 @@ non-Nature RNG parity remain **UNVERIFIED**.
 
 - `semanticChanceSchemaId = sts2-v111-semantic-playable-p0-v1`.
 - `semanticDrawChoiceSchemaId = sts2-v111-semantic-deck-v1`.
+- `semanticDrawHookChoiceSchemaId =
+  sts2-v111-semantic-draw-hook-choice-v1`.
 - `semanticRandomPileCardChoiceSchemaId =
   sts2-v111-semantic-random-pile-card-v1`.
 - `semanticTargetChoiceSchemaId = sts2-v111-semantic-target-choice-v1`.
@@ -48,7 +50,8 @@ non-Nature RNG parity remain **UNVERIFIED**.
   random_draw_attack_card_model, random_hand_card_energy_cost,
   random_hand_card_select, random_pile_selection_shortlist, random_pile_card]`;
   fixture-specific sites require their corresponding seeded-entry options.
-- `semanticExtendedPlayerChoices = [select_cards]`.
+- `semanticExtendedPlayerChoices = [select_cards,
+  card_drawn_hook_action]`.
 - `semanticPlayable = true`, scope
   `seeded-source-route-or-post-committed-opening-fixture-restricted-Silent-combat`.
 - `semanticControlledSites = [enemy_intent, draw_card]`.
@@ -86,6 +89,7 @@ paths avoid that external setup chain:
 | `semantic_resolve_draw_insertion` | handle, fingerprint, pending `event_id`, bounded `position` | Child Nature / player / terminal |
 | `semantic_enumerate` | handle, fingerprint, optional `maximum_outcomes` (default 32) | One child session per legal outcome of the pending chance event |
 | `semantic_step` at `player_choice` | handle, fingerprint, listed legal `select_cards` action ID | Child player / Nature / terminal |
+| `semantic_step` at `draw_hook_action_choice` | handle, fingerprint, listed legal source action ID | Child player choice / Nature / terminal |
 | `semantic_fork` | handle | Independent child handle |
 | `semantic_save` | handle | Privileged snapshot string |
 | `semantic_load` | snapshot | New replay-validated handle |

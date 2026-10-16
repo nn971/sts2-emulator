@@ -559,9 +559,9 @@ physical position, and resumes the same draw. Save/restore replays insertion
 events interleaved with card identity and cost decisions. The insertion event
 request retains the `prototype.combat` stream and relic application owner.
 The Release solution build passes with zero warnings or errors; tests were not
-run for this checkpoint. Stratagem selection during the standalone recycle,
-automatic draw-pipeline insertions and nested standalone `CardDrawn` choices
-remain unsupported. Conditional probabilities remain `UNVERIFIED`; see
+run for this checkpoint. Stratagem selection during the standalone recycle
+and automatic draw-pipeline insertions remain unsupported. Conditional
+probabilities remain `UNVERIFIED`; see
 [`NATURE_SEMANTIC_COMBAT_DRAW_143.md`](NATURE_SEMANTIC_COMBAT_DRAW_143.md).
 
 ## 2026-10-17: automatic CardDrawn hook choices
@@ -584,8 +584,8 @@ each chosen insertion position updates the semantic deck and resumes the same
 `DrawCards` call. Draw-cost continuations use the same cursor, and the existing
 post-hand-draw cleanup runs once after the draw finishes. The Release solution
 build passes with zero warnings or errors; tests were not run for this
-checkpoint. Stratagem combined with an insertion and nested `CardDrawn`
-choices remain unsupported. Conditional probabilities remain `UNVERIFIED`; see
+checkpoint. Stratagem combined with an insertion remains unsupported.
+Conditional probabilities remain `UNVERIFIED`; see
 [`NATURE_SEMANTIC_AUTOMATIC_HAND_DRAW_143.md`](NATURE_SEMANTIC_AUTOMATIC_HAND_DRAW_143.md).
 
 ## 2026-10-17: standalone Stratagem draw selection
@@ -595,8 +595,8 @@ choice after a Nature recycle, then resumes the same remaining draw. The
 selection is identified by a serialized marker on its queued draw continuation
 and recorded as a semantic card-selection decision for replay. This also
 composes with standalone after-shuffle insertion and draw-cost stages.
-Automatic-pipeline Stratagem selection and nested `CardDrawn` choices remain
-unsupported. The Release solution build passes with zero warnings or errors;
+Automatic-pipeline Stratagem selection and nested `CardDrawn` choices were
+unsupported at this checkpoint. The Release solution build passes with zero warnings or errors;
 tests were not run for this checkpoint. Conditional probabilities remain
 `UNVERIFIED`; see
 [`NATURE_SEMANTIC_COMBAT_DRAW_143.md`](NATURE_SEMANTIC_COMBAT_DRAW_143.md).
@@ -608,7 +608,7 @@ source `select_cards` event after recycle, then resumes the saved remaining
 draw. The selection composes with after-shuffle insertions and draw-cost
 stages, and the existing hand-draw cleanup still runs once at completion. The
 shared source selection path synchronizes the semantic deck before queued
-draw operations resume. Nested `CardDrawn` choices remain unsupported.
+draw operations resume.
 The Release solution build passes with zero warnings or errors; tests were not
 run for this checkpoint.
 Conditional probabilities remain `UNVERIFIED`; see
@@ -630,7 +630,17 @@ The standalone semantic draw now persists the remaining `DrawCards` operation
 when a `CardDrawn` hook opens an ordinary source action choice. A typed hook
 choice event records legal action support and replays the selected action;
 the same draw resumes once the choice resolves. Controlled nested chance
-boundaries and automatic hand-draw hook choices remain separate work. The
+boundaries remain unsupported. The
 Release solution build passes with zero warnings or errors; tests were not run
 for this checkpoint. Conditional probabilities remain `UNVERIFIED`; see
 [`NATURE_SEMANTIC_COMBAT_DRAW_143.md`](NATURE_SEMANTIC_COMBAT_DRAW_143.md).
+
+## 2026-10-17: semantic end-turn CardDrawn hook relay
+
+`SemanticEndTurnV111` and the playable semantic JSONL session now relay typed
+ordinary action choices from automatic `CardDrawn` hooks as player-choice
+boundaries. `semantic_step` resolves the listed action ID; save/load replays
+the hook decision with the source draw and end-turn transcript. The Release
+solution build passes with zero warnings or errors; tests were not run for this
+checkpoint. Conditional probabilities remain `UNVERIFIED`; see
+[`NATURE_SEMANTIC_END_TURN_143.md`](NATURE_SEMANTIC_END_TURN_143.md).

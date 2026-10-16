@@ -18,7 +18,8 @@ public sealed record SemanticPilotTransitionV111(
     SemanticDrawInsertionDecisionV111? DrawInsertionDecision = null,
     SemanticHandCostSelectionDecisionV111? HandCostSelectionDecision = null,
     SemanticCardShortlistDecisionV111? CardShortlistDecision = null,
-    SemanticRandomPileCardDecisionV111? RandomPileCardDecision = null);
+    SemanticRandomPileCardDecisionV111? RandomPileCardDecision = null,
+    SemanticDrawHookChoiceDecisionV111? DrawHookChoiceDecision = null);
 
 /// <summary>
 /// Independently replayable setup provenance. The default entry is a
@@ -127,6 +128,8 @@ public sealed record SemanticPilotCombatV111(
         SemanticPilotCombatEngineV111.DescribePendingPoolShuffleEvent(this);
     [JsonIgnore] public SemanticDrawInsertionEventV111? DrawInsertionPending =>
         SemanticPilotCombatEngineV111.DescribePendingDrawInsertionEvent(this);
+    [JsonIgnore] public SemanticDrawHookChoiceEventV111?
+        DrawHookChoicePending => PendingEndTurn?.DrawHookChoicePending;
     [JsonIgnore] public string Fingerprint => CanonicalJson.Sha256(this);
     [JsonIgnore] public bool AtPlayerBoundary =>
         PendingInitialIntents is null &&
@@ -137,8 +140,11 @@ public sealed record SemanticPilotCombatV111(
     [JsonIgnore] public bool CombatTerminal =>
         Run.Phase is RunPhase.Reward or RunPhase.Terminal;
     [JsonIgnore] public bool AtPlayerChoiceBoundary =>
-        PendingEndTurn is null && PendingInitialIntents is null &&
-        !CombatTerminal && CardSelectionPending is not null;
+        !CombatTerminal &&
+        ((PendingEndTurn is null && PendingInitialIntents is null &&
+          CardSelectionPending is not null) ||
+         (PendingEndTurn is not null && PendingInitialIntents is null &&
+          DrawHookChoicePending is not null));
     [JsonIgnore] public bool UsesNativePolicyBaseline =>
         SeededEntry?.NativePolicyBaseline ?? false;
     [JsonIgnore] public string? SourceOpeningFingerprint =>
@@ -205,6 +211,10 @@ public sealed record SemanticPilotCombatV111(
             { RandomPileCardDecision: { } decision } => transition with
             {
                 RandomPileCardDecision = decision.Fork()
+            },
+            { DrawHookChoiceDecision: { } decision } => transition with
+            {
+                DrawHookChoiceDecision = decision.Fork()
             },
             { TargetDecision: { } decision } => transition with
             {
@@ -1202,7 +1212,9 @@ public static class SemanticPilotCombatEngineV111
         if (current.Fingerprint != fingerprint)
             throw new InvalidOperationException("Stale semantic player-action fingerprint.");
         if (current.AtPlayerChoiceBoundary)
-            return StepCardSelection(current, actionId);
+            return current.DrawHookChoicePending is not null
+                ? StepDrawHookChoice(current, actionId)
+                : StepCardSelection(current, actionId);
         if (!current.AtPlayerBoundary)
             throw new InvalidOperationException("Nature decision or combat terminal is pending.");
         if (current.UsesNativePolicyBaseline)
@@ -1388,6 +1400,37 @@ public static class SemanticPilotCombatEngineV111
         };
         Validate(next);
         return next;
+    }
+
+    private static SemanticPilotCombatV111 StepDrawHookChoice(
+        SemanticPilotCombatV111 current, string actionId)
+    {
+        var pending = current.DrawHookChoicePending ??
+            throw new InvalidOperationException(
+                "No CardDrawn hook action is pending.");
+        var endTurn = current.PendingEndTurn ??
+            throw new InvalidDataException(
+                "Draw-hook action lost its end-turn continuation.");
+        var nextEndTurn = SemanticEndTurnEngineV111.ResolveDrawHookChoice(
+            endTurn, endTurn.Fingerprint, actionId);
+        var decision = nextEndTurn.HandDraw?.DrawHookChoiceTranscript
+            .LastOrDefault() ?? throw new InvalidDataException(
+                "Draw-hook action omitted its replay decision.");
+        if (CanonicalJson.Sha256(decision.Event) !=
+                CanonicalJson.Sha256(pending) ||
+            decision.ActionId != actionId)
+            throw new InvalidDataException(
+                "Draw-hook action transcript diverged from its event.");
+        var next = current with
+        {
+            Run = nextEndTurn.Run,
+            PendingEndTurn = nextEndTurn.Complete ? null : nextEndTurn,
+            History = current.History.Append(
+                new SemanticPilotTransitionV111(
+                    "semantic_draw_hook_choice",
+                    DrawHookChoiceDecision: decision.Fork())).ToArray()
+        };
+        return NormalizeNoncontrolledCosts(next);
     }
 
     /// <summary>
@@ -1978,6 +2021,9 @@ public static class SemanticPilotCombatEngineV111
         Validate(current);
         if (current.Fingerprint != fingerprint)
             throw new InvalidOperationException("Stale semantic Nature fingerprint.");
+        if (current.DrawHookChoicePending is not null)
+            throw new InvalidOperationException(
+                "Resolve the pending CardDrawn hook action by action ID.");
         if (semanticIntent is not null)
             ValidateSemanticIntentDecision(current, semanticIntent, selectedIndex);
         var drawEvent = current.DrawPending;
@@ -3379,6 +3425,25 @@ public static class SemanticPilotCombatEngineV111
                 throw new InvalidDataException(
                     "Random pile-card continuation conflicts with another boundary.");
         }
+        if (state.DrawHookChoicePending is { } drawHookChoicePending)
+        {
+            drawHookChoicePending.Validate();
+            if (state.PendingEndTurn is null ||
+                state.PendingInitialIntents is not null ||
+                state.IntentPending is not null || state.DrawPending is not null ||
+                state.RandomPileCardPending is not null ||
+                state.CostPending is not null || state.TargetPending is not null ||
+                state.GeneratedCardPending is not null ||
+                state.CardSelectionPending is not null ||
+                state.PoolShufflePending is not null ||
+                state.DrawInsertionPending is not null ||
+                state.CardShortlistPending is not null ||
+                state.HandCostSelectionPending is not null ||
+                !state.AtPlayerChoiceBoundary || state.UsesNativePolicyBaseline ||
+                state.CombatTerminal)
+                throw new InvalidDataException(
+                    "CardDrawn hook action conflicts with another semantic boundary.");
+        }
         if (state.TargetPending is { } targetPending)
         {
             targetPending.Validate();
@@ -3645,6 +3710,10 @@ public static class SemanticPilotCombatEngineV111
                     ResolveRandomPileCard(replay, replay.Fingerprint,
                         transition.RandomPileCardDecision.Event.EventId,
                         transition.RandomPileCardDecision.SelectedCardInstanceId),
+                "semantic_draw_hook_choice" when
+                    transition.DrawHookChoiceDecision is not null =>
+                    Step(replay, replay.Fingerprint,
+                        transition.DrawHookChoiceDecision.ActionId),
                 "semantic_target" when transition.TargetDecision is not null =>
                     ResolveRandomTarget(replay, replay.Fingerprint,
                         transition.TargetDecision.Event.EventId,

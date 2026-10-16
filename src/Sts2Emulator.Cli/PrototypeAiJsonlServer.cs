@@ -63,6 +63,25 @@ internal static class PrototypeAiJsonlServer
 
         object? DescribeSemanticPending(SemanticPilotCombatV111 state)
         {
+            if (state.DrawHookChoicePending is { } hookChoice)
+            {
+                return new
+                {
+                    kind = "draw_hook_action_choice",
+                    schemaId = hookChoice.SchemaId,
+                    eventId = hookChoice.EventId,
+                    boundaryFingerprint = hookChoice.BoundaryFingerprint,
+                    supportFingerprint = hookChoice.SupportFingerprint,
+                    choiceId = hookChoice.ChoiceId,
+                    automaticHandDraw = hookChoice.AutomaticHandDraw,
+                    candidates = hookChoice.Candidates.Select(candidate => new
+                    {
+                        actionId = candidate.ActionId,
+                        kind = candidate.Kind,
+                        payloadFingerprint = candidate.PayloadFingerprint
+                    }).ToArray()
+                };
+            }
             if (state.IntentPending is { } intent)
             {
                 var semanticEvent = SemanticPilotCombatEngineV111
@@ -625,6 +644,8 @@ internal static class PrototypeAiJsonlServer
                                 SemanticChanceEventContractV111.SchemaId,
                             semanticDrawChoiceSchemaId =
                                 SemanticDeckStateV111.SchemaId,
+                            semanticDrawHookChoiceSchemaId =
+                                SemanticDrawHookChoiceEventV111.EventSchemaId,
                             semanticRandomPileCardChoiceSchemaId =
                                 SemanticRandomPileCardEventV111.EventSchemaId,
                             semanticTargetChoiceSchemaId =
@@ -660,7 +681,7 @@ internal static class PrototypeAiJsonlServer
                             },
                             semanticExtendedPlayerChoices = new[]
                             {
-                                "select_cards"
+                                "select_cards", "card_drawn_hook_action"
                             },
                             semanticProbabilityStatus = "UNVERIFIED",
                             controlledChanceScope = "isolated-playable-combat-stage-continuations-v1",
