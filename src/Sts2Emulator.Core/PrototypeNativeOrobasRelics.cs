@@ -124,8 +124,10 @@ public static class PrototypeNativeOrobasRelics
         var potionIds = nativeRunRng is null
             ? PrototypeNativePotionShop.PickWeightedDistinct(
                 rng, "event", 4)
-            : PrototypeNativePotionShop.PickWeightedDistinctNative(
-                nativeRunRng, "run.combat_potion_generation", 4);
+            : PrototypeNativePotionShop.PickWeightedDistinctNativeWithAudit(
+                nativeRunRng, "run.combat_potion_generation", 4,
+                "relic:alchemical_coffer:acquisition",
+                new NativeRandomIndexProviderV111()).PotionIds;
         if (!player.ActiveRelics.Any(relic =>
             PrototypeContent.Relic(relic.RelicId).PreventPotionAcquisition))
         {

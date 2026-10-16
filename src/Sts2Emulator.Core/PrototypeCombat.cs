@@ -9059,12 +9059,17 @@ public sealed partial class PrototypeGameEngine
             var openSlot = Array.IndexOf(slots, null);
             while (openSlot >= 0)
             {
+                var potionOwnerId =
+                    $"combat:act:{state.World?.Act}:floor:{state.World?.Floor}"
+                    + $":node:{state.World?.Map.CurrentNodeId}:potion_slot:{openSlot}";
                 var potionId = nativeRunRng is null
                     ? PrototypeNativePotionShop.PickWeighted(
                         state.Rng, "event")
-                    : PrototypeNativePotionShop.PickWeightedDistinctNative(
+                    : PrototypeNativePotionShop.PickWeightedDistinctNativeWithAudit(
                         nativeRunRng,
-                        "run.combat_potion_generation", 1)[0];
+                        "run.combat_potion_generation", 1,
+                        potionOwnerId,
+                        new NativeRandomIndexProviderV111()).PotionIds[0];
 
                 if (state.Player.ActiveRelics.Any(relic =>
                     PrototypeContent.Relic(relic.RelicId)

@@ -8,6 +8,9 @@ public enum PrototypeNativePotionRarity
     Rare
 }
 
+public sealed record NativePotionModelSelectionAuditV111(
+    string[] PotionIds, RandomIndexDecisionV111[] Choices, string ProviderMode);
+
 /// <summary>
 /// Pinned v0.111.0 rarity and merchant price rules for the supported
 /// full-unlock Silent/shared potion pool. Out-of-combat native generation
@@ -16,8 +19,8 @@ public enum PrototypeNativePotionRarity
 public static class PrototypeNativePotionShop
 {
     // PotionFactory concatenates the current character's unlocked pool before
-    // the shared pool. Keep that ordering for NativeRngV111.NextItem: a
-    // different ordering changes the selected potion for the same RNG draw.
+    // the shared pool. Keep that ordering for the typed model-index request:
+    // a different ordering changes the selected potion for the same draw.
     private static readonly string[] NativeSilentPotionPoolOrder =
     [
         "proto.potion.poison",
@@ -214,20 +217,37 @@ public static class PrototypeNativePotionShop
 
     /// <summary>
     /// Source-ordered out-of-combat PotionFactory generation. Each item rolls
-    /// rarity with NextFloat, chooses from the remaining same-rarity models,
-    /// and removes the selected model before the next item.
+    /// rarity with NextFloat, asks a provider for a model index in the
+    /// remaining same-rarity pool, and removes that model before the next item.
     /// </summary>
     public static string[] PickWeightedDistinctNative(
         RngBundle rng, string streamId, int count)
+        => PickWeightedDistinctNativeWithAudit(
+            rng, streamId, count, "potion_factory",
+            new NativeRandomIndexProviderV111()).PotionIds;
+
+    public static NativePotionModelSelectionAuditV111
+        PickWeightedDistinctNativeWithAudit(
+            RngBundle rng,
+            string streamId,
+            int count,
+            string ownerId,
+            IRandomIndexProviderV111 provider)
     {
+        ArgumentNullException.ThrowIfNull(rng);
+        ArgumentNullException.ThrowIfNull(provider);
+        ArgumentException.ThrowIfNullOrWhiteSpace(streamId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
         if (count < 0)
             throw new ArgumentOutOfRangeException(nameof(count));
 
+        var workingRng = rng.Fork();
         var remaining = NativePotionPoolOrder.ToList();
         var selected = new List<string>(count);
+        var choices = new List<RandomIndexDecisionV111>(count);
         for (var index = 0; index < count; index++)
         {
-            var roll = NativeRngV111.NextFloat(rng, streamId);
+            var roll = NativeRngV111.NextFloat(workingRng, streamId);
             var rarity = roll <= 0.1f
                 ? PrototypeNativePotionRarity.Rare
                 : roll <= 0.35f
@@ -238,14 +258,20 @@ public static class PrototypeNativePotionShop
             if (candidates.Length == 0)
                 throw new InvalidOperationException(
                     $"No unselected {rarity} potions remain.");
-            var potionId = NativeRngV111.NextItem(
-                rng, streamId, (IReadOnlyList<string>)candidates)
-                ?? throw new InvalidOperationException(
-                    "Native potion selection returned no model.");
+            var decision = provider.Resolve(new RandomIndexRequestV111(
+                "potion_factory.model_within_rarity.index_draw", streamId,
+                ownerId, index,
+                Enumerable.Range(0, candidates.Length).ToArray()), workingRng);
+            decision.Validate();
+            choices.Add(decision);
+            var potionId = candidates[decision.SelectedIndex];
             selected.Add(potionId);
             remaining.Remove(potionId);
         }
-        return selected.ToArray();
+        for (var streamIndex = 0; streamIndex < rng.Streams.Length; streamIndex++)
+            rng.Streams[streamIndex] = workingRng.Streams[streamIndex].Fork();
+        return new NativePotionModelSelectionAuditV111(
+            selected.ToArray(), choices.ToArray(), provider.Mode);
     }
 
     /// <summary>

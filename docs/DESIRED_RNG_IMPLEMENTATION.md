@@ -45,7 +45,9 @@ existing source-pinned Fisher–Yates loop now accepts an arbitrary named
 stream and provider without duplicating its swap mechanics. Jeweled Mask's
 random Power selection and native generated-card full-pool shuffle also reach
 typed native providers; controlled combat continuation for those native
-sites remains pending. An opt-in bounded
+sites remains pending. The potion factory's model index is typed after its
+native float rarity roll, so tier selection is still outside the provider.
+An opt-in bounded
 enumerator now resolves one small semantic chance support into independent
 child sessions; it rejects supports above the requested cap instead of
 truncating them.

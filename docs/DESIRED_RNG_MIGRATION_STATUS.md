@@ -51,6 +51,7 @@ reference distribution is claimed.
 | `combat.card_draw.slither_energy_cost` | drawn card / `run.combat_energy_costs` | Yes, source draw-hook order | Partial: private engine-owned native-codec stream; assignment unverified | No | Yes, opt-in typed event | Yes | No |
 | `combat.card_selection.random_shortlist` | draw-pile selector / prototype combat stream | Yes, source filters and without-replacement prefix | No v111 provider | No | Yes: semantic JSONL/Python event | No: not run or covered by a focused test | No |
 | `combat.relic.jeweled_mask.random_power_draw_card` | player relic hook / `run.combat_card_selection` | Yes: prefers noninnate powers, then the ordered Power pool | Yes: typed native provider request | No: provider-specific result/cursor regression pending | No | No | No |
+| `potion_factory.model_within_rarity.index_draw` | potion factory / `run.combat_potion_generation` | Partial: native float chooses rarity; source-ordered remaining tier pool chooses model | Partial: typed model index; rarity float remains direct | No: provider-specific result/cursor regression pending | Partial: model choice controlled within the native-sampled tier | No | No |
 
 This is the migrated typed-site inventory, not a complete v0.111 RNG
 inventory. Other encounter resolvers, summon/death lifecycle effects,
