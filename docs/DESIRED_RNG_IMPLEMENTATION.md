@@ -107,6 +107,10 @@ precedes relic population; combat-earned extra offers and Black Star relic
 draws precede Prayer Wheel's appended group. Driftwood rerolls and Dream
 Catcher rest rewards also preserve the advanced native stream. Source-shaped
 pools remain restricted, and native result/cursor parity is unverified.
+Configured Overgrowth treasure relics now use the same persistent
+`player.rewards` stream and rarity-partitioned relic queue as reward and
+merchant draws. Treasure RNG state is saved on both successful and exhausted
+bag paths; source result/cursor parity remains unverified.
 The potion factory now routes its unit-float rarity
 sample and within-tier model index through separate typed providers in source
 order. Native effect-random-target and Sly auto-play selections use typed

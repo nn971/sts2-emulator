@@ -79,11 +79,13 @@ public sealed partial class PrototypeGameEngine
         }
 
         var world = RequireWorld(state);
+        var nativeRunRng = state.NativeRunRng?.Fork();
         string? relicId;
         if (UsesNativeRegionalSystems(world))
         {
             var draw = PrototypeNativeRelicGrabBag.Draw(
-                world, state.Player, state.Rng, merchant: false);
+                world, state.Player, state.Rng, merchant: false,
+                nativeRunRng: nativeRunRng);
             world = draw.World;
             relicId = draw.Id;
         }
@@ -107,7 +109,11 @@ public sealed partial class PrototypeGameEngine
         if (relicId is null)
         {
             // Constrained catalog exhaustion. Native uses Circlet.
-            return CompleteRoomToMap(state with { World = world });
+            return CompleteRoomToMap(state with
+            {
+                NativeRunRng = nativeRunRng ?? state.NativeRunRng,
+                World = world
+            });
         }
         var reward = new RewardState(
             SourceRoom: "Treasure",
@@ -120,6 +126,7 @@ public sealed partial class PrototypeGameEngine
             EndsAct: false);
         return state with
         {
+            NativeRunRng = nativeRunRng ?? state.NativeRunRng,
             World = world with { Reward = reward },
             Phase = RunPhase.Reward
         };

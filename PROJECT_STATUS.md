@@ -1454,6 +1454,11 @@ The legacy streams remain available for unconfigured prototype runs. The
 merchant's restricted card/relic/potion pools, controlled shop continuation,
 and seeded source result/cursor parity remain open.
 
+Configured Overgrowth treasure rooms now draw relic rarity from the persistent
+`player.rewards` stream and advance the existing rarity-partitioned relic bag.
+Both successful treasure rewards and exhausted-bag exits retain the advanced
+native RNG bundle. Source result/cursor parity remains unverified.
+
 Configured Overgrowth combat rewards now use the persistent `player.rewards`
 stream for potion pity, gold bounds, rarity-weighted potion selection, card
 rarity/model/upgrade draws, relic rarity, boss relic offer shuffling, and Lava
