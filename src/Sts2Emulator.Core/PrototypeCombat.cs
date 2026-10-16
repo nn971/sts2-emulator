@@ -7105,8 +7105,47 @@ public sealed partial class PrototypeGameEngine
                     var pool = PrototypeContent.PotionPool;
                     for (var i = 0; i < operation.Amount; i++)
                     {
-                        var generated = pool[PrototypeRng.NextInt(
-                            rng, "combat", pool.Length)];
+                        if (ControlledChanceGuardV111.Active &&
+                            !ControlledChanceGuardV111
+                                .EngineOwnedNativeProviderActive)
+                            throw new NotSupportedException(
+                                "UNSUPPORTED_CONTROLLED_CHANCE " +
+                                "site=combat.potion_generation.random_model " +
+                                "operation=choose_index requires a saved potion continuation.");
+                        var native = combat.NativeRng;
+                        var streamId = native is null
+                            ? "combat"
+                            : "run.combat_potion_generation";
+                        var streams = native?.RunStreams.Fork() ?? rng;
+                        var stream = streams.Streams.SingleOrDefault(item =>
+                            item.StreamId == streamId) ??
+                            throw new InvalidOperationException(
+                                "Combat potion generation stream is missing.");
+                        var callOrdinal = stream.CallCount ?? 0;
+                        if (callOrdinal > int.MaxValue)
+                            throw new NotSupportedException(
+                                "Combat potion generation ordinal exceeds the request range.");
+                        IRandomIndexProviderV111 provider = native is null
+                            ? new LegacyPrototypeRandomIndexProviderV111()
+                            : new NativeRandomIndexProviderV111();
+                        var ownerId = "effect:" + operation.Kind + ":source:" +
+                            (sourceCardInstanceId?.ToString() ?? "none") +
+                            ":pool:" + CanonicalJson.Sha256(pool);
+                        var decision = provider.Resolve(
+                            new RandomIndexRequestV111(
+                                "combat.potion_generation.random_model",
+                                streamId, ownerId, (int)callOrdinal,
+                                Enumerable.Range(0, pool.Length).ToArray()),
+                            streams);
+                        if (native is not null)
+                            combat = combat with
+                            {
+                                NativeRng = native with
+                                {
+                                    RunStreams = streams
+                                }
+                            };
+                        var generated = pool[decision.SelectedIndex];
                         var slots = (PotionInstance?[])player.PotionSlots.Clone();
                         var firstEmpty = Array.FindIndex(slots, item => item is null);
                         if (firstEmpty < 0)
