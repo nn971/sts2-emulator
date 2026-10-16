@@ -1,10 +1,10 @@
 # RNG model
 
-> **Desired implementation:** [Interchangeable native RNG / controlled Nature architecture](DESIRED_RNG_IMPLEMENTATION.md) (proposed design; not yet implemented). It separates ordered mechanical random-choice boundaries from the provider selecting the outcome, while preserving native seeded replay as its own fidelity gate.
+> **Canonical contract:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md) and [roadmap](STOCHASTIC_ARCHITECTURE_ROADMAP.md); [detailed desired implementation](DESIRED_RNG_IMPLEMENTATION.md). Native RNG owns source streams and committed hidden outcomes, Nature owns unresolved stochastic constraints, and optional read-only Chance Law serves ReferenceNature/analysis without participating in native execution. Implementation is partial; native seeded replay remains a separate fidelity gate.
 
 ## Principle
 
-RNG is part of the state, not a global service.
+RNG and provider-private stochastic realizations/constraints are part of the **complete simulation state**, not global services. Their internal representation is owned by the active provider; mechanics own physical objects, membership and deterministic consequences. The complete engine lifecycle must fork/serialize both atomically.
 
 Conceptually, each random stream is a deterministic transition:
 

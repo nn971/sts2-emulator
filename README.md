@@ -1,5 +1,7 @@
 # STS2 Emulator
 
+**Current RNG/Nature architecture:** [Unified stochastic architecture](docs/UNIFIED_STOCHASTIC_ARCHITECTURE.md) · [Chance Law and ReferenceNature roadmap](docs/STOCHASTIC_ARCHITECTURE_ROADMAP.md). These define provider-owned hidden stochastic state, optional read-only Chance Law, the source RNG provider and the independent inspector track; implementation is partial.
+
 A **trustworthy, practically fast, whole-run emulator for Slay the Spire 2**.
 
 This repository is intended to stand on its own as emulator infrastructure and to be embedded as a **subrepository/submodule** inside a future AI-learning project. It owns game semantics, state transitions, RNG reproduction, parity tooling, and performance-critical simulation. It deliberately does **not** own strategy search, policy/value models, training loops, experiment management, or decision databases.

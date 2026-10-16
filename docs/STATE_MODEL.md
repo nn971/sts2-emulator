@@ -1,5 +1,7 @@
 # Canonical state model
 
+**Current ownership decision:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md). The exact state `S` conceptually contains **mechanical state plus active RNG/Nature provider-private stochastic state**, both forked/saved together. Hidden mechanical history belongs to the engine; committed shuffled order and unresolved randomness constraints belong to the provider. Chance Law is a **read-only pre-outcome query** over a declared information state, not another source of mutable simulation state. The top-level record illustration below is a scaffold, not a directive to store provider internals in the game's mechanical state.
+
 ## Representations and purposes
 
 The emulator distinguishes:

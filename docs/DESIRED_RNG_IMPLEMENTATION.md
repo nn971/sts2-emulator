@@ -1,11 +1,13 @@
 # Desired RNG Implementation
 
-**Status:** proposed target architecture; documentation only (2026-10-12).
+**Status:** accepted architecture target as of 2026-10-16; partially implemented through independent, versioned slices. Historical D0–D6 plans below retain their original sequencing context.
 **Scope:** `sts2-emulator`, pinned STS2 v0.111.0, single-player first.
 **Primary goal:** faithful mechanics and ordered triggers with an interchangeable source of random decisions.
 **Related plans:** [RNG model](RNG.md), [v111 native RNG fidelity matrix](reference-builds/v0.111.0-native-rng-fidelity-matrix.md), [complete implementation roadmap](FULL_IMPLEMENTATION_ROADMAP.md), [configured v111 interface](V111_INTERFACE.md).
 
-This document records the **desired RNG implementation** for the next emulator architecture milestone. It specifies what we want to build; it does **not** claim that these interfaces, migrations, or probability calibrations are implemented today. The existing v111 native RNG work should be extended rather than discarded.
+**Normative ownership and Chance Law boundaries:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md), [ADR 0004](adr/0004-provider-owned-stochastic-state-and-chance-law.md) and [staged roadmap](STOCHASTIC_ARCHITECTURE_ROADMAP.md). This document supplies detailed historical and prospective RNG migration rules. Existing v111 native and semantic RNG implementations are partly delivered; the full Chance Law/ReferenceNature contract and generalized state/continuation have not yet been delivered. The native RNG work should be extended, not discarded.
+
+**Architecture clarification (2026-10-16):** Chance Law is an **optional, read-only service**, primarily for Nature and analytical tests. Native RNG runs its source sampling algorithm without calling Chance Law; the native game bridge likewise has no runtime dependency. ReferenceNature samples from the declared law and validates structural/distributional consistency using **independent** exact small-state reference calculations. The engine owns mechanical objects/history and complete-snapshot lifecycle; providers own committed/unresolved hidden stochastic state. For the first two-site experiment, [#143](https://github.com/nn971/sts2-emulator/issues/143) owns emulator Nature-vs-control results, [#122](https://github.com/nn971/sts2-emulator/issues/122) owns native fidelity, and N5 owns source-probability calibration.
 
 ## 0. Architecture update: stochastic state and semantic Nature (2026-10-15)
 
@@ -126,6 +128,7 @@ A random outcome may determine which hooks fire next, which random choices arise
 
 ### Priorities
 
+0. **Chance Law separation:** independent pre-outcome conditional-probability query used by Nature/ReferenceNature; no normal native RNG or bridge call is routed through it.
 1. **Mechanical fidelity:** correct rules, eligibility, timing, side effects, hook order, and persistent state for a supplied sequence of outcomes.
 2. **Interchangeability:** native RNG, externally selected Nature outcomes, scripted replay, and finite enumeration use the same mechanics.
 3. **Native RNG fidelity:** retain stream-specific codecs, stream ownership, native draw order, and exact seeded replay as a separate, valuable validation mode.
@@ -141,7 +144,9 @@ For training, mechanically legal outcomes are sufficient to build and test the a
 | --- | --- |
 | Game mechanics | Execute card/enemy/relic/potion/map/event/reward effects, ordered hooks, choices, and state changes. |
 | Random-operation layer | Define typed semantic operations and private stochastic-state transitions alongside source-authentic primitive requests, stable call-site identity, stream ownership, eligibility, validation, and outcome application. |
-| Native provider | Resolve using v111 named/context streams and native primitive algorithms, mutating the correct stream state. |
+| Native provider | Resolve using v111 named/context streams and native primitive algorithms; own cursors and committed stochastic realizations. No Chance Law runtime dependency. |
+| Chance Law (read-only) | Describe conditional reference probabilities over legal semantic outcomes given the declared information/constraint state, independent of selected outcome. |
+| ReferenceNature (test sampler) | Sample reported Chance Law probabilities, then pass a legal selected outcome through the ordinary Nature continuation. |
 | Controlled provider | Pause at a choice, accept an external legal outcome, record intervention provenance, and resume mechanically. |
 | Trace/replay provider | Consume a recorded choice transcript, asserting call-site/order/eligibility agreement. |
 | Enumerator | Fork a supported finite-choice boundary once per eligible outcome for tests and search. |
