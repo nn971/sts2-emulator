@@ -6197,8 +6197,14 @@ public sealed partial class PrototypeGameEngine
                     var pool = preferred.Length > 0 ? preferred : eligible;
                     if (pool.Length > 0)
                     {
-                        var selected = pool[PrototypeRng.NextInt(
-                            rng, "combat", pool.Length)];
+                        var choice = ResolveRandomCombatCardIndex(
+                            combat, rng,
+                            "combat.draw_pile.random_replay_card.select",
+                            "combat", pool,
+                            "effect:" + operation.Kind + ":source:" +
+                                (sourceCardInstanceId?.ToString() ?? "none"));
+                        combat = choice.Combat;
+                        var selected = pool[choice.SelectedIndex];
                         combat = combat with
                         {
                             Cards = combat.Cards.Select(card =>
