@@ -102,12 +102,11 @@ remain separate gaps, and native result/cursor parity is still unverified.
 Configured Overgrowth combat reward generation now carries the persistent
 `player.rewards` stream through potion pity, gold bounds, weighted potion
 selection, card rarity/model/upgrade draws, relic rarity, and boss relic offer
-shuffling. The base card offer precedes relic population; combat-earned extra
-offers and Black Star relic draws precede Prayer Wheel's appended group.
-Driftwood rerolls and Dream Catcher rest rewards also preserve the advanced
-native stream. Lava Rock's extra boss relic picks still use the retained
-legacy pool sampler. Source-shaped pools remain restricted, and native
-result/cursor parity is unverified.
+shuffling, and Lava Rock's extra boss relic picks. The base card offer
+precedes relic population; combat-earned extra offers and Black Star relic
+draws precede Prayer Wheel's appended group. Driftwood rerolls and Dream
+Catcher rest rewards also preserve the advanced native stream. Source-shaped
+pools remain restricted, and native result/cursor parity is unverified.
 The potion factory now routes its unit-float rarity
 sample and within-tier model index through separate typed providers in source
 order. Native effect-random-target and Sly auto-play selections use typed

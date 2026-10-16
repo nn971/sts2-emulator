@@ -5,8 +5,9 @@ namespace Sts2Emulator.Core;
 /// <summary>
 /// Lava Rock's one-time Act 1 boss reward modifier. The pinned native
 /// game adds two independent relic rewards, in addition to the normal
-/// three-option boss relic reward; the prototype draws unowned unique
-/// items from its existing ordinary relic pool.
+/// three-option boss relic reward. The source-shaped supported pool uses
+/// the native player Rewards stream in configured runs and the legacy
+/// reward stream otherwise; exact native pool order remains open.
 /// </summary>
 public sealed partial class PrototypeGameEngine
 {
@@ -18,7 +19,8 @@ public sealed partial class PrototypeGameEngine
             PrototypeRoomType room,
             int act,
             string[]? bossRelicOptions,
-            RngBundle rng)
+            RngBundle rng,
+            RngBundle? nativeRunRng = null)
     {
         if (room != PrototypeRoomType.Boss || act != 1)
         {
@@ -50,9 +52,23 @@ public sealed partial class PrototypeGameEngine
             bossRelicOptions ?? Array.Empty<string>());
         var available = PrototypeContent.RelicPool
             .Where(id => !excluded.Contains(id)).ToArray();
-        var selected = PickDistinct(
-            available, Math.Min(2, available.Length),
-            rng, "reward");
+        string[] selected;
+        var count = Math.Min(2, available.Length);
+        if (nativeRunRng is null)
+        {
+            selected = PickDistinct(available, count, rng, "reward");
+        }
+        else
+        {
+            _ = NativeFisherYatesV111.ShuffleInPlace(
+                available,
+                nativeRunRng,
+                new NativeRandomIndexProviderV111(),
+                NativePlayerRngV111.RewardsStreamId,
+                "run:act:1:boss:lava_rock_extra_relics",
+                "reward.lava_rock.relic_offer.shuffle_swap_index");
+            selected = available.Take(count).ToArray();
+        }
 
         var relics = (RelicInstance[])player.Relics.Clone();
         relics[index] = relics[index] with

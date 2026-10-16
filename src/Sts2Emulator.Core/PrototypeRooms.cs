@@ -4835,7 +4835,7 @@ public sealed partial class PrototypeGameEngine
 
         var lavaRock = ApplyLavaRockBossRewards(
             silverCrucible.Player, room, world.Act,
-            relicOptions, state.Rng);
+            relicOptions, state.Rng, nativeRunRng);
         var extraRelicRewardIds = lavaRock.AdditionalRelicIds
             .Concat(blackStarRelicRewardIds).ToList();
         var extraRelicRewards = extraRelicRewardIds.ToArray();
