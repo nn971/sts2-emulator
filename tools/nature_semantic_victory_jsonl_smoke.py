@@ -71,6 +71,11 @@ def play_victory():
             combat = combat.step(chosen["actionId"])
         assert combat.terminal, "Supported starter combat never reached terminal"
         assert combat.outcome == "victory", combat.status()
+        result = combat.status()
+        assert result["rewardProvider"] == (
+            "engine-owned-prototype-reward-unverified-v1")
+        assert result["rewardDrawCount"] > 0
+        assert result["probabilityStatus"] == "UNVERIFIED"
         assert combat.exit_hp is not None and combat.exit_hp > 0
         assert strikes >= 6
         assert combat.pending is None
