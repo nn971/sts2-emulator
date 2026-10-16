@@ -295,11 +295,16 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
 
                         var potionId =
                             PrototypeContent.PotionPool[
-                                PrototypeRng.NextInt(
+                                ResolveLegacyRandomIndex(
                                     rng,
-                                    "reward",
-                                    PrototypeContent
-                                        .PotionPool.Length)];
+                                    "run.potion.fill_empty_slots.model",
+                                    "player:potion_slot:" + index + ":pool:"
+                                        + CanonicalJson.Sha256(
+                                            PrototypeContent.PotionPool),
+                                    Enumerable.Range(
+                                        0,
+                                        PrototypeContent.PotionPool.Length),
+                                    streamId: "reward")];
                         slots[index] =
                             new PotionInstance(
                                 potionId,
@@ -583,8 +588,12 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                             "Random Rare-card reward has an empty pool.");
                     }
 
-                    var cardId = rarePool[PrototypeRng.NextInt(
-                        rewardRng, "reward", rarePool.Length)];
+                    var cardId = rarePool[ResolveLegacyRandomIndex(
+                        rewardRng,
+                        "relic.acquisition.random_rare_card.model",
+                        "player:rare_pool:" + CanonicalJson.Sha256(rarePool),
+                        Enumerable.Range(0, rarePool.Length),
+                        streamId: "reward")];
                     player = AppendCard(
                         player, cardAllocator(), cardId, rewardRng);
                     break;
@@ -622,10 +631,16 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
 
                     var potionId = effect.Kind
                             == PrototypeRunEffectKind.GainRandomPotion
-                        ? PrototypeContent.PotionPool[PrototypeRng.NextInt(
+                        ? PrototypeContent.PotionPool[ResolveLegacyRandomIndex(
                             rng ?? throw new InvalidOperationException(
                                 "Random potion relic acquisition requires RNG context."),
-                            "event", PrototypeContent.PotionPool.Length)]
+                            "relic.acquisition.random_potion.model",
+                            "player:potion_slot:" + slot + ":pool:"
+                                + CanonicalJson.Sha256(
+                                    PrototypeContent.PotionPool),
+                            Enumerable.Range(
+                                0, PrototypeContent.PotionPool.Length),
+                            streamId: "event")]
                         : effect.PotionId ?? throw new InvalidOperationException(
                             "Potion relic acquisition requires a potion ID.");
                     _ = PrototypeContent.Potion(potionId);
@@ -677,13 +692,14 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         var rng = state.Rng.Streams.Length == 0
             ? PrototypeRng.CreateBundle(state.RunSeed)
             : state.Rng.Fork();
-        var actOneBossEncounterId =
-            PrototypeContent.OvergrowthBossEncounterPool[
-                PrototypeRng.NextInt(
-                    rng,
-                    "combat",
-                    PrototypeContent
-                        .OvergrowthBossEncounterPool.Length)];
+        var bossPool = PrototypeContent.OvergrowthBossEncounterPool;
+        var actOneBossEncounterId = bossPool[
+            ResolveLegacyRandomIndex(
+                rng,
+                "run.encounter.overgrowth_boss.index_draw",
+                "run:act:1:boss_pool:" + CanonicalJson.Sha256(bossPool),
+                Enumerable.Range(0, bossPool.Length),
+                streamId: "combat")];
         var nextId = 1L;
         var deck = PrototypeContent.StartingDeck
             .Select(cardId => new CardInstance(
