@@ -44,6 +44,12 @@ public sealed record NativeEncounterFormationV111(
     };
 }
 
+/// <summary>Formation output plus the typed native RNG requests made while
+/// selecting its source-defined enemy indices.</summary>
+public sealed record NativeEncounterFormationAuditV111(
+    NativeEncounterFormationV111 Formation,
+    RandomIndexDecisionV111[] Choices, string ProviderMode);
+
 /// <summary>
 /// Opt-in native RNG boundary for source-shaped encounter formations.
 /// Unlike the legacy ResolveEnemySpecs(RngBundle) path, this consumes
@@ -55,7 +61,26 @@ public sealed record NativeEncounterFormationV111(
 /// </summary>
 public static class NativeEncounterFormationFactoryV111
 {
+    public const string FormationSiteId =
+        "combat.encounter.formation.index_draw";
+
     public static NativeEncounterFormationV111 Generate(
+        string seed,
+        PrototypeEncounterDefinition encounter,
+        string nativeEncounterEntry,
+        int totalFloor,
+        int currentActIndex,
+        long firstMonsterCombatId,
+        int? mapColumn = null,
+        int? mapRow = null,
+        Func<Func<int, int>,
+            (PrototypeEncounterEnemySpec[] Enemies, int? OpeningOffset)>?
+            sourceResolver = null) =>
+        GenerateWithAudit(seed, encounter, nativeEncounterEntry,
+            totalFloor, currentActIndex, firstMonsterCombatId,
+            mapColumn, mapRow, sourceResolver).Formation;
+
+    public static NativeEncounterFormationAuditV111 GenerateWithAudit(
         string seed,
         PrototypeEncounterDefinition encounter,
         string nativeEncounterEntry,
@@ -84,9 +109,22 @@ public static class NativeEncounterFormationFactoryV111
         var ownedStream = NativeRngV111Contexts.ForEncounterFormation(
             seed, nativeEncounterEntry, totalFloor);
         var ownedBundle = new RngBundle([ownedStream]);
+        var provider = new NativeRandomIndexProviderV111();
+        var choices = new List<RandomIndexDecisionV111>();
+        var ordinal = 0;
         Func<int, int> nextIndex = maxExclusive =>
-            NativeRngV111.NextInt(
-                ownedBundle, ownedStream.StreamId, maxExclusive);
+        {
+            if (maxExclusive <= 0)
+                throw new ArgumentOutOfRangeException(nameof(maxExclusive));
+            var request = new RandomIndexRequestV111(
+                FormationSiteId, ownedStream.StreamId,
+                $"encounter:{nativeEncounterEntry}:floor:{totalFloor}",
+                ordinal, Enumerable.Range(0, maxExclusive).ToArray());
+            var decision = provider.Resolve(request, ownedBundle);
+            choices.Add(decision);
+            ordinal++;
+            return decision.SelectedIndex;
+        };
         var (formation, openingOffset) = sourceResolver is null
             ? (encounter.ResolveEnemySpecs(nextIndex), (int?)null)
             : sourceResolver(nextIndex);
@@ -107,9 +145,11 @@ public static class NativeEncounterFormationFactoryV111
                     seed, currentActIndex, combatId, mapColumn, mapRow));
         }).ToArray();
 
-        return new NativeEncounterFormationV111(
+        var result = new NativeEncounterFormationV111(
             nativeEncounterEntry, totalFloor,
             formation, ownedBundle.Streams[0].Fork(), monsters,
             openingOffset, seed, currentActIndex, mapColumn, mapRow);
+        return new NativeEncounterFormationAuditV111(
+            result, choices.ToArray(), provider.Mode);
     }
 }

@@ -26,6 +26,7 @@ reference distribution is claimed.
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `combat.initial_unique_hp` | creature CombatId / `run.niche` | Yes | Yes | Yes: seeded result/hash/cursor | Yes: isolated HP → intent entry | Yes | No |
 | `combat.committed_intent.index_draw` | creature CombatId / `run.monster_ai` | Yes, supported moves | Yes, subset | Yes: seeded result/hash/cursor | Yes: isolated entry, source route and automatic turn continuation | Yes | No |
+| `combat.encounter.formation.index_draw` | encounter entry + floor / `context.encounter.*` | Partial: supported source resolvers; singleton calls preserved | Yes: native typed provider | Yes: existing seeded result/cursor regressions | No | No | No |
 | `combat.draw_pile.shuffle.swap` | player / `run.shuffle` | Yes, pinned Fisher–Yates and hook stages | Partial: injectable primitive, not every ordinary Step shuffle | Partial: source algorithm/cursor checks; live operation capture pending | Partial: provider supports controlled outcomes; ordinary shuffle sites remain separate | Yes, primitive-level | No |
 | `combat.draw_pile_recycle.swap_index` | player / legacy `combat` stream | Yes, recycle swap bounds | No v111 provider at this site | No | Yes: legacy controlled recycle continuation | Yes | No |
 | `combat.draw_pile.draw_card` | player / `semantic.draw_pile` | Yes, source `DrawCards` order and identity | Partial: exact native deck mode; no per-draw provider seam | No | Yes: deferred physical-card identity | Yes, actual draw segment | No |
@@ -42,11 +43,11 @@ reference distribution is claimed.
 | `combat.card_selection.random_shortlist` | draw-pile selector / prototype combat stream | Yes, source filters and without-replacement prefix | No v111 provider | No | Yes: semantic JSONL/Python event | No: not run or covered by a focused test | No |
 
 This is the migrated typed-site inventory, not a complete v0.111 RNG
-inventory. Encounter formation, summon/death creation, monster-local draws,
-enemy-side insertion, remaining cost/reward sites, map/event/shop/treasure
-selection, and native float/Gaussian/rejection operations still need stable
-call-site identities and row-level audit. Their absence here is not evidence
-that they are deterministic or supported.
+inventory. Other encounter resolvers, summon/death creation, monster-local
+draws, enemy-side insertion, remaining cost/reward sites,
+map/event/shop/treasure selection, and native float/Gaussian/rejection
+operations still need stable call-site identities and row-level audit. Their
+absence here is not evidence that they are deterministic or supported.
 
 ## First migrated site: `combat.initial_unique_hp`
 
@@ -78,8 +79,9 @@ controlled indices without consuming a native stream.
 
 ## D2 and D3 gates
 
-**D2 progress:** both initial `run.niche` unique HP and
-`run.monster_ai` committed intent index rolls now use the common provider.
+**D2 progress:** initial `run.niche` unique HP, `run.monster_ai` committed
+intent index rolls, and supported encounter-formation index draws now use
+the common provider.
 The intent engine's eligibility logic (source move state, weighted
 branches, anti-repeat, opening sequence and per-creature commit order)
 remains inside `PrototypeGameEngine.SelectEnemyMove`. The callback
@@ -91,10 +93,15 @@ occurrence sequence. `CommitIntentsWithAudit` is opt-in and returns
 the selected indices and exact pre/post native stream words/counters.
 Seeded fixture tests assert entire combat hashes and exact cursor
 equality, including encounters with deterministic enemies that consume
-no draws. None of these changes activate Nature-controlled intent
-selection in the live engine.
+no draws. Encounter-local formation index draws also pass through the
+native provider under `combat.encounter.formation.index_draw`; the opt-in
+`GenerateWithAudit` result exposes each request while the compatibility
+`Generate` method keeps the existing formation result. Singleton formation
+draws still consume `NextInt(1)`. The formation resolver remains native-only;
+this does not add a controlled encounter-entry boundary.
 
-**D2 remaining:** encounter formation, monster-local draws, summons,
+**D2 remaining:** formation resolvers outside the integrated subset,
+monster-local draws, summons,
 shuffle/targets/rewards and other audited call sites; explicit weighted
 outcome metadata at move-level instead of primitive index selections.
 The separate semantic playable API now exposes typed weighted intent events,
