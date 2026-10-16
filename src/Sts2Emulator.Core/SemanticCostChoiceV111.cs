@@ -5,8 +5,14 @@ public sealed record SemanticCostEventV111(
     string SchemaId, string EventId, string BoundaryFingerprint,
     string SupportFingerprint, RandomIndexRequestV111 Request,
     int[] CandidateCosts, string ProbabilityStatus = "UNVERIFIED")
+    : ISemanticChanceEventV111
 {
     public const string EventSchemaId = "sts2-v111-semantic-cost-choice-v1";
+    public string SiteId => Request.SiteId;
+    public string OperationKind => Request.OperationKind;
+    public string StreamId => Request.StreamId;
+    public string OwnerId => Request.OwnerId;
+    public int Ordinal => Request.Ordinal;
 
     public SemanticCostEventV111 Fork() => this with
     {
