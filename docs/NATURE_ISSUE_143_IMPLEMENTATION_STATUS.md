@@ -430,7 +430,7 @@ fixture still uses its declared fallback unless the explicit native cost
 provider is selected. The stream assignment and original conditional laws
 remain `UNVERIFIED`.
 
-The CLI Release build passes with zero warnings or errors after the shuffle
-change; the updated route smoke has not yet been run. The branch remains a
-work in progress, and the issue stays open for source audit and remaining
-P0 gates.
+The CLI Release build passes with zero warnings or errors after the
+source-route cost-stream change; the updated route smoke has not yet been
+run. The branch remains a work in progress, and the issue stays open for
+source audit and remaining P0 gates.
