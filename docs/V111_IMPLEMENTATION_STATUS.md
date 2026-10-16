@@ -56,8 +56,10 @@ the event fight still uses prototype RNG, so native parity remains open. See
 the [Fake Merchant implementation note](reference-builds/v0.111.0-fake-merchant.md).
 This or That is registered as a shared event in Overgrowth, Underdocks, Hive,
 and Glory. Its plain choice deals 6 HP damage before awarding the saved 41–68
-gold roll. Its ornate choice obtains a random relic, resolves any relic
-acquisition deck choice, then adds Clumsy.
+gold roll. Native v111 entry stores that roll in the persisted
+`THIS_OR_THAT` event context; seeded result/cursor parity remains open. Its
+ornate choice obtains a random relic, resolves any relic acquisition deck
+choice, then adds Clumsy.
 The Future of Potions is integrated in Hive and Glory for runs with at least
 two potions. Trading one consumes it and offers three upgraded Silent cards
 with the potion's mapped rarity and event-entry rolled card type. The offer

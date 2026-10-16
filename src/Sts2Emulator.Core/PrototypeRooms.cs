@@ -863,6 +863,9 @@ public sealed partial class PrototypeGameEngine
                             PrototypeNativeEndlessConveyor.NativeRngEventId,
                         PrototypeNativePunchOff.EventId =>
                             PrototypeNativePunchOff.NativeRngEventId,
+                        PrototypeNativeSharedEvents.ThisOrThatId =>
+                            PrototypeNativeSharedEvents
+                                .ThisOrThatNativeRngEventId,
                         _ => null
                     }),
                 NativeEventGold:
@@ -927,24 +930,31 @@ public sealed partial class PrototypeGameEngine
             EventHistory = world.EventIds.Append(selected.Id).ToArray()
         };
 
-        if (selected.Id == PrototypeNativePunchOff.EventId
+        if ((selected.Id == PrototypeNativePunchOff.EventId
+                || selected.Id == PrototypeNativeSharedEvents.ThisOrThatId)
             && state.NativeRunRng is not null)
         {
+            var isPunchOff = selected.Id == PrototypeNativePunchOff.EventId;
+            var nativeEventEntry = isPunchOff
+                ? PrototypeNativePunchOff.NativeRngEventId
+                : PrototypeNativeSharedEvents.ThisOrThatNativeRngEventId;
+            var minimumGold = isPunchOff ? 91 : 41;
+            var goldRange = isPunchOff ? 8 : 28;
             state = state with { World = world };
             var draw = NativeEventContextRngV111.ResolveBoundedInteger(
                 state,
                 world.Event!,
-                PrototypeNativePunchOff.NativeRngEventId,
+                nativeEventEntry,
                 "event.generated_gold.index_draw",
                 $"event:{selected.Id}:gold:primary",
-                8);
+                goldRange);
             state = draw.State;
             world = state.World!;
             world = world with
             {
                 Event = world.Event! with
                 {
-                    NativeEventGold = 91 + draw.SelectedValue
+                    NativeEventGold = minimumGold + draw.SelectedValue
                 }
             };
             state = state with { World = world };

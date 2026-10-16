@@ -64,6 +64,10 @@ public static class PrototypeStateInvariants
             state,
             PrototypeNativePunchOff.EventId,
             PrototypeNativePunchOff.NativeRngEventId);
+        NativeEventContextRngV111.Validate(
+            state,
+            PrototypeNativeSharedEvents.ThisOrThatId,
+            PrototypeNativeSharedEvents.ThisOrThatNativeRngEventId);
         if (state.Ascension < 0)
         {
             throw new InvalidOperationException(

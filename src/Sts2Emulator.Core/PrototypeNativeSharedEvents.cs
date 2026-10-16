@@ -6,6 +6,7 @@ namespace Sts2Emulator.Core;
 public static class PrototypeNativeSharedEvents
 {
     public const string ThisOrThatId = "proto.native.event.this_or_that";
+    public const string ThisOrThatNativeRngEventId = "THIS_OR_THAT";
     public const string ClumsyCardId = NativeGloryAncientsV111.ClumsyCardId;
 
     public static PrototypeEventDefinition ThisOrThatDefinition { get; } =
