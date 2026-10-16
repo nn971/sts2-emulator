@@ -75,6 +75,9 @@ parity remain unverified.
 Infested Automaton is integrated in Hive for Silent. Study adds one eligible
 Power and Touch Core adds one eligible zero cost card when the card generator
 returns one; both choices retain their result page even when no card is added.
+Native v111 runs use the persisted `INFESTED_AUTOMATON` event context for the
+card selection; the supported Silent card pool remains restricted and seeded
+result/cursor parity remains open.
 The Lantern Key now retains its return result page and exits to the map after
 the optional quest card reward from its fight.
 Zen Weaver retains its selected result page after the breathing-technique

@@ -11,6 +11,8 @@ public static class PrototypeNativeHiveEvents
 {
     public const string InfestedAutomatonId =
         "proto.native.hive.infested_automaton";
+    public const string InfestedAutomatonNativeRngEventId =
+        "INFESTED_AUTOMATON";
     public const string StoneOfAllTimeId =
         PrototypeNativeStoneOfAllTime.EventId;
 
@@ -342,13 +344,18 @@ public sealed partial class PrototypeGameEngine
             return PreserveNativeEventCompletionPage(state, choice);
         }
 
-        var selected = eligible[LegacyRandomChoiceV111.ChooseIndexRange(
-            state.Rng,
+        var draw = NativeEventContextRngV111.ResolveIndex(
+            state,
+            world.Event!,
+            PrototypeNativeHiveEvents
+                .InfestedAutomatonNativeRngEventId,
             "event.hive.card_offer.index_draw",
-            "event",
             $"event:{world.Event!.EventId}:choice:{choice}:pool:"
                 + CanonicalJson.Sha256(eligible),
-            eligible.Length).SelectedIndex];
+            eligible.Length);
+        state = draw.State;
+        world = RequireWorld(state);
+        var selected = eligible[draw.SelectedIndex];
         var player = AppendCard(
             state.Player, world.NextCardInstanceId, selected, state.Rng);
         return PreserveNativeEventCompletionPage(state with

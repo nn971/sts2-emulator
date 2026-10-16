@@ -856,6 +856,9 @@ public sealed partial class PrototypeGameEngine
                                 .TrialNativeRngEventId,
                         PrototypeNativeFutureOfPotions.EventId =>
                             PrototypeNativeFutureOfPotions.NativeRngEventId,
+                        PrototypeNativeHiveEvents.InfestedAutomatonId =>
+                            PrototypeNativeHiveEvents
+                                .InfestedAutomatonNativeRngEventId,
                         _ => null
                     }),
                 NativeEventGold:

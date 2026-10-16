@@ -51,6 +51,11 @@ public static class PrototypeStateInvariants
             state,
             PrototypeNativeFutureOfPotions.EventId,
             PrototypeNativeFutureOfPotions.NativeRngEventId);
+        NativeEventContextRngV111.Validate(
+            state,
+            PrototypeNativeHiveEvents.InfestedAutomatonId,
+            PrototypeNativeHiveEvents
+                .InfestedAutomatonNativeRngEventId);
         if (state.Ascension < 0)
         {
             throw new InvalidOperationException(
