@@ -354,7 +354,8 @@ class Session:
             self, seed: str, *, act: int, encounter_id: str,
             native_entry: str, total_floor: int, ascension: int = 0,
             first_monster_combat_id: int = 1,
-            map_column: int = 3, map_row: int = 5):
+            map_column: int = 3, map_row: int = 5,
+            other_chance_provider_id: str | None = None):
         """Begin a two-site pilot without external opening chance tickets.
 
         Setup uses source-shaped RNG streams in an isolated Hive/Glory
@@ -363,12 +364,17 @@ class Session:
         if self.capabilities.get("semanticSeededOpeningProvider") != (
                 "engine-owned-seeded-source-shaped-unverified-v1"):
             raise EmulatorError("Emulator lacks seeded semantic entry")
+        if other_chance_provider_id is not None and (
+                other_chance_provider_id not in
+                self.capabilities.get("semanticOtherChanceProviders", [])):
+            raise EmulatorError("Unsupported engine-owned chance provider")
         return SemanticCombat.from_wire(self, self.call(
             "semantic_begin_seeded", seed=seed, act=act,
             encounter_id=encounter_id, native_entry=native_entry,
             total_floor=total_floor, ascension=ascension,
             first_monster_combat_id=first_monster_combat_id,
-            map_column=map_column, map_row=map_row))
+            map_column=map_column, map_row=map_row,
+            other_chance_provider_id=other_chance_provider_id))
 
     def load_semantic_snapshot(self, snapshot: str):
         if self.capabilities.get("semanticChanceSchemaId") != (
