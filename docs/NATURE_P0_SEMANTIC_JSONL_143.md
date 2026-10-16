@@ -12,10 +12,12 @@ choice sites**: `enemy_intent` and `draw_card`. Previous #143 work
 implemented the original mechanics internally but exposed only
 isolated legacy Fisher–Yates and HP/intent fixtures.
 
-This P0 bridge is the **first restricted external boundary**, not yet
-the final P0 acceptance of fully source-initialized, genuinely terminal
-training episodes. All evidence from small fixture tests is protocol/
-mechanics smoke only. Probability status is **UNVERIFIED**.
+This P0 bridge is an opt-in external boundary, not yet full acceptance for
+source-calibrated training episodes. It now has both an isolated seeded
+entry and a source-routed Act 1 entry that reaches the real first-combat
+hook. The source-route smoke reaches true victory on five weak encounters
+and replays each across fifteen workers. Native probability and complete
+non-Nature RNG parity remain **UNVERIFIED**.
 
 ## Capability / negotiated protocol
 
@@ -23,24 +25,29 @@ mechanics smoke only. Probability status is **UNVERIFIED**.
 
 - `semanticChanceSchemaId = sts2-v111-semantic-playable-p0-v1`.
 - `semanticPlayable = true`, scope
-  `post-committed-opening-fixture-restricted-Silent-combat`.
+  `seeded-source-route-or-post-committed-opening-fixture-restricted-Silent-combat`.
 - `semanticControlledSites = [enemy_intent, draw_card]`.
 - `semanticOtherChanceProvider =
   engine-owned-deterministic-unverified-v1`.
 - `semanticOpeningProvider = precommitted-fixture-v1`.
+- `semanticSeededOpeningProvider =
+  engine-owned-seeded-source-shaped-unverified-v1` and
+  `semanticSeededRouteEntryProviderId =
+  engine-owned-v111-native-weak-route-entry-unverified-v1`.
 - `semanticProbabilityStatus = UNVERIFIED`.
 
 Legacy `nature_*` and `controlled_*` retain their distinct
 schemas, opaque handle namespaces and unchanged behavior.
 
-**Current restricted startup:** first construct a completed source-shaped
-`ControlledPlayableCombatV111` opening using the earlier
-`nature_begin` / `nature_advance`, `controlled_begin` and
-`controlled_resolve` endpoints. Then:
+**Legacy fixture startup:** `semantic_begin` accepts a completed
+source-shaped `ControlledPlayableCombatV111` opening created through the
+older Nature/controlled endpoints. The newer seeded and source-route entry
+paths avoid that external setup chain:
 
 | Operation | Inputs | Result |
 | --- | --- | --- |
 | `semantic_begin` | `controlled_handle` | Separate `semantic_handle`, phase, pending, fingerprint |
+| `semantic_begin_seeded` | seed and pinned encounter parameters | Engine-owned seeded opening; optional source-route mode |
 | `semantic_status` | `semantic_handle` | Current player / Nature / terminal boundary |
 | `semantic_observe` | `semantic_handle`, `policy_id=prototype-fair-v0` | Existing **player-only** observation and legal action IDs |
 | `semantic_step` | handle, fingerprint, legal `action_id` | Child player action / Nature / terminal |
@@ -54,18 +61,24 @@ Semantic status-changing routes return `requestId`, top-level
 `ok=true`, and a nested `result` with
 `semanticHandle`, `fingerprint`, `boundary`, `pending`,
 `terminal`, `outcome` and `exitHp`.
-The Python `Session.begin_semantic_combat` returns a typed
-`SemanticCombat`, with `step`, `resolve`, `observe`, `actions`,
-`fork`, `save_snapshot`, `status` and `release`.
+Python `Session.begin_semantic_combat` returns a typed `SemanticCombat`.
+`begin_seeded_semantic_combat` constructs a restricted seeded entry, and
+`begin_seeded_semantic_route` resolves the Act 1 start event and first
+combat-map choice through legal actions before entering the real native weak
+combat hook. Source-route mode currently covers first-floor Overgrowth and
+Underdocks weak encounters.
 
-**Nature-only event metadata:** pending `enemy_intent` currently
-contains the source selector site/stream, stable owner, bounded index
-support, ordinal and support fingerprint. **Raw weights and
-eligible move IDs are not yet audited and are returned as
-`rawEligibleWeights: null`**, not fabricated. A pending `draw_card`
-contains ordered legal physical card-instance IDs **and corresponding
-card-model IDs**, source shuffle epoch, pool/constraint fingerprint,
-stable event ID and `UNVERIFIED` law.
+**Nature-only event metadata:** pending `enemy_intent` contains the source
+selector site/stream, stable enemy owner, bounded support, ordinal,
+source-filtered semantic intent IDs and move IDs, raw branch weights,
+ticket intervals and total raw weight. The implementation checks that
+weights are positive, intervals are contiguous, and their sum matches the
+source ticket bound. These are source-shaped weights, not independently
+calibrated native conditional probabilities: `weightsVerified=false` and
+`probabilityStatus=UNVERIFIED` remain explicit. A pending `draw_card`
+contains ordered legal physical card-instance IDs and corresponding
+card-model IDs, source shuffle epoch, pool/constraint fingerprint, stable
+event ID and `UNVERIFIED` law.
 
 The normal player observation comes **exclusively** from
 `PrototypeAiEnvironment.Observe` under the existing fair policy.
@@ -75,22 +88,23 @@ included in `semantic_observe`.
 
 ## RNG ownership boundary
 
-The opening fixture already committed a concrete shuffled draw order.
-The semantic provider imports that order as privately **known** top-first
-positions without new Nature choice tickets. A subsequent
+Legacy fixture startup arrives with its opening draw order already
+committed. Source-route startup commits the native opening shuffle through
+`run.shuffle` before the Nature/native policy split. In both paths the
+semantic provider imports that order as privately **known** positions
+without new Nature choice tickets. A subsequent
 source-triggered recycle creates a fresh unresolved pool and produces
 per-card Nature choices only as actual draws need them. This prevents
 simultaneously issuing old Fisher–Yates swap tickets and new
 `draw_card` tickets for the **same** shuffle epoch inside the new
 semantic protocol.
 
-A drawn-card Snecko/Slither cost is still resolved through source-shaped
-original hooks, but its random selection is an **engine-owned,
-deterministic UNVERIFIED fallback**, not exported as a third Nature
-action and not represented as a native cursor-accurate sample. Unsupported
-randomness elsewhere fails explicitly with source site and operation.
-The fallback is a pilot diagnostic, subject to replacement with audited
-native/default RNG before the full P0 training acceptance.
+Drawn-card Snecko/Slither costs use an engine-owned provider, never a third
+Nature action. Legacy seeded fixture entry defaults to the deterministic
+unverified fallback; source-route entry retains the private native-codec
+`run.combat_energy_costs` stream. Its assignment and native call-order parity
+remain unverified. Unsupported randomness elsewhere fails explicitly with
+source site and operation.
 
 ## Current legal actions and replay
 
@@ -100,41 +114,43 @@ enemy intents, automatic turn stages, new semantic draws and normal
 `CardDrawn` hooks. Known positions are drawn directly. Supported
 player-actions preserve the provider-owned deck across turns.
 
-Session snapshots record the original completed opening fixture and
-every legal player/selected Nature action. Loading fully **replays**
-that source to the same resulting RunState and private provider state.
-Stale decisions and unsupported effects leave their parent handle
-unchanged. Processes and handles have disjoint private copies.
+Session snapshots record fixture or seeded route provenance and every
+legal player/selected Nature action. Loading **replays** that entry to the
+same resulting RunState and private provider state. Stale decisions and
+unsupported effects leave their parent handle unchanged. Processes and
+handles have disjoint private copies.
 
 A transition to `RunPhase.Reward` after defeating the enemy is
 classified as `outcome=victory`; `RunPhase.Terminal` is
 `outcome=defeat`, with `exitHp` from the actual RunState.
 An outstanding end-turn continuation must complete before publishing a
-terminal outcome. Longer real-combat victory/defeat verification is
-still an independent P0 task.
+terminal outcome. Source-route victory and replay are verified for five
+weak encounters; a seeded fixture also verifies defeat. Normal encounters
+and source-route defeat remain uncovered.
 
 ## Outstanding strict P0 acceptance criteria
 
-1. **Independent initial-combat handshake** that sources initial enemy
-   HP/intents, opening shuffle/card effects and native/default RNG
-   without requiring the older controlled fixture API or user-selected
-   Fisher–Yates swaps.
-2. **Filtered weighted intent support:** stable source
-   enemy-instance and actual move IDs, raw post-history/phase-filter
-   move weights and denominator, publication of committed intent
-   in fair player observations. Current bounded index is insufficient.
-3. **Source-law/default provider:** correct native/default RNG at every
-   *other* source hook with explicit provenance. The current deterministic
-   cost fallback is intentionally provisional and **unverified**.
-4. **Genuinely terminal supported combats:** real source-compatible
-   opening and weak/normal encounter actions all the way through
-   victory/defeat and exit HP, save/restore and 1-vs-15 independent
-   process transcript equality.
-5. **Consumer verification:** `sts2-ai` PR #78 can negotiate the
-   exact semantic schema, consume player vs Nature observations
-   separately and run a terminal combat. Full confidence about Nature
-   training requires substantial multi-seed, held-out-native trials,
-   not a few smoke rounds.
+1. **Independent initial-combat handshake - mechanically partial.** Seeded
+   fixture entry and first-floor source-route entry exist. Route mode reaches
+   the actual `StartCombat` weak-encounter hook and commits initial shuffle
+   and intent entry. Full native parity for route, Neow and entry RNG still
+   needs native trace verification.
+2. **Filtered weighted intent support - mechanically implemented.** Stable
+   enemy and move IDs, post-filter branch weights, denominator and ticket
+   intervals are exposed and invariant-checked. Native conditional-law
+   calibration remains outstanding; committed deterministic intents stay in
+   fair player observations.
+3. **Source-law/default provider - incomplete.** Native/default RNG is not
+   verified at every non-Nature hook. Reward generation still uses the
+   explicitly unverified prototype reward stream; cost-stream assignment and
+   other chance-site parity also remain open.
+4. **Genuinely terminal supported combats - partial.** Five weak source-route
+   victories pass save/restore and 1-vs-15 transcript checks. Normal encounter
+   coverage and source-route defeat are not established.
+5. **Consumer verification - outstanding.** The semantic API has not been
+   verified against `sts2-ai` PR #78. A consumer check must negotiate the exact
+   schema, keep player and Nature observations separate, and reach a terminal
+   combat. Held-out native trials are also required before training claims.
 
 **Do P0 before additional card-effect/Nature chance-site expansion.**
 Frozen all-Act Silent `main` and the old
@@ -178,14 +194,15 @@ combat = session.begin_seeded_semantic_combat(
   continuation, snapshot round-trip, and transcript equivalence between
   **one and fifteen independent external JSONL processes**.
 
-**Scope / outstanding P0:** This is a seed-reproducible *isolated fixture*,
-not yet an audited full game start or native combat entry; initial card draw
-and other entry hooks still follow the existing restricted opening and native
-source law has status `UNVERIFIED`. The P0 independent handshake requirement
-is partially addressed, while source-filtered *semantic* intent IDs/weights,
-a validated non-Nature native/default provider for all remaining RNG,
-and true terminal combat plus held-out native baseline remain open. CI smoke
-evidence must not be interpreted as decision-grade Nature training performance.
+**Scope / outstanding P0:** This seeded entry is a reproducible *isolated
+fixture*; by itself it is not a full game start or native combat entry.
+Initial card draw and other entry hooks remain restricted and its source law
+is `UNVERIFIED`. A separate source-route entry is documented below. Weighted
+semantic intent IDs and weights were added in the following section; native
+conditional-law calibration, a validated non-Nature provider for every
+remaining RNG site, broader terminal combat coverage and held-out native
+evaluation remain open. CI smoke evidence is not decision-grade Nature
+training evidence.
 
 ## 2026-10-16 P0: filtered semantic enemy-intent support
 
