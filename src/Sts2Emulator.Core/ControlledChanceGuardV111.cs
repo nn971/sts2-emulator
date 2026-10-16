@@ -68,7 +68,10 @@ public static class ControlledChanceGuardV111
         if (Active && EngineOwnedNativeDepth.Value > 0 &&
             (site is "native_rng.run.monster_ai" or
                 "native_rng.run.shuffle" or
-                "native_rng.run.combat_energy_costs") &&
+                "native_rng.run.combat_energy_costs" or
+                "native_rng.run.combat_targets" or
+                "native_rng.run.combat_card_selection" or
+                "native_rng.run.combat_card_generation") &&
             operation == "next_uint64")
             return;
         if (Active && !(EngineOwnedRewardDepth.Value > 0 &&

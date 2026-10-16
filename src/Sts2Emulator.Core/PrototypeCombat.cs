@@ -5174,6 +5174,7 @@ public sealed partial class PrototypeGameEngine
             // itself is random: choose its source model, then its insertion
             // position. Fixed-card insertion needs only the position stage.
             if (ControlledChanceGuardV111.Active &&
+                !ControlledChanceGuardV111.EngineOwnedNativeProviderActive &&
                 operation.Amount > 0 &&
                 operation.Kind is (
                     PrototypeCombatEffectKind.CreateGeneratedCardsAtRandomDrawPositions
@@ -5227,6 +5228,7 @@ public sealed partial class PrototypeGameEngine
             // combat hooks are already reflected in `combat`; only the
             // remaining operations are saved for later continuation.
             if (ControlledChanceGuardV111.Active &&
+                !ControlledChanceGuardV111.EngineOwnedNativeProviderActive &&
                 operation.Amount > 0 &&
                 ControlledGeneratedCardPool(operation) is { } generationPool)
             {
@@ -7303,8 +7305,15 @@ public sealed partial class PrototypeGameEngine
                         break;
                     }
 
-                    var selected = eligible[PrototypeRng.NextInt(
-                        rng, "combat", eligible.Length)];
+                    var selection = ResolveRandomCombatCardIndex(
+                        combat, rng,
+                        "combat.autoplay.random_card.select", "combat",
+                        eligible,
+                        "effect:" + operation.Kind + ":source:" +
+                            (sourceCardInstanceId?.ToString() ?? "none") +
+                            ":zone:" + zone);
+                    combat = selection.Combat;
+                    var selected = eligible[selection.SelectedIndex];
                     combat = SetZone(combat, zone,
                         ids.Where(id => id != selected).ToArray());
                     combat = SetZone(combat, PrototypeCardZone.PlayPile,
@@ -12740,6 +12749,67 @@ public sealed partial class PrototypeGameEngine
             OperationKind: selectingCard ? "choose_index" : "bounded_integer",
             BoundedCount: selectingCard ? null : boundedCount);
         var decision = provider.Resolve(request, streams);
+        var updated = native is null
+            ? combat
+            : combat with
+            {
+                NativeRng = native with { RunStreams = streams }
+            };
+        return (updated, decision.SelectedIndex);
+    }
+
+    private static (CombatState Combat, int SelectedIndex)
+        ResolveRandomCombatCardIndex(
+            CombatState combat,
+            RngBundle legacyRng,
+            string siteId,
+            string legacyStreamId,
+            long[] orderedCardInstanceIds,
+            string ownerId)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(legacyRng);
+        ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(legacyStreamId);
+        ArgumentNullException.ThrowIfNull(orderedCardInstanceIds);
+        ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
+        if (orderedCardInstanceIds.Length == 0 ||
+            orderedCardInstanceIds.Any(id => id <= 0) ||
+            orderedCardInstanceIds.Distinct().Count() !=
+                orderedCardInstanceIds.Length)
+            throw new ArgumentException(
+                "Random combat-card selection requires ordered unique instances.",
+                nameof(orderedCardInstanceIds));
+
+        if (ControlledChanceGuardV111.Active &&
+            !ControlledChanceGuardV111.EngineOwnedNativeProviderActive)
+            throw new NotSupportedException(
+                $"UNSUPPORTED_CONTROLLED_CHANCE site={siteId} " +
+                "operation=choose_index requires a saved autoplay continuation.");
+
+        var native = combat.NativeRng;
+        var streamId = native is null
+            ? legacyStreamId
+            : "run.combat_card_selection";
+        var streams = native?.RunStreams.Fork() ?? legacyRng;
+        var stream = streams.Streams.SingleOrDefault(item =>
+            item.StreamId == streamId) ??
+            throw new InvalidOperationException(
+                "Random combat-card provider stream is missing.");
+        var callOrdinal = stream.CallCount ?? 0;
+        if (callOrdinal > int.MaxValue)
+            throw new NotSupportedException(
+                "Random combat-card provider ordinal exceeds the request range.");
+        IRandomIndexProviderV111 provider = native is null
+            ? new LegacyPrototypeRandomIndexProviderV111()
+            : new NativeRandomIndexProviderV111();
+        var decision = provider.Resolve(new RandomIndexRequestV111(
+            siteId, streamId,
+            ownerId + ":pool:" +
+                CanonicalJson.Sha256(orderedCardInstanceIds),
+            (int)callOrdinal,
+            Enumerable.Range(0, orderedCardInstanceIds.Length).ToArray()),
+            streams);
         var updated = native is null
             ? combat
             : combat with
