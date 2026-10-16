@@ -57,6 +57,26 @@ def without_initial_intents(observation):
     return json.dumps(view, sort_keys=True)
 
 
+def validate_intent_support(event):
+    assert event["semanticIntentSupportSchemaId"] == (
+        "sts2-v111-semantic-weighted-intent-v1")
+    candidates = event["semanticCandidates"]
+    weights = event["rawEligibleWeights"]
+    assert candidates and weights == [candidate["rawWeight"]
+                                      for candidate in candidates]
+    assert event["totalRawWeight"] == event["supportCount"]
+    assert event["probabilityStatus"] == "UNVERIFIED"
+    assert event["weightsVerified"] is False
+    ticket_start = 0
+    for candidate in candidates:
+        assert candidate["rawWeight"] > 0
+        assert candidate["ticketStart"] == ticket_start
+        assert candidate["intentId"] and candidate["moveId"]
+        ticket_start += candidate["rawWeight"]
+    assert ticket_start == event["totalRawWeight"]
+    return len(candidates), ticket_start
+
+
 def play_victory(seed=SEED, region="Overgrowth"):
     with Session(COMMAND) as session:
         combat = begin_combat(session, seed=seed, region=region)
@@ -68,12 +88,17 @@ def play_victory(seed=SEED, region="Overgrowth"):
         initial = combat.fingerprint
         strikes = 0
         turns = 0
+        intent_events = 0
+        intent_candidates = 0
         transcript = []
         while combat.boundary == "nature":
             event = combat.pending
             assert event["kind"] == "enemy_intent"
             transcript.append(("nature", event["kind"],
                                event["supportFingerprint"]))
+            candidate_count, _ = validate_intent_support(event)
+            intent_events += 1
+            intent_candidates += candidate_count
             combat = combat.resolve_intent(
                 event["semanticCandidates"][0]["intentId"])
         assert combat.boundary == "player", combat.status()
@@ -87,6 +112,9 @@ def play_victory(seed=SEED, region="Overgrowth"):
                 transcript.append(("nature", event["kind"],
                                    event["supportFingerprint"]))
                 if event["kind"] == "enemy_intent":
+                    candidate_count, _ = validate_intent_support(event)
+                    intent_events += 1
+                    intent_candidates += candidate_count
                     combat = combat.resolve_intent(
                         event["semanticCandidates"][0]["intentId"])
                 else:
@@ -116,7 +144,8 @@ def play_victory(seed=SEED, region="Overgrowth"):
             "semantic_status", semantic_handle=combat.handle)["result"][
                 "sourceOpeningFingerprint"], tuple(transcript),
                 combat.fingerprint, combat.outcome, combat.exit_hp,
-                strikes, turns, initial_observation)
+                strikes, turns, initial_observation, intent_events,
+                intent_candidates)
 
 
 def play_native_policy_baseline(seed=SEED, region="Overgrowth"):
@@ -203,6 +232,8 @@ def main():
             print(f"PASS: fair Silent legal-action Act 1 source-routed "
                   f"paired case {label}: Nature={nature[4]}@{nature[5]}, "
                   f"native-v111={native[4]}@{native[5]}; "
+                  f"weighted intent events={nature[9]} "
+                  f"(candidates={nature[10]}); "
                   f"native decisions={native[8]}, shuffles={native[9]}; "
                   "complete 1-vs-15 independent process replay")
     print("Source conditional laws remain UNVERIFIED")

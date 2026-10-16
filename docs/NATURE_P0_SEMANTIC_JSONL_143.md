@@ -480,6 +480,14 @@ opening observation, save/load replay, and equality against fifteen
 independent JSONL processes. These five weak encounters do not establish
 broad coverage of normal encounters.
 
+For each randomized Nature intent event in those paired transcripts, the
+smoke checks the advertised weighted-support schema, positive raw weights,
+contiguous ticket intervals, sum-to-source-support invariant, and explicit
+`UNVERIFIED` probability status. The canonical route exercised one event
+with two candidates; Sludge Spinner exercised two events with four
+candidates. The other three runs had no randomized Nature intent event
+under the chosen route seeds.
+
 **Remaining P0 acceptance:** `UNVERIFIED` route/Neow and filtered-intent
 probability laws; native reward and other non-Nature RNG parity; broader
 source-routed encounter coverage, including normal encounters; and
