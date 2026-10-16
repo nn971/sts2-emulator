@@ -5055,6 +5055,7 @@ public sealed partial class PrototypeGameEngine
         var randomTargetOrdinal = 0;
         var autoPlayTargetOrdinal = 0;
         var generatedCardOrdinal = 0;
+        var drawInsertionOrdinal = 0;
         while (operations.Count > 0)
         {
             var operation = operations.Dequeue();
@@ -6874,17 +6875,25 @@ public sealed partial class PrototypeGameEngine
                     }
 
                     // CardFactory.GetForCombat samples WITH replacement.
-                    // The native CombatCardGeneration stream and unlocked
-                    // roster are not yet modeled; use the prototype combat
-                    // stream and implemented Silent subset explicitly.
+                    // Route its model draw through CombatCardGeneration;
+                    // the eligible pool remains the implemented Silent
+                    // subset rather than the full unlocked roster.
                     for (int i = 0; i < operation.Amount; i++)
                     {
-                        var selected = pool[PrototypeRng.NextInt(
-                            rng, "combat", pool.Length)];
+                        var modelSelection = ResolveGeneratedCardModelIndex(
+                            combat, rng, pool, operation.Kind,
+                            sourceCardInstanceId, generatedCardOrdinal++,
+                            "combat.random_draw_attack.card_model");
+                        combat = modelSelection.Combat;
+                        var selected = pool[modelSelection.SelectedIndex];
                         var id = combat.NextCardInstanceId;
+                        var insertion = ResolveRandomDrawPosition(
+                            combat, rng, combat.DrawPile, selected,
+                            operation.Kind, sourceCardInstanceId,
+                            drawInsertionOrdinal++);
+                        combat = insertion.Combat;
                         var draw = combat.DrawPile.ToList();
-                        draw.Insert(PrototypeRng.NextInt(
-                            rng, "combat", draw.Count + 1), id);
+                        draw.Insert(insertion.SelectedIndex, id);
                         combat = combat with
                         {
                             NextCardInstanceId = id + 1,
@@ -6914,10 +6923,13 @@ public sealed partial class PrototypeGameEngine
                     for (var i = 0; i < Math.Max(0, operation.Amount); i++)
                     {
                         var id = combat.NextCardInstanceId;
+                        var insertion = ResolveRandomDrawPosition(
+                            combat, rng, combat.DrawPile, operation.CardId,
+                            operation.Kind, sourceCardInstanceId,
+                            drawInsertionOrdinal++);
+                        combat = insertion.Combat;
                         var draw = combat.DrawPile.ToList();
-                        var insertionIndex = PrototypeRng.NextInt(
-                            rng, "combat", draw.Count + 1);
-                        draw.Insert(insertionIndex, id);
+                        draw.Insert(insertion.SelectedIndex, id);
                         combat = combat with
                         {
                             NextCardInstanceId = id + 1,
@@ -7844,6 +7856,7 @@ public sealed partial class PrototypeGameEngine
 
     private static CombatState ApplyRelicAfterShuffleCards(CombatState combat, RngBundle rng)
     {
+        var insertionOrdinal = 0;
         foreach (var relic in combat.RelicStates.Where(relic => !relic.IsMelted).OrderBy(relic => relic.ApplicationOrder))
         {
             var cardId = PrototypeContent.Relic(relic.RelicId).AfterShuffleGeneratedCardId;
@@ -7851,8 +7864,22 @@ public sealed partial class PrototypeGameEngine
                 continue;
             var instanceId = combat.NextCardInstanceId;
             combat = AddGeneratedCardsToDiscard(combat, cardId, 1);
+            if (ControlledChanceGuardV111.Active &&
+                !ControlledChanceGuardV111.EngineOwnedNativeProviderActive)
+                throw new NotSupportedException(
+                    "UNSUPPORTED_CONTROLLED_CHANCE " +
+                    "site=combat.relic.after_shuffle.generated_card.random_insert_index " +
+                    "operation=bounded_integer requires a saved insertion continuation.");
+            var insertion = ResolveRandomDrawPosition(
+                combat, rng, combat.DrawPile, cardId,
+                PrototypeCombatEffectKind.CreateGeneratedCardsAtRandomDrawPositions,
+                sourceCardInstanceId: null, ordinal: insertionOrdinal++,
+                siteId: "combat.relic.after_shuffle.generated_card.random_insert_index",
+                requestOwnerPrefix:
+                    "relic:" + relic.RelicId + ":application:" + relic.ApplicationOrder);
+            combat = insertion.Combat;
             var draw = combat.DrawPile.ToList();
-            draw.Insert(PrototypeRng.NextInt(rng, "combat", draw.Count + 1), instanceId);
+            draw.Insert(insertion.SelectedIndex, instanceId);
             combat = combat with
             {
                 DrawPile = draw.ToArray(),
@@ -12597,7 +12624,8 @@ public sealed partial class PrototypeGameEngine
             string[] candidateCardIds,
             PrototypeCombatEffectKind operationKind,
             long? sourceCardInstanceId,
-            int ordinal)
+            int ordinal,
+            string siteId = "combat.generated_card.select")
     {
         ArgumentNullException.ThrowIfNull(combat);
         ArgumentNullException.ThrowIfNull(legacyRng);
@@ -12625,8 +12653,60 @@ public sealed partial class PrototypeGameEngine
             : "effect:" + operationKind;
         ownerId += ":pool:" + CanonicalJson.Sha256(candidateCardIds);
         var decision = provider.Resolve(new RandomIndexRequestV111(
-            "combat.generated_card.select", streamId, ownerId, ordinal,
+            siteId, streamId, ownerId, ordinal,
             Enumerable.Range(0, candidateCardIds.Length).ToArray()), streams);
+        var updated = native is null
+            ? combat
+            : combat with
+            {
+                NativeRng = native with { RunStreams = streams }
+            };
+        return (updated, decision.SelectedIndex);
+    }
+
+    private static (CombatState Combat, int SelectedIndex)
+        ResolveRandomDrawPosition(
+            CombatState combat,
+            RngBundle legacyRng,
+            long[] orderedDrawPile,
+            string cardModelId,
+            PrototypeCombatEffectKind operationKind,
+            long? sourceCardInstanceId,
+            int ordinal,
+            string siteId = "combat.draw_pile.random_insert_index",
+            string? requestOwnerPrefix = null)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(legacyRng);
+        ArgumentNullException.ThrowIfNull(orderedDrawPile);
+        ArgumentException.ThrowIfNullOrWhiteSpace(cardModelId);
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+        if (requestOwnerPrefix is not null)
+            ArgumentException.ThrowIfNullOrWhiteSpace(requestOwnerPrefix);
+        if (orderedDrawPile.Distinct().Count() != orderedDrawPile.Length)
+            throw new ArgumentException(
+                "Random insertion support requires unique card instances.",
+                nameof(orderedDrawPile));
+
+        var native = combat.NativeRng;
+        var streamId = native is null
+            ? "combat"
+            : "run.shuffle";
+        var streams = native?.RunStreams.Fork() ?? legacyRng;
+        IRandomIndexProviderV111 provider = native is null
+            ? new LegacyPrototypeRandomIndexProviderV111()
+            : new NativeRandomIndexProviderV111();
+        var ownerId = requestOwnerPrefix ??
+            (sourceCardInstanceId is { } sourceCardId
+                ? "card_instance:" + sourceCardId
+                : "effect:" + operationKind);
+        ownerId += ":card:" + cardModelId + ":draw_pile:" +
+            CanonicalJson.Sha256(orderedDrawPile);
+        var decision = provider.Resolve(new RandomIndexRequestV111(
+            siteId, streamId, ownerId,
+            ordinal, [], OperationKind: "bounded_integer",
+            BoundedCount: checked(orderedDrawPile.Length + 1)), streams);
         var updated = native is null
             ? combat
             : combat with

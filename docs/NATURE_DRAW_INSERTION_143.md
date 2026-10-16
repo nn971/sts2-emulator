@@ -7,6 +7,19 @@ This slice adds two source-shaped chance sequences to the real `PrototypeGameEng
 
 The first site permits indices from 0 through the current draw-pile count inclusive, matching the normal `PrototypeRng.NextInt(rng, "combat", draw.Count + 1)` call. The second selects an eligible Attack from the existing ordered `NativeSilentCardPool` filter and then inserts that temporary zero-cost card at Nature's selected index. Card instances and `NextCardInstanceId` are created only at the second stage; partial card-model selection leaves the deck unchanged.
 
+Native combat routes the model draw through `run.combat_card_generation` and
+the random position through `run.shuffle`; `CardPileCmd` uses
+`RunState.Rng.Shuffle` for `CardPilePosition.Random`. The retained
+prototype profile preserves its `combat` stream through the legacy adapter.
+The semantic v1 protocol continues to label its controlled event
+`prototype.combat` for compatibility. Native cursor parity and the full
+unlocked candidate pool remain open.
+
+After-shuffle relic-generated draw-pile cards now use a separate typed
+`run.shuffle` site in native combat and preserve legacy `combat` draws. That
+hook fails closed under controlled Nature until its post-shuffle continuation
+is serializable; enemy-side draw/discard insertion remains unmigrated.
+
 The private pending choice records the exact eligible draw-pile instance IDs, source operation, generated card ID or eligible Attack IDs, remaining repetition count in the saved queued-operation continuation, and source-card/event/card-play continuation identity. On completion, the original queue resumes without re-running earlier effects. Multiple insertions generate successive tickets and are recorded chronologically in the existing `LiveTranscript`, with independent fork outcomes and source-eligibility validation. Nature receives card models in `pending.candidateCardIds` for the model-selection stage. The ordinary fair player observation remains inaccessible during pending Nature decisions; source probability status is `UNVERIFIED`.
 
 ## Semantic JSONL/Python fixture bridge

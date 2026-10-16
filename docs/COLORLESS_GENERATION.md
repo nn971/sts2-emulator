@@ -35,11 +35,11 @@ Pinned game source: STS2 v0.111.0, `Flaaax/STS2-source` at
   This deliberately removes unknown, unavailable or not-yet-implemented
   candidates rather than silently manufacturing unsupported cards.
   It does **not** reflect all cards of a fully unlocked account.
-- The synthetic adapter currently provides six SplitMix64 streams.
-  Native `CombatCardGeneration` and `CombatCardSelection` instead
-  share the emulator's synthetic `combat` stream, as does existing
-  generated-card logic. This preserves deterministic reset/fork
-  reproducibility but **does not assert exact native RNG parity**.
+- The synthetic adapter currently provides six SplitMix64 streams. Native
+  Metamorphosis card-model draws now use typed `run.combat_card_generation`
+  requests, and random insertion positions use `run.shuffle`; other existing
+  generated-card paths still need their source streams migrated. These routes
+  **do not assert exact native RNG parity**.
 - Merchant colorless selection also needs epoch-aware filtering at
   run level; catalog membership and implemented mechanics alone
   do not imply a player has unlocked a card.

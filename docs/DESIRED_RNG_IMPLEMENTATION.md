@@ -59,6 +59,11 @@ order. Native effect-random-target and Sly auto-play selections now use typed
 index requests on `run.combat_targets`; their controlled continuations remain
 separate from native cursor parity. Other automatic card plays have a distinct
 provider site with trigger and controlled-continuation coverage still open.
+The supported generated draw-pile operations now use typed model-pick requests
+on native `run.combat_card_generation` and position requests on `run.shuffle`;
+the legacy profile preserves `combat`. Post-shuffle relic insertion now has
+its own typed site; enemy-side insertion and other relic-triggered insertion
+paths still need separate tracing and controlled continuations.
 Beautiful Bracelet's eligible-deck shuffle and Fur Coat's current-act combat
 node shuffle now use typed native swap requests as well; controlled relic
 acquisition continuation remains pending. Distinguished Cape's two
