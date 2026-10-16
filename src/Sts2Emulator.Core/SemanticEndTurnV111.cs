@@ -118,6 +118,7 @@ public static class SemanticEndTurnEngineV111
                 "Expected exactly one legal end_turn player action.");
         RunState advanced;
         using (ControlledChanceGuardV111.Enter())
+        using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
             advanced = environment.Step(
                 playerBoundary.Fork(), actions[0].ActionId).State;
         if (advanced.Phase is RunPhase.Terminal or RunPhase.Reward)

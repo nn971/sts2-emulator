@@ -140,6 +140,8 @@ internal static class PrototypeAiJsonlServer
                 otherChanceProvider = state.OtherChance?.ProviderId ??
                     "engine-owned-deterministic-unverified-v1",
                 otherChanceDecisionCount = state.OtherChance?.Decisions.Length ?? 0,
+                rewardProvider = state.RewardAudit?.ProviderId,
+                rewardDrawCount = state.RewardAudit?.Calls,
                 sourceOpeningProvider = state.SeededEntry is null
                     ? "precommitted-fixture-v1"
                     : state.SeededEntry.ReplayOpeningDrawHooks
@@ -277,6 +279,8 @@ internal static class PrototypeAiJsonlServer
                                 "engine-owned-deterministic-unverified-v1",
                                 SemanticOtherChanceEngineV111.ProviderId
                             },
+                            semanticRewardProvider =
+                                SemanticRewardAuditV111.PrototypeProviderId,
                             semanticOpeningProvider = "precommitted-fixture-v1",
                             semanticSeededOpeningProvider =
                                 "engine-owned-seeded-source-shaped-unverified-v1",

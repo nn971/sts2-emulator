@@ -14,6 +14,21 @@ public sealed record SemanticPilotTransitionV111(
 /// encounter parameters initialize the opening using engine-owned seeded
 /// streams. The fixture still omits full native combat-entry hooks.
 /// </summary>
+/// <summary>
+    /// Combat-ended reward selection is outside the two-site Nature game:
+    /// legacy prototype reward RNG, isolated under the guarded source stream.
+    /// Its exact cursor use is replayable, while native source parity is
+    /// explicitly UNVERIFIED.
+    /// </summary>
+public sealed record SemanticRewardAuditV111(
+    string ProviderId, ulong BeforeCalls, ulong AfterCalls,
+    string ProbabilityStatus = "UNVERIFIED")
+{
+    public const string PrototypeProviderId =
+        "engine-owned-prototype-reward-unverified-v1";
+    public ulong Calls => AfterCalls - BeforeCalls;
+}
+
 public sealed record SemanticSeededEntryV111(
     string Seed, int Act, string EncounterId, string NativeEncounterEntry,
     int TotalFloor, int Ascension, long FirstMonsterCombatId,
@@ -44,6 +59,7 @@ public sealed record SemanticPilotCombatV111(
     public SemanticSeededEntryV111? SeededEntry { get; init; }
     /// <summary>Private state for explicitly opted-in non-Nature RNG.</summary>
     public SemanticOtherChanceStateV111? OtherChance { get; init; }
+    public SemanticRewardAuditV111? RewardAudit { get; init; }
     [JsonIgnore] public string Fingerprint => CanonicalJson.Sha256(this);
     [JsonIgnore] public bool AtPlayerBoundary =>
         PendingEndTurn is null &&
@@ -126,14 +142,21 @@ public static class SemanticPilotCombatEngineV111
         ArgumentException.ThrowIfNullOrWhiteSpace(entry.Seed);
         ArgumentException.ThrowIfNullOrWhiteSpace(entry.EncounterId);
         ArgumentException.ThrowIfNullOrWhiteSpace(entry.NativeEncounterEntry);
-        if (entry.Act is not (2 or 3) || entry.TotalFloor < 0 ||
+        if (entry.Act is not (1 or 2 or 3) || entry.TotalFloor < 1 ||
             entry.FirstMonsterCombatId < 1)
             throw new ArgumentOutOfRangeException(nameof(entry),
-                "Seeded Nature combat supports positive monster IDs and Hive/Glory.");
-        var prepared = PrototypeNativeLaterActFixture.CreateCombatRngPreEntry(
-            entry.Seed, entry.Act, entry.EncounterId,
-            entry.NativeEncounterEntry, entry.TotalFloor, entry.Ascension,
-            entry.FirstMonsterCombatId, entry.MapColumn, entry.MapRow);
+                "Seeded Nature combat requires a positive floor and monster IDs.");
+        // Act 1 fixed weak entry is deliberately isolated from the
+        // Hive/Glory fixture's pre-existing public 2/3-only contract.
+        var prepared = entry.Act == 1
+            ? PrototypeNativeActOneWeakNatureFixtureV111.CreateCombatRngPreEntry(
+                entry.Seed, entry.EncounterId, entry.NativeEncounterEntry,
+                entry.TotalFloor, entry.Ascension, entry.FirstMonsterCombatId,
+                entry.MapColumn, entry.MapRow)
+            : PrototypeNativeLaterActFixture.CreateCombatRngPreEntry(
+                entry.Seed, entry.Act, entry.EncounterId,
+                entry.NativeEncounterEntry, entry.TotalFloor, entry.Ascension,
+                entry.FirstMonsterCombatId, entry.MapColumn, entry.MapRow);
         var rng = prepared.NativeStreams.Fork();
         var hp = ControlledInitialHpV111.Begin(
             prepared.Combat, prepared.Formation, prepared.NativeStreams);
@@ -313,6 +336,7 @@ public static class SemanticPilotCombatEngineV111
             // Preserve actual source damage, relic/power hooks and victory
             // transition. The private deck must remain unchanged.
             using (ControlledChanceGuardV111.Enter())
+            using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
                 result = environment.Step(source, actionId).State;
             if (result.Phase is not (RunPhase.Combat or RunPhase.Reward))
                 throw new NotSupportedException(
@@ -322,10 +346,21 @@ public static class SemanticPilotCombatEngineV111
                 SemanticPlayerActionEngineV111.ValidateBoundary(result);
             var previous = current.Run.World!.Combat!;
             var next = result.World?.Combat;
-            if (next is null ||
-                !previous.DrawPile.SequenceEqual(next.DrawPile) ||
-                CanonicalJson.Sha256(previous.SemanticDeck) !=
-                    CanonicalJson.Sha256(next.SemanticDeck))
+            if (result.Phase == RunPhase.Reward)
+            {
+                // The original EnterReward consumes the defeated combat
+                // and publishes RewardState. It is a genuine terminal
+                // combat victory; no provider-owned deck survives to
+                // mutate or expose on the next player decision.
+                if (result.World?.Reward is null ||
+                    result.World.Combat is not null)
+                    throw new InvalidDataException(
+                        "Victory did not enter a genuine combat reward boundary.");
+            }
+            else if (next is null ||
+                     !previous.DrawPile.SequenceEqual(next.DrawPile) ||
+                     CanonicalJson.Sha256(previous.SemanticDeck) !=
+                         CanonicalJson.Sha256(next.SemanticDeck))
                 throw new NotSupportedException(
                     "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
                     "operation=unmodeled_draw_pile_mutation");
@@ -336,11 +371,36 @@ public static class SemanticPilotCombatEngineV111
                 action.Kind);
         var nextState = current with
         {
-            Run = result, PendingEndTurn = endTurn,
+            Run = result,
+            RewardAudit = result.Phase == RunPhase.Reward
+                ? RecordRewardAudit(source, result)
+                : current.RewardAudit,
+            // A genuine fully deterministic end-turn continuation can
+            // finish without exposing an intent or draw Nature ticket.
+            // The next player decision must be immediately available.
+            PendingEndTurn = endTurn is { Complete: true } ? null : endTurn,
             History = current.History.Append(
                 new SemanticPilotTransitionV111("player", actionId)).ToArray()
         };
         return NormalizeNoncontrolledCosts(nextState);
+    }
+
+    private static SemanticRewardAuditV111 RecordRewardAudit(
+        RunState source, RunState result)
+    {
+        static ulong Count(RunState run) =>
+            run.Rng.Streams.Single(x =>
+                x.StreamId == "reward" &&
+                x.Codec == PrototypeRng.Codec).CallCount
+            ?? throw new InvalidDataException(
+                "Reward RNG stream has no saved call count.");
+        var before = Count(source);
+        var after = Count(result);
+        if (after < before)
+            throw new InvalidDataException(
+                "Engine-owned reward RNG cursor rewound on victory.");
+        return new SemanticRewardAuditV111(
+            SemanticRewardAuditV111.PrototypeProviderId, before, after);
     }
 
     public static SemanticPilotCombatV111 Resolve(
@@ -458,6 +518,15 @@ public static class SemanticPilotCombatEngineV111
         }
         if (state.OtherChance is not null)
             SemanticOtherChanceEngineV111.Validate(state.OtherChance);
+        if (state.RewardAudit is { } reward &&
+            (state.Run.Phase != RunPhase.Reward ||
+             reward.ProviderId != SemanticRewardAuditV111.PrototypeProviderId ||
+             reward.ProbabilityStatus != "UNVERIFIED" ||
+             reward.AfterCalls < reward.BeforeCalls ||
+             state.Run.Rng.Streams.Single(x =>
+                 x.StreamId == "reward").CallCount != reward.AfterCalls))
+            throw new InvalidDataException(
+                "Invalid source-timed reward RNG audit.");
         if (state.SeededEntry is { } entry &&
             (entry.Seed != state.OpeningSource.Seed ||
              entry.Act != state.OpeningSource.Origin.Combat.Act ||
