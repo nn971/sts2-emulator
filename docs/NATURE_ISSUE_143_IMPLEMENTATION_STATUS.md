@@ -418,8 +418,11 @@ native provider. The shared source-opening fingerprint is captured before
 that provider split.
 
 This removes the fabricated encounter formation from the opt-in route mode,
-but does not make route probabilities, Neow choices, opening shuffle, or
-all combat entry hooks native-parity verified. The CLI Release build passed
-after the route-entry implementation; the updated route smoke has not yet
-been run. The branch remains a work in progress, and the issue stays open
-for source audit and remaining P0 gates.
+but does not make route probabilities, Neow choices, shuffle-order hooks,
+or all combat entry hooks native-parity verified. The initial draw-pile
+Fisher–Yates shuffle now advances the persistent `run.shuffle` stream before
+native HP initialization, using the pinned v0.111 swap bounds and source
+deck order. The CLI Release build passes with zero warnings or errors after
+this change; the updated route smoke has not yet been run. The branch remains
+a work in progress, and the issue stays open for source audit and remaining
+P0 gates.

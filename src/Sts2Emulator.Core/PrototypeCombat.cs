@@ -351,7 +351,21 @@ public sealed partial class PrototypeGameEngine
             .Where(card => !IsInnate(card))
             .Select(card => card.InstanceId)
             .ToArray();
-        PrototypeRng.Shuffle(state.Rng, "combat", drawPile);
+        if (nativeFormation is not null)
+        {
+            var nativeRunStreams = state.NativeRunRng?.Fork() ??
+                throw new NotSupportedException(
+                    "UNSUPPORTED_NATIVE_COMBAT site=combat.initial_shuffle " +
+                    "operation=missing_run_stream_owner");
+            var shuffle = NativeFisherYatesV111.Execute(
+                drawPile, nativeRunStreams,
+                new NativeRandomIndexProviderV111(),
+                ownerId: "player:0");
+            drawPile = shuffle.PreHookOutput;
+            state = state with { NativeRunRng = nativeRunStreams };
+        }
+        else
+            PrototypeRng.Shuffle(state.Rng, "combat", drawPile);
         var teaOfDiscourtesy = ApplyTeaOfDiscourtesyBeforeCombat(
             state.Player,
             combatCards,
