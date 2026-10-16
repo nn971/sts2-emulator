@@ -39,5 +39,7 @@ jobs:
         run: python tools/nature_semantic_seeded_jsonl_smoke.py
       - name: P0 semantic random-target continuation and 15-process replay
         run: python tools/nature_semantic_target_jsonl_smoke.py
+      - name: P0 semantic generated-card pools and 15-process replay
+        run: python tools/nature_semantic_generation_jsonl_smoke.py
       - name: P0 source-routed Nature/native policy comparison and 15-process replay
         run: python tools/nature_semantic_victory_jsonl_smoke.py

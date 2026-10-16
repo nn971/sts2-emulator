@@ -22,8 +22,8 @@ v111 consumer protocols have **not** been switched.
 | Encounter formation | encounter-local context RNG | Supported formations source audited | Yes (subset) | No | No | Existing tests | No |
 | Hatch / death spawn HP | creature creation; `run.niche` | Selected source hooks audited | Yes (subset) | No | No | Existing tests | No |
 | Monster-local randomness | monster CombatId owner stream | Partial | Yes (selected) | No | No | Existing tests | No |
-| Card shuffle and target selection | named run and player context streams | Partial | Selected paths | No | No | Pending | No |
-| Draw/generation/energy costs/reward | separate named run/player streams | Partial | Selected paths | No | No | Pending | No |
+| Card shuffle and target selection | named run and player context streams | Partial | Selected paths | Partial: semantic deck draw/recycle state and typed random-enemy events; native operation seam pending | Restricted semantic player-action continuation | Native shuffle audits remain separate; Nature target is counterfactual | No |
+| Draw/generation/energy costs/reward | separate named run/player streams | Partial | Selected paths | Partial: typed deferred draws and generated-card model pools; selected costs/rewards have explicit unverified providers | Restricted semantic draw, generation, cost and reward paths | Native stream/call-order parity pending for remaining sites | No |
 | Map/event/shop/treasure selection | act- and model-context streams | Partial | Selected paths | No | No | Pending | No |
 
 ## First migrated site: `combat.initial_unique_hp`
@@ -75,6 +75,10 @@ selection in the live engine.
 **D2 remaining:** encounter formation, monster-local draws, summons,
 shuffle/targets/rewards and other audited call sites; explicit weighted
 outcome metadata at move-level instead of primitive index selections.
+The separate semantic playable API now exposes typed weighted intent events,
+deferred physical-card draws, random-enemy targets and generated-card model
+pools. Those controlled events do not complete the native provider seam or
+native cursor parity rows in the migration matrix.
 
 **D3 partial:** the initial HP and committed enemy intent sites now have
 persisted, source-reachable pending Nature choices, with fork, restore,
@@ -85,12 +89,19 @@ decisions, only the side-effect-free AI selector is re-entered with
 verified tickets. No prior game actions or hooks are rerun.
 This is still restricted to isolated combat-entry fixtures; it does
 **not** attach controlled continuation to general `RunState` / player
-actions and must not fabricate a `NativeCombatRngV111` sidecar.
+actions in the D3 HP/intent provider itself and must not fabricate a
+`NativeCombatRngV111` sidecar. A separate P0 semantic pilot attaches selected
+source continuations to `RunState`, including end turn, card draw, random
+targets and generated-card pools; broad player-card and trigger coverage
+remains outstanding.
 
 **D4 partial:** opt-in `nature_begin`, `nature_resolve`,
 `nature_advance`, `nature_fork`, `nature_save`, `nature_load`, and
 `nature_release_many` are available in the JSONL server and through
-the thin Python binding, using **distinct non-playable handles**.
+the thin Python binding, using **distinct non-playable handles**. A separate
+playable semantic schema now exposes seeded entry, player actions, weighted
+intent IDs, typed draw/target/generated-card resolution, and exact snapshot
+replay through the same JSONL/Python bridge.
 Existing `step` and native RNG paths retain semantics. Next D3/D4
 work must wire controlled choices into general game action continuation
 and trained agent-facing observations. Full native-oracle fidelity
@@ -99,7 +110,9 @@ remains separate from seeded emulator RNG equality. See
 
 ## Known limitations
 
-- This first provider handles finite ordered **index** decisions only.
+- The original `RandomIndex` provider handles finite ordered **index**
+  decisions only. The semantic playable extension separately supports
+  typed physical-card, enemy-instance and generated-card-model identities.
   Native primitive float, Gaussian/rejection, and dynamic weighted choices
   need additional typed operations and call-site audits.
 - The scripting provider validates an exact request sequence but is not yet

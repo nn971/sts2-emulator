@@ -10,7 +10,8 @@ public sealed record SemanticPilotTransitionV111(
     string Kind, string? ActionId = null, int? SelectedIndex = null,
     SemanticIntentDecisionV111? IntentDecision = null,
     SemanticDrawDecisionV111? DrawDecision = null,
-    SemanticTargetDecisionV111? TargetDecision = null);
+    SemanticTargetDecisionV111? TargetDecision = null,
+    SemanticGeneratedCardDecisionV111? GeneratedCardDecision = null);
 
 /// <summary>
 /// Independently replayable setup provenance. The default entry is a
@@ -62,7 +63,8 @@ public sealed record SemanticSeededEntryV111(
     ActIdentity RouteActOneRegion = ActIdentity.Overgrowth,
     string? RouteNeowChoiceId = null,
     string? RouteMapNodeId = null,
-    string? FixtureRandomTargetCardId = null);
+    string? FixtureRandomTargetCardId = null,
+    string? FixtureGenerationPotionId = null);
 
 /// <summary>
 /// First external playable semantic boundary. Initial opening order is
@@ -92,6 +94,8 @@ public sealed record SemanticPilotCombatV111(
     public ControlledTurnIntentsV111? PendingInitialIntents { get; init; }
     [JsonIgnore] public SemanticTargetEventV111? TargetPending =>
         SemanticPilotCombatEngineV111.DescribePendingTargetEvent(this);
+    [JsonIgnore] public SemanticGeneratedCardEventV111? GeneratedCardPending =>
+        SemanticPilotCombatEngineV111.DescribePendingGeneratedCardEvent(this);
     [JsonIgnore] public string Fingerprint => CanonicalJson.Sha256(this);
     [JsonIgnore] public bool AtPlayerBoundary =>
         PendingInitialIntents is null &&
@@ -153,6 +157,10 @@ public sealed record SemanticPilotCombatV111(
             { TargetDecision: { } decision } => transition with
             {
                 TargetDecision = decision.Fork()
+            },
+            { GeneratedCardDecision: { } decision } => transition with
+            {
+                GeneratedCardDecision = decision.Fork()
             },
             _ => transition
         }).ToArray(),
@@ -245,7 +253,8 @@ public static class SemanticPilotCombatEngineV111
         if (entry.NativePolicyBaseline &&
             (entry.OtherChanceProviderId is not null ||
              entry.FixtureDrawCostRelicId is not null ||
-             entry.FixtureRandomTargetCardId is not null))
+             entry.FixtureRandomTargetCardId is not null ||
+             entry.FixtureGenerationPotionId is not null))
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_NATIVE site=combat.seeded_entry " +
                 "operation=native_baseline_fixture_loadout_conflict");
@@ -356,6 +365,8 @@ public static class SemanticPilotCombatEngineV111
         }
         if (entry.FixtureRandomTargetCardId is { } targetCardId)
             state = ApplyFixtureRandomTargetCard(state, targetCardId);
+        if (entry.FixtureGenerationPotionId is { } potionId)
+            state = ApplyFixtureGenerationPotion(state, potionId);
         Validate(state);
         return state;
     }
@@ -403,6 +414,38 @@ public static class SemanticPilotCombatEngineV111
         };
     }
 
+    private static SemanticPilotCombatV111 ApplyFixtureGenerationPotion(
+        SemanticPilotCombatV111 state, string potionId)
+    {
+        if (potionId != "proto.potion.orobic_acid")
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_LOADOUT site=combat.seeded_entry " +
+                "operation=fixture_generation_potion:" + potionId);
+        var world = state.Run.World ?? throw new InvalidDataException(
+            "Generation fixture is missing its combat world.");
+        var combat = world.Combat ?? throw new InvalidDataException(
+            "Generation fixture is missing combat.");
+        var slot = Array.FindIndex(state.Run.Player.PotionSlots,
+            potion => potion is null);
+        if (slot < 0 || (combat.Potions ?? []).Any(potion =>
+                potion.PotionId == potionId))
+            throw new InvalidOperationException(
+                "Generation fixture requires an empty potion slot.");
+        var slots = (PotionInstance?[])state.Run.Player.PotionSlots.Clone();
+        slots[slot] = new PotionInstance(potionId, PrototypeJson.EmptyObject());
+        var potions = (combat.Potions ?? []).Append(
+            new CombatPotionState(slot, potionId, PrototypeJson.EmptyObject()))
+            .OrderBy(potion => potion.Slot).ToArray();
+        return state with
+        {
+            Run = state.Run with
+            {
+                Player = state.Run.Player with { PotionSlots = slots },
+                World = world with { Combat = combat with { Potions = potions } }
+            }
+        };
+    }
+
     private static SemanticPilotCombatV111 BeginSourceRoute(
         SemanticSeededEntryV111 entry)
     {
@@ -411,6 +454,7 @@ public static class SemanticPilotCombatEngineV111
                 ActIdentity.Underdocks) || entry.OtherChanceProviderId is not null ||
             entry.FixtureDrawCostRelicId is not null ||
             entry.FixtureRandomTargetCardId is not null ||
+            entry.FixtureGenerationPotionId is not null ||
             entry.ReplayOpeningDrawHooks)
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_ROUTE site=act1.entry " +
@@ -874,12 +918,7 @@ public static class SemanticPilotCombatEngineV111
                     "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
                     "operation=unsupported_post_card_phase");
             if (result.Phase == RunPhase.Combat)
-            {
-                if (result.World?.Combat?.PendingChoice?.ControlledTarget is not null)
-                    ValidateTargetBoundary(result);
-                else
-                    SemanticPlayerActionEngineV111.ValidateBoundary(result);
-            }
+                ValidateSemanticCombatBoundary(result);
             var previous = current.Run.World!.Combat!;
             var next = result.World?.Combat;
             if (result.Phase == RunPhase.Reward)
@@ -897,6 +936,36 @@ public static class SemanticPilotCombatEngineV111
                      !previous.DrawPile.SequenceEqual(next.DrawPile) ||
                      CanonicalJson.Sha256(previous.SemanticDeck) !=
                          CanonicalJson.Sha256(next.SemanticDeck))
+                throw new NotSupportedException(
+                    "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
+                    "operation=unmodeled_draw_pile_mutation");
+        }
+        else if (action.Kind == "use_potion")
+        {
+            var payload = action.Payload.Deserialize<UsePotionPayload>() ??
+                throw new InvalidDataException("Missing potion action payload.");
+            var fixturePotion = current.SeededEntry?.FixtureGenerationPotionId;
+            if (fixturePotion != "proto.potion.orobic_acid" ||
+                payload.Slot < 0 ||
+                payload.Slot >= source.Player.PotionSlots.Length ||
+                source.Player.PotionSlots[payload.Slot]?.PotionId != fixturePotion ||
+                payload.TargetEnemyId is not null)
+                throw new NotSupportedException(
+                    "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
+                    "operation=potion_effect_requires_semantic_audit");
+            using (ControlledChanceGuardV111.Enter())
+                result = environment.Step(source, actionId).State;
+            if (result.Phase != RunPhase.Combat)
+                throw new NotSupportedException(
+                    "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
+                    "operation=unsupported_post_potion_phase");
+            ValidateSemanticCombatBoundary(result);
+            var previous = current.Run.World!.Combat!;
+            var next = result.World?.Combat;
+            if (next is null ||
+                !previous.DrawPile.SequenceEqual(next.DrawPile) ||
+                CanonicalJson.Sha256(previous.SemanticDeck) !=
+                    CanonicalJson.Sha256(next.SemanticDeck))
                 throw new NotSupportedException(
                     "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
                     "operation=unmodeled_draw_pile_mutation");
@@ -956,10 +1025,7 @@ public static class SemanticPilotCombatEngineV111
                 current.Run.Fork(), index);
         if (result.Phase == RunPhase.Combat)
         {
-            if (result.World?.Combat?.PendingChoice?.ControlledTarget is not null)
-                ValidateTargetBoundary(result);
-            else
-                SemanticPlayerActionEngineV111.ValidateBoundary(result);
+            ValidateSemanticCombatBoundary(result);
             var priorCombat = current.Run.World!.Combat!;
             var nextCombat = result.World!.Combat!;
             if (!priorCombat.DrawPile.SequenceEqual(nextCombat.DrawPile) ||
@@ -983,6 +1049,69 @@ public static class SemanticPilotCombatEngineV111
                 new SemanticPilotTransitionV111(
                     "semantic_target", TargetDecision: expected.Fork()))
                 .ToArray()
+        };
+        return NormalizeNoncontrolledCosts(next);
+    }
+
+    /// <summary>
+    /// Resolve one generated card model from its ordered source pool and
+    /// resume the original generation/trigger continuation.
+    /// </summary>
+    public static SemanticPilotCombatV111 ResolveGeneratedCard(
+        SemanticPilotCombatV111 current, string fingerprint,
+        string eventId, string cardId)
+    {
+        Validate(current);
+        if (current.Fingerprint != fingerprint)
+            throw new InvalidOperationException(
+                "Stale semantic generated-card fingerprint.");
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(cardId);
+        var pending = current.GeneratedCardPending ??
+            throw new InvalidOperationException(
+                "No semantic generated-card event is pending.");
+        if (pending.EventId != eventId)
+            throw new InvalidOperationException(
+                "Generated-card event ID is stale or mismatched.");
+        var index = Array.IndexOf(pending.CandidateCardIds, cardId);
+        if (index < 0)
+            throw new InvalidOperationException(
+                "Card model is outside the pending generated-card support.");
+        var expected = new SemanticGeneratedCardDecisionV111(
+            pending, index, cardId);
+        expected.Validate();
+
+        RunState result;
+        using (ControlledChanceGuardV111.Enter())
+        using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
+            result = PrototypeGameEngine.ResumeControlledGeneratedCard(
+                current.Run.Fork(), index);
+        if (result.Phase == RunPhase.Combat)
+        {
+            ValidateSemanticCombatBoundary(result);
+            var priorCombat = current.Run.World!.Combat!;
+            var nextCombat = result.World!.Combat!;
+            if (!priorCombat.DrawPile.SequenceEqual(nextCombat.DrawPile) ||
+                CanonicalJson.Sha256(priorCombat.SemanticDeck) !=
+                    CanonicalJson.Sha256(nextCombat.SemanticDeck))
+                throw new NotSupportedException(
+                    "UNSUPPORTED_SEMANTIC_DECK site=combat.generated_card " +
+                    "operation=unmodeled_draw_pile_mutation");
+        }
+        else if (result.Phase is not (RunPhase.Reward or RunPhase.Terminal))
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_DECK site=combat.generated_card " +
+                "operation=unsupported_post_generation_phase");
+        var next = current with
+        {
+            Run = result,
+            RewardAudit = result.Phase == RunPhase.Reward
+                ? RecordRewardAudit(current.Run, result)
+                : current.RewardAudit,
+            History = current.History.Append(
+                new SemanticPilotTransitionV111(
+                    "semantic_generated_card",
+                    GeneratedCardDecision: expected.Fork())).ToArray()
         };
         return NormalizeNoncontrolledCosts(next);
     }
@@ -1303,6 +1432,80 @@ public static class SemanticPilotCombatEngineV111
         return semanticEvent;
     }
 
+    public static SemanticGeneratedCardEventV111?
+        DescribePendingGeneratedCardEvent(SemanticPilotCombatV111 current)
+    {
+        ArgumentNullException.ThrowIfNull(current);
+        var combat = current.Run.World?.Combat;
+        var choice = combat?.PendingChoice;
+        var generation = choice?.ControlledGeneration;
+        if (generation is null) return null;
+        ValidateGeneratedCardBoundary(current.Run);
+        var candidates = (string[])generation.CandidateCardIds.Clone();
+        var ownerId = choice!.SourceCardInstanceId is { } sourceCardId
+            ? "card_instance:" + sourceCardId
+            : "effect:" + generation.Operation.Kind;
+        var ordinal = current.History.Count(transition =>
+            transition.Kind == "semantic_generated_card");
+        var supportFingerprint = CanonicalJson.Sha256(candidates);
+        var eventId = CanonicalJson.Sha256(new
+        {
+            SchemaId = SemanticGenerationChoiceV111.SchemaId,
+            BoundaryFingerprint = current.Fingerprint,
+            SiteId = "combat.generated_card.select",
+            OwnerId = ownerId,
+            Ordinal = ordinal,
+            SupportFingerprint = supportFingerprint
+        });
+        var semanticEvent = new SemanticGeneratedCardEventV111(
+            SemanticGenerationChoiceV111.SchemaId, eventId,
+            "combat.generated_card.select", "prototype.combat", ownerId,
+            ordinal, "choose_card_model", candidates, supportFingerprint);
+        semanticEvent.Validate();
+        return semanticEvent;
+    }
+
+    private static void ValidateSemanticCombatBoundary(RunState run)
+    {
+        var choice = run.World?.Combat?.PendingChoice;
+        if (choice?.ControlledTarget is not null)
+        {
+            ValidateTargetBoundary(run);
+            return;
+        }
+        if (choice?.ControlledGeneration is not null)
+        {
+            ValidateGeneratedCardBoundary(run);
+            return;
+        }
+        SemanticPlayerActionEngineV111.ValidateBoundary(run);
+    }
+
+    private static void ValidateGeneratedCardBoundary(RunState run)
+    {
+        var combat = run.World?.Combat;
+        var choice = combat?.PendingChoice;
+        var generation = choice?.ControlledGeneration;
+        if (run.Phase != RunPhase.Combat ||
+            combat is not { IsPlayerTurn: true,
+                AutomaticPipelineContinuation: null } ||
+            choice is not { ChoiceId: "controlled_generated_card",
+                OuterChoiceContinuation: not null } ||
+            generation is null ||
+            !PrototypeGameEngine.ValidateControlledGenerationSupport(generation))
+            throw new InvalidDataException(
+                "Semantic generated-card pool is not source-reachable.");
+        var deck = combat.SemanticDeck ?? throw new InvalidDataException(
+            "Generated-card continuation lost its provider-owned deck.");
+        SemanticDeckEngineV111.Validate(deck);
+        if (deck.Mode != SemanticDeckStateV111.NatureMode ||
+            deck.Pending is not null ||
+            !SemanticDeckEngineV111.AllCardInstanceIds(deck)
+                .Order().SequenceEqual(combat.DrawPile.Order()))
+            throw new InvalidDataException(
+                "Generated-card continuation changed the hidden draw pile.");
+    }
+
     private static void ValidateTargetBoundary(RunState run)
     {
         var combat = run.World?.Combat;
@@ -1505,6 +1708,16 @@ public static class SemanticPilotCombatEngineV111
                 throw new InvalidDataException(
                     "Random-target continuation conflicts with another boundary.");
         }
+        if (state.GeneratedCardPending is { } generatedCardPending)
+        {
+            generatedCardPending.Validate();
+            if (state.TargetPending is not null ||
+                state.PendingEndTurn is not null ||
+                state.PendingInitialIntents is not null ||
+                state.UsesNativePolicyBaseline || state.CombatTerminal)
+                throw new InvalidDataException(
+                    "Generated-card continuation conflicts with another boundary.");
+        }
         if (state.OtherChance is not null)
             SemanticOtherChanceEngineV111.Validate(state.OtherChance);
         if (state.RewardAudit is { } reward &&
@@ -1637,6 +1850,11 @@ public static class SemanticPilotCombatEngineV111
                     ResolveRandomTarget(replay, replay.Fingerprint,
                         transition.TargetDecision.Event.EventId,
                         transition.TargetDecision.SelectedEnemyInstanceId),
+                "semantic_generated_card" when
+                    transition.GeneratedCardDecision is not null =>
+                    ResolveGeneratedCard(replay, replay.Fingerprint,
+                        transition.GeneratedCardDecision.Event.EventId,
+                        transition.GeneratedCardDecision.SelectedCardId),
                 "nature" when transition.SelectedIndex is not null =>
                     Resolve(replay, replay.Fingerprint,
                         transition.SelectedIndex.Value),

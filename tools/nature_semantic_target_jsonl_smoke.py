@@ -19,7 +19,7 @@ def rollout(worker):
         assert session.capabilities["semanticTargetChoiceSchemaId"] == (
             "sts2-v111-semantic-target-choice-v1")
         assert session.capabilities["semanticExtendedControlledSites"] == [
-            "random_enemy_target"]
+            "random_enemy_target", "generated_card_pool"]
         combat = session.begin_seeded_semantic_combat(
             SEED, act=2,
             encounter_id="proto.native.hive.encounter.exoskeletons_normal",
@@ -29,7 +29,7 @@ def rollout(worker):
         assert combat.status()["chanceSites"] == [
             "enemy_intent", "draw_card", "random_target"]
         assert combat.status()["controllerMode"] == (
-            "nature-two-site-plus-random-target-fixture")
+            "nature-extended-fixture")
         observation = combat.observe()
         assert any(card["card_id"] == "proto.silent.ricochet"
                    for card in observation["combat"]["hand"])

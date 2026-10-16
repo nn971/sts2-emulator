@@ -235,6 +235,58 @@ public sealed class SemanticPilotCombatV111Tests
     }
 
     [Fact]
+    public void SemanticGeneratedCardPoolResolvesByModelIdentityAndReplays()
+    {
+        var state = SemanticPilotCombatEngineV111.BeginSeeded(
+            Seeded("semantic-p0-generation-event") with
+            {
+                FixtureGenerationPotionId = "proto.potion.orobic_acid"
+            });
+        var action = Assert.Single(new PrototypeAiEnvironment()
+            .Observe(state.Run).LegalActions,
+            candidate => candidate.Kind == "use_potion");
+        state = SemanticPilotCombatEngineV111.Step(
+            state, state.Fingerprint, action.ActionId);
+        var originalCardCount = state.Run.World!.Combat!.Cards.Length;
+        var pending = state.GeneratedCardPending!;
+        Assert.Equal("combat.generated_card.select", pending.SiteId);
+        Assert.Equal("prototype.combat", pending.StreamId);
+        Assert.Equal("choose_card_model", pending.OperationKind);
+        Assert.Equal("UNVERIFIED", pending.ProbabilityStatus);
+        Assert.True(pending.CandidateCardIds.Length > 3);
+
+        var fingerprint = state.Fingerprint;
+        Assert.Throws<InvalidOperationException>(() =>
+            SemanticPilotCombatEngineV111.ResolveGeneratedCard(
+                state, fingerprint, "stale-event", pending.CandidateCardIds[0]));
+        Assert.Throws<InvalidOperationException>(() =>
+            SemanticPilotCombatEngineV111.ResolveGeneratedCard(
+                state, fingerprint, pending.EventId, "proto.card.not_real"));
+        Assert.Equal(fingerprint, state.Fingerprint);
+
+        int decisions = 0;
+        while (state.GeneratedCardPending is { } generated)
+        {
+            Assert.True(decisions < 4,
+                "Expected Orobic Acid to resolve its three generated pools.");
+            var cardId = generated.CandidateCardIds[^1];
+            state = SemanticPilotCombatEngineV111.ResolveGeneratedCard(
+                state, state.Fingerprint, generated.EventId, cardId);
+            decisions++;
+            Assert.Equal(state.Fingerprint,
+                SemanticPilotCombatEngineV111.Restore(
+                    SemanticPilotCombatEngineV111.Save(state)).Fingerprint);
+        }
+        Assert.Equal(3, decisions);
+        Assert.True(state.AtPlayerBoundary);
+        Assert.Null(state.Run.Player.PotionSlots[0]);
+        Assert.Equal(3, state.History.Count(transition =>
+            transition.Kind == "semantic_generated_card"));
+        Assert.Equal(originalCardCount + 3,
+            state.Run.World!.Combat!.Cards.Length);
+    }
+
+    [Fact]
     public void BasicSilentActionKeepsCommittedHiddenDeckUntouched()
     {
         var state = SemanticPilotCombatEngineV111.Begin(

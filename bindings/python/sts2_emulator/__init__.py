@@ -252,6 +252,26 @@ class SemanticCombat:
                 fingerprint=self.fingerprint, event_id=self.pending["eventId"],
                 enemy_instance_id=enemy_instance_id))
 
+    def resolve_generated_card(self, card_model_id: str):
+        """Resolve one generated card from its ordered source pool."""
+        if not self.pending or self.pending["kind"] != "generated_card":
+            raise EmulatorError("Expected a generated_card Nature event")
+        if self.session.capabilities.get(
+                "semanticGeneratedCardChoiceSchemaId") != (
+                    "sts2-v111-semantic-generation-choice-v1"):
+            raise EmulatorError(
+                "Emulator does not expose semantic generated-card identities")
+        candidate_ids = [
+            candidate["cardModelId"]
+            for candidate in self.pending.get("candidates", [])]
+        if card_model_id not in candidate_ids:
+            raise ValueError("Card model is outside the pending generation support")
+        return SemanticCombat.from_wire(
+            self.session, self.session.call(
+                "semantic_resolve_generated_card", semantic_handle=self.handle,
+                fingerprint=self.fingerprint, event_id=self.pending["eventId"],
+                card_model_id=card_model_id))
+
     def fork(self):
         return SemanticCombat.from_wire(
             self.session, self.session.call(
@@ -394,6 +414,7 @@ class Session:
             other_chance_provider_id: str | None = None,
             fixture_draw_cost_relic_id: str | None = None,
             fixture_random_target_card_id: str | None = None,
+            fixture_generation_potion_id: str | None = None,
             replay_opening_draw_hooks: bool = False,
             native_policy_baseline: bool = False,
             source_route_entry: bool = False,
@@ -406,7 +427,8 @@ class Session:
         source_route_entry through begin_seeded_semantic_route() to run the
         configured Act 1 route and real native weak-combat entry. The
         optional random-target fixture adds Ricochet to the opening hand for
-        semantic target-boundary integration checks.
+        semantic target-boundary integration checks; the generation fixture
+        adds Orobic Acid to expose three ordered generated-card pools.
         """
         if self.capabilities.get("semanticSeededOpeningProvider") != (
                 "engine-owned-seeded-source-shaped-unverified-v1"):
@@ -432,6 +454,7 @@ class Session:
             other_chance_provider_id=other_chance_provider_id,
             fixture_draw_cost_relic_id=fixture_draw_cost_relic_id,
             fixture_random_target_card_id=fixture_random_target_card_id,
+            fixture_generation_potion_id=fixture_generation_potion_id,
             replay_opening_draw_hooks=replay_opening_draw_hooks,
             native_policy_baseline=native_policy_baseline,
             source_route_entry=source_route_entry,

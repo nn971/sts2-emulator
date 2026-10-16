@@ -1,11 +1,16 @@
 # Desired RNG Implementation
 
-**Status:** proposed target architecture; documentation only (2026-10-12).
+**Status:** target architecture with incremental implementation in progress.
 **Scope:** `sts2-emulator`, pinned STS2 v0.111.0, single-player first.
 **Primary goal:** faithful mechanics and ordered triggers with an interchangeable source of random decisions.
 **Related plans:** [RNG model](RNG.md), [v111 native RNG fidelity matrix](reference-builds/v0.111.0-native-rng-fidelity-matrix.md), [complete implementation roadmap](FULL_IMPLEMENTATION_ROADMAP.md), [configured v111 interface](V111_INTERFACE.md).
 
-This document records the **desired RNG implementation** for the next emulator architecture milestone. It specifies what we want to build; it does **not** claim that these interfaces, migrations, or probability calibrations are implemented today. The existing v111 native RNG work should be extended rather than discarded.
+This document records the **desired RNG implementation** for the emulator. It
+specifies the target architecture; it does not claim that the full interface,
+all source migrations or probability calibrations are complete. See the
+[migration matrix](DESIRED_RNG_MIGRATION_STATUS.md) and [semantic playable
+protocol](NATURE_P0_SEMANTIC_JSONL_143.md) for implemented slices. Extend the
+existing v111 native RNG work rather than discarding it.
 
 ## 0. Architecture update: stochastic state and semantic Nature (2026-10-15)
 
@@ -16,6 +21,16 @@ other hidden values. Nature may represent the same game state by unresolved,
 constrained random objects and select outcomes when the mechanics actually
 need them. Both providers execute the same card, enemy, relic, potion,
 visibility and trigger rules. The native stream/cursor audit remains intact.
+
+**Implementation progress (2026-10-16):** the repository now has a provider-
+owned semantic deck state with committed and unresolved positions, typed
+weighted intent events, and replayable semantic events for deferred card
+draws, random-enemy targets and generated-card model pools. The playable
+JSONL/Python pilot resumes the original draw, target and generation
+continuations, including draw-time hooks. Random-target and generation
+coverage use explicit test fixtures. Their source laws remain `UNVERIFIED`;
+the shared native provider seam, broad player-action coverage and native
+cursor parity for the remaining operations are still open work.
 
 ### State ownership and operation contract
 

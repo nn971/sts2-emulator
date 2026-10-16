@@ -26,7 +26,7 @@ non-Nature RNG parity remain **UNVERIFIED**.
 - `semanticChanceSchemaId = sts2-v111-semantic-playable-p0-v1`.
 - `semanticDrawChoiceSchemaId = sts2-v111-semantic-deck-v1`.
 - `semanticTargetChoiceSchemaId = sts2-v111-semantic-target-choice-v1`.
-- `semanticExtendedControlledSites = [random_enemy_target]`.
+- `semanticExtendedControlledSites = [random_enemy_target, generated_card_pool]`.
 - `semanticPlayable = true`, scope
   `seeded-source-route-or-post-committed-opening-fixture-restricted-Silent-combat`.
 - `semanticControlledSites = [enemy_intent, draw_card]`.
@@ -57,6 +57,7 @@ paths avoid that external setup chain:
 | `semantic_resolve` | handle, fingerprint, legal `selected_index` | Child Nature / player / terminal |
 | `semantic_resolve_draw_card` | handle, fingerprint, pending `event_id`, legal `card_instance_id` | Child Nature / player / terminal |
 | `semantic_resolve_random_target` | handle, fingerprint, pending `event_id`, legal `enemy_instance_id` | Child Nature / player / terminal |
+| `semantic_resolve_generated_card` | handle, fingerprint, pending `event_id`, legal `card_model_id` | Child Nature / player / terminal |
 | `semantic_fork` | handle | Independent child handle |
 | `semantic_save` | handle | Privileged snapshot string |
 | `semantic_load` | snapshot | New replay-validated handle |
@@ -273,6 +274,16 @@ Each `random_target` event exposes ordered live enemy instance IDs and the
 and records a `semantic_target` decision. Replay regenerates the same test
 loadout from seeded-entry provenance. This extension is marked
 `UNVERIFIED` and does not change the base two-site capability list.
+
+The optional `generated_card_pool` extension wraps the existing serialized
+generation continuation. The test loadout
+`fixture_generation_potion_id="proto.potion.orobic_acid"` adds Orobic Acid
+to the seeded combat. Its real source effects pause at each ordered attack,
+skill and power card pool. `semantic_resolve_generated_card` selects by
+stable card model ID, resumes the saved effect, and records a typed
+`semantic_generated_card` event for replay. Candidate pools preserve source
+ordering and remain `UNVERIFIED` as probability laws. The test loadout does
+not claim native potion acquisition provenance.
 
 **Probability status:** these are raw weights produced by the emulator's
 source-shaped selector, **not** independently audited original-game

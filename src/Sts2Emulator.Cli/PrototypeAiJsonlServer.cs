@@ -157,8 +157,49 @@ internal static class PrototypeAiJsonlServer
                         }).ToArray()
                 };
             }
+            if (state.GeneratedCardPending is { } generated)
+            {
+                return new
+                {
+                    kind = "generated_card",
+                    schemaId = generated.SchemaId,
+                    eventId = generated.EventId,
+                    siteId = generated.SiteId,
+                    streamId = generated.StreamId,
+                    ownerId = generated.OwnerId,
+                    ordinal = generated.Ordinal,
+                    operationKind = generated.OperationKind,
+                    supportFingerprint = generated.SupportFingerprint,
+                    probabilityStatus = generated.ProbabilityStatus,
+                    candidates = generated.CandidateCardIds
+                        .Select((id, index) => new
+                        {
+                            index,
+                            cardModelId = id
+                        }).ToArray()
+                };
+            }
             return null;
         }
+
+        string[] SemanticChanceSites(SemanticPilotCombatV111 state)
+        {
+            if (state.UsesNativePolicyBaseline) return [];
+            var sites = new List<string> { "enemy_intent", "draw_card" };
+            if (state.SeededEntry?.FixtureRandomTargetCardId is not null)
+                sites.Add("random_target");
+            if (state.SeededEntry?.FixtureGenerationPotionId is not null)
+                sites.Add("generated_card");
+            return sites.ToArray();
+        }
+
+        string SemanticControllerMode(SemanticPilotCombatV111 state) =>
+            state.UsesNativePolicyBaseline
+                ? "engine-owned-native-v111-policy-baseline"
+                : state.SeededEntry?.FixtureRandomTargetCardId is not null ||
+                  state.SeededEntry?.FixtureGenerationPotionId is not null
+                    ? "nature-extended-fixture"
+                    : "nature-two-site";
 
         object SemanticResult(
             SemanticPilotCombatV111 state, string handle,
@@ -181,16 +222,8 @@ internal static class PrototypeAiJsonlServer
                 terminal = state.CombatTerminal,
                 outcome = state.CombatOutcome,
                 exitHp = state.CombatTerminal ? state.Run.Player.Hp : (int?)null,
-                chanceSites = state.UsesNativePolicyBaseline
-                    ? Array.Empty<string>()
-                    : state.SeededEntry?.FixtureRandomTargetCardId is not null
-                        ? new[] { "enemy_intent", "draw_card", "random_target" }
-                        : new[] { "enemy_intent", "draw_card" },
-                controllerMode = state.UsesNativePolicyBaseline
-                    ? "engine-owned-native-v111-policy-baseline"
-                    : state.SeededEntry?.FixtureRandomTargetCardId is not null
-                        ? "nature-two-site-plus-random-target-fixture"
-                        : "nature-two-site",
+                chanceSites = SemanticChanceSites(state),
+                controllerMode = SemanticControllerMode(state),
                 nativePolicyProvider = state.UsesNativePolicyBaseline
                     ? SemanticNativePolicyAuditV111.NativeProviderId
                     : null,
@@ -363,9 +396,11 @@ internal static class PrototypeAiJsonlServer
                                 SemanticDeckStateV111.SchemaId,
                             semanticTargetChoiceSchemaId =
                                 SemanticTargetChoiceV111.SchemaId,
+                            semanticGeneratedCardChoiceSchemaId =
+                                SemanticGenerationChoiceV111.SchemaId,
                             semanticExtendedControlledSites = new[]
                             {
-                                "random_enemy_target"
+                                "random_enemy_target", "generated_card_pool"
                             },
                             semanticProbabilityStatus = "UNVERIFIED",
                             controlledChanceScope = "isolated-playable-combat-stage-continuations-v1",
@@ -695,7 +730,8 @@ internal static class PrototypeAiJsonlServer
                             sourceRouteEntry, routeRegion,
                             OptionalString(request, "route_neow_choice_id"),
                             OptionalString(request, "route_map_node_id"),
-                            OptionalString(request, "fixture_random_target_card_id"));
+                            OptionalString(request, "fixture_random_target_card_id"),
+                            OptionalString(request, "fixture_generation_potion_id"));
                         var next = SemanticPilotCombatEngineV111.BeginSeeded(entry);
                         var handle = StoreSemantic(next);
                         Write(new { requestId, ok = true,
@@ -783,6 +819,20 @@ internal static class PrototypeAiJsonlServer
                             OptionalInt(request, "enemy_instance_id") ??
                                 throw new ArgumentException(
                                     "Missing enemy_instance_id."));
+                        var handle = StoreSemantic(next);
+                        Write(new { requestId, ok = true,
+                            result = SemanticResult(next, handle, parentHandle) });
+                        break;
+                    }
+
+                    case "semantic_resolve_generated_card":
+                    {
+                        var parentHandle = RequiredString(request, "semantic_handle");
+                        var current = RequireSemantic(request);
+                        var next = SemanticPilotCombatEngineV111.ResolveGeneratedCard(
+                            current, RequiredString(request, "fingerprint"),
+                            RequiredString(request, "event_id"),
+                            RequiredString(request, "card_model_id"));
                         var handle = StoreSemantic(next);
                         Write(new { requestId, ok = true,
                             result = SemanticResult(next, handle, parentHandle) });
