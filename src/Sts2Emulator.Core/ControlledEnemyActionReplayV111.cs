@@ -67,7 +67,8 @@ public sealed record PrototypeControlledEnemyActionContinuationV111(
         "combat.enemy.draw.random_insert_index" or
         "combat.enemy.theft_card.select" or
         "combat.enemy.summon_pool.select" or
-        NativeCombatRngEntryV111.InitialUniqueHpSiteId;
+        NativeCombatRngEntryV111.InitialUniqueHpSiteId or
+        NativeCombatRngEntryV111.ToughEggHatchHpSiteId;
 }
 
 internal sealed class ControlledEnemyActionChanceRequiredException(

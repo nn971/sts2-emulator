@@ -768,7 +768,9 @@ stream assignment, cursor parity and conditional probabilities remain
 The enemy-action replay now handles the modeled legacy summon-pool selection.
 When a summoned enemy has a variable HP range, the replay serializes that
 second choice and injects the summon selection again before resolving the HP
-outcome. Native summon-pool selection remains fail-closed pending source RNG
-audit. The Release solution build passes with zero warnings or errors; tests
-and mechanics regressions were not run. The new nested continuation is
-`UNVERIFIED`; see [`NATURE_ENEMY_SUMMON_143.md`](NATURE_ENEMY_SUMMON_143.md).
+outcome. It also handles variable HP from a legacy Tough Egg hatch during the
+enemy stage. Native summon-pool selection remains fail-closed pending source
+RNG audit; native Tough Egg hatching uses its separate audited provider. The
+Release solution build passes with zero warnings or errors; tests and mechanics
+regressions were not run. The new nested continuation is `UNVERIFIED`; see
+[`NATURE_ENEMY_SUMMON_143.md`](NATURE_ENEMY_SUMMON_143.md).

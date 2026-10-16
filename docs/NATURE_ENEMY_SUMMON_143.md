@@ -12,6 +12,10 @@ Earlier summon choices are injected again from the checkpoint before the HP
 choice is reached. The source action commits the selected HP and continues the
 enemy stage once all decisions are resolved.
 
+The frame also resumes a legacy Tough Egg hatch that rolls variable Hatchling
+HP through `combat.tough_egg.hatchling_hp`. Native hatching remains routed
+through its separately audited run-level HP provider.
+
 This continuation covers the existing legacy combat model. Native summon-pool
 selection remains fail-closed until its source RNG assignment is audited.
 Probability status is `UNVERIFIED`; the new nested controlled mechanics path

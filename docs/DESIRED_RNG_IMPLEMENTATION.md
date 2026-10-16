@@ -142,7 +142,8 @@ opening and next-turn AI intent choices now pass through the shared typed
 adapter while retaining their existing streams and draw bounds; opening and
 later-turn intent choices have separate stable site IDs. The controlled legacy enemy
 action replay now covers summon-pool choices and any subsequent summoned-enemy
-HP choices, as well as card theft and random pile insertions. Native
+HP choices, variable legacy Tough Egg hatchling HP, card theft and random pile
+insertions. Native
 summon-pool selection remains fail-closed pending source audit; encounter
 selection continuations remain open.
 Beautiful Bracelet's eligible-deck shuffle and Fur Coat's current-act combat

@@ -813,6 +813,7 @@ internal static class PrototypeAiJsonlServer
                             {
                                 ControlledPlayableCombatEngineV111.ShuffleSite,
                                 NativeCombatRngEntryV111.InitialUniqueHpSiteId,
+                                NativeCombatRngEntryV111.ToughEggHatchHpSiteId,
                                 ControlledTurnIntentEngineV111.SiteId,
                                 ControlledRecycleShuffleEngineV111.SiteId,
                                 "combat.effect.random_enemy",
@@ -839,7 +840,7 @@ internal static class PrototypeAiJsonlServer
                                 "hand-cost selection/rerolls, random pile shortlists, " +
                                 "per-potion model generation, selected-card transforms, " +
                                 "Bottled Potential hand-return shuffles, and their relic insertions; " +
-                                "legacy enemy summon pools, summoned-enemy HP and " +
+                                "legacy enemy summon pools, summoned/hatchling HP and " +
                                 "persistent-card theft during end turn; " +
                                 "other chance sites fail closed; native entry and laws unverified.",
                             natureBoundaryKinds = new[] { "initial_hp", "intents" },
