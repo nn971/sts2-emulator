@@ -126,10 +126,10 @@ public static class SemanticPilotCombatEngineV111
         ArgumentException.ThrowIfNullOrWhiteSpace(entry.Seed);
         ArgumentException.ThrowIfNullOrWhiteSpace(entry.EncounterId);
         ArgumentException.ThrowIfNullOrWhiteSpace(entry.NativeEncounterEntry);
-        if (entry.Act is not (2 or 3) || entry.TotalFloor < 0 ||
+        if (entry.Act is not (1 or 2 or 3) || entry.TotalFloor < 1 ||
             entry.FirstMonsterCombatId < 1)
             throw new ArgumentOutOfRangeException(nameof(entry),
-                "Seeded Nature combat supports positive monster IDs and Hive/Glory.");
+                "Seeded Nature combat requires a positive floor and monster IDs.");
         var prepared = PrototypeNativeLaterActFixture.CreateCombatRngPreEntry(
             entry.Seed, entry.Act, entry.EncounterId,
             entry.NativeEncounterEntry, entry.TotalFloor, entry.Ascension,
