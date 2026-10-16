@@ -339,6 +339,15 @@ is an ordinary player choice, not an added Nature chance site. It does not
 establish native fixture-loadout acquisition or generic support for nested
 random continuations.
 
+Touch of Insanity, Droplet of Precognition and Liquid Memories also use this
+saved choice path when present in a potion slot. Their real effects select an
+energy-costing hand card, a draw-pile card or a discard-pile card, respectively;
+Touch of Insanity sets the selected hand card's temporary cost to zero. Set
+`fixture_selection_potion_id` to one of those potion IDs to add it to the
+seeded combat for a reproducible choice fixture. Draw-pile selection still
+fails closed when removing a hidden identity would split semantic position
+constraints.
+
 For the source random-pile shortlist, set
 `fixture_selection_card_id="proto.colorless.seeker_strike"`. Its actual
 `ChooseCards` effect exposes a sequence of ordered

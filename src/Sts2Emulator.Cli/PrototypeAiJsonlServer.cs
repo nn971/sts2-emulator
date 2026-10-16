@@ -995,7 +995,9 @@ internal static class PrototypeAiJsonlServer
                             OptionalInt(request,
                                 "fixture_randomize_hand_costs_max_exclusive"),
                             OptionalInt(request,
-                                "fixture_set_random_hand_card_cost"));
+                                "fixture_set_random_hand_card_cost"),
+                            OptionalString(request,
+                                "fixture_selection_potion_id"));
                         var next = SemanticPilotCombatEngineV111.BeginSeeded(entry);
                         var handle = StoreSemantic(next);
                         Write(new { requestId, ok = true,
