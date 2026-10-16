@@ -137,7 +137,9 @@ internal static class PrototypeAiJsonlServer
                 outcome = state.CombatOutcome,
                 exitHp = state.CombatTerminal ? state.Run.Player.Hp : (int?)null,
                 chanceSites = new[] { "enemy_intent", "draw_card" },
-                otherChanceProvider = "engine-owned-deterministic-unverified-v1",
+                otherChanceProvider = state.OtherChance?.ProviderId ??
+                    "engine-owned-deterministic-unverified-v1",
+                otherChanceDecisionCount = state.OtherChance?.Decisions.Length ?? 0,
                 sourceOpeningProvider = state.SeededEntry is null
                     ? "precommitted-fixture-v1"
                     : "engine-owned-seeded-source-shaped-unverified-v1",
@@ -268,6 +270,11 @@ internal static class PrototypeAiJsonlServer
                             },
                             semanticOtherChanceProvider =
                                 "engine-owned-deterministic-unverified-v1",
+                            semanticOtherChanceProviders = new[]
+                            {
+                                "engine-owned-deterministic-unverified-v1",
+                                SemanticOtherChanceEngineV111.ProviderId
+                            },
                             semanticOpeningProvider = "precommitted-fixture-v1",
                             semanticSeededOpeningProvider =
                                 "engine-owned-seeded-source-shaped-unverified-v1",
@@ -578,7 +585,9 @@ internal static class PrototypeAiJsonlServer
                             OptionalInt(request, "ascension") ?? 0,
                             OptionalInt(request, "first_monster_combat_id") ?? 1,
                             OptionalInt(request, "map_column"),
-                            OptionalInt(request, "map_row"));
+                            OptionalInt(request, "map_row"),
+                            OptionalString(request, "other_chance_provider_id"),
+                            OptionalString(request, "fixture_draw_cost_relic_id"));
                         var next = SemanticPilotCombatEngineV111.BeginSeeded(entry);
                         var handle = StoreSemantic(next);
                         Write(new { requestId, ok = true,

@@ -115,12 +115,55 @@ def terminal_rollout():
         return turns, tuple(trace), combat.fingerprint, combat.exit_hp
 
 
+def engine_cost_rollout():
+    with Session(COMMAND) as session:
+        provider = "engine-owned-native-v111-cost-stream-unverified-v1"
+        assert provider in session.capabilities["semanticOtherChanceProviders"]
+        combat = session.begin_seeded_semantic_combat(
+            SEED + "-snecko-native-cost", act=2,
+            encounter_id="proto.native.hive.encounter.exoskeletons_normal",
+            native_entry="ExoskeletonsNormal", total_floor=20,
+            map_column=3, map_row=5,
+            other_chance_provider_id=provider,
+            fixture_draw_cost_relic_id="proto.relic.snecko_eye")
+        assert combat.status()["otherChanceProvider"] == provider
+        assert combat.status()["otherChanceDecisionCount"] == 0
+        assert "semanticDeck" not in json.dumps(combat.observe())
+        action = next(a for a in combat.actions() if a["kind"] == "end_turn")
+        combat = combat.step(action["actionId"])
+        trace = []
+        while combat.boundary == "nature":
+            assert len(trace) < 150
+            event = combat.pending
+            assert event["kind"] in ("enemy_intent", "draw_card")
+            trace.append((event["kind"], event["supportFingerprint"]))
+            if event["kind"] == "enemy_intent":
+                combat = combat.resolve_intent(
+                    event["semanticCandidates"][0]["intentId"])
+            else:
+                combat = combat.resolve(0)
+        assert combat.boundary in ("player", "terminal")
+        state = combat.status()
+        assert state["otherChanceProvider"] == provider
+        assert state["otherChanceDecisionCount"] > 0
+        assert state["probabilityStatus"] == "UNVERIFIED"
+        assert session.load_semantic_snapshot(
+            combat.save_snapshot()).fingerprint == combat.fingerprint
+        return tuple(trace), combat.fingerprint, state["otherChanceDecisionCount"]
+
+
 def main():
     baseline = rollout()
     with ThreadPoolExecutor(max_workers=15) as pool:
         independent = list(pool.map(lambda _: rollout(), range(15)))
     assert all(value == baseline for value in independent), (
         "Seeded Nature session differs across independent JSONL processes")
+    cost = engine_cost_rollout()
+    with ThreadPoolExecutor(max_workers=15) as pool:
+        cost_workers = list(pool.map(
+            lambda _: engine_cost_rollout(), range(15)))
+    assert all(value == cost for value in cost_workers), (
+        "Engine-owned native-codec cost rolls differ by process")
     terminal = terminal_rollout()
     with ThreadPoolExecutor(max_workers=15) as pool:
         terminal_workers = list(pool.map(
@@ -130,7 +173,8 @@ def main():
     print("PASS: seeded Nature opening, 1 vs 15 independent process "
           "first-turn and full-terminal transcript equality; "
           f"defeat after {terminal[0]} turns, exit HP {terminal[3]}; "
-          "replay; only intent/draw Nature; source law UNVERIFIED")
+          f"replay; engine-owned cost rolls={cost[2]} per worker; "
+          "only intent/draw Nature; source law UNVERIFIED")
 
 
 if __name__ == "__main__":

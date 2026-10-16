@@ -261,3 +261,63 @@ the absence of phantom pending randomness, final exit HP and complete
 snapshot reconstruction. This establishes a narrow real **defeat**
 terminal path only when CI passes; complete victory and a sufficiently
 broad encounter/player policy evaluation are still acceptance work.
+
+## 2026-10-16 P0.4 slice: opt-in engine-owned native-codec cost stream
+
+The prior two-site semantic pilot auto-resolved Snecko/Slither random
+drawn-card costs using a deterministic hash of the session seed and current
+cost checkpoint. That compatibility mode remains available and is still
+the default for the existing `semantic_begin` and
+`semantic_begin_seeded` clients.
+
+**New explicit opt-in** on `semantic_begin_seeded`:
+`other_chance_provider_id =
+engine-owned-native-v111-cost-stream-unverified-v1`.
+Python `Session.begin_seeded_semantic_combat(...,
+other_chance_provider_id=...)` passes through this request.
+`hello.semanticOtherChanceProviders` lists both supported providers;
+each semantic `status` exposes the selected
+`otherChanceProvider` and cumulative `otherChanceDecisionCount`.
+
+The engine saves a *private, deeply forked* named v111 RNG bundle
+immediately after its source-shaped seeded HP / initial intent /
+Fisher–Yates opening setup. When the **real** DrawCards continuation
+pauses at a Snecko or Slither energy-cost call, the owned cost provider
+samples the pending bounded index with the native v111 NextInt codec from
+`run.combat_energy_costs`, then feeds the selected cost into the existing
+source-timed original mechanical continuation. The provider stores each
+sampled request, selected value, source stream, native before/after cursor,
+and `UNVERIFIED` source probability label in a provider-private transcript.
+Only `enemy_intent` and unresolved `draw_card` are returned to Nature.
+No shuffle-swap ticket is generated for an already committed deck epoch.
+
+- The private stream is not part of fair player observations. State
+  fingerprints, deep forks, snapshots and full player/Nature replay include
+  this hidden state and its transcript. Stale decisions / unsupported chance
+  sites abort before publishing a new child.
+- `run.combat_energy_costs` is an **explicit source-shaped assignment
+  hypothesis** for these two cost sites. Native stream ownership/call-order
+  parity for the installed game still requires validation. This is
+  stronger than the former hash-based approximation because it reproduces
+  the version-pinned native codec and cursor behavior at the supported
+  cost continuation; it is not a claim of exact unobserved native outcomes.
+- An optional **isolated test-only loadout**
+  `fixture_draw_cost_relic_id=proto.relic.snecko_eye`
+  inserts Snecko after the committed opening to exercise the actual draw
+  hooks. This does *not* establish native relic-acquisition provenance.
+  CI checks the real Snecko cost path, exact private cursor progression,
+  replay, and 1-vs-15 independent external JSONL process equality.
+- Other non-intent/draw random mechanics (targeting, generation,
+  random insertion, nested hooks, etc.) still fail explicitly at their
+  unmigrated guarded sites. A complete multi-site native/default provider
+  remains P0.4 work.
+
+Example:
+```python
+pilot = session.begin_seeded_semantic_combat(
+    seed="reproducible-run", act=2,
+    encounter_id="proto.native.hive.encounter.exoskeletons_normal",
+    native_entry="ExoskeletonsNormal", total_floor=20,
+    other_chance_provider_id=
+        "engine-owned-native-v111-cost-stream-unverified-v1")
+```
