@@ -235,6 +235,73 @@ public sealed class SemanticPilotCombatV111Tests
     }
 
     [Fact]
+    public void SourcePinnedActOneWeakCombatWinsByOrdinarySilentStrikeActions()
+    {
+        var entry = new SemanticSeededEntryV111(
+            "nature-p0-weak-real-victory", 1,
+            "proto.encounter.shrinker_beetle_weak",
+            "ShrinkerBeetleWeak", 2, 0, 1, 3, 1,
+            ReplayOpeningDrawHooks: true);
+        var state = SemanticPilotCombatEngineV111.BeginSeeded(entry);
+        Assert.True(state.AtPlayerBoundary);
+        Assert.Single(state.Run.World!.Combat!.Enemies);
+        int actions = 0, nature = 0, strikeActions = 0;
+        while (!state.CombatTerminal)
+        {
+            Assert.True(++actions + nature < 600,
+                "Expected a genuine starter-deck Act 1 victory.");
+            if (state.AtPlayerBoundary)
+            {
+                var combat = state.Run.World!.Combat!;
+                var frame = new PrototypeAiEnvironment().Observe(state.Run);
+                var strike = frame.LegalActions.FirstOrDefault(action =>
+                    action.Kind == "play_card" &&
+                    action.Payload.Deserialize<PlayCardPayload>() is { } card &&
+                    combat.Cards.Any(instance =>
+                        instance.InstanceId == card.CardInstanceId &&
+                        instance.CardId == "proto.silent.strike"));
+                var defend = frame.LegalActions.FirstOrDefault(action =>
+                    action.Kind == "play_card" &&
+                    action.Payload.Deserialize<PlayCardPayload>() is { } card &&
+                    combat.Cards.Any(instance =>
+                        instance.InstanceId == card.CardInstanceId &&
+                        instance.CardId == "proto.silent.defend"));
+                var chosen = strike ?? defend ??
+                    Assert.Single(frame.LegalActions, a => a.Kind == "end_turn");
+                if (strike is not null) strikeActions++;
+                state = SemanticPilotCombatEngineV111.Step(
+                    state, state.Fingerprint, chosen.ActionId);
+            }
+            else if (state.IntentPending is not null)
+            {
+                var support = ControlledTurnIntentEngineV111
+                    .DescribePendingSemanticIntent(state.PendingEndTurn!.Intents!)!;
+                state = SemanticPilotCombatEngineV111.ResolveIntent(
+                    state, state.Fingerprint, support.Candidates[0].IntentId);
+                nature++;
+            }
+            else if (state.DrawPending is not null)
+            {
+                state = SemanticPilotCombatEngineV111.Resolve(
+                    state, state.Fingerprint, 0);
+                nature++;
+            }
+            else
+                throw new InvalidDataException("Unexpected semantic boundary.");
+        }
+        Assert.True(strikeActions >= 6);
+        Assert.Equal("victory", state.CombatOutcome);
+        Assert.Equal(RunPhase.Reward, state.Run.Phase);
+        Assert.Null(state.PendingEndTurn);
+        Assert.Null(state.IntentPending);
+        Assert.Null(state.DrawPending);
+        Assert.True(state.Run.Player.Hp > 0);
+        Assert.Equal(state.Fingerprint,
+            SemanticPilotCombatEngineV111.Restore(
+                SemanticPilotCombatEngineV111.Save(state)).Fingerprint);
+    }
+
+    [Fact]
     public void SeededOpeningReusesExactCommittedOrderThroughRealCardDrawnHooks()
     {
         var entry = Seeded("semantic-143-opening-real-hooks");
