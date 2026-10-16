@@ -104,6 +104,10 @@ preserving draw-pile order and its automatic-pipeline cursor; see
 Random hand-card selection and energy-cost effects keep their automatic
 pipeline cursor while Nature resolves the selected card and any per-card cost
 tickets.
+Generated-card and potion-model choices also preserve that cursor while the
+saved effect queue resumes, including successive generated items.
+Full-pool random card effects preserve it through each saved descending swap
+and resume the effect queue after the permutation commits.
 Anointed's full shuffle over Rare draw-pile instances now resumes from each
 saved bounded swap and moves the resulting prefix into hand while updating the
 semantic deck. The player-action fixture route uses stable card-instance

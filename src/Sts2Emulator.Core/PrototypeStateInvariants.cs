@@ -3493,8 +3493,6 @@ public static class PrototypeStateInvariants
                     pending.ControlledRandomPileCard is not null ||
                     pending.ControlledSemanticDraw is not null ||
                     combat.PendingKnowledgeDemonChoice is not null ||
-                    combat.SemanticDeck is not
-                        { Mode: SemanticDeckStateV111.NatureMode } ||
                     (automatic is null && !combat.IsPlayerTurn) ||
                     !PrototypeGameEngine.ValidateControlledCardShortlist(
                         combat, cardShortlist))
@@ -3517,8 +3515,6 @@ public static class PrototypeStateInvariants
                     pending.ControlledRandomPileCard is not null ||
                     pending.ControlledSemanticDraw is not null ||
                     combat.PendingKnowledgeDemonChoice is not null ||
-                    combat.SemanticDeck is not
-                        { Mode: SemanticDeckStateV111.NatureMode } ||
                     (automatic is null && !combat.IsPlayerTurn) ||
                     randomCost.Operation.Kind is not (
                         PrototypeCombatEffectKind
@@ -3530,13 +3526,14 @@ public static class PrototypeStateInvariants
                     throw new InvalidOperationException(
                         "Controlled random-hand-cost continuation is malformed.");
             }
-            if (pending.ControlledPotionGeneration is { } potionGeneration)
+            if (pending.ControlledGeneration is { } generatedCard)
             {
-                if (!PrototypeGameEngine.ValidateControlledPotionGeneration(
-                        combat, potionGeneration,
-                        pending.SourceCardInstanceId) ||
+                var automatic = combat.AutomaticPipelineContinuation;
+                if (pending.ChoiceId != "controlled_generated_card" ||
+                    pending.OuterChoiceContinuation is null ||
                     pending.ControlledTarget is not null ||
-                    pending.ControlledGeneration is not null ||
+                    pending.ControlledPotionGeneration is not null ||
+                    pending.ControlledCardTransform is not null ||
                     pending.ControlledDrawInsertion is not null ||
                     pending.ControlledPoolShuffle is not null ||
                     pending.ControlledRandomCost is not null ||
@@ -3544,6 +3541,55 @@ public static class PrototypeStateInvariants
                     pending.ControlledCardShortlist is not null ||
                     pending.ControlledRandomPileCard is not null ||
                     pending.ControlledSemanticDraw is not null ||
+                    combat.PendingKnowledgeDemonChoice is not null ||
+                    (automatic is null && !combat.IsPlayerTurn) ||
+                    !PrototypeGameEngine.ValidateControlledGenerationSupport(
+                        generatedCard))
+                    throw new InvalidOperationException(
+                        "Controlled generated-card continuation is malformed.");
+            }
+            if (pending.ControlledPoolShuffle is { } poolShuffle)
+            {
+                var automatic = combat.AutomaticPipelineContinuation;
+                if (pending.ChoiceId != "controlled_pool_shuffle" ||
+                    pending.OuterChoiceContinuation is null ||
+                    pending.ControlledTarget is not null ||
+                    pending.ControlledGeneration is not null ||
+                    pending.ControlledPotionGeneration is not null ||
+                    pending.ControlledCardTransform is not null ||
+                    pending.ControlledDrawInsertion is not null ||
+                    pending.ControlledRandomCost is not null ||
+                    pending.ControlledDrawCost is not null ||
+                    pending.ControlledCardShortlist is not null ||
+                    pending.ControlledRandomPileCard is not null ||
+                    pending.ControlledSemanticDraw is not null ||
+                    combat.PendingKnowledgeDemonChoice is not null ||
+                    (automatic is null && !combat.IsPlayerTurn) ||
+                    !PrototypeGameEngine.ValidateControlledPoolShuffle(
+                        combat, poolShuffle, pending.SourceCardInstanceId))
+                    throw new InvalidOperationException(
+                        "Controlled pool-shuffle continuation is malformed.");
+            }
+            if (pending.ControlledPotionGeneration is { } potionGeneration)
+            {
+                var automatic = combat.AutomaticPipelineContinuation;
+                if (pending.ChoiceId != "controlled_potion_generation" ||
+                    pending.OuterChoiceContinuation is null ||
+                    pending.ControlledTarget is not null ||
+                    pending.ControlledGeneration is not null ||
+                    pending.ControlledCardTransform is not null ||
+                    pending.ControlledDrawInsertion is not null ||
+                    pending.ControlledPoolShuffle is not null ||
+                    pending.ControlledRandomCost is not null ||
+                    pending.ControlledDrawCost is not null ||
+                    pending.ControlledCardShortlist is not null ||
+                    pending.ControlledRandomPileCard is not null ||
+                    pending.ControlledSemanticDraw is not null ||
+                    combat.PendingKnowledgeDemonChoice is not null ||
+                    (automatic is null && !combat.IsPlayerTurn) ||
+                    !PrototypeGameEngine.ValidateControlledPotionGeneration(
+                        combat, potionGeneration,
+                        pending.SourceCardInstanceId) ||
                     pending.Selection.SourceZone != PrototypeCardZone.Hand ||
                     pending.Selection.MinSelections != 0 ||
                     pending.Selection.MaxSelections != 0 ||

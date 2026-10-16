@@ -3160,8 +3160,9 @@ public static class SemanticPilotCombatEngineV111
         var choice = combat?.PendingChoice;
         var shuffle = choice?.ControlledPoolShuffle;
         if (run.Phase != RunPhase.Combat ||
-            combat is not { IsPlayerTurn: true,
-                AutomaticPipelineContinuation: null } ||
+            combat is not { PendingKnowledgeDemonChoice: null } ||
+            (combat.AutomaticPipelineContinuation is null &&
+             !combat.IsPlayerTurn) ||
             choice is not { ChoiceId: "controlled_pool_shuffle",
                 OuterChoiceContinuation: not null } ||
             shuffle is null ||
@@ -3178,6 +3179,7 @@ public static class SemanticPilotCombatEngineV111
                 .Order().SequenceEqual(combat.DrawPile.Order()))
             throw new InvalidDataException(
                 "Full-pool shuffle changed the hidden draw pile.");
+        PrototypeStateInvariants.Validate(run);
     }
 
     public static SemanticDrawInsertionEventV111?
@@ -3461,8 +3463,9 @@ public static class SemanticPilotCombatEngineV111
         var choice = combat?.PendingChoice;
         var generation = choice?.ControlledPotionGeneration;
         if (run.Phase != RunPhase.Combat ||
-            combat is not { IsPlayerTurn: true,
-                AutomaticPipelineContinuation: null } ||
+            combat is not { PendingKnowledgeDemonChoice: null } ||
+            (combat.AutomaticPipelineContinuation is null &&
+             !combat.IsPlayerTurn) ||
             choice is not { ChoiceId: "controlled_potion_generation",
                 OuterChoiceContinuation: not null } ||
             generation is null ||
@@ -3479,6 +3482,7 @@ public static class SemanticPilotCombatEngineV111
                 .Order().SequenceEqual(combat.DrawPile.Order()))
             throw new InvalidDataException(
                 "Potion generation changed the hidden draw pile.");
+        PrototypeStateInvariants.Validate(run);
     }
 
     private static void ValidateCardTransformBoundary(
@@ -3581,8 +3585,9 @@ public static class SemanticPilotCombatEngineV111
         var choice = combat?.PendingChoice;
         var generation = choice?.ControlledGeneration;
         if (run.Phase != RunPhase.Combat ||
-            combat is not { IsPlayerTurn: true,
-                AutomaticPipelineContinuation: null } ||
+            combat is not { PendingKnowledgeDemonChoice: null } ||
+            (combat.AutomaticPipelineContinuation is null &&
+             !combat.IsPlayerTurn) ||
             choice is not { ChoiceId: "controlled_generated_card",
                 OuterChoiceContinuation: not null } ||
             generation is null ||
@@ -3598,6 +3603,7 @@ public static class SemanticPilotCombatEngineV111
                 .Order().SequenceEqual(combat.DrawPile.Order()))
             throw new InvalidDataException(
                 "Generated-card continuation changed the hidden draw pile.");
+        PrototypeStateInvariants.Validate(run);
     }
 
     private static void ValidateTargetBoundary(RunState run)
