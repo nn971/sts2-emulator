@@ -840,6 +840,8 @@ public sealed partial class PrototypeGameEngine
                             PrototypeNativeFakeMerchant.NativeRngEventId,
                         PrototypeNativeGloryEvents.TinkerTimeId =>
                             PrototypeNativeGloryEvents.TinkerTimeNativeRngEventId,
+                        PrototypeNativeStoneOfAllTime.EventId =>
+                            PrototypeNativeStoneOfAllTime.NativeRngEventId,
                         _ => null
                     }),
                 NativeEventGold:
@@ -897,11 +899,41 @@ public sealed partial class PrototypeGameEngine
                             : 0,
                 NativeEventPotionSlot:
                     selected.Id == PrototypeNativeStoneOfAllTime.EventId
+                        && state.NativeRunRng is null
                         ? PrototypeNativeStoneOfAllTime.RollPotionSlot(
                             state.Player, state.Rng)
                         : null),
             EventHistory = world.EventIds.Append(selected.Id).ToArray()
         };
+
+        if (selected.Id == PrototypeNativeStoneOfAllTime.EventId
+            && state.NativeRunRng is not null)
+        {
+            var slots = PrototypeNativeStoneOfAllTime.OccupiedPotionSlots(
+                state.Player);
+            if (slots.Length == 0)
+                throw new InvalidOperationException(
+                    "Stone of All Time requires an owned potion.");
+            state = state with { World = world };
+            var draw = NativeEventContextRngV111.ResolveIndex(
+                state,
+                world.Event!,
+                PrototypeNativeStoneOfAllTime.NativeRngEventId,
+                "event.stone_of_all_time.potion_slot.index_draw",
+                "event:stone_of_all_time:potion_slots:"
+                    + CanonicalJson.Sha256(slots),
+                slots.Length);
+            state = draw.State;
+            world = state.World!;
+            world = world with
+            {
+                Event = world.Event! with
+                {
+                    NativeEventPotionSlot = slots[draw.SelectedIndex]
+                }
+            };
+            state = state with { World = world };
+        }
 
         if (selected.Id == PrototypeNativeFakeMerchant.EventId)
         {

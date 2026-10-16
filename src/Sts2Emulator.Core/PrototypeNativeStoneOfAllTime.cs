@@ -7,6 +7,7 @@ namespace Sts2Emulator.Core;
 public static class PrototypeNativeStoneOfAllTime
 {
     public const string EventId = "proto.native.hive.stone_of_all_time";
+    public const string NativeRngEventId = "STONE_OF_ALL_TIME";
 
     public static PrototypeEventDefinition Definition { get; } = new(
         EventId,
@@ -30,13 +31,16 @@ public static class PrototypeNativeStoneOfAllTime
         MaxAct: 2,
         Weight: 0);
 
-    public static int RollPotionSlot(PlayerState player, RngBundle rng)
-    {
-        var slots = player.PotionSlots
+    public static int[] OccupiedPotionSlots(PlayerState player) =>
+        player.PotionSlots
             .Select((potion, slot) => (Potion: potion, Slot: slot))
             .Where(item => item.Potion is not null)
             .Select(item => item.Slot)
             .ToArray();
+
+    public static int RollPotionSlot(PlayerState player, RngBundle rng)
+    {
+        var slots = OccupiedPotionSlots(player);
         if (slots.Length == 0)
         {
             throw new InvalidOperationException(
@@ -89,12 +93,29 @@ public sealed partial class PrototypeGameEngine
             }
         };
 
-        _ = LegacyRandomChoiceV111.ChooseBoundedInteger(
-            result.Rng,
-            "event.stone_of_all_time.lift_ticket",
-            "event",
-            "event:stone_of_all_time:lift",
-            100);
+        if (result.NativeRunRng is not null)
+        {
+            if (current.NativeEventRng is null)
+                throw new InvalidOperationException(
+                    "Native Stone of All Time has no saved event RNG.");
+            var draw = NativeEventContextRngV111.ResolveBoundedInteger(
+                result,
+                result.World!.Event!,
+                PrototypeNativeStoneOfAllTime.NativeRngEventId,
+                "event.stone_of_all_time.lift_ticket",
+                "event:stone_of_all_time:lift",
+                100);
+            result = draw.State;
+        }
+        else
+        {
+            _ = LegacyRandomChoiceV111.ChooseBoundedInteger(
+                result.Rng,
+                "event.stone_of_all_time.lift_ticket",
+                "event",
+                "event:stone_of_all_time:lift",
+                100);
+        }
         return PreserveNativeEventCompletionPage(result, "lift");
     }
 }

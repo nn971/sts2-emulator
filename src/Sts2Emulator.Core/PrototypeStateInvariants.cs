@@ -27,6 +27,10 @@ public static class PrototypeStateInvariants
             state,
             PrototypeNativeGloryEvents.TinkerTimeId,
             PrototypeNativeGloryEvents.TinkerTimeNativeRngEventId);
+        NativeEventContextRngV111.Validate(
+            state,
+            PrototypeNativeStoneOfAllTime.EventId,
+            PrototypeNativeStoneOfAllTime.NativeRngEventId);
         if (state.Ascension < 0)
         {
             throw new InvalidOperationException(

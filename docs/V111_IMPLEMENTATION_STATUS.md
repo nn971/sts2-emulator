@@ -68,6 +68,9 @@ Stone of All Time is integrated in Hive. Lift discards the potion chosen on
 event entry and grants 10 Max HP. Push deals 6 HP damage, then offers one
 eligible Attack for Vigorous 8. Vigorous adds its amount to powered Attack
 damage and disables itself after the card's first completed play.
+Native v111 runs retain the `STONE_OF_ALL_TIME` event stream across the
+occupied-potion pick and the hidden lift/push tickets; seeded result and cursor
+parity remain unverified.
 Infested Automaton is integrated in Hive for Silent. Study adds one eligible
 Power and Touch Core adds one eligible zero cost card when the card generator
 returns one; both choices retain their result page even when no card is added.

@@ -217,12 +217,27 @@ public sealed partial class PrototypeGameEngine
                 && eventState.NativePageIndex == 0
                 && eventState.ChosenChoiceId == "push")
             {
-                _ = LegacyRandomChoiceV111.ChooseBoundedInteger(
-                    state.Rng,
-                    "event.stone_of_all_time.push_ticket",
-                    "event",
-                    "event:stone_of_all_time:push",
-                    100);
+                if (state.NativeRunRng is not null)
+                {
+                    var draw = NativeEventContextRngV111
+                        .ResolveBoundedInteger(
+                            state,
+                            eventState,
+                            PrototypeNativeStoneOfAllTime.NativeRngEventId,
+                            "event.stone_of_all_time.push_ticket",
+                            "event:stone_of_all_time:push",
+                            100);
+                    state = draw.State;
+                }
+                else
+                {
+                    _ = LegacyRandomChoiceV111.ChooseBoundedInteger(
+                        state.Rng,
+                        "event.stone_of_all_time.push_ticket",
+                        "event",
+                        "event:stone_of_all_time:push",
+                        100);
+                }
                 return PreserveNativeEventCompletionPage(state, "push");
             }
 
