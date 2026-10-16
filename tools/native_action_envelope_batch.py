@@ -74,6 +74,14 @@ def collect(directory: Path) -> dict:
             "native_rng_primitive_status": primitive["status"],
             "native_rng_primitive_validated_calls": primitive["validated_calls"],
             "native_rng_primitive_errors": primitive["errors"],
+            "native_rng_primitive_error_count": primitive["primitive_error_count"],
+            "native_rng_stream_conflicts": primitive["stream_conflict_count"],
+            "native_rng_stream_conflict_examples": primitive["stream_conflicts"],
+            "native_rng_stream_gaps": primitive["stream_gap_count"],
+            "native_rng_stream_gap_examples": primitive["stream_gaps"],
+            "native_rng_stream_pairs_checked": primitive["stream_pairs_checked"],
+            "native_rng_stream_pairs_contiguous": primitive["stream_pairs_contiguous"],
+            "native_rng_stream_coverage": primitive["status"],
             "native_rng_unattributed_calls": result["native_rng_unattributed_calls"],
             "native_rng_source_coverage": result["native_rng_source_coverage"],
             "unattributed_history_entries": result["unattributed_history_entries"],
@@ -119,7 +127,15 @@ def collect(directory: Path) -> dict:
             entry["native_shuffle_primitive_calls_correlated"]
             for entry in traces),
         "native_rng_primitive_errors": sum(
-            len(entry["native_rng_primitive_errors"]) for entry in traces),
+            entry["native_rng_primitive_error_count"] for entry in traces),
+        "native_rng_stream_conflicts": sum(
+            entry["native_rng_stream_conflicts"] for entry in traces),
+        "native_rng_stream_gaps": sum(
+            entry["native_rng_stream_gaps"] for entry in traces),
+        "native_rng_stream_pairs_checked": sum(
+            entry["native_rng_stream_pairs_checked"] for entry in traces),
+        "native_rng_stream_pairs_contiguous": sum(
+            entry["native_rng_stream_pairs_contiguous"] for entry in traces),
         "native_rng_primitive_validated_calls": sum(
             entry["native_rng_primitive_validated_calls"] for entry in traces),
         "native_rng_source_calls": sum(

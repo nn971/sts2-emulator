@@ -34,12 +34,16 @@ def combine(corpus: dict, strict: dict, prefixes: dict,
         status = "NATIVE_SHUFFLE_SOURCE_MISMATCH"
     elif corpus.get("native_rng_primitive_errors", 0) > 0:
         status = "NATIVE_RNG_PRIMITIVE_MISMATCH"
+    elif corpus.get("native_rng_stream_conflicts", 0) > 0:
+        status = "NATIVE_RNG_STREAM_ORDER_CONFLICT"
     elif engine_error:
         status = "ENGINE_EXECUTION_UNAVAILABLE"
     elif captures == 0 and strict.get("trace_count", 0) == 0:
         status = "NO_CAPTURE_EVIDENCE"
     elif mismatched:
         status = "REAL_ENGINE_CHECKPOINT_MISMATCH"
+    elif corpus.get("native_rng_stream_gaps", 0) > 0:
+        status = "NATIVE_RNG_STREAM_GAPS_REQUIRE_REVIEW"
     elif engine is None or stepped == 0:
         status = "ENGINE_COMPARISON_NOT_COMPLETED"
     elif not all_native_valid or engine.get("unsupported_or_invalid", 0):
@@ -78,6 +82,14 @@ def combine(corpus: dict, strict: dict, prefixes: dict,
                 corpus.get("native_rng_primitive_validated_calls", 0),
             "native_rng_primitive_errors":
                 corpus.get("native_rng_primitive_errors", 0),
+            "native_rng_stream_conflicts":
+                corpus.get("native_rng_stream_conflicts", 0),
+            "native_rng_stream_gaps":
+                corpus.get("native_rng_stream_gaps", 0),
+            "native_rng_stream_pairs_checked":
+                corpus.get("native_rng_stream_pairs_checked", 0),
+            "native_rng_stream_pairs_contiguous":
+                corpus.get("native_rng_stream_pairs_contiguous", 0),
             "native_rng_unattributed_calls": corpus.get("native_rng_unattributed_calls", 0),
             "strict_trace_files": strict.get("trace_count", 0),
             "strict_traces_complete": strict.get("structurally_valid_count", 0),
@@ -105,6 +117,7 @@ def combine(corpus: dict, strict: dict, prefixes: dict,
             "The current importer omits hidden state, relic/potion and some power/turn-counter mechanics",
             "Emulator RNG journaling currently covers only migrated typed provider sites",
             "No original conditional outcome-law or full native cursor parity certification",
+            "Inter-call RNG cursor gaps may be other primitives, resets, or missing records; investigate before claiming stream coverage",
         ],
     }
 
@@ -168,7 +181,8 @@ def main() -> int:
     return 1 if report["status"] in (
         "REAL_ENGINE_CHECKPOINT_MISMATCH", "NATIVE_RNG_PRIMITIVE_MISMATCH",
         "NATIVE_SHUFFLE_SOURCE_MISMATCH",
-        "NATIVE_INITIAL_HP_SOURCE_MISMATCH") else (
+        "NATIVE_INITIAL_HP_SOURCE_MISMATCH",
+        "NATIVE_RNG_STREAM_ORDER_CONFLICT") else (
         2 if report["status"] != "SUPPORTED_CHECKPOINTS_AGREE_NOT_FULL_GAME_PARITY"
         else 0)
 

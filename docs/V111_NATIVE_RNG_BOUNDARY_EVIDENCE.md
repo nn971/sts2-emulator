@@ -119,3 +119,47 @@ full call-site coverage, semantic candidate eligibility or native RNG parity
 requires real-game traces. Use
 [`V111_NATIVE_RNG_HOOK_LOCAL_VALIDATION.md`](V111_NATIVE_RNG_HOOK_LOCAL_VALIDATION.md)
 for the isolated WSL checkout and Windows process setup.
+
+## 2026-10-13: adjacent source-call stream-continuity audit
+
+The offline `native_rng_boundary_verify.py` additionally correlates
+**successive individually valid calls on each known `run.*` or `player.*`
+native RNG stream inside one combat sidecar**. It compares the previous
+post-call counter and all four xoshiro state words against the next
+pre-call snapshot, across different action and creature owner IDs.
+
+- Exact match: `stream_pairs_contiguous` increments; this is direct evidence
+  for this *observed pair*, not proof of all RNG primitive coverage.
+- Forward counter gap: `UNOBSERVED_STREAM_ADVANCE` with the number of
+  advances and exact source line numbers. Other RNG primitives, lost records
+  and unattached native hooks are distinct possible causes. Report
+  `OBSERVED_NATIVE_RNG_PRIMITIVES_WITH_STREAM_GAPS`, exit 2.
+- Overlapping/rewound counter or different state at the same counter:
+  `NATIVE_RNG_STREAM_ORDER_CONFLICT`, exit 1. Potential nested overload
+  double-observation, stream reassignment or reset requires inspection.
+- Context/unknown `UNATTRIBUTED` streams are explicitly excluded from the
+  continuity check; their individual source primitive transitions remain
+  verifiable, but no stable cross-call identity has been established.
+- Calls failing individual source/xoshiro verification break the adjacency
+  chain for that stream rather than creating fictitious continuity evidence.
+
+The corpus auditor aggregates `native_rng_stream_gaps`,
+`native_rng_stream_conflicts`, checked pairs and contiguous pairs.
+The unified fidelity gate fails on stream order conflicts and returns an
+explicit partial-coverage classification for forward gaps, even when a
+supported isolated emulator checkpoint happens to agree. Both classifications
+preserve `native_source_hook_order_parity=NOT_TESTED` and
+`exact_native_rng_parity=NOT_TESTED`.
+
+This is an **offline diagnostic**. The native hook, RNG consumption,
+Silent four-Act engine and active gameplay branches are unchanged.
+
+The standalone `native_rng_boundary_compare.py` now runs the same
+source-primitive and full-sidecar persistent-stream continuity verifier before
+matching an isolated action to an actual engine provider journal. It returns
+`NATIVE_RNG_PRIMITIVE_MISMATCH` or `NATIVE_RNG_STREAM_ORDER_CONFLICT`
+for invalid native evidence, and a **partial** verdict
+`OBSERVED_RNG_PRIMITIVE_WITH_UNOBSERVED_STREAM_ADVANCES` when supported
+bounds/results match but another observed call exposes uninstrumented stream
+advances. This prevents a stand-alone local comparator from claiming agreement
+on tampered source cursors or overlapped source callbacks.

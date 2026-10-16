@@ -56,25 +56,97 @@ def verify_call(data: dict) -> str | None:
     return None
 
 
+def _cursor(snapshot: dict) -> tuple[int, ...]:
+    """Canonical counter + four state words from an individually valid call."""
+    return (field(snapshot, "counter"),) + tuple(
+        field(snapshot, name) for name in ("state0", "state1", "state2", "state3")
+    )
+
+
 def audit(records: list[dict]) -> dict:
     errors = []
+    conflicts = []
+    gaps = []
     count = 0
-    for ordinal, entry in enumerate(records, 1):
+    continuous_pairs = 0
+    checked_pairs = 0
+    # The native owner registry identifies persistent run/player Rng instances
+    # by reference for ONE combat. Scope-level owner_id may be a creature and
+    # call_ordinal may reset on each RollMove; neither keys stream continuity.
+    last_by_stream: dict[str, tuple[int, tuple[int, ...]]] = {}
+    streams_seen: set[str] = set()
+    for line, entry in enumerate(records, 1):
         if entry.get("type") != "native_rng_boundary":
             continue
         count += 1
-        error = verify_call(entry.get("data") or {})
+        data = entry.get("data") or {}
+        error = verify_call(data) if isinstance(data, dict) else "INVALID_SOURCE_EVENT"
+        stream = data.get("stream_id") if isinstance(data, dict) else None
+        persistent = (isinstance(stream, str) and
+                      (stream.startswith("run.") or stream.startswith("player.")))
         if error:
-            errors.append({"line": ordinal, "type": error,
+            errors.append({"line": line, "type": error,
                            "native_action_id": entry.get("action_id")})
+            # An invalid middle observation cannot establish an adjacent pair.
+            if persistent:
+                last_by_stream.pop(stream, None)
+            continue
+        if not persistent:
+            continue  # Context/UNATTRIBUTED objects have no verified identity.
+        streams_seen.add(stream)
+        before = _cursor(data["cursor_before"])
+        after = _cursor(data["cursor_after"])
+        prior = last_by_stream.get(stream)
+        if prior is not None:
+            checked_pairs += 1
+            previous_line, previous_after = prior
+            difference = before[0] - previous_after[0]
+            if difference == 0 and before == previous_after:
+                continuous_pairs += 1
+            elif difference > 0:
+                # Forward advances can be unhooked double/float primitives,
+                # other source calls, or dropped records; they are a *coverage
+                # gap*, not proof that an integer source callback was missed.
+                gaps.append({
+                    "stream_id": stream, "previous_line": previous_line,
+                    "line": line, "unobserved_rng_advances": difference,
+                    "type": "UNOBSERVED_STREAM_ADVANCE",
+                })
+            else:
+                # Rewind / overlapping source hooks / same-counter different
+                # states can also indicate a stream reset or changed binding.
+                # They require investigation; never certify ordered evidence.
+                conflicts.append({
+                    "stream_id": stream, "previous_line": previous_line,
+                    "line": line,
+                    "type": ("STREAM_CURSOR_REWIND_OR_OVERLAP"
+                             if difference < 0 else "SAME_COUNTER_STATE_CONFLICT"),
+                    "previous_after_counter": previous_after[0],
+                    "next_before_counter": before[0],
+                })
+        last_by_stream[stream] = (line, after)
+    status = (
+        "SOURCE_RNG_NOT_OBSERVED" if count == 0
+        else "NATIVE_RNG_PRIMITIVE_MISMATCH" if errors
+        else "NATIVE_RNG_STREAM_ORDER_CONFLICT" if conflicts
+        else "OBSERVED_NATIVE_RNG_PRIMITIVES_WITH_STREAM_GAPS" if gaps
+        else "OBSERVED_NATIVE_RNG_PRIMITIVES_VALID"
+    )
     return {
         "schema": "native-rng-primitive-verification-v1",
-        "status": ("SOURCE_RNG_NOT_OBSERVED" if count == 0
-                   else "NATIVE_RNG_PRIMITIVE_MISMATCH" if errors
-                   else "OBSERVED_NATIVE_RNG_PRIMITIVES_VALID"),
+        "status": status,
         "source_calls": count,
         "validated_calls": count - len(errors),
+        "primitive_error_count": len(errors),
         "errors": errors[:20],
+        "stream_conflict_count": len(conflicts),
+        "stream_conflicts": conflicts[:20],
+        "stream_gap_count": len(gaps),
+        "stream_gaps": gaps[:20],
+        "persistent_streams_observed": sorted(streams_seen),
+        "stream_pairs_checked": checked_pairs,
+        "stream_pairs_contiguous": continuous_pairs,
+        "stream_continuity_scope": "OBSERVED_PERSISTENT_RUN_PLAYER_STREAMS_WITHIN_SIDECAR",
         "semantic_eligibility_parity": "NOT_TESTED",
         "native_hook_order_parity": "NOT_TESTED",
         "unobserved_rng_primitives": "UNKNOWN",
@@ -98,7 +170,8 @@ def main() -> int:
         args.out.parent.mkdir(parents=True, exist_ok=True)
         args.out.write_text(output, encoding="utf-8")
     return (0 if report["status"] == "OBSERVED_NATIVE_RNG_PRIMITIVES_VALID"
-            else 1 if report["errors"] else 2)
+            else 1 if (report["primitive_error_count"] or
+                       report["stream_conflict_count"]) else 2)
 
 
 if __name__ == "__main__":

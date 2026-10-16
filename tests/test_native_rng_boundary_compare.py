@@ -5,9 +5,22 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "tools"))
 from native_rng_boundary_compare import compare_native_emulator
+from native_rng_stream_audit import MASK, advance, initial_state, rotate
+
+WORDS = initial_state(971)
+RANDOM64 = (rotate((WORDS[1] * 5) & MASK, 7) * 9) & MASK
+NATIVE_INDEX = int(((RANDOM64 >> 11) * (1 / (1 << 53))) * 2)
 
 
-def row(action=4, stream="run.niche", index=1, source="source_primitive_hook"):
+def cursor(counter, words):
+    return {"counter": counter, **{
+        "state" + str(i): value for i, value in enumerate(words)}}
+
+
+
+def row(action=4, stream="run.niche", index=None,
+        source="source_primitive_hook"):
+    index = NATIVE_INDEX if index is None else index
     return {
         "type": "native_rng_boundary",
         "action_id": action,
@@ -19,13 +32,14 @@ def row(action=4, stream="run.niche", index=1, source="source_primitive_hook"):
             "source_version": "v0.111.0",
             "origin": source, "source_hook_observed": source == "source_primitive_hook",
             "attributed": True,
-            "cursor_before": {"counter": 0},
-            "cursor_after": {"counter": 1}
+            "cursor_before": cursor(0, WORDS),
+            "cursor_after": cursor(1, advance(WORDS))
         }
     }
 
 
-def engine(index=1, events=True):
+def engine(index=None, events=True):
+    index = NATIVE_INDEX if index is None else index
     return {
         "executed_actual_engine_step": True,
         "emulator_random_boundaries": [{
@@ -61,7 +75,7 @@ class NativeRngBoundaryCompareTests(unittest.TestCase):
         r = compare_native_emulator([row(stream="player.rewards")], engine(), 4)
         self.assertEqual("RNG_BOUNDARY_MISMATCH", r["status"])
         self.assertEqual("stream_id", r["first_mismatch"]["field"])
-        r = compare_native_emulator([row(index=0)], engine(), 4)
+        r = compare_native_emulator([row()], engine(index=1-NATIVE_INDEX), 4)
         self.assertEqual("selected_index", r["first_mismatch"]["field"])
 
     def test_unattributed_or_inferred_frame_call_is_not_source_evidence(self):
@@ -90,7 +104,8 @@ class NativeRngBoundaryCompareTests(unittest.TestCase):
             compare_native_emulator([row(action=7)], engine(), 4)["status"])
 
     def test_missing_second_random_call_is_a_count_mismatch(self):
-        r = compare_native_emulator([row(), row()], engine(), 4)
+        r = compare_native_emulator([row(), row(stream="player.rewards")],
+                                    engine(), 4)
         self.assertEqual("RNG_BOUNDARY_COUNT_MISMATCH", r["status"])
 
     def test_cursor_parity_requires_full_native_words(self):
@@ -104,6 +119,34 @@ class NativeRngBoundaryCompareTests(unittest.TestCase):
         missing["executed_actual_engine_step"] = False
         self.assertEqual("EMULATOR_STEP_NOT_EXECUTED",
             compare_native_emulator([row()], missing, 4)["status"])
+
+    def test_source_cursor_tampering_precedes_any_pairing_claim(self):
+        tampered = row()
+        tampered["data"]["cursor_after"]["state2"] ^= 1
+        result = compare_native_emulator([tampered], engine(), 4)
+        self.assertEqual("NATIVE_RNG_PRIMITIVE_MISMATCH", result["status"])
+        self.assertEqual("XOSHIRO_STATE_TRANSITION_MISMATCH",
+                         result["first_mismatch"]["type"])
+
+    def test_duplicate_native_hook_observation_never_counts_as_consistent(self):
+        duplicate = [row(), row()]
+        result = compare_native_emulator(duplicate, engine(), 4)
+        self.assertEqual("NATIVE_RNG_STREAM_ORDER_CONFLICT", result["status"])
+        self.assertEqual(1, result["native_stream_conflict_count"])
+
+    def test_forward_stream_gap_restricts_supported_comparison(self):
+        first = row()
+        unobserved = advance(advance(WORDS))
+        number = (rotate((unobserved[1] * 5) & MASK, 7) * 9) & MASK
+        second = row(action=5, index=int(
+            ((number >> 11) * (1 / (1 << 53))) * 2))
+        second["data"]["cursor_before"] = cursor(2, unobserved)
+        second["data"]["cursor_after"] = cursor(3, advance(unobserved))
+        result = compare_native_emulator([first, second], engine(), 4)
+        self.assertEqual("OBSERVED_RNG_PRIMITIVE_WITH_UNOBSERVED_STREAM_ADVANCES",
+                         result["status"])
+        self.assertEqual(1, result["native_stream_gap_count"])
+        self.assertEqual(1, result["compared"])
 
 
 if __name__ == "__main__":
