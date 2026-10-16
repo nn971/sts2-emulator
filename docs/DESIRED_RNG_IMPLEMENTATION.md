@@ -92,10 +92,13 @@ Overgrowth Neow offers use a persisted `context.event.NEOW.player_0` stream
 through typed native, scripted, or controlled providers. Their legacy helper
 remains available; map and Neow source call-order parity remain open, as do
 Neow unlock and `IsAllowedAtNeow` filters.
-Merchant sale-slot selection now uses the existing persistent `player.shops`
-stream when native run RNG ownership is enabled, with the legacy `shop`
-stream retained for unconfigured prototype runs. The rest of merchant
-generation remains on its existing paths.
+Configured merchant generation now routes sale-slot, card-pool, potion-pool,
+and item-price draws through the existing native player streams. Card and
+relic rarity use `player.rewards`; card and potion offers and merchant prices
+use `player.shops`; the persistent rarity-partitioned relic queues initialize
+from `run.treasure_room_relics`. Legacy prototype paths remain available.
+The restricted pools, unconfigured profile, and controlled shop continuation
+remain separate gaps, and native result/cursor parity is still unverified.
 The potion factory now routes its unit-float rarity
 sample and within-tier model index through separate typed providers in source
 order. Native effect-random-target and Sly auto-play selections use typed

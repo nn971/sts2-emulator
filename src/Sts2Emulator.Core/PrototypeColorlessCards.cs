@@ -802,7 +802,8 @@ public static class PrototypeColorlessCards
     public static string PickMerchantCard(
         PrototypeCardRarity rarity,
         RngBundle rng,
-        IReadOnlyCollection<string>? excluded = null)
+        IReadOnlyCollection<string>? excluded = null,
+        RngBundle? nativeRunRng = null)
     {
         if (rarity is not (PrototypeCardRarity.Uncommon or PrototypeCardRarity.Rare))
         {
@@ -822,11 +823,21 @@ public static class PrototypeColorlessCards
                 $"No playable {rarity} colorless merchant cards.");
         }
 
-        return eligible[LegacyRandomChoiceV111.ChooseIndexRange(
-            rng,
-            "shop.colorless_card_model.index_draw",
-            "shop",
-            "rarity:" + rarity + ":pool:" + CanonicalJson.Sha256(eligible),
-            eligible.Length).SelectedIndex];
+        var ownerId = "rarity:" + rarity + ":pool:"
+            + CanonicalJson.Sha256(eligible);
+        var selectedIndex = nativeRunRng is null
+            ? LegacyRandomChoiceV111.ChooseIndexRange(
+                rng,
+                "shop.colorless_card_model.index_draw",
+                "shop",
+                ownerId,
+                eligible.Length).SelectedIndex
+            : NativeMerchantRngV111.ChooseIndex(
+                nativeRunRng,
+                "shop.colorless_card_model.index_draw",
+                NativeMerchantRngV111.ShopsStreamId,
+                ownerId,
+                eligible.Length);
+        return eligible[selectedIndex];
     }
 }

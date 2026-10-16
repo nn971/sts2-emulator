@@ -2412,14 +2412,12 @@ public sealed partial class PrototypeGameEngine
         if (nativeMerchant)
         {
             saleIndex = nativeRunRng is { } nativeShopRng
-                ? new NativeRandomIndexProviderV111().Resolve(
-                    new RandomIndexRequestV111(
-                        "shop.merchant.sale_slot.index_draw",
-                        "player.shops",
-                        $"merchant:act:{world.Act}:floor:{world.Floor}",
-                        0,
-                        Enumerable.Range(0, 5).ToArray()),
-                    nativeShopRng).SelectedIndex
+                ? NativeMerchantRngV111.ChooseIndex(
+                    nativeShopRng,
+                    "shop.merchant.sale_slot.index_draw",
+                    NativeMerchantRngV111.ShopsStreamId,
+                    $"merchant:act:{world.Act}:floor:{world.Floor}",
+                    5)
                 : ResolveLegacyRandomIndex(
                     state.Rng,
                     "shop.merchant.sale_slot.index_draw",
@@ -2437,7 +2435,8 @@ public sealed partial class PrototypeGameEngine
                 nativeMerchant
                     ? PrototypeNativeCardRarityOdds.GenerateMerchantCards(
                         group.Count, state.Ascension, group.Type,
-                        world.CardRarityOffsetBasisPoints, state.Rng)
+                        world.CardRarityOffsetBasisPoints, state.Rng,
+                        nativeRunRng)
                     : PickShopCards(
                         world.Act,
                         group.Count,
@@ -2450,14 +2449,18 @@ public sealed partial class PrototypeGameEngine
             {
                 var onSale = index == saleIndex;
                 var basePrice = nativeMerchant
-                    ? NativeMerchantCardPrice(cardId, state.Rng)
+                    ? NativeMerchantCardPrice(
+                        cardId, state.Rng, nativeRunRng,
+                        $"act:{world.Act}:floor:{world.Floor}:offer:{index}:card:{cardId}")
                     : ShopCardPrice(cardId, state.Rng);
                 if (onSale)
                 {
                     // MerchantCardEntry.SetOnSale calls CalcCost
                     // again, then halves the newly rolled price.
                     basePrice =
-                        NativeMerchantCardPrice(cardId, state.Rng) / 2;
+                        NativeMerchantCardPrice(
+                            cardId, state.Rng, nativeRunRng,
+                            $"act:{world.Act}:floor:{world.Floor}:offer:{index}:sale_reprice:{cardId}") / 2;
                 }
                 return new ShopOffer(
                     index + 1,
@@ -2478,13 +2481,17 @@ public sealed partial class PrototypeGameEngine
             var colorless = new[]
             {
                 PrototypeColorlessCards.PickMerchantCard(
-                    PrototypeCardRarity.Uncommon, state.Rng),
+                    PrototypeCardRarity.Uncommon, state.Rng,
+                    nativeRunRng: nativeRunRng),
                 PrototypeColorlessCards.PickMerchantCard(
-                    PrototypeCardRarity.Rare, state.Rng)
+                    PrototypeCardRarity.Rare, state.Rng,
+                    nativeRunRng: nativeRunRng)
             };
             offers = offers.Concat(colorless.Select((cardId, index) =>
             {
-                var price = NativeMerchantCardPrice(cardId, state.Rng);
+                var price = NativeMerchantCardPrice(
+                    cardId, state.Rng, nativeRunRng,
+                    $"act:{world.Act}:floor:{world.Floor}:colorless_offer:{index}:card:{cardId}");
                 return new ShopOffer(
                     6 + index,
                     cardId,
@@ -2495,8 +2502,16 @@ public sealed partial class PrototypeGameEngine
         }
 
         var potionIds = nativeMerchant
-            ? PrototypeNativePotionShop.PickWeightedDistinct(
-                state.Rng, "shop", 3)
+            ? nativeRunRng is { } nativePotionRng
+                ? PrototypeNativePotionShop.PickWeightedDistinctNativeWithAudit(
+                    nativePotionRng,
+                    "player.shops",
+                    3,
+                    $"merchant:act:{world.Act}:floor:{world.Floor}:potions",
+                    new NativeRandomIndexProviderV111(),
+                    new NativeRandomUnitFloatProviderV111()).PotionIds
+                : PrototypeNativePotionShop.PickWeightedDistinct(
+                    state.Rng, "shop", 3)
             : PickDistinct(
                 PrototypeContent.PotionPool,
                 3,
@@ -2518,12 +2533,18 @@ public sealed partial class PrototypeGameEngine
             var selections = new List<string>(3);
             for (var index = 0; index < 3; index++)
             {
-                var tier = index == 2
+                PrototypeRelicRarity? forcedTier = index == 2
                     ? PrototypeRelicRarity.Shop
-                    : PrototypeNativeRelicGrabBag.RollRarity(state.Rng);
+                    : null;
+                if (nativeRunRng is null && forcedTier is null)
+                    forcedTier = PrototypeNativeRelicGrabBag.RollRarity(
+                        state.Rng, merchant: true,
+                        ownerId: $"act:{world.Act}:floor:{world.Floor}:merchant_relic:{index}");
                 var draw = PrototypeNativeRelicGrabBag.Draw(
                     world, state.Player, state.Rng,
-                    merchant: true, forcedRarity: tier);
+                    merchant: true,
+                    forcedRarity: forcedTier,
+                    nativeRunRng: nativeRunRng);
                 world = draw.World;
                 if (draw.Id is not null)
                 {
@@ -2547,8 +2568,12 @@ public sealed partial class PrototypeGameEngine
             .Select((potionId, index) =>
             {
                 var basePrice = nativeMerchant
-                    ? PrototypeNativePotionShop.MerchantPrice(
-                        potionId, state.Rng)
+                    ? nativeRunRng is { } nativePotionRng
+                        ? PrototypeNativePotionShop.MerchantPriceNative(
+                            potionId, nativePotionRng,
+                            $"act:{world.Act}:floor:{world.Floor}:offer:{index}:potion:{potionId}")
+                        : PrototypeNativePotionShop.MerchantPrice(
+                            potionId, state.Rng)
                     : ResolveLegacyRandomIndex(
                         state.Rng,
                         "shop.potion_offer.price.index_draw",
@@ -2567,8 +2592,12 @@ public sealed partial class PrototypeGameEngine
             .Select((relicId, index) =>
             {
                 var basePrice = nativeMerchant
-                    ? PrototypeNativeRelicGrabBag.MerchantPrice(
-                        relicId, state.Rng)
+                    ? nativeRunRng is { } nativeRelicRng
+                        ? PrototypeNativeRelicGrabBag.MerchantPriceNative(
+                            relicId, nativeRelicRng,
+                            $"act:{world.Act}:floor:{world.Floor}:offer:{index}:relic:{relicId}")
+                        : PrototypeNativeRelicGrabBag.MerchantPrice(
+                            relicId, state.Rng)
                     : ResolveLegacyRandomIndex(
                         state.Rng,
                         "shop.relic_offer.price.index_draw",
@@ -5051,7 +5080,9 @@ public sealed partial class PrototypeGameEngine
     }
 
     private static int NativeMerchantCardPrice(
-        string cardId, RngBundle rng)
+        string cardId, RngBundle rng,
+        RngBundle? nativeRunRng = null,
+        string ownerId = "")
     {
         var baseCost = PrototypeContent.Card(cardId).Rarity switch
         {
@@ -5068,17 +5099,28 @@ public sealed partial class PrototypeGameEngine
         {
             baseCost = (int)Math.Round(baseCost * 1.15);
         }
-        // Native CalcCost uses Shops.NextFloat(0.95, 1.05)
-        // followed by Mathf.RoundToInt. Integer percentage samples
-        // approximate that distribution without claiming RNG parity.
+        if (nativeRunRng is not null)
+        {
+            var roll = NativeMerchantRngV111.NextUnitFloat(
+                nativeRunRng,
+                "shop.merchant.card_price_modifier.unit_float",
+                NativeMerchantRngV111.ShopsStreamId,
+                string.IsNullOrWhiteSpace(ownerId)
+                    ? "card:" + cardId : ownerId);
+            var modifier = 0.95f + (1.05f - 0.95f) * roll;
+            return Math.Max(1,
+                (int)MathF.Round(baseCost * modifier,
+                    MidpointRounding.ToEven));
+        }
+
+        // Retained legacy mode approximates source NextFloat with integer
+        // percentage bins on the prototype shop stream.
         var percent = ResolveLegacyRandomIndex(
-            rng,
-            "shop.merchant.card_price_modifier.index_draw",
-            "card:" + cardId,
-            Enumerable.Range(95, 11),
+            rng, "shop.merchant.card_price_modifier.index_draw",
+            "card:" + cardId, Enumerable.Range(95, 11),
             streamId: "shop");
-        return Math.Max(1,
-            (int)Math.Round(baseCost * percent / 100.0));
+        return Math.Max(1, (int)Math.Round(
+            baseCost * percent / 100.0));
     }
 
     private static int ShopCardPrice(string cardId, RngBundle rng)

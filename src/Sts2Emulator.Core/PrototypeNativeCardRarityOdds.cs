@@ -3,9 +3,9 @@ namespace Sts2Emulator.Core;
 /// <summary>
 /// Pinned v0.111.0 CardRarityOdds, represented in integer basis points.
 /// Each encounter card advances the persistent rarity offset; shop cards
-/// consult that same offset without changing it. The prototype consumes
-/// discrete RNG draws, so this models probabilities and lifecycle rather
-/// than native float bit sequences.
+/// consult that same offset without changing it. Legacy operations retain
+/// their discrete prototype draws; configured merchant generation uses the
+/// native reward float and shop model/upgrade streams.
 /// </summary>
 public enum PrototypeNativeCardOddsSource
 {
@@ -195,9 +195,33 @@ public static class PrototypeNativeCardRarityOdds
         return (cards.ToArray(), offset, upgrades.ToArray());
     }
 
+    private static (int RareBase, int UncommonBase) MerchantThresholds(
+        int ascension)
+    {
+        if (ascension < 0)
+            throw new ArgumentOutOfRangeException(nameof(ascension));
+        var scarcity = ascension >= ScarcityAscension;
+        return (scarcity ? 450 : 900, 3700);
+    }
+
+    private static PrototypeCardRarity ResolveMerchantRarity(
+        float unitRoll, int currentOffsetBasisPoints, int ascension)
+    {
+        var (rareBase, uncommonBase) = MerchantThresholds(ascension);
+        var rareThreshold = rareBase + currentOffsetBasisPoints;
+        var rareLimit = rareThreshold / 10000f;
+        var uncommonLimit = (rareThreshold + uncommonBase) / 10000f;
+        return unitRoll < rareLimit
+            ? PrototypeCardRarity.Rare
+            : unitRoll < uncommonLimit
+                ? PrototypeCardRarity.Uncommon
+                : PrototypeCardRarity.Common;
+    }
+
     public static string[] GenerateMerchantCards(
         int count, int ascension, PrototypeCardType type,
-        int currentOffsetBasisPoints, RngBundle rng)
+        int currentOffsetBasisPoints, RngBundle rng,
+        RngBundle? nativeRunRng = null)
     {
         if (count < 0)
         {
@@ -211,35 +235,72 @@ public static class PrototypeNativeCardRarityOdds
         var cards = new string[count];
         for (var i = 0; i < count; i++)
         {
-            var (rolled, unchanged) = Roll(
-                currentOffsetBasisPoints, ascension,
-                PrototypeNativeCardOddsSource.Shop, rng);
-            if (unchanged != currentOffsetBasisPoints)
+            PrototypeCardRarity rolled;
+            if (nativeRunRng is null)
             {
-                throw new InvalidOperationException(
-                    "Merchant generation changed persistent rarity odds.");
+                var (legacyRarity, unchanged) = Roll(
+                    currentOffsetBasisPoints, ascension,
+                    PrototypeNativeCardOddsSource.Shop, rng);
+                if (unchanged != currentOffsetBasisPoints)
+                    throw new InvalidOperationException(
+                        "Merchant generation changed persistent rarity odds.");
+                rolled = legacyRarity;
             }
+            else
+            {
+                var ownerId = $"type:{type}:offer:{i}:offset:{currentOffsetBasisPoints}";
+                var roll = NativeMerchantRngV111.NextUnitFloat(
+                    nativeRunRng,
+                    "card_rarity.roll.unit_float",
+                    NativeMerchantRngV111.RewardsStreamId,
+                    ownerId);
+                rolled = ResolveMerchantRarity(
+                    roll, currentOffsetBasisPoints,
+                    ascension);
+            }
+
             var rarity = NextAvailableRarity(rolled,
                 pool.Select(id => PrototypeContent.Card(id).Rarity)
                     .Distinct().ToArray());
             var candidates = pool.Where(id =>
                 PrototypeContent.Card(id).Rarity == rarity).ToArray();
-            cards[i] = candidates[
-                LegacyRandomChoiceV111.ChooseIndexRange(
+            var selectionOwner =
+                $"type:{type}:offer:{i}:rarity:{rarity}:pool:"
+                    + CanonicalJson.Sha256(candidates);
+            var selectedIndex = nativeRunRng is null
+                ? LegacyRandomChoiceV111.ChooseIndexRange(
                     rng,
                     "shop.merchant.card_model.index_draw",
                     "shop",
-                    $"type:{type}:offer:{i}:rarity:{rarity}:pool:"
-                        + CanonicalJson.Sha256(candidates),
-                    candidates.Length).SelectedIndex];
+                    selectionOwner,
+                    candidates.Length).SelectedIndex
+                : NativeMerchantRngV111.ChooseIndex(
+                    nativeRunRng,
+                    "shop.merchant.card_model.index_draw",
+                    NativeMerchantRngV111.ShopsStreamId,
+                    selectionOwner,
+                    candidates.Length);
+            cards[i] = candidates[selectedIndex];
             // CardFactory.CreateForMerchant consumes a Shops upgrade
             // roll even though its negative base chance prevents upgrades.
-            _ = LegacyRandomChoiceV111.ChooseBoundedInteger(
-                rng,
-                "shop.merchant.card_upgrade_roll.ticket",
-                "shop",
-                $"type:{type}:offer:{i}:card:{cards[i]}",
-                10000);
+            var upgradeOwner = $"type:{type}:offer:{i}:card:{cards[i]}";
+            if (nativeRunRng is null)
+            {
+                _ = LegacyRandomChoiceV111.ChooseBoundedInteger(
+                    rng,
+                    "shop.merchant.card_upgrade_roll.ticket",
+                    "shop",
+                    upgradeOwner,
+                    10000);
+            }
+            else
+            {
+                _ = NativeMerchantRngV111.NextUnitFloat(
+                    nativeRunRng,
+                    "shop.merchant.card_upgrade_roll.unit_float",
+                    NativeMerchantRngV111.ShopsStreamId,
+                    upgradeOwner);
+            }
         }
         return cards;
     }

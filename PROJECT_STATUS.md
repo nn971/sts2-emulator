@@ -1444,8 +1444,12 @@ prototype-stream helper remains available for compatibility. Unlock and
 The Release CLI build passes with zero warnings or errors; no test suite was
 run for these migrations.
 
-The first native Overgrowth merchant draw, sale-slot selection, now uses the
-existing persistent `player.shops` stream when native run RNG ownership is
-enabled. The legacy `shop` stream remains the fallback for unconfigured
-prototype runs. Merchant generation still needs the remaining card, potion,
-relic, and price draws migrated.
+Configured Overgrowth merchant generation now uses the existing native RNG
+owners for sale-slot selection, card rarity/model/upgrade draws, colorless
+card model picks, potion rarity/model offers, relic rarity-queue draws, and
+card/potion/relic price modifiers. Card and relic rarity samples use
+`player.rewards`; merchant offers and price modifiers use `player.shops`; the
+rarity-partitioned relic queues initialize from `run.treasure_room_relics`.
+The legacy streams remain available for unconfigured prototype runs. The
+merchant's restricted card/relic/potion pools, controlled shop continuation,
+and seeded source result/cursor parity remain open.

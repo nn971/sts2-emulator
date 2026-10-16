@@ -340,7 +340,8 @@ public static class PrototypeNativePotionShop
     /// <summary>
     /// Native merchant potions use Shops.NextFloat(0.95, 1.05)
     /// and Godot Mathf.Round; discrete percent samples approximate
-    /// the distribution until exact RNG parity is enabled.
+    /// the distribution in the retained legacy overload. Configured runs
+    /// use MerchantPriceNative for the native unit-float operation.
     /// </summary>
     public static int MerchantPrice(
         string potionId, RngBundle rng,
@@ -354,5 +355,19 @@ public static class PrototypeNativePotionShop
             11).SelectedIndex;
         return Math.Max(1,
             (int)Math.Round(MerchantBaseCost(potionId) * percent / 100.0));
+    }
+
+    public static int MerchantPriceNative(
+        string potionId, RngBundle nativeRunRng, string ownerId)
+    {
+        var roll = NativeMerchantRngV111.NextUnitFloat(
+            nativeRunRng,
+            "shop.merchant.potion_price_modifier.unit_float",
+            NativeMerchantRngV111.ShopsStreamId,
+            ownerId + ":" + potionId);
+        var modifier = 0.95f + (1.05f - 0.95f) * roll;
+        return Math.Max(1,
+            (int)MathF.Round(MerchantBaseCost(potionId) * modifier,
+                MidpointRounding.ToEven));
     }
 }

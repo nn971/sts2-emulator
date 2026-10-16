@@ -126,6 +126,40 @@ public static class PrototypeNativeRelicGrabBag
     }
 
     /// <summary>
+    /// Native RelicGrabBag construction shuffles each ordered rarity pool
+    /// with the persistent treasure-room relic stream.
+    /// </summary>
+    public static PrototypeRelicBagState CreateNative(
+        PlayerState player, RngBundle nativeRunRng)
+    {
+        ArgumentNullException.ThrowIfNull(player);
+        ArgumentNullException.ThrowIfNull(nativeRunRng);
+        string[] Make(PrototypeRelicRarity rarity)
+        {
+            var ids = PrototypeContent.RelicPool
+                .Where(id => Rarities.TryGetValue(id, out var value)
+                    && value == rarity
+                    && !player.Relics.Any(relic =>
+                        StringComparer.Ordinal.Equals(relic.RelicId, id)))
+                .ToArray();
+            _ = NativeFisherYatesV111.ShuffleInPlace(
+                ids,
+                nativeRunRng,
+                new NativeRandomIndexProviderV111(),
+                "run.treasure_room_relics",
+                "player:0:relic_grab_bag:" + rarity,
+                "relic_grab_bag.queue_shuffle.swap_index");
+            return ids;
+        }
+
+        return new PrototypeRelicBagState(
+            Make(PrototypeRelicRarity.Common),
+            Make(PrototypeRelicRarity.Uncommon),
+            Make(PrototypeRelicRarity.Rare),
+            Make(PrototypeRelicRarity.Shop));
+    }
+
+    /// <summary>
     /// RelicModel.MerchantCost's default for each native rarity.
     /// All source-classified relics in this restricted bag use that default.
     /// </summary>
@@ -149,8 +183,8 @@ public static class PrototypeNativeRelicGrabBag
 
     /// <summary>
     /// MerchantRelicEntry.CalcCost uses Shops.NextFloat(0.85, 1.15)
-    /// and Math.Round. Sample integer hundredths from the shop stream
-    /// until exact native float/PRNG parity is implemented.
+    /// and Math.Round. This retained legacy overload approximates it with
+    /// integer hundredths; configured runs use MerchantPriceNative.
     /// </summary>
     public static int MerchantPrice(
         string relicId, RngBundle rng,
@@ -163,6 +197,19 @@ public static class PrototypeNativeRelicGrabBag
             ownerId + ":" + relicId,
             31).SelectedIndex;
         return (int)Math.Round(MerchantBaseCost(relicId) * percent / 100.0);
+    }
+
+    public static int MerchantPriceNative(
+        string relicId, RngBundle nativeRunRng, string ownerId)
+    {
+        var roll = NativeMerchantRngV111.NextUnitFloat(
+            nativeRunRng,
+            "shop.merchant.relic_price_modifier.unit_float",
+            NativeMerchantRngV111.ShopsStreamId,
+            ownerId + ":" + relicId);
+        var modifier = 0.85f + (1.15f - 0.85f) * roll;
+        return (int)MathF.Round(MerchantBaseCost(relicId) * modifier,
+            MidpointRounding.ToEven);
     }
 
     public static PrototypeRelicRarity RollRarity(
@@ -180,6 +227,22 @@ public static class PrototypeNativeRelicGrabBag
         return roll < 50
             ? PrototypeRelicRarity.Common
             : roll < 83
+                ? PrototypeRelicRarity.Uncommon
+                : PrototypeRelicRarity.Rare;
+    }
+
+    public static PrototypeRelicRarity RollRarityNative(
+        RngBundle nativeRunRng, bool merchant = false,
+        string ownerId = "relic_grab_bag:reward")
+    {
+        var roll = NativeMerchantRngV111.NextUnitFloat(
+            nativeRunRng,
+            "relic_grab_bag.rarity.unit_float",
+            NativeMerchantRngV111.RewardsStreamId,
+            ownerId + (merchant ? ":merchant" : ":reward"));
+        return roll < 0.50f
+            ? PrototypeRelicRarity.Common
+            : roll < 0.83f
                 ? PrototypeRelicRarity.Uncommon
                 : PrototypeRelicRarity.Rare;
     }
@@ -265,10 +328,15 @@ public static class PrototypeNativeRelicGrabBag
 
     public static (RunWorldState World, string? Id) Draw(
         RunWorldState world, PlayerState player, RngBundle rng,
-        bool merchant, PrototypeRelicRarity? forcedRarity = null)
+        bool merchant, PrototypeRelicRarity? forcedRarity = null,
+        RngBundle? nativeRunRng = null)
     {
-        var bag = world.RelicBag ?? Create(player, rng);
-        var rarity = forcedRarity ?? RollRarity(rng, merchant);
+        var bag = world.RelicBag ?? (nativeRunRng is null
+            ? Create(player, rng)
+            : CreateNative(player, nativeRunRng));
+        var rarity = forcedRarity ?? (nativeRunRng is null
+            ? RollRarity(rng, merchant)
+            : RollRarityNative(nativeRunRng, merchant));
         var (remaining, id) = Pull(bag, rarity, merchant, player);
         return (world with { RelicBag = remaining }, id);
     }

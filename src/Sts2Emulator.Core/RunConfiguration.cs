@@ -219,17 +219,22 @@ public static class V111RunFactory
         var deck = config.Ascension < 5
             ? opening.Player.Deck.Where(card => card.CardId != "proto.common.restlessness").ToArray()
             : opening.Player.Deck;
+        var nativeRunRng = input.NativeRunRng?.Fork()
+            ?? NativeRngV111.CreateBundle(input.RunSeed);
+        var relicBag = opening.World!.RelicBag
+            ?? PrototypeNativeRelicGrabBag.CreateNative(
+                opening.Player, nativeRunRng);
         return opening with
         {
             GameBuild = input.GameBuild, EmulatorSchema = input.EmulatorSchema,
             RunId = input.RunId, DecisionIndex = input.DecisionIndex,
             Configuration = config.Fork(), Player = opening.Player with { Deck = deck },
-            NativeRunRng = input.NativeRunRng?.Fork()
-                ?? NativeRngV111.CreateBundle(input.RunSeed),
+            NativeRunRng = nativeRunRng,
             World = opening.World! with
             {
                 RulesetId = config.RulesetId,
                 ActIdentity = config.Acts[0],
+                RelicBag = relicBag,
                 PreparedLaterActEncounterBags = config.UsesExperimentalSilentThreeActRoute
                     ? BuildPreparedLaterActBags(opening.Rng, config)
                     : null
