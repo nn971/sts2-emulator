@@ -32,9 +32,9 @@ public static class SemanticOtherChanceEngineV111
     public const string CostStreamId = "run.combat_energy_costs";
 
     /// <summary>
-    /// Caller supplies the stream state AFTER all already committed opening
-    /// RNG. This keeps physical-deck realization disjoint from Nature's
-    /// later unresolved draw-card decisions.
+    /// Caller supplies the source-owned run stream bundle after entry setup.
+    /// This keeps cost sampling private and disjoint from Nature's unresolved
+    /// draw-card decisions while preserving the native cost cursor.
     /// </summary>
     public static SemanticOtherChanceStateV111 Begin(RngBundle afterOpening)
     {
