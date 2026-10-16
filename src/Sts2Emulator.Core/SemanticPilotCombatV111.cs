@@ -336,7 +336,11 @@ public static class SemanticPilotCombatEngineV111
                 action.Kind);
         var nextState = current with
         {
-            Run = result, PendingEndTurn = endTurn,
+            Run = result,
+            // A genuine fully deterministic end-turn continuation can
+            // finish without exposing an intent or draw Nature ticket.
+            // The next player decision must be immediately available.
+            PendingEndTurn = endTurn is { Complete: true } ? null : endTurn,
             History = current.History.Append(
                 new SemanticPilotTransitionV111("player", actionId)).ToArray()
         };
