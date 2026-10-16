@@ -406,3 +406,29 @@ continuation.
 genuine full map/room start, additional combat mechanics and multi-site
 native/default RNG delegation; native source parity and conditional
 reference probabilities are still explicitly unverified.
+
+### Terminal reward RNG is delegated explicitly
+
+The genuine `PlayCard` victory path calls
+`EnterCombatReward`/`EnterReward`; legacy reward population consumes
+the `prototype_rng.reward` stream. The guarded two-site controller
+now enables a **strictly scoped**
+`engine-owned-prototype-reward-unverified-v1` fallback for that stream
+on legal source actions. All combat/intent/draw/targeting RNG guards
+continue to reject unmigrated sites, and this allowance is confined to
+the two-site semantic gameplay action scope.
+
+At true `RunPhase.Reward` the original engine consumes the combat
+and creates an actual `RewardState`; the controller recognizes this
+as terminal victory, with no next-decision deck or phantom Nature
+request. Its private `SemanticRewardAuditV111` records reward-stream
+`BeforeCalls`, `AfterCalls`, the exact provider name and
+`UNVERIFIED` probability status. JSONL `hello` advertises the
+reward provider, and terminal `semantic_status` reports
+`rewardProvider` and `rewardDrawCount`. Full snapshot replay
+repeats the same legal actions, scoped reward draws and exact cursor.
+
+This source-timed **prototype** reward behavior is an explicitly
+provisional non-Nature provider. Independent native v111 reward
+selection/call-order parity and all other noncontrolled chance sites
+remain separate acceptance gates.
