@@ -61,6 +61,11 @@ public sealed record SemanticDrawInsertionEventV111(
     }
 }
 
+/// <summary>
+/// SelectedPosition is the source insertion index in CombatState's
+/// bottom-first DrawPile array. Provider-owned semantic deck slots are
+/// top-first, so the engine converts this position when committing it.
+/// </summary>
 public sealed record SemanticDrawInsertionDecisionV111(
     SemanticDrawInsertionEventV111 Event, int SelectedPosition)
 {

@@ -1812,8 +1812,12 @@ public static class SemanticPilotCombatEngineV111
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.draw_pile.random_insert_index " +
                 "operation=unmodeled_post_insertion_continuation");
 
+        // Source positions index the physical bottom-first DrawPile array;
+        // semantic slots are top-first. Convert the source index while
+        // preserving the exact selected insertion point.
+        var topOffset = priorCombat.DrawPile.Length - position;
         var deck = SemanticDeckEngineV111.InsertKnown(
-            priorCombat.SemanticDeck!, position, insertedInstanceId,
+            priorCombat.SemanticDeck!, topOffset, insertedInstanceId,
             publiclyKnown: false);
         result = result with
         {
