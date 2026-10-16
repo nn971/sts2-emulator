@@ -2,13 +2,13 @@
 
 Direct qualified calls to PrototypeRng, NativeRngV111, and NativeFisherYatesV111 in Sts2Emulator.Core. This does not include indirect delegates, random provider interfaces, third-party/native source callsites, or prove that every source operation is mapped.
 
-Direct call expressions: **29**.
+Direct call expressions: **32**.
 
 Counts by direct API family:
 
 - `legacy_prototype_api`: 3
 - `native_primitive_api`: 8
-- `native_shuffle_mechanics`: 18
+- `native_shuffle_mechanics`: 21
 
 Rows distinguish legacy prototype calls, native primitive calls, generic shuffle-helper calls, and recognized provider/fixture support. Unrecognized contexts still need manual source tracing.
 
@@ -18,6 +18,7 @@ Rows distinguish legacy prototype calls, native primitive calls, generic shuffle
 | [`src/Sts2Emulator.Core/NativeDarvEventV111.cs:252`](../src/Sts2Emulator.Core/NativeDarvEventV111.cs#L252) | `NativeFisherYatesV111` | `ShuffleInPlace` | `_ = NativeFisherYatesV111.ShuffleInPlace(` | `typed_provider_shuffle_mechanics_boundary` |
 | [`src/Sts2Emulator.Core/NativeGloryAncientsV111.cs:252`](../src/Sts2Emulator.Core/NativeGloryAncientsV111.cs#L252) | `NativeFisherYatesV111` | `ShuffleInPlace` | `_ = NativeFisherYatesV111.ShuffleInPlace(` | `typed_provider_shuffle_mechanics_boundary` |
 | [`src/Sts2Emulator.Core/NativeGloryAncientsV111.cs:293`](../src/Sts2Emulator.Core/NativeGloryAncientsV111.cs#L293) | `NativeFisherYatesV111` | `ShuffleInPlace` | `_ = NativeFisherYatesV111.ShuffleInPlace(` | `typed_provider_shuffle_mechanics_boundary` |
+| [`src/Sts2Emulator.Core/NativeNeowEventV111.cs:45`](../src/Sts2Emulator.Core/NativeNeowEventV111.cs#L45) | `NativeFisherYatesV111` | `ShuffleInPlace` | `decisions.AddRange(NativeFisherYatesV111.ShuffleInPlace(` | `typed_provider_shuffle_mechanics_boundary` |
 | [`src/Sts2Emulator.Core/NativeNonupeipeEventV111.cs:89`](../src/Sts2Emulator.Core/NativeNonupeipeEventV111.cs#L89) | `NativeFisherYatesV111` | `ShuffleInPlace` | `var choices = NativeFisherYatesV111.ShuffleInPlace(` | `typed_provider_shuffle_mechanics_boundary` |
 | [`src/Sts2Emulator.Core/NativeNonupeipeEventV111.cs:151`](../src/Sts2Emulator.Core/NativeNonupeipeEventV111.cs#L151) | `NativeFisherYatesV111` | `ShuffleInPlace` | `_ = NativeFisherYatesV111.ShuffleInPlace(` | `typed_provider_shuffle_mechanics_boundary` |
 | [`src/Sts2Emulator.Core/NativeRunRngV111.cs:92`](../src/Sts2Emulator.Core/NativeRunRngV111.cs#L92) | `NativeRngV111` | `NextInt` | `value = NativeRngV111.NextInt(advanced, streamId, maxExclusive);` | `provider_or_codec_infrastructure` |
@@ -30,10 +31,12 @@ Rows distinguish legacy prototype calls, native primitive calls, generic shuffle
 | [`src/Sts2Emulator.Core/NativeVakuuEventV111.cs:95`](../src/Sts2Emulator.Core/NativeVakuuEventV111.cs#L95) | `NativeFisherYatesV111` | `ShuffleInPlace` | `choices.AddRange(NativeFisherYatesV111.ShuffleInPlace(` | `typed_provider_shuffle_mechanics_boundary` |
 | [`src/Sts2Emulator.Core/NativeVakuuEventV111.cs:165`](../src/Sts2Emulator.Core/NativeVakuuEventV111.cs#L165) | `NativeFisherYatesV111` | `ShuffleInPlace` | `var choices = NativeFisherYatesV111.ShuffleInPlace(` | `typed_provider_shuffle_mechanics_boundary` |
 | [`src/Sts2Emulator.Core/PrototypeCombat.cs:372`](../src/Sts2Emulator.Core/PrototypeCombat.cs#L372) | `NativeFisherYatesV111` | `ShuffleInPlace` | `_ = NativeFisherYatesV111.ShuffleInPlace(` | `typed_provider_shuffle_mechanics_boundary` |
-| [`src/Sts2Emulator.Core/PrototypeCombat.cs:7955`](../src/Sts2Emulator.Core/PrototypeCombat.cs#L7955) | `NativeFisherYatesV111` | `Execute` | `var shuffle = NativeFisherYatesV111.Execute(` | `typed_provider_shuffle_mechanics_boundary` |
-| [`src/Sts2Emulator.Core/PrototypeCombat.cs:13846`](../src/Sts2Emulator.Core/PrototypeCombat.cs#L13846) | `NativeFisherYatesV111` | `ShuffleInPlace` | `_ = NativeFisherYatesV111.ShuffleInPlace(` | `typed_provider_shuffle_mechanics_boundary` |
-| [`src/Sts2Emulator.Core/PrototypeCombat.cs:16147`](../src/Sts2Emulator.Core/PrototypeCombat.cs#L16147) | `NativeFisherYatesV111` | `Execute` | `var shuffle = NativeFisherYatesV111.Execute(` | `typed_provider_shuffle_mechanics_boundary` |
+| [`src/Sts2Emulator.Core/PrototypeCombat.cs:7932`](../src/Sts2Emulator.Core/PrototypeCombat.cs#L7932) | `NativeFisherYatesV111` | `Execute` | `var shuffle = NativeFisherYatesV111.Execute(` | `typed_provider_shuffle_mechanics_boundary` |
+| [`src/Sts2Emulator.Core/PrototypeCombat.cs:13827`](../src/Sts2Emulator.Core/PrototypeCombat.cs#L13827) | `NativeFisherYatesV111` | `ShuffleInPlace` | `_ = NativeFisherYatesV111.ShuffleInPlace(` | `typed_provider_shuffle_mechanics_boundary` |
+| [`src/Sts2Emulator.Core/PrototypeCombat.cs:16128`](../src/Sts2Emulator.Core/PrototypeCombat.cs#L16128) | `NativeFisherYatesV111` | `Execute` | `var shuffle = NativeFisherYatesV111.Execute(` | `typed_provider_shuffle_mechanics_boundary` |
 | [`src/Sts2Emulator.Core/PrototypeNativeLaterActMap.cs:115`](../src/Sts2Emulator.Core/PrototypeNativeLaterActMap.cs#L115) | `NativeFisherYatesV111` | `ShuffleInPlace` | `var choices = NativeFisherYatesV111.ShuffleInPlace(` | `typed_provider_shuffle_mechanics_boundary` |
+| [`src/Sts2Emulator.Core/PrototypeNativeOvergrowthMap.cs:74`](../src/Sts2Emulator.Core/PrototypeNativeOvergrowthMap.cs#L74) | `NativeFisherYatesV111` | `ShuffleInPlace` | `var choices = NativeFisherYatesV111.ShuffleInPlace(` | `typed_provider_shuffle_mechanics_boundary` |
+| [`src/Sts2Emulator.Core/PrototypeNativeRelicGrabBag.cs:145`](../src/Sts2Emulator.Core/PrototypeNativeRelicGrabBag.cs#L145) | `NativeFisherYatesV111` | `ShuffleInPlace` | `_ = NativeFisherYatesV111.ShuffleInPlace(` | `typed_provider_shuffle_mechanics_boundary` |
 | [`src/Sts2Emulator.Core/PrototypeNativeWarHammer.cs:42`](../src/Sts2Emulator.Core/PrototypeNativeWarHammer.cs#L42) | `NativeFisherYatesV111` | `ShuffleInPlace` | `_ = NativeFisherYatesV111.ShuffleInPlace(` | `typed_provider_shuffle_mechanics_boundary` |
 | [`src/Sts2Emulator.Core/RandomGaussianDoubleProvidersV111.cs:84`](../src/Sts2Emulator.Core/RandomGaussianDoubleProvidersV111.cs#L84) | `NativeRngV111` | `NextGaussianDouble` | `var value = NativeRngV111.NextGaussianDouble(` | `provider_or_codec_infrastructure` |
 | [`src/Sts2Emulator.Core/RandomGaussianIntProvidersV111.cs:79`](../src/Sts2Emulator.Core/RandomGaussianIntProvidersV111.cs#L79) | `NativeRngV111` | `NextGaussianInt` | `var value = NativeRngV111.NextGaussianInt(` | `provider_or_codec_infrastructure` |
