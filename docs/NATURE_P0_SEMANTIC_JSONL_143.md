@@ -29,7 +29,11 @@ non-Nature RNG parity remain **UNVERIFIED**.
 - `semanticCardSelectionChoiceSchemaId =
   sts2-v111-semantic-card-selection-choice-v1`.
 - `semanticCostChoiceSchemaId = sts2-v111-semantic-cost-choice-v1`.
-- `semanticExtendedControlledSites = [random_enemy_target, generated_card_pool]`.
+- `semanticPoolShuffleChoiceSchemaId =
+  sts2-v111-semantic-pool-shuffle-v1`.
+- `semanticExtendedControlledSites = [random_enemy_target, generated_card_pool,
+  drawn_card_cost, generated_card_pool_shuffle]`; fixture-specific sites require
+  their corresponding seeded-entry options.
 - `semanticExtendedPlayerChoices = [select_cards]`.
 - `semanticPlayable = true`, scope
   `seeded-source-route-or-post-committed-opening-fixture-restricted-Silent-combat`.
@@ -63,6 +67,7 @@ paths avoid that external setup chain:
 | `semantic_resolve_random_target` | handle, fingerprint, pending `event_id`, legal `enemy_instance_id` | Child Nature / player / terminal |
 | `semantic_resolve_generated_card` | handle, fingerprint, pending `event_id`, legal `card_model_id` | Child Nature / player / terminal |
 | `semantic_resolve_cost` | handle, fingerprint, pending `event_id`, legal cost value | Child Nature / player / terminal |
+| `semantic_resolve_pool_shuffle` | handle, fingerprint, pending `event_id`, bounded `swap_index` | Child Nature / player / terminal |
 | `semantic_step` at `player_choice` | handle, fingerprint, listed legal `select_cards` action ID | Child player / Nature / terminal |
 | `semantic_fork` | handle | Independent child handle |
 | `semantic_save` | handle | Privileged snapshot string |
@@ -308,6 +313,18 @@ continuation before `CardDrawn`, exposes bounded cost values by event ID, and
 resumes the same saved hand-draw operation. When both relic and Slither cost
 stages apply, they appear as separate events in source order. The default
 two-site path keeps its declared engine-owned unverified cost fallback.
+
+The opt-in full-pool generation fixture uses
+`fixture_pool_generation_potion_id="proto.potion.colorless"`. Each source
+Fisher–Yates swap is a typed `generated_card_pool_shuffle` event with a
+bounded `swap_index`, original and current card-model order, and explicit
+`UNVERIFIED` probability status. The final swap resumes the original potion
+effect and exposes the source `select_cards` action as an ordinary
+`player_card_selection` boundary. Python clients use
+`SemanticCombat.resolve_pool_shuffle(swap_index)` and then the existing
+`resolve_card_selection(action_id)` method. Snapshot replay includes every
+swap and the subsequent player choice. This fixture does not claim native
+potion-acquisition provenance or source-law calibration.
 
 **Probability status:** these are raw weights produced by the emulator's
 source-shaped selector, **not** independently audited original-game

@@ -11,6 +11,7 @@ public sealed record SemanticCardSelectionEventV111(
     string SupportFingerprint, long? SourceCardInstanceId,
     string SourceZone, string Resolution, int MinimumSelections,
     int MaximumSelections, long[] CandidateCardInstanceIds,
+    string[] CandidateCardModelIds,
     SemanticCardSelectionCandidateV111[] Candidates)
 {
     public const string EventSchemaId =
@@ -19,6 +20,7 @@ public sealed record SemanticCardSelectionEventV111(
     public SemanticCardSelectionEventV111 Fork() => this with
     {
         CandidateCardInstanceIds = (long[])CandidateCardInstanceIds.Clone(),
+        CandidateCardModelIds = (string[])CandidateCardModelIds.Clone(),
         Candidates = Candidates.Select(candidate => candidate with
         {
             CardInstanceIds = (long[])candidate.CardInstanceIds.Clone()
@@ -32,7 +34,10 @@ public sealed record SemanticCardSelectionEventV111(
             string.IsNullOrWhiteSpace(SupportFingerprint) ||
             string.IsNullOrWhiteSpace(SourceZone) ||
             string.IsNullOrWhiteSpace(Resolution) ||
-            CandidateCardInstanceIds is null || Candidates is null ||
+            CandidateCardInstanceIds is null || CandidateCardModelIds is null ||
+            CandidateCardModelIds.Length != CandidateCardInstanceIds.Length ||
+            CandidateCardModelIds.Any(string.IsNullOrWhiteSpace) ||
+            Candidates is null ||
             CandidateCardInstanceIds.Distinct().Count() !=
                 CandidateCardInstanceIds.Length || Candidates.Length == 0 ||
             Candidates.Any(candidate => candidate is null ||
@@ -111,6 +116,9 @@ public static class SemanticCardSelectionEngineV111
             choice.SourceCardInstanceId,
             choice.Selection,
             choice.CandidateCardInstanceIds,
+            CandidateCardModelIds = choice.CandidateCardInstanceIds.Select(id =>
+                source.World!.Combat!.Cards.Single(card =>
+                    card.InstanceId == id).CardId).ToArray(),
             Candidates = actions
         });
         var eventId = CanonicalJson.Sha256(new
@@ -126,7 +134,10 @@ public static class SemanticCardSelectionEngineV111
             choice.Selection.SourceZone.ToString(),
             choice.Selection.Resolution.ToString(),
             choice.Selection.MinSelections, choice.Selection.MaxSelections,
-            (long[])choice.CandidateCardInstanceIds.Clone(), actions);
+            (long[])choice.CandidateCardInstanceIds.Clone(),
+            choice.CandidateCardInstanceIds.Select(id =>
+                source.World!.Combat!.Cards.Single(card =>
+                    card.InstanceId == id).CardId).ToArray(), actions);
         semanticEvent.Validate();
         return semanticEvent;
     }
@@ -284,8 +295,14 @@ public static class SemanticCardSelectionEngineV111
                 PrototypeCardSelectionResolutionKind.MoveToDiscard or
                 PrototypeCardSelectionResolutionKind.MoveToExhaust) &&
             !spec.RemoveUnselectedFromSource;
+        var supportedGeneratedChoicePool =
+            spec.SourceZone == PrototypeCardZone.ChoicePool &&
+            spec.Resolution == PrototypeCardSelectionResolutionKind.MoveToHand &&
+            spec.RemoveUnselectedFromSource;
         if ((!supportedTop && !supportedDrawRemoval &&
-             !supportedVisibleZoneMove) || spec.RemoveUnselectedFromSource ||
+             !supportedVisibleZoneMove && !supportedGeneratedChoicePool) ||
+            (spec.RemoveUnselectedFromSource &&
+             !supportedGeneratedChoicePool) ||
             spec.SequentialOptional ||
             spec.DrawEqualToSelectionsOnCompletion ||
             choice.OuterChoiceContinuation is not null)

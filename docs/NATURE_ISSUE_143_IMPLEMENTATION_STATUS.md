@@ -94,6 +94,14 @@ The real `ResolveOperations` pipeline now suspends before full-pool Fisher–Yat
 
 Focused tests exercise real Attack and Colorless Potion effect kernels using explicit fixture-injected potion inventory, distinct common generation through an internal operation fixture, forged permutation rejection and 15-worker deterministic execution. Native-provenance potion acquisition and full controlled snapshot replay from those modified fixtures remain unverified; source laws are `UNVERIFIED`. Details in [the full-pool continuation contract](NATURE_FULL_POOL_GENERATION_143.md).
 
+The semantic P0 bridge now opts into the same continuation with a seeded
+Colorless Potion fixture. It exposes each bounded swap through
+`semantic_resolve_pool_shuffle`, resumes to the original `select_cards`
+player boundary, and stores both decision types in semantic snapshot replay.
+Only the fixture potion route is enabled in this bridge; native acquisition
+and source-law calibration remain unverified. The JSONL/Python contract is in
+[Nature P0 semantic JSONL](NATURE_P0_SEMANTIC_JSONL_143.md).
+
 
 ## Next slice: controlled hand-cost operations (#143)
 

@@ -305,6 +305,26 @@ class SemanticCombat:
                 fingerprint=self.fingerprint, event_id=self.pending["eventId"],
                 cost=cost))
 
+    def resolve_pool_shuffle(self, swap_index: int):
+        """Choose one bounded swap while building a generated-card offer."""
+        if not self.pending or self.pending.get(
+                "kind") != "generated_card_pool_shuffle":
+            raise EmulatorError("Expected a generated_card_pool_shuffle event")
+        if self.session.capabilities.get(
+                "semanticPoolShuffleChoiceSchemaId") != (
+                    "sts2-v111-semantic-pool-shuffle-v1"):
+            raise EmulatorError("Emulator lacks semantic pool-shuffle choices")
+        candidates = [
+            candidate["swapIndex"]
+            for candidate in self.pending.get("candidates", [])]
+        if swap_index not in candidates:
+            raise ValueError("Swap index is outside the pending event support")
+        return SemanticCombat.from_wire(
+            self.session, self.session.call(
+                "semantic_resolve_pool_shuffle", semantic_handle=self.handle,
+                fingerprint=self.fingerprint, event_id=self.pending["eventId"],
+                swap_index=swap_index))
+
     def fork(self):
         return SemanticCombat.from_wire(
             self.session, self.session.call(
@@ -450,6 +470,7 @@ class Session:
             fixture_generation_potion_id: str | None = None,
             fixture_selection_card_id: str | None = None,
             fixture_nature_draw_costs: bool = False,
+            fixture_pool_generation_potion_id: str | None = None,
             replay_opening_draw_hooks: bool = False,
             native_policy_baseline: bool = False,
             source_route_entry: bool = False,
@@ -464,6 +485,8 @@ class Session:
         optional random-target fixture adds Ricochet to the opening hand for
         semantic target-boundary integration checks; the generation fixture
         adds Orobic Acid to expose three ordered generated-card pools.
+        The pool-generation fixture adds a Colorless Potion for typed
+        full-pool shuffle choices followed by an ordinary card selection.
         """
         if self.capabilities.get("semanticSeededOpeningProvider") != (
                 "engine-owned-seeded-source-shaped-unverified-v1"):
@@ -492,6 +515,8 @@ class Session:
             fixture_generation_potion_id=fixture_generation_potion_id,
             fixture_selection_card_id=fixture_selection_card_id,
             fixture_nature_draw_costs=fixture_nature_draw_costs,
+            fixture_pool_generation_potion_id=
+                fixture_pool_generation_potion_id,
             replay_opening_draw_hooks=replay_opening_draw_hooks,
             native_policy_baseline=native_policy_baseline,
             source_route_entry=source_route_entry,

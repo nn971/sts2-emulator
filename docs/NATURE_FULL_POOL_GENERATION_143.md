@@ -15,6 +15,19 @@ Source `TakeRandom/GetDistinctForCombat` shuffles the **entire eligible pool** v
 
 The private in-flight checkpoint retains the exact original filtered pool, current permutation, next index, source effect, source-card ID, selected prefix count and parent card/choice/event continuation. Every swap is checked against its stable owner/source/ordinal/support and the partial permutation is reconstructed from the **entire current swap transcript**, ruling out forged reorderings. On the last swap the engine creates the exact prefix without re-running earlier operations. Choice effects then yield a normal `select_cards` player action with cost/upgrade/retain and affliction handling; direct generation effects create the prefix in the player's hand and resume the earlier queued operations.
 
+## Semantic JSONL/Python fixture bridge
+
+The semantic P0 session can opt into this continuation with
+`fixture_pool_generation_potion_id="proto.potion.colorless"`. It exposes each
+bounded swap as a typed `generated_card_pool_shuffle` Nature event carrying
+the current and original candidate order. Resolving the final swap resumes
+the original Colorless Potion continuation and publishes its ordinary
+`player_card_selection` action. The semantic transcript records and replays
+the pool swaps and the subsequent player choice separately; candidate card
+models stay out of the fair player observation. The fixture currently covers
+this potion path and does not claim native potion-acquisition provenance or
+verified probability laws.
+
 ## Validation and boundaries
 
 Focused tests exercise Attack and Colorless Potions through the **real potion-use effect kernel** on a fixture-modified playable combat state, including a resumed player card-selection action, and the distinct-common operation through an internal operation fixture. They verify full-pool RNG call shape, source card-model order, source eligibility, invalid/stale swap decisions, mid-shuffle forgery checks, replay event IDs, and 15-worker independent execution.

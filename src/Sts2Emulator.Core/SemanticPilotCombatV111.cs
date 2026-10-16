@@ -13,7 +13,8 @@ public sealed record SemanticPilotTransitionV111(
     SemanticTargetDecisionV111? TargetDecision = null,
     SemanticGeneratedCardDecisionV111? GeneratedCardDecision = null,
     SemanticCardSelectionDecisionV111? CardSelectionDecision = null,
-    SemanticCostDecisionV111? CostDecision = null);
+    SemanticCostDecisionV111? CostDecision = null,
+    SemanticPoolShuffleDecisionV111? PoolShuffleDecision = null);
 
 /// <summary>
 /// Independently replayable setup provenance. The default entry is a
@@ -68,7 +69,8 @@ public sealed record SemanticSeededEntryV111(
     string? FixtureRandomTargetCardId = null,
     string? FixtureGenerationPotionId = null,
     string? FixtureSelectionCardId = null,
-    bool FixtureNatureDrawCosts = false);
+    bool FixtureNatureDrawCosts = false,
+    string? FixturePoolGenerationPotionId = null);
 
 /// <summary>
 /// First external playable semantic boundary. Initial opening order is
@@ -104,6 +106,8 @@ public sealed record SemanticPilotCombatV111(
         SemanticPilotCombatEngineV111.DescribePendingCardSelectionEvent(this);
     [JsonIgnore] public SemanticCostEventV111? CostPending =>
         SemanticPilotCombatEngineV111.DescribePendingCostEvent(this);
+    [JsonIgnore] public SemanticPoolShuffleEventV111? PoolShufflePending =>
+        SemanticPilotCombatEngineV111.DescribePendingPoolShuffleEvent(this);
     [JsonIgnore] public string Fingerprint => CanonicalJson.Sha256(this);
     [JsonIgnore] public bool AtPlayerBoundary =>
         PendingInitialIntents is null &&
@@ -180,6 +184,10 @@ public sealed record SemanticPilotCombatV111(
             { CostDecision: { } decision } => transition with
             {
                 CostDecision = decision.Fork()
+            },
+            { PoolShuffleDecision: { } decision } => transition with
+            {
+                PoolShuffleDecision = decision.Fork()
             },
             _ => transition
         }).ToArray(),
@@ -281,7 +289,8 @@ public static class SemanticPilotCombatEngineV111
              entry.FixtureRandomTargetCardId is not null ||
              entry.FixtureGenerationPotionId is not null ||
              entry.FixtureSelectionCardId is not null ||
-             entry.FixtureNatureDrawCosts))
+             entry.FixtureNatureDrawCosts ||
+             entry.FixturePoolGenerationPotionId is not null))
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_NATIVE site=combat.seeded_entry " +
                 "operation=native_baseline_fixture_loadout_conflict");
@@ -396,8 +405,42 @@ public static class SemanticPilotCombatEngineV111
             state = ApplyFixtureGenerationPotion(state, potionId);
         if (entry.FixtureSelectionCardId is { } selectionCardId)
             state = ApplyFixtureSelectionCard(state, selectionCardId);
+        if (entry.FixturePoolGenerationPotionId is { } poolPotionId)
+            state = ApplyFixturePoolGenerationPotion(state, poolPotionId);
         Validate(state);
         return state;
+    }
+
+    private static SemanticPilotCombatV111 ApplyFixturePoolGenerationPotion(
+        SemanticPilotCombatV111 state, string potionId)
+    {
+        if (potionId != "proto.potion.colorless")
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_LOADOUT site=combat.seeded_entry " +
+                "operation=fixture_pool_generation_potion:" + potionId);
+        var world = state.Run.World ?? throw new InvalidDataException(
+            "Pool-generation fixture is missing its combat world.");
+        var combat = world.Combat ?? throw new InvalidDataException(
+            "Pool-generation fixture is missing combat.");
+        var slot = Array.FindIndex(state.Run.Player.PotionSlots,
+            potion => potion is null);
+        if (slot < 0 || (combat.Potions ?? []).Any(potion =>
+                potion.PotionId == potionId))
+            throw new InvalidOperationException(
+                "Pool-generation fixture requires an empty potion slot.");
+        var slots = (PotionInstance?[])state.Run.Player.PotionSlots.Clone();
+        slots[slot] = new PotionInstance(potionId, PrototypeJson.EmptyObject());
+        var potions = (combat.Potions ?? []).Append(
+            new CombatPotionState(slot, potionId, PrototypeJson.EmptyObject()))
+            .OrderBy(potion => potion.Slot).ToArray();
+        return state with
+        {
+            Run = state.Run with
+            {
+                Player = state.Run.Player with { PotionSlots = slots },
+                World = world with { Combat = combat with { Potions = potions } }
+            }
+        };
     }
 
     private static SemanticPilotCombatV111 ApplyFixtureSelectionCard(
@@ -525,6 +568,7 @@ public static class SemanticPilotCombatEngineV111
             entry.FixtureRandomTargetCardId is not null ||
             entry.FixtureGenerationPotionId is not null ||
             entry.FixtureSelectionCardId is not null ||
+            entry.FixturePoolGenerationPotionId is not null ||
             entry.ReplayOpeningDrawHooks)
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_ROUTE site=act1.entry " +
@@ -1000,6 +1044,9 @@ public static class SemanticPilotCombatEngineV111
                     "select_cards")
                     SemanticCardSelectionEngineV111
                         .ValidatePendingBoundary(result);
+                else if (result.World?.Combat?.PendingChoice?
+                    .ControlledPoolShuffle is not null)
+                    ValidatePoolShuffleBoundary(result);
                 else
                     ValidateSemanticCombatBoundary(result);
             }
@@ -1029,10 +1076,16 @@ public static class SemanticPilotCombatEngineV111
             var payload = action.Payload.Deserialize<UsePotionPayload>() ??
                 throw new InvalidDataException("Missing potion action payload.");
             var fixturePotion = current.SeededEntry?.FixtureGenerationPotionId;
-            if (fixturePotion != "proto.potion.orobic_acid" ||
-                payload.Slot < 0 ||
-                payload.Slot >= source.Player.PotionSlots.Length ||
-                source.Player.PotionSlots[payload.Slot]?.PotionId != fixturePotion ||
+            var poolPotion = current.SeededEntry?.FixturePoolGenerationPotionId;
+            var validSlot = payload.Slot >= 0 &&
+                payload.Slot < source.Player.PotionSlots.Length;
+            var isGenerationPotion = fixturePotion ==
+                    "proto.potion.orobic_acid" && validSlot &&
+                source.Player.PotionSlots[payload.Slot]?.PotionId == fixturePotion;
+            var isPoolPotion = poolPotion == "proto.potion.colorless" &&
+                validSlot &&
+                source.Player.PotionSlots[payload.Slot]?.PotionId == poolPotion;
+            if ((!isGenerationPotion && !isPoolPotion) ||
                 payload.TargetEnemyId is not null)
                 throw new NotSupportedException(
                     "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
@@ -1043,7 +1096,10 @@ public static class SemanticPilotCombatEngineV111
                 throw new NotSupportedException(
                     "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
                     "operation=unsupported_post_potion_phase");
-            ValidateSemanticCombatBoundary(result);
+            if (result.World?.Combat?.PendingChoice?.ControlledPoolShuffle is not null)
+                ValidatePoolShuffleBoundary(result);
+            else
+                ValidateSemanticCombatBoundary(result);
             var previous = current.Run.World!.Combat!;
             var next = result.World?.Combat;
             if (next is null ||
@@ -1324,6 +1380,65 @@ public static class SemanticPilotCombatEngineV111
             pending, index, selectedCost);
         decision.Validate();
         return Resolve(current, fingerprint, index, null, null, false, decision);
+    }
+
+    public static SemanticPilotCombatV111 ResolvePoolShuffle(
+        SemanticPilotCombatV111 current, string fingerprint,
+        string eventId, int swapIndex)
+    {
+        Validate(current);
+        if (current.Fingerprint != fingerprint)
+            throw new InvalidOperationException(
+                "Stale semantic pool-shuffle fingerprint.");
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
+        var pending = current.PoolShufflePending ??
+            throw new InvalidOperationException(
+                "No generated-card pool shuffle is pending.");
+        if (pending.EventId != eventId)
+            throw new InvalidOperationException(
+                "Pool-shuffle event ID is stale or mismatched.");
+        var decision = new SemanticPoolShuffleDecisionV111(
+            pending, swapIndex);
+        decision.Validate();
+
+        RunState result;
+        using (ControlledChanceGuardV111.Enter())
+            result = PrototypeGameEngine.ResumeControlledPoolShuffle(
+                current.Run.Fork(), swapIndex);
+        if (result.Phase != RunPhase.Combat)
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_POOL site=combat.generation.full_pool_shuffle " +
+                "operation=unsupported_post_shuffle_phase");
+        var resultCombat = result.World?.Combat ??
+            throw new InvalidDataException(
+                "Full-pool shuffle continuation lost combat.");
+        if (resultCombat.PendingChoice?.ControlledPoolShuffle is not null)
+            ValidatePoolShuffleBoundary(result);
+        else if (resultCombat.PendingChoice?.ChoiceId == "select_cards")
+        {
+            SemanticCardSelectionEngineV111.ValidatePendingBoundary(result);
+            _ = SemanticCardSelectionEngineV111.DescribePending(
+                result, CanonicalJson.Sha256(result));
+        }
+        else
+            ValidateSemanticCombatBoundary(result);
+        var priorCombat = current.Run.World!.Combat!;
+        if (!priorCombat.DrawPile.SequenceEqual(resultCombat.DrawPile) ||
+            CanonicalJson.Sha256(priorCombat.SemanticDeck) !=
+                CanonicalJson.Sha256(resultCombat.SemanticDeck))
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_DECK site=combat.generation.full_pool_shuffle " +
+                "operation=unmodeled_draw_pile_mutation");
+        var next = current with
+        {
+            Run = result,
+            History = current.History.Append(
+                new SemanticPilotTransitionV111(
+                    "semantic_pool_shuffle",
+                    PoolShuffleDecision: decision.Fork())).ToArray()
+        };
+        Validate(next);
+        return next;
     }
 
     private static SemanticPilotCombatV111 Resolve(
@@ -1673,6 +1788,88 @@ public static class SemanticPilotCombatEngineV111
         return semanticEvent;
     }
 
+    public static SemanticPoolShuffleEventV111?
+        DescribePendingPoolShuffleEvent(SemanticPilotCombatV111 current)
+    {
+        ArgumentNullException.ThrowIfNull(current);
+        var combat = current.Run.World?.Combat;
+        var choice = combat?.PendingChoice;
+        var shuffle = choice?.ControlledPoolShuffle;
+        if (shuffle is null) return null;
+        if (current.SeededEntry?.FixturePoolGenerationPotionId !=
+                "proto.potion.colorless" ||
+            current.PendingEndTurn is not null ||
+            current.PendingInitialIntents is not null ||
+            current.TargetPending is not null ||
+            current.GeneratedCardPending is not null ||
+            current.CardSelectionPending is not null ||
+            current.UsesNativePolicyBaseline || current.CombatTerminal)
+            throw new InvalidDataException(
+                "Full-pool shuffle conflicts with another semantic boundary.");
+        ValidatePoolShuffleBoundary(current.Run);
+        var original = (string[])shuffle.OriginalCardIds.Clone();
+        var currentPool = (string[])shuffle.CurrentCardIds.Clone();
+        var sourceCardId = choice!.SourceCardInstanceId;
+        var owner = "card:" + (sourceCardId?.ToString() ?? "effect") +
+            ":operation:" + shuffle.Operation.Kind +
+            ":pool:" + CanonicalJson.Sha256(original);
+        var ordinal = current.History.Count(transition =>
+            transition.Kind == "semantic_pool_shuffle");
+        var streamId = shuffle.Operation.GeneratedChoiceUsesNativeCardGenerationRng &&
+            combat!.NativeRng?.RunStreams is not null
+                ? "run.combat_card_generation" : "prototype.combat";
+        var request = new RandomIndexRequestV111(
+            "combat.generation.full_pool_shuffle.swap_index", streamId,
+            owner, ordinal, [], OperationKind: "bounded_integer",
+            BoundedCount: shuffle.NextSwapIndex + 1);
+        request.Validate();
+        var supportFingerprint = CanonicalJson.Sha256(new
+        {
+            request, Original = original, Current = currentPool,
+            shuffle.NextSwapIndex, shuffle.SelectedCount,
+            Operation = shuffle.Operation.Kind.ToString(), sourceCardId
+        });
+        var eventId = CanonicalJson.Sha256(new
+        {
+            SchemaId = SemanticPoolShuffleEventV111.EventSchemaId,
+            BoundaryFingerprint = current.Fingerprint,
+            SupportFingerprint = supportFingerprint
+        });
+        var semanticEvent = new SemanticPoolShuffleEventV111(
+            SemanticPoolShuffleEventV111.EventSchemaId, eventId,
+            current.Fingerprint, supportFingerprint, request, original,
+            currentPool, shuffle.NextSwapIndex, shuffle.SelectedCount,
+            shuffle.Operation.Kind.ToString(), sourceCardId);
+        semanticEvent.Validate();
+        return semanticEvent;
+    }
+
+    private static void ValidatePoolShuffleBoundary(RunState run)
+    {
+        var combat = run.World?.Combat;
+        var choice = combat?.PendingChoice;
+        var shuffle = choice?.ControlledPoolShuffle;
+        if (run.Phase != RunPhase.Combat ||
+            combat is not { IsPlayerTurn: true,
+                AutomaticPipelineContinuation: null } ||
+            choice is not { ChoiceId: "controlled_pool_shuffle",
+                OuterChoiceContinuation: not null } ||
+            shuffle is null ||
+            !PrototypeGameEngine.ValidateControlledPoolShuffle(
+                combat, shuffle, choice.SourceCardInstanceId))
+            throw new InvalidDataException(
+                "Generated-card pool shuffle is not source-reachable.");
+        var deck = combat.SemanticDeck ?? throw new InvalidDataException(
+            "Generated-card pool shuffle lost the provider-owned deck.");
+        SemanticDeckEngineV111.Validate(deck);
+        if (deck.Mode != SemanticDeckStateV111.NatureMode ||
+            deck.Pending is not null ||
+            !SemanticDeckEngineV111.AllCardInstanceIds(deck)
+                .Order().SequenceEqual(combat.DrawPile.Order()))
+            throw new InvalidDataException(
+                "Generated-card pool shuffle changed the hidden draw pile.");
+    }
+
     private static void ValidateCostDecision(
         SemanticCostEventV111? pending,
         SemanticCostDecisionV111 decision, int sourceIndex)
@@ -1956,6 +2153,21 @@ public static class SemanticPilotCombatEngineV111
                 throw new InvalidDataException(
                     "Card-selection continuation conflicts with another boundary.");
         }
+        if (state.PoolShufflePending is { } poolShufflePending)
+        {
+            poolShufflePending.Validate();
+            ValidatePoolShuffleBoundary(state.Run);
+            if (state.PendingEndTurn is not null ||
+                state.PendingInitialIntents is not null ||
+                state.IntentPending is not null || state.DrawPending is not null ||
+                state.TargetPending is not null ||
+                state.GeneratedCardPending is not null ||
+                state.CardSelectionPending is not null ||
+                state.CostPending is not null ||
+                state.UsesNativePolicyBaseline || state.CombatTerminal)
+                throw new InvalidDataException(
+                    "Full-pool shuffle conflicts with another semantic boundary.");
+        }
         if (state.CostPending is { } costPending)
         {
             costPending.Validate();
@@ -2112,6 +2324,11 @@ public static class SemanticPilotCombatEngineV111
                     ResolveCost(replay, replay.Fingerprint,
                         transition.CostDecision.Event.EventId,
                         transition.CostDecision.SelectedCost),
+                "semantic_pool_shuffle" when
+                    transition.PoolShuffleDecision is not null =>
+                    ResolvePoolShuffle(replay, replay.Fingerprint,
+                        transition.PoolShuffleDecision.Event.EventId,
+                        transition.PoolShuffleDecision.SelectedSwapIndex),
                 "nature" when transition.SelectedIndex is not null =>
                     Resolve(replay, replay.Fingerprint,
                         transition.SelectedIndex.Value),
