@@ -6221,6 +6221,14 @@ public sealed partial class PrototypeGameEngine
                     if (candidates.Length == 0)
                         break;
 
+                    if (ControlledChanceGuardV111.Active &&
+                        !ControlledChanceGuardV111
+                            .EngineOwnedNativeProviderActive)
+                        throw new NotSupportedException(
+                            "UNSUPPORTED_SEMANTIC_DECK " +
+                            "site=combat.relic.jeweled_mask.random_power_draw_card " +
+                            "operation=missing_resumable_automatic_hook_choice");
+
                     var nativeRunStreams = combat.NativeRng?.RunStreams.Fork();
                     var selectedIndex = nativeRunStreams is null
                         ? PrototypeRng.NextInt(

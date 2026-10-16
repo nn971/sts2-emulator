@@ -46,8 +46,9 @@ for native mode. Vakuu's request ordinals span its three pool shuffles. The
 existing source-pinned Fisher–Yates loop now accepts an arbitrary named
 stream and provider without duplicating its swap mechanics. Jeweled Mask's
 random Power selection and native generated-card full-pool shuffle also reach
-typed native providers; controlled combat continuation for those native
-sites remains pending. The potion factory now routes its unit-float rarity
+typed native providers. Semantic-controlled Jeweled Mask execution now fails
+closed until its BeforeHandDraw continuation can resume after the card choice.
+The potion factory now routes its unit-float rarity
 sample and within-tier model index through separate typed providers in source
 order.
 Beautiful Bracelet's eligible-deck shuffle and Fur Coat's current-act combat
