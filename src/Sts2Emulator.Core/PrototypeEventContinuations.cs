@@ -331,13 +331,17 @@ public sealed partial class PrototypeGameEngine
                 // Suspicious Condiment's optional potion reward completes.
                 if (eventState.NativeDishRollPending)
                 {
-                    var next = PrototypeNativeEndlessConveyor.RollNextDish(
-                        eventState with { NativeDishRollPending = false },
-                        state.Player, state.Rng);
-                    return state with
-                    {
-                        World = world with { Event = next }
-                    };
+                    return PrototypeNativeEndlessConveyor.RollNextDish(
+                        state with
+                        {
+                            World = world with
+                            {
+                                Event = eventState with
+                                {
+                                    NativeDishRollPending = false
+                                }
+                            }
+                        });
                 }
                 return state;
             }

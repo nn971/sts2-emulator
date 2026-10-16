@@ -8,6 +8,7 @@ namespace Sts2Emulator.Core;
 public static class PrototypeNativeEndlessConveyor
 {
     public const string EventId = "proto.native.underdocks.endless_conveyor";
+    public const string NativeRngEventId = "ENDLESS_CONVEYOR";
     public const string FeedingFrenzyId = "proto.native.underdocks.feeding_frenzy";
 
     public static PrototypeCardDefinition[] EventCards { get; } =
@@ -34,27 +35,38 @@ public static class PrototypeNativeEndlessConveyor
         ("FRIED_EEL", 3)
     ];
 
-    public static EventState RollNextDish(
-        EventState current, PlayerState player, RngBundle rng)
+    public static RunState RollNextDish(RunState state)
     {
+        var world = state.World
+            ?? throw new InvalidOperationException(
+                "Endless Conveyor requires an active run world.");
+        var current = world.Event
+            ?? throw new InvalidOperationException(
+                "Endless Conveyor has no active event.");
         var nextRoll = current.NativeDishCount + 1;
         if (nextRoll % 5 == 0)
         {
             // The source forces Seapunk Salad without calling NextFloat.
-            return current with
+            return state with
             {
-                NativeDishCount = nextRoll,
-                NativeLastDishId = "SEAPUNK_SALAD",
-                NativeDishId = "SEAPUNK_SALAD"
+                World = world with
+                {
+                    Event = current with
+                    {
+                        NativeDishCount = nextRoll,
+                        NativeLastDishId = "SEAPUNK_SALAD",
+                        NativeDishId = "SEAPUNK_SALAD"
+                    }
+                }
             };
         }
 
         var candidates = BaseDishes.ToList();
-        if (player.PotionSlots.Any(slot => slot is null))
+        if (state.Player.PotionSlots.Any(slot => slot is null))
         {
             candidates.Add(("SUSPICIOUS_CONDIMENT", 3));
         }
-        if (player.Hp < player.MaxHp)
+        if (state.Player.Hp < state.Player.MaxHp)
         {
             candidates.Add(("CLAM_ROLL", 6));
         }
@@ -70,14 +82,33 @@ public static class PrototypeNativeEndlessConveyor
                 "Endless Conveyor has no available dishes.");
         }
 
-        // Native uses NextFloat()*weight; the prototype uses a single
-        // integer draw in the same event stream, with the same weights.
-        var roll = LegacyRandomChoiceV111.ChooseBoundedInteger(
-            rng,
-            "event.endless_conveyor.dish_weighted_ticket",
-            "event",
-            $"dish:{nextRoll}:pool:{CanonicalJson.Sha256(candidates)}",
-            totalWeight).SelectedIndex;
+        float roll;
+        var ownerId = $"dish:{nextRoll}:pool:{CanonicalJson.Sha256(candidates)}";
+        if (state.NativeRunRng is not null
+            && (current.NativeEventRng is not null
+                || current.NativeDishCount == 0))
+        {
+            var draw = NativeEventContextRngV111.ResolveUnitFloat(
+                state,
+                current,
+                NativeRngEventId,
+                "event.endless_conveyor.dish_weighted_ticket",
+                ownerId);
+            state = draw.State;
+            world = state.World!;
+            current = world.Event!;
+            roll = draw.SelectedValue * totalWeight;
+        }
+        else
+        {
+            // Preserve the legacy prototype's integer-weight approximation.
+            roll = LegacyRandomChoiceV111.ChooseBoundedInteger(
+                state.Rng,
+                "event.endless_conveyor.dish_weighted_ticket",
+                "event",
+                ownerId,
+                totalWeight).SelectedIndex;
+        }
         var selected = candidates[^1].Id;
         foreach (var dish in candidates)
         {
@@ -88,11 +119,17 @@ public static class PrototypeNativeEndlessConveyor
             }
             roll -= dish.Weight;
         }
-        return current with
+        return state with
         {
-            NativeDishCount = nextRoll,
-            NativeDishId = selected,
-            NativeLastDishId = selected
+            World = world with
+            {
+                Event = current with
+                {
+                    NativeDishCount = nextRoll,
+                    NativeDishId = selected,
+                    NativeLastDishId = selected
+                }
+            }
         };
     }
 }
@@ -142,11 +179,11 @@ public sealed partial class PrototypeGameEngine
         var choice = action.ReadPayload<EventChoicePayload>().ChoiceId;
         if (choice == "observe" && evt.NativeDishCount == 1)
         {
-            var player = UpgradeRandomEligibleConveyorCard(
-                state.Player, state.Rng);
+            state = UpgradeRandomEligibleConveyorCard(state);
+            world = RequireWorld(state);
+            evt = world.Event!;
             var result = state with
             {
-                Player = player,
                 World = world with
                 {
                     Event = evt with { ChosenChoiceId = choice }
@@ -190,8 +227,11 @@ public sealed partial class PrototypeGameEngine
                 break;
 
             case "SPICY_SNAPPY":
-                playerAfter = UpgradeRandomEligibleConveyorCard(
-                    playerAfter, state.Rng);
+                state = UpgradeRandomEligibleConveyorCard(
+                    state with { Player = playerAfter });
+                world = RequireWorld(state);
+                evt = world.Event!;
+                playerAfter = state.Player;
                 break;
 
             case "JELLY_LIVER":
@@ -217,12 +257,34 @@ public sealed partial class PrototypeGameEngine
                     throw new NotSupportedException(
                         "Fried Eel has no supported Colorless card.");
                 }
-                var id = pool[LegacyRandomChoiceV111.ChooseIndexRange(
-                    state.Rng,
-                    "event.endless_conveyor.colorless_card.index_draw",
-                    "event",
-                    $"dish:{evt.NativeDishCount}:pool:{CanonicalJson.Sha256(pool)}",
-                    pool.Length).SelectedIndex];
+                var ownerId = $"dish:{evt.NativeDishCount}:pool:"
+                    + CanonicalJson.Sha256(pool);
+                int selectedIndex;
+                if (state.NativeRunRng is not null
+                    && evt.NativeEventRng is null)
+                {
+                    selectedIndex = LegacyRandomChoiceV111.ChooseIndexRange(
+                        state.Rng,
+                        "event.endless_conveyor.colorless_card.index_draw",
+                        "event",
+                        ownerId,
+                        pool.Length).SelectedIndex;
+                }
+                else
+                {
+                    var draw = NativeEventContextRngV111.ResolveIndex(
+                        state,
+                        evt,
+                        PrototypeNativeEndlessConveyor.NativeRngEventId,
+                        "event.endless_conveyor.colorless_card.index_draw",
+                        ownerId,
+                        pool.Length);
+                    state = draw.State;
+                    world = RequireWorld(state);
+                    evt = world.Event!;
+                    selectedIndex = draw.SelectedIndex;
+                }
+                var id = pool[selectedIndex];
                 playerAfter = AppendCard(
                     playerAfter, nextCardId++, id, state.Rng);
                 break;
@@ -291,31 +353,55 @@ public sealed partial class PrototypeGameEngine
         });
     }
 
-    private static PlayerState UpgradeRandomEligibleConveyorCard(
-        PlayerState player, RngBundle rng)
+    private static RunState UpgradeRandomEligibleConveyorCard(RunState state)
     {
-        var candidates = player.Deck.Where(card =>
+        var world = RequireWorld(state);
+        var evt = world.Event
+            ?? throw new InvalidOperationException(
+                "Endless Conveyor has no active event.");
+        var candidates = state.Player.Deck.Where(card =>
                 CanSelectEventDeckCard(card,
                     PrototypePersistentDeckChoiceKind.Upgrade,
                     null, null, false))
             .Select(card => card.InstanceId).ToArray();
         if (candidates.Length == 0)
         {
-            return player;
+            return state;
         }
-        var chosen = candidates[LegacyRandomChoiceV111.ChooseIndexRange(
-            rng,
-            "event.endless_conveyor.random_upgrade.card_instance",
-            "event",
-            "endless_conveyor:deck:"
-                + CanonicalJson.Sha256(candidates),
-            candidates.Length).SelectedIndex];
-        return player with
+        var ownerId = "endless_conveyor:deck:"
+            + CanonicalJson.Sha256(candidates);
+        int selectedIndex;
+        if (state.NativeRunRng is not null && evt.NativeEventRng is null)
         {
-            Deck = player.Deck.Select(card =>
-                card.InstanceId == chosen
-                    ? card with { UpgradeLevel = card.UpgradeLevel + 1 }
-                    : card).ToArray()
+            selectedIndex = LegacyRandomChoiceV111.ChooseIndexRange(
+                state.Rng,
+                "event.endless_conveyor.random_upgrade.card_instance",
+                "event",
+                ownerId,
+                candidates.Length).SelectedIndex;
+        }
+        else
+        {
+            var draw = NativeEventContextRngV111.ResolveIndex(
+                state,
+                evt,
+                PrototypeNativeEndlessConveyor.NativeRngEventId,
+                "event.endless_conveyor.random_upgrade.card_instance",
+                ownerId,
+                candidates.Length);
+            state = draw.State;
+            selectedIndex = draw.SelectedIndex;
+        }
+        var chosen = candidates[selectedIndex];
+        return state with
+        {
+            Player = state.Player with
+            {
+                Deck = state.Player.Deck.Select(card =>
+                    card.InstanceId == chosen
+                        ? card with { UpgradeLevel = card.UpgradeLevel + 1 }
+                        : card).ToArray()
+            }
         };
     }
 

@@ -133,6 +133,53 @@ public static class NativeEventContextRngV111
         }, decision.SelectedIndex);
     }
 
+    public static (RunState State, float SelectedValue) ResolveUnitFloat(
+        RunState state, EventState eventState, string nativeEventEntry,
+        string siteId, string ownerId, int ordinal = 0)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(eventState);
+        ArgumentException.ThrowIfNullOrWhiteSpace(nativeEventEntry);
+        ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+
+        var nativeStream = eventState.NativeEventRng;
+        if (nativeStream is null && state.NativeRunRng is not null)
+        {
+            if (eventState.NativePageIndex != 0
+                || eventState.ChosenChoiceId is not null
+                || eventState.NativeEventPotionSlot is not null)
+                throw new InvalidOperationException(
+                    "Cannot reconstruct a missing native event RNG after event progress.");
+            nativeStream = NativeRngV111Contexts.ForEvent(
+                state.RunSeed, nativeEventEntry);
+        }
+        if (nativeStream is null)
+            throw new InvalidOperationException(
+                "A native event unit-float draw requires its event RNG context.");
+
+        var bundle = new RngBundle([nativeStream.Fork()]);
+        var decision = new NativeRandomUnitFloatProviderV111().Resolve(
+            new RandomUnitFloatRequestV111(
+                siteId, nativeStream.StreamId, ownerId, ordinal),
+            bundle);
+        var world = state.World
+            ?? throw new InvalidOperationException(
+                "A native event RNG requires an active run world.");
+        return (state with
+        {
+            World = world with
+            {
+                Event = eventState with
+                {
+                    NativeEventRng = bundle.Streams[0]
+                }
+            }
+        }, decision.SelectedValue);
+    }
+
     public static RunState ShuffleInPlace<T>(
         RunState state, EventState eventState, string nativeEventEntry,
         IList<T> values, string siteId, string ownerId,

@@ -56,6 +56,10 @@ public static class PrototypeStateInvariants
             PrototypeNativeHiveEvents.InfestedAutomatonId,
             PrototypeNativeHiveEvents
                 .InfestedAutomatonNativeRngEventId);
+        NativeEventContextRngV111.Validate(
+            state,
+            PrototypeNativeEndlessConveyor.EventId,
+            PrototypeNativeEndlessConveyor.NativeRngEventId);
         if (state.Ascension < 0)
         {
             throw new InvalidOperationException(

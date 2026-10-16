@@ -859,6 +859,8 @@ public sealed partial class PrototypeGameEngine
                         PrototypeNativeHiveEvents.InfestedAutomatonId =>
                             PrototypeNativeHiveEvents
                                 .InfestedAutomatonNativeRngEventId,
+                        PrototypeNativeEndlessConveyor.EventId =>
+                            PrototypeNativeEndlessConveyor.NativeRngEventId,
                         _ => null
                     }),
                 NativeEventGold:
@@ -961,11 +963,9 @@ public sealed partial class PrototypeGameEngine
 
         if (selected.Id == PrototypeNativeEndlessConveyor.EventId)
         {
-            world = world with
-            {
-                Event = PrototypeNativeEndlessConveyor.RollNextDish(
-                    world.Event!, state.Player, state.Rng)
-            };
+            state = state with { World = world };
+            state = PrototypeNativeEndlessConveyor.RollNextDish(state);
+            world = state.World!;
         }
 
         if (selected.Id == PrototypeNativeFutureOfPotions.EventId)

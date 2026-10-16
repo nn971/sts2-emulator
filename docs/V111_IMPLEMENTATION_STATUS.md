@@ -510,10 +510,12 @@ potion. Full native potion-pool and cursor parity remain unverified.
 - Corrected v111 Endless Conveyor continuation ordering: the next dish is
   rolled after Jelly Liver deck transformation or Suspicious Condiment potion
   reward resolution. The visible dish ID/number are now exported to consumers;
-  a pending roll remains fork- and snapshot-safe. Punch Off also consumes its
-  pinned event-entry dynamic-gold roll (91–98), even when that value is unused
-  by its options. The event RNG still uses the prototype codec, so native
-  stream parity remains unverified.
+  a pending roll remains fork- and snapshot-safe. Native v111 runs now persist
+  the `ENDLESS_CONVEYOR` event stream across weighted dish, upgrade, and
+  Colorless-card draws. Weighted dishes use the source unit-float boundary;
+  old saves without a context retain the legacy event fallback. Seeded parity
+  remains unverified. Punch Off also consumes its pinned event-entry
+  dynamic-gold roll (91–98), even when that value is unused by its options.
 - Exposed only already-visible v111 event economics and fixed item rewards in
   optional AI event-choice projections: independent chest rolls, Statue/Conveyor
   outcomes, cost/HP trades, escalation in Abyssal Baths and source-known
