@@ -88,10 +88,13 @@ public sealed partial class PrototypeGameEngine
             .SemanticDrawContinuation?.AutomaticSemanticHandDrawSegment == true;
         bool awaitingStratagem = after.PendingChoice?
             .AutomaticSemanticStratagemDrawSelection == true;
+        bool awaitingHookChoice = after.PendingChoice?
+            .AutomaticSemanticDrawHookChoice == true;
         if (!IsSemanticAutomaticHandDraw(after) ||
             (after.SemanticDeck?.Pending is null &&
              after.PendingChoice?.ControlledDrawCost is null &&
-             !awaitingInsertion && !awaitingStratagem))
+             !awaitingInsertion && !awaitingStratagem &&
+             !awaitingHookChoice))
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.DrawPlayerHand " +
                 "operation=unsupported_nested_stage");

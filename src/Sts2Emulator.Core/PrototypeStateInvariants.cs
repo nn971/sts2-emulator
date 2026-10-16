@@ -3511,6 +3511,26 @@ public static class PrototypeStateInvariants
                     throw new InvalidOperationException(
                         "Standalone CardDrawn hook choice is malformed.");
             }
+            if (pending.AutomaticSemanticDrawHookChoice)
+            {
+                if (pending.StandaloneSemanticDrawHookChoice ||
+                    pending.SemanticStratagemDrawSelection ||
+                    pending.AutomaticSemanticStratagemDrawSelection ||
+                    pending.ControlledTarget is not null ||
+                    pending.ControlledGeneration is not null ||
+                    pending.ControlledDrawCost is not null ||
+                    pending.ControlledSemanticDraw is not null ||
+                    pending.ControlledDrawInsertion is not null ||
+                    pending.ControlledRandomCost is not null ||
+                    pending.ControlledCardShortlist is not null ||
+                    pending.ControlledRandomPileCard is not null ||
+                    !PrototypeGameEngine.IsSemanticAutomaticHandDraw(combat) ||
+                    combat.SemanticDeck is not
+                        { Mode: SemanticDeckStateV111.NatureMode,
+                            Pending: null })
+                    throw new InvalidOperationException(
+                        "Automatic CardDrawn hook choice is malformed.");
+            }
             var savedChoiceOperations = new List<PrototypeQueuedOperation>(
                 pending.Continuation);
             for (var outer = pending.OuterChoiceContinuation;

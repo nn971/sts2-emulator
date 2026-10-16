@@ -564,6 +564,17 @@ automatic draw-pipeline insertions and nested standalone `CardDrawn` choices
 remain unsupported. Conditional probabilities remain `UNVERIFIED`; see
 [`NATURE_SEMANTIC_COMBAT_DRAW_143.md`](NATURE_SEMANTIC_COMBAT_DRAW_143.md).
 
+## 2026-10-17: automatic CardDrawn hook choices
+
+The automatic `DrawPlayerHand` segment now persists ordinary source action
+choices opened from `CardDrawn` hooks. The saved automatic cursor retains the
+requested and remaining hand-draw counts; resolving the hook action re-enters
+the same `DrawCards` operation and performs the hand-draw cleanup once. Nested
+controlled chance boundaries remain unsupported. The Release solution build
+passes with zero warnings or errors; tests were not run for this checkpoint.
+Conditional probabilities remain `UNVERIFIED`; see
+[`NATURE_SEMANTIC_COMBAT_DRAW_143.md`](NATURE_SEMANTIC_COMBAT_DRAW_143.md).
+
 ## 2026-10-17: automatic hand-draw after-shuffle insertions
 
 The automatic `DrawPlayerHand` continuation now suspends on the typed semantic

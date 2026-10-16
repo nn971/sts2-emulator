@@ -584,11 +584,32 @@ public static class SemanticCombatDrawEngineV111
             .CounterState.CardsDrawnThisCombat;
         var (run, decision) = SemanticDrawHookChoiceEngineV111.Resolve(
             state.Run.Fork(), pending, actionId);
+        int remaining;
+        if (pending.AutomaticHandDraw)
+        {
+            var combat = run.World?.Combat ??
+                throw new InvalidDataException(
+                    "Automatic draw-hook choice removed combat.");
+            if (combat.PendingChoice?.AutomaticSemanticDrawHookChoice == true)
+                remaining = combat.AutomaticPipelineContinuation?
+                    .ControlledSemanticDrawRemaining ??
+                    throw new InvalidDataException(
+                        "Automatic draw-hook choice lost its cursor.");
+            else
+            {
+                using (ControlledChanceGuardV111.Enter())
+                    (run, remaining) =
+                        PrototypeGameEngine.BeginSemanticCombatDraw(
+                            run, state.RemainingCount, fromHandDraw: true);
+            }
+        }
+        else
+            remaining = RemainingSemanticDrawCount(
+                run, state.RemainingCount, drawnBefore);
         var next = state with
         {
             Run = run,
-            RemainingCount = RemainingSemanticDrawCount(
-                run, state.RemainingCount, drawnBefore),
+            RemainingCount = remaining,
             DrawHookChoiceTranscript = state.DrawHookChoiceTranscript
                 .Append(decision.Fork()).ToArray()
         };
@@ -841,7 +862,8 @@ public static class SemanticCombatDrawEngineV111
             var cursor = combat.AutomaticPipelineContinuation;
             bool awaiting = deck.Pending is not null || cost is not null ||
                 drawInsertionPending is not null ||
-                stratagemSelectionPending is not null;
+                stratagemSelectionPending is not null ||
+                drawHookChoicePending is not null;
             if (randomPileCardPending is not null)
             {
                 if (cursor is null ||
@@ -912,13 +934,25 @@ public static class SemanticCombatDrawEngineV111
             controlledSemanticDraw.RemainingCount != state.RemainingCount)
             throw new InvalidDataException(
                 "Standalone semantic draw continuation has a stale count.");
-        if (drawHookChoicePending is { } hookChoice &&
-            (combat.PendingChoice?.StandaloneSemanticDrawHookChoice != true ||
-             !TryGetStandaloneSemanticDrawOperation(
-                 combat.PendingChoice, out var hookDraw) ||
-             hookDraw.Amount != state.RemainingCount))
-            throw new InvalidDataException(
-                "Standalone CardDrawn hook-choice cursor is inconsistent.");
+        if (drawHookChoicePending is { } hookChoice)
+        {
+            bool cursorMatches = hookChoice.AutomaticHandDraw
+                ? state.AutomaticHandDraw &&
+                  combat.PendingChoice?.AutomaticSemanticDrawHookChoice == true &&
+                  PrototypeGameEngine.IsSemanticAutomaticHandDraw(combat) &&
+                  combat.AutomaticPipelineContinuation!
+                      .ControlledSemanticDrawRemaining == state.RemainingCount &&
+                  combat.AutomaticPipelineContinuation
+                      .ControlledSemanticDrawRequested == state.RequestedCount
+                : !state.AutomaticHandDraw &&
+                  combat.PendingChoice?.StandaloneSemanticDrawHookChoice == true &&
+                  TryGetStandaloneSemanticDrawOperation(
+                      combat.PendingChoice, out var hookDraw) &&
+                  hookDraw.Amount == state.RemainingCount;
+            if (!cursorMatches)
+                throw new InvalidDataException(
+                    "CardDrawn hook-choice cursor is inconsistent.");
+        }
         if (stratagemSelectionPending is { } selectionEvent)
         {
             bool cursorMatches = state.AutomaticHandDraw

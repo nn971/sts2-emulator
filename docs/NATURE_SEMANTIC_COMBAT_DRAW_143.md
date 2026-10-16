@@ -45,6 +45,9 @@ This slice connects the separate provider-owned
   after-shuffle insertions, Stratagem selection, and drawn-card cost stages.
 - Ordinary source action choices opened by a standalone draw's `CardDrawn`
   hooks preserve the remaining draw operation and resume it after selection.
+- Ordinary source action choices opened by automatic `DrawPlayerHand`
+  `CardDrawn` hooks preserve the automatic stage cursor and resume the same
+  hand-draw request after selection.
 - Exact card instance identities and no replacement within the pile.
 - Draw count up to available pile/hand size; finite exhaustive
   two-draw/three-card enumeration.
@@ -53,9 +56,9 @@ This slice connects the separate provider-owned
 
 ## Explicit next work
 
-- Controlled nested chance boundaries and nested `CardDrawn` choices in the
-  automatic hand-draw pipeline still fail closed. Other draw contexts without
-  a saved continuation remain unsupported.
+- Controlled nested chance boundaries in standalone and automatic draw frames
+  still fail closed. Other draw contexts without a saved continuation remain
+  unsupported.
 - Opening-hand and ordinary player-action `DrawCards`, semantic deck mutation
   by card effects, public JSONL protocol negotiation, and source-audited native
   parity. The automatic hand-draw integration is a separate stage envelope,

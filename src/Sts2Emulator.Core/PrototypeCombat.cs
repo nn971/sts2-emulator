@@ -2544,9 +2544,27 @@ public sealed partial class PrototypeGameEngine
                     controlledAfterShuffleInsertionSuspension:
                         ControlledChanceGuardV111.Active &&
                         combat.SemanticDeck is
+                            { Mode: SemanticDeckStateV111.NatureMode },
+                    controlledCardDrawnChoiceSuspension:
+                        ControlledChanceGuardV111.Active &&
+                        combat.SemanticDeck is
                             { Mode: SemanticDeckStateV111.NatureMode });
                 player = drawn.Player;
                 combat = drawn.Combat;
+                if (ControlledChanceGuardV111.Active &&
+                    combat.SemanticDeck is
+                        { Mode: SemanticDeckStateV111.NatureMode } &&
+                    drawn.NestedCardDrawnChoicePending)
+                {
+                    var advanced = state with
+                    {
+                        Player = player,
+                        World = world with { Combat = combat }
+                    };
+                    return SuspendSemanticAutomaticDrawAtHookChoice(
+                        advanced, player, combat, drawn.RemainingCount,
+                        requestedHandDraw);
+                }
                 if (combat.SemanticDeck is
                         { Mode: SemanticDeckStateV111.NatureMode } &&
                     drawn.ControlledAfterShuffleInsertions is
@@ -12783,6 +12801,7 @@ public sealed partial class PrototypeGameEngine
         };
 
         if (!pending.AutomaticSemanticStratagemDrawSelection &&
+            !pending.AutomaticSemanticDrawHookChoice &&
             resolved.Combat.PendingChoice is null
             && resolved.Combat.AutomaticPipelineContinuation is
                 { } automaticContinuation)
