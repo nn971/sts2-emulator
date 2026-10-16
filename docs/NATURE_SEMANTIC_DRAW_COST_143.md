@@ -73,11 +73,14 @@ effect-style `FromHandDraw=false` segment, stale/out-of-support and
 forged-card rejection, native stream isolation, full/partial snapshot
 replay and deterministic 15-worker sessions.
 
-The semantic adapter still works on a **conditioned combat draw
-segment**, and is not yet the general controlled-playable
-`step`/JSONL protocol. A `CardDrawn` event that itself creates a
-nested pending choice, Stratagem post-shuffle selection, and a relic
-that inserts a newly generated card at a random position after
-shuffle still need distinct continuations. The native reference
-probability law remains explicitly `UNVERIFIED` until source-audited.
+The semantic JSONL pilot now has a separate opt-in entry
+(`fixture_nature_draw_costs`) that surfaces this saved continuation as a
+typed `drawn_card_cost` event when paired with the explicit Snecko Eye test
+loadout. It preserves the default P0 engine-owned cost fallback and does not
+change the general conditioned draw-segment contract above. A `CardDrawn`
+event that itself creates a nested pending choice, Stratagem post-shuffle
+selection, and a relic that inserts a newly generated card at a random
+position after shuffle still need distinct continuations. The native
+reference probability law remains explicitly `UNVERIFIED` until
+source-audited.
 The frozen Silent all-Act `main` remains unchanged.

@@ -357,8 +357,9 @@ opaque forkable session handles and complete save/load mechanical
 replay. Precommitted opening deck order becomes private *known*
 semantic positions, not newly issued Nature draw choices; later
 source-time recycle remains deferred. Drawn Snecko/Slither cost
-picks are currently an **explicitly marked unverified engine-owned
-fallback**, not optimized Nature sites. Focused **173/173 C# tests**
+picks retain the **unverified engine-owned fallback** by default; a separate
+opt-in seeded fixture can expose them as typed `drawn_card_cost` Nature
+events. Focused **173/173 C# tests**
 and the first live Python semantic JSONL session smoke passed,
 including older Inspector and Nature protocol checks.
 
@@ -427,12 +428,12 @@ or all combat entry hooks native-parity verified. The initial draw-pile
 Fisher–Yates shuffle now advances the persistent `run.shuffle` stream before
 native HP initialization, using the pinned v0.111 swap bounds and source
 deck order. The Nature side of this source route also retains a private
-native `run.combat_energy_costs` cursor for Snecko/Slither draw costs. Those
-costs stay engine-owned and do not become a third Nature choice; replay
-checks the saved stream cursor and decision transcript. The older isolated
-fixture still uses its declared fallback unless the explicit native cost
-provider is selected. The stream assignment and original conditional laws
-remain `UNVERIFIED`.
+native `run.combat_energy_costs` cursor for Snecko/Slither draw costs. The
+source-route and default seeded paths keep costs engine-owned; the explicit
+seeded `fixture_nature_draw_costs` option exposes those same draw-cost
+continuations as typed Nature events with `UNVERIFIED` support. Replay checks
+the source cursor or typed cost transcript according to the selected mode.
+The stream assignment and original conditional laws remain `UNVERIFIED`.
 
 The CLI Release build passes with zero warnings or errors after the
 source-route cost-stream change. The updated

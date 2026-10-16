@@ -23,7 +23,7 @@ v111 consumer protocols have **not** been switched.
 | Hatch / death spawn HP | creature creation; `run.niche` | Selected source hooks audited | Yes (subset) | No | No | Existing tests | No |
 | Monster-local randomness | monster CombatId owner stream | Partial | Yes (selected) | No | No | Existing tests | No |
 | Card shuffle and target selection | named run and player context streams | Partial | Selected paths | Partial: semantic deck draw/recycle state and typed random-enemy events; native operation seam pending | Restricted semantic player-action continuation | Native shuffle audits remain separate; Nature target is counterfactual | No |
-| Draw/generation/energy costs/reward | separate named run/player streams | Partial | Selected paths | Partial: typed deferred draws and generated-card model pools; selected costs/rewards have explicit unverified providers | Restricted semantic draw, generation, cost and reward paths | Native stream/call-order parity pending for remaining sites | No |
+| Draw/generation/energy costs/reward | separate named run/player streams | Partial | Selected paths | Partial: typed deferred draws, generated-card model pools and opt-in drawn-card cost events; default costs/rewards retain explicit unverified providers | Restricted semantic draw, generation, cost and reward paths | Native stream/call-order parity pending for remaining sites | No |
 | Map/event/shop/treasure selection | act- and model-context streams | Partial | Selected paths | No | No | Pending | No |
 
 ## First migrated site: `combat.initial_unique_hp`
@@ -76,9 +76,10 @@ selection in the live engine.
 shuffle/targets/rewards and other audited call sites; explicit weighted
 outcome metadata at move-level instead of primitive index selections.
 The separate semantic playable API now exposes typed weighted intent events,
-deferred physical-card draws, random-enemy targets and generated-card model
-pools. Those controlled events do not complete the native provider seam or
-native cursor parity rows in the migration matrix.
+deferred physical-card draws, random-enemy targets, generated-card model
+pools, opt-in drawn-card costs and source card-selection choices. Those
+controlled events do not complete the native provider seam or native cursor
+parity rows in the migration matrix.
 
 **D3 partial:** the initial HP and committed enemy intent sites now have
 persisted, source-reachable pending Nature choices, with fork, restore,

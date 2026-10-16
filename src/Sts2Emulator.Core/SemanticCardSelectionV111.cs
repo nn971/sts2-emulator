@@ -68,10 +68,10 @@ public sealed record SemanticCardSelectionDecisionV111(
 }
 
 /// <summary>
-/// One ordinary source-generated select_cards action that changes the
-/// draw pile while retaining the provider-owned Nature constraints.
-/// Separate from the broad play-card controller: the source pending choice
-/// may be created by an earlier card, relic or potion continuation.
+/// One ordinary source-generated select_cards action and its resulting
+/// provider-owned draw-pile projection. Separate from the broad play-card
+/// controller: the source pending choice may be created by an earlier card,
+/// relic or potion continuation.
 /// </summary>
 public sealed record SemanticCardSelectionV111(
     RunState Origin, RunState Run, string ActionId,

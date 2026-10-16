@@ -25,12 +25,13 @@ visibility and trigger rules. The native stream/cursor audit remains intact.
 **Implementation progress (2026-10-16):** the repository now has a provider-
 owned semantic deck state with committed and unresolved positions, typed
 weighted intent events, and replayable semantic events for deferred card
-draws, random-enemy targets and generated-card model pools. The playable
-JSONL/Python pilot resumes the original draw, target and generation
-continuations, including draw-time hooks. Random-target and generation
-coverage use explicit test fixtures. Their source laws remain `UNVERIFIED`;
-the shared native provider seam, broad player-action coverage and native
-cursor parity for the remaining operations are still open work.
+draws, random-enemy targets, generated-card model pools and an opt-in drawn-
+card cost continuation. The semantic JSONL/Python pilot resumes the original
+draw, target, generation and cost continuations, including draw-time hooks,
+and exposes source `select_cards` player choices. Several extensions use
+explicit fixture loadouts. Their source laws remain `UNVERIFIED`; the shared
+native provider seam, broad player-action coverage and native cursor parity
+for the remaining operations are still open work.
 
 ### State ownership and operation contract
 

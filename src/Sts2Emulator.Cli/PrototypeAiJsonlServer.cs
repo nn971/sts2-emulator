@@ -200,6 +200,24 @@ internal static class PrototypeAiJsonlServer
                     }).ToArray()
                 };
             }
+            if (state.CostPending is { } cost)
+            {
+                return new
+                {
+                    kind = "drawn_card_cost",
+                    schemaId = cost.SchemaId,
+                    eventId = cost.EventId,
+                    siteId = cost.Request.SiteId,
+                    streamId = cost.Request.StreamId,
+                    ownerId = cost.Request.OwnerId,
+                    ordinal = cost.Request.Ordinal,
+                    operationKind = cost.Request.OperationKind,
+                    supportFingerprint = cost.SupportFingerprint,
+                    probabilityStatus = cost.ProbabilityStatus,
+                    candidates = cost.CandidateCosts.Select((value, index) =>
+                        new { index, cost = value }).ToArray()
+                };
+            }
             return null;
         }
 
@@ -211,6 +229,8 @@ internal static class PrototypeAiJsonlServer
                 sites.Add("random_target");
             if (state.SeededEntry?.FixtureGenerationPotionId is not null)
                 sites.Add("generated_card");
+            if (state.SeededEntry?.FixtureNatureDrawCosts == true)
+                sites.Add("drawn_card_cost");
             return sites.ToArray();
         }
 
@@ -219,7 +239,8 @@ internal static class PrototypeAiJsonlServer
                 ? "engine-owned-native-v111-policy-baseline"
                 : state.SeededEntry?.FixtureRandomTargetCardId is not null ||
                   state.SeededEntry?.FixtureGenerationPotionId is not null ||
-                  state.SeededEntry?.FixtureSelectionCardId is not null
+                  state.SeededEntry?.FixtureSelectionCardId is not null ||
+                  state.SeededEntry?.FixtureNatureDrawCosts == true
                     ? "nature-extended-fixture"
                     : "nature-two-site";
 
@@ -423,9 +444,12 @@ internal static class PrototypeAiJsonlServer
                                 SemanticGenerationChoiceV111.SchemaId,
                             semanticCardSelectionChoiceSchemaId =
                                 SemanticCardSelectionEventV111.EventSchemaId,
+                            semanticCostChoiceSchemaId =
+                                SemanticCostEventV111.EventSchemaId,
                             semanticExtendedControlledSites = new[]
                             {
-                                "random_enemy_target", "generated_card_pool"
+                                "random_enemy_target", "generated_card_pool",
+                                "drawn_card_cost"
                             },
                             semanticExtendedPlayerChoices = new[]
                             {
@@ -761,7 +785,8 @@ internal static class PrototypeAiJsonlServer
                             OptionalString(request, "route_map_node_id"),
                             OptionalString(request, "fixture_random_target_card_id"),
                             OptionalString(request, "fixture_generation_potion_id"),
-                            OptionalString(request, "fixture_selection_card_id"));
+                            OptionalString(request, "fixture_selection_card_id"),
+                            OptionalBool(request, "fixture_nature_draw_costs"));
                         var next = SemanticPilotCombatEngineV111.BeginSeeded(entry);
                         var handle = StoreSemantic(next);
                         Write(new { requestId, ok = true,
@@ -864,6 +889,21 @@ internal static class PrototypeAiJsonlServer
                             current, RequiredString(request, "fingerprint"),
                             RequiredString(request, "event_id"),
                             RequiredString(request, "card_model_id"));
+                        var handle = StoreSemantic(next);
+                        Write(new { requestId, ok = true,
+                            result = SemanticResult(next, handle, parentHandle) });
+                        break;
+                    }
+
+                    case "semantic_resolve_cost":
+                    {
+                        var parentHandle = RequiredString(request, "semantic_handle");
+                        var current = RequireSemantic(request);
+                        var next = SemanticPilotCombatEngineV111.ResolveCost(
+                            current, RequiredString(request, "fingerprint"),
+                            RequiredString(request, "event_id"),
+                            OptionalInt(request, "cost") ??
+                                throw new ArgumentException("Missing cost."));
                         var handle = StoreSemantic(next);
                         Write(new { requestId, ok = true,
                             result = SemanticResult(next, handle, parentHandle) });

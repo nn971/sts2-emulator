@@ -288,6 +288,23 @@ class SemanticCombat:
                 fingerprint=self.fingerprint, event_id=self.pending["eventId"],
                 card_model_id=card_model_id))
 
+    def resolve_cost(self, cost: int):
+        """Resolve an opt-in drawn-card temporary cost by its legal value."""
+        if not self.pending or self.pending.get("kind") != "drawn_card_cost":
+            raise EmulatorError("Expected a drawn_card_cost Nature event")
+        if self.session.capabilities.get("semanticCostChoiceSchemaId") != (
+                "sts2-v111-semantic-cost-choice-v1"):
+            raise EmulatorError("Emulator does not expose semantic cost choices")
+        candidate_costs = [
+            candidate["cost"] for candidate in self.pending.get("candidates", [])]
+        if cost not in candidate_costs:
+            raise ValueError("Cost value is outside the pending event support")
+        return SemanticCombat.from_wire(
+            self.session, self.session.call(
+                "semantic_resolve_cost", semantic_handle=self.handle,
+                fingerprint=self.fingerprint, event_id=self.pending["eventId"],
+                cost=cost))
+
     def fork(self):
         return SemanticCombat.from_wire(
             self.session, self.session.call(
@@ -432,6 +449,7 @@ class Session:
             fixture_random_target_card_id: str | None = None,
             fixture_generation_potion_id: str | None = None,
             fixture_selection_card_id: str | None = None,
+            fixture_nature_draw_costs: bool = False,
             replay_opening_draw_hooks: bool = False,
             native_policy_baseline: bool = False,
             source_route_entry: bool = False,
@@ -473,6 +491,7 @@ class Session:
             fixture_random_target_card_id=fixture_random_target_card_id,
             fixture_generation_potion_id=fixture_generation_potion_id,
             fixture_selection_card_id=fixture_selection_card_id,
+            fixture_nature_draw_costs=fixture_nature_draw_costs,
             replay_opening_draw_hooks=replay_opening_draw_hooks,
             native_policy_baseline=native_policy_baseline,
             source_route_entry=source_route_entry,

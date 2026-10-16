@@ -12,7 +12,8 @@ public sealed record SemanticPilotTransitionV111(
     SemanticDrawDecisionV111? DrawDecision = null,
     SemanticTargetDecisionV111? TargetDecision = null,
     SemanticGeneratedCardDecisionV111? GeneratedCardDecision = null,
-    SemanticCardSelectionDecisionV111? CardSelectionDecision = null);
+    SemanticCardSelectionDecisionV111? CardSelectionDecision = null,
+    SemanticCostDecisionV111? CostDecision = null);
 
 /// <summary>
 /// Independently replayable setup provenance. The default entry is a
@@ -66,7 +67,8 @@ public sealed record SemanticSeededEntryV111(
     string? RouteMapNodeId = null,
     string? FixtureRandomTargetCardId = null,
     string? FixtureGenerationPotionId = null,
-    string? FixtureSelectionCardId = null);
+    string? FixtureSelectionCardId = null,
+    bool FixtureNatureDrawCosts = false);
 
 /// <summary>
 /// First external playable semantic boundary. Initial opening order is
@@ -100,6 +102,8 @@ public sealed record SemanticPilotCombatV111(
         SemanticPilotCombatEngineV111.DescribePendingGeneratedCardEvent(this);
     [JsonIgnore] public SemanticCardSelectionEventV111? CardSelectionPending =>
         SemanticPilotCombatEngineV111.DescribePendingCardSelectionEvent(this);
+    [JsonIgnore] public SemanticCostEventV111? CostPending =>
+        SemanticPilotCombatEngineV111.DescribePendingCostEvent(this);
     [JsonIgnore] public string Fingerprint => CanonicalJson.Sha256(this);
     [JsonIgnore] public bool AtPlayerBoundary =>
         PendingInitialIntents is null &&
@@ -172,6 +176,10 @@ public sealed record SemanticPilotCombatV111(
             { CardSelectionDecision: { } decision } => transition with
             {
                 CardSelectionDecision = decision.Fork()
+            },
+            { CostDecision: { } decision } => transition with
+            {
+                CostDecision = decision.Fork()
             },
             _ => transition
         }).ToArray(),
@@ -261,12 +269,19 @@ public static class SemanticPilotCombatEngineV111
             entry.FirstMonsterCombatId < 1)
             throw new ArgumentOutOfRangeException(nameof(entry),
                 "Seeded Nature combat requires a positive floor and monster IDs.");
+        if (entry.FixtureNatureDrawCosts &&
+            (entry.FixtureDrawCostRelicId != "proto.relic.snecko_eye" ||
+             entry.OtherChanceProviderId is not null))
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_COST site=combat.seeded_entry " +
+                "operation=fixture_draw_cost_choices_require_only_snecko_fixture");
         if (entry.NativePolicyBaseline &&
             (entry.OtherChanceProviderId is not null ||
              entry.FixtureDrawCostRelicId is not null ||
              entry.FixtureRandomTargetCardId is not null ||
              entry.FixtureGenerationPotionId is not null ||
-             entry.FixtureSelectionCardId is not null))
+             entry.FixtureSelectionCardId is not null ||
+             entry.FixtureNatureDrawCosts))
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_NATIVE site=combat.seeded_entry " +
                 "operation=native_baseline_fixture_loadout_conflict");
@@ -1284,13 +1299,39 @@ public static class SemanticPilotCombatEngineV111
 
     public static SemanticPilotCombatV111 Resolve(
         SemanticPilotCombatV111 current, string fingerprint, int selectedIndex)
-        => Resolve(current, fingerprint, selectedIndex, null, null, false);
+        => Resolve(current, fingerprint, selectedIndex, null, null, false, null);
+
+    public static SemanticPilotCombatV111 ResolveCost(
+        SemanticPilotCombatV111 current, string fingerprint,
+        string eventId, int selectedCost)
+    {
+        Validate(current);
+        if (current.Fingerprint != fingerprint)
+            throw new InvalidOperationException(
+                "Stale semantic cost fingerprint.");
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
+        var pending = current.CostPending ??
+            throw new InvalidOperationException(
+                "No Nature-controlled drawn-card cost is pending.");
+        if (pending.EventId != eventId)
+            throw new InvalidOperationException(
+                "Semantic cost event ID is stale or mismatched.");
+        var index = Array.IndexOf(pending.CandidateCosts, selectedCost);
+        if (index < 0)
+            throw new InvalidOperationException(
+                "Cost value is outside the pending event support.");
+        var decision = new SemanticCostDecisionV111(
+            pending, index, selectedCost);
+        decision.Validate();
+        return Resolve(current, fingerprint, index, null, null, false, decision);
+    }
 
     private static SemanticPilotCombatV111 Resolve(
         SemanticPilotCombatV111 current, string fingerprint, int selectedIndex,
         SemanticIntentDecisionV111? semanticIntent,
         SemanticDrawDecisionV111? expectedDeckDecision,
-        bool recordSemanticDraw)
+        bool recordSemanticDraw,
+        SemanticCostDecisionV111? expectedCostDecision)
     {
         Validate(current);
         if (current.Fingerprint != fingerprint)
@@ -1300,6 +1341,9 @@ public static class SemanticPilotCombatEngineV111
         var drawEvent = current.DrawPending;
         if (expectedDeckDecision is not null)
             ValidateDeckDecision(drawEvent, expectedDeckDecision);
+        var costEvent = current.CostPending;
+        if (expectedCostDecision is not null)
+            ValidateCostDecision(costEvent, expectedCostDecision, selectedIndex);
         if (current.PendingInitialIntents is { Pending: not null } initialIntents)
         {
             var resolvedInitial = ControlledTurnIntentEngineV111.Resolve(
@@ -1354,9 +1398,10 @@ public static class SemanticPilotCombatEngineV111
         }
         var pending = current.PendingEndTurn ??
             throw new InvalidOperationException("No Nature decision is pending.");
-        if (pending.IntentPending is null && pending.DrawPending is null)
+        if (pending.IntentPending is null && pending.DrawPending is null &&
+            pending.CostPending is null)
             throw new InvalidOperationException(
-                "Only semantic enemy_intent and draw_card are Nature-controlled.");
+                "No semantic enemy intent, draw or cost choice is pending.");
         var resolved = SemanticEndTurnEngineV111.Resolve(
             pending, pending.Fingerprint, selectedIndex);
         SemanticDrawDecisionV111? deckDecision = null;
@@ -1391,13 +1436,36 @@ public static class SemanticPilotCombatEngineV111
                 CanonicalJson.Sha256(deckDecision))
             throw new InvalidOperationException(
                 "Semantic card decision is stale or outside current support.");
+        SemanticCostDecisionV111? costDecision = null;
+        if (costEvent is not null)
+        {
+            var transcript = resolved.HandDraw?.CostTranscript ?? [];
+            var recorded = transcript.LastOrDefault(decision =>
+                CanonicalJson.Sha256(decision.Request) ==
+                CanonicalJson.Sha256(costEvent.Request)) ??
+                throw new InvalidDataException(
+                    "Semantic draw cost did not record its source event.");
+            if (recorded.SelectedIndex != selectedIndex)
+                throw new InvalidDataException(
+                    "Semantic draw cost selected a different bounded value.");
+            costDecision = new SemanticCostDecisionV111(
+                costEvent, recorded.SelectedIndex,
+                costEvent.CandidateCosts[recorded.SelectedIndex]);
+            costDecision.Validate();
+        }
+        if (expectedCostDecision is not null &&
+            CanonicalJson.Sha256(expectedCostDecision) !=
+                CanonicalJson.Sha256(costDecision))
+            throw new InvalidOperationException(
+                "Semantic cost decision is stale or outside current support.");
         return NormalizeNoncontrolledCosts(current with
         {
             Run = resolved.Run,
             PendingEndTurn = resolved.Complete ? null : resolved,
             History = current.History.Append(NatureTransition(
                 selectedIndex, semanticIntent,
-                recordSemanticDraw ? deckDecision : null)).ToArray()
+                recordSemanticDraw ? deckDecision : null,
+                costDecision)).ToArray()
         });
     }
 
@@ -1432,7 +1500,7 @@ public static class SemanticPilotCombatEngineV111
             semanticEvent, candidate.IntentId);
         decision.Validate();
         return Resolve(current, fingerprint, candidate.TicketStart,
-            decision, null, false);
+            decision, null, false, null);
     }
 
     /// <summary>
@@ -1463,7 +1531,7 @@ public static class SemanticPilotCombatEngineV111
         var expected = new SemanticDrawDecisionV111(pending, index,
             cardInstanceId);
         expected.Validate();
-        return Resolve(current, fingerprint, index, null, expected, true);
+        return Resolve(current, fingerprint, index, null, expected, true, null);
     }
 
     /// <summary>
@@ -1573,6 +1641,48 @@ public static class SemanticPilotCombatEngineV111
                 "Source card selection conflicts with another semantic boundary.");
         return SemanticCardSelectionEngineV111.DescribePending(
             current.Run, CanonicalJson.Sha256(current.Run));
+    }
+
+    public static SemanticCostEventV111? DescribePendingCostEvent(
+        SemanticPilotCombatV111 current)
+    {
+        ArgumentNullException.ThrowIfNull(current);
+        if (current.SeededEntry?.FixtureNatureDrawCosts != true ||
+            current.PendingEndTurn?.CostPending is not { } request)
+            return null;
+        request.Validate();
+        if (request.SupportCount < 1 || request.OperationKind != "bounded_integer")
+            throw new InvalidDataException(
+                "Semantic drawn-card cost has invalid bounded support.");
+        var costs = Enumerable.Range(0, request.SupportCount).ToArray();
+        var supportFingerprint = CanonicalJson.Sha256(new { request, costs });
+        var eventId = CanonicalJson.Sha256(new
+        {
+            SchemaId = SemanticCostEventV111.EventSchemaId,
+            BoundaryFingerprint = current.Fingerprint,
+            SupportFingerprint = supportFingerprint
+        });
+        var semanticEvent = new SemanticCostEventV111(
+            SemanticCostEventV111.EventSchemaId, eventId,
+            current.Fingerprint, supportFingerprint,
+            request with
+            {
+                OrderedCandidates = (int[])request.OrderedCandidates.Clone()
+            }, costs);
+        semanticEvent.Validate();
+        return semanticEvent;
+    }
+
+    private static void ValidateCostDecision(
+        SemanticCostEventV111? pending,
+        SemanticCostDecisionV111 decision, int sourceIndex)
+    {
+        decision.Validate();
+        if (pending is null || sourceIndex != decision.SelectedIndex ||
+            CanonicalJson.Sha256(pending) !=
+                CanonicalJson.Sha256(decision.Event))
+            throw new InvalidOperationException(
+                "Semantic cost decision is stale or outside current support.");
     }
 
     private static void ValidateSemanticCombatBoundary(RunState run)
@@ -1722,8 +1832,12 @@ public static class SemanticPilotCombatEngineV111
 
     private static SemanticPilotTransitionV111 NatureTransition(
         int selectedIndex, SemanticIntentDecisionV111? semanticIntent,
-        SemanticDrawDecisionV111? deckDecision) =>
-        semanticIntent is not null
+        SemanticDrawDecisionV111? deckDecision,
+        SemanticCostDecisionV111? costDecision = null) =>
+        costDecision is not null
+            ? new SemanticPilotTransitionV111("semantic_cost",
+                CostDecision: costDecision.Fork())
+            : semanticIntent is not null
             ? new SemanticPilotTransitionV111("semantic_intent",
                 IntentDecision: semanticIntent)
             : deckDecision is not null
@@ -1741,6 +1855,8 @@ public static class SemanticPilotCombatEngineV111
     private static SemanticPilotCombatV111 NormalizeNoncontrolledCosts(
         SemanticPilotCombatV111 current)
     {
+        if (current.SeededEntry?.FixtureNatureDrawCosts == true)
+            return current;
         while (current.PendingEndTurn is { CostPending: { } cost } endTurn)
         {
             var bound = cost.SupportCount;
@@ -1839,6 +1955,17 @@ public static class SemanticPilotCombatEngineV111
                 state.UsesNativePolicyBaseline || state.CombatTerminal)
                 throw new InvalidDataException(
                     "Card-selection continuation conflicts with another boundary.");
+        }
+        if (state.CostPending is { } costPending)
+        {
+            costPending.Validate();
+            if (state.IntentPending is not null || state.DrawPending is not null ||
+                state.CardSelectionPending is not null ||
+                state.TargetPending is not null ||
+                state.GeneratedCardPending is not null ||
+                state.PendingEndTurn?.CostPending is null)
+                throw new InvalidDataException(
+                    "Draw-cost continuation conflicts with another boundary.");
         }
         if (state.OtherChance is not null)
             SemanticOtherChanceEngineV111.Validate(state.OtherChance);
@@ -1981,6 +2108,10 @@ public static class SemanticPilotCombatEngineV111
                     transition.CardSelectionDecision is not null =>
                     Step(replay, replay.Fingerprint,
                         transition.CardSelectionDecision.ActionId),
+                "semantic_cost" when transition.CostDecision is not null =>
+                    ResolveCost(replay, replay.Fingerprint,
+                        transition.CostDecision.Event.EventId,
+                        transition.CostDecision.SelectedCost),
                 "nature" when transition.SelectedIndex is not null =>
                     Resolve(replay, replay.Fingerprint,
                         transition.SelectedIndex.Value),

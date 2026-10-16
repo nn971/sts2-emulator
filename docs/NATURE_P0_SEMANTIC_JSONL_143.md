@@ -28,6 +28,7 @@ non-Nature RNG parity remain **UNVERIFIED**.
 - `semanticTargetChoiceSchemaId = sts2-v111-semantic-target-choice-v1`.
 - `semanticCardSelectionChoiceSchemaId =
   sts2-v111-semantic-card-selection-choice-v1`.
+- `semanticCostChoiceSchemaId = sts2-v111-semantic-cost-choice-v1`.
 - `semanticExtendedControlledSites = [random_enemy_target, generated_card_pool]`.
 - `semanticExtendedPlayerChoices = [select_cards]`.
 - `semanticPlayable = true`, scope
@@ -61,6 +62,7 @@ paths avoid that external setup chain:
 | `semantic_resolve_draw_card` | handle, fingerprint, pending `event_id`, legal `card_instance_id` | Child Nature / player / terminal |
 | `semantic_resolve_random_target` | handle, fingerprint, pending `event_id`, legal `enemy_instance_id` | Child Nature / player / terminal |
 | `semantic_resolve_generated_card` | handle, fingerprint, pending `event_id`, legal `card_model_id` | Child Nature / player / terminal |
+| `semantic_resolve_cost` | handle, fingerprint, pending `event_id`, legal cost value | Child Nature / player / terminal |
 | `semantic_step` at `player_choice` | handle, fingerprint, listed legal `select_cards` action ID | Child player / Nature / terminal |
 | `semantic_fork` | handle | Independent child handle |
 | `semantic_save` | handle | Privileged snapshot string |
@@ -298,6 +300,14 @@ source continuation and records a typed `semantic_card_selection` decision
 for snapshot replay. This is an ordinary player choice, not an added Nature
 chance site. It does not establish native fixture-loadout acquisition or
 generic support for nested random continuations.
+
+The optional `drawn_card_cost` Nature site is enabled with
+`fixture_draw_cost_relic_id="proto.relic.snecko_eye"` and
+`fixture_nature_draw_costs=true`. It pauses at the original drawn-card cost
+continuation before `CardDrawn`, exposes bounded cost values by event ID, and
+resumes the same saved hand-draw operation. When both relic and Slither cost
+stages apply, they appear as separate events in source order. The default
+two-site path keeps its declared engine-owned unverified cost fallback.
 
 **Probability status:** these are raw weights produced by the emulator's
 source-shaped selector, **not** independently audited original-game
