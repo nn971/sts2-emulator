@@ -103,7 +103,7 @@ and source-law calibration remain unverified. The JSONL/Python contract is in
 [Nature P0 semantic JSONL](NATURE_P0_SEMANTIC_JSONL_143.md).
 
 
-## Next slice: controlled hand-cost operations (#143)
+## Controlled hand-cost operations (#143)
 
 The real `ResolveOperations` kernel suspends before choosing a random
 positive-cost hand card for a temporary cost change and before each bounded
@@ -117,9 +117,14 @@ with `UNVERIFIED` source probability status.
 Coverage is established with narrow actual-operation fixtures, including
 invalid cursor/support rejection, independent forks and schedule-independent
 15-worker tests. These starter-fixture diagnostic entrances do not establish
-unmodified player-action replay provenance. Draw-triggered relic/Slither
-random costs, random pile selection shortlists, enemy-side insertion,
-death/summon continuations, native laws and full terminal rollout remain.
+unmodified player-action replay provenance. The semantic JSONL bridge now
+exposes the sequential bounded cost-roll stage using
+`fixture_randomize_hand_costs_max_exclusive`; each typed cost event identifies
+its current hand card, resumes the real operation, and replays independently.
+The random positive-cost card-selection stage, draw-triggered relic/Slither
+costs beyond their existing event path, random pile selection shortlists,
+enemy-side insertion, death/summon continuations, native laws and full
+terminal rollout remain.
 
 
 ## New slice: draw-triggered relic/Slither costs

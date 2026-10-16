@@ -85,7 +85,8 @@ public static class SemanticNatureEnumeratorV111
         }
         else if (current.CostPending is { } cost)
         {
-            eventKind = "drawn_card_cost";
+            eventKind = cost.TargetCardInstanceId is null
+                ? "drawn_card_cost" : "random_hand_card_cost";
             eventId = cost.EventId;
             outcomeIds = cost.CandidateCosts.Select(value =>
                 value.ToString(CultureInfo.InvariantCulture)).ToArray();

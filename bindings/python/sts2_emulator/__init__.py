@@ -289,9 +289,10 @@ class SemanticCombat:
                 card_model_id=card_model_id))
 
     def resolve_cost(self, cost: int):
-        """Resolve an opt-in drawn-card temporary cost by its legal value."""
-        if not self.pending or self.pending.get("kind") != "drawn_card_cost":
-            raise EmulatorError("Expected a drawn_card_cost Nature event")
+        """Resolve an opt-in temporary card cost by its legal value."""
+        if not self.pending or self.pending.get("kind") not in (
+                "drawn_card_cost", "random_hand_card_cost"):
+            raise EmulatorError("Expected a semantic card-cost Nature event")
         if self.session.capabilities.get("semanticCostChoiceSchemaId") != (
                 "sts2-v111-semantic-cost-choice-v1"):
             raise EmulatorError("Emulator does not expose semantic cost choices")
@@ -530,6 +531,7 @@ class Session:
             fixture_pool_generation_potion_id: str | None = None,
             fixture_generated_draw_insertion_card_id: str | None = None,
             fixture_random_free_attack_draw_insertion: bool = False,
+            fixture_randomize_hand_costs_max_exclusive: int | None = None,
             replay_opening_draw_hooks: bool = False,
             native_policy_baseline: bool = False,
             source_route_entry: bool = False,
@@ -550,6 +552,7 @@ class Session:
         card insertion boundary for the requested card model.
         The random-Attack insertion fixture exposes both source model choice
         and insertion position stages.
+        The hand-cost fixture exposes one cost event per eligible card.
         """
         if self.capabilities.get("semanticSeededOpeningProvider") != (
                 "engine-owned-seeded-source-shaped-unverified-v1"):
@@ -584,6 +587,8 @@ class Session:
                 fixture_generated_draw_insertion_card_id,
             fixture_random_free_attack_draw_insertion=
                 fixture_random_free_attack_draw_insertion,
+            fixture_randomize_hand_costs_max_exclusive=
+                fixture_randomize_hand_costs_max_exclusive,
             replay_opening_draw_hooks=replay_opening_draw_hooks,
             native_policy_baseline=native_policy_baseline,
             source_route_entry=source_route_entry,

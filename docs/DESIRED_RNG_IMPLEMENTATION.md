@@ -27,8 +27,8 @@ owned semantic deck state with committed and unresolved positions, typed
 weighted intent events, and replayable semantic events for deferred card
 draws, random-enemy targets, generated-card model pools and an opt-in drawn-
 card cost continuation, plus a source-authentic generated-card draw-pile
-insertion. The semantic JSONL/Python pilot resumes the original
-draw, target, generation and cost continuations, including draw-time hooks,
+insertion and sequential hand-cost rerolls. The semantic JSONL/Python pilot
+resumes the original draw, target, generation and cost continuations, including draw-time hooks,
 exposes source `select_cards` player choices, and can opt into typed bounded
 swaps for a generated card pool before returning the ordinary player choice,
 or a bounded insertion position while preserving unresolved deck order.

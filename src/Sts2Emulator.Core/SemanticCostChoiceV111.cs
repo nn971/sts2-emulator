@@ -1,10 +1,11 @@
 namespace Sts2Emulator.Core;
 
-/// <summary>One opt-in source-timed random drawn-card cost event.</summary>
+/// <summary>One opt-in source-timed random card-cost event.</summary>
 public sealed record SemanticCostEventV111(
     string SchemaId, string EventId, string BoundaryFingerprint,
     string SupportFingerprint, RandomIndexRequestV111 Request,
-    int[] CandidateCosts, string ProbabilityStatus = "UNVERIFIED")
+    int[] CandidateCosts, string ProbabilityStatus = "UNVERIFIED",
+    long? TargetCardInstanceId = null, string? TargetCardModelId = null)
     : ISemanticChanceEventV111
 {
     public const string EventSchemaId = "sts2-v111-semantic-cost-choice-v1";
@@ -35,8 +36,27 @@ public sealed record SemanticCostEventV111(
             !CandidateCosts.SequenceEqual(
                 Enumerable.Range(0, CandidateCosts.Length)) ||
             Request.SupportCount != CandidateCosts.Length ||
-            ProbabilityStatus != "UNVERIFIED")
+            ProbabilityStatus != "UNVERIFIED" ||
+            (TargetCardInstanceId is null) != (TargetCardModelId is null) ||
+            (TargetCardInstanceId is not null &&
+             (TargetCardInstanceId <= 0 ||
+              string.IsNullOrWhiteSpace(TargetCardModelId) ||
+              Request.SiteId != "combat.random_hand_card.energy_cost" ||
+              Request.StreamId != "prototype.combat")))
             throw new InvalidDataException("Invalid semantic cost event.");
+        var expectedSupportFingerprint = TargetCardInstanceId is null
+            ? CanonicalJson.Sha256(new
+                { request = Request, costs = CandidateCosts })
+            : CanonicalJson.Sha256(new
+            {
+                request = Request,
+                costs = CandidateCosts,
+                targetCardInstanceId = TargetCardInstanceId,
+                targetCardModelId = TargetCardModelId
+            });
+        if (SupportFingerprint != expectedSupportFingerprint)
+            throw new InvalidDataException(
+                "Semantic cost support fingerprint is inconsistent.");
     }
 }
 

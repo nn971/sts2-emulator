@@ -209,7 +209,8 @@ internal static class PrototypeAiJsonlServer
             {
                 return new
                 {
-                    kind = "drawn_card_cost",
+                    kind = cost.TargetCardInstanceId is null
+                        ? "drawn_card_cost" : "random_hand_card_cost",
                     schemaId = cost.SchemaId,
                     eventId = cost.EventId,
                     siteId = cost.Request.SiteId,
@@ -219,6 +220,8 @@ internal static class PrototypeAiJsonlServer
                     operationKind = cost.Request.OperationKind,
                     supportFingerprint = cost.SupportFingerprint,
                     probabilityStatus = cost.ProbabilityStatus,
+                    targetCardInstanceId = cost.TargetCardInstanceId,
+                    targetCardModelId = cost.TargetCardModelId,
                     candidates = cost.CandidateCosts.Select((value, index) =>
                         new { index, cost = value }).ToArray()
                 };
@@ -293,6 +296,8 @@ internal static class PrototypeAiJsonlServer
                 sites.Add("random_draw_attack_card_model");
                 sites.Add("generated_draw_pile_insertion");
             }
+            if (state.SeededEntry?.FixtureRandomizeHandCostsMaxExclusive is not null)
+                sites.Add("random_hand_card_energy_cost");
             return sites.ToArray();
         }
 
@@ -305,7 +310,8 @@ internal static class PrototypeAiJsonlServer
                   state.SeededEntry?.FixtureNatureDrawCosts == true ||
                   state.SeededEntry?.FixturePoolGenerationPotionId is not null ||
                   state.SeededEntry?.FixtureGeneratedDrawInsertionCardId is not null ||
-                  state.SeededEntry?.FixtureRandomFreeAttackDrawInsertion == true
+                  state.SeededEntry?.FixtureRandomFreeAttackDrawInsertion == true ||
+                  state.SeededEntry?.FixtureRandomizeHandCostsMaxExclusive is not null
                     ? "nature-extended-fixture"
                     : "nature-two-site";
 
@@ -524,7 +530,8 @@ internal static class PrototypeAiJsonlServer
                                 "random_enemy_target", "generated_card_pool",
                                 "drawn_card_cost", "generated_card_pool_shuffle",
                                 "generated_draw_pile_insertion",
-                                "random_draw_attack_card_model"
+                                "random_draw_attack_card_model",
+                                "random_hand_card_energy_cost"
                             },
                             semanticExtendedPlayerChoices = new[]
                             {
@@ -867,7 +874,9 @@ internal static class PrototypeAiJsonlServer
                             OptionalString(request,
                                 "fixture_generated_draw_insertion_card_id"),
                             OptionalBool(request,
-                                "fixture_random_free_attack_draw_insertion"));
+                                "fixture_random_free_attack_draw_insertion"),
+                            OptionalInt(request,
+                                "fixture_randomize_hand_costs_max_exclusive"));
                         var next = SemanticPilotCombatEngineV111.BeginSeeded(entry);
                         var handle = StoreSemantic(next);
                         Write(new { requestId, ok = true,

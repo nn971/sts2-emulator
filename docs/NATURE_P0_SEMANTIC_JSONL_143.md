@@ -37,7 +37,7 @@ non-Nature RNG parity remain **UNVERIFIED**.
   support size is 256.
 - `semanticExtendedControlledSites = [random_enemy_target, generated_card_pool,
   drawn_card_cost, generated_card_pool_shuffle, generated_draw_pile_insertion,
-  random_draw_attack_card_model]`;
+  random_draw_attack_card_model, random_hand_card_energy_cost]`;
   fixture-specific sites require their corresponding seeded-entry options.
 - `semanticExtendedPlayerChoices = [select_cards]`.
 - `semanticPlayable = true`, scope
@@ -340,6 +340,16 @@ effect and exposes the source `select_cards` action as an ordinary
 `resolve_card_selection(action_id)` method. Snapshot replay includes every
 swap and the subsequent player choice. This fixture does not claim native
 potion-acquisition provenance or source-law calibration.
+
+`fixture_randomize_hand_costs_max_exclusive=4` opts into the source
+`RandomizeHandCardEnergyCostsUntilTurnEndOrPlayed` continuation for the
+opening hand. It publishes one `random_hand_card_cost` event per eligible
+card, in original hand order, with that card's instance/model ID and bounded
+cost values. `SemanticCombat.resolve_cost(cost)` resumes each saved stage;
+the original operation continues after the final card. The provider's
+draw-pile constraints are unchanged. This fixture does not expose the
+separate random positive-cost card-selection operation, and its law and
+fixture provenance remain `UNVERIFIED`.
 
 The draw-pile insertion fixture can use
 `fixture_generated_draw_insertion_card_id="proto.silent.strike"` (or another
