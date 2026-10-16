@@ -25,6 +25,8 @@ non-Nature RNG parity remain **UNVERIFIED**.
 
 - `semanticChanceSchemaId = sts2-v111-semantic-playable-p0-v1`.
 - `semanticDrawChoiceSchemaId = sts2-v111-semantic-deck-v1`.
+- `semanticTargetChoiceSchemaId = sts2-v111-semantic-target-choice-v1`.
+- `semanticExtendedControlledSites = [random_enemy_target]`.
 - `semanticPlayable = true`, scope
   `seeded-source-route-or-post-committed-opening-fixture-restricted-Silent-combat`.
 - `semanticControlledSites = [enemy_intent, draw_card]`.
@@ -54,6 +56,7 @@ paths avoid that external setup chain:
 | `semantic_step` | handle, fingerprint, legal `action_id` | Child player action / Nature / terminal |
 | `semantic_resolve` | handle, fingerprint, legal `selected_index` | Child Nature / player / terminal |
 | `semantic_resolve_draw_card` | handle, fingerprint, pending `event_id`, legal `card_instance_id` | Child Nature / player / terminal |
+| `semantic_resolve_random_target` | handle, fingerprint, pending `event_id`, legal `enemy_instance_id` | Child Nature / player / terminal |
 | `semantic_fork` | handle | Independent child handle |
 | `semantic_save` | handle | Privileged snapshot string |
 | `semantic_load` | snapshot | New replay-validated handle |
@@ -260,6 +263,16 @@ index and selected card ID; snapshot loading replays that event and outcome.
 Python clients use `combat.resolve_draw_card(card_instance_id)`. The existing
 integer `semantic_resolve` route remains compatible with older clients and
 snapshots.
+
+The optional `random_enemy_target` extension wraps the existing serialized
+engine target continuation. The test loadout
+`fixture_random_target_card_id="proto.silent.ricochet"` places Ricochet in the
+opening hand, where its real multi-hit effect pauses once per random target.
+Each `random_target` event exposes ordered live enemy instance IDs and the
+`run.combat_targets` source site; the typed resolver resumes the saved effect
+and records a `semantic_target` decision. Replay regenerates the same test
+loadout from seeded-entry provenance. This extension is marked
+`UNVERIFIED` and does not change the base two-site capability list.
 
 **Probability status:** these are raw weights produced by the emulator's
 source-shaped selector, **not** independently audited original-game

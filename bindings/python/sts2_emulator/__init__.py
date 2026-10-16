@@ -234,6 +234,24 @@ class SemanticCombat:
                 fingerprint=self.fingerprint, event_id=self.pending["eventId"],
                 card_instance_id=card_instance_id))
 
+    def resolve_random_target(self, enemy_instance_id: int):
+        """Resolve a suspended random-enemy effect by enemy identity."""
+        if not self.pending or self.pending["kind"] != "random_target":
+            raise EmulatorError("Expected a random_target Nature event")
+        if self.session.capabilities.get("semanticTargetChoiceSchemaId") != (
+                "sts2-v111-semantic-target-choice-v1"):
+            raise EmulatorError("Emulator does not expose semantic target identities")
+        candidate_ids = [
+            candidate["enemyInstanceId"]
+            for candidate in self.pending.get("candidates", [])]
+        if enemy_instance_id not in candidate_ids:
+            raise ValueError("Enemy instance is outside the pending target support")
+        return SemanticCombat.from_wire(
+            self.session, self.session.call(
+                "semantic_resolve_random_target", semantic_handle=self.handle,
+                fingerprint=self.fingerprint, event_id=self.pending["eventId"],
+                enemy_instance_id=enemy_instance_id))
+
     def fork(self):
         return SemanticCombat.from_wire(
             self.session, self.session.call(
@@ -375,6 +393,7 @@ class Session:
             map_column: int = 3, map_row: int = 5,
             other_chance_provider_id: str | None = None,
             fixture_draw_cost_relic_id: str | None = None,
+            fixture_random_target_card_id: str | None = None,
             replay_opening_draw_hooks: bool = False,
             native_policy_baseline: bool = False,
             source_route_entry: bool = False,
@@ -385,7 +404,9 @@ class Session:
 
         By default setup uses the isolated seeded fixture. Set
         source_route_entry through begin_seeded_semantic_route() to run the
-        configured Act 1 route and real native weak-combat entry.
+        configured Act 1 route and real native weak-combat entry. The
+        optional random-target fixture adds Ricochet to the opening hand for
+        semantic target-boundary integration checks.
         """
         if self.capabilities.get("semanticSeededOpeningProvider") != (
                 "engine-owned-seeded-source-shaped-unverified-v1"):
@@ -410,6 +431,7 @@ class Session:
             map_column=map_column, map_row=map_row,
             other_chance_provider_id=other_chance_provider_id,
             fixture_draw_cost_relic_id=fixture_draw_cost_relic_id,
+            fixture_random_target_card_id=fixture_random_target_card_id,
             replay_opening_draw_hooks=replay_opening_draw_hooks,
             native_policy_baseline=native_policy_baseline,
             source_route_entry=source_route_entry,

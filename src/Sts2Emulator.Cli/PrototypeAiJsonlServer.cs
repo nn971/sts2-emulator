@@ -134,6 +134,29 @@ internal static class PrototypeAiJsonlServer
                         }).ToArray()
                 };
             }
+            if (state.TargetPending is { } target)
+            {
+                return new
+                {
+                    kind = "random_target",
+                    schemaId = target.SchemaId,
+                    eventId = target.EventId,
+                    siteId = target.SiteId,
+                    streamId = target.StreamId,
+                    ownerId = target.OwnerId,
+                    ordinal = target.Ordinal,
+                    targetKind = target.TargetKind,
+                    operationKind = target.OperationKind,
+                    supportFingerprint = target.SupportFingerprint,
+                    probabilityStatus = target.ProbabilityStatus,
+                    candidates = target.CandidateEnemyInstanceIds
+                        .Select((id, index) => new
+                        {
+                            index,
+                            enemyInstanceId = id
+                        }).ToArray()
+                };
+            }
             return null;
         }
 
@@ -160,10 +183,14 @@ internal static class PrototypeAiJsonlServer
                 exitHp = state.CombatTerminal ? state.Run.Player.Hp : (int?)null,
                 chanceSites = state.UsesNativePolicyBaseline
                     ? Array.Empty<string>()
-                    : new[] { "enemy_intent", "draw_card" },
+                    : state.SeededEntry?.FixtureRandomTargetCardId is not null
+                        ? new[] { "enemy_intent", "draw_card", "random_target" }
+                        : new[] { "enemy_intent", "draw_card" },
                 controllerMode = state.UsesNativePolicyBaseline
                     ? "engine-owned-native-v111-policy-baseline"
-                    : "nature-two-site",
+                    : state.SeededEntry?.FixtureRandomTargetCardId is not null
+                        ? "nature-two-site-plus-random-target-fixture"
+                        : "nature-two-site",
                 nativePolicyProvider = state.UsesNativePolicyBaseline
                     ? SemanticNativePolicyAuditV111.NativeProviderId
                     : null,
@@ -334,6 +361,12 @@ internal static class PrototypeAiJsonlServer
                                 SemanticChanceEventContractV111.SchemaId,
                             semanticDrawChoiceSchemaId =
                                 SemanticDeckStateV111.SchemaId,
+                            semanticTargetChoiceSchemaId =
+                                SemanticTargetChoiceV111.SchemaId,
+                            semanticExtendedControlledSites = new[]
+                            {
+                                "random_enemy_target"
+                            },
                             semanticProbabilityStatus = "UNVERIFIED",
                             controlledChanceScope = "isolated-playable-combat-stage-continuations-v1",
                             controlledChanceSupportedSites = new[]
@@ -661,7 +694,8 @@ internal static class PrototypeAiJsonlServer
                             OptionalBool(request, "native_policy_baseline"),
                             sourceRouteEntry, routeRegion,
                             OptionalString(request, "route_neow_choice_id"),
-                            OptionalString(request, "route_map_node_id"));
+                            OptionalString(request, "route_map_node_id"),
+                            OptionalString(request, "fixture_random_target_card_id"));
                         var next = SemanticPilotCombatEngineV111.BeginSeeded(entry);
                         var handle = StoreSemantic(next);
                         Write(new { requestId, ok = true,
@@ -733,6 +767,22 @@ internal static class PrototypeAiJsonlServer
                             current, RequiredString(request, "fingerprint"),
                             RequiredString(request, "event_id"),
                             RequiredLong(request, "card_instance_id"));
+                        var handle = StoreSemantic(next);
+                        Write(new { requestId, ok = true,
+                            result = SemanticResult(next, handle, parentHandle) });
+                        break;
+                    }
+
+                    case "semantic_resolve_random_target":
+                    {
+                        var parentHandle = RequiredString(request, "semantic_handle");
+                        var current = RequireSemantic(request);
+                        var next = SemanticPilotCombatEngineV111.ResolveRandomTarget(
+                            current, RequiredString(request, "fingerprint"),
+                            RequiredString(request, "event_id"),
+                            OptionalInt(request, "enemy_instance_id") ??
+                                throw new ArgumentException(
+                                    "Missing enemy_instance_id."));
                         var handle = StoreSemantic(next);
                         Write(new { requestId, ok = true,
                             result = SemanticResult(next, handle, parentHandle) });

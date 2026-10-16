@@ -179,6 +179,62 @@ public sealed class SemanticPilotCombatV111Tests
     }
 
     [Fact]
+    public void SemanticRandomTargetResumesRealEffectByEnemyIdentityAndReplays()
+    {
+        var state = SemanticPilotCombatEngineV111.BeginSeeded(
+            Seeded("semantic-p0-target-identity-event") with
+            {
+                FixtureRandomTargetCardId = "proto.silent.ricochet"
+            });
+        var combat = state.Run.World!.Combat!;
+        var startingEnemyHp = combat.Enemies.Sum(enemy => enemy.Hp);
+        var cardInstanceId = combat.Hand[0];
+        var action = Assert.Single(new PrototypeAiEnvironment()
+            .Observe(state.Run).LegalActions,
+            candidate => candidate.Kind == "play_card" &&
+                candidate.Payload.Deserialize<PlayCardPayload>()?.CardInstanceId ==
+                    cardInstanceId);
+        state = SemanticPilotCombatEngineV111.Step(
+            state, state.Fingerprint, action.ActionId);
+        var pending = state.TargetPending!;
+        Assert.Equal("combat.effect.random_enemy", pending.SiteId);
+        Assert.Equal("run.combat_targets", pending.StreamId);
+        Assert.Equal("choose_enemy_instance", pending.OperationKind);
+        Assert.Equal("UNVERIFIED", pending.ProbabilityStatus);
+        Assert.True(pending.CandidateEnemyInstanceIds.Length > 1);
+
+        var fingerprint = state.Fingerprint;
+        var selectedId = pending.CandidateEnemyInstanceIds[^1];
+        Assert.Throws<InvalidOperationException>(() =>
+            SemanticPilotCombatEngineV111.ResolveRandomTarget(
+                state, fingerprint, "stale-event", selectedId));
+        Assert.Throws<InvalidOperationException>(() =>
+            SemanticPilotCombatEngineV111.ResolveRandomTarget(
+                state, fingerprint, pending.EventId, int.MaxValue));
+        Assert.Equal(fingerprint, state.Fingerprint);
+
+        int decisions = 0;
+        while (state.TargetPending is { } target)
+        {
+            Assert.True(decisions < 8,
+                "Expected Ricochet's source effect to finish its target sequence.");
+            var targetId = target.CandidateEnemyInstanceIds[^1];
+            state = SemanticPilotCombatEngineV111.ResolveRandomTarget(
+                state, state.Fingerprint, target.EventId, targetId);
+            decisions++;
+            Assert.Equal(state.Fingerprint,
+                SemanticPilotCombatEngineV111.Restore(
+                    SemanticPilotCombatEngineV111.Save(state)).Fingerprint);
+        }
+        Assert.Equal(4, decisions);
+        Assert.True(state.AtPlayerBoundary || state.CombatTerminal);
+        Assert.Equal(4, state.History.Count(transition =>
+            transition.Kind == "semantic_target"));
+        Assert.True(state.Run.World!.Combat!.Enemies.Sum(enemy => enemy.Hp) <
+            startingEnemyHp);
+    }
+
+    [Fact]
     public void BasicSilentActionKeepsCommittedHiddenDeckUntouched()
     {
         var state = SemanticPilotCombatEngineV111.Begin(
@@ -237,7 +293,10 @@ public sealed class SemanticPilotCombatV111Tests
             state, state.Fingerprint, last.IntentId);
         var bySourceTicket = SemanticPilotCombatEngineV111.Resolve(
             state, state.Fingerprint, last.TicketStart);
-        Assert.Equal(bySourceTicket.Fingerprint, bySemanticId.Fingerprint);
+        Assert.Equal(CanonicalJson.Sha256(bySourceTicket.Run),
+            CanonicalJson.Sha256(bySemanticId.Run));
+        Assert.Equal("nature", bySourceTicket.History[^1].Kind);
+        Assert.Equal("semantic_intent", bySemanticId.History[^1].Kind);
         Assert.Throws<InvalidOperationException>(() =>
             SemanticPilotCombatEngineV111.ResolveIntent(
                 state, state.Fingerprint, "forged-intent-id"));
