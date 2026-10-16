@@ -623,7 +623,8 @@ public static class SemanticPilotCombatEngineV111
         SemanticPilotCombatV111 state, string cardId)
     {
         if (cardId is not ("proto.silent.survivor" or
-            "proto.colorless.seeker_strike"))
+            "proto.colorless.seeker_strike" or
+            NativeGloryAncientsV111.WishCardId))
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_LOADOUT site=combat.seeded_entry " +
                 "operation=fixture_selection_card:" + cardId);
@@ -1202,7 +1203,8 @@ public static class SemanticPilotCombatEngineV111
             var card = source.World!.Combat!.Cards.SingleOrDefault(c =>
                 c.InstanceId == play.CardInstanceId);
             var semanticSelectionCard = card?.CardId is
-                ("proto.silent.survivor" or "proto.silent.hand_trick");
+                ("proto.silent.survivor" or "proto.silent.hand_trick" or
+                    NativeGloryAncientsV111.WishCardId);
             var fixtureSelectionCard = card?.CardId ==
                     current.SeededEntry?.FixtureSelectionCardId &&
                 card?.CardId == "proto.colorless.seeker_strike";

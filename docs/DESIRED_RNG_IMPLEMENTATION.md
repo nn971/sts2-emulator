@@ -31,8 +31,8 @@ insertion, sequential hand-cost rerolls, random hand-card selection, and
 without-replacement random pile shortlists. The
 semantic JSONL/Python pilot resumes the original draw, target, generation and
 cost continuations, including draw-time hooks, exposes source `select_cards`
-choices after Survivor and Hand Trick plays or the supported selection potions,
-and can opt into typed bounded swaps for a generated card pool
+choices after Survivor, Hand Trick and Wish plays or the supported selection
+potions, and can opt into typed bounded swaps for a generated card pool
 before returning the ordinary player choice or a bounded insertion position
 while preserving unresolved deck order. The deck kernel also supports exact
 moves of known cards to a forced offset while keeping unresolved positions
