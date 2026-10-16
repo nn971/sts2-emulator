@@ -80,11 +80,13 @@ public static class NativeActOneNormalCombatEntryV111
             || encounter.RoomType != PrototypeRoomType.Combat)
             throw new NotSupportedException(
                 $"Experimental normal combat entry does not support '{encounter.Id}'.");
-        var profile = entry.Region == PrototypeActOneRegion.Overgrowth
-            ? PrototypeNativeOvergrowthMap.GenerationProfileId
-            : PrototypeNativeUnderdocks.GenerationProfileId;
+        var profileMatches = entry.Region == PrototypeActOneRegion.Overgrowth
+            ? PrototypeNativeOvergrowthMap.IsGenerationProfile(
+                world.Map.GenerationProfileId)
+            : world.Map.GenerationProfileId ==
+                PrototypeNativeUnderdocks.GenerationProfileId;
         if (world.ActOneRegion != entry.Region
-            || world.Map.GenerationProfileId != profile)
+            || !profileMatches)
             throw new NotSupportedException(
                 "Native normal encounter is not in its pinned Act 1 region.");
         if (state.NativeRunRng is null)

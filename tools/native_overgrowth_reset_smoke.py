@@ -13,7 +13,7 @@ from pathlib import Path
 ROOT = Path(__file__).resolve().parents[1]
 DLL = ROOT / "src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cli.dll"
 RESET_SCHEMA = "prototype-native-overgrowth-reset-v1"
-MAP_PROFILE = "native-overgrowth-map-structure-v0.111.0-v1"
+MAP_PROFILE = "native-overgrowth-map-native-rng-v0.111.0-v1"
 POLICY = "prototype-fair-v0"
 
 

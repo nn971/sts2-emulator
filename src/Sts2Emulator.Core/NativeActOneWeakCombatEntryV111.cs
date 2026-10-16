@@ -51,12 +51,14 @@ public static class NativeActOneWeakCombatEntryV111
             or "proto.encounter.corpse_slugs_weak"
                 ? PrototypeActOneRegion.Underdocks
                 : PrototypeActOneRegion.Overgrowth;
-        var expectedMapProfile = expectedRegion
+        var expectedMapProfileMatches = expectedRegion
             == PrototypeActOneRegion.Underdocks
-                ? PrototypeNativeUnderdocks.GenerationProfileId
-                : PrototypeNativeOvergrowthMap.GenerationProfileId;
+                ? world.Map.GenerationProfileId ==
+                    PrototypeNativeUnderdocks.GenerationProfileId
+                : PrototypeNativeOvergrowthMap.IsGenerationProfile(
+                    world.Map.GenerationProfileId);
         if (world.ActOneRegion != expectedRegion
-            || world.Map.GenerationProfileId != expectedMapProfile)
+            || !expectedMapProfileMatches)
             throw new NotSupportedException(
                 "Native weak encounter must belong to the active pinned Act 1 region.");
         if (state.NativeRunRng is null)

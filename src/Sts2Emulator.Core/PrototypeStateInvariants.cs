@@ -134,6 +134,7 @@ public static class PrototypeStateInvariants
         {
             PrototypeGoldenPathMapV111.ProfileId => PrototypeGoldenPathMapV111.BossFloor,
             PrototypeNativeOvergrowthMap.GenerationProfileId
+                or PrototypeNativeOvergrowthMap.LegacyGenerationProfileId
                 or PrototypeNativeUnderdocks.GenerationProfileId =>
                 PrototypeNativeOvergrowthMap.BossFloor,
             PrototypeNativeLaterActMap.HiveProfileId
@@ -568,6 +569,7 @@ public static class PrototypeStateInvariants
                 && (world.Map.GenerationProfileId is
                     PrototypeContent.MapGenerationProfileId
                     or PrototypeNativeOvergrowthMap.GenerationProfileId
+                    or PrototypeNativeOvergrowthMap.LegacyGenerationProfileId
                     or PrototypeNativeUnderdocks.GenerationProfileId
                     || (world.RulesetId == V111Build.RulesetId
                         && world.Map.GenerationProfileId is
@@ -602,6 +604,7 @@ public static class PrototypeStateInvariants
             world.Map.GenerationProfileId is
                 PrototypeContent.MapGenerationProfileId
                 or PrototypeNativeOvergrowthMap.GenerationProfileId
+                or PrototypeNativeOvergrowthMap.LegacyGenerationProfileId
                 or PrototypeNativeUnderdocks.GenerationProfileId
             || (world.RulesetId == V111Build.RulesetId
                 && world.Map.GenerationProfileId is
@@ -2655,8 +2658,8 @@ public static class PrototypeStateInvariants
             return;
         }
 
-        if (world.Map.GenerationProfileId
-                == PrototypeNativeOvergrowthMap.GenerationProfileId
+        if (PrototypeNativeOvergrowthMap.IsGenerationProfile(
+                world.Map.GenerationProfileId)
             || world.Map.GenerationProfileId
                 == PrototypeNativeUnderdocks.GenerationProfileId)
         {

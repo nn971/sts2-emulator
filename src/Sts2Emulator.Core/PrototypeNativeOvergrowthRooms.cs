@@ -3,7 +3,8 @@ namespace Sts2Emulator.Core;
 public sealed partial class PrototypeGameEngine
 {
     private static bool UsesNativeActOneSystems(RunWorldState world) =>
-        world.Act == 1 && (world.Map.GenerationProfileId == PrototypeNativeOvergrowthMap.GenerationProfileId
+        world.Act == 1 && (PrototypeNativeOvergrowthMap.IsGenerationProfile(
+                world.Map.GenerationProfileId)
             || world.Map.GenerationProfileId == PrototypeNativeUnderdocks.GenerationProfileId);
 
     // The Act 1 economy/Unknown machinery is structurally reusable for

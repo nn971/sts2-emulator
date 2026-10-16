@@ -107,11 +107,13 @@ public static class NativeActOneEliteBossCombatEntryV111
             throw new NotSupportedException(
                 $"Experimental native elite/boss entry does not support '{encounter.Id}'.");
 
-        var mapProfile = entry.Region == PrototypeActOneRegion.Overgrowth
-            ? PrototypeNativeOvergrowthMap.GenerationProfileId
-            : PrototypeNativeUnderdocks.GenerationProfileId;
+        var mapProfileMatches = entry.Region == PrototypeActOneRegion.Overgrowth
+            ? PrototypeNativeOvergrowthMap.IsGenerationProfile(
+                world.Map.GenerationProfileId)
+            : world.Map.GenerationProfileId ==
+                PrototypeNativeUnderdocks.GenerationProfileId;
         if (world.ActOneRegion != entry.Region
-            || world.Map.GenerationProfileId != mapProfile)
+            || !mapProfileMatches)
             throw new NotSupportedException(
                 "Native elite/boss encounter is not in its pinned Act 1 region.");
         if (state.NativeRunRng is null)

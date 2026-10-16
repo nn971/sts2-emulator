@@ -719,8 +719,8 @@ public sealed partial class PrototypeGameEngine
     {
         var world = RequireWorld(state);
         var nativeOvergrowth = world.Act == 1
-            && world.Map.GenerationProfileId
-                == PrototypeNativeOvergrowthMap.GenerationProfileId;
+            && PrototypeNativeOvergrowthMap.IsGenerationProfile(
+                world.Map.GenerationProfileId);
         var nativeUnderdocks = world.Act == 1
             && world.Map.GenerationProfileId
                 == PrototypeNativeUnderdocks.GenerationProfileId;
@@ -1129,6 +1129,7 @@ public sealed partial class PrototypeGameEngine
                     && world.Act == 1
                     && world.Map.GenerationProfileId
                         is PrototypeNativeOvergrowthMap.GenerationProfileId
+                            or PrototypeNativeOvergrowthMap.LegacyGenerationProfileId
                         or PrototypeNativeUnderdocks.GenerationProfileId
                     && world.Map.CurrentNodeId is null)
             {

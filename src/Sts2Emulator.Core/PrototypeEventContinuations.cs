@@ -295,6 +295,7 @@ public sealed partial class PrototypeGameEngine
                 && world.Act == 1
                 && world.Map.GenerationProfileId
                     is PrototypeNativeOvergrowthMap.GenerationProfileId
+                        or PrototypeNativeOvergrowthMap.LegacyGenerationProfileId
                     or PrototypeNativeUnderdocks.GenerationProfileId
                 && world.Map.CurrentNodeId is null)
             {

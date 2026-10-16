@@ -182,11 +182,11 @@ reference distribution is claimed.
 | `map.legacy.second_edge_target.index_draw` | act + source node + target support / legacy `map` | Partial: least-incoming available targets | No: legacy typed index provider only | No | No: map generation remains source-owned | No | No |
 | `map.legacy.required_room.node.index_draw` | act + floor + required room / legacy `map` | Partial: legal nodes for each required room | No: legacy typed index provider only | No | No: map generation remains source-owned | No | No |
 | `map.legacy.room_assignment.index_draw` | act + floor + node / legacy `map` | Partial: legal room pool after duplicate-special filtering | No: legacy typed index provider only | No | No: map generation remains source-owned | No | No |
-| `map.overgrowth.path_start_column.index_draw` | Act 1 path ordinal + retry / legacy `map` | Partial: seven path starts and second-path collision retries | No: legacy typed bounded-integer provider only | No | No: map generation remains source-owned | No | No |
-| `map.overgrowth.path_delta.shuffle_swap_index` | Act 1 path + floor / legacy `map` | Partial: ordered `[-1, 0, 1]` path deltas | No: shared Fisher–Yates loop with legacy typed provider | No | No: map generation remains source-owned | No | No |
-| `map.overgrowth.rest_count.gaussian_component` | Act 1 rest quota / legacy `map` | Partial: Box–Muller approximation using bounded integer components and truncation | No: legacy typed bounded-integer provider only | No | No: map generation remains source-owned | No | No |
-| `map.overgrowth.unknown_count.gaussian_component` | Act 1 unknown quota / legacy `map` | Partial: Box–Muller approximation using bounded integer components and truncation | No: legacy typed bounded-integer provider only | No | No: map generation remains source-owned | No | No |
-| `map.overgrowth.room_assignment.shuffle_swap_index` | Act 1 room type + attempt + ordered unassigned points / legacy `map` | Partial: source-shaped ordered pool and descending Fisher–Yates swaps | No: shared Fisher–Yates loop with legacy typed provider | No | No: map generation remains source-owned | No | No |
+| `map.overgrowth.path_start_column.index_draw` | Act 1 path ordinal + retry / `context.act_1_map`; legacy `map` | Partial: seven path starts and second-path collision retries | Yes: native context bounded provider and legacy typed provider | No: map call-order and resulting-map parity pending | No: native Act map stays source-owned | No | No |
+| `map.overgrowth.path_delta.shuffle_swap_index` | Act 1 path + floor / `context.act_1_map`; legacy `map` | Partial: ordered `[-1, 0, 1]` path deltas | Yes: native and legacy typed Fisher–Yates providers | No: map call-order and resulting-map parity pending | No: native Act map stays source-owned | No | No |
+| `map.overgrowth.rest_count.gaussian_component` | Act 1 rest quota / `context.act_1_map`; legacy `map` | Partial: native truncated rounded Gaussian [6,7]; legacy Box–Muller bounded-integer approximation | Yes: native typed Gaussian-int and legacy typed component requests | No: map call-order and resulting-map parity pending | No: native Act map stays source-owned | No | No |
+| `map.overgrowth.unknown_count.gaussian_component` | Act 1 unknown quota / `context.act_1_map`; legacy `map` | Partial: native truncated rounded Gaussian [10,14]; legacy Box–Muller bounded-integer approximation | Yes: native typed Gaussian-int and legacy typed component requests | No: map call-order and resulting-map parity pending | No: native Act map stays source-owned | No | No |
+| `map.overgrowth.room_assignment.shuffle_swap_index` | Act 1 room type + attempt + ordered unassigned points / `context.act_1_map`; legacy `map` | Partial: source-shaped ordered pool and descending Fisher–Yates swaps | Yes: native and legacy typed Fisher–Yates providers | No: map call-order and resulting-map parity pending | No: native Act map stays source-owned | No | No |
 | `map.later_act.path_start_column.index_draw` | act map / `context.act_map.*` or legacy `map` | Partial: seven path starts and second-path collision retries | Yes: native provider and legacy typed bounded-integer requests | No: provider-specific result/cursor regression pending | No | No | No |
 | `map.later_act.path_delta.shuffle_swap_index` | act map / `context.act_map.*` or legacy `map` | Partial: ordered `[-1, 0, 1]` path deltas | Yes: native and legacy typed provider at each descending swap | No: provider-specific result/cursor regression pending | No | No | No |
 | `map.later_act.glory_rest_count.index_draw` | Glory map / `context.act_map.*` or legacy `map` | Yes: source `NextInt(2)` rest quota | Yes: native provider and legacy typed bounded-integer request | No: provider-specific result/cursor regression pending | No | No | No |
@@ -215,7 +215,11 @@ retains `combat`. Controlled Nature continues to resolve its existing saved
 shortlist continuation.
 The distinct generated-colorless path uses the typed legacy shuffle but
 remains fail-closed when native combat state is attached because its modeled
-pool omits locked or unimplemented source card models.
+pool omits locked or unimplemented source card models. The opt-in Overgrowth
+map factory now uses the native `context.act_1_map` stream through typed
+bounded, Fisher–Yates and Gaussian providers; its source call order and map
+result parity remain unverified. The historical `map.overgrowth` generator
+entry point continues to use the legacy `map` stream.
 
 The direct API source census is generated by
 [`tools/rng_callsite_inventory.py`](../tools/rng_callsite_inventory.py) and

@@ -132,9 +132,12 @@ public sealed record RunConfiguration(
             {
                 var region = configuration.Acts[0] == ActIdentity.Overgrowth
                     ? PrototypeActOneRegion.Overgrowth : PrototypeActOneRegion.Underdocks;
-                var mapProfile = region == PrototypeActOneRegion.Overgrowth
-                    ? PrototypeNativeOvergrowthMap.GenerationProfileId : PrototypeNativeUnderdocks.GenerationProfileId;
-                if (initialized.ActOneRegion != region || initialized.Map.GenerationProfileId != mapProfile)
+                var mapProfileMatches = region == PrototypeActOneRegion.Overgrowth
+                    ? PrototypeNativeOvergrowthMap.IsGenerationProfile(
+                        initialized.Map.GenerationProfileId)
+                    : initialized.Map.GenerationProfileId ==
+                        PrototypeNativeUnderdocks.GenerationProfileId;
+                if (initialized.ActOneRegion != region || !mapProfileMatches)
                     throw new InvalidDataException("Act region or map generation profile does not match configured v111 route.");
             }
         }

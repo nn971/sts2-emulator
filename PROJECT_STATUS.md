@@ -897,14 +897,15 @@ native-shaped boss-clear/reward transition. The fixed baseline policy
 is weak, and outcome statistics cannot be interpreted as game balance.
 
 Remaining blockers to a *complete native Act 1 generator*: the map's
-geometry uses source-shaped placement but not native RNG/call order;
+geometry uses source-shaped placement and the native act-local stream, but
+source call-order and final map parity remain unverified;
 Neow offered relics are still metadata-only definitions without their
 actual gameplay effects; several Overgrowth events explicitly substitute
 approximate, single-page or empty choices for native multi-page,
 enchantment or follow-up combat behavior; treasure/shop/reward
 selection still draws from prototype item pools/economy; and exact native
 room generation/selection and seeded run parity have not been proven.
-Keep the `native-overgrowth-map-structure-v0.111.0-v1` profile opt-in
+Keep the `native-overgrowth-map-native-rng-v0.111.0-v1` profile opt-in
 until these are implemented and tested. Do not call this a native-complete
 environment or begin the requested fidelity phase solely because the
 sweep succeeds.

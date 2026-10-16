@@ -87,6 +87,7 @@ public sealed partial class PrototypeGameEngine
             if (world.Map.GenerationProfileId
                 is PrototypeContent.MapGenerationProfileId
                 or PrototypeNativeOvergrowthMap.GenerationProfileId
+                or PrototypeNativeOvergrowthMap.LegacyGenerationProfileId
                 or PrototypeNativeUnderdocks.GenerationProfileId)
             {
                 throw new InvalidOperationException(
