@@ -55,11 +55,11 @@ def play_victory():
             actions = combat.actions()
             strikes_here = [a for a in actions if a["kind"] == "play_card"
                             and card_ids.get(json.loads(
-                                a["payloadJson"])["cardInstanceId"]) ==
+                                a["payloadJson"])["CardInstanceId"]) ==
                             "proto.silent.strike"]
             defends_here = [a for a in actions if a["kind"] == "play_card"
                             and card_ids.get(json.loads(
-                                a["payloadJson"])["cardInstanceId"]) ==
+                                a["payloadJson"])["CardInstanceId"]) ==
                             "proto.silent.defend"]
             chosen = (strikes_here or defends_here or
                       [next(a for a in actions if a["kind"] == "end_turn")])[0]
