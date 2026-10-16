@@ -355,7 +355,8 @@ class Session:
             native_entry: str, total_floor: int, ascension: int = 0,
             first_monster_combat_id: int = 1,
             map_column: int = 3, map_row: int = 5,
-            other_chance_provider_id: str | None = None):
+            other_chance_provider_id: str | None = None,
+            fixture_draw_cost_relic_id: str | None = None):
         """Begin a two-site pilot without external opening chance tickets.
 
         Setup uses source-shaped RNG streams in an isolated Hive/Glory
@@ -374,7 +375,8 @@ class Session:
             total_floor=total_floor, ascension=ascension,
             first_monster_combat_id=first_monster_combat_id,
             map_column=map_column, map_row=map_row,
-            other_chance_provider_id=other_chance_provider_id))
+            other_chance_provider_id=other_chance_provider_id,
+            fixture_draw_cost_relic_id=fixture_draw_cost_relic_id))
 
     def load_semantic_snapshot(self, snapshot: str):
         if self.capabilities.get("semanticChanceSchemaId") != (
