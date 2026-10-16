@@ -104,7 +104,12 @@ public sealed partial class PrototypeGameEngine
                         null, null, false))
                     .Select(card => card.InstanceId)
                     .ToArray();
-                PrototypeRng.Shuffle(state.Rng, "event", selected);
+                _ = LegacyFisherYatesV111.ShuffleInPlace(
+                    selected,
+                    state.Rng,
+                    "event",
+                    "event.battleworn.upgrade.shuffle_swap_index",
+                    "event:battleworn:setting:2:eligible_cards");
                 var upgraded = selected.Take(2).ToHashSet();
                 var player = state.Player with
                 {

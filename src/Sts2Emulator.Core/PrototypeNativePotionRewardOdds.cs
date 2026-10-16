@@ -31,7 +31,12 @@ public static class PrototypeNativePotionRewardOdds
         // Do not clamp the odds here: native AbstractOdds.CurrentValue
         // is updated directly, without explicit clipping.
         var threshold = currentThousandths + (elite ? EliteBonus : 0);
-        var roll = PrototypeRng.NextInt(rng, "reward", 1000);
+        var roll = LegacyRandomChoiceV111.ChooseBoundedInteger(
+            rng,
+            "reward.potion_odds.ticket",
+            "reward",
+            "run:potion_reward_odds",
+            1000).SelectedIndex;
         var offered = roll < threshold;
         return (
             offered,

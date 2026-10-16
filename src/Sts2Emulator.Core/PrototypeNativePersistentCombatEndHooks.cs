@@ -112,7 +112,13 @@ public sealed partial class PrototypeGameEngine
                 // Native uses RunState.Rng.Niche; this prototype retains
                 // the pre-existing event stream until native integration.
                 var selected = candidates[
-                    PrototypeRng.NextInt(rng, "event", candidates.Length)];
+                    LegacyRandomChoiceV111.ChooseIndexRange(
+                        rng,
+                        "relic.persistent_combat_end.random_upgrade.index_draw",
+                        "event",
+                        $"relic:{relics[index].RelicId}:combat_count:{count}:pool:"
+                            + CanonicalJson.Sha256(candidates),
+                        candidates.Length).SelectedIndex];
                 player = player with
                 {
                     Deck = player.Deck.Select(card =>

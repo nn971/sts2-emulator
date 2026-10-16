@@ -822,6 +822,11 @@ public static class PrototypeColorlessCards
                 $"No playable {rarity} colorless merchant cards.");
         }
 
-        return eligible[PrototypeRng.NextInt(rng, "shop", eligible.Length)];
+        return eligible[LegacyRandomChoiceV111.ChooseIndexRange(
+            rng,
+            "shop.colorless_card_model.index_draw",
+            "shop",
+            "rarity:" + rarity + ":pool:" + CanonicalJson.Sha256(eligible),
+            eligible.Length).SelectedIndex];
     }
 }

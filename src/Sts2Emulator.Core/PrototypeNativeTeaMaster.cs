@@ -110,8 +110,12 @@ public sealed partial class PrototypeGameEngine
                 UpgradeLevel: 0,
                 IsTemporary: true,
                 State: PrototypeJson.EmptyObject()));
-            var position = PrototypeRng.NextInt(
-                rng, "combat", updatedDrawPile.Count + 1);
+            var position = LegacyRandomChoiceV111.ChooseIndexRange(
+                rng,
+                "combat.draw_pile.random_insert_index",
+                "combat",
+                $"relic:tea_of_discourtesy:insert:{i}:count:{updatedDrawPile.Count}",
+                updatedDrawPile.Count + 1).SelectedIndex;
             updatedDrawPile.Insert(position, instanceId);
         }
 

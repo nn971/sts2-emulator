@@ -22,7 +22,13 @@ public sealed partial class PrototypeGameEngine
             if (saved.Length == 0)
                 continue;
 
-            var selectedIndex = PrototypeRng.NextInt(state.Rng, "reward", saved.Length);
+            var selectedIndex = LegacyRandomChoiceV111.ChooseIndexRange(
+                state.Rng,
+                "relic.paels_tooth.card_return.index_draw",
+                "reward",
+                $"player:0:relic:{relicIndex}:saved_cards:"
+                    + CanonicalJson.Sha256(saved),
+                saved.Length).SelectedIndex;
             var selected = saved[selectedIndex];
             player = NativePaelRewardsV111.RemoveToothCard(player, relicIndex, selectedIndex);
             var definition = PrototypeContent.Card(selected.CardId);

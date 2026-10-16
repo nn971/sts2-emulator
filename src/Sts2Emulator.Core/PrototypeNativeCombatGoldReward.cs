@@ -66,7 +66,11 @@ public static class PrototypeNativeCombatGoldReward
 
         var (minimum, maximum) = bounds.Value;
         // Native GoldReward.Populate calls Rewards.NextInt(min, max+1).
-        return minimum + PrototypeRng.NextInt(
-            rng, "reward", checked(maximum - minimum + 1));
+        return minimum + LegacyRandomChoiceV111.ChooseBoundedInteger(
+            rng,
+            "reward.combat_gold.index_draw",
+            "reward",
+            $"room:{room}:ascension:{ascension}:bounds:{minimum}:{maximum}",
+            checked(maximum - minimum + 1)).SelectedIndex;
     }
 }

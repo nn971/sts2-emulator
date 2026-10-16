@@ -310,7 +310,12 @@ public sealed partial class PrototypeGameEngine
                     PrototypePersistentDeckChoiceKind.Upgrade,
                     null, null, false))
                 .Select(card => card.InstanceId).ToArray();
-            PrototypeRng.Shuffle(state.Rng, "event", ids);
+            _ = LegacyFisherYatesV111.ShuffleInPlace(
+                ids,
+                state.Rng,
+                "event",
+                "event.glory.random_upgrade.shuffle_swap_index",
+                $"event:{world.Event?.EventId}:eligible_cards");
             var upgrades = ids.Take(2).ToHashSet();
             player = player with
             {

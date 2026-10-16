@@ -54,13 +54,19 @@ public static class PrototypeNativePotionCourier
 
     public static string PickRandomUncommonPotion(
         RngBundle rng,
-        string streamId)
+        string streamId,
+        string ownerId = "potion:courier:uncommon")
     {
         if (ImplementedUncommonPotionPool.Length == 0)
             throw new InvalidOperationException(
                 "No implemented Uncommon potions are available.");
 
-        return ImplementedUncommonPotionPool[PrototypeRng.NextInt(
-            rng, streamId, ImplementedUncommonPotionPool.Length)];
+        var candidates = ImplementedUncommonPotionPool;
+        return candidates[LegacyRandomChoiceV111.ChooseIndexRange(
+            rng,
+            "potion.uncommon_model.index_draw",
+            streamId,
+            ownerId + ":pool:" + CanonicalJson.Sha256(candidates),
+            candidates.Length).SelectedIndex];
     }
 }

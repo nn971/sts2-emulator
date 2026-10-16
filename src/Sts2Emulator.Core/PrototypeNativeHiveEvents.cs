@@ -342,8 +342,13 @@ public sealed partial class PrototypeGameEngine
             return PreserveNativeEventCompletionPage(state, choice);
         }
 
-        var selected = eligible[
-            PrototypeRng.NextInt(state.Rng, "event", eligible.Length)];
+        var selected = eligible[LegacyRandomChoiceV111.ChooseIndexRange(
+            state.Rng,
+            "event.hive.card_offer.index_draw",
+            "event",
+            $"event:{world.Event!.EventId}:choice:{choice}:pool:"
+                + CanonicalJson.Sha256(eligible),
+            eligible.Length).SelectedIndex];
         var player = AppendCard(
             state.Player, world.NextCardInstanceId, selected, state.Rng);
         return PreserveNativeEventCompletionPage(state with

@@ -45,8 +45,12 @@ public sealed partial class PrototypeGameEngine
 
                 var gold = current.NativeEventGold is >= 61 and <= 99
                     ? current.NativeEventGold
-                    : 61 + PrototypeRng.NextInt(
-                        state.Rng, "event", 39);
+                    : 61 + LegacyRandomChoiceV111.ChooseBoundedInteger(
+                        state.Rng,
+                        "event.generated_gold.index_draw",
+                        "event",
+                        "event:dense_vegetation:trudge_gold",
+                        39).SelectedIndex;
                 var result = state with
                 {
                     Player = state.Player with

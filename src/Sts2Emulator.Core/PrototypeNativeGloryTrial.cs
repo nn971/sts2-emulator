@@ -62,7 +62,12 @@ public sealed partial class PrototypeGameEngine
                     Event = evt with
                     {
                         NativePageIndex =
-                            2 + PrototypeRng.NextInt(state.Rng, "event", 3)
+                            2 + LegacyRandomChoiceV111.ChooseBoundedInteger(
+                                state.Rng,
+                                "event.glory_trial.damage_amount.index_draw",
+                                "event",
+                                "event:glory_trial:trial_damage",
+                                3).SelectedIndex
                     }
                 }
             };

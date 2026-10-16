@@ -54,7 +54,12 @@ public sealed partial class PrototypeGameEngine
         if (evt.NativePageIndex == 0)
         {
             var choices = (string[])TinkerTypes.Clone();
-            PrototypeRng.Shuffle(state.Rng, "event", choices);
+            _ = LegacyFisherYatesV111.ShuffleInPlace(
+                choices,
+                state.Rng,
+                "event",
+                "event.glory_tinker.type_offer.shuffle_swap_index",
+                "event:glory_tinker:types");
             return state with
             {
                 World = world with
@@ -71,7 +76,12 @@ public sealed partial class PrototypeGameEngine
         if (evt.NativePageIndex == 1)
         {
             var riders = TinkerRiders(choice);
-            PrototypeRng.Shuffle(state.Rng, "event", riders);
+            _ = LegacyFisherYatesV111.ShuffleInPlace(
+                riders,
+                state.Rng,
+                "event",
+                "event.glory_tinker.rider_offer.shuffle_swap_index",
+                "event:glory_tinker:type:" + choice);
             return state with
             {
                 World = world with
@@ -252,7 +262,13 @@ public sealed partial class PrototypeGameEngine
         var upgrades = new HashSet<long>();
         for (var i = 0; i < amount && candidates.Count > 0; i++)
         {
-            var index = PrototypeRng.NextInt(rng, "combat", candidates.Count);
+            var index = LegacyRandomChoiceV111.ChooseIndexRange(
+                rng,
+                "combat.glory_tinker.improvement_card.index_draw",
+                "combat",
+                $"mad_science_improvement:pick:{i}:pool:"
+                    + CanonicalJson.Sha256(candidates),
+                candidates.Count).SelectedIndex;
             upgrades.Add(candidates[index]);
             candidates.RemoveAt(index);
         }

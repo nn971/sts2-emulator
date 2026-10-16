@@ -132,8 +132,13 @@ public sealed partial class PrototypeGameEngine
 
         if (eligible.Length > 0)
         {
-            var id = eligible[
-                PrototypeRng.NextInt(state.Rng, "event", eligible.Length)];
+            var id = eligible[LegacyRandomChoiceV111.ChooseIndexRange(
+                state.Rng,
+                "event.tablet_of_truth.card.index_draw",
+                "event",
+                "event:tablet_of_truth:eligible_cards:"
+                    + CanonicalJson.Sha256(eligible),
+                eligible.Length).SelectedIndex];
             playerAfterCost = playerAfterCost with
             {
                 Deck = playerAfterCost.Deck.Select(card =>

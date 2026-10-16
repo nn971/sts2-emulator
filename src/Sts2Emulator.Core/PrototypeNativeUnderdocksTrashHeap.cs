@@ -154,9 +154,13 @@ public sealed partial class PrototypeGameEngine
             case "grab":
             {
                 var chosen = PrototypeNativeUnderdocksTrashHeap.CardIds[
-                    PrototypeRng.NextInt(
-                        state.Rng, "event",
-                        PrototypeNativeUnderdocksTrashHeap.CardIds.Length)];
+                    LegacyRandomChoiceV111.ChooseIndexRange(
+                        state.Rng,
+                        "event.trash_heap.card_reward.index_draw",
+                        "event",
+                        "event:trash_heap:cards",
+                        PrototypeNativeUnderdocksTrashHeap.CardIds.Length)
+                        .SelectedIndex];
                 var player = state.Player with
                 {
                     Gold = GoldAfterGain(state.Player, 100)
@@ -186,9 +190,13 @@ public sealed partial class PrototypeGameEngine
                 }
 
                 var relicId = PrototypeNativeUnderdocksTrashHeap.RelicIds[
-                    PrototypeRng.NextInt(
-                        state.Rng, "event",
-                        PrototypeNativeUnderdocksTrashHeap.RelicIds.Length)];
+                    LegacyRandomChoiceV111.ChooseIndexRange(
+                        state.Rng,
+                        "event.trash_heap.relic_reward.index_draw",
+                        "event",
+                        "event:trash_heap:relics",
+                        PrototypeNativeUnderdocksTrashHeap.RelicIds.Length)
+                        .SelectedIndex];
                 // RelicCmd.Obtain / Player.AddRelicInternal append a new
                 // mutable instance even when its model ID is already owned.
                 // A new Maw Bank starts active regardless of an older one's

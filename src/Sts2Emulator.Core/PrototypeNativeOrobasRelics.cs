@@ -196,7 +196,12 @@ public static class PrototypeNativeOrobasRelics
                 null, null, false))
             .Select(card => card.InstanceId)
             .ToArray();
-        PrototypeRng.Shuffle(rng, "event", candidates);
+        _ = LegacyFisherYatesV111.ShuffleInPlace(
+            candidates,
+            rng,
+            "event",
+            "relic.sand_castle.acquisition_upgrade.shuffle_swap_index",
+            "player:0:sand_castle:eligible_cards");
         var selected = candidates.Take(6).ToHashSet();
         if (selected.Count == 0)
             return player;

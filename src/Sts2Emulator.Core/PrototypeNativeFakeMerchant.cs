@@ -212,7 +212,12 @@ public static class PrototypeNativeFakeMerchant
     public static EventState RollInventory(EventState eventState, RngBundle rng)
     {
         var ids = (string[])StockRelicIds.Clone();
-        PrototypeRng.Shuffle(rng, "event", ids);
+        _ = LegacyFisherYatesV111.ShuffleInPlace(
+            ids,
+            rng,
+            "event",
+            "event.fake_merchant.relic_offer.shuffle_swap_index",
+            "event:" + eventState.EventId + ":stock_relics");
         return eventState with
         {
             OfferedChoiceIds = ids.Take(6)

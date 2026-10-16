@@ -194,7 +194,8 @@ public static class ExperimentalSilentThreeActRouteV111
     /// exact native NextDouble rejection draws/stream ownership are pending.
     /// </summary>
     private static string[] GenerateSequence(
-        string[] pool, int count, RngBundle rng, List<string> history)
+        string[] pool, int count, RngBundle rng, List<string> history,
+        int act, string queueId)
     {
         var remaining = new List<string>();
         var result = new string[count];
@@ -210,8 +211,13 @@ public static class ExperimentalSilentThreeActRouteV111
                     || EncounterTag(id) != previousTag)).ToArray();
             if (eligible.Length == 0)
                 eligible = remaining.ToArray();
-            var selected = eligible[PrototypeRng.NextInt(
-                rng, "combat", eligible.Length)];
+            var selected = eligible[LegacyRandomChoiceV111.ChooseIndexRange(
+                rng,
+                $"combat.encounter.later_act.{queueId}.index_draw",
+                "combat",
+                $"act:{act}:queue:{queueId}:draw:{i}:pool:"
+                    + CanonicalJson.Sha256(eligible),
+                eligible.Length).SelectedIndex];
             remaining.Remove(selected);
             history.Add(selected);
             result[i] = selected;
@@ -227,17 +233,23 @@ public static class ExperimentalSilentThreeActRouteV111
         var rooms = OrdinaryRoomCount(act);
         var history = new List<string>(rooms);
         var weak = GenerateSequence(
-            Pool(act, PrototypeRoomType.Combat, true), 2, rng, history);
+            Pool(act, PrototypeRoomType.Combat, true), 2, rng, history,
+            act, "weak");
         var normal = GenerateSequence(
             Pool(act, PrototypeRoomType.Combat, false),
-            rooms - 2, rng, history);
+            rooms - 2, rng, history, act, "normal");
         // The game's elite encounter sequence is prepared for 15 draws,
         // independently of the weak and normal queues.
         var elite = GenerateSequence(
             Pool(act, PrototypeRoomType.Elite, false), 15, rng,
-            new List<string>(15));
+            new List<string>(15), act, "elite");
         var bosses = Pool(act, PrototypeRoomType.Boss, false);
-        var boss = bosses[PrototypeRng.NextInt(rng, "combat", bosses.Length)];
+        var boss = bosses[LegacyRandomChoiceV111.ChooseIndexRange(
+            rng,
+            "combat.encounter.later_act.boss.index_draw",
+            "combat",
+            $"act:{act}:boss_pool:{CanonicalJson.Sha256(bosses)}",
+            bosses.Length).SelectedIndex];
         var discoveryOrder = act switch
         {
             2 => HiveBossDiscoveryOrder,
@@ -253,8 +265,13 @@ public static class ExperimentalSilentThreeActRouteV111
         if (act == 3 && ascension >= 10)
         {
             var alternatives = bosses.Where(id => id != boss).ToArray();
-            secondBoss = alternatives[PrototypeRng.NextInt(
-                rng, "combat", alternatives.Length)];
+            secondBoss = alternatives[LegacyRandomChoiceV111.ChooseIndexRange(
+                rng,
+                "combat.encounter.later_act.second_boss.index_draw",
+                "combat",
+                $"act:{act}:first_boss:{boss}:alternatives:"
+                    + CanonicalJson.Sha256(alternatives),
+                alternatives.Length).SelectedIndex];
         }
         return new PrototypeLaterActEncounterBagV111(
             act, 0, weak, normal, elite,
@@ -298,11 +315,20 @@ public static class ExperimentalSilentThreeActRouteV111
         // from the remaining shared pool, so the relic may be assigned to
         // Hive, Glory or neither. This uses the existing prototype stream;
         // the native UpFront schedule is a later RNG pass.
-        var hiveReceivesDarv = PrototypeRng.NextInt(rng, "event", 2) == 1;
+        var hiveReceivesDarv = LegacyRandomChoiceV111.ChooseBoundedInteger(
+            rng,
+            "event.later_act.darv_assignment.hive.index_draw",
+            "event",
+            "run:darv_assignment:hive",
+            2).SelectedIndex == 1;
         // RunManager draws a count for Glory even if Hive removed the only
         // shared Ancient; that call is a bound-one draw in that case.
-        var gloryReceivesDarv = PrototypeRng.NextInt(
-            rng, "event", hiveReceivesDarv ? 1 : 2) == 1;
+        var gloryReceivesDarv = LegacyRandomChoiceV111.ChooseBoundedInteger(
+            rng,
+            "event.later_act.darv_assignment.glory.index_draw",
+            "event",
+            "run:darv_assignment:glory",
+            hiveReceivesDarv ? 1 : 2).SelectedIndex == 1;
         var sharedAncientAct = hiveReceivesDarv ? 2
             : gloryReceivesDarv ? 3 : -1;
         return [SelectAncient(2, rng, sharedAncientAct == 2),
@@ -313,7 +339,13 @@ public static class ExperimentalSilentThreeActRouteV111
         bool includeDarv = false)
     {
         var pool = AncientPool(act, includeDarv);
-        return pool[PrototypeRng.NextInt(rng, "event", pool.Length)];
+        return pool[LegacyRandomChoiceV111.ChooseIndexRange(
+            rng,
+            "event.later_act.ancient.index_draw",
+            "event",
+            $"act:{act}:include_darv:{includeDarv}:pool:"
+                + CanonicalJson.Sha256(pool),
+            pool.Length).SelectedIndex];
     }
 
     public static RunState ContinueAct(RunState state)

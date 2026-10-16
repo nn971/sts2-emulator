@@ -61,8 +61,13 @@ public static class PrototypeNativeFutureOfPotions
                     PrototypeCardType.Skill,
                     PrototypeCardType.Power
                 };
-            var cardType = cardTypes[PrototypeRng.NextInt(
-                rng, "event", cardTypes.Length)];
+            var cardType = cardTypes[LegacyRandomChoiceV111.ChooseIndexRange(
+                rng,
+                "event.future_of_potions.card_type.index_draw",
+                "event",
+                $"potion_slot:{slot}:potion:{potionId}:pool:"
+                    + CanonicalJson.Sha256(cardTypes),
+                cardTypes.Length).SelectedIndex];
             if (offers.Count < 3)
             {
                 offers.Add(new PrototypeFuturePotionOffer(

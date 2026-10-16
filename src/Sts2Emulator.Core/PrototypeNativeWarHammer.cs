@@ -52,7 +52,12 @@ public sealed partial class PrototypeGameEngine
                 // Prototype runs do not own run.niche. Keep their test path
                 // on the legacy event stream without claiming native parity.
                 var shuffled = candidates.ToArray();
-                PrototypeRng.Shuffle(state.Rng, "event", shuffled);
+                _ = LegacyFisherYatesV111.ShuffleInPlace(
+                    shuffled,
+                    state.Rng,
+                    "event",
+                    "relic.war_hammer.elite_upgrade.shuffle_swap_index",
+                    $"player:0:war_hammer:{hammer}:eligible_cards");
                 candidates = shuffled.ToList();
             }
 

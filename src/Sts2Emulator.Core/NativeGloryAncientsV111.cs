@@ -242,7 +242,12 @@ public static class NativeGloryAncientsV111
 
         var shuffled = (CardInstance[])eligible.Clone();
         if (nativeRunRng is null)
-            PrototypeRng.Shuffle(rng, "event", shuffled);
+            _ = LegacyFisherYatesV111.ShuffleInPlace(
+                shuffled,
+                rng,
+                "event",
+                BeautifulBraceletShuffleSiteId,
+                "relic:beautiful_bracelet:acquisition");
         else
             _ = NativeFisherYatesV111.ShuffleInPlace(
                 shuffled, nativeRunRng,
@@ -293,7 +298,12 @@ public static class NativeGloryAncientsV111
         }
         else
         {
-            PrototypeRng.Shuffle(prototypeRng, "event", candidates);
+            _ = LegacyFisherYatesV111.ShuffleInPlace(
+                candidates,
+                prototypeRng,
+                "event",
+                FurCoatShuffleSiteId,
+                $"relic:fur_coat:act:{act}");
         }
 
         var selected = candidates.Take(Math.Min(8, candidates.Length))

@@ -144,10 +144,18 @@ public sealed partial class PrototypeGameEngine
             {
                 RepyChestPotionIds =
                 [
-                    potions[PrototypeRng.NextInt(
-                        state.Rng, "reward", potions.Length)],
-                    potions[PrototypeRng.NextInt(
-                        state.Rng, "reward", potions.Length)]
+                    potions[LegacyRandomChoiceV111.ChooseIndexRange(
+                        state.Rng,
+                        "event.war_historian.repy.potion_offer.index_draw",
+                        "reward",
+                        "event:war_historian_repy:potion_offer:0",
+                        potions.Length).SelectedIndex],
+                    potions[LegacyRandomChoiceV111.ChooseIndexRange(
+                        state.Rng,
+                        "event.war_historian.repy.potion_offer.index_draw",
+                        "reward",
+                        "event:war_historian_repy:potion_offer:1",
+                        potions.Length).SelectedIndex]
                 ],
                 RepyChestRelicIds = offers,
                 RepyChestGroupsResolved = 0

@@ -29,8 +29,13 @@ public sealed partial class PrototypeGameEngine
                 .Select(card => card.InstanceId).ToList();
             for (var i = 0; i < 2 && downgradable.Count > 0; i++)
             {
-                var index = PrototypeRng.NextInt(state.Rng,
-                    "event", downgradable.Count);
+                var index = LegacyRandomChoiceV111.ChooseIndexRange(
+                    state.Rng,
+                    "event.glory_reflections.downgrade_card.index_draw",
+                    "event",
+                    $"event:reflections:downgrade:{i}:pool:"
+                        + CanonicalJson.Sha256(downgradable),
+                    downgradable.Count).SelectedIndex;
                 var id = downgradable[index];
                 downgradable.RemoveAt(index);
                 player = player with
@@ -49,8 +54,13 @@ public sealed partial class PrototypeGameEngine
                 .Select(card => card.InstanceId).ToList();
             for (var i = 0; i < 4 && upgradable.Count > 0; i++)
             {
-                var index = PrototypeRng.NextInt(state.Rng,
-                    "event", upgradable.Count);
+                var index = LegacyRandomChoiceV111.ChooseIndexRange(
+                    state.Rng,
+                    "event.glory_reflections.upgrade_card.index_draw",
+                    "event",
+                    $"event:reflections:upgrade:{i}:pool:"
+                        + CanonicalJson.Sha256(upgradable),
+                    upgradable.Count).SelectedIndex;
                 var id = upgradable[index];
                 upgradable.RemoveAt(index);
                 player = player with

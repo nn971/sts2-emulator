@@ -116,7 +116,12 @@ public static class NativePaelRewardsV111
             ?? throw new InvalidOperationException("Pael's Legion skin selection requires the reward RNG state.");
         var seed = Convert.ToHexString(source.StateBytes) + ":paels-legion:" + index;
         var skinRng = PrototypeRng.CreateBundle(seed);
-        var skin = LegionSkins[PrototypeRng.NextInt(skinRng, "reward", LegionSkins.Length)];
+        var skin = LegionSkins[LegacyRandomChoiceV111.ChooseIndexRange(
+            skinRng,
+            "relic.paels_legion.skin.index_draw",
+            "reward",
+            $"relic:paels_legion:instance:{index}",
+            LegionSkins.Length).SelectedIndex];
         relics[index] = relics[index] with
         { PersistentState = JsonSerializer.SerializeToElement(new { Skin = skin }) };
         return player with { Relics = relics };

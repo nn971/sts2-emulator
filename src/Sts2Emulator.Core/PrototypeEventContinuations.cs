@@ -217,7 +217,12 @@ public sealed partial class PrototypeGameEngine
                 && eventState.NativePageIndex == 0
                 && eventState.ChosenChoiceId == "push")
             {
-                _ = PrototypeRng.NextInt(state.Rng, "event", 100);
+                _ = LegacyRandomChoiceV111.ChooseBoundedInteger(
+                    state.Rng,
+                    "event.stone_of_all_time.push_ticket",
+                    "event",
+                    "event:stone_of_all_time:push",
+                    100);
                 return PreserveNativeEventCompletionPage(state, "push");
             }
 

@@ -32,11 +32,13 @@ public sealed partial class PrototypeGameEngine
                 null, null, false))
             .Select(card => card.InstanceId)
             .ToList();
-        for (var i = shuffled.Count - 1; i > 0; i--)
-        {
-            var j = PrototypeRng.NextInt(state.Rng, "event", i + 1);
-            (shuffled[i], shuffled[j]) = (shuffled[j], shuffled[i]);
-        }
+        _ = LegacyFisherYatesV111.ShuffleInPlace(
+            shuffled,
+            state.Rng,
+            "event",
+            "event.doors_light.shuffle_swap_index",
+            "event:doors_light:eligible_cards:"
+                + CanonicalJson.Sha256(shuffled));
 
         var selected = shuffled.Take(2).ToHashSet();
         var player = state.Player with

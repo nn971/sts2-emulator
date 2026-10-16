@@ -43,7 +43,13 @@ public static class PrototypeNativeStoneOfAllTime
                 "Stone of All Time requires an owned potion.");
         }
 
-        return slots[PrototypeRng.NextInt(rng, "event", slots.Length)];
+        return slots[LegacyRandomChoiceV111.ChooseIndexRange(
+            rng,
+            "event.stone_of_all_time.potion_slot.index_draw",
+            "event",
+            "event:stone_of_all_time:potion_slots:"
+                + CanonicalJson.Sha256(slots),
+            slots.Length).SelectedIndex];
     }
 }
 
@@ -83,7 +89,12 @@ public sealed partial class PrototypeGameEngine
             }
         };
 
-        _ = PrototypeRng.NextInt(result.Rng, "event", 100);
+        _ = LegacyRandomChoiceV111.ChooseBoundedInteger(
+            result.Rng,
+            "event.stone_of_all_time.lift_ticket",
+            "event",
+            "event:stone_of_all_time:lift",
+            100);
         return PreserveNativeEventCompletionPage(result, "lift");
     }
 }

@@ -66,8 +66,12 @@ public sealed partial class PrototypeGameEngine
                     id, previousElite)).ToArray();
             if (eligibleElites.Length == 0)
                 eligibleElites = availableElites;
-            var index = PrototypeRng.NextInt(
-                state.Rng, "combat", eligibleElites.Length);
+            var index = LegacyRandomChoiceV111.ChooseIndexRange(
+                state.Rng,
+                "combat.encounter.underdocks.elite.index_draw",
+                "combat",
+                "act:1:elite:pool:" + CanonicalJson.Sha256(eligibleElites),
+                eligibleElites.Length).SelectedIndex;
             var selectedElite = eligibleElites[index];
             return (
                 PrototypeContent.Encounter(selectedElite),
@@ -129,8 +133,13 @@ public sealed partial class PrototypeGameEngine
         if (eligible.Length == 0)
             eligible = available;
 
-        var selected = PrototypeRng.NextInt(
-            state.Rng, "combat", eligible.Length);
+        var kind = isWeak ? "weak" : "normal";
+        var selected = LegacyRandomChoiceV111.ChooseIndexRange(
+            state.Rng,
+            "combat.encounter.underdocks." + kind + ".index_draw",
+            "combat",
+            $"act:1:{kind}:pool:{CanonicalJson.Sha256(eligible)}",
+            eligible.Length).SelectedIndex;
         var encounterId = eligible[selected];
         var nextRemaining = available
             .Where(id => !StringComparer.Ordinal.Equals(id, encounterId))

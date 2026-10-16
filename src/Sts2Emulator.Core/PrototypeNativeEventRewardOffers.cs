@@ -102,8 +102,14 @@ public sealed partial class PrototypeGameEngine
                     RequireWorld(state).Act, 3, state.Rng);
                 var potion = CanAcquirePotion(player)
                     ? PrototypeContent.PotionPool[
-                        PrototypeRng.NextInt(state.Rng,
-                            "reward", PrototypeContent.PotionPool.Length)]
+                        LegacyRandomChoiceV111.ChooseIndexRange(
+                            state.Rng,
+                            "event.reward.offer_potion.model.index_draw",
+                            "reward",
+                            prefix + ":potion_pool:"
+                                + CanonicalJson.Sha256(
+                                    PrototypeContent.PotionPool),
+                            PrototypeContent.PotionPool.Length).SelectedIndex]
                     : null;
                 return new RewardState(
                     SourceRoom: prefix,
@@ -205,8 +211,18 @@ public sealed partial class PrototypeGameEngine
 
                 // The native single-player Silent version has no
                 // Defect-specific Claw bundle exception.
-                PrototypeRng.Shuffle(state.Rng, "reward", commons);
-                PrototypeRng.Shuffle(state.Rng, "reward", uncommons);
+                _ = LegacyFisherYatesV111.ShuffleInPlace(
+                    commons,
+                    state.Rng,
+                    "reward",
+                    "event.reward.card_bundle.shuffle_swap_index",
+                    prefix + ":common_bundle");
+                _ = LegacyFisherYatesV111.ShuffleInPlace(
+                    uncommons,
+                    state.Rng,
+                    "reward",
+                    "event.reward.card_bundle.shuffle_swap_index",
+                    prefix + ":uncommon_bundle");
                 return new RewardState(
                     SourceRoom: prefix,
                     CardOptions: [],
@@ -273,7 +289,13 @@ public sealed partial class PrototypeGameEngine
                         "No unowned relics available for a custom relic reward.");
                 }
                 var relicId = available[
-                    PrototypeRng.NextInt(state.Rng, "reward", available.Length)];
+                    LegacyRandomChoiceV111.ChooseIndexRange(
+                        state.Rng,
+                        "relic.unowned_random_selection.index_draw",
+                        "reward",
+                        prefix + ":unowned_relic_pool:"
+                            + CanonicalJson.Sha256(available),
+                        available.Length).SelectedIndex];
                 return new RewardState(
                     SourceRoom: prefix,
                     CardOptions: [],

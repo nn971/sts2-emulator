@@ -1346,8 +1346,12 @@ public static class PrototypeNativeUnderdocksRunFactory
         }
         rng.Streams[combatIndex] = clean.Streams[cleanCombatIndex].Fork();
         var bosses = PrototypeNativeUnderdocks.NativeBossEncounterIds;
-        var boss = bosses[PrototypeRng.NextInt(
-            rng, "combat", bosses.Length)];
+        var boss = bosses[LegacyRandomChoiceV111.ChooseIndexRange(
+            rng,
+            "combat.encounter.underdocks.boss.index_draw",
+            "combat",
+            "act:1:underdocks:boss_pool:" + CanonicalJson.Sha256(bosses),
+            bosses.Length).SelectedIndex];
 
         // Both native Act 1 regions use the same StandardActMap room
         // constraints, with a distinct region profile for routing.

@@ -72,7 +72,12 @@ public static class PrototypeNativeEndlessConveyor
 
         // Native uses NextFloat()*weight; the prototype uses a single
         // integer draw in the same event stream, with the same weights.
-        var roll = PrototypeRng.NextInt(rng, "event", totalWeight);
+        var roll = LegacyRandomChoiceV111.ChooseBoundedInteger(
+            rng,
+            "event.endless_conveyor.dish_weighted_ticket",
+            "event",
+            $"dish:{nextRoll}:pool:{CanonicalJson.Sha256(candidates)}",
+            totalWeight).SelectedIndex;
         var selected = candidates[^1].Id;
         foreach (var dish in candidates)
         {
@@ -212,8 +217,12 @@ public sealed partial class PrototypeGameEngine
                     throw new NotSupportedException(
                         "Fried Eel has no supported Colorless card.");
                 }
-                var id = pool[PrototypeRng.NextInt(
-                    state.Rng, "event", pool.Length)];
+                var id = pool[LegacyRandomChoiceV111.ChooseIndexRange(
+                    state.Rng,
+                    "event.endless_conveyor.colorless_card.index_draw",
+                    "event",
+                    $"dish:{evt.NativeDishCount}:pool:{CanonicalJson.Sha256(pool)}",
+                    pool.Length).SelectedIndex];
                 playerAfter = AppendCard(
                     playerAfter, nextCardId++, id, state.Rng);
                 break;
@@ -228,7 +237,9 @@ public sealed partial class PrototypeGameEngine
                 pendingPotions =
                 [
                     PrototypeNativePotionShop.PickUniform(
-                        state.Rng, "reward")
+                        state.Rng,
+                        "reward",
+                        $"event:endless_conveyor:dish:{evt.NativeDishCount}:potion")
                 ];
                 break;
 
@@ -292,8 +303,13 @@ public sealed partial class PrototypeGameEngine
         {
             return player;
         }
-        var chosen = candidates[
-            PrototypeRng.NextInt(rng, "event", candidates.Length)];
+        var chosen = candidates[LegacyRandomChoiceV111.ChooseIndexRange(
+            rng,
+            "event.endless_conveyor.random_upgrade.card_instance",
+            "event",
+            "endless_conveyor:deck:"
+                + CanonicalJson.Sha256(candidates),
+            candidates.Length).SelectedIndex];
         return player with
         {
             Deck = player.Deck.Select(card =>
@@ -378,8 +394,12 @@ public sealed partial class PrototypeGameEngine
                 enemy with
                 {
                     Hp = Math.Max(1, enemy.Hp -
-                        (2 + PrototypeRng.NextInt(
-                            state.Rng, "combat", 8))),
+                        (2 + LegacyRandomChoiceV111.ChooseBoundedInteger(
+                            state.Rng,
+                            "event.punch_off.construct_hp_offset.index_draw",
+                            "combat",
+                            $"enemy:{enemy.InstanceId}:construct:{index}",
+                            8).SelectedIndex)),
                     MoveIndex = index == 0 ? 1 : 0
                 }).ToArray();
             var combatWorld = RequireWorld(started);
@@ -411,11 +431,19 @@ public sealed partial class PrototypeGameEngine
             throw new NotSupportedException(
                 "Punch Off requires supported relic and potion rewards.");
         }
-        var relic = available[PrototypeRng.NextInt(
-            state.Rng, "reward", available.Length)];
-        var potion = PrototypeContent.PotionPool[
-            PrototypeRng.NextInt(
-                state.Rng, "reward", PrototypeContent.PotionPool.Length)];
+        var relic = available[LegacyRandomChoiceV111.ChooseIndexRange(
+            state.Rng,
+            "event.punch_off.relic_reward.index_draw",
+            "reward",
+            "event:punch_off:relic_pool:" + CanonicalJson.Sha256(available),
+            available.Length).SelectedIndex];
+        var potionPool = PrototypeContent.PotionPool;
+        var potion = potionPool[LegacyRandomChoiceV111.ChooseIndexRange(
+            state.Rng,
+            "event.punch_off.potion_reward.index_draw",
+            "reward",
+            "event:punch_off:potion_pool:" + CanonicalJson.Sha256(potionPool),
+            potionPool.Length).SelectedIndex];
 
         var world = RequireWorld(state);
         var reward = new RewardState(
