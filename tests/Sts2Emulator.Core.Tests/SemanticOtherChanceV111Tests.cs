@@ -41,7 +41,7 @@ public sealed class SemanticOtherChanceV111Tests
         Assert.Equal(untouchedOther, NativeRngV111.ToSnapshot(
             next.Streams.Streams.Single(x => x.StreamId == "run.shuffle")));
         Assert.Equal(before, CanonicalJson.Sha256(privateState));
-        Assert.Equal(next, next.Fork());
+        Assert.Equal(CanonicalJson.Sha256(next), CanonicalJson.Sha256(next.Fork()));
     }
 
     [Fact]
