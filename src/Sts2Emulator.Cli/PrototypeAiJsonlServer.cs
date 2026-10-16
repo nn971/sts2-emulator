@@ -586,7 +586,8 @@ internal static class PrototypeAiJsonlServer
                             OptionalInt(request, "first_monster_combat_id") ?? 1,
                             OptionalInt(request, "map_column"),
                             OptionalInt(request, "map_row"),
-                            OptionalString(request, "other_chance_provider_id"));
+                            OptionalString(request, "other_chance_provider_id"),
+                            OptionalString(request, "fixture_draw_cost_relic_id"));
                         var next = SemanticPilotCombatEngineV111.BeginSeeded(entry);
                         var handle = StoreSemantic(next);
                         Write(new { requestId, ok = true,
