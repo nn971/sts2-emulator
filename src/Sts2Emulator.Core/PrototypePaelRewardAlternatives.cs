@@ -14,22 +14,32 @@ public sealed partial class PrototypeGameEngine
             ? "skip_reward_card" : "skip_reward_card_group" });
         var world = RequireWorld(state);
         var player = state.Player;
+        var nativeRunRng = state.NativeRunRng?.Fork();
         var wingIndex = Array.FindIndex(player.Relics, relic =>
             relic.RelicId == NativePaelRewardsV111.WingId && !relic.IsMelted);
         var count = checked(NativePaelRewardsV111.RewardsSacrificed(player.Relics[wingIndex]) + 1);
         player = NativePaelRewardsV111.SetRewardsSacrificed(player, wingIndex, count);
         if (count % 2 == 0)
         {
-            var draw = PrototypeNativeRelicGrabBag.Draw(world, player, state.Rng, merchant: false);
+            var draw = PrototypeNativeRelicGrabBag.Draw(
+                world, player, state.Rng, merchant: false,
+                nativeRunRng: nativeRunRng);
             world = draw.World;
             var id = draw.Id ?? throw new NotSupportedException("Pael's Wing requires an available front-bag relic.");
             player = player with { Relics = [..player.Relics, new(id, PrototypeJson.EmptyObject())] };
             var nextId = world.NextCardInstanceId;
             player = ApplyRelicRunEvent(player, PrototypeRunEventKind.RelicAcquired,
-                acquiredRelicId: id, rng: state.Rng, allocateCardId: () => nextId++);
+                acquiredRelicId: id, rng: state.Rng,
+                allocateCardId: () => nextId++,
+                nativeRunRng: nativeRunRng);
             world = world with { NextCardInstanceId = nextId, Reward = world.Reward! with
             { PendingDeckChoice = CreateRelicDeckChoice(player, id) } };
         }
-        return state with { Player = player, World = world };
+        return state with
+        {
+            Player = player,
+            NativeRunRng = nativeRunRng ?? state.NativeRunRng,
+            World = world
+        };
     }
 }

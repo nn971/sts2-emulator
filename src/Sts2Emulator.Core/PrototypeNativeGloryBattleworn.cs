@@ -128,16 +128,20 @@ public sealed partial class PrototypeGameEngine
             case 3:
             {
                 // Native PullNextRelicFromFront, offered via custom rewards.
+                var nativeRunRng = state.NativeRunRng?.Fork();
                 var drawn = PrototypeNativeRelicGrabBag.Draw(
-                    world, state.Player, state.Rng, merchant: false);
+                    world, state.Player, state.Rng, merchant: false,
+                    nativeRunRng: nativeRunRng);
                 if (drawn.Id is null)
                     return SetBattlewornResultPage(state with
                     {
                         Phase = RunPhase.Event,
+                        NativeRunRng = nativeRunRng ?? state.NativeRunRng,
                         World = drawn.World with { Combat = null }
                     }, "victory");
                 var rewardState = state with
                 {
+                    NativeRunRng = nativeRunRng ?? state.NativeRunRng,
                     World = drawn.World with
                     {
                         Combat = null,

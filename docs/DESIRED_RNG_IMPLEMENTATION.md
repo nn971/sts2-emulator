@@ -117,6 +117,9 @@ Neow's nested random relic pickup also advances the same bundle while
 preserving its existing reward continuation.
 Random relic gains from configured ordinary event choices use the same bag
 stream and preserve it through the event continuation.
+The same applies to Pael's Wing, the configured Glory Trial, Battleworn and
+Round Tea Party relic rewards, and Calling Bell and Toy Box relic offer
+generation. Their advanced bundles survive the pending event or reward.
 The potion factory now routes its unit-float rarity
 sample and within-tier model index through separate typed providers in source
 order. Native effect-random-target and Sly auto-play selections use typed

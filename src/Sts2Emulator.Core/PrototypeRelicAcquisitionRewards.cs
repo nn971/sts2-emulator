@@ -11,6 +11,7 @@ public sealed partial class PrototypeGameEngine
         if (count <= 0)
             return after;
         var world = RequireWorld(after);
+        var nativeRunRng = after.NativeRunRng?.Fork();
         // Event acquisition already suspends the selected option in its
         // ordinary event continuation, before completing the event room.
         if (world.Reward?.ExtraRelicWaxFlags is { Length: 5 } flags && flags.All(flag => flag)
@@ -20,20 +21,30 @@ public sealed partial class PrototypeGameEngine
         {
             var returnState = new PrototypeCustomRewardReturnState(
                 after.Phase, world.Reward, world.CustomRewardReturn);
-            var reward = CreateWaxRelicReward(after, after.Player, ToyBoxRewardSource, ref world);
+            var reward = CreateWaxRelicReward(
+                after, after.Player, ToyBoxRewardSource, ref world,
+                nativeRunRng);
             world = world with { Reward = reward, CustomRewardReturn = returnState };
-            after = after with { Phase = RunPhase.Reward, World = world };
+            after = after with
+            {
+                Phase = RunPhase.Reward,
+                NativeRunRng = nativeRunRng ?? after.NativeRunRng,
+                World = world
+            };
         }
         return after;
     }
 
     private static RewardState CreateWaxRelicReward(
-        RunState state, PlayerState player, string source, ref RunWorldState world)
+        RunState state, PlayerState player, string source,
+        ref RunWorldState world, RngBundle? nativeRunRng = null)
     {
         var ids = new string[5];
         for (var index = 0; index < ids.Length; index++)
         {
-            var draw = PrototypeNativeRelicGrabBag.Draw(world, player, state.Rng, merchant: false);
+            var draw = PrototypeNativeRelicGrabBag.Draw(
+                world, player, state.Rng, merchant: false,
+                nativeRunRng: nativeRunRng);
             world = draw.World;
             ids[index] = draw.Id ?? throw new NotSupportedException(
                 "Toy Box requires five available front-bag relic rewards.");

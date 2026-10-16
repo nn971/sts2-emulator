@@ -1471,6 +1471,11 @@ Configured ordinary event choices that grant a random relic now draw from
 that same stream and retain it through the existing event continuation.
 Source result/cursor parity remains unverified.
 
+Pael's Wing and the configured Glory Trial, Battleworn and Round Tea Party
+relic rewards now use and retain the same bundle. Calling Bell and Toy Box
+offer generation also advances it while the custom reward is pending. Source
+result/cursor parity remains unverified.
+
 Configured Overgrowth combat rewards now use the persistent `player.rewards`
 stream for potion pity, gold bounds, rarity-weighted potion selection, card
 rarity/model/upgrade draws, relic rarity, boss relic offer shuffling, and Lava

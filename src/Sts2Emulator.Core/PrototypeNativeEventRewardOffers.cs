@@ -14,7 +14,8 @@ public sealed partial class PrototypeGameEngine
         if (kind == PrototypeRunEffectKind.OfferWaxRelics)
             throw new InvalidOperationException("Wax reward construction requires retained bag updates.");
         return CreateDeferredEventRewardCore(
-            state, kind, player, eventId, ref world);
+            state, kind, player, eventId, ref world,
+            nativeRunRng: null);
     }
 
     private static RewardState CreateDeferredEventReward(
@@ -22,10 +23,11 @@ public sealed partial class PrototypeGameEngine
         PrototypeRunEffectKind kind,
         ref PlayerState player,
         string eventId,
-        ref RunWorldState world)
+        ref RunWorldState world,
+        RngBundle? nativeRunRng)
     {
         var reward = CreateDeferredEventRewardCore(
-            state, kind, player, eventId, ref world);
+            state, kind, player, eventId, ref world, nativeRunRng);
         if (kind is not (PrototypeRunEffectKind.OfferThreeRareCards
             or PrototypeRunEffectKind.OfferThreeCardsAndPotion
             or PrototypeRunEffectKind.OfferFiveClassCards
@@ -63,14 +65,16 @@ public sealed partial class PrototypeGameEngine
         PrototypeRunEffectKind kind,
         PlayerState player,
         string eventId,
-        ref RunWorldState world)
+        ref RunWorldState world,
+        RngBundle? nativeRunRng = null)
     {
         var prefix = "Event:" + eventId;
         switch (kind)
         {
             case PrototypeRunEffectKind.OfferWaxRelics:
             {
-                return CreateWaxRelicReward(state, player, prefix, ref world);
+                return CreateWaxRelicReward(
+                    state, player, prefix, ref world, nativeRunRng);
             }
             case PrototypeRunEffectKind.OfferThreeRareCards:
             {
@@ -317,7 +321,8 @@ public sealed partial class PrototypeGameEngine
         PlayerState player,
         string eventId,
         RngBundle rng,
-        ref RunWorldState world)
+        ref RunWorldState world,
+        RngBundle? nativeRunRng)
     {
         var relics = new List<string>(3);
         foreach (var rarity in new[]
@@ -329,7 +334,8 @@ public sealed partial class PrototypeGameEngine
         {
             var draw = PrototypeNativeRelicGrabBag.Draw(
                 world, player, rng, merchant: false,
-                forcedRarity: rarity);
+                forcedRarity: rarity,
+                nativeRunRng: nativeRunRng);
             world = draw.World;
             if (draw.Id is { } relicId)
                 relics.Add(relicId);

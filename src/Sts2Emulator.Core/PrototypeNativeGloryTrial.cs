@@ -31,6 +31,7 @@ public sealed partial class PrototypeGameEngine
     {
         RequireKind(action, "event_choice");
         var world = RequireWorld(state);
+        var nativeRunRng = state.NativeRunRng?.Fork();
         var evt = world.Event;
         if (world.Act != 3 ||
             evt?.EventId != PrototypeNativeGloryEvents.TrialId)
@@ -112,7 +113,8 @@ public sealed partial class PrototypeGameEngine
                 for (var i = 0; i < 2; i++)
                 {
                     var drawn = PrototypeNativeRelicGrabBag.Draw(
-                        world, player, state.Rng, merchant: false);
+                        world, player, state.Rng, merchant: false,
+                        nativeRunRng: nativeRunRng);
                     world = drawn.World;
                     if (drawn.Id is not { } relicId)
                         continue; // Depleted source-shaped partial bag.
@@ -123,7 +125,8 @@ public sealed partial class PrototypeGameEngine
                     };
                     player = ApplyRelicRunEvent(player,
                         PrototypeRunEventKind.RelicAcquired,
-                        acquiredRelicId: relicId, rng: state.Rng);
+                        acquiredRelicId: relicId, rng: state.Rng,
+                        nativeRunRng: nativeRunRng);
                     var deckChoice = CreateRelicEventDeckChoice(
                         choice, PrototypeContent.Relic(relicId));
                     if (deckChoice is not null)
@@ -207,6 +210,7 @@ public sealed partial class PrototypeGameEngine
         state = state with
         {
             Player = player,
+            NativeRunRng = nativeRunRng ?? state.NativeRunRng,
             World = world with
             {
                 NextCardInstanceId = nextId,

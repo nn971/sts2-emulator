@@ -174,12 +174,18 @@ public sealed partial class PrototypeGameEngine
         {
             Hp = Math.Max(0, state.Player.Hp - 11)
         };
-        state = state with { Player = playerAfterHit };
+        var nativeRunRng = state.NativeRunRng?.Fork();
+        state = state with
+        {
+            Player = playerAfterHit,
+            NativeRunRng = nativeRunRng ?? state.NativeRunRng
+        };
         if (playerAfterHit.Hp == 0)
             return EndRun(state, "defeat");
 
         var draw = PrototypeNativeRelicGrabBag.Draw(
-            world, playerAfterHit, state.Rng, merchant: false);
+            world, playerAfterHit, state.Rng, merchant: false,
+            nativeRunRng: nativeRunRng);
         world = draw.World;
         if (draw.Id is not null)
         {
@@ -191,12 +197,14 @@ public sealed partial class PrototypeGameEngine
             };
             playerAfterHit = ApplyRelicRunEvent(playerAfterHit,
                 PrototypeRunEventKind.RelicAcquired,
-                acquiredRelicId: draw.Id, rng: state.Rng);
+                acquiredRelicId: draw.Id, rng: state.Rng,
+                nativeRunRng: nativeRunRng);
         }
 
         return PreserveNativeEventCompletionPage(state with
         {
             Player = playerAfterHit,
+            NativeRunRng = nativeRunRng ?? state.NativeRunRng,
             World = world
         }, choice);
     }

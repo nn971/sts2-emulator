@@ -1640,7 +1640,7 @@ public sealed partial class PrototypeGameEngine
                         state,
                         effect.Kind,
                         ref player,
-                        eventState.EventId, ref world);
+                        eventState.EventId, ref world, nativeRunRng);
                     break;
 
                 case PrototypeRunEffectKind.GainPotionSlots:
@@ -1806,7 +1806,7 @@ public sealed partial class PrototypeGameEngine
                             throw new InvalidOperationException("Toy Box acquisition already has a custom reward.");
                         deferredReward = CreateDeferredEventReward(state,
                             PrototypeRunEffectKind.OfferWaxRelics, ref player,
-                            eventState.EventId, ref world);
+                            eventState.EventId, ref world, nativeRunRng);
                     }
                     if (relicId == NativeDarvEventV111.CallingBellId)
                     {
@@ -1814,7 +1814,8 @@ public sealed partial class PrototypeGameEngine
                             throw new InvalidOperationException(
                                 "Calling Bell acquisition already has a custom reward.");
                         deferredReward = CreateCallingBellRelicReward(
-                            player, eventState.EventId, state.Rng, ref world);
+                            player, eventState.EventId, state.Rng, ref world,
+                            nativeRunRng);
                     }
 
                     var relicChoice =
