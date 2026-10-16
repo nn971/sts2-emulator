@@ -118,7 +118,8 @@ def play_victory(seed=SEED, region="Overgrowth"):
                     combat = combat.resolve_intent(
                         event["semanticCandidates"][0]["intentId"])
                 else:
-                    combat = combat.resolve(0)
+                    combat = combat.resolve_draw_card(
+                        event["candidates"][0]["cardInstanceId"])
                 continue
             assert combat.boundary == "player"
             chosen, has_strike, _ = choose_action(combat)

@@ -64,7 +64,8 @@ def rollout():
                     event["totalRawWeight"])
                 combat = combat.resolve_intent(candidates[0]["intentId"])
             else:
-                combat = combat.resolve(0)
+                combat = combat.resolve_draw_card(
+                    event["candidates"][0]["cardInstanceId"])
             count += 1
         assert any(kind == "enemy_intent" for kind, _ in transcript)
         assert combat.boundary in ("player", "terminal")
@@ -105,7 +106,8 @@ def terminal_rollout():
                     combat = combat.resolve_intent(
                         event["semanticCandidates"][0]["intentId"])
                 else:
-                    combat = combat.resolve(0)
+                    combat = combat.resolve_draw_card(
+                        event["candidates"][0]["cardInstanceId"])
                 events += 1
         assert combat.boundary == "terminal"
         assert combat.outcome == "defeat", combat.status()
@@ -204,7 +206,8 @@ def engine_cost_rollout():
                 combat = combat.resolve_intent(
                     event["semanticCandidates"][0]["intentId"])
             else:
-                combat = combat.resolve(0)
+                combat = combat.resolve_draw_card(
+                    event["candidates"][0]["cardInstanceId"])
         assert combat.boundary in ("player", "terminal")
         state = combat.status()
         assert state["otherChanceProvider"] == provider

@@ -125,6 +125,60 @@ public sealed class SemanticPilotCombatV111Tests
     }
 
     [Fact]
+    public void SemanticDrawResolvesByEventAndCardIdentityAndReplaysTypedDecision()
+    {
+        var state = SemanticPilotCombatEngineV111.BeginSeeded(
+            Seeded("semantic-p0-card-identity-event"));
+        for (var stage = 0; state.DrawPending is null; stage++)
+        {
+            Assert.True(stage < 200,
+                "Expected a natural discard recycle to request a card.");
+            if (state.IntentPending is { } intent)
+            {
+                var support = ControlledTurnIntentEngineV111
+                    .DescribePendingSemanticIntent(
+                        state.PendingEndTurn!.Intents!)!;
+                state = SemanticPilotCombatEngineV111.ResolveIntent(
+                    state, state.Fingerprint,
+                    support.Candidates[0].IntentId);
+            }
+            else if (state.AtPlayerBoundary && !state.CombatTerminal)
+            {
+                var endTurn = Assert.Single(new PrototypeAiEnvironment()
+                    .Observe(state.Run).LegalActions,
+                    action => action.Kind == "end_turn");
+                state = SemanticPilotCombatEngineV111.Step(
+                    state, state.Fingerprint, endTurn.ActionId);
+            }
+            else
+                Assert.Fail("Expected an intent, player, or draw boundary.");
+        }
+
+        var pending = state.DrawPending!;
+        var selectedId = pending.CandidateCardInstanceIds[^1];
+        var fingerprint = state.Fingerprint;
+        Assert.Throws<InvalidOperationException>(() =>
+            SemanticPilotCombatEngineV111.ResolveDrawCard(
+                state, fingerprint, "stale-event", selectedId));
+        Assert.Throws<InvalidOperationException>(() =>
+            SemanticPilotCombatEngineV111.ResolveDrawCard(
+                state, fingerprint, pending.EventId, long.MaxValue));
+        Assert.Equal(fingerprint, state.Fingerprint);
+
+        state = SemanticPilotCombatEngineV111.ResolveDrawCard(
+            state, fingerprint, pending.EventId, selectedId);
+        var decision = Assert.Single(state.History,
+            transition => transition.Kind == "semantic_draw").DrawDecision!;
+        Assert.Equal(pending.EventId, decision.Event.EventId);
+        Assert.Equal(pending.CandidateCardInstanceIds,
+            decision.Event.CandidateCardInstanceIds);
+        Assert.Equal(selectedId, decision.SelectedCardInstanceId);
+        Assert.Equal(state.Fingerprint,
+            SemanticPilotCombatEngineV111.Restore(
+                SemanticPilotCombatEngineV111.Save(state)).Fingerprint);
+    }
+
+    [Fact]
     public void BasicSilentActionKeepsCommittedHiddenDeckUntouched()
     {
         var state = SemanticPilotCombatEngineV111.Begin(

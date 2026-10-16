@@ -332,6 +332,8 @@ internal static class PrototypeAiJsonlServer
                                 SemanticIntentEventV111.EventSchemaId,
                             semanticChanceEventContractId =
                                 SemanticChanceEventContractV111.SchemaId,
+                            semanticDrawChoiceSchemaId =
+                                SemanticDeckStateV111.SchemaId,
                             semanticProbabilityStatus = "UNVERIFIED",
                             controlledChanceScope = "isolated-playable-combat-stage-continuations-v1",
                             controlledChanceSupportedSites = new[]
@@ -717,6 +719,20 @@ internal static class PrototypeAiJsonlServer
                             current, RequiredString(request, "fingerprint"),
                             OptionalInt(request, "selected_index") ??
                                 throw new ArgumentException("Missing selected_index."));
+                        var handle = StoreSemantic(next);
+                        Write(new { requestId, ok = true,
+                            result = SemanticResult(next, handle, parentHandle) });
+                        break;
+                    }
+
+                    case "semantic_resolve_draw_card":
+                    {
+                        var parentHandle = RequiredString(request, "semantic_handle");
+                        var current = RequireSemantic(request);
+                        var next = SemanticPilotCombatEngineV111.ResolveDrawCard(
+                            current, RequiredString(request, "fingerprint"),
+                            RequiredString(request, "event_id"),
+                            RequiredLong(request, "card_instance_id"));
                         var handle = StoreSemantic(next);
                         Write(new { requestId, ok = true,
                             result = SemanticResult(next, handle, parentHandle) });
@@ -1730,6 +1746,16 @@ internal static class PrototypeAiJsonlServer
 
         return value.GetString()
             ?? throw new InvalidOperationException($"Request field '{name}' is null.");
+    }
+
+    private static long RequiredLong(JsonElement request, string name)
+    {
+        if (!request.TryGetProperty(name, out var value) ||
+            value.ValueKind != JsonValueKind.Number ||
+            !value.TryGetInt64(out var result))
+            throw new InvalidOperationException(
+                $"Request field '{name}' must be an integer.");
+        return result;
     }
 
     private static bool OptionalBool(JsonElement request, string name)

@@ -8,7 +8,8 @@ namespace Sts2Emulator.Core;
 /// <summary>One externally replayable action or Nature decision.</summary>
 public sealed record SemanticPilotTransitionV111(
     string Kind, string? ActionId = null, int? SelectedIndex = null,
-    SemanticIntentDecisionV111? IntentDecision = null);
+    SemanticIntentDecisionV111? IntentDecision = null,
+    SemanticDrawDecisionV111? DrawDecision = null);
 
 /// <summary>
 /// Independently replayable setup provenance. The default entry is a
@@ -125,23 +126,28 @@ public sealed record SemanticPilotCombatV111(
         Run = Run.Fork(),
         PendingEndTurn = PendingEndTurn?.Fork(),
         PendingInitialIntents = PendingInitialIntents?.Fork(),
-        History = History.Select(transition =>
-            transition.IntentDecision is { } decision
-                ? transition with
+        History = History.Select(transition => transition switch
+        {
+            { IntentDecision: { } decision } => transition with
+            {
+                IntentDecision = decision with
                 {
-                    IntentDecision = decision with
+                    Event = decision.Event with
                     {
-                        Event = decision.Event with
+                        Support = decision.Event.Support with
                         {
-                            Support = decision.Event.Support with
-                            {
-                                Candidates = (SemanticIntentCandidateV111[])
-                                    decision.Event.Support.Candidates.Clone()
-                            }
+                            Candidates = (SemanticIntentCandidateV111[])
+                                decision.Event.Support.Candidates.Clone()
                         }
                     }
                 }
-                : transition).ToArray(),
+            },
+            { DrawDecision: { } decision } => transition with
+            {
+                DrawDecision = decision.Fork()
+            },
+            _ => transition
+        }).ToArray(),
         OtherChance = OtherChance?.Fork(),
         NativePolicyAudit = NativePolicyAudit is { } audit
             ? audit with
@@ -929,17 +935,22 @@ public static class SemanticPilotCombatEngineV111
 
     public static SemanticPilotCombatV111 Resolve(
         SemanticPilotCombatV111 current, string fingerprint, int selectedIndex)
-        => Resolve(current, fingerprint, selectedIndex, null);
+        => Resolve(current, fingerprint, selectedIndex, null, null, false);
 
     private static SemanticPilotCombatV111 Resolve(
         SemanticPilotCombatV111 current, string fingerprint, int selectedIndex,
-        SemanticIntentDecisionV111? semanticIntent)
+        SemanticIntentDecisionV111? semanticIntent,
+        SemanticDrawDecisionV111? expectedDeckDecision,
+        bool recordSemanticDraw)
     {
         Validate(current);
         if (current.Fingerprint != fingerprint)
             throw new InvalidOperationException("Stale semantic Nature fingerprint.");
         if (semanticIntent is not null)
             ValidateSemanticIntentDecision(current, semanticIntent, selectedIndex);
+        var drawEvent = current.DrawPending;
+        if (expectedDeckDecision is not null)
+            ValidateDeckDecision(drawEvent, expectedDeckDecision);
         if (current.PendingInitialIntents is { Pending: not null } initialIntents)
         {
             var resolvedInitial = ControlledTurnIntentEngineV111.Resolve(
@@ -987,7 +998,7 @@ public static class SemanticPilotCombatEngineV111
                 Run = nextRun,
                 PendingInitialIntents = pendingInitial,
                 History = current.History.Append(NatureTransition(
-                    selectedIndex, semanticIntent)).ToArray()
+                    selectedIndex, semanticIntent, null)).ToArray()
             };
             Validate(initialState);
             return initialState;
@@ -999,12 +1010,45 @@ public static class SemanticPilotCombatEngineV111
                 "Only semantic enemy_intent and draw_card are Nature-controlled.");
         var resolved = SemanticEndTurnEngineV111.Resolve(
             pending, pending.Fingerprint, selectedIndex);
+        SemanticDrawDecisionV111? deckDecision = null;
+        if (drawEvent is not null)
+        {
+            var deck = resolved.Run.World?.Combat?.SemanticDeck ??
+                throw new InvalidDataException(
+                    "Semantic card draw lost its provider-owned deck.");
+            var recordedChoice = deck.Transcript?.SingleOrDefault(choice =>
+                choice.EventId == drawEvent.EventId) ??
+                throw new InvalidDataException(
+                    "Semantic card draw did not record its source event.");
+            if (recordedChoice.SiteId != drawEvent.SiteId ||
+                recordedChoice.Purpose != drawEvent.Purpose ||
+                recordedChoice.TopOffset != drawEvent.TopOffset ||
+                recordedChoice.Ordinal != drawEvent.Ordinal ||
+                recordedChoice.ProbabilityStatus != drawEvent.ProbabilityStatus ||
+                !recordedChoice.CandidateCardInstanceIds.SequenceEqual(
+                    drawEvent.CandidateCardInstanceIds))
+                throw new InvalidDataException(
+                    "Semantic card draw transcript diverged from its event.");
+            deckDecision = new SemanticDrawDecisionV111(drawEvent,
+                recordedChoice.SelectedIndex,
+                recordedChoice.SelectedCardInstanceId);
+            ValidateDeckDecision(drawEvent, deckDecision);
+            if (recordedChoice.SelectedIndex != selectedIndex)
+                throw new InvalidDataException(
+                    "Semantic card draw selected a different candidate index.");
+        }
+        if (expectedDeckDecision is not null &&
+            CanonicalJson.Sha256(expectedDeckDecision) !=
+                CanonicalJson.Sha256(deckDecision))
+            throw new InvalidOperationException(
+                "Semantic card decision is stale or outside current support.");
         return NormalizeNoncontrolledCosts(current with
         {
             Run = resolved.Run,
             PendingEndTurn = resolved.Complete ? null : resolved,
             History = current.History.Append(NatureTransition(
-                selectedIndex, semanticIntent)).ToArray()
+                selectedIndex, semanticIntent,
+                recordSemanticDraw ? deckDecision : null)).ToArray()
         });
     }
 
@@ -1038,7 +1082,39 @@ public static class SemanticPilotCombatEngineV111
         var decision = new SemanticIntentDecisionV111(
             semanticEvent, candidate.IntentId);
         decision.Validate();
-        return Resolve(current, fingerprint, candidate.TicketStart, decision);
+        return Resolve(current, fingerprint, candidate.TicketStart,
+            decision, null, false);
+    }
+
+    /// <summary>
+    /// Resolve one deferred draw by its stable semantic event and physical
+    /// card-instance identity. The source-compatible numeric resolver stays
+    /// available, but semantic consumers need not interpret an index.
+    /// </summary>
+    public static SemanticPilotCombatV111 ResolveDrawCard(
+        SemanticPilotCombatV111 current, string fingerprint,
+        string eventId, long cardInstanceId)
+    {
+        Validate(current);
+        if (current.Fingerprint != fingerprint)
+            throw new InvalidOperationException(
+                "Stale semantic draw fingerprint.");
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
+        var pending = current.DrawPending ??
+            throw new InvalidOperationException(
+                "Only a pending semantic draw supports card-instance resolution.");
+        if (pending.EventId != eventId)
+            throw new InvalidOperationException(
+                "Semantic draw event ID is stale or mismatched.");
+        var index = Array.IndexOf(pending.CandidateCardInstanceIds,
+            cardInstanceId);
+        if (index < 0)
+            throw new InvalidOperationException(
+                "Card instance is outside the pending semantic draw support.");
+        var expected = new SemanticDrawDecisionV111(pending, index,
+            cardInstanceId);
+        expected.Validate();
+        return Resolve(current, fingerprint, index, null, expected, true);
     }
 
     /// <summary>
@@ -1108,13 +1184,36 @@ public static class SemanticPilotCombatEngineV111
         decision.Validate();
     }
 
+    private static void ValidateDeckDecision(
+        SemanticDeckEventV111? pending,
+        SemanticDrawDecisionV111 decision)
+    {
+        decision.Validate();
+        var recordedEvent = decision.Event;
+        if (pending is null ||
+            CanonicalJson.Sha256(recordedEvent) !=
+                CanonicalJson.Sha256(pending) ||
+            !recordedEvent.CandidateCardInstanceIds.SequenceEqual(
+                pending.CandidateCardInstanceIds) ||
+            decision.SelectedIndex < 0 ||
+            decision.SelectedIndex >= pending.CandidateCardInstanceIds.Length ||
+            pending.CandidateCardInstanceIds[decision.SelectedIndex] !=
+                decision.SelectedCardInstanceId)
+            throw new InvalidOperationException(
+                "Semantic draw decision is outside its pending event support.");
+    }
+
     private static SemanticPilotTransitionV111 NatureTransition(
-        int selectedIndex, SemanticIntentDecisionV111? semanticIntent) =>
-        semanticIntent is null
-            ? new SemanticPilotTransitionV111("nature",
-                SelectedIndex: selectedIndex)
-            : new SemanticPilotTransitionV111("semantic_intent",
-                IntentDecision: semanticIntent);
+        int selectedIndex, SemanticIntentDecisionV111? semanticIntent,
+        SemanticDrawDecisionV111? deckDecision) =>
+        semanticIntent is not null
+            ? new SemanticPilotTransitionV111("semantic_intent",
+                IntentDecision: semanticIntent)
+            : deckDecision is not null
+                ? new SemanticPilotTransitionV111("semantic_draw",
+                    DrawDecision: deckDecision.Fork())
+                : new SemanticPilotTransitionV111("nature",
+                    SelectedIndex: selectedIndex);
 
     /// <summary>
     /// The initial two-site pilot does not optimize drawn-card costs.
@@ -1317,6 +1416,10 @@ public static class SemanticPilotCombatEngineV111
                 "semantic_intent" when transition.IntentDecision is not null =>
                     ResolveIntent(replay, replay.Fingerprint,
                         transition.IntentDecision.IntentId),
+                "semantic_draw" when transition.DrawDecision is not null =>
+                    ResolveDrawCard(replay, replay.Fingerprint,
+                        transition.DrawDecision.Event.EventId,
+                        transition.DrawDecision.SelectedCardInstanceId),
                 "nature" when transition.SelectedIndex is not null =>
                     Resolve(replay, replay.Fingerprint,
                         transition.SelectedIndex.Value),

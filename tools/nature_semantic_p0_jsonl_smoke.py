@@ -22,6 +22,8 @@ def main():
         caps = session.capabilities
         assert caps["semanticChanceSchemaId"] == (
             "sts2-v111-semantic-playable-p0-v1")
+        assert caps["semanticDrawChoiceSchemaId"] == (
+            "sts2-v111-semantic-deck-v1")
         assert caps["semanticControlledSites"] == ["enemy_intent", "draw_card"]
         assert caps["semanticProbabilityStatus"] == "UNVERIFIED"
         assert caps["controlledChanceSchemaId"] == (
@@ -101,11 +103,11 @@ def main():
                            c["cardModelId"].startswith("proto.")
                            for c in event["candidates"])
                 assert event["shuffleEpoch"] >= 0
-                selected = 0
             prior = advanced.fingerprint
             advanced = (advanced.resolve_intent(selected)
                         if event["kind"] == "enemy_intent"
-                        else advanced.resolve(selected))
+                        else advanced.resolve_draw_card(
+                            event["candidates"][0]["cardInstanceId"]))
             assert advanced.fingerprint != prior
             assert advanced.fingerprint == session.load_semantic_snapshot(
                 advanced.save_snapshot()).fingerprint

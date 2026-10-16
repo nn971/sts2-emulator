@@ -61,6 +61,40 @@ public sealed record SemanticDeckEventV111(
     string SupportFingerprint, string ProbabilityStatus = "UNVERIFIED")
     : ISemanticChanceEventV111;
 
+/// <summary>Typed result for one semantic draw-pile event.</summary>
+public sealed record SemanticDrawDecisionV111(
+    SemanticDeckEventV111 Event, int SelectedIndex,
+    long SelectedCardInstanceId)
+{
+    public void Validate()
+    {
+        if (Event.SchemaId != SemanticDeckStateV111.SchemaId ||
+            string.IsNullOrWhiteSpace(Event.EventId) ||
+            Event.OperationKind != "choose_card_instance" ||
+            Event.StreamId != "semantic.draw_pile" ||
+            Event.OwnerId != "player:draw_pile" ||
+            Event.CandidateCardInstanceIds is not { Length: > 0 } ||
+            Event.SupportFingerprint != CanonicalJson.Sha256(
+                Event.CandidateCardInstanceIds) ||
+            Event.ProbabilityStatus != "UNVERIFIED" ||
+            SelectedIndex < 0 ||
+            SelectedIndex >= Event.CandidateCardInstanceIds.Length ||
+            Event.CandidateCardInstanceIds[SelectedIndex] !=
+                SelectedCardInstanceId)
+            throw new InvalidDataException(
+                "Invalid semantic draw decision event or outcome.");
+    }
+
+    public SemanticDrawDecisionV111 Fork() => this with
+    {
+        Event = Event with
+        {
+            CandidateCardInstanceIds =
+                (long[])Event.CandidateCardInstanceIds.Clone()
+        }
+    };
+}
+
 /// <summary>
 /// Provider-private stochastic deck state. Arrays are treated as immutable:
 /// every transition forks before changing a slot or a pool. Known and unknown

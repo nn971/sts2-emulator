@@ -216,6 +216,24 @@ class SemanticCombat:
                 "semantic_resolve_intent", semantic_handle=self.handle,
                 fingerprint=self.fingerprint, intent_id=intent_id))
 
+    def resolve_draw_card(self, card_instance_id: int):
+        """Resolve a deferred draw by event and physical instance identity."""
+        if not self.pending or self.pending["kind"] != "draw_card":
+            raise EmulatorError("Expected a draw_card Nature event")
+        if self.session.capabilities.get("semanticDrawChoiceSchemaId") != (
+                "sts2-v111-semantic-deck-v1"):
+            raise EmulatorError("Emulator does not expose semantic draw identities")
+        candidate_ids = [
+            candidate["cardInstanceId"]
+            for candidate in self.pending.get("candidates", [])]
+        if card_instance_id not in candidate_ids:
+            raise ValueError("Card instance is outside the pending draw support")
+        return SemanticCombat.from_wire(
+            self.session, self.session.call(
+                "semantic_resolve_draw_card", semantic_handle=self.handle,
+                fingerprint=self.fingerprint, event_id=self.pending["eventId"],
+                card_instance_id=card_instance_id))
+
     def fork(self):
         return SemanticCombat.from_wire(
             self.session, self.session.call(

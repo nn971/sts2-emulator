@@ -24,6 +24,7 @@ non-Nature RNG parity remain **UNVERIFIED**.
 `hello` advertises:
 
 - `semanticChanceSchemaId = sts2-v111-semantic-playable-p0-v1`.
+- `semanticDrawChoiceSchemaId = sts2-v111-semantic-deck-v1`.
 - `semanticPlayable = true`, scope
   `seeded-source-route-or-post-committed-opening-fixture-restricted-Silent-combat`.
 - `semanticControlledSites = [enemy_intent, draw_card]`.
@@ -52,6 +53,7 @@ paths avoid that external setup chain:
 | `semantic_observe` | `semantic_handle`, `policy_id=prototype-fair-v0` | Existing **player-only** observation and legal action IDs |
 | `semantic_step` | handle, fingerprint, legal `action_id` | Child player action / Nature / terminal |
 | `semantic_resolve` | handle, fingerprint, legal `selected_index` | Child Nature / player / terminal |
+| `semantic_resolve_draw_card` | handle, fingerprint, pending `event_id`, legal `card_instance_id` | Child Nature / player / terminal |
 | `semantic_fork` | handle | Independent child handle |
 | `semantic_save` | handle | Privileged snapshot string |
 | `semantic_load` | snapshot | New replay-validated handle |
@@ -250,6 +252,15 @@ Old `semantic_resolve` with an integer source ticket remains compatible,
 including replay/fork/save. A stale fingerprint or forged candidate ID fails
 before publishing a new handle.
 
+For `draw_card`, `semantic_resolve_draw_card(semantic_handle, fingerprint,
+event_id, card_instance_id)` selects by the stable physical card identity in
+the pending event's support. It records a typed `semantic_draw` history entry
+containing the complete event descriptor, ordered candidate IDs, selected
+index and selected card ID; snapshot loading replays that event and outcome.
+Python clients use `combat.resolve_draw_card(card_instance_id)`. The existing
+integer `semantic_resolve` route remains compatible with older clients and
+snapshots.
+
 **Probability status:** these are raw weights produced by the emulator's
 source-shaped selector, **not** independently audited original-game
 conditional probabilities. `weightsVerified=false` and
@@ -264,6 +275,11 @@ smokes inspect the candidates and resolve intents by ID, including the
 15-independent-process equivalence check. This is still a restricted
 playable two-site API; authentic opening hooks, native/default non-Nature
 chance parity, and terminal combat remain separate P0 gates.
+
+The seeded and victory JSONL smokes also resolve deferred draws with the new
+event/card-identity operation. A focused C# regression reaches a natural
+discard recycle, checks stale-event and out-of-support rejection, and verifies
+typed draw history through save/load replay.
 
 ## 2026-10-16 P0: terminal-aware real end_turn transition
 
