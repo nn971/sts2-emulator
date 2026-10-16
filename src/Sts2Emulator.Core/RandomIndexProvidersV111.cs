@@ -141,6 +141,148 @@ public sealed class LegacyPrototypeRandomIndexProviderV111
 }
 
 /// <summary>
+/// Convenience boundary for source sites that still use the legacy six-stream
+/// profile. It records the same typed request as native and scripted providers
+/// while preserving the legacy modulo draw and named-stream cursor.
+/// </summary>
+public static class LegacyRandomChoiceV111
+{
+    public static RandomIndexDecisionV111 ChooseIndex(
+        RngBundle streams,
+        string siteId,
+        string streamId,
+        string ownerId,
+        int[] orderedCandidates,
+        int? ordinal = null)
+    {
+        ArgumentNullException.ThrowIfNull(orderedCandidates);
+        if (orderedCandidates.Length == 0)
+            throw new ArgumentException(
+                "Legacy index selection requires a nonempty ordered support.",
+                nameof(orderedCandidates));
+        return Resolve(
+            streams, siteId, streamId, ownerId, orderedCandidates,
+            "choose_index", null, ordinal);
+    }
+
+    public static RandomIndexDecisionV111 ChooseIndexRange(
+        RngBundle streams,
+        string siteId,
+        string streamId,
+        string ownerId,
+        int candidateCount,
+        int? ordinal = null)
+    {
+        if (candidateCount <= 0)
+            throw new ArgumentOutOfRangeException(nameof(candidateCount));
+        return ChooseIndex(
+            streams, siteId, streamId, ownerId,
+            Enumerable.Range(0, candidateCount).ToArray(), ordinal);
+    }
+
+    public static RandomIndexDecisionV111 ChooseBoundedInteger(
+        RngBundle streams,
+        string siteId,
+        string streamId,
+        string ownerId,
+        int boundedCount,
+        int? ordinal = null)
+    {
+        if (boundedCount <= 0)
+            throw new ArgumentOutOfRangeException(nameof(boundedCount));
+        return Resolve(
+            streams, siteId, streamId, ownerId, [],
+            "bounded_integer", boundedCount, ordinal);
+    }
+
+    private static RandomIndexDecisionV111 Resolve(
+        RngBundle streams,
+        string siteId,
+        string streamId,
+        string ownerId,
+        int[] orderedCandidates,
+        string operationKind,
+        int? boundedCount,
+        int? ordinal)
+    {
+        ArgumentNullException.ThrowIfNull(streams);
+        ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(streamId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
+        if (ControlledChanceGuardV111.Active
+            && !ControlledChanceGuardV111.EngineOwnedNativeProviderActive)
+            throw new NotSupportedException(
+                $"UNSUPPORTED_CONTROLLED_CHANCE site={siteId} " +
+                $"operation={operationKind} requires a saved continuation.");
+
+        var matchingStreams = streams.Streams.Where(stream =>
+            stream.StreamId == streamId).ToArray();
+        if (matchingStreams.Length != 1)
+            throw new InvalidOperationException(
+                "Legacy random-choice stream ownership is ambiguous.");
+        var streamOrdinal = matchingStreams[0].CallCount ?? 0;
+        if (streamOrdinal < 0 || streamOrdinal > int.MaxValue)
+            throw new NotSupportedException(
+                "Legacy random-choice provider ordinal exceeds the request range.");
+        var decision = new LegacyPrototypeRandomIndexProviderV111().Resolve(
+            new RandomIndexRequestV111(
+                siteId,
+                streamId,
+                ownerId,
+                ordinal ?? (int)streamOrdinal,
+                (int[])orderedCandidates.Clone(),
+                OperationKind: operationKind,
+                BoundedCount: boundedCount),
+            streams);
+        return decision;
+    }
+}
+
+/// <summary>
+/// Compatibility wrapper for legacy-profile Fisher–Yates sites. It reuses
+/// the shared descending swap mechanics and the original named stream.
+/// </summary>
+public static class LegacyFisherYatesV111
+{
+    public static RandomIndexDecisionV111[] ShuffleInPlace<T>(
+        IList<T> values,
+        RngBundle streams,
+        string streamId,
+        string siteId,
+        string ownerId)
+    {
+        ArgumentNullException.ThrowIfNull(values);
+        ArgumentNullException.ThrowIfNull(streams);
+        ArgumentException.ThrowIfNullOrWhiteSpace(streamId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
+        if (ControlledChanceGuardV111.Active
+            && !ControlledChanceGuardV111.EngineOwnedNativeProviderActive)
+            throw new NotSupportedException(
+                $"UNSUPPORTED_CONTROLLED_CHANCE site={siteId} " +
+                "operation=shuffle requires a saved continuation.");
+
+        var matchingStreams = streams.Streams.Where(stream =>
+            stream.StreamId == streamId).ToArray();
+        if (matchingStreams.Length != 1)
+            throw new InvalidOperationException(
+                "Legacy shuffle stream ownership is ambiguous.");
+        var callOrdinal = matchingStreams[0].CallCount ?? 0;
+        if (callOrdinal < 0 || callOrdinal > int.MaxValue)
+            throw new NotSupportedException(
+                "Legacy shuffle provider ordinal exceeds the request range.");
+        return NativeFisherYatesV111.ShuffleInPlace(
+            values,
+            streams,
+            new LegacyPrototypeRandomIndexProviderV111(),
+            streamId,
+            ownerId,
+            siteId,
+            (int)callOrdinal);
+    }
+}
+
+/// <summary>
 /// Exact replay of a *specified outcome transcript*. Does not touch native
 /// cursors: replayed Nature choices are counterfactual, not seeded-native RNG.
 /// The caller must explicitly assert all choices were consumed.

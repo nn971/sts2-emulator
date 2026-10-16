@@ -12795,39 +12795,11 @@ public sealed partial class PrototypeGameEngine
         int? boundedCount,
         string streamId)
     {
-        ArgumentNullException.ThrowIfNull(legacyRng);
-        ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
-        ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
-        ArgumentException.ThrowIfNullOrWhiteSpace(streamId);
-        if (ControlledChanceGuardV111.Active
-            && !ControlledChanceGuardV111.EngineOwnedNativeProviderActive)
-            throw new NotSupportedException(
-                $"UNSUPPORTED_CONTROLLED_CHANCE site={siteId} " +
-                "operation=" + (boundedCount is null
-                    ? "choose_index"
-                    : "bounded_integer")
-                + " requires a saved continuation.");
-
-        var stream = legacyRng.Streams.SingleOrDefault(item =>
-            item.StreamId == streamId) ??
-            throw new InvalidOperationException(
-                "Legacy random-choice provider stream is missing.");
-        var callOrdinal = stream.CallCount ?? 0;
-        if (callOrdinal > int.MaxValue)
-            throw new NotSupportedException(
-                "Legacy random-choice provider ordinal exceeds the request range.");
-        var request = new RandomIndexRequestV111(
-            siteId,
-            streamId,
-            ownerId,
-            (int)callOrdinal,
-            orderedCandidates,
-            OperationKind: boundedCount is null
-                ? "choose_index"
-                : "bounded_integer",
-            BoundedCount: boundedCount);
-        var decision = new LegacyPrototypeRandomIndexProviderV111().Resolve(
-            request, legacyRng);
+        var decision = boundedCount is { } bound
+            ? LegacyRandomChoiceV111.ChooseBoundedInteger(
+                legacyRng, siteId, streamId, ownerId, bound)
+            : LegacyRandomChoiceV111.ChooseIndex(
+                legacyRng, siteId, streamId, ownerId, orderedCandidates);
         return decision.SelectedValue;
     }
 

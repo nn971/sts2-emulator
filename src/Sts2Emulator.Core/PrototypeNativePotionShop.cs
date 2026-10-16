@@ -166,9 +166,12 @@ public static class PrototypeNativePotionShop
     /// generation. Native source-owned generation uses NextFloat below.
     /// </summary>
     public static PrototypeNativePotionRarity RollRarity(
-        RngBundle rng, string streamId)
+        RngBundle rng, string streamId,
+        string ownerId = "potion:weighted_offer")
     {
-        var roll = PrototypeRng.NextInt(rng, streamId, 100);
+        var roll = LegacyRandomChoiceV111.ChooseBoundedInteger(
+            rng, "potion.rarity_roll.ticket", streamId, ownerId, 100)
+            .SelectedIndex;
         return roll < 10
             ? PrototypeNativePotionRarity.Rare
             : roll < 35
@@ -178,9 +181,10 @@ public static class PrototypeNativePotionShop
 
     public static string PickWeighted(
         RngBundle rng, string streamId,
-        IReadOnlyCollection<string>? excluded = null)
+        IReadOnlyCollection<string>? excluded = null,
+        string ownerId = "potion:weighted_offer")
     {
-        var rarity = RollRarity(rng, streamId);
+        var rarity = RollRarity(rng, streamId, ownerId + ":rarity");
         var candidates = NativePotionPoolOrder
             .Where(id => Rarities[id] == rarity
                 && (excluded is null || !excluded.Contains(id)))
@@ -193,8 +197,13 @@ public static class PrototypeNativePotionShop
                 $"No unexcluded {rarity} potions remain.");
         }
 
-        return candidates[PrototypeRng.NextInt(
-            rng, streamId, candidates.Length)];
+        return candidates[LegacyRandomChoiceV111.ChooseIndexRange(
+            rng,
+            "potion.model_within_rarity.index_draw",
+            streamId,
+            ownerId + ":rarity:" + rarity + ":pool:"
+                + CanonicalJson.Sha256(candidates),
+            candidates.Length).SelectedIndex];
     }
 
     /// <summary>
@@ -203,7 +212,8 @@ public static class PrototypeNativePotionShop
     /// order because each NextItem indexes the remaining rarity subset.
     /// </summary>
     public static string[] PickWeightedDistinct(
-        RngBundle rng, string streamId, int count)
+        RngBundle rng, string streamId, int count,
+        string ownerId = "potion:weighted_distinct")
     {
         if (count < 0)
         {
@@ -213,7 +223,9 @@ public static class PrototypeNativePotionShop
         var selected = new List<string>(count);
         for (var i = 0; i < count; i++)
         {
-            selected.Add(PickWeighted(rng, streamId, selected));
+            selected.Add(PickWeighted(
+                rng, streamId, selected,
+                ownerId + ":pick:" + i));
         }
 
         return selected.ToArray();
@@ -293,10 +305,16 @@ public static class PrototypeNativePotionShop
     /// Source uniform selection over the full-unlock character/shared potion
     /// pool, with no rarity weighting. Used by Wellspring and event offers.
     /// </summary>
-    public static string PickUniform(RngBundle rng, string streamId)
+    public static string PickUniform(
+        RngBundle rng, string streamId,
+        string ownerId = "potion:uniform_offer")
     {
-        return NativePotionPoolOrder[PrototypeRng.NextInt(
-            rng, streamId, NativePotionPoolOrder.Count)];
+        return NativePotionPoolOrder[LegacyRandomChoiceV111.ChooseIndexRange(
+            rng,
+            "potion.uniform_model.index_draw",
+            streamId,
+            ownerId + ":pool:" + CanonicalJson.Sha256(NativePotionPoolOrder),
+            NativePotionPoolOrder.Count).SelectedIndex];
     }
 
     /// <summary>
@@ -324,9 +342,16 @@ public static class PrototypeNativePotionShop
     /// and Godot Mathf.Round; discrete percent samples approximate
     /// the distribution until exact RNG parity is enabled.
     /// </summary>
-    public static int MerchantPrice(string potionId, RngBundle rng)
+    public static int MerchantPrice(
+        string potionId, RngBundle rng,
+        string ownerId = "shop:merchant:potion")
     {
-        var percent = 95 + PrototypeRng.NextInt(rng, "shop", 11);
+        var percent = 95 + LegacyRandomChoiceV111.ChooseIndexRange(
+            rng,
+            "shop.merchant.potion_price_modifier.index_draw",
+            "shop",
+            ownerId + ":" + potionId,
+            11).SelectedIndex;
         return Math.Max(1,
             (int)Math.Round(MerchantBaseCost(potionId) * percent / 100.0));
     }

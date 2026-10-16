@@ -109,7 +109,12 @@ public static class PrototypeNativeRelicGrabBag
                     && !player.Relics.Any(relic =>
                         StringComparer.Ordinal.Equals(relic.RelicId, id)))
                 .ToArray();
-            PrototypeRng.Shuffle(rng, "reward", ids);
+            _ = LegacyFisherYatesV111.ShuffleInPlace(
+                ids,
+                rng,
+                "reward",
+                "relic_grab_bag.queue_shuffle.swap_index",
+                "player:0:relic_grab_bag:" + rarity);
             return ids;
         }
 
@@ -147,18 +152,31 @@ public static class PrototypeNativeRelicGrabBag
     /// and Math.Round. Sample integer hundredths from the shop stream
     /// until exact native float/PRNG parity is implemented.
     /// </summary>
-    public static int MerchantPrice(string relicId, RngBundle rng)
+    public static int MerchantPrice(
+        string relicId, RngBundle rng,
+        string ownerId = "shop:merchant:relic")
     {
-        var percent = 85 + PrototypeRng.NextInt(rng, "shop", 31);
+        var percent = 85 + LegacyRandomChoiceV111.ChooseIndexRange(
+            rng,
+            "shop.merchant.relic_price_modifier.index_draw",
+            "shop",
+            ownerId + ":" + relicId,
+            31).SelectedIndex;
         return (int)Math.Round(MerchantBaseCost(relicId) * percent / 100.0);
     }
 
     public static PrototypeRelicRarity RollRarity(
-        RngBundle rng, bool merchant = false)
+        RngBundle rng, bool merchant = false,
+        string ownerId = "relic_grab_bag:reward")
     {
         // Native relic rarity roll: <0.50 Common, <0.83 Uncommon,
         // otherwise Rare. Merchant rolls consume Rewards RNG too.
-        var roll = PrototypeRng.NextInt(rng, "reward", 100);
+        var roll = LegacyRandomChoiceV111.ChooseBoundedInteger(
+            rng,
+            "relic_grab_bag.rarity.ticket",
+            "reward",
+            ownerId + (merchant ? ":merchant" : ":reward"),
+            100).SelectedIndex;
         return roll < 50
             ? PrototypeRelicRarity.Common
             : roll < 83

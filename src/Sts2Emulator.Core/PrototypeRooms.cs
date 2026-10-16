@@ -5303,22 +5303,12 @@ public sealed partial class PrototypeGameEngine
         }
 
         var copy = (string[])pool.Clone();
-        var stream = rng.Streams.SingleOrDefault(item =>
-            item.StreamId == streamId) ??
-            throw new InvalidOperationException(
-                "Legacy pool-shuffle provider stream is missing.");
-        var ordinal = stream.CallCount ?? 0;
-        if (ordinal > int.MaxValue)
-            throw new NotSupportedException(
-                "Legacy pool-shuffle provider ordinal exceeds the request range.");
-        _ = NativeFisherYatesV111.ShuffleInPlace(
+        _ = LegacyFisherYatesV111.ShuffleInPlace(
             copy,
             rng,
-            new LegacyPrototypeRandomIndexProviderV111(),
             streamId,
-            ownerId + ":pool:" + CanonicalJson.Sha256(pool),
             siteId,
-            (int)ordinal);
+            ownerId + ":pool:" + CanonicalJson.Sha256(pool));
         return copy.Take(Math.Min(count, copy.Length)).ToArray();
     }
 }

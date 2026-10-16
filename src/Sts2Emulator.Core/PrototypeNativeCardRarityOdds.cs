@@ -58,7 +58,12 @@ public static class PrototypeNativeCardRarityOdds
 
         // Native CardRarityOdds owns Rewards RNG even for merchant
         // rarity; the resulting merchant card selection uses Shops.
-        var roll = PrototypeRng.NextInt(rng, "reward", 10000);
+        var roll = LegacyRandomChoiceV111.ChooseBoundedInteger(
+            rng,
+            "card_rarity.roll.ticket",
+            "reward",
+            $"source:{source}:offset:{currentOffsetBasisPoints}",
+            10000).SelectedIndex;
         var rareThreshold = rareBase +
             (source == PrototypeNativeCardOddsSource.BossEncounter
                 ? 0 : currentOffsetBasisPoints);
@@ -130,7 +135,12 @@ public static class PrototypeNativeCardRarityOdds
                 : Math.Min(10000,
                     (act - 1) * (ascension >= ScarcityAscension
                         ? 2500 : 1250));
-        var roll = PrototypeRng.NextInt(rng, "reward", 10000);
+        var roll = LegacyRandomChoiceV111.ChooseBoundedInteger(
+            rng,
+            "card_rarity.upgrade_roll.ticket",
+            "reward",
+            $"card:{cardId}:act:{act}:ascension:{ascension}",
+            10000).SelectedIndex;
         return roll < threshold;
     }
 
@@ -169,8 +179,14 @@ public static class PrototypeNativeCardRarityOdds
                     .Distinct().ToArray());
             var candidates = pool.Where(id =>
                 PrototypeContent.Card(id).Rarity == rarity).ToArray();
-            var selected = candidates[PrototypeRng.NextInt(
-                rng, "reward", candidates.Length)];
+            var selected = candidates[
+                LegacyRandomChoiceV111.ChooseIndexRange(
+                    rng,
+                    "card_rarity.encounter_model.index_draw",
+                    "reward",
+                    $"act:{act}:room:{room}:pick:{i}:rarity:{rarity}:pool:"
+                        + CanonicalJson.Sha256(candidates),
+                    candidates.Length).SelectedIndex];
             cards.Add(selected);
             pool.Remove(selected);
             upgrades.Add(RollEncounterCardUpgrade(
@@ -208,11 +224,22 @@ public static class PrototypeNativeCardRarityOdds
                     .Distinct().ToArray());
             var candidates = pool.Where(id =>
                 PrototypeContent.Card(id).Rarity == rarity).ToArray();
-            cards[i] = candidates[PrototypeRng.NextInt(
-                rng, "shop", candidates.Length)];
+            cards[i] = candidates[
+                LegacyRandomChoiceV111.ChooseIndexRange(
+                    rng,
+                    "shop.merchant.card_model.index_draw",
+                    "shop",
+                    $"type:{type}:offer:{i}:rarity:{rarity}:pool:"
+                        + CanonicalJson.Sha256(candidates),
+                    candidates.Length).SelectedIndex];
             // CardFactory.CreateForMerchant consumes a Shops upgrade
             // roll even though its negative base chance prevents upgrades.
-            _ = PrototypeRng.NextInt(rng, "shop", 10000);
+            _ = LegacyRandomChoiceV111.ChooseBoundedInteger(
+                rng,
+                "shop.merchant.card_upgrade_roll.ticket",
+                "shop",
+                $"type:{type}:offer:{i}:card:{cards[i]}",
+                10000);
         }
         return cards;
     }
