@@ -1,4 +1,4 @@
-# Desired RNG implementation — migration matrix (D0–D4)
+# Desired RNG implementation — migration matrix (D0–D5 partial)
 
 **Baseline:** `agent/v111-hive-glory-pregenerated-encounter-queues-v20`
 (pinned native v0.111.0 code). This work is stacked on that emulator
@@ -10,21 +10,43 @@ matches a complete, ordered request/outcome transcript and makes no native
 draw. `controlled-v111` validates an external index at a single request
 site, also without consuming native RNG. Both nonnative providers started as
 D1 components; isolated **serializable D3 HP → intent continuations** and
-an opt-in D4 JSONL/Python adapter now exist. There is **not yet** a
-whole-run controlled game continuation or a trained Nature-policy API. No `p/q` probability
-or original conditional law is claimed. The legacy prototype and default
-v111 consumer protocols have **not** been switched.
+an opt-in D4 JSONL/Python adapter now exist. Restricted semantic rollouts can
+reach supported combat terminals, but there is **not yet** a general
+whole-run controlled continuation or a trained Nature-policy API. No `p/q`
+probability or original conditional law is claimed. The legacy prototype and
+default v111 consumer protocols have **not** been switched.
 
-| Mechanics call site | Owner and stream | Native source audited | Existing native mode | Provider seam migrated | Controlled in live mechanics | Native cursor parity gate | Reference law calibrated |
+The matrix separates call-site mechanics and reference-law status. “Native
+parity” means a seeded emulator cursor/result regression; it does not imply a
+live Inspector comparison. “Controlled mechanics” records existing focused
+evidence, not a build-only check. `No` in the law column means no calibrated
+reference distribution is claimed.
+
+| Stable call-site ID | Owner / stream | Source audit | Native v111 implemented | Native parity tested | Controlled implemented | Controlled mechanics tested | Reference law calibrated |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| Initial unique enemy HP | each creation-order creature; `run.niche` | Yes: filtered inclusive pool, fallback, singleton consumes | Yes | **Yes, typed finite index** | Isolated D3 controlled entry only; not in regular run | Seeded hash/counter equivalence added | No |
-| Committed enemy intent | current enemy; `run.monster_ai` | Supported moves audited per enemy | Yes (subset) | **Yes, bounded integer index with creature owner** | Isolated D3 controlled entry only; not in regular run | Seeded exact hash/counter equality added | No |
-| Encounter formation | encounter-local context RNG | Supported formations source audited | Yes (subset) | No | No | Existing tests | No |
-| Hatch / death spawn HP | creature creation; `run.niche` | Selected source hooks audited | Yes (subset) | No | No | Existing tests | No |
-| Monster-local randomness | monster CombatId owner stream | Partial | Yes (selected) | No | No | Existing tests | No |
-| Card shuffle and target selection | named run and player context streams | Partial | Selected paths | Partial: semantic deck draw/recycle state, typed random-enemy events, random pile-selection shortlists, and opt-in fixed/random-model generated-card draw-pile insertion events; native operation seam pending | Restricted semantic player-action continuation | Native shuffle audits remain separate; Nature target is counterfactual | No |
-| Draw/generation/energy costs/reward | separate named run/player streams | Partial | Selected paths | Partial: typed deferred draws, generated-card model pools, full-pool swaps, draw insertion, drawn-card costs, random hand-card selection and sequential hand-cost rerolls; default remaining costs/rewards retain explicit unverified providers | Restricted semantic draw, generation, cost, insertion and reward paths | Native stream/call-order parity pending for remaining sites | No |
-| Map/event/shop/treasure selection | act- and model-context streams | Partial | Selected paths | No | No | Pending | No |
+| `combat.initial_unique_hp` | creature CombatId / `run.niche` | Yes | Yes | Yes: seeded result/hash/cursor | Yes: isolated HP → intent entry | Yes | No |
+| `combat.committed_intent.index_draw` | creature CombatId / `run.monster_ai` | Yes, supported moves | Yes, subset | Yes: seeded result/hash/cursor | Yes: isolated entry, source route and automatic turn continuation | Yes | No |
+| `combat.draw_pile.shuffle.swap` | player / `run.shuffle` | Yes, pinned Fisher–Yates and hook stages | Partial: injectable primitive, not every ordinary Step shuffle | Partial: source algorithm/cursor checks; live operation capture pending | Partial: provider supports controlled outcomes; ordinary shuffle sites remain separate | Yes, primitive-level | No |
+| `combat.draw_pile_recycle.swap_index` | player / legacy `combat` stream | Yes, recycle swap bounds | No v111 provider at this site | No | Yes: legacy controlled recycle continuation | Yes | No |
+| `combat.draw_pile.draw_card` | player / `semantic.draw_pile` | Yes, source `DrawCards` order and identity | Partial: exact native deck mode; no per-draw provider seam | No | Yes: deferred physical-card identity | Yes, actual draw segment | No |
+| `combat.effect.random_enemy` | effect / prototype combat stream | Yes, live formation support | No v111 provider | No | Yes: saved operation continuation | Yes | No |
+| `combat.sly_autoplay.random_enemy` | auto-play / prototype combat stream | Yes, live formation support | No v111 provider | No | Yes: saved auto-play continuation | Yes | No |
+| `combat.generated_card.select` | effect / prototype combat stream | Yes, source-ordered model pool | No v111 provider | No | Yes: generated-card continuation | Yes | No |
+| `combat.random_draw_attack.card_model` | draw insertion / prototype combat stream | Yes, source-ordered Attack pool | No v111 provider | No | Yes: model then insertion choices | Yes | No |
+| `combat.generation.full_pool_shuffle.swap_index` | effect / prototype combat stream | Yes, full filtered pool and swap order | No v111 provider | No | Yes: bounded swap continuation | Yes | No |
+| `combat.draw_pile.random_insert_index` | player draw pile / prototype combat stream | Yes, bounded source position | No v111 provider | No | Yes: source-timed insertion continuation | Yes | No |
+| `combat.random_hand_card.select` | player hand / prototype combat stream | Yes, ordered eligible instances | No v111 provider | No | Yes: semantic selection event | Yes | No |
+| `combat.random_hand_card.energy_cost` | player hand / prototype combat stream | Yes, bounded cost support | No v111 provider | No | Yes: semantic cost event | Yes | No |
+| `combat.card_draw.relic_energy_cost` | drawn card / `run.combat_energy_costs` | Yes, source draw-hook order | Partial: private engine-owned native-codec stream; assignment unverified | No | Yes, opt-in typed event | Yes | No |
+| `combat.card_draw.slither_energy_cost` | drawn card / `run.combat_energy_costs` | Yes, source draw-hook order | Partial: private engine-owned native-codec stream; assignment unverified | No | Yes, opt-in typed event | Yes | No |
+| `combat.card_selection.random_shortlist` | draw-pile selector / prototype combat stream | Yes, source filters and without-replacement prefix | No v111 provider | No | Yes: semantic JSONL/Python event | No: not run or covered by a focused test | No |
+
+This is the migrated typed-site inventory, not a complete v0.111 RNG
+inventory. Encounter formation, summon/death creation, monster-local draws,
+enemy-side insertion, remaining cost/reward sites, map/event/shop/treasure
+selection, and native float/Gaussian/rejection operations still need stable
+call-site identities and row-level audit. Their absence here is not evidence
+that they are deterministic or supported.
 
 ## First migrated site: `combat.initial_unique_hp`
 

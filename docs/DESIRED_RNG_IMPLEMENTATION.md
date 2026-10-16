@@ -307,6 +307,12 @@ Measure native transition/whole-run throughput against the pre-refactor baseline
 
 Keep a **per-call-site completion matrix** with independent flags: source-audited, native-implemented, native-parity-tested, controlled-implemented, controlled-mechanically-tested, and reference-law-calibrated. Checkmarks in one category do not imply the others.
 
+The current emulator-side site inventory and its deliberately separate status
+flags are maintained in
+[`DESIRED_RNG_MIGRATION_STATUS.md`](DESIRED_RNG_MIGRATION_STATUS.md). Sites not
+listed there remain unassessed; an empty provider journal or missing matrix row
+does not imply that the native game made no random call.
+
 ## 8. First concrete PRs
 
 **PR 1 — D0/D1 scaffolding:** introduce typed random-decision descriptors and a native adapter around existing `NativeRngV111` calls; add a scripted recording/replay provider, a migration inventory and strict no-behavior-change regression tests. Preserve the legacy prototype path and v111 default modes.

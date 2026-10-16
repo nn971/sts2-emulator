@@ -196,8 +196,28 @@ public sealed class SemanticCardSelectionV111Tests
         var (run, _) = PlayerWithSemanticDeck(
             "semantic-select-unknown-position");
         var combat = run.World!.Combat!;
-        long unknown = SemanticDeckEngineV111
-            .AllCardInstanceIds(combat.SemanticDeck!).First();
+        var selectedAnchor = combat.Hand[0];
+        var originalDeck = combat.SemanticDeck!;
+        var unresolvedPool = originalDeck.Pools.First(pool =>
+            pool.RemainingCardInstanceIds.Length >= 2);
+        var poolPositions = originalDeck.Slots
+            .Select((slot, index) => (slot, index))
+            .Where(item => item.slot.PoolId == unresolvedPool.PoolId)
+            .Select(item => item.index).ToArray();
+        var splitDeck = SemanticDeckEngineV111.InsertKnown(
+            originalDeck, poolPositions[poolPositions.Length / 2],
+            selectedAnchor);
+        combat = combat with
+        {
+            Hand = combat.Hand.Skip(1).ToArray(),
+            DrawPile = combat.DrawPile.Append(selectedAnchor).ToArray(),
+            SemanticDeck = splitDeck
+        };
+        run = run with
+        {
+            World = run.World! with { Combat = combat }
+        };
+        long unknown = unresolvedPool.RemainingCardInstanceIds[0];
         var source = PendingSelection(run, PrototypeCardZone.DrawPile,
             PrototypeCardSelectionResolutionKind.MoveToHand, [unknown]);
         var sourceFingerprint = CanonicalJson.Sha256(source);
