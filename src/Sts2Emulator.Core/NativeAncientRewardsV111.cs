@@ -2,6 +2,9 @@ using System.Text.Json;
 
 namespace Sts2Emulator.Core;
 
+public sealed record NativeTezcataraOfferAuditV111(
+    RunState State, RandomIndexDecisionV111[] Choices, string ProviderMode);
+
 /// <summary>
 /// Source-backed Tezcatara reward dependencies. Named reward fixtures reuse
 /// ordinary event acquisition and combat continuations. Tezcatara's complete
@@ -11,6 +14,8 @@ namespace Sts2Emulator.Core;
 public static class NativeAncientRewardsV111
 {
     public const string TezcataraId = "proto.native.ancient.tezcatara";
+    public const string TezcataraOfferSiteId =
+        "event.tezcatara.relic_offer.index_draw";
     public const string VeryHotCocoaId = "proto.native.ancient.very_hot_cocoa";
     public const string YummyCookieId = "proto.native.ancient.yummy_cookie";
     public const string ToastyMittensId = "proto.native.ancient.toasty_mittens";
@@ -163,13 +168,32 @@ public static class NativeAncientRewardsV111
             NativeNonupeipeEventV111.ValidateEventContext(state);
             return;
         }
-        if (evt.EventId != TezcataraId || stream.StreamId != "context.event.TEZCATARA.player_0"
-            || NativeRngV111.ToSnapshot(stream).Counter != 3)
+        if (evt.EventId != TezcataraId
+            || stream.StreamId != "context.event.TEZCATARA.player_0")
             throw new InvalidOperationException("Tezcatara event context must retain its three completed offer draws.");
         var pools = TezcataraPools(state.Player);
         if (evt.OfferedChoiceIds is not { Length: 3 } offers
             || offers.Any(id => !id.StartsWith("take_", StringComparison.Ordinal)))
             throw new InvalidOperationException("Sampled Tezcatara requires one persisted offer from each source pool, in order.");
+        if (evt.NativeEventRngProviderMode is { } mode
+            && mode is not ("scripted-v111" or "controlled-v111"))
+            throw new InvalidOperationException("Tezcatara has an unsupported persisted random provider mode.");
+        if (evt.NativeEventRngProviderMode is not null)
+        {
+            var counterfactualInitial = NativeRngV111Contexts.ForEvent(
+                state.RunSeed, "TEZCATARA");
+            if (NativeRngV111.ToSnapshot(stream)
+                != NativeRngV111.ToSnapshot(counterfactualInitial))
+                throw new InvalidOperationException(
+                    "Counterfactual Tezcatara offer providers must not advance the native event stream.");
+            for (var index = 0; index < pools.Length; index++)
+                if (!pools[index].Any(id => "take_" + id == offers[index]))
+                    throw new InvalidOperationException(
+                        "Counterfactual Tezcatara offer is outside its ordered source pool.");
+            return;
+        }
+        if (NativeRngV111.ToSnapshot(stream).Counter != 3)
+            throw new InvalidOperationException("Tezcatara event context must retain its three completed offer draws.");
         var initial = NativeRngV111Contexts.ForEvent(state.RunSeed, "TEZCATARA");
         var expected = new RngBundle([initial]);
         var expectedOffers = pools.Select(pool => "take_" + NativeRngV111.NextItem(
@@ -185,8 +209,25 @@ public static class NativeAncientRewardsV111
     /// Uses all three source pools, including Soup based on Basic Strike
     /// presence (not enchantability). Does not select the act's Ancient.
     /// </summary>
-    public static RunState BeginTezcataraOpening(RunState state)
+    public static RunState BeginTezcataraOpening(RunState state) =>
+        BeginTezcataraOpeningWithAudit(
+            state, new NativeRandomIndexProviderV111()).State;
+
+    /// <summary>
+    /// Resolve Tezcatara's three ordered offer pools through the supplied
+    /// provider. Nonnative provider mode is persisted on the completed event.
+    /// </summary>
+    public static NativeTezcataraOfferAuditV111 BeginTezcataraOpeningWithAudit(
+        RunState state, IRandomIndexProviderV111 provider)
     {
+        ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(provider);
+        var providerMode = provider.Mode;
+        if (providerMode is not ("native-v111" or "scripted-v111"
+            or "controlled-v111"))
+            throw new ArgumentException(
+                "Tezcatara offer generation requires a supported random provider mode.",
+                nameof(provider));
         if (state.World is not { Act: 2, Floor: 0, Combat: null, Reward: null, Event: null } world
             || world.Map.CurrentNodeId is not null || state.Phase != RunPhase.MapChoice
             || world.EventIds.Contains(TezcataraId, StringComparer.Ordinal)
@@ -196,18 +237,31 @@ public static class NativeAncientRewardsV111
         var pools = TezcataraPools(fork.Player);
         var stream = NativeRngV111Contexts.ForEvent(fork.RunSeed, "TEZCATARA");
         var bundle = new RngBundle([stream]);
-        string Pick(IReadOnlyList<string> pool) => "take_" + NativeRngV111.NextItem(bundle, stream.StreamId, pool);
-        var offers = pools.Select(Pick).ToArray();
-        return fork with
+        var decisions = new List<RandomIndexDecisionV111>(pools.Length);
+        var offers = pools.Select((pool, ordinal) =>
+        {
+            var decision = provider.Resolve(new RandomIndexRequestV111(
+                TezcataraOfferSiteId, stream.StreamId,
+                "event:TEZCATARA:act:2:floor:0", ordinal,
+                Enumerable.Range(0, pool.Length).ToArray()), bundle);
+            decision.Validate();
+            decisions.Add(decision);
+            return "take_" + pool[decision.SelectedIndex];
+        }).ToArray();
+        var result = fork with
         {
             Phase = RunPhase.Event,
             World = fork.World! with
             {
                 Event = new EventState(TezcataraId, OfferedChoiceIds: offers,
-                    NativeEventRng: bundle.Streams[0]),
+                    NativeEventRng: bundle.Streams[0],
+                    NativeEventRngProviderMode: providerMode == "native-v111"
+                        ? null : providerMode),
                 EventHistory = world.EventIds.Append(TezcataraId).ToArray()
             }
         };
+        return new NativeTezcataraOfferAuditV111(
+            result, decisions.ToArray(), providerMode);
     }
 
     public static RunState CreateTezcataraOpeningFixture(string seed, int ascension = 0) =>
