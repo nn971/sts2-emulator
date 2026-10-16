@@ -235,6 +235,61 @@ public sealed class SemanticPilotCombatV111Tests
     }
 
     [Fact]
+    public void SeededSneckoCostsUsePrivateNamedStreamAndReproduceOnRestore()
+    {
+        var entry = Seeded("semantic-p0-named-cost-stream") with
+        {
+            OtherChanceProviderId = SemanticOtherChanceEngineV111.ProviderId,
+            FixtureDrawCostRelicId = "proto.relic.snecko_eye"
+        };
+        var state = SemanticPilotCombatEngineV111.BeginSeeded(entry);
+        Assert.NotNull(state.OtherChance);
+        Assert.Empty(state.OtherChance!.Decisions);
+        var openingHash = state.Fingerprint;
+        var action = Assert.Single(new PrototypeAiEnvironment()
+            .Observe(state.Run).LegalActions, a => a.Kind == "end_turn");
+        state = SemanticPilotCombatEngineV111.Step(
+            state, state.Fingerprint, action.ActionId);
+        for (int stage = 0; !state.AtPlayerBoundary && !state.CombatTerminal; stage++)
+        {
+            Assert.True(stage < 150);
+            if (state.IntentPending is { })
+            {
+                var support = ControlledTurnIntentEngineV111
+                    .DescribePendingSemanticIntent(state.PendingEndTurn!.Intents!)!;
+                state = SemanticPilotCombatEngineV111.ResolveIntent(
+                    state, state.Fingerprint, support.Candidates[0].IntentId);
+            }
+            else if (state.DrawPending is { })
+                state = SemanticPilotCombatEngineV111.Resolve(
+                    state, state.Fingerprint, 0);
+            else
+                throw new InvalidDataException("Unexpected non-two-site Nature event.");
+        }
+        Assert.True(state.AtPlayerBoundary || state.CombatTerminal);
+        Assert.NotNull(state.OtherChance);
+        var decisions = state.OtherChance!.Decisions;
+        Assert.NotEmpty(decisions);
+        Assert.All(decisions, d =>
+        {
+            Assert.Equal("native-v111", d.ProviderMode);
+            Assert.Equal(SemanticOtherChanceEngineV111.CostStreamId,
+                d.Request.StreamId);
+            Assert.Equal("UNVERIFIED", d.ProbabilityStatus);
+            Assert.NotNull(d.NativeCursorBefore);
+            Assert.NotNull(d.NativeCursorAfter);
+        });
+        Assert.All(decisions.Select((decision, i) => (decision, i)), pair =>
+            Assert.Equal(pair.i, pair.decision.Request.Ordinal));
+        Assert.Equal(state.Fingerprint,
+            SemanticPilotCombatEngineV111.Restore(
+                SemanticPilotCombatEngineV111.Save(state)).Fingerprint);
+        Assert.NotEqual(openingHash, state.Fingerprint);
+        var original = SemanticPilotCombatEngineV111.BeginSeeded(entry);
+        Assert.Empty(original.OtherChance!.Decisions);
+    }
+
+    [Fact]
     public void SeededCombatEndTurnsCanReachActualDefeatWithoutPhantomIntent()
     {
         var state = SemanticPilotCombatEngineV111.BeginSeeded(
