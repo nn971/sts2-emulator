@@ -8071,10 +8071,16 @@ public sealed partial class PrototypeGameEngine
     {
         const int maxHandSize = 10;
         var capacity = Math.Max(0, maxHandSize - combat.Hand.Length);
+        if (capacity == 0 || count <= 0)
+            return combat;
+        if (combat.NativeRng is not null)
+            throw new NotSupportedException(
+                "Native distinct-colorless generation needs the complete unlocked " +
+                "card pool before it can consume run.combat_card_generation.");
         var candidates = PrototypeColorlessCards.ImplementedCombatGenerationPool
             .Where(id => !StringComparer.Ordinal.Equals(id, sourceCardId))
             .ToArray();
-        if (capacity == 0 || count <= 0 || candidates.Length == 0)
+        if (candidates.Length == 0)
         {
             return combat;
         }
@@ -8083,7 +8089,13 @@ public sealed partial class PrototypeGameEngine
         // fully-unlocked card pool. Synthetic RNG currently shares the
         // combat stream, and we intentionally omit locked/unimplemented
         // models until the native unlock bridge exists.
-        PrototypeRng.Shuffle(rng, "combat", candidates);
+        combat = ShuffleCombatCardPool(
+            combat, rng, candidates,
+            "combat.generation.full_pool_shuffle.swap_index",
+            "combat", "run.combat_card_generation",
+            "effect:CreateDistinctColorlessCardsInHand:source:" +
+                (sourceCardId ?? "none"),
+            forceLegacyProfile: true);
         foreach (var cardId in candidates.Take(
                      Math.Min(Math.Min(count, capacity), candidates.Length)))
         {
@@ -8143,26 +8155,18 @@ public sealed partial class PrototypeGameEngine
         }
 
         var selectedCount = Math.Min(count, candidates.Length);
-        var nativeRunStreams = useNativeCardGenerationRng
-            ? combat.NativeRng?.RunStreams.Fork()
-            : null;
+        var useNativeProvider = useNativeCardGenerationRng &&
+            combat.NativeRng is not null;
         // GetDistinctForCombat delegates to TakeRandom, which shuffles the
         // full filtered pool before taking a prefix. Preserve that RNG call
         // count even when the effect asks for only a few cards.
-        if (nativeRunStreams is null)
-        {
-            PrototypeRng.Shuffle(rng, "combat", candidates);
-        }
-        else
-        {
-            _ = NativeFisherYatesV111.ShuffleInPlace(
-                candidates,
-                nativeRunStreams,
-                new NativeRandomIndexProviderV111(),
-                "run.combat_card_generation", "combat:generated_cards:first_instance:"
-                    + combat.NextCardInstanceId,
-                "combat.generation.full_pool_shuffle.swap_index");
-        }
+        combat = ShuffleCombatCardPool(
+            combat, rng, candidates,
+            "combat.generation.full_pool_shuffle.swap_index",
+            "combat", "run.combat_card_generation",
+            "combat:generated_cards:first_instance:" +
+                combat.NextCardInstanceId,
+            forceLegacyProfile: !useNativeProvider);
         var selectedIds = candidates.Take(selectedCount).ToArray();
         var generatedIds = new List<long>(
             selectedIds.Length);
@@ -8201,17 +8205,6 @@ public sealed partial class PrototypeGameEngine
                 ChoicePool = combat.ChoiceCardIds
                     .Append(instance.InstanceId)
                     .ToArray()
-            };
-        }
-
-        if (nativeRunStreams is not null)
-        {
-            combat = combat with
-            {
-                NativeRng = combat.NativeRng! with
-                {
-                    RunStreams = nativeRunStreams
-                }
             };
         }
 
@@ -12904,7 +12897,8 @@ public sealed partial class PrototypeGameEngine
         string siteId,
         string legacyStreamId,
         string nativeStreamId,
-        string ownerPrefix)
+        string ownerPrefix,
+        bool forceLegacyProfile = false)
     {
         ArgumentNullException.ThrowIfNull(combat);
         ArgumentNullException.ThrowIfNull(legacyRng);
@@ -12922,7 +12916,7 @@ public sealed partial class PrototypeGameEngine
                 "site=" + siteId + " " +
                 "operation=shuffle requires a saved shortlist continuation.");
 
-        var native = combat.NativeRng;
+        var native = forceLegacyProfile ? null : combat.NativeRng;
         var streamId = native is null
             ? legacyStreamId
             : nativeStreamId;
