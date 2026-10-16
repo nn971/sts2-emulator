@@ -42,7 +42,9 @@ segment admits audited draw-pile-neutral Silent actions: Strike, Defend,
 Deflect, Neutralize, Slice, Poisoned Stab, Deadly Poison, Sucker Punch,
 Dagger Spray, Dash, Cloak and Dagger, Blade Dance and Piercing Wail. It rejects
 a chance or turn boundary it cannot resume with a typed unsupported-operation
-error.
+error. The semantic playable pilot also admits Survivor and Hand Trick through
+its persisted source card-selection continuation; the no-choice action engine
+remains limited to the draw-pile-neutral list above.
 Physical draw-pile moves now keep provider state synchronized across exact
 insertions, removals, transformations, and zone transfers. Native hand-return
 shuffles commit the resulting top-first order, and after-shuffle relic cards

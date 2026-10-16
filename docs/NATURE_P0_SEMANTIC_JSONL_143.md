@@ -328,15 +328,16 @@ stable card model ID, resumes the saved effect, and records a typed
 ordering and remain `UNVERIFIED` as probability laws. The test loadout does
 not claim native potion acquisition provenance.
 
-The optional `select_cards` player-choice extension uses
-`fixture_selection_card_id="proto.silent.survivor"` to put Survivor in the
-first opening-hand slot. Its real play produces a `player_choice` boundary
-with source-ordered candidate identities and legal selection action IDs.
-`semantic_step` (or Python `resolve_card_selection`) resumes the original
-source continuation and records a typed `semantic_card_selection` decision
-for snapshot replay. This is an ordinary player choice, not an added Nature
-chance site. It does not establish native fixture-loadout acquisition or
-generic support for nested random continuations.
+The `select_cards` player-choice extension supports Survivor and Hand Trick
+when present in hand; `fixture_selection_card_id="proto.silent.survivor"` can
+put Survivor in the first opening-hand slot for a reproducible fixture. Their
+real plays produce a `player_choice` boundary with source-ordered candidate
+identities and legal selection action IDs. `semantic_step` (or Python
+`resolve_card_selection`) resumes the original source continuation and
+records a typed `semantic_card_selection` decision for snapshot replay. This
+is an ordinary player choice, not an added Nature chance site. It does not
+establish native fixture-loadout acquisition or generic support for nested
+random continuations.
 
 For the source random-pile shortlist, set
 `fixture_selection_card_id="proto.colorless.seeker_strike"`. Its actual

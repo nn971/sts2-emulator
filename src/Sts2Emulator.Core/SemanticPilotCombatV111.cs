@@ -1158,13 +1158,15 @@ public static class SemanticPilotCombatEngineV111
                 throw new InvalidDataException("Missing source card payload.");
             var card = source.World!.Combat!.Cards.SingleOrDefault(c =>
                 c.InstanceId == play.CardInstanceId);
+            var semanticSelectionCard = card?.CardId is
+                ("proto.silent.survivor" or "proto.silent.hand_trick");
             var fixtureSelectionCard = card?.CardId ==
                     current.SeededEntry?.FixtureSelectionCardId &&
-                card?.CardId is ("proto.silent.survivor" or
-                    "proto.colorless.seeker_strike");
+                card?.CardId == "proto.colorless.seeker_strike";
             var supportedCardAction = card is not null &&
                 (SemanticPlayerActionEngineV111.SupportsCard(card.CardId) ||
                  card.CardId == "proto.silent.ricochet" ||
+                 semanticSelectionCard ||
                  fixtureSelectionCard);
             if (!supportedCardAction)
                 throw new NotSupportedException(
