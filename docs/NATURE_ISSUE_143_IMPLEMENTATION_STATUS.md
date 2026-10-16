@@ -451,3 +451,12 @@ calibration: route/Neow laws, conditional intent laws, non-intent native
 stream assignments and wider encounter coverage remain `UNVERIFIED`. The
 branch remains a work in progress, and the issue stays open for those P0
 gates.
+
+A separate local Inspector sidecar audit is pinned by matching `sts2.dll`,
+`0Harmony.dll`, runtime and release hashes to
+`data/reference_builds/v0.111.0-41cef1ea.json`. It verifies 3 native
+`run.niche` initial-HP draws and 5 shuffle operations containing 52
+`run.shuffle` primitive draws. That capture contains no monster-intent or
+`run.combat_energy_costs` calls and remains incomplete with native/emulator
+parity `NOT_TESTED`; it does not calibrate the source-route policy or cost
+provider.
