@@ -5052,6 +5052,8 @@ public sealed partial class PrototypeGameEngine
         long? eventSourceCardInstanceId = null,
         PrototypeEventDispatchContinuationState? eventDispatchContinuation = null)
     {
+        var randomTargetOrdinal = 0;
+        var autoPlayTargetOrdinal = 0;
         while (operations.Count > 0)
         {
             var operation = operations.Dequeue();
@@ -5094,11 +5096,14 @@ public sealed partial class PrototypeGameEngine
                         combat, "effect_random_enemy", liveEnemies,
                         suspended));
                 }
-                targetEnemyId = liveEnemies[
-                    PrototypeRng.NextInt(
-                        rng,
-                        "combat_targets",
-                        liveEnemies.Length)];
+                var target = ResolveRandomEnemyTarget(
+                    combat, rng, liveEnemies,
+                    "combat.effect.random_enemy",
+                    "combat_targets",
+                    "effect_operation",
+                    randomTargetOrdinal++);
+                combat = target.Combat;
+                targetEnemyId = liveEnemies[target.SelectedIndex];
             }
 
             if (!EvaluateCombatPredicate(
@@ -7525,12 +7530,15 @@ public sealed partial class PrototypeGameEngine
                             || !liveTargets.Contains(
                                 autoPlayTarget.Value))
                         {
-                            autoPlayTarget =
-                                liveTargets[
-                                    PrototypeRng.NextInt(
-                                        rng,
-                                        "combat_targets",
-                                        liveTargets.Length)];
+                            var target = ResolveRandomEnemyTarget(
+                                combat, rng, liveTargets,
+                                "combat.autoplay.random_enemy",
+                                "combat_targets",
+                                "card:" + autoPlayId,
+                                autoPlayTargetOrdinal++);
+                            combat = target.Combat;
+                            autoPlayTarget = liveTargets[
+                                target.SelectedIndex];
                         }
                     }
                     else
@@ -12518,6 +12526,55 @@ public sealed partial class PrototypeGameEngine
                     parent)
             };
 
+    private static (CombatState Combat, int SelectedIndex)
+        ResolveRandomEnemyTarget(
+            CombatState combat,
+            RngBundle legacyRng,
+            int[] eligibleEnemyInstanceIds,
+            string siteId,
+            string legacyStreamId,
+            string ownerId,
+            int ordinal)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(legacyRng);
+        ArgumentNullException.ThrowIfNull(eligibleEnemyInstanceIds);
+        ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(legacyStreamId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+        if (eligibleEnemyInstanceIds.Length == 0 ||
+            eligibleEnemyInstanceIds.Distinct().Count() !=
+                eligibleEnemyInstanceIds.Length)
+            throw new ArgumentException(
+                "Random enemy selection requires a nonempty unique support.",
+                nameof(eligibleEnemyInstanceIds));
+
+        var native = combat.NativeRng;
+        var streamId = native is null
+            ? legacyStreamId
+            : "run.combat_targets";
+        var streams = native?.RunStreams.Fork() ?? legacyRng;
+        var stream = streams.Streams.SingleOrDefault(item =>
+            item.StreamId == streamId) ??
+            throw new InvalidOperationException(
+                "Random target provider stream is missing.");
+        IRandomIndexProviderV111 provider = native is null
+            ? new LegacyPrototypeRandomIndexProviderV111()
+            : new NativeRandomIndexProviderV111();
+        var decision = provider.Resolve(new RandomIndexRequestV111(
+            siteId, streamId, ownerId, ordinal,
+            (int[])eligibleEnemyInstanceIds.Clone()), streams);
+        var updated = native is null
+            ? combat
+            : combat with
+            {
+                NativeRng = native with { RunStreams = streams }
+            };
+        return (updated, decision.SelectedIndex);
+    }
+
     private static CombatState MakeControlledRandomTargetChoice(
         CombatState combat, string kind, int[] eligible,
         PrototypeChoiceResolutionContinuationState continuation,
@@ -12707,11 +12764,11 @@ public sealed partial class PrototypeGameEngine
         }
 
         // Source CardCmd.AutoPlay(choiceContext, card, target: null,
-        // AutoPlayType.SlyDiscard) chooses an enemy with
-        // RunState.Rng.CombatTargets.NextItem(combatState.HittableEnemies)
-        // for TargetType.AnyEnemy. Preserve the ordered eligible set and
-        // selected result in combat history. Prototype combat-stream
-        // ownership remains provisional until v111 CombatTargets parity.
+        // AutoPlayType.SlyDiscard) chooses from the ordered hittable set
+        // using RunState.Rng.CombatTargets. Native combat routes this through
+        // the typed run.combat_targets provider; the retained prototype
+        // profile keeps its legacy combat stream. Source cursor parity is
+        // still unverified.
         int? autoPlayTarget = null;
         if (definition.Target == PrototypeCardTarget.Enemy)
         {
@@ -12730,8 +12787,26 @@ public sealed partial class PrototypeGameEngine
                 throw new NotSupportedException(
                     "UNSUPPORTED_CONTROLLED_CHANCE site=combat.sly_autoplay.target " +
                     "operation=choose_index requires a saved target continuation.");
-            var selectedIndex = controlledSelectedIndex ??
-                PrototypeRng.NextInt(rng, "combat", eligible.Length);
+            int selectedIndex;
+            if (controlledSelectedIndex is { } selected)
+            {
+                selectedIndex = selected;
+            }
+            else
+            {
+                var eligibleIds = eligible.Select(enemy =>
+                    enemy.InstanceId).ToArray();
+                var target = ResolveRandomEnemyTarget(
+                    combat, rng, eligibleIds,
+                    "combat.sly_autoplay.random_enemy",
+                    "combat",
+                    "card:" + cardInstanceId,
+                    combat.AutoPlayTargetRolls?.Count(roll =>
+                        roll.CardInstanceId == cardInstanceId &&
+                        roll.Turn == combat.Turn) ?? 0);
+                combat = target.Combat;
+                selectedIndex = target.SelectedIndex;
+            }
             if (selectedIndex < 0 || selectedIndex >= eligible.Length)
                 throw new InvalidOperationException(
                     "Selected Sly enemy index is outside current support.");

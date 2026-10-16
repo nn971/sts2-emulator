@@ -52,7 +52,10 @@ continuation after the selection, without replaying prior hooks. Reference-law
 calibration and native cursor parity remain open.
 The potion factory now routes its unit-float rarity
 sample and within-tier model index through separate typed providers in source
-order.
+order. Native effect-random-target and Sly auto-play selections now use typed
+index requests on `run.combat_targets`; their controlled continuations remain
+separate from native cursor parity. Other automatic card plays have a distinct
+provider site with trigger and controlled-continuation coverage still open.
 Beautiful Bracelet's eligible-deck shuffle and Fur Coat's current-act combat
 node shuffle now use typed native swap requests as well; controlled relic
 acquisition continuation remains pending. Distinguished Cape's two
