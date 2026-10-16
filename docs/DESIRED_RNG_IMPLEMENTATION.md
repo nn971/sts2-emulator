@@ -129,7 +129,9 @@ After-shuffle insertion composes with card-effect draws, standalone conditioned
 draws, and the automatic `DrawPlayerHand` continuation. Standalone Stratagem
 selection resumes the same saved draw across the source `select_cards` choice.
 Automatic Stratagem selection resumes the same draw and composes with
-after-shuffle insertion and draw-cost stages. Ordinary source action choices
+after-shuffle insertion and draw-cost stages. Legacy controlled end-turn
+recycling also pauses for the ordinary Stratagem card selection and resumes
+the saved hand-draw cursor through later cost and recycle boundaries. Ordinary source action choices
 from standalone and automatic `CardDrawn` hooks now preserve and resume their
 draw frames. Controlled nested chance boundaries in standalone and automatic
 frames, and other recycle contexts remain unsupported

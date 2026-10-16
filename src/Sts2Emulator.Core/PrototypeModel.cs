@@ -394,6 +394,8 @@ public sealed record PrototypeAutomaticPipelineContinuationState(
     // resumes after the saved event-dispatch continuation, before applying
     // the deterministic hand-draw prelude and starting DrawCards.
     bool ControlledSemanticBeforeHandDrawPending = false,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    bool ControlledRecycleStratagemPending = false,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     PrototypeControlledEnemyActionContinuationV111? ControlledEnemyAction = null);
 

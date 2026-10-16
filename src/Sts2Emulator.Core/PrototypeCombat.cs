@@ -1806,70 +1806,19 @@ public sealed partial class PrototypeGameEngine
             DiscardPile = [],
             SemanticDeck = semanticDeck
         }, state.Rng);
-        // Stratagem is itself a player-selection continuation whose
-        // parent must be wired separately. Fail before publishing a child.
         if (combat.PlayerPowers.Any(power =>
-            power.PowerId == "proto.power.stratagem" && power.Stacks > 0))
-            throw new NotSupportedException(
-                "UNSUPPORTED_CONTROLLED_CHANCE site=combat.recycle.stratagem operation=choose_cards");
+                power.PowerId == "proto.power.stratagem" && power.Stacks > 0) &&
+            combat.Hand.Length < 10)
+            return BeginControlledRecycleStratagemSelection(
+                state, state.Player, combat,
+                continuation.ControlledDrawRemaining.Value);
 
         var player = state.Player;
         var drawn = DrawCards(player, combat, continuation.ControlledDrawRemaining.Value,
             state.Rng, fromHandDraw: true,
             controlledRecycleSuspension: true,
             controlledDrawCostSuspension: true);
-        player = drawn.Player;
-        combat = drawn.Combat;
-        if (drawn.ShuffleSelectionPending)
-            throw new InvalidOperationException(
-                "Controlled recycle unexpectedly entered a Stratagem choice.");
-
-        if (drawn.ControlledDrawCostPending)
-            return state with
-            {
-                Player = player,
-                World = world with
-                {
-                    Combat = combat with
-                    {
-                        AutomaticPipelineContinuation = continuation with
-                        {
-                            ControlledDrawRemaining = null,
-                            ControlledDrawCostRemaining = drawn.RemainingCount
-                        }
-                    }
-                }
-            };
-        if (drawn.ControlledRecyclePending)
-            return state with
-            {
-                Player = player,
-                World = world with
-                {
-                    Combat = combat with
-                    {
-                        AutomaticPipelineContinuation = continuation with
-                        {
-                            ControlledDrawRemaining = drawn.RemainingCount,
-                            ControlledDrawCostRemaining = null
-                        }
-                    }
-                }
-            };
-        combat = RemovePlayerPowers(
-            combat, definition => definition.RemoveAfterHandDraw);
-        combat = DecrementPlayerPowers(
-            combat, definition => definition.DecrementAfterHandDraw);
-
-        var resumed = state with
-        {
-            Player = player,
-            World = world with
-            {
-                Combat = combat with { AutomaticPipelineContinuation = null }
-            }
-        };
-        return ResumeAutomaticPipeline(resumed, index + 1);
+        return ContinueControlledHandDraw(state, drawn);
     }
 
     private static CombatState CompleteAdvanceTurnAfterCommittedIntents(
@@ -13201,6 +13150,10 @@ public sealed partial class PrototypeGameEngine
             Player = resolved.Player,
             World = world with { Combat = resolved.Combat }
         };
+
+        if (resolved.Combat.AutomaticPipelineContinuation is
+            { ControlledRecycleStratagemPending: true })
+            return ResumeControlledRecycleStratagemSelection(state);
 
         if (!pending.AutomaticSemanticStratagemDrawSelection &&
             !pending.AutomaticSemanticDrawHookChoice &&

@@ -3091,6 +3091,22 @@ public static class PrototypeStateInvariants
             throw new InvalidOperationException(
                 "Invalid suspended automatic-combat pipeline.");
         if (combat.AutomaticPipelineContinuation is
+                { ControlledRecycleStratagemPending: true } stratagemContinuation &&
+            (stratagemContinuation.NextStepIndex < 0 ||
+             stratagemContinuation.NextStepIndex >=
+                PrototypeContent.Rules.EndTurnPipeline.Length ||
+             PrototypeContent.Rules.EndTurnPipeline[
+                    stratagemContinuation.NextStepIndex].Kind !=
+                PrototypeAutomaticStepKind.DrawPlayerHand ||
+             stratagemContinuation.ControlledDrawRemaining is not > 0 ||
+             stratagemContinuation.ControlledDrawCostRemaining is not null ||
+             combat.PendingChoice is not
+                { ChoiceId: "select_cards",
+                  Selection.SourceZone: PrototypeCardZone.DrawPile } ||
+             combat.SemanticDeck is not null))
+            throw new InvalidOperationException(
+                "Controlled recycle Stratagem selection is malformed.");
+        if (combat.AutomaticPipelineContinuation is
                 { ControlledEnemyAction: { } enemyAction } enemyActionCursor)
         {
             enemyAction.Validate(PrototypeContent.Rules.EndTurnPipeline.Length);

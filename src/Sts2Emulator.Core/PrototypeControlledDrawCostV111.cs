@@ -249,47 +249,6 @@ public sealed partial class PrototypeGameEngine
             state.Rng, fromHandDraw: true, eventDepth: cost.EventDepth,
             controlledRecycleSuspension: true,
             controlledDrawCostSuspension: true);
-        player = drawn.Player;
-        combat = drawn.Combat;
-        if (drawn.ShuffleSelectionPending)
-            throw new NotSupportedException(
-                "UNSUPPORTED_CONTROLLED_CHANCE site=combat.draw_cost." +
-                "stratagem operation=choose_cards");
-        if (drawn.ControlledDrawCostPending || drawn.ControlledRecyclePending)
-        {
-            return state with
-            {
-                Player = player,
-                World = world with
-                {
-                    Combat = combat with
-                    {
-                        AutomaticPipelineContinuation = continuation with
-                        {
-                            ControlledDrawCostRemaining =
-                                drawn.ControlledDrawCostPending
-                                    ? drawn.RemainingCount : null,
-                            ControlledDrawRemaining =
-                                drawn.ControlledRecyclePending
-                                    ? drawn.RemainingCount : null
-                        }
-                    }
-                }
-            };
-        }
-
-        combat = RemovePlayerPowers(
-            combat, definition => definition.RemoveAfterHandDraw);
-        combat = DecrementPlayerPowers(
-            combat, definition => definition.DecrementAfterHandDraw);
-        var resumed = state with
-        {
-            Player = player,
-            World = world with
-            {
-                Combat = combat with { AutomaticPipelineContinuation = null }
-            }
-        };
-        return ResumeAutomaticPipeline(resumed, index + 1);
+        return ContinueControlledHandDraw(state, drawn);
     }
 }

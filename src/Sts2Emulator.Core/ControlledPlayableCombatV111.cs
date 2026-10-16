@@ -646,6 +646,8 @@ public static class ControlledPlayableCombatEngineV111
         int index = continuation.NextStepIndex;
         if (index < 0 || index >= PrototypeContent.Rules.EndTurnPipeline.Length)
             throw new InvalidOperationException("Saved combat pipeline cursor is invalid.");
+        if (continuation.ControlledRecycleStratagemPending)
+            return state;
         if (continuation.ControlledDrawCostRemaining is not null)
         {
             if (PrototypeContent.Rules.EndTurnPipeline[index].Kind !=
