@@ -125,7 +125,23 @@ public sealed record SemanticPilotCombatV111(
         Run = Run.Fork(),
         PendingEndTurn = PendingEndTurn?.Fork(),
         PendingInitialIntents = PendingInitialIntents?.Fork(),
-        History = (SemanticPilotTransitionV111[])History.Clone(),
+        History = History.Select(transition =>
+            transition.IntentDecision is { } decision
+                ? transition with
+                {
+                    IntentDecision = decision with
+                    {
+                        Event = decision.Event with
+                        {
+                            Support = decision.Event.Support with
+                            {
+                                Candidates = (SemanticIntentCandidateV111[])
+                                    decision.Event.Support.Candidates.Clone()
+                            }
+                        }
+                    }
+                }
+                : transition).ToArray(),
         OtherChance = OtherChance?.Fork(),
         NativePolicyAudit = NativePolicyAudit is { } audit
             ? audit with
@@ -1017,8 +1033,11 @@ public static class SemanticPilotCombatEngineV111
             x.IntentId == intentId) ??
             throw new InvalidOperationException(
                 "Illegal or stale semantic intent candidate ID.");
-        var decision = MakeSemanticIntentDecision(current, ticket.Pending,
-            support, candidate);
+        var semanticEvent = MakeSemanticIntentEvent(current, ticket.Pending,
+            support);
+        var decision = new SemanticIntentDecisionV111(
+            semanticEvent, candidate.IntentId);
+        decision.Validate();
         return Resolve(current, fingerprint, candidate.TicketStart, decision);
     }
 
@@ -1026,35 +1045,43 @@ public static class SemanticPilotCombatEngineV111
     /// Stable event identity for the current Nature-facing weighted intent
     /// support. It is bound to the exact pre-choice state and eligible pool.
     /// </summary>
-    public static string PendingIntentEventId(
-        SemanticPilotCombatV111 current, SemanticIntentSupportV111 support)
+    public static SemanticIntentEventV111 DescribePendingIntentEvent(
+        SemanticPilotCombatV111 current)
     {
         ArgumentNullException.ThrowIfNull(current);
-        ArgumentNullException.ThrowIfNull(support);
-        var boundaryFingerprint = current.Fingerprint;
-        var supportFingerprint = CanonicalJson.Sha256(support);
-        return CanonicalJson.Sha256(new
-        {
-            SchemaId = SemanticIntentDecisionV111.EventSchemaId,
-            BoundaryFingerprint = boundaryFingerprint,
-            SupportFingerprint = supportFingerprint
-        });
+        var ticket = current.PendingInitialIntents ??
+            current.PendingEndTurn?.Intents;
+        if (ticket?.Pending is not { } request)
+            throw new InvalidOperationException(
+                "No semantic intent event is pending.");
+        var support = ControlledTurnIntentEngineV111
+            .DescribePendingSemanticIntent(ticket) ??
+            throw new InvalidDataException("Missing weighted intent support.");
+        return MakeSemanticIntentEvent(current, request, support);
     }
 
-    private static SemanticIntentDecisionV111 MakeSemanticIntentDecision(
+    private static SemanticIntentEventV111 MakeSemanticIntentEvent(
         SemanticPilotCombatV111 current, RandomIndexRequestV111 request,
-        SemanticIntentSupportV111 support,
-        SemanticIntentCandidateV111 candidate)
+        SemanticIntentSupportV111 support)
     {
+        var detachedSupport = support with
+        {
+            Candidates = (SemanticIntentCandidateV111[])support.Candidates.Clone()
+        };
         var supportFingerprint = CanonicalJson.Sha256(support);
-        var decision = new SemanticIntentDecisionV111(
-            SemanticIntentDecisionV111.EventSchemaId,
-            PendingIntentEventId(current, support), current.Fingerprint,
-            supportFingerprint, request.SiteId, request.StreamId,
-            request.OwnerId, request.Ordinal, candidate.IntentId,
-            candidate.RawWeight, support.TotalRawWeight);
-        decision.Validate();
-        return decision;
+        var eventId = CanonicalJson.Sha256(new
+        {
+            SchemaId = SemanticIntentEventV111.EventSchemaId,
+            BoundaryFingerprint = current.Fingerprint,
+            SupportFingerprint = supportFingerprint
+        });
+        var semanticEvent = new SemanticIntentEventV111(
+            SemanticIntentEventV111.EventSchemaId,
+            eventId, current.Fingerprint, supportFingerprint,
+            request.SiteId, request.StreamId, request.OwnerId,
+            request.Ordinal, detachedSupport);
+        semanticEvent.Validate();
+        return semanticEvent;
     }
 
     private static void ValidateSemanticIntentDecision(
@@ -1070,13 +1097,15 @@ public static class SemanticPilotCombatEngineV111
         var support = ControlledTurnIntentEngineV111
             .DescribePendingSemanticIntent(ticket) ??
             throw new InvalidDataException("Missing weighted intent support.");
+        var semanticEvent = MakeSemanticIntentEvent(current, request, support);
         var candidate = support.Candidates.SingleOrDefault(x =>
             x.IntentId == decision.IntentId);
         if (candidate is null || sourceTicket != candidate.TicketStart ||
-            MakeSemanticIntentDecision(current, request, support, candidate) !=
-                decision)
+            CanonicalJson.Sha256(semanticEvent) !=
+                CanonicalJson.Sha256(decision.Event))
             throw new InvalidOperationException(
                 "Semantic intent event is stale or outside current support.");
+        decision.Validate();
     }
 
     private static SemanticPilotTransitionV111 NatureTransition(

@@ -58,7 +58,8 @@ public sealed record SemanticDeckEventV111(
     string SchemaId, string EventId, string SiteId, string Purpose,
     int TopOffset, int Ordinal, string OperationKind,
     string StreamId, string OwnerId, long[] CandidateCardInstanceIds,
-    string SupportFingerprint, string ProbabilityStatus = "UNVERIFIED");
+    string SupportFingerprint, string ProbabilityStatus = "UNVERIFIED")
+    : ISemanticChanceEventV111;
 
 /// <summary>
 /// Provider-private stochastic deck state. Arrays are treated as immutable:

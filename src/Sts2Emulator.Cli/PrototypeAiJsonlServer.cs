@@ -65,12 +65,9 @@ internal static class PrototypeAiJsonlServer
         {
             if (state.IntentPending is { } intent)
             {
-                var intentState = state.PendingInitialIntents ??
-                    state.PendingEndTurn?.Intents ??
-                    throw new InvalidDataException(
-                        "Pending semantic intent lost its continuation.");
-                var support = ControlledTurnIntentEngineV111
-                    .DescribePendingSemanticIntent(intentState);
+                var semanticEvent = SemanticPilotCombatEngineV111
+                    .DescribePendingIntentEvent(state);
+                var support = semanticEvent.Support;
                 return new
                 {
                     kind = "enemy_intent",
@@ -83,11 +80,10 @@ internal static class PrototypeAiJsonlServer
                     eligibleIndices = Enumerable.Range(0, intent.SupportCount),
                     semanticIntentSupportSchemaId = SemanticIntentSupportV111.SchemaId,
                     semanticIntentEventSchemaId =
-                        SemanticIntentDecisionV111.EventSchemaId,
-                    eventId = support is null ? null :
-                        SemanticPilotCombatEngineV111.PendingIntentEventId(
-                            state, support),
-                    semanticCandidates = support is null ? null :
+                        SemanticIntentEventV111.EventSchemaId,
+                    semanticEvent,
+                    eventId = semanticEvent.EventId,
+                    semanticCandidates =
                         support.Candidates.Select(candidate => new
                         {
                             candidate.IntentId,
@@ -98,9 +94,9 @@ internal static class PrototypeAiJsonlServer
                             normalizedWeight = (double)candidate.RawWeight /
                                 support.TotalRawWeight
                         }).ToArray(),
-                    rawEligibleWeights = support?.Candidates
+                    rawEligibleWeights = support.Candidates
                         .Select(candidate => candidate.RawWeight).ToArray(),
-                    totalRawWeight = support?.TotalRawWeight,
+                    totalRawWeight = support.TotalRawWeight,
                     semanticSupportFingerprint = CanonicalJson.Sha256(support),
                     weightsVerified = false,
                     probabilityStatus = "UNVERIFIED",
@@ -333,7 +329,9 @@ internal static class PrototypeAiJsonlServer
                             semanticIntentSupportSchemaId =
                                 SemanticIntentSupportV111.SchemaId,
                             semanticIntentEventSchemaId =
-                                SemanticIntentDecisionV111.EventSchemaId,
+                                SemanticIntentEventV111.EventSchemaId,
+                            semanticChanceEventContractId =
+                                SemanticChanceEventContractV111.SchemaId,
                             semanticProbabilityStatus = "UNVERIFIED",
                             controlledChanceScope = "isolated-playable-combat-stage-continuations-v1",
                             controlledChanceSupportedSites = new[]

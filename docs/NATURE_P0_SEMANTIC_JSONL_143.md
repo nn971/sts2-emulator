@@ -224,7 +224,9 @@ handled by the original move selector.
 `hello.semanticIntentSupportSchemaId` =
 `sts2-v111-semantic-weighted-intent-v1`, and
 `hello.semanticIntentEventSchemaId` =
-`sts2-v111-semantic-intent-event-v1`. The existing pending
+`sts2-v111-semantic-intent-event-v1`; both implement the shared
+`sts2-v111-semantic-chance-event-v1` descriptor contract already used by the
+semantic draw-pile event. The existing pending
 `enemy_intent` object now carries `semanticCandidates` in source branch
 order, with stable `intentId`, `moveId`, `moveIndex`,
 `rawWeight`, normalized weight and `ticketStart`; also `rawEligibleWeights`,
@@ -238,6 +240,7 @@ move ID while retaining different next-AI state effects.
 `semantic_resolve_intent(semantic_handle, fingerprint, intent_id)` records a
 typed semantic event containing the event ID, support fingerprint, selected
 branch ID, raw weight and total weight, then resumes the original mechanics.
+The transcript retains the full ordered support alongside the selected ID.
 The source-shaped selector uses that branch's first ticket internally as a
 deterministic realization; this ticket is not recorded as a second Nature
 event. Snapshot replay preserves the semantic decision identity separately
