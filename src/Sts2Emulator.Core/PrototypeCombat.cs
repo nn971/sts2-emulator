@@ -13378,6 +13378,7 @@ public sealed partial class PrototypeGameEngine
         if (selection.Resolution
                 == PrototypeCardSelectionResolutionKind.TransformRandom)
         {
+            var transformOrdinal = 0;
             foreach (var instanceId in selected)
             {
                 var original = RequireCombatCard(combat, instanceId);
@@ -13411,8 +13412,14 @@ public sealed partial class PrototypeGameEngine
                         "No eligible native-pool solo transform targets.");
                 }
 
-                var replacement = eligible[PrototypeRng.NextInt(
-                    rng, "combat", eligible.Length)];
+                var replacementChoice = ResolveGeneratedCardModelIndex(
+                    combat, rng, eligible,
+                    PrototypeCombatEffectKind.ChooseCards,
+                    instanceId, transformOrdinal++,
+                    "combat.card_transform.replacement.index_draw");
+                combat = replacementChoice.Combat;
+                var replacement = eligible[
+                    replacementChoice.SelectedIndex];
                 var replacementId = combat.NextCardInstanceId;
                 var oldPersistentId = original.PersistentCardInstanceId;
                 var transformed = combat.TransformedPersistentCardIds
