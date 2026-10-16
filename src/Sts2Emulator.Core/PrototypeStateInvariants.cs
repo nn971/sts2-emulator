@@ -72,6 +72,34 @@ public static class PrototypeStateInvariants
             state,
             PrototypeNativeHiveEvents.LostWispId,
             PrototypeNativeHiveEvents.LostWispNativeRngEventId);
+        NativeEventContextRngV111.Validate(
+            state,
+            PrototypeNativeDenseVegetation.EventId,
+            "DENSE_VEGETATION");
+        NativeEventContextRngV111.Validate(
+            state,
+            "proto.native.event.whispering_hollow",
+            "WHISPERING_HOLLOW");
+        NativeEventContextRngV111.Validate(
+            state,
+            "proto.native.event.sunken_statue",
+            "SUNKEN_STATUE");
+        NativeEventContextRngV111.Validate(
+            state,
+            "proto.native.event.luminous_choir",
+            "LUMINOUS_CHOIR");
+        NativeEventContextRngV111.Validate(
+            state,
+            "proto.native.event.jungle_maze_adventure",
+            "JUNGLE_MAZE_ADVENTURE");
+        NativeEventContextRngV111.Validate(
+            state,
+            "proto.native.underdocks.sunken_treasury",
+            "SUNKEN_TREASURY");
+        NativeEventContextRngV111.Validate(
+            state,
+            "proto.native.underdocks.sunken_statue",
+            "SUNKEN_STATUE");
         if (state.Ascension < 0)
         {
             throw new InvalidOperationException(
@@ -979,7 +1007,7 @@ public static class PrototypeStateInvariants
                 "proto.native.event.luminous_choir" =>
                     eventState.NativeEventGold is >= 100 and <= 149,
                 "proto.native.event.jungle_maze_adventure" =>
-                    eventState.NativeEventGold is >= 135 and <= 164,
+                    eventState.NativeEventGold is >= 135 and <= 165,
                 "proto.native.underdocks.sunken_statue" =>
                     eventState.NativeEventGold is >= 101 and <= 121,
                 "proto.native.underdocks.sunken_treasury" =>
@@ -1001,7 +1029,7 @@ public static class PrototypeStateInvariants
             && !(eventState.EventId switch
             {
                 "proto.native.event.jungle_maze_adventure" =>
-                    eventState.NativeEventSecondaryGold is >= 35 and <= 64,
+                    eventState.NativeEventSecondaryGold is >= 35 and <= 65,
                 "proto.native.underdocks.sunken_treasury" =>
                     eventState.NativeEventSecondaryGold is >= 303 and <= 363,
                 _ => false

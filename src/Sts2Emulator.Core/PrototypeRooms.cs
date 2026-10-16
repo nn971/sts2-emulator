@@ -715,6 +715,143 @@ public sealed partial class PrototypeGameEngine
             Enumerable.Range(minimum, candidateCount),
             streamId: "event");
 
+    private static RunState ResolveNativeEventGold(RunState state)
+    {
+        var world = RequireWorld(state);
+        var evt = world.Event
+            ?? throw new InvalidOperationException(
+                "Native event gold needs an active event.");
+        switch (evt.EventId)
+        {
+            case PrototypeNativeDenseVegetation.EventId:
+            {
+                var draw = ResolveNativeEventGoldIndex(
+                    state, evt, "DENSE_VEGETATION", "primary", 39);
+                return StoreNativeEventGold(
+                    draw.State, 61 + draw.SelectedIndex);
+            }
+            case "proto.native.event.whispering_hollow":
+            {
+                var draw = ResolveNativeEventGoldIndex(
+                    state, evt, "WHISPERING_HOLLOW", "primary", 19);
+                return StoreNativeEventGold(
+                    draw.State, 26 + draw.SelectedIndex);
+            }
+            case "proto.native.event.sunken_statue":
+            case "proto.native.underdocks.sunken_statue":
+            {
+                var draw = ResolveNativeEventGoldIndex(
+                    state, evt, "SUNKEN_STATUE", "primary", 21);
+                return StoreNativeEventGold(
+                    draw.State, 101 + draw.SelectedIndex);
+            }
+            case "proto.native.event.luminous_choir":
+            {
+                var draw = ResolveNativeEventGoldIndex(
+                    state, evt, "LUMINOUS_CHOIR", "primary", 50);
+                return StoreNativeEventGold(
+                    draw.State, 149 - draw.SelectedIndex);
+            }
+            case "proto.native.event.jungle_maze_adventure":
+            {
+                var first = ResolveNativeEventGoldUnitFloat(
+                    state, evt, "JUNGLE_MAZE_ADVENTURE", "primary");
+                state = first.State;
+                evt = RequireWorld(state).Event!;
+                var second = ResolveNativeEventGoldUnitFloat(
+                    state, evt, "JUNGLE_MAZE_ADVENTURE", "secondary");
+                var soloGold = (int)(150f
+                    + (first.SelectedValue * 30f - 15f));
+                var joinGold = (int)(50f
+                    + (second.SelectedValue * 30f - 15f));
+                return StoreNativeEventGold(
+                    second.State, soloGold, joinGold);
+            }
+            case "proto.native.underdocks.sunken_treasury":
+            {
+                var first = ResolveNativeEventGoldIndex(
+                    state, evt, "SUNKEN_TREASURY", "primary", 16);
+                state = first.State;
+                evt = RequireWorld(state).Event!;
+                var second = ResolveNativeEventGoldIndex(
+                    state, evt, "SUNKEN_TREASURY", "secondary", 61);
+                return StoreNativeEventGold(
+                    second.State,
+                    52 + first.SelectedIndex,
+                    303 + second.SelectedIndex);
+            }
+            case PrototypeNativeHiveEvents.LostWispId:
+            {
+                var draw = ResolveNativeEventGoldUnitFloat(
+                    state, evt, "LOST_WISP", "primary");
+                var gold = (int)(60f
+                    + (draw.SelectedValue * 30f - 15f));
+                return StoreNativeEventGold(draw.State, gold);
+            }
+            case PrototypeNativePunchOff.EventId:
+            {
+                var draw = ResolveNativeEventGoldIndex(
+                    state, evt, PrototypeNativePunchOff.NativeRngEventId,
+                    "primary", 8);
+                return StoreNativeEventGold(draw.State, 91 + draw.SelectedIndex);
+            }
+            case PrototypeNativeSharedEvents.ThisOrThatId:
+            {
+                var draw = ResolveNativeEventGoldIndex(
+                    state, evt,
+                    PrototypeNativeSharedEvents.ThisOrThatNativeRngEventId,
+                    "primary", 28);
+                return StoreNativeEventGold(draw.State, 41 + draw.SelectedIndex);
+            }
+            default:
+                return state;
+        }
+    }
+
+    private static (RunState State, int SelectedIndex)
+        ResolveNativeEventGoldIndex(
+            RunState state, EventState evt, string nativeEventEntry,
+            string stage, int boundedCount) =>
+        NativeEventContextRngV111.ResolveBoundedInteger(
+            state,
+            evt,
+            nativeEventEntry,
+            "event.generated_gold.index_draw",
+            $"event:{evt.EventId}:gold:{stage}",
+            boundedCount);
+
+    private static (RunState State, float SelectedValue)
+        ResolveNativeEventGoldUnitFloat(
+            RunState state, EventState evt, string nativeEventEntry,
+            string stage) =>
+        NativeEventContextRngV111.ResolveUnitFloat(
+            state,
+            evt,
+            nativeEventEntry,
+            "event.generated_gold.unit_float",
+            $"event:{evt.EventId}:gold:{stage}");
+
+    private static RunState StoreNativeEventGold(
+        RunState state, int primaryGold, int? secondaryGold = null)
+    {
+        var world = RequireWorld(state);
+        var evt = world.Event
+            ?? throw new InvalidOperationException(
+                "Native event gold needs an active event.");
+        return state with
+        {
+            World = world with
+            {
+                Event = evt with
+                {
+                    NativeEventGold = primaryGold,
+                    NativeEventSecondaryGold = secondaryGold
+                        ?? evt.NativeEventSecondaryGold
+                }
+            }
+        };
+    }
+
     private static RunState StartEvent(RunState state)
     {
         var world = RequireWorld(state);
@@ -869,44 +1006,73 @@ public sealed partial class PrototypeGameEngine
                         PrototypeNativeHiveEvents.LostWispId =>
                             PrototypeNativeHiveEvents
                                 .LostWispNativeRngEventId,
+                        PrototypeNativeDenseVegetation.EventId =>
+                            "DENSE_VEGETATION",
+                        "proto.native.event.whispering_hollow" =>
+                            "WHISPERING_HOLLOW",
+                        "proto.native.event.sunken_statue" =>
+                            "SUNKEN_STATUE",
+                        "proto.native.event.luminous_choir" =>
+                            "LUMINOUS_CHOIR",
+                        "proto.native.event.jungle_maze_adventure" =>
+                            "JUNGLE_MAZE_ADVENTURE",
+                        "proto.native.underdocks.sunken_treasury" =>
+                            "SUNKEN_TREASURY",
+                        "proto.native.underdocks.sunken_statue" =>
+                            "SUNKEN_STATUE",
                         _ => null
                     }),
                 NativeEventGold:
                     selected.Id switch
                     {
                         PrototypeNativeDenseVegetation.EventId =>
-                            ResolveLegacyEventGold(
-                                state.Rng, selected.Id, "primary", 61, 39),
+                            state.NativeRunRng is null
+                                ? ResolveLegacyEventGold(
+                                    state.Rng, selected.Id, "primary", 61, 39)
+                                : 0,
                         "proto.native.event.whispering_hollow" =>
-                            ResolveLegacyEventGold(
-                                state.Rng, selected.Id, "primary", 26, 19),
+                            state.NativeRunRng is null
+                                ? ResolveLegacyEventGold(
+                                    state.Rng, selected.Id, "primary", 26, 19)
+                                : 0,
                         "proto.native.event.sunken_statue" =>
-                            ResolveLegacyEventGold(
-                                state.Rng, selected.Id, "primary", 101, 21),
+                            state.NativeRunRng is null
+                                ? ResolveLegacyEventGold(
+                                    state.Rng, selected.Id, "primary", 101, 21)
+                                : 0,
                         "proto.native.event.luminous_choir" =>
-                            ResolveLegacyEventGold(
-                                state.Rng, selected.Id, "primary", 100, 50),
+                            state.NativeRunRng is null
+                                ? ResolveLegacyEventGold(
+                                    state.Rng, selected.Id, "primary", 100, 50)
+                                : 0,
                         // Source rolls two independent -15..15 floats:
                         // 150 + solo roll, 50 + join roll, truncated to
-                        // integer gold by PlayerCmd.GainGold. The
-                        // prototype currently samples integer bins.
+                        // integer gold by PlayerCmd.GainGold. Legacy runs
+                        // retain the earlier integer-bin approximation;
+                        // native runs use the source unit-float boundary.
                         "proto.native.event.jungle_maze_adventure" =>
-                            ResolveLegacyEventGold(
-                                state.Rng, selected.Id, "primary", 135, 30),
+                            state.NativeRunRng is null
+                                ? ResolveLegacyEventGold(
+                                    state.Rng, selected.Id, "primary", 135, 30)
+                                : 0,
                         // Native Sunken Treasury rolls small then large
                         // independently; both rolls are persisted so the
                         // eventual choice never changes the RNG outcome.
                         "proto.native.underdocks.sunken_treasury" =>
-                            ResolveLegacyEventGold(
-                                state.Rng, selected.Id, "primary", 52, 16),
+                            state.NativeRunRng is null
+                                ? ResolveLegacyEventGold(
+                                    state.Rng, selected.Id, "primary", 52, 16)
+                                : 0,
                         PrototypeNativeHiveEvents.LostWispId =>
                             state.NativeRunRng is null
                                 ? ResolveLegacyEventGold(
                                     state.Rng, selected.Id, "primary", 45, 31)
                                 : 0,
                         "proto.native.underdocks.sunken_statue" =>
-                            ResolveLegacyEventGold(
-                                state.Rng, selected.Id, "primary", 101, 21),
+                            state.NativeRunRng is null
+                                ? ResolveLegacyEventGold(
+                                    state.Rng, selected.Id, "primary", 101, 21)
+                                : 0,
                         // Punch Off computes an entry-only 91..98 gold
                         // variable even though neither option pays it.
                         // Keep this draw to preserve the event RNG stream.
@@ -924,9 +1090,11 @@ public sealed partial class PrototypeGameEngine
                     },
                 NativeEventSecondaryGold:
                     selected.Id == "proto.native.event.jungle_maze_adventure"
+                        && state.NativeRunRng is null
                         ? ResolveLegacyEventGold(
                             state.Rng, selected.Id, "secondary", 35, 30)
                         : selected.Id == "proto.native.underdocks.sunken_treasury"
+                            && state.NativeRunRng is null
                             ? ResolveLegacyEventGold(
                                 state.Rng, selected.Id, "secondary", 303, 61)
                             : 0,
@@ -939,68 +1107,23 @@ public sealed partial class PrototypeGameEngine
             EventHistory = world.EventIds.Append(selected.Id).ToArray()
         };
 
-        if ((selected.Id == PrototypeNativePunchOff.EventId
-                || selected.Id == PrototypeNativeSharedEvents.ThisOrThatId)
-            && state.NativeRunRng is not null)
-        {
-            var isPunchOff = selected.Id == PrototypeNativePunchOff.EventId;
-            var nativeEventEntry = isPunchOff
-                ? PrototypeNativePunchOff.NativeRngEventId
-                : PrototypeNativeSharedEvents.ThisOrThatNativeRngEventId;
-            var minimumGold = isPunchOff ? 91 : 41;
-            var goldRange = isPunchOff ? 8 : 28;
-            state = state with { World = world };
-            var draw = NativeEventContextRngV111.ResolveBoundedInteger(
-                state,
-                world.Event!,
-                nativeEventEntry,
-                "event.generated_gold.index_draw",
-                $"event:{selected.Id}:gold:primary",
-                goldRange);
-            state = draw.State;
-            world = state.World!;
-            world = world with
-            {
-                Event = world.Event! with
-                {
-                    NativeEventGold = minimumGold + draw.SelectedValue
-                }
-            };
-            state = state with { World = world };
-        }
-
-        if (selected.Id == PrototypeNativeHiveEvents.LostWispId
-            && state.NativeRunRng is not null)
+        if (state.NativeRunRng is not null)
         {
             state = state with { World = world };
-            var draw = NativeEventContextRngV111.ResolveUnitFloat(
-                state,
-                world.Event!,
-                PrototypeNativeHiveEvents.LostWispNativeRngEventId,
-                "event.generated_gold.unit_float",
-                $"event:{selected.Id}:gold:primary");
-            state = draw.State;
             world = state.World!;
-            var goldRoll = 60f + (draw.SelectedValue * 30f - 15f);
-            world = world with
-            {
-                Event = world.Event! with
-                {
-                    NativeEventGold = (int)goldRoll
-                }
-            };
-            state = state with { World = world };
+            state = ResolveNativeEventGold(state);
+            world = RequireWorld(state);
         }
 
         if (selected.Id == PrototypeNativeStoneOfAllTime.EventId
             && state.NativeRunRng is not null)
         {
+            state = state with { World = world };
             var slots = PrototypeNativeStoneOfAllTime.OccupiedPotionSlots(
                 state.Player);
             if (slots.Length == 0)
                 throw new InvalidOperationException(
                     "Stone of All Time requires an owned potion.");
-            state = state with { World = world };
             var draw = NativeEventContextRngV111.ResolveIndex(
                 state,
                 world.Event!,
