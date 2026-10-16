@@ -1,5 +1,7 @@
 # Desired RNG implementation — migration matrix (D0–D4)
 
+> **Historical D0–D4 migration snapshot.** The following site matrix reflects an earlier implementation stage; statements such as "no playable controlled continuation" must not be read as October 2026 current status. See [canonical architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md), [current #143 semantic pilot history](NATURE_P0_SEMANTIC_JSONL_143.md), and [new roadmap](STOCHASTIC_ARCHITECTURE_ROADMAP.md). Chance Law and ReferenceNature are proposed next milestones; their source-law calibration remains separate from inspector RNG cursor parity.
+
 **Baseline:** `agent/v111-hive-glory-pregenerated-encounter-queues-v20`
 (pinned native v0.111.0 code). This work is stacked on that emulator
 integration branch, **not** the lightweight inspector foundation branch.

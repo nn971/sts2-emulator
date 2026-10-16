@@ -1,8 +1,10 @@
 # Nature issue #143: playable controlled-chance integration
 
+> **Archive / status supersession (2026-10-16).** The chronological PR implementation notes below are retained as development history; the opening "issue #143 stays OPEN for ... native parity" describes an **obsolete acceptance definition**. [Current issue #143](https://github.com/nn971/sts2-emulator/issues/143) is limited to two-site playable Nature training, engine-owned ordinary stochastic delegation, and an emulator A/B control arm. Original-game native fidelity is owned by [issue #122](https://github.com/nn971/sts2-emulator/issues/122); original conditional-law calibration is N5. The current target structure is [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md), with [Chance Law/ReferenceNature roadmap](STOCHASTIC_ARCHITECTURE_ROADMAP.md).
+
 **Tracking issue:** [#143](https://github.com/nn971/sts2-emulator/issues/143).
 **Base:** the isolated fidelity/RNG integration branch (PR [#137](https://github.com/nn971/sts2-emulator/pull/137)); the Silent all-Act gameplay snapshot in `main` is unchanged.
-**Status:** PRs #144–#152, #155–#157 and #159–#165 merged into the isolated RNG/Inspector integration branch. PR #155 adds live drawn-card cost continuations and synchronizes the revised desired RNG architecture from main PR #154; #156–#157 add semantic deck-state and actual DrawCards integration, and #159 adds source-timed semantic recycle. Issue #143 stays OPEN for full semantic gameplay/JSONL integration, source-timed recycle and draw-cost continuations, weighted visible intents, native parity and complete controlled terminal rollouts.
+**Status:** PRs #144–#152, #155–#157 and #159–#165 merged into the isolated RNG/Inspector integration branch. PR #155 adds live drawn-card cost continuations and synchronizes the revised desired RNG architecture from main PR #154; #156–#157 add semantic deck-state and actual DrawCards integration, and #159 adds source-timed semantic recycle. The PR chronology below records the historical interim #143 scope and is **not the current closure gate**. As of 2026-10-16 #143 is open for the remaining declared engine-owned random delegation, emulator control arm and `sts2-ai` Nature A/B acceptance; native parity belongs to #122.
 
 ## Delivered by the event-metadata slice
 

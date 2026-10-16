@@ -1,5 +1,7 @@
 # Issue #143 P0 — first external playable semantic Nature API
 
+> **Architecture alignment (2026-10-16):** [Unified stochastic ownership and Chance Law](UNIFIED_STOCHASTIC_ARCHITECTURE.md) supersede provisional architectural assumptions in older implementation sections below. [ReferenceNature roadmap](STOCHASTIC_ARCHITECTURE_ROADMAP.md) adds a read-only declared-law sampler as the structural training/control baseline; it does **not** certify original-game `p` or native seeded RNG parity. Versioned P0 protocol evidence and `UNVERIFIED` status are preserved.
+
 > **Scope revision, 2026-10-16:** This document records incremental
 > implementation history. The [current issue #143](https://github.com/nn971/sts2-emulator/issues/143)
 > controls training acceptance: a two-site Nature opponent, an emulator-owned

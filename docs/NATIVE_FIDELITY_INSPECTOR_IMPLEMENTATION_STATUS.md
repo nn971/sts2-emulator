@@ -1,5 +1,7 @@
 # Inspector implementation status
 
+> **Chronology note:** The P0–P5 table below is a **foundation-branch snapshot** and is not an exhaustive current integration-branch status. Later October 2026 evidence and native RNG/spectator draft PRs may supersede individual "not tested" / "deferred" entries. The [inspector plan](NATIVE_FIDELITY_INSPECTOR_PLAN.md) and [issue #122](https://github.com/nn971/sts2-emulator/issues/122) are authoritative for scope; the [unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md) does not make native bridge operation depend on Chance Law or ReferenceNature.
+
 **Scope ownership (2026-10-16):** Native-game fidelity checks,
 mechanics/trace differential comparison, exact RNG streams/cursor/shuffle
 and source hook-order audits belong to this inspector work and

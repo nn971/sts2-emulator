@@ -1,5 +1,7 @@
 # AI consumer interface
 
+**Information boundaries:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md). The normal agent observation is the **player-visible** projection; Nature receives a separately negotiated stochastic-choice support/constraints view, and the privileged inspector may access hidden provider state. The proposed read-only Chance Law and ReferenceNature consume Nature-side information and do not change this versioned `prototype-ai-v0` observation contract.
+
 The canonical emulator API remains `IDeterministicEngine` over `RunState` and `GameAction`.
 Search and learning code should normally use `PrototypeAiEnvironment` instead of depending on
 CLI formatting or raw JSON layout.

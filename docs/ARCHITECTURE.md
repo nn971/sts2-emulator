@@ -1,5 +1,7 @@
 # Architecture
 
+**Stochastic architecture (canonical):** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md) and [implementation roadmap](STOCHASTIC_ARCHITECTURE_ROADMAP.md). The reference-oracle diagram below describes the **fidelity evidence flow**, not a runtime dependency: the emulator's Native RNG and bridge operate independently of read-only Chance Law / ReferenceNature. A complete simulator snapshot contains mechanical state **and** active-provider private stochastic state, while projections enforce the audience's information policy.
+
 ## Core design
 
 The repository separates **native truth**, **exact simulation**, and **consumer interfaces**.
@@ -57,7 +59,7 @@ Load(snapshot)     -> S
 
 High-throughput consumers also need batch variants, but batch operations must preserve identical semantics.
 
-`Step` is deterministic because every continuation-relevant RNG stream belongs to `S`.
+`Step` is deterministic in auto-resolving seeded execution because its complete state includes the active provider's private RNG/committed state. Nature mode instead suspends at explicit stochastic boundaries until a legal external choice is supplied; a complete state plus supplied choice is deterministic.
 
 ## Exact state vs projections
 

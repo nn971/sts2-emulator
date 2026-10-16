@@ -1,5 +1,7 @@
 # Native Reference Mod and Fidelity Inspector: implementation plan
 
+> **Architecture boundary (2026-10-16):** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md) and [roadmap](STOCHASTIC_ARCHITECTURE_ROADMAP.md) define Chance Law as an *optional*, read-only Nature/analysis service. The installed-game bridge and Native RNG provider have **no runtime dependency** on it. Native source stream/hook parity is independently owned here and by issue #122. ReferenceNature distribution tests are structurally useful without a native-game session; the inspector supplies later independent evidence where original-game verification is required.
+
 **Status:** In progress. Implementation evidence and remaining gates:
 [NATIVE_FIDELITY_INSPECTOR_IMPLEMENTATION_STATUS.md](NATIVE_FIDELITY_INSPECTOR_IMPLEMENTATION_STATUS.md).
 No authentic native-versus-emulator parity result has yet been established.
