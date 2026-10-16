@@ -474,7 +474,6 @@ public sealed partial class PrototypeGameEngine
         ArgumentNullException.ThrowIfNull(combat);
         var world = RequireWorld(source);
         if (source.Phase != RunPhase.Combat ||
-            world.ActiveRoom != PrototypeRoomType.Combat ||
             world.Combat is null || combat.Act != world.Act)
             throw new InvalidOperationException(
                 "Initial intent continuation has an invalid combat-entry source.");

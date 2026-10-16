@@ -431,6 +431,23 @@ provider is selected. The stream assignment and original conditional laws
 remain `UNVERIFIED`.
 
 The CLI Release build passes with zero warnings or errors after the
-source-route cost-stream change; the updated route smoke has not yet been
-run. The branch remains a work in progress, and the issue stays open for
-source audit and remaining P0 gates.
+source-route cost-stream change. The updated
+`tools/nature_semantic_victory_jsonl_smoke.py` passed: the paired Nature and
+native-policy sessions both reached victory (55 and 53 HP), save/load
+replay matched, the native path recorded 39 decisions and 35 shuffles, and
+the one-vs-fifteen independent-process comparison was identical. The
+focused `SemanticPilotCombatV111Tests` and `SemanticOtherChanceV111Tests`
+suite passed 14/14 tests.
+
+The full core suite reports 1,521 passed and 296 failed. Running the same
+suite from the exact `origin/integration/fidelity-rng-on-silent-all-act-v111`
+base produced 1,520 passed and the same 296 failing test names; the feature
+branch adds one passing test and no new failures. This comparison exposed
+and removed an overstrict initial-continuation room check before the final
+run.
+
+This is source-routed paired mechanics evidence, not probability
+calibration: route/Neow laws, conditional intent laws, non-intent native
+stream assignments and wider encounter coverage remain `UNVERIFIED`. The
+branch remains a work in progress, and the issue stays open for those P0
+gates.
