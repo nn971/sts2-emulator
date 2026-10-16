@@ -34,11 +34,14 @@ cost continuations, including draw-time hooks, exposes source `select_cards`
 player choices, and can opt into typed bounded swaps for a generated card pool
 before returning the ordinary player choice,
 or a bounded insertion position while preserving unresolved deck order.
-Orobas's three ordered relic offer selections also pass through the shared
-index provider, with an opt-in audit result and native compatibility entry
-point. An opt-in bounded enumerator now resolves one small semantic chance
-support into independent child sessions; it rejects supports above the
-requested cap instead of truncating them.
+Orobas's three ordered relic offer selections and Darv's offer-variant plus
+ordered relic-pool shuffle now pass through the shared index provider, with
+opt-in audit results and native compatibility entry points. The existing
+source-pinned Fisher–Yates loop now accepts an arbitrary named stream and
+provider without duplicating its swap mechanics. An opt-in bounded enumerator
+now resolves one small semantic chance support into independent child
+sessions; it rejects supports above the requested cap instead of truncating
+them.
 Several extensions use explicit fixture loadouts. Their source laws remain
 `UNVERIFIED`; the shared native provider seam, broad player-action coverage
 and native cursor parity for the remaining operations are still open work.

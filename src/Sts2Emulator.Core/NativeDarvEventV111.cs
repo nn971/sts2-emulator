@@ -1,5 +1,8 @@
 namespace Sts2Emulator.Core;
 
+public sealed record NativeDarvEventAuditV111(
+    RunState State, RandomIndexDecisionV111[] Choices, string ProviderMode);
+
 /// <summary>
 /// Silent's executable shared Ancient offer. Cross-character cards are not
 /// used by this event; its supported choices use implemented Silent mechanics.
@@ -14,6 +17,10 @@ public static class NativeDarvEventV111
     public const string DustyTomeCardId = "proto.silent.wraith_form";
     public const string CurseOfTheBellCardId = "proto.native.shared.curse_of_the_bell";
     private const string RngEventId = "DARV";
+    public const string OfferVariantSiteId =
+        "event.darv.offer_variant.index_draw";
+    public const string RelicShuffleSiteId =
+        "event.darv.relic_offer.shuffle_swap_index";
 
     public static PrototypeCardDefinition[] Cards =>
     [
@@ -111,8 +118,18 @@ public static class NativeDarvEventV111
         && world.Map.CurrentNodeId is null
         && world.Event?.EventId == EventId;
 
-    public static RunState BeginOpening(RunState state)
+    public static RunState BeginOpening(RunState state) =>
+        BeginOpeningWithAudit(state, new NativeRandomIndexProviderV111()).State;
+
+    /// <summary>
+    /// Resolve Darv's offer-variant and relic-shuffle choices through the
+    /// supplied provider. The compatibility entry point uses native-v111.
+    /// </summary>
+    public static NativeDarvEventAuditV111 BeginOpeningWithAudit(
+        RunState state, IRandomIndexProviderV111 provider)
     {
+        ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(provider);
         if (state.World is not { Act: 2 or 3, Floor: 0, Combat: null,
                 Reward: null, Event: null } world
             || world.Map.CurrentNodeId is not null
@@ -127,14 +144,24 @@ public static class NativeDarvEventV111
         // Source sets do not exclude relics already owned by the player.
         // Sozu is only eligible in Hive; its source set is filtered in Glory.
         var streamId = bundle.Streams[0].StreamId;
-        var offerDustyTome = NativeRngV111.NextInt(bundle, streamId, 2) == 0;
+        var ownerId = $"event:DARV:act:{world.Act}:floor:0";
+        var decisions = new List<RandomIndexDecisionV111>();
+        var variant = provider.Resolve(new RandomIndexRequestV111(
+            OfferVariantSiteId, streamId, ownerId, 0,
+            Array.Empty<int>(), OperationKind: "bounded_integer",
+            BoundedCount: 2), bundle);
+        variant.Validate();
+        decisions.Add(variant);
+        var offerDustyTome = variant.SelectedValue == 0;
         var relics = PoolOneRelicIdsForAct(world.Act, state.Player);
-        NativeRngV111.Shuffle(bundle, streamId, relics);
+        decisions.AddRange(NativeFisherYatesV111.ShuffleInPlace(
+            relics, bundle, provider, streamId, ownerId,
+            RelicShuffleSiteId));
         var offers = relics.Take(offerDustyTome ? 2 : 3)
             .Select(ChoiceId)
             .Concat(offerDustyTome ? [ChoiceId(DustyTomeId)] : [])
             .ToArray();
-        return fork with
+        var result = fork with
         {
             Phase = RunPhase.Event,
             World = world with
@@ -145,6 +172,8 @@ public static class NativeDarvEventV111
                 EventHistory = world.EventIds.Append(EventId).ToArray()
             }
         };
+        return new NativeDarvEventAuditV111(
+            result, decisions.ToArray(), provider.Mode);
     }
 
     public static RunState CreateOpeningFixture(string seed, int act = 2,

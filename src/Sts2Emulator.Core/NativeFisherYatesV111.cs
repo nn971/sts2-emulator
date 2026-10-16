@@ -29,24 +29,47 @@ public static class NativeFisherYatesV111
         if (result.Distinct().Count() != result.Length)
             throw new ArgumentException(
                 "Fisher-Yates instance identities must be pairwise distinct.");
+        var decisions = ShuffleInPlace(
+            result, streams, provider, StreamId, ownerId, siteId);
+        return new NativeFisherYatesResultV111(
+            orderedInput.ToArray(), result, decisions,
+            "post_fisher_yates_pre_modify_shuffle_order");
+    }
+
+    /// <summary>
+    /// Apply the same source-pinned descending Fisher-Yates loop to an
+    /// arbitrary ordered pool and named stream through the shared provider.
+    /// </summary>
+    public static RandomIndexDecisionV111[] ShuffleInPlace<T>(
+        IList<T> values,
+        RngBundle streams,
+        IRandomIndexProviderV111 provider,
+        string streamId,
+        string ownerId,
+        string siteId)
+    {
+        ArgumentNullException.ThrowIfNull(values);
+        ArgumentNullException.ThrowIfNull(streams);
+        ArgumentNullException.ThrowIfNull(provider);
+        ArgumentException.ThrowIfNullOrWhiteSpace(streamId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
         var decisions = new List<RandomIndexDecisionV111>();
-        for (int end = result.Length - 1; end > 0; --end)
+        for (int end = values.Count - 1; end > 0; --end)
         {
             // Native ListExtensions.UnstableShuffle calls NextInt(end+1)
             // exactly once, including the final bound of two.
             var request = new RandomIndexRequestV111(
-                siteId, StreamId, ownerId, decisions.Count,
+                siteId, streamId, ownerId, decisions.Count,
                 Array.Empty<int>(), OperationKind: "bounded_integer",
                 BoundedCount: end + 1);
             var decision = provider.Resolve(request, streams);
             decision.Validate();
-            (result[end], result[decision.SelectedIndex]) =
-                (result[decision.SelectedIndex], result[end]);
+            (values[end], values[decision.SelectedIndex]) =
+                (values[decision.SelectedIndex], values[end]);
             decisions.Add(decision);
         }
-        return new NativeFisherYatesResultV111(
-            orderedInput.ToArray(), result, decisions.ToArray(),
-            "post_fisher_yates_pre_modify_shuffle_order");
+        return decisions.ToArray();
     }
 }
 
