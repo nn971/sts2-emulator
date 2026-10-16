@@ -137,7 +137,9 @@ internal static class PrototypeAiJsonlServer
                 outcome = state.CombatOutcome,
                 exitHp = state.CombatTerminal ? state.Run.Player.Hp : (int?)null,
                 chanceSites = new[] { "enemy_intent", "draw_card" },
-                otherChanceProvider = SemanticOtherChanceV111.ProviderId,
+                otherChanceProvider = state.OtherChance is null
+                    ? "engine-owned-deterministic-unverified-v1"
+                    : SemanticOtherChanceV111.ProviderId,
                 sourceOpeningProvider = state.SeededEntry is null
                     ? "precommitted-fixture-v1"
                     : "engine-owned-seeded-source-shaped-unverified-v1",
