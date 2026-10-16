@@ -146,10 +146,17 @@ public static class SemanticPilotCombatEngineV111
             entry.FirstMonsterCombatId < 1)
             throw new ArgumentOutOfRangeException(nameof(entry),
                 "Seeded Nature combat requires a positive floor and monster IDs.");
-        var prepared = PrototypeNativeLaterActFixture.CreateCombatRngPreEntry(
-            entry.Seed, entry.Act, entry.EncounterId,
-            entry.NativeEncounterEntry, entry.TotalFloor, entry.Ascension,
-            entry.FirstMonsterCombatId, entry.MapColumn, entry.MapRow);
+        // Act 1 fixed weak entry is deliberately isolated from the
+        // Hive/Glory fixture's pre-existing public 2/3-only contract.
+        var prepared = entry.Act == 1
+            ? PrototypeNativeActOneWeakNatureFixtureV111.CreateCombatRngPreEntry(
+                entry.Seed, entry.EncounterId, entry.NativeEncounterEntry,
+                entry.TotalFloor, entry.Ascension, entry.FirstMonsterCombatId,
+                entry.MapColumn, entry.MapRow)
+            : PrototypeNativeLaterActFixture.CreateCombatRngPreEntry(
+                entry.Seed, entry.Act, entry.EncounterId,
+                entry.NativeEncounterEntry, entry.TotalFloor, entry.Ascension,
+                entry.FirstMonsterCombatId, entry.MapColumn, entry.MapRow);
         var rng = prepared.NativeStreams.Fork();
         var hp = ControlledInitialHpV111.Begin(
             prepared.Combat, prepared.Formation, prepared.NativeStreams);
