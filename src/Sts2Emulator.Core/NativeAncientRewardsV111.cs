@@ -115,6 +115,7 @@ public static class NativeAncientRewardsV111
 
     internal static void ValidateEventContext(RunState state)
     {
+        NativeNeowEventV111.ValidateEventContext(state);
         NativeOrobasEventV111.ValidateEventContext(state);
         NativeDarvEventV111.ValidateEventContext(state);
         if (state.World is { } world
@@ -147,6 +148,8 @@ public static class NativeAncientRewardsV111
         if (evt.EventId == NativeOrobasEventV111.EventId)
             return;
         if (evt.EventId == NativeDarvEventV111.EventId)
+            return;
+        if (evt.EventId == PrototypeNativeOvergrowthEvents.NeowEventId)
             return;
         if (evt.EventId == NativePaelRewardsV111.PaelId)
         {

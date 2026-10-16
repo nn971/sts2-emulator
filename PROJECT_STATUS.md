@@ -1424,3 +1424,22 @@ and float values; hook-forced potion rewards and exact RNG
 alignment are not modeled. The legacy abstract map retains its
 former 50% potion-reward chance. No colorless card or
 cross-character mechanics were added.
+
+## Native Overgrowth map and Neow RNG contexts (2026-10-17)
+
+The opt-in Overgrowth map now has two versioned profiles: the retained
+legacy prototype-stream generator and a native context-stream generator
+using `context.act_1_map`. Both route the same map structure through typed
+index, shuffle, and Gaussian providers. The native profile preserves the
+legacy map API and returns its final stream cursor for audit; complete source
+call-order and resulting-map parity remain unverified.
+
+New Overgrowth runs now generate Neow's existing source-shaped offer logic
+through `context.event.NEOW.player_0`, persist the event RNG cursor, and
+expose native, scripted, or controlled decisions through the run-factory
+audit entry point. Event validation replays native offers and checks that
+counterfactual providers leave the native cursor untouched. The older
+prototype-stream helper remains available for compatibility. Unlock and
+`IsAllowedAtNeow` filtering and native call-order parity are still open.
+The Release CLI build passes with zero warnings or errors; no test suite was
+run for these migrations.

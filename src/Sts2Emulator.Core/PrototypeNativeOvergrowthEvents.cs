@@ -10,6 +10,17 @@ namespace Sts2Emulator.Core;
 public static class PrototypeNativeOvergrowthEvents
 {
     public const string NeowEventId = "proto.native.event.neow";
+    public const string NeowRngEventEntry = "NEOW";
+    public const string NeowCursedRelicSiteId =
+        "event.neow.cursed_relic.index_draw";
+    public const string NeowLavaRockPairSiteId =
+        "event.neow.lava_rock_pair.index_draw";
+    public const string NeowOysterPairSiteId =
+        "event.neow.oyster_pair.index_draw";
+    public const string NeowTalismanPairSiteId =
+        "event.neow.talisman_pair.index_draw";
+    public const string NeowPositiveRelicShuffleSiteId =
+        "event.neow.positive_relic.shuffle_swap_index";
 
     // The default Neow positive/curse subsets from v0.111.0 Neow.cs.
     // This intentionally excludes conditionally-added special choices
@@ -294,16 +305,30 @@ public static class PrototypeNativeOvergrowthEvents
 
     public static string[] GenerateNeowOfferedChoiceIds(RngBundle rng)
     {
-        // Mirrors the native Neow.GenerateInitialOptions decision graph,
-        // while still using the emulator RNG (not native call-order parity).
-        // Unlock/IsAllowedAtNeow filtering is not yet translated.
+        ArgumentNullException.ThrowIfNull(rng);
+        return GenerateNeowOfferedChoiceIds(
+            (siteId, ownerId, count) => LegacyRandomChoiceV111
+                .ChooseIndexRange(rng, siteId, "event", ownerId, count)
+                .SelectedIndex,
+            (values, ownerId) =>
+            {
+                _ = LegacyFisherYatesV111.ShuffleInPlace(
+                    values, rng, "event", NeowPositiveRelicShuffleSiteId,
+                    ownerId);
+            });
+    }
+
+    internal static string[] GenerateNeowOfferedChoiceIds(
+        Func<string, string, int, int> chooseIndex,
+        Action<string[], string> shuffle)
+    {
+        ArgumentNullException.ThrowIfNull(chooseIndex);
+        ArgumentNullException.ThrowIfNull(shuffle);
+        // Mirrors the native Neow.GenerateInitialOptions decision graph.
+        // Unlock/IsAllowedAtNeow filtering remains unaudited.
         var cursed = NeowCursedRelicNames[
-            LegacyRandomChoiceV111.ChooseIndexRange(
-                rng,
-                "event.neow.cursed_relic.index_draw",
-                "event",
-                "run:act:1:neow:cursed_relic",
-                NeowCursedRelicNames.Length).SelectedIndex];
+            chooseIndex(NeowCursedRelicSiteId,
+                "run:act:1:neow:cursed_relic", NeowCursedRelicNames.Length)];
         var positives = NeowPositiveRelicNames.ToList();
 
         // Suppress a positive whose corresponding curse is offered.
@@ -330,28 +355,16 @@ public static class PrototypeNativeOvergrowthEvents
 
         if (cursed != "LargeCapsule")
         {
-            positives.Add(LegacyRandomChoiceV111.ChooseIndexRange(
-                rng,
-                "event.neow.lava_rock_pair.index_draw",
-                "event",
-                "run:act:1:neow:lava_rock_pair",
-                2).SelectedIndex == 0
+            positives.Add(chooseIndex(NeowLavaRockPairSiteId,
+                "run:act:1:neow:lava_rock_pair", 2) == 0
                 ? "LavaRock" : "SmallCapsule");
         }
 
-        positives.Add(LegacyRandomChoiceV111.ChooseIndexRange(
-            rng,
-            "event.neow.oyster_pair.index_draw",
-            "event",
-            "run:act:1:neow:oyster_pair",
-            2).SelectedIndex == 0
+        positives.Add(chooseIndex(NeowOysterPairSiteId,
+            "run:act:1:neow:oyster_pair", 2) == 0
             ? "NutritiousOyster" : "StoneHumidifier");
-        positives.Add(LegacyRandomChoiceV111.ChooseIndexRange(
-            rng,
-            "event.neow.talisman_pair.index_draw",
-            "event",
-            "run:act:1:neow:talisman_pair",
-            2).SelectedIndex == 0
+        positives.Add(chooseIndex(NeowTalismanPairSiteId,
+            "run:act:1:neow:talisman_pair", 2) == 0
             ? "NeowsTalisman" : "Pomander");
 
         // Massive Scroll's native IsAllowed requires more than one
@@ -366,12 +379,7 @@ public static class PrototypeNativeOvergrowthEvents
         positives.Remove("Kaleidoscope");
 
         var shuffled = positives.ToArray();
-        _ = LegacyFisherYatesV111.ShuffleInPlace(
-            shuffled,
-            rng,
-            "event",
-            "event.neow.positive_relic.shuffle_swap_index",
-            "run:act:1:neow:positive_relics");
+        shuffle(shuffled, "run:act:1:neow:positive_relics");
         return shuffled.Take(2).Append(cursed)
             .Select(name => "take_" + NeowRelicId(name))
             .ToArray();

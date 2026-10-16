@@ -87,6 +87,11 @@ through the legacy provider. Semantic-controlled Jeweled Mask publishes its
 ordered eligible Power instances and resumes the saved `BeforeHandDraw`
 continuation after the selection, without replaying prior hooks. Reference-law
 calibration and native cursor parity remain open.
+The opt-in Overgrowth map uses the `context.act_1_map` stream, and new
+Overgrowth Neow offers use a persisted `context.event.NEOW.player_0` stream
+through typed native, scripted, or controlled providers. Their legacy helper
+remains available; map and Neow source call-order parity remain open, as do
+Neow unlock and `IsAllowedAtNeow` filters.
 The potion factory now routes its unit-float rarity
 sample and within-tier model index through separate typed providers in source
 order. Native effect-random-target and Sly auto-play selections use typed

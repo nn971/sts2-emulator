@@ -384,7 +384,14 @@ public static class PrototypeNativeOvergrowthMap
 /// </summary>
 public static class PrototypeNativeOvergrowthRunFactory
 {
-    public static RunState Create(string seed, int ascension = 0)
+    public static RunState Create(string seed, int ascension = 0) =>
+        CreateWithAudit(seed, ascension).State;
+
+    public static (RunState State, NativeNeowOfferAuditV111 NeowOffers)
+        CreateWithAudit(
+            string seed,
+            int ascension = 0,
+            IRandomIndexProviderV111? neowProvider = null)
     {
         var engine = new PrototypeGameEngine();
         var state = engine.Step(
@@ -424,8 +431,10 @@ public static class PrototypeNativeOvergrowthRunFactory
             ? (int)(state.Player.MaxHp * 0.8m)
             : state.Player.MaxHp;
         var nativePotionSlots = ascension >= 4 ? 2 : 3;
+        var neowOffers = NativeNeowEventV111.GenerateInitialOptions(
+            seed, neowProvider);
 
-        return state with
+        var result = state with
         {
             Player = state.Player with
             {
@@ -442,8 +451,11 @@ public static class PrototypeNativeOvergrowthRunFactory
                 UnknownRoomOdds = new PrototypeUnknownRoomOddsState(),
                 Event = new EventState(
                     PrototypeNativeOvergrowthEvents.NeowEventId,
-                    OfferedChoiceIds:
-                        PrototypeNativeOvergrowthEvents.GenerateNeowOfferedChoiceIds(rng)),
+                    OfferedChoiceIds: neowOffers.OfferedChoiceIds,
+                    NativeEventRng: neowOffers.NativeEventRng,
+                    NativeEventRngProviderMode:
+                        neowOffers.ProviderMode == "native-v111"
+                            ? null : neowOffers.ProviderMode),
                 EventHistory =
                 [
                     PrototypeNativeOvergrowthEvents.NeowEventId
@@ -451,5 +463,6 @@ public static class PrototypeNativeOvergrowthRunFactory
             },
             Phase = RunPhase.Event
         };
+        return (result, neowOffers);
     }
 }
