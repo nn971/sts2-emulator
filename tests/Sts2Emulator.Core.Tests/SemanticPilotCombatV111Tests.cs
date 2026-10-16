@@ -296,6 +296,11 @@ public sealed class SemanticPilotCombatV111Tests
         Assert.Null(state.IntentPending);
         Assert.Null(state.DrawPending);
         Assert.True(state.Run.Player.Hp > 0);
+        Assert.NotNull(state.RewardAudit);
+        Assert.Equal(SemanticRewardAuditV111.PrototypeProviderId,
+            state.RewardAudit!.ProviderId);
+        Assert.True(state.RewardAudit.Calls > 0);
+        Assert.Equal("UNVERIFIED", state.RewardAudit.ProbabilityStatus);
         Assert.Equal(state.Fingerprint,
             SemanticPilotCombatEngineV111.Restore(
                 SemanticPilotCombatEngineV111.Save(state)).Fingerprint);
