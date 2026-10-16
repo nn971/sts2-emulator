@@ -3558,6 +3558,8 @@ public sealed partial class PrototypeGameEngine
         var enemies = combat.Enemies
             .Select(enemy => enemy.Fork())
             .ToList();
+        var randomDiscardInsertionOrdinal = 0;
+        var randomDrawInsertionOrdinal = 0;
         var block = combat.PlayerBlock;
         var hp = player.Hp;
         var gold = player.Gold;
@@ -3565,6 +3567,12 @@ public sealed partial class PrototypeGameEngine
         for (var index = 0; index < enemies.Count; index++)
         {
             var enemy = enemies[index];
+            var enemyCombatId = combat.NativeRng is { } nativeRng
+                ? index < nativeRng.Formation.MonsterContexts.Length
+                    ? nativeRng.Formation.MonsterContexts[index].CombatId
+                    : throw new InvalidDataException(
+                        "Native enemy action lost its creature RNG owner.")
+                : enemy.InstanceId;
             var definition = PrototypeContent.Enemy(enemy.EnemyId);
 
             if (enemy.Hp <= 0)
@@ -4262,10 +4270,22 @@ public sealed partial class PrototypeGameEngine
                                     combat.NextCardInstanceId, null,
                                     effect.CardId, 0, true,
                                     PrototypeJson.EmptyObject());
-                                var insertion = PrototypeRng.NextInt(
-                                    rng, "combat", combat.DiscardPile.Length + 1);
+                                var insertion = ResolveRandomPilePosition(
+                                    combat, rng, combat.DiscardPile,
+                                    effect.CardId, operationKind: null,
+                                    sourceCardInstanceId: null,
+                                    ordinal: randomDiscardInsertionOrdinal++,
+                                    siteId:
+                                        "combat.enemy.discard.random_insert_index",
+                                    requestOwnerPrefix:
+                                        "creature:" + enemyCombatId +
+                                        ":move:" + move.Id +
+                                        ":effect:" + effect.Kind,
+                                    pileName: "discard");
+                                combat = insertion.Combat;
                                 var pile = combat.DiscardPile.ToList();
-                                pile.Insert(insertion, instance.InstanceId);
+                                pile.Insert(insertion.SelectedIndex,
+                                    instance.InstanceId);
                                 combat = combat with
                                 {
                                     Cards = combat.Cards.Append(instance).ToArray(),
@@ -4290,10 +4310,21 @@ public sealed partial class PrototypeGameEngine
                                     combat.NextCardInstanceId,
                                     null, effect.CardId, 0, true,
                                     PrototypeJson.EmptyObject());
-                                var insertion = PrototypeRng.NextInt(
-                                    rng, "combat", combat.DrawPile.Length + 1);
+                                var insertion = ResolveRandomPilePosition(
+                                    combat, rng, combat.DrawPile,
+                                    effect.CardId, operationKind: null,
+                                    sourceCardInstanceId: null,
+                                    ordinal: randomDrawInsertionOrdinal++,
+                                    siteId:
+                                        "combat.enemy.draw.random_insert_index",
+                                    requestOwnerPrefix:
+                                        "creature:" + enemyCombatId +
+                                        ":move:" + move.Id +
+                                        ":effect:" + effect.Kind);
+                                combat = insertion.Combat;
                                 var draw = combat.DrawPile.ToList();
-                                draw.Insert(insertion, instance.InstanceId);
+                                draw.Insert(insertion.SelectedIndex,
+                                    instance.InstanceId);
                                 combat = combat with
                                 {
                                     Cards = combat.Cards.Append(instance).ToArray(),
@@ -6887,7 +6918,7 @@ public sealed partial class PrototypeGameEngine
                         combat = modelSelection.Combat;
                         var selected = pool[modelSelection.SelectedIndex];
                         var id = combat.NextCardInstanceId;
-                        var insertion = ResolveRandomDrawPosition(
+                        var insertion = ResolveRandomPilePosition(
                             combat, rng, combat.DrawPile, selected,
                             operation.Kind, sourceCardInstanceId,
                             drawInsertionOrdinal++);
@@ -6923,7 +6954,7 @@ public sealed partial class PrototypeGameEngine
                     for (var i = 0; i < Math.Max(0, operation.Amount); i++)
                     {
                         var id = combat.NextCardInstanceId;
-                        var insertion = ResolveRandomDrawPosition(
+                        var insertion = ResolveRandomPilePosition(
                             combat, rng, combat.DrawPile, operation.CardId,
                             operation.Kind, sourceCardInstanceId,
                             drawInsertionOrdinal++);
@@ -7870,7 +7901,7 @@ public sealed partial class PrototypeGameEngine
                     "UNSUPPORTED_CONTROLLED_CHANCE " +
                     "site=combat.relic.after_shuffle.generated_card.random_insert_index " +
                     "operation=bounded_integer requires a saved insertion continuation.");
-            var insertion = ResolveRandomDrawPosition(
+            var insertion = ResolveRandomPilePosition(
                 combat, rng, combat.DrawPile, cardId,
                 PrototypeCombatEffectKind.CreateGeneratedCardsAtRandomDrawPositions,
                 sourceCardInstanceId: null, ordinal: insertionOrdinal++,
@@ -12665,16 +12696,17 @@ public sealed partial class PrototypeGameEngine
     }
 
     private static (CombatState Combat, int SelectedIndex)
-        ResolveRandomDrawPosition(
+        ResolveRandomPilePosition(
             CombatState combat,
             RngBundle legacyRng,
             long[] orderedDrawPile,
             string cardModelId,
-            PrototypeCombatEffectKind operationKind,
+            PrototypeCombatEffectKind? operationKind,
             long? sourceCardInstanceId,
             int ordinal,
             string siteId = "combat.draw_pile.random_insert_index",
-            string? requestOwnerPrefix = null)
+            string? requestOwnerPrefix = null,
+            string pileName = "draw")
     {
         ArgumentNullException.ThrowIfNull(combat);
         ArgumentNullException.ThrowIfNull(legacyRng);
@@ -12684,10 +12716,18 @@ public sealed partial class PrototypeGameEngine
             throw new ArgumentOutOfRangeException(nameof(ordinal));
         if (requestOwnerPrefix is not null)
             ArgumentException.ThrowIfNullOrWhiteSpace(requestOwnerPrefix);
+        if (pileName is not ("draw" or "discard"))
+            throw new ArgumentOutOfRangeException(nameof(pileName));
         if (orderedDrawPile.Distinct().Count() != orderedDrawPile.Length)
             throw new ArgumentException(
                 "Random insertion support requires unique card instances.",
                 nameof(orderedDrawPile));
+
+        if (ControlledChanceGuardV111.Active &&
+            !ControlledChanceGuardV111.EngineOwnedNativeProviderActive)
+            throw new NotSupportedException(
+                $"UNSUPPORTED_CONTROLLED_CHANCE site={siteId} " +
+                "operation=bounded_integer requires a saved pile-insertion continuation.");
 
         var native = combat.NativeRng;
         var streamId = native is null
@@ -12700,8 +12740,12 @@ public sealed partial class PrototypeGameEngine
         var ownerId = requestOwnerPrefix ??
             (sourceCardInstanceId is { } sourceCardId
                 ? "card_instance:" + sourceCardId
-                : "effect:" + operationKind);
-        ownerId += ":card:" + cardModelId + ":draw_pile:" +
+                : operationKind is { } kind
+                    ? "effect:" + kind
+                    : throw new ArgumentException(
+                        "Random pile insertion requires a stable owner.",
+                        nameof(requestOwnerPrefix)));
+        ownerId += ":card:" + cardModelId + ":" + pileName + "_pile:" +
             CanonicalJson.Sha256(orderedDrawPile);
         var decision = provider.Resolve(new RandomIndexRequestV111(
             siteId, streamId, ownerId,
