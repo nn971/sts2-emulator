@@ -70,17 +70,42 @@ public static class PrototypeNativeLaterActFixture
         int? mapColumn = null,
         int? mapRow = null)
     {
-        _ = PrototypeNativeLaterActMap.ProfileId(act);
+        // Narrow source-pinned Overgrowth weak-encounter bridge for the
+        // first *winning* semantic combat acceptance pilot. Keep the
+        // independent Hive/Glory fixture's other route semantics unchanged.
+        // These fixed formations require no random source resolver.
+        if (act == 1)
+        {
+            string expectedName = emulatorEncounterId switch
+            {
+                "proto.encounter.shrinker_beetle_weak" => "ShrinkerBeetleWeak",
+                "proto.encounter.nibbits_weak" => "NibbitsWeak",
+                _ => throw new NotSupportedException(
+                    "UNSUPPORTED_SEMANTIC_OPENING site=act1.weak_formation " +
+                    "operation=" + emulatorEncounterId)
+            };
+            if (!StringComparer.Ordinal.Equals(nativeEncounterEntry, expectedName))
+                throw new ArgumentException(
+                    "Act 1 weak source entry name differs from pinned encounter.",
+                    nameof(nativeEncounterEntry));
+        }
+        else
+            _ = PrototypeNativeLaterActMap.ProfileId(act);
         var encounter = PrototypeContent.Encounter(emulatorEncounterId);
         if (encounter.MinAct > act || encounter.MaxAct < act)
             throw new ArgumentException(
                 $"Encounter '{emulatorEncounterId}' is not valid in act {act}.",
                 nameof(emulatorEncounterId));
 
-        return NativeEncounterFormationFactoryV111.Generate(
+        var result = NativeEncounterFormationFactoryV111.Generate(
             seed, encounter, nativeEncounterEntry, totalFloor,
             currentActIndex: act - 1,
             firstMonsterCombatId, mapColumn, mapRow);
+        if (act == 1 && (result.EncounterOpeningOffset is not null ||
+            !result.Enemies.SequenceEqual(encounter.FixedEnemySpecs)))
+            throw new InvalidDataException(
+                "Pinned Act 1 weak source formation changed unexpectedly.");
+        return result;
     }
 
     /// <summary>
