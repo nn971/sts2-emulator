@@ -59,6 +59,8 @@ reference distribution is claimed.
 | `map.later_act.path_delta.shuffle_swap_index` | act map / `context.act_map.*` | Partial: ordered `[-1, 0, 1]` path deltas | Yes: typed provider at each descending swap | No: provider-specific result/cursor regression pending | No | No | No |
 | `map.later_act.glory_rest_count.index_draw` | Glory map / `context.act_map.*` | Yes: source `NextInt(2)` rest quota | Yes: bounded typed provider request | No: provider-specific result/cursor regression pending | No | No | No |
 | `map.later_act.room_assignment.shuffle_swap_index` | act map / `context.act_map.*` | Partial: ordered unassigned points, shuffled per room quota | Yes: typed provider at each descending swap | No: provider-specific result/cursor regression pending | No | No | No |
+| `map.later_act.hive_rest_count.gaussian_int` | Hive map / `context.act_map.*` | Yes: truncated rounded Gaussian, inclusive 6–7 | Yes: typed Gaussian-int provider preserves native rejection sampling | No: provider-specific result/cursor regression pending | No | No | No |
+| `map.later_act.unknown_count.gaussian_int` | Hive/Glory map / `context.act_map.*` | Yes: truncated rounded Gaussian 10–14, then minus one | Yes: typed Gaussian-int provider preserves native rejection sampling | No: provider-specific result/cursor regression pending | No | No | No |
 
 This is the migrated typed-site inventory, not a complete v0.111 RNG
 inventory. Other encounter resolvers, summon/death lifecycle effects,
@@ -122,8 +124,8 @@ provider integrations, not controlled summon/death continuations.
 
 **D2 remaining:** formation resolvers outside the integrated subset,
 monster-local draws, summon/death continuation mechanics,
-shuffle/targets/rewards, map Gaussian quota draws and full map source-order
-parity, event sites beyond Orobas, Darv, Pael, Tezcatara, Nonupeipe, Tanx and
+shuffle/targets/rewards, full map source-order parity, event sites beyond
+Orobas, Darv, Pael, Tezcatara, Nonupeipe, Tanx and
 Vakuu offer generation,
 and other audited call sites; explicit weighted
 outcome metadata at move-level instead of primitive index selections.
@@ -166,12 +168,14 @@ remains separate from seeded emulator RNG equality. See
 ## Known limitations
 
 - The `RandomIndex` provider handles finite ordered **index** decisions. A
-  separate typed unit-float provider now wraps native and controlled samples;
-  it accepts `1.0f`, which can result from rounding a native value below one.
+  separate typed unit-float provider wraps native and controlled samples, and
+  a Gaussian-integer provider wraps the native inclusive rejection sampler;
+  the unit-float provider accepts `1.0f`, which can result from rounding a
+  native value below one.
   The semantic playable extension separately supports typed physical
   card, enemy-instance and generated-card-model identities. Ranged floats,
-  Gaussian/rejection and dynamic weighted choices still need typed operations
-  and call-site audits.
+  Gaussian-double/rejection and dynamic weighted choices still need typed
+  operations and call-site audits.
 - The scripting provider validates an exact request sequence but is not yet
   a serializable resumable game controller.
 - Provider instance state is not in canonical `RunState`, so callers must

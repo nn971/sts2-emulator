@@ -25,6 +25,10 @@ public static class PrototypeNativeLaterActMap
         "map.later_act.glory_rest_count.index_draw";
     public const string RoomAssignmentShuffleSiteId =
         "map.later_act.room_assignment.shuffle_swap_index";
+    public const string HiveRestCountGaussianSiteId =
+        "map.later_act.hive_rest_count.gaussian_int";
+    public const string UnknownCountGaussianSiteId =
+        "map.later_act.unknown_count.gaussian_int";
 
     public static string ProfileId(int act) => act switch
     {
@@ -61,6 +65,8 @@ public static class PrototypeNativeLaterActMap
         RngBundle bundle, string streamId, bool native, string ownerId)
     {
         private readonly NativeRandomIndexProviderV111 _nativeProvider = new();
+        private readonly NativeRandomGaussianIntProviderV111
+            _nativeGaussianProvider = new();
         private readonly Dictionary<string, int> _ordinals = new(
             StringComparer.Ordinal);
 
@@ -98,10 +104,18 @@ public static class PrototypeNativeLaterActMap
             _ordinals[siteId] = ordinal + choices.Length;
         }
 
-        public int NextGaussianInt(int mean, int standardDeviation, int min, int max) =>
-            native ? NativeRngV111.NextGaussianInt(bundle, streamId,
-                mean, standardDeviation, min, max)
-                : SampleTruncatedGaussian(bundle, mean, standardDeviation, min, max);
+        public int NextGaussianInt(
+            int mean, int standardDeviation, int min, int max, string siteId)
+        {
+            if (!native)
+                return SampleTruncatedGaussian(
+                    bundle, mean, standardDeviation, min, max);
+            var decision = _nativeGaussianProvider.Resolve(
+                new RandomGaussianIntRequestV111(
+                    siteId, streamId, ownerId, NextOrdinal(siteId),
+                    mean, standardDeviation, min, max), bundle);
+            return decision.SelectedValue;
+        }
     }
 
     /// <summary>
@@ -263,10 +277,12 @@ public static class PrototypeNativeLaterActMap
         // Both have StandardRandomUnknownCount minus one (9..13).
         // Geometry/quota compatibility is not RNG stream parity.
         var restCount = act == 2
-            ? random.NextGaussianInt(6, 1, 6, 7)
+            ? random.NextGaussianInt(
+                6, 1, 6, 7, HiveRestCountGaussianSiteId)
             : 5 + random.NextInt(2, GloryRestCountSiteId);
         var unknownCount =
-            random.NextGaussianInt(12, 1, 10, 14) - 1;
+            random.NextGaussianInt(
+                12, 1, 10, 14, UnknownCountGaussianSiteId) - 1;
         var quotas = new (PrototypeRoomType Type, int Count)[]
         {
             (PrototypeRoomType.Rest, restCount),

@@ -52,8 +52,8 @@ Beautiful Bracelet's eligible-deck shuffle and Fur Coat's current-act combat
 node shuffle now use typed native swap requests as well; controlled relic
 acquisition continuation remains pending. The later-act map's bounded path
 starts, delta shuffles, Glory rest-count pick and room-assignment shuffles now
-also use typed native requests. Its Gaussian quota rolls remain direct, and
-full source call-order parity is still open.
+also use typed native requests. Its Gaussian quota samples now use typed
+provider requests, while full source call-order parity is still open.
 An opt-in bounded
 enumerator now resolves one small semantic chance support into independent
 child sessions; it rejects supports above the requested cap instead of
