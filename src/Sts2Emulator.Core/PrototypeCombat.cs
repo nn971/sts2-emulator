@@ -5054,6 +5054,7 @@ public sealed partial class PrototypeGameEngine
     {
         var randomTargetOrdinal = 0;
         var autoPlayTargetOrdinal = 0;
+        var generatedCardOrdinal = 0;
         while (operations.Count > 0)
         {
             var operation = operations.Dequeue();
@@ -6199,8 +6200,11 @@ public sealed partial class PrototypeGameEngine
                             "Chaos has no supported single-player card pool.");
                     for (var index = 0; index < operation.Amount; index++)
                     {
-                        var id = pool[PrototypeRng.NextInt(
-                            rng, "combat", pool.Length)];
+                        var selection = ResolveGeneratedCardModelIndex(
+                            combat, rng, pool, operation.Kind,
+                            sourceCardInstanceId, generatedCardOrdinal++);
+                        combat = selection.Combat;
+                        var id = pool[selection.SelectedIndex];
                         combat = AddGeneratedCardCopies(combat,
                             new PrototypeCombatCardSnapshot(
                                 id, 0, PrototypeJson.EmptyObject(),
@@ -6231,8 +6235,11 @@ public sealed partial class PrototypeGameEngine
                     }
                     for (var n = 0; n < operation.Amount; n++)
                     {
-                        var picked = pool[PrototypeRng.NextInt(
-                            rng, "combat", pool.Length)];
+                        var selection = ResolveGeneratedCardModelIndex(
+                            combat, rng, pool, operation.Kind,
+                            sourceCardInstanceId, generatedCardOrdinal++);
+                        combat = selection.Combat;
+                        var picked = pool[selection.SelectedIndex];
                         combat = AddGeneratedCardCopies(combat,
                             new PrototypeCombatCardSnapshot(
                                 picked, operation.GeneratedCardUpgradeLevel,
@@ -6963,8 +6970,11 @@ public sealed partial class PrototypeGameEngine
                     }
                     for (var i = 0; i < operation.Amount; i++)
                     {
-                        var id = pool[PrototypeRng.NextInt(
-                            rng, "combat", pool.Length)];
+                        var selection = ResolveGeneratedCardModelIndex(
+                            combat, rng, pool, operation.Kind,
+                            sourceCardInstanceId, generatedCardOrdinal++);
+                        combat = selection.Combat;
+                        var id = pool[selection.SelectedIndex];
                         combat = AddGeneratedCardCopies(combat,
                             new PrototypeCombatCardSnapshot(
                                 id, 0, PrototypeJson.EmptyObject(),
@@ -12571,6 +12581,52 @@ public sealed partial class PrototypeGameEngine
         var decision = provider.Resolve(new RandomIndexRequestV111(
             siteId, streamId, ownerId, ordinal,
             (int[])eligibleEnemyInstanceIds.Clone()), streams);
+        var updated = native is null
+            ? combat
+            : combat with
+            {
+                NativeRng = native with { RunStreams = streams }
+            };
+        return (updated, decision.SelectedIndex);
+    }
+
+    private static (CombatState Combat, int SelectedIndex)
+        ResolveGeneratedCardModelIndex(
+            CombatState combat,
+            RngBundle legacyRng,
+            string[] candidateCardIds,
+            PrototypeCombatEffectKind operationKind,
+            long? sourceCardInstanceId,
+            int ordinal)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(legacyRng);
+        ArgumentNullException.ThrowIfNull(candidateCardIds);
+        if (candidateCardIds.Length == 0 ||
+            candidateCardIds.Any(string.IsNullOrWhiteSpace) ||
+            candidateCardIds.Distinct(StringComparer.Ordinal).Count() !=
+                candidateCardIds.Length)
+            throw new ArgumentException(
+                "Generated-card selection requires a nonempty unique support.",
+                nameof(candidateCardIds));
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+
+        var native = combat.NativeRng;
+        var streamId = native is null
+            ? "combat"
+            : "run.combat_card_generation";
+        var streams = native?.RunStreams.Fork() ?? legacyRng;
+        IRandomIndexProviderV111 provider = native is null
+            ? new LegacyPrototypeRandomIndexProviderV111()
+            : new NativeRandomIndexProviderV111();
+        var ownerId = sourceCardInstanceId is { } sourceCardId
+            ? "card_instance:" + sourceCardId
+            : "effect:" + operationKind;
+        ownerId += ":pool:" + CanonicalJson.Sha256(candidateCardIds);
+        var decision = provider.Resolve(new RandomIndexRequestV111(
+            "combat.generated_card.select", streamId, ownerId, ordinal,
+            Enumerable.Range(0, candidateCardIds.Length).ToArray()), streams);
         var updated = native is null
             ? combat
             : combat with

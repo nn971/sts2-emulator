@@ -47,7 +47,9 @@ existing source-pinned Fisher–Yates loop now accepts an arbitrary named
 stream and provider without duplicating its swap mechanics. Jeweled Mask's
 random Power selection and native generated-card full-pool shuffle also reach
 typed native providers. Jeweled Mask preserves its legacy `combat` stream
-through the typed legacy adapter. Semantic-controlled Jeweled Mask publishes its
+through the typed legacy adapter. Random generated-card model picks now use
+`run.combat_card_generation` in native combat and the retained `combat` stream
+through the legacy provider. Semantic-controlled Jeweled Mask publishes its
 ordered eligible Power instances and resumes the saved `BeforeHandDraw`
 continuation after the selection, without replaying prior hooks. Reference-law
 calibration and native cursor parity remain open.
