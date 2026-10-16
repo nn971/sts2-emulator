@@ -6325,16 +6325,21 @@ public sealed partial class PrototypeGameEngine
                     }
 
                     var nativeRunStreams = combat.NativeRng?.RunStreams.Fork();
-                    var selectedIndex = nativeRunStreams is null
-                        ? PrototypeRng.NextInt(
-                            rng, "combat", candidates.Length)
-                        : new NativeRandomIndexProviderV111().Resolve(
-                            new RandomIndexRequestV111(
-                                "combat.relic.jeweled_mask.random_power_draw_card",
-                                "run.combat_card_selection", "player:0",
-                                combat.Turn - 1,
-                                Enumerable.Range(0, candidates.Length).ToArray()),
-                            nativeRunStreams).SelectedIndex;
+                    var streamId = nativeRunStreams is null
+                        ? "combat"
+                        : "run.combat_card_selection";
+                    var streams = nativeRunStreams ?? rng;
+                    IRandomIndexProviderV111 provider =
+                        nativeRunStreams is null
+                            ? new LegacyPrototypeRandomIndexProviderV111()
+                            : new NativeRandomIndexProviderV111();
+                    var decision = provider.Resolve(
+                        new RandomIndexRequestV111(
+                            "combat.relic.jeweled_mask.random_power_draw_card",
+                            streamId, "player:0", combat.Turn - 1,
+                            Enumerable.Range(0, candidates.Length).ToArray()),
+                        streams);
+                    var selectedIndex = decision.SelectedIndex;
                     var selectedId = candidates[selectedIndex];
                     combat = SetCardTemporaryEnergyCost(
                         combat,
