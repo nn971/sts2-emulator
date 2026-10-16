@@ -50,6 +50,6 @@ public sealed class SemanticOtherChanceV111Tests
         Assert.Throws<NotSupportedException>(() =>
             SemanticOtherChanceEngineV111.ResolveCost(result,
                 Cost("combat.unknown_cost", 4, 1)));
-        Assert.Equal(1, result.Transcript.Length);
+        Assert.Single(result.Transcript);
     }
 }
