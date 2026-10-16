@@ -842,6 +842,12 @@ public sealed partial class PrototypeGameEngine
                             PrototypeNativeGloryEvents.TinkerTimeNativeRngEventId,
                         PrototypeNativeStoneOfAllTime.EventId =>
                             PrototypeNativeStoneOfAllTime.NativeRngEventId,
+                        PrototypeNativeGloryEvents.BattlewornDummyId =>
+                            PrototypeNativeGloryEvents
+                                .BattlewornDummyNativeRngEventId,
+                        PrototypeNativeGloryEvents.HungryForMushroomsId =>
+                            PrototypeNativeGloryEvents
+                                .HungryForMushroomsNativeRngEventId,
                         _ => null
                     }),
                 NativeEventGold:

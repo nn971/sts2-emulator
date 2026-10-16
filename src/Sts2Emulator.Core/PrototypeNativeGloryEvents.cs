@@ -11,6 +11,8 @@ public static class PrototypeNativeGloryEvents
 {
     public const string HungryForMushroomsId =
         "proto.native.glory.hungry_for_mushrooms";
+    public const string HungryForMushroomsNativeRngEventId =
+        "HUNGRY_FOR_MUSHROOMS";
     public const string BigMushroomId =
         "proto.native.glory.big_mushroom";
     public const string FragrantMushroomId =
@@ -50,6 +52,8 @@ public static class PrototypeNativeGloryEvents
     public const string StrangleId = "proto.power.strangle";
     public const string BattlewornDummyId =
         "proto.native.glory.battleworn_dummy";
+    public const string BattlewornDummyNativeRngEventId =
+        "BATTLEWORN_DUMMY";
     public const string BattlewornTimeLimitId =
         "proto.native.glory.battleworn_dummy_time_limit";
     public const string BattleFriendV1Id =
@@ -311,12 +315,15 @@ public sealed partial class PrototypeGameEngine
                     PrototypePersistentDeckChoiceKind.Upgrade,
                     null, null, false))
                 .Select(card => card.InstanceId).ToArray();
-            _ = LegacyFisherYatesV111.ShuffleInPlace(
+            state = NativeEventContextRngV111.ShuffleInPlace(
+                state,
+                world.Event!,
+                PrototypeNativeGloryEvents
+                    .HungryForMushroomsNativeRngEventId,
                 ids,
-                state.Rng,
-                "event",
                 "event.glory.random_upgrade.shuffle_swap_index",
                 $"event:{world.Event?.EventId}:eligible_cards");
+            world = RequireWorld(state);
             var upgrades = ids.Take(2).ToHashSet();
             player = player with
             {

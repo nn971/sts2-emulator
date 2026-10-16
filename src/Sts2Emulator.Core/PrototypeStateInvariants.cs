@@ -31,6 +31,14 @@ public static class PrototypeStateInvariants
             state,
             PrototypeNativeStoneOfAllTime.EventId,
             PrototypeNativeStoneOfAllTime.NativeRngEventId);
+        NativeEventContextRngV111.Validate(
+            state,
+            PrototypeNativeGloryEvents.BattlewornDummyId,
+            PrototypeNativeGloryEvents.BattlewornDummyNativeRngEventId);
+        NativeEventContextRngV111.Validate(
+            state,
+            PrototypeNativeGloryEvents.HungryForMushroomsId,
+            PrototypeNativeGloryEvents.HungryForMushroomsNativeRngEventId);
         if (state.Ascension < 0)
         {
             throw new InvalidOperationException(

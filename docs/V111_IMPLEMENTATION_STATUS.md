@@ -941,8 +941,10 @@ potion. Full native potion-pool and cursor parity remain unverified.
   optional potion, two distinct random deck upgrades, or an optional
   relic from the persistent front grab bag; timing out yields no
   reward. Event combat completion is counted as one original
-  event room. The encounter models remain outside random regional
-  selection; native RNG, rewards and trace parity are unresolved.
+  event room. Native v111 setting 2 now uses the persisted
+  `BATTLEWORN_DUMMY` event context for its upgrade shuffle; seeded parity,
+  other reward streams and trace parity remain unresolved. The encounter
+  models remain outside random regional selection.
   [Source audit](reference-builds/v0.111.0-glory-battleworn-dummy.md).
 
 - Added gated **Glory Tinker Time**: source-shaped, two-of-three

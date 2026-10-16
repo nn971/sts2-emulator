@@ -39,7 +39,12 @@ public sealed partial class PrototypeGameEngine
                 Event = evt with
                 {
                     ChosenChoiceId = choice,
-                    NativePageIndex = page
+                    NativePageIndex = page,
+                    NativeEventRng = evt.NativeEventRng
+                        ?? NativeEventContextRngV111.CreateAtEntry(
+                            state,
+                            PrototypeNativeGloryEvents
+                                .BattlewornDummyNativeRngEventId)
                 }
             }
         }, PrototypeRoomType.Combat, PrototypeContent.Encounter(encounterId));
@@ -104,12 +109,16 @@ public sealed partial class PrototypeGameEngine
                         null, null, false))
                     .Select(card => card.InstanceId)
                     .ToArray();
-                _ = LegacyFisherYatesV111.ShuffleInPlace(
+                state = NativeEventContextRngV111.ShuffleInPlace(
+                    state,
+                    evt,
+                    PrototypeNativeGloryEvents
+                        .BattlewornDummyNativeRngEventId,
                     selected,
-                    state.Rng,
-                    "event",
                     "event.battleworn.upgrade.shuffle_swap_index",
                     "event:battleworn:setting:2:eligible_cards");
+                world = RequireWorld(state);
+                evt = world.Event!;
                 var upgraded = selected.Take(2).ToHashSet();
                 var player = state.Player with
                 {
