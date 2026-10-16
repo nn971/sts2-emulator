@@ -68,6 +68,10 @@ public static class PrototypeStateInvariants
             state,
             PrototypeNativeSharedEvents.ThisOrThatId,
             PrototypeNativeSharedEvents.ThisOrThatNativeRngEventId);
+        NativeEventContextRngV111.Validate(
+            state,
+            PrototypeNativeHiveEvents.LostWispId,
+            PrototypeNativeHiveEvents.LostWispNativeRngEventId);
         if (state.Ascension < 0)
         {
             throw new InvalidOperationException(

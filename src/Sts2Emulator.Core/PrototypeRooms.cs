@@ -866,6 +866,9 @@ public sealed partial class PrototypeGameEngine
                         PrototypeNativeSharedEvents.ThisOrThatId =>
                             PrototypeNativeSharedEvents
                                 .ThisOrThatNativeRngEventId,
+                        PrototypeNativeHiveEvents.LostWispId =>
+                            PrototypeNativeHiveEvents
+                                .LostWispNativeRngEventId,
                         _ => null
                     }),
                 NativeEventGold:
@@ -897,8 +900,10 @@ public sealed partial class PrototypeGameEngine
                             ResolveLegacyEventGold(
                                 state.Rng, selected.Id, "primary", 52, 16),
                         PrototypeNativeHiveEvents.LostWispId =>
-                            ResolveLegacyEventGold(
-                                state.Rng, selected.Id, "primary", 45, 31),
+                            state.NativeRunRng is null
+                                ? ResolveLegacyEventGold(
+                                    state.Rng, selected.Id, "primary", 45, 31)
+                                : 0,
                         "proto.native.underdocks.sunken_statue" =>
                             ResolveLegacyEventGold(
                                 state.Rng, selected.Id, "primary", 101, 21),
@@ -906,11 +911,15 @@ public sealed partial class PrototypeGameEngine
                         // variable even though neither option pays it.
                         // Keep this draw to preserve the event RNG stream.
                         PrototypeNativePunchOff.EventId =>
-                            ResolveLegacyEventGold(
-                                state.Rng, selected.Id, "primary", 91, 8),
+                            state.NativeRunRng is null
+                                ? ResolveLegacyEventGold(
+                                    state.Rng, selected.Id, "primary", 91, 8)
+                                : 0,
                         PrototypeNativeSharedEvents.ThisOrThatId =>
-                            ResolveLegacyEventGold(
-                                state.Rng, selected.Id, "primary", 41, 28),
+                            state.NativeRunRng is null
+                                ? ResolveLegacyEventGold(
+                                    state.Rng, selected.Id, "primary", 41, 28)
+                                : 0,
                         _ => 0
                     },
                 NativeEventSecondaryGold:
@@ -955,6 +964,29 @@ public sealed partial class PrototypeGameEngine
                 Event = world.Event! with
                 {
                     NativeEventGold = minimumGold + draw.SelectedValue
+                }
+            };
+            state = state with { World = world };
+        }
+
+        if (selected.Id == PrototypeNativeHiveEvents.LostWispId
+            && state.NativeRunRng is not null)
+        {
+            state = state with { World = world };
+            var draw = NativeEventContextRngV111.ResolveUnitFloat(
+                state,
+                world.Event!,
+                PrototypeNativeHiveEvents.LostWispNativeRngEventId,
+                "event.generated_gold.unit_float",
+                $"event:{selected.Id}:gold:primary");
+            state = draw.State;
+            world = state.World!;
+            var goldRoll = 60f + (draw.SelectedValue * 30f - 15f);
+            world = world with
+            {
+                Event = world.Event! with
+                {
+                    NativeEventGold = (int)goldRoll
                 }
             };
             state = state with { World = world };

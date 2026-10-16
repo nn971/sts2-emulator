@@ -56,6 +56,7 @@ public static class PrototypeNativeHiveEvents
     public const string MetamorphosisId = "proto.native.hive.metamorphosis";
 
     public const string LostWispId = "proto.native.hive.lost_wisp";
+    public const string LostWispNativeRngEventId = "LOST_WISP";
     public const string ZenWeaverId = "proto.native.hive.zen_weaver";
     public const string DecayId = "proto.native.hive.decay";
     public const string EnlightenmentId = "proto.native.hive.enlightenment";

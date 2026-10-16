@@ -815,8 +815,10 @@ potion. Full native potion-pool and cursor parity remain unverified.
   Enlightenment limits the current hand's costs to one, preserving any
   lower cost; base expires when played or at turn end, while upgraded
   cards retain the reduced cost until combat end. The added events
-  remain forced-event Weight=0 fixtures; native Hive maps, event
-  randomness and live-oracle parity are still pending.
+  remain forced-event Weight=0 fixtures. Lost Wisp's entry gold now uses
+  the persisted `LOST_WISP` context and native unit-float provider; seeded
+  result/cursor parity, the other event RNG sites, native Hive maps, and
+  live-oracle parity remain pending.
 
 - Added source-backed Act 2 Hive forced-event fixtures for **Colossal Flower**
   and **Spirit Grafter**. Flower supports all three digging stages:

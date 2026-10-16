@@ -99,8 +99,9 @@ occupied-potion selection and choice ticket, Battleworn Dummy's setting 2
 upgrade shuffle, Fragrant Mushroom's upgrade shuffle, both Reflections
 card-selection passes, Trial's court case choice, The Future of Potions'
 entry offers, Infested Automaton's card choice, and Endless Conveyor's dish
-and card-selection draws, plus Punch Off and This or That's entry gold rolls,
-through their event contexts; seeded results and cursors remain unverified.
+and card-selection draws, plus Punch Off and This or That's entry gold rolls
+and Lost Wisp's entry unit-float roll, through their event contexts; seeded
+results and cursors remain unverified.
 Configured merchant generation now routes sale-slot, card-pool, potion-pool,
 and item-price draws through the existing native player streams. Card and
 relic rarity use `player.rewards`; card and potion offers and merchant prices
