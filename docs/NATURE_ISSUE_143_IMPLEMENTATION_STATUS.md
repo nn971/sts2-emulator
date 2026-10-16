@@ -123,8 +123,10 @@ exposes both source stages: the fixed-cost single-card selector using
 stage using `fixture_randomize_hand_costs_max_exclusive`. The selector event
 identifies the ordered eligible hand-card instances; each reroll event
 identifies its current hand card. Both resume the source operation and replay
-independently. Draw-triggered relic/Slither costs beyond their existing event
-path, random pile selection shortlists, enemy-side insertion, death/summon
+independently. The Seeker Strike source shortlist is also exposed as ordered
+without-replacement instance choices before its ordinary player selection;
+unknown-position removal still fails closed. Draw-triggered relic/Slither
+costs beyond their existing event path, enemy-side insertion, death/summon
 continuations, native laws and full terminal rollout remain.
 
 

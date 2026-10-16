@@ -16,7 +16,8 @@ public sealed record SemanticPilotTransitionV111(
     SemanticCostDecisionV111? CostDecision = null,
     SemanticPoolShuffleDecisionV111? PoolShuffleDecision = null,
     SemanticDrawInsertionDecisionV111? DrawInsertionDecision = null,
-    SemanticHandCostSelectionDecisionV111? HandCostSelectionDecision = null);
+    SemanticHandCostSelectionDecisionV111? HandCostSelectionDecision = null,
+    SemanticCardShortlistDecisionV111? CardShortlistDecision = null);
 
 /// <summary>
 /// Independently replayable setup provenance. The default entry is a
@@ -116,6 +117,10 @@ public sealed record SemanticPilotCombatV111(
         HandCostSelectionPending =>
             SemanticPilotCombatEngineV111
                 .DescribePendingHandCostSelectionEvent(this);
+    [JsonIgnore] public SemanticCardShortlistEventV111?
+        CardShortlistPending =>
+            SemanticPilotCombatEngineV111
+                .DescribePendingCardShortlistEvent(this);
     [JsonIgnore] public SemanticPoolShuffleEventV111? PoolShufflePending =>
         SemanticPilotCombatEngineV111.DescribePendingPoolShuffleEvent(this);
     [JsonIgnore] public SemanticDrawInsertionEventV111? DrawInsertionPending =>
@@ -208,6 +213,10 @@ public sealed record SemanticPilotCombatV111(
             { HandCostSelectionDecision: { } decision } => transition with
             {
                 HandCostSelectionDecision = decision.Fork()
+            },
+            { CardShortlistDecision: { } decision } => transition with
+            {
+                CardShortlistDecision = decision.Fork()
             },
             _ => transition
         }).ToArray(),
@@ -564,7 +573,8 @@ public static class SemanticPilotCombatEngineV111
     private static SemanticPilotCombatV111 ApplyFixtureSelectionCard(
         SemanticPilotCombatV111 state, string cardId)
     {
-        if (cardId != "proto.silent.survivor")
+        if (cardId is not ("proto.silent.survivor" or
+            "proto.colorless.seeker_strike"))
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_LOADOUT site=combat.seeded_entry " +
                 "operation=fixture_selection_card:" + cardId);
@@ -1142,9 +1152,9 @@ public static class SemanticPilotCombatEngineV111
             var card = source.World!.Combat!.Cards.SingleOrDefault(c =>
                 c.InstanceId == play.CardInstanceId);
             var fixtureSelectionCard = card?.CardId ==
-                    "proto.silent.survivor" &&
-                current.SeededEntry?.FixtureSelectionCardId ==
-                    "proto.silent.survivor";
+                    current.SeededEntry?.FixtureSelectionCardId &&
+                card?.CardId is ("proto.silent.survivor" or
+                    "proto.colorless.seeker_strike");
             if (card?.CardId is not ("proto.silent.strike" or
                     "proto.silent.defend" or "proto.silent.ricochet") &&
                 !fixtureSelectionCard)
@@ -1162,7 +1172,10 @@ public static class SemanticPilotCombatEngineV111
                     "operation=unsupported_post_card_phase");
             if (result.Phase == RunPhase.Combat)
             {
-                if (result.World?.Combat?.PendingChoice?.ChoiceId ==
+                if (result.World?.Combat?.PendingChoice?
+                        .ControlledCardShortlist is not null)
+                    ValidateCardShortlistBoundary(result);
+                else if (result.World?.Combat?.PendingChoice?.ChoiceId ==
                     "select_cards")
                     SemanticCardSelectionEngineV111
                         .ValidatePendingBoundary(result);
@@ -1604,6 +1617,70 @@ public static class SemanticPilotCombatEngineV111
         return next;
     }
 
+    public static SemanticPilotCombatV111 ResolveCardShortlist(
+        SemanticPilotCombatV111 current, string fingerprint,
+        string eventId, long cardInstanceId)
+    {
+        Validate(current);
+        if (current.Fingerprint != fingerprint)
+            throw new InvalidOperationException(
+                "Stale semantic card-shortlist fingerprint.");
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
+        var pending = current.CardShortlistPending ??
+            throw new InvalidOperationException(
+                "No random card-pile shortlist is pending.");
+        if (pending.EventId != eventId)
+            throw new InvalidOperationException(
+                "Card-shortlist event ID is stale or mismatched.");
+        var index = Array.IndexOf(pending.CandidateCardInstanceIds,
+            cardInstanceId);
+        if (index < 0)
+            throw new InvalidOperationException(
+                "Card is outside the pending shortlist support.");
+        var decision = new SemanticCardShortlistDecisionV111(
+            pending, index, cardInstanceId,
+            pending.CandidateCardModelIds[index]);
+        decision.Validate();
+        ValidateCardShortlistDecision(
+            current.CardShortlistPending, decision, index);
+        ValidateCardShortlistBoundary(current.Run);
+        var priorCombat = current.Run.World!.Combat!;
+        RunState result;
+        using (ControlledChanceGuardV111.Enter())
+            result = PrototypeGameEngine.ResumeControlledCardShortlist(
+                current.Run.Fork(), index);
+        var nextCombat = result.World?.Combat;
+        if (result.Phase != RunPhase.Combat || nextCombat is null)
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_SHORTLIST " +
+                "site=combat.card_selection.random_shortlist " +
+                "operation=unsupported_post_shortlist_phase");
+        if (nextCombat.PendingChoice?.ControlledCardShortlist is not null)
+            ValidateCardShortlistBoundary(result);
+        else if (nextCombat.PendingChoice?.ChoiceId == "select_cards")
+            SemanticCardSelectionEngineV111.ValidatePendingBoundary(result);
+        else
+            ValidateSemanticCombatBoundary(result);
+        if (!priorCombat.DrawPile.SequenceEqual(nextCombat.DrawPile) ||
+            CanonicalJson.Sha256(priorCombat.SemanticDeck) !=
+                CanonicalJson.Sha256(nextCombat.SemanticDeck))
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_DECK " +
+                "site=combat.card_selection.random_shortlist " +
+                "operation=unmodeled_draw_pile_mutation");
+        var next = current with
+        {
+            Run = result,
+            History = current.History.Append(
+                new SemanticPilotTransitionV111(
+                    "semantic_card_shortlist",
+                    CardShortlistDecision: decision.Fork()))
+                .ToArray()
+        };
+        Validate(next);
+        return next;
+    }
+
     public static SemanticPilotCombatV111 ResolvePoolShuffle(
         SemanticPilotCombatV111 current, string fingerprint,
         string eventId, int swapIndex)
@@ -1740,6 +1817,9 @@ public static class SemanticPilotCombatEngineV111
         var drawEvent = current.DrawPending;
         if (expectedDeckDecision is not null)
             ValidateDeckDecision(drawEvent, expectedDeckDecision);
+        if (current.CardShortlistPending is not null)
+            throw new InvalidOperationException(
+                "Resolve the pending pile shortlist by card instance ID.");
         var costEvent = current.CostPending;
         if (current.HandCostSelectionPending is not null &&
             expectedCostDecision is null)
@@ -2183,6 +2263,58 @@ public static class SemanticPilotCombatEngineV111
         return semanticEvent;
     }
 
+    public static SemanticCardShortlistEventV111?
+        DescribePendingCardShortlistEvent(SemanticPilotCombatV111 current)
+    {
+        ArgumentNullException.ThrowIfNull(current);
+        var combat = current.Run.World?.Combat;
+        var shortlist = combat?.PendingChoice?.ControlledCardShortlist;
+        if (shortlist is null) return null;
+        ValidateCardShortlistBoundary(current.Run);
+        var eligibleIds =
+            (long[])shortlist.OriginalCandidateCardInstanceIds.Clone();
+        var eligibleModels = eligibleIds.Select(id => combat!.Cards.Single(
+            card => card.InstanceId == id).CardId).ToArray();
+        var candidateIds =
+            (long[])shortlist.RemainingCandidateCardInstanceIds.Clone();
+        var candidateModels = candidateIds.Select(id => combat!.Cards.Single(
+            card => card.InstanceId == id).CardId).ToArray();
+        var selectedIds =
+            (long[])shortlist.SelectedCandidateCardInstanceIds.Clone();
+        var selection = shortlist.Operation.Selection!;
+        var supportFingerprint = CanonicalJson.Sha256(new
+        {
+            eligibleCardInstanceIds = eligibleIds,
+            eligibleCardModelIds = eligibleModels,
+            selectedCardInstanceIds = selectedIds,
+            candidateCardInstanceIds = candidateIds,
+            candidateCardModelIds = candidateModels,
+            requiredCount = shortlist.RequiredCount
+        });
+        const string siteId = "combat.card_selection.random_shortlist";
+        const string streamId = "prototype.combat";
+        const string operationKind =
+            "choose_card_instance_without_replacement";
+        var ownerId = "selection:" + selection.SourceZone + ":pool:" +
+            CanonicalJson.Sha256(eligibleIds);
+        var ordinal = current.History.Count(transition =>
+            transition.Kind == "semantic_card_shortlist");
+        var eventId = CanonicalJson.Sha256(new
+        {
+            SchemaId = SemanticCardShortlistEventV111.EventSchemaId,
+            BoundaryFingerprint = current.Fingerprint,
+            SupportFingerprint = supportFingerprint
+        });
+        var semanticEvent = new SemanticCardShortlistEventV111(
+            SemanticCardShortlistEventV111.EventSchemaId,
+            eventId, current.Fingerprint, supportFingerprint,
+            siteId, streamId, ownerId, ordinal, operationKind,
+            eligibleIds, eligibleModels, selectedIds, candidateIds,
+            candidateModels, shortlist.RequiredCount);
+        semanticEvent.Validate();
+        return semanticEvent;
+    }
+
     public static SemanticPoolShuffleEventV111?
         DescribePendingPoolShuffleEvent(SemanticPilotCombatV111 current)
     {
@@ -2403,6 +2535,33 @@ public static class SemanticPilotCombatEngineV111
                 "Random hand-cost continuation changed the hidden draw pile.");
     }
 
+    private static void ValidateCardShortlistBoundary(RunState run)
+    {
+        var combat = run.World?.Combat;
+        var choice = combat?.PendingChoice;
+        var shortlist = choice?.ControlledCardShortlist;
+        if (run.Phase != RunPhase.Combat ||
+            combat is not { IsPlayerTurn: true,
+                AutomaticPipelineContinuation: null,
+                PendingKnowledgeDemonChoice: null } ||
+            choice is not { ChoiceId: "controlled_card_shortlist",
+                OuterChoiceContinuation: not null } ||
+            shortlist is null ||
+            !PrototypeGameEngine.ValidateControlledCardShortlist(
+                combat, shortlist))
+            throw new InvalidDataException(
+                "Random card shortlist is not source-reachable.");
+        var deck = combat.SemanticDeck ?? throw new InvalidDataException(
+            "Card shortlist lost the provider-owned semantic deck.");
+        SemanticDeckEngineV111.Validate(deck);
+        if (deck.Mode != SemanticDeckStateV111.NatureMode ||
+            deck.Pending is not null ||
+            !SemanticDeckEngineV111.AllCardInstanceIds(deck)
+                .Order().SequenceEqual(combat.DrawPile.Order()))
+            throw new InvalidDataException(
+                "Card shortlist changed the hidden draw-pile state.");
+    }
+
     private static void ValidateCostDecision(
         SemanticCostEventV111? pending,
         SemanticCostDecisionV111 decision, int sourceIndex)
@@ -2427,6 +2586,18 @@ public static class SemanticPilotCombatEngineV111
                 "Hand-cost selection is stale or outside current support.");
     }
 
+    private static void ValidateCardShortlistDecision(
+        SemanticCardShortlistEventV111? pending,
+        SemanticCardShortlistDecisionV111 decision, int sourceIndex)
+    {
+        decision.Validate();
+        if (pending is null || sourceIndex != decision.SelectedIndex ||
+            CanonicalJson.Sha256(pending) !=
+                CanonicalJson.Sha256(decision.Event))
+            throw new InvalidOperationException(
+                "Card-shortlist decision is stale or outside current support.");
+    }
+
     private static void ValidateSemanticCombatBoundary(RunState run)
     {
         var choice = run.World?.Combat?.PendingChoice;
@@ -2448,6 +2619,11 @@ public static class SemanticPilotCombatEngineV111
         if (choice?.ControlledRandomCost is not null)
         {
             ValidateRandomHandCostBoundary(run);
+            return;
+        }
+        if (choice?.ControlledCardShortlist is not null)
+        {
+            ValidateCardShortlistBoundary(run);
             return;
         }
         SemanticPlayerActionEngineV111.ValidateBoundary(run);
@@ -2744,6 +2920,24 @@ public static class SemanticPilotCombatEngineV111
                 throw new InvalidDataException(
                     "Draw insertion conflicts with another semantic boundary.");
         }
+        if (state.CardShortlistPending is { } cardShortlistPending)
+        {
+            cardShortlistPending.Validate();
+            ValidateCardShortlistBoundary(state.Run);
+            if (state.PendingEndTurn is not null ||
+                state.PendingInitialIntents is not null ||
+                state.IntentPending is not null || state.DrawPending is not null ||
+                state.TargetPending is not null ||
+                state.GeneratedCardPending is not null ||
+                state.CardSelectionPending is not null ||
+                state.CostPending is not null ||
+                state.HandCostSelectionPending is not null ||
+                state.PoolShufflePending is not null ||
+                state.DrawInsertionPending is not null ||
+                state.UsesNativePolicyBaseline || state.CombatTerminal)
+                throw new InvalidDataException(
+                    "Card shortlist conflicts with another semantic boundary.");
+        }
         if (state.HandCostSelectionPending is { } handCostSelectionPending)
         {
             handCostSelectionPending.Validate();
@@ -2936,6 +3130,11 @@ public static class SemanticPilotCombatEngineV111
                     ResolveHandCostSelection(replay, replay.Fingerprint,
                         transition.HandCostSelectionDecision.Event.EventId,
                         transition.HandCostSelectionDecision.SelectedCardInstanceId),
+                "semantic_card_shortlist" when
+                    transition.CardShortlistDecision is not null =>
+                    ResolveCardShortlist(replay, replay.Fingerprint,
+                        transition.CardShortlistDecision.Event.EventId,
+                        transition.CardShortlistDecision.SelectedCardInstanceId),
                 "semantic_pool_shuffle" when
                     transition.PoolShuffleDecision is not null =>
                     ResolvePoolShuffle(replay, replay.Fingerprint,

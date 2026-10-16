@@ -5148,6 +5148,30 @@ public sealed partial class PrototypeGameEngine
                     combat, operation, generationPool, continuation));
             }
 
+            if (ControlledChanceGuardV111.Active &&
+                !ControlledChanceGuardV111.EngineOwnedNativeProviderActive &&
+                operation.Kind == PrototypeCombatEffectKind.ChooseCards &&
+                ControlledCardShortlistCandidates(combat, operation) is
+                    { } shortlistCandidates)
+            {
+                var continuation = new PrototypeChoiceResolutionContinuationState(
+                    SourceCardInstanceId: sourceCardInstanceId,
+                    SourceCardDestination: sourceCardDestination,
+                    Operations: operations.ToArray(),
+                    PendingDiscardEvents: [],
+                    PendingSlyCardInstanceIds: [],
+                    CompletionEvents: completionEvents ?? [],
+                    CardPlaySeries: cardPlaySeries,
+                    MoveSourceCardOnCompletion: moveSourceCardOnCompletion,
+                    RemoveSourceCardOnCompletion: removeSourceCardOnCompletion,
+                    SourceCardAlreadyMoved: sourceCardAlreadyMoved,
+                    EventDispatchContinuation: eventDispatchContinuation?.Fork());
+                if (TryMakeControlledCardShortlistChoice(
+                    combat, operation, shortlistCandidates,
+                    continuation, out var suspended))
+                    return (player, suspended);
+            }
+
             NativeEngineEventJournalV111.Record(
                 "effect_operation", operation.Kind.ToString(),
                 sourceCardInstanceId: sourceCardInstanceId,

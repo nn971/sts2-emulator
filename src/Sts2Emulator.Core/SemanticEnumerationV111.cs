@@ -106,6 +106,17 @@ public static class SemanticNatureEnumeratorV111
                     current, currentFingerprint, handCost.EventId,
                     long.Parse(outcomeId, CultureInfo.InvariantCulture));
         }
+        else if (current.CardShortlistPending is { } shortlist)
+        {
+            eventKind = "random_pile_selection_shortlist";
+            eventId = shortlist.EventId;
+            outcomeIds = shortlist.CandidateCardInstanceIds.Select(id =>
+                id.ToString(CultureInfo.InvariantCulture)).ToArray();
+            resolve = outcomeId =>
+                SemanticPilotCombatEngineV111.ResolveCardShortlist(
+                    current, currentFingerprint, shortlist.EventId,
+                    long.Parse(outcomeId, CultureInfo.InvariantCulture));
+        }
         else if (current.PoolShufflePending is { } pool)
         {
             eventKind = "generated_card_pool_shuffle";

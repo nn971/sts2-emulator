@@ -1849,6 +1849,28 @@ public sealed record PrototypeControlledRandomCostV111(
     };
 }
 
+/// <summary>Source-ordered without-replacement shortlist from a card pile.
+/// The source player's select_cards choice is published only after the
+/// requested random prefix has been committed.</summary>
+public sealed record PrototypeControlledCardShortlistV111(
+    PrototypeQueuedOperation Operation,
+    long[] OriginalCandidateCardInstanceIds,
+    long[] RemainingCandidateCardInstanceIds,
+    long[] SelectedCandidateCardInstanceIds,
+    int RequiredCount)
+{
+    public PrototypeControlledCardShortlistV111 Fork() => this with
+    {
+        Operation = Operation with { },
+        OriginalCandidateCardInstanceIds =
+            (long[])OriginalCandidateCardInstanceIds.Clone(),
+        RemainingCandidateCardInstanceIds =
+            (long[])RemainingCandidateCardInstanceIds.Clone(),
+        SelectedCandidateCardInstanceIds =
+            (long[])SelectedCandidateCardInstanceIds.Clone()
+    };
+}
+
 /// <summary>Drawn card already moved to hand. Nature must resolve optional
 /// relic cost then Slither cost before dispatching CardDrawn exactly once.
 /// RemainingCount excludes this card and keeps its physical draw order.</summary>
@@ -1883,7 +1905,8 @@ public sealed record PendingCombatChoiceState(
     PrototypeControlledDrawInsertionV111? ControlledDrawInsertion = null,
     PrototypeControlledPoolShuffleV111? ControlledPoolShuffle = null,
     PrototypeControlledRandomCostV111? ControlledRandomCost = null,
-    PrototypeControlledDrawCostV111? ControlledDrawCost = null)
+    PrototypeControlledDrawCostV111? ControlledDrawCost = null,
+    PrototypeControlledCardShortlistV111? ControlledCardShortlist = null)
 {
     public PendingCombatChoiceState Fork() => this with
     {
@@ -1904,7 +1927,8 @@ public sealed record PendingCombatChoiceState(
         ControlledDrawInsertion = ControlledDrawInsertion?.Fork(),
         ControlledPoolShuffle = ControlledPoolShuffle?.Fork(),
         ControlledRandomCost = ControlledRandomCost?.Fork(),
-        ControlledDrawCost = ControlledDrawCost?.Fork()
+        ControlledDrawCost = ControlledDrawCost?.Fork(),
+        ControlledCardShortlist = ControlledCardShortlist?.Fork()
     };
 }
 

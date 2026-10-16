@@ -229,6 +229,38 @@ internal static class PrototypeAiJsonlServer
                         }).ToArray()
                 };
             }
+            if (state.CardShortlistPending is { } shortlist)
+            {
+                return new
+                {
+                    kind = "random_pile_selection_shortlist",
+                    schemaId = shortlist.SchemaId,
+                    eventId = shortlist.EventId,
+                    siteId = shortlist.SiteId,
+                    streamId = shortlist.StreamId,
+                    ownerId = shortlist.OwnerId,
+                    ordinal = shortlist.Ordinal,
+                    operationKind = shortlist.OperationKind,
+                    supportFingerprint = shortlist.SupportFingerprint,
+                    requiredCount = shortlist.RequiredCount,
+                    eligibleCards = shortlist.EligibleCardInstanceIds
+                        .Select((id, index) => new
+                        {
+                            cardInstanceId = id,
+                            cardModelId = shortlist.EligibleCardModelIds[index]
+                        }).ToArray(),
+                    selectedCardInstanceIds =
+                        shortlist.SelectedCardInstanceIds,
+                    candidates = shortlist.CandidateCardInstanceIds
+                        .Select((id, index) => new
+                        {
+                            index,
+                            cardInstanceId = id,
+                            cardModelId = shortlist.CandidateCardModelIds[index]
+                        }).ToArray(),
+                    probabilityStatus = shortlist.ProbabilityStatus
+                };
+            }
             if (state.CostPending is { } cost)
             {
                 return new
@@ -324,6 +356,18 @@ internal static class PrototypeAiJsonlServer
                 sites.Add("random_hand_card_energy_cost");
             if (state.SeededEntry?.FixtureSetRandomHandCardCost is not null)
                 sites.Add("random_hand_card_select");
+            if (state.SeededEntry?.FixtureSelectionCardId ==
+                "proto.colorless.seeker_strike")
+                sites.Add("random_pile_selection_shortlist");
+            if (state.CardShortlistPending is not null &&
+                !sites.Contains("random_pile_selection_shortlist"))
+                sites.Add("random_pile_selection_shortlist");
+            if (state.HandCostSelectionPending is not null &&
+                !sites.Contains("random_hand_card_select"))
+                sites.Add("random_hand_card_select");
+            if (state.CostPending?.TargetCardInstanceId is not null &&
+                !sites.Contains("random_hand_card_energy_cost"))
+                sites.Add("random_hand_card_energy_cost");
             return sites.ToArray();
         }
 
@@ -338,7 +382,10 @@ internal static class PrototypeAiJsonlServer
                   state.SeededEntry?.FixtureGeneratedDrawInsertionCardId is not null ||
                   state.SeededEntry?.FixtureRandomFreeAttackDrawInsertion == true ||
                   state.SeededEntry?.FixtureRandomizeHandCostsMaxExclusive is not null ||
-                  state.SeededEntry?.FixtureSetRandomHandCardCost is not null
+                  state.SeededEntry?.FixtureSetRandomHandCardCost is not null ||
+                  state.CardShortlistPending is not null ||
+                  state.HandCostSelectionPending is not null ||
+                  state.CostPending?.TargetCardInstanceId is not null
                     ? "nature-extended-fixture"
                     : "nature-two-site";
 
@@ -546,6 +593,8 @@ internal static class PrototypeAiJsonlServer
                                 SemanticCostEventV111.EventSchemaId,
                             semanticHandCostSelectionChoiceSchemaId =
                                 SemanticHandCostSelectionEventV111.EventSchemaId,
+                            semanticCardShortlistChoiceSchemaId =
+                                SemanticCardShortlistEventV111.EventSchemaId,
                             semanticPoolShuffleChoiceSchemaId =
                                 SemanticPoolShuffleEventV111.EventSchemaId,
                             semanticDrawInsertionChoiceSchemaId =
@@ -561,7 +610,8 @@ internal static class PrototypeAiJsonlServer
                                 "generated_draw_pile_insertion",
                                 "random_draw_attack_card_model",
                                 "random_hand_card_energy_cost",
-                                "random_hand_card_select"
+                                "random_hand_card_select",
+                                "random_pile_selection_shortlist"
                             },
                             semanticExtendedPlayerChoices = new[]
                             {
@@ -581,13 +631,14 @@ internal static class PrototypeAiJsonlServer
                                 "combat.draw_pile.random_insert_index",
                                 "combat.generation.full_pool_shuffle.swap_index",
                                 "combat.random_hand_card.select",
-                                "combat.random_hand_card.energy_cost"
+                                "combat.random_hand_card.energy_cost",
+                                "combat.card_selection.random_shortlist"
                             },
                             controlledChanceLimitations =
                                 "Opt-in HP/intents, shuffle, turn intents, hand-draw recycle, " +
                                 "random-enemy and Sly targeting, five generated-card " +
                                 "effects, draw insertion, full-pool generation shuffles, " +
-                                "and hand-cost selection/rerolls; " +
+                                "hand-cost selection/rerolls, and random pile shortlists; " +
                                 "other chance sites fail closed; native entry and laws unverified.",
                             natureBoundaryKinds = new[] { "initial_hp", "intents" },
                             coverageSchemaId = V111Coverage.SchemaId,
@@ -1044,6 +1095,20 @@ internal static class PrototypeAiJsonlServer
                                 current, RequiredString(request, "fingerprint"),
                                 RequiredString(request, "event_id"),
                                 RequiredLong(request, "card_instance_id"));
+                        var handle = StoreSemantic(next);
+                        Write(new { requestId, ok = true,
+                            result = SemanticResult(next, handle, parentHandle) });
+                        break;
+                    }
+
+                    case "semantic_resolve_card_shortlist":
+                    {
+                        var parentHandle = RequiredString(request, "semantic_handle");
+                        var current = RequireSemantic(request);
+                        var next = SemanticPilotCombatEngineV111.ResolveCardShortlist(
+                            current, RequiredString(request, "fingerprint"),
+                            RequiredString(request, "event_id"),
+                            RequiredLong(request, "card_instance_id"));
                         var handle = StoreSemantic(next);
                         Write(new { requestId, ok = true,
                             result = SemanticResult(next, handle, parentHandle) });

@@ -31,6 +31,8 @@ non-Nature RNG parity remain **UNVERIFIED**.
 - `semanticCostChoiceSchemaId = sts2-v111-semantic-cost-choice-v1`.
 - `semanticHandCostSelectionChoiceSchemaId =
   sts2-v111-semantic-hand-cost-selection-v1`.
+- `semanticCardShortlistChoiceSchemaId =
+  sts2-v111-semantic-card-shortlist-v1`.
 - `semanticPoolShuffleChoiceSchemaId =
   sts2-v111-semantic-pool-shuffle-v1`.
 - `semanticDrawInsertionChoiceSchemaId =
@@ -40,7 +42,7 @@ non-Nature RNG parity remain **UNVERIFIED**.
 - `semanticExtendedControlledSites = [random_enemy_target, generated_card_pool,
   drawn_card_cost, generated_card_pool_shuffle, generated_draw_pile_insertion,
   random_draw_attack_card_model, random_hand_card_energy_cost,
-  random_hand_card_select]`;
+  random_hand_card_select, random_pile_selection_shortlist]`;
   fixture-specific sites require their corresponding seeded-entry options.
 - `semanticExtendedPlayerChoices = [select_cards]`.
 - `semanticPlayable = true`, scope
@@ -323,6 +325,17 @@ source continuation and records a typed `semantic_card_selection` decision
 for snapshot replay. This is an ordinary player choice, not an added Nature
 chance site. It does not establish native fixture-loadout acquisition or
 generic support for nested random continuations.
+
+For the source random-pile shortlist, set
+`fixture_selection_card_id="proto.colorless.seeker_strike"`. Its actual
+`ChooseCards` effect exposes a sequence of ordered
+`random_pile_selection_shortlist` events, sampling eligible draw-pile card
+instances without replacement. After the required prefix is selected, the
+source `select_cards` player choice is exposed normally. Python clients use
+`resolve_card_shortlist(card_instance_id)` for each Nature choice, then
+`resolve_card_selection(action_id)`. The fixture begins with a committed
+exact draw-pile order; selecting from a later unresolved pile position still
+fails closed when the semantic deck cannot locate the chosen instance.
 
 The optional `drawn_card_cost` Nature site is enabled with
 `fixture_draw_cost_relic_id="proto.relic.snecko_eye"` and

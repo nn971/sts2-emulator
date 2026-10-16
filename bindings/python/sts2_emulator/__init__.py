@@ -330,6 +330,30 @@ class SemanticCombat:
                 event_id=self.pending["eventId"],
                 card_instance_id=card_instance_id))
 
+    def resolve_card_shortlist(self, card_instance_id: int):
+        """Select one eligible card for a source random-pile shortlist."""
+        if not self.pending or self.pending.get(
+                "kind") != "random_pile_selection_shortlist":
+            raise EmulatorError(
+                "Expected a random_pile_selection_shortlist Nature event")
+        if self.session.capabilities.get(
+                "semanticCardShortlistChoiceSchemaId") != (
+                    "sts2-v111-semantic-card-shortlist-v1"):
+            raise EmulatorError(
+                "Emulator lacks semantic card-shortlist choices")
+        candidates = [candidate["cardInstanceId"]
+                      for candidate in self.pending.get("candidates", [])]
+        if card_instance_id not in candidates:
+            raise ValueError(
+                "Card instance is outside the pending shortlist support")
+        return SemanticCombat.from_wire(
+            self.session, self.session.call(
+                "semantic_resolve_card_shortlist",
+                semantic_handle=self.handle,
+                fingerprint=self.fingerprint,
+                event_id=self.pending["eventId"],
+                card_instance_id=card_instance_id))
+
     def resolve_pool_shuffle(self, swap_index: int):
         """Choose one bounded swap while building a generated-card offer."""
         if not self.pending or self.pending.get(
@@ -571,6 +595,8 @@ class Session:
         optional random-target fixture adds Ricochet to the opening hand for
         semantic target-boundary integration checks; the generation fixture
         adds Orobic Acid to expose three ordered generated-card pools.
+        The selection fixture can replace the first card with Survivor for
+        an ordinary player choice or Seeker Strike for a random pile shortlist.
         The pool-generation fixture adds a Colorless Potion for typed
         full-pool shuffle choices followed by an ordinary card selection.
         The draw-insertion fixture begins at a source-authentic generated
