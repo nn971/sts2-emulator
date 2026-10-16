@@ -55,7 +55,7 @@ def play_victory():
             actions = combat.actions()
             strikes_here = [a for a in actions if a["kind"] == "play_card"
                             and card_ids.get(json.loads(
-                                a["payloadJson"])["card_instance_id"]) ==
+                                a["payloadJson"])["cardInstanceId"]) ==
                             "proto.silent.strike"]
             defends_here = [a for a in actions if a["kind"] == "play_card"
                             and card_ids.get(json.loads(
