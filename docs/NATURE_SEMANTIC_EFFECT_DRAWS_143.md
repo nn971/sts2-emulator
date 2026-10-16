@@ -56,10 +56,11 @@ draw-insertion event suspends the frame and resumes it after the chosen
 position is committed. Stratagem reuses the existing semantic `select_cards`
 event before the remaining draw resumes. Standard serialized `PendingChoice`
 events raised by `CardDrawn` hooks compose, including repeated nested choices.
-Knowledge Demon choices and choices in standalone or automatic draw-pipeline
-frames remain outside this card-effect continuation. Other draw-pipeline
-recycle contexts with after-shuffle insertions remain outside this
-card-effect continuation. Native source probability laws remain unverified.
+Knowledge Demon choices and nested choices in standalone or automatic
+draw-pipeline frames remain outside this card-effect continuation. The
+automatic hand-draw continuation separately supports after-shuffle insertion;
+other draw-pipeline recycle contexts remain outside the saved frames. Native
+source probability laws remain unverified.
 
 The player-action fixture and card allowlists remain opt-in; this continuation
 does not broaden source-authentic loadout acquisition or the frozen all-Act

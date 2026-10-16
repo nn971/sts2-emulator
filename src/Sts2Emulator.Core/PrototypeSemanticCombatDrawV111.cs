@@ -32,14 +32,10 @@ public sealed partial class PrototypeGameEngine
         var result = DrawCards(
             run.Player, combat, count, run.Rng, fromHandDraw,
             controlledSemanticDrawSuspension: true,
-            controlledAfterShuffleInsertionSuspension: !automatic);
+            controlledAfterShuffleInsertionSuspension: true);
         if (result.ControlledAfterShuffleInsertions is
             { Length: > 0 } afterShuffleInsertions)
         {
-            if (automatic)
-                throw new NotSupportedException(
-                    "UNSUPPORTED_SEMANTIC_DECK site=combat.draw.recycle " +
-                    "operation=automatic_after_shuffle_insertion");
             var advancedAfterInsertion = run with
             {
                 Player = result.Player,
@@ -47,7 +43,11 @@ public sealed partial class PrototypeGameEngine
             };
             return SuspendSemanticDrawAfterShuffleInsertions(
                 advancedAfterInsertion, result, afterShuffleInsertions,
-                fromHandDraw, eventDepth: 0);
+                fromHandDraw, eventDepth: 0,
+                automaticHandDrawRequested: automatic
+                    ? combat.AutomaticPipelineContinuation!
+                        .ControlledSemanticDrawRequested
+                    : null);
         }
         if (result.ControlledRecyclePending || result.ShuffleSelectionPending)
             throw new NotSupportedException(
@@ -145,14 +145,10 @@ public sealed partial class PrototypeGameEngine
             player, combat, cost.RemainingCount, run.Rng,
             cost.FromHandDraw, eventDepth: cost.EventDepth,
             controlledSemanticDrawSuspension: true,
-            controlledAfterShuffleInsertionSuspension: !automatic);
+            controlledAfterShuffleInsertionSuspension: true);
         if (continued.ControlledAfterShuffleInsertions is
             { Length: > 0 } afterShuffleInsertions)
         {
-            if (automatic)
-                throw new NotSupportedException(
-                    "UNSUPPORTED_SEMANTIC_DECK site=combat.draw.recycle " +
-                    "operation=automatic_after_shuffle_insertion");
             var advancedAfterInsertion = run with
             {
                 Player = continued.Player,
@@ -160,7 +156,11 @@ public sealed partial class PrototypeGameEngine
             };
             return SuspendSemanticDrawAfterShuffleInsertions(
                 advancedAfterInsertion, continued, afterShuffleInsertions,
-                cost.FromHandDraw, cost.EventDepth);
+                cost.FromHandDraw, cost.EventDepth,
+                automaticHandDrawRequested: automatic
+                    ? combat.AutomaticPipelineContinuation!
+                        .ControlledSemanticDrawRequested
+                    : null);
         }
         if (continued.ControlledRecyclePending ||
             continued.ShuffleSelectionPending)
@@ -186,7 +186,8 @@ public sealed partial class PrototypeGameEngine
             PrototypeDrawCardsResult drawn,
             PrototypeAfterShuffleRelicInsertionV111[] insertions,
             bool fromHandDraw,
-            int eventDepth)
+            int eventDepth,
+            int? automaticHandDrawRequested = null)
     {
         if (insertions.Length == 0 || drawn.RemainingCount <= 0)
             throw new InvalidDataException(
@@ -197,12 +198,18 @@ public sealed partial class PrototypeGameEngine
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.draw.recycle " +
                 "operation=after_shuffle_insertion_with_stratagem");
+        bool automatic = automaticHandDrawRequested is not null;
+        if (automatic && (!fromHandDraw || eventDepth != 0 ||
+                          automaticHandDrawRequested is not > 0))
+            throw new InvalidDataException(
+                "Automatic after-shuffle draw cursor is inconsistent.");
         var semanticDraw = new PrototypeControlledSemanticDrawV111(
             drawn.RemainingCount, fromHandDraw, eventDepth,
             DrawnCardKeyword: null,
             DeferredKeywordCardInstanceIds: [],
             StratagemSelectionPending: false,
-            StandaloneSemanticDrawSegment: true);
+            StandaloneSemanticDrawSegment: !automatic,
+            AutomaticSemanticHandDrawSegment: automatic);
         var continuation = new PrototypeChoiceResolutionContinuationState(
             SourceCardInstanceId: null,
             SourceCardDestination: PrototypeCardZone.DrawPile,
@@ -210,8 +217,27 @@ public sealed partial class PrototypeGameEngine
             PendingDiscardEvents: [],
             PendingSlyCardInstanceIds: [],
             CompletionEvents: []);
+        var insertionCombat = drawn.Combat;
+        if (automatic)
+        {
+            int stepIndex = SemanticHandDrawStepIndex;
+            if (stepIndex < 0 ||
+                (insertionCombat.AutomaticPipelineContinuation is { } cursor &&
+                 cursor.NextStepIndex != stepIndex))
+                throw new InvalidDataException(
+                    "Automatic after-shuffle insertion left DrawPlayerHand.");
+            insertionCombat = insertionCombat with
+            {
+                AutomaticPipelineContinuation =
+                    new PrototypeAutomaticPipelineContinuationState(
+                        stepIndex,
+                        ControlledSemanticDrawRemaining: drawn.RemainingCount,
+                        ControlledSemanticDrawRequested:
+                            automaticHandDrawRequested)
+            };
+        }
         var combat = MakeControlledAfterShuffleInsertionChoice(
-            drawn.Combat, insertions[0], insertions.Skip(1).ToArray(),
+            insertionCombat, insertions[0], insertions.Skip(1).ToArray(),
             [], semanticDraw, continuation, 0);
         return (run with
         {

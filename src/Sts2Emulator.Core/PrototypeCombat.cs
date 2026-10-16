@@ -2540,9 +2540,28 @@ public sealed partial class PrototypeGameEngine
                     controlledDrawCostSuspension: ControlledChanceGuardV111.Active,
                     controlledSemanticDrawSuspension:
                         ControlledChanceGuardV111.Active &&
-                        combat.SemanticDeck is not null);
+                        combat.SemanticDeck is not null,
+                    controlledAfterShuffleInsertionSuspension:
+                        ControlledChanceGuardV111.Active &&
+                        combat.SemanticDeck is
+                            { Mode: SemanticDeckStateV111.NatureMode });
                 player = drawn.Player;
                 combat = drawn.Combat;
+                if (combat.SemanticDeck is
+                        { Mode: SemanticDeckStateV111.NatureMode } &&
+                    drawn.ControlledAfterShuffleInsertions is
+                        { Length: > 0 } afterShuffleInsertions)
+                {
+                    var advanced = state with
+                    {
+                        Player = player,
+                        World = world with { Combat = combat }
+                    };
+                    return SuspendSemanticDrawAfterShuffleInsertions(
+                        advanced, drawn, afterShuffleInsertions,
+                        fromHandDraw: true, eventDepth: 0,
+                        automaticHandDrawRequested: requestedHandDraw).Run;
+                }
                 if (combat.SemanticDeck is not null &&
                     (drawn.ControlledSemanticDrawPending ||
                      drawn.ControlledDrawCostPending))

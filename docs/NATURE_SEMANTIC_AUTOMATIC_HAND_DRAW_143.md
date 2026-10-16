@@ -40,6 +40,14 @@ the event and operation continuations before entering the original draw stage;
 the selected card goes to hand or discard according to the source hand-cap
 rule. Replay records this decision alongside draw and cost decisions.
 
+If the draw recycles and an after-shuffle relic inserts a generated card, the
+automatic cursor also saves the requested and remaining draw counts around the
+typed insertion event. Resolving each insertion synchronizes the semantic deck
+with the physical pile and resumes the same `DrawCards` call. This route uses
+the existing post-hand-draw cleanup and advances the automatic cursor once the
+draw finishes. Stratagem combined with an insertion and nested `CardDrawn`
+choices remain unsupported.
+
 When the requested draw ends, the source's `RemoveAfterHandDraw` and
 `DecrementAfterHandDraw` power hooks execute once and the saved
 pipeline index advances to **the next automatic step**. That later
@@ -71,10 +79,10 @@ integration should connect prior enemy actions, visible next-intent
 Nature decisions, and later automatic steps into one
 `step` → `nature_resolve` → `step` controller. Opening-hand and
 player-card-effect draw contexts also require their own saved
-continuations. Stratagem's player selection, random after-shuffle
-insertion, nested `CardDrawn` choices and native RNG source-law parity remain
-separate gates. The Jeweled Mask continuation and its JSONL / Python route are
-implemented but have not been mechanics-tested.
+continuations. Stratagem's player selection, nested `CardDrawn` choices and
+native RNG source-law parity remain separate gates. The Jeweled Mask
+continuation and its JSONL / Python route are implemented but have not been
+mechanics-tested.
 
 The old `controlled-v111-playable-fixture-v1` swap-ticket schema
 is unchanged. Frozen Silent four-Act `main` is untouched.

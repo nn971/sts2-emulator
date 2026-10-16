@@ -563,3 +563,16 @@ run for this checkpoint. Stratagem selection during the standalone recycle,
 automatic draw-pipeline insertions and nested standalone `CardDrawn` choices
 remain unsupported. Conditional probabilities remain `UNVERIFIED`; see
 [`NATURE_SEMANTIC_COMBAT_DRAW_143.md`](NATURE_SEMANTIC_COMBAT_DRAW_143.md).
+
+## 2026-10-17: automatic hand-draw after-shuffle insertions
+
+The automatic `DrawPlayerHand` continuation now suspends on the typed semantic
+insertion event when an after-shuffle relic inserts a generated card. The
+requested and remaining draw counts stay on the automatic pipeline cursor;
+each chosen insertion position updates the semantic deck and resumes the same
+`DrawCards` call. Draw-cost continuations use the same cursor, and the existing
+post-hand-draw cleanup runs once after the draw finishes. The Release solution
+build passes with zero warnings or errors; tests were not run for this
+checkpoint. Stratagem combined with an insertion and nested `CardDrawn`
+choices remain unsupported. Conditional probabilities remain `UNVERIFIED`; see
+[`NATURE_SEMANTIC_AUTOMATIC_HAND_DRAW_143.md`](NATURE_SEMANTIC_AUTOMATIC_HAND_DRAW_143.md).

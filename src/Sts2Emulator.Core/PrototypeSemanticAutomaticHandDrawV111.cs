@@ -84,9 +84,12 @@ public sealed partial class PrototypeGameEngine
                 World = RequireWorld(result) with { Combat = after }
             }, drawn, 0);
         }
+        bool awaitingInsertion = after.PendingChoice?.ControlledDrawInsertion?
+            .SemanticDrawContinuation?.AutomaticSemanticHandDrawSegment == true;
         if (!IsSemanticAutomaticHandDraw(after) ||
             (after.SemanticDeck?.Pending is null &&
-             after.PendingChoice?.ControlledDrawCost is null))
+             after.PendingChoice?.ControlledDrawCost is null &&
+             !awaitingInsertion))
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.DrawPlayerHand " +
                 "operation=unsupported_nested_stage");

@@ -40,7 +40,8 @@ This slice connects the separate provider-owned
 - Consecutive ordinary draws and deterministic `CardDrawn` hooks in a
   given combat snapshot.
 - Source-timed discard recycle with Perfect Fit ordering, after-shuffle relic
-  insertions, and drawn-card cost decisions in the standalone segment.
+  insertions, and drawn-card cost decisions in the standalone segment; the
+  automatic hand-draw integration also supports after-shuffle insertions.
 - Exact card instance identities and no replacement within the pile.
 - Draw count up to available pile/hand size; finite exhaustive
   two-draw/three-card enumeration.
@@ -51,8 +52,8 @@ This slice connects the separate provider-owned
 
 - Stratagem selection when the standalone draw recycles, and nested
   `CardDrawn` choices in the standalone segment, still fail closed.
-- After-shuffle relic insertion in the automatic hand-draw pipeline and other
-  draw contexts without the standalone or card-effect continuation remain
+- Stratagem combined with an after-shuffle insertion and other draw contexts
+  without a standalone, card-effect, or automatic hand-draw continuation remain
   unsupported.
 - Opening-hand and ordinary player-action `DrawCards`, automatic hand
   draw pipeline, semantic deck mutation by card effects, public JSONL

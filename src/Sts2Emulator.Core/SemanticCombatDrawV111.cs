@@ -97,18 +97,28 @@ public static class SemanticCombatDrawEngineV111
         if (insertion is null || insertion.AfterShuffleRelic is null)
             return null;
         var semanticDraw = insertion.SemanticDrawContinuation;
+        bool automaticSegment = state.AutomaticHandDraw &&
+            semanticDraw?.AutomaticSemanticHandDrawSegment == true;
+        bool standaloneSegment = !state.AutomaticHandDraw &&
+            semanticDraw?.StandaloneSemanticDrawSegment == true;
         if (run.Phase != RunPhase.Combat ||
-            state.AutomaticHandDraw ||
-            combat is not { IsPlayerTurn: true,
-                AutomaticPipelineContinuation: null } ||
+            combat is not { IsPlayerTurn: true } ||
             pending is not { ChoiceId: "controlled_draw_insertion",
                 OuterChoiceContinuation: not null } ||
             insertion.Stage != "position" ||
             semanticDraw is null ||
-            !semanticDraw.StandaloneSemanticDrawSegment ||
+            (!standaloneSegment && !automaticSegment) ||
+            (standaloneSegment &&
+             combat!.AutomaticPipelineContinuation is not null) ||
+            (automaticSegment &&
+             (!PrototypeGameEngine.IsSemanticAutomaticHandDraw(combat!) ||
+              combat.AutomaticPipelineContinuation!
+                  .ControlledSemanticDrawRemaining != state.RemainingCount ||
+              combat.AutomaticPipelineContinuation
+                  .ControlledSemanticDrawRequested != state.RequestedCount)) ||
             semanticDraw.RemainingCount != state.RemainingCount ||
             !PrototypeGameEngine.ValidateControlledDrawInsertion(
-                combat, insertion) ||
+                combat!, insertion) ||
             combat.SemanticDeck is not
                 { Mode: SemanticDeckStateV111.NatureMode, Pending: null } deck ||
             !SemanticDeckEngineV111.AllCardInstanceIds(deck)
@@ -367,6 +377,9 @@ public static class SemanticCombatDrawEngineV111
             pending?.ControlledDrawCost?.RemainingCount;
         if (savedCount is { } remaining)
             return remaining;
+        if (PrototypeGameEngine.IsSemanticAutomaticHandDraw(combat))
+            return combat.AutomaticPipelineContinuation!
+                .ControlledSemanticDrawRemaining!.Value;
         if (combat.SemanticDeck?.Pending is not null)
             return Math.Max(0, previousRemaining -
                 (combat.CounterState.CardsDrawnThisCombat - drawnBefore));
@@ -537,7 +550,8 @@ public static class SemanticCombatDrawEngineV111
         if (state.AutomaticHandDraw)
         {
             var cursor = combat.AutomaticPipelineContinuation;
-            bool awaiting = deck.Pending is not null || cost is not null;
+            bool awaiting = deck.Pending is not null || cost is not null ||
+                drawInsertionPending is not null;
             if (randomPileCardPending is not null)
             {
                 if (cursor is null ||

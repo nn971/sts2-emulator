@@ -168,6 +168,13 @@ public sealed partial class PrototypeGameEngine
                 (!semanticDraw.StandaloneSemanticDrawSegment ||
                  (!semanticDraw.StratagemSelectionPending &&
                   semanticDraw.EventDepth == 0)) &&
+                !(semanticDraw.StandaloneSemanticDrawSegment &&
+                  semanticDraw.AutomaticSemanticHandDrawSegment) &&
+                (!semanticDraw.AutomaticSemanticHandDrawSegment ||
+                 (semanticDraw.FromHandDraw &&
+                  semanticDraw.EventDepth == 0 &&
+                  !semanticDraw.StratagemSelectionPending &&
+                  PrototypeGameEngine.IsSemanticAutomaticHandDraw(combat))) &&
                 afterShuffle is not null &&
                 choice.Operation.Amount == 1 &&
                 choice.Operation.CardId == afterShuffle.CardId &&
@@ -312,6 +319,17 @@ public sealed partial class PrototypeGameEngine
                 return BeginSemanticCombatDraw(
                     drawRun, semanticDraw.RemainingCount,
                     semanticDraw.FromHandDraw).Run;
+            }
+
+            if (semanticDraw.AutomaticSemanticHandDrawSegment)
+            {
+                var drawRun = state with
+                {
+                    World = world with { Combat = combat }
+                };
+                return BeginSemanticCombatDraw(
+                    drawRun, semanticDraw.RemainingCount,
+                    fromHandDraw: true).Run;
             }
 
             if (semanticDraw.StratagemSelectionPending)
