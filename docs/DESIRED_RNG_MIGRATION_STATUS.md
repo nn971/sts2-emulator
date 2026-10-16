@@ -24,7 +24,8 @@ reference distribution is claimed.
 
 | Stable call-site ID | Owner / stream | Source audit | Native v111 implemented | Native parity tested | Controlled implemented | Controlled mechanics tested | Reference law calibrated |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `combat.initial_unique_hp` | creature CombatId / `run.niche` | Yes | Yes | Yes: seeded result/hash/cursor | Yes: isolated HP → intent entry | Yes | No |
+| `combat.initial_unique_hp` | creature CombatId / `run.niche` | Yes: initial and attached summons | Yes | Yes: seeded result/hash/cursor | Yes: initial entry only | Yes | No |
+| `combat.tough_egg.hatchling_hp` | Tough Egg CombatId / `run.niche` | Yes, direct hatch range and call timing | Yes | Yes: existing seeded hatch oracle | No | No | No |
 | `combat.committed_intent.index_draw` | creature CombatId / `run.monster_ai` | Yes, supported moves | Yes, subset | Yes: seeded result/hash/cursor | Yes: isolated entry, source route and automatic turn continuation | Yes | No |
 | `combat.encounter.formation.index_draw` | encounter entry + floor / `context.encounter.*` | Partial: supported source resolvers; singleton calls preserved | Yes: native typed provider | Yes: existing seeded result/cursor regressions | No | No | No |
 | `combat.draw_pile.shuffle.swap` | player / `run.shuffle` | Yes, pinned Fisher–Yates and hook stages | Partial: injectable primitive, not every ordinary Step shuffle | Partial: source algorithm/cursor checks; live operation capture pending | Partial: provider supports controlled outcomes; ordinary shuffle sites remain separate | Yes, primitive-level | No |
@@ -43,8 +44,8 @@ reference distribution is claimed.
 | `combat.card_selection.random_shortlist` | draw-pile selector / prototype combat stream | Yes, source filters and without-replacement prefix | No v111 provider | No | Yes: semantic JSONL/Python event | No: not run or covered by a focused test | No |
 
 This is the migrated typed-site inventory, not a complete v0.111 RNG
-inventory. Other encounter resolvers, summon/death creation, monster-local
-draws, enemy-side insertion, remaining cost/reward sites,
+inventory. Other encounter resolvers, summon/death lifecycle effects,
+monster-local draws, enemy-side insertion, remaining cost/reward sites,
 map/event/shop/treasure selection, and native float/Gaussian/rejection
 operations still need stable call-site identities and row-level audit. Their
 absence here is not evidence that they are deterministic or supported.
@@ -97,11 +98,13 @@ no draws. Encounter-local formation index draws also pass through the
 native provider under `combat.encounter.formation.index_draw`; the opt-in
 `GenerateWithAudit` result exposes each request while the compatibility
 `Generate` method keeps the existing formation result. Singleton formation
-draws still consume `NextInt(1)`. The formation resolver remains native-only;
-this does not add a controlled encounter-entry boundary.
+draws still consume `NextInt(1)`. The shared `combat.initial_unique_hp` site
+also covers attached summoned-creature HP; Tough Egg's direct hatch roll is
+separately typed as `combat.tough_egg.hatchling_hp`. These are native
+provider integrations, not controlled summon/death continuations.
 
 **D2 remaining:** formation resolvers outside the integrated subset,
-monster-local draws, summons,
+monster-local draws, summon/death continuation mechanics,
 shuffle/targets/rewards and other audited call sites; explicit weighted
 outcome metadata at move-level instead of primitive index selections.
 The separate semantic playable API now exposes typed weighted intent events,

@@ -33,6 +33,11 @@ public sealed record NativeIntentAuditV111(
 
 public static class NativeCombatRngEntryV111
 {
+    public const string InitialUniqueHpSiteId =
+        "combat.initial_unique_hp";
+    public const string ToughEggHatchHpSiteId =
+        "combat.tough_egg.hatchling_hp";
+
     /// <summary>
     /// Attach a native RNG sidecar, sampling initial HP in creature creation
     /// order from run.niche. All run stream cursors are preserved after HP
@@ -101,7 +106,7 @@ public static class NativeCombatRngEntryV111
             var pool = InitialHpPool(combat, enemy, usedHp);
             // Native RNG must consume even singleton pools.
             var choice = chooser.Resolve(new RandomIndexRequestV111(
-                "combat.initial_unique_hp", "run.niche",
+                InitialUniqueHpSiteId, "run.niche",
                 "creature:" + context.CombatId, index, pool), fresh.RunStreams);
             decisions.Add(choice);
             var hp = choice.SelectedValue;
@@ -265,8 +270,14 @@ public static class NativeCombatRngEntryV111
         // Ascension 8+ uses [20,23] instead of [19,22].
         var min = combat.Ascension >= 8 ? 20 : 19;
         var max = combat.Ascension >= 8 ? 23 : 22;
-        var hp = min + NativeRngV111.NextInt(
-            native.RunStreams, "run.niche", max - min + 1);
+        var hatchHpCandidates = Enumerable.Range(
+            min, checked(max - min + 1)).ToArray();
+        var hatchHpChoice = new NativeRandomIndexProviderV111().Resolve(
+            new RandomIndexRequestV111(
+                ToughEggHatchHpSiteId, "run.niche",
+                "creature:" + currentEgg.InstanceId, 0,
+                hatchHpCandidates), native.RunStreams);
+        var hp = hatchHpChoice.SelectedValue;
         hatched = currentEgg with
         {
             EnemyId = PrototypeNativeHiveSummoningNormals.HatchlingId,
@@ -377,9 +388,12 @@ public static class NativeCombatRngEntryV111
             : Enumerable.Range(
                 range.Min, checked(range.Max - range.Min + 1)).ToArray();
         // Even the fixed-range/singleton case advances run.niche.
-        var selection = NativeRngV111.NextInt(
-            native.RunStreams, "run.niche", values.Length);
-        var hp = values[selection];
+        var spawnHpChoice = new NativeRandomIndexProviderV111().Resolve(
+            new RandomIndexRequestV111(
+                InitialUniqueHpSiteId, "run.niche",
+                "creature:" + spawned.InstanceId, 0, values),
+            native.RunStreams);
+        var hp = spawnHpChoice.SelectedValue;
         var updatedSpawn = spawned with { Hp = hp, MaxHp = hp };
         var spec = new PrototypeEncounterEnemySpec(
             updatedSpawn.EnemyId, updatedSpawn.FormationPosition,
