@@ -26,7 +26,10 @@ non-Nature RNG parity remain **UNVERIFIED**.
 - `semanticChanceSchemaId = sts2-v111-semantic-playable-p0-v1`.
 - `semanticDrawChoiceSchemaId = sts2-v111-semantic-deck-v1`.
 - `semanticTargetChoiceSchemaId = sts2-v111-semantic-target-choice-v1`.
+- `semanticCardSelectionChoiceSchemaId =
+  sts2-v111-semantic-card-selection-choice-v1`.
 - `semanticExtendedControlledSites = [random_enemy_target, generated_card_pool]`.
+- `semanticExtendedPlayerChoices = [select_cards]`.
 - `semanticPlayable = true`, scope
   `seeded-source-route-or-post-committed-opening-fixture-restricted-Silent-combat`.
 - `semanticControlledSites = [enemy_intent, draw_card]`.
@@ -58,6 +61,7 @@ paths avoid that external setup chain:
 | `semantic_resolve_draw_card` | handle, fingerprint, pending `event_id`, legal `card_instance_id` | Child Nature / player / terminal |
 | `semantic_resolve_random_target` | handle, fingerprint, pending `event_id`, legal `enemy_instance_id` | Child Nature / player / terminal |
 | `semantic_resolve_generated_card` | handle, fingerprint, pending `event_id`, legal `card_model_id` | Child Nature / player / terminal |
+| `semantic_step` at `player_choice` | handle, fingerprint, listed legal `select_cards` action ID | Child player / Nature / terminal |
 | `semantic_fork` | handle | Independent child handle |
 | `semantic_save` | handle | Privileged snapshot string |
 | `semantic_load` | snapshot | New replay-validated handle |
@@ -284,6 +288,16 @@ stable card model ID, resumes the saved effect, and records a typed
 `semantic_generated_card` event for replay. Candidate pools preserve source
 ordering and remain `UNVERIFIED` as probability laws. The test loadout does
 not claim native potion acquisition provenance.
+
+The optional `select_cards` player-choice extension uses
+`fixture_selection_card_id="proto.silent.survivor"` to put Survivor in the
+first opening-hand slot. Its real play produces a `player_choice` boundary
+with source-ordered candidate identities and legal selection action IDs.
+`semantic_step` (or Python `resolve_card_selection`) resumes the original
+source continuation and records a typed `semantic_card_selection` decision
+for snapshot replay. This is an ordinary player choice, not an added Nature
+chance site. It does not establish native fixture-loadout acquisition or
+generic support for nested random continuations.
 
 **Probability status:** these are raw weights produced by the emulator's
 source-shaped selector, **not** independently audited original-game

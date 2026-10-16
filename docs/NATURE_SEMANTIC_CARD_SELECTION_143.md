@@ -44,10 +44,12 @@ all other physical card zones and continuation events normally.
 
 `SemanticCardSelectionEngineV111.Step` accepts a **source-shaped
 pending `select_cards` checkpoint** already obtained after a card,
-potion or other source effect has created the choice. It verifies
-that this is a simple terminal card-selection resolution, resolves
-the legal choice via the original AI action engine, and validates
-the exact resulting provider constraints and physical card zones.
+potion or other source effect has created the choice. It verifies the
+supported source selection and pile transition, resolves the legal action
+through the original AI action engine, and validates the exact resulting
+provider constraints and physical card zones. A supported queued source
+continuation may complete after the selection; unsupported outer choices,
+sequential prompts and draw-on-completion choices fail closed.
 
 The resulting object contains the complete original pending choice,
 legal action ID, selected card IDs and real post-resolution RunState.
@@ -64,16 +66,39 @@ source-shaped `select_cards` checkpoint to cover:
 - Rejected unknown-position removals and tampered semantic snapshots.
 - Deterministic independent 15-worker source-selection + end-turn replay.
 
+## Opt-in semantic player-choice bridge
+
+The semantic JSONL session now exposes one source action that creates a real
+`select_cards` prompt: an opt-in seeded fixture substitutes Silent's Survivor
+into the first opening-hand slot. Its block and card-play hooks run through the
+ordinary engine, then the session publishes the source candidate IDs, legal
+selection action IDs and a stable `player_card_selection` event. The ordinary
+fair observation and legal-action list remain the player's interface; the
+semantic event adds identity and support metadata for replay.
+
+Selecting a legal action resumes the original `ResolvePendingChoice` path,
+including its saved source-card and queued-operation continuation. The choice
+is recorded as `semantic_card_selection` in the existing action transcript,
+and save/load replays the play plus selection from entry provenance. Choices
+that do not move the hidden draw pile preserve its semantic state; known-top
+placements and previously revealed draw-pile removals use the existing deck
+projection rules above.
+
+This is deliberately a fixture loadout integration, not evidence that Survivor
+was acquired through the native run route. Outer-choice continuations,
+sequential optional prompts, draw-on-completion prompts, hidden-position
+removals and any continuation that reaches an unsupported random site still
+fail closed. Conditional probabilities remain `UNVERIFIED`.
+
 ## Remaining integration gates
 
 This implements the **real choice-resolution mechanic**, not yet
-the parent card/potion action's complete nested continuation that
-generates its `select_cards` prompt. It does not yet support scry
-discard/reordering, partial random-position removals, card-effect
-draws, effects that return the hand and reshuffle, or random
-insertions into the draw pile. Those transitions require dedicated
-stochastic and source-timed continuations, with provider membership
-verified at each mutation site.
+general source-authentic loadout acquisition or every parent card/potion
+continuation that creates a `select_cards` prompt. It does not yet support
+scry discard/reordering, partial random-position removals, card-effect draws,
+effects that return the hand and reshuffle, or random insertions into the draw
+pile. Those transitions require dedicated stochastic and source-timed
+continuations, with provider membership verified at each mutation site.
 
 This opt-in capability is separate from legacy controlled
 Fisher–Yates swap tickets and from the frozen four-Act Silent

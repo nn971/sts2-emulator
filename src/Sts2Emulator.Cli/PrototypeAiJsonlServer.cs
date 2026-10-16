@@ -179,6 +179,27 @@ internal static class PrototypeAiJsonlServer
                         }).ToArray()
                 };
             }
+            if (state.CardSelectionPending is { } selection)
+            {
+                return new
+                {
+                    kind = "player_card_selection",
+                    schemaId = selection.SchemaId,
+                    eventId = selection.EventId,
+                    supportFingerprint = selection.SupportFingerprint,
+                    sourceZone = selection.SourceZone,
+                    resolution = selection.Resolution,
+                    sourceCardInstanceId = selection.SourceCardInstanceId,
+                    minimumSelections = selection.MinimumSelections,
+                    maximumSelections = selection.MaximumSelections,
+                    candidates = selection.CandidateCardInstanceIds,
+                    actions = selection.Candidates.Select(candidate => new
+                    {
+                        actionId = candidate.ActionId,
+                        cardInstanceIds = candidate.CardInstanceIds
+                    }).ToArray()
+                };
+            }
             return null;
         }
 
@@ -197,7 +218,8 @@ internal static class PrototypeAiJsonlServer
             state.UsesNativePolicyBaseline
                 ? "engine-owned-native-v111-policy-baseline"
                 : state.SeededEntry?.FixtureRandomTargetCardId is not null ||
-                  state.SeededEntry?.FixtureGenerationPotionId is not null
+                  state.SeededEntry?.FixtureGenerationPotionId is not null ||
+                  state.SeededEntry?.FixtureSelectionCardId is not null
                     ? "nature-extended-fixture"
                     : "nature-two-site";
 
@@ -217,7 +239,8 @@ internal static class PrototypeAiJsonlServer
                 sourceRouteNativeEntry = state.SourceRouteAudit?.NativeEncounterEntry,
                 sourceRouteProbabilityStatus = state.SourceRouteAudit?.ProbabilityStatus,
                 boundary = state.CombatTerminal ? "terminal" :
-                    state.AtPlayerBoundary ? "player" : "nature",
+                    state.AtPlayerBoundary ? "player" :
+                    state.AtPlayerChoiceBoundary ? "player_choice" : "nature",
                 pending = DescribeSemanticPending(state),
                 terminal = state.CombatTerminal,
                 outcome = state.CombatOutcome,
@@ -398,9 +421,15 @@ internal static class PrototypeAiJsonlServer
                                 SemanticTargetChoiceV111.SchemaId,
                             semanticGeneratedCardChoiceSchemaId =
                                 SemanticGenerationChoiceV111.SchemaId,
+                            semanticCardSelectionChoiceSchemaId =
+                                SemanticCardSelectionEventV111.EventSchemaId,
                             semanticExtendedControlledSites = new[]
                             {
                                 "random_enemy_target", "generated_card_pool"
+                            },
+                            semanticExtendedPlayerChoices = new[]
+                            {
+                                "select_cards"
                             },
                             semanticProbabilityStatus = "UNVERIFIED",
                             controlledChanceScope = "isolated-playable-combat-stage-continuations-v1",
@@ -731,7 +760,8 @@ internal static class PrototypeAiJsonlServer
                             OptionalString(request, "route_neow_choice_id"),
                             OptionalString(request, "route_map_node_id"),
                             OptionalString(request, "fixture_random_target_card_id"),
-                            OptionalString(request, "fixture_generation_potion_id"));
+                            OptionalString(request, "fixture_generation_potion_id"),
+                            OptionalString(request, "fixture_selection_card_id"));
                         var next = SemanticPilotCombatEngineV111.BeginSeeded(entry);
                         var handle = StoreSemantic(next);
                         Write(new { requestId, ok = true,
@@ -754,7 +784,8 @@ internal static class PrototypeAiJsonlServer
                         if (RequiredString(request, "policy_id") != FairPolicyId)
                             throw new NotSupportedException(
                                 "Semantic observation requires the existing fair policy.");
-                        if (!current.AtPlayerBoundary)
+                        if (!current.AtPlayerBoundary &&
+                            !current.AtPlayerChoiceBoundary)
                             throw new InvalidOperationException(
                                 "Semantic observation is available only at a player boundary.");
                         var frame = environment.Observe(current.Run);

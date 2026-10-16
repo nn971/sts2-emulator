@@ -11,7 +11,8 @@ public sealed record SemanticPilotTransitionV111(
     SemanticIntentDecisionV111? IntentDecision = null,
     SemanticDrawDecisionV111? DrawDecision = null,
     SemanticTargetDecisionV111? TargetDecision = null,
-    SemanticGeneratedCardDecisionV111? GeneratedCardDecision = null);
+    SemanticGeneratedCardDecisionV111? GeneratedCardDecision = null,
+    SemanticCardSelectionDecisionV111? CardSelectionDecision = null);
 
 /// <summary>
 /// Independently replayable setup provenance. The default entry is a
@@ -64,7 +65,8 @@ public sealed record SemanticSeededEntryV111(
     string? RouteNeowChoiceId = null,
     string? RouteMapNodeId = null,
     string? FixtureRandomTargetCardId = null,
-    string? FixtureGenerationPotionId = null);
+    string? FixtureGenerationPotionId = null,
+    string? FixtureSelectionCardId = null);
 
 /// <summary>
 /// First external playable semantic boundary. Initial opening order is
@@ -96,6 +98,8 @@ public sealed record SemanticPilotCombatV111(
         SemanticPilotCombatEngineV111.DescribePendingTargetEvent(this);
     [JsonIgnore] public SemanticGeneratedCardEventV111? GeneratedCardPending =>
         SemanticPilotCombatEngineV111.DescribePendingGeneratedCardEvent(this);
+    [JsonIgnore] public SemanticCardSelectionEventV111? CardSelectionPending =>
+        SemanticPilotCombatEngineV111.DescribePendingCardSelectionEvent(this);
     [JsonIgnore] public string Fingerprint => CanonicalJson.Sha256(this);
     [JsonIgnore] public bool AtPlayerBoundary =>
         PendingInitialIntents is null &&
@@ -105,6 +109,9 @@ public sealed record SemanticPilotCombatV111(
             PendingChoice: null, AutomaticPipelineContinuation: null };
     [JsonIgnore] public bool CombatTerminal =>
         Run.Phase is RunPhase.Reward or RunPhase.Terminal;
+    [JsonIgnore] public bool AtPlayerChoiceBoundary =>
+        PendingEndTurn is null && PendingInitialIntents is null &&
+        !CombatTerminal && CardSelectionPending is not null;
     [JsonIgnore] public bool UsesNativePolicyBaseline =>
         SeededEntry?.NativePolicyBaseline ?? false;
     [JsonIgnore] public string? SourceOpeningFingerprint =>
@@ -161,6 +168,10 @@ public sealed record SemanticPilotCombatV111(
             { GeneratedCardDecision: { } decision } => transition with
             {
                 GeneratedCardDecision = decision.Fork()
+            },
+            { CardSelectionDecision: { } decision } => transition with
+            {
+                CardSelectionDecision = decision.Fork()
             },
             _ => transition
         }).ToArray(),
@@ -254,7 +265,8 @@ public static class SemanticPilotCombatEngineV111
             (entry.OtherChanceProviderId is not null ||
              entry.FixtureDrawCostRelicId is not null ||
              entry.FixtureRandomTargetCardId is not null ||
-             entry.FixtureGenerationPotionId is not null))
+             entry.FixtureGenerationPotionId is not null ||
+             entry.FixtureSelectionCardId is not null))
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_NATIVE site=combat.seeded_entry " +
                 "operation=native_baseline_fixture_loadout_conflict");
@@ -367,8 +379,50 @@ public static class SemanticPilotCombatEngineV111
             state = ApplyFixtureRandomTargetCard(state, targetCardId);
         if (entry.FixtureGenerationPotionId is { } potionId)
             state = ApplyFixtureGenerationPotion(state, potionId);
+        if (entry.FixtureSelectionCardId is { } selectionCardId)
+            state = ApplyFixtureSelectionCard(state, selectionCardId);
         Validate(state);
         return state;
+    }
+
+    private static SemanticPilotCombatV111 ApplyFixtureSelectionCard(
+        SemanticPilotCombatV111 state, string cardId)
+    {
+        if (cardId != "proto.silent.survivor")
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_LOADOUT site=combat.seeded_entry " +
+                "operation=fixture_selection_card:" + cardId);
+        var world = state.Run.World ?? throw new InvalidDataException(
+            "Card-selection fixture is missing its combat world.");
+        var combat = world.Combat ?? throw new InvalidDataException(
+            "Card-selection fixture is missing combat.");
+        if (combat.Hand.Length == 0)
+            throw new InvalidOperationException(
+                "Card-selection fixture requires an opening-hand card.");
+        var selected = combat.Cards.Single(card =>
+            card.InstanceId == combat.Hand[0]);
+        var persistentId = selected.PersistentCardInstanceId ??
+            throw new InvalidDataException(
+                "Card-selection fixture card has no persistent deck identity.");
+        var deckIndex = Array.FindIndex(state.Run.Player.Deck, card =>
+            card.InstanceId == persistentId);
+        if (deckIndex < 0)
+            throw new InvalidDataException(
+                "Card-selection fixture is absent from the player deck.");
+        var cards = combat.Cards.Select(card =>
+            card.InstanceId == selected.InstanceId
+                ? card with { CardId = cardId }
+                : card).ToArray();
+        var playerDeck = (CardInstance[])state.Run.Player.Deck.Clone();
+        playerDeck[deckIndex] = playerDeck[deckIndex] with { CardId = cardId };
+        return state with
+        {
+            Run = state.Run with
+            {
+                Player = state.Run.Player with { Deck = playerDeck },
+                World = world with { Combat = combat with { Cards = cards } }
+            }
+        };
     }
 
     private static SemanticPilotCombatV111 ApplyFixtureRandomTargetCard(
@@ -455,6 +509,7 @@ public static class SemanticPilotCombatEngineV111
             entry.FixtureDrawCostRelicId is not null ||
             entry.FixtureRandomTargetCardId is not null ||
             entry.FixtureGenerationPotionId is not null ||
+            entry.FixtureSelectionCardId is not null ||
             entry.ReplayOpeningDrawHooks)
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_ROUTE site=act1.entry " +
@@ -879,6 +934,8 @@ public static class SemanticPilotCombatEngineV111
         Validate(current);
         if (current.Fingerprint != fingerprint)
             throw new InvalidOperationException("Stale semantic player-action fingerprint.");
+        if (current.AtPlayerChoiceBoundary)
+            return StepCardSelection(current, actionId);
         if (!current.AtPlayerBoundary)
             throw new InvalidOperationException("Nature decision or combat terminal is pending.");
         if (current.UsesNativePolicyBaseline)
@@ -903,8 +960,13 @@ public static class SemanticPilotCombatEngineV111
                 throw new InvalidDataException("Missing source card payload.");
             var card = source.World!.Combat!.Cards.SingleOrDefault(c =>
                 c.InstanceId == play.CardInstanceId);
+            var fixtureSelectionCard = card?.CardId ==
+                    "proto.silent.survivor" &&
+                current.SeededEntry?.FixtureSelectionCardId ==
+                    "proto.silent.survivor";
             if (card?.CardId is not ("proto.silent.strike" or
-                    "proto.silent.defend" or "proto.silent.ricochet"))
+                    "proto.silent.defend" or "proto.silent.ricochet") &&
+                !fixtureSelectionCard)
                 throw new NotSupportedException(
                     "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
                     "operation=card_effect_requires_semantic_audit");
@@ -918,7 +980,14 @@ public static class SemanticPilotCombatEngineV111
                     "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
                     "operation=unsupported_post_card_phase");
             if (result.Phase == RunPhase.Combat)
-                ValidateSemanticCombatBoundary(result);
+            {
+                if (result.World?.Combat?.PendingChoice?.ChoiceId ==
+                    "select_cards")
+                    SemanticCardSelectionEngineV111
+                        .ValidatePendingBoundary(result);
+                else
+                    ValidateSemanticCombatBoundary(result);
+            }
             var previous = current.Run.World!.Combat!;
             var next = result.World?.Combat;
             if (result.Phase == RunPhase.Reward)
@@ -988,6 +1057,30 @@ public static class SemanticPilotCombatEngineV111
                 new SemanticPilotTransitionV111("player", actionId)).ToArray()
         };
         return NormalizeNoncontrolledCosts(nextState);
+    }
+
+    private static SemanticPilotCombatV111 StepCardSelection(
+        SemanticPilotCombatV111 current, string actionId)
+    {
+        var selection = SemanticCardSelectionEngineV111.Step(
+            current.Run, actionId);
+        var decision = selection.Decision ??
+            throw new InvalidDataException(
+                "Source card selection omitted its typed decision.");
+        if (CanonicalJson.Sha256(decision.Event) !=
+            CanonicalJson.Sha256(DescribePendingCardSelectionEvent(current)))
+            throw new InvalidDataException(
+                "Source card-selection event changed before resolution.");
+        var next = current with
+        {
+            Run = selection.Run,
+            History = current.History.Append(
+                new SemanticPilotTransitionV111(
+                    "semantic_card_selection",
+                    CardSelectionDecision: decision.Fork())).ToArray()
+        };
+        Validate(next);
+        return next;
     }
 
     /// <summary>
@@ -1465,6 +1558,23 @@ public static class SemanticPilotCombatEngineV111
         return semanticEvent;
     }
 
+    public static SemanticCardSelectionEventV111?
+        DescribePendingCardSelectionEvent(SemanticPilotCombatV111 current)
+    {
+        ArgumentNullException.ThrowIfNull(current);
+        if (current.Run.World?.Combat?.PendingChoice?.ChoiceId != "select_cards")
+            return null;
+        if (current.PendingEndTurn is not null ||
+            current.PendingInitialIntents is not null ||
+            current.TargetPending is not null ||
+            current.GeneratedCardPending is not null ||
+            current.UsesNativePolicyBaseline || current.CombatTerminal)
+            throw new InvalidDataException(
+                "Source card selection conflicts with another semantic boundary.");
+        return SemanticCardSelectionEngineV111.DescribePending(
+            current.Run, CanonicalJson.Sha256(current.Run));
+    }
+
     private static void ValidateSemanticCombatBoundary(RunState run)
     {
         var choice = run.World?.Combat?.PendingChoice;
@@ -1718,6 +1828,18 @@ public static class SemanticPilotCombatEngineV111
                 throw new InvalidDataException(
                     "Generated-card continuation conflicts with another boundary.");
         }
+        if (state.CardSelectionPending is { } cardSelectionPending)
+        {
+            cardSelectionPending.Validate();
+            SemanticCardSelectionEngineV111.ValidatePendingBoundary(state.Run);
+            if (state.PendingEndTurn is not null ||
+                state.PendingInitialIntents is not null ||
+                state.TargetPending is not null ||
+                state.GeneratedCardPending is not null ||
+                state.UsesNativePolicyBaseline || state.CombatTerminal)
+                throw new InvalidDataException(
+                    "Card-selection continuation conflicts with another boundary.");
+        }
         if (state.OtherChance is not null)
             SemanticOtherChanceEngineV111.Validate(state.OtherChance);
         if (state.RewardAudit is { } reward &&
@@ -1855,6 +1977,10 @@ public static class SemanticPilotCombatEngineV111
                     ResolveGeneratedCard(replay, replay.Fingerprint,
                         transition.GeneratedCardDecision.Event.EventId,
                         transition.GeneratedCardDecision.SelectedCardId),
+                "semantic_card_selection" when
+                    transition.CardSelectionDecision is not null =>
+                    Step(replay, replay.Fingerprint,
+                        transition.CardSelectionDecision.ActionId),
                 "nature" when transition.SelectedIndex is not null =>
                     Resolve(replay, replay.Fingerprint,
                         transition.SelectedIndex.Value),

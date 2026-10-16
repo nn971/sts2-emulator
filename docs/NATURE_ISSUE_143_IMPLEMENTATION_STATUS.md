@@ -332,9 +332,13 @@ removals, forged hidden pool rejection, complete source replay
 and independent 15-worker outcomes. Focused CI covers this
 versioned choice-resolution slice; see
 [Nature semantic card selection](NATURE_SEMANTIC_CARD_SELECTION_143.md).
-The parent player action that **creates** this nested choice, generic
-scry/random-position selection, random insertions and card-effect
-draws remain separate integration milestones.
+The semantic JSONL bridge now exercises that same engine after the real
+Survivor action in an explicit seeded fixture loadout. It publishes a typed
+`player_card_selection` event and source legal actions, then replays the
+action/choice pair from the seeded entry. This does not establish native
+Survivor acquisition or generic nested-choice coverage. Scry/random-position
+selection, random insertions and card-effect draws remain separate integration
+milestones.
 
 
 ## P0 reprioritization: first external two-site playable semantic JSONL (merged PR #165)

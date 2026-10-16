@@ -189,10 +189,26 @@ class SemanticCombat:
         return result["actions"]
 
     def step(self, action_id: str):
+        if self.boundary not in ("player", "player_choice"):
+            raise EmulatorError("Expected a semantic player decision")
         return SemanticCombat.from_wire(
             self.session, self.session.call(
                 "semantic_step", semantic_handle=self.handle,
                 fingerprint=self.fingerprint, action_id=action_id))
+
+    def resolve_card_selection(self, action_id: str):
+        """Resolve a source select_cards prompt by one listed legal action."""
+        if not self.pending or self.pending.get("kind") != "player_card_selection":
+            raise EmulatorError("Expected a player_card_selection boundary")
+        if self.session.capabilities.get(
+                "semanticCardSelectionChoiceSchemaId") != (
+                    "sts2-v111-semantic-card-selection-choice-v1"):
+            raise EmulatorError("Emulator lacks semantic card-selection choices")
+        if action_id not in {
+                candidate["actionId"]
+                for candidate in self.pending.get("actions", [])}:
+            raise ValueError("Action is outside the pending card-selection support")
+        return self.step(action_id)
 
     def resolve(self, selected_index: int):
         if not self.pending or self.pending["kind"] not in (
@@ -415,6 +431,7 @@ class Session:
             fixture_draw_cost_relic_id: str | None = None,
             fixture_random_target_card_id: str | None = None,
             fixture_generation_potion_id: str | None = None,
+            fixture_selection_card_id: str | None = None,
             replay_opening_draw_hooks: bool = False,
             native_policy_baseline: bool = False,
             source_route_entry: bool = False,
@@ -455,6 +472,7 @@ class Session:
             fixture_draw_cost_relic_id=fixture_draw_cost_relic_id,
             fixture_random_target_card_id=fixture_random_target_card_id,
             fixture_generation_potion_id=fixture_generation_potion_id,
+            fixture_selection_card_id=fixture_selection_card_id,
             replay_opening_draw_hooks=replay_opening_draw_hooks,
             native_policy_baseline=native_policy_baseline,
             source_route_entry=source_route_entry,
