@@ -1,5 +1,16 @@
 # Inspector implementation status
 
+**Scope ownership (2026-10-16):** Native-game fidelity checks,
+mechanics/trace differential comparison, exact RNG streams/cursor/shuffle
+and source hook-order audits belong to this inspector work and
+[inspector issue #122](https://github.com/nn971/sts2-emulator/issues/122).
+See the [explicitly transferred fidelity gates](NATIVE_FIDELITY_INSPECTOR_PLAN.md#scope-ownership--fidelity-checks-moved-out-of-nature-issue-143-2026-10-16).
+[Nature training issue #143](https://github.com/nn971/sts2-emulator/issues/143)
+owns the playable two-site API and emulator-owned ordinary-RNG-vs-Nature
+experiment baseline. Original-game parity is not a #143 acceptance gate.
+The separate N5 source probability calibration remains distinct.
+
+
 **Feature branch:** `feature/native-fidelity-inspector-foundation`
 
 | Gate | Status | Evidence / blocker |
