@@ -14,6 +14,21 @@ public sealed record SemanticPilotTransitionV111(
 /// encounter parameters initialize the opening using engine-owned seeded
 /// streams. The fixture still omits full native combat-entry hooks.
 /// </summary>
+/// <summary>
+    /// Combat-ended reward selection is outside the two-site Nature game:
+    /// legacy prototype reward RNG, isolated under the guarded source stream.
+    /// Its exact cursor use is replayable, while native source parity is
+    /// explicitly UNVERIFIED.
+    /// </summary>
+public sealed record SemanticRewardAuditV111(
+    string ProviderId, ulong BeforeCalls, ulong AfterCalls,
+    string ProbabilityStatus = "UNVERIFIED")
+{
+    public const string PrototypeProviderId =
+        "engine-owned-prototype-reward-unverified-v1";
+    public ulong Calls => AfterCalls - BeforeCalls;
+}
+
 public sealed record SemanticSeededEntryV111(
     string Seed, int Act, string EncounterId, string NativeEncounterEntry,
     int TotalFloor, int Ascension, long FirstMonsterCombatId,
@@ -44,6 +59,7 @@ public sealed record SemanticPilotCombatV111(
     public SemanticSeededEntryV111? SeededEntry { get; init; }
     /// <summary>Private state for explicitly opted-in non-Nature RNG.</summary>
     public SemanticOtherChanceStateV111? OtherChance { get; init; }
+    public SemanticRewardAuditV111? RewardAudit { get; init; }
     [JsonIgnore] public string Fingerprint => CanonicalJson.Sha256(this);
     [JsonIgnore] public bool AtPlayerBoundary =>
         PendingEndTurn is null &&
@@ -338,6 +354,9 @@ public static class SemanticPilotCombatEngineV111
         var nextState = current with
         {
             Run = result,
+            RewardAudit = result.Phase == RunPhase.Reward
+                ? RecordRewardAudit(source, result)
+                : current.RewardAudit,
             // A genuine fully deterministic end-turn continuation can
             // finish without exposing an intent or draw Nature ticket.
             // The next player decision must be immediately available.
@@ -346,6 +365,24 @@ public static class SemanticPilotCombatEngineV111
                 new SemanticPilotTransitionV111("player", actionId)).ToArray()
         };
         return NormalizeNoncontrolledCosts(nextState);
+    }
+
+    private static SemanticRewardAuditV111 RecordRewardAudit(
+        RunState source, RunState result)
+    {
+        static ulong Count(RunState run) =>
+            run.Rng.Streams.Single(x =>
+                x.StreamId == "reward" &&
+                x.Codec == PrototypeRng.Codec).CallCount
+            ?? throw new InvalidDataException(
+                "Reward RNG stream has no saved call count.");
+        var before = Count(source);
+        var after = Count(result);
+        if (after < before)
+            throw new InvalidDataException(
+                "Engine-owned reward RNG cursor rewound on victory.");
+        return new SemanticRewardAuditV111(
+            SemanticRewardAuditV111.PrototypeProviderId, before, after);
     }
 
     public static SemanticPilotCombatV111 Resolve(
@@ -463,6 +500,15 @@ public static class SemanticPilotCombatEngineV111
         }
         if (state.OtherChance is not null)
             SemanticOtherChanceEngineV111.Validate(state.OtherChance);
+        if (state.RewardAudit is { } reward &&
+            (state.Run.Phase != RunPhase.Reward ||
+             reward.ProviderId != SemanticRewardAuditV111.PrototypeProviderId ||
+             reward.ProbabilityStatus != "UNVERIFIED" ||
+             reward.AfterCalls < reward.BeforeCalls ||
+             state.Run.Rng.Streams.Single(x =>
+                 x.StreamId == "reward").CallCount != reward.AfterCalls))
+            throw new InvalidDataException(
+                "Invalid source-timed reward RNG audit.");
         if (state.SeededEntry is { } entry &&
             (entry.Seed != state.OpeningSource.Seed ||
              entry.Act != state.OpeningSource.Origin.Combat.Act ||
