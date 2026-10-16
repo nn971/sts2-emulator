@@ -1899,7 +1899,8 @@ public sealed record PrototypeControlledDrawInsertionV111(
     string RequestOwnerId = "prototype.combat",
     int RequestOrdinal = 0,
     PrototypePersonalHiveDamageContinuationV111?
-        PersonalHiveDamageContinuation = null)
+        PersonalHiveDamageContinuation = null,
+    int? AutomaticHandDrawRemaining = null)
 {
     public const string PersonalHiveDazedSiteId =
         "combat.effect.personal_hive.dazed.random_insert_index";

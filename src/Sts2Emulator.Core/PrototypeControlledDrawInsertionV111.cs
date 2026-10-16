@@ -30,7 +30,8 @@ public sealed partial class PrototypeGameEngine
         string? requestSiteId = null,
         string? requestOwnerId = null,
         PrototypePersonalHiveDamageContinuationV111?
-            personalHiveDamageContinuation = null)
+            personalHiveDamageContinuation = null,
+        int? automaticHandDrawRemaining = null)
     {
         if (!ControlledChanceGuardV111.Active ||
             combat.PendingChoice is not null || operation.Amount <= 0)
@@ -99,7 +100,9 @@ public sealed partial class PrototypeGameEngine
                             ":application:" + afterShuffleRelic.RelicApplicationOrder),
                     RequestOrdinal: requestOrdinal,
                     PersonalHiveDamageContinuation:
-                        personalHiveDamageContinuation?.Fork()))
+                        personalHiveDamageContinuation?.Fork(),
+                    AutomaticHandDrawRemaining:
+                        automaticHandDrawRemaining))
         };
     }
 
@@ -150,10 +153,29 @@ public sealed partial class PrototypeGameEngine
             if (!basicSupport) return false;
             if (choice.SemanticDrawContinuation is null)
             {
+                if (choice.AutomaticHandDrawRemaining is { } handRemaining)
+                {
+                    var cursor = combat.AutomaticPipelineContinuation;
+                    if (handRemaining <= 0 ||
+                        choice.AfterShuffleRelic is null ||
+                        combat.SemanticDeck is not null || cursor is null ||
+                        cursor.OpeningStage is not null ||
+                        cursor.ControlledDrawRemaining != handRemaining ||
+                        cursor.NextStepIndex < 0 ||
+                        cursor.NextStepIndex >=
+                            PrototypeContent.Rules.EndTurnPipeline.Length ||
+                        PrototypeContent.Rules.EndTurnPipeline[
+                            cursor.NextStepIndex].Kind !=
+                            PrototypeAutomaticStepKind.DrawPlayerHand ||
+                        cursor.ControlledDrawCostRemaining is not null ||
+                        cursor.ControlledRecycleStratagemPending)
+                        return false;
+                }
                 if (choice.AfterShuffleRelic is null)
                 {
                     if (choice.CompletedAfterShuffleRelics is not null ||
-                        choice.RemainingAfterShuffleRelics is not null)
+                        choice.RemainingAfterShuffleRelics is not null ||
+                        choice.AutomaticHandDrawRemaining is not null)
                         return false;
                     if (choice.RequestSiteId ==
                         PrototypeControlledDrawInsertionV111
@@ -172,6 +194,8 @@ public sealed partial class PrototypeGameEngine
                     choice.RemainingAfterShuffleRelics ?? [];
                 var expected = ControlledAfterShuffleRelicInsertions(combat);
                 return choice.Operation.Amount == 1 &&
+                    (choice.AutomaticHandDrawRemaining is null ||
+                     choice.AutomaticHandDrawRemaining > 0) &&
                     choice.Operation.CardId == insertion.CardId &&
                     afterShuffleCompleted.All(item =>
                         ValidateAfterShuffleRelicInsertion(combat, item)) &&
@@ -188,6 +212,8 @@ public sealed partial class PrototypeGameEngine
                     choice.RequestOrdinal >= 0;
             }
             var semanticDraw = choice.SemanticDrawContinuation;
+            if (choice.AutomaticHandDrawRemaining is not null)
+                return false;
             var afterShuffle = choice.AfterShuffleRelic;
             var completed = choice.CompletedAfterShuffleRelics ?? [];
             var remaining = choice.RemainingAfterShuffleRelics ?? [];
@@ -388,7 +414,8 @@ public sealed partial class PrototypeGameEngine
                 (choice.CompletedAfterShuffleRelics ?? [])
                     .Append(choice.AfterShuffleRelic).ToArray(),
                 choice.SemanticDrawContinuation, continuation,
-                choice.RequestOrdinal + 1);
+                choice.RequestOrdinal + 1,
+                choice.AutomaticHandDrawRemaining);
             return state with
             {
                 World = world with { Combat = nextCombat }
@@ -466,6 +493,28 @@ public sealed partial class PrototypeGameEngine
                     drawState, resumedDraw, semanticDraw, continuation));
         }
 
+        if (choice.AutomaticHandDrawRemaining is { } handDrawRemaining)
+        {
+            if (continuation.Operations.Length != 0 ||
+                continuation.PendingDiscardEvents.Length != 0 ||
+                continuation.PendingSlyCardInstanceIds.Length != 0 ||
+                continuation.CompletionEvents.Length != 0 ||
+                continuation.Parent is not null ||
+                continuation.EventDispatchContinuation is not null)
+                throw new InvalidDataException(
+                    "Automatic hand-draw insertion has unrelated operations.");
+            var drawRun = state with
+            {
+                World = world with { Combat = combat }
+            };
+            var resumedDraw = DrawCards(
+                drawRun.Player, combat, handDrawRemaining, drawRun.Rng,
+                fromHandDraw: true,
+                controlledRecycleSuspension: true,
+                controlledDrawCostSuspension: true);
+            return ContinueControlledHandDraw(drawRun, resumedDraw);
+        }
+
         var resumePlayer = state.Player;
         var resumeCombat = combat;
         var resumeContinuation = continuation;
@@ -523,14 +572,16 @@ public sealed partial class PrototypeGameEngine
         PrototypeAfterShuffleRelicInsertionV111[] completed,
         PrototypeControlledSemanticDrawV111? semanticDraw,
         PrototypeChoiceResolutionContinuationState continuation,
-        int ordinal)
+        int ordinal,
+        int? automaticHandDrawRemaining = null)
     {
         var operation = new PrototypeQueuedOperation(
             PrototypeCombatEffectKind.CreateGeneratedCardsAtRandomDrawPositions,
             1, CardId: insertion.CardId);
         return MakeControlledDrawInsertionChoice(
             combat, operation, continuation, semanticDraw, insertion,
-            completed, remaining, ordinal);
+            completed, remaining, ordinal,
+            automaticHandDrawRemaining: automaticHandDrawRemaining);
     }
 
     private static RunState ResumeControlledStratagemSelection(

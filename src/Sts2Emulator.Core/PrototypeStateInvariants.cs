@@ -3599,6 +3599,13 @@ public static class PrototypeStateInvariants
                     pending.Selection.SourceZone != PrototypeCardZone.Hand ||
                     pending.Selection.MinSelections != 0 ||
                     pending.Selection.MaxSelections != 0 ||
+                    drawInsertion.AutomaticHandDrawRemaining is not null &&
+                        (pending.OuterChoiceContinuation.Operations.Length != 0 ||
+                         pending.OuterChoiceContinuation.PendingDiscardEvents.Length != 0 ||
+                         pending.OuterChoiceContinuation.PendingSlyCardInstanceIds.Length != 0 ||
+                         pending.OuterChoiceContinuation.CompletionEvents.Length != 0 ||
+                         pending.OuterChoiceContinuation.Parent is not null ||
+                         pending.OuterChoiceContinuation.EventDispatchContinuation is not null) ||
                     !PrototypeGameEngine.ValidateControlledDrawInsertion(
                         combat, drawInsertion))
                     throw new InvalidOperationException(

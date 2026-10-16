@@ -1800,21 +1800,49 @@ public sealed partial class PrototypeGameEngine
             semanticDeck = SemanticDeckEngineV111.RecycleNature(
                 semanticDeck, eligible, perfectFit);
         }
-        combat = ApplyRelicAfterShuffleCards(combat with
+        combat = combat with
         {
             DrawPile = postHook,
             DiscardPile = [],
             SemanticDeck = semanticDeck
-        }, state.Rng);
+        };
+        var remainingHandDraw = continuation.ControlledDrawRemaining.Value;
+        var afterShuffleInsertions = ControlledAfterShuffleRelicInsertions(
+            combat);
+        if (afterShuffleInsertions.Length > 0 &&
+            ControlledChanceGuardV111.Active &&
+            !ControlledChanceGuardV111.EngineOwnedNativeProviderActive)
+        {
+            var insertionContinuation =
+                new PrototypeChoiceResolutionContinuationState(
+                    SourceCardInstanceId: null,
+                    SourceCardDestination: PrototypeCardZone.DrawPile,
+                    Operations: [],
+                    PendingDiscardEvents: [],
+                    PendingSlyCardInstanceIds: [],
+                    CompletionEvents: []);
+            combat = MakeControlledAfterShuffleInsertionChoice(
+                combat, afterShuffleInsertions[0],
+                afterShuffleInsertions.Skip(1).ToArray(), [], null,
+                insertionContinuation, ordinal: 0,
+                automaticHandDrawRemaining: remainingHandDraw);
+            var suspended = state with
+            {
+                World = world with { Combat = combat }
+            };
+            PrototypeStateInvariants.Validate(suspended);
+            return suspended;
+        }
+        combat = ApplyRelicAfterShuffleCards(combat, state.Rng);
         if (combat.PlayerPowers.Any(power =>
                 power.PowerId == "proto.power.stratagem" && power.Stacks > 0) &&
             combat.Hand.Length < 10)
             return BeginControlledRecycleStratagemSelection(
                 state, state.Player, combat,
-                continuation.ControlledDrawRemaining.Value);
+                remainingHandDraw);
 
         var player = state.Player;
-        var drawn = DrawCards(player, combat, continuation.ControlledDrawRemaining.Value,
+        var drawn = DrawCards(player, combat, remainingHandDraw,
             state.Rng, fromHandDraw: true,
             controlledRecycleSuspension: true,
             controlledDrawCostSuspension: true);

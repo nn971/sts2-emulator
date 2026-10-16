@@ -9,7 +9,7 @@ The actual combat `DrawPlayerHand` stage now executes pre-draw hooks and prior c
 
 Nature selects each Fisher–Yates swap index. The engine applies the original postshuffle PerfectFit ordering and after-shuffle relic effects, draws the remaining cards, applies end-of-hand-draw effects, and continues from the **next** pipeline stage. Previous effects are preserved, including health, block, draw triggers and consumed card positions.
 
-If a recycled hand draw triggers Stratagem, the run now pauses for its ordinary draw-pile selection before continuing the saved remaining draw count. Draw-cost tickets and another recycle reuse that same automatic-pipeline cursor. This composition is build-verified; existing fixed hand-draw/recycle continuation coverage remains unchanged.
+If a recycled hand draw triggers an after-shuffle relic insertion, Nature now chooses each generated card's draw-pile position in relic application order before the hand draw resumes. A recycled draw that triggers Stratagem pauses for its ordinary draw-pile selection before continuing the saved remaining count. Draw-cost tickets and another recycle reuse that same automatic-pipeline cursor. These compositions are build-verified; existing fixed hand-draw/recycle continuation coverage remains unchanged.
 
 The controlled snapshot records chronological live events spanning intent and recycle choices and verifies them by exact replay from the original HP/intent prefix and ordered player actions. Fork, stale-guard, invalid support, malformed snapshot and 15-worker deterministic tests cover the previously implemented fixed hand-draw/recycle path.
 
@@ -17,7 +17,7 @@ The controlled snapshot records chronological live events spanning intent and re
 
 - Supported: opt-in Hive/Glory starter combat fixture; controlled initial HP, initial intents, opening shuffle, next-turn intent tickets, and end-turn hand-draw recycling.
 - Other calls to `DrawCards` that need recycling fail explicitly until their own resumable operation records exist.
-- Stratagem after an end-turn recycle is supported. Random-cost draw effects outside the hand-draw stage, generated after-shuffle relic inserts, random targeting/autoplay, summons and nested hooks still require dedicated control/migration.
+- Stratagem and generated after-shuffle relic insertions after an end-turn recycle are supported. Random-cost draw effects outside the hand-draw stage, random targeting/autoplay, summons and nested hooks still require dedicated control/migration.
 - All source conditional probabilities remain `UNVERIFIED`; native parity remains untested here.
 
 **Issue status:** #143 stays open. See [the implementation status](NATURE_ISSUE_143_IMPLEMENTATION_STATUS.md) for earlier milestones. The desired RNG and Inspector plans are unchanged.
