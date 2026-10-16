@@ -325,6 +325,26 @@ class SemanticCombat:
                 fingerprint=self.fingerprint, event_id=self.pending["eventId"],
                 swap_index=swap_index))
 
+    def resolve_draw_insertion(self, position: int):
+        """Insert the pending generated card at a legal draw-pile position."""
+        if not self.pending or self.pending.get(
+                "kind") != "generated_draw_pile_insertion":
+            raise EmulatorError(
+                "Expected a generated_draw_pile_insertion event")
+        if self.session.capabilities.get(
+                "semanticDrawInsertionChoiceSchemaId") != (
+                    "sts2-v111-semantic-draw-insertion-v1"):
+            raise EmulatorError("Emulator lacks semantic draw-insertion choices")
+        positions = [candidate["position"]
+                     for candidate in self.pending.get("candidates", [])]
+        if position not in positions:
+            raise ValueError("Position is outside the pending event support")
+        return SemanticCombat.from_wire(
+            self.session, self.session.call(
+                "semantic_resolve_draw_insertion",
+                semantic_handle=self.handle, fingerprint=self.fingerprint,
+                event_id=self.pending["eventId"], position=position))
+
     def fork(self):
         return SemanticCombat.from_wire(
             self.session, self.session.call(
@@ -471,6 +491,7 @@ class Session:
             fixture_selection_card_id: str | None = None,
             fixture_nature_draw_costs: bool = False,
             fixture_pool_generation_potion_id: str | None = None,
+            fixture_generated_draw_insertion_card_id: str | None = None,
             replay_opening_draw_hooks: bool = False,
             native_policy_baseline: bool = False,
             source_route_entry: bool = False,
@@ -487,6 +508,8 @@ class Session:
         adds Orobic Acid to expose three ordered generated-card pools.
         The pool-generation fixture adds a Colorless Potion for typed
         full-pool shuffle choices followed by an ordinary card selection.
+        The draw-insertion fixture begins at a source-authentic generated
+        card insertion boundary for the requested card model.
         """
         if self.capabilities.get("semanticSeededOpeningProvider") != (
                 "engine-owned-seeded-source-shaped-unverified-v1"):
@@ -517,6 +540,8 @@ class Session:
             fixture_nature_draw_costs=fixture_nature_draw_costs,
             fixture_pool_generation_potion_id=
                 fixture_pool_generation_potion_id,
+            fixture_generated_draw_insertion_card_id=
+                fixture_generated_draw_insertion_card_id,
             replay_opening_draw_hooks=replay_opening_draw_hooks,
             native_policy_baseline=native_policy_baseline,
             source_route_entry=source_route_entry,

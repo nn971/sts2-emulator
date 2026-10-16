@@ -345,8 +345,18 @@ Survivor action in an explicit seeded fixture loadout. It publishes a typed
 `player_card_selection` event and source legal actions, then replays the
 action/choice pair from the seeded entry. This does not establish native
 Survivor acquisition or generic nested-choice coverage. Scry/random-position
-selection, random insertions and card-effect draws remain separate integration
-milestones.
+selection, other insertion effects and card-effect draws remain separate
+integration milestones.
+
+The semantic JSONL/Python bridge also exposes the fixed-model random
+draw-pile insertion continuation through an explicit seeded card fixture.
+Each position resolves at the real `ResolveOperations` continuation, then
+adds the generated instance to the provider deck as a private known anchor
+without revealing the surrounding unresolved order. The bounded event and
+player-external setup replay from the seeded entry. Random model selection
+for draw-pile Attack insertion and native fixture acquisition remain
+uncovered; source laws are `UNVERIFIED`. See
+[the insertion contract](NATURE_DRAW_INSERTION_143.md).
 
 
 ## P0 reprioritization: first external two-site playable semantic JSONL (merged PR #165)

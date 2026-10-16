@@ -248,6 +248,29 @@ internal static class PrototypeAiJsonlServer
                     probabilityStatus = pool.ProbabilityStatus
                 };
             }
+            if (state.DrawInsertionPending is { } insertion)
+            {
+                return new
+                {
+                    kind = "generated_draw_pile_insertion",
+                    schemaId = insertion.SchemaId,
+                    eventId = insertion.EventId,
+                    siteId = insertion.SiteId,
+                    streamId = insertion.StreamId,
+                    ownerId = insertion.OwnerId,
+                    ordinal = insertion.Ordinal,
+                    operationKind = insertion.OperationKind,
+                    supportFingerprint = insertion.SupportFingerprint,
+                    generatedCardModelId = insertion.GeneratedCardModelId,
+                    eligibleDrawPileInstanceIds =
+                        insertion.EligibleDrawPileInstanceIds,
+                    candidates = Enumerable.Range(
+                            0, insertion.Request.SupportCount)
+                        .Select(position => new { position })
+                        .ToArray(),
+                    probabilityStatus = insertion.ProbabilityStatus
+                };
+            }
             return null;
         }
 
@@ -263,6 +286,8 @@ internal static class PrototypeAiJsonlServer
                 sites.Add("drawn_card_cost");
             if (state.SeededEntry?.FixturePoolGenerationPotionId is not null)
                 sites.Add("generated_card_pool_shuffle");
+            if (state.SeededEntry?.FixtureGeneratedDrawInsertionCardId is not null)
+                sites.Add("generated_draw_pile_insertion");
             return sites.ToArray();
         }
 
@@ -273,7 +298,8 @@ internal static class PrototypeAiJsonlServer
                   state.SeededEntry?.FixtureGenerationPotionId is not null ||
                   state.SeededEntry?.FixtureSelectionCardId is not null ||
                   state.SeededEntry?.FixtureNatureDrawCosts == true ||
-                  state.SeededEntry?.FixturePoolGenerationPotionId is not null
+                  state.SeededEntry?.FixturePoolGenerationPotionId is not null ||
+                  state.SeededEntry?.FixtureGeneratedDrawInsertionCardId is not null
                     ? "nature-extended-fixture"
                     : "nature-two-site";
 
@@ -481,10 +507,13 @@ internal static class PrototypeAiJsonlServer
                                 SemanticCostEventV111.EventSchemaId,
                             semanticPoolShuffleChoiceSchemaId =
                                 SemanticPoolShuffleEventV111.EventSchemaId,
+                            semanticDrawInsertionChoiceSchemaId =
+                                SemanticDrawInsertionEventV111.EventSchemaId,
                             semanticExtendedControlledSites = new[]
                             {
                                 "random_enemy_target", "generated_card_pool",
-                                "drawn_card_cost", "generated_card_pool_shuffle"
+                                "drawn_card_cost", "generated_card_pool_shuffle",
+                                "generated_draw_pile_insertion"
                             },
                             semanticExtendedPlayerChoices = new[]
                             {
@@ -823,7 +852,9 @@ internal static class PrototypeAiJsonlServer
                             OptionalString(request, "fixture_selection_card_id"),
                             OptionalBool(request, "fixture_nature_draw_costs"),
                             OptionalString(request,
-                                "fixture_pool_generation_potion_id"));
+                                "fixture_pool_generation_potion_id"),
+                            OptionalString(request,
+                                "fixture_generated_draw_insertion_card_id"));
                         var next = SemanticPilotCombatEngineV111.BeginSeeded(entry);
                         var handle = StoreSemantic(next);
                         Write(new { requestId, ok = true,
@@ -957,6 +988,21 @@ internal static class PrototypeAiJsonlServer
                             OptionalInt(request, "swap_index") ??
                                 throw new ArgumentException(
                                     "Missing swap_index."));
+                        var handle = StoreSemantic(next);
+                        Write(new { requestId, ok = true,
+                            result = SemanticResult(next, handle, parentHandle) });
+                        break;
+                    }
+
+                    case "semantic_resolve_draw_insertion":
+                    {
+                        var parentHandle = RequiredString(request, "semantic_handle");
+                        var current = RequireSemantic(request);
+                        var next = SemanticPilotCombatEngineV111.ResolveDrawInsertion(
+                            current, RequiredString(request, "fingerprint"),
+                            RequiredString(request, "event_id"),
+                            OptionalInt(request, "position") ??
+                                throw new ArgumentException("Missing position."));
                         var handle = StoreSemantic(next);
                         Write(new { requestId, ok = true,
                             result = SemanticResult(next, handle, parentHandle) });

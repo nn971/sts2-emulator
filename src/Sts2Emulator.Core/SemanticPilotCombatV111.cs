@@ -14,7 +14,8 @@ public sealed record SemanticPilotTransitionV111(
     SemanticGeneratedCardDecisionV111? GeneratedCardDecision = null,
     SemanticCardSelectionDecisionV111? CardSelectionDecision = null,
     SemanticCostDecisionV111? CostDecision = null,
-    SemanticPoolShuffleDecisionV111? PoolShuffleDecision = null);
+    SemanticPoolShuffleDecisionV111? PoolShuffleDecision = null,
+    SemanticDrawInsertionDecisionV111? DrawInsertionDecision = null);
 
 /// <summary>
 /// Independently replayable setup provenance. The default entry is a
@@ -70,7 +71,8 @@ public sealed record SemanticSeededEntryV111(
     string? FixtureGenerationPotionId = null,
     string? FixtureSelectionCardId = null,
     bool FixtureNatureDrawCosts = false,
-    string? FixturePoolGenerationPotionId = null);
+    string? FixturePoolGenerationPotionId = null,
+    string? FixtureGeneratedDrawInsertionCardId = null);
 
 /// <summary>
 /// First external playable semantic boundary. Initial opening order is
@@ -108,6 +110,8 @@ public sealed record SemanticPilotCombatV111(
         SemanticPilotCombatEngineV111.DescribePendingCostEvent(this);
     [JsonIgnore] public SemanticPoolShuffleEventV111? PoolShufflePending =>
         SemanticPilotCombatEngineV111.DescribePendingPoolShuffleEvent(this);
+    [JsonIgnore] public SemanticDrawInsertionEventV111? DrawInsertionPending =>
+        SemanticPilotCombatEngineV111.DescribePendingDrawInsertionEvent(this);
     [JsonIgnore] public string Fingerprint => CanonicalJson.Sha256(this);
     [JsonIgnore] public bool AtPlayerBoundary =>
         PendingInitialIntents is null &&
@@ -188,6 +192,10 @@ public sealed record SemanticPilotCombatV111(
             { PoolShuffleDecision: { } decision } => transition with
             {
                 PoolShuffleDecision = decision.Fork()
+            },
+            { DrawInsertionDecision: { } decision } => transition with
+            {
+                DrawInsertionDecision = decision.Fork()
             },
             _ => transition
         }).ToArray(),
@@ -290,7 +298,8 @@ public static class SemanticPilotCombatEngineV111
              entry.FixtureGenerationPotionId is not null ||
              entry.FixtureSelectionCardId is not null ||
              entry.FixtureNatureDrawCosts ||
-             entry.FixturePoolGenerationPotionId is not null))
+             entry.FixturePoolGenerationPotionId is not null ||
+             entry.FixtureGeneratedDrawInsertionCardId is not null))
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_NATIVE site=combat.seeded_entry " +
                 "operation=native_baseline_fixture_loadout_conflict");
@@ -407,8 +416,24 @@ public static class SemanticPilotCombatEngineV111
             state = ApplyFixtureSelectionCard(state, selectionCardId);
         if (entry.FixturePoolGenerationPotionId is { } poolPotionId)
             state = ApplyFixturePoolGenerationPotion(state, poolPotionId);
+        if (entry.FixtureGeneratedDrawInsertionCardId is { } insertionCardId)
+            state = ApplyFixtureGeneratedDrawInsertion(state, insertionCardId);
         Validate(state);
         return state;
+    }
+
+    private static SemanticPilotCombatV111 ApplyFixtureGeneratedDrawInsertion(
+        SemanticPilotCombatV111 state, string cardId)
+    {
+        var operation = new PrototypeQueuedOperation(
+            PrototypeCombatEffectKind.CreateGeneratedCardsAtRandomDrawPositions,
+            Amount: 1, CardId: cardId);
+        RunState result;
+        using (ControlledChanceGuardV111.Enter())
+            result = PrototypeGameEngine.BeginControlledDrawInsertionFixture(
+                state.Run.Fork(), operation);
+        ValidateDrawInsertionBoundary(result);
+        return state with { Run = result };
     }
 
     private static SemanticPilotCombatV111 ApplyFixturePoolGenerationPotion(
@@ -569,6 +594,7 @@ public static class SemanticPilotCombatEngineV111
             entry.FixtureGenerationPotionId is not null ||
             entry.FixtureSelectionCardId is not null ||
             entry.FixturePoolGenerationPotionId is not null ||
+            entry.FixtureGeneratedDrawInsertionCardId is not null ||
             entry.ReplayOpeningDrawHooks)
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_ROUTE site=act1.entry " +
@@ -1441,6 +1467,68 @@ public static class SemanticPilotCombatEngineV111
         return next;
     }
 
+    public static SemanticPilotCombatV111 ResolveDrawInsertion(
+        SemanticPilotCombatV111 current, string fingerprint,
+        string eventId, int position)
+    {
+        Validate(current);
+        if (current.Fingerprint != fingerprint)
+            throw new InvalidOperationException(
+                "Stale semantic draw-insertion fingerprint.");
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
+        var pending = current.DrawInsertionPending ??
+            throw new InvalidOperationException(
+                "No generated draw-pile insertion is pending.");
+        if (pending.EventId != eventId)
+            throw new InvalidOperationException(
+                "Draw-insertion event ID is stale or mismatched.");
+        var decision = new SemanticDrawInsertionDecisionV111(pending, position);
+        decision.Validate();
+
+        var priorCombat = current.Run.World!.Combat!;
+        var insertedInstanceId = priorCombat.NextCardInstanceId;
+        RunState result;
+        using (ControlledChanceGuardV111.Enter())
+            result = PrototypeGameEngine.ResumeControlledDrawInsertion(
+                current.Run.Fork(), position);
+        var resultCombat = result.World?.Combat;
+        var expectedPile = priorCombat.DrawPile.ToList();
+        expectedPile.Insert(position, insertedInstanceId);
+        if (result.Phase != RunPhase.Combat || resultCombat is not
+                { IsPlayerTurn: true, AutomaticPipelineContinuation: null,
+                    PendingChoice: null } ||
+            resultCombat.NextCardInstanceId != insertedInstanceId + 1 ||
+            !resultCombat.DrawPile.SequenceEqual(expectedPile) ||
+            resultCombat.Cards.SingleOrDefault(card =>
+                card.InstanceId == insertedInstanceId)?.CardId !=
+                pending.GeneratedCardModelId)
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_DECK site=combat.draw_pile.random_insert_index " +
+                "operation=unmodeled_post_insertion_continuation");
+
+        var deck = SemanticDeckEngineV111.InsertKnown(
+            priorCombat.SemanticDeck!, position, insertedInstanceId,
+            publiclyKnown: false);
+        result = result with
+        {
+            World = result.World! with
+            {
+                Combat = resultCombat with { SemanticDeck = deck }
+            }
+        };
+        ValidateSemanticCombatBoundary(result);
+        var next = current with
+        {
+            Run = result,
+            History = current.History.Append(
+                new SemanticPilotTransitionV111(
+                    "semantic_draw_insertion",
+                    DrawInsertionDecision: decision.Fork())).ToArray()
+        };
+        Validate(next);
+        return next;
+    }
+
     private static SemanticPilotCombatV111 Resolve(
         SemanticPilotCombatV111 current, string fingerprint, int selectedIndex,
         SemanticIntentDecisionV111? semanticIntent,
@@ -1870,6 +1958,89 @@ public static class SemanticPilotCombatEngineV111
                 "Generated-card pool shuffle changed the hidden draw pile.");
     }
 
+    public static SemanticDrawInsertionEventV111?
+        DescribePendingDrawInsertionEvent(SemanticPilotCombatV111 current)
+    {
+        ArgumentNullException.ThrowIfNull(current);
+        var combat = current.Run.World?.Combat;
+        var choice = combat?.PendingChoice;
+        var insertion = choice?.ControlledDrawInsertion;
+        if (insertion is null) return null;
+        if (current.SeededEntry?.FixtureGeneratedDrawInsertionCardId !=
+                insertion.Operation.CardId ||
+            current.PendingEndTurn is not null ||
+            current.PendingInitialIntents is not null ||
+            current.TargetPending is not null ||
+            current.GeneratedCardPending is not null ||
+            current.CardSelectionPending is not null ||
+            current.PoolShufflePending is not null ||
+            current.UsesNativePolicyBaseline || current.CombatTerminal)
+            throw new InvalidDataException(
+                "Draw insertion conflicts with another semantic boundary.");
+        ValidateDrawInsertionBoundary(current.Run);
+        var pile = (long[])insertion.EligibleDrawPile.Clone();
+        var request = new RandomIndexRequestV111(
+            "combat.draw_pile.random_insert_index", "prototype.combat",
+            "effect:" + insertion.Operation.Kind +
+                ":card:" + insertion.SelectedCardId +
+                ":pile:" + CanonicalJson.Sha256(pile),
+            current.History.Count(transition =>
+                transition.Kind == "semantic_draw_insertion"), [],
+            OperationKind: "bounded_integer",
+            BoundedCount: pile.Length + 1);
+        request.Validate();
+        var supportFingerprint = CanonicalJson.Sha256(new
+        {
+            Request = request,
+            GeneratedCardModelId = insertion.SelectedCardId!,
+            EligibleDrawPileInstanceIds = pile
+        });
+        var eventId = CanonicalJson.Sha256(new
+        {
+            SchemaId = SemanticDrawInsertionEventV111.EventSchemaId,
+            BoundaryFingerprint = current.Fingerprint,
+            SupportFingerprint = supportFingerprint
+        });
+        var semanticEvent = new SemanticDrawInsertionEventV111(
+            SemanticDrawInsertionEventV111.EventSchemaId, eventId,
+            current.Fingerprint, supportFingerprint, request,
+            insertion.SelectedCardId!, pile);
+        semanticEvent.Validate();
+        return semanticEvent;
+    }
+
+    private static void ValidateDrawInsertionBoundary(RunState run)
+    {
+        var combat = run.World?.Combat;
+        var choice = combat?.PendingChoice;
+        var insertion = choice?.ControlledDrawInsertion;
+        if (run.Phase != RunPhase.Combat ||
+            combat is not { IsPlayerTurn: true,
+                AutomaticPipelineContinuation: null } ||
+            choice is not { ChoiceId: "controlled_draw_insertion",
+                OuterChoiceContinuation: not null } ||
+            insertion is not
+            {
+                Stage: "position",
+                Operation.Kind:
+                    PrototypeCombatEffectKind.CreateGeneratedCardsAtRandomDrawPositions,
+                SelectedCardId: not null
+            } ||
+            !PrototypeGameEngine.ValidateControlledDrawInsertion(
+                combat, insertion))
+            throw new InvalidDataException(
+                "Generated draw-pile insertion is not source-reachable.");
+        var deck = combat.SemanticDeck ?? throw new InvalidDataException(
+            "Generated draw-pile insertion lost the provider-owned deck.");
+        SemanticDeckEngineV111.Validate(deck);
+        if (deck.Mode != SemanticDeckStateV111.NatureMode ||
+            deck.Pending is not null ||
+            !SemanticDeckEngineV111.AllCardInstanceIds(deck)
+                .Order().SequenceEqual(combat.DrawPile.Order()))
+            throw new InvalidDataException(
+                "Generated draw-pile insertion changed the hidden pile early.");
+    }
+
     private static void ValidateCostDecision(
         SemanticCostEventV111? pending,
         SemanticCostDecisionV111 decision, int sourceIndex)
@@ -2168,6 +2339,22 @@ public static class SemanticPilotCombatEngineV111
                 throw new InvalidDataException(
                     "Full-pool shuffle conflicts with another semantic boundary.");
         }
+        if (state.DrawInsertionPending is { } drawInsertionPending)
+        {
+            drawInsertionPending.Validate();
+            ValidateDrawInsertionBoundary(state.Run);
+            if (state.PendingEndTurn is not null ||
+                state.PendingInitialIntents is not null ||
+                state.IntentPending is not null || state.DrawPending is not null ||
+                state.TargetPending is not null ||
+                state.GeneratedCardPending is not null ||
+                state.CardSelectionPending is not null ||
+                state.PoolShufflePending is not null ||
+                state.CostPending is not null ||
+                state.UsesNativePolicyBaseline || state.CombatTerminal)
+                throw new InvalidDataException(
+                    "Draw insertion conflicts with another semantic boundary.");
+        }
         if (state.CostPending is { } costPending)
         {
             costPending.Validate();
@@ -2329,6 +2516,11 @@ public static class SemanticPilotCombatEngineV111
                     ResolvePoolShuffle(replay, replay.Fingerprint,
                         transition.PoolShuffleDecision.Event.EventId,
                         transition.PoolShuffleDecision.SelectedSwapIndex),
+                "semantic_draw_insertion" when
+                    transition.DrawInsertionDecision is not null =>
+                    ResolveDrawInsertion(replay, replay.Fingerprint,
+                        transition.DrawInsertionDecision.Event.EventId,
+                        transition.DrawInsertionDecision.SelectedPosition),
                 "nature" when transition.SelectedIndex is not null =>
                     Resolve(replay, replay.Fingerprint,
                         transition.SelectedIndex.Value),

@@ -22,8 +22,8 @@ v111 consumer protocols have **not** been switched.
 | Encounter formation | encounter-local context RNG | Supported formations source audited | Yes (subset) | No | No | Existing tests | No |
 | Hatch / death spawn HP | creature creation; `run.niche` | Selected source hooks audited | Yes (subset) | No | No | Existing tests | No |
 | Monster-local randomness | monster CombatId owner stream | Partial | Yes (selected) | No | No | Existing tests | No |
-| Card shuffle and target selection | named run and player context streams | Partial | Selected paths | Partial: semantic deck draw/recycle state and typed random-enemy events; native operation seam pending | Restricted semantic player-action continuation | Native shuffle audits remain separate; Nature target is counterfactual | No |
-| Draw/generation/energy costs/reward | separate named run/player streams | Partial | Selected paths | Partial: typed deferred draws, generated-card model pools and opt-in drawn-card cost events; default costs/rewards retain explicit unverified providers | Restricted semantic draw, generation, cost and reward paths | Native stream/call-order parity pending for remaining sites | No |
+| Card shuffle and target selection | named run and player context streams | Partial | Selected paths | Partial: semantic deck draw/recycle state, typed random-enemy events, and an opt-in generated-card draw-pile insertion event; native operation seam pending | Restricted semantic player-action continuation | Native shuffle audits remain separate; Nature target is counterfactual | No |
+| Draw/generation/energy costs/reward | separate named run/player streams | Partial | Selected paths | Partial: typed deferred draws, generated-card model pools, full-pool swaps, draw insertion, and opt-in drawn-card cost events; default costs/rewards retain explicit unverified providers | Restricted semantic draw, generation, cost, insertion and reward paths | Native stream/call-order parity pending for remaining sites | No |
 | Map/event/shop/treasure selection | act- and model-context streams | Partial | Selected paths | No | No | Pending | No |
 
 ## First migrated site: `combat.initial_unique_hp`

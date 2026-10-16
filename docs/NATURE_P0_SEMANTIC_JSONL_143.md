@@ -31,9 +31,11 @@ non-Nature RNG parity remain **UNVERIFIED**.
 - `semanticCostChoiceSchemaId = sts2-v111-semantic-cost-choice-v1`.
 - `semanticPoolShuffleChoiceSchemaId =
   sts2-v111-semantic-pool-shuffle-v1`.
+- `semanticDrawInsertionChoiceSchemaId =
+  sts2-v111-semantic-draw-insertion-v1`.
 - `semanticExtendedControlledSites = [random_enemy_target, generated_card_pool,
-  drawn_card_cost, generated_card_pool_shuffle]`; fixture-specific sites require
-  their corresponding seeded-entry options.
+  drawn_card_cost, generated_card_pool_shuffle, generated_draw_pile_insertion]`;
+  fixture-specific sites require their corresponding seeded-entry options.
 - `semanticExtendedPlayerChoices = [select_cards]`.
 - `semanticPlayable = true`, scope
   `seeded-source-route-or-post-committed-opening-fixture-restricted-Silent-combat`.
@@ -68,6 +70,7 @@ paths avoid that external setup chain:
 | `semantic_resolve_generated_card` | handle, fingerprint, pending `event_id`, legal `card_model_id` | Child Nature / player / terminal |
 | `semantic_resolve_cost` | handle, fingerprint, pending `event_id`, legal cost value | Child Nature / player / terminal |
 | `semantic_resolve_pool_shuffle` | handle, fingerprint, pending `event_id`, bounded `swap_index` | Child Nature / player / terminal |
+| `semantic_resolve_draw_insertion` | handle, fingerprint, pending `event_id`, bounded `position` | Child Nature / player / terminal |
 | `semantic_step` at `player_choice` | handle, fingerprint, listed legal `select_cards` action ID | Child player / Nature / terminal |
 | `semantic_fork` | handle | Independent child handle |
 | `semantic_save` | handle | Privileged snapshot string |
@@ -325,6 +328,17 @@ effect and exposes the source `select_cards` action as an ordinary
 `resolve_card_selection(action_id)` method. Snapshot replay includes every
 swap and the subsequent player choice. This fixture does not claim native
 potion-acquisition provenance or source-law calibration.
+
+The fixed-card draw-pile insertion fixture uses
+`fixture_generated_draw_insertion_card_id="proto.silent.strike"` (or another
+source-valid card model). It exposes each position from zero through the
+current draw-pile count as a `generated_draw_pile_insertion` event. Resolving
+the event resumes the source insertion, preserves the unresolved hidden deck
+pool and adds the generated card as a private known position. Python clients
+use `SemanticCombat.resolve_draw_insertion(position)`. This fixture covers
+the fixed-model path only; random-model selection remains outside this
+semantic bridge. Its probability law and fixture acquisition provenance are
+`UNVERIFIED`.
 
 **Probability status:** these are raw weights produced by the emulator's
 source-shaped selector, **not** independently audited original-game
