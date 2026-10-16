@@ -184,7 +184,7 @@ public sealed class SemanticPilotCombatV111Tests
         Assert.Null(restored.OtherChance);
         Assert.Equal(old.Fingerprint, restored.Fingerprint);
         Assert.NotNull(original.OtherChance);
-        Assert.Equal(0, original.OtherChance!.Transcript.Length);
+        Assert.Empty(original.OtherChance!.Transcript);
     }
 
     [Fact]
