@@ -345,6 +345,22 @@ class SemanticCombat:
                 semantic_handle=self.handle, fingerprint=self.fingerprint,
                 event_id=self.pending["eventId"], position=position))
 
+    def enumerate_chance(self, max_outcomes: int = 32) -> "SemanticEnumeration":
+        """Fork every legal outcome of one small pending Nature event."""
+        if self.session.capabilities.get("semanticEnumerationSchemaId") != (
+                "sts2-v111-semantic-enumeration-v1"):
+            raise EmulatorError("Emulator lacks semantic chance enumeration")
+        capability_limit = self.session.capabilities.get(
+            "semanticEnumerationMaximumOutcomes", 256)
+        if (not isinstance(max_outcomes, int) or isinstance(max_outcomes, bool)
+                or max_outcomes < 1 or max_outcomes > capability_limit):
+            raise ValueError(
+                f"max_outcomes must be between 1 and {capability_limit}")
+        result = self.session.call(
+            "semantic_enumerate", semantic_handle=self.handle,
+            fingerprint=self.fingerprint, maximum_outcomes=max_outcomes)
+        return SemanticEnumeration.from_wire(self.session, result)
+
     def fork(self):
         return SemanticCombat.from_wire(
             self.session, self.session.call(
@@ -357,6 +373,27 @@ class SemanticCombat:
 
     def release(self):
         return self.session.release_semantic_many([self])
+
+
+@dataclass(frozen=True)
+class SemanticBranch:
+    outcome_id: str
+    child: SemanticCombat
+
+
+@dataclass(frozen=True)
+class SemanticEnumeration:
+    event_kind: str
+    event_id: str
+    outcomes: tuple[SemanticBranch, ...]
+
+    @classmethod
+    def from_wire(cls, session, payload):
+        branches = tuple(
+            SemanticBranch(item["outcomeId"],
+                           SemanticCombat.from_wire(session, item))
+            for item in payload["outcomes"])
+        return cls(payload["eventKind"], payload["eventId"], branches)
 
 
 class Session:

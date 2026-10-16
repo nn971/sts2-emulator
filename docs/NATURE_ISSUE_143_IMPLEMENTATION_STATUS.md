@@ -359,6 +359,11 @@ native fixture acquisition remains uncovered and source laws are
 `UNVERIFIED`. See
 [the insertion contract](NATURE_DRAW_INSERTION_143.md).
 
+The semantic protocol also exposes a capped one-event enumerator. It creates
+an independent replayable child for each outcome up to the caller's limit,
+with a hard maximum of 256 and no truncation. Player card-selection actions
+remain player choices rather than Nature enumeration outcomes.
+
 
 ## P0 reprioritization: first external two-site playable semantic JSONL (merged PR #165)
 

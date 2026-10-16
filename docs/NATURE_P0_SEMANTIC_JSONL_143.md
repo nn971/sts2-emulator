@@ -33,6 +33,8 @@ non-Nature RNG parity remain **UNVERIFIED**.
   sts2-v111-semantic-pool-shuffle-v1`.
 - `semanticDrawInsertionChoiceSchemaId =
   sts2-v111-semantic-draw-insertion-v1`.
+- `semanticEnumerationSchemaId = sts2-v111-semantic-enumeration-v1`; maximum
+  support size is 256.
 - `semanticExtendedControlledSites = [random_enemy_target, generated_card_pool,
   drawn_card_cost, generated_card_pool_shuffle, generated_draw_pile_insertion,
   random_draw_attack_card_model]`;
@@ -72,6 +74,7 @@ paths avoid that external setup chain:
 | `semantic_resolve_cost` | handle, fingerprint, pending `event_id`, legal cost value | Child Nature / player / terminal |
 | `semantic_resolve_pool_shuffle` | handle, fingerprint, pending `event_id`, bounded `swap_index` | Child Nature / player / terminal |
 | `semantic_resolve_draw_insertion` | handle, fingerprint, pending `event_id`, bounded `position` | Child Nature / player / terminal |
+| `semantic_enumerate` | handle, fingerprint, optional `maximum_outcomes` (default 32) | One child session per legal outcome of the pending chance event |
 | `semantic_step` at `player_choice` | handle, fingerprint, listed legal `select_cards` action ID | Child player / Nature / terminal |
 | `semantic_fork` | handle | Independent child handle |
 | `semantic_save` | handle | Privileged snapshot string |
@@ -88,6 +91,14 @@ Python `Session.begin_semantic_combat` returns a typed `SemanticCombat`.
 combat-map choice through legal actions before entering the real native weak
 combat hook. Source-route mode currently covers first-floor Overgrowth and
 Underdocks weak encounters.
+
+`SemanticCombat.enumerate_chance(max_outcomes=32)` exposes the optional
+enumeration provider. It returns one independent child session per legal
+outcome for the pending Nature event and leaves the parent handle unchanged.
+The request fails if support is larger than the requested cap; the service
+supports caps through 256 and never returns a silently truncated list.
+Player-owned `select_cards` actions are not chance events and are not
+enumerated by this method.
 
 **Nature-only event metadata:** pending `enemy_intent` contains the source
 selector site/stream, stable enemy owner, bounded support, ordinal,

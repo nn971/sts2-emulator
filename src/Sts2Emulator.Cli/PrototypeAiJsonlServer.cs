@@ -515,6 +515,10 @@ internal static class PrototypeAiJsonlServer
                                 SemanticPoolShuffleEventV111.EventSchemaId,
                             semanticDrawInsertionChoiceSchemaId =
                                 SemanticDrawInsertionEventV111.EventSchemaId,
+                            semanticEnumerationSchemaId =
+                                SemanticNatureEnumeratorV111.SchemaId,
+                            semanticEnumerationMaximumOutcomes =
+                                SemanticNatureEnumeratorV111.MaximumSupportedOutcomes,
                             semanticExtendedControlledSites = new[]
                             {
                                 "random_enemy_target", "generated_card_pool",
@@ -1028,6 +1032,30 @@ internal static class PrototypeAiJsonlServer
                         var handle = StoreSemantic(next);
                         Write(new { requestId, ok = true,
                             result = SemanticResult(next, handle, parentHandle) });
+                        break;
+                    }
+
+                    case "semantic_enumerate":
+                    {
+                        var parentHandle = RequiredString(request, "semantic_handle");
+                        var current = RequireSemantic(request);
+                        var enumeration = SemanticNatureEnumeratorV111.Enumerate(
+                            current, RequiredString(request, "fingerprint"),
+                            OptionalInt(request, "maximum_outcomes") ?? 32);
+                        var outcomes = enumeration.Outcomes.Select(outcome =>
+                        {
+                            var handle = StoreSemantic(outcome.Child);
+                            return new
+                            {
+                                outcomeId = outcome.OutcomeId,
+                                result = SemanticResult(
+                                    outcome.Child, handle, parentHandle)
+                            };
+                        }).ToArray();
+                        Write(new { requestId, ok = true,
+                            schemaId = enumeration.SchemaId,
+                            eventKind = enumeration.EventKind,
+                            eventId = enumeration.EventId, outcomes });
                         break;
                     }
 

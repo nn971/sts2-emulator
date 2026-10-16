@@ -99,8 +99,10 @@ remains outstanding.
 **D4 partial:** opt-in `nature_begin`, `nature_resolve`,
 `nature_advance`, `nature_fork`, `nature_save`, `nature_load`, and
 `nature_release_many` are available in the JSONL server and through
-the thin Python binding, using **distinct non-playable handles**. A separate
-playable semantic schema now exposes seeded entry, player actions, weighted
+the thin Python binding, using **distinct non-playable handles**. The playable
+semantic protocol also has a bounded enumerator for every legal outcome of
+one small pending chance event. A separate playable semantic schema exposes
+seeded entry, player actions, weighted
 intent IDs, typed draw/target/generated-card resolution, and exact snapshot
 replay through the same JSONL/Python bridge.
 Existing `step` and native RNG paths retain semantics. Next D3/D4
