@@ -142,7 +142,9 @@ internal static class PrototypeAiJsonlServer
                 otherChanceDecisionCount = state.OtherChance?.Decisions.Length ?? 0,
                 sourceOpeningProvider = state.SeededEntry is null
                     ? "precommitted-fixture-v1"
-                    : "engine-owned-seeded-source-shaped-unverified-v1",
+                    : state.SeededEntry.ReplayOpeningDrawHooks
+                        ? "engine-owned-seeded-source-shaped-draw-hooks-unverified-v1"
+                        : "engine-owned-seeded-source-shaped-unverified-v1",
                 probabilityStatus = "UNVERIFIED"
             };
         }
@@ -278,6 +280,8 @@ internal static class PrototypeAiJsonlServer
                             semanticOpeningProvider = "precommitted-fixture-v1",
                             semanticSeededOpeningProvider =
                                 "engine-owned-seeded-source-shaped-unverified-v1",
+                            semanticSeededOpeningDrawHooksId =
+                                "engine-owned-seeded-source-shaped-draw-hooks-unverified-v1",
                             semanticIntentSupportSchemaId =
                                 SemanticIntentSupportV111.SchemaId,
                             semanticProbabilityStatus = "UNVERIFIED",
@@ -587,7 +591,8 @@ internal static class PrototypeAiJsonlServer
                             OptionalInt(request, "map_column"),
                             OptionalInt(request, "map_row"),
                             OptionalString(request, "other_chance_provider_id"),
-                            OptionalString(request, "fixture_draw_cost_relic_id"));
+                            OptionalString(request, "fixture_draw_cost_relic_id"),
+                            OptionalBool(request, "replay_opening_draw_hooks"));
                         var next = SemanticPilotCombatEngineV111.BeginSeeded(entry);
                         var handle = StoreSemantic(next);
                         Write(new { requestId, ok = true,
@@ -1658,6 +1663,20 @@ internal static class PrototypeAiJsonlServer
 
         return value.GetString()
             ?? throw new InvalidOperationException($"Request field '{name}' is null.");
+    }
+
+    private static bool OptionalBool(JsonElement request, string name)
+    {
+        if (!request.TryGetProperty(name, out var value) ||
+            value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
+            return false;
+        return value.ValueKind switch
+        {
+            JsonValueKind.True => true,
+            JsonValueKind.False => false,
+            _ => throw new ArgumentException(
+                "Request field '" + name + "' must be a boolean.")
+        };
     }
 
     private static int? OptionalInt(

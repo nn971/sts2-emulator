@@ -321,3 +321,44 @@ pilot = session.begin_seeded_semantic_combat(
     other_chance_provider_id=
         "engine-owned-native-v111-cost-stream-unverified-v1")
 ```
+
+## 2026-10-16 P0 opening mechanics: source-timed known-card draw hooks
+
+For independent seeded sessions, the legacy controlled opening fixture
+deals the first five cards directly after its committed Fisher–Yates
+shuffle. The previous semantic `BeginSeeded` imported the remaining
+physical pile as *known slots*, but that direct opening omitted the
+regular `DrawCards`/`CardDrawn` hook chain.
+
+**Opt-in** `replay_opening_draw_hooks=true` on
+`semantic_begin_seeded` and
+`Session.begin_seeded_semantic_combat(...)` enables a restricted source
+mechanic continuation:
+1. Reconstruct the exact pre-deal committed physical pile by appending
+   the reverse of the visible opening hand to the remaining bottom-to-top
+   draw pile. Check unique instance identities.
+2. Re-initialize the private semantic deck from this **already fixed**
+   permutation. Every position is known to the provider. Neither
+   shuffle swaps nor deferred `draw_card` Nature decisions occur.
+3. Execute the actual pinned `DrawCards` and `CardDrawn` hooks for the
+   original number of opening cards **once**, under the controlled guard.
+   Check that the resulting opening hand and residual physical pile
+   exactly match the committed original. A random cost or nested card
+   effect outside the restricted starter-hand scope fails explicitly.
+
+`hello.semanticSeededOpeningDrawHooksId` advertises
+`engine-owned-seeded-source-shaped-draw-hooks-unverified-v1`; the chosen
+`sourceOpeningProvider` in semantic status distinguishes opted-in
+sessions from the existing default direct deal. The setting is persisted
+in the private seed provenance and round-trips through complete snapshot
+replay. Normal player observations remain fair. The test-only Snecko
+cost fixture is applied *after* opening hooks, preserving the supported
+no-cost starter opening without pretending that Snecko's original
+acquisition/first-hand trigger timing is native-authentic.
+
+**Scope:** this ensures the ordered regular card-draw mechanics are
+executed for an already source-committed starter hand. Authentic
+`BeforeHandDraw`, entry relic/character/card powers, dynamic opening
+draw counts, complete game-route combat creation, and real game-local
+parity are separate gates. Unsupported effects abort before publishing a
+semantic session. The default legacy and seeded APIs remain unchanged.

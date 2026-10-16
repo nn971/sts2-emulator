@@ -30,10 +30,11 @@ def rollout():
             SEED, act=2,
             encounter_id="proto.native.hive.encounter.exoskeletons_normal",
             native_entry="ExoskeletonsNormal", total_floor=20,
-            map_column=3, map_row=5)
+            map_column=3, map_row=5,
+            replay_opening_draw_hooks=True)
         assert combat.boundary == "player"
         assert combat.status()["sourceOpeningProvider"] == (
-            "engine-owned-seeded-source-shaped-unverified-v1")
+            "engine-owned-seeded-source-shaped-draw-hooks-unverified-v1")
         assert combat.pending is None
         public = combat.observe()
         assert "semanticDeck" not in json.dumps(public)
@@ -125,7 +126,8 @@ def engine_cost_rollout():
             native_entry="ExoskeletonsNormal", total_floor=20,
             map_column=3, map_row=5,
             other_chance_provider_id=provider,
-            fixture_draw_cost_relic_id="proto.relic.snecko_eye")
+            fixture_draw_cost_relic_id="proto.relic.snecko_eye",
+            replay_opening_draw_hooks=True)
         assert combat.status()["otherChanceProvider"] == provider
         assert combat.status()["otherChanceDecisionCount"] == 0
         assert "semanticDeck" not in json.dumps(combat.observe())
