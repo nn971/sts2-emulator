@@ -25,6 +25,14 @@ public sealed record RandomUnitFloatBoundaryEventV111(
     NativeRngSnapshot? NativeCursorBefore,
     NativeRngSnapshot? NativeCursorAfter);
 
+public sealed record RandomRangedFloatBoundaryEventV111(
+    int Sequence,
+    RandomRangedFloatRequestV111 Request,
+    float SelectedValue,
+    string ProviderMode,
+    NativeRngSnapshot? NativeCursorBefore,
+    NativeRngSnapshot? NativeCursorAfter);
+
 public sealed record RandomGaussianIntBoundaryEventV111(
     int Sequence,
     RandomGaussianIntRequestV111 Request,
@@ -47,6 +55,7 @@ public sealed class RandomBoundaryJournalV111 : IDisposable
     private readonly RandomBoundaryJournalV111? _previous;
     private readonly List<RandomBoundaryEventV111> _events = [];
     private readonly List<RandomUnitFloatBoundaryEventV111> _unitFloatEvents = [];
+    private readonly List<RandomRangedFloatBoundaryEventV111> _rangedFloatEvents = [];
     private readonly List<RandomGaussianIntBoundaryEventV111> _gaussianIntEvents = [];
     private readonly List<RandomGaussianDoubleBoundaryEventV111> _gaussianDoubleEvents = [];
     private bool _disposed;
@@ -63,6 +72,8 @@ public sealed class RandomBoundaryJournalV111 : IDisposable
         _events.ToArray();
     public IReadOnlyList<RandomUnitFloatBoundaryEventV111> UnitFloatEntries =>
         _unitFloatEvents.ToArray();
+    public IReadOnlyList<RandomRangedFloatBoundaryEventV111> RangedFloatEntries =>
+        _rangedFloatEvents.ToArray();
     public IReadOnlyList<RandomGaussianIntBoundaryEventV111> GaussianIntEntries =>
         _gaussianIntEvents.ToArray();
     public IReadOnlyList<RandomGaussianDoubleBoundaryEventV111> GaussianDoubleEntries =>
@@ -97,6 +108,21 @@ public sealed class RandomBoundaryJournalV111 : IDisposable
             throw new InvalidOperationException("Random boundary journal is closed.");
         scope._unitFloatEvents.Add(new RandomUnitFloatBoundaryEventV111(
             scope._unitFloatEvents.Count + 1,
+            decision.Request with { },
+            decision.SelectedValue,
+            decision.ProviderMode,
+            decision.NativeCursorBefore,
+            decision.NativeCursorAfter));
+    }
+
+    public static void Record(RandomRangedFloatDecisionV111 decision)
+    {
+        var scope = Active.Value;
+        if (scope is null) return;
+        if (scope._disposed)
+            throw new InvalidOperationException("Random boundary journal is closed.");
+        scope._rangedFloatEvents.Add(new RandomRangedFloatBoundaryEventV111(
+            scope._rangedFloatEvents.Count + 1,
             decision.Request with { },
             decision.SelectedValue,
             decision.ProviderMode,
@@ -145,7 +171,7 @@ public sealed class RandomBoundaryJournalV111 : IDisposable
 }
 
 /// <summary>
-/// Compare two already resolved index, unit-float, Gaussian-integer or
+/// Compare already resolved index, unit/ranged-float, Gaussian-integer or
 /// Gaussian-double provider traces on source site, stream, owner, request
 /// parameters and outcome.
 /// Provider mode and cursor may differ between native and counterfactual
@@ -251,6 +277,42 @@ public static class RandomBoundaryComparisonV111
                 a.Request.Ordinal != b.Request.Ordinal ? "ordinal" :
                 a.Request.Mean != b.Request.Mean ? "mean" :
                 a.Request.StandardDeviation != b.Request.StandardDeviation ? "standard_deviation" :
+                a.Request.MinInclusive != b.Request.MinInclusive ? "min_inclusive" :
+                a.Request.MaxInclusive != b.Request.MaxInclusive ? "max_inclusive" :
+                a.Request.SourceVersion != b.Request.SourceVersion ? "source_version" :
+                a.SelectedValue != b.SelectedValue ? "selected_value" :
+                requireNativeCursorEquality && (
+                    a.NativeCursorBefore is null || b.NativeCursorBefore is null ||
+                    a.NativeCursorAfter is null || b.NativeCursorAfter is null ||
+                    a.NativeCursorBefore != b.NativeCursorBefore ||
+                    a.NativeCursorAfter != b.NativeCursorAfter) ? "native_cursors" :
+                null;
+            if (mismatch is not null)
+                return new("RANDOM_BOUNDARY_MISMATCH", i, i, mismatch);
+        }
+        if (left.Length != right.Length)
+            return new("RANDOM_BOUNDARY_LENGTH_MISMATCH", shared,
+                shared, "request_count");
+        return new("RANDOM_BOUNDARIES_CONSISTENT", shared, null, null);
+    }
+
+    public static RandomBoundaryDiffV111 Compare(
+        IEnumerable<RandomRangedFloatBoundaryEventV111> expected,
+        IEnumerable<RandomRangedFloatBoundaryEventV111> actual,
+        bool requireNativeCursorEquality = false)
+    {
+        var left = expected.ToArray();
+        var right = actual.ToArray();
+        int shared = Math.Min(left.Length, right.Length);
+        for (int i = 0; i < shared; i++)
+        {
+            var a = left[i]; var b = right[i];
+            string? mismatch =
+                a.Sequence != i + 1 || b.Sequence != i + 1 ? "sequence" :
+                a.Request.SiteId != b.Request.SiteId ? "site_id" :
+                a.Request.StreamId != b.Request.StreamId ? "stream_id" :
+                a.Request.OwnerId != b.Request.OwnerId ? "owner_id" :
+                a.Request.Ordinal != b.Request.Ordinal ? "ordinal" :
                 a.Request.MinInclusive != b.Request.MinInclusive ? "min_inclusive" :
                 a.Request.MaxInclusive != b.Request.MaxInclusive ? "max_inclusive" :
                 a.Request.SourceVersion != b.Request.SourceVersion ? "source_version" :

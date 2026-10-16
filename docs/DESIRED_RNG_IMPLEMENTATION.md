@@ -58,8 +58,9 @@ starts, delta shuffles, Glory rest-count pick and room-assignment shuffles now
 also use typed native requests. Its Gaussian quota samples now use typed
 provider requests. A typed Gaussian-double adapter now wraps the native
 rejection sampler and journals its complete cursor span, including rejected
-samples; no gameplay call site is mapped to it yet. Full source call-order
-parity is still open.
+samples. A typed ranged-float adapter now preserves the native `NextFloat(min,
+max)` calculation and records its cursor; neither primitive has an additional
+gameplay call site mapped yet. Full source call-order parity is still open.
 An opt-in bounded
 enumerator now resolves one small semantic chance support into independent
 child sessions; it rejects supports above the requested cap instead of

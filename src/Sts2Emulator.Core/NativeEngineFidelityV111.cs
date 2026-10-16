@@ -28,6 +28,9 @@ public sealed record NativeEngineFidelityReportV111(
     RandomUnitFloatBoundaryEventV111[]? EmulatorRandomUnitFloatBoundaries = null,
     [property: System.Text.Json.Serialization.JsonIgnore(
         Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    RandomRangedFloatBoundaryEventV111[]? EmulatorRandomRangedFloatBoundaries = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     RandomGaussianIntBoundaryEventV111[]? EmulatorGaussianIntBoundaries = null,
     [property: System.Text.Json.Serialization.JsonIgnore(
         Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
@@ -324,6 +327,7 @@ public static class NativeEngineFidelityV111
             NativeEngineJournalEntryV111[] engineEvents;
             RandomBoundaryEventV111[] randomEvents;
             RandomUnitFloatBoundaryEventV111[] randomFloatEvents;
+            RandomRangedFloatBoundaryEventV111[] rangedFloatEvents;
             RandomGaussianIntBoundaryEventV111[] gaussianIntEvents;
             RandomGaussianDoubleBoundaryEventV111[] gaussianDoubleEvents;
             using (var journal = NativeEngineEventJournalV111.Begin())
@@ -333,6 +337,7 @@ public static class NativeEngineFidelityV111
                 engineEvents = journal.Entries.ToArray();
                 randomEvents = randomJournal.Entries.ToArray();
                 randomFloatEvents = randomJournal.UnitFloatEntries.ToArray();
+                rangedFloatEvents = randomJournal.RangedFloatEntries.ToArray();
                 gaussianIntEvents = randomJournal.GaussianIntEntries.ToArray();
                 gaussianDoubleEvents = randomJournal.GaussianDoubleEntries.ToArray();
             }
@@ -344,6 +349,7 @@ public static class NativeEngineFidelityV111
                     EmulatorEventJournal: engineEvents,
                     EmulatorRandomBoundaries: randomEvents,
                     EmulatorRandomUnitFloatBoundaries: randomFloatEvents,
+                    EmulatorRandomRangedFloatBoundaries: rangedFloatEvents,
                     EmulatorGaussianIntBoundaries: gaussianIntEvents,
                     EmulatorGaussianDoubleBoundaries: gaussianDoubleEvents);
             var next = result.World.Combat;
@@ -445,6 +451,7 @@ public static class NativeEngineFidelityV111
                 EmulatorEventJournal: engineEvents,
                 EmulatorRandomBoundaries: randomEvents,
                 EmulatorRandomUnitFloatBoundaries: randomFloatEvents,
+                EmulatorRandomRangedFloatBoundaries: rangedFloatEvents,
                 EmulatorGaussianIntBoundaries: gaussianIntEvents,
                 EmulatorGaussianDoubleBoundaries: gaussianDoubleEvents);
         }

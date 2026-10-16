@@ -67,9 +67,9 @@ inventory. Other encounter resolvers, summon/death lifecycle effects,
 monster-local draws, enemy-side insertion, remaining cost/reward sites,
 other map/event/shop/treasure selection, and native float/Gaussian/rejection
 call sites still need stable identities and row-level audit. Typed unit-float,
-Gaussian-integer, and Gaussian-double primitive adapters exist, but that does
-not establish coverage for any additional gameplay site. Their absence here
-is not evidence that they are deterministic or supported.
+ranged-float, Gaussian-integer, and Gaussian-double primitive adapters exist,
+but that does not establish coverage for any additional gameplay site. Their
+absence here is not evidence that they are deterministic or supported.
 
 ## First migrated site: `combat.initial_unique_hp`
 
@@ -173,13 +173,14 @@ remains separate from seeded emulator RNG equality. See
   separate typed unit-float provider wraps native and controlled samples, and
   a Gaussian-integer provider wraps the native inclusive rejection sampler;
   a Gaussian-double provider wraps the native bounded rejection sampler and
-  records its full cursor span. The unit-float provider accepts `1.0f`, which
+  records its full cursor span, and a ranged-float provider wraps native
+  `NextFloat(min, max)` rounding. The unit-float provider accepts `1.0f`, which
   can result from rounding a native value below one.
   The semantic playable extension separately supports typed physical
-  card, enemy-instance and generated-card-model identities. Ranged floats,
-  other rejection operations and dynamic weighted choices still need typed
-  operations and call-site audits. Gaussian-double source-site identities and
-  row-level coverage also remain unaudited.
+  card, enemy-instance and generated-card-model identities. Ranged-float and
+  Gaussian-double gameplay site identities, other rejection operations and
+  dynamic weighted choices still need source call-site audits. Neither of the
+  new primitive adapters adds gameplay coverage by itself.
 - The scripting provider validates an exact request sequence but is not yet
   a serializable resumable game controller.
 - Provider instance state is not in canonical `RunState`, so callers must
