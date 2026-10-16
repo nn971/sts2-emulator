@@ -436,21 +436,44 @@ public sealed partial class PrototypeGameEngine
             throw new NotSupportedException(
                 "Punch Off requires supported relic and potion rewards.");
         }
-        var relic = available[LegacyRandomChoiceV111.ChooseIndexRange(
-            state.Rng,
-            "event.punch_off.relic_reward.index_draw",
-            "reward",
-            "event:punch_off:relic_pool:" + CanonicalJson.Sha256(available),
-            available.Length).SelectedIndex];
-        var potionPool = PrototypeContent.PotionPool;
-        var potion = potionPool[LegacyRandomChoiceV111.ChooseIndexRange(
-            state.Rng,
-            "event.punch_off.potion_reward.index_draw",
-            "reward",
-            "event:punch_off:potion_pool:" + CanonicalJson.Sha256(potionPool),
-            potionPool.Length).SelectedIndex];
-
         var world = RequireWorld(state);
+        var nativeRunRng = UsesNativeRegionalSystems(world)
+            ? state.NativeRunRng?.Fork()
+            : null;
+        var relicOwner = "event:punch_off:relic_pool:"
+            + CanonicalJson.Sha256(available);
+        var relicIndex = nativeRunRng is { } nativeRewardRng
+            ? NativePlayerRngV111.ChooseIndex(
+                nativeRewardRng,
+                "event.punch_off.relic_reward.index_draw",
+                NativePlayerRngV111.RewardsStreamId,
+                relicOwner,
+                available.Length)
+            : LegacyRandomChoiceV111.ChooseIndexRange(
+                state.Rng,
+                "event.punch_off.relic_reward.index_draw",
+                "reward",
+                relicOwner,
+                available.Length).SelectedIndex;
+        var relic = available[relicIndex];
+        var potionPool = PrototypeContent.PotionPool;
+        var potionOwner = "event:punch_off:potion_pool:"
+            + CanonicalJson.Sha256(potionPool);
+        var potionIndex = nativeRunRng is { } nativePotionRng
+            ? NativePlayerRngV111.ChooseIndex(
+                nativePotionRng,
+                "event.punch_off.potion_reward.index_draw",
+                NativePlayerRngV111.RewardsStreamId,
+                potionOwner,
+                potionPool.Length)
+            : LegacyRandomChoiceV111.ChooseIndexRange(
+                state.Rng,
+                "event.punch_off.potion_reward.index_draw",
+                "reward",
+                potionOwner,
+                potionPool.Length).SelectedIndex;
+        var potion = potionPool[potionIndex];
+
         var reward = new RewardState(
             SourceRoom: "Combat",
             CardOptions: [],
@@ -463,6 +486,7 @@ public sealed partial class PrototypeGameEngine
             IndependentSelection: true);
         return state with
         {
+            NativeRunRng = nativeRunRng ?? state.NativeRunRng,
             World = world with
             {
                 Combat = null,

@@ -107,6 +107,8 @@ precedes relic population; combat-earned extra offers and Black Star relic
 draws precede Prayer Wheel's appended group. Driftwood rerolls and Dream
 Catcher rest rewards also preserve the advanced native stream. Source-shaped
 pools remain restricted, and native result/cursor parity is unverified.
+Punch Off's relic and potion custom reward picks now use that player stream in
+configured regional runs; their source stream assignment remains unverified.
 Configured Overgrowth treasure relics now use the same persistent
 `player.rewards` stream and rarity-partitioned relic queue as reward and
 merchant draws. Treasure RNG state is saved on both successful and exhausted

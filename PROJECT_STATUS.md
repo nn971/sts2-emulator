@@ -1492,6 +1492,10 @@ through a typed index provider when native run RNG is present, while retaining
 the legacy reward-stream fallback. Source stream/cursor validation remains
 pending, and the event-specific fill path remains on its separate legacy site.
 
+Punch Off's relic and potion custom rewards now use sequential typed index
+requests on `player.rewards` in configured regional runs, with legacy reward
+fallback retained. Native stream ownership and cursor parity remain unverified.
+
 Configured Overgrowth combat rewards now use the persistent `player.rewards`
 stream for potion pity, gold bounds, rarity-weighted potion selection, card
 rarity/model/upgrade draws, relic rarity, boss relic offer shuffling, and Lava
