@@ -13,11 +13,15 @@ public sealed partial class PrototypeGameEngine
 
     private sealed record NativeElitesDefeated(int ElitesDefeated);
 
-    private static PlayerState ApplyNativePersistentCombatEnd(
-        PlayerState player,
-        PrototypeRoomType? roomType,
-        RngBundle rng)
+    private static RunState ApplyNativePersistentCombatEnd(
+        RunState state,
+        PrototypeRoomType? roomType)
     {
+        var player = state.Player;
+        var rng = state.Rng;
+        var nativeRunStreams = state.World?.Combat?.NativeRng?.RunStreams
+            .Fork() ?? state.NativeRunRng?.Fork();
+
         // Guilty counts every completed combat and leaves the deck
         // after the fifth combat, including Elite/Boss combats.
         var deck = player.Deck.Select(card =>
@@ -109,16 +113,32 @@ public sealed partial class PrototypeGameEngine
                     continue;
                 }
 
-                // Native uses RunState.Rng.Niche; this prototype retains
-                // the pre-existing event stream until native integration.
-                var selected = candidates[
-                    LegacyRandomChoiceV111.ChooseIndexRange(
+                int selectedIndex;
+                if (nativeRunStreams is not null)
+                {
+                    var ownerId = $"relic:{relics[index].RelicId}:slot:{index}";
+                    var decision = new NativeRandomIndexProviderV111().Resolve(
+                        new RandomIndexRequestV111(
+                            "relic.persistent_combat_end.random_upgrade.index_draw",
+                            "run.niche",
+                            ownerId,
+                            count / 3 - 1,
+                            Enumerable.Range(0, candidates.Length).ToArray()),
+                        nativeRunStreams);
+                    selectedIndex = decision.SelectedIndex;
+                }
+                else
+                {
+                    // Prototype-only runs retain their existing event stream.
+                    selectedIndex = LegacyRandomChoiceV111.ChooseIndexRange(
                         rng,
                         "relic.persistent_combat_end.random_upgrade.index_draw",
                         "event",
                         $"relic:{relics[index].RelicId}:combat_count:{count}:pool:"
                             + CanonicalJson.Sha256(candidates),
-                        candidates.Length).SelectedIndex];
+                        candidates.Length).SelectedIndex;
+                }
+                var selected = candidates[selectedIndex];
                 player = player with
                 {
                     Deck = player.Deck.Select(card =>
@@ -131,7 +151,30 @@ public sealed partial class PrototypeGameEngine
             player = player with { Relics = relics };
         }
 
-        return player;
+        var world = state.World;
+        var combat = world?.Combat;
+        if (nativeRunStreams is not null && combat?.NativeRng is { } active)
+        {
+            combat = combat with
+            {
+                NativeRng = active with
+                {
+                    RunStreams = nativeRunStreams.Fork()
+                }
+            };
+        }
+
+        var updated = state with
+        {
+            Player = player,
+            NativeRunRng = nativeRunStreams ?? state.NativeRunRng,
+            World = world is null || combat is null
+                ? world
+                : world with { Combat = combat }
+        };
+        if (nativeRunStreams is not null && combat?.NativeRng is not null)
+            NativeRunRngV111.Validate(updated);
+        return updated;
     }
 
     private static int GetNativeElitesDefeated(JsonElement state) =>

@@ -35,17 +35,37 @@ public sealed partial class PrototypeGameEngine
             if (state.NativeRunRng is not null)
             {
                 // Native War Hammer uses the persistent run.niche stream.
-                // Keep the run and active-combat views synchronized per draw.
-                for (var last = candidates.Count - 1; last > 0; last--)
+                // Resolve each swap through the typed boundary and keep the
+                // run and active-combat cursor copies synchronized.
+                var nativeStreams = (state.World?.Combat?.NativeRng?.RunStreams
+                    ?? state.NativeRunRng).Fork();
+                _ = NativeFisherYatesV111.ShuffleInPlace(
+                    candidates,
+                    nativeStreams,
+                    new NativeRandomIndexProviderV111(),
+                    "run.niche",
+                    $"player:0:war_hammer:{hammer}:eligible_cards",
+                    "relic.war_hammer.elite_upgrade.shuffle_swap_index");
+                var activeNativeRng = state.World?.Combat?.NativeRng;
+                var combat = state.World?.Combat;
+                if (activeNativeRng is not null && combat is not null)
                 {
-                    state = NativeRunRngV111.SampleNextInt(
-                        state,
-                        "run.niche",
-                        last + 1,
-                        out var chosen);
-                    (candidates[last], candidates[chosen]) =
-                        (candidates[chosen], candidates[last]);
+                    combat = combat with
+                    {
+                        NativeRng = activeNativeRng with
+                        {
+                            RunStreams = nativeStreams.Fork()
+                        }
+                    };
                 }
+                state = state with
+                {
+                    NativeRunRng = nativeStreams,
+                    World = state.World is null || combat is null
+                        ? state.World
+                        : state.World with { Combat = combat }
+                };
+                NativeRunRngV111.Validate(state);
             }
             else
             {

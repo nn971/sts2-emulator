@@ -1413,14 +1413,11 @@ public sealed partial class PrototypeGameEngine
             }
         };
 
+        state = ApplyNativePersistentCombatEnd(state, world.ActiveRoom);
         state = state with
         {
             Player = ApplyMadScienceImprovement(
-                ApplyNativePersistentCombatEnd(
-                    state.Player,
-                    world.ActiveRoom,
-                    state.Rng),
-                combat, state.Rng)
+                state.Player, combat, state.Rng)
         };
         state = ApplyWarHammerEliteVictory(
             state, world.ActiveRoom);
