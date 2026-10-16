@@ -28,6 +28,12 @@ the choice can finish at the genuine reward boundary and records the reward RNG
 audit from the pre-reward state. If a draw or discard hook creates another
 unsupported nested boundary, the guarded action fails closed.
 
+Standard choices opened by a `CardDrawn` subscriber now compose with this
+frame. The pending choice retains the remainder of its event dispatch; an
+outer queued `DrawCards` operation retains the unprocessed draw count, delayed
+keyword updates, source effect suffix and any enclosing event continuation.
+After the choice and event chain finish, the remaining draw resumes once.
+
 Draw-time randomized energy costs now use the existing typed semantic cost
 event for Snecko-style relic costs and Slither overrides. The selected card
 identity is committed first, then cost choices resolve before `CardDrawn`;
@@ -43,17 +49,17 @@ boundaries. The event uses the existing semantic draw schema and reports
 
 ## Current limits
 
-For these supported cards, draw hooks must not open another choice. The saved
-draw frame crosses a nonempty-discard recycle through the existing
+The saved draw frame crosses a nonempty-discard recycle through the existing
 `RecycleNature` epoch and preserves the Perfect Fit top-pool constraint.
 When an after-shuffle relic inserts a generated card, the existing semantic
 draw-insertion event suspends the frame and resumes it after the chosen
 position is committed. Stratagem reuses the existing semantic `select_cards`
-event before the remaining draw resumes. Nested `CardDrawn` choices still fail
-closed. Other draw-pipeline recycle contexts with after-shuffle insertions
-remain outside this card-effect continuation. Arbitrary follow-up choices and
-multiple nested choice levels remain outside the current support. Native
-source probability laws remain unverified.
+event before the remaining draw resumes. Standard serialized `PendingChoice`
+events raised by `CardDrawn` hooks compose, including repeated nested choices.
+Knowledge Demon choices and choices in standalone or automatic draw-pipeline
+frames remain outside this card-effect continuation. Other draw-pipeline
+recycle contexts with after-shuffle insertions remain outside this
+card-effect continuation. Native source probability laws remain unverified.
 
 The player-action fixture and card allowlists remain opt-in; this continuation
 does not broaden source-authentic loadout acquisition or the frozen all-Act

@@ -84,11 +84,11 @@ The semantic JSONL pilot now has a separate opt-in entry
 typed `drawn_card_cost` event when paired with the explicit Snecko Eye test
 loadout. It preserves the default P0 engine-owned cost fallback and does not
 change the general conditioned draw-segment contract above. In the player
-card-effect frame, recycle, Stratagem selection and after-shuffle relic
-insertion now compose through the existing event continuations described
-below. A `CardDrawn` event that itself creates a nested pending choice still
-needs its own continuation. The native reference probability law remains
-explicitly `UNVERIFIED` until source-audited.
+card-effect frame, recycle, Stratagem selection, after-shuffle relic insertion
+and standard choices opened by `CardDrawn` hooks compose through serialized
+event and outer-choice continuations. Knowledge Demon choices and standalone
+or automatic draw-pipeline frames remain separate boundaries. The native
+reference probability law remains explicitly `UNVERIFIED` until source-audited.
 
 ## Card-effect draw composition
 
@@ -107,6 +107,6 @@ draw envelope retains its own source constraints.
 The saved frame also retains card instances awaiting a `DrawnCardKeyword`
 override. The override is applied after all requested cards and their draw
 hooks finish, preserving source operation order across identity, cost,
-recycle, Stratagem and after-shuffle insertion suspensions. Nested
-`CardDrawn` choices remain unsupported in the player-action path.
+recycle, Stratagem, after-shuffle insertion and nested `CardDrawn` choice
+suspensions.
 The frozen Silent all-Act `main` remains unchanged.

@@ -133,9 +133,24 @@ public sealed partial class PrototypeGameEngine
                 SourceCardInstanceId: cost.CardInstanceId,
                 CardId: card.CardId,
                 FromHandDraw: cost.FromHandDraw),
-            state.Rng, cost.EventDepth);
-        if (dispatched.Combat.PendingChoice is not null ||
-            dispatched.Combat.PendingKnowledgeDemonChoice is not null)
+            state.Rng, cost.EventDepth, allowSuspension: true);
+        if (dispatched.Combat.PendingChoice is not null)
+        {
+            var resumeDraw = CreateDrawResumeOperation(
+                cost.RemainingCount,
+                draw.FromHandDraw,
+                draw.EventDepth,
+                draw.DrawnCardKeyword,
+                draw.DeferredKeywordCardInstanceIds);
+            var combatWithDraw = AttachDrawResumeContinuation(
+                dispatched.Combat, resumeDraw, continuation);
+            return state with
+            {
+                Player = dispatched.Player,
+                World = world with { Combat = combatWithDraw }
+            };
+        }
+        if (dispatched.Combat.PendingKnowledgeDemonChoice is not null)
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.draw.CardDrawn " +
                 "operation=nested_choice_continuation");
@@ -145,7 +160,8 @@ public sealed partial class PrototypeGameEngine
             state.Rng, cost.FromHandDraw, eventDepth: cost.EventDepth,
             controlledDrawCostSuspension: true,
             controlledSemanticDrawSuspension: true,
-            controlledAfterShuffleInsertionSuspension: true);
+            controlledAfterShuffleInsertionSuspension: true,
+            controlledCardDrawnChoiceSuspension: true);
         return ContinueControlledSemanticEffectDraw(
             state, drawn, draw, continuation);
     }

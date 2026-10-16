@@ -535,13 +535,17 @@ Draw-time randomized costs now compose through the existing typed semantic
 cost event and `ControlledDrawCost` checkpoint, preserving relic-before-Slither
 ordering and dispatching `CardDrawn` once before resuming the remaining draw.
 Pending card keyword overrides are delayed until the complete `DrawCards`
-operation returns, across both identity and cost suspensions. The Core and CLI
-Release builds pass with zero warnings or errors. Tests were not run for this
-implementation checkpoint. The card-effect draw frame crosses the existing
-Nature recycle epoch, preserves its Perfect Fit constraints and resumes
-Stratagem selection through the existing semantic `select_cards` event.
-Nested `CardDrawn` choices still fail closed. After-shuffle relic insertion
-uses the existing semantic draw-insertion event and resumes the card-effect
-draw frame; other draw-pipeline recycle contexts with that insertion remain
-unsupported. Conditional Nature probabilities remain `UNVERIFIED`; see
+operation returns, across identity, cost and nested hook-choice suspensions.
+The Release solution build passes with zero warnings or errors. Tests were not
+run for this implementation checkpoint. The card-effect draw frame crosses
+the existing Nature recycle epoch, preserves its Perfect Fit constraints and
+resumes Stratagem selection through the existing semantic `select_cards` event.
+Standard choices opened by `CardDrawn` hooks compose through serialized event
+and outer-choice continuations, preserving the remaining draw cursor, delayed
+keyword updates and queued effect suffix. Knowledge Demon choices and
+standalone or automatic draw-pipeline frames remain outside this continuation.
+After-shuffle relic insertion uses the existing semantic draw-insertion event
+and resumes the card-effect draw frame; other draw-pipeline recycle contexts
+with that insertion remain unsupported. Conditional Nature probabilities
+remain `UNVERIFIED`; see
 [`NATURE_SEMANTIC_EFFECT_DRAWS_143.md`](NATURE_SEMANTIC_EFFECT_DRAWS_143.md).

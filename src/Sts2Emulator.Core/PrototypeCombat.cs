@@ -6038,9 +6038,42 @@ public sealed partial class PrototypeGameEngine
                         controlledSemanticDrawSuspension:
                             semanticDrawSuspension,
                         controlledAfterShuffleInsertionSuspension:
+                            semanticDrawSuspension,
+                        controlledCardDrawnChoiceSuspension:
                             semanticDrawSuspension);
                     player = drawn.Player;
                     combat = drawn.Combat;
+                    if (drawn.NestedCardDrawnChoicePending)
+                    {
+                        var resumeDraw = CreateDrawResumeOperation(
+                            drawn.RemainingCount,
+                            operation.FromHandDraw,
+                            drawEventDepth,
+                            operation.DrawnCardKeyword,
+                            (operation.DeferredDrawnCardInstanceIds ?? [])
+                                .Concat(drawn.DrawnCardInstanceIds)
+                                .Distinct().ToArray());
+                        var continuation =
+                            new PrototypeChoiceResolutionContinuationState(
+                                SourceCardInstanceId: sourceCardInstanceId,
+                                SourceCardDestination: sourceCardDestination,
+                                Operations: new[] { resumeDraw }
+                                    .Concat(operations).ToArray(),
+                                PendingDiscardEvents: [],
+                                PendingSlyCardInstanceIds: [],
+                                CompletionEvents: completionEvents ?? [],
+                                CardPlaySeries: cardPlaySeries,
+                                MoveSourceCardOnCompletion:
+                                    moveSourceCardOnCompletion,
+                                RemoveSourceCardOnCompletion:
+                                    removeSourceCardOnCompletion,
+                                SourceCardAlreadyMoved:
+                                    sourceCardAlreadyMoved,
+                                EventDispatchContinuation:
+                                    eventDispatchContinuation?.Fork());
+                        return (player, AttachOuterChoiceContinuation(
+                            combat, continuation));
+                    }
                     if (drawn.ControlledSemanticDrawPending ||
                         drawn.ControlledDrawCostPending ||
                         drawn.ControlledAfterShuffleInsertions is
@@ -12973,6 +13006,42 @@ public sealed partial class PrototypeGameEngine
         };
     }
 
+    private static CombatState AttachDrawResumeContinuation(
+        CombatState combat,
+        PrototypeQueuedOperation drawOperation,
+        PrototypeChoiceResolutionContinuationState continuation) =>
+        AttachOuterChoiceContinuation(
+            combat,
+            continuation with
+            {
+                Operations = new[] { drawOperation }
+                    .Concat(continuation.Operations).ToArray()
+            });
+
+    private static PrototypeQueuedOperation CreateDrawResumeOperation(
+        int remainingCount,
+        bool fromHandDraw,
+        int eventDepth,
+        PrototypeCardKeywordOverrideSpec? drawnCardKeyword,
+        long[]? deferredDrawnCardInstanceIds)
+    {
+        if (remainingCount < 0 || eventDepth < 0)
+            throw new ArgumentOutOfRangeException(
+                nameof(remainingCount),
+                "A saved draw cursor requires nonnegative progress values.");
+        return new PrototypeQueuedOperation(
+            PrototypeCombatEffectKind.DrawCards,
+            remainingCount,
+            FromHandDraw: fromHandDraw,
+            DrawnCardKeyword: drawnCardKeyword is null
+                ? null : drawnCardKeyword with { },
+            DeferredDrawnCardInstanceIds:
+                deferredDrawnCardInstanceIds is null
+                    ? null
+                    : (long[])deferredDrawnCardInstanceIds.Clone(),
+            DrawEventDepth: eventDepth);
+    }
+
     private static CombatState AttachParentChoiceContinuation(
         CombatState combat,
         PrototypeChoiceResolutionContinuationState? parent) =>
@@ -13675,7 +13744,8 @@ public sealed partial class PrototypeGameEngine
             draw.FromHandDraw, eventDepth: draw.EventDepth,
             controlledDrawCostSuspension: true,
             controlledSemanticDrawSuspension: true,
-            controlledAfterShuffleInsertionSuspension: true);
+            controlledAfterShuffleInsertionSuspension: true,
+            controlledCardDrawnChoiceSuspension: true);
         return ContinueControlledSemanticEffectDraw(
             state, drawn, draw, continuation);
     }
@@ -13685,6 +13755,24 @@ public sealed partial class PrototypeGameEngine
         PrototypeControlledSemanticDrawV111 draw,
         PrototypeChoiceResolutionContinuationState continuation)
     {
+        if (drawn.NestedCardDrawnChoicePending)
+        {
+            var resumeDraw = CreateDrawResumeOperation(
+                drawn.RemainingCount,
+                draw.FromHandDraw,
+                draw.EventDepth,
+                draw.DrawnCardKeyword,
+                (draw.DeferredKeywordCardInstanceIds ?? [])
+                    .Concat(drawn.DrawnCardInstanceIds)
+                    .Distinct().ToArray());
+            var nestedCombat = AttachDrawResumeContinuation(
+                drawn.Combat, resumeDraw, continuation);
+            return state with
+            {
+                Player = drawn.Player,
+                World = state.World! with { Combat = nestedCombat }
+            };
+        }
         if (drawn.ControlledAfterShuffleInsertions is
             { Length: > 0 } afterShuffleInsertions)
         {
@@ -15443,7 +15531,8 @@ public sealed partial class PrototypeGameEngine
         bool ControlledDrawCostPending = false,
         bool ControlledSemanticDrawPending = false,
         PrototypeAfterShuffleRelicInsertionV111[]?
-            ControlledAfterShuffleInsertions = null);
+            ControlledAfterShuffleInsertions = null,
+        bool NestedCardDrawnChoicePending = false);
 
     private static PrototypeDrawCardsResult DrawCards(
         PlayerState player,
@@ -15455,7 +15544,8 @@ public sealed partial class PrototypeGameEngine
         bool controlledRecycleSuspension = false,
         bool controlledDrawCostSuspension = false,
         bool controlledSemanticDrawSuspension = false,
-        bool controlledAfterShuffleInsertionSuspension = false)
+        bool controlledAfterShuffleInsertionSuspension = false,
+        bool controlledCardDrawnChoiceSuspension = false)
     {
         const int maxHandSize = 10;
         var drawnCardInstanceIds = new List<long>();
@@ -15765,9 +15855,18 @@ public sealed partial class PrototypeGameEngine
                     CardId: card.CardId,
                     FromHandDraw: fromHandDraw),
                 rng,
-                eventDepth);
+                eventDepth,
+                allowSuspension: controlledCardDrawnChoiceSuspension);
             player = dispatched.Player;
             combat = dispatched.Combat;
+            if (controlledCardDrawnChoiceSuspension &&
+                combat.SemanticDeck is
+                    { Mode: SemanticDeckStateV111.NatureMode } &&
+                combat.PendingChoice is not null)
+                return new PrototypeDrawCardsResult(
+                    player, combat, drawnCardInstanceIds.ToArray(),
+                    RemainingCount: count - drawNumber - 1,
+                    NestedCardDrawnChoicePending: true);
             if (combat.SemanticDeck is not null &&
                 (combat.PendingChoice is not null ||
                  combat.PendingKnowledgeDemonChoice is not null))
