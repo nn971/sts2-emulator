@@ -33,6 +33,7 @@ reference distribution is claimed.
 | `event.darv.relic_offer.shuffle_swap_index` | Darv event / `context.event.DARV.player_0` | Yes: descending Fisher–Yates over the ordered eligible relic pool | Yes: typed provider at each swap | No: provider-specific result/cursor regression pending | Yes: one-shot offer generation accepts a provider | No | No |
 | `event.pael.relic_offer.index_draw` | Pael event / `context.event.PAEL.player_0` | Yes: three ordered pools, including repeated entries as weights | Yes: typed provider; native entry preserves source draws | No: provider-specific result/cursor regression pending | Yes: one-shot generation and nonnative mode persisted | No | No |
 | `event.tezcatara.relic_offer.index_draw` | Tezcatara event / `context.event.TEZCATARA.player_0` | Yes: three ordered pools with deck-dependent first-pool filtering | Yes: typed provider; native entry preserves source draws | No: provider-specific result/cursor regression pending | Yes: one-shot generation and nonnative mode persisted | No | No |
+| `event.nonupeipe.relic_offer.shuffle_swap_index` | Nonupeipe event / `context.event.NONUPEIPE.player_0` | Yes: eligible source-ordered pool and saved Bracelet condition | Yes: typed provider at each descending swap | No: provider-specific result/cursor regression pending | Yes: one-shot generation and nonnative mode persisted | No | No |
 | `combat.draw_pile.shuffle.swap` | player / `run.shuffle` | Yes, pinned Fisher–Yates and hook stages | Partial: injectable primitive, not every ordinary Step shuffle | Partial: source algorithm/cursor checks; live operation capture pending | Partial: provider supports controlled outcomes; ordinary shuffle sites remain separate | Yes, primitive-level | No |
 | `combat.draw_pile_recycle.swap_index` | player / legacy `combat` stream | Yes, recycle swap bounds | No v111 provider at this site | No | Yes: legacy controlled recycle continuation | Yes | No |
 | `combat.draw_pile.draw_card` | player / `semantic.draw_pile` | Yes, source `DrawCards` order and identity | Partial: exact native deck mode; no per-draw provider seam | No | Yes: deferred physical-card identity | Yes, actual draw segment | No |
@@ -110,7 +111,8 @@ provider integrations, not controlled summon/death continuations.
 
 **D2 remaining:** formation resolvers outside the integrated subset,
 monster-local draws, summon/death continuation mechanics,
-shuffle/targets/rewards, event sites beyond Orobas, Darv, Pael and Tezcatara offer generation,
+shuffle/targets/rewards, event sites beyond Orobas, Darv, Pael, Tezcatara and
+Nonupeipe offer generation,
 and other audited call sites; explicit weighted
 outcome metadata at move-level instead of primitive index selections.
 The separate semantic playable API now exposes typed weighted intent events,

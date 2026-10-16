@@ -1,5 +1,8 @@
 namespace Sts2Emulator.Core;
 
+public sealed record NativeNonupeipeEventAuditV111(
+    RunState State, RandomIndexDecisionV111[] Choices, string ProviderMode);
+
 /// <summary>
 /// Source-backed Nonupeipe offer generation at Glory's Ancient boundary.
 /// Run-start act-local Ancient assignment is owned by the regional route.
@@ -8,6 +11,8 @@ namespace Sts2Emulator.Core;
 public static class NativeNonupeipeEventV111
 {
     public const string EventId = "proto.native.glory.nonupeipe";
+    public const string ShuffleSiteId =
+        "event.nonupeipe.relic_offer.shuffle_swap_index";
     private const string RngEventId = "NONUPEIPE";
 
     private static readonly string[] BaseRelicIds =
@@ -49,8 +54,24 @@ public static class NativeNonupeipeEventV111
         && world.Map.CurrentNodeId is null
         && world.Event?.EventId == EventId;
 
-    public static RunState BeginOpening(RunState state)
+    public static RunState BeginOpening(RunState state) =>
+        BeginOpeningWithAudit(state, new NativeRandomIndexProviderV111()).State;
+
+    /// <summary>
+    /// Resolve Nonupeipe's source-ordered relic shuffle through the supplied
+    /// provider. Nonnative mode is stored with the completed offers.
+    /// </summary>
+    public static NativeNonupeipeEventAuditV111 BeginOpeningWithAudit(
+        RunState state, IRandomIndexProviderV111 provider)
     {
+        ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(provider);
+        var providerMode = provider.Mode;
+        if (providerMode is not ("native-v111" or "scripted-v111"
+            or "controlled-v111"))
+            throw new ArgumentException(
+                "Nonupeipe offer generation requires a supported random provider mode.",
+                nameof(provider));
         if (state.World is not { Act: 3, Floor: 0, Combat: null,
                 Reward: null, Event: null } world
             || world.Map.CurrentNodeId is not null
@@ -64,8 +85,11 @@ public static class NativeNonupeipeEventV111
         var candidates = CandidateRelics(includeBracelet);
         var stream = NativeRngV111Contexts.ForEvent(fork.RunSeed, RngEventId);
         var bundle = new RngBundle([stream]);
-        NativeRngV111.Shuffle(bundle, stream.StreamId, candidates);
-        return fork with
+        var ownerId = "event:NONUPEIPE:act:3:floor:0";
+        var choices = NativeFisherYatesV111.ShuffleInPlace(
+            candidates, bundle, provider, stream.StreamId, ownerId,
+            ShuffleSiteId);
+        var result = fork with
         {
             Phase = RunPhase.Event,
             World = fork.World! with
@@ -74,10 +98,14 @@ public static class NativeNonupeipeEventV111
                     OfferedChoiceIds: candidates.Take(3)
                         .Select(ChoiceId).ToArray(),
                     NativeEventRng: bundle.Streams[0],
-                    NativeNonupeipeBraceletEligible: includeBracelet),
+                    NativeNonupeipeBraceletEligible: includeBracelet,
+                    NativeEventRngProviderMode: providerMode == "native-v111"
+                        ? null : providerMode),
                 EventHistory = world.EventIds.Append(EventId).ToArray()
             }
         };
+        return new NativeNonupeipeEventAuditV111(
+            result, choices, providerMode);
     }
 
     internal static void ValidateEventContext(RunState state)
@@ -96,18 +124,35 @@ public static class NativeNonupeipeEventV111
 
         var initial = NativeRngV111Contexts.ForEvent(state.RunSeed,
             RngEventId);
-        var bundle = new RngBundle([initial]);
         var candidates = CandidateRelics(includeBracelet);
-        NativeRngV111.Shuffle(bundle, initial.StreamId, candidates);
-        var expected = candidates.Take(3).Select(ChoiceId).ToArray();
+        var eligibleOffers = candidates.Select(ChoiceId).ToArray();
         if (evt.OfferedChoiceIds is not { Length: 3 } offers
-            || !offers.SequenceEqual(expected, StringComparer.Ordinal))
+            || offers.Distinct(StringComparer.Ordinal).Count() != 3
+            || offers.Any(id => !eligibleOffers.Contains(id,
+                StringComparer.Ordinal)))
             throw new InvalidOperationException(
-                "Nonupeipe offers do not match its source pool and native shuffle.");
+                "Nonupeipe offers do not match its source pool.");
         if (evt.ChosenChoiceId is { } chosen
             && !offers.Contains(chosen, StringComparer.Ordinal))
             throw new InvalidOperationException(
                 "Nonupeipe selected a relic outside its three offers.");
+        if (evt.NativeEventRngProviderMode is { } mode)
+        {
+            if (mode is not ("scripted-v111" or "controlled-v111"))
+                throw new InvalidOperationException(
+                    "Nonupeipe has an unsupported persisted random provider mode.");
+            if (NativeRngV111.ToSnapshot(saved)
+                != NativeRngV111.ToSnapshot(initial))
+                throw new InvalidOperationException(
+                    "Counterfactual Nonupeipe providers must not advance the native event stream.");
+            return;
+        }
+        var bundle = new RngBundle([initial]);
+        NativeRngV111.Shuffle(bundle, initial.StreamId, candidates);
+        var expected = candidates.Take(3).Select(ChoiceId).ToArray();
+        if (!offers.SequenceEqual(expected, StringComparer.Ordinal))
+            throw new InvalidOperationException(
+                "Nonupeipe offers do not match its native shuffle.");
         if (NativeRngV111.ToSnapshot(saved)
             != NativeRngV111.ToSnapshot(bundle.Streams[0]))
             throw new InvalidOperationException(
