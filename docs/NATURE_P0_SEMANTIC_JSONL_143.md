@@ -468,12 +468,14 @@ names; this branch adds one passing test and no new failures.
 The smoke also reproduces paired victories on four additional route seeds:
 Overgrowth Shrinker Beetle (Nature/native exit HP 57/62), Overgrowth Fuzzy
 Wurm Crawler (54/54), Underdocks Toadpoles (42/47), and Underdocks Sludge
-Spinner (56/56). These runs each check the independently rebuilt shared
-source opening, fair opening observation, and save/load replay. Only the
-canonical Overgrowth case is included in the 1-vs-15 worker comparison.
+Spinner (56/56). All five route seeds, including the canonical Overgrowth
+case, now check the independently rebuilt shared source opening, fair
+opening observation, save/load replay, and equality against fifteen
+independent JSONL processes. These five weak encounters do not establish
+broad coverage of normal encounters.
 
 **Remaining P0 acceptance:** `UNVERIFIED` route/Neow and filtered-intent
 probability laws; native reward and other non-Nature RNG parity; broader
-source-routed encounter coverage and worker comparison; and `sts2-ai`
-consumer verification. The paired smoke is mechanics and replay evidence,
-not calibration or training evidence. Issue #143 remains open.
+source-routed encounter coverage, including normal encounters; and
+`sts2-ai` consumer verification. The paired smoke is mechanics and replay
+evidence, not calibration or training evidence. Issue #143 remains open.

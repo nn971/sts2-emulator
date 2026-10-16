@@ -452,14 +452,14 @@ stream assignments and wider encounter coverage remain `UNVERIFIED`. The
 branch remains a work in progress, and the issue stays open for those P0
 gates.
 
-The Python smoke now also runs one paired Nature/native victory per
-additional weak source route: Overgrowth Shrinker Beetle (57/62 HP),
-Overgrowth Fuzzy Wurm Crawler (54/54), Underdocks Toadpoles (42/47), and
-Underdocks Sludge Spinner (56/56). Each pair independently rebuilds the
-same source opening and checks fair opening observations and save/load
-replay. The 1-vs-15 process replay remains on the canonical Overgrowth
-case; these four cases expand encounter evidence but do not calibrate
-source probabilities or establish broad coverage.
+The Python smoke now runs the 1-vs-15 independent-process paired replay
+for five source-route seeds: the canonical Overgrowth route, Overgrowth
+Shrinker Beetle (57/62 HP), Overgrowth Fuzzy Wurm Crawler (54/54),
+Underdocks Toadpoles (42/47), and Underdocks Sludge Spinner (56/56).
+Every pair independently rebuilds the same source opening and checks fair
+opening observations and save/load replay. This expands weak-encounter
+mechanics evidence but does not calibrate source probabilities or cover
+normal encounters broadly.
 
 A separate local Inspector sidecar audit is pinned by matching `sts2.dll`,
 `0Harmony.dll`, runtime and release hashes to

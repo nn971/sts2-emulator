@@ -181,33 +181,31 @@ def play_comparison_pair(seed=SEED, region="Overgrowth"):
 
 
 def main():
-    baseline = play_comparison_pair()
     route_cases = [
+        ("canonical Overgrowth", SEED, "Overgrowth"),
         ("Overgrowth/Shrinker Beetle", "route-audit-01", "Overgrowth"),
         ("Overgrowth/Fuzzy Wurm Crawler", "route-audit-02", "Overgrowth"),
         ("Underdocks/Toadpoles", "route-audit-01", "Underdocks"),
         ("Underdocks/Sludge Spinner", "route-audit-02", "Underdocks"),
     ]
-    route_results = []
-    for label, seed, region in route_cases:
-        nature, native = play_comparison_pair(seed=seed, region=region)
-        route_results.append((label, nature, native))
+    # Check deterministic paired replay at every included route seed, not
+    # just the canonical encounter.
     with ThreadPoolExecutor(max_workers=15) as pool:
-        parallel = list(pool.map(lambda _: play_comparison_pair(), range(15)))
-    assert all(result == baseline for result in parallel), (
-        "Native/Nature paired replay diverged across independent processes")
-    nature, native = baseline
-    print("PASS: fair Silent legal-action Act 1 source-routed weak "
-          f"paired source-disjoint outcomes Nature={nature[4]}@{nature[5]}, "
-          f"native-v111={native[4]}@{native[5]}; "
-          f"native decisions={native[8]}, shuffles={native[9]}; "
-          "canonical complete 1-vs-15 independent process replay; "
-          "source conditional laws remain UNVERIFIED")
-    for label, nature, native in route_results:
-        print(f"PASS: paired route case {label}: "
-              f"Nature={nature[4]}@{nature[5]}, "
-              f"native-v111={native[4]}@{native[5]}; "
-              f"native decisions={native[8]}, shuffles={native[9]}")
+        for label, seed, region in route_cases:
+            baseline = play_comparison_pair(seed=seed, region=region)
+            parallel = list(pool.map(
+                lambda _: play_comparison_pair(seed=seed, region=region),
+                range(15)))
+            assert all(result == baseline for result in parallel), (
+                f"Native/Nature paired replay diverged for {label} "
+                "across independent processes")
+            nature, native = baseline
+            print(f"PASS: fair Silent legal-action Act 1 source-routed "
+                  f"paired case {label}: Nature={nature[4]}@{nature[5]}, "
+                  f"native-v111={native[4]}@{native[5]}; "
+                  f"native decisions={native[8]}, shuffles={native[9]}; "
+                  "complete 1-vs-15 independent process replay")
+    print("Source conditional laws remain UNVERIFIED")
 
 
 if __name__ == "__main__":
