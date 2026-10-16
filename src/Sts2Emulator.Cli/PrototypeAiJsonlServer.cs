@@ -205,6 +205,30 @@ internal static class PrototypeAiJsonlServer
                     }).ToArray()
                 };
             }
+            if (state.HandCostSelectionPending is { } handCost)
+            {
+                return new
+                {
+                    kind = "random_hand_card_selection",
+                    schemaId = handCost.SchemaId,
+                    eventId = handCost.EventId,
+                    siteId = handCost.SiteId,
+                    streamId = handCost.StreamId,
+                    ownerId = handCost.OwnerId,
+                    ordinal = handCost.Ordinal,
+                    operationKind = handCost.OperationKind,
+                    supportFingerprint = handCost.SupportFingerprint,
+                    appliedCost = handCost.AppliedCost,
+                    probabilityStatus = handCost.ProbabilityStatus,
+                    candidates = handCost.CandidateCardInstanceIds
+                        .Select((id, index) => new
+                        {
+                            index,
+                            cardInstanceId = id,
+                            cardModelId = handCost.CandidateCardModelIds[index]
+                        }).ToArray()
+                };
+            }
             if (state.CostPending is { } cost)
             {
                 return new
@@ -298,6 +322,8 @@ internal static class PrototypeAiJsonlServer
             }
             if (state.SeededEntry?.FixtureRandomizeHandCostsMaxExclusive is not null)
                 sites.Add("random_hand_card_energy_cost");
+            if (state.SeededEntry?.FixtureSetRandomHandCardCost is not null)
+                sites.Add("random_hand_card_select");
             return sites.ToArray();
         }
 
@@ -311,7 +337,8 @@ internal static class PrototypeAiJsonlServer
                   state.SeededEntry?.FixturePoolGenerationPotionId is not null ||
                   state.SeededEntry?.FixtureGeneratedDrawInsertionCardId is not null ||
                   state.SeededEntry?.FixtureRandomFreeAttackDrawInsertion == true ||
-                  state.SeededEntry?.FixtureRandomizeHandCostsMaxExclusive is not null
+                  state.SeededEntry?.FixtureRandomizeHandCostsMaxExclusive is not null ||
+                  state.SeededEntry?.FixtureSetRandomHandCardCost is not null
                     ? "nature-extended-fixture"
                     : "nature-two-site";
 
@@ -517,6 +544,8 @@ internal static class PrototypeAiJsonlServer
                                 SemanticCardSelectionEventV111.EventSchemaId,
                             semanticCostChoiceSchemaId =
                                 SemanticCostEventV111.EventSchemaId,
+                            semanticHandCostSelectionChoiceSchemaId =
+                                SemanticHandCostSelectionEventV111.EventSchemaId,
                             semanticPoolShuffleChoiceSchemaId =
                                 SemanticPoolShuffleEventV111.EventSchemaId,
                             semanticDrawInsertionChoiceSchemaId =
@@ -531,7 +560,8 @@ internal static class PrototypeAiJsonlServer
                                 "drawn_card_cost", "generated_card_pool_shuffle",
                                 "generated_draw_pile_insertion",
                                 "random_draw_attack_card_model",
-                                "random_hand_card_energy_cost"
+                                "random_hand_card_energy_cost",
+                                "random_hand_card_select"
                             },
                             semanticExtendedPlayerChoices = new[]
                             {
@@ -549,12 +579,15 @@ internal static class PrototypeAiJsonlServer
                                 "combat.generated_card.select",
                                 "combat.random_draw_attack.card_model",
                                 "combat.draw_pile.random_insert_index",
-                                "combat.generation.full_pool_shuffle.swap_index"
+                                "combat.generation.full_pool_shuffle.swap_index",
+                                "combat.random_hand_card.select",
+                                "combat.random_hand_card.energy_cost"
                             },
                             controlledChanceLimitations =
                                 "Opt-in HP/intents, shuffle, turn intents, hand-draw recycle, " +
                                 "random-enemy and Sly targeting, five generated-card " +
-                                "effects, draw insertion, and full-pool generation shuffles; " +
+                                "effects, draw insertion, full-pool generation shuffles, " +
+                                "and hand-cost selection/rerolls; " +
                                 "other chance sites fail closed; native entry and laws unverified.",
                             natureBoundaryKinds = new[] { "initial_hp", "intents" },
                             coverageSchemaId = V111Coverage.SchemaId,
@@ -876,7 +909,9 @@ internal static class PrototypeAiJsonlServer
                             OptionalBool(request,
                                 "fixture_random_free_attack_draw_insertion"),
                             OptionalInt(request,
-                                "fixture_randomize_hand_costs_max_exclusive"));
+                                "fixture_randomize_hand_costs_max_exclusive"),
+                            OptionalInt(request,
+                                "fixture_set_random_hand_card_cost"));
                         var next = SemanticPilotCombatEngineV111.BeginSeeded(entry);
                         var handle = StoreSemantic(next);
                         Write(new { requestId, ok = true,
@@ -994,6 +1029,21 @@ internal static class PrototypeAiJsonlServer
                             RequiredString(request, "event_id"),
                             OptionalInt(request, "cost") ??
                                 throw new ArgumentException("Missing cost."));
+                        var handle = StoreSemantic(next);
+                        Write(new { requestId, ok = true,
+                            result = SemanticResult(next, handle, parentHandle) });
+                        break;
+                    }
+
+                    case "semantic_resolve_hand_cost_selection":
+                    {
+                        var parentHandle = RequiredString(request, "semantic_handle");
+                        var current = RequireSemantic(request);
+                        var next = SemanticPilotCombatEngineV111
+                            .ResolveHandCostSelection(
+                                current, RequiredString(request, "fingerprint"),
+                                RequiredString(request, "event_id"),
+                                RequiredLong(request, "card_instance_id"));
                         var handle = StoreSemantic(next);
                         Write(new { requestId, ok = true,
                             result = SemanticResult(next, handle, parentHandle) });

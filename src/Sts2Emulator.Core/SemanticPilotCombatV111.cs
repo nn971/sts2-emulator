@@ -15,7 +15,8 @@ public sealed record SemanticPilotTransitionV111(
     SemanticCardSelectionDecisionV111? CardSelectionDecision = null,
     SemanticCostDecisionV111? CostDecision = null,
     SemanticPoolShuffleDecisionV111? PoolShuffleDecision = null,
-    SemanticDrawInsertionDecisionV111? DrawInsertionDecision = null);
+    SemanticDrawInsertionDecisionV111? DrawInsertionDecision = null,
+    SemanticHandCostSelectionDecisionV111? HandCostSelectionDecision = null);
 
 /// <summary>
 /// Independently replayable setup provenance. The default entry is a
@@ -74,7 +75,8 @@ public sealed record SemanticSeededEntryV111(
     string? FixturePoolGenerationPotionId = null,
     string? FixtureGeneratedDrawInsertionCardId = null,
     bool FixtureRandomFreeAttackDrawInsertion = false,
-    int? FixtureRandomizeHandCostsMaxExclusive = null);
+    int? FixtureRandomizeHandCostsMaxExclusive = null,
+    int? FixtureSetRandomHandCardCost = null);
 
 /// <summary>
 /// First external playable semantic boundary. Initial opening order is
@@ -110,6 +112,10 @@ public sealed record SemanticPilotCombatV111(
         SemanticPilotCombatEngineV111.DescribePendingCardSelectionEvent(this);
     [JsonIgnore] public SemanticCostEventV111? CostPending =>
         SemanticPilotCombatEngineV111.DescribePendingCostEvent(this);
+    [JsonIgnore] public SemanticHandCostSelectionEventV111?
+        HandCostSelectionPending =>
+            SemanticPilotCombatEngineV111
+                .DescribePendingHandCostSelectionEvent(this);
     [JsonIgnore] public SemanticPoolShuffleEventV111? PoolShufflePending =>
         SemanticPilotCombatEngineV111.DescribePendingPoolShuffleEvent(this);
     [JsonIgnore] public SemanticDrawInsertionEventV111? DrawInsertionPending =>
@@ -198,6 +204,10 @@ public sealed record SemanticPilotCombatV111(
             { DrawInsertionDecision: { } decision } => transition with
             {
                 DrawInsertionDecision = decision.Fork()
+            },
+            { HandCostSelectionDecision: { } decision } => transition with
+            {
+                HandCostSelectionDecision = decision.Fork()
             },
             _ => transition
         }).ToArray(),
@@ -303,7 +313,17 @@ public static class SemanticPilotCombatEngineV111
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_COST site=combat.seeded_entry " +
                 "operation=hand_cost_max_exclusive_out_of_range");
+        if (entry.FixtureSetRandomHandCardCost is < 0)
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_COST site=combat.seeded_entry " +
+                "operation=hand_cost_value_out_of_range");
         if (entry.FixtureRandomizeHandCostsMaxExclusive is not null &&
+            entry.FixtureSetRandomHandCardCost is not null)
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_COST site=combat.seeded_entry " +
+                "operation=choose_one_hand_cost_fixture");
+        if ((entry.FixtureRandomizeHandCostsMaxExclusive is not null ||
+             entry.FixtureSetRandomHandCardCost is not null) &&
             (entry.FixtureRandomTargetCardId is not null ||
              entry.FixtureGenerationPotionId is not null ||
              entry.FixtureSelectionCardId is not null ||
@@ -323,7 +343,8 @@ public static class SemanticPilotCombatEngineV111
              entry.FixturePoolGenerationPotionId is not null ||
              entry.FixtureGeneratedDrawInsertionCardId is not null ||
              entry.FixtureRandomFreeAttackDrawInsertion ||
-             entry.FixtureRandomizeHandCostsMaxExclusive is not null))
+             entry.FixtureRandomizeHandCostsMaxExclusive is not null ||
+             entry.FixtureSetRandomHandCardCost is not null))
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_NATIVE site=combat.seeded_entry " +
                 "operation=native_baseline_fixture_loadout_conflict");
@@ -446,6 +467,8 @@ public static class SemanticPilotCombatEngineV111
             state = ApplyFixtureRandomAttackDrawInsertion(state);
         if (entry.FixtureRandomizeHandCostsMaxExclusive is { } maxExclusive)
             state = ApplyFixtureRandomizeHandCosts(state, maxExclusive);
+        if (entry.FixtureSetRandomHandCardCost is { } setCost)
+            state = ApplyFixtureSetRandomHandCardCost(state, setCost);
         Validate(state);
         return state;
     }
@@ -484,6 +507,20 @@ public static class SemanticPilotCombatEngineV111
         var operation = new PrototypeQueuedOperation(
             PrototypeCombatEffectKind.RandomizeHandCardEnergyCostsUntilTurnEndOrPlayed,
             Amount: maxExclusive);
+        RunState result;
+        using (ControlledChanceGuardV111.Enter())
+            result = PrototypeGameEngine.BeginControlledRandomCostFixture(
+                state.Run.Fork(), operation);
+        ValidateRandomHandCostBoundary(result);
+        return state with { Run = result };
+    }
+
+    private static SemanticPilotCombatV111 ApplyFixtureSetRandomHandCardCost(
+        SemanticPilotCombatV111 state, int cost)
+    {
+        var operation = new PrototypeQueuedOperation(
+            PrototypeCombatEffectKind.SetRandomHandCardEnergyCostUntilTurnEndOrPlayed,
+            Amount: cost);
         RunState result;
         using (ControlledChanceGuardV111.Enter())
             result = PrototypeGameEngine.BeginControlledRandomCostFixture(
@@ -653,6 +690,7 @@ public static class SemanticPilotCombatEngineV111
             entry.FixtureGeneratedDrawInsertionCardId is not null ||
             entry.FixtureRandomFreeAttackDrawInsertion ||
             entry.FixtureRandomizeHandCostsMaxExclusive is not null ||
+            entry.FixtureSetRandomHandCardCost is not null ||
             entry.ReplayOpeningDrawHooks)
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_ROUTE site=act1.entry " +
@@ -1506,6 +1544,66 @@ public static class SemanticPilotCombatEngineV111
         return Resolve(current, fingerprint, index, null, null, false, decision);
     }
 
+    public static SemanticPilotCombatV111 ResolveHandCostSelection(
+        SemanticPilotCombatV111 current, string fingerprint,
+        string eventId, long cardInstanceId)
+    {
+        Validate(current);
+        if (current.Fingerprint != fingerprint)
+            throw new InvalidOperationException(
+                "Stale semantic hand-cost selection fingerprint.");
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
+        var pending = current.HandCostSelectionPending ??
+            throw new InvalidOperationException(
+                "No random hand-card cost selection is pending.");
+        if (pending.EventId != eventId)
+            throw new InvalidOperationException(
+                "Hand-cost selection event ID is stale or mismatched.");
+        var index = Array.IndexOf(pending.CandidateCardInstanceIds,
+            cardInstanceId);
+        if (index < 0)
+            throw new InvalidOperationException(
+                "Card is outside the pending hand-cost selection support.");
+        var decision = new SemanticHandCostSelectionDecisionV111(
+            pending, index, cardInstanceId,
+            pending.CandidateCardModelIds[index]);
+        decision.Validate();
+        ValidateHandCostSelectionDecision(
+            current.HandCostSelectionPending, decision, index);
+        ValidateRandomHandCostBoundary(current.Run);
+        var priorCombat = current.Run.World!.Combat!;
+        RunState result;
+        using (ControlledChanceGuardV111.Enter())
+            result = PrototypeGameEngine.ResumeControlledRandomCost(
+                current.Run.Fork(), index);
+        var nextCombat = result.World?.Combat;
+        if (result.Phase != RunPhase.Combat || nextCombat is null)
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_COST site=combat.random_hand_card.select " +
+                "operation=unsupported_post_cost_phase");
+        if (nextCombat.PendingChoice?.ControlledRandomCost is not null)
+            ValidateRandomHandCostBoundary(result);
+        else
+            ValidateSemanticCombatBoundary(result);
+        if (!priorCombat.DrawPile.SequenceEqual(nextCombat.DrawPile) ||
+            CanonicalJson.Sha256(priorCombat.SemanticDeck) !=
+                CanonicalJson.Sha256(nextCombat.SemanticDeck))
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_DECK site=combat.random_hand_card.select " +
+                "operation=unmodeled_draw_pile_mutation");
+        var next = current with
+        {
+            Run = result,
+            History = current.History.Append(
+                new SemanticPilotTransitionV111(
+                    "semantic_hand_cost_selection",
+                    HandCostSelectionDecision: decision.Fork()))
+                .ToArray()
+        };
+        Validate(next);
+        return next;
+    }
+
     public static SemanticPilotCombatV111 ResolvePoolShuffle(
         SemanticPilotCombatV111 current, string fingerprint,
         string eventId, int swapIndex)
@@ -1643,6 +1741,10 @@ public static class SemanticPilotCombatEngineV111
         if (expectedDeckDecision is not null)
             ValidateDeckDecision(drawEvent, expectedDeckDecision);
         var costEvent = current.CostPending;
+        if (current.HandCostSelectionPending is not null &&
+            expectedCostDecision is null)
+            throw new InvalidOperationException(
+                "Resolve the pending hand-cost selection event by card instance ID.");
         if (expectedCostDecision is not null)
             ValidateCostDecision(costEvent, expectedCostDecision, selectedIndex);
         if (current.PendingInitialIntents is { Pending: not null } initialIntents)
@@ -1971,15 +2073,18 @@ public static class SemanticPilotCombatEngineV111
         if (current.PendingEndTurn?.CostPending is { } drawCostRequest &&
             current.SeededEntry?.FixtureNatureDrawCosts == true)
             request = drawCostRequest;
-        else if (current.SeededEntry?.FixtureRandomizeHandCostsMaxExclusive is
-                    { } maxExclusive &&
-                current.Run.World?.Combat?.PendingChoice?
-                    .ControlledRandomCost is { } randomCost)
+        else if (current.Run.World?.Combat?.PendingChoice?
+                    .ControlledRandomCost is { } randomCost &&
+                randomCost.Operation.Kind == PrototypeCombatEffectKind
+                    .RandomizeHandCardEnergyCostsUntilTurnEndOrPlayed)
         {
             ValidateRandomHandCostBoundary(current.Run);
-            if (randomCost.Operation.Amount != maxExclusive)
+            if (current.SeededEntry?.FixtureRandomizeHandCostsMaxExclusive is
+                    { } fixtureMaxExclusive &&
+                randomCost.Operation.Amount != fixtureMaxExclusive)
                 throw new InvalidDataException(
                     "Random hand-cost operation differs from fixture provenance.");
+            var maxExclusive = Math.Max(1, randomCost.Operation.Amount);
             var combat = current.Run.World!.Combat!;
             targetCardInstanceId = randomCost.EligibleCardInstanceIds[
                 randomCost.NextCardIndex];
@@ -2023,6 +2128,57 @@ public static class SemanticPilotCombatEngineV111
                 OrderedCandidates = (int[])request.OrderedCandidates.Clone()
             }, costs, TargetCardInstanceId: targetCardInstanceId,
             TargetCardModelId: targetCardModelId);
+        semanticEvent.Validate();
+        return semanticEvent;
+    }
+
+    public static SemanticHandCostSelectionEventV111?
+        DescribePendingHandCostSelectionEvent(SemanticPilotCombatV111 current)
+    {
+        ArgumentNullException.ThrowIfNull(current);
+        var combat = current.Run.World?.Combat;
+        var randomCost = combat?.PendingChoice?.ControlledRandomCost;
+        if (randomCost is null ||
+            randomCost.Operation.Kind != PrototypeCombatEffectKind
+                .SetRandomHandCardEnergyCostUntilTurnEndOrPlayed)
+            return null;
+        ValidateRandomHandCostBoundary(current.Run);
+        if ((current.SeededEntry?.FixtureSetRandomHandCardCost is
+                { } fixtureCost &&
+             randomCost.Operation.Amount != fixtureCost) ||
+            current.PendingEndTurn is not null ||
+            current.PendingInitialIntents is not null ||
+            current.CostPending is not null || current.UsesNativePolicyBaseline ||
+            current.CombatTerminal)
+            throw new InvalidDataException(
+                "Random hand-card selection conflicts with another boundary.");
+        var cardIds = (long[])randomCost.EligibleCardInstanceIds.Clone();
+        var modelIds = cardIds.Select(id => combat!.Cards.Single(card =>
+            card.InstanceId == id).CardId).ToArray();
+        var supportFingerprint = CanonicalJson.Sha256(new
+        {
+            candidateCardInstanceIds = cardIds,
+            candidateCardModelIds = modelIds,
+            appliedCost = Math.Max(0, randomCost.Operation.Amount)
+        });
+        const string siteId = "combat.random_hand_card.select";
+        const string streamId = "prototype.combat";
+        const string operationKind = "choose_hand_card_instance";
+        var ownerId = "effect:" + randomCost.Operation.Kind + ":hand:" +
+            CanonicalJson.Sha256(randomCost.EligibleCardInstanceIds);
+        var ordinal = current.History.Count(transition =>
+            transition.Kind == "semantic_hand_cost_selection");
+        var eventId = CanonicalJson.Sha256(new
+        {
+            SchemaId = SemanticHandCostSelectionEventV111.EventSchemaId,
+            BoundaryFingerprint = current.Fingerprint,
+            SupportFingerprint = supportFingerprint
+        });
+        var semanticEvent = new SemanticHandCostSelectionEventV111(
+            SemanticHandCostSelectionEventV111.EventSchemaId,
+            eventId, current.Fingerprint, supportFingerprint,
+            siteId, streamId, ownerId, ordinal, operationKind,
+            cardIds, modelIds, Math.Max(0, randomCost.Operation.Amount));
         semanticEvent.Validate();
         return semanticEvent;
     }
@@ -2227,8 +2383,11 @@ public static class SemanticPilotCombatEngineV111
             choice is not { ChoiceId: "controlled_random_hand_cost",
                 OuterChoiceContinuation: not null } ||
             randomCost is null ||
-            randomCost.Operation.Kind != PrototypeCombatEffectKind
-                .RandomizeHandCardEnergyCostsUntilTurnEndOrPlayed ||
+            randomCost.Operation.Kind is not (
+                PrototypeCombatEffectKind
+                    .RandomizeHandCardEnergyCostsUntilTurnEndOrPlayed or
+                PrototypeCombatEffectKind
+                    .SetRandomHandCardEnergyCostUntilTurnEndOrPlayed) ||
             !PrototypeGameEngine.ValidateControlledRandomCost(
                 combat, randomCost))
             throw new InvalidDataException(
@@ -2254,6 +2413,18 @@ public static class SemanticPilotCombatEngineV111
                 CanonicalJson.Sha256(decision.Event))
             throw new InvalidOperationException(
                 "Semantic cost decision is stale or outside current support.");
+    }
+
+    private static void ValidateHandCostSelectionDecision(
+        SemanticHandCostSelectionEventV111? pending,
+        SemanticHandCostSelectionDecisionV111 decision, int sourceIndex)
+    {
+        decision.Validate();
+        if (pending is null || sourceIndex != decision.SelectedIndex ||
+            CanonicalJson.Sha256(pending) !=
+                CanonicalJson.Sha256(decision.Event))
+            throw new InvalidOperationException(
+                "Hand-cost selection is stale or outside current support.");
     }
 
     private static void ValidateSemanticCombatBoundary(RunState run)
@@ -2573,6 +2744,23 @@ public static class SemanticPilotCombatEngineV111
                 throw new InvalidDataException(
                     "Draw insertion conflicts with another semantic boundary.");
         }
+        if (state.HandCostSelectionPending is { } handCostSelectionPending)
+        {
+            handCostSelectionPending.Validate();
+            ValidateRandomHandCostBoundary(state.Run);
+            if (state.PendingEndTurn is not null ||
+                state.PendingInitialIntents is not null ||
+                state.IntentPending is not null || state.DrawPending is not null ||
+                state.TargetPending is not null ||
+                state.GeneratedCardPending is not null ||
+                state.CardSelectionPending is not null ||
+                state.CostPending is not null ||
+                state.PoolShufflePending is not null ||
+                state.DrawInsertionPending is not null ||
+                state.UsesNativePolicyBaseline || state.CombatTerminal)
+                throw new InvalidDataException(
+                    "Hand-cost selection conflicts with another semantic boundary.");
+        }
         if (state.CostPending is { } costPending)
         {
             costPending.Validate();
@@ -2586,11 +2774,18 @@ public static class SemanticPilotCombatEngineV111
                 state.PoolShufflePending is not null ||
                 state.DrawInsertionPending is not null ||
                 (handCost
-                    ? state.SeededEntry?.FixtureRandomizeHandCostsMaxExclusive is null
+                    ? state.Run.World?.Combat?.PendingChoice?
+                        .ControlledRandomCost is null
                     : state.PendingEndTurn?.CostPending is null))
                 throw new InvalidDataException(
                     "Semantic cost continuation conflicts with another boundary.");
         }
+        if (state.Run.World?.Combat?.PendingChoice?
+                .ControlledRandomCost is not null &&
+            state.CostPending?.TargetCardInstanceId is null &&
+            state.HandCostSelectionPending is null)
+            throw new InvalidDataException(
+                "Source random hand-cost continuation has no semantic event.");
         if (state.OtherChance is not null)
             SemanticOtherChanceEngineV111.Validate(state.OtherChance);
         if (state.RewardAudit is { } reward &&
@@ -2736,6 +2931,11 @@ public static class SemanticPilotCombatEngineV111
                     ResolveCost(replay, replay.Fingerprint,
                         transition.CostDecision.Event.EventId,
                         transition.CostDecision.SelectedCost),
+                "semantic_hand_cost_selection" when
+                    transition.HandCostSelectionDecision is not null =>
+                    ResolveHandCostSelection(replay, replay.Fingerprint,
+                        transition.HandCostSelectionDecision.Event.EventId,
+                        transition.HandCostSelectionDecision.SelectedCardInstanceId),
                 "semantic_pool_shuffle" when
                     transition.PoolShuffleDecision is not null =>
                     ResolvePoolShuffle(replay, replay.Fingerprint,

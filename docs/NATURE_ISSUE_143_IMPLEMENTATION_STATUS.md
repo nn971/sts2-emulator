@@ -118,13 +118,14 @@ Coverage is established with narrow actual-operation fixtures, including
 invalid cursor/support rejection, independent forks and schedule-independent
 15-worker tests. These starter-fixture diagnostic entrances do not establish
 unmodified player-action replay provenance. The semantic JSONL bridge now
-exposes the sequential bounded cost-roll stage using
-`fixture_randomize_hand_costs_max_exclusive`; each typed cost event identifies
-its current hand card, resumes the real operation, and replays independently.
-The random positive-cost card-selection stage, draw-triggered relic/Slither
-costs beyond their existing event path, random pile selection shortlists,
-enemy-side insertion, death/summon continuations, native laws and full
-terminal rollout remain.
+exposes both source stages: the fixed-cost single-card selector using
+`fixture_set_random_hand_card_cost`, and the sequential bounded cost-roll
+stage using `fixture_randomize_hand_costs_max_exclusive`. The selector event
+identifies the ordered eligible hand-card instances; each reroll event
+identifies its current hand card. Both resume the source operation and replay
+independently. Draw-triggered relic/Slither costs beyond their existing event
+path, random pile selection shortlists, enemy-side insertion, death/summon
+continuations, native laws and full terminal rollout remain.
 
 
 ## New slice: draw-triggered relic/Slither costs

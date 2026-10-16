@@ -29,6 +29,8 @@ non-Nature RNG parity remain **UNVERIFIED**.
 - `semanticCardSelectionChoiceSchemaId =
   sts2-v111-semantic-card-selection-choice-v1`.
 - `semanticCostChoiceSchemaId = sts2-v111-semantic-cost-choice-v1`.
+- `semanticHandCostSelectionChoiceSchemaId =
+  sts2-v111-semantic-hand-cost-selection-v1`.
 - `semanticPoolShuffleChoiceSchemaId =
   sts2-v111-semantic-pool-shuffle-v1`.
 - `semanticDrawInsertionChoiceSchemaId =
@@ -37,7 +39,8 @@ non-Nature RNG parity remain **UNVERIFIED**.
   support size is 256.
 - `semanticExtendedControlledSites = [random_enemy_target, generated_card_pool,
   drawn_card_cost, generated_card_pool_shuffle, generated_draw_pile_insertion,
-  random_draw_attack_card_model, random_hand_card_energy_cost]`;
+  random_draw_attack_card_model, random_hand_card_energy_cost,
+  random_hand_card_select]`;
   fixture-specific sites require their corresponding seeded-entry options.
 - `semanticExtendedPlayerChoices = [select_cards]`.
 - `semanticPlayable = true`, scope
@@ -346,10 +349,17 @@ potion-acquisition provenance or source-law calibration.
 opening hand. It publishes one `random_hand_card_cost` event per eligible
 card, in original hand order, with that card's instance/model ID and bounded
 cost values. `SemanticCombat.resolve_cost(cost)` resumes each saved stage;
-the original operation continues after the final card. The provider's
-draw-pile constraints are unchanged. This fixture does not expose the
-separate random positive-cost card-selection operation, and its law and
-fixture provenance remain `UNVERIFIED`.
+the original operation continues after the final card. The provider's draw-pile
+constraints are unchanged. Its law and fixture provenance remain `UNVERIFIED`.
+
+`fixture_set_random_hand_card_cost=0` opts into the source
+`SetRandomHandCardEnergyCostUntilTurnEndOrPlayed` continuation for the
+opening hand. Its `random_hand_card_selection` event publishes the ordered
+positive-cost card instance and model IDs, plus the fixed cost applied by the
+source operation. `SemanticCombat.resolve_hand_cost_selection(card_instance_id)`
+resumes the original effect for that card. The fixture is exclusive with the
+all-hand reroll and other pending-choice fixtures; its source law and fixture
+provenance remain `UNVERIFIED`.
 
 The draw-pile insertion fixture can use
 `fixture_generated_draw_insertion_card_id="proto.silent.strike"` (or another

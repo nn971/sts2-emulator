@@ -306,6 +306,30 @@ class SemanticCombat:
                 fingerprint=self.fingerprint, event_id=self.pending["eventId"],
                 cost=cost))
 
+    def resolve_hand_cost_selection(self, card_instance_id: int):
+        """Select the source-eligible hand card for a fixed cost effect."""
+        if not self.pending or self.pending.get(
+                "kind") != "random_hand_card_selection":
+            raise EmulatorError(
+                "Expected a random_hand_card_selection Nature event")
+        if self.session.capabilities.get(
+                "semanticHandCostSelectionChoiceSchemaId") != (
+                    "sts2-v111-semantic-hand-cost-selection-v1"):
+            raise EmulatorError(
+                "Emulator lacks semantic hand-cost selection choices")
+        candidates = [candidate["cardInstanceId"]
+                      for candidate in self.pending.get("candidates", [])]
+        if card_instance_id not in candidates:
+            raise ValueError(
+                "Card instance is outside the pending hand-cost support")
+        return SemanticCombat.from_wire(
+            self.session, self.session.call(
+                "semantic_resolve_hand_cost_selection",
+                semantic_handle=self.handle,
+                fingerprint=self.fingerprint,
+                event_id=self.pending["eventId"],
+                card_instance_id=card_instance_id))
+
     def resolve_pool_shuffle(self, swap_index: int):
         """Choose one bounded swap while building a generated-card offer."""
         if not self.pending or self.pending.get(
@@ -532,6 +556,7 @@ class Session:
             fixture_generated_draw_insertion_card_id: str | None = None,
             fixture_random_free_attack_draw_insertion: bool = False,
             fixture_randomize_hand_costs_max_exclusive: int | None = None,
+            fixture_set_random_hand_card_cost: int | None = None,
             replay_opening_draw_hooks: bool = False,
             native_policy_baseline: bool = False,
             source_route_entry: bool = False,
@@ -553,6 +578,7 @@ class Session:
         The random-Attack insertion fixture exposes both source model choice
         and insertion position stages.
         The hand-cost fixture exposes one cost event per eligible card.
+        The fixed hand-cost fixture exposes the eligible card-selection event.
         """
         if self.capabilities.get("semanticSeededOpeningProvider") != (
                 "engine-owned-seeded-source-shaped-unverified-v1"):
@@ -589,6 +615,8 @@ class Session:
                 fixture_random_free_attack_draw_insertion,
             fixture_randomize_hand_costs_max_exclusive=
                 fixture_randomize_hand_costs_max_exclusive,
+            fixture_set_random_hand_card_cost=
+                fixture_set_random_hand_card_cost,
             replay_opening_draw_hooks=replay_opening_draw_hooks,
             native_policy_baseline=native_policy_baseline,
             source_route_entry=source_route_entry,
