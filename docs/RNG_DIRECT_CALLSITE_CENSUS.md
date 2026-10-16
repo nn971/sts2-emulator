@@ -2,12 +2,12 @@
 
 Direct qualified calls to PrototypeRng, NativeRngV111, and NativeFisherYatesV111 in Sts2Emulator.Core. This does not include indirect delegates, random provider interfaces, third-party/native source callsites, or prove that every source operation is mapped.
 
-Direct call expressions: **203**.
+Direct call expressions: **202**.
 
 Counts by direct API family:
 
 - `legacy_prototype_api`: 175
-- `native_primitive_api`: 17
+- `native_primitive_api`: 16
 - `native_shuffle_mechanics`: 11
 
 Rows distinguish legacy prototype calls, native primitive calls, generic shuffle-helper calls, and recognized provider/fixture support. Unrecognized contexts still need manual source tracing.
@@ -21,7 +21,6 @@ Rows distinguish legacy prototype calls, native primitive calls, generic shuffle
 | [`src/Sts2Emulator.Core/ExperimentalSilentThreeActRouteV111.cs:304`](../src/Sts2Emulator.Core/ExperimentalSilentThreeActRouteV111.cs#L304) | `PrototypeRng` | `NextInt` | `var gloryReceivesDarv = PrototypeRng.NextInt(` | `prototype_callsite_needs_semantic_site_mapping` |
 | [`src/Sts2Emulator.Core/ExperimentalSilentThreeActRouteV111.cs:316`](../src/Sts2Emulator.Core/ExperimentalSilentThreeActRouteV111.cs#L316) | `PrototypeRng` | `NextInt` | `return pool[PrototypeRng.NextInt(rng, "event", pool.Length)];` | `prototype_callsite_needs_semantic_site_mapping` |
 | [`src/Sts2Emulator.Core/NativeAncientRewardsV111.cs:199`](../src/Sts2Emulator.Core/NativeAncientRewardsV111.cs#L199) | `NativeRngV111` | `NextItem` | `var expectedOffers = pools.Select(pool => "take_" + NativeRngV111.NextItem(` | `native_primitive_callsite_needs_site_review` |
-| [`src/Sts2Emulator.Core/NativeCombatRngEntryV111.cs:530`](../src/Sts2Emulator.Core/NativeCombatRngEntryV111.cs#L530) | `NativeRngV111` | `NextInt` | `sampled = NativeRngV111.NextInt(` | `native_primitive_callsite_needs_site_review` |
 | [`src/Sts2Emulator.Core/NativeDarvEventV111.cs:163`](../src/Sts2Emulator.Core/NativeDarvEventV111.cs#L163) | `NativeFisherYatesV111` | `ShuffleInPlace` | `decisions.AddRange(NativeFisherYatesV111.ShuffleInPlace(` | `shuffle_callsite_needs_stable_site_link` |
 | [`src/Sts2Emulator.Core/NativeDarvEventV111.cs:243`](../src/Sts2Emulator.Core/NativeDarvEventV111.cs#L243) | `NativeRngV111` | `NextInt` | `var offerVariant = NativeRngV111.NextInt(` | `native_primitive_callsite_needs_site_review` |
 | [`src/Sts2Emulator.Core/NativeDarvEventV111.cs:246`](../src/Sts2Emulator.Core/NativeDarvEventV111.cs#L246) | `NativeRngV111` | `Shuffle` | `NativeRngV111.Shuffle(bundle, initial.StreamId, relics);` | `native_primitive_callsite_needs_site_review` |
