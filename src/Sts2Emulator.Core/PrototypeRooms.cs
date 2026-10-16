@@ -851,6 +851,9 @@ public sealed partial class PrototypeGameEngine
                         PrototypeNativeGloryEvents.ReflectionsId =>
                             PrototypeNativeGloryEvents
                                 .ReflectionsNativeRngEventId,
+                        PrototypeNativeGloryEvents.TrialId =>
+                            PrototypeNativeGloryEvents
+                                .TrialNativeRngEventId,
                         _ => null
                     }),
                 NativeEventGold:

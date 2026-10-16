@@ -97,8 +97,8 @@ Tablet of Truth upgrade picks, Doors of Light's shuffle, Fake Merchant's
 stock shuffle, both Tinker Time offer shuffles, and Stone of All Time's
 occupied-potion selection and choice ticket, Battleworn Dummy's setting 2
 upgrade shuffle, Fragrant Mushroom's upgrade shuffle, and both Reflections
-card-selection passes through their event contexts; seeded results and
-cursors remain unverified.
+card-selection passes, and Trial's court case choice through their event
+contexts; seeded results and cursors remain unverified.
 Configured merchant generation now routes sale-slot, card-pool, potion-pool,
 and item-price draws through the existing native player streams. Card and
 relic rarity use `player.rewards`; card and potion offers and merchant prices

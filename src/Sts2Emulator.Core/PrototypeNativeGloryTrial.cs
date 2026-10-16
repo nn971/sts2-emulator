@@ -3,8 +3,8 @@ namespace Sts2Emulator.Core;
 /// <summary>
 /// Source-shaped v0.111.0 Trial event. Each choice is a separate
 /// decision boundary, including its abandoned-run confirmation.
-/// Random court identity and card/relic pools currently use prototype
-/// streams/pools rather than the pinned native context generators.
+/// Random court identity uses the event-local context on native v111 runs;
+/// card/relic pools still use prototype streams/pools.
 /// </summary>
 public sealed partial class PrototypeGameEngine
 {
@@ -39,6 +39,18 @@ public sealed partial class PrototypeGameEngine
             evt?.EventId != PrototypeNativeGloryEvents.TrialId)
             throw new InvalidOperationException(
                 "Trial requires its isolated Glory event fixture.");
+        if (evt.NativePageIndex is 0 or 1)
+        {
+            evt = evt with
+            {
+                NativeEventRng = evt.NativeEventRng
+                    ?? NativeEventContextRngV111.CreateAtEntry(
+                        state,
+                        PrototypeNativeGloryEvents.TrialNativeRngEventId)
+            };
+            world = world with { Event = evt };
+            state = state with { World = world };
+        }
         var choice = action.ReadPayload<EventChoicePayload>().ChoiceId;
         if (!GetNativeTrialActions(evt).Any(a =>
             a.ReadPayload<EventChoicePayload>().ChoiceId == choice))
@@ -58,22 +70,25 @@ public sealed partial class PrototypeGameEngine
             };
 
         if ((evt.NativePageIndex is 0 or 1) && choice == "accept")
+        {
+            var draw = NativeEventContextRngV111.ResolveBoundedInteger(
+                state,
+                evt,
+                PrototypeNativeGloryEvents.TrialNativeRngEventId,
+                "event.glory_trial.damage_amount.index_draw",
+                "event:glory_trial:trial_damage",
+                3);
+            state = draw.State;
+            world = RequireWorld(state);
+            evt = world.Event!;
             return state with
             {
                 World = world with
                 {
-                    Event = evt with
-                    {
-                        NativePageIndex =
-                            2 + LegacyRandomChoiceV111.ChooseBoundedInteger(
-                                state.Rng,
-                                "event.glory_trial.damage_amount.index_draw",
-                                "event",
-                                "event:glory_trial:trial_damage",
-                                3).SelectedIndex
-                    }
+                    Event = evt with { NativePageIndex = 2 + draw.SelectedValue }
                 }
             };
+        }
 
         if (evt.NativePageIndex == 1 && choice == "double_down")
             return state with

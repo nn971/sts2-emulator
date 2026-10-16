@@ -932,8 +932,9 @@ potion. Full native potion-pool and cursor parity remain unverified.
   silently terminating on the initial click. Trial's Regret, Shame and
   Doubt curses are playable as unplayable hand-end effects: Regret
   deals hand-size unblockable damage; Shame/Doubt apply Frail/Weak
-  with their first-duration tick skipped. The scenario RNG and
-  reward pools are provisional, and the regional random event bag
+  with their first-duration tick skipped. Native v111 Trial case selection
+  now uses the persisted `TRIAL` event context; seeded result/cursor parity
+  and reward pools remain provisional, and the regional random event bag
   and native replay parity remain unsupported.
   [Source audit](reference-builds/v0.111.0-glory-trial.md).
 

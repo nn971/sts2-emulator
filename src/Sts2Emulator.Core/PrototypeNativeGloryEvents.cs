@@ -39,6 +39,7 @@ public static class PrototypeNativeGloryEvents
     public const string ForgottenSoulId =
         "proto.relic.forgotten_soul";
     public const string TrialId = "proto.native.glory.trial";
+    public const string TrialNativeRngEventId = "TRIAL";
     public const string TanxId = NativeTanxEventV111.EventId;
     public const string VakuuId = NativeVakuuEventV111.EventId;
     public const string RegretId = "proto.native.glory.regret";
