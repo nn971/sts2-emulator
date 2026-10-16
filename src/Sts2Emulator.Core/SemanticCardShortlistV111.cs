@@ -31,15 +31,20 @@ public sealed record SemanticCardShortlistEventV111(
             ? null
             : EligibleCardInstanceIds
                 .Where(id => !SelectedCardInstanceIds.Contains(id)).ToArray();
+        var expectedOperationKind =
+            SiteId == "combat.draw_pile.random_replay_card.select"
+                ? "choose_card_instance"
+                : "choose_card_instance_without_replacement";
         if (SchemaId != EventSchemaId ||
             string.IsNullOrWhiteSpace(EventId) ||
             string.IsNullOrWhiteSpace(BoundaryFingerprint) ||
             string.IsNullOrWhiteSpace(SupportFingerprint) ||
             SiteId is not ("combat.card_selection.random_shortlist" or
-                "combat.autoplay.random_card.select") ||
+                "combat.autoplay.random_card.select" or
+                "combat.draw_pile.random_replay_card.select") ||
             StreamId != "prototype.combat" ||
             string.IsNullOrWhiteSpace(OwnerId) || Ordinal < 0 ||
-            OperationKind != "choose_card_instance_without_replacement" ||
+            OperationKind != expectedOperationKind ||
             EligibleCardInstanceIds is not { Length: > 1 } ||
             EligibleCardModelIds is null ||
             EligibleCardModelIds.Length != EligibleCardInstanceIds.Length ||
@@ -62,6 +67,8 @@ public sealed record SemanticCardShortlistEventV111(
                 CandidateCardInstanceIds.Length ||
             RequiredCount < 1 ||
             RequiredCount >= EligibleCardInstanceIds.Length ||
+            (SiteId == "combat.draw_pile.random_replay_card.select" &&
+             RequiredCount != 1) ||
             SelectedCardInstanceIds.Length >= RequiredCount ||
             ProbabilityStatus != "UNVERIFIED" ||
             SupportFingerprint != CanonicalJson.Sha256(new

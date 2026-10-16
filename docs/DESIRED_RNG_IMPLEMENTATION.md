@@ -96,6 +96,10 @@ Catastrophe selects from the draw pile and commits the removed identity to the
 semantic deck before playing it. The source pool is re-evaluated after each
 auto-play. Multi-candidate automatic-pipeline contexts and native cursor
 parity remain open; see [the auto-play continuation note](NATURE_SEMANTIC_AUTOPLAY_143.md).
+Hidden Gem's random draw-pile replay selection also resumes through the same
+card-shortlist continuation, updating the selected card's replay count while
+preserving draw-pile order. Its multi-candidate automatic-pipeline contexts
+remain unsupported; see [the replay-selection note](NATURE_SEMANTIC_RANDOM_REPLAY_143.md).
 The supported generated draw-pile operations now use typed model-pick requests
 on native `run.combat_card_generation` and position requests on `run.shuffle`;
 the legacy profile preserves `combat`. Post-shuffle relic insertion now has

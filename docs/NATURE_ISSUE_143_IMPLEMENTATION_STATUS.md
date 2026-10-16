@@ -678,3 +678,15 @@ Multi-candidate automatic-pipeline contexts remain unsupported. The Release
 solution build passes with zero warnings or errors; tests and mechanics
 regressions were not run. Conditional probabilities remain `UNVERIFIED`; see
 [`NATURE_SEMANTIC_AUTOPLAY_143.md`](NATURE_SEMANTIC_AUTOPLAY_143.md).
+
+## 2026-10-17: player-action random replay-card selection
+
+Hidden Gem's `combat.draw_pile.random_replay_card.select` now uses the shared
+serializable card-shortlist continuation. The source-preferred Attack/Skill/
+Power pool and fallback eligibility are retained; resolving the selected
+instance applies its replay count and resumes the saved effect suffix without
+changing draw-pile order. Multi-candidate automatic-pipeline contexts remain
+unsupported. The Release solution build passes with zero warnings or errors;
+tests and mechanics regressions were not run. Conditional probabilities
+remain `UNVERIFIED`; see
+[`NATURE_SEMANTIC_RANDOM_REPLAY_143.md`](NATURE_SEMANTIC_RANDOM_REPLAY_143.md).

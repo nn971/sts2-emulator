@@ -1248,6 +1248,8 @@ public static class SemanticPilotCombatEngineV111
             var semanticAutoplayCard = card?.CardId is
                 ("proto.colorless.beat_down" or
                  "proto.colorless.catastrophe");
+            var semanticRandomReplayCard =
+                card?.CardId == "proto.colorless.hidden_gem";
             var fixtureSelectionCard = card?.CardId ==
                     current.SeededEntry?.FixtureSelectionCardId &&
                 card?.CardId == "proto.colorless.seeker_strike";
@@ -1256,6 +1258,7 @@ public static class SemanticPilotCombatEngineV111
                  card.CardId == "proto.silent.ricochet" ||
                  semanticDrawCard ||
                  semanticAutoplayCard ||
+                 semanticRandomReplayCard ||
                  semanticSelectionCard ||
                  fixtureSelectionCard);
             if (!supportedCardAction)
@@ -2717,8 +2720,10 @@ public static class SemanticPilotCombatEngineV111
             (long[])shortlist.SelectedCandidateCardInstanceIds.Clone();
         bool randomAutoplay = shortlist.Operation.Kind ==
             PrototypeCombatEffectKind.AutoPlayRandomCardsFromZone;
+        bool randomReplayCard = shortlist.Operation.Kind ==
+            PrototypeCombatEffectKind.EmpowerRandomDrawCardReplay;
         var selection = shortlist.Operation.Selection;
-        if (!randomAutoplay && selection is null)
+        if (!randomAutoplay && !randomReplayCard && selection is null)
             throw new InvalidDataException(
                 "Card shortlist lost its source selection specification.");
         var supportFingerprint = CanonicalJson.Sha256(new
@@ -2732,17 +2737,24 @@ public static class SemanticPilotCombatEngineV111
         });
         var siteId = randomAutoplay
             ? "combat.autoplay.random_card.select"
-            : "combat.card_selection.random_shortlist";
+            : randomReplayCard
+                ? "combat.draw_pile.random_replay_card.select"
+                : "combat.card_selection.random_shortlist";
         const string streamId = "prototype.combat";
-        const string operationKind =
-            "choose_card_instance_without_replacement";
+        var operationKind = randomReplayCard
+            ? "choose_card_instance"
+            : "choose_card_instance_without_replacement";
         var ownerId = randomAutoplay
             ? "effect:" + shortlist.Operation.Kind + ":source:" +
               (choice!.SourceCardInstanceId?.ToString() ?? "none") +
               ":zone:" + shortlist.Operation.AutoPlaySourceZone +
               ":pool:" + CanonicalJson.Sha256(eligibleIds)
-            : "selection:" + selection!.SourceZone + ":pool:" +
-              CanonicalJson.Sha256(eligibleIds);
+            : randomReplayCard
+                ? "effect:" + shortlist.Operation.Kind + ":source:" +
+                  (choice!.SourceCardInstanceId?.ToString() ?? "none") +
+                  ":pool:" + CanonicalJson.Sha256(eligibleIds)
+                : "selection:" + selection!.SourceZone + ":pool:" +
+                  CanonicalJson.Sha256(eligibleIds);
         var ordinal = current.History.Count(transition =>
             transition.Kind == "semantic_card_shortlist");
         var eventId = CanonicalJson.Sha256(new

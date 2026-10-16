@@ -6519,35 +6519,51 @@ public sealed partial class PrototypeGameEngine
 
                 case PrototypeCombatEffectKind.EmpowerRandomDrawCardReplay:
                 {
-                    var eligible = combat.DrawPile
-                        .Where(id =>
-                        {
-                            var card = RequireCombatCard(combat, id);
-                            var definition = PrototypeContent.Card(card.CardId);
-                            return !definition.Unplayable
-                                && definition.Type is not
-                                    (PrototypeCardType.Curse or PrototypeCardType.Status)
-                                && card.ReplayCount == 0
-                                && card.Enchantment is not
-                                    { Kind: PrototypeCardEnchantmentKind.Spiral
-                                        or PrototypeCardEnchantmentKind.Glam };
-                        })
-                        .ToArray();
-                    var preferred = eligible.Where(id =>
-                        PrototypeContent.Card(
-                            RequireCombatCard(combat, id).CardId).Type
-                            is PrototypeCardType.Attack
-                                or PrototypeCardType.Skill
-                                or PrototypeCardType.Power).ToArray();
-                    var pool = preferred.Length > 0 ? preferred : eligible;
+                    var pool = ControlledCardShortlistCandidates(
+                        combat, operation) ?? throw new InvalidDataException(
+                            "Random replay-card effect lost its source pool.");
                     if (pool.Length > 0)
                     {
-                        var choice = ResolveRandomCombatCardIndex(
-                            combat, rng,
-                            "combat.draw_pile.random_replay_card.select",
-                            "combat", pool,
-                            "effect:" + operation.Kind + ":source:" +
-                                (sourceCardInstanceId?.ToString() ?? "none"));
+                        (CombatState Combat, int SelectedIndex) choice;
+                        if (ControlledChanceGuardV111.Active &&
+                            !ControlledChanceGuardV111
+                                .EngineOwnedNativeProviderActive &&
+                            pool.Length > 1)
+                        {
+                            var continuation =
+                                new PrototypeChoiceResolutionContinuationState(
+                                    SourceCardInstanceId: sourceCardInstanceId,
+                                    SourceCardDestination: sourceCardDestination,
+                                    Operations: operations.ToArray(),
+                                    PendingDiscardEvents: [],
+                                    PendingSlyCardInstanceIds: [],
+                                    CompletionEvents: completionEvents ?? [],
+                                    CardPlaySeries: cardPlaySeries,
+                                    MoveSourceCardOnCompletion:
+                                        moveSourceCardOnCompletion,
+                                    RemoveSourceCardOnCompletion:
+                                        removeSourceCardOnCompletion,
+                                    SourceCardAlreadyMoved:
+                                        sourceCardAlreadyMoved,
+                                    EventDispatchContinuation:
+                                        eventDispatchContinuation?.Fork());
+                            if (TryMakeControlledCardShortlistChoice(
+                                combat, operation, pool, continuation,
+                                out var suspended))
+                                return (player, suspended);
+                        }
+                        if (ControlledChanceGuardV111.Active &&
+                            !ControlledChanceGuardV111
+                                .EngineOwnedNativeProviderActive &&
+                            pool.Length == 1)
+                            choice = (combat, 0);
+                        else
+                            choice = ResolveRandomCombatCardIndex(
+                                combat, rng,
+                                "combat.draw_pile.random_replay_card.select",
+                                "combat", pool,
+                                "effect:" + operation.Kind + ":source:" +
+                                    (sourceCardInstanceId?.ToString() ?? "none"));
                         combat = choice.Combat;
                         var selected = pool[choice.SelectedIndex];
                         combat = combat with

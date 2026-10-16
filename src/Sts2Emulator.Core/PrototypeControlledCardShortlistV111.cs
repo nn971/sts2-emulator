@@ -29,6 +29,29 @@ public sealed partial class PrototypeGameEngine
                 : eligible;
         }
 
+        if (operation.Kind ==
+            PrototypeCombatEffectKind.EmpowerRandomDrawCardReplay)
+        {
+            var eligible = combat.DrawPile.Where(id =>
+            {
+                var card = RequireCombatCard(combat, id);
+                var definition = PrototypeContent.Card(card.CardId);
+                return !definition.Unplayable &&
+                    definition.Type is not (
+                        PrototypeCardType.Curse or PrototypeCardType.Status) &&
+                    card.ReplayCount == 0 &&
+                    card.Enchantment is not
+                        { Kind: PrototypeCardEnchantmentKind.Spiral or
+                            PrototypeCardEnchantmentKind.Glam };
+            }).ToArray();
+            var preferred = eligible.Where(id =>
+                PrototypeContent.Card(
+                    RequireCombatCard(combat, id).CardId).Type is
+                    PrototypeCardType.Attack or PrototypeCardType.Skill or
+                    PrototypeCardType.Power).ToArray();
+            return preferred.Length > 0 ? preferred : eligible;
+        }
+
         if (operation.Kind != PrototypeCombatEffectKind.ChooseCards ||
             operation.Selection is not { RandomCandidateCount: > 0 } selection)
             return null;
@@ -55,8 +78,11 @@ public sealed partial class PrototypeGameEngine
 
     private static int ControlledCardShortlistRequiredCount(
         PrototypeQueuedOperation operation) =>
-        operation.Kind == PrototypeCombatEffectKind.AutoPlayRandomCardsFromZone &&
-            operation.Amount > 0
+        (operation.Kind ==
+                PrototypeCombatEffectKind.AutoPlayRandomCardsFromZone &&
+            operation.Amount > 0) ||
+        operation.Kind ==
+            PrototypeCombatEffectKind.EmpowerRandomDrawCardReplay
             ? 1
             : operation.Selection?.RandomCandidateCount ?? 0;
 
@@ -233,6 +259,32 @@ public sealed partial class PrototypeGameEngine
                     Operations = resumedOperations.ToArray()
                 });
             return ResumeAfterCardShortlist(state, world, autoplay);
+        }
+
+        if (shortlist.Operation.Kind ==
+            PrototypeCombatEffectKind.EmpowerRandomDrawCardReplay)
+        {
+            if (selectedPrefix.Length != 1)
+                throw new InvalidDataException(
+                    "Random replay-card shortlist has an invalid prefix.");
+            combat = combat with
+            {
+                PendingChoice = null,
+                Cards = combat.Cards.Select(card =>
+                    card.InstanceId == selected
+                        ? card with
+                        {
+                            ReplayCount = card.ReplayCount +
+                                Math.Max(0, shortlist.Operation.Amount)
+                        }
+                        : card).ToArray()
+            };
+            var resumed = ResumeChoiceResolutionContinuation(
+                state.Player, combat, state.Rng, continuation with
+                {
+                    Operations = continuation.Operations.ToArray()
+                });
+            return ResumeAfterCardShortlist(state, world, resumed);
         }
 
         combat = combat with { PendingChoice = null };
