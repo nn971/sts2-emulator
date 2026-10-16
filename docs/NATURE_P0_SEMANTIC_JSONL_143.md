@@ -279,6 +279,12 @@ other_chance_provider_id=...)` passes through this request.
 each semantic `status` exposes the selected
 `otherChanceProvider` and cumulative `otherChanceDecisionCount`.
 
+The opt-in `source_route_entry` uses the same private native cost stream
+automatically for its Nature branch, seeded from the real run stream bundle
+at combat entry. Its native-policy baseline continues the stream directly
+through native combat ownership. Source-route users therefore do not need
+to request a third Nature choice or configure a separate cost provider.
+
 The engine saves a *private, deeply forked* named v111 RNG bundle
 immediately after its source-shaped seeded HP / initial intent /
 Fisher–Yates opening setup. When the **real** DrawCards continuation

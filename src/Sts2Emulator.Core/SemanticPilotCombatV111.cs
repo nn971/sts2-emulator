@@ -627,6 +627,10 @@ public static class SemanticPilotCombatEngineV111
             sourceOpening, semanticRun, null, [], actualNativeEntry)
         {
             SeededEntry = resolvedEntry,
+            OtherChance = entry.NativePolicyBaseline
+                ? null
+                : SemanticOtherChanceEngineV111.Begin(
+                    nativeCombat.RunStreams),
             SourceRouteAudit = routeAudit,
             PendingInitialIntents = pendingInitialIntents is { Complete: false }
                 ? pendingInitialIntents
@@ -1098,17 +1102,24 @@ public static class SemanticPilotCombatEngineV111
                  x.StreamId == "reward").CallCount != reward.AfterCalls))
             throw new InvalidDataException(
                 "Invalid source-timed reward RNG audit.");
-        if (state.SeededEntry is { } entry &&
-            (entry.Seed != state.OpeningSource.Seed ||
-             entry.Act != state.OpeningSource.Origin.Combat.Act ||
-             entry.NativeEncounterEntry != state.NativeEncounterEntry ||
-             entry.TotalFloor != state.OpeningSource.Origin.Formation.TotalFloor ||
-             (entry.OtherChanceProviderId is null) !=
-                 (state.OtherChance is null) ||
-             (entry.OtherChanceProviderId is not null &&
-              entry.OtherChanceProviderId != state.OtherChance?.ProviderId)))
-            throw new InvalidDataException(
-                "Seeded Nature entry provenance disagrees with its opening.");
+        if (state.SeededEntry is { } entry)
+        {
+            var routeCostProviderExpected = entry.SourceRouteEntry &&
+                !entry.NativePolicyBaseline;
+            var otherChanceExpected = entry.OtherChanceProviderId is not null ||
+                routeCostProviderExpected;
+            if (entry.Seed != state.OpeningSource.Seed ||
+                entry.Act != state.OpeningSource.Origin.Combat.Act ||
+                entry.NativeEncounterEntry != state.NativeEncounterEntry ||
+                entry.TotalFloor != state.OpeningSource.Origin.Formation.TotalFloor ||
+                otherChanceExpected != (state.OtherChance is not null) ||
+                (entry.OtherChanceProviderId is not null &&
+                 entry.OtherChanceProviderId != state.OtherChance?.ProviderId) ||
+                (routeCostProviderExpected && state.OtherChance?.ProviderId !=
+                 SemanticOtherChanceEngineV111.ProviderId))
+                throw new InvalidDataException(
+                    "Seeded Nature entry provenance disagrees with its opening.");
+        }
         if (state.SeededEntry is { SourceRouteEntry: true } routeEntry)
         {
             var route = state.SourceRouteAudit ?? throw new InvalidDataException(

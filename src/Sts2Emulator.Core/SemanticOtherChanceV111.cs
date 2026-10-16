@@ -9,7 +9,8 @@ namespace Sts2Emulator.Core;
 public sealed record SemanticOtherChanceStateV111(
     RngBundle Streams,
     RandomIndexDecisionV111[] Decisions,
-    string ProviderId = SemanticOtherChanceEngineV111.ProviderId)
+    string ProviderId = SemanticOtherChanceEngineV111.ProviderId,
+    ulong InitialCallCount = 0)
 {
     public SemanticOtherChanceStateV111 Fork() => this with
     {
@@ -38,8 +39,13 @@ public static class SemanticOtherChanceEngineV111
     public static SemanticOtherChanceStateV111 Begin(RngBundle afterOpening)
     {
         ArgumentNullException.ThrowIfNull(afterOpening);
+        var streams = afterOpening.Fork();
+        var initialCallCount = streams.Streams.SingleOrDefault(stream =>
+            stream.StreamId == CostStreamId)?.CallCount ??
+            throw new InvalidDataException(
+                "Native cost stream is missing its call counter.");
         var state = new SemanticOtherChanceStateV111(
-            afterOpening.Fork(), []);
+            streams, [], InitialCallCount: initialCallCount);
         Validate(state);
         return state;
     }
@@ -69,10 +75,15 @@ public static class SemanticOtherChanceEngineV111
                 "UNSUPPORTED_SEMANTIC_OTHER_CHANCE site=" + pending.SiteId +
                 " operation=" + pending.OperationKind);
 
+        var callCount = WorkingCostStreamCallCount(previous);
+        if (callCount > int.MaxValue)
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_OTHER_CHANCE site=" + pending.SiteId +
+                " operation=native_ordinal_overflow");
         var sourceRequest = pending with
         {
             StreamId = CostStreamId,
-            Ordinal = previous.Decisions.Length,
+            Ordinal = (int)callCount,
             OrderedCandidates = []
         };
         var working = previous.Fork();
@@ -86,6 +97,13 @@ public static class SemanticOtherChanceEngineV111
         return (next, decision);
     }
 
+    private static ulong WorkingCostStreamCallCount(
+        SemanticOtherChanceStateV111 state) =>
+        state.Streams.Streams.Single(stream =>
+            stream.StreamId == CostStreamId).CallCount ??
+        throw new InvalidDataException(
+            "Native cost stream is missing its call counter.");
+
     public static void Validate(SemanticOtherChanceStateV111 state)
     {
         ArgumentNullException.ThrowIfNull(state);
@@ -98,13 +116,21 @@ public static class SemanticOtherChanceEngineV111
         var ids = state.Streams.Streams.Select(x => x.StreamId).ToArray();
         if (ids.Distinct(StringComparer.Ordinal).Count() != ids.Length)
             throw new InvalidDataException("Duplicate private RNG stream owners.");
+        var expectedCallCount = checked(
+            state.InitialCallCount + (ulong)state.Decisions.Length);
+        if (WorkingCostStreamCallCount(state) != expectedCallCount)
+            throw new InvalidDataException(
+                "Private non-Nature cost stream cursor disagrees with its transcript.");
         for (int ordinal = 0; ordinal < state.Decisions.Length; ordinal++)
         {
             var decision = state.Decisions[ordinal];
+            var expectedOrdinal = checked(
+                state.InitialCallCount + (ulong)ordinal);
             decision.Validate();
             if (decision.ProviderMode != "native-v111" ||
                 decision.Request.StreamId != CostStreamId ||
-                decision.Request.Ordinal != ordinal ||
+                expectedOrdinal > int.MaxValue ||
+                decision.Request.Ordinal != (int)expectedOrdinal ||
                 decision.Request.SiteId is not (
                     "combat.card_draw.relic_energy_cost" or
                     "combat.card_draw.slither_energy_cost") ||

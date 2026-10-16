@@ -422,7 +422,15 @@ but does not make route probabilities, Neow choices, shuffle-order hooks,
 or all combat entry hooks native-parity verified. The initial draw-pile
 Fisher–Yates shuffle now advances the persistent `run.shuffle` stream before
 native HP initialization, using the pinned v0.111 swap bounds and source
-deck order. The CLI Release build passes with zero warnings or errors after
-this change; the updated route smoke has not yet been run. The branch remains
-a work in progress, and the issue stays open for source audit and remaining
+deck order. The Nature side of this source route also retains a private
+native `run.combat_energy_costs` cursor for Snecko/Slither draw costs. Those
+costs stay engine-owned and do not become a third Nature choice; replay
+checks the saved stream cursor and decision transcript. The older isolated
+fixture still uses its declared fallback unless the explicit native cost
+provider is selected. The stream assignment and original conditional laws
+remain `UNVERIFIED`.
+
+The CLI Release build passes with zero warnings or errors after the shuffle
+change; the updated route smoke has not yet been run. The branch remains a
+work in progress, and the issue stays open for source audit and remaining
 P0 gates.
