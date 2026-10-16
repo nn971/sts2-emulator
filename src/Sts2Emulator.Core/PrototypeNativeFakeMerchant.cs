@@ -12,6 +12,7 @@ namespace Sts2Emulator.Core;
 public static class PrototypeNativeFakeMerchant
 {
     public const string EventId = "proto.native.event.fake_merchant";
+    public const string NativeRngEventId = "FAKE_MERCHANT";
     public const string EncounterId =
         "proto.native.encounter.fake_merchant_event";
     public const string MonsterId = "proto.native.event.fake_merchant_monster";
@@ -209,21 +210,40 @@ public static class PrototypeNativeFakeMerchant
         || player.PotionSlots.Any(potion =>
             potion?.PotionId == FoulPotionId);
 
-    public static EventState RollInventory(EventState eventState, RngBundle rng)
+    public static RunState RollInventory(RunState state)
     {
+        var world = state.World
+            ?? throw new InvalidOperationException(
+                "Fake Merchant requires an active run world.");
+        var eventState = world.Event
+            ?? throw new InvalidOperationException(
+                "Fake Merchant has no active event state.");
+        if (eventState.EventId != EventId)
+            throw new InvalidOperationException(
+                "Fake Merchant is not the active event.");
+
         var ids = (string[])StockRelicIds.Clone();
-        _ = LegacyFisherYatesV111.ShuffleInPlace(
+        state = NativeEventContextRngV111.ShuffleInPlace(
+            state,
+            eventState,
+            NativeRngEventId,
             ids,
-            rng,
-            "event",
             "event.fake_merchant.relic_offer.shuffle_swap_index",
             "event:" + eventState.EventId + ":stock_relics");
-        return eventState with
+        world = state.World!;
+        eventState = world.Event!;
+        return state with
         {
-            OfferedChoiceIds = ids.Take(6)
-                .Select(ChoiceId)
-                .Append(LeaveChoiceId)
-                .ToArray()
+            World = world with
+            {
+                Event = eventState with
+                {
+                    OfferedChoiceIds = ids.Take(6)
+                        .Select(ChoiceId)
+                        .Append(LeaveChoiceId)
+                        .ToArray()
+                }
+            }
         };
     }
 

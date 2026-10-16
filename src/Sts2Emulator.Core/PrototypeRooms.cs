@@ -836,6 +836,8 @@ public sealed partial class PrototypeGameEngine
                             PrototypeNativeTabletOfTruth.NativeRngEventId,
                         "proto.native.underdocks.doors_of_light_and_dark" =>
                             "DOORS_OF_LIGHT_AND_DARK",
+                        PrototypeNativeFakeMerchant.EventId =>
+                            PrototypeNativeFakeMerchant.NativeRngEventId,
                         _ => null
                     }),
                 NativeEventGold:
@@ -901,11 +903,9 @@ public sealed partial class PrototypeGameEngine
 
         if (selected.Id == PrototypeNativeFakeMerchant.EventId)
         {
-            world = world with
-            {
-                Event = PrototypeNativeFakeMerchant.RollInventory(
-                    world.Event!, state.Rng)
-            };
+            state = state with { World = world };
+            state = PrototypeNativeFakeMerchant.RollInventory(state);
+            world = state.World!;
         }
 
         if (selected.Id == PrototypeNativeEndlessConveyor.EventId)

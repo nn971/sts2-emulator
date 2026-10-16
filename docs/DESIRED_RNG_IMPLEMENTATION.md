@@ -93,9 +93,9 @@ through typed native, scripted, or controlled providers. Their legacy helper
 remains available; map and Neow source call-order parity remain open, as do
 Neow unlock and `IsAllowedAtNeow` filters.
 The shared `EventState.NativeEventRng` owner now routes Trash Heap rewards,
-Tablet of Truth upgrade picks, and the Doors of Light shuffle through their
-`TRASH_HEAP`, `TABLET_OF_TRUTH`, and `DOORS_OF_LIGHT_AND_DARK` event contexts;
-seeded results and cursors remain unverified.
+Tablet of Truth upgrade picks, Doors of Light's shuffle, and Fake Merchant's
+stock shuffle through their event contexts; seeded results and cursors remain
+unverified.
 Configured merchant generation now routes sale-slot, card-pool, potion-pool,
 and item-price draws through the existing native player streams. Card and
 relic rarity use `player.rewards`; card and potion offers and merchant prices

@@ -19,6 +19,10 @@ public static class PrototypeStateInvariants
             state,
             "proto.native.underdocks.doors_of_light_and_dark",
             "DOORS_OF_LIGHT_AND_DARK");
+        NativeEventContextRngV111.Validate(
+            state,
+            PrototypeNativeFakeMerchant.EventId,
+            PrototypeNativeFakeMerchant.NativeRngEventId);
         if (state.Ascension < 0)
         {
             throw new InvalidOperationException(

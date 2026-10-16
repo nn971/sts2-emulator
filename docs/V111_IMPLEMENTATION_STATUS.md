@@ -51,8 +51,9 @@ starts the one-merchant event fight, whose victory offers the fixed 300 gold,
 Fake Merchant's Rug, and all unsold stocked relics. All nine fake relic effects
 are executable, including the Tea Set's next-combat energy after a Rest Site.
 Foul Potion now deals its source 12 damage to all enemies without damaging the
-player. Prototype RNG is used for the inventory and fight, so native parity
-remains open; see the [Fake Merchant implementation note](reference-builds/v0.111.0-fake-merchant.md).
+player. Native v111 runs use the `FAKE_MERCHANT` event context for inventory;
+the event fight still uses prototype RNG, so native parity remains open. See
+the [Fake Merchant implementation note](reference-builds/v0.111.0-fake-merchant.md).
 This or That is registered as a shared event in Overgrowth, Underdocks, Hive,
 and Glory. Its plain choice deals 6 HP damage before awarding the saved 41–68
 gold roll. Its ornate choice obtains a random relic, resolves any relic
