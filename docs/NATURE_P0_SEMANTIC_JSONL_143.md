@@ -125,8 +125,10 @@ classified as `outcome=victory`; `RunPhase.Terminal` is
 `outcome=defeat`, with `exitHp` from the actual RunState.
 An outstanding end-turn continuation must complete before publishing a
 terminal outcome. Source-route victory and replay are verified for five
-weak encounters; a seeded fixture also verifies defeat. Normal encounters
-and source-route defeat remain uncovered.
+weak encounters. A seeded Hive Exoskeletons Normal fixture also reaches
+defeat on both Nature and native-policy branches from the same source
+opening, with save/load and 1-vs-15 replay. Normal full-route coverage and
+source-route defeat remain uncovered.
 
 ## Outstanding strict P0 acceptance criteria
 
@@ -145,8 +147,10 @@ and source-route defeat remain uncovered.
    explicitly unverified prototype reward stream; cost-stream assignment and
    other chance-site parity also remain open.
 4. **Genuinely terminal supported combats - partial.** Five weak source-route
-   victories pass save/restore and 1-vs-15 transcript checks. Normal encounter
-   coverage and source-route defeat are not established.
+   victories pass save/restore and 1-vs-15 transcript checks. A seeded Hive
+   normal fixture also reaches paired terminal defeat and passes 1-vs-15
+   replay, but normal full-route coverage and source-route defeat are not
+   established.
 5. **Consumer verification - outstanding.** The semantic API has not been
    verified against `sts2-ai` PR #78. A consumer check must negotiate the exact
    schema, keep player and Nature observations separate, and reach a terminal
@@ -483,12 +487,16 @@ both this branch and its exact integration base, with identical failed test
 names; this branch adds one passing test and no new failures.
 
 The legacy restricted P0 semantic JSONL smoke and seeded-entry smoke also
-pass after the route changes. They cover the fair player view, two Nature
-sites, handles/forks, replay, seeded terminal defeat, and seven private
-engine-owned cost rolls per worker; those cost and source laws remain
-`UNVERIFIED`.
+pass after the route changes. The seeded smoke now pairs Nature and native
+policy on the Hive Exoskeletons Normal fixture: both reach defeat after four
+turns at 0 HP from the same source-opening fingerprint and fair opening,
+with save/load and 1-vs-15 replay. It also covers the two Nature sites,
+handles/forks, and seven private engine-owned cost rolls per worker; cost
+and source laws remain `UNVERIFIED`. This normal encounter is a seeded
+fixture, not a full map-route normal encounter.
 
-The smoke also reproduces paired victories on four additional route seeds:
+The source-route smoke also reproduces paired victories on four additional
+route seeds:
 Overgrowth Shrinker Beetle (Nature/native exit HP 57/62), Overgrowth Fuzzy
 Wurm Crawler (54/54), Underdocks Toadpoles (42/47), and Underdocks Sludge
 Spinner (56/56). All five route seeds, including the canonical Overgrowth

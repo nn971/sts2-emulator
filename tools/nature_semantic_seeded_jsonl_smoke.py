@@ -85,6 +85,8 @@ def terminal_rollout():
             encounter_id="proto.native.hive.encounter.exoskeletons_normal",
             native_entry="ExoskeletonsNormal", total_floor=20,
             map_column=3, map_row=5)
+        source_opening = combat.status()["sourceOpeningFingerprint"]
+        initial_observation = without_initial_intents(combat.observe())
         turns = events = 0
         trace = []
         while not combat.terminal:
@@ -113,7 +115,66 @@ def terminal_rollout():
             combat.save_snapshot()).fingerprint == combat.fingerprint
         status = combat.status()
         assert status["terminal"] and status["exitHp"] == combat.exit_hp
-        return turns, tuple(trace), combat.fingerprint, combat.exit_hp
+        return (source_opening, initial_observation, turns, tuple(trace),
+                combat.outcome, combat.exit_hp, combat.fingerprint,
+                status.get("nativePolicyDecisionCount", 0),
+                status.get("nativePolicyShuffleCount", 0))
+
+
+def terminal_native_policy_rollout():
+    with Session(COMMAND) as session:
+        combat = session.begin_seeded_semantic_combat(
+            SEED + "-defeat", act=2,
+            encounter_id="proto.native.hive.encounter.exoskeletons_normal",
+            native_entry="ExoskeletonsNormal", total_floor=20,
+            map_column=3, map_row=5, native_policy_baseline=True)
+        source_opening = combat.status()["sourceOpeningFingerprint"]
+        initial_observation = without_initial_intents(combat.observe())
+        turns = 0
+        while not combat.terminal:
+            assert turns < 40, "Native-policy normal combat did not terminate"
+            assert combat.boundary == "player", combat.status()
+            end = next(a for a in combat.actions()
+                       if a["kind"] == "end_turn")
+            combat = combat.step(end["actionId"])
+            turns += 1
+        assert combat.boundary == "terminal"
+        assert combat.outcome == "defeat", combat.status()
+        assert combat.exit_hp is not None and combat.exit_hp <= 0
+        assert session.load_semantic_snapshot(
+            combat.save_snapshot()).fingerprint == combat.fingerprint
+        status = combat.status()
+        assert status["nativePolicyProvider"] == (
+            "engine-owned-native-v111-comparator-unverified-v1")
+        assert status["nativePolicyDecisionCount"] > 0
+        assert status["nativePolicyShuffleCount"] > 0
+        return (source_opening, initial_observation, turns, (),
+                combat.outcome, combat.exit_hp, combat.fingerprint,
+                status["nativePolicyDecisionCount"],
+                status["nativePolicyShuffleCount"])
+
+
+def without_initial_intents(observation):
+    view = json.loads(json.dumps(observation))
+    for enemy in view["combat"]["enemies"]:
+        for key in list(enemy):
+            if key.replace("_", "").lower() in {
+                    "moveid", "intentdamage", "intenthits",
+                    "intentbasedamage"}:
+                enemy.pop(key)
+    return json.dumps(view, sort_keys=True)
+
+
+def terminal_comparison_pair():
+    nature = terminal_rollout()
+    native = terminal_native_policy_rollout()
+    assert nature[0] == native[0], (
+        "Normal encounter branches must share a source opening")
+    assert nature[1] == native[1], (
+        "Normal encounter fair openings differ outside initial intent")
+    assert nature[4] == native[4] == "defeat"
+    assert nature[5] is not None and native[5] is not None
+    return nature, native
 
 
 def engine_cost_rollout():
@@ -166,15 +227,17 @@ def main():
             lambda _: engine_cost_rollout(), range(15)))
     assert all(value == cost for value in cost_workers), (
         "Engine-owned native-codec cost rolls differ by process")
-    terminal = terminal_rollout()
+    terminal = terminal_comparison_pair()
     with ThreadPoolExecutor(max_workers=15) as pool:
         terminal_workers = list(pool.map(
-            lambda _: terminal_rollout(), range(15)))
+            lambda _: terminal_comparison_pair(), range(15)))
     assert all(value == terminal for value in terminal_workers), (
-        "Terminal combat differs across independent JSONL processes")
+        "Paired normal terminal combat differs across independent processes")
     print("PASS: seeded Nature opening, 1 vs 15 independent process "
           "first-turn and full-terminal transcript equality; "
-          f"defeat after {terminal[0]} turns, exit HP {terminal[3]}; "
+          f"seeded Hive normal defeat after Nature/native turns="
+          f"{terminal[0][2]}/{terminal[1][2]}, "
+          f"exit HP={terminal[0][5]}/{terminal[1][5]}; "
           f"replay; engine-owned cost rolls={cost[2]} per worker; "
           "only intent/draw Nature; source law UNVERIFIED")
 

@@ -461,6 +461,13 @@ opening observations and save/load replay. This expands weak-encounter
 mechanics evidence but does not calibrate source probabilities or cover
 normal encounters broadly.
 
+The separate seeded-entry smoke now pairs Nature and native-policy
+branches on the Act 2 Hive Exoskeletons Normal formation. Both reach defeat
+after four end turns at 0 HP from the same source-opening fingerprint and
+fair opening observation, with snapshot replay and 1-vs-15 process equality.
+This is seeded fixture coverage; it does not establish a full-map normal
+encounter route.
+
 A separate local Inspector sidecar audit is pinned by matching `sts2.dll`,
 `0Harmony.dll`, runtime and release hashes to
 `data/reference_builds/v0.111.0-41cef1ea.json`. It verifies 3 native
