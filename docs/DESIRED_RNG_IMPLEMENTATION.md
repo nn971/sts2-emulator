@@ -173,7 +173,11 @@ journal their cursor spans. Neither primitive has an additional gameplay call
 site mapped yet. The opt-in emulator RNG journal now also carries one
 mixed-operation sequence across every typed provider family, alongside its
 legacy per-type arrays. It preserves order only for migrated provider calls;
-full source call-order parity is still open.
+full source call-order parity is still open. `ScriptedRandomBoundaryProviderV111`
+replays that mixed transcript through the six typed primitive-provider
+interfaces, checking operation family and complete request identity before
+each outcome. It rejects the first mismatch and can assert that the full
+transcript was consumed; replay does not advance an RNG stream.
 An opt-in bounded
 enumerator now resolves one small semantic chance support into independent
 child sessions; it rejects supports above the requested cap instead of
@@ -374,7 +378,7 @@ One action may encounter **multiple chance decisions**, interleaved with ordinar
 
 ### Trace/replay and enumeration providers
 
-A transcript provider supplies a fixed recorded sequence of choice identities/outcomes and fails at the first mismatch in operation, owner, candidates, or order. This enables mechanical differential testing using supplied native-observed outcomes even when the native seed differs.
+A transcript provider supplies a fixed recorded sequence of choice identities/outcomes and fails at the first mismatch in operation, owner, candidates, or order. `ScriptedRandomBoundaryProviderV111` consumes the journal's mixed transcript across all six typed primitive-provider interfaces and exposes `AssertComplete()` to reject unused outcomes. This enables mechanical differential testing using supplied native-observed outcomes even when the native seed differs.
 
 An enumeration provider forks at a pending small finite-support choice, resolves each legal outcome, and runs the shared continuation. Do not enumerate enormous shuffles or continuous supports by default.
 
