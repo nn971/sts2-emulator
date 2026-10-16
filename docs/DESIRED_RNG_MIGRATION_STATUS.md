@@ -43,13 +43,14 @@ reference distribution is claimed.
 | `combat.sly_autoplay.random_enemy` | auto-play / prototype combat stream | Yes, live formation support | No v111 provider | No | Yes: saved auto-play continuation | Yes | No |
 | `combat.generated_card.select` | effect / prototype combat stream | Yes, source-ordered model pool | No v111 provider | No | Yes: generated-card continuation | Yes | No |
 | `combat.random_draw_attack.card_model` | draw insertion / prototype combat stream | Yes, source-ordered Attack pool | No v111 provider | No | Yes: model then insertion choices | Yes | No |
-| `combat.generation.full_pool_shuffle.swap_index` | effect / prototype combat stream | Yes, full filtered pool and swap order | No v111 provider | No | Yes: bounded swap continuation | Yes | No |
+| `combat.generation.full_pool_shuffle.swap_index` | generated-card effect / native `run.combat_card_generation` or prototype `combat` | Yes, full filtered pool and swap order | Partial: attached native combat uses typed bounded swaps | No: provider-specific result/cursor regression pending | Yes: semantic bounded swap continuation | Yes | No |
 | `combat.draw_pile.random_insert_index` | player draw pile / prototype combat stream | Yes, bounded source position | No v111 provider | No | Yes: source-timed insertion continuation | Yes | No |
 | `combat.random_hand_card.select` | player hand / prototype combat stream | Yes, ordered eligible instances | No v111 provider | No | Yes: semantic selection event | Yes | No |
 | `combat.random_hand_card.energy_cost` | player hand / prototype combat stream | Yes, bounded cost support | No v111 provider | No | Yes: semantic cost event | Yes | No |
 | `combat.card_draw.relic_energy_cost` | drawn card / `run.combat_energy_costs` | Yes, source draw-hook order | Partial: private engine-owned native-codec stream; assignment unverified | No | Yes, opt-in typed event | Yes | No |
 | `combat.card_draw.slither_energy_cost` | drawn card / `run.combat_energy_costs` | Yes, source draw-hook order | Partial: private engine-owned native-codec stream; assignment unverified | No | Yes, opt-in typed event | Yes | No |
 | `combat.card_selection.random_shortlist` | draw-pile selector / prototype combat stream | Yes, source filters and without-replacement prefix | No v111 provider | No | Yes: semantic JSONL/Python event | No: not run or covered by a focused test | No |
+| `combat.relic.jeweled_mask.random_power_draw_card` | player relic hook / `run.combat_card_selection` | Yes: prefers noninnate powers, then the ordered Power pool | Yes: typed native provider request | No: provider-specific result/cursor regression pending | No | No | No |
 
 This is the migrated typed-site inventory, not a complete v0.111 RNG
 inventory. Other encounter resolvers, summon/death lifecycle effects,

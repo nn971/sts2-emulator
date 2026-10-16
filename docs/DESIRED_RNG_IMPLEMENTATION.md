@@ -42,7 +42,10 @@ Pael, Tezcatara, Nonupeipe, Tanx and Vakuu record nonnative provider mode in
 their completed event state while retaining strict seeded validation for
 native mode. Vakuu's request ordinals span its three pool shuffles. The
 existing source-pinned Fisher–Yates loop now accepts an arbitrary named
-stream and provider without duplicating its swap mechanics. An opt-in bounded
+stream and provider without duplicating its swap mechanics. Jeweled Mask's
+random Power selection and native generated-card full-pool shuffle also reach
+typed native providers; controlled combat continuation for those native
+sites remains pending. An opt-in bounded
 enumerator now resolves one small semantic chance support into independent
 child sessions; it rejects supports above the requested cap instead of
 truncating them.
