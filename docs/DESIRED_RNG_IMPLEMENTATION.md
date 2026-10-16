@@ -115,6 +115,8 @@ The configured Shovel rest-site reward uses that same player reward stream and
 retains its advanced bundle while the relic reward is pending.
 Neow's nested random relic pickup also advances the same bundle while
 preserving its existing reward continuation.
+Random relic gains from configured ordinary event choices use the same bag
+stream and preserve it through the event continuation.
 The potion factory now routes its unit-float rarity
 sample and within-tier model index through separate typed providers in source
 order. Native effect-random-target and Sly auto-play selections use typed

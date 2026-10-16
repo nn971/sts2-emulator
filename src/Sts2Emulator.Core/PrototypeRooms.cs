@@ -1693,7 +1693,8 @@ public sealed partial class PrototypeGameEngine
                         && UsesNativeRegionalSystems(world))
                     {
                         var draw = PrototypeNativeRelicGrabBag.Draw(
-                            world, player, state.Rng, merchant: false);
+                            world, player, state.Rng, merchant: false,
+                            nativeRunRng: nativeRunRng);
                         world = draw.World;
                         relicId = draw.Id
                             ?? throw new InvalidOperationException(
