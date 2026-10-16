@@ -313,6 +313,7 @@ public static class SemanticPilotCombatEngineV111
             // Preserve actual source damage, relic/power hooks and victory
             // transition. The private deck must remain unchanged.
             using (ControlledChanceGuardV111.Enter())
+            using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
                 result = environment.Step(source, actionId).State;
             if (result.Phase is not (RunPhase.Combat or RunPhase.Reward))
                 throw new NotSupportedException(
