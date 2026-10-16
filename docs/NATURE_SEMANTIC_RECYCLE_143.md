@@ -54,11 +54,12 @@ reuse the semantic insertion event and update the provider deck before
 resuming the same draw. Other recycle contexts without these saved draw frames
 still fail closed at `combat.draw.recycle` for after-shuffle insertion.
 
-When Stratagem is active, both the card-effect draw frame and standalone
-conditioned draw reuse the semantic `select_cards` event to choose from the
-recycled draw pile, then resume the remaining draw. The standalone wrapper
-records the source selection decision with the semantic draw transcript.
-Automatic hand-draw Stratagem selection remains unsupported.
+When Stratagem is active, card-effect draws, standalone conditioned draws,
+and the automatic `DrawPlayerHand` segment reuse the source `select_cards`
+event to choose from the recycled draw pile, then resume the remaining draw.
+Standalone and automatic wrappers record the source selection decision with
+their semantic draw transcript. The automatic path also composes with
+after-shuffle insertions and drawn-cost stages.
 
 The real-semantic bridge now includes limited standalone, card-effect and
 automatic hand-draw continuations, but is not a complete opening-hand/turn/

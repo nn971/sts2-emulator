@@ -146,20 +146,33 @@ public static class SemanticCardSelectionEngineV111
     {
         ArgumentNullException.ThrowIfNull(source);
         var combat = source.World?.Combat;
-        var choice = combat!.PendingChoice!;
+        var choice = combat?.PendingChoice;
+        bool automaticStratagem =
+            choice?.AutomaticSemanticStratagemDrawSelection == true;
         if (source.Phase != RunPhase.Combat ||
-            combat is not { IsPlayerTurn: true,
-                AutomaticPipelineContinuation: null,
-                PendingKnowledgeDemonChoice: null } ||
+            combat is not { PendingKnowledgeDemonChoice: null } ||
+            (!automaticStratagem && !combat.IsPlayerTurn) ||
             choice is not { ChoiceId: "select_cards" } ||
             combat.SemanticDeck is not { } deck || deck.Pending is not null)
             throw new InvalidOperationException(
                 "Expected a source card-selection choice on a semantic player turn.");
+        if (automaticStratagem)
+        {
+            if (choice!.SemanticStratagemDrawSelection ||
+                !PrototypeGameEngine.IsSemanticAutomaticHandDraw(combat!))
+                throw new InvalidDataException(
+                    "Automatic Stratagem draw cursor is inconsistent.");
+        }
+        else if (combat!.AutomaticPipelineContinuation is not null)
+            throw new InvalidOperationException(
+                "Expected an ordinary semantic player-turn choice.");
         SemanticDeckEngineV111.Validate(deck);
         if (!SemanticDeckEngineV111.AllCardInstanceIds(deck)
             .Order().SequenceEqual(combat.DrawPile.Order()))
             throw new InvalidDataException(
                 "Semantic card-selection source has inconsistent physical pile.");
+        if (automaticStratagem)
+            PrototypeStateInvariants.Validate(source);
     }
 
     public static SemanticCardSelectionV111 Step(
@@ -204,8 +217,19 @@ public static class SemanticCardSelectionEngineV111
         using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
             advanced = environment.Step(source.Fork(), actionId).State;
         if (advanced.Phase == RunPhase.Combat)
-            SemanticPilotCombatEngineV111.ValidateSemanticCombatBoundary(
-                advanced);
+        {
+            if (choice.AutomaticSemanticStratagemDrawSelection)
+            {
+                if (advanced.World?.Combat is not { PendingChoice: null } after ||
+                    !PrototypeGameEngine.IsSemanticAutomaticHandDraw(after))
+                    throw new InvalidDataException(
+                        "Automatic Stratagem selection lost its draw cursor.");
+                PrototypeStateInvariants.Validate(advanced);
+            }
+            else
+                SemanticPilotCombatEngineV111.ValidateSemanticCombatBoundary(
+                    advanced);
+        }
         else if (advanced.Phase == RunPhase.Reward &&
                  advanced.World?.Reward is not null &&
                  advanced.World.Combat is null)
@@ -271,8 +295,20 @@ public static class SemanticCardSelectionEngineV111
             throw new InvalidDataException(
                 "Invalid saved source card selection.");
         if (state.Run.Phase == RunPhase.Combat)
-            SemanticPilotCombatEngineV111.ValidateSemanticCombatBoundary(
-                state.Run);
+        {
+            if (from.PendingChoice?.AutomaticSemanticStratagemDrawSelection ==
+                true)
+            {
+                if (to?.PendingChoice is not null ||
+                    !PrototypeGameEngine.IsSemanticAutomaticHandDraw(to!))
+                    throw new InvalidDataException(
+                        "Saved automatic Stratagem selection lost its draw cursor.");
+                PrototypeStateInvariants.Validate(state.Run);
+            }
+            else
+                SemanticPilotCombatEngineV111.ValidateSemanticCombatBoundary(
+                    state.Run);
+        }
         else if (reward)
             PrototypeStateInvariants.Validate(state.Run);
         else
@@ -292,7 +328,7 @@ public static class SemanticCardSelectionEngineV111
             CanonicalJson.Sha256(state.Decision.Event))
             throw new InvalidDataException(
                 "Saved card-selection event differs from its source support.");
-        var selectionSpec = from.PendingChoice.Selection;
+        var selectionSpec = from!.PendingChoice!.Selection;
         var topMove = IsSupportedTopMove(selectionSpec);
         var drawRemoval = IsSupportedDrawRemoval(selectionSpec);
         var initial = from.SemanticDeck ??

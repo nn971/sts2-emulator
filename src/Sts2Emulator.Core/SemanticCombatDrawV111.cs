@@ -172,16 +172,31 @@ public static class SemanticCombatDrawEngineV111
         var run = state.Run;
         var combat = run.World?.Combat;
         var choice = combat?.PendingChoice;
-        if (state.AutomaticHandDraw ||
-            combat is not { IsPlayerTurn: true,
-                AutomaticPipelineContinuation: null,
-                SemanticDeck: { Mode: SemanticDeckStateV111.NatureMode,
+        bool automaticSelection = state.AutomaticHandDraw &&
+            choice?.AutomaticSemanticStratagemDrawSelection == true;
+        bool standaloneSelection = !state.AutomaticHandDraw &&
+            choice?.SemanticStratagemDrawSelection == true;
+        if (combat is not { SemanticDeck:
+                    { Mode: SemanticDeckStateV111.NatureMode,
                     Pending: null } } ||
-            choice is not { ChoiceId: "select_cards",
-                SemanticStratagemDrawSelection: true } ||
+            (standaloneSelection && !combat.IsPlayerTurn) ||
+            choice is not { ChoiceId: "select_cards" } ||
             choice.Selection.SourceZone != PrototypeCardZone.DrawPile ||
             state.RemainingCount <= 0 ||
-            !HasStandaloneSemanticDrawOperation(choice) ||
+            (!automaticSelection && !standaloneSelection) ||
+            (automaticSelection &&
+             choice!.SemanticStratagemDrawSelection) ||
+            (standaloneSelection &&
+             choice!.AutomaticSemanticStratagemDrawSelection) ||
+            (automaticSelection &&
+             (!PrototypeGameEngine.IsSemanticAutomaticHandDraw(combat!) ||
+              combat.AutomaticPipelineContinuation!
+                  .ControlledSemanticDrawRemaining != state.RemainingCount ||
+              combat.AutomaticPipelineContinuation
+                  .ControlledSemanticDrawRequested != state.RequestedCount)) ||
+            (standaloneSelection &&
+             (combat!.AutomaticPipelineContinuation is not null ||
+              !HasStandaloneSemanticDrawOperation(choice!))) ||
             !combat.PlayerPowers.Any(power =>
                 power.PowerId == "proto.power.stratagem" &&
                 power.Stacks > 0 && combat.Hand.Length < 10))
@@ -503,7 +518,7 @@ public static class SemanticCombatDrawEngineV111
         ArgumentException.ThrowIfNullOrWhiteSpace(actionId);
         var pending = state.StratagemSelectionPending ??
             throw new InvalidOperationException(
-                "No standalone Stratagem selection is pending.");
+                "No semantic Stratagem selection is pending.");
         if (!pending.Candidates.Any(candidate =>
                 candidate.ActionId == actionId))
             throw new InvalidOperationException(
@@ -520,11 +535,23 @@ public static class SemanticCombatDrawEngineV111
             CanonicalJson.Sha256(pending))
             throw new InvalidDataException(
                 "Stratagem selection event changed during resolution.");
+        RunState resumedRun = selection.Run;
+        int remaining;
+        if (state.AutomaticHandDraw)
+        {
+            using (ControlledChanceGuardV111.Enter())
+                (resumedRun, remaining) =
+                    PrototypeGameEngine.BeginSemanticCombatDraw(
+                        resumedRun, state.RemainingCount,
+                        fromHandDraw: true);
+        }
+        else
+            remaining = RemainingSemanticDrawCount(
+                selection.Run, state.RemainingCount, drawnBefore);
         var next = state with
         {
-            Run = selection.Run,
-            RemainingCount = RemainingSemanticDrawCount(
-                selection.Run, state.RemainingCount, drawnBefore),
+            Run = resumedRun,
+            RemainingCount = remaining,
             StratagemSelectionTranscript =
                 state.StratagemSelectionTranscript
                     .Append(decision.Fork()).ToArray()
@@ -752,7 +779,8 @@ public static class SemanticCombatDrawEngineV111
         {
             var cursor = combat.AutomaticPipelineContinuation;
             bool awaiting = deck.Pending is not null || cost is not null ||
-                drawInsertionPending is not null;
+                drawInsertionPending is not null ||
+                stratagemSelectionPending is not null;
             if (randomPileCardPending is not null)
             {
                 if (cursor is null ||
@@ -821,11 +849,16 @@ public static class SemanticCombatDrawEngineV111
                 "Standalone semantic draw continuation has a stale count.");
         if (stratagemSelectionPending is { } selectionEvent)
         {
-            var operation = TryGetStandaloneSemanticDrawOperation(
-                combat.PendingChoice!, out var draw)
-                ? draw : null;
-            if (operation is null || state.RemainingCount <= 0 ||
-                operation.Amount != state.RemainingCount ||
+            bool cursorMatches = state.AutomaticHandDraw
+                ? PrototypeGameEngine.IsSemanticAutomaticHandDraw(combat) &&
+                  combat.AutomaticPipelineContinuation!
+                      .ControlledSemanticDrawRemaining == state.RemainingCount &&
+                  combat.AutomaticPipelineContinuation
+                      .ControlledSemanticDrawRequested == state.RequestedCount
+                : TryGetStandaloneSemanticDrawOperation(
+                      combat.PendingChoice!, out var draw) &&
+                  draw.Amount == state.RemainingCount;
+            if (!cursorMatches || state.RemainingCount <= 0 ||
                 selectionEvent.MaximumSelections !=
                     ExpectedStratagemSelectionCount(combat))
                 throw new InvalidDataException(

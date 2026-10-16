@@ -2594,6 +2594,19 @@ public sealed partial class PrototypeGameEngine
                         }
                     };
                 }
+                if (ControlledChanceGuardV111.Active &&
+                    combat.SemanticDeck is
+                        { Mode: SemanticDeckStateV111.NatureMode } &&
+                    drawn.ShuffleSelectionPending)
+                {
+                    var advanced = state with
+                    {
+                        Player = player,
+                        World = world with { Combat = combat }
+                    };
+                    return SuspendSemanticAutomaticDrawForStratagemSelection(
+                        advanced, drawn, requestedHandDraw);
+                }
                 if (drawn.ControlledDrawCostPending)
                 {
                     int stageIndex = Array.FindIndex(
@@ -2716,7 +2729,8 @@ public sealed partial class PrototypeGameEngine
     };
 
     private static PrototypeQueuedOperation StratagemChoiceOperation(
-        CombatState combat, bool semanticStandaloneDraw = false)
+        CombatState combat, bool semanticStandaloneDraw = false,
+        bool semanticAutomaticDraw = false)
     {
         var amount = combat.PlayerPowers
             .Where(power => power.PowerId == "proto.power.stratagem")
@@ -2727,7 +2741,9 @@ public sealed partial class PrototypeGameEngine
                 PrototypeCardZone.DrawPile,
                 amount, amount,
                 PrototypeCardSelectionResolutionKind.MoveToHand),
-            SemanticStratagemDrawSelection: semanticStandaloneDraw);
+            SemanticStratagemDrawSelection: semanticStandaloneDraw,
+            AutomaticSemanticStratagemDrawSelection:
+                semanticAutomaticDraw);
     }
 
     private static CombatState ReturnLastTurnReboundCardsToHand(
@@ -6810,7 +6826,9 @@ public sealed partial class PrototypeGameEngine
                             EventDispatchContinuation:
                                 eventDispatchContinuation?.Fork(),
                             SemanticStratagemDrawSelection:
-                                operation.SemanticStratagemDrawSelection)
+                                operation.SemanticStratagemDrawSelection,
+                            AutomaticSemanticStratagemDrawSelection:
+                                operation.AutomaticSemanticStratagemDrawSelection)
                     };
                     return (player, combat);
                 }
@@ -12754,7 +12772,8 @@ public sealed partial class PrototypeGameEngine
             World = world with { Combat = resolved.Combat }
         };
 
-        if (resolved.Combat.PendingChoice is null
+        if (!pending.AutomaticSemanticStratagemDrawSelection &&
+            resolved.Combat.PendingChoice is null
             && resolved.Combat.AutomaticPipelineContinuation is
                 { } automaticContinuation)
         {

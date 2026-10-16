@@ -172,7 +172,6 @@ public sealed partial class PrototypeGameEngine
                 (!semanticDraw.AutomaticSemanticHandDrawSegment ||
                  (semanticDraw.FromHandDraw &&
                   semanticDraw.EventDepth == 0 &&
-                  !semanticDraw.StratagemSelectionPending &&
                   PrototypeGameEngine.IsSemanticAutomaticHandDraw(combat))) &&
                 afterShuffle is not null &&
                 choice.Operation.Amount == 1 &&
@@ -425,9 +424,15 @@ public sealed partial class PrototypeGameEngine
             Operations = new[]
             {
                 StratagemChoiceOperation(
-                    combat, draw.StandaloneSemanticDrawSegment),
-                drawOperation
-            }.Concat(continuation.Operations).ToArray()
+                    combat,
+                    semanticStandaloneDraw:
+                        draw.StandaloneSemanticDrawSegment,
+                    semanticAutomaticDraw:
+                        draw.AutomaticSemanticHandDrawSegment)
+            }.Concat(draw.AutomaticSemanticHandDrawSegment
+                ? continuation.Operations
+                : new[] { drawOperation }.Concat(
+                    continuation.Operations)).ToArray()
         };
         var resolved = ResumeChoiceResolutionContinuation(
             state.Player, combat, state.Rng, resumedContinuation);

@@ -96,9 +96,10 @@ its own typed site, and enemy-side insertion now has typed sites. Their
 after-shuffle insertion composes with card-effect draws, standalone conditioned
 draws, and the automatic `DrawPlayerHand` continuation. Standalone Stratagem
 selection resumes the same saved draw across the source `select_cards` choice.
-Automatic Stratagem selection, nested `CardDrawn` choices in standalone and
-automatic frames, and other recycle contexts remain unsupported under
-controlled Nature pending serializable frames.
+Automatic Stratagem selection resumes the same draw and composes with
+after-shuffle insertion and draw-cost stages. Nested `CardDrawn` choices in
+standalone and automatic frames, and other recycle contexts remain unsupported
+under controlled Nature pending serializable frames.
 Legacy combat-entry and summoned-enemy HP rolls, Overgrowth encounter-bag
 choices, weighted encounter tickets, encounter-formation selections, and
 opening AI rotation now pass through the shared typed adapter while retaining

@@ -45,8 +45,11 @@ automatic cursor also saves the requested and remaining draw counts around the
 typed insertion event. Resolving each insertion synchronizes the semantic deck
 with the physical pile and resumes the same `DrawCards` call. This route uses
 the existing post-hand-draw cleanup and advances the automatic cursor once the
-draw finishes. Stratagem combined with an insertion and nested `CardDrawn`
-choices remain unsupported.
+draw finishes. If Stratagem is active after recycling, its source
+`select_cards` choice is saved as part of the automatic cursor; resolving it
+continues the same remaining draw. This also composes with after-shuffle
+insertions and drawn-cost stages. Nested `CardDrawn` choices remain
+unsupported.
 
 When the requested draw ends, the source's `RemoveAfterHandDraw` and
 `DecrementAfterHandDraw` power hooks execute once and the saved
@@ -79,8 +82,8 @@ integration should connect prior enemy actions, visible next-intent
 Nature decisions, and later automatic steps into one
 `step` → `nature_resolve` → `step` controller. Opening-hand and
 player-card-effect draw contexts also require their own saved
-continuations. Stratagem selection in the automatic draw pipeline, nested
-`CardDrawn` choices and native RNG source-law parity remain separate gates.
+continuations. Nested `CardDrawn` choices and native RNG source-law parity
+remain separate gates.
 The Jeweled Mask continuation and its JSONL / Python route are implemented but
 have not been mechanics-tested.
 

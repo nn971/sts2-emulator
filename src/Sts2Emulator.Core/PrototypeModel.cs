@@ -716,7 +716,9 @@ public sealed record PrototypeQueuedOperation(
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
     bool StandaloneSemanticDrawSegment = false,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-    bool SemanticStratagemDrawSelection = false);
+    bool SemanticStratagemDrawSelection = false,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    bool AutomaticSemanticStratagemDrawSelection = false);
 
 public sealed record PrototypeRunEffectSpec(
     PrototypeRunEffectKind Kind,
@@ -2004,7 +2006,9 @@ public sealed record PendingCombatChoiceState(
     PrototypeControlledRandomPileCardV111? ControlledRandomPileCard = null,
     PrototypeControlledSemanticDrawV111? ControlledSemanticDraw = null,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-    bool SemanticStratagemDrawSelection = false)
+    bool SemanticStratagemDrawSelection = false,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    bool AutomaticSemanticStratagemDrawSelection = false)
 {
     public PendingCombatChoiceState Fork() => this with
     {

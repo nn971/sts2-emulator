@@ -589,3 +589,16 @@ unsupported. The Release solution build passes with zero warnings or errors;
 tests were not run for this checkpoint. Conditional probabilities remain
 `UNVERIFIED`; see
 [`NATURE_SEMANTIC_COMBAT_DRAW_143.md`](NATURE_SEMANTIC_COMBAT_DRAW_143.md).
+
+## 2026-10-17: automatic hand-draw Stratagem selection
+
+The semantic automatic `DrawPlayerHand` segment now suspends on Stratagem's
+source `select_cards` event after recycle, then resumes the saved remaining
+draw. The selection composes with after-shuffle insertions and draw-cost
+stages, and the existing hand-draw cleanup still runs once at completion. The
+shared source selection path synchronizes the semantic deck before queued
+draw operations resume. Nested `CardDrawn` choices remain unsupported.
+The Release solution build passes with zero warnings or errors; tests were not
+run for this checkpoint.
+Conditional probabilities remain `UNVERIFIED`; see
+[`NATURE_SEMANTIC_AUTOMATIC_HAND_DRAW_143.md`](NATURE_SEMANTIC_AUTOMATIC_HAND_DRAW_143.md).

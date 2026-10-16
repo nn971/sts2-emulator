@@ -3460,6 +3460,28 @@ public static class PrototypeStateInvariants
                     throw new InvalidOperationException(
                         "Standalone Stratagem selection is malformed.");
             }
+            if (pending.AutomaticSemanticStratagemDrawSelection)
+            {
+                int stratagemPicks = combat.PlayerPowers.Where(power =>
+                        power.PowerId == "proto.power.stratagem")
+                    .Sum(power => Math.Max(0, power.Stacks));
+                int expectedStratagemPicks = Math.Min(stratagemPicks,
+                    Math.Min(combat.DrawPile.Length,
+                        Math.Max(0, 10 - combat.Hand.Length)));
+                if (pending.SemanticStratagemDrawSelection ||
+                    pending.ChoiceId != "select_cards" ||
+                    pending.Selection.SourceZone !=
+                        PrototypeCardZone.DrawPile ||
+                    pending.Selection.MinSelections != expectedStratagemPicks ||
+                    pending.Selection.MaxSelections != expectedStratagemPicks ||
+                    stratagemPicks <= 0 || combat.Hand.Length >= 10 ||
+                    combat.SemanticDeck is not
+                        { Mode: SemanticDeckStateV111.NatureMode,
+                            Pending: null } ||
+                    !PrototypeGameEngine.IsSemanticAutomaticHandDraw(combat))
+                    throw new InvalidOperationException(
+                        "Automatic Stratagem selection is malformed.");
+            }
             var savedChoiceOperations = new List<PrototypeQueuedOperation>(
                 pending.Continuation);
             for (var outer = pending.OuterChoiceContinuation;
