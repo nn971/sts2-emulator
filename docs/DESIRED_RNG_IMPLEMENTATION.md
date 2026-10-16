@@ -93,8 +93,9 @@ The supported generated draw-pile operations now use typed model-pick requests
 on native `run.combat_card_generation` and position requests on `run.shuffle`;
 the legacy profile preserves `combat`. Post-shuffle relic insertion now has
 its own typed site, and enemy-side insertion now has typed sites. Their
-post-shuffle and enemy-turn continuations remain unsupported under controlled
-Nature pending serializable frames.
+after-shuffle insertion composes with the saved card-effect draw frame;
+other recycle contexts and enemy-turn insertions remain unsupported under
+controlled Nature pending serializable frames.
 Legacy combat-entry and summoned-enemy HP rolls, Overgrowth encounter-bag
 choices, weighted encounter tickets, encounter-formation selections, and
 opening AI rotation now pass through the shared typed adapter while retaining

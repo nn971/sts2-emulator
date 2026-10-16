@@ -379,6 +379,13 @@ internal static class PrototypeAiJsonlServer
                 sites.Add("random_draw_attack_card_model");
                 sites.Add("generated_draw_pile_insertion");
             }
+            if ((state.Run.World?.Combat?.PendingChoice?
+                    .ControlledDrawInsertion?.AfterShuffleRelic is not null ||
+                 state.Run.Player.ActiveRelics.Any(relic =>
+                     PrototypeContent.Relic(relic.RelicId)
+                         .AfterShuffleGeneratedCardId is not null)) &&
+                !sites.Contains("generated_draw_pile_insertion"))
+                sites.Add("generated_draw_pile_insertion");
             if (state.SeededEntry?.FixtureRandomizeHandCostsMaxExclusive is not null)
                 sites.Add("random_hand_card_energy_cost");
             if (state.SeededEntry?.FixtureSetRandomHandCardCost is not null)
@@ -413,6 +420,11 @@ internal static class PrototypeAiJsonlServer
                   state.RandomPileCardPending is not null ||
                   state.Run.Player.ActiveRelics.Any(relic =>
                       relic.RelicId == "proto.relic.jeweled_mask") ||
+                  state.Run.World?.Combat?.PendingChoice?
+                      .ControlledDrawInsertion?.AfterShuffleRelic is not null ||
+                  state.Run.Player.ActiveRelics.Any(relic =>
+                      PrototypeContent.Relic(relic.RelicId)
+                          .AfterShuffleGeneratedCardId is not null) ||
                   state.CardShortlistPending is not null ||
                   state.HandCostSelectionPending is not null ||
                   state.CostPending?.TargetCardInstanceId is not null

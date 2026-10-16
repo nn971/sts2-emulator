@@ -519,10 +519,12 @@ No shuffle-swap ticket is generated for an already committed deck epoch.
   hooks. This does *not* establish native relic-acquisition provenance.
   CI checks the real Snecko cost path, exact private cursor progression,
   replay, and 1-vs-15 independent external JSONL process equality.
-- Other non-intent/draw random mechanics (targeting, generation,
-  random insertion, nested hooks, etc.) still fail explicitly at their
-  unmigrated guarded sites. A complete multi-site native/default provider
-  remains P0.4 work.
+- Other non-intent/draw random mechanics (targeting, generation, enemy-side
+  insertion, nested hooks, and unsupported draw contexts) still fail
+  explicitly at their unmigrated guarded sites. Limited card-effect draw
+  continuations now include after-shuffle relic insertion through the
+  existing semantic draw-insertion event. A complete multi-site
+  native/default provider remains P0.4 work.
 
 Example:
 ```python

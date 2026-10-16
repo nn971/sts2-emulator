@@ -1839,15 +1839,34 @@ public sealed record PrototypeControlledGeneratedCardV111(
 /// </summary>
 public sealed record PrototypeControlledDrawInsertionV111(
     PrototypeQueuedOperation Operation, string Stage, string? SelectedCardId,
-    string[] CandidateCardIds, long[] EligibleDrawPile)
+    string[] CandidateCardIds, long[] EligibleDrawPile,
+    PrototypeControlledSemanticDrawV111? SemanticDrawContinuation = null,
+    PrototypeAfterShuffleRelicInsertionV111? AfterShuffleRelic = null,
+    PrototypeAfterShuffleRelicInsertionV111[]? CompletedAfterShuffleRelics = null,
+    PrototypeAfterShuffleRelicInsertionV111[]? RemainingAfterShuffleRelics = null,
+    string RequestSiteId = "combat.draw_pile.random_insert_index",
+    string RequestOwnerId = "prototype.combat",
+    int RequestOrdinal = 0)
 {
     public PrototypeControlledDrawInsertionV111 Fork() => this with
     {
         Operation = Operation with { },
         CandidateCardIds = (string[])CandidateCardIds.Clone(),
-        EligibleDrawPile = (long[])EligibleDrawPile.Clone()
+        EligibleDrawPile = (long[])EligibleDrawPile.Clone(),
+        SemanticDrawContinuation = SemanticDrawContinuation?.Fork(),
+        AfterShuffleRelic = AfterShuffleRelic is null
+            ? null : AfterShuffleRelic with { },
+        CompletedAfterShuffleRelics = CompletedAfterShuffleRelics is null
+            ? null : CompletedAfterShuffleRelics
+                .Select(item => item with { }).ToArray(),
+        RemainingAfterShuffleRelics = RemainingAfterShuffleRelics is null
+            ? null : RemainingAfterShuffleRelics
+                .Select(item => item with { }).ToArray()
     };
 }
+
+public sealed record PrototypeAfterShuffleRelicInsertionV111(
+    string RelicId, long RelicApplicationOrder, string CardId);
 
 /// <summary>
 /// Source-ordered full-pool generation shuffle waiting on a Nature swap.

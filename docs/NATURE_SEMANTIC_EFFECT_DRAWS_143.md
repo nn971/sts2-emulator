@@ -43,10 +43,14 @@ boundaries. The event uses the existing semantic draw schema and reports
 
 ## Current limits
 
-For these supported cards, draw hooks must not open another choice. Draws that
-trigger pile recycling, Stratagem selection, random post-shuffle card
-insertion or a nested `CardDrawn` choice still fail closed until those
-continuation stages compose with the saved draw frame. Arbitrary follow-up
+For these supported cards, draw hooks must not open another choice. The saved
+draw frame crosses a nonempty-discard recycle through the existing
+`RecycleNature` epoch and preserves the Perfect Fit top-pool constraint.
+When an after-shuffle relic inserts a generated card, the existing semantic
+draw-insertion event suspends the frame and resumes it after the chosen
+position is committed. Stratagem selection and nested `CardDrawn` choices
+still fail closed. Other draw-pipeline recycle contexts with after-shuffle
+insertions remain outside this card-effect continuation. Arbitrary follow-up
 choices and multiple nested choice levels remain outside the current support.
 Native source probability laws remain unverified.
 

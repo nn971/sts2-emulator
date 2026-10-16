@@ -6034,11 +6034,15 @@ public sealed partial class PrototypeGameEngine
                         controlledDrawCostSuspension:
                             semanticDrawSuspension,
                         controlledSemanticDrawSuspension:
+                            semanticDrawSuspension,
+                        controlledAfterShuffleInsertionSuspension:
                             semanticDrawSuspension);
                     player = drawn.Player;
                     combat = drawn.Combat;
                     if (drawn.ControlledSemanticDrawPending ||
-                        drawn.ControlledDrawCostPending)
+                        drawn.ControlledDrawCostPending ||
+                        drawn.ControlledAfterShuffleInsertions is
+                            { Length: > 0 })
                     {
                         if (drawn.ControlledRecyclePending ||
                             drawn.ShuffleSelectionPending)
@@ -6070,6 +6074,13 @@ public sealed partial class PrototypeGameEngine
                                 eventDepth + 1,
                                 operation.DrawnCardKeyword,
                                 drawn.DrawnCardInstanceIds);
+                        if (drawn.ControlledAfterShuffleInsertions is
+                            { Length: > 0 } afterShuffleInsertions)
+                            return (player,
+                                MakeControlledAfterShuffleInsertionChoice(
+                                    combat, afterShuffleInsertions[0],
+                                    afterShuffleInsertions.Skip(1).ToArray(),
+                                    [], suspendedDraw, continuation, 0));
                         if (drawn.ControlledSemanticDrawPending)
                             return (player,
                                 MakeControlledSemanticDrawChoice(
@@ -13641,7 +13652,8 @@ public sealed partial class PrototypeGameEngine
             state.Player, combat, draw.RemainingCount, state.Rng,
             draw.FromHandDraw, eventDepth: draw.EventDepth,
             controlledDrawCostSuspension: true,
-            controlledSemanticDrawSuspension: true);
+            controlledSemanticDrawSuspension: true,
+            controlledAfterShuffleInsertionSuspension: true);
         return ContinueControlledSemanticEffectDraw(
             state, drawn, draw, continuation);
     }
@@ -13651,6 +13663,27 @@ public sealed partial class PrototypeGameEngine
         PrototypeControlledSemanticDrawV111 draw,
         PrototypeChoiceResolutionContinuationState continuation)
     {
+        if (drawn.ControlledAfterShuffleInsertions is
+            { Length: > 0 } afterShuffleInsertions)
+        {
+            var insertionKeywordIds =
+                (draw.DeferredKeywordCardInstanceIds ?? [])
+                .Concat(drawn.DrawnCardInstanceIds).Distinct().ToArray();
+            var drawAfterInsertion = draw with
+            {
+                RemainingCount = drawn.RemainingCount,
+                DeferredKeywordCardInstanceIds = insertionKeywordIds
+            };
+            var nextCombat = MakeControlledAfterShuffleInsertionChoice(
+                drawn.Combat, afterShuffleInsertions[0],
+                afterShuffleInsertions.Skip(1).ToArray(), [],
+                drawAfterInsertion, continuation, 0);
+            return state with
+            {
+                Player = drawn.Player,
+                World = state.World! with { Combat = nextCombat }
+            };
+        }
         if (drawn.ControlledRecyclePending || drawn.ShuffleSelectionPending)
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.card_effect.draw " +
@@ -15361,7 +15394,9 @@ public sealed partial class PrototypeGameEngine
         bool ShuffleSelectionPending = false,
         bool ControlledRecyclePending = false,
         bool ControlledDrawCostPending = false,
-        bool ControlledSemanticDrawPending = false);
+        bool ControlledSemanticDrawPending = false,
+        PrototypeAfterShuffleRelicInsertionV111[]?
+            ControlledAfterShuffleInsertions = null);
 
     private static PrototypeDrawCardsResult DrawCards(
         PlayerState player,
@@ -15372,7 +15407,8 @@ public sealed partial class PrototypeGameEngine
         int eventDepth = 0,
         bool controlledRecycleSuspension = false,
         bool controlledDrawCostSuspension = false,
-        bool controlledSemanticDrawSuspension = false)
+        bool controlledSemanticDrawSuspension = false,
+        bool controlledAfterShuffleInsertionSuspension = false)
     {
         const int maxHandSize = 10;
         var drawnCardInstanceIds = new List<long>();
@@ -15415,17 +15451,6 @@ public sealed partial class PrototypeGameEngine
                         throw new NotSupportedException(
                             "UNSUPPORTED_SEMANTIC_DECK site=combat.draw.recycle " +
                             "operation=stratagem_player_selection");
-                    // Nature needs a saved continuation for a random
-                    // after-shuffle insertion. Native exact mode can commit
-                    // the source-selected position directly below.
-                    if (deferred.Mode == SemanticDeckStateV111.NatureMode &&
-                        combat.RelicStates.Where(relic => !relic.IsMelted)
-                            .Any(relic => PrototypeContent.Relic(relic.RelicId)
-                                .AfterShuffleGeneratedCardId is not null))
-                        throw new NotSupportedException(
-                            "UNSUPPORTED_SEMANTIC_DECK site=combat.draw.recycle " +
-                            "operation=after_shuffle_random_insertion");
-
                     var perfectFit = discard.Where(id =>
                         RequireCombatCard(combat, id).Enchantment?.Kind
                             == PrototypeCardEnchantmentKind.PerfectFit)
@@ -15494,6 +15519,24 @@ public sealed partial class PrototypeGameEngine
                             DrawPile = draw.ToArray(),
                             DiscardPile = []
                         };
+                        var afterShuffleInsertions =
+                            ControlledAfterShuffleRelicInsertions(combat);
+                        if (afterShuffleInsertions.Length > 0)
+                        {
+                            if (!ControlledChanceGuardV111.Active ||
+                                !controlledSemanticDrawSuspension ||
+                                !controlledAfterShuffleInsertionSuspension)
+                                throw new NotSupportedException(
+                                    "UNSUPPORTED_SEMANTIC_DECK " +
+                                    "site=combat.draw.recycle " +
+                                    "operation=missing_after_shuffle_continuation");
+                            return new PrototypeDrawCardsResult(
+                                player, combat,
+                                drawnCardInstanceIds.ToArray(),
+                                RemainingCount: count - drawNumber,
+                                ControlledAfterShuffleInsertions:
+                                    afterShuffleInsertions);
+                        }
                     }
                 }
                 else

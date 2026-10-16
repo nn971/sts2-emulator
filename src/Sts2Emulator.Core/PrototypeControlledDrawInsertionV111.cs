@@ -21,7 +21,12 @@ public sealed partial class PrototypeGameEngine
 
     private static CombatState MakeControlledDrawInsertionChoice(
         CombatState combat, PrototypeQueuedOperation operation,
-        PrototypeChoiceResolutionContinuationState continuation)
+        PrototypeChoiceResolutionContinuationState continuation,
+        PrototypeControlledSemanticDrawV111? semanticDrawContinuation = null,
+        PrototypeAfterShuffleRelicInsertionV111? afterShuffleRelic = null,
+        PrototypeAfterShuffleRelicInsertionV111[]? completedAfterShuffleRelics = null,
+        PrototypeAfterShuffleRelicInsertionV111[]? remainingAfterShuffleRelics = null,
+        int requestOrdinal = 0)
     {
         if (!ControlledChanceGuardV111.Active ||
             combat.PendingChoice is not null || operation.Amount <= 0)
@@ -70,24 +75,107 @@ public sealed partial class PrototypeGameEngine
                 OuterChoiceContinuation: continuation.Fork(),
                 ControlledDrawInsertion: new PrototypeControlledDrawInsertionV111(
                     operation with { }, stage, selected, pool,
-                    (long[])combat.DrawPile.Clone()))
+                    (long[])combat.DrawPile.Clone(),
+                    SemanticDrawContinuation: semanticDrawContinuation?.Fork(),
+                    AfterShuffleRelic: afterShuffleRelic is null
+                        ? null : afterShuffleRelic with { },
+                    CompletedAfterShuffleRelics:
+                        completedAfterShuffleRelics is null
+                            ? null : completedAfterShuffleRelics
+                                .Select(item => item with { }).ToArray(),
+                    RemainingAfterShuffleRelics: remainingAfterShuffleRelics is null
+                        ? null : remainingAfterShuffleRelics
+                            .Select(item => item with { }).ToArray(),
+                    RequestSiteId: afterShuffleRelic is null
+                        ? "combat.draw_pile.random_insert_index"
+                        : "combat.relic.after_shuffle.generated_card.random_insert_index",
+                    RequestOwnerId: afterShuffleRelic is null
+                        ? "prototype.combat"
+                        : "relic:" + afterShuffleRelic.RelicId +
+                            ":application:" + afterShuffleRelic.RelicApplicationOrder,
+                    RequestOrdinal: requestOrdinal))
         };
     }
+
+    private static bool ValidateAfterShuffleRelicInsertion(
+        CombatState combat, PrototypeAfterShuffleRelicInsertionV111 insertion)
+    {
+        var relic = combat.RelicStates.SingleOrDefault(state =>
+            state.ApplicationOrder == insertion.RelicApplicationOrder &&
+            state.RelicId == insertion.RelicId && !state.IsMelted);
+        return relic is not null &&
+            PrototypeContent.Relic(relic.RelicId)
+                .AfterShuffleGeneratedCardId == insertion.CardId;
+    }
+
+    private static PrototypeAfterShuffleRelicInsertionV111[]
+        ControlledAfterShuffleRelicInsertions(CombatState combat) =>
+        combat.RelicStates.Where(relic => !relic.IsMelted)
+            .OrderBy(relic => relic.ApplicationOrder)
+            .Select(relic => new
+            {
+                Relic = relic,
+                CardId = PrototypeContent.Relic(relic.RelicId)
+                    .AfterShuffleGeneratedCardId
+            })
+            .Where(item => item.CardId is not null)
+            .Select(item => new PrototypeAfterShuffleRelicInsertionV111(
+                item.Relic.RelicId, item.Relic.ApplicationOrder,
+                item.CardId!))
+            .ToArray();
 
     internal static bool ValidateControlledDrawInsertion(
         CombatState combat, PrototypeControlledDrawInsertionV111 choice)
     {
-        if (choice.Operation.Amount <= 0 ||
-            !combat.DrawPile.SequenceEqual(choice.EligibleDrawPile) ||
-            choice.CandidateCardIds is null ||
-            choice.EligibleDrawPile is null)
+        if (choice.CandidateCardIds is null ||
+            choice.EligibleDrawPile is null || choice.Operation.Amount <= 0 ||
+            !combat.DrawPile.SequenceEqual(choice.EligibleDrawPile))
             return false;
         if (choice.Operation.Kind ==
             PrototypeCombatEffectKind.CreateGeneratedCardsAtRandomDrawPositions)
-            return choice.Stage == "position" &&
+        {
+            var basicSupport = choice.Stage == "position" &&
                 choice.Operation.CardId is not null &&
                 choice.SelectedCardId == choice.Operation.CardId &&
                 choice.CandidateCardIds.Length == 0;
+            if (!basicSupport) return false;
+            if (choice.SemanticDrawContinuation is null)
+                return choice.AfterShuffleRelic is null &&
+                    choice.CompletedAfterShuffleRelics is null &&
+                    choice.RemainingAfterShuffleRelics is null &&
+                    choice.RequestSiteId ==
+                        "combat.draw_pile.random_insert_index" &&
+                    choice.RequestOwnerId == "prototype.combat" &&
+                    choice.RequestOrdinal == 0;
+            var semanticDraw = choice.SemanticDrawContinuation;
+            var afterShuffle = choice.AfterShuffleRelic;
+            var completed = choice.CompletedAfterShuffleRelics ?? [];
+            var remaining = choice.RemainingAfterShuffleRelics ?? [];
+            var expectedInsertions = ControlledAfterShuffleRelicInsertions(
+                combat);
+            var savedInsertions = afterShuffle is null
+                ? Array.Empty<PrototypeAfterShuffleRelicInsertionV111>()
+                : completed.Concat(new[] { afterShuffle })
+                    .Concat(remaining).ToArray();
+            return semanticDraw.RemainingCount > 0 &&
+                semanticDraw.EventDepth >= 0 &&
+                semanticDraw.DeferredKeywordCardInstanceIds?.Distinct().Count() ==
+                    semanticDraw.DeferredKeywordCardInstanceIds?.Length &&
+                afterShuffle is not null &&
+                choice.Operation.Amount == 1 &&
+                choice.Operation.CardId == afterShuffle.CardId &&
+                completed.All(item =>
+                    ValidateAfterShuffleRelicInsertion(combat, item)) &&
+                ValidateAfterShuffleRelicInsertion(combat, afterShuffle) &&
+                remaining.All(item =>
+                    ValidateAfterShuffleRelicInsertion(combat, item)) &&
+                savedInsertions.SequenceEqual(expectedInsertions) &&
+                choice.RequestSiteId ==
+                    "combat.relic.after_shuffle.generated_card.random_insert_index" &&
+                choice.RequestOwnerId == "relic:" + afterShuffle.RelicId +
+                    ":application:" + afterShuffle.RelicApplicationOrder &&
+                choice.RequestOrdinal >= 0;
+        }
         if (choice.Operation.Kind !=
             PrototypeCombatEffectKind.CreateRandomFreeAttacksInDrawPile ||
             !choice.CandidateCardIds.SequenceEqual(ControlledRandomDrawAttackPool()))
@@ -151,23 +239,78 @@ public sealed partial class PrototypeGameEngine
             choice.SelectedCardId is not { } cardId)
             throw new ArgumentOutOfRangeException(nameof(chosen));
         var instanceId = combat.NextCardInstanceId;
-        var card = new CombatCardInstance(
-            instanceId, null, cardId, 0, true,
-            PrototypeJson.EmptyObject(),
-            TemporaryEnergyCost: choice.Operation.Kind ==
-                PrototypeCombatEffectKind.CreateRandomFreeAttacksInDrawPile
-                ? new PrototypeTemporaryCardCost(
-                    0, PrototypeTemporaryCardCostExpiry.None)
-                : null);
+        if (choice.AfterShuffleRelic is not null)
+        {
+            combat = AddGeneratedCardsToDiscard(combat, cardId, 1);
+            if (combat.NextCardInstanceId != instanceId + 1)
+                throw new InvalidDataException(
+                    "After-shuffle relic insertion changed its card identity.");
+        }
+        else
+        {
+            var card = new CombatCardInstance(
+                instanceId, null, cardId, 0, true,
+                PrototypeJson.EmptyObject(),
+                TemporaryEnergyCost: choice.Operation.Kind ==
+                    PrototypeCombatEffectKind.CreateRandomFreeAttacksInDrawPile
+                    ? new PrototypeTemporaryCardCost(
+                        0, PrototypeTemporaryCardCostExpiry.None)
+                    : null);
+            combat = combat with
+            {
+                NextCardInstanceId = instanceId + 1,
+                Cards = combat.Cards.Append(card).ToArray()
+            };
+        }
         var draw = combat.DrawPile.ToList();
         draw.Insert(chosen, instanceId);
+        var semanticDeck = choice.SemanticDrawContinuation is null
+            ? combat.SemanticDeck
+            : SynchronizeSemanticDrawPileAfterInsertion(
+                combat, chosen, instanceId);
         combat = combat with
         {
             PendingChoice = null,
-            NextCardInstanceId = instanceId + 1,
-            Cards = combat.Cards.Append(card).ToArray(),
-            DrawPile = draw.ToArray()
+            DrawPile = draw.ToArray(),
+            SemanticDeck = semanticDeck,
+            DiscardPile = choice.AfterShuffleRelic is null
+                ? combat.DiscardPile
+                : combat.DiscardPile.Where(id => id != instanceId).ToArray()
         };
+
+        if (choice.SemanticDrawContinuation is { } semanticDraw)
+        {
+            var remainingInsertions =
+                choice.RemainingAfterShuffleRelics ?? [];
+            if (remainingInsertions.Length > 0)
+            {
+                var nextCombat = MakeControlledAfterShuffleInsertionChoice(
+                    combat, remainingInsertions[0],
+                    remainingInsertions.Skip(1).ToArray(),
+                    (choice.CompletedAfterShuffleRelics ?? [])
+                        .Append(choice.AfterShuffleRelic!).ToArray(),
+                    semanticDraw, continuation, choice.RequestOrdinal + 1);
+                return state with
+                {
+                    World = world with { Combat = nextCombat }
+                };
+            }
+
+            var resumedDraw = DrawCards(
+                state.Player, combat, semanticDraw.RemainingCount, state.Rng,
+                semanticDraw.FromHandDraw, eventDepth: semanticDraw.EventDepth,
+                controlledDrawCostSuspension: true,
+                controlledSemanticDrawSuspension: true,
+                controlledAfterShuffleInsertionSuspension: true);
+            var drawState = state with
+            {
+                World = world with { Combat = combat }
+            };
+            return ResumeControlledInsertionPipeline(
+                ContinueControlledSemanticEffectDraw(
+                    drawState, resumedDraw, semanticDraw, continuation));
+        }
+
         var resolved = ResumeChoiceResolutionContinuation(
             state.Player, combat, state.Rng, continuation);
         var updated = state with
@@ -199,6 +342,50 @@ public sealed partial class PrototypeGameEngine
             AllEnemiesDefeated(live))
             return EnterCombatReward(updated);
         return updated;
+    }
+
+    private static CombatState MakeControlledAfterShuffleInsertionChoice(
+        CombatState combat,
+        PrototypeAfterShuffleRelicInsertionV111 insertion,
+        PrototypeAfterShuffleRelicInsertionV111[] remaining,
+        PrototypeAfterShuffleRelicInsertionV111[] completed,
+        PrototypeControlledSemanticDrawV111 semanticDraw,
+        PrototypeChoiceResolutionContinuationState continuation,
+        int ordinal)
+    {
+        var operation = new PrototypeQueuedOperation(
+            PrototypeCombatEffectKind.CreateGeneratedCardsAtRandomDrawPositions,
+            1, CardId: insertion.CardId);
+        return MakeControlledDrawInsertionChoice(
+            combat, operation, continuation, semanticDraw, insertion,
+            completed, remaining, ordinal);
+    }
+
+    private static RunState ResumeControlledInsertionPipeline(RunState state)
+    {
+        if (state.Phase == RunPhase.Combat &&
+            state.World?.Combat is { PendingChoice: null,
+                AutomaticPipelineContinuation: { } automatic } combat)
+        {
+            state = state with
+            {
+                World = state.World with
+                {
+                    Combat = combat with
+                    {
+                        AutomaticPipelineContinuation = null
+                    }
+                }
+            };
+            state = automatic.OpeningStage is { } openingStage
+                ? ResumeOpeningCombat(state, openingStage)
+                : ResumeAutomaticPipeline(state, automatic.NextStepIndex,
+                    automatic.PendingPostDispatchEventKind);
+        }
+        if (state.Phase == RunPhase.Combat &&
+            state.World?.Combat is { } live && AllEnemiesDefeated(live))
+            return EnterCombatReward(state);
+        return state;
     }
 
     /// <summary>

@@ -28,10 +28,18 @@ public sealed record SemanticDrawInsertionEventV111(
     public void Validate()
     {
         Request.Validate();
+        var supportedSite = Request.SiteId ==
+                "combat.draw_pile.random_insert_index" &&
+                Request.OwnerId == "prototype.combat" ||
+            Request.SiteId ==
+                "combat.relic.after_shuffle.generated_card.random_insert_index" &&
+                Request.OwnerId.StartsWith("relic:", StringComparison.Ordinal) &&
+                Request.OwnerId.Contains(":application:",
+                    StringComparison.Ordinal);
         if (SchemaId != EventSchemaId ||
             string.IsNullOrWhiteSpace(BoundaryFingerprint) ||
             string.IsNullOrWhiteSpace(GeneratedCardModelId) ||
-            Request.SiteId != "combat.draw_pile.random_insert_index" ||
+            !supportedSite ||
             Request.StreamId != "prototype.combat" ||
             Request.OperationKind != "bounded_integer" ||
             EligibleDrawPileInstanceIds is null ||

@@ -17,9 +17,12 @@ draw observes an empty draw pile and nonempty discard:
    and increments the semantic provider's shuffle epoch.
 3. Instead of issuing one Nature decision for every source-time
    Fisher–Yates swap, the provider keeps the new epoch **unresolved**.
-4. The original `DrawCards` loop continues and asks Nature for the first
-   physically required card instance; each subsequent draw triggers its
-   own legal identity ticket and normal `CardDrawn` hooks.
+4. When a card-effect draw crosses the recycle and an after-shuffle relic
+   inserts a generated card, the draw frame suspends on the existing semantic
+   insertion event. After the position is selected, the same `DrawCards` loop
+   continues and asks Nature for the first physically required card instance;
+   each subsequent draw triggers its own legal identity ticket and normal
+   `CardDrawn` hooks.
 5. Under the controlled provider no shadow native RNG step is consumed.
    Exact stream call count/seed parity remain obligations of the separate
    native provider path, whose code is unchanged.
@@ -44,13 +47,11 @@ choose semantic Nature outcomes.
 
 ## Explicit remaining hooks
 
-Current `ApplyRelicAfterShuffleCards` adds a generated card and inserts
-it at a source-random position when a relevant relic is active. A correct
-semantic continuation needs **new-card creation, position choice and
-positional-constraint update** in source order. Until that exists this
-path fails before the recycle changes any state:
-
-`UNSUPPORTED_SEMANTIC_DECK site=combat.draw.recycle operation=after_shuffle_random_insertion`
+An active after-shuffle relic inserts its generated card at a random draw-pile
+position. The card-effect draw continuation now reuses the semantic insertion
+event and updates the provider deck before resuming the same draw. Other
+recycle contexts without that saved card-effect frame still fail closed at
+`combat.draw.recycle` for after-shuffle insertion.
 
 Stratagem can suspend for a player selection *after* a shuffle and before
 the resumed draw. That choice also requires its own nested continuation;
@@ -58,12 +59,11 @@ it currently fails atomically:
 
 `UNSUPPORTED_SEMANTIC_DECK site=combat.draw.recycle operation=stratagem_player_selection`
 
-The current real-semantic bridge is still a **conditioned draw segment**,
-not a full opening-hand/turn/card-effect/JSONL implementation. Snecko Eye,
-Slither, nested `CardDrawn` decisions, split-pool unknown-position deck
-mutation,
-native seeded parity, source probability and original-game importance
-weights remain separate future gates.
+The real-semantic bridge now includes limited card-effect draw continuations,
+but is not a complete opening-hand/turn/card-effect/JSONL implementation.
+Snecko Eye, Slither, Stratagem selection, nested `CardDrawn` decisions,
+split-pool unknown-position deck mutation, native seeded parity, source
+probability and original-game importance weights remain separate future gates.
 
 ## Tests
 
