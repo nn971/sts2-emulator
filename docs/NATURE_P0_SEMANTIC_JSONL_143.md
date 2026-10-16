@@ -28,7 +28,7 @@ non-Nature RNG parity remain **UNVERIFIED**.
 - `semanticChanceSchemaId = sts2-v111-semantic-playable-p0-v1`.
 - `semanticDrawChoiceSchemaId = sts2-v111-semantic-deck-v1`.
 - `semanticDrawHookChoiceSchemaId =
-  sts2-v111-semantic-draw-hook-choice-v1`.
+  sts2-v111-semantic-draw-hook-choice-v2`.
 - `semanticRandomPileCardChoiceSchemaId =
   sts2-v111-semantic-random-pile-card-v1`.
 - `semanticTargetChoiceSchemaId = sts2-v111-semantic-target-choice-v1`.

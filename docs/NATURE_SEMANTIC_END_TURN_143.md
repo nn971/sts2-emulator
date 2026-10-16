@@ -29,7 +29,9 @@ and statuses until the original `AdvanceTurn` intent checkpoint.
    and `CardDrawn` hooks execute between physical draws. After-shuffle relic
    insertions use the typed insertion event, Stratagem uses its source
    `select_cards` action, and ordinary `CardDrawn` hook actions are exposed
-   as player choices before the remaining draw resumes.
+   as player choices before the remaining draw resumes. Ordinary source
+   action choices from `BeforeHandDraw` are also resolved at a player-choice
+   boundary, then resume the saved dispatcher before the hand-draw prelude.
 4. The ordinary one-time post-hand-draw power cleanup advances the
    automatic index. `ResumeSemanticAutomaticAfterHandDraw` executes
    the remaining **real pipeline**. The controller checks that combat

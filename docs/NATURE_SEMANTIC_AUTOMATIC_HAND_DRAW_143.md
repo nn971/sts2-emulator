@@ -32,13 +32,18 @@ Resolving a pending chance selection executes the **same** physical
 `DrawCards` call, committing a card identity, temporarily changing
 cost when needed, then running `CardDrawn` once. Every subsequent
 decision continues from the saved state. `BeforeHandDraw`, earlier
-turn phases and prior card/event hooks are not executed again.
+turn phases and prior card/event hooks are not executed again. If a source
+action choice suspends inside `BeforeHandDraw`, the legal actions are exposed
+as a typed hook-choice event. Resolving it resumes the saved event dispatch
+and the same automatic stage before the deterministic hand-draw prelude;
+earlier subscribers are not replayed.
 
-If Jeweled Mask suspends inside `BeforeHandDraw`, the saved event exposes its
-ordered eligible Power instances (noninnate Powers first). Resolving it resumes
-the event and operation continuations before entering the original draw stage;
-the selected card goes to hand or discard according to the source hand-cap
-rule. Replay records this decision alongside draw and cost decisions.
+If Jeweled Mask suspends inside `BeforeHandDraw`, its separate random Power
+card event exposes ordered eligible Power instances (noninnate Powers first).
+Resolving it resumes the event and operation continuations before entering the
+original draw stage; the selected card goes to hand or discard according to
+the source hand-cap rule. Replay records both forms of hook choice alongside
+draw and cost decisions.
 
 If the draw recycles and an after-shuffle relic inserts a generated card, the
 automatic cursor also saves the requested and remaining draw counts around the
@@ -48,7 +53,8 @@ the existing post-hand-draw cleanup and advances the automatic cursor once the
 draw finishes. If Stratagem is active after recycling, its source
 `select_cards` choice is saved as part of the automatic cursor; resolving it
 continues the same remaining draw. This also composes with after-shuffle
-insertions and drawn-cost stages. Nested `CardDrawn` choices remain
+insertions and drawn-cost stages. Ordinary source action choices from
+`CardDrawn` hooks are supported; nested controlled chance choices remain
 unsupported.
 
 When the requested draw ends, the source's `RemoveAfterHandDraw` and
@@ -82,10 +88,9 @@ integration should connect prior enemy actions, visible next-intent
 Nature decisions, and later automatic steps into one
 `step` → `nature_resolve` → `step` controller. Opening-hand and
 player-card-effect draw contexts also require their own saved
-continuations. Nested `CardDrawn` choices and native RNG source-law parity
-remain separate gates.
-The Jeweled Mask continuation and its JSONL / Python route are implemented but
-have not been mechanics-tested.
+continuations. Nested controlled chance choices and native RNG source-law
+parity remain separate gates. The Jeweled Mask and ordinary
+`BeforeHandDraw` action-choice continuations have not been mechanics-tested.
 
 The old `controlled-v111-playable-fixture-v1` swap-ticket schema
 is unchanged. Frozen Silent four-Act `main` is untouched.

@@ -2504,9 +2504,42 @@ public sealed partial class PrototypeGameEngine
                     }
                     if (ControlledChanceGuardV111.Active &&
                         combat.PendingChoice is not null)
-                        throw new NotSupportedException(
-                            "UNSUPPORTED_SEMANTIC_DECK site=combat.BeforeHandDraw " +
-                            "operation=unsupported_nested_hook_choice");
+                    {
+                        var pending = combat.PendingChoice;
+                        if (pending.ControlledTarget is not null ||
+                            pending.ControlledGeneration is not null ||
+                            pending.ControlledDrawCost is not null ||
+                            pending.ControlledSemanticDraw is not null ||
+                            pending.ControlledDrawInsertion is not null ||
+                            pending.ControlledRandomCost is not null ||
+                            pending.ControlledCardShortlist is not null ||
+                            pending.ControlledPoolShuffle is not null ||
+                            pending.ControlledRandomPileCard is not null ||
+                            pending.SemanticStratagemDrawSelection ||
+                            pending.AutomaticSemanticStratagemDrawSelection)
+                            throw new NotSupportedException(
+                                "UNSUPPORTED_SEMANTIC_DECK site=combat.BeforeHandDraw " +
+                                "operation=nested_controlled_choice");
+                        int stageIndex = SemanticHandDrawStepIndex;
+                        if (stageIndex < 0)
+                            throw new InvalidDataException(
+                                "DrawPlayerHand has no automatic pipeline index.");
+                        combat = combat with
+                        {
+                            PendingChoice = pending with
+                            {
+                                AutomaticSemanticDrawHookChoice = true
+                            },
+                            AutomaticPipelineContinuation = new(
+                                stageIndex,
+                                ControlledSemanticBeforeHandDrawPending: true)
+                        };
+                        return state with
+                        {
+                            Player = player,
+                            World = world with { Combat = combat }
+                        };
+                    }
                 }
                 combat = ReturnLastTurnReboundCardsToHand(combat);
 

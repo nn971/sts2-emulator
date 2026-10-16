@@ -53,6 +53,10 @@ public sealed partial class PrototypeGameEngine
             after.AutomaticPipelineContinuation?
                 .ControlledSemanticBeforeHandDrawPending == true)
             return (result, 0, 0);
+        if (after.PendingChoice?.AutomaticSemanticDrawHookChoice == true &&
+            after.AutomaticPipelineContinuation?
+                .ControlledSemanticBeforeHandDrawPending == true)
+            return (result, 0, 0);
         // A source-committed opening order may supply the complete
         // requested hand without a Nature ticket. This is a valid,
         // genuinely deterministic automatic stage, not an unsupported
@@ -101,6 +105,69 @@ public sealed partial class PrototypeGameEngine
         var saved = after.AutomaticPipelineContinuation!;
         return (result, saved.ControlledSemanticDrawRequested!.Value,
             saved.ControlledSemanticDrawRemaining!.Value);
+    }
+
+    internal static (RunState Run, int Requested, int Remaining)
+        ResumeSemanticBeforeHandDrawActionChoice(RunState run)
+    {
+        if (!ControlledChanceGuardV111.Active)
+            throw new InvalidOperationException(
+                "Semantic pre-draw resumption requires the RNG guard.");
+        var combat = RequireWorld(run).Combat ??
+            throw new InvalidOperationException(
+                "Missing combat for semantic pre-draw resumption.");
+        var cursor = combat.AutomaticPipelineContinuation;
+        if (cursor?.NextStepIndex != SemanticHandDrawStepIndex ||
+            !cursor.ControlledSemanticBeforeHandDrawPending ||
+            cursor.ControlledSemanticDrawRemaining is not null ||
+            cursor.ControlledSemanticDrawRequested is not null ||
+            combat.PendingChoice is not null ||
+            combat.PendingKnowledgeDemonChoice is not null ||
+            combat.SemanticDeck is not
+                { Mode: SemanticDeckStateV111.NatureMode, Pending: null })
+            throw new InvalidDataException(
+                "Semantic BeforeHandDraw choice is not ready to resume.");
+
+        var result = ResolveAutomaticStep(
+            run,
+            PrototypeContent.Rules.EndTurnPipeline[SemanticHandDrawStepIndex]);
+        var after = RequireWorld(result).Combat ??
+            throw new InvalidDataException(
+                "Semantic BeforeHandDraw resumption removed combat.");
+        if (IsSemanticAutomaticHandDraw(after))
+        {
+            var saved = after.AutomaticPipelineContinuation!;
+            return (result, saved.ControlledSemanticDrawRequested!.Value,
+                saved.ControlledSemanticDrawRemaining!.Value);
+        }
+
+        var completed = after.AutomaticPipelineContinuation;
+        if (completed is null ||
+            completed.NextStepIndex != SemanticHandDrawStepIndex + 1 ||
+            completed.ControlledSemanticBeforeHandDrawPending ||
+            completed.ControlledSemanticDrawRemaining is not null ||
+            after.SemanticDeck is not { Pending: null } ||
+            after.PendingChoice is not null ||
+            after.PendingKnowledgeDemonChoice is not null)
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_DECK site=combat.BeforeHandDraw " +
+                "operation=unsupported_resumed_hand_draw_state");
+
+        int requested = completed.ControlledSemanticDrawRequested ??
+            Math.Max(0, after.CounterState.CardsDrawnThisCombat -
+                combat.CounterState.CardsDrawnThisCombat);
+        after = after with
+        {
+            AutomaticPipelineContinuation = completed with
+            {
+                ControlledSemanticDrawRequested = null
+            }
+        };
+        result = result with
+        {
+            World = RequireWorld(result) with { Combat = after }
+        };
+        return (result, requested, 0);
     }
 
     internal static (RunState Run, int Remaining)

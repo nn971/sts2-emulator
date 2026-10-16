@@ -582,15 +582,29 @@ public static class SemanticCombatDrawEngineV111
                 "No nested CardDrawn hook choice is pending.");
         int drawnBefore = state.Run.World!.Combat!
             .CounterState.CardsDrawnThisCombat;
+        bool beforeHandDraw = pending.BeforeHandDraw;
         var (run, decision) = SemanticDrawHookChoiceEngineV111.Resolve(
             state.Run.Fork(), pending, actionId);
         int remaining;
+        int requested = state.RequestedCount;
         if (pending.AutomaticHandDraw)
         {
             var combat = run.World?.Combat ??
                 throw new InvalidDataException(
                     "Automatic draw-hook choice removed combat.");
-            if (combat.PendingChoice?.AutomaticSemanticDrawHookChoice == true)
+            if (beforeHandDraw &&
+                combat.PendingChoice?.AutomaticSemanticDrawHookChoice == true)
+            {
+                remaining = 0;
+            }
+            else if (beforeHandDraw)
+            {
+                using (ControlledChanceGuardV111.Enter())
+                    (run, requested, remaining) =
+                        PrototypeGameEngine
+                            .ResumeSemanticBeforeHandDrawActionChoice(run);
+            }
+            else if (combat.PendingChoice?.AutomaticSemanticDrawHookChoice == true)
                 remaining = combat.AutomaticPipelineContinuation?
                     .ControlledSemanticDrawRemaining ??
                     throw new InvalidDataException(
@@ -609,6 +623,7 @@ public static class SemanticCombatDrawEngineV111
         var next = state with
         {
             Run = run,
+            RequestedCount = requested,
             RemainingCount = remaining,
             DrawHookChoiceTranscript = state.DrawHookChoiceTranscript
                 .Append(decision.Fork()).ToArray()
@@ -818,7 +833,9 @@ public static class SemanticCombatDrawEngineV111
             state.RemainingCount < 0 ||
             state.RemainingCount > state.RequestedCount ||
             (state.RequestedCount == 0 && randomPileCardPending is null &&
-             drawInsertionPending is null && !completedAfterHook) ||
+             drawInsertionPending is null &&
+             drawHookChoicePending?.BeforeHandDraw != true &&
+             !completedAfterHook) ||
             state.Origin.Phase != RunPhase.Combat ||
             state.Origin.World?.Combat is not { } originCombat ||
             (!state.AutomaticHandDraw && originCombat.SemanticDeck is not null) ||
@@ -875,6 +892,20 @@ public static class SemanticCombatDrawEngineV111
                     deck.Pending is not null || cost is not null)
                     throw new InvalidDataException(
                         "Semantic BeforeHandDraw choice cursor is inconsistent.");
+            }
+            else if (drawHookChoicePending?.BeforeHandDraw == true)
+            {
+                if (cursor is null ||
+                    cursor.NextStepIndex !=
+                        PrototypeGameEngine.SemanticHandDrawStepIndex ||
+                    !cursor.ControlledSemanticBeforeHandDrawPending ||
+                    cursor.ControlledSemanticDrawRemaining is not null ||
+                    cursor.ControlledSemanticDrawRequested is not null ||
+                    state.RequestedCount != 0 || state.RemainingCount != 0 ||
+                    combat.PendingChoice?.AutomaticSemanticDrawHookChoice != true ||
+                    deck.Pending is not null || cost is not null)
+                    throw new InvalidDataException(
+                        "Semantic BeforeHandDraw action cursor is inconsistent.");
             }
             else if (cursor is null ||
                 cursor.ControlledSemanticBeforeHandDrawPending ||
@@ -939,11 +970,17 @@ public static class SemanticCombatDrawEngineV111
             bool cursorMatches = hookChoice.AutomaticHandDraw
                 ? state.AutomaticHandDraw &&
                   combat.PendingChoice?.AutomaticSemanticDrawHookChoice == true &&
-                  PrototypeGameEngine.IsSemanticAutomaticHandDraw(combat) &&
-                  combat.AutomaticPipelineContinuation!
-                      .ControlledSemanticDrawRemaining == state.RemainingCount &&
-                  combat.AutomaticPipelineContinuation
-                      .ControlledSemanticDrawRequested == state.RequestedCount
+                  (hookChoice.BeforeHandDraw
+                      ? combat.AutomaticPipelineContinuation?
+                            .ControlledSemanticBeforeHandDrawPending == true &&
+                        combat.AutomaticPipelineContinuation.NextStepIndex ==
+                            PrototypeGameEngine.SemanticHandDrawStepIndex &&
+                        state.RequestedCount == 0 && state.RemainingCount == 0
+                      : PrototypeGameEngine.IsSemanticAutomaticHandDraw(combat) &&
+                        combat.AutomaticPipelineContinuation!
+                            .ControlledSemanticDrawRemaining == state.RemainingCount &&
+                        combat.AutomaticPipelineContinuation
+                            .ControlledSemanticDrawRequested == state.RequestedCount)
                 : !state.AutomaticHandDraw &&
                   combat.PendingChoice?.StandaloneSemanticDrawHookChoice == true &&
                   TryGetStandaloneSemanticDrawOperation(

@@ -3,16 +3,17 @@ namespace Sts2Emulator.Core;
 public sealed record SemanticDrawHookChoiceCandidateV111(
     string ActionId, string Kind, string PayloadFingerprint);
 
-/// <summary>A source action choice opened by a CardDrawn hook while a
-/// standalone semantic DrawCards frame is suspended.</summary>
+/// <summary>A source action choice opened by a draw hook while a standalone
+/// draw or automatic hand-draw stage is suspended.</summary>
 public sealed record SemanticDrawHookChoiceEventV111(
     string SchemaId, string EventId, string BoundaryFingerprint,
     string SupportFingerprint, string ChoiceId,
     SemanticDrawHookChoiceCandidateV111[] Candidates,
-    bool AutomaticHandDraw = false)
+    bool AutomaticHandDraw = false,
+    bool BeforeHandDraw = false)
 {
     public const string EventSchemaId =
-        "sts2-v111-semantic-draw-hook-choice-v1";
+        "sts2-v111-semantic-draw-hook-choice-v2";
 
     public SemanticDrawHookChoiceEventV111 Fork() => this with
     {
@@ -31,6 +32,7 @@ public sealed record SemanticDrawHookChoiceEventV111(
                 string.IsNullOrWhiteSpace(candidate.ActionId) ||
                 string.IsNullOrWhiteSpace(candidate.Kind) ||
                 string.IsNullOrWhiteSpace(candidate.PayloadFingerprint)) ||
+            (BeforeHandDraw && !AutomaticHandDraw) ||
             Candidates.Select(candidate => candidate.ActionId).Distinct()
                 .Count() != Candidates.Length ||
             SupportFingerprint != CanonicalJson.Sha256(new
@@ -43,7 +45,8 @@ public sealed record SemanticDrawHookChoiceEventV111(
                 SchemaId,
                 BoundaryFingerprint,
                 SupportFingerprint,
-                AutomaticHandDraw
+                AutomaticHandDraw,
+                BeforeHandDraw
             }))
             throw new InvalidDataException(
                 "Invalid semantic draw-hook choice event.");
@@ -76,6 +79,9 @@ public static class SemanticDrawHookChoiceEngineV111
         var combat = source.World?.Combat;
         var choice = combat?.PendingChoice;
         bool automatic = choice?.AutomaticSemanticDrawHookChoice == true;
+        bool beforeHandDraw = automatic &&
+            combat?.AutomaticPipelineContinuation?
+                .ControlledSemanticBeforeHandDrawPending == true;
         if (choice?.StandaloneSemanticDrawHookChoice != true && !automatic)
             return null;
         if (choice is null || source.Phase != RunPhase.Combat ||
@@ -88,13 +94,21 @@ public static class SemanticDrawHookChoiceEngineV111
             choice.ControlledDrawCost is not null ||
             choice.ControlledSemanticDraw is not null ||
             choice.ControlledDrawInsertion is not null ||
+            choice.ControlledPoolShuffle is not null ||
             choice.ControlledRandomCost is not null ||
             choice.ControlledCardShortlist is not null ||
             choice.ControlledRandomPileCard is not null ||
             choice.SemanticStratagemDrawSelection ||
             choice.AutomaticSemanticStratagemDrawSelection ||
             (automatic
-                ? !PrototypeGameEngine.IsSemanticAutomaticHandDraw(combat)
+                ? beforeHandDraw
+                    ? combat.AutomaticPipelineContinuation?.NextStepIndex !=
+                        PrototypeGameEngine.SemanticHandDrawStepIndex ||
+                      combat.AutomaticPipelineContinuation
+                          .ControlledSemanticDrawRemaining is not null ||
+                      combat.AutomaticPipelineContinuation
+                          .ControlledSemanticDrawRequested is not null
+                    : !PrototypeGameEngine.IsSemanticAutomaticHandDraw(combat)
                 : combat.AutomaticPipelineContinuation is not null ||
                   !HasStandaloneDrawResume(choice)))
             throw new InvalidDataException(
@@ -122,9 +136,11 @@ public static class SemanticDrawHookChoiceEngineV111
                 SchemaId = SemanticDrawHookChoiceEventV111.EventSchemaId,
                 BoundaryFingerprint = boundary,
                 SupportFingerprint = support,
-                AutomaticHandDraw = automatic
+                AutomaticHandDraw = automatic,
+                BeforeHandDraw = beforeHandDraw
             }), boundary, support, choice.ChoiceId, candidates,
-            AutomaticHandDraw: automatic);
+            AutomaticHandDraw: automatic,
+            BeforeHandDraw: beforeHandDraw);
         result.Validate();
         return result;
     }
@@ -156,13 +172,16 @@ public static class SemanticDrawHookChoiceEngineV111
 
         var environment = new PrototypeAiEnvironment();
         RunState advanced;
+        bool beforeHandDraw = pending.BeforeHandDraw;
+        string site = beforeHandDraw
+            ? "combat.BeforeHandDraw" : "combat.draw.CardDrawn";
         using (ControlledChanceGuardV111.Enter())
         using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
             advanced = environment.Step(source.Fork(), actionId).State;
         if (advanced.Phase != RunPhase.Combat ||
             advanced.World?.Combat is not { } advancedCombat)
             throw new NotSupportedException(
-                "UNSUPPORTED_SEMANTIC_DECK site=combat.draw.CardDrawn " +
+                $"UNSUPPORTED_SEMANTIC_DECK site={site} " +
                 "operation=unsupported_nested_choice_result");
         if (pending.AutomaticHandDraw &&
             advancedCombat.PendingChoice is { } nextChoice)
@@ -172,11 +191,14 @@ public static class SemanticDrawHookChoiceEngineV111
                 nextChoice.ControlledDrawCost is not null ||
                 nextChoice.ControlledSemanticDraw is not null ||
                 nextChoice.ControlledDrawInsertion is not null ||
+                nextChoice.ControlledPoolShuffle is not null ||
                 nextChoice.ControlledRandomCost is not null ||
                 nextChoice.ControlledCardShortlist is not null ||
-                nextChoice.ControlledRandomPileCard is not null)
+                nextChoice.ControlledRandomPileCard is not null ||
+                nextChoice.SemanticStratagemDrawSelection ||
+                nextChoice.AutomaticSemanticStratagemDrawSelection)
                 throw new NotSupportedException(
-                    "UNSUPPORTED_SEMANTIC_DECK site=combat.draw.CardDrawn " +
+                    $"UNSUPPORTED_SEMANTIC_DECK site={site} " +
                     "operation=nested_controlled_choice");
             advancedCombat = advancedCombat with
             {
@@ -190,6 +212,10 @@ public static class SemanticDrawHookChoiceEngineV111
                 World = advanced.World! with { Combat = advancedCombat }
             };
         }
+        else if (beforeHandDraw && advancedCombat.PendingChoice is not null)
+            throw new NotSupportedException(
+                $"UNSUPPORTED_SEMANTIC_DECK site={site} " +
+                "operation=nested_controlled_choice");
         PrototypeStateInvariants.Validate(advanced);
 
         var decision = new SemanticDrawHookChoiceDecisionV111(

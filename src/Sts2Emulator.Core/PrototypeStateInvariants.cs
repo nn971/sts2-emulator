@@ -3521,10 +3521,19 @@ public static class PrototypeStateInvariants
                     pending.ControlledDrawCost is not null ||
                     pending.ControlledSemanticDraw is not null ||
                     pending.ControlledDrawInsertion is not null ||
+                    pending.ControlledPoolShuffle is not null ||
                     pending.ControlledRandomCost is not null ||
                     pending.ControlledCardShortlist is not null ||
                     pending.ControlledRandomPileCard is not null ||
-                    !PrototypeGameEngine.IsSemanticAutomaticHandDraw(combat) ||
+                    pending.SemanticStratagemDrawSelection ||
+                    pending.AutomaticSemanticStratagemDrawSelection ||
+                    !(PrototypeGameEngine.IsSemanticAutomaticHandDraw(combat) ||
+                      combat.AutomaticPipelineContinuation is
+                          { ControlledSemanticBeforeHandDrawPending: true,
+                            ControlledSemanticDrawRemaining: null,
+                            ControlledSemanticDrawRequested: null } cursor &&
+                      cursor.NextStepIndex ==
+                          PrototypeGameEngine.SemanticHandDrawStepIndex) ||
                     combat.SemanticDeck is not
                         { Mode: SemanticDeckStateV111.NatureMode,
                             Pending: null })

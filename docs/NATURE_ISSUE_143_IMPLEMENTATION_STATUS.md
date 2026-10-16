@@ -644,3 +644,14 @@ the hook decision with the source draw and end-turn transcript. The Release
 solution build passes with zero warnings or errors; tests were not run for this
 checkpoint. Conditional probabilities remain `UNVERIFIED`; see
 [`NATURE_SEMANTIC_END_TURN_143.md`](NATURE_SEMANTIC_END_TURN_143.md).
+
+## 2026-10-17: automatic BeforeHandDraw source choices
+
+The automatic semantic hand-draw continuation now also suspends on ordinary
+source action choices opened by `BeforeHandDraw`. The typed hook-choice event
+identifies this pre-draw stage; resolving an action resumes the saved event
+dispatcher before the hand-draw prelude, without replaying earlier
+subscribers. Controlled nested chance choices remain unsupported. The Release
+solution build passes with zero warnings or errors; tests were not run for this
+checkpoint. Conditional probabilities remain `UNVERIFIED`; see
+[`NATURE_SEMANTIC_AUTOMATIC_HAND_DRAW_143.md`](NATURE_SEMANTIC_AUTOMATIC_HAND_DRAW_143.md).
