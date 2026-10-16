@@ -339,10 +339,21 @@ public static class SemanticPilotCombatEngineV111
                 SemanticPlayerActionEngineV111.ValidateBoundary(result);
             var previous = current.Run.World!.Combat!;
             var next = result.World?.Combat;
-            if (next is null ||
-                !previous.DrawPile.SequenceEqual(next.DrawPile) ||
-                CanonicalJson.Sha256(previous.SemanticDeck) !=
-                    CanonicalJson.Sha256(next.SemanticDeck))
+            if (result.Phase == RunPhase.Reward)
+            {
+                // The original EnterReward consumes the defeated combat
+                // and publishes RewardState. It is a genuine terminal
+                // combat victory; no provider-owned deck survives to
+                // mutate or expose on the next player decision.
+                if (result.World?.Reward is null ||
+                    result.World.Combat is not null)
+                    throw new InvalidDataException(
+                        "Victory did not enter a genuine combat reward boundary.");
+            }
+            else if (next is null ||
+                     !previous.DrawPile.SequenceEqual(next.DrawPile) ||
+                     CanonicalJson.Sha256(previous.SemanticDeck) !=
+                         CanonicalJson.Sha256(next.SemanticDeck))
                 throw new NotSupportedException(
                     "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
                     "operation=unmodeled_draw_pile_mutation");
