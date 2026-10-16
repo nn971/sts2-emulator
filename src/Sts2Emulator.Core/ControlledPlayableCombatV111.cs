@@ -200,13 +200,18 @@ public sealed record ControlledPlayableCombatV111(
         {
             var context = Run.World?.Combat?.PendingChoice?.ControlledTarget;
             if (context is null) return null;
+            var siteId = context.Kind switch
+            {
+                "sly_auto_play" => "combat.sly_autoplay.random_enemy",
+                "autoplay_random_enemy" => "combat.autoplay.random_enemy",
+                _ => "combat.effect.random_enemy"
+            };
+            var ownerId = context.SlyCardInstanceId is { } slyCardId
+                ? "card:" + slyCardId
+                : context.AutoPlayCardInstanceId is { } autoPlayCardId
+                    ? "card:" + autoPlayCardId : "effect_operation";
             return new RandomIndexRequestV111(
-                context.Kind == "sly_auto_play"
-                    ? "combat.sly_autoplay.random_enemy"
-                    : "combat.effect.random_enemy",
-                "run.combat_targets",
-                context.SlyCardInstanceId is { } cardId
-                    ? "card:" + cardId : "effect_operation",
+                siteId, "run.combat_targets", ownerId,
                 TargetTranscript.Length,
                 context.EligibleEnemyInstanceIds,
                 OperationKind: "choose_index");
@@ -958,15 +963,32 @@ public static class ControlledPlayableCombatEngineV111
                 .Where(enemy => enemy.Hp > 0 &&
                     (controlledTarget.Kind != "sly_auto_play" || !enemy.Escaped))
                 .Select(enemy => enemy.InstanceId).ToArray();
+            var autoPlayContinuation =
+                combat.PendingChoice?.OuterChoiceContinuation;
             if (state.Recycle is not null || state.TurnIntents is not null ||
                 state.Pending is not null ||
                 combat.PendingChoice?.ControlledPotionGeneration is not null ||
-                controlledTarget.Kind is not ("effect_random_enemy" or "sly_auto_play") ||
+                controlledTarget.Kind is not ("effect_random_enemy" or
+                    "sly_auto_play" or "autoplay_random_enemy") ||
                 eligible.Length == 0 ||
                 !eligible.SequenceEqual(controlledTarget.EligibleEnemyInstanceIds) ||
                 (controlledTarget.Kind == "sly_auto_play" &&
                     (controlledTarget.SlyCardInstanceId is not { } cardId ||
-                     !combat.DiscardPile.Contains(cardId))))
+                     !combat.DiscardPile.Contains(cardId) ||
+                     controlledTarget.AutoPlayCardInstanceId is not null)) ||
+                (controlledTarget.Kind == "autoplay_random_enemy" &&
+                    (controlledTarget.AutoPlayCardInstanceId is not { } autoPlayCardId ||
+                     !combat.PlayCardIds.Contains(autoPlayCardId) ||
+                     controlledTarget.SlyCardInstanceId is not null ||
+                     autoPlayContinuation is null ||
+                     autoPlayContinuation.Operations.Length == 0 ||
+                     autoPlayContinuation.Operations[0].Kind !=
+                        PrototypeCombatEffectKind.AutoPlayCombatCard ||
+                     autoPlayContinuation.Operations[0].CardInstanceId != autoPlayCardId ||
+                     autoPlayContinuation.Operations[0].TargetEnemyId is not null)) ||
+                (controlledTarget.Kind == "effect_random_enemy" &&
+                    (controlledTarget.SlyCardInstanceId is not null ||
+                     controlledTarget.AutoPlayCardInstanceId is not null)))
                 throw new InvalidDataException(
                     "Malformed or stale controlled target-choice support.");
         }

@@ -8184,11 +8184,6 @@ public sealed partial class PrototypeGameEngine
                         {
                             if (ControlledChanceGuardV111.Active)
                             {
-                                if (combat.AutomaticPipelineContinuation is not null)
-                                    throw new NotSupportedException(
-                                        "UNSUPPORTED_CONTROLLED_CHANCE " +
-                                        "site=combat.autoplay.random_enemy " +
-                                        "operation=automatic_pipeline_continuation");
                                 var continuation =
                                     new PrototypeChoiceResolutionContinuationState(
                                         SourceCardInstanceId: sourceCardInstanceId,

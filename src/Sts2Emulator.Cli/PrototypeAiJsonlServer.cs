@@ -779,6 +779,7 @@ internal static class PrototypeAiJsonlServer
                                 ControlledRecycleShuffleEngineV111.SiteId,
                                 "combat.effect.random_enemy",
                                 "combat.sly_autoplay.random_enemy",
+                                "combat.autoplay.random_enemy",
                                 "combat.generated_card.select",
                                 "combat.potion_generation.random_model",
                                 "combat.card_transform.replacement.index_draw",
@@ -791,7 +792,7 @@ internal static class PrototypeAiJsonlServer
                             },
                             controlledChanceLimitations =
                                 "Opt-in HP/intents, shuffle, turn intents, hand-draw recycle, " +
-                                "random-enemy and Sly targeting, five generated-card " +
+                                "random-enemy, Sly, and auto-play targeting, five generated-card " +
                                 "effects, draw insertion, full-pool generation shuffles, " +
                                 "hand-cost selection/rerolls, random pile shortlists, " +
                                 "per-potion model generation, and selected-card transforms; " +

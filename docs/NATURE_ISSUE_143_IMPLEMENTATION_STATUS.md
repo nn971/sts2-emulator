@@ -679,6 +679,15 @@ solution build passes with zero warnings or errors; tests and mechanics
 regressions were not run. Conditional probabilities remain `UNVERIFIED`; see
 [`NATURE_SEMANTIC_AUTOPLAY_143.md`](NATURE_SEMANTIC_AUTOPLAY_143.md).
 
+## 2026-10-17: automatic-pipeline random-enemy auto-play target
+
+The controlled playable continuation now permits a saved
+`combat.autoplay.random_enemy` choice while an automatic-pipeline cursor is
+present. Resolving the target resumes the saved auto-play operation and then
+the real pipeline cursor. Semantic end-turn event exposure and focused
+mechanics coverage remain incomplete; the Release build is the current
+verification evidence.
+
 ## 2026-10-17: player-action random replay-card selection
 
 Hidden Gem's `combat.draw_pile.random_replay_card.select` now uses the shared
