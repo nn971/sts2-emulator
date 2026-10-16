@@ -1,5 +1,18 @@
 # Issue #143 P0 — first external playable semantic Nature API
 
+> **Scope revision, 2026-10-16:** This document records incremental
+> implementation history. The [current issue #143](https://github.com/nn971/sts2-emulator/issues/143)
+> controls training acceptance: a two-site Nature opponent, an emulator-owned
+> ordinary-RNG control policy and external `sts2-ai` A/B smoke.
+> Installed-game fidelity, native stream/cursor/hook parity and source
+> snapshot comparison are assigned to the
+> [Fidelity Inspector plan](NATIVE_FIDELITY_INSPECTOR_PLAN.md)
+> and [issue #122](https://github.com/nn971/sts2-emulator/issues/122).
+> The older "Outstanding strict P0 acceptance criteria" below is a
+> historical checkpoint, **not** the current training closure checklist.
+> N5 original-game probability calibration is tracked separately.
+
+
 **Schema:** `sts2-v111-semantic-playable-p0-v1`  
 **API:** `prototype-ai-jsonl` and `bindings/python/sts2_emulator`  
 **Source:** pinned v0.111.0 engine, opt-in RNG/Inspector integration branch
