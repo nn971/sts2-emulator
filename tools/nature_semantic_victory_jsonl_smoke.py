@@ -50,12 +50,12 @@ def play_victory():
             obs = combat.observe()
             assert "semanticDeck" not in json.dumps(obs)
             assert "rng" not in json.dumps(obs).lower()
-            card_ids = {c["instanceId"]: c["cardId"]
+            card_ids = {c["instance_id"]: c["card_id"]
                         for c in obs["combat"]["hand"]}
             actions = combat.actions()
             strikes_here = [a for a in actions if a["kind"] == "play_card"
                             and card_ids.get(json.loads(
-                                a["payloadJson"])["cardInstanceId"]) ==
+                                a["payloadJson"])["card_instance_id"]) ==
                             "proto.silent.strike"]
             defends_here = [a for a in actions if a["kind"] == "play_card"
                             and card_ids.get(json.loads(
