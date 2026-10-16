@@ -146,7 +146,10 @@ adapter while retaining their existing streams and draw bounds; opening and
 later-turn intent choices have separate stable site IDs. The controlled legacy enemy
 action replay now covers summon-pool choices and any subsequent summoned-enemy
 HP choices, variable legacy Tough Egg hatchling HP, card theft and random pile
-insertions. Native
+insertions. The playable controlled turn-intent continuation now evaluates the
+live formation after that enemy-action stage, so newly summoned enemies are
+included in the next visible intent boundary; this extension currently has
+build-only verification. Native
 summon-pool selection remains fail-closed pending source audit; encounter
 selection continuations remain open.
 Beautiful Bracelet's eligible-deck shuffle and Fur Coat's current-act combat

@@ -673,13 +673,11 @@ public static class ControlledPlayableCombatEngineV111
             return state;
         if (state.TurnIntents is not null)
             throw new InvalidOperationException("Nested intent stage already pending.");
-        if (combat.Enemies.Length != state.Origin.Formation.Enemies.Length ||
-            combat.Enemies.Where((e, i) =>
-                e.EnemyId != state.Origin.Formation.Enemies[i].EnemyId ||
-                e.InstanceId != state.Origin.Formation.MonsterContexts[i].CombatId)
-                .Any())
-            throw new NotSupportedException(
-                "UNSUPPORTED_CONTROLLED_CHANCE site=combat.next_turn_intent.formation_changed operation=formation");
+        // Recompute against the live formation. Enemy actions may change the
+        // formation before the next visible intent boundary; each current
+        // enemy already carries its source AI state and stable instance
+        // identity, so the initial formation is not the eligibility authority
+        // for this later commitment.
         var intents = ControlledTurnIntentEngineV111.Begin(
             combat, state.Origin.Formation.NativeEncounterEntry);
         var next = state with { TurnIntents = intents };
