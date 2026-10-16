@@ -235,6 +235,37 @@ public sealed class SemanticPilotCombatV111Tests
     }
 
     [Fact]
+    public void SeededOpeningReusesExactCommittedOrderThroughRealCardDrawnHooks()
+    {
+        var entry = Seeded("semantic-143-opening-real-hooks");
+        var legacy = SemanticPilotCombatEngineV111.BeginSeeded(entry);
+        var state = SemanticPilotCombatEngineV111.BeginSeeded(
+            entry with { ReplayOpeningDrawHooks = true });
+        var oldCombat = legacy.Run.World!.Combat!;
+        var combat = state.Run.World!.Combat!;
+        Assert.True(state.AtPlayerBoundary);
+        Assert.Equal(oldCombat.Hand, combat.Hand);
+        Assert.Equal(oldCombat.DrawPile, combat.DrawPile);
+        Assert.Equal(oldCombat.Hand.Length +
+            oldCombat.CounterState.CardsDrawnThisCombat,
+            combat.CounterState.CardsDrawnThisCombat);
+        Assert.Equal(oldCombat.SemanticDeck!.ShuffleEpoch,
+            combat.SemanticDeck!.ShuffleEpoch);
+        Assert.Equal(oldCombat.SemanticDeck.Slots,
+            combat.SemanticDeck.Slots);
+        Assert.Empty(combat.SemanticDeck.Transcript!);
+        Assert.Null(combat.SemanticDeck.Pending);
+        Assert.Null(state.DrawPending);
+        Assert.Equal(new PrototypeAiEnvironment()
+                .Observe(legacy.Run).LegalActions.Select(a => a.ActionId),
+            new PrototypeAiEnvironment()
+                .Observe(state.Run).LegalActions.Select(a => a.ActionId));
+        Assert.Equal(state.Fingerprint,
+            SemanticPilotCombatEngineV111.Restore(
+                SemanticPilotCombatEngineV111.Save(state)).Fingerprint);
+    }
+
+    [Fact]
     public void SeededSneckoCostsUsePrivateNamedStreamAndReproduceOnRestore()
     {
         var entry = Seeded("semantic-p0-named-cost-stream") with
