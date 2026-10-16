@@ -1,11 +1,13 @@
 # Nature #143 — card-effect draw continuation
 
 The semantic playable pilot now suspends a Nature draw that occurs inside a
-card's queued effects. The current action adapter admits **Backflip, Quick
-Slash, Adrenaline and Escape Plan** for this path. Their existing card effects
-run through `PrototypeGameEngine`; the physical card is selected from the
-current draw support before it enters the hand, and the source draw hook runs
-once after the identity is committed.
+card's queued effects. Direct-draw actions currently include **Backflip, Quick
+Slash, Adrenaline, Escape Plan, Expertise, Reflex and Restlessness**. It also
+supports **Acrobatics, Dagger Throw and Prepared**, which open an ordinary
+`select_cards` prompt after their draw. Their existing card effects run through
+`PrototypeGameEngine`; the physical card is selected from the current draw
+support before it enters the hand, and the source draw hook runs once after
+the identity is committed.
 
 ## Saved continuation
 
@@ -18,6 +20,14 @@ suffix, card-play completion event and play-series state. Resolving one typed
 the original effect queue. Snapshot restoration replays each draw event in
 order from the player action history.
 
+When the resumed effect queue reaches one of the supported post-draw discard
+choices, the engine publishes its usual semantic card-selection event. The
+player's legal `select_cards` action then resumes the original source choice
+and completes the played card. If that queued effect defeated the final enemy,
+the choice can finish at the genuine reward boundary and records the reward RNG
+audit from the pre-reward state. If a draw or discard hook creates another
+unsupported nested boundary, the guarded action fails closed.
+
 The internal choice is valid only with a pending Nature draw at the top of the
 physical and semantic draw piles. Combat and semantic-state invariants reject
 other controlled-choice metadata, missing supports, and conflicting pilot
@@ -26,13 +36,12 @@ boundaries. The event uses the existing semantic draw schema and reports
 
 ## Current limits
 
-This covers direct draws whose draw hooks do not open another choice. Draws
-that trigger randomized drawn-card costs, pile recycling, Stratagem selection,
+For these supported cards, draw hooks must not open another choice. Draws that
+trigger randomized drawn-card costs, pile recycling, Stratagem selection,
 random post-shuffle card insertion or a nested `CardDrawn` choice still fail
 closed until those continuation stages compose with the saved draw frame.
-Cards that draw and then prompt for a follow-up selection also need nested
-choice resolution to resume their outer effect continuation. Native source
-probability laws remain unverified.
+Arbitrary follow-up choices and multiple nested choice levels remain outside
+the current support. Native source probability laws remain unverified.
 
 The player-action fixture and card allowlists remain opt-in; this continuation
 does not broaden source-authentic loadout acquisition or the frozen all-Act

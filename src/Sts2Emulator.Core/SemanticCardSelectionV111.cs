@@ -201,8 +201,18 @@ public static class SemanticCardSelectionEngineV111
 
         RunState advanced;
         using (ControlledChanceGuardV111.Enter())
+        using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
             advanced = environment.Step(source.Fork(), actionId).State;
-        SemanticPlayerActionEngineV111.ValidateBoundary(advanced);
+        if (advanced.Phase == RunPhase.Combat)
+            SemanticPlayerActionEngineV111.ValidateBoundary(advanced);
+        else if (advanced.Phase == RunPhase.Reward &&
+                 advanced.World?.Reward is not null &&
+                 advanced.World.Combat is null)
+            PrototypeStateInvariants.Validate(advanced);
+        else
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_DECK site=combat.card_selection " +
+                "operation=unsupported_post_selection_phase");
         var selectedAction = semanticEvent.Candidates.Single(candidate =>
             candidate.ActionId == actionId);
         var decision = new SemanticCardSelectionDecisionV111(
@@ -246,8 +256,10 @@ public static class SemanticCardSelectionEngineV111
         ArgumentNullException.ThrowIfNull(state);
         var from = state.Origin.World?.Combat;
         var to = state.Run.World?.Combat;
+        var reward = state.Run.Phase == RunPhase.Reward &&
+            state.Run.World?.Reward is not null && to is null;
         if (from?.PendingChoice?.ChoiceId != "select_cards" ||
-            to is null || state.SelectedCardInstanceIds is null ||
+            (to is null && !reward) || state.SelectedCardInstanceIds is null ||
             state.SelectedCardInstanceIds.Distinct().Count() !=
                 state.SelectedCardInstanceIds.Length ||
             state.Decision is null ||
@@ -257,7 +269,13 @@ public static class SemanticCardSelectionEngineV111
                 "preserve_draw_pile"))
             throw new InvalidDataException(
                 "Invalid saved source card selection.");
-        SemanticPlayerActionEngineV111.ValidateBoundary(state.Run);
+        if (state.Run.Phase == RunPhase.Combat)
+            SemanticPlayerActionEngineV111.ValidateBoundary(state.Run);
+        else if (reward)
+            PrototypeStateInvariants.Validate(state.Run);
+        else
+            throw new InvalidDataException(
+                "Saved source card selection has an unsupported result phase.");
         state.Decision.Validate();
         if (state.Decision.ActionId != state.ActionId ||
             !state.Decision.SelectedCardInstanceIds.SequenceEqual(
@@ -266,12 +284,31 @@ public static class SemanticCardSelectionEngineV111
                 CanonicalJson.Sha256(state.Origin))
             throw new InvalidDataException(
                 "Saved card-selection event differs from its source state.");
+        var describedEvent = DescribePending(state.Origin,
+            CanonicalJson.Sha256(state.Origin));
+        if (CanonicalJson.Sha256(describedEvent) !=
+            CanonicalJson.Sha256(state.Decision.Event))
+            throw new InvalidDataException(
+                "Saved card-selection event differs from its source support.");
+        var selectionSpec = from.PendingChoice.Selection;
+        var topMove = IsSupportedTopMove(selectionSpec);
+        var drawRemoval = IsSupportedDrawRemoval(selectionSpec);
         var initial = from.SemanticDeck ??
             throw new InvalidDataException("Original semantic deck is absent.");
         SemanticDeckEngineV111.Validate(initial);
         var selectedUnknown = state.SelectedCardInstanceIds.Any(id =>
             initial.Pools.Any(pool =>
                 pool.RemainingCardInstanceIds.Contains(id)));
+        var expectedOperation = topMove
+            ? "move_to_draw_top"
+            : drawRemoval
+                ? selectedUnknown
+                    ? "remove_unresolved_draw_card_identity"
+                    : "remove_known_draw_card"
+                : "preserve_draw_pile";
+        if (state.Operation != expectedOperation)
+            throw new InvalidDataException(
+                "Saved card-selection operation differs from its source effect.");
         if ((state.Operation == "remove_known_draw_card" && selectedUnknown) ||
             (state.Operation == "remove_unresolved_draw_card_identity" &&
              !selectedUnknown))
@@ -292,12 +329,12 @@ public static class SemanticCardSelectionEngineV111
                 : SemanticDeckEngineV111.RemoveCardInstances(
                     expected, state.SelectedCardInstanceIds);
         }
-        else if (initial.Fingerprint != to.SemanticDeck!.Fingerprint)
+        else if (!reward && initial.Fingerprint != to!.SemanticDeck!.Fingerprint)
             throw new InvalidDataException(
                 "Visible-zone card selection unexpectedly changed the hidden deck.");
-        if (expected.Fingerprint != to.SemanticDeck!.Fingerprint ||
+        if (!reward && (expected.Fingerprint != to!.SemanticDeck!.Fingerprint ||
             !SemanticDeckEngineV111.AllCardInstanceIds(expected)
-                .Order().SequenceEqual(to.DrawPile.Order()))
+                .Order().SequenceEqual(to.DrawPile.Order())))
             throw new InvalidDataException(
                 "Source choice mutated the hidden deck inconsistently.");
     }

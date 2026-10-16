@@ -519,15 +519,17 @@ provider.
 
 ## 2026-10-17: resumable semantic card-effect draws
 
-The semantic player pilot now admits Backflip, Quick Slash, Adrenaline and
-Escape Plan when their queued effects draw from the Nature semantic deck. An
-internal `controlled_semantic_draw` checkpoint persists the remaining draw
-count and the original effect-queue continuation. Each identity choice resumes
-the same source `DrawCards` operation, dispatches its draw hook once, and then
-continues the queued effects. `semantic_draw` history replay validates each
-selected physical card identity and source event transcript. The saved-state
-invariants bind the internal choice to one pending Nature draw and reject
-conflicting semantic boundaries.
+The semantic player pilot admits ten Silent draw cards for Nature semantic
+draws: seven direct draws and Acrobatics, Dagger Throw and Prepared, which
+prompt for a discard after drawing. An internal `controlled_semantic_draw`
+checkpoint persists the remaining draw count and the original effect-queue
+continuation. Each identity choice resumes the same source `DrawCards`
+operation, dispatches its draw hook once, and then continues the queued effects.
+The three follow-up discard prompts use the ordinary semantic
+`select_cards` action and resume the source completion event. `semantic_draw`
+history replay validates each selected physical card identity and source event
+transcript. The saved-state invariants bind the internal choice to one pending
+Nature draw and reject conflicting semantic boundaries.
 
 The Core and CLI Release builds pass with zero warnings or errors. Tests were
 not run for this implementation checkpoint. Draw costs, recycle-time

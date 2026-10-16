@@ -633,7 +633,13 @@ public static class SemanticPilotCombatEngineV111
         cardId is ("proto.silent.backflip" or
             "proto.silent.quick_slash" or
             "proto.silent.adrenaline" or
-            "proto.silent.escape_plan");
+            "proto.silent.escape_plan" or
+            "proto.silent.expertise" or
+            "proto.silent.reflex" or
+            "proto.silent.restlessness" or
+            "proto.silent.acrobatics" or
+            "proto.silent.dagger_throw" or
+            "proto.silent.prepared");
 
     private static SemanticPilotCombatV111 ApplyFixtureSelectionCard(
         SemanticPilotCombatV111 state, string cardId)
@@ -1370,6 +1376,9 @@ public static class SemanticPilotCombatEngineV111
         var next = current with
         {
             Run = selection.Run,
+            RewardAudit = selection.Run.Phase == RunPhase.Reward
+                ? RecordRewardAudit(current.Run, selection.Run)
+                : current.RewardAudit,
             History = current.History.Append(
                 new SemanticPilotTransitionV111(
                     "semantic_card_selection",
