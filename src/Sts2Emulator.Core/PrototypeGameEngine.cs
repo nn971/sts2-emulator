@@ -543,7 +543,8 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                 }
 
                 player = ApplyRelicAcquisitionRunEffects(
-                    player, trigger.Effects, rng, allocateCardId);
+                    player, trigger.Effects, rng, allocateCardId,
+                    nativeRunRng);
             }
         }
 
@@ -554,7 +555,8 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         PlayerState player,
         IEnumerable<PrototypeRunEffectSpec> effects,
         RngBundle? rng,
-        Func<long>? allocateCardId)
+        Func<long>? allocateCardId,
+        RngBundle? nativeRunRng)
     {
         foreach (var effect in effects)
         {
@@ -568,7 +570,8 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                         effect.CardId ?? throw new InvalidOperationException(
                             "Card grant requires a card ID."),
                         rng ?? throw new InvalidOperationException(
-                            "Card grant requires RNG context."));
+                            "Card grant requires RNG context."),
+                        nativeRunRng);
                     break;
 
                 case PrototypeRunEffectKind.GainRandomRareCard:
@@ -588,14 +591,25 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                             "Random Rare-card reward has an empty pool.");
                     }
 
-                    var cardId = rarePool[ResolveLegacyRandomIndex(
-                        rewardRng,
-                        "relic.acquisition.random_rare_card.model",
-                        "player:rare_pool:" + CanonicalJson.Sha256(rarePool),
-                        Enumerable.Range(0, rarePool.Length),
-                        streamId: "reward")];
+                    var ownerId = "player:rare_pool:"
+                        + CanonicalJson.Sha256(rarePool);
+                    var cardIndex = nativeRunRng is { } nativeRewardRng
+                        ? NativePlayerRngV111.ChooseIndex(
+                            nativeRewardRng,
+                            "relic.acquisition.random_rare_card.model",
+                            NativePlayerRngV111.RewardsStreamId,
+                            ownerId,
+                            rarePool.Length)
+                        : ResolveLegacyRandomIndex(
+                            rewardRng,
+                            "relic.acquisition.random_rare_card.model",
+                            ownerId,
+                            Enumerable.Range(0, rarePool.Length),
+                            streamId: "reward");
+                    var cardId = rarePool[cardIndex];
                     player = AppendCard(
-                        player, cardAllocator(), cardId, rewardRng);
+                        player, cardAllocator(), cardId, rewardRng,
+                        nativeRunRng);
                     break;
                 }
 
@@ -629,20 +643,35 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                             "Relic pickup potion reward has no open slot.");
                     }
 
-                    var potionId = effect.Kind
-                            == PrototypeRunEffectKind.GainRandomPotion
-                        ? PrototypeContent.PotionPool[ResolveLegacyRandomIndex(
-                            rng ?? throw new InvalidOperationException(
-                                "Random potion relic acquisition requires RNG context."),
-                            "relic.acquisition.random_potion.model",
-                            "player:potion_slot:" + slot + ":pool:"
-                                + CanonicalJson.Sha256(
-                                    PrototypeContent.PotionPool),
-                            Enumerable.Range(
-                                0, PrototypeContent.PotionPool.Length),
-                            streamId: "event")]
-                        : effect.PotionId ?? throw new InvalidOperationException(
-                            "Potion relic acquisition requires a potion ID.");
+                    string potionId;
+                    if (effect.Kind == PrototypeRunEffectKind.GainRandomPotion)
+                    {
+                        var rewardRng = rng ?? throw new InvalidOperationException(
+                            "Random potion relic acquisition requires RNG context.");
+                        var potionPool = PrototypeContent.PotionPool;
+                        var potionOwner = "player:potion_slot:" + slot + ":pool:"
+                            + CanonicalJson.Sha256(potionPool);
+                        var potionIndex = nativeRunRng is { } nativeRewardRng
+                            ? NativePlayerRngV111.ChooseIndex(
+                                nativeRewardRng,
+                                "relic.acquisition.random_potion.model",
+                                NativePlayerRngV111.RewardsStreamId,
+                                potionOwner,
+                                potionPool.Length)
+                            : ResolveLegacyRandomIndex(
+                                rewardRng,
+                                "relic.acquisition.random_potion.model",
+                                potionOwner,
+                                Enumerable.Range(0, potionPool.Length),
+                                streamId: "event");
+                        potionId = potionPool[potionIndex];
+                    }
+                    else
+                    {
+                        potionId = effect.PotionId
+                            ?? throw new InvalidOperationException(
+                                "Potion relic acquisition requires a potion ID.");
+                    }
                     _ = PrototypeContent.Potion(potionId);
                     var slots = (PotionInstance?[])player.PotionSlots.Clone();
                     slots[slot] = new PotionInstance(
@@ -988,7 +1017,8 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         PlayerState player,
         long instanceId,
         string cardId,
-        RngBundle rng)
+        RngBundle rng,
+        RngBundle? nativeRunRng = null)
     {
         var definition = PrototypeContent.Card(cardId);
         var upgradeLevel = InitialAddedCardUpgradeLevel(player, definition);
@@ -1009,7 +1039,8 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             player,
             PrototypeRunEventKind.CardAdded,
             addedCard: card,
-            rng: rng);
+            rng: rng,
+            nativeRunRng: nativeRunRng);
     }
 
     internal static int InitialAddedCardUpgradeLevel(

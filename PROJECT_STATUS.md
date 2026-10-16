@@ -1476,6 +1476,12 @@ relic rewards now use and retain the same bundle. Calling Bell and Toy Box
 offer generation also advances it while the custom reward is pending. Source
 result/cursor parity remains unverified.
 
+Random Rare-card and potion models granted by relic acquisition now use typed
+`player.rewards` index requests whenever a native run bundle is supplied; the
+legacy reward/event providers remain the fallback. Native stream ownership is
+a hypothesis pending source validation. Acquisition-triggered card addition
+continues to forward the same bundle through nested relic hooks.
+
 Configured Overgrowth combat rewards now use the persistent `player.rewards`
 stream for potion pity, gold bounds, rarity-weighted potion selection, card
 rarity/model/upgrade draws, relic rarity, boss relic offer shuffling, and Lava

@@ -200,10 +200,12 @@ native map fidelity. The later-act map's bounded path
 starts, delta shuffles, Glory rest-count pick and room-assignment shuffles now
 also use typed native requests. Its Gaussian quota samples now use typed
 provider requests. Default Act 1 boss selection, empty potion-slot fills,
-random relic-acquisition card/potion rewards, weighted event tickets, and
-event-entry gold bins now use typed legacy providers on their existing run
-streams. Event-choice random upgrades, Rare cards, potions, empty potion-slot
-fills, and unowned relic picks now use typed legacy requests as well. Shop-stock
+weighted event tickets, and event-entry gold bins use typed legacy providers
+on their existing run streams. Random relic-acquisition card and potion models
+use native `player.rewards` index requests when native run RNG is present, with
+the legacy providers retained; these stream assignments are hypotheses pending
+source validation. Event-choice random upgrades, Rare cards, potions, empty
+potion-slot fills, and unowned relic picks use typed legacy requests as well. Shop-stock
 shuffles, card rarity/model picks and prices, random potion/relic rewards, and
 persistent-deck transformations now use typed legacy providers. Fishing Rod's
 every-third combat deck upgrade and War Hammer's elite-victory shuffle now use
