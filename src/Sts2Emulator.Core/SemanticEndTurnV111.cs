@@ -574,7 +574,7 @@ public static class SemanticEndTurnEngineV111
                 decision.NativeCursorBefore is not null ||
                 decision.NativeCursorAfter is not null ||
                 !PrototypeControlledEnemyActionContinuationV111
-                    .IsEnemyInsertionSite(decision.Request.SiteId))
+                    .IsEnemyActionSite(decision.Request.SiteId))
                 throw new InvalidDataException(
                     "Invalid semantic enemy-action Nature decision.");
         }

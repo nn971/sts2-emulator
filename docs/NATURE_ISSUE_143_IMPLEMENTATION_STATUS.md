@@ -749,3 +749,16 @@ exposes `hand_return_shuffle`. The Release solution build passes with zero
 warnings or errors; tests and mechanics regressions were not run. Native stream
 assignment, cursor parity and conditional probabilities remain `UNVERIFIED`.
 See [`NATURE_HAND_RETURN_SHUFFLE_143.md`](NATURE_HAND_RETURN_SHUFFLE_143.md).
+
+## 2026-10-17: Thieving Hopper persistent-card selection
+
+The existing serialized enemy-action replay now also suspends at
+`combat.enemy.theft_card.select`, then replays the action with its selected
+card-instance index. The source action removes the chosen persistent card from
+the draw/discard pile and run deck. Nature sessions reject the chance boundary
+before publication when any draw-pile candidate cannot be removed while
+preserving hidden deck constraints. The Release solution build passes with
+zero warnings or errors; tests and mechanics regressions were not run. Native
+stream assignment, cursor parity and conditional probabilities remain
+`UNVERIFIED`; see
+[`NATURE_ENEMY_THEFT_143.md`](NATURE_ENEMY_THEFT_143.md).

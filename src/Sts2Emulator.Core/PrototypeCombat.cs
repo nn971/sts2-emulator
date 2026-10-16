@@ -13652,12 +13652,6 @@ public sealed partial class PrototypeGameEngine
                 "Random combat-card selection requires ordered unique instances.",
                 nameof(orderedCardInstanceIds));
 
-        if (ControlledChanceGuardV111.Active &&
-            !ControlledChanceGuardV111.EngineOwnedNativeProviderActive)
-            throw new NotSupportedException(
-                $"UNSUPPORTED_CONTROLLED_CHANCE site={siteId} " +
-                "operation=choose_index requires a saved autoplay continuation.");
-
         var native = combat.NativeRng;
         var streamId = native is null
             ? legacyStreamId
@@ -13671,16 +13665,38 @@ public sealed partial class PrototypeGameEngine
         if (callOrdinal > int.MaxValue)
             throw new NotSupportedException(
                 "Random combat-card provider ordinal exceeds the request range.");
+        if (siteId == "combat.enemy.theft_card.select" &&
+            combat.SemanticDeck is
+                { Mode: SemanticDeckStateV111.NatureMode } semanticDeck &&
+            orderedCardInstanceIds.Any(id => combat.DrawPile.Contains(id) &&
+                !SemanticDeckEngineV111.CanRemoveCardInstance(
+                    semanticDeck, id)))
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_DECK " +
+                "site=combat.enemy.theft_card.select " +
+                "operation=draw_pile_candidate_removal_breaks_constraints");
         IRandomIndexProviderV111 provider = native is null
             ? new LegacyPrototypeRandomIndexProviderV111()
             : new NativeRandomIndexProviderV111();
-        var decision = provider.Resolve(new RandomIndexRequestV111(
+        var request = new RandomIndexRequestV111(
             siteId, streamId,
             ownerId + ":pool:" +
                 CanonicalJson.Sha256(orderedCardInstanceIds),
             (int)callOrdinal,
-            Enumerable.Range(0, orderedCardInstanceIds.Length).ToArray()),
-            streams);
+            Enumerable.Range(0, orderedCardInstanceIds.Length).ToArray());
+        if (ControlledChanceGuardV111.Active &&
+            !ControlledChanceGuardV111.EngineOwnedNativeProviderActive)
+        {
+            if (PrototypeControlledEnemyActionContinuationV111
+                    .IsEnemyActionSite(siteId))
+                return (combat,
+                    ControlledEnemyActionReplayV111.Resolve(request));
+            throw new NotSupportedException(
+                $"UNSUPPORTED_CONTROLLED_CHANCE site={siteId} " +
+                "operation=choose_index requires a saved continuation.");
+        }
+
+        var decision = provider.Resolve(request, streams);
         var updated = native is null
             ? combat
             : combat with
@@ -13847,7 +13863,7 @@ public sealed partial class PrototypeGameEngine
             !ControlledChanceGuardV111.EngineOwnedNativeProviderActive)
         {
             if (PrototypeControlledEnemyActionContinuationV111
-                    .IsEnemyInsertionSite(siteId))
+                    .IsEnemyActionSite(siteId))
                 return (combat,
                     ControlledEnemyActionReplayV111.Resolve(request));
             throw new NotSupportedException(

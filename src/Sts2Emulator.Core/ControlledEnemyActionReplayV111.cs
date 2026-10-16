@@ -3,9 +3,9 @@ using System.Threading;
 namespace Sts2Emulator.Core;
 
 /// <summary>
-/// Replay checkpoint for a guarded random insertion during the enemy action
-/// pipeline. The checkpoint is captured before ResolveEnemyActions and has no
-/// automatic cursor of its own, so the saved graph is finite.
+/// Replay checkpoint for guarded random choices during the enemy action
+/// pipeline. The checkpoint is captured before ResolveEnemyActions and has
+/// no automatic cursor of its own, so the saved graph is finite.
 /// </summary>
 public sealed record PrototypeControlledEnemyActionContinuationV111(
     RunState Checkpoint,
@@ -40,7 +40,7 @@ public sealed record PrototypeControlledEnemyActionContinuationV111(
             throw new InvalidDataException(
                 "Malformed controlled enemy-action checkpoint.");
         PendingRequest.Validate();
-        if (!IsEnemyInsertionSite(PendingRequest.SiteId))
+        if (!IsEnemyActionSite(PendingRequest.SiteId))
             throw new InvalidDataException(
                 "Enemy-action continuation contains an unrelated chance site.");
         foreach (var decision in Decisions)
@@ -49,7 +49,7 @@ public sealed record PrototypeControlledEnemyActionContinuationV111(
             if (decision.ProviderMode != "controlled-v111" ||
                 decision.NativeCursorBefore is not null ||
                 decision.NativeCursorAfter is not null ||
-                !IsEnemyInsertionSite(decision.Request.SiteId))
+                !IsEnemyActionSite(decision.Request.SiteId))
                 throw new InvalidDataException(
                     "Enemy-action replay prefix contains an invalid Nature decision.");
         }
@@ -62,14 +62,15 @@ public sealed record PrototypeControlledEnemyActionContinuationV111(
         PrototypeStateInvariants.Validate(Checkpoint);
     }
 
-    public static bool IsEnemyInsertionSite(string siteId) => siteId is
+    public static bool IsEnemyActionSite(string siteId) => siteId is
         "combat.enemy.discard.random_insert_index" or
-        "combat.enemy.draw.random_insert_index";
+        "combat.enemy.draw.random_insert_index" or
+        "combat.enemy.theft_card.select";
 }
 
 internal sealed class ControlledEnemyActionChanceRequiredException(
     RandomIndexRequestV111 request) : Exception(
-        "A controlled enemy action needs a bounded-index choice.")
+        "A controlled enemy action needs a random-choice outcome.")
 {
     public RandomIndexRequestV111 Request { get; } = request;
 }
@@ -109,7 +110,7 @@ internal sealed class ControlledEnemyActionReplayV111 : IDisposable
             "Enemy-action replay is not active.");
         request.Validate();
         if (!PrototypeControlledEnemyActionContinuationV111
-                .IsEnemyInsertionSite(request.SiteId))
+                .IsEnemyActionSite(request.SiteId))
             throw new NotSupportedException(
                 "UNSUPPORTED_CONTROLLED_CHANCE site=" + request.SiteId +
                 " operation=" + request.OperationKind);

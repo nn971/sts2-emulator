@@ -55,20 +55,21 @@ with `resolve_generated_card(card_model_id)`. Native law and fixture
 acquisition provenance remain `UNVERIFIED`.
 
 The automatic enemy-action frame is exposed as `enemy_action_chance` with its
-typed bounded-index request and eligible indices. JSONL clients resolve it
-with `semantic_resolve_enemy_action` and `selected_index`; subsequent enemy
-insertions are presented one at a time, then the semantic turn-intent stage
-continues.
+typed request and eligible indices. JSONL clients resolve it with
+`semantic_resolve_enemy_action` and `selected_index`; subsequent enemy
+insertions or Hopper theft choices are presented one at a time, then the
+semantic turn-intent stage continues. Native stream assignment and probability
+status remain `UNVERIFIED`.
 
 ## Validation scope
 
 The focused tests exercise the real operation kernel through a narrow internal fixture entry with existing combat `RunState`. This is necessary because these two effect kinds are not yet reachable from a standard Silent card in the current isolated starter combat. The test fixture does not claim native-source entry provenance and is not yet replayable from a standard action-only controlled snapshot. Tests cover the two-stage Attack creation/placement, exact pile identities, repeated fixed insertions, invalid indices/stale fingerprints, malformed support, and deterministic 15-worker forks.
 
-Enemy move draw/discard insertions now pass through typed providers and a
-serialized source-replay frame. Focused mechanics regressions for this frame,
-native cursor parity, random-cost mutations, full-card-pool shuffles, and
-nested death/summon hooks remain open. Complete end-to-end controlled
-action-to-terminal rollouts and probability calibration remain issue #143
-work.
+Enemy move draw/discard insertions and Thieving Hopper's persistent-card
+selection now pass through typed providers and the serialized source-replay
+frame. Focused mechanics regressions for this frame, native cursor parity,
+random-cost mutations, full-card-pool shuffles, and nested death/summon hooks
+remain open. Complete end-to-end controlled action-to-terminal rollouts and
+probability calibration remain issue #143 work.
 
 The frozen gameplay `main`, desired RNG and fidelity Inspector specifications, and ordinary gameplay RNG execution are unchanged.

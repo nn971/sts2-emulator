@@ -50,7 +50,8 @@ non-Nature RNG parity remain **UNVERIFIED**.
 - `semanticEnumerationSchemaId = sts2-v111-semantic-enumeration-v1`; maximum
   support size is 256.
 - `semanticExtendedControlledSites = [random_enemy_target, generated_card_pool,
-  drawn_card_cost, generated_card_pool_shuffle, generated_draw_pile_insertion,
+  enemy_action_chance, drawn_card_cost, generated_card_pool_shuffle,
+  generated_draw_pile_insertion,
   random_draw_attack_card_model, random_hand_card_energy_cost,
   random_hand_card_select, random_pile_selection_shortlist, random_pile_card,
   random_auto_play_card, random_replay_card, random_rare_to_hand_shuffle,

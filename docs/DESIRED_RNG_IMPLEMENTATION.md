@@ -119,8 +119,13 @@ tokens in the shared pool-shuffle event; see [the Anointed continuation note](NA
 The supported generated draw-pile operations now use typed model-pick requests
 on native `run.combat_card_generation` and position requests on `run.shuffle`;
 the legacy profile preserves `combat`. Post-shuffle relic insertion now has
-its own typed site, and enemy-side insertion now has typed sites. Their
-after-shuffle insertion composes with card-effect draws, standalone conditioned
+its own typed site, and enemy-side insertion now has typed sites. The saved
+enemy-action replay also resolves Thieving Hopper's persistent-card selection,
+removes the selected card from its combat and run zones, and updates the
+semantic deck when the card came from the draw pile. It fails closed before
+presenting the choice if any draw-pile candidate cannot be removed while
+preserving Nature's constraints. Native stream assignment remains unverified.
+After-shuffle insertion composes with card-effect draws, standalone conditioned
 draws, and the automatic `DrawPlayerHand` continuation. Standalone Stratagem
 selection resumes the same saved draw across the source `select_cards` choice.
 Automatic Stratagem selection resumes the same draw and composes with

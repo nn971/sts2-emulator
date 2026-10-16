@@ -789,7 +789,8 @@ internal static class PrototypeAiJsonlServer
                                 SemanticNatureEnumeratorV111.MaximumSupportedOutcomes,
                             semanticExtendedControlledSites = new[]
                             {
-                                "random_enemy_target", "generated_card_pool",
+                                "random_enemy_target", "enemy_action_chance",
+                                "generated_card_pool",
                                 "drawn_card_cost", "generated_card_pool_shuffle",
                                 "generated_draw_pile_insertion",
                                 "random_draw_attack_card_model",
@@ -821,6 +822,7 @@ internal static class PrototypeAiJsonlServer
                                 "combat.card_transform.replacement.index_draw",
                                 "combat.random_draw_attack.card_model",
                                 "combat.draw_pile.random_insert_index",
+                                "combat.enemy.theft_card.select",
                                 "combat.hand_return.draw_pile.shuffle_swap_index",
                                 "combat.generation.full_pool_shuffle.swap_index",
                                 "combat.random_hand_card.select",
@@ -830,10 +832,12 @@ internal static class PrototypeAiJsonlServer
                             controlledChanceLimitations =
                                 "Opt-in HP/intents, shuffle, turn intents, hand-draw recycle, " +
                                 "random-enemy, Sly, and auto-play targeting, five generated-card " +
-                                "effects, draw insertion, full-pool generation shuffles, " +
+                                "effects, draw insertion, " +
+                                "full-pool generation shuffles, " +
                                 "hand-cost selection/rerolls, random pile shortlists, " +
                                 "per-potion model generation, selected-card transforms, " +
                                 "Bottled Potential hand-return shuffles, and their relic insertions; " +
+                                "enemy persistent-card theft during end turn; " +
                                 "other chance sites fail closed; native entry and laws unverified.",
                             natureBoundaryKinds = new[] { "initial_hp", "intents" },
                             coverageSchemaId = V111Coverage.SchemaId,
