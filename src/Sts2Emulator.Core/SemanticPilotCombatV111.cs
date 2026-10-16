@@ -1162,9 +1162,11 @@ public static class SemanticPilotCombatEngineV111
                     current.SeededEntry?.FixtureSelectionCardId &&
                 card?.CardId is ("proto.silent.survivor" or
                     "proto.colorless.seeker_strike");
-            if (card?.CardId is not ("proto.silent.strike" or
-                    "proto.silent.defend" or "proto.silent.ricochet") &&
-                !fixtureSelectionCard)
+            var supportedCardAction = card is not null &&
+                (SemanticPlayerActionEngineV111.SupportsCard(card.CardId) ||
+                 card.CardId == "proto.silent.ricochet" ||
+                 fixtureSelectionCard);
+            if (!supportedCardAction)
                 throw new NotSupportedException(
                     "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
                     "operation=card_effect_requires_semantic_audit");

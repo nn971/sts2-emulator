@@ -49,6 +49,9 @@ public static class SemanticPlayerActionEngineV111
             "proto.silent.piercing_wail"
         };
 
+    internal static bool SupportsCard(string cardId) =>
+        SupportedCards.Contains(cardId);
+
     public static SemanticPlayerActionV111 Step(
         RunState source, string actionId)
     {
@@ -70,7 +73,7 @@ public static class SemanticPlayerActionEngineV111
         var card = combat.Cards.SingleOrDefault(c =>
             c.InstanceId == payload.CardInstanceId);
         if (card is null || !combat.Hand.Contains(payload.CardInstanceId) ||
-            !SupportedCards.Contains(card.CardId))
+            !SupportsCard(card.CardId))
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
                 "operation=card_effect_requires_semantic_audit");
