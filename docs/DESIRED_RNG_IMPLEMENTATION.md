@@ -77,7 +77,10 @@ acquisition continuation remains pending. Distinguished Cape's two
 source-ordered modifier-curse selections now pass through the typed index
 provider in native and legacy-prototype modes; the legacy adapter preserves
 the original sampler. Tough Egg's hatch request uses the native formation
-CombatId as its owner. The later-act map's bounded path
+CombatId as its owner. The six-floor prototype map's width, edge,
+convergence, and room-assignment draws now use typed legacy requests on the
+existing map stream; this maps the emulator algorithm without establishing
+native map fidelity. The later-act map's bounded path
 starts, delta shuffles, Glory rest-count pick and room-assignment shuffles now
 also use typed native requests. Its Gaussian quota samples now use typed
 provider requests. A typed Gaussian-double adapter now wraps the native

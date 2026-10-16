@@ -139,12 +139,15 @@ public sealed partial class PrototypeGameEngine
             if (floorRule.MaxNodes
                 > floorRule.MinNodes)
             {
-                width += PrototypeRng.NextInt(
+                width += ResolveLegacyRandomIndex(
                     rng,
-                    "map",
-                    floorRule.MaxNodes
-                        - floorRule.MinNodes
-                        + 1);
+                    "map.legacy.floor_width.index_draw",
+                    $"act:{act}:floor:{floor}:bounds:{floorRule.MinNodes}-{floorRule.MaxNodes}",
+                    Enumerable.Range(
+                        0,
+                        checked(floorRule.MaxNodes
+                            - floorRule.MinNodes + 1)),
+                    streamId: "map");
             }
 
             var nodes = Enumerable.Range(
@@ -220,6 +223,7 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidOperationException(
                 "Prototype map layers cannot be empty.");
         }
+        var edgeOwner = LegacyMapEdgeOwner(current, next);
 
         var targets = Enumerable.Range(
                 0,
@@ -264,10 +268,15 @@ public sealed partial class PrototypeGameEngine
                     .ToArray();
                 var sourceIndex =
                     balanced[
-                        PrototypeRng.NextInt(
+                        ResolveLegacyRandomIndex(
                             rng,
-                            "map",
-                            balanced.Length)];
+                            "map.legacy.edge_source.index_draw",
+                            edgeOwner + ":target:" + next[nextIndex].NodeId
+                                + ":sources:" + CanonicalJson.Sha256(
+                                    balanced.Select(index =>
+                                        current[index].NodeId).ToArray()),
+                            Enumerable.Range(0, balanced.Length),
+                            streamId: "map")];
                 targets[sourceIndex].Add(
                     next[nextIndex].NodeId);
                 incoming[nextIndex]++;
@@ -294,10 +303,15 @@ public sealed partial class PrototypeGameEngine
                         .ToArray();
                 var nextIndex =
                     candidates[
-                        PrototypeRng.NextInt(
+                        ResolveLegacyRandomIndex(
                             rng,
-                            "map",
-                            candidates.Length)];
+                            "map.legacy.orphan_target.index_draw",
+                            edgeOwner + ":source:"
+                                + current[sourceIndex].NodeId + ":targets:"
+                                + CanonicalJson.Sha256(candidates.Select(index =>
+                                    next[index].NodeId).ToArray()),
+                            Enumerable.Range(0, candidates.Length),
+                            streamId: "map")];
                 targets[sourceIndex].Add(
                     next[nextIndex].NodeId);
                 incoming[nextIndex]++;
@@ -330,10 +344,13 @@ public sealed partial class PrototypeGameEngine
                  sourceIndex++)
             {
                 if (targets[sourceIndex].Count != 1
-                    || PrototypeRng.NextInt(
+                    || ResolveLegacyBoundedInteger(
                         rng,
-                        "map",
-                        100) >= 35)
+                        "map.legacy.edge_extra_chance.ticket",
+                        edgeOwner + ":source:"
+                            + current[sourceIndex].NodeId,
+                        100,
+                        streamId: "map") >= 35)
                 {
                     continue;
                 }
@@ -341,6 +358,7 @@ public sealed partial class PrototypeGameEngine
                 AddSecondTargetForSource(
                     targets,
                     sourceIndex,
+                    current,
                     next,
                     incoming,
                     rng);
@@ -385,17 +403,27 @@ public sealed partial class PrototypeGameEngine
 
         var sourceIndex =
             candidates[
-                PrototypeRng.NextInt(
+                ResolveLegacyRandomIndex(
                     rng,
-                    "map",
-                    candidates.Length)];
+                    "map.legacy.second_edge_source.index_draw",
+                    LegacyMapEdgeOwner(current, next) + ":sources:"
+                        + CanonicalJson.Sha256(candidates.Select(index =>
+                            current[index].NodeId).ToArray()),
+                    Enumerable.Range(0, candidates.Length),
+                    streamId: "map")];
         AddSecondTargetForSource(
             targets,
             sourceIndex,
+            current,
             next,
             incoming,
             rng);
     }
+
+    private static string LegacyMapEdgeOwner(
+        MapNodeState[] current,
+        MapNodeState[] next) =>
+        $"act:{current[0].Act}:from_floor:{current[0].Floor}:to_floor:{next[0].Floor}";
 
     private static void AddRandomConvergence(
         List<string>[] targets,
@@ -404,15 +432,16 @@ public sealed partial class PrototypeGameEngine
         int[] incoming,
         RngBundle rng)
     {
+        var edgeOwner = LegacyMapEdgeOwner(current, next);
         var nextOrder =
-            Enumerable.Range(
-                    0,
-                    next.Length)
-                .OrderBy(_ =>
-                    PrototypeRng.NextInt(
+            Enumerable.Range(0, next.Length)
+                .OrderBy(nextIndex =>
+                    ResolveLegacyBoundedInteger(
                         rng,
-                        "map",
-                        int.MaxValue))
+                        "map.legacy.convergence.order_key",
+                        edgeOwner + ":target:" + next[nextIndex].NodeId,
+                        int.MaxValue,
+                        streamId: "map"))
                 .ToArray();
 
         foreach (var nextIndex in nextOrder)
@@ -435,10 +464,15 @@ public sealed partial class PrototypeGameEngine
 
             var sourceIndex =
                 sources[
-                    PrototypeRng.NextInt(
+                    ResolveLegacyRandomIndex(
                         rng,
-                        "map",
-                        sources.Length)];
+                        "map.legacy.convergence.source.index_draw",
+                        edgeOwner + ":target:" + next[nextIndex].NodeId
+                            + ":sources:" + CanonicalJson.Sha256(
+                                sources.Select(sourceIndex =>
+                                    current[sourceIndex].NodeId).ToArray()),
+                        Enumerable.Range(0, sources.Length),
+                        streamId: "map")];
             targets[sourceIndex].Add(
                 next[nextIndex].NodeId);
             incoming[nextIndex]++;
@@ -449,6 +483,7 @@ public sealed partial class PrototypeGameEngine
     private static void AddSecondTargetForSource(
         List<string>[] targets,
         int sourceIndex,
+        MapNodeState[] current,
         MapNodeState[] next,
         int[] incoming,
         RngBundle rng)
@@ -483,10 +518,15 @@ public sealed partial class PrototypeGameEngine
             .ToArray();
         var nextIndex =
             balanced[
-                PrototypeRng.NextInt(
+                ResolveLegacyRandomIndex(
                     rng,
-                    "map",
-                    balanced.Length)];
+                    "map.legacy.second_edge_target.index_draw",
+                    LegacyMapEdgeOwner(current, next) + ":source:"
+                        + current[sourceIndex].NodeId + ":targets:"
+                        + CanonicalJson.Sha256(balanced.Select(index =>
+                            next[index].NodeId).ToArray()),
+                    Enumerable.Range(0, balanced.Length),
+                    streamId: "map")];
         targets[sourceIndex].Add(
             next[nextIndex].NodeId);
         incoming[nextIndex]++;
@@ -554,10 +594,14 @@ public sealed partial class PrototypeGameEngine
 
             var index =
                 candidateIndices[
-                    PrototypeRng.NextInt(
+                    ResolveLegacyRandomIndex(
                         rng,
-                        "map",
-                        candidateIndices.Length)];
+                        "map.legacy.required_room.node.index_draw",
+                        $"act:{nodes[0].Act}:floor:{nodes[0].Floor}:room:{requiredRoom}:nodes:"
+                            + CanonicalJson.Sha256(candidateIndices.Select(index =>
+                                nodes[index].NodeId).ToArray()),
+                        Enumerable.Range(0, candidateIndices.Length),
+                        streamId: "map")];
             assigned[index] =
                 requiredRoom;
             if (requiredRoom
@@ -601,10 +645,13 @@ public sealed partial class PrototypeGameEngine
 
             var room =
                 candidates[
-                    PrototypeRng.NextInt(
+                    ResolveLegacyRandomIndex(
                         rng,
-                        "map",
-                        candidates.Length)];
+                        "map.legacy.room_assignment.index_draw",
+                        $"act:{nodes[index].Act}:floor:{nodes[index].Floor}:node:{nodes[index].NodeId}:rooms:"
+                            + CanonicalJson.Sha256(candidates),
+                        Enumerable.Range(0, candidates.Length),
+                        streamId: "map")];
             assigned[index] = room;
             if (room
                 != PrototypeRoomType.Combat)

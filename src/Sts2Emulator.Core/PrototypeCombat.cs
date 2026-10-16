@@ -12761,7 +12761,8 @@ public sealed partial class PrototypeGameEngine
         RngBundle legacyRng,
         string siteId,
         string ownerId,
-        IEnumerable<int> orderedCandidates)
+        IEnumerable<int> orderedCandidates,
+        string streamId = "combat")
     {
         ArgumentNullException.ThrowIfNull(orderedCandidates);
         var candidates = orderedCandidates.ToArray();
@@ -12770,19 +12771,20 @@ public sealed partial class PrototypeGameEngine
                 "Legacy random selection requires a nonempty ordered support.",
                 nameof(orderedCandidates));
         return ResolveLegacyRandomOutcome(
-            legacyRng, siteId, ownerId, candidates, null);
+            legacyRng, siteId, ownerId, candidates, null, streamId);
     }
 
     private static int ResolveLegacyBoundedInteger(
         RngBundle legacyRng,
         string siteId,
         string ownerId,
-        int boundedCount)
+        int boundedCount,
+        string streamId = "combat")
     {
         if (boundedCount <= 0)
             throw new ArgumentOutOfRangeException(nameof(boundedCount));
         return ResolveLegacyRandomOutcome(
-            legacyRng, siteId, ownerId, [], boundedCount);
+            legacyRng, siteId, ownerId, [], boundedCount, streamId);
     }
 
     private static int ResolveLegacyRandomOutcome(
@@ -12790,11 +12792,13 @@ public sealed partial class PrototypeGameEngine
         string siteId,
         string ownerId,
         int[] orderedCandidates,
-        int? boundedCount)
+        int? boundedCount,
+        string streamId)
     {
         ArgumentNullException.ThrowIfNull(legacyRng);
         ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
         ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(streamId);
         if (ControlledChanceGuardV111.Active
             && !ControlledChanceGuardV111.EngineOwnedNativeProviderActive)
             throw new NotSupportedException(
@@ -12804,7 +12808,6 @@ public sealed partial class PrototypeGameEngine
                     : "bounded_integer")
                 + " requires a saved continuation.");
 
-        const string streamId = "combat";
         var stream = legacyRng.Streams.SingleOrDefault(item =>
             item.StreamId == streamId) ??
             throw new InvalidOperationException(
