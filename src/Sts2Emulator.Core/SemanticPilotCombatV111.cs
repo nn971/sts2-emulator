@@ -17,7 +17,8 @@ public sealed record SemanticPilotTransitionV111(
 public sealed record SemanticSeededEntryV111(
     string Seed, int Act, string EncounterId, string NativeEncounterEntry,
     int TotalFloor, int Ascension, long FirstMonsterCombatId,
-    int? MapColumn, int? MapRow);
+    int? MapColumn, int? MapRow,
+    string? OtherChanceProviderId = null);
 
 /// <summary>
 /// First external playable semantic boundary. Initial opening order is
@@ -39,6 +40,8 @@ public sealed record SemanticPilotCombatV111(
     /// This field is provider-private and never part of fair observation.
     /// </summary>
     public SemanticSeededEntryV111? SeededEntry { get; init; }
+    /// <summary>Private state for explicitly opted-in non-Nature RNG.</summary>
+    public SemanticOtherChanceStateV111? OtherChance { get; init; }
     [JsonIgnore] public string Fingerprint => CanonicalJson.Sha256(this);
     [JsonIgnore] public bool AtPlayerBoundary =>
         PendingEndTurn is null &&
@@ -64,7 +67,8 @@ public sealed record SemanticPilotCombatV111(
         OpeningSource = OpeningSource.Fork(),
         Run = Run.Fork(),
         PendingEndTurn = PendingEndTurn?.Fork(),
-        History = (SemanticPilotTransitionV111[])History.Clone()
+        History = (SemanticPilotTransitionV111[])History.Clone(),
+        OtherChance = OtherChance?.Fork()
     };
 }
 
@@ -162,7 +166,17 @@ public static class SemanticPilotCombatEngineV111
             opening = ControlledPlayableCombatEngineV111.Resolve(
                 opening, opening.Fingerprint, choice);
         }
-        var state = Begin(opening) with { SeededEntry = entry };
+        if (entry.OtherChanceProviderId is not null &&
+            entry.OtherChanceProviderId != SemanticOtherChanceEngineV111.ProviderId)
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_OTHER_CHANCE provider=" +
+                entry.OtherChanceProviderId);
+        var state = Begin(opening) with
+        {
+            SeededEntry = entry,
+            OtherChance = entry.OtherChanceProviderId is null
+                ? null : SemanticOtherChanceEngineV111.Begin(rng)
+        };
         Validate(state);
         return state;
     }
@@ -296,16 +310,31 @@ public static class SemanticPilotCombatEngineV111
             var bound = cost.SupportCount;
             if (bound < 1)
                 throw new InvalidDataException("Invalid engine-owned cost bound.");
-            var hash = SHA256.HashData(Encoding.UTF8.GetBytes(
-                current.OpeningSource.Seed + ":" +
-                endTurn.Fingerprint + ":" + cost.SiteId));
-            var index = (int)(BitConverter.ToUInt32(hash, 0) % (uint)bound);
+            SemanticOtherChanceStateV111? nextOther = null;
+            int index;
+            if (current.OtherChance is { } other)
+            {
+                var choice = SemanticOtherChanceEngineV111.ResolveDrawCost(
+                    other, cost);
+                nextOther = choice.Next;
+                index = choice.Decision.SelectedIndex;
+            }
+            else
+            {
+                // Preserve pre-existing p0-v1 sessions unless the caller
+                // explicitly negotiates the named native-codec provider.
+                var hash = SHA256.HashData(Encoding.UTF8.GetBytes(
+                    current.OpeningSource.Seed + ":" +
+                    endTurn.Fingerprint + ":" + cost.SiteId));
+                index = (int)(BitConverter.ToUInt32(hash, 0) % (uint)bound);
+            }
             var resolved = SemanticEndTurnEngineV111.Resolve(
                 endTurn, endTurn.Fingerprint, index);
             current = current with
             {
                 Run = resolved.Run,
-                PendingEndTurn = resolved.Complete ? null : resolved
+                PendingEndTurn = resolved.Complete ? null : resolved,
+                OtherChance = nextOther ?? current.OtherChance
             };
         }
         Validate(current);
@@ -330,11 +359,17 @@ public static class SemanticPilotCombatEngineV111
                 throw new InvalidDataException(
                     "Semantic playable and end-turn continuation diverged.");
         }
+        if (state.OtherChance is not null)
+            SemanticOtherChanceEngineV111.Validate(state.OtherChance);
         if (state.SeededEntry is { } entry &&
             (entry.Seed != state.OpeningSource.Seed ||
              entry.Act != state.OpeningSource.Origin.Combat.Act ||
              entry.NativeEncounterEntry != state.NativeEncounterEntry ||
-             entry.TotalFloor != state.OpeningSource.Origin.Formation.TotalFloor))
+             entry.TotalFloor != state.OpeningSource.Origin.Formation.TotalFloor ||
+             (entry.OtherChanceProviderId is null) !=
+                 (state.OtherChance is null) ||
+             (entry.OtherChanceProviderId is not null &&
+              entry.OtherChanceProviderId != state.OtherChance?.ProviderId)))
             throw new InvalidDataException(
                 "Seeded Nature entry provenance disagrees with its opening.");
         if (state.AtPlayerBoundary)
