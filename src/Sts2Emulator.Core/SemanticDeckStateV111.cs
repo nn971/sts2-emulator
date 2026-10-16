@@ -426,10 +426,32 @@ public static class SemanticDeckEngineV111
     }
 
     public static SemanticDeckStateV111 MoveKnownToTop(
+        SemanticDeckStateV111 state, long cardId, bool publiclyKnown = true) =>
+        MoveKnownToOffset(state, cardId, 0, publiclyKnown);
+
+    public static SemanticDeckStateV111 MoveKnownToBottom(
         SemanticDeckStateV111 state, long cardId, bool publiclyKnown = true)
     {
         Validate(state);
         AssertIdle(state);
+        if (state.Count == 0)
+            throw new InvalidOperationException(
+                "Cannot move a card to the bottom of an empty pile.");
+        return MoveKnownToOffset(
+            state, cardId, state.Count - 1, publiclyKnown);
+    }
+
+    /// <summary>Move an already known instance to a precise final top-first
+    /// offset. Unknown identities cannot be reordered without selecting the
+    /// identity at their source position, so those moves fail closed.</summary>
+    public static SemanticDeckStateV111 MoveKnownToOffset(
+        SemanticDeckStateV111 state, long cardId, int topOffset,
+        bool publiclyKnown = true)
+    {
+        Validate(state);
+        AssertIdle(state);
+        if (topOffset < 0 || topOffset >= state.Count)
+            throw new ArgumentOutOfRangeException(nameof(topOffset));
         var index = Array.FindIndex(state.Slots, slot =>
             slot.KnownCardInstanceId == cardId);
         if (index < 0)
@@ -438,7 +460,7 @@ public static class SemanticDeckEngineV111
         var slots = state.Slots.ToList();
         var slot = slots[index];
         slots.RemoveAt(index);
-        slots.Insert(0, slot with
+        slots.Insert(topOffset, slot with
         {
             PubliclyRevealed = publiclyKnown || slot.PubliclyRevealed
         });

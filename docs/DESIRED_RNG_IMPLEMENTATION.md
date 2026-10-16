@@ -32,8 +32,10 @@ without-replacement random pile shortlists. The
 semantic JSONL/Python pilot resumes the original draw, target, generation and
 cost continuations, including draw-time hooks, exposes source `select_cards`
 player choices, and can opt into typed bounded swaps for a generated card pool
-before returning the ordinary player choice,
-or a bounded insertion position while preserving unresolved deck order.
+before returning the ordinary player choice or a bounded insertion position
+while preserving unresolved deck order. The deck kernel also supports exact
+moves of known cards to a forced offset while keeping unresolved positions
+constrained.
 The Orobas, Pael and Tezcatara ordered relic offer selections; Darv's
 offer-variant and ordered relic-pool shuffle; and the Nonupeipe, Tanx and
 Vakuu relic shuffles now pass through the shared index provider, with opt-in
