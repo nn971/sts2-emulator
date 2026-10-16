@@ -465,6 +465,12 @@ pilot/cost tests pass 14/14. The full core test suite has 296 failures on
 both this branch and its exact integration base, with identical failed test
 names; this branch adds one passing test and no new failures.
 
+The legacy restricted P0 semantic JSONL smoke and seeded-entry smoke also
+pass after the route changes. They cover the fair player view, two Nature
+sites, handles/forks, replay, seeded terminal defeat, and seven private
+engine-owned cost rolls per worker; those cost and source laws remain
+`UNVERIFIED`.
+
 The smoke also reproduces paired victories on four additional route seeds:
 Overgrowth Shrinker Beetle (Nature/native exit HP 57/62), Overgrowth Fuzzy
 Wurm Crawler (54/54), Underdocks Toadpoles (42/47), and Underdocks Sludge
