@@ -3090,6 +3090,21 @@ public static class PrototypeStateInvariants
                 { } eventKind && !Enum.IsDefined(eventKind)))
             throw new InvalidOperationException(
                 "Invalid suspended automatic-combat pipeline.");
+        if (combat.AutomaticPipelineContinuation is
+                { ControlledEnemyAction: { } enemyAction } enemyActionCursor)
+        {
+            enemyAction.Validate(PrototypeContent.Rules.EndTurnPipeline.Length);
+            if (enemyActionCursor.NextStepIndex != enemyAction.StepIndex ||
+                combat.IsPlayerTurn || combat.PendingChoice is not null ||
+                combat.PendingKnowledgeDemonChoice is not null ||
+                CanonicalJson.Sha256(enemyAction.Checkpoint.World?.Combat) !=
+                    CanonicalJson.Sha256(combat with
+                    {
+                        AutomaticPipelineContinuation = null
+                    }))
+                throw new InvalidOperationException(
+                    "Controlled enemy-action checkpoint disagrees with combat state.");
+        }
         if (combat.ToricShields is { } shields
             && shields.Any(shield =>
                 shield.BlockAmount <= 0

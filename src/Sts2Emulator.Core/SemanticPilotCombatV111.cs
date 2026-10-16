@@ -176,6 +176,8 @@ public sealed record SemanticPilotCombatV111(
         };
     [JsonIgnore] public RandomIndexRequestV111? IntentPending =>
         PendingInitialIntents?.Pending ?? PendingEndTurn?.IntentPending;
+    [JsonIgnore] public RandomIndexRequestV111? EnemyActionPending =>
+        PendingEndTurn?.EnemyActionPending;
     [JsonIgnore] public SemanticDeckEventV111? DrawPending
     {
         get
@@ -2508,7 +2510,8 @@ public static class SemanticPilotCombatEngineV111
         var pending = current.PendingEndTurn ??
             throw new InvalidOperationException("No Nature decision is pending.");
         if (pending.IntentPending is null && pending.DrawPending is null &&
-            pending.RandomPileCardPending is null && pending.CostPending is null)
+            pending.RandomPileCardPending is null && pending.CostPending is null &&
+            pending.EnemyActionPending is null)
             throw new InvalidOperationException(
                 "No semantic enemy intent, draw or cost choice is pending.");
         var resolved = SemanticEndTurnEngineV111.Resolve(
@@ -3817,6 +3820,12 @@ public static class SemanticPilotCombatEngineV111
         {
             SemanticEndTurnEngineV111.Validate(endTurn);
             if (endTurn.Complete ||
+                (endTurn.EnemyActionPending is not null &&
+                 (state.PendingInitialIntents is not null ||
+                  endTurn.IntentPending is not null ||
+                  endTurn.DrawPending is not null ||
+                  endTurn.HandDraw is not null ||
+                  state.UsesNativePolicyBaseline)) ||
                 (endTurn.CostPending is not null &&
                  (state.CostPending is null ||
                   state.CostPending.TargetCardInstanceId is not null ||

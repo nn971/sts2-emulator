@@ -124,6 +124,30 @@ internal static class PrototypeAiJsonlServer
                     sourceScope = "source_filtered_semantic_eligible_moves"
                 };
             }
+            if (state.EnemyActionPending is { } enemyAction)
+            {
+                var eventId = CanonicalJson.Sha256(new
+                {
+                    schemaId = SemanticChanceSchemaId,
+                    boundaryFingerprint = state.Fingerprint,
+                    request = enemyAction
+                });
+                return new
+                {
+                    kind = "enemy_action_chance",
+                    eventId,
+                    siteId = enemyAction.SiteId,
+                    streamId = enemyAction.StreamId,
+                    ownerId = enemyAction.OwnerId,
+                    ordinal = enemyAction.Ordinal,
+                    operationKind = enemyAction.OperationKind,
+                    supportCount = enemyAction.SupportCount,
+                    eligibleIndices = Enumerable.Range(
+                        0, enemyAction.SupportCount).ToArray(),
+                    supportFingerprint = CanonicalJson.Sha256(enemyAction),
+                    probabilityStatus = "UNVERIFIED"
+                };
+            }
             if (state.RandomPileCardPending is { } pileCard)
             {
                 return new
@@ -454,6 +478,8 @@ internal static class PrototypeAiJsonlServer
                 state.PoolShufflePending?.SiteId ==
                     "combat.generation.full_pool_shuffle.swap_index")
                 sites.Add("generated_card_pool_shuffle");
+            if (state.EnemyActionPending is not null)
+                sites.Add("enemy_action_chance");
             if (state.SeededEntry?.FixtureSelectionCardId is
                     "proto.colorless.beat_down" or
                     "proto.colorless.catastrophe" ||
@@ -516,6 +542,7 @@ internal static class PrototypeAiJsonlServer
                   state.SeededEntry?.FixtureRandomFreeAttackDrawInsertion == true ||
                   state.SeededEntry?.FixtureRandomizeHandCostsMaxExclusive is not null ||
                   state.SeededEntry?.FixtureSetRandomHandCardCost is not null ||
+                  state.EnemyActionPending is not null ||
                   state.RandomPileCardPending is not null ||
                   state.Run.Player.ActiveRelics.Any(relic =>
                       relic.RelicId == "proto.relic.jeweled_mask") ||
@@ -1356,6 +1383,21 @@ internal static class PrototypeAiJsonlServer
                         var next = SemanticPilotCombatEngineV111.ResolveIntent(
                             current, RequiredString(request, "fingerprint"),
                             RequiredString(request, "intent_id"));
+                        var handle = StoreSemantic(next);
+                        Write(new { requestId, ok = true,
+                            result = SemanticResult(next, handle, parentHandle) });
+                        break;
+                    }
+
+                    case "semantic_resolve_enemy_action":
+                    {
+                        var parentHandle = RequiredString(request, "semantic_handle");
+                        var current = RequireSemantic(request);
+                        var next = SemanticPilotCombatEngineV111.Resolve(
+                            current, RequiredString(request, "fingerprint"),
+                            OptionalInt(request, "selected_index") ??
+                                throw new ArgumentException(
+                                    "Missing selected_index."));
                         var handle = StoreSemantic(next);
                         Write(new { requestId, ok = true,
                             result = SemanticResult(next, handle, parentHandle) });

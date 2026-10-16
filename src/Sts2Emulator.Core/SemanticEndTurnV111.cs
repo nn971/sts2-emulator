@@ -22,7 +22,11 @@ public sealed record SemanticEndTurnV111(
     public const string SchemaId = "sts2-v111-semantic-end-turn-v1";
     public RunState? PlayerActionSource { get; init; }
     public string? PlayerActionId { get; init; }
+    public RandomIndexDecisionV111[] EnemyActionTranscript { get; init; } = [];
     [JsonIgnore] public string Fingerprint => CanonicalJson.Sha256(this);
+    [JsonIgnore] public RandomIndexRequestV111? EnemyActionPending =>
+        Complete ? null : Run.World?.Combat?.AutomaticPipelineContinuation?
+            .ControlledEnemyAction?.PendingRequest;
     [JsonIgnore] public RandomIndexRequestV111? IntentPending =>
         Intents?.Pending;
     [JsonIgnore] public SemanticDeckEventV111? DrawPending =>
@@ -52,6 +56,15 @@ public sealed record SemanticEndTurnV111(
         Origin = Origin.Fork(), Run = Run.Fork(),
         Intents = Intents?.Fork(), HandDraw = HandDraw?.Fork(),
         PlayerActionSource = PlayerActionSource?.Fork(),
+        EnemyActionTranscript = EnemyActionTranscript.Select(decision =>
+            decision with
+            {
+                Request = decision.Request with
+                {
+                    OrderedCandidates =
+                        (int[])decision.Request.OrderedCandidates.Clone()
+                }
+            }).ToArray(),
         IntentTranscript = IntentTranscript.Select(t => t with
         {
             Request = t.Request with
@@ -135,6 +148,19 @@ public static class SemanticEndTurnEngineV111
                 playerBoundary.Fork(), actions[0].ActionId).State;
         if (advanced.Phase is RunPhase.Terminal or RunPhase.Reward)
             return (null, advanced);
+        if (advanced.World?.Combat?.AutomaticPipelineContinuation?
+                .ControlledEnemyAction is not null)
+        {
+            var suspendedEnemyAction = new SemanticEndTurnV111(
+                playerBoundary.Fork(), advanced.Fork(),
+                nativeEncounterEntry, null, null, [])
+            {
+                PlayerActionSource = playerBoundary.Fork(),
+                PlayerActionId = actions[0].ActionId
+            };
+            Validate(suspendedEnemyAction);
+            return (suspendedEnemyAction, suspendedEnemyAction.Run);
+        }
         var state = BeginAtAdvanceTurn(advanced, nativeEncounterEntry);
         var continuation = state with
         {
@@ -153,7 +179,55 @@ public static class SemanticEndTurnEngineV111
         if (source.Complete)
             throw new InvalidOperationException("End-turn Nature choices are complete.");
         var state = source.Fork();
-        if (state.Intents is { Pending: not null } pending)
+        if (state.EnemyActionPending is { } enemyActionRequest)
+        {
+            var decision = new ControlledRandomIndexProviderV111(selectedIndex)
+                .Resolve(enemyActionRequest, state.Run.Rng);
+            RunState resumed;
+            using (ControlledChanceGuardV111.Enter())
+                resumed = PrototypeGameEngine.ResumeControlledEnemyAction(
+                    state.Run.Fork(), selectedIndex);
+            var transcript = state.EnemyActionTranscript.Append(decision).ToArray();
+            if (resumed.Phase is RunPhase.Reward or RunPhase.Terminal)
+            {
+                state = state with
+                {
+                    Run = resumed,
+                    Intents = null,
+                    HandDraw = null,
+                    EnemyActionTranscript = transcript,
+                    Complete = true
+                };
+            }
+            else if (resumed.World?.Combat?.AutomaticPipelineContinuation?
+                         .ControlledEnemyAction is not null)
+            {
+                state = state with
+                {
+                    Run = resumed,
+                    EnemyActionTranscript = transcript
+                };
+            }
+            else if (resumed.World?.Combat?.AutomaticPipelineContinuation is
+                         { } cursor &&
+                     PrototypeContent.Rules.EndTurnPipeline[
+                         cursor.NextStepIndex].Kind ==
+                         PrototypeAutomaticStepKind.AdvanceTurn)
+            {
+                state = BeginAtAdvanceTurn(
+                    resumed, state.NativeEncounterEntry) with
+                {
+                    PlayerActionSource = state.PlayerActionSource?.Fork(),
+                    PlayerActionId = state.PlayerActionId,
+                    EnemyActionTranscript = transcript
+                };
+            }
+            else
+                throw new NotSupportedException(
+                    "UNSUPPORTED_CONTROLLED_CHANCE site=combat.enemy_action " +
+                    "operation=unexpected_pipeline_boundary");
+        }
+        else if (state.Intents is { Pending: not null } pending)
         {
             var next = ControlledTurnIntentEngineV111.Resolve(
                 pending, selectedIndex, state.Run.Rng);
@@ -306,6 +380,19 @@ public static class SemanticEndTurnEngineV111
             reproduced.PlayerActionId != saved.PlayerActionId)
             throw new InvalidDataException(
                 "End-turn action identity differs on source replay.");
+        foreach (var choice in saved.EnemyActionTranscript)
+        {
+            choice.Validate();
+            if (choice.ProviderMode != "controlled-v111" ||
+                choice.ProbabilityStatus != "UNVERIFIED" ||
+                reproduced.EnemyActionPending is not { } request ||
+                CanonicalJson.Sha256(request) !=
+                    CanonicalJson.Sha256(choice.Request))
+                throw new InvalidDataException(
+                    "Semantic end-turn enemy-action transcript diverged.");
+            reproduced = Resolve(
+                reproduced, reproduced.Fingerprint, choice.SelectedIndex);
+        }
         foreach (var choice in saved.IntentTranscript)
         {
             choice.Validate();
@@ -444,16 +531,53 @@ public static class SemanticEndTurnEngineV111
     public static void Validate(SemanticEndTurnV111 state)
     {
         ArgumentNullException.ThrowIfNull(state);
-        ValidateOrigin(state.Origin);
+        if (state.EnemyActionPending is not null)
+        {
+            if (state.Complete || state.Intents is not null ||
+                state.HandDraw is not null ||
+                state.PlayerActionSource is not { } playerSource ||
+                playerSource.Phase != RunPhase.Combat ||
+                playerSource.World?.Combat is not { IsPlayerTurn: true,
+                    PendingChoice: null,
+                    AutomaticPipelineContinuation: null })
+                throw new InvalidDataException(
+                    "Invalid pending semantic enemy-action stage.");
+            var cursor = state.Run.World!.Combat!
+                .AutomaticPipelineContinuation!.ControlledEnemyAction!;
+            cursor.Validate(PrototypeContent.Rules.EndTurnPipeline.Length);
+            if (CanonicalJson.Sha256(cursor.Decisions) !=
+                CanonicalJson.Sha256(state.EnemyActionTranscript))
+                throw new InvalidDataException(
+                    "Semantic enemy-action transcript differs from its replay frame.");
+        }
+        else if (!state.Complete ||
+                 state.Run.Phase is not (RunPhase.Terminal or RunPhase.Reward))
+        {
+            ValidateOrigin(state.Origin);
+        }
         if (string.IsNullOrWhiteSpace(state.NativeEncounterEntry) ||
             state.IntentTranscript is null ||
+            state.EnemyActionTranscript is null ||
             (state.PlayerActionSource is null) != (state.PlayerActionId is null) ||
             (state.Complete && (state.Intents is not null ||
-                                state.HandDraw is not { AtBoundary: true })) ||
+                (state.Run.Phase is RunPhase.Terminal or RunPhase.Reward
+                    ? state.HandDraw is not null
+                    : state.HandDraw is not { AtBoundary: true }))) ||
             (!state.Complete && state.Intents is null &&
-             state.HandDraw is null) ||
+             state.HandDraw is null && state.EnemyActionPending is null) ||
             (state.Intents is not null && state.HandDraw is not null))
             throw new InvalidDataException("Invalid semantic end-turn stages.");
+        foreach (var decision in state.EnemyActionTranscript)
+        {
+            decision.Validate();
+            if (decision.ProviderMode != "controlled-v111" ||
+                decision.NativeCursorBefore is not null ||
+                decision.NativeCursorAfter is not null ||
+                !PrototypeControlledEnemyActionContinuationV111
+                    .IsEnemyInsertionSite(decision.Request.SiteId))
+                throw new InvalidDataException(
+                    "Invalid semantic enemy-action Nature decision.");
+        }
         if (state.Intents is { } intents)
         {
             ControlledTurnIntentEngineV111.Validate(intents);

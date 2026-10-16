@@ -39,8 +39,12 @@ public sealed record ControlledPlayableCombatV111(
     [System.Text.Json.Serialization.JsonIgnore]
     public RandomIndexRequestV111? ActivePending =>
         DrawCostPending ?? RandomCostPending ?? PotionGenerationPending ?? CardTransformPending ?? PoolShufflePending ?? DrawInsertionPending ??
-        GeneratedCardPending ?? TargetPending ??
+        EnemyActionPending ?? GeneratedCardPending ?? TargetPending ??
         Recycle?.Pending ?? TurnIntents?.Pending ?? Pending;
+    [System.Text.Json.Serialization.JsonIgnore]
+    public RandomIndexRequestV111? EnemyActionPending =>
+        Run.World?.Combat?.AutomaticPipelineContinuation?
+            .ControlledEnemyAction?.PendingRequest;
     [System.Text.Json.Serialization.JsonIgnore]
     public RandomIndexRequestV111? DrawCostPending
     {
@@ -362,6 +366,8 @@ public static class ControlledPlayableCombatEngineV111
             return ResolvePoolShuffle(state, selectedIndex);
         if (state.DrawInsertionPending is not null)
             return ResolveDrawInsertion(state, selectedIndex);
+        if (state.EnemyActionPending is not null)
+            return ResolveEnemyAction(state, selectedIndex);
         if (state.GeneratedCardPending is not null)
             return ResolveGeneratedCard(state, selectedIndex);
         if (state.TargetPending is not null)
@@ -505,6 +511,26 @@ public static class ControlledPlayableCombatEngineV111
         return StartPendingTurn(next);
     }
 
+    private static ControlledPlayableCombatV111 ResolveEnemyAction(
+        ControlledPlayableCombatV111 state, int selectedIndex)
+    {
+        var request = state.EnemyActionPending ??
+            throw new InvalidOperationException(
+                "Missing controlled enemy-action ticket.");
+        var decision = new ControlledRandomIndexProviderV111(selectedIndex)
+            .Resolve(request, state.Origin.ReferenceStreams);
+        RunState result;
+        using (ControlledChanceGuardV111.Enter())
+            result = PrototypeGameEngine.ResumeControlledEnemyAction(
+                state.Run.Fork(), selectedIndex);
+        var next = state.Fork() with
+        {
+            Run = result,
+            LiveTranscript = state.LiveTranscript.Append(decision).ToArray()
+        };
+        return StartPendingTurn(next);
+    }
+
     private static ControlledPlayableCombatV111 ResolveGeneratedCard(
         ControlledPlayableCombatV111 state, int selectedIndex)
     {
@@ -620,6 +646,8 @@ public static class ControlledPlayableCombatEngineV111
             var recycleState = state with { Recycle = recycle };
             return recycle.Complete ? FinishRecycle(recycleState) : recycleState;
         }
+        if (continuation.ControlledEnemyAction is not null)
+            return state;
         if (PrototypeContent.Rules.EndTurnPipeline[index].Kind !=
                 PrototypeAutomaticStepKind.AdvanceTurn)
             return state;
@@ -826,6 +854,18 @@ public static class ControlledPlayableCombatEngineV111
             (state.Recycle is not null &&
                 (state.Pending is not null || state.TurnIntents is not null)))
             throw new InvalidDataException("Malformed controlled playable stage.");
+        var enemyAction = state.Run.World?.Combat?
+            .AutomaticPipelineContinuation?.ControlledEnemyAction;
+        if (enemyAction is not null)
+        {
+            enemyAction.Validate(PrototypeContent.Rules.EndTurnPipeline.Length);
+            if (state.Pending is not null || state.Recycle is not null ||
+                state.TurnIntents is not null ||
+                CanonicalJson.Sha256(state.EnemyActionPending) !=
+                    CanonicalJson.Sha256(enemyAction.PendingRequest))
+                throw new InvalidDataException(
+                    "Enemy-action chance conflicts with another controlled boundary.");
+        }
         var drawnCostCombat = state.Run.World?.Combat;
         var drawnCost = drawnCostCombat?.PendingChoice?.ControlledDrawCost;
         if (drawnCost is not null)

@@ -1502,7 +1502,9 @@ public sealed partial class PrototypeGameEngine
         RunState state,
         int startIndex,
         PrototypeCombatEventKind? pendingPostDispatchEventKind = null,
-        bool stopBeforeSemanticHandDraw = false)
+        bool stopBeforeSemanticHandDraw = false,
+        PrototypeControlledEnemyActionContinuationV111?
+            controlledEnemyActionReplay = null)
     {
         if (pendingPostDispatchEventKind is not null)
         {
@@ -1547,7 +1549,36 @@ public sealed partial class PrototypeGameEngine
                 automaticStep.Kind == PrototypeAutomaticStepKind.AdvanceTurn)
                 return SetAutomaticPipelineContinuation(
                     state, index, pendingPostDispatchEventKind: null);
-            state = ResolveAutomaticStep(state, automaticStep);
+            if (ControlledChanceGuardV111.Active &&
+                automaticStep.Kind ==
+                    PrototypeAutomaticStepKind.ResolveEnemyActions)
+            {
+                var replay = controlledEnemyActionReplay;
+                if (replay is not null && replay.StepIndex != index)
+                    throw new InvalidDataException(
+                        "Enemy-action replay cursor points at another pipeline stage.");
+                var checkpoint = replay?.Checkpoint ??
+                    ClearAutomaticPipelineContinuation(state.Fork());
+                try
+                {
+                    using var replayScope =
+                        ControlledEnemyActionReplayV111.Begin(
+                            replay?.Decisions ?? []);
+                    state = ResolveAutomaticStep(state, automaticStep);
+                    replayScope.EnsureConsumed();
+                }
+                catch (ControlledEnemyActionChanceRequiredException required)
+                {
+                    return SetControlledEnemyActionContinuation(
+                        checkpoint, index, replay?.Decisions ?? [],
+                        required.Request);
+                }
+                controlledEnemyActionReplay = null;
+            }
+            else
+            {
+                state = ResolveAutomaticStep(state, automaticStep);
+            }
 
             var currentCombat = RequireWorld(state).Combat
                 ?? throw new InvalidOperationException(
@@ -1677,6 +1708,44 @@ public sealed partial class PrototypeGameEngine
         };
         return ResumeAutomaticPipeline(resumed, index + 1,
             stopBeforeSemanticHandDraw: stopBeforeSemanticHandDraw);
+    }
+
+    internal static RunState ResumeControlledEnemyAction(
+        RunState state, int selectedIndex)
+    {
+        if (!ControlledChanceGuardV111.Active)
+            throw new InvalidOperationException(
+                "Controlled enemy actions require the RNG guard.");
+        var combat = RequireWorld(state).Combat ??
+            throw new InvalidOperationException(
+                "No combat for the controlled enemy-action choice.");
+        var replay = combat.AutomaticPipelineContinuation?
+            .ControlledEnemyAction ?? throw new InvalidOperationException(
+                "No controlled enemy-action continuation is pending.");
+        replay.Validate(PrototypeContent.Rules.EndTurnPipeline.Length);
+        if (CanonicalJson.Sha256(ClearAutomaticPipelineContinuation(state)) !=
+            CanonicalJson.Sha256(replay.Checkpoint))
+            throw new InvalidDataException(
+                "Enemy-action checkpoint no longer matches the suspended run.");
+
+        replay.PendingRequest.Validate();
+        if (selectedIndex < 0 ||
+            selectedIndex >= replay.PendingRequest.SupportCount)
+            throw new ArgumentOutOfRangeException(nameof(selectedIndex));
+        var decision = new RandomIndexDecisionV111(
+            replay.PendingRequest with
+            {
+                OrderedCandidates =
+                    (int[])replay.PendingRequest.OrderedCandidates.Clone()
+            }, selectedIndex, "controlled-v111");
+        decision.Validate();
+        var resumed = replay with
+        {
+            Decisions = replay.Decisions.Append(decision).ToArray()
+        };
+        return ResumeAutomaticPipeline(
+            replay.Checkpoint.Fork(), replay.StepIndex,
+            controlledEnemyActionReplay: resumed);
     }
 
     /// <summary>
@@ -1833,6 +1902,56 @@ public sealed partial class PrototypeGameEngine
                 }
             }
         };
+    }
+
+    private static RunState SetControlledEnemyActionContinuation(
+        RunState checkpoint,
+        int stepIndex,
+        RandomIndexDecisionV111[] decisions,
+        RandomIndexRequestV111 pendingRequest)
+    {
+        if (checkpoint.World?.Combat is not { } originalCombat ||
+            checkpoint.Phase != RunPhase.Combat || originalCombat.IsPlayerTurn)
+            throw new InvalidOperationException(
+                "Enemy-action suspension lost its pre-step combat state.");
+        var savedCheckpoint = ClearAutomaticPipelineContinuation(checkpoint);
+        var combat = RequireWorld(savedCheckpoint).Combat!;
+        var replay = new PrototypeControlledEnemyActionContinuationV111(
+            savedCheckpoint, stepIndex, decisions, pendingRequest);
+        replay.Validate(PrototypeContent.Rules.EndTurnPipeline.Length);
+        return savedCheckpoint with
+        {
+            World = savedCheckpoint.World! with
+            {
+                Combat = combat with
+                {
+                    AutomaticPipelineContinuation =
+                        new PrototypeAutomaticPipelineContinuationState(
+                            stepIndex,
+                            ControlledEnemyAction: replay)
+                }
+            }
+        };
+    }
+
+    private static RunState ClearAutomaticPipelineContinuation(RunState state)
+    {
+        var world = RequireWorld(state);
+        var combat = world.Combat ??
+            throw new InvalidOperationException(
+                "Combat unexpectedly disappeared.");
+        return combat.AutomaticPipelineContinuation is null
+            ? state
+            : state with
+            {
+                World = world with
+                {
+                    Combat = combat with
+                    {
+                        AutomaticPipelineContinuation = null
+                    }
+                }
+            };
     }
 
     private static RunState ResolveImbuedAutoPlay(RunState state)
@@ -13669,12 +13788,6 @@ public sealed partial class PrototypeGameEngine
                 "Random insertion support requires unique card instances.",
                 nameof(orderedDrawPile));
 
-        if (ControlledChanceGuardV111.Active &&
-            !ControlledChanceGuardV111.EngineOwnedNativeProviderActive)
-            throw new NotSupportedException(
-                $"UNSUPPORTED_CONTROLLED_CHANCE site={siteId} " +
-                "operation=bounded_integer requires a saved pile-insertion continuation.");
-
         var native = combat.NativeRng;
         var streamId = native is null
             ? "combat"
@@ -13693,10 +13806,23 @@ public sealed partial class PrototypeGameEngine
                         nameof(requestOwnerPrefix)));
         ownerId += ":card:" + cardModelId + ":" + pileName + "_pile:" +
             CanonicalJson.Sha256(orderedDrawPile);
-        var decision = provider.Resolve(new RandomIndexRequestV111(
+        var request = new RandomIndexRequestV111(
             siteId, streamId, ownerId,
             ordinal, [], OperationKind: "bounded_integer",
-            BoundedCount: checked(orderedDrawPile.Length + 1)), streams);
+            BoundedCount: checked(orderedDrawPile.Length + 1));
+        if (ControlledChanceGuardV111.Active &&
+            !ControlledChanceGuardV111.EngineOwnedNativeProviderActive)
+        {
+            if (PrototypeControlledEnemyActionContinuationV111
+                    .IsEnemyInsertionSite(siteId))
+                return (combat,
+                    ControlledEnemyActionReplayV111.Resolve(request));
+            throw new NotSupportedException(
+                $"UNSUPPORTED_CONTROLLED_CHANCE site={siteId} " +
+                "operation=bounded_integer requires a saved pile-insertion continuation.");
+        }
+
+        var decision = provider.Resolve(request, streams);
         var updated = native is null
             ? combat
             : combat with

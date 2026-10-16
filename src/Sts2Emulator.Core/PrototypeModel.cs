@@ -393,7 +393,9 @@ public sealed record PrototypeAutomaticPipelineContinuationState(
     // BeforeHandDraw can itself contain a semantic chance event. This marker
     // resumes after the saved event-dispatch continuation, before applying
     // the deterministic hand-draw prelude and starting DrawCards.
-    bool ControlledSemanticBeforeHandDrawPending = false);
+    bool ControlledSemanticBeforeHandDrawPending = false,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    PrototypeControlledEnemyActionContinuationV111? ControlledEnemyAction = null);
 
 /// <summary>
 /// A source-owned, blocking choice in the enemy-side action pipeline.
@@ -2222,7 +2224,11 @@ public sealed record CombatState(
         AutomaticPipelineContinuation =
             AutomaticPipelineContinuation is null
                 ? null
-                : AutomaticPipelineContinuation with { }
+                : AutomaticPipelineContinuation with
+                {
+                    ControlledEnemyAction =
+                        AutomaticPipelineContinuation.ControlledEnemyAction?.Fork()
+                }
     };
 
     public CombatRelicState[] RelicStates =>
