@@ -48,7 +48,8 @@ non-Nature RNG parity remain **UNVERIFIED**.
 - `semanticExtendedControlledSites = [random_enemy_target, generated_card_pool,
   drawn_card_cost, generated_card_pool_shuffle, generated_draw_pile_insertion,
   random_draw_attack_card_model, random_hand_card_energy_cost,
-  random_hand_card_select, random_pile_selection_shortlist, random_pile_card]`;
+  random_hand_card_select, random_pile_selection_shortlist, random_pile_card,
+  random_auto_play_card, random_replay_card, random_rare_to_hand_shuffle]`;
   fixture-specific sites require their corresponding seeded-entry options.
 - `semanticExtendedPlayerChoices = [select_cards,
   card_drawn_hook_action]`.
@@ -375,6 +376,14 @@ contiguous unresolved semantic pool without revealing its old position;
 removal fails closed when a known inserted card splits that shared pool into
 multiple positional runs.
 
+The same `fixture_selection_card_id` loadout hook can substitute
+`proto.colorless.beat_down`, `proto.colorless.catastrophe`, or
+`proto.colorless.hidden_gem` to reach the saved player-action
+`combat.autoplay.random_card.select` and
+`combat.draw_pile.random_replay_card.select` continuations. These are fixture
+loadouts, not native card-acquisition routes; the corresponding semantic
+shortlist event is resolved with `resolve_card_shortlist(card_instance_id)`.
+
 The optional `drawn_card_cost` Nature site is enabled with
 `fixture_draw_cost_relic_id="proto.relic.snecko_eye"` and
 `fixture_nature_draw_costs=true`. It pauses at the original drawn-card cost
@@ -394,6 +403,16 @@ effect and exposes the source `select_cards` action as an ordinary
 `resolve_card_selection(action_id)` method. Snapshot replay includes every
 swap and the subsequent player choice. This fixture does not claim native
 potion-acquisition provenance or source-law calibration.
+
+Set `fixture_selection_card_id="proto.colorless.anointed"` to reach Anointed's
+`random_rare_to_hand_shuffle` event. Its `originalCardIds` and
+`currentCardIds` are stable `card-instance:<instanceId>:<cardModelId>` tokens,
+so duplicate Rare models remain distinct. Resolve each bounded swap with
+`semantic_resolve_pool_shuffle(swap_index)`; after the final swap, the saved
+effect moves the source prefix into hand and updates the semantic deck.
+Hidden-position removals that cannot preserve current constraints fail
+closed. This card replacement is a fixture loadout, not a native
+acquisition route.
 
 `fixture_randomize_hand_costs_max_exclusive=4` opts into the source
 `RandomizeHandCardEnergyCostsUntilTurnEndOrPlayed` continuation for the

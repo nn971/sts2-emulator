@@ -275,7 +275,14 @@ internal static class PrototypeAiJsonlServer
             {
                 return new
                 {
-                    kind = "random_pile_selection_shortlist",
+                    kind = shortlist.SiteId switch
+                    {
+                        "combat.autoplay.random_card.select" =>
+                            "random_auto_play_card",
+                        "combat.draw_pile.random_replay_card.select" =>
+                            "random_replay_card",
+                        _ => "random_pile_selection_shortlist"
+                    },
                     schemaId = shortlist.SchemaId,
                     eventId = shortlist.EventId,
                     siteId = shortlist.SiteId,
@@ -328,7 +335,10 @@ internal static class PrototypeAiJsonlServer
             {
                 return new
                 {
-                    kind = "generated_card_pool_shuffle",
+                    kind = pool.SiteId ==
+                        "combat.draw_pile.random_rare_to_hand.shuffle_swap_index"
+                            ? "random_rare_to_hand_shuffle"
+                            : "generated_card_pool_shuffle",
                     schemaId = pool.SchemaId,
                     eventId = pool.EventId,
                     siteId = pool.SiteId,
@@ -389,8 +399,26 @@ internal static class PrototypeAiJsonlServer
                 sites.Add("generated_card");
             if (state.SeededEntry?.FixtureNatureDrawCosts == true)
                 sites.Add("drawn_card_cost");
-            if (state.SeededEntry?.FixturePoolGenerationPotionId is not null)
+            if (state.SeededEntry?.FixturePoolGenerationPotionId is not null ||
+                state.PoolShufflePending?.SiteId ==
+                    "combat.generation.full_pool_shuffle.swap_index")
                 sites.Add("generated_card_pool_shuffle");
+            if (state.SeededEntry?.FixtureSelectionCardId is
+                    "proto.colorless.beat_down" or
+                    "proto.colorless.catastrophe" ||
+                state.CardShortlistPending?.SiteId ==
+                    "combat.autoplay.random_card.select")
+                sites.Add("random_auto_play_card");
+            if (state.SeededEntry?.FixtureSelectionCardId ==
+                    "proto.colorless.hidden_gem" ||
+                state.CardShortlistPending?.SiteId ==
+                    "combat.draw_pile.random_replay_card.select")
+                sites.Add("random_replay_card");
+            if (state.SeededEntry?.FixtureSelectionCardId ==
+                    "proto.colorless.anointed" ||
+                state.PoolShufflePending?.SiteId ==
+                    "combat.draw_pile.random_rare_to_hand.shuffle_swap_index")
+                sites.Add("random_rare_to_hand_shuffle");
             if (state.SeededEntry?.FixtureGeneratedDrawInsertionCardId is not null)
                 sites.Add("generated_draw_pile_insertion");
             if (state.SeededEntry?.FixtureRandomFreeAttackDrawInsertion == true)
@@ -677,7 +705,9 @@ internal static class PrototypeAiJsonlServer
                                 "random_hand_card_energy_cost",
                                 "random_hand_card_select",
                                 "random_pile_selection_shortlist",
-                                "random_pile_card"
+                                "random_pile_card", "random_auto_play_card",
+                                "random_replay_card",
+                                "random_rare_to_hand_shuffle"
                             },
                             semanticExtendedPlayerChoices = new[]
                             {

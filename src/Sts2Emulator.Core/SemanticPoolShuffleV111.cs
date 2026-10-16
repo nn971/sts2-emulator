@@ -1,6 +1,6 @@
 namespace Sts2Emulator.Core;
 
-/// <summary>One bounded source swap in a full generated-card-pool shuffle.</summary>
+/// <summary>One bounded source swap in a full combat-pool shuffle.</summary>
 public sealed record SemanticPoolShuffleEventV111(
     string SchemaId, string EventId, string BoundaryFingerprint,
     string SupportFingerprint, RandomIndexRequestV111 Request,
@@ -30,10 +30,17 @@ public sealed record SemanticPoolShuffleEventV111(
     public void Validate()
     {
         Request.Validate();
+        var expectedSite = SourceOperationKind ==
+                PrototypeCombatEffectKind.MoveRandomRareDrawCardsToHand.ToString()
+            ? "combat.draw_pile.random_rare_to_hand.shuffle_swap_index"
+            : "combat.generation.full_pool_shuffle.swap_index";
         if (SchemaId != EventSchemaId || string.IsNullOrWhiteSpace(EventId) ||
             string.IsNullOrWhiteSpace(BoundaryFingerprint) ||
             string.IsNullOrWhiteSpace(SupportFingerprint) ||
-            Request.SiteId != "combat.generation.full_pool_shuffle.swap_index" ||
+            Request.SiteId is not (
+                "combat.generation.full_pool_shuffle.swap_index" or
+                "combat.draw_pile.random_rare_to_hand.shuffle_swap_index") ||
+            Request.SiteId != expectedSite ||
             Request.OperationKind != "bounded_integer" ||
             OriginalCardIds is not { Length: > 1 } ||
             CurrentCardIds is null ||

@@ -1,15 +1,27 @@
 namespace Sts2Emulator.Core;
 
 /// <summary>
-/// Opt-in Nature continuation for source-shaped full-pool combat generation.
+/// Opt-in Nature continuation for source-shaped full-pool combat selections.
 /// A whole eligible list is shuffled even when the effect takes one card.
 /// Hook and outer operation effects executed before the first swap persist.
 /// </summary>
 public sealed partial class PrototypeGameEngine
 {
-    private static string[]? SourceGeneratedPoolForShuffle(
+    private static string[]? SourcePoolForShuffle(
         CombatState combat, PrototypeQueuedOperation op, long? sourceCardInstanceId)
     {
+        if (op.Kind == PrototypeCombatEffectKind.MoveRandomRareDrawCardsToHand)
+            return combat.DrawPile.Where(id => PrototypeContent.Card(
+                    RequireCombatCard(combat, id).CardId).Rarity ==
+                    PrototypeCardRarity.Rare)
+                .Select(id =>
+                {
+                    var card = RequireCombatCard(combat, id);
+                    return "card-instance:" + card.InstanceId.ToString(
+                        System.Globalization.CultureInfo.InvariantCulture) +
+                        ":" + card.CardId;
+                }).ToArray();
+
         if (op.Kind == PrototypeCombatEffectKind.CreateDistinctCharacterCommonCardsInHand)
             return PrototypeContent.NativeSilentCardPool.Where(id =>
             {
@@ -62,6 +74,9 @@ public sealed partial class PrototypeGameEngine
             PrototypeCombatEffectKind.CreateDistinctColorlessCardsInHand =>
                 Math.Min(Math.Max(0, op.Amount),
                     Math.Max(0, 10 - combat.Hand.Length)),
+            PrototypeCombatEffectKind.MoveRandomRareDrawCardsToHand =>
+                Math.Min(Math.Max(0, op.Amount),
+                    Math.Max(0, 10 - combat.Hand.Length)),
             _ => op.Amount
         };
         return Math.Min(Math.Max(0, count), poolCount);
@@ -74,9 +89,15 @@ public sealed partial class PrototypeGameEngine
         out CombatState suspended)
     {
         suspended = combat;
-        if (!ControlledChanceGuardV111.Active)
+        if (!ControlledChanceGuardV111.Active ||
+            ControlledChanceGuardV111.EngineOwnedNativeProviderActive)
             return false;
-        var pool = SourceGeneratedPoolForShuffle(
+        if (operation.Kind ==
+                PrototypeCombatEffectKind.MoveRandomRareDrawCardsToHand &&
+            combat.SemanticDeck is not
+                { Mode: SemanticDeckStateV111.NatureMode })
+            return false;
+        var pool = SourcePoolForShuffle(
             combat, operation, sourceCardInstanceId);
         if (pool is null || pool.Length <= 1)
             return false;
@@ -121,7 +142,7 @@ public sealed partial class PrototypeGameEngine
         int expectedCount;
         try
         {
-            source = SourceGeneratedPoolForShuffle(
+            source = SourcePoolForShuffle(
                 combat, pool.Operation, sourceCardInstanceId);
             expectedCount = ControlledPoolSelectedCount(
                 combat, pool.Operation, source?.Length ?? 0);
@@ -242,27 +263,50 @@ public sealed partial class PrototypeGameEngine
             return state with { World = world with { Combat = combat } };
         }
 
-        foreach (var cardId in values.Take(shuffle.SelectedCount))
+        if (op.Kind ==
+            PrototypeCombatEffectKind.MoveRandomRareDrawCardsToHand)
         {
-            if (op.Kind == PrototypeCombatEffectKind.CreateDistinctColorlessCardsInHand)
+            var selected = values.Take(shuffle.SelectedCount)
+                .Select(ParseShuffledCardInstanceToken).ToArray();
+            if (selected.Distinct().Count() != selected.Length ||
+                selected.Any(id => !combat.DrawPile.Contains(id)))
+                throw new InvalidDataException(
+                    "Rare-card shuffle selected a stale draw-pile identity.");
+            var selectedSet = selected.ToHashSet();
+            var semanticDeck = SynchronizeSemanticDrawPileAfterRemoval(
+                combat, selected);
+            combat = combat with
             {
-                if (combat.Hand.Length >= 10)
-                    break;
-                var card = new CombatCardInstance(
-                    combat.NextCardInstanceId, null, cardId, 0, true,
-                    PrototypeJson.EmptyObject());
-                card = ApplyActiveSourceBoundAfflictionToCard(combat, card);
-                combat = combat with
+                DrawPile = combat.DrawPile
+                    .Where(id => !selectedSet.Contains(id)).ToArray(),
+                Hand = combat.Hand.Concat(selected).ToArray(),
+                SemanticDeck = semanticDeck
+            };
+        }
+        else
+        {
+            foreach (var cardId in values.Take(shuffle.SelectedCount))
+            {
+                if (op.Kind == PrototypeCombatEffectKind.CreateDistinctColorlessCardsInHand)
                 {
-                    NextCardInstanceId = combat.NextCardInstanceId + 1,
-                    Cards = combat.Cards.Append(card).ToArray(),
-                    Hand = combat.Hand.Append(card.InstanceId).ToArray()
-                };
+                    if (combat.Hand.Length >= 10)
+                        break;
+                    var card = new CombatCardInstance(
+                        combat.NextCardInstanceId, null, cardId, 0, true,
+                        PrototypeJson.EmptyObject());
+                    card = ApplyActiveSourceBoundAfflictionToCard(combat, card);
+                    combat = combat with
+                    {
+                        NextCardInstanceId = combat.NextCardInstanceId + 1,
+                        Cards = combat.Cards.Append(card).ToArray(),
+                        Hand = combat.Hand.Append(card.InstanceId).ToArray()
+                    };
+                }
+                else
+                    combat = AddGeneratedCardCopies(combat,
+                        new PrototypeCombatCardSnapshot(
+                            cardId, 0, PrototypeJson.EmptyObject()), 1);
             }
-            else
-                combat = AddGeneratedCardCopies(combat,
-                    new PrototypeCombatCardSnapshot(
-                        cardId, 0, PrototypeJson.EmptyObject()), 1);
         }
         var resolved = ResumeChoiceResolutionContinuation(
             state.Player, combat, state.Rng, continuation);
@@ -295,6 +339,21 @@ public sealed partial class PrototypeGameEngine
             AllEnemiesDefeated(live))
             return EnterCombatReward(updated);
         return updated;
+    }
+
+    private static long ParseShuffledCardInstanceToken(string token)
+    {
+        const string prefix = "card-instance:";
+        var end = token.IndexOf(':', prefix.Length);
+        if (!token.StartsWith(prefix, StringComparison.Ordinal) ||
+            end < 0 || !long.TryParse(
+                token.AsSpan(prefix.Length, end - prefix.Length),
+                System.Globalization.NumberStyles.None,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out var instanceId) || instanceId <= 0)
+            throw new InvalidDataException(
+                "Rare-card shuffle contains an invalid instance token.");
+        return instanceId;
     }
 
     /// <summary>

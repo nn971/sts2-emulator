@@ -100,6 +100,10 @@ Hidden Gem's random draw-pile replay selection also resumes through the same
 card-shortlist continuation, updating the selected card's replay count while
 preserving draw-pile order. Its multi-candidate automatic-pipeline contexts
 remain unsupported; see [the replay-selection note](NATURE_SEMANTIC_RANDOM_REPLAY_143.md).
+Anointed's full shuffle over Rare draw-pile instances now resumes from each
+saved bounded swap and moves the resulting prefix into hand while updating the
+semantic deck. The player-action fixture route uses stable card-instance
+tokens in the shared pool-shuffle event; see [the Anointed continuation note](NATURE_SEMANTIC_ANOINTED_143.md).
 The supported generated draw-pile operations now use typed model-pick requests
 on native `run.combat_card_generation` and position requests on `run.shuffle`;
 the legacy profile preserves `combat`. Post-shuffle relic insertion now has

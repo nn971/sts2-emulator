@@ -15,6 +15,11 @@ The source cards currently routed through this player-action path are:
 - **Catastrophe** selects from the draw pile, falling back to that pile when
   no playable card is eligible.
 
+The semantic pilot's existing `fixture_selection_card_id` can replace the
+first opening-hand card with either source card for a reproducible fixture.
+This changes fixture loadout only; it does not claim native acquisition
+history.
+
 The engine saves the active auto-play operation, queued suffix, card-play
 series, and enclosing choice/event continuation. After Nature selects an
 instance, the engine removes it from its source pile, queues the same

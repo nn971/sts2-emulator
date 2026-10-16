@@ -9,6 +9,11 @@ serializable card-shortlist continuation and emits a
 `SemanticCardShortlistEventV111` with the draw-pile instance IDs in source
 order.
 
+Set `fixture_selection_card_id="proto.colorless.hidden_gem"` to replace the
+first opening-hand card with Hidden Gem in a reproducible semantic-pilot
+fixture. This changes the fixture loadout and does not claim native card
+acquisition history.
+
 Eligibility matches the source effect: cards must not be unplayable, Curse or
 Status cards, already replayed, or enchanted with Spiral or Glam. If the
 eligible pool contains Attacks, Skills or Powers, only that preferred ordered

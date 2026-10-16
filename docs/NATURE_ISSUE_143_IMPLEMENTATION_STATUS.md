@@ -690,3 +690,15 @@ unsupported. The Release solution build passes with zero warnings or errors;
 tests and mechanics regressions were not run. Conditional probabilities
 remain `UNVERIFIED`; see
 [`NATURE_SEMANTIC_RANDOM_REPLAY_143.md`](NATURE_SEMANTIC_RANDOM_REPLAY_143.md).
+
+## 2026-10-17: player-action Anointed rare-card shuffle
+
+The semantic pilot now exposes Anointed's full Rare draw-pile shuffle through
+the existing bounded pool-shuffle continuation. Each Nature event resolves
+the source swap index over stable card-instance tokens; the final permutation
+moves the selected prefix into hand and removes those identities from the
+semantic deck. A contiguous-pool removal that cannot preserve hidden position
+constraints still fails closed. The Release solution build passes with zero
+warnings or errors; tests and mechanics regressions were not run. Conditional
+probabilities remain `UNVERIFIED`; see
+[`NATURE_SEMANTIC_ANOINTED_143.md`](NATURE_SEMANTIC_ANOINTED_143.md).

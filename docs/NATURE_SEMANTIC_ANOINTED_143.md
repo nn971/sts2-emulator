@@ -1,0 +1,36 @@
+# Semantic Anointed rare-card shuffle
+
+## Supported operation
+
+The semantic pilot now supports Anointed's
+`combat.draw_pile.random_rare_to_hand.shuffle_swap_index` operation. Its
+existing full-pool shuffle continuation saves the real effect queue before
+the first swap and publishes one bounded Nature event per source-ordered
+Fisher–Yates swap. The pool contains only Rare physical card instances in
+draw-pile order. Event identities use stable tokens of the form
+`card-instance:<instanceId>:<cardModelId>` so duplicate card models remain
+distinct.
+
+After the last swap, the engine takes the source prefix up to the card's
+amount and remaining hand capacity. It moves those instances from draw pile
+to hand without dispatching ordinary draw hooks, matching the source effect.
+The semantic deck removes the same identities. If that removal would split
+hidden positional constraints in a way the current deck model cannot
+represent, the continuation fails closed.
+
+The seeded semantic-pilot fixture can replace its first opening-hand card
+with Anointed by setting
+`fixture_selection_card_id="proto.colorless.anointed"`. It also replaces
+the remaining opening draw-pile models with supported Rare cards so the
+multi-card shuffle path is reachable. This fixture does not claim native
+card-acquisition history. JSONL clients resolve each event with
+`semantic_resolve_pool_shuffle(swap_index)` under the pending kind
+`random_rare_to_hand_shuffle`.
+
+## Limits and verification
+
+Only the player-action card route is covered. The migration does not establish
+native stream assignment, seeded cursor parity, or the source probability
+law. The Release solution build succeeded with zero warnings and errors for
+this change. Tests and mechanics regressions were not run, so controlled
+mechanics remain unverified.

@@ -658,7 +658,11 @@ public static class SemanticPilotCombatEngineV111
     {
         if (cardId is not ("proto.silent.survivor" or
             "proto.colorless.seeker_strike" or
+            "proto.colorless.anointed" or
             "proto.silent.nightmare" or
+            "proto.colorless.beat_down" or
+            "proto.colorless.catastrophe" or
+            "proto.colorless.hidden_gem" or
             NativeGloryAncientsV111.WishCardId))
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_LOADOUT site=combat.seeded_entry " +
@@ -686,6 +690,49 @@ public static class SemanticPilotCombatEngineV111
                 : card).ToArray();
         var playerDeck = (CardInstance[])state.Run.Player.Deck.Clone();
         playerDeck[deckIndex] = playerDeck[deckIndex] with { CardId = cardId };
+        if (cardId == "proto.colorless.anointed")
+        {
+            var rareModels = PrototypeContent.RewardCardPool.Where(id =>
+            {
+                var definition = PrototypeContent.Card(id);
+                return definition.Rarity == PrototypeCardRarity.Rare &&
+                    definition.MechanicsImplemented &&
+                    !definition.MultiplayerOnly;
+            }).ToArray();
+            if (rareModels.Length == 0 || combat.DrawPile.Length < 2)
+                throw new NotSupportedException(
+                    "UNSUPPORTED_SEMANTIC_LOADOUT site=combat.seeded_entry " +
+                    "operation=anointed_fixture_requires_rare_draw_cards");
+            for (var index = 0; index < combat.DrawPile.Length; index++)
+            {
+                var instanceId = combat.DrawPile[index];
+                var sourceCard = cards.Single(card =>
+                    card.InstanceId == instanceId);
+                var persistentCardId = sourceCard.PersistentCardInstanceId ??
+                    throw new InvalidDataException(
+                        "Anointed fixture draw card lacks persistent identity.");
+                var sourceDeckIndex = Array.FindIndex(playerDeck, card =>
+                    card.InstanceId == persistentCardId);
+                if (sourceDeckIndex < 0)
+                    throw new InvalidDataException(
+                        "Anointed fixture draw card is absent from the player deck.");
+                var rareModel = rareModels[index % rareModels.Length];
+                cards = cards.Select(card => card.InstanceId == instanceId
+                    ? card with
+                    {
+                        CardId = rareModel,
+                        State = PrototypeJson.EmptyObject(),
+                        Enchantment = null,
+                        ReplayCount = 0
+                    }
+                    : card).ToArray();
+                playerDeck[sourceDeckIndex] = playerDeck[sourceDeckIndex] with
+                {
+                    CardId = rareModel,
+                    PersistentState = PrototypeJson.EmptyObject()
+                };
+            }
+        }
         return state with
         {
             Run = state.Run with
@@ -1250,6 +1297,8 @@ public static class SemanticPilotCombatEngineV111
                  "proto.colorless.catastrophe");
             var semanticRandomReplayCard =
                 card?.CardId == "proto.colorless.hidden_gem";
+            var semanticRandomRareToHandCard =
+                card?.CardId == "proto.colorless.anointed";
             var fixtureSelectionCard = card?.CardId ==
                     current.SeededEntry?.FixtureSelectionCardId &&
                 card?.CardId == "proto.colorless.seeker_strike";
@@ -1259,6 +1308,7 @@ public static class SemanticPilotCombatEngineV111
                  semanticDrawCard ||
                  semanticAutoplayCard ||
                  semanticRandomReplayCard ||
+                 semanticRandomRareToHandCard ||
                  semanticSelectionCard ||
                  fixtureSelectionCard);
             if (!supportedCardAction)
@@ -1266,7 +1316,8 @@ public static class SemanticPilotCombatEngineV111
                     "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
                     "operation=card_effect_requires_semantic_audit");
             // Preserve actual source damage, relic/power hooks and victory
-            // transition. The private deck must remain unchanged.
+            // transitions. Supported hidden-pile mutations must update the
+            // provider-owned semantic deck at their source boundary.
             using (ControlledChanceGuardV111.Enter())
             using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
                 result = environment.Step(source, actionId).State;
@@ -1310,8 +1361,8 @@ public static class SemanticPilotCombatEngineV111
                      CanonicalJson.Sha256(previous.SemanticDeck) !=
                          CanonicalJson.Sha256(next.SemanticDeck))
             {
-                if ((!semanticDrawCard && !semanticAutoplayCard) ||
-                    next is null)
+                if ((!semanticDrawCard && !semanticAutoplayCard &&
+                     !semanticRandomRareToHandCard) || next is null)
                     throw new NotSupportedException(
                         "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
                         "operation=unmodeled_draw_pile_mutation");
@@ -1912,7 +1963,7 @@ public static class SemanticPilotCombatEngineV111
                 current.Run.Fork(), swapIndex);
         if (result.Phase != RunPhase.Combat)
             throw new NotSupportedException(
-                "UNSUPPORTED_SEMANTIC_POOL site=combat.generation.full_pool_shuffle " +
+                "UNSUPPORTED_SEMANTIC_POOL site=" + pending.SiteId + " " +
                 "operation=unsupported_post_shuffle_phase");
         var resultCombat = result.World?.Combat ??
             throw new InvalidDataException(
@@ -1928,12 +1979,18 @@ public static class SemanticPilotCombatEngineV111
         else
             ValidateSemanticCombatBoundary(result);
         var priorCombat = current.Run.World!.Combat!;
-        if (!priorCombat.DrawPile.SequenceEqual(resultCombat.DrawPile) ||
-            CanonicalJson.Sha256(priorCombat.SemanticDeck) !=
-                CanonicalJson.Sha256(resultCombat.SemanticDeck))
+        bool randomRareToHand = priorCombat.PendingChoice!
+            .ControlledPoolShuffle!.Operation.Kind ==
+            PrototypeCombatEffectKind.MoveRandomRareDrawCardsToHand;
+        if (!randomRareToHand &&
+            (!priorCombat.DrawPile.SequenceEqual(resultCombat.DrawPile) ||
+             CanonicalJson.Sha256(priorCombat.SemanticDeck) !=
+                 CanonicalJson.Sha256(resultCombat.SemanticDeck)))
             throw new NotSupportedException(
-                "UNSUPPORTED_SEMANTIC_DECK site=combat.generation.full_pool_shuffle " +
+                "UNSUPPORTED_SEMANTIC_DECK site=" + pending.SiteId + " " +
                 "operation=unmodeled_draw_pile_mutation");
+        if (randomRareToHand)
+            PrototypeStateInvariants.Validate(result);
         var next = current with
         {
             Run = result,
@@ -2781,8 +2838,14 @@ public static class SemanticPilotCombatEngineV111
         var choice = combat?.PendingChoice;
         var shuffle = choice?.ControlledPoolShuffle;
         if (shuffle is null) return null;
-        if (current.SeededEntry?.FixturePoolGenerationPotionId !=
-                "proto.potion.colorless" ||
+        bool randomRareToHand = shuffle.Operation.Kind ==
+            PrototypeCombatEffectKind.MoveRandomRareDrawCardsToHand;
+        var fixtureMatches = randomRareToHand
+            ? current.SeededEntry?.FixtureSelectionCardId ==
+                "proto.colorless.anointed"
+            : current.SeededEntry?.FixturePoolGenerationPotionId ==
+                "proto.potion.colorless";
+        if (!fixtureMatches ||
             current.PendingEndTurn is not null ||
             current.PendingInitialIntents is not null ||
             current.TargetPending is not null ||
@@ -2803,8 +2866,11 @@ public static class SemanticPilotCombatEngineV111
         var streamId = shuffle.Operation.GeneratedChoiceUsesNativeCardGenerationRng &&
             combat!.NativeRng?.RunStreams is not null
                 ? "run.combat_card_generation" : "prototype.combat";
+        var siteId = randomRareToHand
+            ? "combat.draw_pile.random_rare_to_hand.shuffle_swap_index"
+            : "combat.generation.full_pool_shuffle.swap_index";
         var request = new RandomIndexRequestV111(
-            "combat.generation.full_pool_shuffle.swap_index", streamId,
+            siteId, streamId,
             owner, ordinal, [], OperationKind: "bounded_integer",
             BoundedCount: shuffle.NextSwapIndex + 1);
         request.Validate();
@@ -2843,16 +2909,16 @@ public static class SemanticPilotCombatEngineV111
             !PrototypeGameEngine.ValidateControlledPoolShuffle(
                 combat, shuffle, choice.SourceCardInstanceId))
             throw new InvalidDataException(
-                "Generated-card pool shuffle is not source-reachable.");
+                "Full-pool shuffle is not source-reachable.");
         var deck = combat.SemanticDeck ?? throw new InvalidDataException(
-            "Generated-card pool shuffle lost the provider-owned deck.");
+            "Full-pool shuffle lost the provider-owned deck.");
         SemanticDeckEngineV111.Validate(deck);
         if (deck.Mode != SemanticDeckStateV111.NatureMode ||
             deck.Pending is not null ||
             !SemanticDeckEngineV111.AllCardInstanceIds(deck)
                 .Order().SequenceEqual(combat.DrawPile.Order()))
             throw new InvalidDataException(
-                "Generated-card pool shuffle changed the hidden draw pile.");
+                "Full-pool shuffle changed the hidden draw pile.");
     }
 
     public static SemanticDrawInsertionEventV111?
