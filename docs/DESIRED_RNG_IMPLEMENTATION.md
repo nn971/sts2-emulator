@@ -38,9 +38,11 @@ moves of known cards to a forced offset while keeping unresolved positions
 constrained. Rebound returns remove a known card identity from semantic deck
 state without revealing its unresolved position, and fail closed if that
 removal would break split-pool constraints. The saved real player-action
-segment also admits source-audited Silent Strike, Defend, Deflect and
-Neutralize plays; it rejects a chance or turn boundary it cannot resume with
-a typed unsupported-operation error.
+segment admits audited draw-pile-neutral Silent actions: Strike, Defend,
+Deflect, Neutralize, Slice, Poisoned Stab, Deadly Poison, Sucker Punch,
+Dagger Spray, Dash, Cloak and Dagger, Blade Dance and Piercing Wail. It rejects
+a chance or turn boundary it cannot resume with a typed unsupported-operation
+error.
 Physical draw-pile moves now keep provider state synchronized across exact
 insertions, removals, transformations, and zone transfers. Native hand-return
 shuffles commit the resulting top-first order, and after-shuffle relic cards

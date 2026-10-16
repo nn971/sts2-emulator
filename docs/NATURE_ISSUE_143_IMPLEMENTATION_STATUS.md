@@ -301,9 +301,9 @@ intents and the externally negotiated semantic JSONL bridge remain open.
 The real `CombatState.SemanticDeck` now survives supported player
 actions and subsequent `DrawPlayerHand` automatic stages **without
 reinitializing unresolved positional card pools or replaying previous
-Nature shuffle choices**. `SemanticPlayerActionEngineV111` runs
-source-audited basic Silent Strike/Defend through the genuine AI action
-engine under the controlled chance guard, accepts only unchanged
+Nature shuffle choices**. `SemanticPlayerActionEngineV111` runs its
+audited draw-pile-neutral Silent action allowlist through the genuine AI
+action engine under the controlled chance guard, accepts only unchanged
 physical draw-pile sequence and identical private deck state, and
 replays the complete action from a saved source snapshot.
 

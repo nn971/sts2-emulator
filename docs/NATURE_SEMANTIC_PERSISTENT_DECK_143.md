@@ -18,10 +18,12 @@ and one currently legal action ID, invokes the actual
 `PrototypeAiEnvironment.Step` under the controlled RNG guard and
 accepts the result only if the **private semantic deck fingerprint**
 and the **physical draw-pile member sequence** stay exactly unchanged.
-The first audited allowlist consists of basic Silent
-`proto.silent.strike` and `proto.silent.defend`. Action effects
-still use the real game mechanics, so card play, energy, target,
-damage/block, relic hooks, hand and discard changes occur normally.
+The allowlist covers draw-pile-neutral Silent actions: Strike, Defend,
+Deflect, Neutralize, Slice, Poisoned Stab, Deadly Poison, Sucker Punch,
+Dagger Spray, Dash, Cloak and Dagger, Blade Dance and Piercing Wail. Action
+effects still use the real game mechanics, so card play, energy, target,
+damage/block, fixed generated cards, relic hooks, hand and discard changes
+occur normally.
 Unmodeled chance sites abort without publishing a child, even for
 an allowlisted card when other active game modifiers cause extra
 RNG/deck mutations. Unsupported action kinds and draw-pile
@@ -60,7 +62,7 @@ rerandomizes a precommitted, nonempty native/legacy shuffle.
 
 ## Test gates and limitations
 
-Regression tests cover replaying a basic Silent action between two
+Existing regression tests cover replaying a basic Silent action between two
 genuine controlled Nature end turns, provider fingerprint invariance,
 prior chance history preservation, accumulated vs segment-local
 tickets, a fixed-top card persisting across an unrelated action and

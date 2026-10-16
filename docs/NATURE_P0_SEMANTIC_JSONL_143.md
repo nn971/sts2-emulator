@@ -159,6 +159,9 @@ The initial playable slice supports real Silent Strike/Defend and
 enemy intents, automatic turn stages, new semantic draws and normal
 `CardDrawn` hooks. Known positions are drawn directly. Supported
 player-actions preserve the provider-owned deck across turns.
+The retained-deck player-action engine additionally admits audited
+draw-pile-neutral Silent cards and fixed generated hand cards; the initial
+JSONL example still uses Strike/Defend.
 
 Session snapshots record fixture or seeded route provenance and every
 legal player/selected Nature action. Loading **replays** that entry to the

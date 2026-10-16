@@ -37,7 +37,16 @@ public static class SemanticPlayerActionEngineV111
             "proto.silent.strike",
             "proto.silent.defend",
             "proto.silent.deflect",
-            "proto.silent.neutralize"
+            "proto.silent.neutralize",
+            "proto.silent.slice",
+            "proto.silent.poisoned_stab",
+            "proto.silent.deadly_poison",
+            "proto.silent.sucker_punch",
+            "proto.silent.dagger_spray",
+            "proto.silent.dash",
+            "proto.silent.cloak_and_dagger",
+            "proto.silent.blade_dance",
+            "proto.silent.piercing_wail"
         };
 
     public static SemanticPlayerActionV111 Step(
