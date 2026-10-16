@@ -393,12 +393,30 @@ decision and shuffle counts. This is paired weak-entry evidence only.
 The native comparator and conditional probability laws remain explicitly
 `UNVERIFIED`.
 
-This does not close #143. The opening remains a source-shaped weak fixture
-rather than a fully audited native route/entry; stream ownership and
-source timing for all relevant mechanics, including drawn random costs,
-still require source verification. Full route acquisition, complete
-source audit, and any remaining P0 acceptance gates must be completed
-before the issue can be resolved. The focused .NET test invocation in
-this working session could not start because MSBuild was denied its local
-named-pipe bind; the Release CLI build and external-process smoke had
-already succeeded for this slice.
+This does not close #143. The comparator smoke recorded above used the
+source-shaped fixture entry. Its native provider and conditional laws are
+unverified. The focused .NET test invocation in this working session could
+not start because MSBuild was denied its local named-pipe bind; the Release
+CLI build and external-process smoke had succeeded for that comparator
+checkpoint.
+
+## Working-tree follow-up: first-combat route entry
+
+An opt-in `source_route_entry` now builds the configured Act 1 Overgrowth
+or Underdocks Silent run, resolves the opening event and first map choice
+through legal engine actions, and reaches combat through the real
+`PrototypeGameEngine.StartCombat` path and its native weak-entry provider.
+The route choice sequence, first-floor node, resolved encounter, native
+entry name, and initial native decisions are retained in a replayable
+source-route audit. Nature and native-policy sessions split from this same
+completed opening. The native baseline keeps native stream ownership; the
+Nature branch detaches those streams after entry and controls subsequent
+intent/draw boundaries. The initial enemy intent is still committed by the
+shared source entry and is not currently a Nature choice.
+
+This removes the fabricated encounter formation from the opt-in route mode,
+but does not make route probabilities, Neow choices, opening shuffle, or
+all combat entry hooks native-parity verified. The initial native intent is
+common to both branches. The CLI Release build passed after this change;
+the updated route smoke has not yet been run. The branch remains a work in
+progress, and the issue stays open for source audit and remaining P0 gates.

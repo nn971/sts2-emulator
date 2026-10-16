@@ -358,11 +358,16 @@ class Session:
             other_chance_provider_id: str | None = None,
             fixture_draw_cost_relic_id: str | None = None,
             replay_opening_draw_hooks: bool = False,
-            native_policy_baseline: bool = False):
+            native_policy_baseline: bool = False,
+            source_route_entry: bool = False,
+            route_region: str = "Overgrowth",
+            route_neow_choice_id: str | None = None,
+            route_map_node_id: str | None = None):
         """Begin a two-site pilot without external opening chance tickets.
 
-        Setup uses source-shaped RNG streams in an isolated Hive/Glory
-        fixture. Full native route/entry parity is still unverified.
+        By default setup uses the isolated seeded fixture. Set
+        source_route_entry through begin_seeded_semantic_route() to run the
+        configured Act 1 route and real native weak-combat entry.
         """
         if self.capabilities.get("semanticSeededOpeningProvider") != (
                 "engine-owned-seeded-source-shaped-unverified-v1"):
@@ -371,6 +376,10 @@ class Session:
                 "semanticNativePolicyComparatorId") != (
                     "engine-owned-native-v111-comparator-unverified-v1"):
             raise EmulatorError("Emulator lacks the native-policy comparator")
+        if source_route_entry and self.capabilities.get(
+                "semanticSeededRouteEntryProviderId") != (
+                    "engine-owned-v111-native-weak-route-entry-unverified-v1"):
+            raise EmulatorError("Emulator lacks source-route semantic entry")
         if other_chance_provider_id is not None and (
                 other_chance_provider_id not in
                 self.capabilities.get("semanticOtherChanceProviders", [])):
@@ -384,7 +393,28 @@ class Session:
             other_chance_provider_id=other_chance_provider_id,
             fixture_draw_cost_relic_id=fixture_draw_cost_relic_id,
             replay_opening_draw_hooks=replay_opening_draw_hooks,
-            native_policy_baseline=native_policy_baseline))
+            native_policy_baseline=native_policy_baseline,
+            source_route_entry=source_route_entry,
+            route_region=route_region,
+            route_neow_choice_id=route_neow_choice_id,
+            route_map_node_id=route_map_node_id))
+
+    def begin_seeded_semantic_route(
+            self, seed: str, *, region: str = "Overgrowth",
+            ascension: int = 0, native_policy_baseline: bool = False,
+            neow_choice_id: str | None = None,
+            first_map_node_id: str | None = None):
+        """Replay a source-shaped Act 1 run into its first native weak combat."""
+        if self.capabilities.get("semanticSeededRouteEntryProviderId") != (
+                "engine-owned-v111-native-weak-route-entry-unverified-v1"):
+            raise EmulatorError("Emulator lacks source-route semantic entry")
+        return self.begin_seeded_semantic_combat(
+            seed, act=1, encounter_id="@source-route",
+            native_entry="@source-route", total_floor=1,
+            ascension=ascension, native_policy_baseline=native_policy_baseline,
+            source_route_entry=True, route_region=region,
+            route_neow_choice_id=neow_choice_id,
+            route_map_node_id=first_map_node_id)
 
     def load_semantic_snapshot(self, snapshot: str):
         if self.capabilities.get("semanticChanceSchemaId") != (

@@ -19,12 +19,8 @@ SEED = "nature-p0-weak-real-victory"
 
 
 def begin_combat(session, *, native_policy_baseline=False):
-    return session.begin_seeded_semantic_combat(
-        SEED, act=1,
-        encounter_id="proto.encounter.shrinker_beetle_weak",
-        native_entry="ShrinkerBeetleWeak", total_floor=2,
-        map_column=3, map_row=1,
-        replay_opening_draw_hooks=True,
+    return session.begin_seeded_semantic_route(
+        SEED, region="Overgrowth",
         native_policy_baseline=native_policy_baseline)
 
 
@@ -52,6 +48,11 @@ def play_victory():
     with Session(COMMAND) as session:
         combat = begin_combat(session)
         assert combat.boundary == "player"
+        route = combat.status()
+        assert route["sourceRouteProvider"] == (
+            "engine-owned-v111-native-weak-route-entry-unverified-v1")
+        assert route["sourceRouteActionCount"] > 0
+        assert route["sourceRouteProbabilityStatus"] == "UNVERIFIED"
         initial_observation = combat.observe()
         assert len(initial_observation["combat"]["enemies"]) == 1
         initial = combat.fingerprint
@@ -104,6 +105,9 @@ def play_native_policy_baseline():
     with Session(COMMAND) as session:
         combat = begin_combat(session, native_policy_baseline=True)
         status = combat.status()
+        assert status["sourceRouteProvider"] == (
+            "engine-owned-v111-native-weak-route-entry-unverified-v1")
+        assert status["sourceRouteProbabilityStatus"] == "UNVERIFIED"
         assert status["controllerMode"] == (
             "engine-owned-native-v111-policy-baseline")
         assert status["nativePolicyProvider"] == (
@@ -162,7 +166,7 @@ def main():
     assert all(result == baseline for result in parallel), (
         "Native/Nature paired replay diverged across independent processes")
     nature, native = baseline
-    print("PASS: fair Silent legal-action Act 1 source-pinned weak "
+    print("PASS: fair Silent legal-action Act 1 source-routed weak "
           f"paired source-disjoint outcomes Nature={nature[4]}@{nature[5]}, "
           f"native-v111={native[4]}@{native[5]}; "
           f"native decisions={native[8]}, shuffles={native[9]}; "

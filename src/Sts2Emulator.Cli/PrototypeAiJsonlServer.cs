@@ -131,6 +131,11 @@ internal static class PrototypeAiJsonlServer
                 semanticHandle = handle, parent,
                 fingerprint = state.Fingerprint,
                 sourceOpeningFingerprint = state.SourceOpeningFingerprint,
+                sourceRouteProvider = state.SourceRouteAudit?.ProviderId,
+                sourceRouteActionCount = state.SourceRouteAudit?.ActionIds.Length ?? 0,
+                sourceRouteEncounterId = state.SourceRouteAudit?.EncounterId,
+                sourceRouteNativeEntry = state.SourceRouteAudit?.NativeEncounterEntry,
+                sourceRouteProbabilityStatus = state.SourceRouteAudit?.ProbabilityStatus,
                 boundary = state.CombatTerminal ? "terminal" :
                     state.AtPlayerBoundary ? "player" : "nature",
                 pending = DescribeSemanticPending(state),
@@ -282,9 +287,11 @@ internal static class PrototypeAiJsonlServer
                             semanticChanceSchemaId = SemanticChanceSchemaId,
                             semanticNativePolicyComparatorId =
                                 "engine-owned-native-v111-comparator-unverified-v1",
+                            semanticSeededRouteEntryProviderId =
+                                SemanticSourceRouteAuditV111.SourceRouteProviderId,
                             semanticPlayable = true,
                             semanticPlayableScope =
-                                "post-committed-opening-fixture-restricted-Silent-combat",
+                                "seeded-source-route-or-post-committed-opening-fixture-restricted-Silent-combat",
                             semanticControlledSites = new[]
                             {
                                 "enemy_intent", "draw_card"
@@ -599,14 +606,29 @@ internal static class PrototypeAiJsonlServer
                         // external Nature policy. The opening is generated
                         // independently by engine-owned seeded streams,
                         // without externally selected HP or shuffle tickets.
+                        var sourceRouteEntry = OptionalBool(request,
+                            "source_route_entry");
+                        var routeRegionText = OptionalString(request,
+                            "route_region") ?? nameof(ActIdentity.Overgrowth);
+                        if (!Enum.TryParse<ActIdentity>(routeRegionText,
+                                ignoreCase: true, out var routeRegion) ||
+                            routeRegion is not (ActIdentity.Overgrowth or
+                                ActIdentity.Underdocks))
+                            throw new ArgumentException(
+                                "route_region must be Overgrowth or Underdocks.");
                         var entry = new SemanticSeededEntryV111(
                             RequiredString(request, "seed"),
-                            OptionalInt(request, "act") ??
-                                throw new ArgumentException("Missing act."),
-                            RequiredString(request, "encounter_id"),
-                            RequiredString(request, "native_entry"),
+                            OptionalInt(request, "act") ?? (sourceRouteEntry ? 1 :
+                                throw new ArgumentException("Missing act.")),
+                            OptionalString(request, "encounter_id") ??
+                                (sourceRouteEntry ? "@source-route" :
+                                    throw new ArgumentException("Missing encounter_id.")),
+                            OptionalString(request, "native_entry") ??
+                                (sourceRouteEntry ? "@source-route" :
+                                    throw new ArgumentException("Missing native_entry.")),
                             OptionalInt(request, "total_floor") ??
-                                throw new ArgumentException("Missing total_floor."),
+                                (sourceRouteEntry ? 1 :
+                                    throw new ArgumentException("Missing total_floor.")),
                             OptionalInt(request, "ascension") ?? 0,
                             OptionalInt(request, "first_monster_combat_id") ?? 1,
                             OptionalInt(request, "map_column"),
@@ -614,7 +636,10 @@ internal static class PrototypeAiJsonlServer
                             OptionalString(request, "other_chance_provider_id"),
                             OptionalString(request, "fixture_draw_cost_relic_id"),
                             OptionalBool(request, "replay_opening_draw_hooks"),
-                            OptionalBool(request, "native_policy_baseline"));
+                            OptionalBool(request, "native_policy_baseline"),
+                            sourceRouteEntry, routeRegion,
+                            OptionalString(request, "route_neow_choice_id"),
+                            OptionalString(request, "route_map_node_id"));
                         var next = SemanticPilotCombatEngineV111.BeginSeeded(entry);
                         var handle = StoreSemantic(next);
                         Write(new { requestId, ok = true,

@@ -37,5 +37,5 @@ jobs:
         run: python tools/nature_semantic_p0_jsonl_smoke.py
       - name: P0 independent seeded semantic JSONL setup and 15-process equality
         run: python tools/nature_semantic_seeded_jsonl_smoke.py
-      - name: P0 source-disjoint Nature/native policy comparison and 15-process replay
+      - name: P0 source-routed Nature/native policy comparison and 15-process replay
         run: python tools/nature_semantic_victory_jsonl_smoke.py

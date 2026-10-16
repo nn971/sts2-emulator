@@ -10,9 +10,9 @@ public sealed record SemanticPilotTransitionV111(
     string Kind, string? ActionId = null, int? SelectedIndex = null);
 
 /// <summary>
-/// Independently replayable source-shaped setup provenance. These explicit
-/// encounter parameters initialize the opening using engine-owned seeded
-/// streams. The fixture still omits full native combat-entry hooks.
+/// Independently replayable setup provenance. The default entry is a
+/// source-shaped encounter fixture; SourceRouteEntry instead replays the
+/// configured Act 1 start into the real native weak-combat entry hook.
 /// </summary>
 /// <summary>
     /// Combat-ended reward selection is outside the two-site Nature game:
@@ -37,6 +37,16 @@ public sealed record SemanticNativePolicyAuditV111(
         "engine-owned-native-v111-comparator-unverified-v1";
 }
 
+public sealed record SemanticSourceRouteAuditV111(
+    string ProviderId, ActIdentity ActOneRegion, string[] ActionIds,
+    string MapNodeId, string EncounterId, string NativeEncounterEntry,
+    RandomBoundaryEventV111[] NativeEntryDecisions,
+    string ProbabilityStatus = "UNVERIFIED")
+{
+    public const string SourceRouteProviderId =
+        "engine-owned-v111-native-weak-route-entry-unverified-v1";
+}
+
 public sealed record SemanticSeededEntryV111(
     string Seed, int Act, string EncounterId, string NativeEncounterEntry,
     int TotalFloor, int Ascension, long FirstMonsterCombatId,
@@ -44,7 +54,11 @@ public sealed record SemanticSeededEntryV111(
     string? OtherChanceProviderId = null,
     string? FixtureDrawCostRelicId = null,
     bool ReplayOpeningDrawHooks = false,
-    bool NativePolicyBaseline = false);
+    bool NativePolicyBaseline = false,
+    bool SourceRouteEntry = false,
+    ActIdentity RouteActOneRegion = ActIdentity.Overgrowth,
+    string? RouteNeowChoiceId = null,
+    string? RouteMapNodeId = null);
 
 /// <summary>
 /// First external playable semantic boundary. Initial opening order is
@@ -70,6 +84,7 @@ public sealed record SemanticPilotCombatV111(
     public SemanticOtherChanceStateV111? OtherChance { get; init; }
     public SemanticRewardAuditV111? RewardAudit { get; init; }
     public SemanticNativePolicyAuditV111? NativePolicyAudit { get; init; }
+    public SemanticSourceRouteAuditV111? SourceRouteAudit { get; init; }
     [JsonIgnore] public string Fingerprint => CanonicalJson.Sha256(this);
     [JsonIgnore] public bool AtPlayerBoundary =>
         PendingEndTurn is null &&
@@ -85,7 +100,8 @@ public sealed record SemanticPilotCombatV111(
             ? CanonicalJson.Sha256(new
             {
                 Entry = entry with { NativePolicyBaseline = false },
-                OpeningSource
+                OpeningSource,
+                SourceRouteAudit
             })
             : null;
     [JsonIgnore] public string? CombatOutcome =>
@@ -118,6 +134,21 @@ public sealed record SemanticPilotCombatV111(
                             .OrderedCandidates.Clone()
                     }
                 }).ToArray()
+            }
+            : null,
+        SourceRouteAudit = SourceRouteAudit is { } route
+            ? route with
+            {
+                ActionIds = (string[])route.ActionIds.Clone(),
+                NativeEntryDecisions = route.NativeEntryDecisions.Select(
+                    decision => decision with
+                    {
+                        Request = decision.Request with
+                        {
+                            OrderedCandidates = (int[])decision.Request
+                                .OrderedCandidates.Clone()
+                        }
+                    }).ToArray()
             }
             : null
     };
@@ -159,14 +190,12 @@ public static class SemanticPilotCombatEngineV111
 
     /// <summary>
     /// Build a playable two-site session without asking an external worker to
-    /// choose HP, initial intent tickets or opening Fisher-Yates swaps.
-    /// Source-shaped eligibility and the pinned native RNG codec decide these
-    /// setup events on separately owned streams. The later player/Nature
-    /// protocol remains identical; opening order is imported as known and
-    /// will never be randomized again by a Nature draw ticket.
-    ///
-    /// This is an isolated seeded Hive/Glory fixture, not a claim that all
-    /// native route history, entry hooks or opening draw effects are audited.
+    /// choose the initial HP, intent or opening shuffle. By default this is a
+    /// source-shaped encounter fixture; the opt-in source-route mode replays
+    /// the configured Act 1 route and enters combat through the real engine.
+    /// Opening order is imported as known and is never randomized again by a
+    /// deferred draw ticket. Route probabilities and noncombat RNG remain
+    /// explicitly unverified.
     /// </summary>
     public static SemanticPilotCombatV111 BeginSeeded(
         SemanticSeededEntryV111 entry)
@@ -185,6 +214,8 @@ public static class SemanticPilotCombatEngineV111
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_NATIVE site=combat.seeded_entry " +
                 "operation=native_baseline_fixture_cost_provider_conflict");
+        if (entry.SourceRouteEntry)
+            return BeginSourceRoute(entry);
         // Act 1 fixed weak entry is deliberately isolated from the
         // Hive/Glory fixture's pre-existing public 2/3-only contract.
         var prepared = entry.Act == 1
@@ -288,6 +319,231 @@ public static class SemanticPilotCombatEngineV111
                 }
             };
         }
+        Validate(state);
+        return state;
+    }
+
+    private static SemanticPilotCombatV111 BeginSourceRoute(
+        SemanticSeededEntryV111 entry)
+    {
+        if (entry.Act != 1 || entry.Ascension is < 0 or > 10 ||
+            entry.RouteActOneRegion is not (ActIdentity.Overgrowth or
+                ActIdentity.Underdocks) || entry.OtherChanceProviderId is not null ||
+            entry.FixtureDrawCostRelicId is not null ||
+            entry.ReplayOpeningDrawHooks)
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_ROUTE site=act1.entry " +
+                "operation=route_configuration");
+
+        var configuration = RunConfiguration.Create(
+            "silent", entry.Ascension, entry.RouteActOneRegion) with
+        {
+            FidelityId = V111Build.NativeWeakCombatEntryFidelityId
+        };
+        var engine = new PrototypeGameEngine();
+        var run = V111RunFactory.Create(entry.Seed, configuration);
+        var actions = new List<string>();
+        string? neowChoice = null;
+        string? mapNodeId = null;
+        using var setupJournal = RandomBoundaryJournalV111.Begin();
+
+        for (int step = 0; step < 32 && run.Phase != RunPhase.Combat; step++)
+        {
+            var legal = engine.GetLegalActions(run);
+            if (legal.Count == 0)
+                throw new NotSupportedException(
+                    "UNSUPPORTED_SEMANTIC_ROUTE site=act1.entry " +
+                    "operation=no_legal_route_action");
+
+            GameAction selected;
+            if (run.Phase == RunPhase.MapChoice)
+            {
+                var world = run.World ?? throw new InvalidDataException(
+                    "Source route lost its world before the first combat.");
+                var available = legal.Where(action =>
+                {
+                    if (action.Kind != "choose_map_node") return false;
+                    var nodeId = action.ReadPayload<ChooseMapNodePayload>()
+                        .NodeId;
+                    var node = world.Map.Nodes.SingleOrDefault(candidate =>
+                        candidate.NodeId == nodeId);
+                    return node is not null && node.Floor == 1 &&
+                        (world.Map.EntryNodeIds ?? []).Contains(nodeId,
+                            StringComparer.Ordinal) &&
+                        node.RoomType == PrototypeRoomType.Combat;
+                }).ToArray();
+                selected = entry.RouteMapNodeId is { Length: > 0 } requested
+                    ? available.SingleOrDefault(action =>
+                        action.ReadPayload<ChooseMapNodePayload>().NodeId == requested)
+                        ?? throw new InvalidOperationException(
+                            "Requested source-route map node is not a legal first-floor combat.")
+                    : available.FirstOrDefault()
+                        ?? throw new NotSupportedException(
+                            "UNSUPPORTED_SEMANTIC_ROUTE site=act1.map " +
+                            "operation=no_first_floor_combat_entry");
+                mapNodeId = selected.ReadPayload<ChooseMapNodePayload>().NodeId;
+            }
+            else if (run.Phase == RunPhase.Event && run.World?.Event is { } evt &&
+                     evt.EventId == PrototypeNativeOvergrowthEvents.NeowEventId &&
+                     neowChoice is null)
+            {
+                var choices = legal.Where(action => action.Kind == "event_choice")
+                    .ToArray();
+                selected = entry.RouteNeowChoiceId is { Length: > 0 } requested
+                    ? choices.SingleOrDefault(action =>
+                        action.ReadPayload<EventChoicePayload>().ChoiceId == requested)
+                        ?? throw new InvalidOperationException(
+                            "Requested Neow route choice is not currently offered.")
+                    : choices.FirstOrDefault()
+                        ?? throw new NotSupportedException(
+                            "UNSUPPORTED_SEMANTIC_ROUTE site=act1.neow " +
+                            "operation=no_legal_starting_choice");
+                neowChoice = selected.ReadPayload<EventChoicePayload>().ChoiceId;
+            }
+            else if (run.Phase is RunPhase.Event)
+            {
+                // Source-shaped opening relics can add a small follow-up
+                // choice. Resolve it deterministically before entering the
+                // first map node; route actions are recorded for replay.
+                selected = legal[0];
+            }
+            else if (run.Phase == RunPhase.Reward)
+            {
+                // Some source-shaped Neow relics open a follow-up reward.
+                // The first legal option is a deterministic route choice;
+                // its exact action is preserved in the replay audit.
+                selected = legal[0];
+            }
+            else if (run.Phase == RunPhase.RunStart)
+            {
+                selected = legal.Single(action => action.Kind == "start_run");
+            }
+            else
+                throw new NotSupportedException(
+                    "UNSUPPORTED_SEMANTIC_ROUTE site=act1.entry phase=" +
+                    run.Phase);
+
+            actions.Add(PrototypeAiEnvironment.StableActionId(selected));
+            run = engine.Step(run, selected).State;
+        }
+
+        if (run.Phase != RunPhase.Combat || run.World?.Combat is not { } combat ||
+            run.World.ActiveRoom != PrototypeRoomType.Combat ||
+            combat.PendingChoice is not null ||
+            combat.AutomaticPipelineContinuation is not null ||
+            !combat.IsPlayerTurn || combat.NativeRng is not { } nativeCombat ||
+            run.NativeRunRng is null)
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_ROUTE site=act1.entry " +
+                "operation=not_a_native_player_boundary");
+        NativeCombatRngEntryV111.Validate(combat);
+        NativeRunRngV111.Validate(run);
+
+        var routeWorld = run.World;
+        var actualEncounterId = (routeWorld.EncounterHistory ?? [])
+            .LastOrDefault()
+            ?? throw new InvalidDataException(
+                "Source route reached combat without encounter history.");
+        var actualNativeEntry = nativeCombat.Formation.NativeEncounterEntry;
+        var actualNodeId = mapNodeId ?? routeWorld.Map.CurrentNodeId ??
+            throw new InvalidDataException(
+                "Source route reached combat without a map node.");
+        var actualNode = routeWorld.Map.Nodes.Single(node =>
+            node.NodeId == actualNodeId);
+        var nodeParts = actualNodeId.Split(':');
+        if (nodeParts.Length != 3 ||
+            !int.TryParse(nodeParts[2], out var mapColumn))
+            throw new InvalidDataException(
+                "Source route map node lacks its pinned Act 1 coordinate.");
+        if ((entry.EncounterId != "@source-route" &&
+             entry.EncounterId != actualEncounterId) ||
+            (entry.NativeEncounterEntry != "@source-route" &&
+             entry.NativeEncounterEntry != actualNativeEntry) ||
+            routeWorld.Floor != 1 ||
+            actualNode.RoomType != PrototypeRoomType.Combat)
+            throw new InvalidDataException(
+                "Source route differs from the requested pinned combat entry.");
+
+        var nativeDecisions = setupJournal.Entries
+            .Where(decision => decision.ProviderMode == "native-v111")
+            .Select((decision, index) => decision with
+            {
+                Sequence = index + 1,
+                Request = decision.Request with
+                {
+                    OrderedCandidates = (int[])decision.Request
+                        .OrderedCandidates.Clone()
+                }
+            }).ToArray();
+        var routeAudit = new SemanticSourceRouteAuditV111(
+            SemanticSourceRouteAuditV111.SourceRouteProviderId,
+            entry.RouteActOneRegion, actions.ToArray(), actualNodeId,
+            actualEncounterId, actualNativeEntry, nativeDecisions);
+
+        var resolvedEntry = entry with
+        {
+            EncounterId = actualEncounterId,
+            NativeEncounterEntry = actualNativeEntry,
+            TotalFloor = routeWorld.Floor,
+            FirstMonsterCombatId = nativeCombat.Formation.MonsterContexts
+                .First().CombatId,
+            MapColumn = mapColumn,
+            MapRow = actualNode.Floor - 1,
+            RouteNeowChoiceId = neowChoice,
+            RouteMapNodeId = actualNodeId
+        };
+        var baselineCombat = combat.Fork() with { SemanticDeck = null };
+        var origin = new ControlledIntentStateV111(
+            baselineCombat.Fork() with { NativeRng = null },
+            baselineCombat with { NativeRng = null },
+            nativeCombat.Formation.Fork(), nativeCombat.RunStreams.Fork(),
+            combat.Enemies.Length, [], null,
+            Mode: "controlled-v111-source-route-origin-v1",
+            PriorHpTranscript: []);
+        var sourceOpening = new ControlledPlayableCombatV111(
+            entry.Seed, origin, run.Fork(), -1, [], [], null,
+            Mode: "controlled-v111-source-route-origin-v1");
+
+        CombatState semanticCombat;
+        RunState semanticRun;
+        if (entry.NativePolicyBaseline)
+        {
+            semanticCombat = combat with
+            {
+                SemanticDeck = SemanticDeckEngineV111.BeginNative(
+                    combat.DrawPile.Reverse().ToArray())
+            };
+            semanticRun = run with
+            {
+                World = routeWorld with { Combat = semanticCombat }
+            };
+        }
+        else
+        {
+            semanticCombat = combat with
+            {
+                NativeRng = null,
+                SemanticDeck = SemanticDeckEngineV111.FromCommittedOpening(
+                    combat.DrawPile.Reverse().ToArray())
+            };
+            semanticRun = run with
+            {
+                NativeRunRng = null,
+                World = routeWorld with { Combat = semanticCombat }
+            };
+        }
+
+        var state = new SemanticPilotCombatV111(
+            sourceOpening, semanticRun, null, [], actualNativeEntry)
+        {
+            SeededEntry = resolvedEntry,
+            SourceRouteAudit = routeAudit,
+            NativePolicyAudit = entry.NativePolicyBaseline
+                ? new SemanticNativePolicyAuditV111(
+                    SemanticNativePolicyAuditV111.NativeProviderId,
+                    nativeDecisions)
+                : null
+        };
         Validate(state);
         return state;
     }
@@ -690,6 +946,29 @@ public static class SemanticPilotCombatEngineV111
               entry.OtherChanceProviderId != state.OtherChance?.ProviderId)))
             throw new InvalidDataException(
                 "Seeded Nature entry provenance disagrees with its opening.");
+        if (state.SeededEntry is { SourceRouteEntry: true } routeEntry)
+        {
+            var route = state.SourceRouteAudit ?? throw new InvalidDataException(
+                "Source-route semantic session is missing its route audit.");
+            var world = state.Run.World ?? throw new InvalidDataException(
+                "Source-route semantic session is missing its run world.");
+            if (route.ProviderId != SemanticSourceRouteAuditV111.SourceRouteProviderId ||
+                route.ProbabilityStatus != "UNVERIFIED" ||
+                route.ActOneRegion != routeEntry.RouteActOneRegion ||
+                route.ActionIds is null || route.ActionIds.Length == 0 ||
+                route.ActionIds.Any(string.IsNullOrWhiteSpace) ||
+                route.MapNodeId != routeEntry.RouteMapNodeId ||
+                route.EncounterId != routeEntry.EncounterId ||
+                route.NativeEncounterEntry != routeEntry.NativeEncounterEntry ||
+                world.Map.CurrentNodeId != route.MapNodeId ||
+                (world.EncounterHistory ?? []).LastOrDefault() != route.EncounterId ||
+                route.NativeEntryDecisions is null)
+                throw new InvalidDataException(
+                    "Source-route audit disagrees with the seeded run entry.");
+        }
+        else if (state.SourceRouteAudit is not null)
+            throw new InvalidDataException(
+                "Fixture semantic session cannot retain a source-route audit.");
         if (state.UsesNativePolicyBaseline)
         {
             if (state.OtherChance is not null || state.PendingEndTurn is not null)
