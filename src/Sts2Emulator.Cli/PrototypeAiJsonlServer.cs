@@ -65,8 +65,12 @@ internal static class PrototypeAiJsonlServer
         {
             if (state.IntentPending is { } intent)
             {
+                var intentState = state.PendingInitialIntents ??
+                    state.PendingEndTurn?.Intents ??
+                    throw new InvalidDataException(
+                        "Pending semantic intent lost its continuation.");
                 var support = ControlledTurnIntentEngineV111
-                    .DescribePendingSemanticIntent(state.PendingEndTurn!.Intents!);
+                    .DescribePendingSemanticIntent(intentState);
                 return new
                 {
                     kind = "enemy_intent",

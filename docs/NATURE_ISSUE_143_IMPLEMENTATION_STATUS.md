@@ -411,12 +411,15 @@ entry name, and initial native decisions are retained in a replayable
 source-route audit. Nature and native-policy sessions split from this same
 completed opening. The native baseline keeps native stream ownership; the
 Nature branch detaches those streams after entry and controls subsequent
-intent/draw boundaries. The initial enemy intent is still committed by the
-shared source entry and is not currently a Nature choice.
+intent/draw boundaries. The initial intent now suspends at the real
+`combat.committed_intent.index_draw` site: Nature sees its weighted support,
+while the baseline commits the same pre-intent checkpoint through the
+native provider. The shared source-opening fingerprint is captured before
+that provider split.
 
 This removes the fabricated encounter formation from the opt-in route mode,
 but does not make route probabilities, Neow choices, opening shuffle, or
-all combat entry hooks native-parity verified. The initial native intent is
-common to both branches. The CLI Release build passed after this change;
-the updated route smoke has not yet been run. The branch remains a work in
-progress, and the issue stays open for source audit and remaining P0 gates.
+all combat entry hooks native-parity verified. The CLI Release build passed
+after the route-entry implementation; the updated route smoke has not yet
+been run. The branch remains a work in progress, and the issue stays open
+for source audit and remaining P0 gates.

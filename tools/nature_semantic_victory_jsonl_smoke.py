@@ -44,21 +44,39 @@ def choose_action(combat):
     return chosen, bool(strikes), obs
 
 
+def without_initial_intents(observation):
+    view = json.loads(json.dumps(observation))
+    for enemy in view["combat"]["enemies"]:
+        for key in list(enemy):
+            normalized = key.replace("_", "").lower()
+            if normalized in {
+                    "moveid", "intentdamage", "intenthits",
+                    "intentbasedamage"}:
+                enemy.pop(key)
+    return json.dumps(view, sort_keys=True)
+
+
 def play_victory():
     with Session(COMMAND) as session:
         combat = begin_combat(session)
-        assert combat.boundary == "player"
         route = combat.status()
         assert route["sourceRouteProvider"] == (
             "engine-owned-v111-native-weak-route-entry-unverified-v1")
         assert route["sourceRouteActionCount"] > 0
         assert route["sourceRouteProbabilityStatus"] == "UNVERIFIED"
-        initial_observation = combat.observe()
-        assert len(initial_observation["combat"]["enemies"]) == 1
         initial = combat.fingerprint
         strikes = 0
         turns = 0
         transcript = []
+        while combat.boundary == "nature":
+            event = combat.pending
+            assert event["kind"] == "enemy_intent"
+            transcript.append(("nature", event["kind"],
+                               event["supportFingerprint"]))
+            combat = combat.resolve_intent(
+                event["semanticCandidates"][0]["intentId"])
+        assert combat.boundary == "player", combat.status()
+        initial_observation = combat.observe()
         for step in range(600):
             if combat.terminal:
                 break
@@ -153,8 +171,9 @@ def play_comparison_pair():
     native = play_native_policy_baseline()
     assert nature[1] == native[1], (
         "Nature and native branches must start from the same source snapshot")
-    assert nature[8] == native[10], (
-        "Source-disjoint branches must expose the same fair opening view")
+    assert without_initial_intents(nature[8]) == \
+        without_initial_intents(native[10]), (
+            "Source-disjoint branches must agree outside the initial intent")
     assert nature[5] is not None and native[5] is not None
     return nature, native
 

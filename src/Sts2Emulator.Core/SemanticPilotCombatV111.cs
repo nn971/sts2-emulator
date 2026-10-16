@@ -85,8 +85,10 @@ public sealed record SemanticPilotCombatV111(
     public SemanticRewardAuditV111? RewardAudit { get; init; }
     public SemanticNativePolicyAuditV111? NativePolicyAudit { get; init; }
     public SemanticSourceRouteAuditV111? SourceRouteAudit { get; init; }
+    public ControlledTurnIntentsV111? PendingInitialIntents { get; init; }
     [JsonIgnore] public string Fingerprint => CanonicalJson.Sha256(this);
     [JsonIgnore] public bool AtPlayerBoundary =>
+        PendingInitialIntents is null &&
         PendingEndTurn is null &&
         Run.Phase == RunPhase.Combat &&
         Run.World?.Combat is { IsPlayerTurn: true,
@@ -112,7 +114,7 @@ public sealed record SemanticPilotCombatV111(
             _ => null
         };
     [JsonIgnore] public RandomIndexRequestV111? IntentPending =>
-        PendingEndTurn?.IntentPending;
+        PendingInitialIntents?.Pending ?? PendingEndTurn?.IntentPending;
     [JsonIgnore] public SemanticDeckEventV111? DrawPending =>
         PendingEndTurn?.DrawPending;
 
@@ -121,6 +123,7 @@ public sealed record SemanticPilotCombatV111(
         OpeningSource = OpeningSource.Fork(),
         Run = Run.Fork(),
         PendingEndTurn = PendingEndTurn?.Fork(),
+        PendingInitialIntents = PendingInitialIntents?.Fork(),
         History = (SemanticPilotTransitionV111[])History.Clone(),
         OtherChance = OtherChance?.Fork(),
         NativePolicyAudit = NativePolicyAudit is { } audit
@@ -346,6 +349,8 @@ public static class SemanticPilotCombatEngineV111
         string? neowChoice = null;
         string? mapNodeId = null;
         using var setupJournal = RandomBoundaryJournalV111.Begin();
+        using var initialIntentCapture =
+            SemanticInitialIntentCaptureV111.Begin();
 
         for (int step = 0; step < 32 && run.Phase != RunPhase.Combat; step++)
         {
@@ -424,14 +429,30 @@ public static class SemanticPilotCombatEngineV111
                     run.Phase);
 
             actions.Add(PrototypeAiEnvironment.StableActionId(selected));
-            run = engine.Step(run, selected).State;
+            try
+            {
+                run = engine.Step(run, selected).State;
+            }
+            catch (SemanticInitialIntentBoundaryException)
+            {
+                run = initialIntentCapture.State ??
+                    throw new InvalidDataException(
+                        "Native combat entry suspended without a saved source state.");
+                break;
+            }
         }
 
+        if (initialIntentCapture.State is null)
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_ROUTE site=act1.entry " +
+                "operation=initial_intent_boundary_not_reached");
         if (run.Phase != RunPhase.Combat || run.World?.Combat is not { } combat ||
             run.World.ActiveRoom != PrototypeRoomType.Combat ||
             combat.PendingChoice is not null ||
             combat.AutomaticPipelineContinuation is not null ||
-            !combat.IsPlayerTurn || combat.NativeRng is not { } nativeCombat ||
+            combat.Enemies.Any(enemy => enemy.PlannedMoveIndex is not null ||
+                enemy.PlannedNextAiStateId is not null) ||
+            combat.NativeRng is not { } nativeCombat ||
             run.NativeRunRng is null)
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_ROUTE site=act1.entry " +
@@ -506,16 +527,52 @@ public static class SemanticPilotCombatEngineV111
 
         CombatState semanticCombat;
         RunState semanticRun;
+        ControlledTurnIntentsV111? pendingInitialIntents = null;
+        RandomBoundaryEventV111[] nativePolicyDecisions = nativeDecisions;
         if (entry.NativePolicyBaseline)
         {
-            semanticCombat = combat with
+            RandomBoundaryEventV111[] committedIntentDecisions;
+            using (var intentJournal = RandomBoundaryJournalV111.Begin())
+            {
+                PrototypeGameEngine.NativeCommittedIntentAuditV111 committed;
+                using (ControlledChanceGuardV111.Enter())
+                using (ControlledChanceGuardV111.AllowEngineOwnedNativeProvider())
+                using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
+                    committed = PrototypeGameEngine.CommitEnemyIntentsWithAudit(
+                        combat, run.Rng);
+                using (ControlledChanceGuardV111.Enter())
+                using (ControlledChanceGuardV111.AllowEngineOwnedNativeProvider())
+                using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
+                    run = PrototypeGameEngine.ResumeSemanticInitialCombatEntry(
+                        run, committed.Combat);
+                committedIntentDecisions = intentJournal.Entries
+                    .Where(decision => decision.ProviderMode == "native-v111")
+                    .ToArray();
+            }
+            nativePolicyDecisions = nativeDecisions
+                .Concat(committedIntentDecisions)
+                .Select((decision, index) => decision with
+                {
+                    Sequence = index + 1,
+                    Request = decision.Request with
+                    {
+                        OrderedCandidates = (int[])decision.Request
+                            .OrderedCandidates.Clone()
+                    }
+                }).ToArray();
+            var completedWorld = run.World ?? throw new InvalidDataException(
+                "Native source route lost its world after intent resolution.");
+            var completedCombat = completedWorld.Combat ??
+                throw new InvalidDataException(
+                    "Native source route lost combat after intent resolution.");
+            semanticCombat = completedCombat with
             {
                 SemanticDeck = SemanticDeckEngineV111.BeginNative(
-                    combat.DrawPile.Reverse().ToArray())
+                    completedCombat.DrawPile.Reverse().ToArray())
             };
             semanticRun = run with
             {
-                World = routeWorld with { Combat = semanticCombat }
+                World = completedWorld with { Combat = semanticCombat }
             };
         }
         else
@@ -523,14 +580,47 @@ public static class SemanticPilotCombatEngineV111
             semanticCombat = combat with
             {
                 NativeRng = null,
-                SemanticDeck = SemanticDeckEngineV111.FromCommittedOpening(
-                    combat.DrawPile.Reverse().ToArray())
+                SemanticDeck = null
             };
             semanticRun = run with
             {
                 NativeRunRng = null,
                 World = routeWorld with { Combat = semanticCombat }
             };
+            pendingInitialIntents = ControlledTurnIntentEngineV111.Begin(
+                semanticCombat, actualNativeEntry,
+                siteId: "combat.committed_intent.index_draw");
+            if (pendingInitialIntents.Complete)
+            {
+                using (ControlledChanceGuardV111.Enter())
+                    semanticRun = PrototypeGameEngine
+                        .ResumeSemanticInitialCombatEntry(
+                            semanticRun, pendingInitialIntents.Combat);
+                var completedWorld = semanticRun.World ??
+                    throw new InvalidDataException(
+                        "Nature source route lost its world after intent resolution.");
+                var completedCombat = completedWorld.Combat ??
+                    throw new InvalidDataException(
+                        "Nature source route lost combat after intent resolution.");
+                semanticCombat = completedCombat with
+                {
+                    SemanticDeck = SemanticDeckEngineV111
+                        .FromCommittedOpening(
+                            completedCombat.DrawPile.Reverse().ToArray())
+                };
+                semanticRun = semanticRun with
+                {
+                    World = completedWorld with { Combat = semanticCombat }
+                };
+            }
+            else
+            {
+                semanticCombat = pendingInitialIntents.Combat.Fork();
+                semanticRun = semanticRun with
+                {
+                    World = routeWorld with { Combat = semanticCombat }
+                };
+            }
         }
 
         var state = new SemanticPilotCombatV111(
@@ -538,10 +628,13 @@ public static class SemanticPilotCombatEngineV111
         {
             SeededEntry = resolvedEntry,
             SourceRouteAudit = routeAudit,
+            PendingInitialIntents = pendingInitialIntents is { Complete: false }
+                ? pendingInitialIntents
+                : null,
             NativePolicyAudit = entry.NativePolicyBaseline
                 ? new SemanticNativePolicyAuditV111(
                     SemanticNativePolicyAuditV111.NativeProviderId,
-                    nativeDecisions)
+                    nativePolicyDecisions)
                 : null
         };
         Validate(state);
@@ -759,14 +852,16 @@ public static class SemanticPilotCombatEngineV111
             throw new InvalidDataException(
                 "Native policy baseline is missing provider provenance.");
         int offset = audit.Decisions.Length;
-        var recorded = boundaries.Entries.Select((entry, index) => entry with
+        var recorded = boundaries.Entries
+            .Where(entry => entry.ProviderMode == "native-v111")
+            .Select((entry, index) => entry with
         {
             Sequence = offset + index + 1,
             Request = entry.Request with
             {
                 OrderedCandidates = (int[])entry.Request.OrderedCandidates.Clone()
             }
-        }).ToArray();
+            }).ToArray();
 
         if (result.Phase == RunPhase.Combat)
             ValidateNativePolicyBoundary(result);
@@ -817,6 +912,59 @@ public static class SemanticPilotCombatEngineV111
         Validate(current);
         if (current.Fingerprint != fingerprint)
             throw new InvalidOperationException("Stale semantic Nature fingerprint.");
+        if (current.PendingInitialIntents is { Pending: not null } initialIntents)
+        {
+            var resolvedInitial = ControlledTurnIntentEngineV111.Resolve(
+                initialIntents, selectedIndex, current.Run.Rng);
+            var world = current.Run.World ?? throw new InvalidDataException(
+                "Initial intent resolution lost the source route world.");
+            var nextRun = current.Run with
+            {
+                World = world with { Combat = resolvedInitial.Combat }
+            };
+            ControlledTurnIntentsV111? pendingInitial = resolvedInitial.Complete
+                ? null : resolvedInitial;
+            if (resolvedInitial.Complete)
+            {
+                using (ControlledChanceGuardV111.Enter())
+                    nextRun = PrototypeGameEngine
+                        .ResumeSemanticInitialCombatEntry(
+                            nextRun, resolvedInitial.Combat);
+                var completedWorld = nextRun.World ??
+                    throw new InvalidDataException(
+                        "Initial intent completion lost the source route world.");
+                var completedCombat = completedWorld.Combat ??
+                    throw new InvalidDataException(
+                        "Initial intent completion lost combat.");
+                if (nextRun.Phase != RunPhase.Combat ||
+                    !completedCombat.IsPlayerTurn ||
+                    completedCombat.PendingChoice is not null ||
+                    completedCombat.AutomaticPipelineContinuation is not null)
+                    throw new NotSupportedException(
+                        "UNSUPPORTED_SEMANTIC_ROUTE site=combat.opening " +
+                        "operation=unmodeled_opening_continuation");
+                var semanticCombat = completedCombat with
+                {
+                    SemanticDeck = SemanticDeckEngineV111
+                        .FromCommittedOpening(
+                            completedCombat.DrawPile.Reverse().ToArray())
+                };
+                nextRun = nextRun with
+                {
+                    World = completedWorld with { Combat = semanticCombat }
+                };
+            }
+            var initialState = current with
+            {
+                Run = nextRun,
+                PendingInitialIntents = pendingInitial,
+                History = current.History.Append(
+                    new SemanticPilotTransitionV111("nature",
+                        SelectedIndex: selectedIndex)).ToArray()
+            };
+            Validate(initialState);
+            return initialState;
+        }
         var pending = current.PendingEndTurn ??
             throw new InvalidOperationException("No Nature decision is pending.");
         if (pending.IntentPending is null && pending.DrawPending is null)
@@ -847,7 +995,8 @@ public static class SemanticPilotCombatEngineV111
         if (current.Fingerprint != fingerprint)
             throw new InvalidOperationException("Stale semantic intent fingerprint.");
         ArgumentException.ThrowIfNullOrWhiteSpace(intentId);
-        var ticket = current.PendingEndTurn?.Intents;
+        var ticket = current.PendingInitialIntents ??
+            current.PendingEndTurn?.Intents;
         if (ticket?.Pending is null)
             throw new InvalidOperationException(
                 "Only a pending enemy_intent supports semantic intent IDs.");
@@ -924,6 +1073,20 @@ public static class SemanticPilotCombatEngineV111
                 throw new InvalidDataException(
                     "Semantic playable and end-turn continuation diverged.");
         }
+        if (state.PendingInitialIntents is { } initialIntents)
+        {
+            ControlledTurnIntentEngineV111.Validate(initialIntents);
+            if (initialIntents.Complete || state.PendingEndTurn is not null ||
+                state.SeededEntry?.SourceRouteEntry != true ||
+                state.Run.World?.Combat is not { } entryCombat ||
+                CanonicalJson.Sha256(entryCombat) !=
+                    CanonicalJson.Sha256(initialIntents.Combat) ||
+                entryCombat.NativeRng is not null ||
+                entryCombat.SemanticDeck is not null ||
+                state.Run.NativeRunRng is not null)
+                throw new InvalidDataException(
+                    "Initial intent continuation diverged from the source-route boundary.");
+        }
         if (state.OtherChance is not null)
             SemanticOtherChanceEngineV111.Validate(state.OtherChance);
         if (state.RewardAudit is { } reward &&
@@ -971,7 +1134,8 @@ public static class SemanticPilotCombatEngineV111
                 "Fixture semantic session cannot retain a source-route audit.");
         if (state.UsesNativePolicyBaseline)
         {
-            if (state.OtherChance is not null || state.PendingEndTurn is not null)
+            if (state.OtherChance is not null || state.PendingEndTurn is not null ||
+                state.PendingInitialIntents is not null)
                 throw new InvalidDataException(
                     "Native policy baseline cannot retain Nature-only continuations.");
             var nativeAudit = state.NativePolicyAudit ??

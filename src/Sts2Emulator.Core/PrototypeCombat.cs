@@ -425,6 +425,18 @@ public sealed partial class PrototypeGameEngine
 
         // Intents must be committed before an opening player choice is visible.
         combat = GrantEnemyAllyBlockOnPlayerTurnStart(combat);
+        var entryWorld = world with
+        {
+            Combat = combat,
+            EncounterHistory = world.EncounterIds.Append(encounter.Id).ToArray()
+        };
+        SemanticInitialIntentCaptureV111.CaptureAndSuspend(state with
+        {
+            NativeRunRng = combat.NativeRng?.RunStreams.Fork()
+                ?? state.NativeRunRng?.Fork(),
+            World = entryWorld,
+            Phase = RunPhase.Combat
+        });
         combat = CommitEnemyIntents(combat, state.Rng);
         // Return the latest native run/player cursors to their persistent
         // owner; later Step() calls continue from these precise positions.
@@ -434,18 +446,36 @@ public sealed partial class PrototypeGameEngine
                 NativeRunRng = combat.NativeRng.RunStreams.Fork()
             };
 
-        world = world with
+        return ResumeSemanticInitialCombatEntry(state with
         {
-            Combat = combat,
-            EncounterHistory = world.EncounterIds.Append(encounter.Id).ToArray()
-        };
-
-        state = ApplyOpeningRoyalPoison(state with
-        {
-            World = world,
+            World = entryWorld with { Combat = combat },
             Phase = RunPhase.Combat
-        });
-        return ResumeOpeningCombat(state, PrototypeOpeningCombatStage.PlayerSideStart);
+        }, combat);
+    }
+
+    internal static RunState ResumeSemanticInitialCombatEntry(
+        RunState source, CombatState combat)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(combat);
+        var world = RequireWorld(source);
+        if (source.Phase != RunPhase.Combat ||
+            world.ActiveRoom != PrototypeRoomType.Combat ||
+            world.Combat is null || combat.Act != world.Act)
+            throw new InvalidOperationException(
+                "Initial intent continuation has an invalid combat-entry source.");
+        var nativeStreams = combat.NativeRng?.RunStreams.Fork()
+            ?? source.NativeRunRng?.Fork();
+        var advanced = source with
+        {
+            NativeRunRng = nativeStreams,
+            World = world with { Combat = combat.Fork() }
+        };
+        if (nativeStreams is not null && combat.NativeRng is not null)
+            NativeRunRngV111.Validate(advanced);
+        advanced = ApplyOpeningRoyalPoison(advanced);
+        return ResumeOpeningCombat(
+            advanced, PrototypeOpeningCombatStage.PlayerSideStart);
     }
 
     private static PrototypeEncounterDefinition?

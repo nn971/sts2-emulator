@@ -12,7 +12,8 @@ public sealed record ControlledTurnIntentsV111(
     string NativeEncounterEntry,
     int NextEnemyIndex,
     RandomIndexDecisionV111[] Transcript,
-    RandomIndexRequestV111? Pending)
+    RandomIndexRequestV111? Pending,
+    string SiteId = ControlledTurnIntentEngineV111.SiteId)
 {
     public bool Complete => Pending is null;
     public ControlledTurnIntentsV111 Fork() => this with
@@ -38,12 +39,15 @@ public static class ControlledTurnIntentEngineV111
     public const string SiteId = "combat.next_turn_intent.index_draw";
 
     public static ControlledTurnIntentsV111 Begin(
-        CombatState combat, string nativeEncounterEntry)
+        CombatState combat, string nativeEncounterEntry,
+        string siteId = SiteId)
     {
         ArgumentNullException.ThrowIfNull(combat);
         ArgumentException.ThrowIfNullOrWhiteSpace(nativeEncounterEntry);
+        ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
         var state = new ControlledTurnIntentsV111(
-            combat.Fork(), combat.Fork(), nativeEncounterEntry, 0, [], null);
+            combat.Fork(), combat.Fork(), nativeEncounterEntry, 0, [], null,
+            siteId);
         return AdvanceToBoundary(state);
     }
 
@@ -138,6 +142,7 @@ public static class ControlledTurnIntentEngineV111
     public static void Validate(ControlledTurnIntentsV111 state)
     {
         if (string.IsNullOrWhiteSpace(state.NativeEncounterEntry) ||
+            string.IsNullOrWhiteSpace(state.SiteId) ||
             state.Transcript is null ||
             state.NextEnemyIndex < 0 ||
             state.NextEnemyIndex > state.BaselineCombat.Enemies.Length ||
@@ -199,7 +204,7 @@ public static class ControlledTurnIntentEngineV111
                 if (bound <= 0)
                     throw new InvalidOperationException("Nonpositive turn-intent ticket bound.");
                 var request = new RandomIndexRequestV111(
-                    SiteId, "run.monster_ai",
+                    state.SiteId, "run.monster_ai",
                     "creature:" + enemy.InstanceId,
                     state.Transcript.Length - prior.Length + position,
                     [], OperationKind: "bounded_integer", BoundedCount: bound);
