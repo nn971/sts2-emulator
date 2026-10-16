@@ -272,10 +272,11 @@ public static class NativeCombatRngEntryV111
         var max = combat.Ascension >= 8 ? 23 : 22;
         var hatchHpCandidates = Enumerable.Range(
             min, checked(max - min + 1)).ToArray();
+        var monsterContext = native.Formation.MonsterContexts[index];
         var hatchHpChoice = new NativeRandomIndexProviderV111().Resolve(
             new RandomIndexRequestV111(
                 ToughEggHatchHpSiteId, "run.niche",
-                "creature:" + currentEgg.InstanceId, 0,
+                "creature:" + monsterContext.CombatId, 0,
                 hatchHpCandidates), native.RunStreams);
         var hp = hatchHpChoice.SelectedValue;
         hatched = currentEgg with

@@ -25,7 +25,7 @@ reference distribution is claimed.
 | Stable call-site ID | Owner / stream | Source audit | Native v111 implemented | Native parity tested | Controlled implemented | Controlled mechanics tested | Reference law calibrated |
 | --- | --- | --- | --- | --- | --- | --- | --- |
 | `combat.initial_unique_hp` | creature CombatId / `run.niche` | Yes: initial and attached summons | Yes | Yes: seeded result/hash/cursor | Yes: initial entry only | Yes | No |
-| `combat.tough_egg.hatchling_hp` | Tough Egg CombatId / `run.niche` | Yes, direct hatch range and call timing | Yes | Yes: existing seeded hatch oracle | No | No | No |
+| `combat.tough_egg.hatchling_hp` | Tough Egg CombatId / `run.niche` | Yes, direct hatch range and call timing | Yes: typed index provider | Yes: existing seeded hatch oracle | No | No | No |
 | `combat.committed_intent.index_draw` | creature CombatId / `run.monster_ai` | Yes, supported moves | Yes, subset | Yes: seeded result/hash/cursor | Yes: isolated entry, source route and automatic turn continuation | Yes | No |
 | `combat.encounter.formation.index_draw` | encounter entry + floor / `context.encounter.*` | Partial: supported source resolvers; singleton calls preserved | Yes: native typed provider | Yes: existing seeded result/cursor regressions | No | No | No |
 | `event.orobas.relic_offer.index_draw` | Orobas event / `context.event.OROBAS.player_0` | Yes: three ordered eligible pools; singleton fallback still consumes | Yes: typed provider and opt-in audit | No: provider-specific result/cursor regression pending | Yes: one-shot provider, persisted nonnative mode and cursor validation | No | No |
@@ -132,7 +132,9 @@ native provider under `combat.encounter.formation.index_draw`; the opt-in
 `Generate` method keeps the existing formation result. Singleton formation
 draws still consume `NextInt(1)`. The shared `combat.initial_unique_hp` site
 also covers attached summoned-creature HP; Tough Egg's direct hatch roll is
-separately typed as `combat.tough_egg.hatchling_hp`. These are native
+separately routed through `NativeRandomIndexProviderV111` as
+`combat.tough_egg.hatchling_hp`. It preserves one `NextInt(4)` on `run.niche`
+and now appears in the migrated-provider boundary journal. These are native
 provider integrations, not controlled summon/death continuations.
 
 **D2 remaining:** formation resolvers outside the integrated subset,
