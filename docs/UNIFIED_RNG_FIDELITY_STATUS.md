@@ -16,7 +16,8 @@
 2. All three initial `IRandomIndexProviderV111` implementations (native, scripted and controlled) emit observations only after successful validation/resolution. The journal never requests a new draw or changes a stream; invalid selections emit nothing.
 3. `RandomBoundaryComparisonV111` checks exact support order, owner, stream, call site/sequence, source version and selected outcome; optionally requires identical native pre/post cursors. Native vs counterfactual scripted outcomes may match despite different provider mode and cursor.
 4. The **actual**, unchanged `PrototypeGameEngine.Step` checkpoint importer now captures both its existing ordered mechanics journal and the nested typed RNG provider journal, returning `emulator_random_boundaries` and `random_boundary_coverage=MIGRATED_PROVIDER_SITES_ONLY`. Batch summaries include per-fixture provider boundary counts.
-5. Negative/regression tests cover provider parity vs scripted, candidate order and request count mismatch, invalid outcomes, nested capture scopes, untouched controlled RNG, and duplicate creature owner IDs inherited from #125. A journal with zero migrated calls is **not** evidence that the native game made no random calls.
+5. The emulator RNG journal now also emits `emulator_random_transcript`, one global sequence across index, float/double, and Gaussian provider operations. The existing typed arrays remain available. This restores mixed-operation order for migrated provider calls; it does not show native calls or unported emulator sites.
+6. Negative/regression tests cover provider parity vs scripted, candidate order and request count mismatch, invalid outcomes, nested capture scopes, untouched controlled RNG, and duplicate creature owner IDs inherited from #125. A journal with zero migrated calls is **not** evidence that the native game made no random calls.
 
 ## Known limits, precisely classified
 

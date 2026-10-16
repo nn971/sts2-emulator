@@ -63,7 +63,10 @@ rejection sampler and journals its complete cursor span, including rejected
 samples. A typed ranged-float adapter now preserves the native `NextFloat(min,
 max)` rounding, and a ranged-double adapter wraps `NextDouble(min, max)`; both
 journal their cursor spans. Neither primitive has an additional gameplay call
-site mapped yet. Full source call-order parity is still open.
+site mapped yet. The opt-in emulator RNG journal now also carries one
+mixed-operation sequence across every typed provider family, alongside its
+legacy per-type arrays. It preserves order only for migrated provider calls;
+full source call-order parity is still open.
 An opt-in bounded
 enumerator now resolves one small semantic chance support into independent
 child sessions; it rejects supports above the requested cap instead of

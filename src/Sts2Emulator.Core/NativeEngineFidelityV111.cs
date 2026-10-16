@@ -40,6 +40,11 @@ public sealed record NativeEngineFidelityReportV111(
     RandomGaussianDoubleBoundaryEventV111[]? EmulatorGaussianDoubleBoundaries = null,
     string RandomBoundaryCoverage = "MIGRATED_PROVIDER_SITES_ONLY")
 {
+    [System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public RandomBoundaryTranscriptEntryV111[]? EmulatorRandomTranscript
+        { get; init; }
+
     public static NativeEngineFidelityReportV111 Stop(
         string status, string? build, IEnumerable<string> blockers,
         IEnumerable<string>? assumptions = null, string? error = null) =>
@@ -334,6 +339,7 @@ public static class NativeEngineFidelityV111
             RandomRangedDoubleBoundaryEventV111[] rangedDoubleEvents;
             RandomGaussianIntBoundaryEventV111[] gaussianIntEvents;
             RandomGaussianDoubleBoundaryEventV111[] gaussianDoubleEvents;
+            RandomBoundaryTranscriptEntryV111[] randomTranscript;
             using (var journal = NativeEngineEventJournalV111.Begin())
             using (var randomJournal = RandomBoundaryJournalV111.Begin())
             {
@@ -345,6 +351,7 @@ public static class NativeEngineFidelityV111
                 rangedDoubleEvents = randomJournal.RangedDoubleEntries.ToArray();
                 gaussianIntEvents = randomJournal.GaussianIntEntries.ToArray();
                 gaussianDoubleEvents = randomJournal.GaussianDoubleEntries.ToArray();
+                randomTranscript = randomJournal.OrderedTranscript.ToArray();
             }
             if (result.Phase != RunPhase.Combat || result.World?.Combat is null)
                 return new NativeEngineFidelityReportV111(
@@ -357,7 +364,10 @@ public static class NativeEngineFidelityV111
                     EmulatorRandomRangedFloatBoundaries: rangedFloatEvents,
                     EmulatorRandomRangedDoubleBoundaries: rangedDoubleEvents,
                     EmulatorGaussianIntBoundaries: gaussianIntEvents,
-                    EmulatorGaussianDoubleBoundaries: gaussianDoubleEvents);
+                    EmulatorGaussianDoubleBoundaries: gaussianDoubleEvents)
+                {
+                    EmulatorRandomTranscript = randomTranscript
+                };
             var next = result.World.Combat;
             var checks = new List<NativeEngineFieldCheckV111>();
             void Check(string path, object native, object emulated)
@@ -460,7 +470,10 @@ public static class NativeEngineFidelityV111
                 EmulatorRandomRangedFloatBoundaries: rangedFloatEvents,
                 EmulatorRandomRangedDoubleBoundaries: rangedDoubleEvents,
                 EmulatorGaussianIntBoundaries: gaussianIntEvents,
-                EmulatorGaussianDoubleBoundaries: gaussianDoubleEvents);
+                EmulatorGaussianDoubleBoundaries: gaussianDoubleEvents)
+            {
+                EmulatorRandomTranscript = randomTranscript
+            };
         }
         catch (Exception e) when (e is JsonException or InvalidOperationException
                                   or ArgumentException or KeyNotFoundException)
