@@ -347,6 +347,13 @@ flags are maintained in
 listed there remain unassessed; an empty provider journal or missing matrix row
 does not imply that the native game made no random call.
 
+The reproducible direct-call census at
+[`RNG_DIRECT_CALLSITE_CENSUS.md`](RNG_DIRECT_CALLSITE_CENSUS.md) tracks the
+currently visible `PrototypeRng`, `NativeRngV111`, and
+`NativeFisherYatesV111` call expressions by source location. It helps find
+sites missing from the migration matrix, but indirect calls and native game
+source operations still need separate tracing.
+
 ## 8. First concrete PRs
 
 **PR 1 — D0/D1 scaffolding:** introduce typed random-decision descriptors and a native adapter around existing `NativeRngV111` calls; add a scripted recording/replay provider, a migration inventory and strict no-behavior-change regression tests. Preserve the legacy prototype path and v111 default modes.
