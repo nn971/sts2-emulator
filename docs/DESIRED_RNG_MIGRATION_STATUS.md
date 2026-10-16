@@ -51,7 +51,8 @@ reference distribution is claimed.
 | `combat.card_draw.slither_energy_cost` | drawn card / `run.combat_energy_costs` | Yes, source draw-hook order | Partial: private engine-owned native-codec stream; assignment unverified | No | Yes, opt-in typed event | Yes | No |
 | `combat.card_selection.random_shortlist` | draw-pile selector / prototype combat stream | Yes, source filters and without-replacement prefix | No v111 provider | No | Yes: semantic JSONL/Python event | No: not run or covered by a focused test | No |
 | `combat.relic.jeweled_mask.random_power_draw_card` | player relic hook / `run.combat_card_selection` | Yes: prefers noninnate powers, then the ordered Power pool | Yes: typed native provider request | No: provider-specific result/cursor regression pending | No | No | No |
-| `potion_factory.model_within_rarity.index_draw` | potion factory / `run.combat_potion_generation` | Partial: native float chooses rarity; source-ordered remaining tier pool chooses model | Partial: typed model index; rarity float remains direct | No: provider-specific result/cursor regression pending | Partial: model choice controlled within the native-sampled tier | No | No |
+| `potion_factory.rarity_roll.unit_float` | potion factory / `run.combat_potion_generation` | Yes: unit-float thresholds choose Common / Uncommon / Rare | Yes: typed unit-float provider around native `NextFloat` | No: provider-specific result/cursor regression pending | Yes: controlled unit-float request | No | No |
+| `potion_factory.model_within_rarity.index_draw` | potion factory / `run.combat_potion_generation` | Yes: source-ordered remaining tier pool after rarity choice | Yes: typed model index provider | No: provider-specific result/cursor regression pending | Yes: model choice controlled within the chosen tier | No | No |
 | `run.relic.beautiful_bracelet.deck_shuffle.swap_index` | Beautiful Bracelet acquisition / `run.niche` | Yes: ordered eligible deck cards; first four selected after full shuffle | Yes: typed provider at each descending swap | No: provider-specific result/cursor regression pending | No | No | No |
 | `run.relic.fur_coat.map_node_shuffle.swap_index` | Fur Coat acquisition + act / `context.player.*` | Yes: current-act Combat and Elite nodes; first eight marked after full shuffle | Yes: typed provider at each descending swap | No: provider-specific result/cursor regression pending | No | No | No |
 
@@ -159,11 +160,13 @@ remains separate from seeded emulator RNG equality. See
 
 ## Known limitations
 
-- The original `RandomIndex` provider handles finite ordered **index**
-  decisions only. The semantic playable extension separately supports
-  typed physical-card, enemy-instance and generated-card-model identities.
-  Native primitive float, Gaussian/rejection, and dynamic weighted choices
-  need additional typed operations and call-site audits.
+- The `RandomIndex` provider handles finite ordered **index** decisions. A
+  separate typed unit-float provider now wraps native and controlled samples;
+  it accepts `1.0f`, which can result from rounding a native value below one.
+  The semantic playable extension separately supports typed physical
+  card, enemy-instance and generated-card-model identities. Ranged floats,
+  Gaussian/rejection and dynamic weighted choices still need typed operations
+  and call-site audits.
 - The scripting provider validates an exact request sequence but is not yet
   a serializable resumable game controller.
 - Provider instance state is not in canonical `RunState`, so callers must

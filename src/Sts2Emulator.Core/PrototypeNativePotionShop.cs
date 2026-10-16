@@ -9,7 +9,11 @@ public enum PrototypeNativePotionRarity
 }
 
 public sealed record NativePotionModelSelectionAuditV111(
-    string[] PotionIds, RandomIndexDecisionV111[] Choices, string ProviderMode);
+    string[] PotionIds,
+    RandomIndexDecisionV111[] Choices,
+    RandomUnitFloatDecisionV111[] RarityRolls,
+    string IndexProviderMode,
+    string FloatProviderMode);
 
 /// <summary>
 /// Pinned v0.111.0 rarity and merchant price rules for the supported
@@ -216,8 +220,8 @@ public static class PrototypeNativePotionShop
     }
 
     /// <summary>
-    /// Source-ordered out-of-combat PotionFactory generation. Each item rolls
-    /// rarity with NextFloat, asks a provider for a model index in the
+    /// Source-ordered out-of-combat PotionFactory generation. Each item asks
+    /// a float provider for rarity, then an index provider for a model in the
     /// remaining same-rarity pool, and removes that model before the next item.
     /// </summary>
     public static string[] PickWeightedDistinctNative(
@@ -232,7 +236,8 @@ public static class PrototypeNativePotionShop
             string streamId,
             int count,
             string ownerId,
-            IRandomIndexProviderV111 provider)
+            IRandomIndexProviderV111 provider,
+            IRandomUnitFloatProviderV111? floatProvider = null)
     {
         ArgumentNullException.ThrowIfNull(rng);
         ArgumentNullException.ThrowIfNull(provider);
@@ -241,13 +246,22 @@ public static class PrototypeNativePotionShop
         if (count < 0)
             throw new ArgumentOutOfRangeException(nameof(count));
 
+        var effectiveFloatProvider = floatProvider
+            ?? new NativeRandomUnitFloatProviderV111();
         var workingRng = rng.Fork();
         var remaining = NativePotionPoolOrder.ToList();
         var selected = new List<string>(count);
         var choices = new List<RandomIndexDecisionV111>(count);
+        var rarityRolls = new List<RandomUnitFloatDecisionV111>(count);
         for (var index = 0; index < count; index++)
         {
-            var roll = NativeRngV111.NextFloat(workingRng, streamId);
+            var rarityDecision = effectiveFloatProvider.Resolve(
+                new RandomUnitFloatRequestV111(
+                    "potion_factory.rarity_roll.unit_float", streamId,
+                    ownerId, index), workingRng);
+            rarityDecision.Validate();
+            rarityRolls.Add(rarityDecision);
+            var roll = rarityDecision.SelectedValue;
             var rarity = roll <= 0.1f
                 ? PrototypeNativePotionRarity.Rare
                 : roll <= 0.35f
@@ -271,7 +285,8 @@ public static class PrototypeNativePotionShop
         for (var streamIndex = 0; streamIndex < rng.Streams.Length; streamIndex++)
             rng.Streams[streamIndex] = workingRng.Streams[streamIndex].Fork();
         return new NativePotionModelSelectionAuditV111(
-            selected.ToArray(), choices.ToArray(), provider.Mode);
+            selected.ToArray(), choices.ToArray(), rarityRolls.ToArray(),
+            provider.Mode, effectiveFloatProvider.Mode);
     }
 
     /// <summary>

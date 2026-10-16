@@ -23,6 +23,9 @@ public sealed record NativeEngineFidelityReportV111(
     string? EngineFailure = null,
     NativeEngineJournalEntryV111[]? EmulatorEventJournal = null,
     RandomBoundaryEventV111[]? EmulatorRandomBoundaries = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    RandomUnitFloatBoundaryEventV111[]? EmulatorRandomUnitFloatBoundaries = null,
     string RandomBoundaryCoverage = "MIGRATED_PROVIDER_SITES_ONLY")
 {
     public static NativeEngineFidelityReportV111 Stop(
@@ -314,12 +317,14 @@ public static class NativeEngineFidelityV111
             RunState result;
             NativeEngineJournalEntryV111[] engineEvents;
             RandomBoundaryEventV111[] randomEvents;
+            RandomUnitFloatBoundaryEventV111[] randomFloatEvents;
             using (var journal = NativeEngineEventJournalV111.Begin())
             using (var randomJournal = RandomBoundaryJournalV111.Begin())
             {
                 result = engine.Step(state, action).State;
                 engineEvents = journal.Entries.ToArray();
                 randomEvents = randomJournal.Entries.ToArray();
+                randomFloatEvents = randomJournal.UnitFloatEntries.ToArray();
             }
             if (result.Phase != RunPhase.Combat || result.World?.Combat is null)
                 return new NativeEngineFidelityReportV111(
@@ -327,7 +332,8 @@ public static class NativeEngineFidelityV111
                     ["Engine left combat before the next native checkpoint."],
                     guards.ToArray(), [], "$.phase",
                     EmulatorEventJournal: engineEvents,
-                    EmulatorRandomBoundaries: randomEvents);
+                    EmulatorRandomBoundaries: randomEvents,
+                    EmulatorRandomUnitFloatBoundaries: randomFloatEvents);
             var next = result.World.Combat;
             var checks = new List<NativeEngineFieldCheckV111>();
             void Check(string path, object native, object emulated)
@@ -425,7 +431,8 @@ public static class NativeEngineFidelityV111
                 "NOT_TESTED", true, build, [], guards.ToArray(),
                 checks.ToArray(), differences.FirstOrDefault()?.Path,
                 EmulatorEventJournal: engineEvents,
-                EmulatorRandomBoundaries: randomEvents);
+                EmulatorRandomBoundaries: randomEvents,
+                EmulatorRandomUnitFloatBoundaries: randomFloatEvents);
         }
         catch (Exception e) when (e is JsonException or InvalidOperationException
                                   or ArgumentException or KeyNotFoundException)

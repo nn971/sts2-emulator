@@ -45,8 +45,9 @@ existing source-pinned Fisher–Yates loop now accepts an arbitrary named
 stream and provider without duplicating its swap mechanics. Jeweled Mask's
 random Power selection and native generated-card full-pool shuffle also reach
 typed native providers; controlled combat continuation for those native
-sites remains pending. The potion factory's model index is typed after its
-native float rarity roll, so tier selection is still outside the provider.
+sites remains pending. The potion factory now routes its unit-float rarity
+sample and within-tier model index through separate typed providers in source
+order.
 Beautiful Bracelet's eligible-deck shuffle and Fur Coat's current-act combat
 node shuffle now use typed native swap requests as well; controlled relic
 acquisition continuation remains pending.
