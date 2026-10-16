@@ -41,6 +41,14 @@ removal would break split-pool constraints. The saved real player-action
 segment also admits source-audited Silent Strike, Defend, Deflect and
 Neutralize plays; it rejects a chance or turn boundary it cannot resume with
 a typed unsupported-operation error.
+Physical draw-pile moves now keep provider state synchronized across exact
+insertions, removals, transformations, and zone transfers. Native hand-return
+shuffles commit the resulting top-first order, and after-shuffle relic cards
+record their source-selected insertion position in native exact mode. Top-draw
+autoplay consumes the exact provider order and commits native recycle shuffles;
+it fails closed for deferred Nature until it has a resumable draw continuation.
+Nature still fails closed where a shuffle or after-shuffle insertion lacks a
+saved continuation.
 The Orobas, Pael and Tezcatara ordered relic offer selections; Darv's
 offer-variant and ordered relic-pool shuffle; and the Nonupeipe, Tanx and
 Vakuu relic shuffles now pass through the shared index provider, with opt-in

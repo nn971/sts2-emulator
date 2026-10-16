@@ -17,8 +17,9 @@ unlocked candidate pool remain open.
 
 After-shuffle relic-generated draw-pile cards now use a separate typed
 `run.shuffle` site in native combat and preserve legacy `combat` draws. That
-hook fails closed under controlled Nature until its post-shuffle continuation
-is serializable. Enemy-side random draw/discard insertion also uses typed
+hook records the inserted position in the native exact semantic deck, while
+controlled Nature still fails closed until its post-shuffle continuation is
+serializable. Enemy-side random draw/discard insertion also uses typed
 `run.shuffle` sites, but fails closed until enemy-action continuations can
 resume them.
 
