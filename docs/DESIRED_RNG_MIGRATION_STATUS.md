@@ -31,6 +31,7 @@ reference distribution is claimed.
 | `combat.initial_unique_hp` | creature CombatId / native `run.niche`, legacy `combat` | Yes: native initial and attached summons; legacy initial, death, and ordinary summons | Yes: native unique-pool draw and shared legacy typed index provider | Yes: seeded result/hash/cursor for native entry | Yes: initial entry only | Yes | No |
 | `combat.tough_egg.hatchling_hp` | Tough Egg CombatId / native `run.niche`, legacy `combat` | Yes, direct hatch range and call timing | Yes: typed native hatch and legacy transform index providers | Yes: existing seeded hatch oracle | No | No | No |
 | `combat.committed_intent.index_draw` | creature CombatId / native `run.monster_ai`, legacy `combat` | Yes, supported moves | Yes: native subset and legacy typed bounded-integer provider | Yes: seeded result/hash/cursor | Yes: isolated entry, source route and automatic turn continuation | Yes | No |
+| `combat.next_turn_intent.index_draw` | creature CombatId + saved end-turn stage / `run.monster_ai` | Yes: same pure eligibility selector after end-turn hooks | No: native entry uses the committed-intent site ID | No | Yes: serialized per-enemy turn-intent continuation | Yes: existing turn-intent continuation coverage | No |
 | `combat.encounter.formation.index_draw` | encounter entry + floor / native `context.encounter.*`, legacy `combat` | Partial: supported source resolvers and opening rotation; singleton calls preserved | Yes: native and legacy typed providers across callback and distinct-pool resolvers | Yes: existing seeded result/cursor regressions | No | No | No |
 | `combat.encounter.overgrowth_elite.index_draw` | act/floor + eligible encounter pool / legacy `combat` | Partial: previous-elite exclusion and ordered fallback pool | No: legacy typed index provider only | No | No: fails closed pending an encounter-selection continuation | No | No |
 | `combat.encounter.overgrowth_weak.index_draw` | act/floor + remaining weak encounter pool / legacy `combat` | Partial: remaining encounter order and exhaustion boundary | No: legacy typed index provider only | No | No: fails closed pending an encounter-selection continuation | No | No |
@@ -137,6 +138,7 @@ reference distribution is claimed.
 | `combat.hand_return.draw_pile.shuffle_swap_index` | player hand + draw pile / native `run.shuffle` hypothesis; legacy `combat` | Partial: source input order; native call-site assignment pending parity | Yes: typed native and legacy descending swaps | No: provider-specific result/cursor regression pending | No: fails closed pending a saved shuffle continuation | No | No |
 | `combat.draw_pile_recycle.swap_index` | player / native `run.shuffle`; legacy controlled continuation | Yes: recycle swap bounds and descending shuffle order | Yes: typed native Fisher–Yates provider | No: provider-specific seeded recycle parity pending | Yes: saved legacy controlled recycle continuation | Yes | No |
 | `combat.draw_pile.draw_card` | player / `semantic.draw_pile` | Yes, source `DrawCards` order and identity | Partial: exact native deck mode; no per-draw provider seam | No | Yes: deferred physical-card identity | Yes, actual draw segment | No |
+| `combat.draw_pile.reveal_card` | draw-pile offset + peek/scry purpose / semantic deferred deck | Partial: kernel supports constrained peek and scry; source callsites are not integrated | No: exact known positions reveal without a new native draw | No | Yes: serializable semantic reveal event | Yes: existing semantic deck kernel coverage | No |
 | `combat.effect.random_enemy` | effect card / `run.combat_targets`; legacy `combat_targets` | Yes, live ordered formation support | Yes: native and legacy typed index providers | No | Yes: saved operation continuation | Yes | No |
 | `combat.autoplay.random_enemy` | auto-play card / `run.combat_targets`; legacy `combat_targets` | Partial: source target pool; triggering contexts still need audit | Yes: native and legacy typed index providers | No | No | No | No |
 | `combat.autoplay.random_card.select` | source pile + effect / native `run.combat_card_selection` hypothesis; legacy `combat` | Partial: ordered eligible card instances; native stream assignment unverified | Yes: typed native and legacy index providers | No: provider-specific result/cursor regression pending | No: fails closed pending an autoplay continuation | No | No |
@@ -225,6 +227,12 @@ review category. It is a code-site tracing aid; indirect provider dispatch,
 delegates and the native game's own source call sites are outside its scope.
 Rows must be linked to stable matrix IDs or classified as infrastructure
 before the D0 inventory can be considered complete.
+
+A literal scan of site-like strings in the core source currently finds no
+unmapped stable site IDs. The one dynamic site prefix,
+`combat.encounter.underdocks.`, expands to the weak and normal rows listed
+above. This checks only IDs already present in source; it does not establish
+that every native RNG operation has been found or migrated.
 
 ## First migrated site: `combat.initial_unique_hp`
 
