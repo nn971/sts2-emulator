@@ -7,6 +7,7 @@ public static class PrototypeStateInvariants
         RunConfiguration.ValidateState(state);
         NativeRunRngV111.Validate(state);
         NativeAncientRewardsV111.ValidateEventContext(state);
+        PrototypeNativeUnderdocksTrashHeap.ValidateNativeEventRng(state);
         if (state.Ascension < 0)
         {
             throw new InvalidOperationException(

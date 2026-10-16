@@ -8,6 +8,33 @@ namespace Sts2Emulator.Core;
 public static class PrototypeNativeUnderdocksTrashHeap
 {
     public const string EventId = "proto.native.underdocks.trash_heap";
+    public const string NativeRngEventId = "TRASH_HEAP";
+
+    public static void ValidateNativeEventRng(RunState state)
+    {
+        if (state.World?.Event is not { EventId: EventId } evt)
+            return;
+
+        if (state.NativeRunRng is null)
+        {
+            if (evt.NativeEventRng is not null)
+                throw new InvalidOperationException(
+                    "Legacy Trash Heap state cannot own a native event RNG.");
+            return;
+        }
+
+        if (evt.NativeEventRng is not { } stream)
+            return;
+        if (evt.NativeEventRngProviderMode is not null)
+            throw new InvalidOperationException(
+                "Native Trash Heap state cannot use a counterfactual provider.");
+
+        var initial = NativeRngV111Contexts.ForEvent(
+            state.RunSeed, NativeRngEventId);
+        if (stream.StreamId != initial.StreamId)
+            throw new InvalidOperationException(
+                "Trash Heap event RNG has the wrong native context.");
+    }
 
     public static string[] RelicIds { get; } =
     [
@@ -153,14 +180,16 @@ public sealed partial class PrototypeGameEngine
         {
             case "grab":
             {
+                var draw = ResolveTrashHeapRewardIndex(
+                    state, evt,
+                    "event.trash_heap.card_reward.index_draw",
+                    "event:trash_heap:cards",
+                    PrototypeNativeUnderdocksTrashHeap.CardIds.Length);
+                state = draw.State;
+                world = RequireWorld(state);
+                evt = world.Event!;
                 var chosen = PrototypeNativeUnderdocksTrashHeap.CardIds[
-                    LegacyRandomChoiceV111.ChooseIndexRange(
-                        state.Rng,
-                        "event.trash_heap.card_reward.index_draw",
-                        "event",
-                        "event:trash_heap:cards",
-                        PrototypeNativeUnderdocksTrashHeap.CardIds.Length)
-                        .SelectedIndex];
+                    draw.SelectedIndex];
                 var player = state.Player with
                 {
                     Gold = GoldAfterGain(state.Player, 100)
@@ -189,14 +218,16 @@ public sealed partial class PrototypeGameEngine
                     return EndRun(state, "defeat");
                 }
 
+                var draw = ResolveTrashHeapRewardIndex(
+                    state, evt,
+                    "event.trash_heap.relic_reward.index_draw",
+                    "event:trash_heap:relics",
+                    PrototypeNativeUnderdocksTrashHeap.RelicIds.Length);
+                state = draw.State;
+                world = RequireWorld(state);
+                evt = world.Event!;
                 var relicId = PrototypeNativeUnderdocksTrashHeap.RelicIds[
-                    LegacyRandomChoiceV111.ChooseIndexRange(
-                        state.Rng,
-                        "event.trash_heap.relic_reward.index_draw",
-                        "event",
-                        "event:trash_heap:relics",
-                        PrototypeNativeUnderdocksTrashHeap.RelicIds.Length)
-                        .SelectedIndex];
+                    draw.SelectedIndex];
                 // RelicCmd.Obtain / Player.AddRelicInternal append a new
                 // mutable instance even when its model ID is already owned.
                 // A new Maw Bank starts active regardless of an older one's
@@ -221,5 +252,45 @@ public sealed partial class PrototypeGameEngine
                 throw new InvalidOperationException(
                     $"Unknown Trash Heap choice '{choice}'.");
         }
+    }
+
+    private static (RunState State, int SelectedIndex)
+        ResolveTrashHeapRewardIndex(
+            RunState state, EventState evt, string siteId,
+            string ownerId, int candidateCount)
+    {
+        var nativeStream = evt.NativeEventRng;
+        if (nativeStream is null && state.NativeRunRng is not null)
+        {
+            // An active event saved before this migration has not yet sampled
+            // either reward, so its source event stream still starts at entry.
+            nativeStream = NativeRngV111Contexts.ForEvent(
+                state.RunSeed,
+                PrototypeNativeUnderdocksTrashHeap.NativeRngEventId);
+        }
+        if (nativeStream is null)
+        {
+            return (state, LegacyRandomChoiceV111.ChooseIndexRange(
+                state.Rng, siteId, "event", ownerId,
+                candidateCount).SelectedIndex);
+        }
+
+        var bundle = new RngBundle([nativeStream.Fork()]);
+        var request = new RandomIndexRequestV111(
+            siteId,
+            nativeStream.StreamId,
+            ownerId,
+            0,
+            Enumerable.Range(0, candidateCount).ToArray());
+        var decision = new NativeRandomIndexProviderV111().Resolve(
+            request, bundle);
+        var world = RequireWorld(state);
+        return (state with
+        {
+            World = world with
+            {
+                Event = evt with { NativeEventRng = bundle.Streams[0] }
+            }
+        }, decision.SelectedIndex);
     }
 }

@@ -826,6 +826,14 @@ public sealed partial class PrototypeGameEngine
         {
             Event = new EventState(
                 selected.Id,
+                NativeEventRng:
+                    state.NativeRunRng is not null
+                        && selected.Id
+                            == PrototypeNativeUnderdocksTrashHeap.EventId
+                        ? NativeRngV111Contexts.ForEvent(
+                            state.RunSeed,
+                            PrototypeNativeUnderdocksTrashHeap.NativeRngEventId)
+                        : null,
                 NativeEventGold:
                     selected.Id switch
                     {
