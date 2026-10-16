@@ -3601,11 +3601,13 @@ public sealed partial class PrototypeGameEngine
         }
 
         var world = RequireWorld(state);
+        var nativeRunRng = state.NativeRunRng?.Fork();
         string? relicId;
         if (UsesNativeRegionalSystems(world))
         {
             var draw = PrototypeNativeRelicGrabBag.Draw(
-                world, state.Player, state.Rng, merchant: false);
+                world, state.Player, state.Rng, merchant: false,
+                nativeRunRng: nativeRunRng);
             world = draw.World;
             relicId = draw.Id;
         }
@@ -3623,6 +3625,7 @@ public sealed partial class PrototypeGameEngine
 
         return state with
         {
+            NativeRunRng = nativeRunRng ?? state.NativeRunRng,
             World = world with
             {
                 Reward = new RewardState(

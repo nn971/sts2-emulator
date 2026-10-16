@@ -1459,6 +1459,10 @@ Configured Overgrowth treasure rooms now draw relic rarity from the persistent
 Both successful treasure rewards and exhausted-bag exits retain the advanced
 native RNG bundle. Source result/cursor parity remains unverified.
 
+The configured Shovel rest-site reward now uses the same persistent relic
+rarity stream and retains its advanced RNG bundle while the relic reward is
+pending. Source result/cursor parity remains unverified.
+
 Configured Overgrowth combat rewards now use the persistent `player.rewards`
 stream for potion pity, gold bounds, rarity-weighted potion selection, card
 rarity/model/upgrade draws, relic rarity, boss relic offer shuffling, and Lava
