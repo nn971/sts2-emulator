@@ -18,7 +18,8 @@ public sealed record SemanticSeededEntryV111(
     string Seed, int Act, string EncounterId, string NativeEncounterEntry,
     int TotalFloor, int Ascension, long FirstMonsterCombatId,
     int? MapColumn, int? MapRow,
-    string? OtherChanceProviderId = null);
+    string? OtherChanceProviderId = null,
+    string? FixtureDrawCostRelicId = null);
 
 /// <summary>
 /// First external playable semantic boundary. Initial opening order is
@@ -177,6 +178,43 @@ public static class SemanticPilotCombatEngineV111
             OtherChance = entry.OtherChanceProviderId is null
                 ? null : SemanticOtherChanceEngineV111.Begin(rng)
         };
+        if (entry.FixtureDrawCostRelicId is { } relicId)
+        {
+            if (relicId != "proto.relic.snecko_eye")
+                throw new NotSupportedException(
+                    "UNSUPPORTED_SEMANTIC_LOADOUT site=combat.seeded_entry " +
+                    "operation=fixture_relic:" + relicId);
+            // Explicitly test-only loadout. This is an actual relic used
+            // by the real DrawCards source mechanic; its acquisition
+            // history is NOT asserted to be native-authentic.
+            var world = state.Run.World!;
+            var combat = world.Combat!;
+            if (state.Run.Player.Relics.Any(x => x.RelicId == relicId))
+                throw new InvalidOperationException("Fixture relic already owned.");
+            var definition = PrototypeContent.Relic(relicId);
+            int index = combat.Relics.Length;
+            var player = state.Run.Player with
+            {
+                Relics = state.Run.Player.Relics.Append(
+                    new RelicInstance(relicId, PrototypeJson.EmptyObject()))
+                    .ToArray()
+            };
+            var updated = combat with
+            {
+                Relics = combat.Relics.Append(
+                    new CombatRelicState(index, relicId, index + 1L,
+                        new int[(definition.Triggers ?? []).Length], false))
+                    .ToArray()
+            };
+            state = state with
+            {
+                Run = state.Run with
+                {
+                    Player = player,
+                    World = world with { Combat = updated }
+                }
+            };
+        }
         Validate(state);
         return state;
     }
