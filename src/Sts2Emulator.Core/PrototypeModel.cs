@@ -1347,8 +1347,34 @@ public sealed record PrototypeEncounterDefinition(
     /// behavior and its exact draw order are unchanged.
     /// </summary>
     public PrototypeEncounterEnemySpec[] ResolveEnemySpecs(RngBundle rng) =>
-        ResolveEnemySpecs(maxExclusive =>
-            PrototypeRng.NextInt(rng, "combat", maxExclusive));
+        ResolveEnemySpecs(rng, "encounter:" + Id);
+
+    /// <summary>Typed legacy adapter with stable encounter ownership.</summary>
+    public PrototypeEncounterEnemySpec[] ResolveEnemySpecs(
+        RngBundle rng,
+        string ownerId)
+    {
+        ArgumentNullException.ThrowIfNull(rng);
+        ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
+        const string streamId = "combat";
+        const string siteId = "combat.encounter.formation.index_draw";
+        var provider = new LegacyPrototypeRandomIndexProviderV111();
+        var ordinal = 0;
+        return ResolveEnemySpecs(maxExclusive =>
+        {
+            if (maxExclusive <= 0)
+                throw new ArgumentOutOfRangeException(nameof(maxExclusive));
+            var choice = provider.Resolve(
+                new RandomIndexRequestV111(
+                    siteId,
+                    streamId,
+                    ownerId,
+                    ordinal++,
+                    Enumerable.Range(0, maxExclusive).ToArray()),
+                rng);
+            return choice.SelectedIndex;
+        });
+    }
 
     /// <summary>
     /// Per-encounter choice hook used by pinned native context RNGs.

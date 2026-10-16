@@ -40,13 +40,20 @@ public static class PrototypeEncounterFormationResolver
         }
 
         var choices = (string[])pool.Clone();
+        var provider = new LegacyPrototypeRandomIndexProviderV111();
+        var ordinal = 0;
         for (var index = 0; index < count; index++)
         {
-            var swapIndex = index
-                + PrototypeRng.NextInt(
-                    rng,
+            var decision = provider.Resolve(
+                new RandomIndexRequestV111(
+                    "combat.encounter.formation.index_draw",
                     "combat",
-                    choices.Length - index);
+                    "encounter:" + encounter.Id,
+                    ordinal++,
+                    Enumerable.Range(
+                        0, choices.Length - index).ToArray()),
+                rng);
+            var swapIndex = index + decision.SelectedIndex;
             (choices[index], choices[swapIndex]) =
                 (choices[swapIndex], choices[index]);
         }

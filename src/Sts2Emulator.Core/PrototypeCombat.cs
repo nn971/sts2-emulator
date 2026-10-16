@@ -176,7 +176,9 @@ public sealed partial class PrototypeGameEngine
                             state, world, encounter)
                 : null;
         var enemySpecs = nativeFormation?.Enemies
-            ?? encounter.ResolveEnemySpecs(state.Rng);
+            ?? encounter.ResolveEnemySpecs(
+                state.Rng,
+                "encounter:" + encounter.Id + ":floor:" + world.Floor);
         var instanceIdByFormationPosition =
             enemySpecs
                 .Select((enemySpec, index) =>
