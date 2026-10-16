@@ -18,11 +18,12 @@ unlocked candidate pool remain open.
 After-shuffle relic-generated draw-pile cards now use a separate typed
 `run.shuffle` site in native combat and preserve legacy `combat` draws. That
 hook records the inserted position in the native exact semantic deck. A
-Nature card-effect draw reuses the existing semantic insertion event and
-resumes its saved draw frame; other recycle contexts still fail closed until
-their draw-pipeline continuations are serializable. Enemy-side random
-draw/discard insertion also uses typed `run.shuffle` sites, but fails closed
-until enemy-action continuations can resume them.
+Nature card-effect draws and standalone conditioned draw segments reuse the
+existing semantic insertion event and resume their saved draw frames;
+automatic hand-draw and other recycle contexts still fail closed until their
+pipeline continuations are serializable. Enemy-side random draw/discard
+insertion also uses typed `run.shuffle` sites, but fails closed until
+enemy-action continuations can resume them.
 
 The private pending choice records the exact eligible draw-pile instance IDs, source operation, generated card ID or eligible Attack IDs, remaining repetition count in the saved queued-operation continuation, and source-card/event/card-play continuation identity. On completion, the original queue resumes without re-running earlier effects. Multiple insertions generate successive tickets and are recorded chronologically in the existing `LiveTranscript`, with independent fork outcomes and source-eligibility validation. Nature receives card models in `pending.candidateCardIds` for the model-selection stage. The ordinary fair player observation remains inaccessible during pending Nature decisions; source probability status is `UNVERIFIED`.
 

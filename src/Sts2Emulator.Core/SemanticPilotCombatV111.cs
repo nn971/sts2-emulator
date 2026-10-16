@@ -2799,10 +2799,7 @@ public static class SemanticPilotCombatEngineV111
                 ":draw_pile:" + CanonicalJson.Sha256(pile)
             : insertion.RequestOwnerId;
         var request = new RandomIndexRequestV111(
-            insertion.RequestSiteId, requestOwnerId,
-            "effect:" + insertion.Operation.Kind +
-                ":card:" + insertion.SelectedCardId +
-                ":pile:" + CanonicalJson.Sha256(pile),
+            insertion.RequestSiteId, "prototype.combat", requestOwnerId,
             requestOrdinal, [],
             OperationKind: "bounded_integer",
             BoundedCount: pile.Length + 1);

@@ -17,12 +17,12 @@ draw observes an empty draw pile and nonempty discard:
    and increments the semantic provider's shuffle epoch.
 3. Instead of issuing one Nature decision for every source-time
    Fisher–Yates swap, the provider keeps the new epoch **unresolved**.
-4. When a card-effect draw crosses the recycle and an after-shuffle relic
-   inserts a generated card, the draw frame suspends on the existing semantic
-   insertion event. After the position is selected, the same `DrawCards` loop
-   continues and asks Nature for the first physically required card instance;
-   each subsequent draw triggers its own legal identity ticket and normal
-   `CardDrawn` hooks.
+4. When a supported card-effect draw or standalone conditioned draw crosses
+   the recycle and an after-shuffle relic inserts a generated card, the draw
+   frame suspends on the existing semantic insertion event. After the position
+   is selected, the same `DrawCards` loop continues and asks Nature for the
+   first physically required card instance; each subsequent draw triggers its
+   own legal identity ticket and normal `CardDrawn` hooks.
 5. Under the controlled provider no shadow native RNG step is consumed.
    Exact stream call count/seed parity remain obligations of the separate
    native provider path, whose code is unchanged.
@@ -48,21 +48,22 @@ choose semantic Nature outcomes.
 ## Explicit remaining hooks
 
 An active after-shuffle relic inserts its generated card at a random draw-pile
-position. The card-effect draw continuation now reuses the semantic insertion
-event and updates the provider deck before resuming the same draw. Other
-recycle contexts without that saved card-effect frame still fail closed at
-`combat.draw.recycle` for after-shuffle insertion.
+position. Both the card-effect frame and standalone conditioned draw segment
+reuse the semantic insertion event and update the provider deck before
+resuming the same draw. Automatic hand-draw and other recycle contexts without
+these saved draw frames still fail closed at `combat.draw.recycle` for
+after-shuffle insertion.
 
 When Stratagem is active, the card-effect draw frame reuses the semantic
 `select_cards` event to choose from the recycled draw pile, then resumes the
 remaining draw and queued effects. Automatic draw-cost continuations still
 need this choice composed with their saved pipeline cursor.
 
-The real-semantic bridge now includes limited card-effect draw continuations,
-but is not a complete opening-hand/turn/card-effect/JSONL implementation.
-Snecko Eye, Slither, nested `CardDrawn` decisions, split-pool unknown-position
-deck mutation, native seeded parity, source probability and original-game
-importance weights remain separate future gates.
+The real-semantic bridge now includes limited standalone and card-effect draw
+continuations, but is not a complete opening-hand/turn/card-effect/JSONL
+implementation. Standalone Stratagem selection, nested `CardDrawn` decisions,
+split-pool unknown-position deck mutation, native seeded parity, source
+probability and original-game importance weights remain separate future gates.
 
 ## Tests
 

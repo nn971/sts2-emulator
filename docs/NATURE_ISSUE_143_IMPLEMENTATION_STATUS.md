@@ -549,3 +549,17 @@ and resumes the card-effect draw frame; other draw-pipeline recycle contexts
 with that insertion remain unsupported. Conditional Nature probabilities
 remain `UNVERIFIED`; see
 [`NATURE_SEMANTIC_EFFECT_DRAWS_143.md`](NATURE_SEMANTIC_EFFECT_DRAWS_143.md).
+
+## 2026-10-17: standalone semantic after-shuffle insertions
+
+The conditioned `SemanticCombatDrawV111` segment now suspends when a recycle
+activates after-shuffle relic insertions. Each insertion uses the existing
+typed semantic position event, synchronizes the semantic deck at the committed
+physical position, and resumes the same draw. Save/restore replays insertion
+events interleaved with card identity and cost decisions. The insertion event
+request retains the `prototype.combat` stream and relic application owner.
+The Release solution build passes with zero warnings or errors; tests were not
+run for this checkpoint. Stratagem selection during the standalone recycle,
+automatic draw-pipeline insertions and nested standalone `CardDrawn` choices
+remain unsupported. Conditional probabilities remain `UNVERIFIED`; see
+[`NATURE_SEMANTIC_COMBAT_DRAW_143.md`](NATURE_SEMANTIC_COMBAT_DRAW_143.md).

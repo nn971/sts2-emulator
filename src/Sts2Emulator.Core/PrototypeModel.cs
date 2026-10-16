@@ -1946,7 +1946,8 @@ public sealed record PrototypeControlledSemanticDrawV111(
     int RemainingCount, bool FromHandDraw, int EventDepth,
     PrototypeCardKeywordOverrideSpec? DrawnCardKeyword,
     long[]? DeferredKeywordCardInstanceIds = null,
-    bool StratagemSelectionPending = false)
+    bool StratagemSelectionPending = false,
+    bool StandaloneSemanticDrawSegment = false)
 {
     public PrototypeControlledSemanticDrawV111 Fork() => this with
     {

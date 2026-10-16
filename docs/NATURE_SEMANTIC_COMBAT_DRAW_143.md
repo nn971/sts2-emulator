@@ -30,15 +30,17 @@ This slice connects the separate provider-owned
   that order never resolves a semantic Nature choice.
 - `SemanticCombatDrawV111` persists the untouched source snapshot, the
   live `RunState`, the requested draw count, remaining draw cursor, and
-  the provider's full semantic transcript. `Restore` re-executes the
-  actual mechanics from the conditioned source using *only recorded
-  semantic card choices*, then compares the entire resulting snapshot.
-  Forks and stale/forged candidates fail closed.
+  semantic card, cost and insertion transcripts. `Restore` re-executes the
+  actual mechanics from the conditioned source using those recorded
+  decisions, then compares the entire resulting snapshot. Forks and
+  stale/forged candidates fail closed.
 
 ## Supported first slice
 
 - Consecutive ordinary draws and deterministic `CardDrawn` hooks in a
   given combat snapshot.
+- Source-timed discard recycle with Perfect Fit ordering, after-shuffle relic
+  insertions, and drawn-card cost decisions in the standalone segment.
 - Exact card instance identities and no replacement within the pile.
 - Draw count up to available pile/hand size; finite exhaustive
   two-draw/three-card enumeration.
@@ -47,13 +49,11 @@ This slice connects the separate provider-owned
 
 ## Explicit next work
 
-- Source-timed **discard recycle and on-shuffle hooks** into a new semantic
-  epoch. Current semantic draw attempts to recycle fail with
-  `UNSUPPORTED_SEMANTIC_DECK site=combat.draw.recycle`, never silently
-  fall back to old Fisher–Yates controlled-swap tickets.
-- Card-draw **Snecko Eye / Slither cost** randomness and nested
-  `CardDrawn` choices: fail before publishing a child while the
-  corresponding semantic continuation is missing.
+- Stratagem selection when the standalone draw recycles, and nested
+  `CardDrawn` choices in the standalone segment, still fail closed.
+- After-shuffle relic insertion in the automatic hand-draw pipeline and other
+  draw contexts without the standalone or card-effect continuation remain
+  unsupported.
 - Opening-hand and ordinary player-action `DrawCards`, automatic hand
   draw pipeline, semantic deck mutation by card effects, public JSONL
   protocol negotiation, and source-audited native parity.

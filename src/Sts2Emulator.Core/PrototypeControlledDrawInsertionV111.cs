@@ -165,6 +165,9 @@ public sealed partial class PrototypeGameEngine
                  (combat.Hand.Length < 10 && combat.PlayerPowers.Any(power =>
                      power.PowerId == "proto.power.stratagem" &&
                      power.Stacks > 0))) &&
+                (!semanticDraw.StandaloneSemanticDrawSegment ||
+                 (!semanticDraw.StratagemSelectionPending &&
+                  semanticDraw.EventDepth == 0)) &&
                 afterShuffle is not null &&
                 choice.Operation.Amount == 1 &&
                 choice.Operation.CardId == afterShuffle.CardId &&
@@ -298,6 +301,17 @@ public sealed partial class PrototypeGameEngine
                 {
                     World = world with { Combat = nextCombat }
                 };
+            }
+
+            if (semanticDraw.StandaloneSemanticDrawSegment)
+            {
+                var drawRun = state with
+                {
+                    World = world with { Combat = combat }
+                };
+                return BeginSemanticCombatDraw(
+                    drawRun, semanticDraw.RemainingCount,
+                    semanticDraw.FromHandDraw).Run;
             }
 
             if (semanticDraw.StratagemSelectionPending)
