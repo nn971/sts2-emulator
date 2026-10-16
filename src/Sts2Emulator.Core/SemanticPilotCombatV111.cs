@@ -2423,10 +2423,15 @@ public static class SemanticPilotCombatEngineV111
         if (target is null) return null;
         ValidateTargetBoundary(current.Run);
         var candidates = (int[])target.EligibleEnemyInstanceIds.Clone();
-        var siteId = target.Kind == "sly_auto_play"
-            ? "combat.sly_autoplay.random_enemy"
-            : "combat.effect.random_enemy";
-        var ownerId = target.SlyCardInstanceId is { } slyCardId
+        var siteId = target.Kind switch
+        {
+            "sly_auto_play" => "combat.sly_autoplay.random_enemy",
+            "autoplay_random_enemy" => "combat.autoplay.random_enemy",
+            _ => "combat.effect.random_enemy"
+        };
+        var ownerId = target.AutoPlayCardInstanceId is { } autoPlayCardId
+            ? "card_instance:" + autoPlayCardId
+            : target.SlyCardInstanceId is { } slyCardId
             ? "card_instance:" + slyCardId
             : choice!.SourceCardInstanceId is { } sourceCardId
                 ? "card_instance:" + sourceCardId
@@ -3165,7 +3170,8 @@ public static class SemanticPilotCombatEngineV111
             choice is not { ChoiceId: "controlled_random_target",
                 OuterChoiceContinuation: not null } ||
             target is null ||
-            target.Kind is not ("effect_random_enemy" or "sly_auto_play"))
+            target.Kind is not ("effect_random_enemy" or "sly_auto_play" or
+                "autoplay_random_enemy"))
             throw new InvalidDataException(
                 "Semantic target continuation is not at a supported player action.");
         var eligible = combat.Enemies.Where(enemy => enemy.Hp > 0 &&
@@ -3176,10 +3182,30 @@ public static class SemanticPilotCombatEngineV111
             throw new InvalidDataException(
                 "Semantic target support disagrees with live enemy eligibility.");
         if (target.Kind == "sly_auto_play" &&
-            (target.SlyCardInstanceId is not { } cardId ||
-             !combat.DiscardPile.Contains(cardId)))
+            (target.SlyCardInstanceId is not { } slyCardId ||
+             !combat.DiscardPile.Contains(slyCardId) ||
+             target.AutoPlayCardInstanceId is not null))
             throw new InvalidDataException(
                 "Sly auto-play target lost its discarded source card.");
+        if (target.Kind == "autoplay_random_enemy")
+        {
+            if (target.AutoPlayCardInstanceId is not { } autoPlayCardId ||
+                !combat.PlayCardIds.Contains(autoPlayCardId) ||
+                target.SlyCardInstanceId is not null ||
+                choice?.OuterChoiceContinuation?.Operations is not
+                    { Length: > 0 } operations ||
+                operations[0].Kind !=
+                    PrototypeCombatEffectKind.AutoPlayCombatCard ||
+                operations[0].CardInstanceId != autoPlayCardId ||
+                operations[0].TargetEnemyId is not null)
+                throw new InvalidDataException(
+                    "Auto-play target lost its suspended card operation.");
+        }
+        else if (target.Kind == "effect_random_enemy" &&
+                 (target.SlyCardInstanceId is not null ||
+                  target.AutoPlayCardInstanceId is not null))
+            throw new InvalidDataException(
+                "Effect random-target event carries an auto-play card identity.");
         var deck = combat.SemanticDeck ?? throw new InvalidDataException(
             "Semantic target continuation lost its provider-owned deck.");
         SemanticDeckEngineV111.Validate(deck);

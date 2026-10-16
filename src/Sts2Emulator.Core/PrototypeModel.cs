@@ -1825,7 +1825,8 @@ public sealed record PrototypeChoiceResolutionContinuationState(
 public sealed record PrototypeControlledTargetChoiceV111(
     string Kind,
     int[] EligibleEnemyInstanceIds,
-    long? SlyCardInstanceId = null)
+    long? SlyCardInstanceId = null,
+    long? AutoPlayCardInstanceId = null)
 {
     public PrototypeControlledTargetChoiceV111 Fork() => this with
     {

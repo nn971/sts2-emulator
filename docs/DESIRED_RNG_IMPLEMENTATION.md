@@ -85,10 +85,12 @@ continuation after the selection, without replaying prior hooks. Reference-law
 calibration and native cursor parity remain open.
 The potion factory now routes its unit-float rarity
 sample and within-tier model index through separate typed providers in source
-order. Native effect-random-target and Sly auto-play selections now use typed
-index requests on `run.combat_targets`; their controlled continuations remain
-separate from native cursor parity. Other automatic card plays have a distinct
-provider site with trigger and controlled-continuation coverage still open.
+order. Native effect-random-target and Sly auto-play selections use typed
+index requests on `run.combat_targets`; player-action auto-play targets now
+resume the saved auto-play operation after Nature selects a live enemy. Late
+automatic-pipeline auto-play and native cursor parity remain open. Other
+automatic card plays have a distinct provider site with trigger coverage still
+open.
 The supported generated draw-pile operations now use typed model-pick requests
 on native `run.combat_card_generation` and position requests on `run.shuffle`;
 the legacy profile preserves `combat`. Post-shuffle relic insertion now has

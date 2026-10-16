@@ -13,7 +13,8 @@ public sealed record SemanticTargetEventV111(
         if (SchemaId != SemanticTargetChoiceV111.SchemaId ||
             string.IsNullOrWhiteSpace(EventId) ||
             SiteId is not ("combat.effect.random_enemy" or
-                "combat.sly_autoplay.random_enemy") ||
+                "combat.sly_autoplay.random_enemy" or
+                "combat.autoplay.random_enemy") ||
             StreamId != "run.combat_targets" ||
             string.IsNullOrWhiteSpace(OwnerId) || Ordinal < 0 ||
             OperationKind != "choose_enemy_instance" ||
@@ -23,9 +24,12 @@ public sealed record SemanticTargetEventV111(
             SupportFingerprint != CanonicalJson.Sha256(
                 CandidateEnemyInstanceIds) ||
             ProbabilityStatus != "UNVERIFIED" ||
-            TargetKind is not ("effect_random_enemy" or "sly_auto_play") ||
+            TargetKind is not ("effect_random_enemy" or "sly_auto_play" or
+                "autoplay_random_enemy") ||
             (TargetKind == "sly_auto_play") !=
-                (SiteId == "combat.sly_autoplay.random_enemy"))
+                (SiteId == "combat.sly_autoplay.random_enemy") ||
+            (TargetKind == "autoplay_random_enemy") !=
+                (SiteId == "combat.autoplay.random_enemy"))
             throw new InvalidDataException("Invalid semantic target event.");
     }
 }

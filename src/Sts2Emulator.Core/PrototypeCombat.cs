@@ -8111,6 +8111,41 @@ public sealed partial class PrototypeGameEngine
                             || !liveTargets.Contains(
                                 autoPlayTarget.Value))
                         {
+                            if (ControlledChanceGuardV111.Active)
+                            {
+                                if (combat.AutomaticPipelineContinuation is not null)
+                                    throw new NotSupportedException(
+                                        "UNSUPPORTED_CONTROLLED_CHANCE " +
+                                        "site=combat.autoplay.random_enemy " +
+                                        "operation=automatic_pipeline_continuation");
+                                var continuation =
+                                    new PrototypeChoiceResolutionContinuationState(
+                                        SourceCardInstanceId: sourceCardInstanceId,
+                                        SourceCardDestination: sourceCardDestination,
+                                        Operations: (new[]
+                                        {
+                                            operation with
+                                            {
+                                                TargetEnemyId = null
+                                            }
+                                        }).Concat(operations).ToArray(),
+                                        PendingDiscardEvents: [],
+                                        PendingSlyCardInstanceIds: [],
+                                        CompletionEvents: completionEvents ?? [],
+                                        CardPlaySeries: cardPlaySeries,
+                                        MoveSourceCardOnCompletion:
+                                            moveSourceCardOnCompletion,
+                                        RemoveSourceCardOnCompletion:
+                                            removeSourceCardOnCompletion,
+                                        SourceCardAlreadyMoved:
+                                            sourceCardAlreadyMoved,
+                                        EventDispatchContinuation:
+                                            eventDispatchContinuation?.Fork());
+                                return (player, MakeControlledRandomTargetChoice(
+                                    combat, "autoplay_random_enemy", liveTargets,
+                                    continuation,
+                                    autoPlayCardInstanceId: autoPlayId));
+                            }
                             var target = ResolveRandomEnemyTarget(
                                 combat, rng, liveTargets,
                                 "combat.autoplay.random_enemy",
@@ -13585,7 +13620,8 @@ public sealed partial class PrototypeGameEngine
     private static CombatState MakeControlledRandomTargetChoice(
         CombatState combat, string kind, int[] eligible,
         PrototypeChoiceResolutionContinuationState continuation,
-        long? slyCardInstanceId = null)
+        long? slyCardInstanceId = null,
+        long? autoPlayCardInstanceId = null)
     {
         if (!ControlledChanceGuardV111.Active ||
             eligible.Length == 0 || eligible.Distinct().Count() != eligible.Length ||
@@ -13606,7 +13642,8 @@ public sealed partial class PrototypeGameEngine
                 CompletionEvents: [],
                 OuterChoiceContinuation: continuation.Fork(),
                 ControlledTarget: new PrototypeControlledTargetChoiceV111(
-                    kind, (int[])eligible.Clone(), slyCardInstanceId))
+                    kind, (int[])eligible.Clone(), slyCardInstanceId,
+                    autoPlayCardInstanceId))
         };
     }
 
@@ -13737,7 +13774,8 @@ public sealed partial class PrototypeGameEngine
         if (selectedIndex < 0 || selectedIndex >= eligible.Length)
             throw new ArgumentOutOfRangeException(nameof(selectedIndex));
         var currentEligible = combat.Enemies
-            .Where(e => e.Hp > 0 && (target.Kind != "sly_auto_play" || !e.Escaped))
+            .Where(e => e.Hp > 0 &&
+                (target.Kind != "sly_auto_play" || !e.Escaped))
             .Select(e => e.InstanceId).ToArray();
         if (!currentEligible.SequenceEqual(eligible))
             throw new InvalidDataException(
@@ -13773,6 +13811,29 @@ public sealed partial class PrototypeGameEngine
             else
                 resolved = ResumeChoiceResolutionContinuation(
                     resolved.Player, resolved.Combat, state.Rng, continuation);
+        }
+        else if (target.Kind == "autoplay_random_enemy")
+        {
+            if (target.AutoPlayCardInstanceId is not { } autoPlayCardId ||
+                continuation.Operations.Length == 0)
+                throw new InvalidDataException(
+                    "Auto-play target choice lost its suspended source operation.");
+            var suspendedOperation = continuation.Operations[0];
+            if (suspendedOperation.Kind !=
+                    PrototypeCombatEffectKind.AutoPlayCombatCard ||
+                suspendedOperation.CardInstanceId != autoPlayCardId)
+                throw new InvalidDataException(
+                    "Auto-play target choice lost its suspended source operation.");
+            var fixedOperation = suspendedOperation with
+            {
+                TargetEnemyId = eligible[selectedIndex]
+            };
+            resolved = ResumeChoiceResolutionContinuation(
+                state.Player, combat, state.Rng, continuation with
+                {
+                    Operations = (new[] { fixedOperation })
+                        .Concat(continuation.Operations.Skip(1)).ToArray()
+                });
         }
         else
             throw new InvalidDataException("Unknown controlled target kind.");

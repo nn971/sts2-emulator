@@ -3428,6 +3428,46 @@ public static class PrototypeStateInvariants
         if (combat.PendingChoice is not null)
         {
             var pending = combat.PendingChoice;
+            if (pending.ControlledTarget is { } target)
+            {
+                var eligible = combat.Enemies.Where(enemy =>
+                        enemy.Hp > 0 &&
+                        (target.Kind != "sly_auto_play" || !enemy.Escaped))
+                    .Select(enemy => enemy.InstanceId).ToArray();
+                if (pending.ChoiceId != "controlled_random_target" ||
+                    pending.OuterChoiceContinuation is not { } continuation ||
+                    target.Kind is not ("effect_random_enemy" or
+                        "sly_auto_play" or "autoplay_random_enemy") ||
+                    target.EligibleEnemyInstanceIds is not { Length: > 0 } ||
+                    target.EligibleEnemyInstanceIds.Distinct().Count() !=
+                        target.EligibleEnemyInstanceIds.Length ||
+                    !eligible.SequenceEqual(target.EligibleEnemyInstanceIds))
+                    throw new InvalidOperationException(
+                        "Controlled random-target continuation is malformed.");
+                if (target.Kind == "sly_auto_play" &&
+                    (target.SlyCardInstanceId is not { } slyCardId ||
+                     !combat.DiscardPile.Contains(slyCardId) ||
+                     target.AutoPlayCardInstanceId is not null))
+                    throw new InvalidOperationException(
+                        "Sly random-target continuation lost its source card.");
+                if (target.Kind == "autoplay_random_enemy" &&
+                    (target.AutoPlayCardInstanceId is not { } autoPlayCardId ||
+                     !combat.PlayCardIds.Contains(autoPlayCardId) ||
+                     target.SlyCardInstanceId is not null ||
+                     continuation.Operations.Length == 0 ||
+                     continuation.Operations[0].Kind !=
+                        PrototypeCombatEffectKind.AutoPlayCombatCard ||
+                     continuation.Operations[0].CardInstanceId !=
+                        autoPlayCardId ||
+                     continuation.Operations[0].TargetEnemyId is not null))
+                    throw new InvalidOperationException(
+                        "Auto-play random-target continuation lost its source operation.");
+                if (target.Kind == "effect_random_enemy" &&
+                    (target.SlyCardInstanceId is not null ||
+                     target.AutoPlayCardInstanceId is not null))
+                    throw new InvalidOperationException(
+                        "Effect random-target continuation has an unexpected card identity.");
+            }
             if (pending.SemanticStratagemDrawSelection)
             {
                 bool hasStandaloneDraw = pending.Continuation.Any(operation =>

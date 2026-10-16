@@ -655,3 +655,14 @@ subscribers. Controlled nested chance choices remain unsupported. The Release
 solution build passes with zero warnings or errors; tests were not run for this
 checkpoint. Conditional probabilities remain `UNVERIFIED`; see
 [`NATURE_SEMANTIC_AUTOMATIC_HAND_DRAW_143.md`](NATURE_SEMANTIC_AUTOMATIC_HAND_DRAW_143.md).
+
+## 2026-10-17: player-action auto-play targets
+
+The controlled semantic target path now suspends a targeted
+`AutoPlayCombatCard` operation inside a player action, exposes its living enemy
+support, and resumes the same operation with the selected instance ID. The
+remaining operation queue and outer card-action continuation stay attached;
+late automatic-pipeline auto-play still needs an end-turn target boundary.
+The Release solution build passes with zero warnings or errors; tests were not
+run for this checkpoint. Conditional probabilities remain `UNVERIFIED`; see
+[`NATURE_RANDOM_TARGET_143.md`](NATURE_RANDOM_TARGET_143.md).

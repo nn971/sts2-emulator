@@ -320,7 +320,8 @@ Each `random_target` event exposes ordered live enemy instance IDs and the
 `run.combat_targets` source site; the typed resolver resumes the saved effect
 and records a `semantic_target` decision. Replay regenerates the same test
 loadout from seeded-entry provenance. This extension is marked
-`UNVERIFIED` and does not change the base two-site capability list.
+`UNVERIFIED`; the same target-event and resolver also cover saved
+player-action auto-play targets at `combat.autoplay.random_enemy`.
 
 The optional `generated_card_pool` extension wraps the existing serialized
 generation continuation. The test loadout
