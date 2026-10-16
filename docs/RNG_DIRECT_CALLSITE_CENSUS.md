@@ -2,11 +2,11 @@
 
 Direct qualified calls to PrototypeRng, NativeRngV111, and NativeFisherYatesV111 in Sts2Emulator.Core. This does not include indirect delegates, random provider interfaces, third-party/native source callsites, or prove that every source operation is mapped.
 
-Direct call expressions: **144**.
+Direct call expressions: **131**.
 
 Counts by direct API family:
 
-- `legacy_prototype_api`: 117
+- `legacy_prototype_api`: 104
 - `native_primitive_api`: 16
 - `native_shuffle_mechanics`: 11
 
@@ -118,39 +118,26 @@ Rows distinguish legacy prototype calls, native primitive calls, generic shuffle
 | [`src/Sts2Emulator.Core/PrototypeNativeUnderdocksTrashHeap.cs:189`](../src/Sts2Emulator.Core/PrototypeNativeUnderdocksTrashHeap.cs#L189) | `PrototypeRng` | `NextInt` | `PrototypeRng.NextInt(` | `prototype_callsite_needs_semantic_site_mapping` |
 | [`src/Sts2Emulator.Core/PrototypeNativeWarHammer.cs:55`](../src/Sts2Emulator.Core/PrototypeNativeWarHammer.cs#L55) | `PrototypeRng` | `Shuffle` | `PrototypeRng.Shuffle(state.Rng, "event", shuffled);` | `prototype_callsite_needs_semantic_site_mapping` |
 | [`src/Sts2Emulator.Core/PrototypePaelsTooth.cs:25`](../src/Sts2Emulator.Core/PrototypePaelsTooth.cs#L25) | `PrototypeRng` | `NextInt` | `var selectedIndex = PrototypeRng.NextInt(state.Rng, "reward", saved.Length);` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeRooms.cs:788`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L788) | `PrototypeRng` | `NextInt` | `var roll = PrototypeRng.NextInt(state.Rng, "event", totalWeight);` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeRooms.cs:809`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L809) | `PrototypeRng` | `NextInt` | `61 + PrototypeRng.NextInt(state.Rng, "event", 39),` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeRooms.cs:811`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L811) | `PrototypeRng` | `NextInt` | `26 + PrototypeRng.NextInt(state.Rng, "event", 19),` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeRooms.cs:813`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L813) | `PrototypeRng` | `NextInt` | `101 + PrototypeRng.NextInt(state.Rng, "event", 21),` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeRooms.cs:815`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L815) | `PrototypeRng` | `NextInt` | `100 + PrototypeRng.NextInt(state.Rng, "event", 50),` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeRooms.cs:821`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L821) | `PrototypeRng` | `NextInt` | `135 + PrototypeRng.NextInt(state.Rng, "event", 30),` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeRooms.cs:826`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L826) | `PrototypeRng` | `NextInt` | `52 + PrototypeRng.NextInt(state.Rng, "event", 16),` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeRooms.cs:828`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L828) | `PrototypeRng` | `NextInt` | `45 + PrototypeRng.NextInt(state.Rng, "event", 31),` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeRooms.cs:830`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L830) | `PrototypeRng` | `NextInt` | `101 + PrototypeRng.NextInt(state.Rng, "event", 21),` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeRooms.cs:835`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L835) | `PrototypeRng` | `NextInt` | `91 + PrototypeRng.NextInt(state.Rng, "event", 8),` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeRooms.cs:837`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L837) | `PrototypeRng` | `NextInt` | `41 + PrototypeRng.NextInt(state.Rng, "event", 28),` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeRooms.cs:842`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L842) | `PrototypeRng` | `NextInt` | `? 35 + PrototypeRng.NextInt(state.Rng, "event", 30)` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeRooms.cs:844`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L844) | `PrototypeRng` | `NextInt` | `? 303 + PrototypeRng.NextInt(` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeRooms.cs:1513`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L1513) | `PrototypeRng` | `NextInt` | `PrototypeRng.NextInt(` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeRooms.cs:1635`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L1635) | `PrototypeRng` | `NextInt` | `PrototypeRng.NextInt(` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeRooms.cs:1800`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L1800) | `PrototypeRng` | `NextInt` | `PrototypeRng.NextInt(` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeRooms.cs:1909`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L1909) | `PrototypeRng` | `NextInt` | `return available[PrototypeRng.NextInt(` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeRooms.cs:2321`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L2321) | `PrototypeRng` | `NextInt` | `PrototypeRng.NextInt(` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeRooms.cs:2344`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L2344) | `PrototypeRng` | `NextInt` | `? PrototypeRng.NextInt(state.Rng, "shop", 5)` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeRooms.cs:2461`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L2461) | `PrototypeRng` | `NextInt` | `: 40 + PrototypeRng.NextInt(` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeRooms.cs:2479`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L2479) | `PrototypeRng` | `NextInt` | `: 100 + PrototypeRng.NextInt(` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeRooms.cs:4553`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L4553) | `PrototypeRng` | `NextBool` | `&& PrototypeRng.NextBool(` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeRooms.cs:4556`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L4556) | `PrototypeRng` | `NextInt` | `PrototypeRng.NextInt(` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeRooms.cs:4576`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L4576) | `PrototypeRng` | `NextInt` | `PrototypeRng.NextInt(` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeRooms.cs:4779`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L4779) | `PrototypeRng` | `NextInt` | `var curseId = cursePool[PrototypeRng.NextInt(` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeRooms.cs:4886`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L4886) | `PrototypeRng` | `NextInt` | `var roll = PrototypeRng.NextInt(` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeRooms.cs:4906`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L4906) | `PrototypeRng` | `NextInt` | `PrototypeRng.NextInt(rng, "shop", candidates.Length)];` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeRooms.cs:4935`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L4935) | `PrototypeRng` | `NextInt` | `var percent = 95 + PrototypeRng.NextInt(rng, "shop", 11);` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeRooms.cs:4952`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L4952) | `PrototypeRng` | `NextInt` | `return minimum + PrototypeRng.NextInt(rng, "shop", spread);` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeRooms.cs:4978`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L4978) | `PrototypeRng` | `NextInt` | `var roll = PrototypeRng.NextInt(rng, "reward", totalWeight);` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeRooms.cs:4995`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L4995) | `PrototypeRng` | `NextInt` | `PrototypeRng.NextInt(rng, "reward", candidates.Length)];` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeRooms.cs:5094`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L5094) | `PrototypeRng` | `NextInt` | `pool[PrototypeRng.NextInt(` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeRooms.cs:5125`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L5125) | `PrototypeRng` | `Shuffle` | `PrototypeRng.Shuffle(rng, streamId, copy);` | `prototype_callsite_needs_semantic_site_mapping` |
+| [`src/Sts2Emulator.Core/PrototypeRooms.cs:1548`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L1548) | `PrototypeRng` | `NextInt` | `PrototypeRng.NextInt(` | `prototype_callsite_needs_semantic_site_mapping` |
+| [`src/Sts2Emulator.Core/PrototypeRooms.cs:1670`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L1670) | `PrototypeRng` | `NextInt` | `PrototypeRng.NextInt(` | `prototype_callsite_needs_semantic_site_mapping` |
+| [`src/Sts2Emulator.Core/PrototypeRooms.cs:1835`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L1835) | `PrototypeRng` | `NextInt` | `PrototypeRng.NextInt(` | `prototype_callsite_needs_semantic_site_mapping` |
+| [`src/Sts2Emulator.Core/PrototypeRooms.cs:1944`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L1944) | `PrototypeRng` | `NextInt` | `return available[PrototypeRng.NextInt(` | `prototype_callsite_needs_semantic_site_mapping` |
+| [`src/Sts2Emulator.Core/PrototypeRooms.cs:2356`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L2356) | `PrototypeRng` | `NextInt` | `PrototypeRng.NextInt(` | `prototype_callsite_needs_semantic_site_mapping` |
+| [`src/Sts2Emulator.Core/PrototypeRooms.cs:2379`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L2379) | `PrototypeRng` | `NextInt` | `? PrototypeRng.NextInt(state.Rng, "shop", 5)` | `prototype_callsite_needs_semantic_site_mapping` |
+| [`src/Sts2Emulator.Core/PrototypeRooms.cs:2496`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L2496) | `PrototypeRng` | `NextInt` | `: 40 + PrototypeRng.NextInt(` | `prototype_callsite_needs_semantic_site_mapping` |
+| [`src/Sts2Emulator.Core/PrototypeRooms.cs:2514`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L2514) | `PrototypeRng` | `NextInt` | `: 100 + PrototypeRng.NextInt(` | `prototype_callsite_needs_semantic_site_mapping` |
+| [`src/Sts2Emulator.Core/PrototypeRooms.cs:4588`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L4588) | `PrototypeRng` | `NextBool` | `&& PrototypeRng.NextBool(` | `prototype_callsite_needs_semantic_site_mapping` |
+| [`src/Sts2Emulator.Core/PrototypeRooms.cs:4591`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L4591) | `PrototypeRng` | `NextInt` | `PrototypeRng.NextInt(` | `prototype_callsite_needs_semantic_site_mapping` |
+| [`src/Sts2Emulator.Core/PrototypeRooms.cs:4611`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L4611) | `PrototypeRng` | `NextInt` | `PrototypeRng.NextInt(` | `prototype_callsite_needs_semantic_site_mapping` |
+| [`src/Sts2Emulator.Core/PrototypeRooms.cs:4814`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L4814) | `PrototypeRng` | `NextInt` | `var curseId = cursePool[PrototypeRng.NextInt(` | `prototype_callsite_needs_semantic_site_mapping` |
+| [`src/Sts2Emulator.Core/PrototypeRooms.cs:4921`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L4921) | `PrototypeRng` | `NextInt` | `var roll = PrototypeRng.NextInt(` | `prototype_callsite_needs_semantic_site_mapping` |
+| [`src/Sts2Emulator.Core/PrototypeRooms.cs:4941`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L4941) | `PrototypeRng` | `NextInt` | `PrototypeRng.NextInt(rng, "shop", candidates.Length)];` | `prototype_callsite_needs_semantic_site_mapping` |
+| [`src/Sts2Emulator.Core/PrototypeRooms.cs:4970`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L4970) | `PrototypeRng` | `NextInt` | `var percent = 95 + PrototypeRng.NextInt(rng, "shop", 11);` | `prototype_callsite_needs_semantic_site_mapping` |
+| [`src/Sts2Emulator.Core/PrototypeRooms.cs:4987`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L4987) | `PrototypeRng` | `NextInt` | `return minimum + PrototypeRng.NextInt(rng, "shop", spread);` | `prototype_callsite_needs_semantic_site_mapping` |
+| [`src/Sts2Emulator.Core/PrototypeRooms.cs:5013`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L5013) | `PrototypeRng` | `NextInt` | `var roll = PrototypeRng.NextInt(rng, "reward", totalWeight);` | `prototype_callsite_needs_semantic_site_mapping` |
+| [`src/Sts2Emulator.Core/PrototypeRooms.cs:5030`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L5030) | `PrototypeRng` | `NextInt` | `PrototypeRng.NextInt(rng, "reward", candidates.Length)];` | `prototype_callsite_needs_semantic_site_mapping` |
+| [`src/Sts2Emulator.Core/PrototypeRooms.cs:5129`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L5129) | `PrototypeRng` | `NextInt` | `pool[PrototypeRng.NextInt(` | `prototype_callsite_needs_semantic_site_mapping` |
+| [`src/Sts2Emulator.Core/PrototypeRooms.cs:5160`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L5160) | `PrototypeRng` | `Shuffle` | `PrototypeRng.Shuffle(rng, streamId, copy);` | `prototype_callsite_needs_semantic_site_mapping` |
 | [`src/Sts2Emulator.Core/RandomGaussianDoubleProvidersV111.cs:84`](../src/Sts2Emulator.Core/RandomGaussianDoubleProvidersV111.cs#L84) | `NativeRngV111` | `NextGaussianDouble` | `var value = NativeRngV111.NextGaussianDouble(` | `provider_or_codec_infrastructure` |
 | [`src/Sts2Emulator.Core/RandomGaussianIntProvidersV111.cs:79`](../src/Sts2Emulator.Core/RandomGaussianIntProvidersV111.cs#L79) | `NativeRngV111` | `NextGaussianInt` | `var value = NativeRngV111.NextGaussianInt(` | `provider_or_codec_infrastructure` |
 | [`src/Sts2Emulator.Core/RandomIndexProvidersV111.cs:91`](../src/Sts2Emulator.Core/RandomIndexProvidersV111.cs#L91) | `NativeRngV111` | `NextInt` | `int index = NativeRngV111.NextInt(streams, request.StreamId, request.SupportCount);` | `provider_or_codec_infrastructure` |

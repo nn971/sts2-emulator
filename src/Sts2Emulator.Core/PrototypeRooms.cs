@@ -702,6 +702,19 @@ public sealed partial class PrototypeGameEngine
                         StringComparer.Ordinal));
     }
 
+    private static int ResolveLegacyEventGold(
+        RngBundle rng,
+        string eventId,
+        string stage,
+        int minimum,
+        int candidateCount) =>
+        ResolveLegacyRandomIndex(
+            rng,
+            "event.generated_gold.index_draw",
+            $"event:{eventId}:gold:{stage}",
+            Enumerable.Range(minimum, candidateCount),
+            streamId: "event");
+
     private static RunState StartEvent(RunState state)
     {
         var world = RequireWorld(state);
@@ -785,7 +798,18 @@ public sealed partial class PrototypeGameEngine
         // so legacy prototype runs cannot sample them. Only this explicit
         // regional route opts in, using uniform provisional weights.
         var totalWeight = eligible.Sum(evt => laterRoute ? 1 : evt.Weight);
-        var roll = PrototypeRng.NextInt(state.Rng, "event", totalWeight);
+        var weightedSupport = eligible.Select(evt => new
+        {
+            evt.Id,
+            Weight = laterRoute ? 1 : evt.Weight
+        }).ToArray();
+        var roll = ResolveLegacyBoundedInteger(
+            state.Rng,
+            "event.selection.weighted_ticket",
+            $"act:{world.Act}:floor:{world.Floor}:pool:"
+                + CanonicalJson.Sha256(weightedSupport),
+            totalWeight,
+            streamId: "event");
         var selected = eligible[^1];
         foreach (var evt in eligible)
         {
@@ -806,43 +830,54 @@ public sealed partial class PrototypeGameEngine
                     selected.Id switch
                     {
                         PrototypeNativeDenseVegetation.EventId =>
-                            61 + PrototypeRng.NextInt(state.Rng, "event", 39),
+                            ResolveLegacyEventGold(
+                                state.Rng, selected.Id, "primary", 61, 39),
                         "proto.native.event.whispering_hollow" =>
-                            26 + PrototypeRng.NextInt(state.Rng, "event", 19),
+                            ResolveLegacyEventGold(
+                                state.Rng, selected.Id, "primary", 26, 19),
                         "proto.native.event.sunken_statue" =>
-                            101 + PrototypeRng.NextInt(state.Rng, "event", 21),
+                            ResolveLegacyEventGold(
+                                state.Rng, selected.Id, "primary", 101, 21),
                         "proto.native.event.luminous_choir" =>
-                            100 + PrototypeRng.NextInt(state.Rng, "event", 50),
+                            ResolveLegacyEventGold(
+                                state.Rng, selected.Id, "primary", 100, 50),
                         // Source rolls two independent -15..15 floats:
                         // 150 + solo roll, 50 + join roll, truncated to
                         // integer gold by PlayerCmd.GainGold. The
                         // prototype currently samples integer bins.
                         "proto.native.event.jungle_maze_adventure" =>
-                            135 + PrototypeRng.NextInt(state.Rng, "event", 30),
+                            ResolveLegacyEventGold(
+                                state.Rng, selected.Id, "primary", 135, 30),
                         // Native Sunken Treasury rolls small then large
                         // independently; both rolls are persisted so the
                         // eventual choice never changes the RNG outcome.
                         "proto.native.underdocks.sunken_treasury" =>
-                            52 + PrototypeRng.NextInt(state.Rng, "event", 16),
+                            ResolveLegacyEventGold(
+                                state.Rng, selected.Id, "primary", 52, 16),
                         PrototypeNativeHiveEvents.LostWispId =>
-                            45 + PrototypeRng.NextInt(state.Rng, "event", 31),
+                            ResolveLegacyEventGold(
+                                state.Rng, selected.Id, "primary", 45, 31),
                         "proto.native.underdocks.sunken_statue" =>
-                            101 + PrototypeRng.NextInt(state.Rng, "event", 21),
+                            ResolveLegacyEventGold(
+                                state.Rng, selected.Id, "primary", 101, 21),
                         // Punch Off computes an entry-only 91..98 gold
                         // variable even though neither option pays it.
                         // Keep this draw to preserve the event RNG stream.
                         PrototypeNativePunchOff.EventId =>
-                            91 + PrototypeRng.NextInt(state.Rng, "event", 8),
+                            ResolveLegacyEventGold(
+                                state.Rng, selected.Id, "primary", 91, 8),
                         PrototypeNativeSharedEvents.ThisOrThatId =>
-                            41 + PrototypeRng.NextInt(state.Rng, "event", 28),
+                            ResolveLegacyEventGold(
+                                state.Rng, selected.Id, "primary", 41, 28),
                         _ => 0
                     },
                 NativeEventSecondaryGold:
                     selected.Id == "proto.native.event.jungle_maze_adventure"
-                        ? 35 + PrototypeRng.NextInt(state.Rng, "event", 30)
+                        ? ResolveLegacyEventGold(
+                            state.Rng, selected.Id, "secondary", 35, 30)
                         : selected.Id == "proto.native.underdocks.sunken_treasury"
-                            ? 303 + PrototypeRng.NextInt(
-                                state.Rng, "event", 61)
+                            ? ResolveLegacyEventGold(
+                                state.Rng, selected.Id, "secondary", 303, 61)
                             : 0,
                 NativeEventPotionSlot:
                     selected.Id == PrototypeNativeStoneOfAllTime.EventId
