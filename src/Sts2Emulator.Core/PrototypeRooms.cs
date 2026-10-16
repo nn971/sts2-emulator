@@ -1640,7 +1640,10 @@ public sealed partial class PrototypeGameEngine
                         state,
                         effect.Kind,
                         ref player,
-                        eventState.EventId, ref world, nativeRunRng);
+                        eventState.EventId, ref world,
+                        UsesNativeRegionalSystems(world)
+                            ? nativeRunRng
+                            : null);
                     break;
 
                 case PrototypeRunEffectKind.GainPotionSlots:
@@ -1815,7 +1818,9 @@ public sealed partial class PrototypeGameEngine
                                 "Calling Bell acquisition already has a custom reward.");
                         deferredReward = CreateCallingBellRelicReward(
                             player, eventState.EventId, state.Rng, ref world,
-                            nativeRunRng);
+                            UsesNativeRegionalSystems(world)
+                                ? nativeRunRng
+                                : null);
                     }
 
                     var relicChoice =

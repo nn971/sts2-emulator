@@ -11,7 +11,9 @@ public sealed partial class PrototypeGameEngine
         if (count <= 0)
             return after;
         var world = RequireWorld(after);
-        var nativeRunRng = after.NativeRunRng?.Fork();
+        var nativeRunRng = UsesNativeRegionalSystems(world)
+            ? after.NativeRunRng?.Fork()
+            : null;
         // Event acquisition already suspends the selected option in its
         // ordinary event continuation, before completing the event room.
         if (world.Reward?.ExtraRelicWaxFlags is { Length: 5 } flags && flags.All(flag => flag)

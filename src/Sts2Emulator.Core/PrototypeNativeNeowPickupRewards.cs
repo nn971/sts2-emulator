@@ -65,7 +65,10 @@ public sealed partial class PrototypeGameEngine
                 nestedReward = CreateDeferredEventReward(
                     after, effect.Kind, ref player,
                     PrototypeNativeOvergrowthEvents.NeowEventId,
-                    ref world, nativeRunRng);
+                    ref world,
+                    UsesNativeRegionalSystems(world)
+                        ? nativeRunRng
+                        : null);
                 continue;
             }
 

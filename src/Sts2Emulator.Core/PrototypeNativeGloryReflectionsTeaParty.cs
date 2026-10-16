@@ -174,7 +174,9 @@ public sealed partial class PrototypeGameEngine
         {
             Hp = Math.Max(0, state.Player.Hp - 11)
         };
-        var nativeRunRng = state.NativeRunRng?.Fork();
+        var nativeRunRng = UsesNativeRegionalSystems(world)
+            ? state.NativeRunRng?.Fork()
+            : null;
         state = state with
         {
             Player = playerAfterHit,

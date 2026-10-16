@@ -31,7 +31,9 @@ public sealed partial class PrototypeGameEngine
     {
         RequireKind(action, "event_choice");
         var world = RequireWorld(state);
-        var nativeRunRng = state.NativeRunRng?.Fork();
+        var nativeRunRng = UsesNativeRegionalSystems(world)
+            ? state.NativeRunRng?.Fork()
+            : null;
         var evt = world.Event;
         if (world.Act != 3 ||
             evt?.EventId != PrototypeNativeGloryEvents.TrialId)

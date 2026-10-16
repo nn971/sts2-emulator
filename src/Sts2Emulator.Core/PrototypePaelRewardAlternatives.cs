@@ -14,7 +14,9 @@ public sealed partial class PrototypeGameEngine
             ? "skip_reward_card" : "skip_reward_card_group" });
         var world = RequireWorld(state);
         var player = state.Player;
-        var nativeRunRng = state.NativeRunRng?.Fork();
+        var nativeRunRng = UsesNativeRegionalSystems(world)
+            ? state.NativeRunRng?.Fork()
+            : null;
         var wingIndex = Array.FindIndex(player.Relics, relic =>
             relic.RelicId == NativePaelRewardsV111.WingId && !relic.IsMelted);
         var count = checked(NativePaelRewardsV111.RewardsSacrificed(player.Relics[wingIndex]) + 1);

@@ -128,7 +128,9 @@ public sealed partial class PrototypeGameEngine
             case 3:
             {
                 // Native PullNextRelicFromFront, offered via custom rewards.
-                var nativeRunRng = state.NativeRunRng?.Fork();
+                var nativeRunRng = UsesNativeRegionalSystems(world)
+                    ? state.NativeRunRng?.Fork()
+                    : null;
                 var drawn = PrototypeNativeRelicGrabBag.Draw(
                     world, state.Player, state.Rng, merchant: false,
                     nativeRunRng: nativeRunRng);
