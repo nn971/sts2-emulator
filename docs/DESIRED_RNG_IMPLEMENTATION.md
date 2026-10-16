@@ -111,6 +111,8 @@ Punch Off's relic and potion custom reward picks now use that player stream in
 configured regional runs; their source stream assignment remains unverified.
 War Historian Repy's two independent potion offers also use typed `player.rewards`
 requests under an explicit stream hypothesis, with legacy fallback retained.
+Its distinct relic offers use the shared native Fisher–Yates provider under
+the same stream hypothesis, while source pool order remains unverified.
 Configured Overgrowth treasure relics now use the same persistent
 `player.rewards` stream and rarity-partitioned relic queue as reward and
 merchant draws. Treasure RNG state is saved on both successful and exhausted

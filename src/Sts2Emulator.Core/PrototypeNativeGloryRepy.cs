@@ -142,7 +142,23 @@ public sealed partial class PrototypeGameEngine
             var nativeRunRng = UsesNativeRegionalSystems(world)
                 ? state.NativeRunRng?.Fork()
                 : null;
-            var offers = PickDistinct(available, 2, state.Rng, "reward");
+            string[] offers;
+            if (nativeRunRng is { } nativeRelicRng)
+            {
+                var shuffled = available.ToArray();
+                _ = NativeFisherYatesV111.ShuffleInPlace(
+                    shuffled,
+                    nativeRelicRng,
+                    new NativeRandomIndexProviderV111(),
+                    NativePlayerRngV111.RewardsStreamId,
+                    "event:war_historian_repy:relic_offer",
+                    "event.war_historian.repy.relic_offer.shuffle_swap_index");
+                offers = shuffled.Take(2).ToArray();
+            }
+            else
+            {
+                offers = PickDistinct(available, 2, state.Rng, "reward");
+            }
             int PotionIndex(int ordinal)
             {
                 var ownerId = $"event:war_historian_repy:potion_offer:{ordinal}";

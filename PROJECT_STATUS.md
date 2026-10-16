@@ -1501,6 +1501,10 @@ requests on the same stream hypothesis when native run RNG is present. Legacy
 reward selection remains available, and source stream/cursor validation is
 pending.
 
+Its two distinct relic offers now use the shared native Fisher–Yates provider
+on the same stream hypothesis, while unconfigured runs retain the legacy
+shuffle. Pool order and native stream/cursor parity remain unverified.
+
 Configured Overgrowth combat rewards now use the persistent `player.rewards`
 stream for potion pity, gold bounds, rarity-weighted potion selection, card
 rarity/model/upgrade draws, relic rarity, boss relic offer shuffling, and Lava
