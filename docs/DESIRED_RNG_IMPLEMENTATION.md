@@ -88,6 +88,9 @@ random relic-acquisition card/potion rewards, weighted event tickets, and
 event-entry gold bins now use typed legacy providers on their existing run
 streams. Event-choice random upgrades, Rare cards, potions, empty potion-slot
 fills, and unowned relic picks now use typed legacy requests as well. A typed
+shop-stock shuffles, card rarity/model picks and prices, random potion/relic
+rewards, and persistent-deck transformations now use typed legacy providers.
+Their source/native parity and controlled continuations remain open. A typed
 Gaussian-double adapter now wraps the native
 rejection sampler and journals its complete cursor span, including rejected
 samples. A typed ranged-float adapter now preserves the native `NextFloat(min,

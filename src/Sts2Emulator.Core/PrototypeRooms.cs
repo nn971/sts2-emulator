@@ -2407,7 +2407,12 @@ public sealed partial class PrototypeGameEngine
         // MerchantInventory chooses one of the five character-card
         // slots before populating the inventory.
         var saleIndex = nativeMerchant
-            ? PrototypeRng.NextInt(state.Rng, "shop", 5)
+            ? ResolveLegacyRandomIndex(
+                state.Rng,
+                "shop.merchant.sale_slot.index_draw",
+                $"act:{world.Act}:floor:{world.Floor}",
+                Enumerable.Range(0, 5),
+                streamId: "shop")
             : -1;
         var cardIds = new[]
             {
@@ -2483,7 +2488,9 @@ public sealed partial class PrototypeGameEngine
                 PrototypeContent.PotionPool,
                 3,
                 state.Rng,
-                "shop");
+                "shop",
+                "shop.potion_offer.shuffle_swap_index",
+                $"act:{world.Act}:floor:{world.Floor}:potion_offers");
         var availableRelics =
             PrototypeContent.RelicPool
                 .Where(id =>
@@ -2515,7 +2522,12 @@ public sealed partial class PrototypeGameEngine
         else
         {
             relicIds = PickDistinct(
-                availableRelics, 3, state.Rng, "shop");
+                availableRelics,
+                3,
+                state.Rng,
+                "shop",
+                "shop.relic_offer.shuffle_swap_index",
+                $"act:{world.Act}:floor:{world.Floor}:relic_offers");
         }
 
         var potionOffers = potionIds
@@ -2524,10 +2536,12 @@ public sealed partial class PrototypeGameEngine
                 var basePrice = nativeMerchant
                     ? PrototypeNativePotionShop.MerchantPrice(
                         potionId, state.Rng)
-                    : 40 + PrototypeRng.NextInt(
+                    : ResolveLegacyRandomIndex(
                         state.Rng,
-                        "shop",
-                        21);
+                        "shop.potion_offer.price.index_draw",
+                        $"act:{world.Act}:floor:{world.Floor}:offer:{index}:potion:{potionId}",
+                        Enumerable.Range(40, 21),
+                        streamId: "shop");
                 return new ShopOffer(
                     100 + index,
                     potionId,
@@ -2542,10 +2556,12 @@ public sealed partial class PrototypeGameEngine
                 var basePrice = nativeMerchant
                     ? PrototypeNativeRelicGrabBag.MerchantPrice(
                         relicId, state.Rng)
-                    : 100 + PrototypeRng.NextInt(
+                    : ResolveLegacyRandomIndex(
                         state.Rng,
-                        "shop",
-                        41);
+                        "shop.relic_offer.price.index_draw",
+                        $"act:{world.Act}:floor:{world.Floor}:offer:{index}:relic:{relicId}",
+                        Enumerable.Range(100, 41),
+                        streamId: "shop");
                 return new ShopOffer(
                     200 + index,
                     relicId,
@@ -4606,24 +4622,40 @@ public sealed partial class PrototypeGameEngine
         else
         {
             cardOptions = PickRewardCards(
-                world.Act, cardChoiceCount, state.Rng);
+                world.Act,
+                cardChoiceCount,
+                state.Rng,
+                $"act:{world.Act}:floor:{world.Floor}:room:{room}:group:0");
             extraCardOptions = Enumerable.Range(
                     0, extraCardRewardGroups)
-                .Select(_ => PickRewardCards(
-                    world.Act, cardChoiceCount, state.Rng))
+                .Select((_, groupIndex) => PickRewardCards(
+                    world.Act,
+                    cardChoiceCount,
+                    state.Rng,
+                    $"act:{world.Act}:floor:{world.Floor}:room:{room}:extra_group:{groupIndex}"))
                 .ToArray();
         }
 
         if (!nativeOvergrowth)
         {
-            potion = CanAcquirePotion(state.Player)
-                && PrototypeRng.NextBool(
-                    state.Rng, "reward", 1, 2)
+            var potionDrop = CanAcquirePotion(state.Player)
+                && ResolveLegacyBoundedInteger(
+                    state.Rng,
+                    "reward.random_potion.drop.ticket",
+                    $"act:{world.Act}:floor:{world.Floor}:room:{room}",
+                    2,
+                    streamId: "reward") == 0;
+            potion = potionDrop
                 ? PrototypeContent.PotionPool[
-                    PrototypeRng.NextInt(
+                    ResolveLegacyRandomIndex(
                         state.Rng,
-                        "reward",
-                        PrototypeContent.PotionPool.Length)]
+                        "reward.random_potion.model",
+                        $"act:{world.Act}:floor:{world.Floor}:room:{room}:pool:"
+                            + CanonicalJson.Sha256(
+                                PrototypeContent.PotionPool),
+                        Enumerable.Range(
+                            0, PrototypeContent.PotionPool.Length),
+                        streamId: "reward")]
                 : null;
         }
 
@@ -4640,10 +4672,15 @@ public sealed partial class PrototypeGameEngine
             else
             {
                 relic = PrototypeContent.RelicPool[
-                    PrototypeRng.NextInt(
+                    ResolveLegacyRandomIndex(
                         state.Rng,
-                        "reward",
-                        PrototypeContent.RelicPool.Length)];
+                        "reward.elite_relic.model",
+                        $"act:{world.Act}:floor:{world.Floor}:pool:"
+                            + CanonicalJson.Sha256(
+                                PrototypeContent.RelicPool),
+                        Enumerable.Range(
+                            0, PrototypeContent.RelicPool.Length),
+                        streamId: "reward")];
             }
         }
         if (nativeOvergrowth && prayerWheelGroups > 0)
@@ -4696,7 +4733,9 @@ public sealed partial class PrototypeGameEngine
                         .ToArray(),
                     3,
                     state.Rng,
-                    "reward")
+                    "reward",
+                    "reward.boss_relic_offer.shuffle_swap_index",
+                    $"act:{world.Act}:floor:{world.Floor}")
                 : null;
 
         var lavaRock = ApplyLavaRockBossRewards(
@@ -4843,8 +4882,13 @@ public sealed partial class PrototypeGameEngine
             {
                 var cursePool = NativeGloryAncientsV111
                     .ModifierGeneratedCurseIds;
-                var curseId = cursePool[PrototypeRng.NextInt(
-                    state.Rng, "reward", cursePool.Length)];
+                var curseId = cursePool[ResolveLegacyRandomIndex(
+                    state.Rng,
+                    "event.reward.random_modifier_curse.index_draw",
+                    "event:" + world.Event.EventId + ":pool:"
+                        + CanonicalJson.Sha256(cursePool),
+                    Enumerable.Range(0, cursePool.Length),
+                    streamId: "reward")];
                 player = AppendCard(player, nextId++, curseId, state.Rng);
             }
             else if (reward.AddCardAfterReward is { } additionalCardId)
@@ -4950,10 +4994,18 @@ public sealed partial class PrototypeGameEngine
                 break;
             }
 
-            var roll = PrototypeRng.NextInt(
+            var raritySupport = weights.Select(item => new
+            {
+                item.Rarity,
+                item.Weight
+            }).ToArray();
+            var roll = ResolveLegacyBoundedInteger(
                 rng,
-                "shop",
-                weights.Sum(item => item.Weight));
+                "shop.card_rarity.ticket",
+                $"act:{act}:type:{requiredType}:offer:{selected.Count}:weights:"
+                    + CanonicalJson.Sha256(raritySupport),
+                weights.Sum(item => item.Weight),
+                streamId: "shop");
             var rarity = weights[^1].Rarity;
             foreach (var item in weights)
             {
@@ -4970,7 +5022,13 @@ public sealed partial class PrototypeGameEngine
                 .Where(cardId => PrototypeContent.Card(cardId).Rarity == rarity)
                 .ToArray();
             var selectedId = candidates[
-                PrototypeRng.NextInt(rng, "shop", candidates.Length)];
+                ResolveLegacyRandomIndex(
+                    rng,
+                    "shop.card_model.index_draw",
+                    $"act:{act}:type:{requiredType}:offer:{selected.Count}:rarity:{rarity}:pool:"
+                        + CanonicalJson.Sha256(candidates),
+                    Enumerable.Range(0, candidates.Length),
+                    streamId: "shop")];
             selected.Add(selectedId);
             available.Remove(selectedId);
         }
@@ -4999,7 +5057,12 @@ public sealed partial class PrototypeGameEngine
         // Native CalcCost uses Shops.NextFloat(0.95, 1.05)
         // followed by Mathf.RoundToInt. Integer percentage samples
         // approximate that distribution without claiming RNG parity.
-        var percent = 95 + PrototypeRng.NextInt(rng, "shop", 11);
+        var percent = ResolveLegacyRandomIndex(
+            rng,
+            "shop.merchant.card_price_modifier.index_draw",
+            "card:" + cardId,
+            Enumerable.Range(95, 11),
+            streamId: "shop");
         return Math.Max(1,
             (int)Math.Round(baseCost * percent / 100.0));
     }
@@ -5016,13 +5079,29 @@ public sealed partial class PrototypeGameEngine
                 $"Basic card '{cardId}' cannot be a normal shop offer.")
         };
 
-        return minimum + PrototypeRng.NextInt(rng, "shop", spread);
+        return ResolveLegacyRandomIndex(
+            rng,
+            "shop.card.price.index_draw",
+            "card:" + cardId,
+            Enumerable.Range(minimum, spread),
+            streamId: "shop");
     }
 
     private static string[] PickRewardCards(
         int act,
         int count,
-        RngBundle rng)
+        RngBundle rng) =>
+        PickRewardCards(
+            act,
+            count,
+            rng,
+            $"act:{act}:reward_group:external");
+
+    private static string[] PickRewardCards(
+        int act,
+        int count,
+        RngBundle rng,
+        string ownerId)
     {
         var available = PrototypeContent.RewardCardPool.ToList();
         var selected = new List<string>(Math.Min(count, available.Count));
@@ -5041,8 +5120,19 @@ public sealed partial class PrototypeGameEngine
                 break;
             }
 
+            var raritySupport = rarityWeights.Select(item => new
+            {
+                item.Rarity,
+                item.Weight
+            }).ToArray();
             var totalWeight = rarityWeights.Sum(item => item.Weight);
-            var roll = PrototypeRng.NextInt(rng, "reward", totalWeight);
+            var roll = ResolveLegacyBoundedInteger(
+                rng,
+                "reward.card_rarity.ticket",
+                ownerId + ":card:" + selected.Count + ":weights:"
+                    + CanonicalJson.Sha256(raritySupport),
+                totalWeight,
+                streamId: "reward");
             var rarity = rarityWeights[^1].Rarity;
             foreach (var item in rarityWeights)
             {
@@ -5059,7 +5149,13 @@ public sealed partial class PrototypeGameEngine
                 .Where(cardId => PrototypeContent.Card(cardId).Rarity == rarity)
                 .ToArray();
             var selectedId = candidates[
-                PrototypeRng.NextInt(rng, "reward", candidates.Length)];
+                ResolveLegacyRandomIndex(
+                    rng,
+                    "reward.card_model.index_draw",
+                    ownerId + ":card:" + selected.Count + ":rarity:" + rarity
+                        + ":pool:" + CanonicalJson.Sha256(candidates),
+                    Enumerable.Range(0, candidates.Length),
+                    streamId: "reward")];
 
             selected.Add(selectedId);
             available.Remove(selectedId);
@@ -5157,11 +5253,13 @@ public sealed partial class PrototypeGameEngine
                 "No prototype card is available for transformation.");
         }
 
-        var transformedCardId =
-            pool[PrototypeRng.NextInt(
-                rng,
-                "reward",
-                pool.Length)];
+        var transformedCardId = pool[ResolveLegacyRandomIndex(
+            rng,
+            "reward.card_transform.replacement.index_draw",
+            "card_instance:" + cardInstanceId + ":original:" + original.CardId
+                + ":pool:" + CanonicalJson.Sha256(pool),
+            Enumerable.Range(0, pool.Length),
+            streamId: "reward")];
         return player with
         {
             Deck = player.Deck
@@ -5181,7 +5279,23 @@ public sealed partial class PrototypeGameEngine
         string[] pool,
         int count,
         RngBundle rng,
-        string streamId)
+        string streamId) =>
+        PickDistinct(
+            pool,
+            count,
+            rng,
+            streamId,
+            "run.random_pool_distinct.shuffle_swap_index",
+            streamId + ":take:" + count + ":pool:"
+                + CanonicalJson.Sha256(pool));
+
+    private static string[] PickDistinct(
+        string[] pool,
+        int count,
+        RngBundle rng,
+        string streamId,
+        string siteId,
+        string ownerId)
     {
         if (pool.Length == 0)
         {
@@ -5189,7 +5303,22 @@ public sealed partial class PrototypeGameEngine
         }
 
         var copy = (string[])pool.Clone();
-        PrototypeRng.Shuffle(rng, streamId, copy);
+        var stream = rng.Streams.SingleOrDefault(item =>
+            item.StreamId == streamId) ??
+            throw new InvalidOperationException(
+                "Legacy pool-shuffle provider stream is missing.");
+        var ordinal = stream.CallCount ?? 0;
+        if (ordinal > int.MaxValue)
+            throw new NotSupportedException(
+                "Legacy pool-shuffle provider ordinal exceeds the request range.");
+        _ = NativeFisherYatesV111.ShuffleInPlace(
+            copy,
+            rng,
+            new LegacyPrototypeRandomIndexProviderV111(),
+            streamId,
+            ownerId + ":pool:" + CanonicalJson.Sha256(pool),
+            siteId,
+            (int)ordinal);
         return copy.Take(Math.Min(count, copy.Length)).ToArray();
     }
 }

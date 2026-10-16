@@ -2,13 +2,13 @@
 
 Direct qualified calls to PrototypeRng, NativeRngV111, and NativeFisherYatesV111 in Sts2Emulator.Core. This does not include indirect delegates, random provider interfaces, third-party/native source callsites, or prove that every source operation is mapped.
 
-Direct call expressions: **126**.
+Direct call expressions: **112**.
 
 Counts by direct API family:
 
-- `legacy_prototype_api`: 99
+- `legacy_prototype_api`: 84
 - `native_primitive_api`: 16
-- `native_shuffle_mechanics`: 11
+- `native_shuffle_mechanics`: 12
 
 Rows distinguish legacy prototype calls, native primitive calls, generic shuffle-helper calls, and recognized provider/fixture support. Unrecognized contexts still need manual source tracing.
 
@@ -118,21 +118,7 @@ Rows distinguish legacy prototype calls, native primitive calls, generic shuffle
 | [`src/Sts2Emulator.Core/PrototypeNativeUnderdocksTrashHeap.cs:189`](../src/Sts2Emulator.Core/PrototypeNativeUnderdocksTrashHeap.cs#L189) | `PrototypeRng` | `NextInt` | `PrototypeRng.NextInt(` | `prototype_callsite_needs_semantic_site_mapping` |
 | [`src/Sts2Emulator.Core/PrototypeNativeWarHammer.cs:55`](../src/Sts2Emulator.Core/PrototypeNativeWarHammer.cs#L55) | `PrototypeRng` | `Shuffle` | `PrototypeRng.Shuffle(state.Rng, "event", shuffled);` | `prototype_callsite_needs_semantic_site_mapping` |
 | [`src/Sts2Emulator.Core/PrototypePaelsTooth.cs:25`](../src/Sts2Emulator.Core/PrototypePaelsTooth.cs#L25) | `PrototypeRng` | `NextInt` | `var selectedIndex = PrototypeRng.NextInt(state.Rng, "reward", saved.Length);` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeRooms.cs:2410`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L2410) | `PrototypeRng` | `NextInt` | `? PrototypeRng.NextInt(state.Rng, "shop", 5)` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeRooms.cs:2527`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L2527) | `PrototypeRng` | `NextInt` | `: 40 + PrototypeRng.NextInt(` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeRooms.cs:2545`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L2545) | `PrototypeRng` | `NextInt` | `: 100 + PrototypeRng.NextInt(` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeRooms.cs:4620`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L4620) | `PrototypeRng` | `NextBool` | `&& PrototypeRng.NextBool(` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeRooms.cs:4623`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L4623) | `PrototypeRng` | `NextInt` | `PrototypeRng.NextInt(` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeRooms.cs:4643`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L4643) | `PrototypeRng` | `NextInt` | `PrototypeRng.NextInt(` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeRooms.cs:4846`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L4846) | `PrototypeRng` | `NextInt` | `var curseId = cursePool[PrototypeRng.NextInt(` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeRooms.cs:4953`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L4953) | `PrototypeRng` | `NextInt` | `var roll = PrototypeRng.NextInt(` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeRooms.cs:4973`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L4973) | `PrototypeRng` | `NextInt` | `PrototypeRng.NextInt(rng, "shop", candidates.Length)];` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeRooms.cs:5002`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L5002) | `PrototypeRng` | `NextInt` | `var percent = 95 + PrototypeRng.NextInt(rng, "shop", 11);` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeRooms.cs:5019`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L5019) | `PrototypeRng` | `NextInt` | `return minimum + PrototypeRng.NextInt(rng, "shop", spread);` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeRooms.cs:5045`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L5045) | `PrototypeRng` | `NextInt` | `var roll = PrototypeRng.NextInt(rng, "reward", totalWeight);` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeRooms.cs:5062`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L5062) | `PrototypeRng` | `NextInt` | `PrototypeRng.NextInt(rng, "reward", candidates.Length)];` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeRooms.cs:5161`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L5161) | `PrototypeRng` | `NextInt` | `pool[PrototypeRng.NextInt(` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeRooms.cs:5192`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L5192) | `PrototypeRng` | `Shuffle` | `PrototypeRng.Shuffle(rng, streamId, copy);` | `prototype_callsite_needs_semantic_site_mapping` |
+| [`src/Sts2Emulator.Core/PrototypeRooms.cs:5314`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L5314) | `NativeFisherYatesV111` | `ShuffleInPlace` | `_ = NativeFisherYatesV111.ShuffleInPlace(` | `shuffle_callsite_needs_stable_site_link` |
 | [`src/Sts2Emulator.Core/RandomGaussianDoubleProvidersV111.cs:84`](../src/Sts2Emulator.Core/RandomGaussianDoubleProvidersV111.cs#L84) | `NativeRngV111` | `NextGaussianDouble` | `var value = NativeRngV111.NextGaussianDouble(` | `provider_or_codec_infrastructure` |
 | [`src/Sts2Emulator.Core/RandomGaussianIntProvidersV111.cs:79`](../src/Sts2Emulator.Core/RandomGaussianIntProvidersV111.cs#L79) | `NativeRngV111` | `NextGaussianInt` | `var value = NativeRngV111.NextGaussianInt(` | `provider_or_codec_infrastructure` |
 | [`src/Sts2Emulator.Core/RandomIndexProvidersV111.cs:91`](../src/Sts2Emulator.Core/RandomIndexProvidersV111.cs#L91) | `NativeRngV111` | `NextInt` | `int index = NativeRngV111.NextInt(streams, request.StreamId, request.SupportCount);` | `provider_or_codec_infrastructure` |
