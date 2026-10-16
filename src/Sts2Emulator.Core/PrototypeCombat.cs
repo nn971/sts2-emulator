@@ -5202,6 +5202,7 @@ public sealed partial class PrototypeGameEngine
             // Suspend before the first random hand-card selection or cost roll.
             // The saved tail and parent continuations resume exactly once.
             if (ControlledChanceGuardV111.Active &&
+                !ControlledChanceGuardV111.EngineOwnedNativeProviderActive &&
                 ControlledRandomCostCandidates(combat, operation) is
                     { Length: > 0 } eligibleCosts)
             {
@@ -6803,11 +6804,13 @@ public sealed partial class PrototypeGameEngine
 
                     if (candidates.Length > 0)
                     {
-                        var selected = candidates[
-                            PrototypeRng.NextInt(
-                                rng,
-                                "combat",
-                                candidates.Length)];
+                        var selection = ResolveRandomHandCostChoice(
+                            combat, rng, operation, sourceCardInstanceId,
+                            candidates.Select(card => card.InstanceId).ToArray(),
+                            selectedCardInstanceId: null,
+                            boundedCount: null);
+                        combat = selection.Combat;
+                        var selected = candidates[selection.SelectedIndex];
                         combat = SetCardTemporaryEnergyCost(
                             combat,
                             selected.InstanceId,
@@ -6825,6 +6828,9 @@ public sealed partial class PrototypeGameEngine
                     var upperBound = Math.Max(
                         1,
                         operation.Amount);
+                    var eligibleCardIds = ControlledRandomCostCandidates(
+                        combat, operation) ?? [];
+                    var eligibleCursor = 0;
                     foreach (var cardInstanceId in combat.Hand)
                     {
                         var card = RequireCombatCard(
@@ -6841,17 +6847,29 @@ public sealed partial class PrototypeGameEngine
                             continue;
                         }
 
+                        if (eligibleCursor >= eligibleCardIds.Length ||
+                            eligibleCardIds[eligibleCursor] != cardInstanceId)
+                            throw new InvalidOperationException(
+                                "Random hand-cost support changed during source iteration.");
+                        var selection = ResolveRandomHandCostChoice(
+                            combat, rng, operation, sourceCardInstanceId,
+                            eligibleCardIds,
+                            selectedCardInstanceId: cardInstanceId,
+                            boundedCount: upperBound);
+                        combat = selection.Combat;
+                        eligibleCursor++;
                         combat = SetCardTemporaryEnergyCost(
                             combat,
                             cardInstanceId,
                             new PrototypeTemporaryCardCost(
-                                PrototypeRng.NextInt(
-                                    rng,
-                                    "combat",
-                                    upperBound),
+                                selection.SelectedIndex,
                                 PrototypeTemporaryCardCostExpiry.EndOfTurn
                                 | PrototypeTemporaryCardCostExpiry.WhenPlayed));
                     }
+
+                    if (eligibleCursor != eligibleCardIds.Length)
+                        throw new InvalidOperationException(
+                            "Random hand-cost support was not fully consumed.");
 
                     break;
                 }
@@ -12639,6 +12657,89 @@ public sealed partial class PrototypeGameEngine
         var decision = provider.Resolve(new RandomIndexRequestV111(
             siteId, streamId, ownerId, ordinal,
             (int[])eligibleEnemyInstanceIds.Clone()), streams);
+        var updated = native is null
+            ? combat
+            : combat with
+            {
+                NativeRng = native with { RunStreams = streams }
+            };
+        return (updated, decision.SelectedIndex);
+    }
+
+    private static (CombatState Combat, int SelectedIndex)
+        ResolveRandomHandCostChoice(
+            CombatState combat,
+            RngBundle legacyRng,
+            PrototypeQueuedOperation operation,
+            long? sourceCardInstanceId,
+            long[] orderedHandCardIds,
+            long? selectedCardInstanceId,
+            int? boundedCount)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(legacyRng);
+        ArgumentNullException.ThrowIfNull(operation);
+        ArgumentNullException.ThrowIfNull(orderedHandCardIds);
+        if (orderedHandCardIds.Length == 0 ||
+            orderedHandCardIds.Any(id => id <= 0) ||
+            orderedHandCardIds.Distinct().Count() != orderedHandCardIds.Length)
+            throw new ArgumentException(
+                "Random hand-cost selection requires an ordered unique hand support.",
+                nameof(orderedHandCardIds));
+
+        var selectingCard = operation.Kind ==
+            PrototypeCombatEffectKind.SetRandomHandCardEnergyCostUntilTurnEndOrPlayed;
+        if (selectingCard != (selectedCardInstanceId is null) ||
+            (selectingCard && boundedCount is not null) ||
+            (!selectingCard && (boundedCount is null or <= 0 ||
+                selectedCardInstanceId is null ||
+                !orderedHandCardIds.Contains(selectedCardInstanceId.Value))) ||
+            operation.Kind is not (
+                PrototypeCombatEffectKind.SetRandomHandCardEnergyCostUntilTurnEndOrPlayed
+                or PrototypeCombatEffectKind.RandomizeHandCardEnergyCostsUntilTurnEndOrPlayed))
+            throw new ArgumentException(
+                "Random hand-cost request does not match its source operation.",
+                nameof(operation));
+
+        if (ControlledChanceGuardV111.Active &&
+            !ControlledChanceGuardV111.EngineOwnedNativeProviderActive)
+            throw new NotSupportedException(
+                "UNSUPPORTED_CONTROLLED_CHANCE site=combat.random_hand_card " +
+                "operation=provider_dispatch requires a saved hand-cost continuation.");
+
+        var native = combat.NativeRng;
+        var streamId = native is null
+            ? "combat"
+            : selectingCard
+                ? "run.combat_card_selection"
+                : "run.combat_energy_costs";
+        var streams = native?.RunStreams.Fork() ?? legacyRng;
+        var stream = streams.Streams.SingleOrDefault(item =>
+            item.StreamId == streamId) ??
+            throw new InvalidOperationException(
+                "Random hand-cost provider stream is missing.");
+        var callOrdinal = stream.CallCount ?? 0;
+        if (callOrdinal > int.MaxValue)
+            throw new NotSupportedException(
+                "Random hand-cost provider ordinal exceeds the request range.");
+        IRandomIndexProviderV111 provider = native is null
+            ? new LegacyPrototypeRandomIndexProviderV111()
+            : new NativeRandomIndexProviderV111();
+        var ownerId = "effect:" + operation.Kind + ":source:" +
+            (sourceCardInstanceId?.ToString() ?? "none") + ":hand:" +
+            CanonicalJson.Sha256(orderedHandCardIds);
+        if (selectedCardInstanceId is { } cardId)
+            ownerId += ":card_instance:" + cardId;
+        var request = new RandomIndexRequestV111(
+            selectingCard ? "combat.random_hand_card.select"
+                          : "combat.random_hand_card.energy_cost",
+            streamId, ownerId, (int)callOrdinal,
+            selectingCard
+                ? Enumerable.Range(0, orderedHandCardIds.Length).ToArray()
+                : [],
+            OperationKind: selectingCard ? "choose_index" : "bounded_integer",
+            BoundedCount: selectingCard ? null : boundedCount);
+        var decision = provider.Resolve(request, streams);
         var updated = native is null
             ? combat
             : combat with
