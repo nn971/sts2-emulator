@@ -202,10 +202,10 @@ public static class PrototypeNativeRelicGrabBag
     public static int MerchantPriceNative(
         string relicId, RngBundle nativeRunRng, string ownerId)
     {
-        var roll = NativeMerchantRngV111.NextUnitFloat(
+        var roll = NativePlayerRngV111.NextUnitFloat(
             nativeRunRng,
             "shop.merchant.relic_price_modifier.unit_float",
-            NativeMerchantRngV111.ShopsStreamId,
+            NativePlayerRngV111.ShopsStreamId,
             ownerId + ":" + relicId);
         var modifier = 0.85f + (1.15f - 0.85f) * roll;
         return (int)MathF.Round(MerchantBaseCost(relicId) * modifier,
@@ -235,10 +235,10 @@ public static class PrototypeNativeRelicGrabBag
         RngBundle nativeRunRng, bool merchant = false,
         string ownerId = "relic_grab_bag:reward")
     {
-        var roll = NativeMerchantRngV111.NextUnitFloat(
+        var roll = NativePlayerRngV111.NextUnitFloat(
             nativeRunRng,
             "relic_grab_bag.rarity.unit_float",
-            NativeMerchantRngV111.RewardsStreamId,
+            NativePlayerRngV111.RewardsStreamId,
             ownerId + (merchant ? ":merchant" : ":reward"));
         return roll < 0.50f
             ? PrototypeRelicRarity.Common

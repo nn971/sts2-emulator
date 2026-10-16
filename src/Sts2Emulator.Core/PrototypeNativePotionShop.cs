@@ -360,10 +360,10 @@ public static class PrototypeNativePotionShop
     public static int MerchantPriceNative(
         string potionId, RngBundle nativeRunRng, string ownerId)
     {
-        var roll = NativeMerchantRngV111.NextUnitFloat(
+        var roll = NativePlayerRngV111.NextUnitFloat(
             nativeRunRng,
             "shop.merchant.potion_price_modifier.unit_float",
-            NativeMerchantRngV111.ShopsStreamId,
+            NativePlayerRngV111.ShopsStreamId,
             ownerId + ":" + potionId);
         var modifier = 0.95f + (1.05f - 0.95f) * roll;
         return Math.Max(1,

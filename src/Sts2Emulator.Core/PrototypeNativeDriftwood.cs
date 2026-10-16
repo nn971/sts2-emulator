@@ -41,6 +41,7 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidOperationException(
                 "Driftwood cannot reroll this card reward group.");
 
+        var nativeRunRng = state.NativeRunRng?.Fork();
         var generators = (PrototypeCardRewardGenerator?[])
             reward.CardRewardGenerators!.Clone();
         var generator = generators[groupIndex]!;
@@ -101,7 +102,7 @@ public sealed partial class PrototypeGameEngine
                     .GenerateEncounterCards(oldOptions.Length,
                         state.Ascension, generator.Room.Value,
                         world.CardRarityOffsetBasisPoints,
-                        state.Rng, generator.Act);
+                        state.Rng, generator.Act, nativeRunRng);
                 oldOptions = generated.Cards;
                 generatedFlags = generated.UpgradeFlags;
                 world = world with
@@ -153,6 +154,10 @@ public sealed partial class PrototypeGameEngine
             };
         }
 
-        return state with { World = world with { Reward = reward } };
+        return state with
+        {
+            NativeRunRng = nativeRunRng ?? state.NativeRunRng,
+            World = world with { Reward = reward }
+        };
     }
 }

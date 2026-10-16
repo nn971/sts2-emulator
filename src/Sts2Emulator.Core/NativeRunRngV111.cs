@@ -181,14 +181,16 @@ public static class NativeRunRngV111
     /// <summary>
     /// Engine transition reconciliation. When a native combat continues,
     /// copy its advanced run RNG cursors to the long-lived run owner.
-    /// When the combat exits in this step, preserve the previous active
-    /// cursors instead of discarding them with the combat object.
+    /// When combat exits, retain the post-step run owner: exit hooks may
+    /// synchronize combat draws, then reward generation may advance player
+    /// streams after the combat object has been removed.
     /// This remains inert for every ordinary prototype run.
     /// </summary>
     internal static RunState ReconcileAfterStep(
         RunState before, RunState after)
     {
-        if (after.NativeRunRng is null)
+        var afterRunStreams = after.NativeRunRng;
+        if (afterRunStreams is null)
             return after;
         var live = after.World?.Combat?.NativeRng;
         var ended = before.World?.Combat?.NativeRng;
@@ -215,7 +217,7 @@ public static class NativeRunRngV111
                     "RNG and lifecycle integration is required.", ex);
             }
         }
-        var source = live?.RunStreams ?? ended!.RunStreams;
+        var source = live?.RunStreams ?? afterRunStreams;
         ValidateBundle(source);
         return after with { NativeRunRng = source.Fork() };
     }

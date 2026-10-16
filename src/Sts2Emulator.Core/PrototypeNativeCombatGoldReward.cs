@@ -3,8 +3,9 @@ namespace Sts2Emulator.Core;
 /// <summary>
 /// Pinned v0.111.0 EncounterModel gold bounds and GoldReward.Populate.
 /// Ordinary single-player Overgrowth encounters use the native defaults.
-/// Uses the emulator Rewards stream instead of claiming bit-identical
-/// native RNG. Reward pickup remains immediately credited by prototype.
+/// Legacy calls use the emulator Rewards stream; configured v111 runs can
+/// route the draw through the persistent native player Rewards stream. The
+/// caller owns whether and when an offered amount is credited.
 /// </summary>
 public static class PrototypeNativeCombatGoldReward
 {
@@ -56,7 +57,7 @@ public static class PrototypeNativeCombatGoldReward
 
     public static int? Roll(
         PrototypeRoomType room, int ascension, RngBundle rng,
-        float goldProportion = 1f)
+        float goldProportion = 1f, RngBundle? nativeRunRng = null)
     {
         var bounds = Bounds(room, ascension, goldProportion);
         if (bounds is null)
@@ -66,11 +67,18 @@ public static class PrototypeNativeCombatGoldReward
 
         var (minimum, maximum) = bounds.Value;
         // Native GoldReward.Populate calls Rewards.NextInt(min, max+1).
-        return minimum + LegacyRandomChoiceV111.ChooseBoundedInteger(
-            rng,
-            "reward.combat_gold.index_draw",
-            "reward",
-            $"room:{room}:ascension:{ascension}:bounds:{minimum}:{maximum}",
-            checked(maximum - minimum + 1)).SelectedIndex;
+        var ownerId =
+            $"room:{room}:ascension:{ascension}:bounds:{minimum}:{maximum}";
+        var index = nativeRunRng is null
+            ? LegacyRandomChoiceV111.ChooseBoundedInteger(
+                rng, "reward.combat_gold.index_draw", "reward",
+                ownerId, checked(maximum - minimum + 1)).SelectedIndex
+            : NativePlayerRngV111.ChooseBoundedInteger(
+                nativeRunRng,
+                "reward.combat_gold.index_draw",
+                NativePlayerRngV111.RewardsStreamId,
+                ownerId,
+                checked(maximum - minimum + 1));
+        return minimum + index;
     }
 }

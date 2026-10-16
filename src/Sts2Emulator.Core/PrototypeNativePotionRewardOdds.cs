@@ -4,9 +4,9 @@ namespace Sts2Emulator.Core;
 /// Source-shaped PotionRewardOdds for single-player combat rooms.
 /// Native CurrentValue begins at 0.4, increases by 0.1 on a miss,
 /// decreases by 0.1 on success, and adds 0.25 * 0.5 = 0.125
-/// to the current roll threshold for elites. The prototype
-/// uses integer thousandths and the reward stream rather than
-/// asserting exact native floating-point RNG parity.
+/// to the current roll threshold for elites. Configured v111 runs use the
+/// persistent player Rewards stream; legacy prototype runs retain the
+/// integer-thousandth ticket.
 /// </summary>
 public static class PrototypeNativePotionRewardOdds
 {
@@ -17,7 +17,7 @@ public static class PrototypeNativePotionRewardOdds
 
     public static (bool Offered, int UpdatedThousandths) Roll(
         int currentThousandths, bool elite, RngBundle rng,
-        bool forced = false)
+        bool forced = false, RngBundle? nativeRunRng = null)
     {
         // Native PotionRewardOdds.Roll calls
         // Hook.ShouldForcePotionReward before sampling Rewards RNG
@@ -31,13 +31,18 @@ public static class PrototypeNativePotionRewardOdds
         // Do not clamp the odds here: native AbstractOdds.CurrentValue
         // is updated directly, without explicit clipping.
         var threshold = currentThousandths + (elite ? EliteBonus : 0);
-        var roll = LegacyRandomChoiceV111.ChooseBoundedInteger(
-            rng,
-            "reward.potion_odds.ticket",
-            "reward",
-            "run:potion_reward_odds",
-            1000).SelectedIndex;
-        var offered = roll < threshold;
+        var offered = nativeRunRng is null
+            ? LegacyRandomChoiceV111.ChooseBoundedInteger(
+                rng,
+                "reward.potion_odds.ticket",
+                "reward",
+                "run:potion_reward_odds",
+                1000).SelectedIndex < threshold
+            : NativePlayerRngV111.NextUnitFloat(
+                nativeRunRng,
+                "reward.potion_odds.unit_float",
+                NativePlayerRngV111.RewardsStreamId,
+                "run:potion_reward_odds") < threshold / 1000f;
         return (
             offered,
             checked(currentThousandths + (offered

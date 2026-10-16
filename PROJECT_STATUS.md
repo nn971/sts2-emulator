@@ -1418,12 +1418,12 @@ elite, and boss combat reward generation updates the value, and
 the state persists through serialization and forks. Successful
 offers continue to use the rarity-weighted picker.
 
-The emulator uses a 0–999 integer threshold sample on the existing
-reward stream rather than the pinned game's dedicated odds RNG
-and float values; hook-forced potion rewards and exact RNG
-alignment are not modeled. The legacy abstract map retains its
-former 50% potion-reward chance. No colorless card or
-cross-character mechanics were added.
+Configured v111 runs now use a native unit-float request on the persistent
+`player.rewards` stream. White Beast Statue's forced offer skips both the
+pity draw and update. Unconfigured prototype runs retain the 0–999
+integer-ticket approximation, and seeded result/cursor parity remains
+unverified. The legacy abstract map retains its former 50% potion-reward
+chance. No colorless card or cross-character mechanics were added.
 
 ## Native Overgrowth map and Neow RNG contexts (2026-10-17)
 
@@ -1453,3 +1453,13 @@ rarity-partitioned relic queues initialize from `run.treasure_room_relics`.
 The legacy streams remain available for unconfigured prototype runs. The
 merchant's restricted card/relic/potion pools, controlled shop continuation,
 and seeded source result/cursor parity remain open.
+
+Configured Overgrowth combat rewards now use the persistent `player.rewards`
+stream for potion pity, gold bounds, rarity-weighted potion selection, card
+rarity/model/upgrade draws, relic rarity, and boss relic offer shuffling. The
+base card reward is generated before relic offers; combat-earned extras and
+Black Star relic draws precede Prayer Wheel's appended card reward. Driftwood
+rerolls and Dream Catcher rest rewards preserve the advanced run stream.
+Lava Rock's extra boss relic picks still use the legacy pool sampler. The
+source-shaped pools remain restricted, and native result/cursor parity is
+still unverified.

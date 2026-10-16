@@ -832,10 +832,10 @@ public static class PrototypeColorlessCards
                 "shop",
                 ownerId,
                 eligible.Length).SelectedIndex
-            : NativeMerchantRngV111.ChooseIndex(
+            : NativePlayerRngV111.ChooseIndex(
                 nativeRunRng,
                 "shop.colorless_card_model.index_draw",
-                NativeMerchantRngV111.ShopsStreamId,
+                NativePlayerRngV111.ShopsStreamId,
                 ownerId,
                 eligible.Length);
         return eligible[selectedIndex];

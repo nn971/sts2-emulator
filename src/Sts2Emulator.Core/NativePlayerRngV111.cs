@@ -1,10 +1,10 @@
 namespace Sts2Emulator.Core;
 
 /// <summary>
-/// Shared native run-stream owners used by configured merchant generation.
+/// Shared native player-stream owners used by configured run generation.
 /// Requests still flow through the common typed providers and boundary journal.
 /// </summary>
-internal static class NativeMerchantRngV111
+internal static class NativePlayerRngV111
 {
     public const string ShopsStreamId = "player.shops";
     public const string RewardsStreamId = "player.rewards";
@@ -28,6 +28,16 @@ internal static class NativeMerchantRngV111
         int count) =>
         NativeRandomChoiceV111.ChooseIndexRange(
             streams, siteId, streamId, ownerId, count,
+            NextOrdinal(streams, streamId)).SelectedIndex;
+
+    public static int ChooseBoundedInteger(
+        RngBundle streams,
+        string siteId,
+        string streamId,
+        string ownerId,
+        int boundedCount) =>
+        NativeRandomChoiceV111.ChooseBoundedInteger(
+            streams, siteId, streamId, ownerId, boundedCount,
             NextOrdinal(streams, streamId)).SelectedIndex;
 
     public static float NextUnitFloat(

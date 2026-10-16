@@ -2412,10 +2412,10 @@ public sealed partial class PrototypeGameEngine
         if (nativeMerchant)
         {
             saleIndex = nativeRunRng is { } nativeShopRng
-                ? NativeMerchantRngV111.ChooseIndex(
+                ? NativePlayerRngV111.ChooseIndex(
                     nativeShopRng,
                     "shop.merchant.sale_slot.index_draw",
-                    NativeMerchantRngV111.ShopsStreamId,
+                    NativePlayerRngV111.ShopsStreamId,
                     $"merchant:act:{world.Act}:floor:{world.Floor}",
                     5)
                 : ResolveLegacyRandomIndex(
@@ -4550,6 +4550,7 @@ public sealed partial class PrototypeGameEngine
         }
 
         var nativeOvergrowth = UsesNativeRegionalSystems(world);
+        var nativeRunRng = state.NativeRunRng?.Fork();
 
         // RewardsSet.GenerateRewardsFor rolls the potion pity check
         // before rewards are populated; GoldReward.Populate runs first,
@@ -4565,7 +4566,8 @@ public sealed partial class PrototypeGameEngine
                 world.PotionRewardOddsThousandths,
                 room == PrototypeRoomType.Elite,
                 state.Rng,
-                forced: forced);
+                forced: forced,
+                nativeRunRng: nativeRunRng);
             nativePotionOffered = offered;
             world = world with
             {
@@ -4578,7 +4580,8 @@ public sealed partial class PrototypeGameEngine
         var preventsGoldGain = PreventsGoldGain(state.Player);
         var nativeGold = nativeOvergrowth && !preventsGoldGain
             ? PrototypeNativeCombatGoldReward.Roll(
-                room, state.Ascension, state.Rng)
+                room, state.Ascension, state.Rng,
+                nativeRunRng: nativeRunRng)
             : null;
         var gold = 0;
         if (!preventsGoldGain)
@@ -4618,8 +4621,18 @@ public sealed partial class PrototypeGameEngine
         string? potion = nativeOvergrowth
             && nativePotionOffered
             && CanAcquirePotion(state.Player)
-                ? PrototypeNativePotionShop.PickWeighted(
-                    state.Rng, "reward")
+                ? nativeRunRng is { } nativePotionRng
+                    ? PrototypeNativePotionShop
+                        .PickWeightedDistinctNativeWithAudit(
+                            nativePotionRng,
+                            NativePlayerRngV111.RewardsStreamId,
+                            1,
+                            $"act:{world.Act}:floor:{world.Floor}:room:{room}:potion_reward",
+                            new NativeRandomIndexProviderV111(),
+                            new NativeRandomUnitFloatProviderV111())
+                        .PotionIds[0]
+                    : PrototypeNativePotionShop.PickWeighted(
+                        state.Rng, "reward")
                 : null;
 
         var cardChoiceCount =
@@ -4641,25 +4654,15 @@ public sealed partial class PrototypeGameEngine
             var offset = world.CardRarityOffsetBasisPoints;
             var first = PrototypeNativeCardRarityOdds.GenerateEncounterCards(
                 cardChoiceCount, state.Ascension, room, offset, state.Rng,
-                act: world.Act);
+                act: world.Act,
+                nativeRunRng: nativeRunRng);
             cardOptions = first.Cards;
             cardUpgradeFlags = first.UpgradeFlags;
             offset = first.NextOffsetBasisPoints;
-            var extras = new List<string[]>();
-            var extraUpgrades = new List<bool[]>();
-            // Extra combat-earned rewards belong to the initial list.
-            // Prayer Wheel adds its CardReward later, from ModifyRewards.
-            for (var i = 0; i < Math.Max(0, combat.ExtraCardRewardsEarned); i++)
-            {
-                var next = PrototypeNativeCardRarityOdds.GenerateEncounterCards(
-                    cardChoiceCount, state.Ascension, room, offset, state.Rng,
-                    act: world.Act);
-                extras.Add(next.Cards);
-                extraUpgrades.Add(next.UpgradeFlags);
-                offset = next.NextOffsetBasisPoints;
-            }
-            extraCardOptions = extras.ToArray();
-            extraCardUpgradeFlags = extraUpgrades.ToArray();
+            // Combat-earned extra rewards follow the base relic reward.
+            // Prayer Wheel is appended later by Hook.ModifyRewards.
+            extraCardOptions = [];
+            extraCardUpgradeFlags = [];
             world = world with { CardRarityOffsetBasisPoints = offset };
         }
         else
@@ -4708,7 +4711,8 @@ public sealed partial class PrototypeGameEngine
             if (UsesNativeRegionalSystems(world))
             {
                 var draw = PrototypeNativeRelicGrabBag.Draw(
-                    world, state.Player, state.Rng, merchant: false);
+                    world, state.Player, state.Rng, merchant: false,
+                    nativeRunRng: nativeRunRng);
                 world = draw.World;
                 relic = draw.Id;
             }
@@ -4726,12 +4730,76 @@ public sealed partial class PrototypeGameEngine
                         streamId: "reward")];
             }
         }
+        var relicOptions = (string[]?)null;
+        if (room == PrototypeRoomType.Boss)
+        {
+            var bossRelicPool = PrototypeContent.BossRelicPool
+                .Where(id => !state.Player.Relics.Any(relic =>
+                    StringComparer.Ordinal.Equals(relic.RelicId, id)))
+                .ToArray();
+            if (nativeRunRng is null)
+            {
+                relicOptions = PickDistinct(
+                    bossRelicPool, 3, state.Rng, "reward",
+                    "reward.boss_relic_offer.shuffle_swap_index",
+                    $"act:{world.Act}:floor:{world.Floor}");
+            }
+            else
+            {
+                _ = NativeFisherYatesV111.ShuffleInPlace(
+                    bossRelicPool,
+                    nativeRunRng,
+                    new NativeRandomIndexProviderV111(),
+                    NativePlayerRngV111.RewardsStreamId,
+                    $"act:{world.Act}:floor:{world.Floor}:boss_relics",
+                    "reward.boss_relic_offer.shuffle_swap_index");
+                relicOptions = bossRelicPool.Take(3).ToArray();
+            }
+        }
+        if (nativeOvergrowth && combat.ExtraCardRewardsEarned > 0)
+        {
+            var extras = extraCardOptions.ToList();
+            var upgrades = extraCardUpgradeFlags!.ToList();
+            var offset = world.CardRarityOffsetBasisPoints;
+            for (var index = 0;
+                 index < combat.ExtraCardRewardsEarned;
+                 index++)
+            {
+                var next = PrototypeNativeCardRarityOdds
+                    .GenerateEncounterCards(
+                        cardChoiceCount, state.Ascension, room, offset,
+                        state.Rng, act: world.Act,
+                        nativeRunRng: nativeRunRng);
+                extras.Add(next.Cards);
+                upgrades.Add(next.UpgradeFlags);
+                offset = next.NextOffsetBasisPoints;
+            }
+            extraCardOptions = extras.ToArray();
+            extraCardUpgradeFlags = upgrades.ToArray();
+            world = world with { CardRarityOffsetBasisPoints = offset };
+        }
+        var blackStarRelicRewardIds = new List<string>();
+        if (nativeOvergrowth && room == PrototypeRoomType.Elite)
+        {
+            var blackStarRewards = state.Player.ActiveRelics.Sum(relic =>
+                PrototypeContent.Relic(relic.RelicId)
+                    .ExtraEliteRelicRewardCount);
+            for (var index = 0; index < blackStarRewards; index++)
+            {
+                var draw = PrototypeNativeRelicGrabBag.Draw(
+                    world, state.Player, state.Rng, merchant: false,
+                    nativeRunRng: nativeRunRng);
+                world = draw.World;
+                if (draw.Id is { } relicId)
+                    blackStarRelicRewardIds.Add(relicId);
+            }
+        }
         if (nativeOvergrowth && prayerWheelGroups > 0)
         {
             // Hook.ModifyRewards happens after the original reward
             // list has been populated. Prayer Wheel appends a separate
-            // normal-combat CardReward, so its RNG rolls come after
-            // the base reward and (for elites) relic population.
+            // normal-combat CardReward, so its RNG rolls follow the
+            // base and combat-earned reward population.
             var extras = extraCardOptions.ToList();
             var upgrades = extraCardUpgradeFlags!.ToList();
             var offset = world.CardRarityOffsetBasisPoints;
@@ -4740,7 +4808,8 @@ public sealed partial class PrototypeGameEngine
                 var next = PrototypeNativeCardRarityOdds.GenerateEncounterCards(
                     cardChoiceCount, state.Ascension,
                     PrototypeRoomType.Combat, offset, state.Rng,
-                    act: world.Act);
+                    act: world.Act,
+                    nativeRunRng: nativeRunRng);
                 extras.Add(next.Cards);
                 upgrades.Add(next.UpgradeFlags);
                 offset = next.NextOffsetBasisPoints;
@@ -4764,41 +4833,11 @@ public sealed partial class PrototypeGameEngine
             ? extraCardOptions.Select(ApplyGlitterToCardRewardOptions).ToArray()
             : null;
 
-        var relicOptions =
-            room == PrototypeRoomType.Boss
-                ? PickDistinct(
-                    PrototypeContent.BossRelicPool
-                        .Where(id =>
-                            !state.Player.Relics.Any(relic =>
-                                StringComparer.Ordinal.Equals(
-                                    relic.RelicId,
-                                    id)))
-                        .ToArray(),
-                    3,
-                    state.Rng,
-                    "reward",
-                    "reward.boss_relic_offer.shuffle_swap_index",
-                    $"act:{world.Act}:floor:{world.Floor}")
-                : null;
-
         var lavaRock = ApplyLavaRockBossRewards(
             silverCrucible.Player, room, world.Act,
             relicOptions, state.Rng);
-        var extraRelicRewardIds = lavaRock.AdditionalRelicIds.ToList();
-        if (nativeOvergrowth && room == PrototypeRoomType.Elite)
-        {
-            var blackStarRewards = state.Player.ActiveRelics.Sum(relic =>
-                PrototypeContent.Relic(relic.RelicId)
-                    .ExtraEliteRelicRewardCount);
-            for (var index = 0; index < blackStarRewards; index++)
-            {
-                var draw = PrototypeNativeRelicGrabBag.Draw(
-                    world, state.Player, state.Rng, merchant: false);
-                world = draw.World;
-                if (draw.Id is { } relicId)
-                    extraRelicRewardIds.Add(relicId);
-            }
-        }
+        var extraRelicRewardIds = lavaRock.AdditionalRelicIds
+            .Concat(blackStarRelicRewardIds).ToList();
         var extraRelicRewards = extraRelicRewardIds.ToArray();
 
         var reward = new RewardState(
@@ -4863,6 +4902,7 @@ public sealed partial class PrototypeGameEngine
                 Gold = lavaRock.Player.Gold
                     + (nativeOvergrowth ? 0 : gold)
             },
+            NativeRunRng = nativeRunRng ?? state.NativeRunRng,
             World = world,
             Phase = RunPhase.Reward
         };
@@ -5101,10 +5141,10 @@ public sealed partial class PrototypeGameEngine
         }
         if (nativeRunRng is not null)
         {
-            var roll = NativeMerchantRngV111.NextUnitFloat(
+            var roll = NativePlayerRngV111.NextUnitFloat(
                 nativeRunRng,
                 "shop.merchant.card_price_modifier.unit_float",
-                NativeMerchantRngV111.ShopsStreamId,
+                NativePlayerRngV111.ShopsStreamId,
                 string.IsNullOrWhiteSpace(ownerId)
                     ? "card:" + cardId : ownerId);
             var modifier = 0.95f + (1.05f - 0.95f) * roll;
