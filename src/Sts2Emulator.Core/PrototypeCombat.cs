@@ -2716,7 +2716,7 @@ public sealed partial class PrototypeGameEngine
     };
 
     private static PrototypeQueuedOperation StratagemChoiceOperation(
-        CombatState combat)
+        CombatState combat, bool semanticStandaloneDraw = false)
     {
         var amount = combat.PlayerPowers
             .Where(power => power.PowerId == "proto.power.stratagem")
@@ -2726,7 +2726,8 @@ public sealed partial class PrototypeGameEngine
             Selection: new PrototypeCardSelectionSpec(
                 PrototypeCardZone.DrawPile,
                 amount, amount,
-                PrototypeCardSelectionResolutionKind.MoveToHand));
+                PrototypeCardSelectionResolutionKind.MoveToHand),
+            SemanticStratagemDrawSelection: semanticStandaloneDraw);
     }
 
     private static CombatState ReturnLastTurnReboundCardsToHand(
@@ -6071,7 +6072,8 @@ public sealed partial class PrototypeGameEngine
                             operation.DrawnCardKeyword,
                             (operation.DeferredDrawnCardInstanceIds ?? [])
                                 .Concat(drawn.DrawnCardInstanceIds)
-                                .Distinct().ToArray());
+                                .Distinct().ToArray(),
+                            operation.StandaloneSemanticDrawSegment);
                         var continuation =
                             new PrototypeChoiceResolutionContinuationState(
                                 SourceCardInstanceId: sourceCardInstanceId,
@@ -6136,7 +6138,9 @@ public sealed partial class PrototypeGameEngine
                                     combat.PlayerPowers.Any(power =>
                                         power.PowerId == "proto.power.stratagem" &&
                                         power.Stacks > 0) &&
-                                    combat.Hand.Length < 10);
+                                    combat.Hand.Length < 10,
+                                StandaloneSemanticDrawSegment:
+                                    operation.StandaloneSemanticDrawSegment);
                         if (drawn.ControlledAfterShuffleInsertions is
                             { Length: > 0 } afterShuffleInsertions)
                             return (player,
@@ -6161,7 +6165,9 @@ public sealed partial class PrototypeGameEngine
                         operations = new Queue<PrototypeQueuedOperation>(
                             new[]
                             {
-                                StratagemChoiceOperation(combat),
+                                StratagemChoiceOperation(
+                                    combat,
+                                    operation.StandaloneSemanticDrawSegment),
                                 operation with
                                 {
                                     Amount = drawn.RemainingCount,
@@ -6802,7 +6808,9 @@ public sealed partial class PrototypeGameEngine
                                     ? null
                                     : operation.SelectedCardTemporaryCost with { },
                             EventDispatchContinuation:
-                                eventDispatchContinuation?.Fork())
+                                eventDispatchContinuation?.Fork(),
+                            SemanticStratagemDrawSelection:
+                                operation.SemanticStratagemDrawSelection)
                     };
                     return (player, combat);
                 }
@@ -13042,7 +13050,8 @@ public sealed partial class PrototypeGameEngine
         bool fromHandDraw,
         int eventDepth,
         PrototypeCardKeywordOverrideSpec? drawnCardKeyword,
-        long[]? deferredDrawnCardInstanceIds)
+        long[]? deferredDrawnCardInstanceIds,
+        bool standaloneSemanticDrawSegment = false)
     {
         if (remainingCount < 0 || eventDepth < 0)
             throw new ArgumentOutOfRangeException(
@@ -13058,7 +13067,9 @@ public sealed partial class PrototypeGameEngine
                 deferredDrawnCardInstanceIds is null
                     ? null
                     : (long[])deferredDrawnCardInstanceIds.Clone(),
-            DrawEventDepth: eventDepth);
+            DrawEventDepth: eventDepth,
+            StandaloneSemanticDrawSegment:
+                standaloneSemanticDrawSegment);
     }
 
     private static CombatState AttachParentChoiceContinuation(
@@ -13783,7 +13794,8 @@ public sealed partial class PrototypeGameEngine
                 draw.DrawnCardKeyword,
                 (draw.DeferredKeywordCardInstanceIds ?? [])
                     .Concat(drawn.DrawnCardInstanceIds)
-                    .Distinct().ToArray());
+                    .Distinct().ToArray(),
+                draw.StandaloneSemanticDrawSegment);
             var nestedCombat = AttachDrawResumeContinuation(
                 drawn.Combat, resumeDraw, continuation);
             return state with

@@ -3428,6 +3428,38 @@ public static class PrototypeStateInvariants
         if (combat.PendingChoice is not null)
         {
             var pending = combat.PendingChoice;
+            if (pending.SemanticStratagemDrawSelection)
+            {
+                bool hasStandaloneDraw = pending.Continuation.Any(operation =>
+                    operation.Kind == PrototypeCombatEffectKind.DrawCards &&
+                    operation.StandaloneSemanticDrawSegment);
+                for (var outer = pending.OuterChoiceContinuation;
+                     !hasStandaloneDraw && outer is not null;
+                     outer = outer.Parent)
+                    if (outer.Operations.Any(operation =>
+                            operation.Kind ==
+                                PrototypeCombatEffectKind.DrawCards &&
+                            operation.StandaloneSemanticDrawSegment))
+                    {
+                        hasStandaloneDraw = true;
+                        break;
+                    }
+                int stratagemPicks = combat.PlayerPowers.Where(power =>
+                        power.PowerId == "proto.power.stratagem")
+                    .Sum(power => Math.Max(0, power.Stacks));
+                int expectedStratagemPicks = Math.Min(stratagemPicks,
+                    Math.Min(combat.DrawPile.Length,
+                        Math.Max(0, 10 - combat.Hand.Length)));
+                if (pending.ChoiceId != "select_cards" ||
+                    pending.Selection.SourceZone !=
+                        PrototypeCardZone.DrawPile ||
+                    pending.Selection.MinSelections != expectedStratagemPicks ||
+                    pending.Selection.MaxSelections != expectedStratagemPicks ||
+                    !hasStandaloneDraw || stratagemPicks <= 0 ||
+                    combat.Hand.Length >= 10)
+                    throw new InvalidOperationException(
+                        "Standalone Stratagem selection is malformed.");
+            }
             var savedChoiceOperations = new List<PrototypeQueuedOperation>(
                 pending.Continuation);
             for (var outer = pending.OuterChoiceContinuation;

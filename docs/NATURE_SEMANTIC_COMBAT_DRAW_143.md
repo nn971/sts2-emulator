@@ -40,8 +40,9 @@ This slice connects the separate provider-owned
 - Consecutive ordinary draws and deterministic `CardDrawn` hooks in a
   given combat snapshot.
 - Source-timed discard recycle with Perfect Fit ordering, after-shuffle relic
-  insertions, and drawn-card cost decisions in the standalone segment; the
-  automatic hand-draw integration also supports after-shuffle insertions.
+  insertions, Stratagem selection, and drawn-card cost decisions in the
+  standalone segment; the automatic hand-draw integration also supports
+  after-shuffle insertions.
 - Exact card instance identities and no replacement within the pile.
 - Draw count up to available pile/hand size; finite exhaustive
   two-draw/three-card enumeration.
@@ -50,14 +51,14 @@ This slice connects the separate provider-owned
 
 ## Explicit next work
 
-- Stratagem selection when the standalone draw recycles, and nested
-  `CardDrawn` choices in the standalone segment, still fail closed.
-- Stratagem combined with an after-shuffle insertion and other draw contexts
-  without a standalone, card-effect, or automatic hand-draw continuation remain
+- Nested `CardDrawn` choices in the standalone segment still fail closed.
+- Stratagem combined with after-shuffle insertion in the automatic hand-draw
+  pipeline and other draw contexts without a saved continuation remain
   unsupported.
-- Opening-hand and ordinary player-action `DrawCards`, automatic hand
-  draw pipeline, semantic deck mutation by card effects, public JSONL
-  protocol negotiation, and source-audited native parity.
+- Opening-hand and ordinary player-action `DrawCards`, semantic deck mutation
+  by card effects, public JSONL protocol negotiation, and source-audited native
+  parity. The automatic hand-draw integration is a separate stage envelope,
+  not a complete `end_turn` controller.
 - The current fixture is not a complete playable Nature episode and uses
   a supplied conditioned combat `RunState`. Its source provenance is
   determined by the caller; only the subsequent semantic draw segment has

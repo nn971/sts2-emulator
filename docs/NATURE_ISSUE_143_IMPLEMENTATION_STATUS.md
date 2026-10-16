@@ -576,3 +576,16 @@ build passes with zero warnings or errors; tests were not run for this
 checkpoint. Stratagem combined with an insertion and nested `CardDrawn`
 choices remain unsupported. Conditional probabilities remain `UNVERIFIED`; see
 [`NATURE_SEMANTIC_AUTOMATIC_HAND_DRAW_143.md`](NATURE_SEMANTIC_AUTOMATIC_HAND_DRAW_143.md).
+
+## 2026-10-17: standalone Stratagem draw selection
+
+The standalone semantic draw now suspends at Stratagem's source `select_cards`
+choice after a Nature recycle, then resumes the same remaining draw. The
+selection is identified by a serialized marker on its queued draw continuation
+and recorded as a semantic card-selection decision for replay. This also
+composes with standalone after-shuffle insertion and draw-cost stages.
+Automatic-pipeline Stratagem selection and nested `CardDrawn` choices remain
+unsupported. The Release solution build passes with zero warnings or errors;
+tests were not run for this checkpoint. Conditional probabilities remain
+`UNVERIFIED`; see
+[`NATURE_SEMANTIC_COMBAT_DRAW_143.md`](NATURE_SEMANTIC_COMBAT_DRAW_143.md).

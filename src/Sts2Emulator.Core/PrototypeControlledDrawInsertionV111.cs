@@ -166,8 +166,7 @@ public sealed partial class PrototypeGameEngine
                      power.PowerId == "proto.power.stratagem" &&
                      power.Stacks > 0))) &&
                 (!semanticDraw.StandaloneSemanticDrawSegment ||
-                 (!semanticDraw.StratagemSelectionPending &&
-                  semanticDraw.EventDepth == 0)) &&
+                 semanticDraw.EventDepth == 0) &&
                 !(semanticDraw.StandaloneSemanticDrawSegment &&
                   semanticDraw.AutomaticSemanticHandDrawSegment) &&
                 (!semanticDraw.AutomaticSemanticHandDrawSegment ||
@@ -310,6 +309,15 @@ public sealed partial class PrototypeGameEngine
                 };
             }
 
+            if (semanticDraw.StratagemSelectionPending)
+            {
+                var stratagemRun = ResumeControlledStratagemSelection(
+                    state, combat, semanticDraw, continuation);
+                return semanticDraw.StandaloneSemanticDrawSegment
+                    ? stratagemRun
+                    : ResumeControlledInsertionPipeline(stratagemRun);
+            }
+
             if (semanticDraw.StandaloneSemanticDrawSegment)
             {
                 var drawRun = state with
@@ -331,11 +339,6 @@ public sealed partial class PrototypeGameEngine
                     drawRun, semanticDraw.RemainingCount,
                     fromHandDraw: true).Run;
             }
-
-            if (semanticDraw.StratagemSelectionPending)
-                return ResumeControlledInsertionPipeline(
-                    ResumeControlledStratagemSelection(
-                        state, combat, semanticDraw, continuation));
 
             var resumedDraw = DrawCards(
                 state.Player, combat, semanticDraw.RemainingCount, state.Rng,
@@ -414,12 +417,16 @@ public sealed partial class PrototypeGameEngine
                 ? null : draw.DrawnCardKeyword with { },
             DeferredDrawnCardInstanceIds:
                 (draw.DeferredKeywordCardInstanceIds ?? []).ToArray(),
-            DrawEventDepth: draw.EventDepth);
+            DrawEventDepth: draw.EventDepth,
+            StandaloneSemanticDrawSegment:
+                draw.StandaloneSemanticDrawSegment);
         var resumedContinuation = continuation with
         {
             Operations = new[]
             {
-                StratagemChoiceOperation(combat), drawOperation
+                StratagemChoiceOperation(
+                    combat, draw.StandaloneSemanticDrawSegment),
+                drawOperation
             }.Concat(continuation.Operations).ToArray()
         };
         var resolved = ResumeChoiceResolutionContinuation(

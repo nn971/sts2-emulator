@@ -54,16 +54,17 @@ reuse the semantic insertion event and update the provider deck before
 resuming the same draw. Other recycle contexts without these saved draw frames
 still fail closed at `combat.draw.recycle` for after-shuffle insertion.
 
-When Stratagem is active, the card-effect draw frame reuses the semantic
-`select_cards` event to choose from the recycled draw pile, then resumes the
-remaining draw and queued effects. Automatic draw-cost continuations still
-need this choice composed with their saved pipeline cursor.
+When Stratagem is active, both the card-effect draw frame and standalone
+conditioned draw reuse the semantic `select_cards` event to choose from the
+recycled draw pile, then resume the remaining draw. The standalone wrapper
+records the source selection decision with the semantic draw transcript.
+Automatic hand-draw Stratagem selection remains unsupported.
 
-The real-semantic bridge now includes limited standalone and card-effect draw
-continuations, but is not a complete opening-hand/turn/card-effect/JSONL
-implementation. Standalone Stratagem selection, nested `CardDrawn` decisions,
-split-pool unknown-position deck mutation, native seeded parity, source
-probability and original-game importance weights remain separate future gates.
+The real-semantic bridge now includes limited standalone, card-effect and
+automatic hand-draw continuations, but is not a complete opening-hand/turn/
+card-effect/JSONL implementation. Nested `CardDrawn` decisions, split-pool
+unknown-position deck mutation, native seeded parity, source probability and
+original-game importance weights remain separate future gates.
 
 ## Tests
 

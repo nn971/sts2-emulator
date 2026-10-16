@@ -49,10 +49,36 @@ public sealed partial class PrototypeGameEngine
                         .ControlledSemanticDrawRequested
                     : null);
         }
-        if (result.ControlledRecyclePending || result.ShuffleSelectionPending)
+        if (result.ControlledRecyclePending)
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.draw " +
                 "operation=unsupported_nested_stage");
+        if (result.ShuffleSelectionPending)
+        {
+            if (automatic)
+                throw new NotSupportedException(
+                    "UNSUPPORTED_SEMANTIC_DECK site=combat.draw.recycle " +
+                    "operation=automatic_stratagem_selection");
+            var semanticDraw = new PrototypeControlledSemanticDrawV111(
+                result.RemainingCount, fromHandDraw, 0,
+                DrawnCardKeyword: null,
+                DeferredKeywordCardInstanceIds: [],
+                StratagemSelectionPending: false,
+                StandaloneSemanticDrawSegment: true);
+            var continuation = new PrototypeChoiceResolutionContinuationState(
+                SourceCardInstanceId: null,
+                SourceCardDestination: PrototypeCardZone.DrawPile,
+                Operations: [], PendingDiscardEvents: [],
+                PendingSlyCardInstanceIds: [], CompletionEvents: []);
+            var advancedSelection = run with
+            {
+                Player = result.Player,
+                World = world with { Combat = result.Combat }
+            };
+            var selectionRun = ResumeControlledStratagemSelection(
+                advancedSelection, result.Combat, semanticDraw, continuation);
+            return (selectionRun, result.RemainingCount);
+        }
         var advanced = run with
         {
             Player = result.Player,
@@ -162,11 +188,37 @@ public sealed partial class PrototypeGameEngine
                         .ControlledSemanticDrawRequested
                     : null);
         }
-        if (continued.ControlledRecyclePending ||
-            continued.ShuffleSelectionPending)
+        if (continued.ControlledRecyclePending)
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.draw.cost " +
                 "operation=unsupported_post_cost_stage");
+        if (continued.ShuffleSelectionPending)
+        {
+            if (automatic)
+                throw new NotSupportedException(
+                    "UNSUPPORTED_SEMANTIC_DECK site=combat.draw.cost " +
+                    "operation=automatic_stratagem_selection");
+            var semanticDraw = new PrototypeControlledSemanticDrawV111(
+                continued.RemainingCount, cost.FromHandDraw,
+                cost.EventDepth, DrawnCardKeyword: null,
+                DeferredKeywordCardInstanceIds: [],
+                StratagemSelectionPending: false,
+                StandaloneSemanticDrawSegment: true);
+            var continuation = new PrototypeChoiceResolutionContinuationState(
+                SourceCardInstanceId: null,
+                SourceCardDestination: PrototypeCardZone.DrawPile,
+                Operations: [], PendingDiscardEvents: [],
+                PendingSlyCardInstanceIds: [], CompletionEvents: []);
+            var advancedSelection = run with
+            {
+                Player = continued.Player,
+                World = world with { Combat = continued.Combat }
+            };
+            var selectionRun = ResumeControlledStratagemSelection(
+                advancedSelection, continued.Combat, semanticDraw,
+                continuation);
+            return (selectionRun, continued.RemainingCount);
+        }
         var advanced = run with
         {
             Player = continued.Player,
@@ -192,13 +244,14 @@ public sealed partial class PrototypeGameEngine
         if (insertions.Length == 0 || drawn.RemainingCount <= 0)
             throw new InvalidDataException(
                 "After-shuffle insertion lost its remaining draw cursor.");
-        if (drawn.Combat.PlayerPowers.Any(power =>
-                power.PowerId == "proto.power.stratagem" &&
-                power.Stacks > 0) && drawn.Combat.Hand.Length < 10)
+        bool stratagemSelectionPending = drawn.Combat.PlayerPowers.Any(power =>
+            power.PowerId == "proto.power.stratagem" &&
+            power.Stacks > 0) && drawn.Combat.Hand.Length < 10;
+        bool automatic = automaticHandDrawRequested is not null;
+        if (automatic && stratagemSelectionPending)
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.draw.recycle " +
                 "operation=after_shuffle_insertion_with_stratagem");
-        bool automatic = automaticHandDrawRequested is not null;
         if (automatic && (!fromHandDraw || eventDepth != 0 ||
                           automaticHandDrawRequested is not > 0))
             throw new InvalidDataException(
@@ -207,7 +260,7 @@ public sealed partial class PrototypeGameEngine
             drawn.RemainingCount, fromHandDraw, eventDepth,
             DrawnCardKeyword: null,
             DeferredKeywordCardInstanceIds: [],
-            StratagemSelectionPending: false,
+            StratagemSelectionPending: stratagemSelectionPending,
             StandaloneSemanticDrawSegment: !automatic,
             AutomaticSemanticHandDrawSegment: automatic);
         var continuation = new PrototypeChoiceResolutionContinuationState(

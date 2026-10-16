@@ -24,6 +24,10 @@ public sealed record SemanticCombatDrawV111(
     [JsonIgnore] public SemanticDrawInsertionEventV111?
         DrawInsertionPending =>
             SemanticCombatDrawEngineV111.DescribePendingDrawInsertion(this);
+    [JsonIgnore] public SemanticCardSelectionEventV111?
+        StratagemSelectionPending =>
+            SemanticCombatDrawEngineV111
+                .DescribePendingStratagemSelection(this);
     /// <summary>Cost chance follows the *already committed* card instance.
     /// Bound reflects the current source Snecko/Slither stage.</summary>
     [JsonIgnore] public RandomIndexRequestV111? CostPending
@@ -54,7 +58,8 @@ public sealed record SemanticCombatDrawV111(
         }) : null;
     [JsonIgnore] public bool AtBoundary =>
         Pending is null && RandomPileCardPending is null &&
-        DrawInsertionPending is null && CostPending is null &&
+        DrawInsertionPending is null && StratagemSelectionPending is null &&
+        CostPending is null &&
         RemainingCount == 0;
     // The provider's transcript survives across turns. Only decisions
     // newly made during THIS draw segment are replayed by this envelope.
@@ -65,6 +70,8 @@ public sealed record SemanticCombatDrawV111(
     public SemanticRandomPileCardDecisionV111[] RandomPileCardTranscript
         { get; init; } = [];
     public SemanticDrawInsertionDecisionV111[] DrawInsertionTranscript
+        { get; init; } = [];
+    public SemanticCardSelectionDecisionV111[] StratagemSelectionTranscript
         { get; init; } = [];
     public RandomIndexDecisionV111[] CostTranscript { get; init; } = [];
 
@@ -81,6 +88,8 @@ public sealed record SemanticCombatDrawV111(
         RandomPileCardTranscript = RandomPileCardTranscript
             .Select(decision => decision.Fork()).ToArray(),
         DrawInsertionTranscript = DrawInsertionTranscript
+            .Select(decision => decision.Fork()).ToArray(),
+        StratagemSelectionTranscript = StratagemSelectionTranscript
             .Select(decision => decision.Fork()).ToArray()
     };
 }
@@ -156,6 +165,92 @@ public static class SemanticCombatDrawEngineV111
         result.Validate();
         return result;
     }
+
+    internal static SemanticCardSelectionEventV111?
+        DescribePendingStratagemSelection(SemanticCombatDrawV111 state)
+    {
+        var run = state.Run;
+        var combat = run.World?.Combat;
+        var choice = combat?.PendingChoice;
+        if (state.AutomaticHandDraw ||
+            combat is not { IsPlayerTurn: true,
+                AutomaticPipelineContinuation: null,
+                SemanticDeck: { Mode: SemanticDeckStateV111.NatureMode,
+                    Pending: null } } ||
+            choice is not { ChoiceId: "select_cards",
+                SemanticStratagemDrawSelection: true } ||
+            choice.Selection.SourceZone != PrototypeCardZone.DrawPile ||
+            state.RemainingCount <= 0 ||
+            !HasStandaloneSemanticDrawOperation(choice) ||
+            !combat.PlayerPowers.Any(power =>
+                power.PowerId == "proto.power.stratagem" &&
+                power.Stacks > 0 && combat.Hand.Length < 10))
+            return null;
+
+        var decision = SemanticCardSelectionEngineV111.DescribePending(
+            run, CanonicalJson.Sha256(run));
+        int expectedSelections = ExpectedStratagemSelectionCount(combat);
+        if (decision.MaximumSelections != expectedSelections ||
+            decision.MinimumSelections != expectedSelections)
+            throw new InvalidDataException(
+                "Standalone Stratagem selection differs from its power stacks.");
+        return decision;
+    }
+
+    private static bool HasStandaloneSemanticDrawOperation(
+        PendingCombatChoiceState choice)
+    {
+        return TryGetStandaloneSemanticDrawOperation(choice, out _);
+    }
+
+    private static bool TryGetStandaloneSemanticDrawOperation(
+        PendingCombatChoiceState choice,
+        out PrototypeQueuedOperation operation)
+    {
+        if (choice.Continuation.FirstOrDefault(item =>
+                item.Kind == PrototypeCombatEffectKind.DrawCards &&
+                item.StandaloneSemanticDrawSegment) is { } drawOperation)
+        {
+            operation = drawOperation;
+            return true;
+        }
+        for (PrototypeChoiceResolutionContinuationState? current =
+                choice.OuterChoiceContinuation;
+             current is not null;
+             current = current.Parent)
+            if (TryGetStandaloneSemanticDrawOperation(current,
+                    out operation))
+                return true;
+        operation = null!;
+        return false;
+    }
+
+    private static bool TryGetStandaloneSemanticDrawOperation(
+        PrototypeChoiceResolutionContinuationState continuation,
+        out PrototypeQueuedOperation operation)
+    {
+        for (PrototypeChoiceResolutionContinuationState? current = continuation;
+             current is not null;
+             current = current.Parent)
+            if (current.Operations.FirstOrDefault(item =>
+                    item.Kind == PrototypeCombatEffectKind.DrawCards &&
+                    item.StandaloneSemanticDrawSegment) is { } drawOperation)
+            {
+                operation = drawOperation;
+                return true;
+            }
+        operation = null!;
+        return false;
+    }
+
+    private static int StratagemPickCount(CombatState combat) =>
+        combat.PlayerPowers.Where(power =>
+                power.PowerId == "proto.power.stratagem")
+            .Sum(power => Math.Max(0, power.Stacks));
+
+    private static int ExpectedStratagemSelectionCount(CombatState combat) =>
+        Math.Min(StratagemPickCount(combat),
+            Math.Min(combat.DrawPile.Length, Math.Max(0, 10 - combat.Hand.Length)));
 
     public static SemanticCombatDrawV111 Begin(
         RunState source, int cardCount, bool fromHandDraw = true)
@@ -328,10 +423,25 @@ public static class SemanticCombatDrawEngineV111
             decision.Validate();
             RunState advancedCost;
             int costRemaining;
-            using (ControlledChanceGuardV111.Enter())
-                (advancedCost, costRemaining) =
-                    PrototypeGameEngine.ResumeSemanticCombatDrawCost(
-                        run, selectedIndex);
+            if (combat.PendingChoice?.ControlledSemanticDraw?
+                    .StandaloneSemanticDrawSegment == true)
+            {
+                using (ControlledChanceGuardV111.Enter())
+                    advancedCost =
+                        PrototypeGameEngine
+                            .ResumeControlledSemanticEffectDrawCost(
+                                run, selectedIndex);
+                costRemaining = RemainingSemanticDrawCount(
+                    advancedCost, state.RemainingCount,
+                    combat.CounterState.CardsDrawnThisCombat);
+            }
+            else
+            {
+                using (ControlledChanceGuardV111.Enter())
+                    (advancedCost, costRemaining) =
+                        PrototypeGameEngine.ResumeSemanticCombatDrawCost(
+                            run, selectedIndex);
+            }
             var costNext = state with
             {
                 Run = advancedCost,
@@ -340,6 +450,24 @@ public static class SemanticCombatDrawEngineV111
             };
             Validate(costNext);
             return costNext;
+        }
+
+        if (combat.PendingChoice?.ControlledSemanticDraw?
+                .StandaloneSemanticDrawSegment == true)
+        {
+            RunState resumedDraw;
+            using (ControlledChanceGuardV111.Enter())
+                resumedDraw = PrototypeGameEngine
+                    .ResumeControlledSemanticEffectDraw(run, selectedIndex);
+            var drawNext = state with
+            {
+                Run = resumedDraw,
+                RemainingCount = RemainingSemanticDrawCount(
+                    resumedDraw, state.RemainingCount,
+                    combat.CounterState.CardsDrawnThisCombat)
+            };
+            Validate(drawNext);
+            return drawNext;
         }
 
         var deck = combat.SemanticDeck!;
@@ -365,12 +493,56 @@ public static class SemanticCombatDrawEngineV111
         return next;
     }
 
+    public static SemanticCombatDrawV111 ResolveStratagemSelection(
+        SemanticCombatDrawV111 state, string fingerprint, string actionId)
+    {
+        Validate(state);
+        if (state.Fingerprint != fingerprint)
+            throw new InvalidOperationException(
+                "Stale semantic combat draw fingerprint.");
+        ArgumentException.ThrowIfNullOrWhiteSpace(actionId);
+        var pending = state.StratagemSelectionPending ??
+            throw new InvalidOperationException(
+                "No standalone Stratagem selection is pending.");
+        if (!pending.Candidates.Any(candidate =>
+                candidate.ActionId == actionId))
+            throw new InvalidOperationException(
+                "Action is outside the pending Stratagem selection support.");
+
+        int drawnBefore = state.Run.World!.Combat!
+            .CounterState.CardsDrawnThisCombat;
+        var selection = SemanticCardSelectionEngineV111.Step(
+            state.Run.Fork(), actionId);
+        var decision = selection.Decision ??
+            throw new InvalidDataException(
+                "Stratagem selection omitted its source decision.");
+        if (CanonicalJson.Sha256(decision.Event) !=
+            CanonicalJson.Sha256(pending))
+            throw new InvalidDataException(
+                "Stratagem selection event changed during resolution.");
+        var next = state with
+        {
+            Run = selection.Run,
+            RemainingCount = RemainingSemanticDrawCount(
+                selection.Run, state.RemainingCount, drawnBefore),
+            StratagemSelectionTranscript =
+                state.StratagemSelectionTranscript
+                    .Append(decision.Fork()).ToArray()
+        };
+        Validate(next);
+        return next;
+    }
+
     private static int RemainingSemanticDrawCount(
         RunState run, int previousRemaining, int drawnBefore)
     {
         var combat = run.World?.Combat ?? throw new InvalidDataException(
             "Semantic draw continuation removed combat.");
         var pending = combat.PendingChoice;
+        if (pending?.ChoiceId == "select_cards" &&
+            TryGetStandaloneSemanticDrawOperation(
+                pending, out var drawOperation))
+            return drawOperation.Amount;
         int? savedCount = pending?.ControlledSemanticDraw?.RemainingCount ??
             pending?.ControlledDrawInsertion?.SemanticDrawContinuation?
                 .RemainingCount ??
@@ -408,11 +580,34 @@ public static class SemanticCombatDrawEngineV111
         int costCursor = 0;
         int pileCardCursor = 0;
         int insertionCursor = 0;
+        int stratagemSelectionCursor = 0;
         while (deckCursor < stored.Transcript.Length ||
                costCursor < stored.CostTranscript.Length ||
                pileCardCursor < stored.RandomPileCardTranscript.Length ||
-               insertionCursor < stored.DrawInsertionTranscript.Length)
+               insertionCursor < stored.DrawInsertionTranscript.Length ||
+               stratagemSelectionCursor <
+                   stored.StratagemSelectionTranscript.Length)
         {
+            if (reconstructed.StratagemSelectionPending is { } selection)
+            {
+                if (stratagemSelectionCursor >=
+                    stored.StratagemSelectionTranscript.Length)
+                    throw new InvalidDataException(
+                        "Missing standalone Stratagem selection in replay.");
+                var selectionDecision =
+                    stored.StratagemSelectionTranscript[
+                        stratagemSelectionCursor];
+                selectionDecision.Validate();
+                if (CanonicalJson.Sha256(selectionDecision.Event) !=
+                    CanonicalJson.Sha256(selection))
+                    throw new InvalidDataException(
+                        "Stratagem selection transcript diverges from source support.");
+                reconstructed = ResolveStratagemSelection(
+                    reconstructed, reconstructed.Fingerprint,
+                    selectionDecision.ActionId);
+                stratagemSelectionCursor++;
+                continue;
+            }
             if (reconstructed.RandomPileCardPending is { } pileCard)
             {
                 if (pileCardCursor >=
@@ -543,10 +738,16 @@ public static class SemanticCombatDrawEngineV111
              combat.AutomaticPipelineContinuation is not null) ||
             combat.PendingKnowledgeDemonChoice is not null ||
             state.CostTranscript is null ||
-            state.DrawInsertionTranscript is null)
+            state.DrawInsertionTranscript is null ||
+            state.StratagemSelectionTranscript is null)
             throw new InvalidDataException("Invalid semantic combat draw stage.");
         SemanticDeckEngineV111.Validate(deck);
         var cost = combat.PendingChoice?.ControlledDrawCost;
+        var controlledSemanticDraw =
+            combat.PendingChoice?.ControlledSemanticDraw;
+        bool standaloneSemanticDrawPending = controlledSemanticDraw?
+            .StandaloneSemanticDrawSegment == true;
+        var stratagemSelectionPending = state.StratagemSelectionPending;
         if (state.AutomaticHandDraw)
         {
             var cursor = combat.AutomaticPipelineContinuation;
@@ -580,7 +781,9 @@ public static class SemanticCombatDrawEngineV111
         }
         if ((combat.PendingChoice is not null && cost is null &&
              randomPileCardPending is null &&
-             drawInsertionPending is null) ||
+             drawInsertionPending is null &&
+             !standaloneSemanticDrawPending &&
+             stratagemSelectionPending is null) ||
             (cost is not null &&
              (deck.Pending is not null ||
               cost.RemainingCount != state.RemainingCount ||
@@ -589,7 +792,9 @@ public static class SemanticCombatDrawEngineV111
               !PrototypeGameEngine.ValidateControlledDrawCost(
                   state.Run.Player, combat, cost with { FromHandDraw = true }))) ||
             (deck.Pending is null && cost is null &&
-             drawInsertionPending is null && state.RemainingCount != 0) ||
+             drawInsertionPending is null &&
+             stratagemSelectionPending is null &&
+             state.RemainingCount != 0) ||
             (deck.Pending is not null && state.RemainingCount <= 0))
             throw new InvalidDataException(
                 "Semantic deck/drawn-cost checkpoint is inconsistent.");
@@ -608,6 +813,24 @@ public static class SemanticCombatDrawEngineV111
             decision.Validate();
         foreach (var decision in state.DrawInsertionTranscript)
             decision.Validate();
+        foreach (var decision in state.StratagemSelectionTranscript)
+            decision.Validate();
+        if (standaloneSemanticDrawPending &&
+            controlledSemanticDraw!.RemainingCount != state.RemainingCount)
+            throw new InvalidDataException(
+                "Standalone semantic draw continuation has a stale count.");
+        if (stratagemSelectionPending is { } selectionEvent)
+        {
+            var operation = TryGetStandaloneSemanticDrawOperation(
+                combat.PendingChoice!, out var draw)
+                ? draw : null;
+            if (operation is null || state.RemainingCount <= 0 ||
+                operation.Amount != state.RemainingCount ||
+                selectionEvent.MaximumSelections !=
+                    ExpectedStratagemSelectionCount(combat))
+                throw new InvalidDataException(
+                    "Standalone Stratagem selection cursor is inconsistent.");
+        }
         if (drawInsertionPending is { } insertionEvent)
         {
             var insertion = combat.PendingChoice?.ControlledDrawInsertion;
