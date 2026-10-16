@@ -80,7 +80,13 @@ public static class PrototypeNativeLaterActMap
         public int NextInt(int maxExclusive, string siteId)
         {
             if (!native)
-                return PrototypeRng.NextInt(bundle, streamId, maxExclusive);
+                return LegacyRandomChoiceV111.ChooseBoundedInteger(
+                    bundle,
+                    siteId,
+                    streamId,
+                    ownerId + ":" + siteId,
+                    maxExclusive,
+                    NextOrdinal(siteId)).SelectedIndex;
             if (maxExclusive <= 0)
                 throw new ArgumentOutOfRangeException(nameof(maxExclusive));
             var decision = _nativeProvider.Resolve(new RandomIndexRequestV111(
@@ -94,7 +100,15 @@ public static class PrototypeNativeLaterActMap
         {
             if (!native)
             {
-                PrototypeRng.Shuffle(bundle, streamId, values);
+                var legacyOrdinal = _ordinals.GetValueOrDefault(siteId);
+                var legacyChoices = LegacyFisherYatesV111.ShuffleInPlace(
+                    values,
+                    bundle,
+                    streamId,
+                    siteId,
+                    ownerId + ":" + siteId,
+                    legacyOrdinal);
+                _ordinals[siteId] = legacyOrdinal + legacyChoices.Length;
                 return;
             }
             var ordinal = _ordinals.GetValueOrDefault(siteId);
@@ -109,7 +123,9 @@ public static class PrototypeNativeLaterActMap
         {
             if (!native)
                 return SampleTruncatedGaussian(
-                    bundle, mean, standardDeviation, min, max);
+                    bundle, streamId, ownerId, siteId,
+                    mean, standardDeviation, min, max,
+                    NextOrdinal(siteId));
             var decision = _nativeGaussianProvider.Resolve(
                 new RandomGaussianIntRequestV111(
                     siteId, streamId, ownerId, NextOrdinal(siteId),
@@ -347,17 +363,31 @@ public static class PrototypeNativeLaterActMap
 
     private static int SampleTruncatedGaussian(
         RngBundle rng,
+        string streamId,
+        string ownerId,
+        string siteId,
         int mean,
         int standardDeviation,
         int min,
-        int max)
+        int max,
+        int sampleOrdinal)
     {
         while (true)
         {
-            var a = 1.0 - (PrototypeRng.NextInt(
-                rng, "map", int.MaxValue) / (double)int.MaxValue);
-            var b = 1.0 - (PrototypeRng.NextInt(
-                rng, "map", int.MaxValue) / (double)int.MaxValue);
+            var componentOwner = ownerId + ":" + siteId + ":sample:"
+                + sampleOrdinal;
+            var a = 1.0 - (LegacyRandomChoiceV111.ChooseBoundedInteger(
+                rng,
+                siteId + ".component",
+                streamId,
+                componentOwner,
+                int.MaxValue).SelectedIndex / (double)int.MaxValue);
+            var b = 1.0 - (LegacyRandomChoiceV111.ChooseBoundedInteger(
+                rng,
+                siteId + ".component",
+                streamId,
+                componentOwner,
+                int.MaxValue).SelectedIndex / (double)int.MaxValue);
             var standardNormal = Math.Sqrt(-2.0 * Math.Log(a))
                 * Math.Sin(2.0 * Math.PI * b);
             var result = (int)Math.Round(

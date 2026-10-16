@@ -249,7 +249,8 @@ public static class LegacyFisherYatesV111
         RngBundle streams,
         string streamId,
         string siteId,
-        string ownerId)
+        string ownerId,
+        int? ordinal = null)
     {
         ArgumentNullException.ThrowIfNull(values);
         ArgumentNullException.ThrowIfNull(streams);
@@ -267,10 +268,13 @@ public static class LegacyFisherYatesV111
         if (matchingStreams.Length != 1)
             throw new InvalidOperationException(
                 "Legacy shuffle stream ownership is ambiguous.");
-        var callOrdinal = matchingStreams[0].CallCount ?? 0;
-        if (callOrdinal < 0 || callOrdinal > int.MaxValue)
+        var streamOrdinal = matchingStreams[0].CallCount ?? 0;
+        if (streamOrdinal < 0 || streamOrdinal > int.MaxValue)
             throw new NotSupportedException(
                 "Legacy shuffle provider ordinal exceeds the request range.");
+        var callOrdinal = ordinal ?? (int)streamOrdinal;
+        if (callOrdinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
         return NativeFisherYatesV111.ShuffleInPlace(
             values,
             streams,
@@ -278,7 +282,7 @@ public static class LegacyFisherYatesV111
             streamId,
             ownerId,
             siteId,
-            (int)callOrdinal);
+            callOrdinal);
     }
 }
 

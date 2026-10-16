@@ -132,12 +132,19 @@ reference distribution is claimed.
 | `map.legacy.second_edge_target.index_draw` | act + source node + target support / legacy `map` | Partial: least-incoming available targets | No: legacy typed index provider only | No | No: map generation remains source-owned | No | No |
 | `map.legacy.required_room.node.index_draw` | act + floor + required room / legacy `map` | Partial: legal nodes for each required room | No: legacy typed index provider only | No | No: map generation remains source-owned | No | No |
 | `map.legacy.room_assignment.index_draw` | act + floor + node / legacy `map` | Partial: legal room pool after duplicate-special filtering | No: legacy typed index provider only | No | No: map generation remains source-owned | No | No |
-| `map.later_act.path_start_column.index_draw` | act map / `context.act_map.*` | Partial: seven path starts and second-path collision retries | Yes: bounded typed provider requests | No: provider-specific result/cursor regression pending | No | No | No |
-| `map.later_act.path_delta.shuffle_swap_index` | act map / `context.act_map.*` | Partial: ordered `[-1, 0, 1]` path deltas | Yes: typed provider at each descending swap | No: provider-specific result/cursor regression pending | No | No | No |
-| `map.later_act.glory_rest_count.index_draw` | Glory map / `context.act_map.*` | Yes: source `NextInt(2)` rest quota | Yes: bounded typed provider request | No: provider-specific result/cursor regression pending | No | No | No |
-| `map.later_act.room_assignment.shuffle_swap_index` | act map / `context.act_map.*` | Partial: ordered unassigned points, shuffled per room quota | Yes: typed provider at each descending swap | No: provider-specific result/cursor regression pending | No | No | No |
-| `map.later_act.hive_rest_count.gaussian_int` | Hive map / `context.act_map.*` | Yes: truncated rounded Gaussian, inclusive 6–7 | Yes: typed Gaussian-int provider preserves native rejection sampling | No: provider-specific result/cursor regression pending | No | No | No |
-| `map.later_act.unknown_count.gaussian_int` | Hive/Glory map / `context.act_map.*` | Yes: truncated rounded Gaussian 10–14, then minus one | Yes: typed Gaussian-int provider preserves native rejection sampling | No: provider-specific result/cursor regression pending | No | No | No |
+| `map.overgrowth.path_start_column.index_draw` | Act 1 path ordinal + retry / legacy `map` | Partial: seven path starts and second-path collision retries | No: legacy typed bounded-integer provider only | No | No: map generation remains source-owned | No | No |
+| `map.overgrowth.path_delta.shuffle_swap_index` | Act 1 path + floor / legacy `map` | Partial: ordered `[-1, 0, 1]` path deltas | No: shared Fisher–Yates loop with legacy typed provider | No | No: map generation remains source-owned | No | No |
+| `map.overgrowth.rest_count.gaussian_component` | Act 1 rest quota / legacy `map` | Partial: Box–Muller approximation using bounded integer components and truncation | No: legacy typed bounded-integer provider only | No | No: map generation remains source-owned | No | No |
+| `map.overgrowth.unknown_count.gaussian_component` | Act 1 unknown quota / legacy `map` | Partial: Box–Muller approximation using bounded integer components and truncation | No: legacy typed bounded-integer provider only | No | No: map generation remains source-owned | No | No |
+| `map.overgrowth.room_assignment.shuffle_swap_index` | Act 1 room type + attempt + ordered unassigned points / legacy `map` | Partial: source-shaped ordered pool and descending Fisher–Yates swaps | No: shared Fisher–Yates loop with legacy typed provider | No | No: map generation remains source-owned | No | No |
+| `map.later_act.path_start_column.index_draw` | act map / `context.act_map.*` or legacy `map` | Partial: seven path starts and second-path collision retries | Yes: native provider and legacy typed bounded-integer requests | No: provider-specific result/cursor regression pending | No | No | No |
+| `map.later_act.path_delta.shuffle_swap_index` | act map / `context.act_map.*` or legacy `map` | Partial: ordered `[-1, 0, 1]` path deltas | Yes: native and legacy typed provider at each descending swap | No: provider-specific result/cursor regression pending | No | No | No |
+| `map.later_act.glory_rest_count.index_draw` | Glory map / `context.act_map.*` or legacy `map` | Yes: source `NextInt(2)` rest quota | Yes: native provider and legacy typed bounded-integer request | No: provider-specific result/cursor regression pending | No | No | No |
+| `map.later_act.room_assignment.shuffle_swap_index` | act map / `context.act_map.*` or legacy `map` | Partial: ordered unassigned points, shuffled per room quota | Yes: native and legacy typed provider at each descending swap | No: provider-specific result/cursor regression pending | No | No | No |
+| `map.later_act.hive_rest_count.gaussian_int` | Hive map / `context.act_map.*` or legacy `map` | Yes: native truncated rounded Gaussian 6–7; legacy Box–Muller bounded-integer approximation | Yes: native typed Gaussian-int and legacy typed component requests | No: provider-specific result/cursor regression pending | No | No | No |
+| `map.later_act.unknown_count.gaussian_int` | Hive/Glory map / `context.act_map.*` or legacy `map` | Yes: native truncated rounded Gaussian 10–14 then minus one; legacy Box–Muller approximation | Yes: native typed Gaussian-int and legacy typed component requests | No: provider-specific result/cursor regression pending | No | No | No |
+| `event.unknown_room.odds.ticket` | act/floor + Unknown room / legacy `event` | Partial: bounded integer approximation of source `NextFloat` odds; forced-event rooms still consume one draw | No: legacy typed bounded-integer provider only | No | No: room resolution remains source-owned | No | No |
+| `treasure.relic_model.index_draw` | act/floor + ordered unowned relic pool / legacy `reward` | Partial: restricted prototype relic model pool | No: legacy typed index provider only | No | No: treasure generation remains source-owned | No | No |
 
 This is the migrated typed-site inventory, not a complete v0.111 RNG
 inventory. Other encounter resolvers, summon/death lifecycle effects,
@@ -163,7 +170,7 @@ pool omits locked or unimplemented source card models.
 The direct API source census is generated by
 [`tools/rng_callsite_inventory.py`](../tools/rng_callsite_inventory.py) and
 stored in [`RNG_DIRECT_CALLSITE_CENSUS.md`](RNG_DIRECT_CALLSITE_CENSUS.md).
-The current source has 95 direct calls to the three scanned APIs: 67 legacy
+The current source has 83 direct calls to the three scanned APIs: 55 legacy
 `PrototypeRng` calls, 16 `NativeRngV111` primitive calls, and 12
 `NativeFisherYatesV111` calls. The report provides file, line, expression and
 review category. It is a code-site tracing aid; indirect provider dispatch,

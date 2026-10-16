@@ -31,8 +31,12 @@ public sealed partial class PrototypeGameEngine
 
         var odds = world.UnknownRoomOdds
             ?? new PrototypeUnknownRoomOddsState();
-        var roll = PrototypeRng.NextInt(
-            rng, "event", PrototypeUnknownRoomOddsState.Scale);
+        var roll = LegacyRandomChoiceV111.ChooseBoundedInteger(
+            rng,
+            "event.unknown_room.odds.ticket",
+            "event",
+            $"act:{world.Act}:floor:{world.Floor}:unknown_room",
+            PrototypeUnknownRoomOddsState.Scale).SelectedIndex;
 
         // UnknownMapPointOdds.Roll consumes NextFloat even when a map
         // modifier permits only Event. Disallowed non-event odds do not grow.
@@ -90,8 +94,13 @@ public sealed partial class PrototypeGameEngine
                 .ToArray();
             relicId = available.Length == 0
                 ? null
-                : available[PrototypeRng.NextInt(
-                    state.Rng, "reward", available.Length)];
+                : available[LegacyRandomChoiceV111.ChooseIndexRange(
+                    state.Rng,
+                    "treasure.relic_model.index_draw",
+                    "reward",
+                    $"act:{world.Act}:floor:{world.Floor}:pool:"
+                        + CanonicalJson.Sha256(available),
+                    available.Length).SelectedIndex];
         }
 
         if (relicId is null)

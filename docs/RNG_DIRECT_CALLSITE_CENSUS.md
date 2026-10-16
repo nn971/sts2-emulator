@@ -2,11 +2,11 @@
 
 Direct qualified calls to PrototypeRng, NativeRngV111, and NativeFisherYatesV111 in Sts2Emulator.Core. This does not include indirect delegates, random provider interfaces, third-party/native source callsites, or prove that every source operation is mapped.
 
-Direct call expressions: **95**.
+Direct call expressions: **83**.
 
 Counts by direct API family:
 
-- `legacy_prototype_api`: 67
+- `legacy_prototype_api`: 55
 - `native_primitive_api`: 16
 - `native_shuffle_mechanics`: 12
 
@@ -66,20 +66,8 @@ Rows distinguish legacy prototype calls, native primitive calls, generic shuffle
 | [`src/Sts2Emulator.Core/PrototypeNativeGloryTinker.cs:255`](../src/Sts2Emulator.Core/PrototypeNativeGloryTinker.cs#L255) | `PrototypeRng` | `NextInt` | `var index = PrototypeRng.NextInt(rng, "combat", candidates.Count);` | `prototype_callsite_needs_semantic_site_mapping` |
 | [`src/Sts2Emulator.Core/PrototypeNativeGloryTrial.cs:65`](../src/Sts2Emulator.Core/PrototypeNativeGloryTrial.cs#L65) | `PrototypeRng` | `NextInt` | `2 + PrototypeRng.NextInt(state.Rng, "event", 3)` | `prototype_callsite_needs_semantic_site_mapping` |
 | [`src/Sts2Emulator.Core/PrototypeNativeHiveEvents.cs:346`](../src/Sts2Emulator.Core/PrototypeNativeHiveEvents.cs#L346) | `PrototypeRng` | `NextInt` | `PrototypeRng.NextInt(state.Rng, "event", eligible.Length)];` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeNativeLaterActMap.cs:83`](../src/Sts2Emulator.Core/PrototypeNativeLaterActMap.cs#L83) | `PrototypeRng` | `NextInt` | `return PrototypeRng.NextInt(bundle, streamId, maxExclusive);` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeNativeLaterActMap.cs:97`](../src/Sts2Emulator.Core/PrototypeNativeLaterActMap.cs#L97) | `PrototypeRng` | `Shuffle` | `PrototypeRng.Shuffle(bundle, streamId, values);` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeNativeLaterActMap.cs:101`](../src/Sts2Emulator.Core/PrototypeNativeLaterActMap.cs#L101) | `NativeFisherYatesV111` | `ShuffleInPlace` | `var choices = NativeFisherYatesV111.ShuffleInPlace(` | `shuffle_callsite_needs_stable_site_link` |
-| [`src/Sts2Emulator.Core/PrototypeNativeLaterActMap.cs:357`](../src/Sts2Emulator.Core/PrototypeNativeLaterActMap.cs#L357) | `PrototypeRng` | `NextInt` | `var a = 1.0 - (PrototypeRng.NextInt(` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeNativeLaterActMap.cs:359`](../src/Sts2Emulator.Core/PrototypeNativeLaterActMap.cs#L359) | `PrototypeRng` | `NextInt` | `var b = 1.0 - (PrototypeRng.NextInt(` | `prototype_callsite_needs_semantic_site_mapping` |
+| [`src/Sts2Emulator.Core/PrototypeNativeLaterActMap.cs:115`](../src/Sts2Emulator.Core/PrototypeNativeLaterActMap.cs#L115) | `NativeFisherYatesV111` | `ShuffleInPlace` | `var choices = NativeFisherYatesV111.ShuffleInPlace(` | `shuffle_callsite_needs_stable_site_link` |
 | [`src/Sts2Emulator.Core/PrototypeNativeOrobasRelics.cs:199`](../src/Sts2Emulator.Core/PrototypeNativeOrobasRelics.cs#L199) | `PrototypeRng` | `Shuffle` | `PrototypeRng.Shuffle(rng, "event", candidates);` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeNativeOvergrowthMap.cs:56`](../src/Sts2Emulator.Core/PrototypeNativeOvergrowthMap.cs#L56) | `PrototypeRng` | `NextInt` | `var start = PrototypeRng.NextInt(rng, "map", MapWidth);` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeNativeOvergrowthMap.cs:61`](../src/Sts2Emulator.Core/PrototypeNativeOvergrowthMap.cs#L61) | `PrototypeRng` | `NextInt` | `start = PrototypeRng.NextInt(rng, "map", MapWidth);` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeNativeOvergrowthMap.cs:70`](../src/Sts2Emulator.Core/PrototypeNativeOvergrowthMap.cs#L70) | `PrototypeRng` | `Shuffle` | `PrototypeRng.Shuffle(rng, "map", deltas);` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeNativeOvergrowthMap.cs:158`](../src/Sts2Emulator.Core/PrototypeNativeOvergrowthMap.cs#L158) | `PrototypeRng` | `Shuffle` | `PrototypeRng.Shuffle(rng, "map", order);` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeNativeOvergrowthMap.cs:210`](../src/Sts2Emulator.Core/PrototypeNativeOvergrowthMap.cs#L210) | `PrototypeRng` | `NextInt` | `var a = 1.0 - (PrototypeRng.NextInt(` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeNativeOvergrowthMap.cs:212`](../src/Sts2Emulator.Core/PrototypeNativeOvergrowthMap.cs#L212) | `PrototypeRng` | `NextInt` | `var b = 1.0 - (PrototypeRng.NextInt(` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeNativeOvergrowthRooms.cs:34`](../src/Sts2Emulator.Core/PrototypeNativeOvergrowthRooms.cs#L34) | `PrototypeRng` | `NextInt` | `var roll = PrototypeRng.NextInt(` | `prototype_callsite_needs_semantic_site_mapping` |
-| [`src/Sts2Emulator.Core/PrototypeNativeOvergrowthRooms.cs:93`](../src/Sts2Emulator.Core/PrototypeNativeOvergrowthRooms.cs#L93) | `PrototypeRng` | `NextInt` | `: available[PrototypeRng.NextInt(` | `prototype_callsite_needs_semantic_site_mapping` |
 | [`src/Sts2Emulator.Core/PrototypeNativePersistentCombatEndHooks.cs:115`](../src/Sts2Emulator.Core/PrototypeNativePersistentCombatEndHooks.cs#L115) | `PrototypeRng` | `NextInt` | `PrototypeRng.NextInt(rng, "event", candidates.Length)];` | `prototype_callsite_needs_semantic_site_mapping` |
 | [`src/Sts2Emulator.Core/PrototypeNativePotionCourier.cs:63`](../src/Sts2Emulator.Core/PrototypeNativePotionCourier.cs#L63) | `PrototypeRng` | `NextInt` | `return ImplementedUncommonPotionPool[PrototypeRng.NextInt(` | `prototype_callsite_needs_semantic_site_mapping` |
 | [`src/Sts2Emulator.Core/PrototypeNativePotionRewardOdds.cs:34`](../src/Sts2Emulator.Core/PrototypeNativePotionRewardOdds.cs#L34) | `PrototypeRng` | `NextInt` | `var roll = PrototypeRng.NextInt(rng, "reward", 1000);` | `prototype_callsite_needs_semantic_site_mapping` |
@@ -105,7 +93,7 @@ Rows distinguish legacy prototype calls, native primitive calls, generic shuffle
 | [`src/Sts2Emulator.Core/RandomGaussianIntProvidersV111.cs:79`](../src/Sts2Emulator.Core/RandomGaussianIntProvidersV111.cs#L79) | `NativeRngV111` | `NextGaussianInt` | `var value = NativeRngV111.NextGaussianInt(` | `provider_or_codec_infrastructure` |
 | [`src/Sts2Emulator.Core/RandomIndexProvidersV111.cs:91`](../src/Sts2Emulator.Core/RandomIndexProvidersV111.cs#L91) | `NativeRngV111` | `NextInt` | `int index = NativeRngV111.NextInt(streams, request.StreamId, request.SupportCount);` | `provider_or_codec_infrastructure` |
 | [`src/Sts2Emulator.Core/RandomIndexProvidersV111.cs:128`](../src/Sts2Emulator.Core/RandomIndexProvidersV111.cs#L128) | `PrototypeRng` | `NextInt` | `var selectedIndex = PrototypeRng.NextInt(` | `provider_or_codec_infrastructure` |
-| [`src/Sts2Emulator.Core/RandomIndexProvidersV111.cs:274`](../src/Sts2Emulator.Core/RandomIndexProvidersV111.cs#L274) | `NativeFisherYatesV111` | `ShuffleInPlace` | `return NativeFisherYatesV111.ShuffleInPlace(` | `provider_or_codec_infrastructure` |
+| [`src/Sts2Emulator.Core/RandomIndexProvidersV111.cs:278`](../src/Sts2Emulator.Core/RandomIndexProvidersV111.cs#L278) | `NativeFisherYatesV111` | `ShuffleInPlace` | `return NativeFisherYatesV111.ShuffleInPlace(` | `provider_or_codec_infrastructure` |
 | [`src/Sts2Emulator.Core/RandomRangedDoubleProvidersV111.cs:79`](../src/Sts2Emulator.Core/RandomRangedDoubleProvidersV111.cs#L79) | `NativeRngV111` | `NextDouble` | `var value = NativeRngV111.NextDouble(` | `provider_or_codec_infrastructure` |
 | [`src/Sts2Emulator.Core/RandomRangedFloatProvidersV111.cs:79`](../src/Sts2Emulator.Core/RandomRangedFloatProvidersV111.cs#L79) | `NativeRngV111` | `NextFloat` | `var value = NativeRngV111.NextFloat(` | `provider_or_codec_infrastructure` |
 | [`src/Sts2Emulator.Core/RandomUnitFloatProvidersV111.cs:77`](../src/Sts2Emulator.Core/RandomUnitFloatProvidersV111.cs#L77) | `NativeRngV111` | `NextFloat` | `var value = NativeRngV111.NextFloat(streams, request.StreamId);` | `provider_or_codec_infrastructure` |

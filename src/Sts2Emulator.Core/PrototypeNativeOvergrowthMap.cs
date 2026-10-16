@@ -53,12 +53,22 @@ public static class PrototypeNativeOvergrowthMap
         // starting column is forced to differ from the first.
         for (var path = 0; path < 7; path++)
         {
-            var start = PrototypeRng.NextInt(rng, "map", MapWidth);
+            var start = LegacyRandomChoiceV111.ChooseBoundedInteger(
+                rng,
+                "map.overgrowth.path_start_column.index_draw",
+                "map",
+                $"act:1:path:{path}:start",
+                MapWidth).SelectedIndex;
             if (path == 1)
             {
                 while (starts.Contains(start))
                 {
-                    start = PrototypeRng.NextInt(rng, "map", MapWidth);
+                    start = LegacyRandomChoiceV111.ChooseBoundedInteger(
+                        rng,
+                        "map.overgrowth.path_start_column.index_draw",
+                        "map",
+                        $"act:1:path:{path}:start_retry",
+                        MapWidth).SelectedIndex;
                 }
             }
             starts.Add(start);
@@ -67,7 +77,12 @@ public static class PrototypeNativeOvergrowthMap
             for (var row = 1; row < RoomRows; row++)
             {
                 var deltas = new[] { -1, 0, 1 };
-                PrototypeRng.Shuffle(rng, "map", deltas);
+                _ = LegacyFisherYatesV111.ShuffleInPlace(
+                    deltas,
+                    rng,
+                    "map",
+                    "map.overgrowth.path_delta.shuffle_swap_index",
+                    $"act:1:path:{path}:floor:{row}:deltas");
                 Point? chosen = null;
                 foreach (var delta in deltas)
                 {
@@ -134,8 +149,14 @@ public static class PrototypeNativeOvergrowthMap
         // (mean 12, sigma 1, clamp [10,14]). Use the same rejection
         // algorithm; output draws remain non-native until the map RNG
         // codec and source call-order are translated.
-        var restCount = SampleTruncatedGaussian(rng, 7, 1, 6, 7);
-        var unknownCount = SampleTruncatedGaussian(rng, 12, 1, 10, 14);
+        var restCount = SampleTruncatedGaussian(
+            rng, 7, 1, 6, 7,
+            "map.overgrowth.rest_count.gaussian_component",
+            "act:1:rest_count");
+        var unknownCount = SampleTruncatedGaussian(
+            rng, 12, 1, 10, 14,
+            "map.overgrowth.unknown_count.gaussian_component",
+            "act:1:unknown_count");
         var quotas = new (PrototypeRoomType Type, int Count)[]
         {
             (PrototypeRoomType.Rest, restCount),
@@ -155,7 +176,14 @@ public static class PrototypeNativeOvergrowthMap
                     .OrderBy(point => point.Floor)
                     .ThenBy(point => point.Column)
                     .ToArray();
-                PrototypeRng.Shuffle(rng, "map", order);
+                _ = LegacyFisherYatesV111.ShuffleInPlace(
+                    order,
+                    rng,
+                    "map",
+                    "map.overgrowth.room_assignment.shuffle_swap_index",
+                    "act:1:room:" + type + ":attempt:" + attempt + ":pool:"
+                        + CanonicalJson.Sha256(order.Select(point => point.Id)
+                            .ToArray()));
                 foreach (var point in order)
                 {
                     if (remaining == 0)
@@ -203,14 +231,18 @@ public static class PrototypeNativeOvergrowthMap
         int mean,
         int standardDeviation,
         int min,
-        int max)
+        int max,
+        string siteId,
+        string ownerId)
     {
         while (true)
         {
-            var a = 1.0 - (PrototypeRng.NextInt(
-                rng, "map", int.MaxValue) / (double)int.MaxValue);
-            var b = 1.0 - (PrototypeRng.NextInt(
-                rng, "map", int.MaxValue) / (double)int.MaxValue);
+            var a = 1.0 - (LegacyRandomChoiceV111.ChooseBoundedInteger(
+                rng, siteId, "map", ownerId, int.MaxValue).SelectedIndex
+                / (double)int.MaxValue);
+            var b = 1.0 - (LegacyRandomChoiceV111.ChooseBoundedInteger(
+                rng, siteId, "map", ownerId, int.MaxValue).SelectedIndex
+                / (double)int.MaxValue);
             var standardNormal = Math.Sqrt(-2.0 * Math.Log(a))
                 * Math.Sin(2.0 * Math.PI * b);
             var result = (int)Math.Round(
