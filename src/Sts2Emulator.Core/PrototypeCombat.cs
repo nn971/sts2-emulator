@@ -2726,12 +2726,26 @@ public sealed partial class PrototypeGameEngine
                 continue;
             }
 
+            var semanticDeck = combat.SemanticDeck;
+            if (fromDraw && semanticDeck is not null)
+            {
+                if (!SemanticDeckEngineV111.AllCardInstanceIds(semanticDeck)
+                    .Order().SequenceEqual(combat.DrawPile.Order()))
+                    throw new InvalidDataException(
+                        "Rebound card return found stale semantic draw-pile state.");
+                // The played Rebound identity is known to mechanics, but its
+                // current draw-pile position may still be unresolved.
+                semanticDeck = SemanticDeckEngineV111.RemoveCardInstance(
+                    semanticDeck, id);
+            }
+
             combat = combat with
             {
                 DrawPile = combat.DrawPile.Where(x => x != id).ToArray(),
                 DiscardPile = combat.DiscardPile.Where(x => x != id).ToArray(),
                 ExhaustPile = combat.ExhaustPile.Where(x => x != id).ToArray(),
-                Hand = combat.Hand.Append(id).ToArray()
+                Hand = combat.Hand.Append(id).ToArray(),
+                SemanticDeck = semanticDeck
             };
         }
         return combat;
