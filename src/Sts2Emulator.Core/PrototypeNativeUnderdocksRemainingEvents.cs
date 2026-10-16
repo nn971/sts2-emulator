@@ -141,6 +141,7 @@ public static class PrototypeNativeEndlessConveyor
 public static class PrototypeNativePunchOff
 {
     public const string EventId = "proto.native.underdocks.punch_off";
+    public const string NativeRngEventId = "PUNCH_OFF";
     public const string EncounterId = "proto.encounter.punch_off_event";
 
     public static PrototypeEncounterDefinition Encounter { get; } = new(

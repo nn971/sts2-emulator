@@ -60,6 +60,10 @@ public static class PrototypeStateInvariants
             state,
             PrototypeNativeEndlessConveyor.EventId,
             PrototypeNativeEndlessConveyor.NativeRngEventId);
+        NativeEventContextRngV111.Validate(
+            state,
+            PrototypeNativePunchOff.EventId,
+            PrototypeNativePunchOff.NativeRngEventId);
         if (state.Ascension < 0)
         {
             throw new InvalidOperationException(

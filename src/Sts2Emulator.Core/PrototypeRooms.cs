@@ -861,6 +861,8 @@ public sealed partial class PrototypeGameEngine
                                 .InfestedAutomatonNativeRngEventId,
                         PrototypeNativeEndlessConveyor.EventId =>
                             PrototypeNativeEndlessConveyor.NativeRngEventId,
+                        PrototypeNativePunchOff.EventId =>
+                            PrototypeNativePunchOff.NativeRngEventId,
                         _ => null
                     }),
                 NativeEventGold:
@@ -924,6 +926,29 @@ public sealed partial class PrototypeGameEngine
                         : null),
             EventHistory = world.EventIds.Append(selected.Id).ToArray()
         };
+
+        if (selected.Id == PrototypeNativePunchOff.EventId
+            && state.NativeRunRng is not null)
+        {
+            state = state with { World = world };
+            var draw = NativeEventContextRngV111.ResolveBoundedInteger(
+                state,
+                world.Event!,
+                PrototypeNativePunchOff.NativeRngEventId,
+                "event.generated_gold.index_draw",
+                $"event:{selected.Id}:gold:primary",
+                8);
+            state = draw.State;
+            world = state.World!;
+            world = world with
+            {
+                Event = world.Event! with
+                {
+                    NativeEventGold = 91 + draw.SelectedValue
+                }
+            };
+            state = state with { World = world };
+        }
 
         if (selected.Id == PrototypeNativeStoneOfAllTime.EventId
             && state.NativeRunRng is not null)

@@ -515,7 +515,8 @@ potion. Full native potion-pool and cursor parity remain unverified.
   Colorless-card draws. Weighted dishes use the source unit-float boundary;
   old saves without a context retain the legacy event fallback. Seeded parity
   remains unverified. Punch Off also consumes its pinned event-entry
-  dynamic-gold roll (91–98), even when that value is unused by its options.
+  dynamic-gold roll (91–98) through the persisted `PUNCH_OFF` context, even
+  when that value is unused by its options; seeded parity remains open.
 - Exposed only already-visible v111 event economics and fixed item rewards in
   optional AI event-choice projections: independent chest rolls, Statue/Conveyor
   outcomes, cost/HP trades, escalation in Abyssal Baths and source-known
