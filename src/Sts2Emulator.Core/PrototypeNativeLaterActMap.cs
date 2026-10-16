@@ -17,6 +17,14 @@ public static class PrototypeNativeLaterActMap
     public const int MapWidth = 7;
     public const int HiveRoomRows = 14;
     public const int GloryRoomRows = 13;
+    public const string PathStartSiteId =
+        "map.later_act.path_start_column.index_draw";
+    public const string PathDeltaShuffleSiteId =
+        "map.later_act.path_delta.shuffle_swap_index";
+    public const string GloryRestCountSiteId =
+        "map.later_act.glory_rest_count.index_draw";
+    public const string RoomAssignmentShuffleSiteId =
+        "map.later_act.room_assignment.shuffle_swap_index";
 
     public static string ProfileId(int act) => act switch
     {
@@ -49,16 +57,45 @@ public static class PrototypeNativeLaterActMap
     /// entry point retains its original six-stream behavior; the native path
     /// consumes exclusively the independent act-local context stream.
     /// </summary>
-    private sealed class MapRandom(RngBundle bundle, string streamId, bool native)
+    private sealed class MapRandom(
+        RngBundle bundle, string streamId, bool native, string ownerId)
     {
-        public int NextInt(int maxExclusive) =>
-            native ? NativeRngV111.NextInt(bundle, streamId, maxExclusive)
-                : PrototypeRng.NextInt(bundle, streamId, maxExclusive);
+        private readonly NativeRandomIndexProviderV111 _nativeProvider = new();
+        private readonly Dictionary<string, int> _ordinals = new(
+            StringComparer.Ordinal);
 
-        public void Shuffle<T>(T[] values)
+        private int NextOrdinal(string siteId)
         {
-            if (native) NativeRngV111.Shuffle(bundle, streamId, values);
-            else PrototypeRng.Shuffle(bundle, streamId, values);
+            var ordinal = _ordinals.GetValueOrDefault(siteId);
+            _ordinals[siteId] = ordinal + 1;
+            return ordinal;
+        }
+
+        public int NextInt(int maxExclusive, string siteId)
+        {
+            if (!native)
+                return PrototypeRng.NextInt(bundle, streamId, maxExclusive);
+            if (maxExclusive <= 0)
+                throw new ArgumentOutOfRangeException(nameof(maxExclusive));
+            var decision = _nativeProvider.Resolve(new RandomIndexRequestV111(
+                siteId, streamId, ownerId, NextOrdinal(siteId),
+                Array.Empty<int>(), OperationKind: "bounded_integer",
+                BoundedCount: maxExclusive), bundle);
+            return decision.SelectedIndex;
+        }
+
+        public void Shuffle<T>(T[] values, string siteId)
+        {
+            if (!native)
+            {
+                PrototypeRng.Shuffle(bundle, streamId, values);
+                return;
+            }
+            var ordinal = _ordinals.GetValueOrDefault(siteId);
+            var choices = NativeFisherYatesV111.ShuffleInPlace(
+                values, bundle, _nativeProvider, streamId, ownerId,
+                siteId, ordinal);
+            _ordinals[siteId] = ordinal + choices.Length;
         }
 
         public int NextGaussianInt(int mean, int standardDeviation, int min, int max) =>
@@ -74,7 +111,8 @@ public static class PrototypeNativeLaterActMap
     public static MapState Generate(RngBundle rng, int act, int ascension = 0)
     {
         ArgumentNullException.ThrowIfNull(rng);
-        return GenerateCore(new MapRandom(rng, "map", native: false),
+        return GenerateCore(new MapRandom(
+            rng, "map", native: false, ownerId: "map:prototype"),
             act, ascension);
     }
 
@@ -98,7 +136,8 @@ public static class PrototypeNativeLaterActMap
         var stream = NativeRngV111Contexts.ForActMap(seed, act);
         var bundle = new RngBundle([stream]);
         var map = GenerateCore(
-            new MapRandom(bundle, stream.StreamId, native: true),
+            new MapRandom(bundle, stream.StreamId, native: true,
+                ownerId: $"map:act:{act}"),
             act, ascension);
         return (map, NativeRngV111.ToSnapshot(bundle.Streams[0]));
     }
@@ -137,12 +176,12 @@ public static class PrototypeNativeLaterActMap
         // starting column is forced to differ from the first.
         for (var path = 0; path < 7; path++)
         {
-            var start = random.NextInt(MapWidth);
+            var start = random.NextInt(MapWidth, PathStartSiteId);
             if (path == 1)
             {
                 while (starts.Contains(start))
                 {
-                    start = random.NextInt(MapWidth);
+                    start = random.NextInt(MapWidth, PathStartSiteId);
                 }
             }
             starts.Add(start);
@@ -151,7 +190,7 @@ public static class PrototypeNativeLaterActMap
             for (var row = 1; row < roomRows; row++)
             {
                 var deltas = new[] { -1, 0, 1 };
-                random.Shuffle(deltas);
+                random.Shuffle(deltas, PathDeltaShuffleSiteId);
                 Point? chosen = null;
                 foreach (var delta in deltas)
                 {
@@ -225,7 +264,7 @@ public static class PrototypeNativeLaterActMap
         // Geometry/quota compatibility is not RNG stream parity.
         var restCount = act == 2
             ? random.NextGaussianInt(6, 1, 6, 7)
-            : 5 + random.NextInt(2);
+            : 5 + random.NextInt(2, GloryRestCountSiteId);
         var unknownCount =
             random.NextGaussianInt(12, 1, 10, 14) - 1;
         var quotas = new (PrototypeRoomType Type, int Count)[]
@@ -247,7 +286,7 @@ public static class PrototypeNativeLaterActMap
                     .OrderBy(point => point.Floor)
                     .ThenBy(point => point.Column)
                     .ToArray();
-                random.Shuffle(order);
+                random.Shuffle(order, RoomAssignmentShuffleSiteId);
                 foreach (var point in order)
                 {
                     if (remaining == 0)

@@ -55,6 +55,10 @@ reference distribution is claimed.
 | `potion_factory.model_within_rarity.index_draw` | potion factory / `run.combat_potion_generation` | Yes: source-ordered remaining tier pool after rarity choice | Yes: typed model index provider | No: provider-specific result/cursor regression pending | Yes: model choice controlled within the chosen tier | No | No |
 | `run.relic.beautiful_bracelet.deck_shuffle.swap_index` | Beautiful Bracelet acquisition / `run.niche` | Yes: ordered eligible deck cards; first four selected after full shuffle | Yes: typed provider at each descending swap | No: provider-specific result/cursor regression pending | No | No | No |
 | `run.relic.fur_coat.map_node_shuffle.swap_index` | Fur Coat acquisition + act / `context.player.*` | Yes: current-act Combat and Elite nodes; first eight marked after full shuffle | Yes: typed provider at each descending swap | No: provider-specific result/cursor regression pending | No | No | No |
+| `map.later_act.path_start_column.index_draw` | act map / `context.act_map.*` | Partial: seven path starts and second-path collision retries | Yes: bounded typed provider requests | No: provider-specific result/cursor regression pending | No | No | No |
+| `map.later_act.path_delta.shuffle_swap_index` | act map / `context.act_map.*` | Partial: ordered `[-1, 0, 1]` path deltas | Yes: typed provider at each descending swap | No: provider-specific result/cursor regression pending | No | No | No |
+| `map.later_act.glory_rest_count.index_draw` | Glory map / `context.act_map.*` | Yes: source `NextInt(2)` rest quota | Yes: bounded typed provider request | No: provider-specific result/cursor regression pending | No | No | No |
+| `map.later_act.room_assignment.shuffle_swap_index` | act map / `context.act_map.*` | Partial: ordered unassigned points, shuffled per room quota | Yes: typed provider at each descending swap | No: provider-specific result/cursor regression pending | No | No | No |
 
 This is the migrated typed-site inventory, not a complete v0.111 RNG
 inventory. Other encounter resolvers, summon/death lifecycle effects,
@@ -118,8 +122,9 @@ provider integrations, not controlled summon/death continuations.
 
 **D2 remaining:** formation resolvers outside the integrated subset,
 monster-local draws, summon/death continuation mechanics,
-shuffle/targets/rewards, event sites beyond Orobas, Darv, Pael, Tezcatara,
-Nonupeipe, Tanx and Vakuu offer generation,
+shuffle/targets/rewards, map Gaussian quota draws and full map source-order
+parity, event sites beyond Orobas, Darv, Pael, Tezcatara, Nonupeipe, Tanx and
+Vakuu offer generation,
 and other audited call sites; explicit weighted
 outcome metadata at move-level instead of primitive index selections.
 The separate semantic playable API now exposes typed weighted intent events,
