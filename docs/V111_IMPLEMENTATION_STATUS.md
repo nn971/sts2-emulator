@@ -950,8 +950,10 @@ potion. Full native potion-pool and cursor parity remain unverified.
   Curious discounts, Improvement postcombat upgrades and existing
   Strangle completion hooks. Tests exercise selection, instance
   identity, invalid choices, all nine effects and deterministic
-  forks. Exact native card-generation, event RNG and trigger parity
-  remain unverified; region random event routing stays disabled.
+  forks. Native runs use the persisted `TINKER_TIME` event context for
+  type and rider offer shuffles; seeded offer parity and exact native
+  card-generation/trigger parity remain unverified. Region random event
+  routing stays disabled.
   [Source audit](reference-builds/v0.111.0-glory-tinker-mad-science.md).
 
 ## Experimental first three-act Silent route slice (opt-in)

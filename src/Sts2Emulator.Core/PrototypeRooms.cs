@@ -838,6 +838,8 @@ public sealed partial class PrototypeGameEngine
                             "DOORS_OF_LIGHT_AND_DARK",
                         PrototypeNativeFakeMerchant.EventId =>
                             PrototypeNativeFakeMerchant.NativeRngEventId,
+                        PrototypeNativeGloryEvents.TinkerTimeId =>
+                            PrototypeNativeGloryEvents.TinkerTimeNativeRngEventId,
                         _ => null
                     }),
                 NativeEventGold:

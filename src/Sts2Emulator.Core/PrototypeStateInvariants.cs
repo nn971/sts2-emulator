@@ -23,6 +23,10 @@ public static class PrototypeStateInvariants
             state,
             PrototypeNativeFakeMerchant.EventId,
             PrototypeNativeFakeMerchant.NativeRngEventId);
+        NativeEventContextRngV111.Validate(
+            state,
+            PrototypeNativeGloryEvents.TinkerTimeId,
+            PrototypeNativeGloryEvents.TinkerTimeNativeRngEventId);
         if (state.Ascension < 0)
         {
             throw new InvalidOperationException(

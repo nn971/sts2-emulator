@@ -54,12 +54,15 @@ public sealed partial class PrototypeGameEngine
         if (evt.NativePageIndex == 0)
         {
             var choices = (string[])TinkerTypes.Clone();
-            _ = LegacyFisherYatesV111.ShuffleInPlace(
+            state = NativeEventContextRngV111.ShuffleInPlace(
+                state,
+                evt,
+                PrototypeNativeGloryEvents.TinkerTimeNativeRngEventId,
                 choices,
-                state.Rng,
-                "event",
                 "event.glory_tinker.type_offer.shuffle_swap_index",
                 "event:glory_tinker:types");
+            world = RequireWorld(state);
+            evt = world.Event!;
             return state with
             {
                 World = world with
@@ -76,12 +79,15 @@ public sealed partial class PrototypeGameEngine
         if (evt.NativePageIndex == 1)
         {
             var riders = TinkerRiders(choice);
-            _ = LegacyFisherYatesV111.ShuffleInPlace(
+            state = NativeEventContextRngV111.ShuffleInPlace(
+                state,
+                evt,
+                PrototypeNativeGloryEvents.TinkerTimeNativeRngEventId,
                 riders,
-                state.Rng,
-                "event",
                 "event.glory_tinker.rider_offer.shuffle_swap_index",
                 "event:glory_tinker:type:" + choice);
+            world = RequireWorld(state);
+            evt = world.Event!;
             return state with
             {
                 World = world with
