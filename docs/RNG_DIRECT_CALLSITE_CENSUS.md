@@ -2,46 +2,42 @@
 
 Direct qualified calls to PrototypeRng, NativeRngV111, and NativeFisherYatesV111 in Sts2Emulator.Core. This does not include indirect delegates, random provider interfaces, third-party/native source callsites, or prove that every source operation is mapped.
 
-Direct call expressions: **31**.
+Direct call expressions: **27**.
 
 Counts by direct API family:
 
 - `legacy_prototype_api`: 3
-- `native_primitive_api`: 16
-- `native_shuffle_mechanics`: 12
+- `native_primitive_api`: 8
+- `native_shuffle_mechanics`: 16
 
 Rows distinguish legacy prototype calls, native primitive calls, generic shuffle-helper calls, and recognized provider/fixture support. Unrecognized contexts still need manual source tracing.
 
 | File:line | API | Operation | Source expression | Review status |
 | --- | --- | --- | --- | --- |
-| [`src/Sts2Emulator.Core/NativeAncientRewardsV111.cs:199`](../src/Sts2Emulator.Core/NativeAncientRewardsV111.cs#L199) | `NativeRngV111` | `NextItem` | `var expectedOffers = pools.Select(pool => "take_" + NativeRngV111.NextItem(` | `native_primitive_callsite_needs_site_review` |
-| [`src/Sts2Emulator.Core/NativeDarvEventV111.cs:163`](../src/Sts2Emulator.Core/NativeDarvEventV111.cs#L163) | `NativeFisherYatesV111` | `ShuffleInPlace` | `decisions.AddRange(NativeFisherYatesV111.ShuffleInPlace(` | `shuffle_callsite_needs_stable_site_link` |
-| [`src/Sts2Emulator.Core/NativeDarvEventV111.cs:243`](../src/Sts2Emulator.Core/NativeDarvEventV111.cs#L243) | `NativeRngV111` | `NextInt` | `var offerVariant = NativeRngV111.NextInt(` | `native_primitive_callsite_needs_site_review` |
-| [`src/Sts2Emulator.Core/NativeDarvEventV111.cs:246`](../src/Sts2Emulator.Core/NativeDarvEventV111.cs#L246) | `NativeRngV111` | `Shuffle` | `NativeRngV111.Shuffle(bundle, initial.StreamId, relics);` | `native_primitive_callsite_needs_site_review` |
-| [`src/Sts2Emulator.Core/NativeGloryAncientsV111.cs:252`](../src/Sts2Emulator.Core/NativeGloryAncientsV111.cs#L252) | `NativeFisherYatesV111` | `ShuffleInPlace` | `_ = NativeFisherYatesV111.ShuffleInPlace(` | `shuffle_callsite_needs_stable_site_link` |
-| [`src/Sts2Emulator.Core/NativeGloryAncientsV111.cs:293`](../src/Sts2Emulator.Core/NativeGloryAncientsV111.cs#L293) | `NativeFisherYatesV111` | `ShuffleInPlace` | `_ = NativeFisherYatesV111.ShuffleInPlace(` | `shuffle_callsite_needs_stable_site_link` |
-| [`src/Sts2Emulator.Core/NativeNonupeipeEventV111.cs:89`](../src/Sts2Emulator.Core/NativeNonupeipeEventV111.cs#L89) | `NativeFisherYatesV111` | `ShuffleInPlace` | `var choices = NativeFisherYatesV111.ShuffleInPlace(` | `shuffle_callsite_needs_stable_site_link` |
-| [`src/Sts2Emulator.Core/NativeNonupeipeEventV111.cs:151`](../src/Sts2Emulator.Core/NativeNonupeipeEventV111.cs#L151) | `NativeRngV111` | `Shuffle` | `NativeRngV111.Shuffle(bundle, initial.StreamId, candidates);` | `native_primitive_callsite_needs_site_review` |
-| [`src/Sts2Emulator.Core/NativeOrobasEventV111.cs:166`](../src/Sts2Emulator.Core/NativeOrobasEventV111.cs#L166) | `NativeRngV111` | `NextInt` | `var selectedIndex = NativeRngV111.NextInt(` | `native_primitive_callsite_needs_site_review` |
-| [`src/Sts2Emulator.Core/NativePaelRewardsV111.cs:320`](../src/Sts2Emulator.Core/NativePaelRewardsV111.cs#L320) | `NativeRngV111` | `NextItem` | `var expectedOffers = pools.Select(pool => "take_" + NativeRngV111.NextItem(` | `native_primitive_callsite_needs_site_review` |
+| [`src/Sts2Emulator.Core/NativeDarvEventV111.cs:163`](../src/Sts2Emulator.Core/NativeDarvEventV111.cs#L163) | `NativeFisherYatesV111` | `ShuffleInPlace` | `decisions.AddRange(NativeFisherYatesV111.ShuffleInPlace(` | `typed_provider_shuffle_mechanics_boundary` |
+| [`src/Sts2Emulator.Core/NativeDarvEventV111.cs:252`](../src/Sts2Emulator.Core/NativeDarvEventV111.cs#L252) | `NativeFisherYatesV111` | `ShuffleInPlace` | `_ = NativeFisherYatesV111.ShuffleInPlace(` | `typed_provider_shuffle_mechanics_boundary` |
+| [`src/Sts2Emulator.Core/NativeGloryAncientsV111.cs:252`](../src/Sts2Emulator.Core/NativeGloryAncientsV111.cs#L252) | `NativeFisherYatesV111` | `ShuffleInPlace` | `_ = NativeFisherYatesV111.ShuffleInPlace(` | `typed_provider_shuffle_mechanics_boundary` |
+| [`src/Sts2Emulator.Core/NativeGloryAncientsV111.cs:293`](../src/Sts2Emulator.Core/NativeGloryAncientsV111.cs#L293) | `NativeFisherYatesV111` | `ShuffleInPlace` | `_ = NativeFisherYatesV111.ShuffleInPlace(` | `typed_provider_shuffle_mechanics_boundary` |
+| [`src/Sts2Emulator.Core/NativeNonupeipeEventV111.cs:89`](../src/Sts2Emulator.Core/NativeNonupeipeEventV111.cs#L89) | `NativeFisherYatesV111` | `ShuffleInPlace` | `var choices = NativeFisherYatesV111.ShuffleInPlace(` | `typed_provider_shuffle_mechanics_boundary` |
+| [`src/Sts2Emulator.Core/NativeNonupeipeEventV111.cs:151`](../src/Sts2Emulator.Core/NativeNonupeipeEventV111.cs#L151) | `NativeFisherYatesV111` | `ShuffleInPlace` | `_ = NativeFisherYatesV111.ShuffleInPlace(` | `typed_provider_shuffle_mechanics_boundary` |
 | [`src/Sts2Emulator.Core/NativeRunRngV111.cs:92`](../src/Sts2Emulator.Core/NativeRunRngV111.cs#L92) | `NativeRngV111` | `NextInt` | `value = NativeRngV111.NextInt(advanced, streamId, maxExclusive);` | `provider_or_codec_infrastructure` |
 | [`src/Sts2Emulator.Core/NativeShuffleSourceImportV111.cs:165`](../src/Sts2Emulator.Core/NativeShuffleSourceImportV111.cs#L165) | `NativeRngV111` | `NextInt` | `int expected = NativeRngV111.NextInt(rng, "run.shuffle", bound);` | `provider_or_codec_infrastructure` |
 | [`src/Sts2Emulator.Core/NativeShuffleStepReplayV111.cs:141`](../src/Sts2Emulator.Core/NativeShuffleStepReplayV111.cs#L141) | `PrototypeRng` | `Shuffle` | `PrototypeRng.Shuffle(engineRng, "combat", output);` | `fixture_or_replay_support` |
 | [`src/Sts2Emulator.Core/NativeShuffleStepReplayV111.cs:148`](../src/Sts2Emulator.Core/NativeShuffleStepReplayV111.cs#L148) | `PrototypeRng` | `Shuffle` | `PrototypeRng.Shuffle(engineRng, "combat", unchanged);` | `fixture_or_replay_support` |
 | [`src/Sts2Emulator.Core/NativeShuffleStepReplayV111.cs:173`](../src/Sts2Emulator.Core/NativeShuffleStepReplayV111.cs#L173) | `NativeFisherYatesV111` | `Execute` | `var computed = NativeFisherYatesV111.Execute(` | `fixture_or_replay_support` |
-| [`src/Sts2Emulator.Core/NativeTanxEventV111.cs:104`](../src/Sts2Emulator.Core/NativeTanxEventV111.cs#L104) | `NativeFisherYatesV111` | `ShuffleInPlace` | `var choices = NativeFisherYatesV111.ShuffleInPlace(` | `shuffle_callsite_needs_stable_site_link` |
-| [`src/Sts2Emulator.Core/NativeTanxEventV111.cs:169`](../src/Sts2Emulator.Core/NativeTanxEventV111.cs#L169) | `NativeRngV111` | `Shuffle` | `NativeRngV111.Shuffle(bundle, context.StreamId, candidates);` | `native_primitive_callsite_needs_site_review` |
-| [`src/Sts2Emulator.Core/NativeVakuuEventV111.cs:95`](../src/Sts2Emulator.Core/NativeVakuuEventV111.cs#L95) | `NativeFisherYatesV111` | `ShuffleInPlace` | `choices.AddRange(NativeFisherYatesV111.ShuffleInPlace(` | `shuffle_callsite_needs_stable_site_link` |
-| [`src/Sts2Emulator.Core/NativeVakuuEventV111.cs:162`](../src/Sts2Emulator.Core/NativeVakuuEventV111.cs#L162) | `NativeRngV111` | `Shuffle` | `NativeRngV111.Shuffle(bundle, initial.StreamId, pool);` | `native_primitive_callsite_needs_site_review` |
-| [`src/Sts2Emulator.Core/PrototypeCombat.cs:372`](../src/Sts2Emulator.Core/PrototypeCombat.cs#L372) | `NativeFisherYatesV111` | `ShuffleInPlace` | `_ = NativeFisherYatesV111.ShuffleInPlace(` | `shuffle_callsite_needs_stable_site_link` |
-| [`src/Sts2Emulator.Core/PrototypeCombat.cs:13045`](../src/Sts2Emulator.Core/PrototypeCombat.cs#L13045) | `NativeFisherYatesV111` | `ShuffleInPlace` | `_ = NativeFisherYatesV111.ShuffleInPlace(` | `shuffle_callsite_needs_stable_site_link` |
-| [`src/Sts2Emulator.Core/PrototypeCombat.cs:14846`](../src/Sts2Emulator.Core/PrototypeCombat.cs#L14846) | `NativeFisherYatesV111` | `Execute` | `var shuffle = NativeFisherYatesV111.Execute(` | `shuffle_callsite_needs_stable_site_link` |
-| [`src/Sts2Emulator.Core/PrototypeNativeLaterActMap.cs:115`](../src/Sts2Emulator.Core/PrototypeNativeLaterActMap.cs#L115) | `NativeFisherYatesV111` | `ShuffleInPlace` | `var choices = NativeFisherYatesV111.ShuffleInPlace(` | `shuffle_callsite_needs_stable_site_link` |
+| [`src/Sts2Emulator.Core/NativeTanxEventV111.cs:104`](../src/Sts2Emulator.Core/NativeTanxEventV111.cs#L104) | `NativeFisherYatesV111` | `ShuffleInPlace` | `var choices = NativeFisherYatesV111.ShuffleInPlace(` | `typed_provider_shuffle_mechanics_boundary` |
+| [`src/Sts2Emulator.Core/NativeTanxEventV111.cs:169`](../src/Sts2Emulator.Core/NativeTanxEventV111.cs#L169) | `NativeFisherYatesV111` | `ShuffleInPlace` | `_ = NativeFisherYatesV111.ShuffleInPlace(` | `typed_provider_shuffle_mechanics_boundary` |
+| [`src/Sts2Emulator.Core/NativeVakuuEventV111.cs:95`](../src/Sts2Emulator.Core/NativeVakuuEventV111.cs#L95) | `NativeFisherYatesV111` | `ShuffleInPlace` | `choices.AddRange(NativeFisherYatesV111.ShuffleInPlace(` | `typed_provider_shuffle_mechanics_boundary` |
+| [`src/Sts2Emulator.Core/NativeVakuuEventV111.cs:165`](../src/Sts2Emulator.Core/NativeVakuuEventV111.cs#L165) | `NativeFisherYatesV111` | `ShuffleInPlace` | `var choices = NativeFisherYatesV111.ShuffleInPlace(` | `typed_provider_shuffle_mechanics_boundary` |
+| [`src/Sts2Emulator.Core/PrototypeCombat.cs:372`](../src/Sts2Emulator.Core/PrototypeCombat.cs#L372) | `NativeFisherYatesV111` | `ShuffleInPlace` | `_ = NativeFisherYatesV111.ShuffleInPlace(` | `typed_provider_shuffle_mechanics_boundary` |
+| [`src/Sts2Emulator.Core/PrototypeCombat.cs:13045`](../src/Sts2Emulator.Core/PrototypeCombat.cs#L13045) | `NativeFisherYatesV111` | `ShuffleInPlace` | `_ = NativeFisherYatesV111.ShuffleInPlace(` | `typed_provider_shuffle_mechanics_boundary` |
+| [`src/Sts2Emulator.Core/PrototypeCombat.cs:14846`](../src/Sts2Emulator.Core/PrototypeCombat.cs#L14846) | `NativeFisherYatesV111` | `Execute` | `var shuffle = NativeFisherYatesV111.Execute(` | `typed_provider_shuffle_mechanics_boundary` |
+| [`src/Sts2Emulator.Core/PrototypeNativeLaterActMap.cs:115`](../src/Sts2Emulator.Core/PrototypeNativeLaterActMap.cs#L115) | `NativeFisherYatesV111` | `ShuffleInPlace` | `var choices = NativeFisherYatesV111.ShuffleInPlace(` | `typed_provider_shuffle_mechanics_boundary` |
 | [`src/Sts2Emulator.Core/RandomGaussianDoubleProvidersV111.cs:84`](../src/Sts2Emulator.Core/RandomGaussianDoubleProvidersV111.cs#L84) | `NativeRngV111` | `NextGaussianDouble` | `var value = NativeRngV111.NextGaussianDouble(` | `provider_or_codec_infrastructure` |
 | [`src/Sts2Emulator.Core/RandomGaussianIntProvidersV111.cs:79`](../src/Sts2Emulator.Core/RandomGaussianIntProvidersV111.cs#L79) | `NativeRngV111` | `NextGaussianInt` | `var value = NativeRngV111.NextGaussianInt(` | `provider_or_codec_infrastructure` |
-| [`src/Sts2Emulator.Core/RandomIndexProvidersV111.cs:91`](../src/Sts2Emulator.Core/RandomIndexProvidersV111.cs#L91) | `NativeRngV111` | `NextInt` | `int index = NativeRngV111.NextInt(streams, request.StreamId, request.SupportCount);` | `provider_or_codec_infrastructure` |
-| [`src/Sts2Emulator.Core/RandomIndexProvidersV111.cs:128`](../src/Sts2Emulator.Core/RandomIndexProvidersV111.cs#L128) | `PrototypeRng` | `NextInt` | `var selectedIndex = PrototypeRng.NextInt(` | `provider_or_codec_infrastructure` |
-| [`src/Sts2Emulator.Core/RandomIndexProvidersV111.cs:278`](../src/Sts2Emulator.Core/RandomIndexProvidersV111.cs#L278) | `NativeFisherYatesV111` | `ShuffleInPlace` | `return NativeFisherYatesV111.ShuffleInPlace(` | `provider_or_codec_infrastructure` |
+| [`src/Sts2Emulator.Core/RandomIndexProvidersV111.cs:97`](../src/Sts2Emulator.Core/RandomIndexProvidersV111.cs#L97) | `NativeRngV111` | `NextInt` | `int index = NativeRngV111.NextInt(streams, request.StreamId, request.SupportCount);` | `provider_or_codec_infrastructure` |
+| [`src/Sts2Emulator.Core/RandomIndexProvidersV111.cs:135`](../src/Sts2Emulator.Core/RandomIndexProvidersV111.cs#L135) | `PrototypeRng` | `NextInt` | `var selectedIndex = PrototypeRng.NextInt(` | `provider_or_codec_infrastructure` |
+| [`src/Sts2Emulator.Core/RandomIndexProvidersV111.cs:285`](../src/Sts2Emulator.Core/RandomIndexProvidersV111.cs#L285) | `NativeFisherYatesV111` | `ShuffleInPlace` | `return NativeFisherYatesV111.ShuffleInPlace(` | `provider_or_codec_infrastructure` |
 | [`src/Sts2Emulator.Core/RandomRangedDoubleProvidersV111.cs:79`](../src/Sts2Emulator.Core/RandomRangedDoubleProvidersV111.cs#L79) | `NativeRngV111` | `NextDouble` | `var value = NativeRngV111.NextDouble(` | `provider_or_codec_infrastructure` |
 | [`src/Sts2Emulator.Core/RandomRangedFloatProvidersV111.cs:79`](../src/Sts2Emulator.Core/RandomRangedFloatProvidersV111.cs#L79) | `NativeRngV111` | `NextFloat` | `var value = NativeRngV111.NextFloat(` | `provider_or_codec_infrastructure` |
 | [`src/Sts2Emulator.Core/RandomUnitFloatProvidersV111.cs:77`](../src/Sts2Emulator.Core/RandomUnitFloatProvidersV111.cs#L77) | `NativeRngV111` | `NextFloat` | `var value = NativeRngV111.NextFloat(streams, request.StreamId);` | `provider_or_codec_infrastructure` |

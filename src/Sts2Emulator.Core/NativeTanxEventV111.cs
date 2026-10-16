@@ -166,7 +166,13 @@ public static class NativeTanxEventV111
                     "Counterfactual Tanx providers must not advance the native event stream.");
             return;
         }
-        NativeRngV111.Shuffle(bundle, context.StreamId, candidates);
+        _ = NativeFisherYatesV111.ShuffleInPlace(
+            candidates,
+            bundle,
+            new NativeRandomIndexProviderV111(recordToJournal: false),
+            context.StreamId,
+            "event:TANX:act:3:floor:0",
+            ShuffleSiteId);
         var expectedOffers = candidates.Take(3).Select(ChoiceId).ToArray();
         if (!offers.SequenceEqual(expectedOffers, StringComparer.Ordinal))
             throw new InvalidOperationException(

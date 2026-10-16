@@ -78,6 +78,12 @@ public interface IRandomIndexProviderV111
 public sealed class NativeRandomIndexProviderV111 : IRandomIndexProviderV111
 {
     public string Mode => "native-v111";
+    private readonly bool _recordToJournal;
+
+    public NativeRandomIndexProviderV111(bool recordToJournal = true)
+    {
+        _recordToJournal = recordToJournal;
+    }
 
     public RandomIndexDecisionV111 Resolve(RandomIndexRequestV111 request, RngBundle streams)
     {
@@ -95,7 +101,8 @@ public sealed class NativeRandomIndexProviderV111 : IRandomIndexProviderV111
             request with { OrderedCandidates = (int[])request.OrderedCandidates.Clone() },
             index, Mode, before, after);
         decision.Validate();
-        RandomBoundaryJournalV111.Record(decision);
+        if (_recordToJournal)
+            RandomBoundaryJournalV111.Record(decision);
         return decision;
     }
 }

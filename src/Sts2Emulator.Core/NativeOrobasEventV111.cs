@@ -157,15 +157,23 @@ public static class NativeOrobasEventV111
             && evt.ChosenChoiceId is null)
         {
             var bundle = new RngBundle([initial]);
+            var replayProvider = new NativeRandomIndexProviderV111(
+                recordToJournal: false);
             var expectedOffers = RelicPools.Select((pool, ordinal) =>
             {
                 var eligible = pool.Select(ChoiceId)
                     .Where(id => IsChoiceEligible(state.Player, id)).ToArray();
                 if (eligible.Length == 0)
                     eligible = [LockedChoiceId];
-                var selectedIndex = NativeRngV111.NextInt(
-                    bundle, initial.StreamId, eligible.Length);
-                return eligible[selectedIndex];
+                var decision = replayProvider.Resolve(
+                    new RandomIndexRequestV111(
+                        OfferSiteId,
+                        initial.StreamId,
+                        "event:OROBAS:act:2:floor:0",
+                        ordinal,
+                        Enumerable.Range(0, eligible.Length).ToArray()),
+                    bundle);
+                return eligible[decision.SelectedIndex];
             }).ToArray();
             if (!offers.SequenceEqual(expectedOffers, StringComparer.Ordinal)
                 || NativeRngV111.ToSnapshot(stream)

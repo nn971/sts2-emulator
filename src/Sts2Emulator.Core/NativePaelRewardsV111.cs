@@ -317,8 +317,20 @@ public static class NativePaelRewardsV111
             throw new InvalidOperationException("Pael event context must retain its three completed offer draws.");
         var initial = NativeRngV111Contexts.ForEvent(state.RunSeed, "PAEL");
         var expected = new RngBundle([initial]);
-        var expectedOffers = pools.Select(pool => "take_" + NativeRngV111.NextItem(
-            expected, initial.StreamId, (IReadOnlyList<string>)pool)).ToArray();
+        var replayProvider = new NativeRandomIndexProviderV111(
+            recordToJournal: false);
+        var expectedOffers = pools.Select((pool, ordinal) =>
+        {
+            var decision = replayProvider.Resolve(
+                new RandomIndexRequestV111(
+                    OfferSiteId,
+                    initial.StreamId,
+                    "event:PAEL:act:2:floor:0",
+                    ordinal,
+                    Enumerable.Range(0, pool.Length).ToArray()),
+                expected);
+            return "take_" + pool[decision.SelectedIndex];
+        }).ToArray();
         if (!offers.SequenceEqual(expectedOffers, StringComparer.Ordinal))
             throw new InvalidOperationException("Pael offers do not match its source pools and event RNG draws.");
         if (NativeRngV111.ToSnapshot(stream) != NativeRngV111.ToSnapshot(expected.Streams[0]))

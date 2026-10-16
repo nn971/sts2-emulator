@@ -240,10 +240,22 @@ public static class NativeDarvEventV111
             && evt.ChosenChoiceId is null)
         {
             var bundle = new RngBundle([initial]);
-            var offerVariant = NativeRngV111.NextInt(
-                bundle, initial.StreamId, 2);
+            var replayProvider = new NativeRandomIndexProviderV111(
+                recordToJournal: false);
+            var ownerId = "event:DARV:act:" + state.World.Act + ":floor:0";
+            var offerVariant = replayProvider.Resolve(
+                new RandomIndexRequestV111(
+                    OfferVariantSiteId, initial.StreamId, ownerId, 0,
+                    Array.Empty<int>(), OperationKind: "bounded_integer",
+                    BoundedCount: 2), bundle).SelectedValue;
             var relics = PoolOneRelicIdsForAct(state.World.Act, state.Player);
-            NativeRngV111.Shuffle(bundle, initial.StreamId, relics);
+            _ = NativeFisherYatesV111.ShuffleInPlace(
+                relics,
+                bundle,
+                replayProvider,
+                initial.StreamId,
+                ownerId,
+                RelicShuffleSiteId);
             var expectedOffers = relics.Take(offerVariant == 0 ? 2 : 3)
                 .Select(ChoiceId)
                 .Concat(offerVariant == 0 ? [ChoiceId(DustyTomeId)] : [])

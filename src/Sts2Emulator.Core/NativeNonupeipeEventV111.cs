@@ -148,7 +148,13 @@ public static class NativeNonupeipeEventV111
             return;
         }
         var bundle = new RngBundle([initial]);
-        NativeRngV111.Shuffle(bundle, initial.StreamId, candidates);
+        _ = NativeFisherYatesV111.ShuffleInPlace(
+            candidates,
+            bundle,
+            new NativeRandomIndexProviderV111(recordToJournal: false),
+            initial.StreamId,
+            "event:NONUPEIPE:act:3:floor:0",
+            ShuffleSiteId);
         var expected = candidates.Take(3).Select(ChoiceId).ToArray();
         if (!offers.SequenceEqual(expected, StringComparer.Ordinal))
             throw new InvalidOperationException(

@@ -156,10 +156,21 @@ public static class NativeVakuuEventV111
             return;
         }
         var expectedOffers = new List<string>(3);
+        var replayProvider = new NativeRandomIndexProviderV111(
+            recordToJournal: false);
+        var ordinalOffset = 0;
         foreach (var sourcePool in pools)
         {
             var pool = (string[])sourcePool.Clone();
-            NativeRngV111.Shuffle(bundle, initial.StreamId, pool);
+            var choices = NativeFisherYatesV111.ShuffleInPlace(
+                pool,
+                bundle,
+                replayProvider,
+                initial.StreamId,
+                "event:VAKUU:act:3:floor:0",
+                ShuffleSiteId,
+                ordinalOffset);
+            ordinalOffset += choices.Length;
             expectedOffers.Add(ChoiceId(pool[0]));
         }
 

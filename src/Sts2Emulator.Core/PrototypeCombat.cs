@@ -14845,7 +14845,9 @@ public sealed partial class PrototypeGameEngine
                         var nativeStreams = native.RunStreams.Fork();
                         var shuffle = NativeFisherYatesV111.Execute(
                             discard, nativeStreams,
-                            new NativeRandomIndexProviderV111());
+                            new NativeRandomIndexProviderV111(),
+                            ownerId: "player:0",
+                            siteId: "combat.draw_pile_recycle.swap_index");
                         var postHook = ApplyPerfectFitShuffleOrder(
                             combat, shuffle.PreHookOutput);
                         deferred = SemanticDeckEngineV111.RecycleNative(

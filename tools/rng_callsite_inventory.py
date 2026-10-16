@@ -55,7 +55,7 @@ def collect() -> dict[str, Any]:
                 elif api == "PrototypeRng":
                     review_status = "prototype_callsite_needs_semantic_site_mapping"
                 elif api == "NativeFisherYatesV111":
-                    review_status = "shuffle_callsite_needs_stable_site_link"
+                    review_status = "typed_provider_shuffle_mechanics_boundary"
                 else:
                     review_status = "native_primitive_callsite_needs_site_review"
                 entries.append(
