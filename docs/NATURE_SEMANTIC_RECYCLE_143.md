@@ -53,17 +53,16 @@ event and updates the provider deck before resuming the same draw. Other
 recycle contexts without that saved card-effect frame still fail closed at
 `combat.draw.recycle` for after-shuffle insertion.
 
-Stratagem can suspend for a player selection *after* a shuffle and before
-the resumed draw. That choice also requires its own nested continuation;
-it currently fails atomically:
-
-`UNSUPPORTED_SEMANTIC_DECK site=combat.draw.recycle operation=stratagem_player_selection`
+When Stratagem is active, the card-effect draw frame reuses the semantic
+`select_cards` event to choose from the recycled draw pile, then resumes the
+remaining draw and queued effects. Automatic draw-cost continuations still
+need this choice composed with their saved pipeline cursor.
 
 The real-semantic bridge now includes limited card-effect draw continuations,
 but is not a complete opening-hand/turn/card-effect/JSONL implementation.
-Snecko Eye, Slither, Stratagem selection, nested `CardDrawn` decisions,
-split-pool unknown-position deck mutation, native seeded parity, source
-probability and original-game importance weights remain separate future gates.
+Snecko Eye, Slither, nested `CardDrawn` decisions, split-pool unknown-position
+deck mutation, native seeded parity, source probability and original-game
+importance weights remain separate future gates.
 
 ## Tests
 

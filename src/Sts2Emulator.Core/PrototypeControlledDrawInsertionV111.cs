@@ -161,6 +161,10 @@ public sealed partial class PrototypeGameEngine
                 semanticDraw.EventDepth >= 0 &&
                 semanticDraw.DeferredKeywordCardInstanceIds?.Distinct().Count() ==
                     semanticDraw.DeferredKeywordCardInstanceIds?.Length &&
+                (!semanticDraw.StratagemSelectionPending ||
+                 (combat.Hand.Length < 10 && combat.PlayerPowers.Any(power =>
+                     power.PowerId == "proto.power.stratagem" &&
+                     power.Stacks > 0))) &&
                 afterShuffle is not null &&
                 choice.Operation.Amount == 1 &&
                 choice.Operation.CardId == afterShuffle.CardId &&
@@ -296,6 +300,11 @@ public sealed partial class PrototypeGameEngine
                 };
             }
 
+            if (semanticDraw.StratagemSelectionPending)
+                return ResumeControlledInsertionPipeline(
+                    ResumeControlledStratagemSelection(
+                        state, combat, semanticDraw, continuation));
+
             var resumedDraw = DrawCards(
                 state.Player, combat, semanticDraw.RemainingCount, state.Rng,
                 semanticDraw.FromHandDraw, eventDepth: semanticDraw.EventDepth,
@@ -359,6 +368,35 @@ public sealed partial class PrototypeGameEngine
         return MakeControlledDrawInsertionChoice(
             combat, operation, continuation, semanticDraw, insertion,
             completed, remaining, ordinal);
+    }
+
+    private static RunState ResumeControlledStratagemSelection(
+        RunState state, CombatState combat,
+        PrototypeControlledSemanticDrawV111 draw,
+        PrototypeChoiceResolutionContinuationState continuation)
+    {
+        var drawOperation = new PrototypeQueuedOperation(
+            PrototypeCombatEffectKind.DrawCards, draw.RemainingCount,
+            FromHandDraw: draw.FromHandDraw,
+            DrawnCardKeyword: draw.DrawnCardKeyword is null
+                ? null : draw.DrawnCardKeyword with { },
+            DeferredDrawnCardInstanceIds:
+                (draw.DeferredKeywordCardInstanceIds ?? []).ToArray(),
+            DrawEventDepth: draw.EventDepth);
+        var resumedContinuation = continuation with
+        {
+            Operations = new[]
+            {
+                StratagemChoiceOperation(combat), drawOperation
+            }.Concat(continuation.Operations).ToArray()
+        };
+        var resolved = ResumeChoiceResolutionContinuation(
+            state.Player, combat, state.Rng, resumedContinuation);
+        return state with
+        {
+            Player = resolved.Player,
+            World = state.World! with { Combat = resolved.Combat }
+        };
     }
 
     private static RunState ResumeControlledInsertionPipeline(RunState state)

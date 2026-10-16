@@ -6020,6 +6020,8 @@ public sealed partial class PrototypeGameEngine
 
                 case PrototypeCombatEffectKind.DrawCards:
                 {
+                    var drawEventDepth = operation.DrawEventDepth ??
+                        eventDepth + 1;
                     var semanticDrawSuspension =
                         ControlledChanceGuardV111.Active &&
                         combat.SemanticDeck is
@@ -6030,7 +6032,7 @@ public sealed partial class PrototypeGameEngine
                         operation.Amount,
                         rng,
                         fromHandDraw: operation.FromHandDraw,
-                        eventDepth: eventDepth + 1,
+                        eventDepth: drawEventDepth,
                         controlledDrawCostSuspension:
                             semanticDrawSuspension,
                         controlledSemanticDrawSuspension:
@@ -6071,9 +6073,18 @@ public sealed partial class PrototypeGameEngine
                             new PrototypeControlledSemanticDrawV111(
                                 drawn.RemainingCount,
                                 operation.FromHandDraw,
-                                eventDepth + 1,
+                                drawEventDepth,
                                 operation.DrawnCardKeyword,
-                                drawn.DrawnCardInstanceIds);
+                                (operation.DeferredDrawnCardInstanceIds ?? [])
+                                    .Concat(drawn.DrawnCardInstanceIds)
+                                    .Distinct().ToArray(),
+                                StratagemSelectionPending:
+                                    drawn.ControlledAfterShuffleInsertions is
+                                        { Length: > 0 } &&
+                                    combat.PlayerPowers.Any(power =>
+                                        power.PowerId == "proto.power.stratagem" &&
+                                        power.Stacks > 0) &&
+                                    combat.Hand.Length < 10);
                         if (drawn.ControlledAfterShuffleInsertions is
                             { Length: > 0 } afterShuffleInsertions)
                             return (player,
@@ -6099,13 +6110,24 @@ public sealed partial class PrototypeGameEngine
                             new[]
                             {
                                 StratagemChoiceOperation(combat),
-                                operation with { Amount = drawn.RemainingCount }
+                                operation with
+                                {
+                                    Amount = drawn.RemainingCount,
+                                    DeferredDrawnCardInstanceIds =
+                                        (operation.DeferredDrawnCardInstanceIds ?? [])
+                                            .Concat(drawn.DrawnCardInstanceIds)
+                                            .Distinct().ToArray(),
+                                    DrawEventDepth = drawEventDepth
+                                }
                             }.Concat(operations));
                     }
 
-                    if (operation.DrawnCardKeyword is not null)
+                    if (operation.DrawnCardKeyword is not null &&
+                        !drawn.ShuffleSelectionPending)
                     {
-                        foreach (var cardInstanceId in drawn.DrawnCardInstanceIds)
+                        foreach (var cardInstanceId in
+                            (operation.DeferredDrawnCardInstanceIds ?? [])
+                                .Concat(drawn.DrawnCardInstanceIds).Distinct())
                         {
                             combat = ApplyCardKeywordOverride(
                                 combat,
@@ -13672,7 +13694,12 @@ public sealed partial class PrototypeGameEngine
             var drawAfterInsertion = draw with
             {
                 RemainingCount = drawn.RemainingCount,
-                DeferredKeywordCardInstanceIds = insertionKeywordIds
+                DeferredKeywordCardInstanceIds = insertionKeywordIds,
+                StratagemSelectionPending =
+                    draw.StratagemSelectionPending ||
+                    (drawn.Combat.PlayerPowers.Any(power =>
+                        power.PowerId == "proto.power.stratagem" &&
+                        power.Stacks > 0) && drawn.Combat.Hand.Length < 10)
             };
             var nextCombat = MakeControlledAfterShuffleInsertionChoice(
                 drawn.Combat, afterShuffleInsertions[0],
@@ -13684,7 +13711,27 @@ public sealed partial class PrototypeGameEngine
                 World = state.World! with { Combat = nextCombat }
             };
         }
-        if (drawn.ControlledRecyclePending || drawn.ShuffleSelectionPending)
+        if (drawn.ShuffleSelectionPending)
+        {
+            var stratagemKeywordIds =
+                (draw.DeferredKeywordCardInstanceIds ?? [])
+                .Concat(drawn.DrawnCardInstanceIds).Distinct().ToArray();
+            var drawAfterStratagem = draw with
+            {
+                RemainingCount = drawn.RemainingCount,
+                DeferredKeywordCardInstanceIds = stratagemKeywordIds,
+                StratagemSelectionPending = false
+            };
+            var drawState = state with
+            {
+                Player = drawn.Player,
+                World = state.World! with { Combat = drawn.Combat }
+            };
+            return ResumeControlledStratagemSelection(
+                drawState, drawn.Combat, drawAfterStratagem,
+                continuation);
+        }
+        if (drawn.ControlledRecyclePending)
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.card_effect.draw " +
                 "operation=recycle_requires_composed_continuation");
@@ -15445,12 +15492,6 @@ public sealed partial class PrototypeGameEngine
 
                 if (combat.SemanticDeck is { } deferred)
                 {
-                    if (combat.PlayerPowers.Any(power =>
-                        power.PowerId == "proto.power.stratagem" &&
-                        power.Stacks > 0))
-                        throw new NotSupportedException(
-                            "UNSUPPORTED_SEMANTIC_DECK site=combat.draw.recycle " +
-                            "operation=stratagem_player_selection");
                     var perfectFit = discard.Where(id =>
                         RequireCombatCard(combat, id).Enchantment?.Kind
                             == PrototypeCardEnchantmentKind.PerfectFit)
@@ -15537,6 +15578,22 @@ public sealed partial class PrototypeGameEngine
                                 ControlledAfterShuffleInsertions:
                                     afterShuffleInsertions);
                         }
+                    }
+                    var stratagemCount = combat.PlayerPowers.Sum(power =>
+                        power.PowerId == "proto.power.stratagem"
+                            ? Math.Max(0, power.Stacks) : 0);
+                    if (stratagemCount > 0 && combat.Hand.Length < maxHandSize)
+                    {
+                        combat = combat with
+                        {
+                            DrawPile = draw.ToArray(),
+                            DiscardPile = discard.ToArray()
+                        };
+                        return new PrototypeDrawCardsResult(
+                            player, combat,
+                            drawnCardInstanceIds.ToArray(),
+                            RemainingCount: count - drawNumber,
+                            ShuffleSelectionPending: true);
                     }
                 }
                 else

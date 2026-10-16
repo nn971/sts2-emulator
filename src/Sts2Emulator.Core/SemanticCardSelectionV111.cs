@@ -204,7 +204,8 @@ public static class SemanticCardSelectionEngineV111
         using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
             advanced = environment.Step(source.Fork(), actionId).State;
         if (advanced.Phase == RunPhase.Combat)
-            SemanticPlayerActionEngineV111.ValidateBoundary(advanced);
+            SemanticPilotCombatEngineV111.ValidateSemanticCombatBoundary(
+                advanced);
         else if (advanced.Phase == RunPhase.Reward &&
                  advanced.World?.Reward is not null &&
                  advanced.World.Combat is null)
@@ -270,7 +271,8 @@ public static class SemanticCardSelectionEngineV111
             throw new InvalidDataException(
                 "Invalid saved source card selection.");
         if (state.Run.Phase == RunPhase.Combat)
-            SemanticPlayerActionEngineV111.ValidateBoundary(state.Run);
+            SemanticPilotCombatEngineV111.ValidateSemanticCombatBoundary(
+                state.Run);
         else if (reward)
             PrototypeStateInvariants.Validate(state.Run);
         else
@@ -332,7 +334,28 @@ public static class SemanticCardSelectionEngineV111
         else if (!reward && initial.Fingerprint != to!.SemanticDeck!.Fingerprint)
             throw new InvalidDataException(
                 "Visible-zone card selection unexpectedly changed the hidden deck.");
-        if (!reward && (expected.Fingerprint != to!.SemanticDeck!.Fingerprint ||
+        var resumesDraw = from.PendingChoice.Continuation.Any(operation =>
+            operation.Kind == PrototypeCombatEffectKind.DrawCards);
+        if (!reward && resumesDraw)
+        {
+            var resultDeck = to!.SemanticDeck ?? throw new InvalidDataException(
+                "Resumed card draw lost the provider-owned deck.");
+            SemanticDeckEngineV111.Validate(resultDeck);
+            if (!SemanticDeckEngineV111.AllCardInstanceIds(resultDeck)
+                    .Order().SequenceEqual(to.DrawPile.Order()))
+                throw new InvalidDataException(
+                    "Resumed card draw diverged from the provider-owned deck.");
+            RunState replayed;
+            using (ControlledChanceGuardV111.Enter())
+            using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
+                replayed = new PrototypeAiEnvironment().Step(
+                    state.Origin.Fork(), state.ActionId).State;
+            if (CanonicalJson.Sha256(replayed) !=
+                CanonicalJson.Sha256(state.Run))
+                throw new InvalidDataException(
+                    "Saved draw continuation disagrees with source-choice replay.");
+        }
+        else if (!reward && (expected.Fingerprint != to!.SemanticDeck!.Fingerprint ||
             !SemanticDeckEngineV111.AllCardInstanceIds(expected)
                 .Order().SequenceEqual(to.DrawPile.Order())))
             throw new InvalidDataException(

@@ -3428,6 +3428,19 @@ public static class PrototypeStateInvariants
         if (combat.PendingChoice is not null)
         {
             var pending = combat.PendingChoice;
+            var savedChoiceOperations = new List<PrototypeQueuedOperation>(
+                pending.Continuation);
+            for (var outer = pending.OuterChoiceContinuation;
+                 outer is not null; outer = outer.Parent)
+                savedChoiceOperations.AddRange(outer.Operations);
+            if (savedChoiceOperations.Any(operation =>
+                    operation.DrawEventDepth is < 0 ||
+                    operation.DeferredDrawnCardInstanceIds is { } deferredIds &&
+                    (deferredIds.Distinct().Count() != deferredIds.Length ||
+                     deferredIds.Any(cardId => !combat.Cards.Any(card =>
+                         card.InstanceId == cardId)))))
+                throw new InvalidOperationException(
+                    "Saved draw continuation has invalid deferred card metadata.");
             var draw = pending.ControlledSemanticDraw;
             var isSemanticDrawChoice =
                 pending.ChoiceId == "controlled_semantic_draw";

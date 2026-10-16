@@ -522,9 +522,9 @@ No shuffle-swap ticket is generated for an already committed deck epoch.
 - Other non-intent/draw random mechanics (targeting, generation, enemy-side
   insertion, nested hooks, and unsupported draw contexts) still fail
   explicitly at their unmigrated guarded sites. Limited card-effect draw
-  continuations now include after-shuffle relic insertion through the
-  existing semantic draw-insertion event. A complete multi-site
-  native/default provider remains P0.4 work.
+  continuations now include Stratagem through `select_cards` and after-shuffle
+  relic insertion through the existing semantic draw-insertion event. A
+  complete multi-site native/default provider remains P0.4 work.
 
 Example:
 ```python

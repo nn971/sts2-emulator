@@ -144,7 +144,8 @@ public sealed partial class PrototypeGameEngine
             dispatched.Player, dispatched.Combat, cost.RemainingCount,
             state.Rng, cost.FromHandDraw, eventDepth: cost.EventDepth,
             controlledDrawCostSuspension: true,
-            controlledSemanticDrawSuspension: true);
+            controlledSemanticDrawSuspension: true,
+            controlledAfterShuffleInsertionSuspension: true);
         return ContinueControlledSemanticEffectDraw(
             state, drawn, draw, continuation);
     }

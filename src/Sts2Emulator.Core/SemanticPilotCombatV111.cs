@@ -2966,9 +2966,27 @@ public static class SemanticPilotCombatEngineV111
                 "Card-shortlist decision is stale or outside current support.");
     }
 
-    private static void ValidateSemanticCombatBoundary(RunState run)
+    internal static void ValidateSemanticCombatBoundary(RunState run)
     {
         var choice = run.World?.Combat?.PendingChoice;
+        if (choice?.ChoiceId == "select_cards")
+        {
+            SemanticCardSelectionEngineV111.ValidatePendingBoundary(run);
+            return;
+        }
+        if (choice?.ChoiceId == "controlled_semantic_draw")
+        {
+            ValidateSemanticActionDrawBoundary(run);
+            return;
+        }
+        if (choice is
+            { ChoiceId: "controlled_draw_cost",
+              ControlledDrawCost: not null,
+              ControlledSemanticDraw: not null })
+        {
+            ValidateSemanticActionDrawCostBoundary(run);
+            return;
+        }
         if (choice?.ControlledTarget is not null)
         {
             ValidateTargetBoundary(run);

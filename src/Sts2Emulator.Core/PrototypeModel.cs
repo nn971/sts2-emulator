@@ -710,7 +710,9 @@ public sealed record PrototypeQueuedOperation(
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
     bool FromHandDraw = false,
     bool GeneratedCharacterCardsFreeThisTurn = false,
-    int? EnergySpent = null);
+    int? EnergySpent = null,
+    long[]? DeferredDrawnCardInstanceIds = null,
+    int? DrawEventDepth = null);
 
 public sealed record PrototypeRunEffectSpec(
     PrototypeRunEffectKind Kind,
@@ -1791,7 +1793,13 @@ public sealed record PrototypeChoiceResolutionContinuationState(
 {
     public PrototypeChoiceResolutionContinuationState Fork() => this with
     {
-        Operations = (PrototypeQueuedOperation[])Operations.Clone(),
+        Operations = Operations.Select(operation => operation with
+        {
+            DeferredDrawnCardInstanceIds =
+                operation.DeferredDrawnCardInstanceIds is null
+                    ? null
+                    : (long[])operation.DeferredDrawnCardInstanceIds.Clone()
+        }).ToArray(),
         PendingDiscardEvents =
             (PrototypeCombatEvent[])PendingDiscardEvents.Clone(),
         PendingSlyCardInstanceIds =
@@ -1937,7 +1945,8 @@ public sealed record PrototypeControlledDrawCostV111(
 public sealed record PrototypeControlledSemanticDrawV111(
     int RemainingCount, bool FromHandDraw, int EventDepth,
     PrototypeCardKeywordOverrideSpec? DrawnCardKeyword,
-    long[]? DeferredKeywordCardInstanceIds = null)
+    long[]? DeferredKeywordCardInstanceIds = null,
+    bool StratagemSelectionPending = false)
 {
     public PrototypeControlledSemanticDrawV111 Fork() => this with
     {
@@ -1992,7 +2001,13 @@ public sealed record PendingCombatChoiceState(
     public PendingCombatChoiceState Fork() => this with
     {
         CandidateCardInstanceIds = (long[])CandidateCardInstanceIds.Clone(),
-        Continuation = (PrototypeQueuedOperation[])Continuation.Clone(),
+        Continuation = Continuation.Select(operation => operation with
+        {
+            DeferredDrawnCardInstanceIds =
+                operation.DeferredDrawnCardInstanceIds is null
+                    ? null
+                    : (long[])operation.DeferredDrawnCardInstanceIds.Clone()
+        }).ToArray(),
         CompletionEvents = (PrototypeCombatEvent[])CompletionEvents.Clone(),
         SelectedCardTemporaryCost = SelectedCardTemporaryCost is null
             ? null

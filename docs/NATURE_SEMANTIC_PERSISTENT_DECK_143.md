@@ -75,13 +75,14 @@ being consumed without reroll, tampered hidden pools and physical
 zones, pending/completed snapshots, and deterministic 15-worker runs.
 
 This is a restricted **multiple-decision / multiple-turn** implementation;
-the next phase is integrating all gameplay deck mutations and card-
-effect draws into the semantic provider, then adding the new JSONL
+the next phase is integrating remaining deck mutations and general
+card-effect draws into the semantic provider, then expanding the JSONL
 capability. Only supported ordinary actions are accepted by the
 first guarded player-action adapter. Arbitrary cards/potions, scry,
 known-position effects, shuffled-hand returns, nested `CardDrawn`
-chances, post-shuffle generated cards, Stratagem, weighted intent
-source-law verification and native stream parity are separate
+chances, post-shuffle generated cards outside the supported card-effect
+frame, Stratagem outside that frame, weighted intent source-law verification
+and native stream parity are separate
 acceptance gates. Cross-character and multiplayer mechanics remain
 postponed. Source probability status remains **UNVERIFIED**.
 

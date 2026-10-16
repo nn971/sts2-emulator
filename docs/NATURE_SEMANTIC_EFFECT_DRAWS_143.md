@@ -48,11 +48,12 @@ draw frame crosses a nonempty-discard recycle through the existing
 `RecycleNature` epoch and preserves the Perfect Fit top-pool constraint.
 When an after-shuffle relic inserts a generated card, the existing semantic
 draw-insertion event suspends the frame and resumes it after the chosen
-position is committed. Stratagem selection and nested `CardDrawn` choices
-still fail closed. Other draw-pipeline recycle contexts with after-shuffle
-insertions remain outside this card-effect continuation. Arbitrary follow-up
-choices and multiple nested choice levels remain outside the current support.
-Native source probability laws remain unverified.
+position is committed. Stratagem reuses the existing semantic `select_cards`
+event before the remaining draw resumes. Nested `CardDrawn` choices still fail
+closed. Other draw-pipeline recycle contexts with after-shuffle insertions
+remain outside this card-effect continuation. Arbitrary follow-up choices and
+multiple nested choice levels remain outside the current support. Native
+source probability laws remain unverified.
 
 The player-action fixture and card allowlists remain opt-in; this continuation
 does not broaden source-authentic loadout acquisition or the frozen all-Act
