@@ -82,7 +82,11 @@ public sealed partial class PrototypeGameEngine
                 }
                 else
                 {
-                    relicId = PickUnownedEventRelic(player, after.Rng);
+                    relicId = PickUnownedEventRelic(
+                        player,
+                        after.Rng,
+                        "event:" + PrototypeNativeOvergrowthEvents.NeowEventId
+                            + ":random_relic");
                 }
                 player = player with
                 {

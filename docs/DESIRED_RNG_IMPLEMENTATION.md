@@ -86,7 +86,9 @@ also use typed native requests. Its Gaussian quota samples now use typed
 provider requests. Default Act 1 boss selection, empty potion-slot fills,
 random relic-acquisition card/potion rewards, weighted event tickets, and
 event-entry gold bins now use typed legacy providers on their existing run
-streams. A typed Gaussian-double adapter now wraps the native
+streams. Event-choice random upgrades, Rare cards, potions, empty potion-slot
+fills, and unowned relic picks now use typed legacy requests as well. A typed
+Gaussian-double adapter now wraps the native
 rejection sampler and journals its complete cursor span, including rejected
 samples. A typed ranged-float adapter now preserves the native `NextFloat(min,
 max)` rounding, and a ranged-double adapter wraps `NextDouble(min, max)`; both

@@ -1545,8 +1545,14 @@ public sealed partial class PrototypeGameEngine
                     if (candidates.Length > 0)
                     {
                         var selectedId = candidates[
-                            PrototypeRng.NextInt(
-                                state.Rng, "event", candidates.Length)];
+                            ResolveLegacyRandomIndex(
+                                state.Rng,
+                                "event.random_upgrade.card_instance",
+                                "event:" + eventState.EventId + ":choice:"
+                                    + choice.Id + ":pool:"
+                                    + CanonicalJson.Sha256(candidates),
+                                Enumerable.Range(0, candidates.Length),
+                                streamId: "event")];
                         player = player with
                         {
                             Deck = player.Deck.Select(card =>
@@ -1666,9 +1672,13 @@ public sealed partial class PrototypeGameEngine
                             "Random Rare-card reward has an empty pool.");
                     }
 
-                    var cardId = rares[
-                        PrototypeRng.NextInt(
-                            state.Rng, "reward", rares.Length)];
+                    var cardId = rares[ResolveLegacyRandomIndex(
+                        state.Rng,
+                        "event.reward.random_rare_card.model",
+                        "event:" + eventState.EventId + ":choice:"
+                            + choice.Id + ":pool:" + CanonicalJson.Sha256(rares),
+                        Enumerable.Range(0, rares.Length),
+                        streamId: "reward")];
                     player = AppendCard(
                         player, nextId++, cardId, state.Rng);
                     break;
@@ -1692,7 +1702,11 @@ public sealed partial class PrototypeGameEngine
                     {
                         relicId = effect.Kind
                             == PrototypeRunEffectKind.GainRandomRelic
-                            ? PickUnownedEventRelic(player, state.Rng)
+                            ? PickUnownedEventRelic(
+                                player,
+                                state.Rng,
+                                "event:" + eventState.EventId
+                                    + ":choice:" + choice.Id)
                             : effect.RelicId
                                 ?? throw new InvalidOperationException(
                                     "Gain-relic event effect is missing a relic ID.");
@@ -1832,9 +1846,16 @@ public sealed partial class PrototypeGameEngine
                                 ? PrototypeNativePotionShop.PickWeighted(
                                     state.Rng, "reward")
                                 : PrototypeContent.PotionPool[
-                                    PrototypeRng.NextInt(
-                                        state.Rng, "event",
-                                        PrototypeContent.PotionPool.Length)]
+                                    ResolveLegacyRandomIndex(
+                                        state.Rng,
+                                        "event.reward.random_potion.model",
+                                        "event:" + eventState.EventId
+                                            + ":choice:" + choice.Id
+                                            + ":pool:" + CanonicalJson.Sha256(
+                                                PrototypeContent.PotionPool),
+                                        Enumerable.Range(
+                                            0, PrototypeContent.PotionPool.Length),
+                                        streamId: "event")]
                         : effect.PotionId
                             ?? throw new InvalidOperationException(
                                 "Gain-potion event effect is missing a potion ID.");
@@ -1930,7 +1951,8 @@ public sealed partial class PrototypeGameEngine
 
     private static string PickUnownedEventRelic(
         PlayerState player,
-        RngBundle rng)
+        RngBundle rng,
+        string ownerId)
     {
         var available = PrototypeContent.RelicPool
             .Where(id => !player.Relics.Any(relic =>
@@ -1941,8 +1963,12 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidOperationException(
                 "No unowned prototype relics remain for an event reward.");
         }
-        return available[PrototypeRng.NextInt(
-            rng, "event", available.Length)];
+        return available[ResolveLegacyRandomIndex(
+            rng,
+            "relic.unowned_random_selection.index_draw",
+            ownerId + ":pool:" + CanonicalJson.Sha256(available),
+            Enumerable.Range(0, available.Length),
+            streamId: "event")];
     }
 
     // Persisted event rolls determine both choice legality and settlement.
@@ -2353,10 +2379,15 @@ public sealed partial class PrototypeGameEngine
 
             var potionId =
                 PrototypeContent.PotionPool[
-                    PrototypeRng.NextInt(
+                    ResolveLegacyRandomIndex(
                         rng,
-                        "event",
-                        PrototypeContent.PotionPool.Length)];
+                        "event.potion.fill_empty_slots.model",
+                        "player:potion_slot:" + index + ":pool:"
+                            + CanonicalJson.Sha256(
+                                PrototypeContent.PotionPool),
+                        Enumerable.Range(
+                            0, PrototypeContent.PotionPool.Length),
+                        streamId: "event")];
             slots[index] =
                 new PotionInstance(
                     potionId,
@@ -3521,7 +3552,8 @@ public sealed partial class PrototypeGameEngine
         }
         else
         {
-            relicId = PickUnownedEventRelic(state.Player, state.Rng);
+            relicId = PickUnownedEventRelic(
+                state.Player, state.Rng, "rest:shovel");
         }
 
         if (relicId is null)
