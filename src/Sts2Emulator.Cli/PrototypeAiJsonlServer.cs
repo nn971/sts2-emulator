@@ -243,6 +243,30 @@ internal static class PrototypeAiJsonlServer
                         }).ToArray()
                 };
             }
+            if (state.CardTransformPending is { } cardTransform)
+            {
+                return new
+                {
+                    kind = "card_transform",
+                    schemaId = cardTransform.SchemaId,
+                    eventId = cardTransform.EventId,
+                    siteId = cardTransform.SiteId,
+                    streamId = cardTransform.StreamId,
+                    ownerId = cardTransform.OwnerId,
+                    ordinal = cardTransform.Ordinal,
+                    operationKind = cardTransform.OperationKind,
+                    supportFingerprint = cardTransform.SupportFingerprint,
+                    sourceCardInstanceId = cardTransform.SourceCardInstanceId,
+                    originalCardId = cardTransform.OriginalCardId,
+                    probabilityStatus = cardTransform.ProbabilityStatus,
+                    candidates = cardTransform.CandidateCardIds
+                        .Select((id, index) => new
+                        {
+                            index,
+                            cardModelId = id
+                        }).ToArray()
+                };
+            }
             if (state.CardSelectionPending is { } selection)
             {
                 return new
@@ -422,6 +446,8 @@ internal static class PrototypeAiJsonlServer
             if (state.SeededEntry?.FixturePotionGenerationCardId is not null ||
                 state.PotionGenerationPending is not null)
                 sites.Add("random_potion_generation");
+            if (state.CardTransformPending is not null)
+                sites.Add("random_card_transform");
             if (state.SeededEntry?.FixtureNatureDrawCosts == true)
                 sites.Add("drawn_card_cost");
             if (state.SeededEntry?.FixturePoolGenerationPotionId is not null ||
@@ -708,6 +734,8 @@ internal static class PrototypeAiJsonlServer
                                 SemanticGenerationChoiceV111.SchemaId,
                             semanticPotionGenerationChoiceSchemaId =
                                 SemanticPotionGenerationChoiceV111.SchemaId,
+                            semanticCardTransformChoiceSchemaId =
+                                SemanticCardTransformEventV111.EventSchemaId,
                             semanticCardSelectionChoiceSchemaId =
                                 SemanticCardSelectionEventV111.EventSchemaId,
                             semanticCostChoiceSchemaId =
@@ -736,7 +764,7 @@ internal static class PrototypeAiJsonlServer
                                 "random_pile_card", "random_auto_play_card",
                                 "random_replay_card",
                                 "random_rare_to_hand_shuffle",
-                                "random_potion_generation"
+                                "random_potion_generation", "random_card_transform"
                             },
                             semanticExtendedPlayerChoices = new[]
                             {
@@ -753,6 +781,7 @@ internal static class PrototypeAiJsonlServer
                                 "combat.sly_autoplay.random_enemy",
                                 "combat.generated_card.select",
                                 "combat.potion_generation.random_model",
+                                "combat.card_transform.replacement.index_draw",
                                 "combat.random_draw_attack.card_model",
                                 "combat.draw_pile.random_insert_index",
                                 "combat.generation.full_pool_shuffle.swap_index",
@@ -765,7 +794,7 @@ internal static class PrototypeAiJsonlServer
                                 "random-enemy and Sly targeting, five generated-card " +
                                 "effects, draw insertion, full-pool generation shuffles, " +
                                 "hand-cost selection/rerolls, random pile shortlists, " +
-                                "and per-potion model generation; " +
+                                "per-potion model generation, and selected-card transforms; " +
                                 "other chance sites fail closed; native entry and laws unverified.",
                             natureBoundaryKinds = new[] { "initial_hp", "intents" },
                             coverageSchemaId = V111Coverage.SchemaId,
@@ -1224,6 +1253,20 @@ internal static class PrototypeAiJsonlServer
                             current, RequiredString(request, "fingerprint"),
                             RequiredString(request, "event_id"),
                             RequiredString(request, "potion_model_id"));
+                        var handle = StoreSemantic(next);
+                        Write(new { requestId, ok = true,
+                            result = SemanticResult(next, handle, parentHandle) });
+                        break;
+                    }
+
+                    case "semantic_resolve_card_transform":
+                    {
+                        var parentHandle = RequiredString(request, "semantic_handle");
+                        var current = RequireSemantic(request);
+                        var next = SemanticPilotCombatEngineV111.ResolveCardTransform(
+                            current, RequiredString(request, "fingerprint"),
+                            RequiredString(request, "event_id"),
+                            RequiredString(request, "card_model_id"));
                         var handle = StoreSemantic(next);
                         Write(new { requestId, ok = true,
                             result = SemanticResult(next, handle, parentHandle) });

@@ -45,6 +45,8 @@ non-Nature RNG parity remain **UNVERIFIED**.
   sts2-v111-semantic-draw-insertion-v1`.
 - `semanticPotionGenerationChoiceSchemaId =
   sts2-v111-semantic-potion-generation-v1`.
+- `semanticCardTransformChoiceSchemaId =
+  sts2-v111-semantic-card-transform-v1`.
 - `semanticEnumerationSchemaId = sts2-v111-semantic-enumeration-v1`; maximum
   support size is 256.
 - `semanticExtendedControlledSites = [random_enemy_target, generated_card_pool,
@@ -52,7 +54,7 @@ non-Nature RNG parity remain **UNVERIFIED**.
   random_draw_attack_card_model, random_hand_card_energy_cost,
   random_hand_card_select, random_pile_selection_shortlist, random_pile_card,
   random_auto_play_card, random_replay_card, random_rare_to_hand_shuffle,
-  random_potion_generation]`;
+  random_potion_generation, random_card_transform]`;
   fixture-specific sites require their corresponding seeded-entry options.
 - `semanticExtendedPlayerChoices = [select_cards,
   card_drawn_hook_action]`.
@@ -89,6 +91,7 @@ paths avoid that external setup chain:
 | `semantic_resolve_random_target` | handle, fingerprint, pending `event_id`, legal `enemy_instance_id` | Child Nature / player / terminal |
 | `semantic_resolve_generated_card` | handle, fingerprint, pending `event_id`, legal `card_model_id` | Child Nature / player / terminal |
 | `semantic_resolve_potion_generation` | handle, fingerprint, pending `event_id`, legal `potion_model_id` | Child Nature / player |
+| `semantic_resolve_card_transform` | handle, fingerprint, pending `event_id`, legal `card_model_id` | Child Nature / player / terminal |
 | `semantic_resolve_cost` | handle, fingerprint, pending `event_id`, legal cost value | Child Nature / player / terminal |
 | `semantic_resolve_pool_shuffle` | handle, fingerprint, pending `event_id`, bounded `swap_index` | Child Nature / player / terminal |
 | `semantic_resolve_draw_insertion` | handle, fingerprint, pending `event_id`, bounded `position` | Child Nature / player / terminal |
@@ -751,3 +754,17 @@ model is consumed without delivery, matching the source operation's slot
 check. The loadout is explicit fixture provenance, not a claim about how
 Alchemize entered a native deck. Candidate source law, native stream
 assignment, and cursor parity remain `UNVERIFIED`.
+
+## Random combat-card transform continuation
+
+When a validated `select_cards` action transforms one or more cards while the
+controlled chance guard is active, the engine saves that completed selection
+and exposes one ordered replacement pool at a time through
+`combat.card_transform.replacement.index_draw`. The pool follows the source
+card's own Colorless or reward generation pool, excludes that card model, and
+keeps only supported Common, Uncommon, and Rare combat cards. Resolving each
+`card_transform` event records a replacement model; after the final outcome,
+the existing card-zone and semantic draw-pile transform logic resumes once.
+Python clients call `SemanticCombat.resolve_card_transform(card_model_id)`.
+Native pool assignment, cursor parity, and mechanics coverage remain
+`UNVERIFIED`.

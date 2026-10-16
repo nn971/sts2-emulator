@@ -3491,6 +3491,25 @@ public static class PrototypeStateInvariants
                     throw new InvalidOperationException(
                         "Controlled potion-generation continuation is malformed.");
             }
+            if (pending.ControlledCardTransform is { } cardTransform)
+            {
+                if (!PrototypeGameEngine.ValidateControlledCardTransform(
+                        combat, cardTransform) ||
+                    pending.ControlledTarget is not null ||
+                    pending.ControlledGeneration is not null ||
+                    pending.ControlledPotionGeneration is not null ||
+                    pending.ControlledDrawInsertion is not null ||
+                    pending.ControlledPoolShuffle is not null ||
+                    pending.ControlledRandomCost is not null ||
+                    pending.ControlledDrawCost is not null ||
+                    pending.ControlledCardShortlist is not null ||
+                    pending.ControlledRandomPileCard is not null ||
+                    pending.ControlledSemanticDraw is not null ||
+                    pending.ChoiceId != "controlled_card_transform" ||
+                    pending.CandidateCardInstanceIds.Length != 0)
+                    throw new InvalidOperationException(
+                        "Controlled card-transform continuation is malformed.");
+            }
             if (pending.SemanticStratagemDrawSelection)
             {
                 bool hasStandaloneDraw = pending.Continuation.Any(operation =>

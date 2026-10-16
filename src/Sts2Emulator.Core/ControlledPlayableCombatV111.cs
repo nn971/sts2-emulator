@@ -34,10 +34,11 @@ public sealed record ControlledPlayableCombatV111(
     public RandomIndexDecisionV111[] RandomCostTranscript { get; init; } = [];
     public RandomIndexDecisionV111[] DrawCostTranscript { get; init; } = [];
     public RandomIndexDecisionV111[] PotionGenerationTranscript { get; init; } = [];
+    public RandomIndexDecisionV111[] CardTransformTranscript { get; init; } = [];
 
     [System.Text.Json.Serialization.JsonIgnore]
     public RandomIndexRequestV111? ActivePending =>
-        DrawCostPending ?? RandomCostPending ?? PotionGenerationPending ?? PoolShufflePending ?? DrawInsertionPending ??
+        DrawCostPending ?? RandomCostPending ?? PotionGenerationPending ?? CardTransformPending ?? PoolShufflePending ?? DrawInsertionPending ??
         GeneratedCardPending ?? TargetPending ??
         Recycle?.Pending ?? TurnIntents?.Pending ?? Pending;
     [System.Text.Json.Serialization.JsonIgnore]
@@ -173,6 +174,26 @@ public sealed record ControlledPlayableCombatV111(
         }
     }
     [System.Text.Json.Serialization.JsonIgnore]
+    public RandomIndexRequestV111? CardTransformPending
+    {
+        get
+        {
+            var combat = Run.World?.Combat;
+            var transform = combat?.PendingChoice?.ControlledCardTransform;
+            if (transform is null) return null;
+            var instanceId = transform.SelectedCardInstanceIds[
+                transform.NextTransformIndex];
+            return new RandomIndexRequestV111(
+                "combat.card_transform.replacement.index_draw",
+                "prototype.combat",
+                "card_instance:" + instanceId + ":pool:" +
+                    CanonicalJson.Sha256(transform.CandidateCardIds),
+                CardTransformTranscript.Length,
+                Enumerable.Range(0, transform.CandidateCardIds.Length)
+                    .ToArray(), OperationKind: "choose_index");
+        }
+    }
+    [System.Text.Json.Serialization.JsonIgnore]
     public RandomIndexRequestV111? TargetPending
     {
         get
@@ -220,6 +241,7 @@ public sealed record ControlledPlayableCombatV111(
         RandomCostTranscript = DeepCopy(RandomCostTranscript),
         DrawCostTranscript = DeepCopy(DrawCostTranscript),
         PotionGenerationTranscript = DeepCopy(PotionGenerationTranscript),
+        CardTransformTranscript = DeepCopy(CardTransformTranscript),
         Pending = Pending is null ? null : Pending with
         {
             OrderedCandidates = (int[])Pending.OrderedCandidates.Clone()
@@ -329,6 +351,8 @@ public static class ControlledPlayableCombatEngineV111
             return ResolveRandomCost(state, selectedIndex);
         if (state.PotionGenerationPending is not null)
             return ResolvePotionGeneration(state, selectedIndex);
+        if (state.CardTransformPending is not null)
+            return ResolveCardTransform(state, selectedIndex);
         if (state.PoolShufflePending is not null)
             return ResolvePoolShuffle(state, selectedIndex);
         if (state.DrawInsertionPending is not null)
@@ -513,6 +537,28 @@ public static class ControlledPlayableCombatEngineV111
         {
             Run = result,
             PotionGenerationTranscript = state.PotionGenerationTranscript
+                .Append(choice).ToArray(),
+            LiveTranscript = state.LiveTranscript.Append(choice).ToArray()
+        };
+        return StartPendingTurn(next);
+    }
+
+    private static ControlledPlayableCombatV111 ResolveCardTransform(
+        ControlledPlayableCombatV111 state, int selectedIndex)
+    {
+        var request = state.CardTransformPending ??
+            throw new InvalidOperationException(
+                "Missing random card-transform Nature ticket.");
+        var choice = new ControlledRandomIndexProviderV111(selectedIndex)
+            .Resolve(request, state.Origin.ReferenceStreams);
+        RunState result;
+        using (ControlledChanceGuardV111.Enter())
+            result = PrototypeGameEngine.ResumeControlledCardTransform(
+                state.Run.Fork(), selectedIndex);
+        var next = state.Fork() with
+        {
+            Run = result,
+            CardTransformTranscript = state.CardTransformTranscript
                 .Append(choice).ToArray(),
             LiveTranscript = state.LiveTranscript.Append(choice).ToArray()
         };
@@ -723,7 +769,9 @@ public static class ControlledPlayableCombatEngineV111
             !current.RandomCostTranscript.SequenceEqual(stored.RandomCostTranscript) ||
             !current.DrawCostTranscript.SequenceEqual(stored.DrawCostTranscript) ||
             !current.PotionGenerationTranscript.SequenceEqual(
-                stored.PotionGenerationTranscript))
+                stored.PotionGenerationTranscript) ||
+            !current.CardTransformTranscript.SequenceEqual(
+                stored.CardTransformTranscript))
         {
             // Records hold arrays; canonical comparison below is decisive.
             if (CanonicalJson.Sha256(current.TurnTranscript) !=
@@ -743,7 +791,9 @@ public static class ControlledPlayableCombatEngineV111
                 CanonicalJson.Sha256(current.DrawCostTranscript) !=
                     CanonicalJson.Sha256(stored.DrawCostTranscript) ||
                 CanonicalJson.Sha256(current.PotionGenerationTranscript) !=
-                    CanonicalJson.Sha256(stored.PotionGenerationTranscript))
+                    CanonicalJson.Sha256(stored.PotionGenerationTranscript) ||
+                CanonicalJson.Sha256(current.CardTransformTranscript) !=
+                    CanonicalJson.Sha256(stored.CardTransformTranscript))
                 throw new InvalidDataException("Chance transcripts diverged.");
         }
         if (CanonicalJson.Sha256(current) != CanonicalJson.Sha256(stored))
@@ -765,7 +815,8 @@ public static class ControlledPlayableCombatEngineV111
             state.PoolShuffleTranscript is null ||
             state.RandomCostTranscript is null ||
             state.DrawCostTranscript is null ||
-            state.PotionGenerationTranscript is null || state.Origin is null ||
+            state.PotionGenerationTranscript is null ||
+            state.CardTransformTranscript is null || state.Origin is null ||
             (state.TurnIntents is not null && state.Pending is not null) ||
             (state.Recycle is not null &&
                 (state.Pending is not null || state.TurnIntents is not null)))
@@ -884,6 +935,20 @@ public static class ControlledPlayableCombatEngineV111
                  potionCombat!.PendingChoice?.SourceCardInstanceId)))
             throw new InvalidDataException(
                 "Malformed or stale controlled potion-generation candidate pool.");
+        var transformCombat = state.Run.World?.Combat;
+        var cardTransform = transformCombat?.PendingChoice?
+            .ControlledCardTransform;
+        if (cardTransform is not null &&
+            (state.Pending is not null || state.Recycle is not null ||
+             state.TurnIntents is not null ||
+             transformCombat?.PendingChoice?.ControlledTarget is not null ||
+             transformCombat?.PendingChoice?.ControlledGeneration is not null ||
+             transformCombat?.PendingChoice?.ControlledPotionGeneration is not null ||
+             transformCombat?.PendingChoice?.ControlledPoolShuffle is not null ||
+             !PrototypeGameEngine.ValidateControlledCardTransform(
+                 transformCombat!, cardTransform)))
+            throw new InvalidDataException(
+                "Malformed or stale controlled card-transform candidate pool.");
         var controlledTarget = state.Run.World?.Combat?.PendingChoice?.ControlledTarget;
         if (controlledTarget is not null)
         {

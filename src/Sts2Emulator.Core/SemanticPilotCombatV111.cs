@@ -20,7 +20,8 @@ public sealed record SemanticPilotTransitionV111(
     SemanticCardShortlistDecisionV111? CardShortlistDecision = null,
     SemanticRandomPileCardDecisionV111? RandomPileCardDecision = null,
     SemanticDrawHookChoiceDecisionV111? DrawHookChoiceDecision = null,
-    SemanticPotionGenerationDecisionV111? PotionGenerationDecision = null);
+    SemanticPotionGenerationDecisionV111? PotionGenerationDecision = null,
+    SemanticCardTransformDecisionV111? CardTransformDecision = null);
 
 /// <summary>
 /// Independently replayable setup provenance. The default entry is a
@@ -118,6 +119,10 @@ public sealed record SemanticPilotCombatV111(
         PotionGenerationPending =>
             SemanticPilotCombatEngineV111
                 .DescribePendingPotionGenerationEvent(this);
+    [JsonIgnore] public SemanticCardTransformEventV111?
+        CardTransformPending =>
+            SemanticPilotCombatEngineV111
+                .DescribePendingCardTransformEvent(this);
     [JsonIgnore] public SemanticCardSelectionEventV111? CardSelectionPending =>
         SemanticPilotCombatEngineV111.DescribePendingCardSelectionEvent(this);
     [JsonIgnore] public SemanticCostEventV111? CostPending =>
@@ -233,6 +238,10 @@ public sealed record SemanticPilotCombatV111(
             { PotionGenerationDecision: { } decision } => transition with
             {
                 PotionGenerationDecision = decision.Fork()
+            },
+            { CardTransformDecision: { } decision } => transition with
+            {
+                CardTransformDecision = decision.Fork()
             },
             { CardSelectionDecision: { } decision } => transition with
             {
@@ -1745,6 +1754,54 @@ public static class SemanticPilotCombatEngineV111
         });
     }
 
+    public static SemanticPilotCombatV111 ResolveCardTransform(
+        SemanticPilotCombatV111 current, string fingerprint,
+        string eventId, string cardId)
+    {
+        Validate(current);
+        if (current.Fingerprint != fingerprint)
+            throw new InvalidOperationException(
+                "Stale semantic card-transform fingerprint.");
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(cardId);
+        var pending = current.CardTransformPending ??
+            throw new InvalidOperationException(
+                "No semantic card-transform event is pending.");
+        if (pending.EventId != eventId)
+            throw new InvalidOperationException(
+                "Card-transform event ID is stale or mismatched.");
+        var index = Array.IndexOf(pending.CandidateCardIds, cardId);
+        if (index < 0)
+            throw new InvalidOperationException(
+                "Card model is outside the pending transform support.");
+        var expected = new SemanticCardTransformDecisionV111(
+            pending, index, cardId);
+        expected.Validate();
+
+        RunState result;
+        using (ControlledChanceGuardV111.Enter())
+            result = PrototypeGameEngine.ResumeControlledCardTransform(
+                current.Run.Fork(), index);
+        if (result.Phase == RunPhase.Combat)
+            ValidateSemanticCombatBoundary(result);
+        else if (result.Phase is not (RunPhase.Reward or RunPhase.Terminal))
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_TRANSFORM site=combat.card_transform " +
+                "operation=unsupported_post_transform_phase");
+
+        return NormalizeNoncontrolledCosts(current with
+        {
+            Run = result,
+            RewardAudit = result.Phase == RunPhase.Reward
+                ? RecordRewardAudit(current.Run, result)
+                : current.RewardAudit,
+            History = current.History.Append(
+                new SemanticPilotTransitionV111(
+                    "semantic_card_transform",
+                    CardTransformDecision: expected.Fork())).ToArray()
+        });
+    }
+
     private static SemanticPilotCombatV111 StepNativePolicyBaseline(
         SemanticPilotCombatV111 current, string actionId)
     {
@@ -2757,6 +2814,48 @@ public static class SemanticPilotCombatEngineV111
         return semanticEvent;
     }
 
+    public static SemanticCardTransformEventV111?
+        DescribePendingCardTransformEvent(SemanticPilotCombatV111 current)
+    {
+        ArgumentNullException.ThrowIfNull(current);
+        var combat = current.Run.World?.Combat;
+        var choice = combat?.PendingChoice;
+        var transform = choice?.ControlledCardTransform;
+        if (transform is null) return null;
+        if (current.PendingEndTurn is not null ||
+            current.PendingInitialIntents is not null ||
+            current.UsesNativePolicyBaseline || current.CombatTerminal)
+            throw new InvalidDataException(
+                "Card-transform choice conflicts with another semantic boundary.");
+        ValidateCardTransformBoundary(current.Run, transform);
+        var sourceId = transform.SelectedCardInstanceIds[
+            transform.NextTransformIndex];
+        var originalCardId = combat!.Cards.Single(card =>
+            card.InstanceId == sourceId).CardId;
+        var candidates = (string[])transform.CandidateCardIds.Clone();
+        var supportFingerprint = CanonicalJson.Sha256(candidates);
+        var siteId = "combat.card_transform.replacement.index_draw";
+        var ownerId = "card_instance:" + sourceId + ":model:" +
+            originalCardId + ":pool:" + supportFingerprint;
+        var ordinal = current.History.Count(transition =>
+            transition.Kind == "semantic_card_transform");
+        var eventId = CanonicalJson.Sha256(new
+        {
+            SchemaId = SemanticCardTransformEventV111.EventSchemaId,
+            BoundaryFingerprint = current.Fingerprint,
+            SiteId = siteId,
+            OwnerId = ownerId,
+            Ordinal = ordinal,
+            SupportFingerprint = supportFingerprint
+        });
+        var semanticEvent = new SemanticCardTransformEventV111(
+            SemanticCardTransformEventV111.EventSchemaId, eventId, siteId,
+            "prototype.combat", ownerId, ordinal, "choose_card_model",
+            sourceId, originalCardId, candidates, supportFingerprint);
+        semanticEvent.Validate();
+        return semanticEvent;
+    }
+
     public static SemanticCardSelectionEventV111?
         DescribePendingCardSelectionEvent(SemanticPilotCombatV111 current)
     {
@@ -3297,6 +3396,11 @@ public static class SemanticPilotCombatEngineV111
     internal static void ValidateSemanticCombatBoundary(RunState run)
     {
         var choice = run.World?.Combat?.PendingChoice;
+        if (choice?.ControlledCardTransform is { } cardTransform)
+        {
+            ValidateCardTransformBoundary(run, cardTransform);
+            return;
+        }
         if (choice?.ChoiceId == "select_cards")
         {
             SemanticCardSelectionEngineV111.ValidatePendingBoundary(run);
@@ -3372,6 +3476,29 @@ public static class SemanticPilotCombatEngineV111
                 .Order().SequenceEqual(combat.DrawPile.Order()))
             throw new InvalidDataException(
                 "Potion generation changed the hidden draw pile.");
+    }
+
+    private static void ValidateCardTransformBoundary(
+        RunState run, PrototypeControlledCardTransformV111 transform)
+    {
+        var combat = run.World?.Combat;
+        if (run.Phase != RunPhase.Combat || combat is null ||
+            combat.PendingChoice is not
+                { ChoiceId: "controlled_card_transform" } ||
+            !PrototypeGameEngine.ValidateControlledCardTransform(
+                combat, transform))
+            throw new InvalidDataException(
+                "Card-transform pool is not source-reachable.");
+        if (combat.SemanticDeck is { } deck)
+        {
+            SemanticDeckEngineV111.Validate(deck);
+            if (deck.Mode != SemanticDeckStateV111.NatureMode ||
+                deck.Pending is not null ||
+                !SemanticDeckEngineV111.AllCardInstanceIds(deck)
+                    .Order().SequenceEqual(combat.DrawPile.Order()))
+                throw new InvalidDataException(
+                    "Card-transform continuation diverged from its semantic draw pile.");
+        }
     }
 
     private static void ValidateSemanticActionDrawBoundary(RunState run)
@@ -3828,6 +3955,34 @@ public static class SemanticPilotCombatEngineV111
                      .ControlledPotionGeneration is not null)
             throw new InvalidDataException(
                 "Controlled potion generation has no semantic event.");
+        if (state.CardTransformPending is { } cardTransformPending)
+        {
+            cardTransformPending.Validate();
+            ValidateCardTransformBoundary(state.Run,
+                state.Run.World!.Combat!.PendingChoice!
+                    .ControlledCardTransform!);
+            if (state.TargetPending is not null ||
+                state.GeneratedCardPending is not null ||
+                state.PotionGenerationPending is not null ||
+                state.IntentPending is not null ||
+                state.DrawPending is not null ||
+                state.RandomPileCardPending is not null ||
+                state.CardSelectionPending is not null ||
+                state.CostPending is not null ||
+                state.HandCostSelectionPending is not null ||
+                state.CardShortlistPending is not null ||
+                state.PoolShufflePending is not null ||
+                state.DrawInsertionPending is not null ||
+                state.PendingEndTurn is not null ||
+                state.PendingInitialIntents is not null ||
+                state.UsesNativePolicyBaseline || state.CombatTerminal)
+                throw new InvalidDataException(
+                    "Card-transform continuation conflicts with another semantic boundary.");
+        }
+        else if (state.Run.World?.Combat?.PendingChoice?
+                     .ControlledCardTransform is not null)
+            throw new InvalidDataException(
+                "Controlled card transform has no semantic event.");
         if (state.CardSelectionPending is { } cardSelectionPending)
         {
             cardSelectionPending.Validate();
@@ -4093,6 +4248,11 @@ public static class SemanticPilotCombatEngineV111
                     ResolvePotionGeneration(replay, replay.Fingerprint,
                         transition.PotionGenerationDecision.Event.EventId,
                         transition.PotionGenerationDecision.SelectedPotionId),
+                "semantic_card_transform" when
+                    transition.CardTransformDecision is not null =>
+                    ResolveCardTransform(replay, replay.Fingerprint,
+                        transition.CardTransformDecision.Event.EventId,
+                        transition.CardTransformDecision.SelectedCardId),
                 "semantic_card_selection" when
                     transition.CardSelectionDecision is not null =>
                     Step(replay, replay.Fingerprint,

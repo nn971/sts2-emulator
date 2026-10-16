@@ -1862,6 +1862,25 @@ public sealed record PrototypeControlledPotionGenerationV111(
     };
 }
 
+/// <summary>Nature-owned replacement choice suspended while completing a
+/// validated transform card selection. Replacement card IDs are aligned with
+/// the selected source instance IDs.</summary>
+public sealed record PrototypeControlledCardTransformV111(
+    PendingCombatChoiceState OriginalChoice,
+    long[] SelectedCardInstanceIds,
+    string[] ReplacementCardIds,
+    int NextTransformIndex,
+    string[] CandidateCardIds)
+{
+    public PrototypeControlledCardTransformV111 Fork() => this with
+    {
+        OriginalChoice = OriginalChoice.Fork(),
+        SelectedCardInstanceIds = (long[])SelectedCardInstanceIds.Clone(),
+        ReplacementCardIds = (string[])ReplacementCardIds.Clone(),
+        CandidateCardIds = (string[])CandidateCardIds.Clone()
+    };
+}
+
 /// <summary>Nature-owned source operation suspended before draw pile insertion.
 /// Pending card models are never materialized until Nature selects a position.
 /// </summary>
@@ -2013,6 +2032,7 @@ public sealed record PendingCombatChoiceState(
     PrototypeControlledTargetChoiceV111? ControlledTarget = null,
     PrototypeControlledGeneratedCardV111? ControlledGeneration = null,
     PrototypeControlledPotionGenerationV111? ControlledPotionGeneration = null,
+    PrototypeControlledCardTransformV111? ControlledCardTransform = null,
     PrototypeControlledDrawInsertionV111? ControlledDrawInsertion = null,
     PrototypeControlledPoolShuffleV111? ControlledPoolShuffle = null,
     PrototypeControlledRandomCostV111? ControlledRandomCost = null,
@@ -2052,6 +2072,7 @@ public sealed record PendingCombatChoiceState(
         ControlledTarget = ControlledTarget?.Fork(),
         ControlledGeneration = ControlledGeneration?.Fork(),
         ControlledPotionGeneration = ControlledPotionGeneration?.Fork(),
+        ControlledCardTransform = ControlledCardTransform?.Fork(),
         ControlledDrawInsertion = ControlledDrawInsertion?.Fork(),
         ControlledPoolShuffle = ControlledPoolShuffle?.Fork(),
         ControlledRandomCost = ControlledRandomCost?.Fork(),

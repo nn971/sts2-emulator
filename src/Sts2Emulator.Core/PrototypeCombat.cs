@@ -12704,6 +12704,15 @@ public sealed partial class PrototypeGameEngine
     {
         RequireKind(action, "select_cards");
         var payload = action.ReadPayload<SelectCardsPayload>();
+        return ResolvePendingChoice(state, payload.CardInstanceIds, null);
+    }
+
+    private static RunState ResolvePendingChoice(
+        RunState state,
+        long[] selected,
+        IReadOnlyDictionary<long, string>? transformReplacementCardIds,
+        bool selectionAlreadyResolved = false)
+    {
         var world = RequireWorld(state);
         var combat = world.Combat
             ?? throw new InvalidOperationException("Combat phase has no combat state.");
@@ -12715,14 +12724,13 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidOperationException($"Unknown pending combat choice '{pending.ChoiceId}'.");
         }
 
-        var selected = payload.CardInstanceIds;
         if (selected.Length != selected.Distinct().Count())
         {
             throw new InvalidOperationException(
                 "Card selection contains duplicate instance IDs.");
         }
 
-        if (pending.Selection.SequentialOptional)
+        if (pending.Selection.SequentialOptional && !selectionAlreadyResolved)
         {
             if (selected.Length > 1)
             {
@@ -12808,6 +12816,20 @@ public sealed partial class PrototypeGameEngine
             }
         }
 
+        if (pending.Selection.Resolution ==
+                PrototypeCardSelectionResolutionKind.TransformRandom &&
+            selected.Length > 0 && transformReplacementCardIds is null &&
+            ControlledChanceGuardV111.Active)
+        {
+            var sourceCards = GetZone(combat, pending.Selection.SourceZone);
+            if (selected.Any(cardId => !sourceCards.Contains(cardId)))
+                throw new InvalidOperationException(
+                    "Selected card is no longer in the requested source zone.");
+            combat = MakeControlledCardTransformChoice(
+                combat, pending, selected);
+            return state with { World = world with { Combat = combat } };
+        }
+
         var slyCards = pending.Selection.SourceZone == PrototypeCardZone.Hand
             && pending.Selection.Resolution == PrototypeCardSelectionResolutionKind.MoveToDiscard
                 ? selected
@@ -12822,7 +12844,8 @@ public sealed partial class PrototypeGameEngine
                 : Array.Empty<long>();
 
         combat = ApplyCardSelection(
-            combat, pending.Selection, selected, state.Rng);
+            combat, pending.Selection, selected, state.Rng,
+            transformReplacementCardIds);
         combat = combat with { PendingChoice = null };
 
         if (pending.SelectedCardTemporaryCost is not null)
@@ -14246,7 +14269,8 @@ public sealed partial class PrototypeGameEngine
         CombatState combat,
         PrototypeCardSelectionSpec selection,
         long[] selected,
-        RngBundle rng)
+        RngBundle rng,
+        IReadOnlyDictionary<long, string>? transformReplacementCardIds = null)
     {
         var source = GetZone(combat, selection.SourceZone);
         var selectedSet = selected.ToHashSet();
@@ -14278,7 +14302,6 @@ public sealed partial class PrototypeGameEngine
             foreach (var instanceId in selected)
             {
                 var original = RequireCombatCard(combat, instanceId);
-                var definition = PrototypeContent.Card(original.CardId);
                 if (PrototypeCardRules.IsEternal(original))
                 {
                     throw new InvalidOperationException(
@@ -14287,35 +14310,40 @@ public sealed partial class PrototypeGameEngine
 
                 // Native combat transforms into a different eligible
                 // card from the ORIGINAL card's own generation pool.
-                var pool = original.CardId.StartsWith(
-                        "proto.colorless.", StringComparison.Ordinal)
-                    ? PrototypeColorlessCards.ImplementedCombatGenerationPool
-                    : PrototypeContent.RewardCardPool;
-                var eligible = pool.Where(id =>
-                {
-                    var candidate = PrototypeContent.Card(id);
-                    return id != original.CardId
-                        && candidate.CanBeGeneratedInCombat
-                        && candidate.MechanicsImplemented
-                        && candidate.Rarity is
-                            PrototypeCardRarity.Common
-                            or PrototypeCardRarity.Uncommon
-                            or PrototypeCardRarity.Rare;
-                }).ToArray();
+                var eligible = EligibleCombatTransformPool(original.CardId);
                 if (eligible.Length == 0)
                 {
                     throw new NotSupportedException(
                         "No eligible native-pool solo transform targets.");
                 }
 
-                var replacementChoice = ResolveGeneratedCardModelIndex(
-                    combat, rng, eligible,
-                    PrototypeCombatEffectKind.ChooseCards,
-                    instanceId, transformOrdinal++,
-                    "combat.card_transform.replacement.index_draw");
-                combat = replacementChoice.Combat;
-                var replacement = eligible[
-                    replacementChoice.SelectedIndex];
+                string replacement;
+                if (transformReplacementCardIds is not null)
+                {
+                    if (!transformReplacementCardIds.TryGetValue(
+                            instanceId, out var selectedReplacement) ||
+                        !eligible.Contains(selectedReplacement,
+                            StringComparer.Ordinal))
+                        throw new InvalidDataException(
+                            "Controlled transform replacement is outside its source pool.");
+                    replacement = selectedReplacement;
+                }
+                else
+                {
+                    if (ControlledChanceGuardV111.Active)
+                        throw new NotSupportedException(
+                            "UNSUPPORTED_CONTROLLED_CHANCE " +
+                            "site=combat.card_transform.replacement.index_draw " +
+                            "operation=choose_card_model requires a saved transform continuation.");
+                    var replacementChoice = ResolveGeneratedCardModelIndex(
+                        combat, rng, eligible,
+                        PrototypeCombatEffectKind.ChooseCards,
+                        instanceId, transformOrdinal,
+                        "combat.card_transform.replacement.index_draw");
+                    combat = replacementChoice.Combat;
+                    replacement = eligible[replacementChoice.SelectedIndex];
+                }
+                transformOrdinal++;
                 var replacementId = combat.NextCardInstanceId;
                 var oldPersistentId = original.PersistentCardInstanceId;
                 var transformed = combat.TransformedPersistentCardIds

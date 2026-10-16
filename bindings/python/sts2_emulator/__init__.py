@@ -334,6 +334,28 @@ class SemanticCombat:
                 event_id=self.pending["eventId"],
                 potion_model_id=potion_model_id))
 
+    def resolve_card_transform(self, card_model_id: str):
+        """Resolve one combat-card replacement from its source pool."""
+        if not self.pending or self.pending.get("kind") != "card_transform":
+            raise EmulatorError("Expected a card_transform Nature event")
+        if self.session.capabilities.get(
+                "semanticCardTransformChoiceSchemaId") != (
+                    "sts2-v111-semantic-card-transform-v1"):
+            raise EmulatorError(
+                "Emulator does not expose semantic card-transform choices")
+        candidate_ids = [
+            candidate["cardModelId"]
+            for candidate in self.pending.get("candidates", [])]
+        if card_model_id not in candidate_ids:
+            raise ValueError("Card model is outside the pending transform support")
+        return SemanticCombat.from_wire(
+            self.session, self.session.call(
+                "semantic_resolve_card_transform",
+                semantic_handle=self.handle,
+                fingerprint=self.fingerprint,
+                event_id=self.pending["eventId"],
+                card_model_id=card_model_id))
+
     def resolve_cost(self, cost: int):
         """Resolve an opt-in temporary card cost by its legal value."""
         if not self.pending or self.pending.get("kind") not in (
