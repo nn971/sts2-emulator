@@ -36,7 +36,7 @@ public sealed record ControlledTurnIntentsV111(
 
 public static class ControlledTurnIntentEngineV111
 {
-    public const string SiteId = "combat.next_turn_intent.index_draw";
+    public const string SiteId = NativeCombatRngEntryV111.NextTurnIntentSiteId;
 
     public static ControlledTurnIntentsV111 Begin(
         CombatState combat, string nativeEncounterEntry,

@@ -1118,7 +1118,8 @@ public static class SemanticPilotCombatEngineV111
                 using (ControlledChanceGuardV111.AllowEngineOwnedNativeProvider())
                 using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
                     committed = PrototypeGameEngine.CommitEnemyIntentsWithAudit(
-                        combat, run.Rng);
+                        combat, run.Rng,
+                        NativeCombatRngEntryV111.CommittedIntentSiteId);
                 using (ControlledChanceGuardV111.Enter())
                 using (ControlledChanceGuardV111.AllowEngineOwnedNativeProvider())
                 using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
@@ -1168,7 +1169,7 @@ public static class SemanticPilotCombatEngineV111
             };
             pendingInitialIntents = ControlledTurnIntentEngineV111.Begin(
                 semanticCombat, actualNativeEntry,
-                siteId: "combat.committed_intent.index_draw");
+                siteId: NativeCombatRngEntryV111.CommittedIntentSiteId);
             if (pendingInitialIntents.Complete)
             {
                 using (ControlledChanceGuardV111.Enter())

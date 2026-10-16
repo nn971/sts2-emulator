@@ -35,6 +35,10 @@ public static class NativeCombatRngEntryV111
 {
     public const string InitialUniqueHpSiteId =
         "combat.initial_unique_hp";
+    public const string CommittedIntentSiteId =
+        "combat.committed_intent.index_draw";
+    public const string NextTurnIntentSiteId =
+        "combat.next_turn_intent.index_draw";
     public const string ToughEggHatchHpSiteId =
         "combat.tough_egg.hatchling_hp";
 
@@ -495,7 +499,7 @@ public static class NativeCombatRngEntryV111
             throw new InvalidOperationException(
                 "Only a native-RNG combat can use this isolated intent API.");
         return PrototypeGameEngine.CommitEnemyIntents(
-            combat, RngBundle.Empty);
+            combat, RngBundle.Empty, CommittedIntentSiteId);
     }
 
     public static NativeIntentAuditV111 CommitIntentsWithAudit(CombatState combat)
@@ -503,7 +507,8 @@ public static class NativeCombatRngEntryV111
         ArgumentNullException.ThrowIfNull(combat);
         if (combat.NativeRng is null)
             throw new InvalidOperationException("Native intent audit requires attached native RNG.");
-        var result = PrototypeGameEngine.CommitEnemyIntentsWithAudit(combat, RngBundle.Empty);
+        var result = PrototypeGameEngine.CommitEnemyIntentsWithAudit(
+            combat, RngBundle.Empty, CommittedIntentSiteId);
         return new NativeIntentAuditV111(result.Combat, result.Choices, "native-v111");
     }
 

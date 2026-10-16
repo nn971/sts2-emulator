@@ -460,7 +460,9 @@ public sealed partial class PrototypeGameEngine
             World = entryWorld,
             Phase = RunPhase.Combat
         });
-        combat = CommitEnemyIntents(combat, state.Rng);
+        combat = CommitEnemyIntents(
+            combat, state.Rng,
+            NativeCombatRngEntryV111.CommittedIntentSiteId);
         // Return the latest native run/player cursors to their persistent
         // owner; later Step() calls continue from these precise positions.
         if (combat.NativeRng is not null)
@@ -2482,7 +2484,9 @@ public sealed partial class PrototypeGameEngine
             case PrototypeAutomaticStepKind.AdvanceTurn:
                 // The controlled pipeline suspends *before* this stage.
                 combat = CompleteAdvanceTurnAfterCommittedIntents(
-                    CommitEnemyIntents(combat, state.Rng));
+                    CommitEnemyIntents(
+                        combat, state.Rng,
+                        NativeCombatRngEntryV111.NextTurnIntentSiteId));
                 break;
 
             case PrototypeAutomaticStepKind.ResetPlayerBlock:
@@ -3252,22 +3256,26 @@ public sealed partial class PrototypeGameEngine
         CombatState Combat, RandomIndexDecisionV111[] Choices);
 
     internal static CombatState CommitEnemyIntents(
-        CombatState combat, RngBundle rng) =>
-        CommitEnemyIntentsCore(combat, rng, null);
+        CombatState combat, RngBundle rng,
+        string siteId = NativeCombatRngEntryV111.CommittedIntentSiteId) =>
+        CommitEnemyIntentsCore(combat, rng, null, siteId);
 
     internal static NativeCommittedIntentAuditV111 CommitEnemyIntentsWithAudit(
-        CombatState combat, RngBundle rng)
+        CombatState combat, RngBundle rng,
+        string siteId = NativeCombatRngEntryV111.CommittedIntentSiteId)
     {
         if (combat.NativeRng is null)
             throw new InvalidOperationException("Native intent audit requires attached native RNG.");
         var decisions = new List<RandomIndexDecisionV111>();
-        var result = CommitEnemyIntentsCore(combat, rng, decisions);
+        var result = CommitEnemyIntentsCore(combat, rng, decisions, siteId);
         return new NativeCommittedIntentAuditV111(result, decisions.ToArray());
     }
 
     private static CombatState CommitEnemyIntentsCore(
-        CombatState combat, RngBundle rng, List<RandomIndexDecisionV111>? audit)
+        CombatState combat, RngBundle rng,
+        List<RandomIndexDecisionV111>? audit, string siteId)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
         var ownedNative = combat.NativeRng?.Fork();
         var formation = combat.Enemies.Select(enemy => enemy.Fork()).ToArray();
         var provider = new NativeRandomIndexProviderV111();
@@ -3278,13 +3286,13 @@ public sealed partial class PrototypeGameEngine
             Func<int, int> nextIndex = ownedNative is null
                 ? maxExclusive => ResolveLegacyBoundedInteger(
                     rng,
-                    "combat.committed_intent.index_draw",
+                    siteId,
                     "creature:" + enemy.InstanceId,
                     maxExclusive)
                 : maxExclusive =>
                 {
                     var request = new RandomIndexRequestV111(
-                        "combat.committed_intent.index_draw", "run.monster_ai",
+                        siteId, "run.monster_ai",
                         "creature:" + enemy.InstanceId, occurrence,
                         [], OperationKind: "bounded_integer",
                         BoundedCount: maxExclusive);

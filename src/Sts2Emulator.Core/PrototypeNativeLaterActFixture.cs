@@ -170,7 +170,8 @@ public static class PrototypeNativeLaterActFixture
             prepared.Combat, prepared.Formation, prepared.NativeStreams);
         return commitInitialIntents
             ? PrototypeGameEngine.CommitEnemyIntents(
-                native, PrototypeRng.CreateBundle(seed))
+                native, PrototypeRng.CreateBundle(seed),
+                NativeCombatRngEntryV111.CommittedIntentSiteId)
             : native;
     }
 
