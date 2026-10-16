@@ -1,7 +1,5 @@
 using System.Text.Json;
 using System.Text.Json.Serialization;
-using System.Security.Cryptography;
-using System.Text;
 
 namespace Sts2Emulator.Core;
 
@@ -39,6 +37,11 @@ public sealed record SemanticPilotCombatV111(
     /// This field is provider-private and never part of fair observation.
     /// </summary>
     public SemanticSeededEntryV111? SeededEntry { get; init; }
+    /// <summary>
+    /// Dedicated seed-owned fallback state. Source run-history synchronization
+    /// is unverified; external Nature controls only intent and physical draws.
+    /// </summary>
+    public SemanticOtherChanceV111? OtherChance { get; init; }
     [JsonIgnore] public string Fingerprint => CanonicalJson.Sha256(this);
     [JsonIgnore] public bool AtPlayerBoundary =>
         PendingEndTurn is null &&
@@ -64,6 +67,7 @@ public sealed record SemanticPilotCombatV111(
         OpeningSource = OpeningSource.Fork(),
         Run = Run.Fork(),
         PendingEndTurn = PendingEndTurn?.Fork(),
+        OtherChance = OtherChance?.Fork(),
         History = (SemanticPilotTransitionV111[])History.Clone()
     };
 }
@@ -97,7 +101,10 @@ public static class SemanticPilotCombatEngineV111
         };
         var state = new SemanticPilotCombatV111(
             source.Fork(), run, null, [],
-            source.Origin.Formation.NativeEncounterEntry);
+            source.Origin.Formation.NativeEncounterEntry)
+        {
+            OtherChance = SemanticOtherChanceEngineV111.Begin(source.Seed)
+        };
         Validate(state);
         return state;
     }
@@ -283,28 +290,28 @@ public static class SemanticPilotCombatEngineV111
     }
 
     /// <summary>
-    /// The initial two-site pilot does not optimize drawn-card costs.
-    /// Bound and source hook are taken from the actual semantic cost
-    /// continuation, but sampling is an explicitly declared engine-owned
-    /// deterministic fallback, NOT an audited native RNG distribution.
+    /// All non-Nature drawn-card cost requests are resolved by the separate,
+    /// cursor-owning seeded provider. This preserves the original source
+    /// card-cost hook timing and consumes one RNG draw per actual ticket,
+    /// including singleton support. The reference conditional law remains
+    /// UNVERIFIED until this provider is aligned with actual run history.
     /// </summary>
     private static SemanticPilotCombatV111 NormalizeNoncontrolledCosts(
         SemanticPilotCombatV111 current)
     {
         while (current.PendingEndTurn is { CostPending: { } cost } endTurn)
         {
-            var bound = cost.SupportCount;
-            if (bound < 1)
-                throw new InvalidDataException("Invalid engine-owned cost bound.");
-            var hash = SHA256.HashData(Encoding.UTF8.GetBytes(
-                current.OpeningSource.Seed + ":" +
-                endTurn.Fingerprint + ":" + cost.SiteId));
-            var index = (int)(BitConverter.ToUInt32(hash, 0) % (uint)bound);
+            var other = current.OtherChance ??
+                throw new InvalidDataException(
+                    "Semantic session has no engine-owned chance provider.");
+            var (nextOther, index) =
+                SemanticOtherChanceEngineV111.ResolveCost(other, cost);
             var resolved = SemanticEndTurnEngineV111.Resolve(
                 endTurn, endTurn.Fingerprint, index);
             current = current with
             {
                 Run = resolved.Run,
+                OtherChance = nextOther,
                 PendingEndTurn = resolved.Complete ? null : resolved
             };
         }
@@ -317,11 +324,13 @@ public static class SemanticPilotCombatEngineV111
         ArgumentNullException.ThrowIfNull(state);
         if (state.Mode != SemanticPilotCombatV111.SchemaId ||
             state.History is null ||
+            state.OtherChance is null ||
             state.NativeEncounterEntry != state.OpeningSource.Origin
                 .Formation.NativeEncounterEntry ||
             state.Run.Phase is not (
                 RunPhase.Combat or RunPhase.Reward or RunPhase.Terminal))
             throw new InvalidDataException("Invalid semantic playable session.");
+        SemanticOtherChanceEngineV111.Validate(state.OtherChance);
         if (state.PendingEndTurn is { } endTurn)
         {
             SemanticEndTurnEngineV111.Validate(endTurn);
