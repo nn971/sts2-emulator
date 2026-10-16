@@ -362,3 +362,47 @@ executed for an already source-committed starter hand. Authentic
 draw counts, complete game-route combat creation, and real game-local
 parity are separate gates. Unsupported effects abort before publishing a
 semantic session. The default legacy and seeded APIs remain unchanged.
+
+## 2026-10-16 P0 source-pinned Act 1 weak victory pilot
+
+The independent seeded source-shaped handshake now accepts **two fixed,
+named Overgrowth weak formations**, `ShrinkerBeetleWeak`
+(`proto.encounter.shrinker_beetle_weak`) and `NibbitsWeak`
+(`proto.encounter.nibbits_weak`), at `act=1`. Both are registered in
+the source-audited native Act 1 weak encounter table. Native names are
+validated exactly, and the native formation generator preserves its own
+per-enemy creature RNG contexts and source HP eligibility.
+Unsupported Act 1 formations, including the weak Slimes and Corpse
+Slugs with encounter-specific random resolvers, fail explicitly.
+Existing Hive/Glory entry behavior is unchanged.
+
+For this restricted combat, the player's actual starting Silent deck
+and state come from the normal `PrototypeGameFactory.Create`/
+`start_run` path. The selected enemy formation is attached to this
+isolated run outside map-room entry; it is **not** a claim of fully
+replaying a native Act 1 route. The native-seeded opening is committed
+once; `replay_opening_draw_hooks=True` executes the source
+`DrawCards`/`CardDrawn` logic on the same physical opening deck.
+No Nature draw ticket is duplicated.
+
+A new fair-play acceptance test drives actual legal
+Strike/Defend/`end_turn` actions against the source-shaped
+Shrinker Beetle, with source-filtered intent IDs and deferred
+physical-card draw choices. It requires the real combat engine to
+reach `RunPhase.Reward`/`victory` with positive HP, no pending
+Nature event, and exact full-session replay. The matching Python
+JSONL smoke checks identical full actions/Nature transcripts across
+**one and fifteen independent external processes**. Its policy is a
+mechanical test of victory handling, not a trained model.
+
+This also fixes a source boundary edge case: a genuine automatic
+turn may finish *without any new Nature ticket*, when enemy moves are
+deterministic and all drawn cards already have known physical positions.
+The semantic player wrapper now immediately yields the next legal
+player decision rather than retaining an already-complete end-turn
+continuation.
+
+**Open acceptance work:** matched held-out native-v111 policy baseline,
+genuine full map/room start, additional combat mechanics and multi-site
+native/default RNG delegation; native source parity and conditional
+reference probabilities are still explicitly unverified.
