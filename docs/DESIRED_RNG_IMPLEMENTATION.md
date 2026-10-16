@@ -47,8 +47,10 @@ shuffles commit the resulting top-first order, and after-shuffle relic cards
 record their source-selected insertion position in native exact mode. Top-draw
 autoplay consumes the exact provider order and commits native recycle shuffles;
 it fails closed for deferred Nature until it has a resumable draw continuation.
-Nature still fails closed where a shuffle or after-shuffle insertion lacks a
-saved continuation.
+Native exact mode also rejects operations without their native combat stream
+owner instead of silently falling back to the legacy stream. Nature still
+fails closed where a shuffle or after-shuffle insertion lacks a saved
+continuation.
 The Orobas, Pael and Tezcatara ordered relic offer selections; Darv's
 offer-variant and ordered relic-pool shuffle; and the Nonupeipe, Tanx and
 Vakuu relic shuffles now pass through the shared index provider, with opt-in

@@ -2776,6 +2776,8 @@ public sealed partial class PrototypeGameEngine
         PrototypeTurnStage stage,
         RngBundle rng)
     {
+        RequireSemanticNativeStreamOwner(
+            combat, "combat.enemy_status_stage");
         var enemies = combat.Enemies.Select(enemy => enemy.Fork()).ToArray();
 
         for (var enemyIndex = 0; enemyIndex < enemies.Length; enemyIndex++)
@@ -3614,6 +3616,8 @@ public sealed partial class PrototypeGameEngine
         int ascension,
         RngBundle rng)
     {
+        RequireSemanticNativeStreamOwner(
+            combat, "combat.resolve_enemy_actions");
         var enemies = combat.Enemies
             .Select(enemy => enemy.Fork())
             .ToList();
@@ -5172,6 +5176,8 @@ public sealed partial class PrototypeGameEngine
         long? eventSourceCardInstanceId = null,
         PrototypeEventDispatchContinuationState? eventDispatchContinuation = null)
     {
+        RequireSemanticNativeStreamOwner(
+            combat, "combat.resolve_operations");
         var randomTargetOrdinal = 0;
         var autoPlayTargetOrdinal = 0;
         var generatedCardOrdinal = 0;
@@ -13933,6 +13939,17 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidDataException(
                 "Semantic draw-pile zone transition produced stale membership.");
         return semantic;
+    }
+
+    private static void RequireSemanticNativeStreamOwner(
+        CombatState combat, string siteId)
+    {
+        if (combat.SemanticDeck is
+                { Mode: SemanticDeckStateV111.NativeMode } &&
+            combat.NativeRng is null)
+            throw new NotSupportedException(
+                $"UNSUPPORTED_SEMANTIC_NATIVE site={siteId} " +
+                "operation=missing_native_stream_owner");
     }
 
     private static SemanticDeckStateV111? SynchronizeSemanticDrawPileAfterRemoval(
