@@ -408,6 +408,9 @@ internal static class PrototypeAiJsonlServer
                     kind = pool.SiteId ==
                         "combat.draw_pile.random_rare_to_hand.shuffle_swap_index"
                             ? "random_rare_to_hand_shuffle"
+                            : pool.SiteId ==
+                                "combat.hand_return.draw_pile.shuffle_swap_index"
+                                ? "hand_return_shuffle"
                             : "generated_card_pool_shuffle",
                     schemaId = pool.SchemaId,
                     eventId = pool.EventId,
@@ -478,6 +481,11 @@ internal static class PrototypeAiJsonlServer
                 state.PoolShufflePending?.SiteId ==
                     "combat.generation.full_pool_shuffle.swap_index")
                 sites.Add("generated_card_pool_shuffle");
+            if (state.Run.Player.PotionSlots.Any(potion =>
+                    potion?.PotionId == "proto.potion.bottled_potential") ||
+                state.PoolShufflePending?.SiteId ==
+                    "combat.hand_return.draw_pile.shuffle_swap_index")
+                sites.Add("hand_return_shuffle");
             if (state.EnemyActionPending is not null)
                 sites.Add("enemy_action_chance");
             if (state.SeededEntry?.FixtureSelectionCardId is
@@ -791,6 +799,7 @@ internal static class PrototypeAiJsonlServer
                                 "random_pile_card", "random_auto_play_card",
                                 "random_replay_card",
                                 "random_rare_to_hand_shuffle",
+                                "hand_return_shuffle",
                                 "random_potion_generation", "random_card_transform"
                             },
                             semanticExtendedPlayerChoices = new[]
@@ -812,6 +821,7 @@ internal static class PrototypeAiJsonlServer
                                 "combat.card_transform.replacement.index_draw",
                                 "combat.random_draw_attack.card_model",
                                 "combat.draw_pile.random_insert_index",
+                                "combat.hand_return.draw_pile.shuffle_swap_index",
                                 "combat.generation.full_pool_shuffle.swap_index",
                                 "combat.random_hand_card.select",
                                 "combat.random_hand_card.energy_cost",
@@ -822,7 +832,8 @@ internal static class PrototypeAiJsonlServer
                                 "random-enemy, Sly, and auto-play targeting, five generated-card " +
                                 "effects, draw insertion, full-pool generation shuffles, " +
                                 "hand-cost selection/rerolls, random pile shortlists, " +
-                                "per-potion model generation, and selected-card transforms; " +
+                                "per-potion model generation, selected-card transforms, " +
+                                "Bottled Potential hand-return shuffles, and their relic insertions; " +
                                 "other chance sites fail closed; native entry and laws unverified.",
                             natureBoundaryKinds = new[] { "initial_hp", "intents" },
                             coverageSchemaId = V111Coverage.SchemaId,

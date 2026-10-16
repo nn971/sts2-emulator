@@ -140,13 +140,36 @@ public sealed partial class PrototypeGameEngine
                 choice.CandidateCardIds.Length == 0;
             if (!basicSupport) return false;
             if (choice.SemanticDrawContinuation is null)
-                return choice.AfterShuffleRelic is null &&
-                    choice.CompletedAfterShuffleRelics is null &&
-                    choice.RemainingAfterShuffleRelics is null &&
+            {
+                if (choice.AfterShuffleRelic is null)
+                    return choice.CompletedAfterShuffleRelics is null &&
+                        choice.RemainingAfterShuffleRelics is null &&
+                        choice.RequestSiteId ==
+                            "combat.draw_pile.random_insert_index" &&
+                        choice.RequestOwnerId == "prototype.combat" &&
+                        choice.RequestOrdinal == 0;
+                var insertion = choice.AfterShuffleRelic;
+                var afterShuffleCompleted =
+                    choice.CompletedAfterShuffleRelics ?? [];
+                var afterShuffleRemaining =
+                    choice.RemainingAfterShuffleRelics ?? [];
+                var expected = ControlledAfterShuffleRelicInsertions(combat);
+                return choice.Operation.Amount == 1 &&
+                    choice.Operation.CardId == insertion.CardId &&
+                    afterShuffleCompleted.All(item =>
+                        ValidateAfterShuffleRelicInsertion(combat, item)) &&
+                    ValidateAfterShuffleRelicInsertion(combat, insertion) &&
+                    afterShuffleRemaining.All(item =>
+                        ValidateAfterShuffleRelicInsertion(combat, item)) &&
+                    afterShuffleCompleted.Concat([insertion])
+                        .Concat(afterShuffleRemaining)
+                        .SequenceEqual(expected) &&
                     choice.RequestSiteId ==
-                        "combat.draw_pile.random_insert_index" &&
-                    choice.RequestOwnerId == "prototype.combat" &&
-                    choice.RequestOrdinal == 0;
+                        "combat.relic.after_shuffle.generated_card.random_insert_index" &&
+                    choice.RequestOwnerId == "relic:" + insertion.RelicId +
+                        ":application:" + insertion.RelicApplicationOrder &&
+                    choice.RequestOrdinal >= 0;
+            }
             var semanticDraw = choice.SemanticDrawContinuation;
             var afterShuffle = choice.AfterShuffleRelic;
             var completed = choice.CompletedAfterShuffleRelics ?? [];
@@ -277,7 +300,10 @@ public sealed partial class PrototypeGameEngine
         var draw = combat.DrawPile.ToList();
         draw.Insert(chosen, instanceId);
         var semanticDeck = choice.SemanticDrawContinuation is null
-            ? combat.SemanticDeck
+            ? choice.AfterShuffleRelic is null
+                ? combat.SemanticDeck
+                : SynchronizeSemanticDrawPileAfterInsertion(
+                    combat, chosen, instanceId)
             : SynchronizeSemanticDrawPileAfterInsertion(
                 combat, chosen, instanceId);
         combat = combat with
@@ -290,24 +316,26 @@ public sealed partial class PrototypeGameEngine
                 : combat.DiscardPile.Where(id => id != instanceId).ToArray()
         };
 
+        var remainingAfterShuffleRelics =
+            choice.RemainingAfterShuffleRelics ?? [];
+        if (choice.AfterShuffleRelic is not null &&
+            remainingAfterShuffleRelics.Length > 0)
+        {
+            var nextCombat = MakeControlledAfterShuffleInsertionChoice(
+                combat, remainingAfterShuffleRelics[0],
+                remainingAfterShuffleRelics.Skip(1).ToArray(),
+                (choice.CompletedAfterShuffleRelics ?? [])
+                    .Append(choice.AfterShuffleRelic).ToArray(),
+                choice.SemanticDrawContinuation, continuation,
+                choice.RequestOrdinal + 1);
+            return state with
+            {
+                World = world with { Combat = nextCombat }
+            };
+        }
+
         if (choice.SemanticDrawContinuation is { } semanticDraw)
         {
-            var remainingInsertions =
-                choice.RemainingAfterShuffleRelics ?? [];
-            if (remainingInsertions.Length > 0)
-            {
-                var nextCombat = MakeControlledAfterShuffleInsertionChoice(
-                    combat, remainingInsertions[0],
-                    remainingInsertions.Skip(1).ToArray(),
-                    (choice.CompletedAfterShuffleRelics ?? [])
-                        .Append(choice.AfterShuffleRelic!).ToArray(),
-                    semanticDraw, continuation, choice.RequestOrdinal + 1);
-                return state with
-                {
-                    World = world with { Combat = nextCombat }
-                };
-            }
-
             if (semanticDraw.StratagemSelectionPending)
             {
                 var stratagemRun = ResumeControlledStratagemSelection(
@@ -392,7 +420,7 @@ public sealed partial class PrototypeGameEngine
         PrototypeAfterShuffleRelicInsertionV111 insertion,
         PrototypeAfterShuffleRelicInsertionV111[] remaining,
         PrototypeAfterShuffleRelicInsertionV111[] completed,
-        PrototypeControlledSemanticDrawV111 semanticDraw,
+        PrototypeControlledSemanticDrawV111? semanticDraw,
         PrototypeChoiceResolutionContinuationState continuation,
         int ordinal)
     {

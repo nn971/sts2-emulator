@@ -54,7 +54,7 @@ non-Nature RNG parity remain **UNVERIFIED**.
   random_draw_attack_card_model, random_hand_card_energy_cost,
   random_hand_card_select, random_pile_selection_shortlist, random_pile_card,
   random_auto_play_card, random_replay_card, random_rare_to_hand_shuffle,
-  random_potion_generation, random_card_transform]`;
+  hand_return_shuffle, random_potion_generation, random_card_transform]`;
   fixture-specific sites require their corresponding seeded-entry options.
 - `semanticExtendedPlayerChoices = [select_cards,
   card_drawn_hook_action]`.
@@ -413,6 +413,15 @@ effect and exposes the source `select_cards` action as an ordinary
 `resolve_card_selection(action_id)` method. Snapshot replay includes every
 swap and the subsequent player choice. This fixture does not claim native
 potion-acquisition provenance or source-law calibration.
+
+When Bottled Potential is present in a potion slot, using it exposes each
+source shuffle swap as a `hand_return_shuffle` event. The saved continuation
+returns the current hand, commits the semantic deck order with Perfect Fit
+ordering, resolves active after-shuffle relic insertions through the existing
+draw-insertion event, then resumes the potion's five-card draw. Python clients
+use the same `resolve_pool_shuffle(swap_index)` method for this event as for
+generated-card pool shuffles. Native stream assignment, cursor parity and
+probability law remain `UNVERIFIED`.
 
 Set `fixture_selection_card_id="proto.colorless.anointed"` to reach Anointed's
 `random_rare_to_hand_shuffle` event. Its `originalCardIds` and

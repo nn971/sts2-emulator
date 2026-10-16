@@ -557,6 +557,32 @@ public static class SemanticDeckEngineV111
         });
     }
 
+    /// <summary>Commit the exact order selected through controlled Fisher–Yates
+    /// swaps. The identities stay private to the engine; Nature has resolved
+    /// every swap, so no unresolved positional pool remains.</summary>
+    public static SemanticDeckStateV111 CommitControlledNatureShuffle(
+        SemanticDeckStateV111 state, IReadOnlyCollection<long> orderedTopFirst)
+    {
+        Validate(state);
+        AssertIdle(state);
+        if (state.Mode != SemanticDeckStateV111.NatureMode)
+            throw new InvalidOperationException(
+                "Controlled shuffle requires Nature mode.");
+        ArgumentNullException.ThrowIfNull(orderedTopFirst);
+        var order = orderedTopFirst.ToArray();
+        ValidateUnique(order);
+        if (!order.Order().SequenceEqual(AllCards(state).Order()))
+            throw new ArgumentException(
+                "Controlled shuffle must preserve all card instances.");
+        return Checked(state with
+        {
+            Slots = order.Select(id =>
+                SemanticDeckSlotV111.Known(id, isPublic: false)).ToArray(),
+            Pools = [],
+            ShuffleEpoch = checked(state.ShuffleEpoch + 1)
+        });
+    }
+
     /// <summary>
     /// Record a source-timed native shuffle of the currently exhausted pile.
     /// The caller owns the source shuffle hook and its native RNG stream;

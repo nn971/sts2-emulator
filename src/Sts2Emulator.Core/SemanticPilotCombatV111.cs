@@ -1465,10 +1465,13 @@ public static class SemanticPilotCombatEngineV111
             var isPoolPotion = poolPotion == "proto.potion.colorless" &&
                 validSlot &&
                 source.Player.PotionSlots[payload.Slot]?.PotionId == poolPotion;
+            var isHandReturnPotion = validSlot &&
+                source.Player.PotionSlots[payload.Slot]?.PotionId ==
+                    "proto.potion.bottled_potential";
             var isSelectionPotion = validSlot && IsSemanticSelectionPotion(
                 source.Player.PotionSlots[payload.Slot]?.PotionId);
             if ((!isGenerationPotion && !isPoolPotion &&
-                 !isSelectionPotion) ||
+                 !isSelectionPotion && !isHandReturnPotion) ||
                 payload.TargetEnemyId is not null)
                 throw new NotSupportedException(
                     "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
@@ -1481,6 +1484,16 @@ public static class SemanticPilotCombatEngineV111
                     "operation=unsupported_post_potion_phase");
             if (result.World?.Combat?.PendingChoice?.ControlledPoolShuffle is not null)
                 ValidatePoolShuffleBoundary(result);
+            else if (result.World?.Combat?.PendingChoice?
+                         .ControlledDrawInsertion is not null)
+                ValidateDrawInsertionBoundary(result);
+            else if (result.World?.Combat?.PendingChoice?
+                         .ControlledSemanticDraw is not null)
+                ValidateSemanticActionDrawBoundary(result);
+            else if (result.World?.Combat?.PendingChoice is
+                     { ChoiceId: "controlled_draw_cost",
+                       ControlledSemanticDraw: not null })
+                ValidateSemanticActionDrawCostBoundary(result);
             else if (result.World?.Combat?.PendingChoice?.ChoiceId ==
                 "select_cards")
                 SemanticCardSelectionEngineV111.ValidatePendingBoundary(result);
@@ -1489,9 +1502,11 @@ public static class SemanticPilotCombatEngineV111
             var previous = current.Run.World!.Combat!;
             var next = result.World?.Combat;
             if (next is null ||
+                (!isHandReturnPotion &&
                 !previous.DrawPile.SequenceEqual(next.DrawPile) ||
+                !isHandReturnPotion &&
                 CanonicalJson.Sha256(previous.SemanticDeck) !=
-                    CanonicalJson.Sha256(next.SemanticDeck))
+                    CanonicalJson.Sha256(next.SemanticDeck)))
                 throw new NotSupportedException(
                     "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
                     "operation=unmodeled_draw_pile_mutation");
@@ -2151,6 +2166,8 @@ public static class SemanticPilotCombatEngineV111
                 "Full-pool shuffle continuation lost combat.");
         if (resultCombat.PendingChoice?.ControlledPoolShuffle is not null)
             ValidatePoolShuffleBoundary(result);
+        else if (resultCombat.PendingChoice?.ControlledDrawInsertion is not null)
+            ValidateDrawInsertionBoundary(result);
         else if (resultCombat.PendingChoice?.ChoiceId == "select_cards")
         {
             SemanticCardSelectionEngineV111.ValidatePendingBoundary(result);
@@ -2163,14 +2180,17 @@ public static class SemanticPilotCombatEngineV111
         bool randomRareToHand = priorCombat.PendingChoice!
             .ControlledPoolShuffle!.Operation.Kind ==
             PrototypeCombatEffectKind.MoveRandomRareDrawCardsToHand;
-        if (!randomRareToHand &&
+        bool handReturn = priorCombat.PendingChoice!
+            .ControlledPoolShuffle!.Operation.Kind ==
+            PrototypeCombatEffectKind.ReturnHandToDrawAndShuffle;
+        if (!randomRareToHand && !handReturn &&
             (!priorCombat.DrawPile.SequenceEqual(resultCombat.DrawPile) ||
              CanonicalJson.Sha256(priorCombat.SemanticDeck) !=
                  CanonicalJson.Sha256(resultCombat.SemanticDeck)))
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=" + pending.SiteId + " " +
                 "operation=unmodeled_draw_pile_mutation");
-        if (randomRareToHand)
+        if (randomRareToHand || handReturn)
             PrototypeStateInvariants.Validate(result);
         var next = current with
         {
@@ -2208,6 +2228,8 @@ public static class SemanticPilotCombatEngineV111
                 "Draw-insertion choice lost its saved continuation.");
         var resumesSemanticDraw =
             pendingInsertion.SemanticDrawContinuation is not null;
+        var resumesAfterShuffleRelic =
+            pendingInsertion.AfterShuffleRelic is not null;
         var insertedInstanceId = priorCombat.NextCardInstanceId;
         RunState result;
         using (ControlledChanceGuardV111.Enter())
@@ -2222,9 +2244,11 @@ public static class SemanticPilotCombatEngineV111
             (result.Phase == RunPhase.Combat && resultCombat is not
                 { IsPlayerTurn: true, AutomaticPipelineContinuation: null }) ||
             (result.Phase != RunPhase.Combat &&
-                (!resumesSemanticDraw || result.Phase is not
+                (!resumesSemanticDraw && !resumesAfterShuffleRelic ||
+                 result.Phase is not
                     (RunPhase.Reward or RunPhase.Terminal))) ||
             (result.Phase == RunPhase.Combat && !resumesSemanticDraw &&
+                !resumesAfterShuffleRelic &&
                 (resultCombat!.NextCardInstanceId != insertedInstanceId + 1 ||
                  resultCombat.PendingChoice is not null ||
                  !resultCombat.DrawPile.SequenceEqual(expectedPile))) ||
@@ -2249,21 +2273,44 @@ public static class SemanticPilotCombatEngineV111
         }
         else if (result.Phase == RunPhase.Combat)
         {
-            // Source positions index the physical bottom-first DrawPile array;
-            // semantic slots are top-first. Convert the source index while
-            // preserving the exact selected insertion point.
-            var topOffset = priorCombat.DrawPile.Length - position;
-            var deck = SemanticDeckEngineV111.InsertKnown(
-                priorCombat.SemanticDeck!, topOffset, insertedInstanceId,
-                publiclyKnown: false);
-            result = result with
+            if (resumesAfterShuffleRelic)
             {
-                World = result.World! with
+                if (resultCombat!.SemanticDeck is not { } deck ||
+                    !SemanticDeckEngineV111.AllCardInstanceIds(deck)
+                        .Order().SequenceEqual(resultCombat.DrawPile.Order()))
+                    throw new NotSupportedException(
+                        "UNSUPPORTED_SEMANTIC_DECK site=combat.relic.after_shuffle " +
+                        "operation=stale_after_shuffle_continuation");
+                if (resultCombat.PendingChoice?.ControlledDrawInsertion is
+                        { AfterShuffleRelic: not null })
+                    ValidateDrawInsertionBoundary(result);
+                else if (resultCombat.PendingChoice?.ControlledSemanticDraw is not null)
+                    ValidateSemanticActionDrawBoundary(result);
+                else if (resultCombat.PendingChoice is
+                         { ChoiceId: "controlled_draw_cost",
+                           ControlledSemanticDraw: not null })
+                    ValidateSemanticActionDrawCostBoundary(result);
+                else
+                    ValidateSemanticCombatBoundary(result);
+            }
+            else
+            {
+                // Source positions index the physical bottom-first DrawPile array;
+                // semantic slots are top-first. Convert the source index while
+                // preserving the exact selected insertion point.
+                var topOffset = priorCombat.DrawPile.Length - position;
+                var deck = SemanticDeckEngineV111.InsertKnown(
+                    priorCombat.SemanticDeck!, topOffset, insertedInstanceId,
+                    publiclyKnown: false);
+                result = result with
                 {
-                    Combat = resultCombat with { SemanticDeck = deck }
-                }
-            };
-            ValidateSemanticCombatBoundary(result);
+                    World = result.World! with
+                    {
+                        Combat = resultCombat with { SemanticDeck = deck }
+                    }
+                };
+                ValidateSemanticCombatBoundary(result);
+            }
         }
         var next = current with
         {
@@ -3103,11 +3150,13 @@ public static class SemanticPilotCombatEngineV111
         if (shuffle is null) return null;
         bool randomRareToHand = shuffle.Operation.Kind ==
             PrototypeCombatEffectKind.MoveRandomRareDrawCardsToHand;
-        var fixtureMatches = randomRareToHand
+        bool handReturn = shuffle.Operation.Kind ==
+            PrototypeCombatEffectKind.ReturnHandToDrawAndShuffle;
+        var fixtureMatches = handReturn || (randomRareToHand
             ? current.SeededEntry?.FixtureSelectionCardId ==
                 "proto.colorless.anointed"
             : current.SeededEntry?.FixturePoolGenerationPotionId ==
-                "proto.potion.colorless";
+                "proto.potion.colorless");
         if (!fixtureMatches ||
             current.PendingEndTurn is not null ||
             current.PendingInitialIntents is not null ||
@@ -3121,17 +3170,26 @@ public static class SemanticPilotCombatEngineV111
         var original = (string[])shuffle.OriginalCardIds.Clone();
         var currentPool = (string[])shuffle.CurrentCardIds.Clone();
         var sourceCardId = choice!.SourceCardInstanceId;
-        var owner = "card:" + (sourceCardId?.ToString() ?? "effect") +
-            ":operation:" + shuffle.Operation.Kind +
-            ":pool:" + CanonicalJson.Sha256(original);
+        var owner = handReturn
+            ? "effect:" + shuffle.Operation.Kind + ":source:" +
+                (sourceCardId?.ToString() ?? "none") + ":pool:" +
+                CanonicalJson.Sha256(original)
+            : "card:" + (sourceCardId?.ToString() ?? "effect") +
+                ":operation:" + shuffle.Operation.Kind +
+                ":pool:" + CanonicalJson.Sha256(original);
         var ordinal = current.History.Count(transition =>
             transition.Kind == "semantic_pool_shuffle");
-        var streamId = shuffle.Operation.GeneratedChoiceUsesNativeCardGenerationRng &&
-            combat!.NativeRng?.RunStreams is not null
+        var streamId = handReturn
+            ? combat!.NativeRng is not null
+                ? "run.shuffle" : "prototype.combat"
+            : shuffle.Operation.GeneratedChoiceUsesNativeCardGenerationRng &&
+              combat!.NativeRng?.RunStreams is not null
                 ? "run.combat_card_generation" : "prototype.combat";
-        var siteId = randomRareToHand
-            ? "combat.draw_pile.random_rare_to_hand.shuffle_swap_index"
-            : "combat.generation.full_pool_shuffle.swap_index";
+        var siteId = handReturn
+            ? "combat.hand_return.draw_pile.shuffle_swap_index"
+            : randomRareToHand
+                ? "combat.draw_pile.random_rare_to_hand.shuffle_swap_index"
+                : "combat.generation.full_pool_shuffle.swap_index";
         var request = new RandomIndexRequestV111(
             siteId, streamId,
             owner, ordinal, [], OperationKind: "bounded_integer",
@@ -3209,7 +3267,6 @@ public static class SemanticPilotCombatEngineV111
             current.SeededEntry?.FixtureGeneratedDrawInsertionCardId is null &&
             current.SeededEntry?.FixtureRandomFreeAttackDrawInsertion == true;
         var afterShuffleRelicMatches =
-            insertion.SemanticDrawContinuation is not null &&
             insertion.AfterShuffleRelic is not null &&
             insertion.Operation.Kind == PrototypeCombatEffectKind
                 .CreateGeneratedCardsAtRandomDrawPositions &&

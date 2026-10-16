@@ -10,6 +10,15 @@ public sealed partial class PrototypeGameEngine
     private static string[]? SourcePoolForShuffle(
         CombatState combat, PrototypeQueuedOperation op, long? sourceCardInstanceId)
     {
+        if (op.Kind ==
+            PrototypeCombatEffectKind.ReturnHandToDrawAndShuffle)
+            return combat.DrawPile.Concat(combat.Hand).Select(id =>
+            {
+                var card = RequireCombatCard(combat, id);
+                return "card-instance:" + card.InstanceId.ToString(
+                    System.Globalization.CultureInfo.InvariantCulture) +
+                    ":" + card.CardId;
+            }).ToArray();
         if (op.Kind == PrototypeCombatEffectKind.MoveRandomRareDrawCardsToHand)
             return combat.DrawPile.Where(id => PrototypeContent.Card(
                     RequireCombatCard(combat, id).CardId).Rarity ==
@@ -77,9 +86,30 @@ public sealed partial class PrototypeGameEngine
             PrototypeCombatEffectKind.MoveRandomRareDrawCardsToHand =>
                 Math.Min(Math.Max(0, op.Amount),
                     Math.Max(0, 10 - combat.Hand.Length)),
+            PrototypeCombatEffectKind.ReturnHandToDrawAndShuffle => poolCount,
             _ => op.Amount
         };
         return Math.Min(Math.Max(0, count), poolCount);
+    }
+
+    private static SemanticDeckStateV111? CommitSemanticHandReturnShuffle(
+        CombatState combat, long[] shuffledPhysicalDrawPile,
+        long[] returnedHandIds)
+    {
+        var semantic = combat.SemanticDeck;
+        if (semantic is null) return null;
+        SemanticDeckEngineV111.Validate(semantic);
+        if (semantic.Mode == SemanticDeckStateV111.NativeMode)
+            return CommitSemanticDrawPileShuffle(
+                combat, shuffledPhysicalDrawPile, returnedHandIds);
+        if (semantic.Mode != SemanticDeckStateV111.NatureMode)
+            throw new InvalidDataException(
+                "Unsupported semantic deck mode for hand-return shuffle.");
+        foreach (var cardId in returnedHandIds)
+            semantic = SemanticDeckEngineV111.PlaceBottom(
+                semantic, cardId, publiclyKnown: false);
+        return SemanticDeckEngineV111.CommitControlledNatureShuffle(
+            semantic, shuffledPhysicalDrawPile.Reverse().ToArray());
     }
 
     private static bool TryMakeControlledPoolShuffleChoice(
@@ -282,6 +312,49 @@ public sealed partial class PrototypeGameEngine
                 Hand = combat.Hand.Concat(selected).ToArray(),
                 SemanticDeck = semanticDeck
             };
+        }
+        else if (op.Kind ==
+            PrototypeCombatEffectKind.ReturnHandToDrawAndShuffle)
+        {
+            var shuffled = values.Select(ParseShuffledCardInstanceToken)
+                .ToArray();
+            var returnedHandIds = (long[])combat.Hand.Clone();
+            if (shuffled.Distinct().Count() != shuffled.Length ||
+                !shuffled.Order().SequenceEqual(
+                    combat.DrawPile.Concat(returnedHandIds).Order()))
+                throw new InvalidDataException(
+                    "Hand-return shuffle changed or duplicated card identities.");
+            combat = combat with
+            {
+                PendingChoice = null,
+                Hand = []
+            };
+            var shuffledDrawPile = ApplyPerfectFitShuffleOrder(
+                combat, shuffled);
+            var semanticDeck = CommitSemanticHandReturnShuffle(
+                combat, shuffledDrawPile, returnedHandIds);
+            combat = combat with
+            {
+                DrawPile = shuffledDrawPile,
+                SemanticDeck = semanticDeck
+            };
+            var afterShuffleInsertions =
+                ControlledAfterShuffleRelicInsertions(combat);
+            if (afterShuffleInsertions.Length > 0 &&
+                ControlledChanceGuardV111.Active &&
+                !ControlledChanceGuardV111.EngineOwnedNativeProviderActive)
+            {
+                var nextCombat = MakeControlledAfterShuffleInsertionChoice(
+                    combat, afterShuffleInsertions[0],
+                    afterShuffleInsertions.Skip(1).ToArray(), [], null,
+                    continuation, ordinal: 0);
+                return state with
+                {
+                    World = world with { Combat = nextCombat }
+                };
+            }
+            if (afterShuffleInsertions.Length > 0)
+                combat = ApplyRelicAfterShuffleCards(combat, state.Rng);
         }
         else
         {

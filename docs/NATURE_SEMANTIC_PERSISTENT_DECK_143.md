@@ -77,14 +77,14 @@ zones, pending/completed snapshots, and deterministic 15-worker runs.
 This is a restricted **multiple-decision / multiple-turn** implementation;
 the next phase is integrating remaining deck mutations and general
 card-effect draws into the semantic provider, then expanding the JSONL
-capability. Only supported ordinary actions are accepted by the
-first guarded player-action adapter. Arbitrary cards/potions, scry,
-known-position effects, shuffled-hand returns, nested `CardDrawn`
-chances, post-shuffle generated cards outside the supported card-effect
-frame, Stratagem outside that frame, weighted intent source-law verification
-and native stream parity are separate
-acceptance gates. Cross-character and multiplayer mechanics remain
-postponed. Source probability status remains **UNVERIFIED**.
+capability. Only supported ordinary actions and Bottled Potential's
+hand-return continuation are accepted by the guarded semantic pilot.
+Arbitrary other cards/potions, scry, known-position effects, other
+shuffled-hand returns, nested `CardDrawn` chances, post-shuffle generated
+cards outside the supported card-effect frame, Stratagem outside that frame,
+weighted intent source-law verification and native stream parity are separate
+acceptance gates. Cross-character and multiplayer mechanics remain postponed.
+Source probability status remains **UNVERIFIED**.
 
 The legacy swap-ticket protocol and frozen four-Act Silent `main`
 branch are unchanged.

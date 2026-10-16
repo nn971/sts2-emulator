@@ -6419,7 +6419,9 @@ public sealed partial class PrototypeGameEngine
                 case PrototypeCombatEffectKind.ReturnHandToDrawAndShuffle:
                 {
                     if (combat.SemanticDeck is
-                        { Mode: SemanticDeckStateV111.NatureMode })
+                            { Mode: SemanticDeckStateV111.NatureMode } &&
+                        (!ControlledChanceGuardV111.Active ||
+                         ControlledChanceGuardV111.EngineOwnedNativeProviderActive))
                         throw new NotSupportedException(
                             "UNSUPPORTED_SEMANTIC_DECK " +
                             "site=combat.hand_return.draw_shuffle " +
@@ -6441,14 +6443,45 @@ public sealed partial class PrototypeGameEngine
                     var shuffledDrawPile = ApplyPerfectFitShuffleOrder(
                         combat, shuffled);
                     var semanticDeck =
-                        CommitSemanticDrawPileShuffle(
+                        CommitSemanticHandReturnShuffle(
                             combat, shuffledDrawPile, returnedHandIds);
                     combat = combat with
                     {
                         DrawPile = shuffledDrawPile,
                         SemanticDeck = semanticDeck
                     };
-                    combat = ApplyRelicAfterShuffleCards(combat, rng);
+                    var afterShuffleInsertions =
+                        ControlledAfterShuffleRelicInsertions(combat);
+                    if (ControlledChanceGuardV111.Active &&
+                        !ControlledChanceGuardV111.EngineOwnedNativeProviderActive &&
+                        afterShuffleInsertions.Length > 0)
+                    {
+                        var continuation =
+                            new PrototypeChoiceResolutionContinuationState(
+                                SourceCardInstanceId: sourceCardInstanceId,
+                                SourceCardDestination: sourceCardDestination,
+                                Operations: operations.ToArray(),
+                                PendingDiscardEvents: [],
+                                PendingSlyCardInstanceIds: [],
+                                CompletionEvents: completionEvents ?? [],
+                                CardPlaySeries: cardPlaySeries,
+                                MoveSourceCardOnCompletion:
+                                    moveSourceCardOnCompletion,
+                                RemoveSourceCardOnCompletion:
+                                    removeSourceCardOnCompletion,
+                                SourceCardAlreadyMoved:
+                                    sourceCardAlreadyMoved,
+                                EventDispatchContinuation:
+                                    eventDispatchContinuation?.Fork());
+                        combat = MakeControlledAfterShuffleInsertionChoice(
+                            combat, afterShuffleInsertions[0],
+                            afterShuffleInsertions.Skip(1).ToArray(), [], null,
+                            continuation, ordinal: 0);
+                    }
+                    else
+                    {
+                        combat = ApplyRelicAfterShuffleCards(combat, rng);
+                    }
                     break;
                 }
 

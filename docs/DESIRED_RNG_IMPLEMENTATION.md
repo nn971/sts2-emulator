@@ -54,16 +54,20 @@ operation error. The semantic playable pilot also admits Survivor, Hand Trick,
 Nightmare and Wish through its persisted source card-selection continuation.
 Physical draw-pile moves now keep provider state synchronized across exact
 insertions, removals, transformations, and zone transfers. Native hand-return
-shuffles commit the resulting top-first order, and after-shuffle relic cards
-record their source-selected insertion position in native exact mode. Top-draw
-autoplay consumes the exact provider order and commits native recycle shuffles;
-it fails closed for deferred Nature until it has a resumable draw continuation.
-Native exact mode also rejects operations without their native combat stream
-owner instead of silently falling back to the legacy stream. Nature still
-fails closed where a shuffle or after-shuffle insertion lacks a saved
-continuation. Run-state validation now checks semantic deck membership
-against combat zones, verifies NativeMode's top-first provider order against
-the bottom-first physical pile, and requires its native combat stream owner.
+shuffles commit the resulting top-first order; controlled Nature also resumes
+Bottled Potential's hand-return shuffle, applies Perfect Fit ordering, and
+continues through after-shuffle relic insertions and its five-card draw. The
+native stream assignment and provider-specific cursor parity remain unverified.
+After-shuffle relic cards record their source-selected insertion position in
+native exact mode. Top-draw autoplay consumes the exact provider order and
+commits native recycle shuffles; it fails closed for deferred Nature until it
+has a resumable draw continuation. Native exact mode also rejects operations
+without their native combat stream owner instead of silently falling back to
+the legacy stream. Nature still fails closed where a shuffle or after-shuffle
+insertion lacks a saved continuation. Run-state validation now checks semantic
+deck membership against combat zones, verifies NativeMode's top-first provider
+order against the bottom-first physical pile, and requires its native combat
+stream owner.
 The Orobas, Pael and Tezcatara ordered relic offer selections; Darv's
 offer-variant and ordered relic-pool shuffle; and the Nonupeipe, Tanx and
 Vakuu relic shuffles now pass through the shared index provider, with opt-in

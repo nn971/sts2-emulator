@@ -737,3 +737,15 @@ supports bounded semantic enumeration. The Release solution build passes with
 zero warnings or errors; tests and mechanics regressions were not run.
 Conditional probabilities, native stream assignment and cursor parity remain
 `UNVERIFIED`. See the [semantic P0 contract](NATURE_P0_SEMANTIC_JSONL_143.md).
+
+## 2026-10-17: Bottled Potential hand-return shuffle
+
+The semantic pilot now resolves Bottled Potential's full draw-pile-plus-hand
+shuffle through the saved controlled pool-shuffle continuation. It commits the
+Nature-selected order to the semantic deck, preserves Perfect Fit ordering,
+resolves active after-shuffle relic insertions through the existing insertion
+event, then resumes the potion's five-card draw. The semantic JSONL protocol
+exposes `hand_return_shuffle`. The Release solution build passes with zero
+warnings or errors; tests and mechanics regressions were not run. Native stream
+assignment, cursor parity and conditional probabilities remain `UNVERIFIED`.
+See [`NATURE_HAND_RETURN_SHUFFLE_143.md`](NATURE_HAND_RETURN_SHUFFLE_143.md).

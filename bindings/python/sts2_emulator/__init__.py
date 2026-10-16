@@ -423,10 +423,10 @@ class SemanticCombat:
                 card_instance_id=card_instance_id))
 
     def resolve_pool_shuffle(self, swap_index: int):
-        """Choose one bounded swap while building a generated-card offer."""
-        if not self.pending or self.pending.get(
-                "kind") != "generated_card_pool_shuffle":
-            raise EmulatorError("Expected a generated_card_pool_shuffle event")
+        """Choose one bounded swap for a full-pool shuffle continuation."""
+        if not self.pending or self.pending.get("kind") not in (
+                "generated_card_pool_shuffle", "hand_return_shuffle"):
+            raise EmulatorError("Expected a full-pool shuffle event")
         if self.session.capabilities.get(
                 "semanticPoolShuffleChoiceSchemaId") != (
                     "sts2-v111-semantic-pool-shuffle-v1"):
