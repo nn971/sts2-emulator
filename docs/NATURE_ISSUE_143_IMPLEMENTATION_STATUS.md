@@ -2,7 +2,7 @@
 
 **Tracking issue:** [#143](https://github.com/nn971/sts2-emulator/issues/143).
 **Base:** the isolated fidelity/RNG integration branch (PR [#137](https://github.com/nn971/sts2-emulator/pull/137)); the Silent all-Act gameplay snapshot in `main` is unchanged.
-**Status:** PRs #144–#152, #155–#157 and #159–#165 merged into the isolated RNG/Inspector integration branch. PR #155 adds live drawn-card cost continuations and synchronizes the revised desired RNG architecture from main PR #154; #156–#157 add semantic deck-state and actual DrawCards integration, and #159 adds source-timed semantic recycle. Issue #143 stays OPEN for full semantic gameplay/JSONL integration, source-timed recycle and draw-cost continuations, weighted visible intents, native parity and complete controlled terminal rollouts.
+**Status:** PRs #144–#152, #155–#157 and #159–#165 are merged into the isolated RNG/Inspector integration branch. The P0 JSONL protocol now has an opt-in real Act 1 source route, pre-intent suspension, source-filtered weighted intent IDs, deferred card identities, and a paired native-policy baseline. The source-routed victory smoke, replay check and 1-vs-15 process comparison pass. Issue #143 stays OPEN for native probability/source-law calibration, non-Nature reward parity, broader encounter coverage, and consumer verification; the conditional laws remain `UNVERIFIED`.
 
 ## Delivered by the event-metadata slice
 
@@ -393,12 +393,11 @@ decision and shuffle counts. This is paired weak-entry evidence only.
 The native comparator and conditional probability laws remain explicitly
 `UNVERIFIED`.
 
-This does not close #143. The comparator smoke recorded above used the
-source-shaped fixture entry. Its native provider and conditional laws are
-unverified. The focused .NET test invocation in this working session could
-not start because MSBuild was denied its local named-pipe bind; the Release
-CLI build and external-process smoke had succeeded for that comparator
-checkpoint.
+This did not close #143. The comparator smoke at that earlier checkpoint
+used the source-shaped fixture entry, and its native provider and conditional
+laws were unverified. The focused .NET test invocation at that checkpoint
+could not start because MSBuild was denied its local named-pipe bind. Later
+source-route verification and test results are recorded below.
 
 ## Working-tree follow-up: first-combat route entry
 
@@ -410,8 +409,9 @@ The route choice sequence, first-floor node, resolved encounter, native
 entry name, and initial native decisions are retained in a replayable
 source-route audit. Nature and native-policy sessions split from this same
 completed opening. The native baseline keeps native stream ownership; the
-Nature branch detaches those streams after entry and controls subsequent
-intent/draw boundaries. The initial intent now suspends at the real
+Nature branch removes native combat/run ownership after entry and retains
+the native cost stream separately in its private `OtherChance` state. The
+initial intent now suspends at the real
 `combat.committed_intent.index_draw` site: Nature sees its weighted support,
 while the baseline commits the same pre-intent checkpoint through the
 native provider. The shared source-opening fingerprint is captured before

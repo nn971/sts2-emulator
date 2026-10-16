@@ -438,3 +438,35 @@ This source-timed **prototype** reward behavior is an explicitly
 provisional non-Nature provider. Independent native v111 reward
 selection/call-order parity and all other noncontrolled chance sites
 remain separate acceptance gates.
+
+## 2026-10-16 P0 follow-up: source-route entry and paired baseline
+
+The opt-in `source_route_entry` now constructs an Overgrowth or
+Underdocks Silent Act 1 run, resolves the opening event and first combat-map
+choice with legal engine actions, then enters through the real
+`PrototypeGameEngine.StartCombat` path. Its replay audit stores the route
+actions, map node, resolved encounter, native entry and entry RNG decisions.
+Initial native draw-pile order is committed through `run.shuffle`; the
+initial intent suspends at `combat.committed_intent.index_draw` before its
+first draw. The native-policy branch resolves that same checkpoint with
+the native provider. The Nature branch exposes its source-filtered weighted
+intent support, then controls later deferred draw identities.
+
+Non-Nature Snecko/Slither draw costs remain engine-owned through a private
+`run.combat_energy_costs` stream in the Nature branch. This does not expose
+a third Nature decision. Its cursor and decision transcript participate in
+snapshot replay.
+
+`tools/nature_semantic_victory_jsonl_smoke.py` now passes for this real
+source route: both paired branches reach victory, save/load replay matches,
+the native path records decisions and shuffle epochs, and one-vs-fifteen
+independent JSONL processes produce identical results. The focused semantic
+pilot/cost tests pass 14/14. The full core test suite has 296 failures on
+both this branch and its exact integration base, with identical failed test
+names; this branch adds one passing test and no new failures.
+
+**Remaining P0 acceptance:** `UNVERIFIED` route/Neow and filtered-intent
+probability laws; native reward and other non-Nature RNG parity; broader
+source-routed encounter coverage; and `sts2-ai` consumer verification. The
+paired smoke is mechanics and replay evidence, not calibration or training
+evidence. Issue #143 remains open.
