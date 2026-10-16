@@ -159,8 +159,18 @@ public sealed record SemanticPilotCombatV111(
         };
     [JsonIgnore] public RandomIndexRequestV111? IntentPending =>
         PendingInitialIntents?.Pending ?? PendingEndTurn?.IntentPending;
-    [JsonIgnore] public SemanticDeckEventV111? DrawPending =>
-        PendingEndTurn?.DrawPending;
+    [JsonIgnore] public SemanticDeckEventV111? DrawPending
+    {
+        get
+        {
+            if (PendingEndTurn?.DrawPending is { } endTurnDraw)
+                return endTurnDraw;
+            var combat = Run.World?.Combat;
+            return combat?.PendingChoice?.ControlledSemanticDraw is not null &&
+                combat.SemanticDeck is { } deck
+                    ? SemanticDeckEngineV111.Inspect(deck) : null;
+        }
+    }
     [JsonIgnore] public SemanticRandomPileCardEventV111?
         RandomPileCardPending => PendingEndTurn?.RandomPileCardPending;
 
@@ -618,6 +628,12 @@ public static class SemanticPilotCombatEngineV111
         potionId is ("proto.potion.touch_of_insanity" or
             "proto.potion.droplet_of_precognition" or
             "proto.potion.liquid_memories");
+
+    private static bool IsSemanticEffectDrawCard(string cardId) =>
+        cardId is ("proto.silent.backflip" or
+            "proto.silent.quick_slash" or
+            "proto.silent.adrenaline" or
+            "proto.silent.escape_plan");
 
     private static SemanticPilotCombatV111 ApplyFixtureSelectionCard(
         SemanticPilotCombatV111 state, string cardId)
@@ -1207,12 +1223,15 @@ public static class SemanticPilotCombatEngineV111
                 ("proto.silent.survivor" or "proto.silent.hand_trick" or
                     "proto.silent.nightmare" or
                     NativeGloryAncientsV111.WishCardId);
+            var semanticDrawCard = card is not null &&
+                IsSemanticEffectDrawCard(card.CardId);
             var fixtureSelectionCard = card?.CardId ==
                     current.SeededEntry?.FixtureSelectionCardId &&
                 card?.CardId == "proto.colorless.seeker_strike";
             var supportedCardAction = card is not null &&
                 (SemanticPlayerActionEngineV111.SupportsCard(card.CardId) ||
                  card.CardId == "proto.silent.ricochet" ||
+                 semanticDrawCard ||
                  semanticSelectionCard ||
                  fixtureSelectionCard);
             if (!supportedCardAction)
@@ -1231,6 +1250,9 @@ public static class SemanticPilotCombatEngineV111
             if (result.Phase == RunPhase.Combat)
             {
                 if (result.World?.Combat?.PendingChoice?
+                        .ControlledSemanticDraw is not null)
+                    ValidateSemanticActionDrawBoundary(result);
+                else if (result.World?.Combat?.PendingChoice?
                         .ControlledCardShortlist is not null)
                     ValidateCardShortlistBoundary(result);
                 else if (result.World?.Combat?.PendingChoice?.ChoiceId ==
@@ -1260,9 +1282,13 @@ public static class SemanticPilotCombatEngineV111
                      !previous.DrawPile.SequenceEqual(next.DrawPile) ||
                      CanonicalJson.Sha256(previous.SemanticDeck) !=
                          CanonicalJson.Sha256(next.SemanticDeck))
-                throw new NotSupportedException(
-                    "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
-                    "operation=unmodeled_draw_pile_mutation");
+            {
+                if (!semanticDrawCard || next is null)
+                    throw new NotSupportedException(
+                        "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
+                        "operation=unmodeled_draw_pile_mutation");
+                PrototypeStateInvariants.Validate(result);
+            }
         }
         else if (action.Kind == "use_potion")
         {
@@ -1981,6 +2007,86 @@ public static class SemanticPilotCombatEngineV111
             };
             Validate(initialState);
             return initialState;
+        }
+        if (current.Run.World?.Combat?.PendingChoice?
+                .ControlledSemanticDraw is not null)
+        {
+            if (drawEvent is null)
+                throw new InvalidDataException(
+                    "Card-effect draw continuation lost its Nature event.");
+            if (expectedDeckDecision is not null)
+                ValidateDeckDecision(drawEvent, expectedDeckDecision);
+            if (selectedIndex < 0 ||
+                selectedIndex >= drawEvent.CandidateCardInstanceIds.Length)
+                throw new ArgumentOutOfRangeException(nameof(selectedIndex));
+            var effectDrawDecision = new SemanticDrawDecisionV111(
+                drawEvent, selectedIndex,
+                drawEvent.CandidateCardInstanceIds[selectedIndex]);
+            effectDrawDecision.Validate();
+            if (expectedDeckDecision is not null &&
+                CanonicalJson.Sha256(expectedDeckDecision) !=
+                    CanonicalJson.Sha256(effectDrawDecision))
+                throw new InvalidOperationException(
+                    "Semantic card-effect draw decision is stale or outside support.");
+            RunState effectDrawResult;
+            using (ControlledChanceGuardV111.Enter())
+            using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
+                effectDrawResult = PrototypeGameEngine
+                    .ResumeControlledSemanticEffectDraw(
+                        current.Run.Fork(), selectedIndex);
+            if (effectDrawResult.Phase == RunPhase.Combat)
+            {
+                if (effectDrawResult.World?.Combat?.PendingChoice?
+                        .ControlledSemanticDraw is not null)
+                    ValidateSemanticActionDrawBoundary(effectDrawResult);
+                else if (effectDrawResult.World?.Combat?.PendingChoice?
+                    .ChoiceId == "select_cards")
+                    SemanticCardSelectionEngineV111
+                        .ValidatePendingBoundary(effectDrawResult);
+                else
+                    ValidateSemanticCombatBoundary(effectDrawResult);
+                PrototypeStateInvariants.Validate(effectDrawResult);
+                var deck = effectDrawResult.World?.Combat?.SemanticDeck ??
+                    throw new InvalidDataException(
+                        "Resumed card-effect draw lost its semantic deck.");
+                var recorded = deck.Transcript?.SingleOrDefault(choice =>
+                    choice.EventId == drawEvent.EventId) ??
+                    throw new InvalidDataException(
+                        "Card-effect draw did not record the selected identity.");
+                if (recorded.SiteId != drawEvent.SiteId ||
+                    recorded.Purpose != drawEvent.Purpose ||
+                    recorded.TopOffset != drawEvent.TopOffset ||
+                    recorded.Ordinal != drawEvent.Ordinal ||
+                    recorded.ProbabilityStatus !=
+                        drawEvent.ProbabilityStatus ||
+                    !recorded.CandidateCardInstanceIds.SequenceEqual(
+                        drawEvent.CandidateCardInstanceIds) ||
+                    recorded.SelectedIndex != selectedIndex ||
+                    recorded.SelectedCardInstanceId !=
+                        effectDrawDecision.SelectedCardInstanceId ||
+                    recorded.SelectedCardInstanceId !=
+                        drawEvent.CandidateCardInstanceIds[selectedIndex])
+                    throw new InvalidDataException(
+                        "Card-effect draw transcript diverged from its event.");
+            }
+            else if (effectDrawResult.Phase is not (
+                RunPhase.Reward or RunPhase.Terminal))
+                throw new NotSupportedException(
+                    "UNSUPPORTED_SEMANTIC_DECK site=combat.card_effect.draw " +
+                    "operation=unsupported_post_draw_phase");
+            var effectDrawState = current with
+            {
+                Run = effectDrawResult,
+                RewardAudit = effectDrawResult.Phase == RunPhase.Reward
+                    ? RecordRewardAudit(current.Run, effectDrawResult)
+                    : current.RewardAudit,
+                History = current.History.Append(
+                    new SemanticPilotTransitionV111(
+                        "semantic_draw",
+                        DrawDecision: effectDrawDecision.Fork())).ToArray()
+            };
+            Validate(effectDrawState);
+            return effectDrawState;
         }
         var pending = current.PendingEndTurn ??
             throw new InvalidOperationException("No Nature decision is pending.");
@@ -2751,6 +2857,38 @@ public static class SemanticPilotCombatEngineV111
         SemanticPlayerActionEngineV111.ValidateBoundary(run);
     }
 
+    private static void ValidateSemanticActionDrawBoundary(RunState run)
+    {
+        var combat = run.World?.Combat;
+        var choice = combat?.PendingChoice;
+        var draw = choice?.ControlledSemanticDraw;
+        var deck = combat?.SemanticDeck;
+        if (run.Phase != RunPhase.Combat ||
+            combat is not { IsPlayerTurn: true,
+                AutomaticPipelineContinuation: null,
+                PendingKnowledgeDemonChoice: null } ||
+            choice is not { ChoiceId: "controlled_semantic_draw",
+                ControlledSemanticDraw: not null,
+                OuterChoiceContinuation: not null,
+                ControlledTarget: null, ControlledGeneration: null,
+                ControlledDrawInsertion: null, ControlledPoolShuffle: null,
+                ControlledRandomCost: null, ControlledDrawCost: null,
+                ControlledCardShortlist: null,
+                ControlledRandomPileCard: null } ||
+            draw is null || draw.RemainingCount <= 0 || draw.EventDepth < 0 ||
+            deck is not { Mode: SemanticDeckStateV111.NatureMode,
+                Pending: not null })
+            throw new InvalidDataException(
+                "Card-effect draw is not at a source-reachable Nature boundary.");
+        SemanticDeckEngineV111.Validate(deck);
+        if (!SemanticDeckEngineV111.AllCardInstanceIds(deck)
+                .Order().SequenceEqual(combat.DrawPile.Order()) ||
+            SemanticDeckEngineV111.Inspect(deck) is null)
+            throw new InvalidDataException(
+                "Card-effect draw diverged from its semantic pile state.");
+        PrototypeStateInvariants.Validate(run);
+    }
+
     private static void ValidateGeneratedCardBoundary(RunState run)
     {
         var combat = run.World?.Combat;
@@ -2983,6 +3121,27 @@ public static class SemanticPilotCombatEngineV111
                 state.Run.NativeRunRng is not null)
                 throw new InvalidDataException(
                     "Initial intent continuation diverged from the source-route boundary.");
+        }
+        if (state.Run.World?.Combat?.PendingChoice?
+                .ControlledSemanticDraw is not null)
+        {
+            ValidateSemanticActionDrawBoundary(state.Run);
+            if (state.PendingEndTurn is not null ||
+                state.PendingInitialIntents is not null ||
+                state.IntentPending is not null ||
+                state.DrawPending is null ||
+                state.RandomPileCardPending is not null ||
+                state.CostPending is not null ||
+                state.TargetPending is not null ||
+                state.GeneratedCardPending is not null ||
+                state.CardSelectionPending is not null ||
+                state.PoolShufflePending is not null ||
+                state.DrawInsertionPending is not null ||
+                state.CardShortlistPending is not null ||
+                state.HandCostSelectionPending is not null ||
+                state.UsesNativePolicyBaseline || state.CombatTerminal)
+                throw new InvalidDataException(
+                    "Card-effect draw conflicts with another semantic boundary.");
         }
         if (state.RandomPileCardPending is { } randomPileCardPending)
         {

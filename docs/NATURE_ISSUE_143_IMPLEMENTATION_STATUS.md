@@ -516,3 +516,22 @@ A separate local Inspector sidecar audit is pinned by matching `sts2.dll`,
 `run.combat_energy_costs` calls and remains incomplete with native/emulator
 parity `NOT_TESTED`; it does not calibrate the source-route policy or cost
 provider.
+
+## 2026-10-17: resumable semantic card-effect draws
+
+The semantic player pilot now admits Backflip, Quick Slash, Adrenaline and
+Escape Plan when their queued effects draw from the Nature semantic deck. An
+internal `controlled_semantic_draw` checkpoint persists the remaining draw
+count and the original effect-queue continuation. Each identity choice resumes
+the same source `DrawCards` operation, dispatches its draw hook once, and then
+continues the queued effects. `semantic_draw` history replay validates each
+selected physical card identity and source event transcript. The saved-state
+invariants bind the internal choice to one pending Nature draw and reject
+conflicting semantic boundaries.
+
+The Core and CLI Release builds pass with zero warnings or errors. Tests were
+not run for this implementation checkpoint. Draw costs, recycle-time
+continuations, Stratagem selection, random after-shuffle insertion, nested
+`CardDrawn` choices and follow-up card selection still fail closed. Conditional
+Nature probabilities remain `UNVERIFIED`; see
+[`NATURE_SEMANTIC_EFFECT_DRAWS_143.md`](NATURE_SEMANTIC_EFFECT_DRAWS_143.md).

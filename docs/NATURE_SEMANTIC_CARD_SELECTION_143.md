@@ -100,10 +100,11 @@ This implements the **real choice-resolution mechanic**, not yet
 general source-authentic loadout acquisition or every parent card/potion
 continuation that creates a `select_cards` prompt. It does not yet support
 scry discard/reordering, removals from pools split around known anchors,
-card-effect draws, effects that return the hand and reshuffle, or random
-insertions into the draw pile. Those transitions require dedicated stochastic
-and source-timed continuations, with provider membership verified at each
-mutation site.
+general draw effects beyond the four direct-draw Silent cards documented in
+[`NATURE_SEMANTIC_EFFECT_DRAWS_143.md`](NATURE_SEMANTIC_EFFECT_DRAWS_143.md),
+effects that return the hand and reshuffle, or random insertions into the draw
+pile. Those transitions require dedicated stochastic and source-timed
+continuations, with provider membership verified at each mutation site.
 
 This opt-in capability is separate from legacy controlled
 Fisher–Yates swap tickets and from the frozen four-Act Silent

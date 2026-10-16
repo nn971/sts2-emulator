@@ -3423,6 +3423,53 @@ public static class PrototypeStateInvariants
         if (combat.PendingChoice is not null)
         {
             var pending = combat.PendingChoice;
+            var isControlledSemanticDraw =
+                pending.ControlledSemanticDraw is not null;
+            if ((pending.ChoiceId == "controlled_semantic_draw") !=
+                    isControlledSemanticDraw)
+                throw new InvalidOperationException(
+                    "Controlled semantic draw choice and continuation disagree.");
+            if (isControlledSemanticDraw)
+            {
+                var draw = pending.ControlledSemanticDraw!;
+                var continuation = pending.OuterChoiceContinuation;
+                var deck = combat.SemanticDeck;
+                if (combat.IsPlayerTurn is false ||
+                    combat.AutomaticPipelineContinuation is not null ||
+                    combat.PendingKnowledgeDemonChoice is not null ||
+                    draw.RemainingCount <= 0 || draw.EventDepth < 0 ||
+                    continuation is null ||
+                    pending.SourceCardInstanceId !=
+                        continuation.SourceCardInstanceId ||
+                    pending.SourceCardDestination !=
+                        continuation.SourceCardDestination ||
+                    pending.ControlledTarget is not null ||
+                    pending.ControlledGeneration is not null ||
+                    pending.ControlledDrawInsertion is not null ||
+                    pending.ControlledPoolShuffle is not null ||
+                    pending.ControlledRandomCost is not null ||
+                    pending.ControlledDrawCost is not null ||
+                    pending.ControlledCardShortlist is not null ||
+                    pending.ControlledRandomPileCard is not null ||
+                    pending.Selection.SourceZone != PrototypeCardZone.Hand ||
+                    pending.Selection.MinSelections != 0 ||
+                    pending.Selection.MaxSelections != 0 ||
+                    pending.CandidateCardInstanceIds.Length != 0 ||
+                    pending.Continuation.Length != 0 ||
+                    pending.CompletionEvents.Length != 0 ||
+                    deck is not
+                        { Mode: SemanticDeckStateV111.NatureMode,
+                            Pending: { Purpose: "draw", TopOffset: 0 } })
+                    throw new InvalidOperationException(
+                        "Controlled semantic draw checkpoint is malformed.");
+                var drawEvent = SemanticDeckEngineV111.Inspect(deck!);
+                if (drawEvent is null ||
+                    drawEvent.CandidateCardInstanceIds.Length == 0 ||
+                    drawEvent.CandidateCardInstanceIds.Any(cardId =>
+                        !combat.DrawPile.Contains(cardId)))
+                    throw new InvalidOperationException(
+                        "Controlled semantic draw has no live Nature support.");
+            }
             var sourceZone = pending.Selection.SourceZone switch
             {
                 PrototypeCardZone.Hand => combat.Hand,

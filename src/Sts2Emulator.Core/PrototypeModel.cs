@@ -1912,6 +1912,20 @@ public sealed record PrototypeControlledDrawCostV111(
     public PrototypeControlledDrawCostV111 Fork() => this with { };
 }
 
+/// <summary>Semantic draw suspended inside a card-effect operation queue.
+/// The queued effect suffix is stored in the pending choice's outer
+/// continuation and resumes after the selected card and its draw hooks.</summary>
+public sealed record PrototypeControlledSemanticDrawV111(
+    int RemainingCount, bool FromHandDraw, int EventDepth,
+    PrototypeCardKeywordOverrideSpec? DrawnCardKeyword)
+{
+    public PrototypeControlledSemanticDrawV111 Fork() => this with
+    {
+        DrawnCardKeyword = DrawnCardKeyword is null
+            ? null : DrawnCardKeyword with { }
+    };
+}
+
 /// <summary>Unresolved selection of a physical card from a pile, suspended
 /// inside an automatic hook. Eligibility and candidate order are preserved.</summary>
 public sealed record PrototypeControlledRandomPileCardV111(
@@ -1950,7 +1964,8 @@ public sealed record PendingCombatChoiceState(
     PrototypeControlledRandomCostV111? ControlledRandomCost = null,
     PrototypeControlledDrawCostV111? ControlledDrawCost = null,
     PrototypeControlledCardShortlistV111? ControlledCardShortlist = null,
-    PrototypeControlledRandomPileCardV111? ControlledRandomPileCard = null)
+    PrototypeControlledRandomPileCardV111? ControlledRandomPileCard = null,
+    PrototypeControlledSemanticDrawV111? ControlledSemanticDraw = null)
 {
     public PendingCombatChoiceState Fork() => this with
     {
@@ -1973,7 +1988,8 @@ public sealed record PendingCombatChoiceState(
         ControlledRandomCost = ControlledRandomCost?.Fork(),
         ControlledDrawCost = ControlledDrawCost?.Fork(),
         ControlledCardShortlist = ControlledCardShortlist?.Fork(),
-        ControlledRandomPileCard = ControlledRandomPileCard?.Fork()
+        ControlledRandomPileCard = ControlledRandomPileCard?.Fork(),
+        ControlledSemanticDraw = ControlledSemanticDraw?.Fork()
     };
 }
 
