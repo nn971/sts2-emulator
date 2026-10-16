@@ -37,3 +37,5 @@ jobs:
         run: python tools/nature_semantic_p0_jsonl_smoke.py
       - name: P0 independent seeded semantic JSONL setup and 15-process equality
         run: python tools/nature_semantic_seeded_jsonl_smoke.py
+      - name: P0 source-pinned Act 1 legal-action victory and 15-process equality
+        run: python tools/nature_semantic_victory_jsonl_smoke.py
