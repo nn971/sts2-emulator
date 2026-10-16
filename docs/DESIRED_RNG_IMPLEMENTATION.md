@@ -205,7 +205,9 @@ on their existing run streams. Random relic-acquisition card and potion models
 use native `player.rewards` index requests when native run RNG is present, with
 the legacy providers retained; these stream assignments are hypotheses pending
 source validation. Event-choice random upgrades, Rare cards, potions, empty
-potion-slot fills, and unowned relic picks use typed legacy requests as well. Shop-stock
+potion-slot fills, and legacy unowned relic picks retain typed legacy requests.
+Configured custom random-relic offers use the native `player.rewards` index
+provider under the same explicit stream hypothesis. Shop-stock
 shuffles, card rarity/model picks and prices, random potion/relic rewards, and
 persistent-deck transformations now use typed legacy providers. Fishing Rod's
 every-third combat deck upgrade and War Hammer's elite-victory shuffle now use

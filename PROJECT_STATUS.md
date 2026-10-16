@@ -1482,6 +1482,11 @@ legacy reward/event providers remain the fallback. Native stream ownership is
 a hypothesis pending source validation. Acquisition-triggered card addition
 continues to forward the same bundle through nested relic hooks.
 
+Configured custom random-relic offers now use the same typed provider and
+stream hypothesis over their existing ordered unowned-relic pool. Unconfigured
+runs retain the legacy reward provider, and source stream/cursor validation
+remains pending.
+
 Configured Overgrowth combat rewards now use the persistent `player.rewards`
 stream for potion pity, gold bounds, rarity-weighted potion selection, card
 rarity/model/upgrade draws, relic rarity, boss relic offer shuffling, and Lava

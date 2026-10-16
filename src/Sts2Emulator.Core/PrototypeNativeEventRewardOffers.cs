@@ -8,14 +8,15 @@ namespace Sts2Emulator.Core;
 public sealed partial class PrototypeGameEngine
 {
     private static RewardState CreateDeferredEventReward(
-        RunState state, PrototypeRunEffectKind kind, PlayerState player, string eventId)
+        RunState state, PrototypeRunEffectKind kind, PlayerState player,
+        string eventId, RngBundle? nativeRunRng)
     {
         var world = RequireWorld(state);
         if (kind == PrototypeRunEffectKind.OfferWaxRelics)
             throw new InvalidOperationException("Wax reward construction requires retained bag updates.");
         return CreateDeferredEventRewardCore(
             state, kind, player, eventId, ref world,
-            nativeRunRng: null);
+            nativeRunRng);
     }
 
     private static RewardState CreateDeferredEventReward(
@@ -292,14 +293,22 @@ public sealed partial class PrototypeGameEngine
                     throw new InvalidOperationException(
                         "No unowned relics available for a custom relic reward.");
                 }
-                var relicId = available[
-                    LegacyRandomChoiceV111.ChooseIndexRange(
+                var ownerId = prefix + ":unowned_relic_pool:"
+                    + CanonicalJson.Sha256(available);
+                var relicIndex = nativeRunRng is { } nativeRewardRng
+                    ? NativePlayerRngV111.ChooseIndex(
+                        nativeRewardRng,
+                        "relic.unowned_random_selection.index_draw",
+                        NativePlayerRngV111.RewardsStreamId,
+                        ownerId,
+                        available.Length)
+                    : LegacyRandomChoiceV111.ChooseIndexRange(
                         state.Rng,
                         "relic.unowned_random_selection.index_draw",
                         "reward",
-                        prefix + ":unowned_relic_pool:"
-                            + CanonicalJson.Sha256(available),
-                        available.Length).SelectedIndex];
+                        ownerId,
+                        available.Length).SelectedIndex;
+                var relicId = available[relicIndex];
                 return new RewardState(
                     SourceRoom: prefix,
                     CardOptions: [],
