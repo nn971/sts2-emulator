@@ -2,10 +2,14 @@ using System.Text.Json;
 
 namespace Sts2Emulator.Core;
 
+public sealed record NativePaelOfferAuditV111(
+    RunState State, RandomIndexDecisionV111[] Choices, string ProviderMode);
+
 /// <summary>Source-backed Pael reward mechanics and the three native offer pools.</summary>
 public static class NativePaelRewardsV111
 {
     public const string PaelId = "proto.native.ancient.pael";
+    public const string OfferSiteId = "event.pael.relic_offer.index_draw";
     public const string HornId = "proto.native.ancient.paels_horn";
     public const string FleshId = "proto.native.ancient.paels_flesh";
     public const string BloodId = "proto.native.ancient.paels_blood";
@@ -222,8 +226,25 @@ public static class NativePaelRewardsV111
     public static bool HasEventPet(PlayerState player) =>
         PrototypeNativeEventPetRules.HasEventPet(player);
 
-    public static RunState BeginPaelOpening(RunState state)
+    public static RunState BeginPaelOpening(RunState state) =>
+        BeginPaelOpeningWithAudit(state, new NativeRandomIndexProviderV111()).State;
+
+    /// <summary>
+    /// Resolve Pael's three ordered offer pools through the supplied provider.
+    /// Nonnative provider mode is persisted because state validation otherwise
+    /// assumes the source-seeded offers and cursor.
+    /// </summary>
+    public static NativePaelOfferAuditV111 BeginPaelOpeningWithAudit(
+        RunState state, IRandomIndexProviderV111 provider)
     {
+        ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(provider);
+        var providerMode = provider.Mode;
+        if (providerMode is not ("native-v111" or "scripted-v111"
+            or "controlled-v111"))
+            throw new ArgumentException(
+                "Pael offer generation requires a supported random provider mode.",
+                nameof(provider));
         if (state.World is not { Act: 2, Floor: 0, Combat: null, Reward: null, Event: null } world
             || world.Map.CurrentNodeId is not null || state.Phase != RunPhase.MapChoice
             || world.EventIds.Contains(PaelId, StringComparer.Ordinal)
@@ -234,30 +255,61 @@ public static class NativePaelRewardsV111
         var stream = NativeRngV111Contexts.ForEvent(fork.RunSeed, "PAEL");
         var bundle = new RngBundle([stream]);
         var pools = OfferPools(fork.Player);
-        var offers = pools.Select(pool => "take_" + NativeRngV111.NextItem(
-            bundle, stream.StreamId, (IReadOnlyList<string>)pool)).ToArray();
-        return fork with
+        var decisions = new List<RandomIndexDecisionV111>(pools.Length);
+        var offers = pools.Select((pool, ordinal) =>
+        {
+            var decision = provider.Resolve(new RandomIndexRequestV111(
+                OfferSiteId, stream.StreamId,
+                "event:PAEL:act:2:floor:0", ordinal,
+                Enumerable.Range(0, pool.Length).ToArray()), bundle);
+            decision.Validate();
+            decisions.Add(decision);
+            return "take_" + pool[decision.SelectedIndex];
+        }).ToArray();
+        var result = fork with
         {
             Phase = RunPhase.Event,
             World = fork.World! with
             {
                 Event = new EventState(PaelId, OfferedChoiceIds: offers,
-                    NativeEventRng: bundle.Streams[0]),
+                    NativeEventRng: bundle.Streams[0],
+                    NativeEventRngProviderMode: providerMode == "native-v111"
+                        ? null : providerMode),
                 EventHistory = world.EventIds.Append(PaelId).ToArray()
             }
         };
+        return new NativePaelOfferAuditV111(
+            result, decisions.ToArray(), providerMode);
     }
 
     internal static void ValidateOpeningOfferState(RunState state, EventState evt,
         RngStreamState stream)
     {
-        if (evt.EventId != PaelId || stream.StreamId != "context.event.PAEL.player_0"
-            || NativeRngV111.ToSnapshot(stream).Counter != 3)
+        if (evt.EventId != PaelId || stream.StreamId != "context.event.PAEL.player_0")
             throw new InvalidOperationException("Pael event context must retain its three completed offer draws.");
         var pools = OfferPools(state.Player);
         if (evt.OfferedChoiceIds is not { Length: 3 } offers
             || offers.Any(id => !id.StartsWith("take_", StringComparison.Ordinal)))
             throw new InvalidOperationException("Sampled Pael requires one persisted offer from each source pool, in order.");
+        if (evt.NativeEventRngProviderMode is { } mode
+            && mode is not ("scripted-v111" or "controlled-v111"))
+            throw new InvalidOperationException("Pael has an unsupported persisted random provider mode.");
+        if (evt.NativeEventRngProviderMode is not null)
+        {
+            var counterfactualInitial = NativeRngV111Contexts.ForEvent(
+                state.RunSeed, "PAEL");
+            if (NativeRngV111.ToSnapshot(stream)
+                != NativeRngV111.ToSnapshot(counterfactualInitial))
+                throw new InvalidOperationException(
+                    "Counterfactual Pael offer providers must not advance the native event stream.");
+            for (var index = 0; index < pools.Length; index++)
+                if (!pools[index].Any(id => "take_" + id == offers[index]))
+                    throw new InvalidOperationException(
+                        "Counterfactual Pael offer is outside its ordered source pool.");
+            return;
+        }
+        if (NativeRngV111.ToSnapshot(stream).Counter != 3)
+            throw new InvalidOperationException("Pael event context must retain its three completed offer draws.");
         var initial = NativeRngV111Contexts.ForEvent(state.RunSeed, "PAEL");
         var expected = new RngBundle([initial]);
         var expectedOffers = pools.Select(pool => "take_" + NativeRngV111.NextItem(

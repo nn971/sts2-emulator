@@ -2557,7 +2557,9 @@ public sealed record EventState(
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     bool? NativeNonupeipeBraceletEligible = null,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
-    PrototypeFuturePotionOffer[]? NativeFuturePotionOffers = null)
+    PrototypeFuturePotionOffer[]? NativeFuturePotionOffers = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    string? NativeEventRngProviderMode = null)
 {
     public string[] RemainingPotionIds =>
         QueuedPotionIds ?? Array.Empty<string>();
