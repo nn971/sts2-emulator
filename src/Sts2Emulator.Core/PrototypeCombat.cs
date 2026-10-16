@@ -3883,9 +3883,17 @@ public sealed partial class PrototypeGameEngine
                             // Native uses RunRng.CombatCardGeneration,
                             // which has no matching prototype substream.
                             // This stream is explicitly an approximation.
-                            var chosen = candidates[
-                                PrototypeRng.NextInt(rng, "combat",
-                                    candidates.Length)];
+                            var choice = ResolveRandomCombatCardIndex(
+                                combat, rng,
+                                "combat.enemy.theft_card.select", "combat",
+                                candidates.Select(card => card.InstanceId)
+                                    .ToArray(),
+                                "enemy:" + enemy.InstanceId +
+                                    ":effect:steal_player_card",
+                                nativeStreamId:
+                                    "run.combat_card_generation");
+                            combat = choice.Combat;
+                            var chosen = candidates[choice.SelectedIndex];
                             var persistentId =
                                 chosen.PersistentCardInstanceId!.Value;
                             var persistentCard = player.Deck.Single(card =>
@@ -12849,12 +12857,14 @@ public sealed partial class PrototypeGameEngine
             string siteId,
             string legacyStreamId,
             long[] orderedCardInstanceIds,
-            string ownerId)
+        string ownerId,
+        string nativeStreamId = "run.combat_card_selection")
     {
         ArgumentNullException.ThrowIfNull(combat);
         ArgumentNullException.ThrowIfNull(legacyRng);
         ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
         ArgumentException.ThrowIfNullOrWhiteSpace(legacyStreamId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(nativeStreamId);
         ArgumentNullException.ThrowIfNull(orderedCardInstanceIds);
         ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
         if (orderedCardInstanceIds.Length == 0 ||
@@ -12874,7 +12884,7 @@ public sealed partial class PrototypeGameEngine
         var native = combat.NativeRng;
         var streamId = native is null
             ? legacyStreamId
-            : "run.combat_card_selection";
+            : nativeStreamId;
         var streams = native?.RunStreams.Fork() ?? legacyRng;
         var stream = streams.Streams.SingleOrDefault(item =>
             item.StreamId == streamId) ??
