@@ -27,13 +27,16 @@ re-randomization; subsequent unresolved draws receive their ordinary
 per-card Nature choices.
 
 A source selection that **removes a card from the draw pile**
-(`MoveToHand`, `MoveToDiscard` or `MoveToExhaust`) preserves
-the provider's positional state only if the selected instance's
-position was already fixed by a prior semantic reveal/peek/scry.
-It removes that exact known slot by `RemoveKnown`. Selecting an
-identity still inside an unresolved pool requires a distinct
-random-position continuation and currently fails explicitly before
-publishing a child.
+(`MoveToHand`, `MoveToDiscard` or `MoveToExhaust`) removes a known slot
+directly. It can also remove an unresolved identity without exposing its
+position when that identity's shared pool occupies one contiguous run of
+positions. The remaining cards in that run stay exchangeable, so deleting
+any one slot represents the same remaining constraints. If a known inserted
+card still splits that shared pool into multiple runs after the other
+selected known cards are removed, choosing which run lost the removed
+identity requires a latent-position continuation and currently fails closed.
+New snapshots label these source operations
+`remove_known_draw_card` or `remove_unresolved_draw_card_identity`.
 
 Before either supported mutation the original engine validates
 provider/physical draw-pile membership. Removing all unselected
@@ -63,7 +66,8 @@ source-shaped `select_cards` checkpoint to cover:
   before requesting an unresolved identity.
 - A peek-revealed draw-pile instance moved to hand while other hidden
   positions retain their constraints.
-- Rejected unknown-position removals and tampered semantic snapshots.
+- Contiguous unresolved-pool removals, rejected split-pool removals and
+  tampered semantic snapshots.
 - Deterministic independent 15-worker source-selection + end-turn replay.
 
 ## Opt-in semantic player-choice bridge
@@ -81,8 +85,8 @@ including its saved source-card and queued-operation continuation. The choice
 is recorded as `semantic_card_selection` in the existing action transcript,
 and save/load replays the play plus selection from entry provenance. Choices
 that do not move the hidden draw pile preserve its semantic state; known-top
-placements and previously revealed draw-pile removals use the existing deck
-projection rules above.
+placements and supported known or contiguous-pool draw-pile removals use the
+existing deck projection rules above.
 
 This is deliberately a fixture loadout integration, not evidence that Survivor
 was acquired through the native run route. Outer-choice continuations,
@@ -95,10 +99,11 @@ fail closed. Conditional probabilities remain `UNVERIFIED`.
 This implements the **real choice-resolution mechanic**, not yet
 general source-authentic loadout acquisition or every parent card/potion
 continuation that creates a `select_cards` prompt. It does not yet support
-scry discard/reordering, partial random-position removals, card-effect draws,
-effects that return the hand and reshuffle, or random insertions into the draw
-pile. Those transitions require dedicated stochastic and source-timed
-continuations, with provider membership verified at each mutation site.
+scry discard/reordering, removals from pools split around known anchors,
+card-effect draws, effects that return the hand and reshuffle, or random
+insertions into the draw pile. Those transitions require dedicated stochastic
+and source-timed continuations, with provider membership verified at each
+mutation site.
 
 This opt-in capability is separate from legacy controlled
 Fisher–Yates swap tickets and from the frozen four-Act Silent

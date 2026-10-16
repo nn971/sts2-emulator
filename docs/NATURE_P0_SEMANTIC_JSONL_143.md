@@ -334,8 +334,10 @@ instances without replacement. After the required prefix is selected, the
 source `select_cards` player choice is exposed normally. Python clients use
 `resolve_card_shortlist(card_instance_id)` for each Nature choice, then
 `resolve_card_selection(action_id)`. The fixture begins with a committed
-exact draw-pile order; selecting from a later unresolved pile position still
-fails closed when the semantic deck cannot locate the chosen instance.
+exact draw-pile order. Later, a selected identity can be removed from one
+contiguous unresolved semantic pool without revealing its old position;
+removal fails closed when a known inserted card splits that shared pool into
+multiple positional runs.
 
 The optional `drawn_card_cost` Nature site is enabled with
 `fixture_draw_cost_relic_id="proto.relic.snecko_eye"` and

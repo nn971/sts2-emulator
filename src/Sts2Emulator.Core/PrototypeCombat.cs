@@ -12797,13 +12797,13 @@ public sealed partial class PrototypeGameEngine
 
             if (selection.SourceZone == PrototypeCardZone.DrawPile)
             {
-                // A player-targeted physical removal is valid only once
-                // its old position has been established by an earlier
-                // peek/scry/reveal. Unknown-position removals need a
-                // separate stochastic position continuation.
-                foreach (var cardId in selected)
-                    semantic = SemanticDeckEngineV111.RemoveKnown(
-                        semantic, cardId);
+                // Known identities can be removed directly. An unresolved
+                // identity can be removed without exposing its old position
+                // when its shared pool occupies one contiguous run; pools
+                // split around known anchors need a latent-position
+                // continuation and are rejected by the deck kernel.
+                semantic = SemanticDeckEngineV111.RemoveCardInstances(
+                    semantic, selected);
             }
             if (selection.Resolution ==
                 PrototypeCardSelectionResolutionKind.MoveToDrawTop)

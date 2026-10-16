@@ -187,15 +187,17 @@ public static class SemanticCardSelectionEngineV111
         var selected = action.Payload.Deserialize<SelectCardsPayload>()
             ?.CardInstanceIds ?? throw new InvalidDataException(
                 "Invalid selected-card action payload.");
+        var selectedUnknownPosition = supportedDrawRemoval && selected.Any(id =>
+            !deck.Slots.Any(slot => slot.KnownCardInstanceId == id));
 
-        // The concrete cards in an unknown draw-pile pool do not yet
-        // have established positions. An explicit source selection from
-        // the draw pile needs a revealed location, or a new Nature ticket.
-        if (supportedDrawRemoval && selected.Any(id =>
-            !deck.Slots.Any(slot => slot.KnownCardInstanceId == id)))
-            throw new NotSupportedException(
-                "UNSUPPORTED_SEMANTIC_DECK site=combat.card_selection " +
-                "operation=unknown_source_position");
+        // Removing an unresolved identity is exact when its shared pool is
+        // one contiguous run: deleting any one exchangeable slot leaves the
+        // same remaining order constraints. A pool split around known
+        // anchors needs an additional latent-position continuation.
+        if (supportedDrawRemoval)
+        {
+            deck = SemanticDeckEngineV111.RemoveCardInstances(deck, selected);
+        }
 
         RunState advanced;
         using (ControlledChanceGuardV111.Enter())
@@ -210,7 +212,11 @@ public static class SemanticCardSelectionEngineV111
         var result = new SemanticCardSelectionV111(
             source.Fork(), advanced, actionId, (long[])selected.Clone(),
             supportedTop ? "move_to_draw_top" :
-                supportedDrawRemoval ? "remove_known_draw_card" :
+                supportedDrawRemoval
+                    ? selectedUnknownPosition
+                        ? "remove_unresolved_draw_card_identity"
+                        : "remove_known_draw_card"
+                    :
                     "preserve_draw_pile", decision);
         Validate(result);
         return result;
@@ -246,7 +252,9 @@ public static class SemanticCardSelectionEngineV111
                 state.SelectedCardInstanceIds.Length ||
             state.Decision is null ||
             state.Operation is not ("move_to_draw_top" or
-                "remove_known_draw_card" or "preserve_draw_pile"))
+                "remove_known_draw_card" or
+                "remove_unresolved_draw_card_identity" or
+                "preserve_draw_pile"))
             throw new InvalidDataException(
                 "Invalid saved source card selection.");
         SemanticPlayerActionEngineV111.ValidateBoundary(state.Run);
@@ -261,16 +269,28 @@ public static class SemanticCardSelectionEngineV111
         var initial = from.SemanticDeck ??
             throw new InvalidDataException("Original semantic deck is absent.");
         SemanticDeckEngineV111.Validate(initial);
+        var selectedUnknown = state.SelectedCardInstanceIds.Any(id =>
+            initial.Pools.Any(pool =>
+                pool.RemainingCardInstanceIds.Contains(id)));
+        if ((state.Operation == "remove_known_draw_card" && selectedUnknown) ||
+            (state.Operation == "remove_unresolved_draw_card_identity" &&
+             !selectedUnknown))
+            throw new InvalidDataException(
+                "Saved draw-pile removal kind differs from its source identities.");
         var expected = initial;
         if (state.Operation == "move_to_draw_top")
         {
             foreach (var id in state.SelectedCardInstanceIds)
                 expected = SemanticDeckEngineV111.PlaceTop(expected, id);
         }
-        else if (state.Operation == "remove_known_draw_card")
+        else if (state.Operation is "remove_known_draw_card" or
+            "remove_unresolved_draw_card_identity")
         {
-            foreach (var id in state.SelectedCardInstanceIds)
-                expected = SemanticDeckEngineV111.RemoveKnown(expected, id);
+            expected = state.Operation == "remove_known_draw_card"
+                ? state.SelectedCardInstanceIds.Aggregate(expected,
+                    SemanticDeckEngineV111.RemoveKnown)
+                : SemanticDeckEngineV111.RemoveCardInstances(
+                    expected, state.SelectedCardInstanceIds);
         }
         else if (initial.Fingerprint != to.SemanticDeck!.Fingerprint)
             throw new InvalidDataException(

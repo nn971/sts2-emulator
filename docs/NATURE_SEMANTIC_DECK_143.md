@@ -92,7 +92,8 @@ native game RNG state, so existing consumers are unaffected.
 - Source-ordered Nature instances without replacement and concrete native
   top-first order.
 - Known-top/bottom and middle insertions, shared pool coupling, peeks,
-  scry discards, and unsupported unknown-position removal.
+  scry discards, contiguous unresolved-pool removal, and rejection of removal
+  from a pool split around known anchors.
 - Nature shuffle resets previously revealed positions; native shuffle
   preserves the exact card multiset.
 - Exact enumeration for a 3-card shuffle with a fixed middle insertion:

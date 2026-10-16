@@ -60,7 +60,8 @@ it currently fails atomically:
 
 The current real-semantic bridge is still a **conditioned draw segment**,
 not a full opening-hand/turn/card-effect/JSONL implementation. Snecko Eye,
-Slither, nested `CardDrawn` decisions, unknown-position deck mutation,
+Slither, nested `CardDrawn` decisions, split-pool unknown-position deck
+mutation,
 native seeded parity, source probability and original-game importance
 weights remain separate future gates.
 

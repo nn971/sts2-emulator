@@ -125,8 +125,9 @@ identifies the ordered eligible hand-card instances; each reroll event
 identifies its current hand card. Both resume the source operation and replay
 independently. The Seeker Strike source shortlist is also exposed as ordered
 without-replacement instance choices before its ordinary player selection;
-unknown-position removal still fails closed. Draw-triggered relic/Slither
-costs beyond their existing event path, enemy-side insertion, death/summon
+contiguous unresolved-pool removal is preserved without exposing a hidden
+position; pools split by known anchors still fail closed. Draw-triggered
+relic/Slither costs beyond their existing event path, enemy-side insertion, death/summon
 continuations, native laws and full terminal rollout remain.
 
 

@@ -326,6 +326,105 @@ public static class SemanticDeckEngineV111
         return Checked(state with { Slots = slots.ToArray() });
     }
 
+    /// <summary>Remove a selected card identity without revealing its
+    /// position when its unresolved pool occupies one contiguous run.
+    /// Removing any slot in that run leaves the same exchangeable
+    /// constraints. A pool split around known anchors needs a separate
+    /// latent-position choice and is rejected.</summary>
+    public static bool CanRemoveCardInstance(
+        SemanticDeckStateV111 state, long cardId)
+    {
+        Validate(state);
+        AssertIdle(state);
+        if (state.Slots.Any(slot => slot.KnownCardInstanceId == cardId))
+            return true;
+        var pool = state.Pools.SingleOrDefault(candidate =>
+            candidate.RemainingCardInstanceIds.Contains(cardId));
+        if (pool is null) return false;
+        var positions = state.Slots.Select((slot, index) => (slot, index))
+            .Where(item => item.slot.PoolId == pool.PoolId)
+            .Select(item => item.index).ToArray();
+        return positions.Length > 0 &&
+            positions[^1] - positions[0] + 1 == positions.Length;
+    }
+
+    public static SemanticDeckStateV111 RemoveCardInstance(
+        SemanticDeckStateV111 state, long cardId)
+    {
+        Validate(state);
+        AssertIdle(state);
+        var knownIndex = Array.FindIndex(state.Slots, slot =>
+            slot.KnownCardInstanceId == cardId);
+        if (knownIndex >= 0)
+        {
+            var knownSlots = state.Slots.ToList();
+            knownSlots.RemoveAt(knownIndex);
+            return Checked(state with { Slots = knownSlots.ToArray() });
+        }
+
+        var poolIndex = Array.FindIndex(state.Pools, pool =>
+            pool.RemainingCardInstanceIds.Contains(cardId));
+        if (poolIndex < 0)
+            throw new ArgumentException("Card instance is absent from this pile.");
+        var pool = state.Pools[poolIndex];
+        var positions = state.Slots.Select((slot, index) => (slot, index))
+            .Where(item => item.slot.PoolId == pool.PoolId)
+            .Select(item => item.index).ToArray();
+        if (positions.Length == 0 ||
+            positions[^1] - positions[0] + 1 != positions.Length)
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_DECK " +
+                "site=combat.card_selection " +
+                "operation=remove_unknown_card_from_split_pool");
+
+        var slots = state.Slots.ToList();
+        // Slots in this run are exchangeable. Removing its last slot keeps
+        // surrounding known anchors and the remaining pool law intact.
+        slots.RemoveAt(positions[^1]);
+        var remaining = pool.RemainingCardInstanceIds
+            .Where(id => id != cardId).ToArray();
+        var pools = new List<SemanticDeckPoolV111>();
+        for (var index = 0; index < state.Pools.Length; index++)
+        {
+            if (index != poolIndex)
+            {
+                pools.Add(state.Pools[index].Fork());
+                continue;
+            }
+            if (remaining.Length > 0)
+                pools.Add(pool with { RemainingCardInstanceIds = remaining });
+        }
+        return Checked(state with
+        {
+            Slots = slots.ToArray(),
+            Pools = pools.ToArray()
+        });
+    }
+
+    public static SemanticDeckStateV111 RemoveCardInstances(
+        SemanticDeckStateV111 state, IReadOnlyCollection<long> cardInstanceIds)
+    {
+        Validate(state);
+        AssertIdle(state);
+        ArgumentNullException.ThrowIfNull(cardInstanceIds);
+        var selected = cardInstanceIds.ToArray();
+        ValidateUnique(selected);
+        var unresolved = selected.Where(id => state.Pools.Any(pool =>
+            pool.RemainingCardInstanceIds.Contains(id))).ToArray();
+        foreach (var id in selected.Except(unresolved))
+            state = RemoveKnown(state, id);
+        foreach (var id in unresolved)
+        {
+            if (!CanRemoveCardInstance(state, id))
+                throw new NotSupportedException(
+                    "UNSUPPORTED_SEMANTIC_DECK " +
+                    "site=combat.card_selection " +
+                    "operation=remove_unknown_card_from_split_pool");
+            state = RemoveCardInstance(state, id);
+        }
+        return state;
+    }
+
     public static SemanticDeckStateV111 MoveKnownToTop(
         SemanticDeckStateV111 state, long cardId, bool publiclyKnown = true)
     {
