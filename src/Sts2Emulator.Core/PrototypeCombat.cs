@@ -6440,7 +6440,9 @@ public sealed partial class PrototypeGameEngine
                         // Native pile selectors may offer only a random
                         // shortlist. Filter by type before choosing it.
                         var shuffledCandidates = (long[])candidates.Clone();
-                        PrototypeRng.Shuffle(rng, "combat", shuffledCandidates);
+                        combat = ShuffleRandomCardShortlist(
+                            combat, rng, shuffledCandidates, selection,
+                            sourceCardInstanceId);
                         candidates = shuffledCandidates
                             .Take(selection.RandomCandidateCount).ToArray();
                     }
@@ -12817,6 +12819,62 @@ public sealed partial class PrototypeGameEngine
                 NativeRng = native with { RunStreams = streams }
             };
         return (updated, decision.SelectedIndex);
+    }
+
+    private static CombatState ShuffleRandomCardShortlist(
+        CombatState combat,
+        RngBundle legacyRng,
+        long[] orderedCardInstanceIds,
+        PrototypeCardSelectionSpec selection,
+        long? sourceCardInstanceId)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(legacyRng);
+        ArgumentNullException.ThrowIfNull(orderedCardInstanceIds);
+        ArgumentNullException.ThrowIfNull(selection);
+        if (orderedCardInstanceIds.Length < 2 ||
+            orderedCardInstanceIds.Any(id => id <= 0) ||
+            orderedCardInstanceIds.Distinct().Count() !=
+                orderedCardInstanceIds.Length)
+            throw new ArgumentException(
+                "Random shortlist shuffle needs at least two ordered unique cards.",
+                nameof(orderedCardInstanceIds));
+        if (ControlledChanceGuardV111.Active &&
+            !ControlledChanceGuardV111.EngineOwnedNativeProviderActive)
+            throw new NotSupportedException(
+                "UNSUPPORTED_CONTROLLED_CHANCE " +
+                "site=combat.card_selection.random_shortlist " +
+                "operation=shuffle requires a saved shortlist continuation.");
+
+        var native = combat.NativeRng;
+        var streamId = native is null
+            ? "combat"
+            : "run.combat_card_selection";
+        var streams = native?.RunStreams.Fork() ?? legacyRng;
+        var stream = streams.Streams.SingleOrDefault(item =>
+            item.StreamId == streamId) ??
+            throw new InvalidOperationException(
+                "Random shortlist provider stream is missing.");
+        var callOrdinal = stream.CallCount ?? 0;
+        if (callOrdinal > int.MaxValue)
+            throw new NotSupportedException(
+                "Random shortlist provider ordinal exceeds the request range.");
+        IRandomIndexProviderV111 provider = native is null
+            ? new LegacyPrototypeRandomIndexProviderV111()
+            : new NativeRandomIndexProviderV111();
+        var ownerId = "card_selection:" + selection.SourceZone +
+            ":source:" + (sourceCardInstanceId?.ToString() ?? "none") +
+            ":support:" + CanonicalJson.Sha256(orderedCardInstanceIds);
+        _ = NativeFisherYatesV111.ShuffleInPlace(
+            orderedCardInstanceIds, streams, provider, streamId,
+            ownerId, "combat.card_selection.random_shortlist",
+            (int)callOrdinal);
+        return native is null
+            ? combat
+            : combat with
+            {
+                NativeRng = native with { RunStreams = streams }
+            };
     }
 
     private static (CombatState Combat, int SelectedIndex)
