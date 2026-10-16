@@ -63,6 +63,12 @@ public static class NativeOrobasEventV111
     {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(provider);
+        var providerMode = provider.Mode;
+        if (providerMode is not ("native-v111" or "scripted-v111"
+            or "controlled-v111"))
+            throw new ArgumentException(
+                "Orobas offer generation requires a supported random provider mode.",
+                nameof(provider));
         if (state.World is not { Act: 2, Floor: 0, Combat: null,
                 Reward: null, Event: null } world
             || world.Map.CurrentNodeId is not null
@@ -95,12 +101,14 @@ public static class NativeOrobasEventV111
             World = fork.World! with
             {
                 Event = new EventState(EventId, OfferedChoiceIds: offers,
-                    NativeEventRng: rng.Streams[0]),
+                    NativeEventRng: rng.Streams[0],
+                    NativeEventRngProviderMode: providerMode == "native-v111"
+                        ? null : providerMode),
                 EventHistory = world.EventIds.Append(EventId).ToArray()
             }
         };
         return new NativeOrobasEventAuditV111(
-            result, decisions.ToArray(), provider.Mode);
+            result, decisions.ToArray(), providerMode);
     }
 
     public static RunState CreateOpeningFixture(string seed, int ascension = 0) =>
@@ -115,7 +123,17 @@ public static class NativeOrobasEventV111
             || evt.OfferedChoiceIds is not { Length: 3 } offers)
             throw new InvalidOperationException(
                 "Orobas requires three persisted offers and its event RNG context.");
-        _ = NativeRngV111.ToSnapshot(stream);
+        var initial = NativeRngV111Contexts.ForEvent(state.RunSeed, "OROBAS");
+        if (evt.NativeEventRngProviderMode is { } mode)
+        {
+            if (mode is not ("scripted-v111" or "controlled-v111"))
+                throw new InvalidOperationException(
+                    "Orobas has an unsupported persisted random provider mode.");
+            if (NativeRngV111.ToSnapshot(stream)
+                != NativeRngV111.ToSnapshot(initial))
+                throw new InvalidOperationException(
+                    "Counterfactual Orobas providers must not advance the native event stream.");
+        }
         for (var index = 0; index < offers.Length; index++)
         {
             if (!(index == 2 && offers[index] == LockedChoiceId)
@@ -134,5 +152,26 @@ public static class NativeOrobasEventV111
                 || !offers.Contains(chosen, StringComparer.Ordinal)))
             throw new InvalidOperationException(
                 "Orobas selected a locked or unoffered choice.");
+
+        if (evt.NativeEventRngProviderMode is null
+            && evt.ChosenChoiceId is null)
+        {
+            var bundle = new RngBundle([initial]);
+            var expectedOffers = RelicPools.Select((pool, ordinal) =>
+            {
+                var eligible = pool.Select(ChoiceId)
+                    .Where(id => IsChoiceEligible(state.Player, id)).ToArray();
+                if (eligible.Length == 0)
+                    eligible = [LockedChoiceId];
+                var selectedIndex = NativeRngV111.NextInt(
+                    bundle, initial.StreamId, eligible.Length);
+                return eligible[selectedIndex];
+            }).ToArray();
+            if (!offers.SequenceEqual(expectedOffers, StringComparer.Ordinal)
+                || NativeRngV111.ToSnapshot(stream)
+                    != NativeRngV111.ToSnapshot(bundle.Streams[0]))
+                throw new InvalidOperationException(
+                    "Orobas offers or event RNG cursor do not match its native offer draws.");
+        }
     }
 }

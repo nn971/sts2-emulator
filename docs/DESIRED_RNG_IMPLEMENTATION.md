@@ -37,10 +37,12 @@ or a bounded insertion position while preserving unresolved deck order.
 The Orobas, Pael and Tezcatara ordered relic offer selections; Darv's
 offer-variant and ordered relic-pool shuffle; and the Nonupeipe, Tanx and
 Vakuu relic shuffles now pass through the shared index provider, with opt-in
-audit results and native compatibility entry points.
-Pael, Tezcatara, Nonupeipe, Tanx and Vakuu record nonnative provider mode in
-their completed event state while retaining strict seeded validation for
-native mode. Vakuu's request ordinals span its three pool shuffles. The
+audit results and native compatibility entry points. All seven persist
+nonnative provider mode in completed event state. Orobas and Darv validate
+that counterfactual offers leave the native event cursor untouched, and
+replay native offers and cursors while their opening event remains unchosen.
+Pael, Tezcatara, Nonupeipe, Tanx and Vakuu retain strict seeded validation
+for native mode. Vakuu's request ordinals span its three pool shuffles. The
 existing source-pinned Fisher–Yates loop now accepts an arbitrary named
 stream and provider without duplicating its swap mechanics. Jeweled Mask's
 random Power selection and native generated-card full-pool shuffle also reach
