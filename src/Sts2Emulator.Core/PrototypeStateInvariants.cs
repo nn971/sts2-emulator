@@ -39,6 +39,10 @@ public static class PrototypeStateInvariants
             state,
             PrototypeNativeGloryEvents.HungryForMushroomsId,
             PrototypeNativeGloryEvents.HungryForMushroomsNativeRngEventId);
+        NativeEventContextRngV111.Validate(
+            state,
+            PrototypeNativeGloryEvents.ReflectionsId,
+            PrototypeNativeGloryEvents.ReflectionsNativeRngEventId);
         if (state.Ascension < 0)
         {
             throw new InvalidOperationException(

@@ -848,6 +848,9 @@ public sealed partial class PrototypeGameEngine
                         PrototypeNativeGloryEvents.HungryForMushroomsId =>
                             PrototypeNativeGloryEvents
                                 .HungryForMushroomsNativeRngEventId,
+                        PrototypeNativeGloryEvents.ReflectionsId =>
+                            PrototypeNativeGloryEvents
+                                .ReflectionsNativeRngEventId,
                         _ => null
                     }),
                 NativeEventGold:

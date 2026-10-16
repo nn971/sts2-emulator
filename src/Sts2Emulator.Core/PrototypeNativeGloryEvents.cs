@@ -19,6 +19,7 @@ public static class PrototypeNativeGloryEvents
         "proto.native.glory.fragrant_mushroom";
     public const string ReflectionsId =
         "proto.native.glory.reflections";
+    public const string ReflectionsNativeRngEventId = "REFLECTIONS";
     public const string BadLuckId =
         "proto.native.glory.bad_luck";
     public const string RoundTeaPartyId =

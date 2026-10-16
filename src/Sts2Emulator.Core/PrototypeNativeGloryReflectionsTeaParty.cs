@@ -16,6 +16,7 @@ public sealed partial class PrototypeGameEngine
             world.Event?.EventId != PrototypeNativeGloryEvents.ReflectionsId)
             throw new InvalidOperationException(
                 "Reflections requires its Glory event fixture.");
+        var evt = world.Event!;
 
         var choice = action.ReadPayload<EventChoicePayload>().ChoiceId;
         var player = state.Player;
@@ -29,15 +30,19 @@ public sealed partial class PrototypeGameEngine
                 .Select(card => card.InstanceId).ToList();
             for (var i = 0; i < 2 && downgradable.Count > 0; i++)
             {
-                var index = LegacyRandomChoiceV111.ChooseIndexRange(
-                    state.Rng,
+                var draw = NativeEventContextRngV111.ResolveIndex(
+                    state, evt,
+                    PrototypeNativeGloryEvents
+                        .ReflectionsNativeRngEventId,
                     "event.glory_reflections.downgrade_card.index_draw",
-                    "event",
                     $"event:reflections:downgrade:{i}:pool:"
                         + CanonicalJson.Sha256(downgradable),
-                    downgradable.Count).SelectedIndex;
-                var id = downgradable[index];
-                downgradable.RemoveAt(index);
+                    downgradable.Count);
+                state = draw.State;
+                world = RequireWorld(state);
+                evt = world.Event!;
+                var id = downgradable[draw.SelectedIndex];
+                downgradable.RemoveAt(draw.SelectedIndex);
                 player = player with
                 {
                     Deck = player.Deck.Select(card =>
@@ -54,15 +59,19 @@ public sealed partial class PrototypeGameEngine
                 .Select(card => card.InstanceId).ToList();
             for (var i = 0; i < 4 && upgradable.Count > 0; i++)
             {
-                var index = LegacyRandomChoiceV111.ChooseIndexRange(
-                    state.Rng,
+                var draw = NativeEventContextRngV111.ResolveIndex(
+                    state, evt,
+                    PrototypeNativeGloryEvents
+                        .ReflectionsNativeRngEventId,
                     "event.glory_reflections.upgrade_card.index_draw",
-                    "event",
                     $"event:reflections:upgrade:{i}:pool:"
                         + CanonicalJson.Sha256(upgradable),
-                    upgradable.Count).SelectedIndex;
-                var id = upgradable[index];
-                upgradable.RemoveAt(index);
+                    upgradable.Count);
+                state = draw.State;
+                world = RequireWorld(state);
+                evt = world.Event!;
+                var id = upgradable[draw.SelectedIndex];
+                upgradable.RemoveAt(draw.SelectedIndex);
                 player = player with
                 {
                     Deck = player.Deck.Select(card =>

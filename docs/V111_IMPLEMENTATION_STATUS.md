@@ -906,7 +906,9 @@ potion. Full native potion-pool and cursor parity remain unverified.
   one relic from the persistent reward bag, or die with no reward.
   Its peaceful option obtains Royal Poison and heals to full.
   The full-map fixtures and fork/phase/callback tests do **not** enable
-  incomplete Glory event bags or imply native RNG parity.
+  incomplete Glory event bags or imply broad native RNG parity. Native v111
+  Reflections choices now use the persisted `REFLECTIONS` event context for
+  both card-selection passes; seeded result and cursor parity remain open.
   [Source audit](reference-builds/v0.111.0-glory-reflections-tea-party.md).
 
 - Added gated **Glory Grave of the Forgotten**: source-correct
