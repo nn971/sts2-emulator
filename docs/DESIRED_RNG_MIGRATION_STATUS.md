@@ -8,13 +8,16 @@ integration branch, **not** the lightweight inspector foundation branch.
 source-audited xoshiro stream and consumes its cursor. `scripted-v111`
 matches a complete, ordered request/outcome transcript and makes no native
 draw. `controlled-v111` validates an external index at a single request
-site, also without consuming native RNG. Both nonnative providers started as
-D1 components; isolated **serializable D3 HP → intent continuations** and
-an opt-in D4 JSONL/Python adapter now exist. Restricted semantic rollouts can
-reach supported combat terminals, but there is **not yet** a general
+site, also without consuming native RNG. Scripted and controlled providers
+started as D1 components. Isolated **serializable D3 HP → intent continuations**
+and an opt-in D4 JSONL/Python adapter now exist. Restricted semantic rollouts
+can reach supported combat terminals, but there is **not yet** a general
 whole-run controlled continuation or a trained Nature-policy API. No `p/q`
-probability or original conditional law is claimed. The legacy prototype and
-default v111 consumer protocols have **not** been switched.
+probability or original conditional law is claimed. No consumer-wide profile
+switch has occurred; the legacy prototype profile and default v111 protocols
+remain available. Distinguished Cape's curse-acquisition site now uses an
+explicit `legacy-prototype-v0` adapter under the retained six-stream profile.
+It preserves the legacy modulo sampler and does not claim native-v111 parity.
 
 The matrix separates call-site mechanics and reference-law status. “Native
 parity” means a seeded emulator cursor/result regression; it does not imply a
@@ -54,7 +57,7 @@ reference distribution is claimed.
 | `potion_factory.rarity_roll.unit_float` | potion factory / `run.combat_potion_generation` | Yes: unit-float thresholds choose Common / Uncommon / Rare | Yes: typed unit-float provider around native `NextFloat` | No: provider-specific result/cursor regression pending | Yes: controlled unit-float request | No | No |
 | `potion_factory.model_within_rarity.index_draw` | potion factory / `run.combat_potion_generation` | Yes: source-ordered remaining tier pool after rarity choice | Yes: typed model index provider | No: provider-specific result/cursor regression pending | Yes: model choice controlled within the chosen tier | No | No |
 | `run.relic.beautiful_bracelet.deck_shuffle.swap_index` | Beautiful Bracelet acquisition / `run.niche` | Yes: ordered eligible deck cards; first four selected after full shuffle | Yes: typed provider at each descending swap | No: provider-specific result/cursor regression pending | No | No | No |
-| `run.relic.distinguished_cape.modifier_curse.index_draw` | Distinguished Cape acquisition / `run.niche` | Yes: two ordered draws without replacement from source modifier-eligible curse pool | Yes: typed index provider | Yes: existing exact curse IDs and cursor regression | No | No | No |
+| `run.relic.distinguished_cape.modifier_curse.index_draw` | Distinguished Cape acquisition / `run.niche` | Yes: two ordered draws without replacement from source modifier-eligible curse pool | Yes: native-v111 and legacy typed providers | Yes: existing exact curse IDs and cursor regression | No | No | No |
 | `run.relic.fur_coat.map_node_shuffle.swap_index` | Fur Coat acquisition + act / `context.player.*` | Yes: current-act Combat and Elite nodes; first eight marked after full shuffle | Yes: typed provider at each descending swap | No: provider-specific result/cursor regression pending | No | No | No |
 | `map.later_act.path_start_column.index_draw` | act map / `context.act_map.*` | Partial: seven path starts and second-path collision retries | Yes: bounded typed provider requests | No: provider-specific result/cursor regression pending | No | No | No |
 | `map.later_act.path_delta.shuffle_swap_index` | act map / `context.act_map.*` | Partial: ordered `[-1, 0, 1]` path deltas | Yes: typed provider at each descending swap | No: provider-specific result/cursor regression pending | No | No | No |

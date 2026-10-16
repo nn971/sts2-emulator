@@ -42,8 +42,10 @@ def compare_native_emulator(
         "exact_native_rng_cursor_comparison": exact_native_cursors,
         "native_call_count": len(native),
         "emulator_call_count": 0,
+        "emulator_native_call_count": 0,
         "emulator_global_provider_count": 0,
         "emulator_uncompared_provider_operations": 0,
+        "emulator_non_native_index_operations": 0,
         "compared": 0,
         "first_mismatch": None,
     }
@@ -78,7 +80,22 @@ def compare_native_emulator(
                         "status": "EMULATOR_PROVIDER_TRANSCRIPT_INVALID"}
             operation_kind = key(entry, "operation_kind")
             if operation_kind == "index":
-                emulator.append(key(entry, "event"))
+                base["emulator_call_count"] += 1
+                event = key(entry, "event")
+                provider_mode = key(event, "provider_mode")
+                if provider_mode == "native-v111":
+                    emulator.append(event)
+                elif provider_mode in (
+                        "legacy-prototype-v0", "scripted-v111",
+                        "controlled-v111"):
+                    # This tool compares native source primitive calls. A
+                    # legacy or counterfactual choice can be mechanically
+                    # useful, but it has no native source cursor to pair.
+                    base["emulator_uncompared_provider_operations"] += 1
+                    base["emulator_non_native_index_operations"] += 1
+                else:
+                    return {**base,
+                            "status": "EMULATOR_PROVIDER_MODE_UNAVAILABLE"}
             elif operation_kind in (
                     "unit_float", "ranged_float", "ranged_double",
                     "gaussian_int", "gaussian_double"):
@@ -94,9 +111,29 @@ def compare_native_emulator(
         if not isinstance(emulator, list):
             return {**base, "status": "EMULATOR_PROVIDER_JOURNAL_MISSING"}
         base["emulator_global_provider_count"] = len(emulator)
-    base["emulator_call_count"] = len(emulator)
+        base["emulator_call_count"] = len(emulator)
+        native_emulator = []
+        for event in emulator:
+            provider_mode = key(event, "provider_mode")
+            if provider_mode == "native-v111":
+                native_emulator.append(event)
+            elif provider_mode in (
+                    "legacy-prototype-v0", "scripted-v111",
+                    "controlled-v111"):
+                base["emulator_uncompared_provider_operations"] += 1
+                base["emulator_non_native_index_operations"] += 1
+            else:
+                return {**base,
+                        "status": "EMULATOR_PROVIDER_MODE_UNAVAILABLE"}
+        emulator = native_emulator
+    base["emulator_native_call_count"] = len(emulator)
+    if base["emulator_non_native_index_operations"]:
+        return {**base, "status": "EMULATOR_NON_NATIVE_PROVIDER_PRESENT"}
     if not emulator:
-        return {**base, "status": "EMULATOR_RNG_PROVIDER_UNOBSERVED"}
+        status = "EMULATOR_NATIVE_PROVIDER_UNOBSERVED" \
+            if base["emulator_global_provider_count"] else \
+            "EMULATOR_RNG_PROVIDER_UNOBSERVED"
+        return {**base, "status": status}
 
     semantic_eligibility_unverified = False
     for i, (native_row, emulator_row) in enumerate(zip(native, emulator)):

@@ -57,8 +57,9 @@ Beautiful Bracelet's eligible-deck shuffle and Fur Coat's current-act combat
 node shuffle now use typed native swap requests as well; controlled relic
 acquisition continuation remains pending. Distinguished Cape's two
 source-ordered modifier-curse selections now pass through the typed index
-provider in native mode, and Tough Egg's hatch request uses the native
-formation CombatId as its owner. The later-act map's bounded path
+provider in native and legacy-prototype modes; the legacy adapter preserves
+the original sampler. Tough Egg's hatch request uses the native formation
+CombatId as its owner. The later-act map's bounded path
 starts, delta shuffles, Glory rest-count pick and room-assignment shuffles now
 also use typed native requests. Its Gaussian quota samples now use typed
 provider requests. A typed Gaussian-double adapter now wraps the native
@@ -334,7 +335,7 @@ Measure native transition/whole-run throughput against the pre-refactor baseline
 | Batch | Deliverable | Acceptance gate |
 | --- | --- | --- |
 | **D0 — Spec + inventory** | This document; audit gameplay RNG call sites and classify stream, source operation, conditional support, and migration status. | Versioned inventory with ambiguous call sites called out. |
-| **D1 — Core providers** | Shared request/result types, native adapter, scripted replay adapter, outcome validation. | Native zero-behavior-change tests for initial migrated operations. |
+| **D1 — Core providers** | Shared request/result types, native adapter, scripted replay adapter, optional typed adapter for legacy compatibility, outcome validation. | Native zero-behavior-change tests for initial migrated operations. |
 | **D2 — First migrated mechanics** | Monster HP, committed enemy intents, then audited formation picks. | Seeded native result/cursor parity + controlled fixed-outcome hook parity. |
 | **D3 — Serializable choice boundaries** | Suspend/resume controlled choice in existing engine continuation framework; pending IDs, fork/save/load. | Nested calls and interrupted enemy-turn/trigger chains replay identically. |
 | **D4 — Consumer protocol** | Add opt-in capability/version negotiation, controlled advance/resolve, traces, optional enumerator and Python binding. | Full supported combat segments under native and scripted Nature; legacy `step` unchanged. |

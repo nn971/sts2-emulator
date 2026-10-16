@@ -101,6 +101,46 @@ public sealed class NativeRandomIndexProviderV111 : IRandomIndexProviderV111
 }
 
 /// <summary>
+/// Typed adapter for the retained legacy six-stream prototype profile. It
+/// preserves PrototypeRng's modulo sampler and stream state; it does not
+/// claim native-v111 RNG parity. Use the provider mode in transcripts to keep
+/// these outcomes distinct from native-v111 and counterfactual Nature.
+/// </summary>
+public sealed class LegacyPrototypeRandomIndexProviderV111
+    : IRandomIndexProviderV111
+{
+    public string Mode => "legacy-prototype-v0";
+
+    public RandomIndexDecisionV111 Resolve(
+        RandomIndexRequestV111 request, RngBundle streams)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(streams);
+        request.Validate();
+        var matches = streams.Streams
+            .Where(stream => stream.StreamId == request.StreamId).ToArray();
+        if (matches.Length != 1 ||
+            matches[0].Codec != PrototypeRng.Codec ||
+            matches[0].StateBytes.Length != sizeof(ulong))
+            throw new InvalidOperationException(
+                "Legacy prototype random stream ownership or codec is invalid.");
+
+        var selectedIndex = PrototypeRng.NextInt(
+            streams, request.StreamId, request.SupportCount);
+        var decision = new RandomIndexDecisionV111(
+            request with
+            {
+                OrderedCandidates =
+                    (int[])request.OrderedCandidates.Clone()
+            },
+            selectedIndex, Mode);
+        decision.Validate();
+        RandomBoundaryJournalV111.Record(decision);
+        return decision;
+    }
+}
+
+/// <summary>
 /// Exact replay of a *specified outcome transcript*. Does not touch native
 /// cursors: replayed Nature choices are counterfactual, not seeded-native RNG.
 /// The caller must explicitly assert all choices were consumed.

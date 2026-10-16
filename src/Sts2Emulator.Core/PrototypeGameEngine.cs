@@ -441,23 +441,24 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                         "Distinguished Cape acquisition requires card IDs.");
                 var curseIds = NativeGloryAncientsV111
                     .ModifierGeneratedCurseIds.ToList();
-                var nativeCurseProvider = nativeRunRng is null
-                    ? null
+                IRandomIndexProviderV111 curseProvider = nativeRunRng is null
+                    ? new LegacyPrototypeRandomIndexProviderV111()
                     : new NativeRandomIndexProviderV111();
+                var curseRng = nativeRunRng ?? acquisitionRng;
+                var curseStreamId = nativeRunRng is null
+                    ? "event"
+                    : "run.niche";
                 for (var i = 0; i < 2; i++)
                 {
-                    var selectedIndex = nativeRunRng is null
-                        ? PrototypeRng.NextInt(acquisitionRng, "event",
-                            curseIds.Count)
-                        : nativeCurseProvider!.Resolve(
-                            new RandomIndexRequestV111(
-                                NativeGloryAncientsV111
-                                    .DistinguishedCapeCurseSiteId,
-                                "run.niche",
-                                "relic:distinguished_cape:acquisition",
-                                i,
-                                Enumerable.Range(0, curseIds.Count).ToArray()),
-                            nativeRunRng).SelectedIndex;
+                    var selectedIndex = curseProvider.Resolve(
+                        new RandomIndexRequestV111(
+                            NativeGloryAncientsV111
+                                .DistinguishedCapeCurseSiteId,
+                            curseStreamId,
+                            "relic:distinguished_cape:acquisition",
+                            i,
+                            Enumerable.Range(0, curseIds.Count).ToArray()),
+                        curseRng).SelectedIndex;
                     var curseId = curseIds[selectedIndex];
                     curseIds.RemoveAt(selectedIndex);
                     player = AppendCard(player, allocate(), curseId,
