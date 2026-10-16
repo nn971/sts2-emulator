@@ -1,0 +1,141 @@
+namespace Sts2Emulator.Core;
+
+/// <summary>A source-ordered physical-card support for a random pile
+/// selection that occurs inside an automatic mechanics continuation.</summary>
+public sealed record SemanticRandomPileCardEventV111(
+    string SchemaId, string EventId, string BoundaryFingerprint,
+    string SupportFingerprint, string SiteId, string StreamId,
+    string OwnerId, int Ordinal, string OperationKind,
+    long[] CandidateCardInstanceIds, string[] CandidateCardModelIds,
+    string ProbabilityStatus = "UNVERIFIED") : ISemanticChanceEventV111
+{
+    public const string EventSchemaId =
+        "sts2-v111-semantic-random-pile-card-v1";
+
+    public void Validate()
+    {
+        if (SchemaId != EventSchemaId ||
+            string.IsNullOrWhiteSpace(EventId) ||
+            string.IsNullOrWhiteSpace(BoundaryFingerprint) ||
+            SiteId != "combat.relic.jeweled_mask.random_power_draw_card" ||
+            StreamId != "semantic.draw_pile" ||
+            OwnerId != "player:draw_pile" || Ordinal < 0 ||
+            OperationKind != "choose_card_instance" ||
+            CandidateCardInstanceIds is not { Length: > 0 } ||
+            CandidateCardModelIds is null ||
+            CandidateCardModelIds.Length != CandidateCardInstanceIds.Length ||
+            CandidateCardInstanceIds.Any(id => id <= 0) ||
+            CandidateCardInstanceIds.Distinct().Count() !=
+                CandidateCardInstanceIds.Length ||
+            CandidateCardModelIds.Any(string.IsNullOrWhiteSpace) ||
+            SupportFingerprint != CanonicalJson.Sha256(new
+            {
+                candidateCardInstanceIds = CandidateCardInstanceIds,
+                candidateCardModelIds = CandidateCardModelIds
+            }) ||
+            EventId != CanonicalJson.Sha256(new
+            {
+                SchemaId,
+                BoundaryFingerprint,
+                SupportFingerprint
+            }) ||
+            ProbabilityStatus != "UNVERIFIED")
+            throw new InvalidDataException(
+                "Invalid semantic random pile-card event.");
+    }
+
+    public SemanticRandomPileCardEventV111 Fork() => this with
+    {
+        CandidateCardInstanceIds =
+            (long[])CandidateCardInstanceIds.Clone(),
+        CandidateCardModelIds =
+            (string[])CandidateCardModelIds.Clone()
+    };
+}
+
+public sealed record SemanticRandomPileCardDecisionV111(
+    SemanticRandomPileCardEventV111 Event, int SelectedIndex,
+    long SelectedCardInstanceId, string SelectedCardModelId)
+{
+    public void Validate()
+    {
+        Event.Validate();
+        if (SelectedIndex < 0 ||
+            SelectedIndex >= Event.CandidateCardInstanceIds.Length ||
+            Event.CandidateCardInstanceIds[SelectedIndex] !=
+                SelectedCardInstanceId ||
+            Event.CandidateCardModelIds[SelectedIndex] !=
+                SelectedCardModelId)
+            throw new InvalidDataException(
+                "Random pile-card decision is outside its ordered support.");
+    }
+
+    public SemanticRandomPileCardDecisionV111 Fork() => this with
+    {
+        Event = Event.Fork()
+    };
+}
+
+public static class SemanticRandomPileCardEngineV111
+{
+    public static SemanticRandomPileCardEventV111? DescribePending(
+        RunState run)
+    {
+        ArgumentNullException.ThrowIfNull(run);
+        var combat = run.World?.Combat;
+        var pending = combat?.PendingChoice?.ControlledRandomPileCard;
+        if (combat?.SemanticDeck is not { } deck || pending is null)
+            return null;
+        var ids = (long[])pending.CandidateCardInstanceIds.Clone();
+        var models = ids.Select(id => combat.Cards.Single(card =>
+            card.InstanceId == id).CardId).ToArray();
+        var support = CanonicalJson.Sha256(new
+        {
+            candidateCardInstanceIds = ids,
+            candidateCardModelIds = models
+        });
+        if (pending.SiteId !=
+                "combat.relic.jeweled_mask.random_power_draw_card" ||
+            pending.SupportFingerprint != support)
+            throw new InvalidDataException(
+                "Saved random pile-card support no longer matches combat.");
+        var boundary = CanonicalJson.Sha256(new
+        {
+            combat.Turn,
+            deck.Fingerprint,
+            pending.SiteId,
+            pending.Ordinal,
+            ids,
+            models
+        });
+        var schemaId = SemanticRandomPileCardEventV111.EventSchemaId;
+        var eventId = CanonicalJson.Sha256(new
+        {
+            SchemaId = schemaId,
+            BoundaryFingerprint = boundary,
+            SupportFingerprint = support
+        });
+        var semanticEvent = new SemanticRandomPileCardEventV111(
+            schemaId, eventId, boundary, support, pending.SiteId,
+            "semantic.draw_pile", "player:draw_pile", pending.Ordinal,
+            "choose_card_instance", ids, models);
+        semanticEvent.Validate();
+        return semanticEvent;
+    }
+
+    public static SemanticRandomPileCardDecisionV111 Resolve(
+        SemanticRandomPileCardEventV111 pending, int selectedIndex)
+    {
+        ArgumentNullException.ThrowIfNull(pending);
+        pending.Validate();
+        if (selectedIndex < 0 ||
+            selectedIndex >= pending.CandidateCardInstanceIds.Length)
+            throw new ArgumentOutOfRangeException(nameof(selectedIndex));
+        var decision = new SemanticRandomPileCardDecisionV111(
+            pending.Fork(), selectedIndex,
+            pending.CandidateCardInstanceIds[selectedIndex],
+            pending.CandidateCardModelIds[selectedIndex]);
+        decision.Validate();
+        return decision;
+    }
+}

@@ -34,6 +34,12 @@ cost when needed, then running `CardDrawn` once. Every subsequent
 decision continues from the saved state. `BeforeHandDraw`, earlier
 turn phases and prior card/event hooks are not executed again.
 
+If Jeweled Mask suspends inside `BeforeHandDraw`, the saved event exposes its
+ordered eligible Power instances (noninnate Powers first). Resolving it resumes
+the event and operation continuations before entering the original draw stage;
+the selected card goes to hand or discard according to the source hand-cap
+rule. Replay records this decision alongside draw and cost decisions.
+
 When the requested draw ends, the source's `RemoveAfterHandDraw` and
 `DecrementAfterHandDraw` power hooks execute once and the saved
 pipeline index advances to **the next automatic step**. That later
@@ -66,8 +72,9 @@ Nature decisions, and later automatic steps into one
 `step` → `nature_resolve` → `step` controller. Opening-hand and
 player-card-effect draw contexts also require their own saved
 continuations. Stratagem's player selection, random after-shuffle
-insertion, nested `CardDrawn` choices, JSONL capability negotiation,
-and native RNG source-law parity remain separate gates.
+insertion, nested `CardDrawn` choices and native RNG source-law parity remain
+separate gates. The Jeweled Mask continuation and its JSONL / Python route are
+implemented but have not been mechanics-tested.
 
 The old `controlled-v111-playable-fixture-v1` swap-ticket schema
 is unchanged. Frozen Silent four-Act `main` is untouched.

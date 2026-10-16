@@ -389,7 +389,11 @@ public sealed record PrototypeAutomaticPipelineContinuationState(
     // DrawPlayerHand invocation after BeforeHandDraw, independent of the
     // legacy Fisher-Yates swap and drawn-cost continuation markers.
     int? ControlledSemanticDrawRemaining = null,
-    int? ControlledSemanticDrawRequested = null);
+    int? ControlledSemanticDrawRequested = null,
+    // BeforeHandDraw can itself contain a semantic chance event. This marker
+    // resumes after the saved event-dispatch continuation, before applying
+    // the deterministic hand-draw prelude and starting DrawCards.
+    bool ControlledSemanticBeforeHandDrawPending = false);
 
 /// <summary>
 /// A source-owned, blocking choice in the enemy-side action pipeline.
@@ -1882,6 +1886,19 @@ public sealed record PrototypeControlledDrawCostV111(
     public PrototypeControlledDrawCostV111 Fork() => this with { };
 }
 
+/// <summary>Unresolved selection of a physical card from a pile, suspended
+/// inside an automatic hook. Eligibility and candidate order are preserved.</summary>
+public sealed record PrototypeControlledRandomPileCardV111(
+    string SiteId, int Ordinal, long[] CandidateCardInstanceIds,
+    string SupportFingerprint)
+{
+    public PrototypeControlledRandomPileCardV111 Fork() => this with
+    {
+        CandidateCardInstanceIds =
+            (long[])CandidateCardInstanceIds.Clone()
+    };
+}
+
 public sealed record PendingCombatChoiceState(
     string ChoiceId,
     long? SourceCardInstanceId,
@@ -1906,7 +1923,8 @@ public sealed record PendingCombatChoiceState(
     PrototypeControlledPoolShuffleV111? ControlledPoolShuffle = null,
     PrototypeControlledRandomCostV111? ControlledRandomCost = null,
     PrototypeControlledDrawCostV111? ControlledDrawCost = null,
-    PrototypeControlledCardShortlistV111? ControlledCardShortlist = null)
+    PrototypeControlledCardShortlistV111? ControlledCardShortlist = null,
+    PrototypeControlledRandomPileCardV111? ControlledRandomPileCard = null)
 {
     public PendingCombatChoiceState Fork() => this with
     {
@@ -1928,7 +1946,8 @@ public sealed record PendingCombatChoiceState(
         ControlledPoolShuffle = ControlledPoolShuffle?.Fork(),
         ControlledRandomCost = ControlledRandomCost?.Fork(),
         ControlledDrawCost = ControlledDrawCost?.Fork(),
-        ControlledCardShortlist = ControlledCardShortlist?.Fork()
+        ControlledCardShortlist = ControlledCardShortlist?.Fork(),
+        ControlledRandomPileCard = ControlledRandomPileCard?.Fork()
     };
 }
 

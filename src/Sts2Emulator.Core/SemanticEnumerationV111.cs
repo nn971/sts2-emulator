@@ -50,6 +50,17 @@ public static class SemanticNatureEnumeratorV111
                 SemanticPilotCombatEngineV111.ResolveIntent(
                     current, currentFingerprint, outcomeId);
         }
+        else if (current.RandomPileCardPending is { } pileCard)
+        {
+            eventKind = "random_pile_card";
+            eventId = pileCard.EventId;
+            outcomeIds = pileCard.CandidateCardInstanceIds.Select(id =>
+                id.ToString(CultureInfo.InvariantCulture)).ToArray();
+            resolve = outcomeId =>
+                SemanticPilotCombatEngineV111.ResolveRandomPileCard(
+                    current, currentFingerprint, pileCard.EventId,
+                    long.Parse(outcomeId, CultureInfo.InvariantCulture));
+        }
         else if (current.DrawPending is { } draw)
         {
             eventKind = "draw_card";

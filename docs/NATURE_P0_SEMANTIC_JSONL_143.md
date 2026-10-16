@@ -7,8 +7,10 @@
 ## Why this was prioritized
 
 The first `sts2-ai` Nature training pilot requires real combat through
-external JSONL / Python handles, with **exactly two optimized Nature
-choice sites**: `enemy_intent` and `draw_card`. Previous #143 work
+external JSONL / Python handles, with **two baseline optimized Nature
+choice sites**: `enemy_intent` and `draw_card`. Later opt-in extensions
+include targeting, generation and Jeweled Mask's random Power choice.
+Previous #143 work
 implemented the original mechanics internally but exposed only
 isolated legacy Fisher–Yates and HP/intent fixtures.
 
@@ -25,6 +27,8 @@ non-Nature RNG parity remain **UNVERIFIED**.
 
 - `semanticChanceSchemaId = sts2-v111-semantic-playable-p0-v1`.
 - `semanticDrawChoiceSchemaId = sts2-v111-semantic-deck-v1`.
+- `semanticRandomPileCardChoiceSchemaId =
+  sts2-v111-semantic-random-pile-card-v1`.
 - `semanticTargetChoiceSchemaId = sts2-v111-semantic-target-choice-v1`.
 - `semanticCardSelectionChoiceSchemaId =
   sts2-v111-semantic-card-selection-choice-v1`.
@@ -42,7 +46,7 @@ non-Nature RNG parity remain **UNVERIFIED**.
 - `semanticExtendedControlledSites = [random_enemy_target, generated_card_pool,
   drawn_card_cost, generated_card_pool_shuffle, generated_draw_pile_insertion,
   random_draw_attack_card_model, random_hand_card_energy_cost,
-  random_hand_card_select, random_pile_selection_shortlist]`;
+  random_hand_card_select, random_pile_selection_shortlist, random_pile_card]`;
   fixture-specific sites require their corresponding seeded-entry options.
 - `semanticExtendedPlayerChoices = [select_cards]`.
 - `semanticPlayable = true`, scope
@@ -74,6 +78,7 @@ paths avoid that external setup chain:
 | `semantic_step` | handle, fingerprint, legal `action_id` | Child player action / Nature / terminal |
 | `semantic_resolve` | handle, fingerprint, legal `selected_index` | Child Nature / player / terminal |
 | `semantic_resolve_draw_card` | handle, fingerprint, pending `event_id`, legal `card_instance_id` | Child Nature / player / terminal |
+| `semantic_resolve_random_pile_card` | handle, fingerprint, pending `event_id`, legal `card_instance_id` | Child Nature / player / terminal |
 | `semantic_resolve_random_target` | handle, fingerprint, pending `event_id`, legal `enemy_instance_id` | Child Nature / player / terminal |
 | `semantic_resolve_generated_card` | handle, fingerprint, pending `event_id`, legal `card_model_id` | Child Nature / player / terminal |
 | `semantic_resolve_cost` | handle, fingerprint, pending `event_id`, legal cost value | Child Nature / player / terminal |
@@ -116,6 +121,10 @@ calibrated native conditional probabilities: `weightsVerified=false` and
 contains ordered legal physical card-instance IDs and corresponding
 card-model IDs, source shuffle epoch, pool/constraint fingerprint, stable
 event ID and `UNVERIFIED` law.
+The Jeweled Mask `random_pile_card` event likewise exposes ordered eligible
+Power instances and model IDs. It resumes the suspended `BeforeHandDraw`
+subscriber and operation continuation without replaying prior hooks. This
+extension is implemented but has not been mechanics-tested.
 
 The normal player observation comes **exclusively** from
 `PrototypeAiEnvironment.Observe` under the existing fair policy.

@@ -46,8 +46,10 @@ for native mode. Vakuu's request ordinals span its three pool shuffles. The
 existing source-pinned Fisher–Yates loop now accepts an arbitrary named
 stream and provider without duplicating its swap mechanics. Jeweled Mask's
 random Power selection and native generated-card full-pool shuffle also reach
-typed native providers. Semantic-controlled Jeweled Mask execution now fails
-closed until its BeforeHandDraw continuation can resume after the card choice.
+typed native providers. Semantic-controlled Jeweled Mask publishes its
+ordered eligible Power instances and resumes the saved `BeforeHandDraw`
+continuation after the selection, without replaying prior hooks. Reference-law
+calibration and native cursor parity remain open.
 The potion factory now routes its unit-float rarity
 sample and within-tier model index through separate typed providers in source
 order.

@@ -27,6 +27,9 @@ public sealed record SemanticEndTurnV111(
         Intents?.Pending;
     [JsonIgnore] public SemanticDeckEventV111? DrawPending =>
         Complete ? null : HandDraw?.Pending;
+    [JsonIgnore] public SemanticRandomPileCardEventV111?
+        RandomPileCardPending =>
+            Complete ? null : HandDraw?.RandomPileCardPending;
     [JsonIgnore] public RandomIndexRequestV111? CostPending =>
         Complete ? null : HandDraw?.CostPending;
     [JsonIgnore] public bool AtPlayerBoundary =>
@@ -264,11 +267,29 @@ public static class SemanticEndTurnEngineV111
         }
         if (saved.HandDraw is { } savedHand)
         {
-            int card = 0, cost = 0;
+            int card = 0, cost = 0, pileCard = 0;
             while (card < savedHand.Transcript.Length ||
-                   cost < savedHand.CostTranscript.Length)
+                   cost < savedHand.CostTranscript.Length ||
+                   pileCard < savedHand.RandomPileCardTranscript.Length)
             {
-                if (reproduced.CostPending is { } costRequest)
+                if (reproduced.RandomPileCardPending is { } pileCardEvent)
+                {
+                    if (pileCard >=
+                        savedHand.RandomPileCardTranscript.Length)
+                        throw new InvalidDataException(
+                            "Missing semantic end-turn random pile-card choice.");
+                    var decision =
+                        savedHand.RandomPileCardTranscript[pileCard++];
+                    decision.Validate();
+                    if (CanonicalJson.Sha256(decision.Event) !=
+                        CanonicalJson.Sha256(pileCardEvent))
+                        throw new InvalidDataException(
+                            "Semantic end-turn random pile-card support changed.");
+                    reproduced = Resolve(
+                        reproduced, reproduced.Fingerprint,
+                        decision.SelectedIndex);
+                }
+                else if (reproduced.CostPending is { } costRequest)
                 {
                     if (cost >= savedHand.CostTranscript.Length)
                         throw new InvalidDataException(

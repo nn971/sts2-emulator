@@ -17,7 +17,8 @@ public sealed record SemanticPilotTransitionV111(
     SemanticPoolShuffleDecisionV111? PoolShuffleDecision = null,
     SemanticDrawInsertionDecisionV111? DrawInsertionDecision = null,
     SemanticHandCostSelectionDecisionV111? HandCostSelectionDecision = null,
-    SemanticCardShortlistDecisionV111? CardShortlistDecision = null);
+    SemanticCardShortlistDecisionV111? CardShortlistDecision = null,
+    SemanticRandomPileCardDecisionV111? RandomPileCardDecision = null);
 
 /// <summary>
 /// Independently replayable setup provenance. The default entry is a
@@ -159,6 +160,8 @@ public sealed record SemanticPilotCombatV111(
         PendingInitialIntents?.Pending ?? PendingEndTurn?.IntentPending;
     [JsonIgnore] public SemanticDeckEventV111? DrawPending =>
         PendingEndTurn?.DrawPending;
+    [JsonIgnore] public SemanticRandomPileCardEventV111?
+        RandomPileCardPending => PendingEndTurn?.RandomPileCardPending;
 
     public SemanticPilotCombatV111 Fork() => this with
     {
@@ -185,6 +188,10 @@ public sealed record SemanticPilotCombatV111(
             { DrawDecision: { } decision } => transition with
             {
                 DrawDecision = decision.Fork()
+            },
+            { RandomPileCardDecision: { } decision } => transition with
+            {
+                RandomPileCardDecision = decision.Fork()
             },
             { TargetDecision: { } decision } => transition with
             {
@@ -1497,6 +1504,32 @@ public static class SemanticPilotCombatEngineV111
         SemanticPilotCombatV111 current, string fingerprint, int selectedIndex)
         => Resolve(current, fingerprint, selectedIndex, null, null, false, null);
 
+    public static SemanticPilotCombatV111 ResolveRandomPileCard(
+        SemanticPilotCombatV111 current, string fingerprint,
+        string eventId, long cardInstanceId)
+    {
+        Validate(current);
+        if (current.Fingerprint != fingerprint)
+            throw new InvalidOperationException(
+                "Stale semantic random pile-card fingerprint.");
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
+        var pending = current.RandomPileCardPending ??
+            throw new InvalidOperationException(
+                "No random pile-card Nature event is pending.");
+        if (pending.EventId != eventId)
+            throw new InvalidOperationException(
+                "Random pile-card event ID is stale or mismatched.");
+        var selectedIndex = Array.IndexOf(
+            pending.CandidateCardInstanceIds, cardInstanceId);
+        if (selectedIndex < 0)
+            throw new InvalidOperationException(
+                "Card instance is outside the random pile-card support.");
+        var decision = SemanticRandomPileCardEngineV111.Resolve(
+            pending, selectedIndex);
+        return Resolve(current, fingerprint, selectedIndex,
+            null, null, false, null, decision);
+    }
+
     public static SemanticPilotCombatV111 ResolveCost(
         SemanticPilotCombatV111 current, string fingerprint,
         string eventId, int selectedCost)
@@ -1807,7 +1840,8 @@ public static class SemanticPilotCombatEngineV111
         SemanticIntentDecisionV111? semanticIntent,
         SemanticDrawDecisionV111? expectedDeckDecision,
         bool recordSemanticDraw,
-        SemanticCostDecisionV111? expectedCostDecision)
+        SemanticCostDecisionV111? expectedCostDecision,
+        SemanticRandomPileCardDecisionV111? expectedRandomPileCardDecision = null)
     {
         Validate(current);
         if (current.Fingerprint != fingerprint)
@@ -1815,8 +1849,16 @@ public static class SemanticPilotCombatEngineV111
         if (semanticIntent is not null)
             ValidateSemanticIntentDecision(current, semanticIntent, selectedIndex);
         var drawEvent = current.DrawPending;
+        var randomPileCardEvent = current.RandomPileCardPending;
         if (expectedDeckDecision is not null)
             ValidateDeckDecision(drawEvent, expectedDeckDecision);
+        if (expectedRandomPileCardDecision is not null &&
+            (randomPileCardEvent is null ||
+             CanonicalJson.Sha256(expectedRandomPileCardDecision.Event) !=
+                CanonicalJson.Sha256(randomPileCardEvent) ||
+             expectedRandomPileCardDecision.SelectedIndex != selectedIndex))
+            throw new InvalidOperationException(
+                "Random pile-card decision is stale or outside current support.");
         if (current.CardShortlistPending is not null)
             throw new InvalidOperationException(
                 "Resolve the pending pile shortlist by card instance ID.");
@@ -1882,7 +1924,7 @@ public static class SemanticPilotCombatEngineV111
         var pending = current.PendingEndTurn ??
             throw new InvalidOperationException("No Nature decision is pending.");
         if (pending.IntentPending is null && pending.DrawPending is null &&
-            pending.CostPending is null)
+            pending.RandomPileCardPending is null && pending.CostPending is null)
             throw new InvalidOperationException(
                 "No semantic enemy intent, draw or cost choice is pending.");
         var resolved = SemanticEndTurnEngineV111.Resolve(
@@ -1941,6 +1983,25 @@ public static class SemanticPilotCombatEngineV111
                 CanonicalJson.Sha256(costDecision))
             throw new InvalidOperationException(
                 "Semantic cost decision is stale or outside current support.");
+        SemanticRandomPileCardDecisionV111? randomPileCardDecision = null;
+        if (randomPileCardEvent is not null)
+        {
+            var transcript = resolved.HandDraw?.RandomPileCardTranscript ?? [];
+            randomPileCardDecision = transcript.LastOrDefault(decision =>
+                decision.Event.EventId == randomPileCardEvent.EventId) ??
+                throw new InvalidDataException(
+                    "Random pile-card selection did not record its event.");
+            if (CanonicalJson.Sha256(randomPileCardDecision.Event) !=
+                    CanonicalJson.Sha256(randomPileCardEvent) ||
+                randomPileCardDecision.SelectedIndex != selectedIndex)
+                throw new InvalidDataException(
+                    "Random pile-card selection diverged from its support.");
+        }
+        if (expectedRandomPileCardDecision is not null &&
+            CanonicalJson.Sha256(expectedRandomPileCardDecision) !=
+                CanonicalJson.Sha256(randomPileCardDecision))
+            throw new InvalidOperationException(
+                "Semantic random pile-card decision differs from replay.");
         return NormalizeNoncontrolledCosts(current with
         {
             Run = resolved.Run,
@@ -1948,7 +2009,7 @@ public static class SemanticPilotCombatEngineV111
             History = current.History.Append(NatureTransition(
                 selectedIndex, semanticIntent,
                 recordSemanticDraw ? deckDecision : null,
-                costDecision)).ToArray()
+                costDecision, randomPileCardDecision)).ToArray()
         });
     }
 
@@ -2761,10 +2822,14 @@ public static class SemanticPilotCombatEngineV111
     private static SemanticPilotTransitionV111 NatureTransition(
         int selectedIndex, SemanticIntentDecisionV111? semanticIntent,
         SemanticDrawDecisionV111? deckDecision,
-        SemanticCostDecisionV111? costDecision = null) =>
+        SemanticCostDecisionV111? costDecision = null,
+        SemanticRandomPileCardDecisionV111? randomPileCardDecision = null) =>
         costDecision is not null
             ? new SemanticPilotTransitionV111("semantic_cost",
                 CostDecision: costDecision.Fork())
+            : randomPileCardDecision is not null
+            ? new SemanticPilotTransitionV111("semantic_random_pile_card",
+                RandomPileCardDecision: randomPileCardDecision.Fork())
             : semanticIntent is not null
             ? new SemanticPilotTransitionV111("semantic_intent",
                 IntentDecision: semanticIntent)
@@ -2857,6 +2922,25 @@ public static class SemanticPilotCombatEngineV111
                 state.Run.NativeRunRng is not null)
                 throw new InvalidDataException(
                     "Initial intent continuation diverged from the source-route boundary.");
+        }
+        if (state.RandomPileCardPending is { } randomPileCardPending)
+        {
+            randomPileCardPending.Validate();
+            if (state.PendingEndTurn is null ||
+                state.PendingInitialIntents is not null ||
+                state.IntentPending is not null || state.DrawPending is not null ||
+                state.CostPending is not null || state.TargetPending is not null ||
+                state.GeneratedCardPending is not null ||
+                state.CardSelectionPending is not null ||
+                state.PoolShufflePending is not null ||
+                state.DrawInsertionPending is not null ||
+                state.CardShortlistPending is not null ||
+                state.HandCostSelectionPending is not null ||
+                state.UsesNativePolicyBaseline || state.CombatTerminal ||
+                state.Run.World?.Combat?.PendingChoice?
+                    .ControlledRandomPileCard is null)
+                throw new InvalidDataException(
+                    "Random pile-card continuation conflicts with another boundary.");
         }
         if (state.TargetPending is { } targetPending)
         {
@@ -3108,6 +3192,11 @@ public static class SemanticPilotCombatEngineV111
                     ResolveDrawCard(replay, replay.Fingerprint,
                         transition.DrawDecision.Event.EventId,
                         transition.DrawDecision.SelectedCardInstanceId),
+                "semantic_random_pile_card" when
+                    transition.RandomPileCardDecision is not null =>
+                    ResolveRandomPileCard(replay, replay.Fingerprint,
+                        transition.RandomPileCardDecision.Event.EventId,
+                        transition.RandomPileCardDecision.SelectedCardInstanceId),
                 "semantic_target" when transition.TargetDecision is not null =>
                     ResolveRandomTarget(replay, replay.Fingerprint,
                         transition.TargetDecision.Event.EventId,

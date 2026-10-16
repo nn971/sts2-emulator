@@ -18,6 +18,9 @@ public sealed record SemanticCombatDrawV111(
     [JsonIgnore] public SemanticDeckEventV111? Pending =>
         Run.World?.Combat?.SemanticDeck is { } deck
             ? SemanticDeckEngineV111.Inspect(deck) : null;
+    [JsonIgnore] public SemanticRandomPileCardEventV111?
+        RandomPileCardPending =>
+            SemanticRandomPileCardEngineV111.DescribePending(Run);
     /// <summary>Cost chance follows the *already committed* card instance.
     /// Bound reflects the current source Snecko/Slither stage.</summary>
     [JsonIgnore] public RandomIndexRequestV111? CostPending
@@ -47,13 +50,16 @@ public sealed record SemanticCombatDrawV111(
             request
         }) : null;
     [JsonIgnore] public bool AtBoundary =>
-        Pending is null && CostPending is null && RemainingCount == 0;
+        Pending is null && RandomPileCardPending is null &&
+        CostPending is null && RemainingCount == 0;
     // The provider's transcript survives across turns. Only decisions
     // newly made during THIS draw segment are replayed by this envelope.
     [JsonIgnore] public SemanticDeckChoiceV111[] Transcript =>
         (Run.World?.Combat?.SemanticDeck?.Transcript ?? [])
             .Skip(Origin.World?.Combat?.SemanticDeck?.Transcript?.Length ?? 0)
             .ToArray();
+    public SemanticRandomPileCardDecisionV111[] RandomPileCardTranscript
+        { get; init; } = [];
     public RandomIndexDecisionV111[] CostTranscript { get; init; } = [];
 
     public SemanticCombatDrawV111 Fork() => this with
@@ -65,7 +71,9 @@ public sealed record SemanticCombatDrawV111(
             {
                 OrderedCandidates = (int[])x.Request.OrderedCandidates.Clone()
             }
-        }).ToArray()
+        }).ToArray(),
+        RandomPileCardTranscript = RandomPileCardTranscript
+            .Select(decision => decision.Fork()).ToArray()
     };
 }
 
@@ -157,6 +165,14 @@ public static class SemanticCombatDrawEngineV111
         using (ControlledChanceGuardV111.Enter())
             (run, requested, remaining) =
                 PrototypeGameEngine.BeginSemanticAutomaticHandDraw(attached);
+        if (run.World?.Combat?.PendingChoice?.ControlledRandomPileCard
+                is not null &&
+            run.World.Combat.AutomaticPipelineContinuation?
+                .ControlledSemanticBeforeHandDrawPending == true)
+        {
+            requested = 0;
+            remaining = 0;
+        }
         var result = new SemanticCombatDrawV111(
             origin, run, requested, remaining, true, AutomaticHandDraw: true);
         Validate(result);
@@ -175,6 +191,29 @@ public static class SemanticCombatDrawEngineV111
         var run = state.Run.Fork();
         var world = run.World!;
         var combat = world.Combat!;
+
+        if (state.RandomPileCardPending is { } pileCardEvent)
+        {
+            var decision = SemanticRandomPileCardEngineV111.Resolve(
+                pileCardEvent, selectedIndex);
+            RunState resumed;
+            int requested;
+            int pileCardRemaining;
+            using (ControlledChanceGuardV111.Enter())
+                (resumed, requested, pileCardRemaining) =
+                    PrototypeGameEngine.ResumeSemanticRandomPileCardChoice(
+                        run, decision);
+            var nextPileChoice = state with
+            {
+                Run = resumed,
+                RequestedCount = requested,
+                RemainingCount = pileCardRemaining,
+                RandomPileCardTranscript = state.RandomPileCardTranscript
+                    .Append(decision.Fork()).ToArray()
+            };
+            Validate(nextPileChoice);
+            return nextPileChoice;
+        }
 
         if (state.CostPending is { } costRequest)
         {
@@ -245,9 +284,30 @@ public static class SemanticCombatDrawEngineV111
             : Begin(stored.Origin, stored.RequestedCount, stored.FromHandDraw);
         int deckCursor = 0;
         int costCursor = 0;
+        int pileCardCursor = 0;
         while (deckCursor < stored.Transcript.Length ||
-               costCursor < stored.CostTranscript.Length)
+               costCursor < stored.CostTranscript.Length ||
+               pileCardCursor < stored.RandomPileCardTranscript.Length)
         {
+            if (reconstructed.RandomPileCardPending is { } pileCard)
+            {
+                if (pileCardCursor >=
+                    stored.RandomPileCardTranscript.Length)
+                    throw new InvalidDataException(
+                        "Missing semantic random pile-card decision in replay.");
+                var pileCardDecision =
+                    stored.RandomPileCardTranscript[pileCardCursor];
+                pileCardDecision.Validate();
+                if (CanonicalJson.Sha256(pileCardDecision.Event) !=
+                    CanonicalJson.Sha256(pileCard))
+                    throw new InvalidDataException(
+                        "Random pile-card transcript diverges from source support.");
+                reconstructed = Resolve(
+                    reconstructed, reconstructed.Fingerprint,
+                    pileCardDecision.SelectedIndex);
+                pileCardCursor++;
+                continue;
+            }
             if (reconstructed.CostPending is { } currentCost)
             {
                 if (costCursor >= stored.CostTranscript.Length)
@@ -301,9 +361,18 @@ public static class SemanticCombatDrawEngineV111
     public static void Validate(SemanticCombatDrawV111 state)
     {
         ArgumentNullException.ThrowIfNull(state);
-        if (state.RequestedCount <= 0 ||
+        var randomPileCardPending = state.RandomPileCardPending;
+        var completedHookCursor =
+            state.Run.World?.Combat?.AutomaticPipelineContinuation;
+        bool completedAfterHook = state.AutomaticHandDraw &&
+            state.RandomPileCardTranscript is { Length: > 0 } &&
+            completedHookCursor?.NextStepIndex ==
+                PrototypeGameEngine.SemanticHandDrawStepIndex + 1;
+        if (state.RequestedCount < 0 ||
             state.RemainingCount < 0 ||
             state.RemainingCount > state.RequestedCount ||
+            (state.RequestedCount == 0 && randomPileCardPending is null &&
+             !completedAfterHook) ||
             state.Origin.Phase != RunPhase.Combat ||
             state.Origin.World?.Combat is not { } originCombat ||
             (!state.AutomaticHandDraw && originCombat.SemanticDeck is not null) ||
@@ -321,7 +390,8 @@ public static class SemanticCombatDrawEngineV111
             (state.AutomaticHandDraw &&
              (originCombat.AutomaticPipelineContinuation is not { } initial ||
               initial.NextStepIndex != PrototypeGameEngine.SemanticHandDrawStepIndex ||
-              initial.ControlledSemanticDrawRemaining is not null)) ||
+              initial.ControlledSemanticDrawRemaining is not null ||
+              initial.ControlledSemanticBeforeHandDrawPending)) ||
             state.Run.Phase != RunPhase.Combat ||
             state.Run.World?.Combat is not { } combat ||
             combat.SemanticDeck is not { } deck ||
@@ -336,7 +406,20 @@ public static class SemanticCombatDrawEngineV111
         {
             var cursor = combat.AutomaticPipelineContinuation;
             bool awaiting = deck.Pending is not null || cost is not null;
-            if (cursor is null ||
+            if (randomPileCardPending is not null)
+            {
+                if (cursor is null ||
+                    cursor.NextStepIndex !=
+                        PrototypeGameEngine.SemanticHandDrawStepIndex ||
+                    !cursor.ControlledSemanticBeforeHandDrawPending ||
+                    state.RequestedCount != 0 || state.RemainingCount != 0 ||
+                    combat.PendingChoice?.ControlledRandomPileCard is null ||
+                    deck.Pending is not null || cost is not null)
+                    throw new InvalidDataException(
+                        "Semantic BeforeHandDraw choice cursor is inconsistent.");
+            }
+            else if (cursor is null ||
+                cursor.ControlledSemanticBeforeHandDrawPending ||
                 (awaiting &&
                  (!PrototypeGameEngine.IsSemanticAutomaticHandDraw(combat) ||
                   cursor.ControlledSemanticDrawRemaining != state.RemainingCount ||
@@ -349,7 +432,8 @@ public static class SemanticCombatDrawEngineV111
                 throw new InvalidDataException(
                     "Semantic automatic hand-draw cursor is inconsistent.");
         }
-        if ((combat.PendingChoice is not null && cost is null) ||
+        if ((combat.PendingChoice is not null && cost is null &&
+             randomPileCardPending is null) ||
             (cost is not null &&
              (deck.Pending is not null ||
               cost.RemainingCount != state.RemainingCount ||
@@ -368,6 +452,11 @@ public static class SemanticCombatDrawEngineV111
                 throw new InvalidDataException(
                     "Unexpected semantic drawn-cost transcript provenance.");
         }
+        if (state.RandomPileCardTranscript is null)
+            throw new InvalidDataException(
+                "Missing semantic random pile-card transcript.");
+        foreach (var decision in state.RandomPileCardTranscript)
+            decision.Validate();
         if (deck.Mode != SemanticDeckStateV111.NatureMode ||
             !SemanticDeckEngineV111.AllCardInstanceIds(deck)
                 .Order().SequenceEqual(combat.DrawPile.Order()))

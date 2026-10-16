@@ -212,8 +212,8 @@ class SemanticCombat:
 
     def resolve(self, selected_index: int):
         if not self.pending or self.pending["kind"] not in (
-                "enemy_intent", "draw_card"):
-            raise EmulatorError("Expected a two-site semantic Nature event")
+                "enemy_intent", "draw_card", "random_pile_card"):
+            raise EmulatorError("Expected a semantic Nature event")
         return SemanticCombat.from_wire(
             self.session, self.session.call(
                 "semantic_resolve", semantic_handle=self.handle,
@@ -248,6 +248,29 @@ class SemanticCombat:
             self.session, self.session.call(
                 "semantic_resolve_draw_card", semantic_handle=self.handle,
                 fingerprint=self.fingerprint, event_id=self.pending["eventId"],
+                card_instance_id=card_instance_id))
+
+    def resolve_random_pile_card(self, card_instance_id: int):
+        """Resolve a suspended random pile selection by physical card identity."""
+        if not self.pending or self.pending.get("kind") != "random_pile_card":
+            raise EmulatorError("Expected a random_pile_card Nature event")
+        if self.session.capabilities.get(
+                "semanticRandomPileCardChoiceSchemaId") != (
+                    "sts2-v111-semantic-random-pile-card-v1"):
+            raise EmulatorError(
+                "Emulator does not expose semantic random pile-card choices")
+        candidate_ids = [
+            candidate["cardInstanceId"]
+            for candidate in self.pending.get("candidates", [])]
+        if card_instance_id not in candidate_ids:
+            raise ValueError(
+                "Card instance is outside the pending random pile-card support")
+        return SemanticCombat.from_wire(
+            self.session, self.session.call(
+                "semantic_resolve_random_pile_card",
+                semantic_handle=self.handle,
+                fingerprint=self.fingerprint,
+                event_id=self.pending["eventId"],
                 card_instance_id=card_instance_id))
 
     def resolve_random_target(self, enemy_instance_id: int):

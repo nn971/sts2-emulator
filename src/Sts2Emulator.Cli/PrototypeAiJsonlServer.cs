@@ -105,6 +105,29 @@ internal static class PrototypeAiJsonlServer
                     sourceScope = "source_filtered_semantic_eligible_moves"
                 };
             }
+            if (state.RandomPileCardPending is { } pileCard)
+            {
+                return new
+                {
+                    kind = "random_pile_card",
+                    schemaId = pileCard.SchemaId,
+                    eventId = pileCard.EventId,
+                    siteId = pileCard.SiteId,
+                    streamId = pileCard.StreamId,
+                    ownerId = pileCard.OwnerId,
+                    ordinal = pileCard.Ordinal,
+                    operationKind = pileCard.OperationKind,
+                    supportFingerprint = pileCard.SupportFingerprint,
+                    probabilityStatus = pileCard.ProbabilityStatus,
+                    candidates = pileCard.CandidateCardInstanceIds
+                        .Select((id, index) => new
+                        {
+                            index,
+                            cardInstanceId = id,
+                            cardModelId = pileCard.CandidateCardModelIds[index]
+                        }).ToArray()
+                };
+            }
             if (state.DrawPending is { } drawn)
             {
                 var combat = state.Run.World?.Combat ??
@@ -337,6 +360,10 @@ internal static class PrototypeAiJsonlServer
         {
             if (state.UsesNativePolicyBaseline) return [];
             var sites = new List<string> { "enemy_intent", "draw_card" };
+            if (state.RandomPileCardPending is not null ||
+                state.Run.Player.ActiveRelics.Any(relic =>
+                    relic.RelicId == "proto.relic.jeweled_mask"))
+                sites.Add("random_pile_card");
             if (state.SeededEntry?.FixtureRandomTargetCardId is not null)
                 sites.Add("random_target");
             if (state.SeededEntry?.FixtureGenerationPotionId is not null)
@@ -383,6 +410,9 @@ internal static class PrototypeAiJsonlServer
                   state.SeededEntry?.FixtureRandomFreeAttackDrawInsertion == true ||
                   state.SeededEntry?.FixtureRandomizeHandCostsMaxExclusive is not null ||
                   state.SeededEntry?.FixtureSetRandomHandCardCost is not null ||
+                  state.RandomPileCardPending is not null ||
+                  state.Run.Player.ActiveRelics.Any(relic =>
+                      relic.RelicId == "proto.relic.jeweled_mask") ||
                   state.CardShortlistPending is not null ||
                   state.HandCostSelectionPending is not null ||
                   state.CostPending?.TargetCardInstanceId is not null
@@ -583,6 +613,8 @@ internal static class PrototypeAiJsonlServer
                                 SemanticChanceEventContractV111.SchemaId,
                             semanticDrawChoiceSchemaId =
                                 SemanticDeckStateV111.SchemaId,
+                            semanticRandomPileCardChoiceSchemaId =
+                                SemanticRandomPileCardEventV111.EventSchemaId,
                             semanticTargetChoiceSchemaId =
                                 SemanticTargetChoiceV111.SchemaId,
                             semanticGeneratedCardChoiceSchemaId =
@@ -611,7 +643,8 @@ internal static class PrototypeAiJsonlServer
                                 "random_draw_attack_card_model",
                                 "random_hand_card_energy_cost",
                                 "random_hand_card_select",
-                                "random_pile_selection_shortlist"
+                                "random_pile_selection_shortlist",
+                                "random_pile_card"
                             },
                             semanticExtendedPlayerChoices = new[]
                             {
@@ -1032,6 +1065,20 @@ internal static class PrototypeAiJsonlServer
                         var parentHandle = RequiredString(request, "semantic_handle");
                         var current = RequireSemantic(request);
                         var next = SemanticPilotCombatEngineV111.ResolveDrawCard(
+                            current, RequiredString(request, "fingerprint"),
+                            RequiredString(request, "event_id"),
+                            RequiredLong(request, "card_instance_id"));
+                        var handle = StoreSemantic(next);
+                        Write(new { requestId, ok = true,
+                            result = SemanticResult(next, handle, parentHandle) });
+                        break;
+                    }
+
+                    case "semantic_resolve_random_pile_card":
+                    {
+                        var parentHandle = RequiredString(request, "semantic_handle");
+                        var current = RequireSemantic(request);
+                        var next = SemanticPilotCombatEngineV111.ResolveRandomPileCard(
                             current, RequiredString(request, "fingerprint"),
                             RequiredString(request, "event_id"),
                             RequiredLong(request, "card_instance_id"));

@@ -17,6 +17,7 @@ public sealed partial class PrototypeGameEngine
         return cursor?.ControlledSemanticDrawRemaining is not null &&
             cursor.ControlledSemanticDrawRequested is > 0 &&
             cursor.NextStepIndex == SemanticHandDrawStepIndex &&
+            !cursor.ControlledSemanticBeforeHandDrawPending &&
             cursor.ControlledDrawRemaining is null &&
             cursor.ControlledDrawCostRemaining is null &&
             cursor.OpeningStage is null &&
@@ -37,6 +38,7 @@ public sealed partial class PrototypeGameEngine
             combat.PendingKnowledgeDemonChoice is not null ||
             cursor?.NextStepIndex != SemanticHandDrawStepIndex ||
             cursor.ControlledSemanticDrawRemaining is not null ||
+            cursor.ControlledSemanticBeforeHandDrawPending ||
             cursor.ControlledDrawRemaining is not null ||
             cursor.ControlledDrawCostRemaining is not null ||
             cursor.OpeningStage is not null ||
@@ -47,6 +49,10 @@ public sealed partial class PrototypeGameEngine
             run, PrototypeContent.Rules.EndTurnPipeline[SemanticHandDrawStepIndex]);
         var after = RequireWorld(result).Combat ??
             throw new InvalidOperationException("Hand draw removed combat.");
+        if (after.PendingChoice?.ControlledRandomPileCard is not null &&
+            after.AutomaticPipelineContinuation?
+                .ControlledSemanticBeforeHandDrawPending == true)
+            return (result, 0, 0);
         // A source-committed opening order may supply the complete
         // requested hand without a Nature ticket. This is a valid,
         // genuinely deterministic automatic stage, not an unsupported
@@ -189,5 +195,124 @@ public sealed partial class PrototypeGameEngine
                     "operation=nested_automatic_choice");
         }
         return continued;
+    }
+
+    internal static (RunState Run, int Requested, int Remaining)
+        ResumeSemanticRandomPileCardChoice(
+            RunState run, SemanticRandomPileCardDecisionV111 decision)
+    {
+        if (!ControlledChanceGuardV111.Active)
+            throw new InvalidOperationException(
+                "Semantic automatic-hook resumption requires the RNG guard.");
+        ArgumentNullException.ThrowIfNull(decision);
+        decision.Validate();
+        var world = RequireWorld(run);
+        var combat = world.Combat ??
+            throw new InvalidOperationException(
+                "Missing combat for random pile-card choice.");
+        var cursor = combat.AutomaticPipelineContinuation;
+        var pendingChoice = combat.PendingChoice;
+        var pending = pendingChoice?.ControlledRandomPileCard;
+        var currentEvent = SemanticRandomPileCardEngineV111
+            .DescribePending(run);
+        if (cursor?.NextStepIndex != SemanticHandDrawStepIndex ||
+            !cursor.ControlledSemanticBeforeHandDrawPending ||
+            pending is null || pendingChoice?.ChoiceId !=
+                "controlled_random_pile_card" ||
+            pendingChoice.OuterChoiceContinuation is not { } continuation ||
+            currentEvent is null ||
+            CanonicalJson.Sha256(currentEvent) !=
+                CanonicalJson.Sha256(decision.Event) ||
+            decision.SelectedIndex < 0 ||
+            decision.SelectedIndex >= pending.CandidateCardInstanceIds.Length)
+            throw new InvalidDataException(
+                "Stale or malformed semantic automatic-hook choice.");
+
+        var eligible = combat.DrawPile.Where(id =>
+        {
+            var card = RequireCombatCard(combat, id);
+            return RuntimeCardDefinition(card).Type == PrototypeCardType.Power;
+        }).ToArray();
+        var nonInnate = eligible.Where(id =>
+            !IsInnate(RequireCombatCard(combat, id))).ToArray();
+        var candidates = nonInnate.Length > 0 ? nonInnate : eligible;
+        if (!candidates.SequenceEqual(pending.CandidateCardInstanceIds) ||
+            candidates.Length == 0)
+            throw new InvalidDataException(
+                "Jeweled Mask support changed before the Nature outcome.");
+        var selectedId = candidates[decision.SelectedIndex];
+        var deck = combat.SemanticDeck ??
+            throw new InvalidDataException(
+                "Random pile-card choice lost its semantic deck.");
+        deck = SemanticDeckEngineV111.RemoveCardInstance(deck, selectedId);
+        var handHasSpace = combat.Hand.Length < 10;
+        combat = SetCardTemporaryEnergyCost(
+            combat, selectedId,
+            new PrototypeTemporaryCardCost(
+                0, PrototypeTemporaryCardCostExpiry.EndOfTurn |
+                    PrototypeTemporaryCardCostExpiry.WhenPlayed));
+        combat = combat with
+        {
+            DrawPile = combat.DrawPile.Where(id => id != selectedId).ToArray(),
+            Hand = handHasSpace
+                ? combat.Hand.Append(selectedId).ToArray()
+                : combat.Hand,
+            DiscardPile = handHasSpace
+                ? combat.DiscardPile
+                : combat.DiscardPile.Append(selectedId).ToArray(),
+            SemanticDeck = deck,
+            PendingChoice = null
+        };
+        var resumedEvent = ResumeChoiceResolutionContinuation(
+            run.Player, combat, run.Rng, continuation);
+        if (resumedEvent.Combat.PendingChoice is not null ||
+            resumedEvent.Combat.PendingKnowledgeDemonChoice is not null)
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_DECK site=combat.BeforeHandDraw " +
+                "operation=nested_choice_after_random_pile_card");
+        var afterHook = run with
+        {
+            Player = resumedEvent.Player,
+            World = world with { Combat = resumedEvent.Combat }
+        };
+        var beforeDrawCount = resumedEvent.Combat.CounterState
+            .CardsDrawnThisCombat;
+        var result = ResolveAutomaticStep(
+            afterHook,
+            PrototypeContent.Rules.EndTurnPipeline[SemanticHandDrawStepIndex]);
+        var after = RequireWorld(result).Combat ??
+            throw new InvalidOperationException(
+                "Semantic hand draw removed combat.");
+        if (IsSemanticAutomaticHandDraw(after))
+        {
+            var updatedCursor = after.AutomaticPipelineContinuation!;
+            return (result,
+                updatedCursor.ControlledSemanticDrawRequested!.Value,
+                updatedCursor.ControlledSemanticDrawRemaining!.Value);
+        }
+
+        var completed = after.AutomaticPipelineContinuation;
+        if (after.PendingChoice is not null ||
+            after.PendingKnowledgeDemonChoice is not null ||
+            completed is null ||
+            completed.NextStepIndex != SemanticHandDrawStepIndex + 1 ||
+            completed.ControlledSemanticBeforeHandDrawPending)
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_DECK site=combat.BeforeHandDraw " +
+                "operation=unsupported_post_hook_draw_state");
+        var requested = completed.ControlledSemanticDrawRequested ??
+            Math.Max(0, after.CounterState.CardsDrawnThisCombat - beforeDrawCount);
+        after = after with
+        {
+            AutomaticPipelineContinuation = completed with
+            {
+                ControlledSemanticDrawRequested = null
+            }
+        };
+        result = result with
+        {
+            World = RequireWorld(result) with { Combat = after }
+        };
+        return (result, requested, 0);
     }
 }

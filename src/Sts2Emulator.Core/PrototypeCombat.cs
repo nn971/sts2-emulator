@@ -1548,6 +1548,12 @@ public sealed partial class PrototypeGameEngine
                     .ControlledSemanticDrawRemaining is not null))
                 return state;
 
+            // A semantic random-pile choice inside BeforeHandDraw has its
+            // own saved subscriber/operation continuation. Keep the cursor
+            // at this DrawPlayerHand stage; advancing would skip the hand draw.
+            if (currentCombat.PendingChoice?.ControlledRandomPileCard is not null)
+                return state;
+
             if (currentCombat.PendingChoice is not null
                 || currentCombat.PendingKnowledgeDemonChoice is not null)
             {
@@ -2416,14 +2422,60 @@ public sealed partial class PrototypeGameEngine
 
             case PrototypeAutomaticStepKind.DrawPlayerHand:
             {
-                var beforeHandDraw = DispatchCombatEvent(
-                    player,
-                    combat,
-                    new PrototypeCombatEvent(
-                        PrototypeCombatEventKind.BeforeHandDraw),
-                    state.Rng);
-                player = beforeHandDraw.Player;
-                combat = ReturnLastTurnReboundCardsToHand(beforeHandDraw.Combat);
+                bool resumedAfterSemanticHook =
+                    combat.AutomaticPipelineContinuation?
+                        .ControlledSemanticBeforeHandDrawPending == true;
+                if (resumedAfterSemanticHook)
+                {
+                    combat = combat with
+                    {
+                        AutomaticPipelineContinuation =
+                            combat.AutomaticPipelineContinuation! with
+                            {
+                                ControlledSemanticBeforeHandDrawPending = false
+                            }
+                    };
+                }
+                else
+                {
+                    var beforeHandDraw = DispatchCombatEvent(
+                        player,
+                        combat,
+                        new PrototypeCombatEvent(
+                            PrototypeCombatEventKind.BeforeHandDraw),
+                        state.Rng,
+                        allowSuspension: ControlledChanceGuardV111.Active &&
+                            combat.SemanticDeck is
+                                { Mode: SemanticDeckStateV111.NatureMode });
+                    player = beforeHandDraw.Player;
+                    combat = beforeHandDraw.Combat;
+                    if (combat.PendingChoice?.ControlledRandomPileCard is not null)
+                    {
+                        int stageIndex = SemanticHandDrawStepIndex;
+                        if (stageIndex < 0)
+                            throw new InvalidDataException(
+                                "DrawPlayerHand has no automatic pipeline index.");
+                        return state with
+                        {
+                            Player = player,
+                            World = world with
+                            {
+                                Combat = combat with
+                                {
+                                    AutomaticPipelineContinuation = new(
+                                        stageIndex,
+                                        ControlledSemanticBeforeHandDrawPending: true)
+                                }
+                            }
+                        };
+                    }
+                    if (ControlledChanceGuardV111.Active &&
+                        combat.PendingChoice is not null)
+                        throw new NotSupportedException(
+                            "UNSUPPORTED_SEMANTIC_DECK site=combat.BeforeHandDraw " +
+                            "operation=unsupported_nested_hook_choice");
+                }
+                combat = ReturnLastTurnReboundCardsToHand(combat);
 
                 var pollinousTurn = ApplyPollinousCoreHandDraw(player);
                 player = pollinousTurn.Player;
@@ -2559,6 +2611,21 @@ public sealed partial class PrototypeGameEngine
                 combat = DecrementPlayerPowers(
                     combat,
                     definition => definition.DecrementAfterHandDraw);
+                if (resumedAfterSemanticHook)
+                {
+                    var cursor = combat.AutomaticPipelineContinuation ??
+                        throw new InvalidDataException(
+                            "Semantic BeforeHandDraw continuation lost its cursor.");
+                    combat = combat with
+                    {
+                        AutomaticPipelineContinuation = cursor with
+                        {
+                            NextStepIndex = SemanticHandDrawStepIndex + 1,
+                            ControlledSemanticDrawRequested = requestedHandDraw,
+                            ControlledSemanticBeforeHandDrawPending = false
+                        }
+                    };
+                }
                 break;
             }
 
@@ -6224,10 +6291,33 @@ public sealed partial class PrototypeGameEngine
                     if (ControlledChanceGuardV111.Active &&
                         !ControlledChanceGuardV111
                             .EngineOwnedNativeProviderActive)
-                        throw new NotSupportedException(
-                            "UNSUPPORTED_SEMANTIC_DECK " +
-                            "site=combat.relic.jeweled_mask.random_power_draw_card " +
-                            "operation=missing_resumable_automatic_hook_choice");
+                    {
+                        if (combat.SemanticDeck is not
+                            { Mode: SemanticDeckStateV111.NatureMode })
+                            throw new NotSupportedException(
+                                "UNSUPPORTED_SEMANTIC_DECK " +
+                                "site=combat.relic.jeweled_mask.random_power_draw_card " +
+                                "operation=requires_nature_draw_pile");
+                        var continuation =
+                            new PrototypeChoiceResolutionContinuationState(
+                                SourceCardInstanceId: sourceCardInstanceId,
+                                SourceCardDestination: sourceCardDestination,
+                                Operations: operations.ToArray(),
+                                PendingDiscardEvents: [],
+                                PendingSlyCardInstanceIds: [],
+                                CompletionEvents: completionEvents ?? [],
+                                CardPlaySeries: cardPlaySeries,
+                                MoveSourceCardOnCompletion:
+                                    moveSourceCardOnCompletion,
+                                RemoveSourceCardOnCompletion:
+                                    removeSourceCardOnCompletion,
+                                SourceCardAlreadyMoved:
+                                    sourceCardAlreadyMoved,
+                                EventDispatchContinuation:
+                                    eventDispatchContinuation?.Fork());
+                        return (player, MakeControlledRandomPileCardChoice(
+                            combat, candidates, continuation));
+                    }
 
                     var nativeRunStreams = combat.NativeRng?.RunStreams.Fork();
                     var selectedIndex = nativeRunStreams is null
@@ -12453,6 +12543,45 @@ public sealed partial class PrototypeGameEngine
                 OuterChoiceContinuation: continuation.Fork(),
                 ControlledTarget: new PrototypeControlledTargetChoiceV111(
                     kind, (int[])eligible.Clone(), slyCardInstanceId))
+        };
+    }
+
+    private static CombatState MakeControlledRandomPileCardChoice(
+        CombatState combat, long[] eligible,
+        PrototypeChoiceResolutionContinuationState continuation)
+    {
+        if (!ControlledChanceGuardV111.Active || eligible.Length == 0 ||
+            eligible.Distinct().Count() != eligible.Length ||
+            combat.PendingChoice is not null ||
+            combat.SemanticDeck is not
+                { Mode: SemanticDeckStateV111.NatureMode } deck)
+            throw new InvalidOperationException(
+                "Controlled random pile-card suspension requires a unique semantic support.");
+        var models = eligible.Select(id => RequireCombatCard(combat, id).CardId)
+            .ToArray();
+        var supportFingerprint = CanonicalJson.Sha256(new
+        {
+            candidateCardInstanceIds = eligible,
+            candidateCardModelIds = models
+        });
+        return combat with
+        {
+            PendingChoice = new PendingCombatChoiceState(
+                ChoiceId: "controlled_random_pile_card",
+                SourceCardInstanceId: continuation.SourceCardInstanceId,
+                SourceCardDestination: continuation.SourceCardDestination,
+                Selection: new PrototypeCardSelectionSpec(
+                    PrototypeCardZone.DrawPile, 0, 0,
+                    PrototypeCardSelectionResolutionKind.Preserve),
+                CandidateCardInstanceIds: [],
+                Continuation: [],
+                CompletionEvents: [],
+                OuterChoiceContinuation: continuation.Fork(),
+                ControlledRandomPileCard:
+                    new PrototypeControlledRandomPileCardV111(
+                        "combat.relic.jeweled_mask.random_power_draw_card",
+                        combat.Turn - 1,
+                        (long[])eligible.Clone(), supportFingerprint))
         };
     }
 
