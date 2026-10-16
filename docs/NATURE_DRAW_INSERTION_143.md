@@ -15,6 +15,11 @@ The semantic v1 protocol continues to label its controlled event
 `prototype.combat` for compatibility. Native cursor parity and the full
 unlocked candidate pool remain open.
 
+When either supported insertion operation is reached inside an automatic
+pipeline stage, its saved cursor now stays attached through model selection,
+each insertion position, and the resumed source operation. This does not
+extend the boundary into enemy-action insertion.
+
 After-shuffle relic-generated draw-pile cards now use a separate typed
 `run.shuffle` site in native combat and preserve legacy `combat` draws. That
 hook records the inserted position in the native exact semantic deck. A

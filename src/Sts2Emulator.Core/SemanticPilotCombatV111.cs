@@ -2739,9 +2739,10 @@ public static class SemanticPilotCombatEngineV111
         if (generation is null && !isDrawInsertionModelChoice) return null;
         if (isDrawInsertionModelChoice)
         {
-            if (current.SeededEntry?.FixtureRandomFreeAttackDrawInsertion != true)
+            if (current.SeededEntry?.FixtureRandomFreeAttackDrawInsertion != true &&
+                combat?.AutomaticPipelineContinuation is null)
                 throw new InvalidDataException(
-                    "Random draw-Attack model choice lacks fixture provenance.");
+                    "Random draw-Attack model choice lacks a supported source boundary.");
             ValidateDrawInsertionBoundary(current.Run);
         }
         else
@@ -3190,6 +3191,8 @@ public static class SemanticPilotCombatEngineV111
         var choice = combat?.PendingChoice;
         var insertion = choice?.ControlledDrawInsertion;
         if (insertion is null) return null;
+        var automaticPipelineInsertion =
+            combat?.AutomaticPipelineContinuation is not null;
         if (insertion.Stage != "position") return null;
         var fixedFixtureMatches =
             insertion.Operation.Kind == PrototypeCombatEffectKind
@@ -3210,7 +3213,7 @@ public static class SemanticPilotCombatEngineV111
             current.SeededEntry?.FixtureGeneratedDrawInsertionCardId is null &&
             current.SeededEntry?.FixtureRandomFreeAttackDrawInsertion != true;
         if ((!fixedFixtureMatches && !randomFixtureMatches &&
-             !afterShuffleRelicMatches) ||
+             !afterShuffleRelicMatches && !automaticPipelineInsertion) ||
             current.PendingEndTurn is not null ||
             current.PendingInitialIntents is not null ||
             current.TargetPending is not null ||
@@ -3281,8 +3284,9 @@ public static class SemanticPilotCombatEngineV111
                 SelectedCardId: not null
             };
         if (run.Phase != RunPhase.Combat ||
-            combat is not { IsPlayerTurn: true,
-                AutomaticPipelineContinuation: null } ||
+            combat is not { PendingKnowledgeDemonChoice: null } ||
+            (combat.AutomaticPipelineContinuation is null &&
+             !combat.IsPlayerTurn) ||
             choice is not { ChoiceId: "controlled_draw_insertion",
                 OuterChoiceContinuation: not null } ||
             insertion is null || !supportedStage ||
@@ -3299,6 +3303,7 @@ public static class SemanticPilotCombatEngineV111
                 .Order().SequenceEqual(combat.DrawPile.Order()))
             throw new InvalidDataException(
                 "Generated draw-pile insertion changed the hidden pile early.");
+        PrototypeStateInvariants.Validate(run);
     }
 
     private static void ValidateRandomHandCostBoundary(RunState run)
