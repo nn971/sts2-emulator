@@ -235,13 +235,19 @@ public static class ControlledPlayableCombatEngineV111
                 "Seed disagrees with saved controlled HP/intent stream provenance.");
 
         int act = verified.Combat.Act;
-        if (act is not (2 or 3))
+        if (act is not (1 or 2 or 3))
             throw new NotSupportedException(
-                "First playable Nature fixture is restricted to Hive/Glory.");
-        // Construct real player/route state; copy already-decided enemy HP and
-        // intents without ANY native RNG callback or enemy re-commit.
-        var run = PrototypeNativeLaterActFixture.Create(
-            seed, act, verified.Combat.Ascension);
+                "Source-backed playable Nature fixtures support Acts 1–3.");
+        // Construct the starter character from the original gameplay
+        // engine. Act 1 is restricted to source-pinned fixed weak
+        // formations at the earlier pre-entry validation boundary.
+        // This is still an isolated fixture, not a full route replay.
+        var run = act == 1
+            ? new PrototypeGameEngine().Step(
+                PrototypeGameFactory.Create(seed, verified.Combat.Ascension),
+                GameAction.Empty("start_run")).State
+            : PrototypeNativeLaterActFixture.Create(
+                seed, act, verified.Combat.Ascension);
         var player = run.Player;
         var cards = player.Deck.Select((c, i) => new CombatCardInstance(
             i + 1L, c.InstanceId, c.CardId, c.UpgradeLevel, false,
