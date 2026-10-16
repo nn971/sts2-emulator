@@ -66,8 +66,10 @@ This is the migrated typed-site inventory, not a complete v0.111 RNG
 inventory. Other encounter resolvers, summon/death lifecycle effects,
 monster-local draws, enemy-side insertion, remaining cost/reward sites,
 other map/event/shop/treasure selection, and native float/Gaussian/rejection
-operations still need stable call-site identities and row-level audit. Their
-absence here is not evidence that they are deterministic or supported.
+call sites still need stable identities and row-level audit. Typed unit-float,
+Gaussian-integer, and Gaussian-double primitive adapters exist, but that does
+not establish coverage for any additional gameplay site. Their absence here
+is not evidence that they are deterministic or supported.
 
 ## First migrated site: `combat.initial_unique_hp`
 
@@ -170,12 +172,14 @@ remains separate from seeded emulator RNG equality. See
 - The `RandomIndex` provider handles finite ordered **index** decisions. A
   separate typed unit-float provider wraps native and controlled samples, and
   a Gaussian-integer provider wraps the native inclusive rejection sampler;
-  the unit-float provider accepts `1.0f`, which can result from rounding a
-  native value below one.
+  a Gaussian-double provider wraps the native bounded rejection sampler and
+  records its full cursor span. The unit-float provider accepts `1.0f`, which
+  can result from rounding a native value below one.
   The semantic playable extension separately supports typed physical
   card, enemy-instance and generated-card-model identities. Ranged floats,
-  Gaussian-double/rejection and dynamic weighted choices still need typed
-  operations and call-site audits.
+  other rejection operations and dynamic weighted choices still need typed
+  operations and call-site audits. Gaussian-double source-site identities and
+  row-level coverage also remain unaudited.
 - The scripting provider validates an exact request sequence but is not yet
   a serializable resumable game controller.
 - Provider instance state is not in canonical `RunState`, so callers must
