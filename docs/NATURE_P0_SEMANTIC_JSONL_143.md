@@ -261,3 +261,39 @@ the absence of phantom pending randomness, final exit HP and complete
 snapshot reconstruction. This establishes a narrow real **defeat**
 terminal path only when CI passes; complete victory and a sufficiently
 broad encounter/player policy evaluation are still acceptance work.
+
+## 2026-10-16 P0.4: persisted seeded provider for non-Nature drawn-card cost
+
+The two-site semantic pilot now routes source-timed Snecko/Slither
+drawn-card cost requests to an **engine-owned, stateful** fallback.
+The previous hash-of-end-turn-fingerprint implementation was repeatable
+but had no independently owned RNG cursor. The new
+`engine-owned-seeded-cost-v111-unverified-v1` owns its own
+pinned v111 xoshiro/NextInt `run.combat_energy_costs` stream, sampled
+**once per actual source cost ticket**. Even singleton support consumes
+one native-codec RNG call. The sequence and before/after cursor states
+remain private in the serialized semantic session alongside the
+ordinary player/Nature history; replay reconstructs them from the
+original seed, while forks deep-copy them.
+
+Only `combat.card_draw.relic_energy_cost` and
+`combat.card_draw.slither_energy_cost` are approved by this adapter.
+Other non-Nature chance sites still fail explicitly at the original
+source guard. This provider never creates a third externally selected
+Nature site or another shuffle-ticket layer, and the card-cost
+mechanics and `CardDrawn` trigger order remain original.
+
+`hello.semanticOtherChanceProvider` and the semantic status payload
+advertise the revised provider identity. Exact **source-game stream
+history and native parity are UNVERIFIED**: this separately initialized
+seeded stream has not been synchronized with all preceding native
+run-owned RNG consumption. This is a mechanical provider/cursor
+milestone, not a claim of native likelihood law correctness. The
+focused regression checks two consecutive costs, singleton
+consumption, stream cursor sequence, fork invariance and explicit
+unsupported sites.
+
+The pilot's pending P0 work is to audit the native stream owner and
+initialize it from authentic pre-combat run history, extend all
+non-intent/draw chance effects that arise in supported episodes, and
+demonstrate genuine terminal victory as well as defeat.
