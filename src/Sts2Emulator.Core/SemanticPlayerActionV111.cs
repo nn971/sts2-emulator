@@ -32,7 +32,13 @@ public static class SemanticPlayerActionEngineV111
     // draw-pile mutation. The full action/effect state machine will replace
     // this allowlist as semantic continuations become available.
     private static readonly HashSet<string> SupportedCards =
-        new(StringComparer.Ordinal) { "proto.silent.strike", "proto.silent.defend" };
+        new(StringComparer.Ordinal)
+        {
+            "proto.silent.strike",
+            "proto.silent.defend",
+            "proto.silent.deflect",
+            "proto.silent.neutralize"
+        };
 
     public static SemanticPlayerActionV111 Step(
         RunState source, string actionId)

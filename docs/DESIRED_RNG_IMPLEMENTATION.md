@@ -35,7 +35,9 @@ player choices, and can opt into typed bounded swaps for a generated card pool
 before returning the ordinary player choice or a bounded insertion position
 while preserving unresolved deck order. The deck kernel also supports exact
 moves of known cards to a forced offset while keeping unresolved positions
-constrained.
+constrained. The saved real player-action segment also admits source-audited
+Silent Strike, Defend, Deflect and Neutralize plays; it rejects a chance or
+turn boundary it cannot resume with a typed unsupported-operation error.
 The Orobas, Pael and Tezcatara ordered relic offer selections; Darv's
 offer-variant and ordered relic-pool shuffle; and the Nonupeipe, Tanx and
 Vakuu relic shuffles now pass through the shared index provider, with opt-in
