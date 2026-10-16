@@ -19,7 +19,8 @@ public sealed record SemanticSeededEntryV111(
     int TotalFloor, int Ascension, long FirstMonsterCombatId,
     int? MapColumn, int? MapRow,
     string? OtherChanceProviderId = null,
-    string? FixtureDrawCostRelicId = null);
+    string? FixtureDrawCostRelicId = null,
+    bool ReplayOpeningDrawHooks = false);
 
 /// <summary>
 /// First external playable semantic boundary. Initial opening order is
@@ -178,6 +179,8 @@ public static class SemanticPilotCombatEngineV111
             OtherChance = entry.OtherChanceProviderId is null
                 ? null : SemanticOtherChanceEngineV111.Begin(rng)
         };
+        if (entry.ReplayOpeningDrawHooks)
+            state = ReapplyCommittedOpeningThroughDrawCards(state);
         if (entry.FixtureDrawCostRelicId is { } relicId)
         {
             if (relicId != "proto.relic.snecko_eye")
@@ -217,6 +220,62 @@ public static class SemanticPilotCombatEngineV111
         }
         Validate(state);
         return state;
+    }
+
+    /// <summary>
+    /// Recreate the same already committed opening permutation from the
+    /// original post-shuffle draw pile and the dealt hand. Execute actual
+    /// DrawCards/CardDrawn mechanics once, with all positions private and
+    /// known, before the first player decision. The restricted initial
+    /// starter hand has no random draw-cost or nested player choices.
+    /// This is an opt-in source-mechanic bridge, not full native combat
+    /// entry / BeforeHandDraw hook parity.
+    /// </summary>
+    private static SemanticPilotCombatV111 ReapplyCommittedOpeningThroughDrawCards(
+        SemanticPilotCombatV111 state)
+    {
+        var run = state.Run;
+        var world = run.World!;
+        var combat = world.Combat!;
+        var dealt = (long[])combat.Hand.Clone();
+        if (dealt.Length == 0 || combat.PendingChoice is not null ||
+            combat.AutomaticPipelineContinuation is not null ||
+            combat.SemanticDeck?.Pending is not null)
+            throw new InvalidOperationException(
+                "Opening hook replay requires a committed ordinary dealt hand.");
+        var full = combat.DrawPile.Concat(dealt.Reverse()).ToArray();
+        if (full.Length != full.Distinct().Count())
+            throw new InvalidDataException(
+                "Reconstituted opening pile duplicated physical card identity.");
+        var prepared = run with
+        {
+            World = world with
+            {
+                Combat = combat with
+                {
+                    Hand = [],
+                    DrawPile = full,
+                    SemanticDeck = SemanticDeckEngineV111.FromCommittedOpening(
+                        full.Reverse().ToArray())
+                }
+            }
+        };
+        RunState drawn;
+        int remaining;
+        using (ControlledChanceGuardV111.Enter())
+            (drawn, remaining) = PrototypeGameEngine.BeginSemanticCombatDraw(
+                prepared, dealt.Length, fromHandDraw: true);
+        var result = drawn.World?.Combat;
+        if (remaining != 0 || drawn.Phase != RunPhase.Combat ||
+            result is null || result.PendingChoice is not null ||
+            result.AutomaticPipelineContinuation is not null ||
+            result.SemanticDeck?.Pending is not null ||
+            !result.Hand.SequenceEqual(dealt) ||
+            !result.DrawPile.SequenceEqual(combat.DrawPile))
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_OPENING site=combat.opening.DrawCards " +
+                "operation=unmodeled_initial_draw_hook");
+        return state with { Run = drawn };
     }
 
     public static SemanticPilotCombatV111 Step(
