@@ -1441,7 +1441,8 @@ public sealed partial class PrototypeGameEngine
     private static RunState ResumeAutomaticPipeline(
         RunState state,
         int startIndex,
-        PrototypeCombatEventKind? pendingPostDispatchEventKind = null)
+        PrototypeCombatEventKind? pendingPostDispatchEventKind = null,
+        bool stopBeforeSemanticHandDraw = false)
     {
         if (pendingPostDispatchEventKind is not null)
         {
@@ -1469,11 +1470,39 @@ public sealed partial class PrototypeGameEngine
         {
             var automaticStep =
                 PrototypeContent.Rules.EndTurnPipeline[index];
+            // Opt-in semantic hand-draw handoff. Everything before this
+            // source stage has already executed in the original engine.
+            // The hand stage itself runs later via the genuine
+            // ResolveAutomaticStep(DrawPlayerHand) continuation.
+            if (ControlledChanceGuardV111.Active &&
+                stopBeforeSemanticHandDraw &&
+                automaticStep.Kind == PrototypeAutomaticStepKind.DrawPlayerHand)
+                return SetAutomaticPipelineContinuation(
+                    state, index, pendingPostDispatchEventKind: null);
+            // A controlled end-turn preserves every preceding hook result.
+            // The next-turn intent stage is a separate continuation boundary:
+            // Nature commits its finite tickets before this stage's postwork.
+            if (ControlledChanceGuardV111.Active &&
+                automaticStep.Kind == PrototypeAutomaticStepKind.AdvanceTurn)
+                return SetAutomaticPipelineContinuation(
+                    state, index, pendingPostDispatchEventKind: null);
             state = ResolveAutomaticStep(state, automaticStep);
 
             var currentCombat = RequireWorld(state).Combat
                 ?? throw new InvalidOperationException(
                     "Combat unexpectedly disappeared.");
+
+            // The draw routine returns after applying all earlier cards
+            // and effects, before recycling the discard pile. Resume at
+            // the same real pipeline index without replaying pre-draw hooks.
+            if (ControlledChanceGuardV111.Active &&
+                (currentCombat.AutomaticPipelineContinuation?
+                    .ControlledDrawRemaining is not null ||
+                 currentCombat.AutomaticPipelineContinuation?
+                    .ControlledDrawCostRemaining is not null ||
+                 currentCombat.AutomaticPipelineContinuation?
+                    .ControlledSemanticDrawRemaining is not null))
+                return state;
 
             if (currentCombat.PendingChoice is not null
                 || currentCombat.PendingKnowledgeDemonChoice is not null)
@@ -1547,6 +1576,157 @@ public sealed partial class PrototypeGameEngine
             }
         };
     }
+
+    /// <summary>
+    /// Resume after Nature has committed all next-turn intent tickets.
+    /// Earlier enemy actions/status hooks remain applied in the RunState.
+    /// This method performs AdvanceTurn postwork once and continues from the
+    /// next real pipeline index under the same fail-closed RNG guard.
+    /// </summary>
+    internal static RunState ResumeControlledTurnAfterIntents(
+        RunState state, CombatState committed,
+        bool stopBeforeSemanticHandDraw = false)
+    {
+        if (!ControlledChanceGuardV111.Active)
+            throw new InvalidOperationException(
+                "Controlled turn-intent resumption requires the RNG guard.");
+        var world = RequireWorld(state);
+        var original = world.Combat ??
+            throw new InvalidOperationException("No combat to resume.");
+        var continuation = original.AutomaticPipelineContinuation ??
+            throw new InvalidOperationException("Missing saved turn pipeline cursor.");
+        int index = continuation.NextStepIndex;
+        if (index < 0 || index >= PrototypeContent.Rules.EndTurnPipeline.Length ||
+            PrototypeContent.Rules.EndTurnPipeline[index].Kind !=
+                PrototypeAutomaticStepKind.AdvanceTurn ||
+            continuation.OpeningStage is not null ||
+            continuation.PendingPostDispatchEventKind is not null)
+            throw new InvalidOperationException("Not an AdvanceTurn chance boundary.");
+        var advanced = CompleteAdvanceTurnAfterCommittedIntents(
+            committed with { AutomaticPipelineContinuation = null });
+        var resumed = state with
+        {
+            World = world with { Combat = advanced }
+        };
+        return ResumeAutomaticPipeline(resumed, index + 1,
+            stopBeforeSemanticHandDraw: stopBeforeSemanticHandDraw);
+    }
+
+    /// <summary>
+    /// Resume a pending DrawPlayerHand recycle using Nature's pre-hook shuffle.
+    /// The saved combat includes all preceding drawn cards, draw triggers and
+    /// BeforeHandDraw effects. The original stage is never restarted.
+    /// </summary>
+    internal static RunState ResumeControlledDrawAfterRecycle(
+        RunState state, long[] selectedPreHookOrder)
+    {
+        if (!ControlledChanceGuardV111.Active)
+            throw new InvalidOperationException(
+                "Controlled recycle resumption requires the RNG guard.");
+        var world = RequireWorld(state);
+        var combat = world.Combat ??
+            throw new InvalidOperationException("Missing combat for recycle.");
+        var continuation = combat.AutomaticPipelineContinuation ??
+            throw new InvalidOperationException("Missing draw continuation.");
+        var index = continuation.NextStepIndex;
+        if (index < 0 || index >= PrototypeContent.Rules.EndTurnPipeline.Length ||
+            PrototypeContent.Rules.EndTurnPipeline[index].Kind !=
+                PrototypeAutomaticStepKind.DrawPlayerHand ||
+            continuation.ControlledDrawRemaining is not > 0 ||
+            continuation.OpeningStage is not null ||
+            continuation.PendingPostDispatchEventKind is not null ||
+            combat.DrawPile.Length != 0 ||
+            combat.DiscardPile.Length == 0)
+            throw new InvalidOperationException("Invalid suspended draw stage.");
+        var eligible = combat.DiscardPile;
+        if (selectedPreHookOrder is null ||
+            selectedPreHookOrder.Length != eligible.Length ||
+            !selectedPreHookOrder.Order().SequenceEqual(eligible.Order()))
+            throw new InvalidOperationException(
+                "Nature shuffle must preserve all eligible card identities.");
+
+        var postHook = NativeShuffleStepReplayV111.CheckPostHook(
+            ApplyPerfectFitShuffleOrder(combat, (long[])selectedPreHookOrder.Clone()));
+        combat = ApplyRelicAfterShuffleCards(combat with
+        {
+            DrawPile = postHook,
+            DiscardPile = []
+        }, state.Rng);
+        // Stratagem is itself a player-selection continuation whose
+        // parent must be wired separately. Fail before publishing a child.
+        if (combat.PlayerPowers.Any(power =>
+            power.PowerId == "proto.power.stratagem" && power.Stacks > 0))
+            throw new NotSupportedException(
+                "UNSUPPORTED_CONTROLLED_CHANCE site=combat.recycle.stratagem operation=choose_cards");
+
+        var player = state.Player;
+        var drawn = DrawCards(player, combat, continuation.ControlledDrawRemaining.Value,
+            state.Rng, fromHandDraw: true,
+            controlledRecycleSuspension: true,
+            controlledDrawCostSuspension: true);
+        player = drawn.Player;
+        combat = drawn.Combat;
+        if (drawn.ShuffleSelectionPending)
+            throw new InvalidOperationException(
+                "Controlled recycle unexpectedly entered a Stratagem choice.");
+
+        if (drawn.ControlledDrawCostPending)
+            return state with
+            {
+                Player = player,
+                World = world with
+                {
+                    Combat = combat with
+                    {
+                        AutomaticPipelineContinuation = continuation with
+                        {
+                            ControlledDrawRemaining = null,
+                            ControlledDrawCostRemaining = drawn.RemainingCount
+                        }
+                    }
+                }
+            };
+        if (drawn.ControlledRecyclePending)
+            return state with
+            {
+                Player = player,
+                World = world with
+                {
+                    Combat = combat with
+                    {
+                        AutomaticPipelineContinuation = continuation with
+                        {
+                            ControlledDrawRemaining = drawn.RemainingCount,
+                            ControlledDrawCostRemaining = null
+                        }
+                    }
+                }
+            };
+        combat = RemovePlayerPowers(
+            combat, definition => definition.RemoveAfterHandDraw);
+        combat = DecrementPlayerPowers(
+            combat, definition => definition.DecrementAfterHandDraw);
+
+        var resumed = state with
+        {
+            Player = player,
+            World = world with
+            {
+                Combat = combat with { AutomaticPipelineContinuation = null }
+            }
+        };
+        return ResumeAutomaticPipeline(resumed, index + 1);
+    }
+
+    private static CombatState CompleteAdvanceTurnAfterCommittedIntents(
+        CombatState combat) => combat with
+    {
+        Turn = combat.Turn + 1,
+        PlayerPowers = combat.PlayerPowers.Select(power =>
+            PrototypeContent.Power(power.PowerId).SnapshotGenerationStacksAtTurnStart
+                ? power with { StoredValue = power.Stacks } : power).ToArray(),
+        Counters = AdvanceTurnCounters(combat.CounterState)
+    };
 
     private static RunState SetAutomaticPipelineContinuation(
         RunState state,
@@ -2098,17 +2278,9 @@ public sealed partial class PrototypeGameEngine
             }
 
             case PrototypeAutomaticStepKind.AdvanceTurn:
-                // EnemyTurnEnd statuses, summons, and formation changes have
-                // completed. Select/commit the next enemy moves BEFORE the
-                // next player turn begins, never during Observe().
-                combat = CommitEnemyIntents(combat, state.Rng) with
-                {
-                    Turn = combat.Turn + 1,
-                    PlayerPowers = combat.PlayerPowers.Select(power =>
-                        PrototypeContent.Power(power.PowerId).SnapshotGenerationStacksAtTurnStart
-                            ? power with { StoredValue = power.Stacks } : power).ToArray(),
-                    Counters = AdvanceTurnCounters(combat.CounterState)
-                };
+                // The controlled pipeline suspends *before* this stage.
+                combat = CompleteAdvanceTurnAfterCommittedIntents(
+                    CommitEnemyIntents(combat, state.Rng));
                 break;
 
             case PrototypeAutomaticStepKind.ResetPlayerBlock:
@@ -2227,15 +2399,99 @@ public sealed partial class PrototypeGameEngine
                             : 0)
                     + PrototypeNativeOrobasRelics.HandDrawBonusForTurn(
                         player, combat.Turn);
+                int requestedHandDraw = Math.Max(0,
+                    PrototypeContent.Rules.HandSize + handDrawBonus);
                 var drawn = DrawCards(
                     player,
                     combat,
-                    Math.Max(0, PrototypeContent.Rules.HandSize
-                        + handDrawBonus),
+                    requestedHandDraw,
                     state.Rng,
-                    fromHandDraw: true);
+                    fromHandDraw: true,
+                    controlledRecycleSuspension: ControlledChanceGuardV111.Active,
+                    controlledDrawCostSuspension: ControlledChanceGuardV111.Active,
+                    controlledSemanticDrawSuspension:
+                        ControlledChanceGuardV111.Active &&
+                        combat.SemanticDeck is not null);
                 player = drawn.Player;
                 combat = drawn.Combat;
+                if (combat.SemanticDeck is not null &&
+                    (drawn.ControlledSemanticDrawPending ||
+                     drawn.ControlledDrawCostPending))
+                {
+                    int stageIndex = Array.FindIndex(
+                        PrototypeContent.Rules.EndTurnPipeline,
+                        step => step.Kind ==
+                            PrototypeAutomaticStepKind.DrawPlayerHand);
+                    if (stageIndex < 0 ||
+                        (drawn.ControlledSemanticDrawPending &&
+                         combat.SemanticDeck.Pending is null) ||
+                        (drawn.ControlledDrawCostPending &&
+                         combat.PendingChoice?.ControlledDrawCost is null))
+                        throw new InvalidDataException(
+                            "Semantic hand-draw stage lost its suspended request.");
+                    return state with
+                    {
+                        Player = player,
+                        World = world with
+                        {
+                            Combat = combat with
+                            {
+                                AutomaticPipelineContinuation = new(
+                                    stageIndex,
+                                    ControlledSemanticDrawRemaining:
+                                        drawn.RemainingCount,
+                                    ControlledSemanticDrawRequested:
+                                        requestedHandDraw)
+                            }
+                        }
+                    };
+                }
+                if (drawn.ControlledDrawCostPending)
+                {
+                    int stageIndex = Array.FindIndex(
+                        PrototypeContent.Rules.EndTurnPipeline,
+                        step => step.Kind ==
+                            PrototypeAutomaticStepKind.DrawPlayerHand);
+                    if (stageIndex < 0 || combat.PendingChoice?.ControlledDrawCost is null)
+                        throw new InvalidOperationException(
+                            "Controlled draw-cost stage lost its pending card.");
+                    return state with
+                    {
+                        Player = player,
+                        World = world with
+                        {
+                            Combat = combat with
+                            {
+                                AutomaticPipelineContinuation = new(
+                                    stageIndex,
+                                    ControlledDrawCostRemaining: drawn.RemainingCount)
+                            }
+                        }
+                    };
+                }
+                if (drawn.ControlledRecyclePending)
+                {
+                    int index = Array.FindIndex(
+                        PrototypeContent.Rules.EndTurnPipeline,
+                        step => step.Kind ==
+                            PrototypeAutomaticStepKind.DrawPlayerHand);
+                    if (index < 0 || combat.DrawPile.Length != 0 ||
+                        combat.DiscardPile.Length == 0)
+                        throw new InvalidOperationException(
+                            "Invalid controlled draw recycle boundary.");
+                    return state with
+                    {
+                        Player = player,
+                        World = world with
+                        {
+                            Combat = combat with
+                            {
+                                AutomaticPipelineContinuation = new(
+                                    index, ControlledDrawRemaining: drawn.RemainingCount)
+                            }
+                        }
+                    };
+                }
                 if (drawn.ShuffleSelectionPending)
                 {
                     var pendingDraw = new Queue<PrototypeQueuedOperation>(
@@ -2621,108 +2877,120 @@ public sealed partial class PrototypeGameEngine
     // Commit each enemy's action at combat entry and at the end of each
     // enemy turn. Importantly, this consumes the combat RNG once, at a
     // transition boundary; repeated public observations never reroll moves.
+    internal sealed record NativeCommittedIntentAuditV111(
+        CombatState Combat, RandomIndexDecisionV111[] Choices);
+
     internal static CombatState CommitEnemyIntents(
-        CombatState combat,
-        RngBundle rng)
+        CombatState combat, RngBundle rng) =>
+        CommitEnemyIntentsCore(combat, rng, null);
+
+    internal static NativeCommittedIntentAuditV111 CommitEnemyIntentsWithAudit(
+        CombatState combat, RngBundle rng)
     {
-        // Clone persistent native streams before selecting intents. Legacy
-        // states continue consuming their original prototype combat stream.
+        if (combat.NativeRng is null)
+            throw new InvalidOperationException("Native intent audit requires attached native RNG.");
+        var decisions = new List<RandomIndexDecisionV111>();
+        var result = CommitEnemyIntentsCore(combat, rng, decisions);
+        return new NativeCommittedIntentAuditV111(result, decisions.ToArray());
+    }
+
+    private static CombatState CommitEnemyIntentsCore(
+        CombatState combat, RngBundle rng, List<RandomIndexDecisionV111>? audit)
+    {
         var ownedNative = combat.NativeRng?.Fork();
-        Func<int, int> nextIndex = ownedNative is null
-            ? maxExclusive => PrototypeRng.NextInt(rng, "combat", maxExclusive)
-            : maxExclusive => NativeRngV111.NextInt(
-                ownedNative.RunStreams, "run.monster_ai", maxExclusive);
         var formation = combat.Enemies.Select(enemy => enemy.Fork()).ToArray();
-        for (var index = 0; index < formation.Length; index++)
+        var provider = new NativeRandomIndexProviderV111();
+        int occurrence = 0;
+        for (int index = 0; index < formation.Length; index++)
         {
             var enemy = formation[index];
-            var definition = PrototypeContent.Enemy(enemy.EnemyId);
-            if (enemy.Hp <= 0
-                || enemy.SkipNextEnemyAction
-                || enemy.EnemyActionSkipsRemaining > 0
-                || definition.Moves.Length == 0)
-            {
-                formation[index] = enemy with
+            Func<int, int> nextIndex = ownedNative is null
+                ? maxExclusive => PrototypeRng.NextInt(rng, "combat", maxExclusive)
+                : maxExclusive =>
                 {
-                    PlannedMoveIndex = null,
-                    PlannedNextAiStateId = null
+                    var request = new RandomIndexRequestV111(
+                        "combat.committed_intent.index_draw", "run.monster_ai",
+                        "creature:" + enemy.InstanceId, occurrence,
+                        [], OperationKind: "bounded_integer",
+                        BoundedCount: maxExclusive);
+                    var result = provider.Resolve(request, ownedNative.RunStreams);
+                    audit?.Add(result);
+                    occurrence++;
+                    return result.SelectedIndex;
                 };
-                continue;
-            }
-
-            if (enemy.StunFollowUpMoveIndex is { } stunFollowUp)
-            {
-                if (stunFollowUp < 0
-                    || stunFollowUp >= definition.Moves.Length)
-                {
-                    throw new InvalidOperationException(
-                        $"Enemy {enemy.EnemyId} has an invalid stunned follow-up move.");
-                }
-
-                formation[index] = enemy with
-                {
-                    PlannedMoveIndex = stunFollowUp,
-                    PlannedNextAiStateId =
-                        enemy.StunFollowUpAiStateId ?? enemy.AiStateId,
-                    StunFollowUpMoveIndex = null,
-                    StunFollowUpAiStateId = null
-                };
-                continue;
-            }
-
-            // InkletsNormal sets MiddleInklet explicitly despite null
-            // native slot names. TheKinBoss sets StartsWithDance=true
-            // only on its FIRST KinFollower (slot1). Evaluate their
-            // prototype slot-based conditional AI through transient
-            // aliases, without mutating native source slot identity.
-            var nativeEntry = ownedNative?.Formation.NativeEncounterEntry;
-            var evaluating = nativeEntry == "InkletsNormal"
-                && enemy.EnemyId == "proto.enemy.inklet"
-                && enemy.SlotName is null
-                    ? enemy with
-                    {
-                        SlotName = enemy.FormationPosition switch
-                        {
-                            0 => "left",
-                            1 => "middle",
-                            2 => "right",
-                            _ => null
-                        }
-                    }
-                    : nativeEntry == "TheKinBoss"
-                        && enemy.EnemyId == "proto.enemy.kin_follower"
-                        ? enemy with
-                        {
-                            SlotName = enemy.SlotName switch
-                            {
-                                "slot1" => "dance",
-                                "slot2" => "quick",
-                                _ => throw new InvalidOperationException(
-                                    "Unknown native KinFollower starting slot.")
-                            }
-                        }
-                        : enemy;
-            var selected = SelectEnemyMove(
-                definition, evaluating, formation, nextIndex);
-            var selectedIndex = Array.IndexOf(definition.Moves, selected.Move);
-            if (selectedIndex < 0)
-            {
-                throw new InvalidOperationException(
-                    $"Enemy '{enemy.EnemyId}' selected an unknown move.");
-            }
-
+            var chosen = EvaluateEnemyIntentChoice(
+                formation, index, ownedNative?.Formation.NativeEncounterEntry,
+                nextIndex);
             formation[index] = enemy with
             {
-                PlannedMoveIndex = selectedIndex,
-                PlannedNextAiStateId = selected.NextAiStateId
+                PlannedMoveIndex = chosen.MoveIndex,
+                PlannedNextAiStateId = chosen.NextAiStateId,
+                StunFollowUpMoveIndex =
+                    chosen.MoveIndex.HasValue && enemy.StunFollowUpMoveIndex.HasValue
+                        ? null : enemy.StunFollowUpMoveIndex,
+                StunFollowUpAiStateId =
+                    chosen.MoveIndex.HasValue && enemy.StunFollowUpMoveIndex.HasValue
+                        ? null : enemy.StunFollowUpAiStateId
             };
         }
+        return combat with { Enemies = formation, NativeRng = ownedNative };
+    }
 
-        return combat with
+    /// <summary>
+    /// Pure source-shaped intent selector shared by the actual game engine and
+    /// serializable controlled Nature. No mutation, hook replay or RNG draw
+    /// occurs except through the caller's supplied bounded ticket callback.
+    /// </summary>
+    internal static (int? MoveIndex, string? NextAiStateId) EvaluateEnemyIntentChoice(
+        IReadOnlyList<EnemyCombatState> formation,
+        int index, string? nativeEntry, Func<int, int> nextIndex,
+        Action<SemanticIntentCandidateV111[]>? inspectCandidates = null)
+    {
+        var enemy = formation[index];
+        var definition = PrototypeContent.Enemy(enemy.EnemyId);
+        if (enemy.Hp <= 0 || enemy.SkipNextEnemyAction
+            || enemy.EnemyActionSkipsRemaining > 0 || definition.Moves.Length == 0)
+            return (null, null);
+        if (enemy.StunFollowUpMoveIndex is { } stunFollowUp)
         {
-            Enemies = formation,
-            NativeRng = ownedNative
-        };
+            if (stunFollowUp < 0 || stunFollowUp >= definition.Moves.Length)
+                throw new InvalidOperationException(
+                    $"Enemy {enemy.EnemyId} has an invalid stunned follow-up move.");
+            return (stunFollowUp, enemy.StunFollowUpAiStateId ?? enemy.AiStateId);
+        }
+        var evaluating = nativeEntry == "InkletsNormal"
+            && enemy.EnemyId == "proto.enemy.inklet"
+            && enemy.SlotName is null
+                ? enemy with
+                {
+                    SlotName = enemy.FormationPosition switch
+                    {
+                        0 => "left",
+                        1 => "middle",
+                        2 => "right",
+                        _ => null
+                    }
+                }
+                : nativeEntry == "TheKinBoss"
+                    && enemy.EnemyId == "proto.enemy.kin_follower"
+                    ? enemy with
+                    {
+                        SlotName = enemy.SlotName switch
+                        {
+                            "slot1" => "dance",
+                            "slot2" => "quick",
+                            _ => throw new InvalidOperationException(
+                                "Unknown native KinFollower starting slot.")
+                        }
+                    }
+                    : enemy;
+        var selected = SelectEnemyMove(
+            definition, evaluating, formation, nextIndex, inspectCandidates);
+        int moveIndex = Array.IndexOf(definition.Moves, selected.Move);
+        if (moveIndex < 0)
+            throw new InvalidOperationException(
+                $"Enemy '{enemy.EnemyId}' selected an unknown move.");
+        return (moveIndex, selected.NextAiStateId);
     }
 
     private static (
@@ -2743,7 +3011,8 @@ public sealed partial class PrototypeGameEngine
             PrototypeEnemyDefinition definition,
             EnemyCombatState enemy,
             IReadOnlyList<EnemyCombatState> formation,
-            Func<int, int> nextIndex)
+            Func<int, int> nextIndex,
+        Action<SemanticIntentCandidateV111[]>? inspectCandidates = null)
     {
         if (definition.Moves.Length == 0)
         {
@@ -2836,6 +3105,12 @@ public sealed partial class PrototypeGameEngine
                         $"Enemy '{definition.Id}' has no legal random moves.");
                 }
 
+                inspectCandidates?.Invoke(candidates.Select((move, position) =>
+                    new SemanticIntentCandidateV111(
+                        "move:" + move.Id + ":index:" + position,
+                        move.Id,
+                        Array.IndexOf(definition.Moves, move),
+                        1, position)).ToArray());
                 return (
                     candidates[nextIndex(candidates.Length)],
                     enemy.AiStateId);
@@ -2846,7 +3121,8 @@ public sealed partial class PrototypeGameEngine
                     definition,
                     enemy,
                     formation,
-                    nextIndex);
+                    nextIndex,
+                    inspectCandidates);
 
             default:
                 throw new ArgumentOutOfRangeException(
@@ -2861,7 +3137,8 @@ public sealed partial class PrototypeGameEngine
             PrototypeEnemyDefinition definition,
             EnemyCombatState enemy,
             IReadOnlyList<EnemyCombatState> formation,
-            Func<int, int> nextIndex)
+            Func<int, int> nextIndex,
+            Action<SemanticIntentCandidateV111[]>? inspectCandidates = null)
     {
         var ai = definition.Ai
             ?? throw new InvalidOperationException(
@@ -2932,6 +3209,25 @@ public sealed partial class PrototypeGameEngine
                     var totalWeight =
                         legal.Sum(branch =>
                             branch.Weight);
+                    if (inspectCandidates is not null)
+                    {
+                        var start = 0;
+                        var support = legal.Select((branch, branchIndex) =>
+                        {
+                            // IsEnemyAiBranchLegal already verified the
+                            // branch targets a concrete Move state.
+                            var moveIndex = states[branch.TargetStateId]
+                                .MoveIndex!.Value;
+                            var candidate = new SemanticIntentCandidateV111(
+                                "state:" + state.Id + ":branch:" +
+                                    branch.TargetStateId + ":index:" + branchIndex,
+                                definition.Moves[moveIndex].Id, moveIndex,
+                                branch.Weight, start);
+                            start = checked(start + branch.Weight);
+                            return candidate;
+                        }).ToArray();
+                        inspectCandidates(support);
+                    }
                     var roll = nextIndex(totalWeight);
                     var selected = legal[^1];
                     foreach (var branch in legal)
@@ -4662,6 +4958,31 @@ public sealed partial class PrototypeGameEngine
                     continue;
                 }
 
+                if (ControlledChanceGuardV111.Active)
+                {
+                    var suspended = new PrototypeChoiceResolutionContinuationState(
+                        SourceCardInstanceId: sourceCardInstanceId,
+                        SourceCardDestination: sourceCardDestination,
+                        Operations: (new[]
+                        {
+                            operation with
+                            {
+                                TargetEnemyId = null,
+                                TargetMode = PrototypeEffectTarget.ActionTargetEnemy
+                            }
+                        }).Concat(operations).ToArray(),
+                        PendingDiscardEvents: [],
+                        PendingSlyCardInstanceIds: [],
+                        CompletionEvents: completionEvents ?? [],
+                        CardPlaySeries: cardPlaySeries,
+                        MoveSourceCardOnCompletion: moveSourceCardOnCompletion,
+                        RemoveSourceCardOnCompletion: removeSourceCardOnCompletion,
+                        SourceCardAlreadyMoved: sourceCardAlreadyMoved,
+                        EventDispatchContinuation: eventDispatchContinuation?.Fork());
+                    return (player, MakeControlledRandomTargetChoice(
+                        combat, "effect_random_enemy", liveEnemies,
+                        suspended));
+                }
                 targetEnemyId = liveEnemies[
                     PrototypeRng.NextInt(
                         rng,
@@ -4675,6 +4996,112 @@ public sealed partial class PrototypeGameEngine
                     targetEnemyId))
             {
                 continue;
+            }
+
+            // Source TakeRandom/GetDistinctForCombat shuffles its entire
+            // eligible pool, including entries beyond the eventual prefix.
+            // Stop before the first swap, preserving the preceding hooks.
+            if (ControlledChanceGuardV111.Active)
+            {
+                var continuation = new PrototypeChoiceResolutionContinuationState(
+                    SourceCardInstanceId: sourceCardInstanceId,
+                    SourceCardDestination: sourceCardDestination,
+                    Operations: operations.ToArray(),
+                    PendingDiscardEvents: [],
+                    PendingSlyCardInstanceIds: [],
+                    CompletionEvents: completionEvents ?? [],
+                    CardPlaySeries: cardPlaySeries,
+                    MoveSourceCardOnCompletion: moveSourceCardOnCompletion,
+                    RemoveSourceCardOnCompletion: removeSourceCardOnCompletion,
+                    SourceCardAlreadyMoved: sourceCardAlreadyMoved,
+                    EventDispatchContinuation: eventDispatchContinuation?.Fork());
+                if (TryMakeControlledPoolShuffleChoice(
+                    combat, operation, sourceCardInstanceId,
+                    continuation, out var suspended))
+                    return (player, suspended);
+            }
+
+            // Draw-pile insertion has two Nature-owned stages when the card
+            // itself is random: choose its source model, then its insertion
+            // position. Fixed-card insertion needs only the position stage.
+            if (ControlledChanceGuardV111.Active &&
+                operation.Amount > 0 &&
+                operation.Kind is (
+                    PrototypeCombatEffectKind.CreateGeneratedCardsAtRandomDrawPositions
+                    or PrototypeCombatEffectKind.CreateRandomFreeAttacksInDrawPile))
+            {
+                var tail = (operation.Amount > 1
+                        ? new[] { operation with { Amount = operation.Amount - 1 } }
+                        : Array.Empty<PrototypeQueuedOperation>())
+                    .Concat(operations).ToArray();
+                var continuation = new PrototypeChoiceResolutionContinuationState(
+                    SourceCardInstanceId: sourceCardInstanceId,
+                    SourceCardDestination: sourceCardDestination,
+                    Operations: tail,
+                    PendingDiscardEvents: [],
+                    PendingSlyCardInstanceIds: [],
+                    CompletionEvents: completionEvents ?? [],
+                    CardPlaySeries: cardPlaySeries,
+                    MoveSourceCardOnCompletion: moveSourceCardOnCompletion,
+                    RemoveSourceCardOnCompletion: removeSourceCardOnCompletion,
+                    SourceCardAlreadyMoved: sourceCardAlreadyMoved,
+                    EventDispatchContinuation: eventDispatchContinuation?.Fork());
+                return (player, MakeControlledDrawInsertionChoice(
+                    combat, operation, continuation));
+            }
+
+            // Suspend before the first random hand-card selection or cost roll.
+            // The saved tail and parent continuations resume exactly once.
+            if (ControlledChanceGuardV111.Active &&
+                ControlledRandomCostCandidates(combat, operation) is
+                    { Length: > 0 } eligibleCosts)
+            {
+                var continuation = new PrototypeChoiceResolutionContinuationState(
+                    SourceCardInstanceId: sourceCardInstanceId,
+                    SourceCardDestination: sourceCardDestination,
+                    Operations: operations.ToArray(),
+                    PendingDiscardEvents: [],
+                    PendingSlyCardInstanceIds: [],
+                    CompletionEvents: completionEvents ?? [],
+                    CardPlaySeries: cardPlaySeries,
+                    MoveSourceCardOnCompletion: moveSourceCardOnCompletion,
+                    RemoveSourceCardOnCompletion: removeSourceCardOnCompletion,
+                    SourceCardAlreadyMoved: sourceCardAlreadyMoved,
+                    EventDispatchContinuation: eventDispatchContinuation?.Fork());
+                return (player, MakeControlledRandomCostChoice(
+                    combat, operation, eligibleCosts, continuation));
+            }
+
+            // The first truly random generated card in this operation is
+            // an in-flight Nature boundary. Earlier queue operations and
+            // combat hooks are already reflected in `combat`; only the
+            // remaining operations are saved for later continuation.
+            if (ControlledChanceGuardV111.Active &&
+                operation.Amount > 0 &&
+                ControlledGeneratedCardPool(operation) is { } generationPool)
+            {
+                if (generationPool.Length == 0)
+                    throw new NotSupportedException(
+                        "UNSUPPORTED_CONTROLLED_CHANCE site=combat.generated_card " +
+                        "operation=choose_index empty_eligible_pool");
+                var tail = (operation.Amount > 1
+                        ? new[] { operation with { Amount = operation.Amount - 1 } }
+                        : Array.Empty<PrototypeQueuedOperation>())
+                    .Concat(operations).ToArray();
+                var continuation = new PrototypeChoiceResolutionContinuationState(
+                    SourceCardInstanceId: sourceCardInstanceId,
+                    SourceCardDestination: sourceCardDestination,
+                    Operations: tail,
+                    PendingDiscardEvents: [],
+                    PendingSlyCardInstanceIds: [],
+                    CompletionEvents: completionEvents ?? [],
+                    CardPlaySeries: cardPlaySeries,
+                    MoveSourceCardOnCompletion: moveSourceCardOnCompletion,
+                    RemoveSourceCardOnCompletion: removeSourceCardOnCompletion,
+                    SourceCardAlreadyMoved: sourceCardAlreadyMoved,
+                    EventDispatchContinuation: eventDispatchContinuation?.Fork());
+                return (player, MakeControlledGeneratedCardChoice(
+                    combat, operation, generationPool, continuation));
             }
 
             NativeEngineEventJournalV111.Record(
@@ -6666,13 +7093,11 @@ public sealed partial class PrototypeGameEngine
                             && discard.Count > 0)
                         {
                             var shuffled =
-                                discard.ToArray();
-                            PrototypeRng.Shuffle(
-                                rng,
-                                "combat",
-                                shuffled);
-                            draw.AddRange(ApplyPerfectFitShuffleOrder(
-                                combat, shuffled));
+                                NativeShuffleStepReplayV111.ShuffleRecycle(
+                                    discard.ToArray(), rng);
+                            draw.AddRange(NativeShuffleStepReplayV111.CheckPostHook(
+                                ApplyPerfectFitShuffleOrder(
+                                    combat, shuffled)));
                             discard.Clear();
                             combat = ApplyRelicAfterShuffleCards(combat with
                             {
@@ -11681,6 +12106,31 @@ public sealed partial class PrototypeGameEngine
                 continue;
             }
 
+            if (ControlledChanceGuardV111.Active)
+            {
+                var slyDefinition = PrototypeContent.Card(
+                    RequireCombatCard(combat, slyCardId).CardId);
+                if (slyDefinition.Target == PrototypeCardTarget.Enemy)
+                {
+                    var eligible = combat.Enemies
+                        .Where(enemy => enemy.Hp > 0 && !enemy.Escaped)
+                        .Select(enemy => enemy.InstanceId).ToArray();
+                    if (eligible.Length > 0)
+                    {
+                        var remaining = continuation with
+                        {
+                            PendingDiscardEvents = [],
+                            PendingSlyCardInstanceIds = continuation
+                                .PendingSlyCardInstanceIds.Skip(slyIndex + 1)
+                                .ToArray()
+                        };
+                        return (player, MakeControlledRandomTargetChoice(
+                            combat, "sly_auto_play", eligible,
+                            remaining, slyCardId));
+                    }
+                }
+            }
+
             var autoPlayed = AutoPlaySlyCard(
                 player,
                 combat,
@@ -11850,11 +12300,137 @@ public sealed partial class PrototypeGameEngine
                     parent)
             };
 
+    private static CombatState MakeControlledRandomTargetChoice(
+        CombatState combat, string kind, int[] eligible,
+        PrototypeChoiceResolutionContinuationState continuation,
+        long? slyCardInstanceId = null)
+    {
+        if (!ControlledChanceGuardV111.Active ||
+            eligible.Length == 0 || eligible.Distinct().Count() != eligible.Length ||
+            combat.PendingChoice is not null)
+            throw new InvalidOperationException(
+                "Controlled random target suspension requires a unique live support.");
+        return combat with
+        {
+            PendingChoice = new PendingCombatChoiceState(
+                ChoiceId: "controlled_random_target",
+                SourceCardInstanceId: continuation.SourceCardInstanceId,
+                SourceCardDestination: continuation.SourceCardDestination,
+                Selection: new PrototypeCardSelectionSpec(
+                    PrototypeCardZone.Hand, 0, 0,
+                    PrototypeCardSelectionResolutionKind.MoveToDiscard),
+                CandidateCardInstanceIds: [],
+                Continuation: [],
+                CompletionEvents: [],
+                OuterChoiceContinuation: continuation.Fork(),
+                ControlledTarget: new PrototypeControlledTargetChoiceV111(
+                    kind, (int[])eligible.Clone(), slyCardInstanceId))
+        };
+    }
+
+    /// <summary>
+    /// Resume from an effect/Sly target choice within the live combat engine.
+    /// The already-applied card/discard/event effects are preserved. The
+    /// selected target is injected into the saved first operation or Sly
+    /// autoplay; then the original queued continuation is resumed.
+    /// </summary>
+    internal static RunState ResumeControlledRandomTarget(
+        RunState state, int selectedIndex)
+    {
+        if (!ControlledChanceGuardV111.Active)
+            throw new InvalidOperationException(
+                "Controlled targeting requires the RNG guard.");
+        var world = RequireWorld(state);
+        var combat = world.Combat ??
+            throw new InvalidOperationException("No combat for target choice.");
+        var pending = combat.PendingChoice ??
+            throw new InvalidOperationException("Missing target choice.");
+        if (pending.ChoiceId != "controlled_random_target" ||
+            pending.ControlledTarget is not { } target ||
+            pending.OuterChoiceContinuation is not { } continuation)
+            throw new InvalidOperationException(
+                "The pending combat choice belongs to the player.");
+        var eligible = target.EligibleEnemyInstanceIds;
+        if (selectedIndex < 0 || selectedIndex >= eligible.Length)
+            throw new ArgumentOutOfRangeException(nameof(selectedIndex));
+        var currentEligible = combat.Enemies
+            .Where(e => e.Hp > 0 && (target.Kind != "sly_auto_play" || !e.Escaped))
+            .Select(e => e.InstanceId).ToArray();
+        if (!currentEligible.SequenceEqual(eligible))
+            throw new InvalidDataException(
+                "Saved target support disagrees with current live enemies.");
+
+        combat = combat with { PendingChoice = null };
+        (PlayerState Player, CombatState Combat) resolved;
+        if (target.Kind == "effect_random_enemy")
+        {
+            if (continuation.Operations.Length == 0)
+                throw new InvalidDataException("Missing suspended target operation.");
+            var fixedOperation = continuation.Operations[0] with
+            {
+                TargetEnemyId = eligible[selectedIndex],
+                TargetMode = PrototypeEffectTarget.ActionTargetEnemy
+            };
+            resolved = ResumeChoiceResolutionContinuation(
+                state.Player, combat, state.Rng, continuation with
+                {
+                    Operations = (new[] { fixedOperation })
+                        .Concat(continuation.Operations.Skip(1)).ToArray()
+                });
+        }
+        else if (target.Kind == "sly_auto_play")
+        {
+            if (target.SlyCardInstanceId is not { } cardId)
+                throw new InvalidDataException("Sly choice lost its source card.");
+            resolved = AutoPlaySlyCard(
+                state.Player, combat, cardId, state.Rng, selectedIndex);
+            if (resolved.Combat.PendingChoice is not null)
+                resolved = (resolved.Player, AttachOuterChoiceContinuation(
+                    resolved.Combat, continuation));
+            else
+                resolved = ResumeChoiceResolutionContinuation(
+                    resolved.Player, resolved.Combat, state.Rng, continuation);
+        }
+        else
+            throw new InvalidDataException("Unknown controlled target kind.");
+
+        var result = state with
+        {
+            Player = resolved.Player,
+            World = world with { Combat = resolved.Combat }
+        };
+        if (resolved.Combat.PendingChoice is null &&
+            resolved.Combat.AutomaticPipelineContinuation is { } automatic)
+        {
+            result = result with
+            {
+                World = result.World! with
+                {
+                    Combat = resolved.Combat with
+                    {
+                        AutomaticPipelineContinuation = null
+                    }
+                }
+            };
+            result = automatic.OpeningStage is { } openingStage
+                ? ResumeOpeningCombat(result, openingStage)
+                : ResumeAutomaticPipeline(result,
+                    automatic.NextStepIndex,
+                    automatic.PendingPostDispatchEventKind);
+        }
+        if (result.Phase == RunPhase.Combat &&
+            result.World?.Combat is { } live &&
+            AllEnemiesDefeated(live))
+            return EnterCombatReward(result);
+        return result;
+    }
+
     private static (PlayerState Player, CombatState Combat) AutoPlaySlyCard(
         PlayerState player,
         CombatState combat,
         long cardInstanceId,
-        RngBundle rng)
+        RngBundle rng,
+        int? controlledSelectedIndex = null)
     {
         if (!combat.DiscardPile.Contains(cardInstanceId))
         {
@@ -11892,8 +12468,16 @@ public sealed partial class PrototypeGameEngine
                 // intercepted earlier by the end-of-combat guard.
                 return (player, combat);
             }
-            var selectedIndex = PrototypeRng.NextInt(
-                rng, "combat", eligible.Length);
+            if (ControlledChanceGuardV111.Active &&
+                controlledSelectedIndex is null)
+                throw new NotSupportedException(
+                    "UNSUPPORTED_CONTROLLED_CHANCE site=combat.sly_autoplay.target " +
+                    "operation=choose_index requires a saved target continuation.");
+            var selectedIndex = controlledSelectedIndex ??
+                PrototypeRng.NextInt(rng, "combat", eligible.Length);
+            if (selectedIndex < 0 || selectedIndex >= eligible.Length)
+                throw new InvalidOperationException(
+                    "Selected Sly enemy index is outside current support.");
             autoPlayTarget = eligible[selectedIndex].InstanceId;
             combat = combat with
             {
@@ -12079,6 +12663,47 @@ public sealed partial class PrototypeGameEngine
         {
             throw new InvalidOperationException(
                 "Card-selection source and destination zones coincide.");
+        }
+
+        // Source card-selection movement can alter the hidden draw pile
+        // without any RNG call. Commit the SAME source-visible movement to
+        // the provider before mutating physical zones. In particular,
+        // MoveToDrawTop appends to the engine's bottom-first array: each
+        // selected card becomes a new top-first known semantic slot.
+        if (combat.SemanticDeck is { } semantic &&
+            (selection.SourceZone == PrototypeCardZone.DrawPile ||
+             destinationZone == PrototypeCardZone.DrawPile))
+        {
+            SemanticDeckEngineV111.Validate(semantic);
+            if (semantic.Pending is not null ||
+                !SemanticDeckEngineV111.AllCardInstanceIds(semantic)
+                    .Order().SequenceEqual(combat.DrawPile.Order()))
+                throw new InvalidDataException(
+                    "Semantic card-selection source has stale hidden pile state.");
+            if (selection.RemoveUnselectedFromSource &&
+                selection.SourceZone == PrototypeCardZone.DrawPile)
+                throw new NotSupportedException(
+                    "UNSUPPORTED_SEMANTIC_DECK site=combat.card_selection " +
+                    "operation=remove_unselected_hidden_draw_cards");
+
+            if (selection.SourceZone == PrototypeCardZone.DrawPile)
+            {
+                // A player-targeted physical removal is valid only once
+                // its old position has been established by an earlier
+                // peek/scry/reveal. Unknown-position removals need a
+                // separate stochastic position continuation.
+                foreach (var cardId in selected)
+                    semantic = SemanticDeckEngineV111.RemoveKnown(
+                        semantic, cardId);
+            }
+            if (selection.Resolution ==
+                PrototypeCardSelectionResolutionKind.MoveToDrawTop)
+            {
+                foreach (var cardId in selected)
+                    semantic = SemanticDeckEngineV111.PlaceTop(
+                        semantic, cardId);
+            }
+            combat = combat with { SemanticDeck = semantic };
         }
 
         var unselected = source
@@ -13193,7 +13818,10 @@ public sealed partial class PrototypeGameEngine
         CombatState Combat,
         long[] DrawnCardInstanceIds,
         int RemainingCount = 0,
-        bool ShuffleSelectionPending = false);
+        bool ShuffleSelectionPending = false,
+        bool ControlledRecyclePending = false,
+        bool ControlledDrawCostPending = false,
+        bool ControlledSemanticDrawPending = false);
 
     private static PrototypeDrawCardsResult DrawCards(
         PlayerState player,
@@ -13201,7 +13829,10 @@ public sealed partial class PrototypeGameEngine
         int count,
         RngBundle rng,
         bool fromHandDraw,
-        int eventDepth = 0)
+        int eventDepth = 0,
+        bool controlledRecycleSuspension = false,
+        bool controlledDrawCostSuspension = false,
+        bool controlledSemanticDrawSuspension = false)
     {
         const int maxHandSize = 10;
         var drawnCardInstanceIds = new List<long>();
@@ -13236,38 +13867,125 @@ public sealed partial class PrototypeGameEngine
                     break;
                 }
 
-                var recycled = discard.ToArray();
-                discard.Clear();
-                PrototypeRng.Shuffle(rng, "combat", recycled);
-                draw.AddRange(ApplyPerfectFitShuffleOrder(
-                    combat, recycled));
-                combat = ApplyRelicAfterShuffleCards(combat with
+                if (combat.SemanticDeck is { } deferred)
                 {
-                    DrawPile = draw.ToArray(), DiscardPile = discard.ToArray()
-                }, rng);
-                draw = combat.DrawPile.ToList();
-                var stratagem = combat.PlayerPowers.Sum(power =>
-                    power.PowerId == "proto.power.stratagem"
-                        ? Math.Max(0, power.Stacks) : 0);
-                if (stratagem > 0 && combat.Hand.Length < maxHandSize)
-                {
-                    // Persist the recycled draw pile before prompting.
-                    // The suspended draw resumes after this choice.
+                    if (!ControlledChanceGuardV111.Active ||
+                        !controlledSemanticDrawSuspension)
+                        throw new NotSupportedException(
+                            "UNSUPPORTED_SEMANTIC_DECK site=combat.draw.recycle " +
+                            "operation=missing_semantic_continuation");
+                    if (combat.PlayerPowers.Any(power =>
+                        power.PowerId == "proto.power.stratagem" &&
+                        power.Stacks > 0))
+                        throw new NotSupportedException(
+                            "UNSUPPORTED_SEMANTIC_DECK site=combat.draw.recycle " +
+                            "operation=stratagem_player_selection");
+                    // In native mode AfterShuffleGeneratedCardId creates a
+                    // new card and inserts it at a random index. That needs
+                    // its own two-stage semantic continuation; reject
+                    // before consuming the recycled pile or changing RNG.
+                    if (combat.RelicStates.Where(relic => !relic.IsMelted)
+                        .Any(relic => PrototypeContent.Relic(relic.RelicId)
+                            .AfterShuffleGeneratedCardId is not null))
+                        throw new NotSupportedException(
+                            "UNSUPPORTED_SEMANTIC_DECK site=combat.draw.recycle " +
+                            "operation=after_shuffle_random_insertion");
+
+                    var perfectFit = discard.Where(id =>
+                        RequireCombatCard(combat, id).Enchantment?.Kind
+                            == PrototypeCardEnchantmentKind.PerfectFit)
+                        .ToArray();
+                    // Ordinary source-time shuffle plus deterministic
+                    // Perfect Fit top-priority hook. Nature commits only
+                    // constraints now; individual card identities remain
+                    // unresolved until their actual draw/reveal.
+                    deferred = SemanticDeckEngineV111.RecycleNature(
+                        deferred, discard, perfectFit);
+                    draw.AddRange(discard);
+                    discard.Clear();
                     combat = combat with
                     {
+                        SemanticDeck = deferred,
                         DrawPile = draw.ToArray(),
-                        DiscardPile = discard.ToArray()
+                        DiscardPile = []
                     };
-                    return new PrototypeDrawCardsResult(
-                        player, combat, drawnCardInstanceIds.ToArray(),
-                        RemainingCount: count - drawNumber,
-                        ShuffleSelectionPending: true);
+                }
+                else
+                {
+                    if (ControlledChanceGuardV111.Active &&
+                        !controlledRecycleSuspension)
+                        throw new NotSupportedException(
+                            "UNSUPPORTED_CONTROLLED_CHANCE site=combat.draw.recycle " +
+                            "operation=shuffle_recycle outside resumable hand-draw stage");
+                    if (ControlledChanceGuardV111.Active)
+                        return new PrototypeDrawCardsResult(
+                            player, combat, drawnCardInstanceIds.ToArray(),
+                            RemainingCount: count - drawNumber,
+                            ControlledRecyclePending: true);
+
+                    var recycled = NativeShuffleStepReplayV111.ShuffleRecycle(
+                        discard.ToArray(), rng);
+                    discard.Clear();
+                    draw.AddRange(NativeShuffleStepReplayV111.CheckPostHook(
+                        ApplyPerfectFitShuffleOrder(
+                            combat, recycled)));
+                    combat = ApplyRelicAfterShuffleCards(combat with
+                    {
+                        DrawPile = draw.ToArray(), DiscardPile = discard.ToArray()
+                    }, rng);
+                    draw = combat.DrawPile.ToList();
+                    var stratagem = combat.PlayerPowers.Sum(power =>
+                        power.PowerId == "proto.power.stratagem"
+                            ? Math.Max(0, power.Stacks) : 0);
+                    if (stratagem > 0 && combat.Hand.Length < maxHandSize)
+                    {
+                        // Persist the recycled draw pile before prompting.
+                        // The suspended draw resumes after this choice.
+                        combat = combat with
+                        {
+                            DrawPile = draw.ToArray(),
+                            DiscardPile = discard.ToArray()
+                        };
+                        return new PrototypeDrawCardsResult(
+                            player, combat, drawnCardInstanceIds.ToArray(),
+                            RemainingCount: count - drawNumber,
+                            ShuffleSelectionPending: true);
+                    }
                 }
             }
 
-            var index = draw.Count - 1;
-            var cardInstanceId = draw[index];
-            draw.RemoveAt(index);
+            long cardInstanceId;
+            if (combat.SemanticDeck is { } semantic)
+            {
+                if (!ControlledChanceGuardV111.Active ||
+                    !controlledSemanticDrawSuspension)
+                    throw new NotSupportedException(
+                        "UNSUPPORTED_SEMANTIC_DECK site=combat.draw " +
+                        "operation=missing_semantic_continuation");
+                var members = SemanticDeckEngineV111.AllCardInstanceIds(semantic);
+                if (!members.Order().SequenceEqual(draw.Order()))
+                    throw new InvalidDataException(
+                        "Semantic draw-pile state diverged from physical instances.");
+                semantic = SemanticDeckEngineV111.Require(semantic, 0, "draw");
+                if (semantic.Pending is not null)
+                    return new PrototypeDrawCardsResult(
+                        player, combat with { SemanticDeck = semantic },
+                        drawnCardInstanceIds.ToArray(),
+                        RemainingCount: count - drawNumber,
+                        ControlledSemanticDrawPending: true);
+                (semantic, cardInstanceId) =
+                    SemanticDeckEngineV111.DrawKnown(semantic);
+                if (!draw.Remove(cardInstanceId))
+                    throw new InvalidDataException(
+                        "Revealed card instance is absent from the draw pile.");
+                combat = combat with { SemanticDeck = semantic };
+            }
+            else
+            {
+                var index = draw.Count - 1;
+                cardInstanceId = draw[index];
+                draw.RemoveAt(index);
+            }
 
             combat = combat with
             {
@@ -13287,10 +14005,42 @@ public sealed partial class PrototypeGameEngine
                     .Max();
             var cardDefinition =
                 PrototypeContent.Card(card.CardId);
-            if (randomizedCostUpperBound > 0
-                && cardDefinition.Cost.Kind
-                    == PrototypeCardCostKind.Fixed
-                && cardDefinition.Cost.Amount >= 0)
+            var needsRelicCost = randomizedCostUpperBound > 0
+                && cardDefinition.Cost.Kind == PrototypeCardCostKind.Fixed
+                && cardDefinition.Cost.Amount >= 0;
+            var hasSlither = card.Enchantment is
+                { Kind: PrototypeCardEnchantmentKind.Slither };
+            if (combat.SemanticDeck is not null && (needsRelicCost || hasSlither))
+            {
+                if (!controlledSemanticDrawSuspension)
+                    throw new NotSupportedException(
+                        "UNSUPPORTED_SEMANTIC_DECK site=combat.draw.cost " +
+                        "operation=missing_semantic_cost_continuation");
+                combat = MakeControlledDrawCostChoice(
+                    combat, cardInstanceId, count - drawNumber - 1,
+                    fromHandDraw, eventDepth, needsRelicCost
+                        ? randomizedCostUpperBound : 0, hasSlither);
+                return new PrototypeDrawCardsResult(
+                    player, combat, drawnCardInstanceIds.ToArray(),
+                    RemainingCount: count - drawNumber - 1,
+                    ControlledDrawCostPending: true);
+            }
+            if (ControlledChanceGuardV111.Active && (needsRelicCost || hasSlither))
+            {
+                if (!controlledDrawCostSuspension)
+                    throw new NotSupportedException(
+                        "UNSUPPORTED_CONTROLLED_CHANCE site=combat.draw_cost." +
+                        "effect_draw operation=draw_card_cost");
+                combat = MakeControlledDrawCostChoice(
+                    combat, cardInstanceId, count - drawNumber - 1,
+                    fromHandDraw, eventDepth, needsRelicCost
+                        ? randomizedCostUpperBound : 0, hasSlither);
+                return new PrototypeDrawCardsResult(
+                    player, combat, drawnCardInstanceIds.ToArray(),
+                    RemainingCount: count - drawNumber - 1,
+                    ControlledDrawCostPending: true);
+            }
+            if (needsRelicCost)
             {
                 combat = SetCardTemporaryEnergyCost(
                     combat,
@@ -13332,6 +14082,12 @@ public sealed partial class PrototypeGameEngine
                 eventDepth);
             player = dispatched.Player;
             combat = dispatched.Combat;
+            if (combat.SemanticDeck is not null &&
+                (combat.PendingChoice is not null ||
+                 combat.PendingKnowledgeDemonChoice is not null))
+                throw new NotSupportedException(
+                    "UNSUPPORTED_SEMANTIC_DECK site=combat.draw.CardDrawn " +
+                    "operation=nested_choice_continuation");
         }
 
         return new PrototypeDrawCardsResult(

@@ -40,6 +40,196 @@ class State:
         return self.session.call("release_many", state_handles=[self.handle])["released"]
 
 
+@dataclass(frozen=True)
+class NatureBoundary:
+    """Isolated source-shaped Nature choice, NOT a playable game State."""
+    session: "Session"
+    handle: str
+    kind: str
+    fingerprint: str
+    pending: dict | None
+    complete: bool
+
+    @classmethod
+    def from_wire(cls, session, payload):
+        return cls(session, payload["natureHandle"], payload["kind"],
+                   payload["fingerprint"], payload["pending"], payload["complete"])
+
+    def resolve(self, selected_index: int):
+        """Create a child by supplying one legal chance index."""
+        result = self.session.call("nature_resolve", nature_handle=self.handle,
+                                   fingerprint=self.fingerprint,
+                                   selected_index=selected_index)
+        return NatureBoundary.from_wire(self.session, result)
+
+    def fork(self):
+        result = self.session.call("nature_fork", nature_handle=self.handle)
+        return NatureBoundary.from_wire(self.session, result)
+
+    def advance(self):
+        """Advance a *completed HP* boundary to committed enemy intents."""
+        result = self.session.call("nature_advance", nature_handle=self.handle)
+        return NatureBoundary.from_wire(self.session, result)
+
+    def inspect(self):
+        """Return source-site chance support and deterministic replay metadata.
+
+        This is Nature-facing information, never a fair player observation
+        or a playable combat handle. Reference probabilities are unverified.
+        """
+        if self.session.capabilities.get("natureEventMetadataSchemaId") != (
+                "sts2-v111-nature-event-metadata-v1"):
+            raise EmulatorError("Emulator does not support Nature event metadata")
+        return self.session.call("nature_inspect", nature_handle=self.handle)
+
+    def save_snapshot(self):
+        """Return an opaque Nature snapshot; distinct from RunState snapshot."""
+        return self.session.call("nature_save", nature_handle=self.handle)["snapshot"]
+
+    def release(self):
+        return self.session.release_nature_many([self])
+
+
+
+
+
+@dataclass(frozen=True)
+class ControlledCombat:
+    """Opt-in playable combat fixture, with source-controlled opening shuffle.
+
+    Only deterministic player actions are currently executable. Unmigrated
+    chance sites fail explicitly; this is not full Nature gameplay support.
+    """
+    session: "Session"
+    handle: str
+    fingerprint: str
+
+    @classmethod
+    def from_wire(cls, session, payload):
+        return cls(session, payload["controlledHandle"], payload["fingerprint"])
+
+    def trace(self):
+        return self.session.call("controlled_trace", controlled_handle=self.handle)
+
+    def resolve(self, selected_index: int):
+        return ControlledCombat.from_wire(self.session,
+            self.session.call("controlled_resolve", controlled_handle=self.handle,
+                              fingerprint=self.fingerprint,
+                              selected_index=selected_index))
+
+    def observe(self):
+        result = self.session.call("controlled_observe",
+                                   controlled_handle=self.handle,
+                                   policy_id="prototype-fair-v0")
+        return json.loads(result["payloadJson"])
+
+    def actions(self):
+        return self.session.call("controlled_legal_actions",
+                                 controlled_handle=self.handle)["actions"]
+
+    def step(self, action_id: str):
+        return ControlledCombat.from_wire(self.session,
+            self.session.call("controlled_step",
+                              controlled_handle=self.handle, action_id=action_id))
+
+    def fork(self):
+        return ControlledCombat.from_wire(self.session,
+            self.session.call("controlled_fork", controlled_handle=self.handle))
+
+    def save_snapshot(self):
+        """Privileged hidden snapshot; NEVER a fair player observation."""
+        return self.session.call("controlled_save",
+                                 controlled_handle=self.handle)["snapshot"]
+
+    def release(self):
+        return self.session.release_controlled_many([self])
+
+
+@dataclass(frozen=True)
+class SemanticCombat:
+    """Versioned two-site Nature session.
+
+    This first P0 bridge is seeded from an already completed source
+    controlled opening. Source-committed opening cards keep their hidden
+    exact order; only fresh intent/draw events reach Nature. The fair
+    policy observation is returned separately from Nature event support.
+    """
+    session: "Session"
+    handle: str
+    fingerprint: str
+    boundary: str
+    pending: dict | None
+    terminal: bool
+    outcome: str | None
+    exit_hp: int | None
+
+    @classmethod
+    def from_wire(cls, session, payload):
+        data = payload["result"]
+        return cls(
+            session, data["semanticHandle"], data["fingerprint"],
+            data["boundary"], data["pending"], data["terminal"],
+            data["outcome"], data["exitHp"])
+
+    def status(self):
+        return self.session.call(
+            "semantic_status", semantic_handle=self.handle)["result"]
+
+    def observe(self):
+        """Fair player-only observation: never a privileged Nature event."""
+        result = self.session.call(
+            "semantic_observe", semantic_handle=self.handle,
+            policy_id="prototype-fair-v0")
+        return json.loads(result["payloadJson"])
+
+    def actions(self):
+        result = self.session.call(
+            "semantic_observe", semantic_handle=self.handle,
+            policy_id="prototype-fair-v0")
+        return result["actions"]
+
+    def step(self, action_id: str):
+        return SemanticCombat.from_wire(
+            self.session, self.session.call(
+                "semantic_step", semantic_handle=self.handle,
+                fingerprint=self.fingerprint, action_id=action_id))
+
+    def resolve(self, selected_index: int):
+        if not self.pending or self.pending["kind"] not in (
+                "enemy_intent", "draw_card"):
+            raise EmulatorError("Expected a two-site semantic Nature event")
+        return SemanticCombat.from_wire(
+            self.session, self.session.call(
+                "semantic_resolve", semantic_handle=self.handle,
+                fingerprint=self.fingerprint, selected_index=selected_index))
+
+    def resolve_intent(self, intent_id: str):
+        """Choose a filtered, weighted semantic enemy move by stable ID.
+
+        The declared raw weights are source-shaped and remain UNVERIFIED
+        as calibrated reference probabilities.
+        """
+        if not self.pending or self.pending["kind"] != "enemy_intent":
+            raise EmulatorError("Expected an enemy_intent Nature event")
+        return SemanticCombat.from_wire(
+            self.session, self.session.call(
+                "semantic_resolve_intent", semantic_handle=self.handle,
+                fingerprint=self.fingerprint, intent_id=intent_id))
+
+    def fork(self):
+        return SemanticCombat.from_wire(
+            self.session, self.session.call(
+                "semantic_fork", semantic_handle=self.handle))
+
+    def save_snapshot(self):
+        """Privileged exact snapshot, never valid as a fair observation."""
+        return self.session.call(
+            "semantic_save", semantic_handle=self.handle)["snapshot"]
+
+    def release(self):
+        return self.session.release_semantic_many([self])
+
+
 class Session:
     def __init__(self, command, *, cwd=None):
         if isinstance(command, str):
@@ -111,6 +301,122 @@ class Session:
             payload.append({"state_handle": state.handle, "action_id": action_id})
         result = self.call("step_batch", steps=payload, parallelism=parallelism)
         return [State(self, item["child"]) for item in result["children"]]
+
+    def _require_nature_capability(self):
+        if self.capabilities.get("natureBoundarySchemaId") != (
+                "sts2-v111-nature-isolated-boundary-v1"):
+            raise EmulatorError("Emulator does not expose the opt-in Nature boundary protocol")
+
+    def begin_nature(self, seed: str, *, kind: str,
+                     act: int, encounter_id: str, native_entry: str,
+                     total_floor: int, map_column: int = 3,
+                     map_row: int = 5, ascension: int = 0):
+        """Create an isolated test fixture; no full-run chance stepping."""
+        self._require_nature_capability()
+        if kind not in ("initial_hp", "intents"):
+            raise ValueError("Supported Nature kinds: initial_hp, intents")
+        result = self.call("nature_begin", kind=kind, seed=seed, act=act,
+                           encounter_id=encounter_id, native_entry=native_entry,
+                           total_floor=total_floor, map_column=map_column,
+                           map_row=map_row, ascension=ascension)
+        return NatureBoundary.from_wire(self, result)
+
+    def begin_controlled_combat(self, completed_intents: NatureBoundary,
+                                *, seed: str):
+        """Join a completed controlled HP→intent prefix with a playable fixture."""
+        self._require_nature_capability()
+        if self.capabilities.get("controlledChanceSchemaId") != (
+                "sts2-v111-controlled-playable-fixture-v1"):
+            raise EmulatorError("Emulator lacks playable Nature fixture capability")
+        if completed_intents.session is not self or not completed_intents.complete:
+            raise ValueError("Expected completed Nature intent from this session")
+        if completed_intents.kind != "intents":
+            raise ValueError("Controlled combat begins after intent commitments")
+        response = self.call("controlled_begin",
+                             nature_handle=completed_intents.handle, seed=seed)
+        return ControlledCombat.from_wire(self, response)
+
+    def begin_semantic_combat(self, completed_opening: ControlledCombat):
+        """P0 interoperability: the opening fixture must be fully committed.
+
+        The initial legacy shuffle is treated as an already committed
+        source order; it cannot be selected as a Nature draw event.
+        """
+        if self.capabilities.get("semanticChanceSchemaId") != (
+                "sts2-v111-semantic-playable-p0-v1"):
+            raise EmulatorError("Emulator does not expose semantic gameplay")
+        if completed_opening.session is not self:
+            raise ValueError("Opening handle belongs to another session")
+        return SemanticCombat.from_wire(self, self.call(
+            "semantic_begin", controlled_handle=completed_opening.handle))
+
+    def begin_seeded_semantic_combat(
+            self, seed: str, *, act: int, encounter_id: str,
+            native_entry: str, total_floor: int, ascension: int = 0,
+            first_monster_combat_id: int = 1,
+            map_column: int = 3, map_row: int = 5,
+            other_chance_provider_id: str | None = None,
+            fixture_draw_cost_relic_id: str | None = None,
+            replay_opening_draw_hooks: bool = False):
+        """Begin a two-site pilot without external opening chance tickets.
+
+        Setup uses source-shaped RNG streams in an isolated Hive/Glory
+        fixture. Full native route/entry parity is still unverified.
+        """
+        if self.capabilities.get("semanticSeededOpeningProvider") != (
+                "engine-owned-seeded-source-shaped-unverified-v1"):
+            raise EmulatorError("Emulator lacks seeded semantic entry")
+        if other_chance_provider_id is not None and (
+                other_chance_provider_id not in
+                self.capabilities.get("semanticOtherChanceProviders", [])):
+            raise EmulatorError("Unsupported engine-owned chance provider")
+        return SemanticCombat.from_wire(self, self.call(
+            "semantic_begin_seeded", seed=seed, act=act,
+            encounter_id=encounter_id, native_entry=native_entry,
+            total_floor=total_floor, ascension=ascension,
+            first_monster_combat_id=first_monster_combat_id,
+            map_column=map_column, map_row=map_row,
+            other_chance_provider_id=other_chance_provider_id,
+            fixture_draw_cost_relic_id=fixture_draw_cost_relic_id,
+            replay_opening_draw_hooks=replay_opening_draw_hooks))
+
+    def load_semantic_snapshot(self, snapshot: str):
+        if self.capabilities.get("semanticChanceSchemaId") != (
+                "sts2-v111-semantic-playable-p0-v1"):
+            raise EmulatorError("Emulator does not expose semantic gameplay")
+        return SemanticCombat.from_wire(self, self.call(
+            "semantic_load", snapshot=snapshot))
+
+    def release_semantic_many(self, states):
+        states = list(states)
+        if any(s.session is not self for s in states):
+            raise ValueError("Semantic handle belongs to another session")
+        return self.call("semantic_release_many",
+                         semantic_handles=[s.handle for s in states])["released"]
+
+    def load_controlled_snapshot(self, snapshot: str):
+        return ControlledCombat.from_wire(self,
+            self.call("controlled_load", snapshot=snapshot))
+
+    def release_controlled_many(self, states):
+        states = list(states)
+        if any(x.session is not self for x in states):
+            raise ValueError("Controlled handle belongs to another session")
+        return self.call("controlled_release_many",
+                         controlled_handles=[x.handle for x in states])["released"]
+
+    def load_nature_snapshot(self, snapshot: str, *, kind: str):
+        self._require_nature_capability()
+        result = self.call("nature_load", kind=kind, snapshot=snapshot)
+        return NatureBoundary.from_wire(self, result)
+
+    def release_nature_many(self, boundaries):
+        self._require_nature_capability()
+        states = list(boundaries)
+        if any(state.session is not self for state in states):
+            raise ValueError("Nature handle belongs to another session")
+        return self.call("nature_release_many",
+                         nature_handles=[state.handle for state in states])["released"]
 
     def coverage(self):
         return self.call("v111_coverage")["coverage"]

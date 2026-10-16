@@ -25,6 +25,12 @@ public sealed record NativeCombatRngV111(
 /// MonsterModel.RollMove uses run.monster_ai; these are different from the
 /// encounter's local formation RNG and each MonsterModel's own Rng.
 /// </summary>
+public sealed record NativeInitialHpAuditV111(
+    CombatState Combat, RandomIndexDecisionV111[] Choices, string ProviderMode);
+
+public sealed record NativeIntentAuditV111(
+    CombatState Combat, RandomIndexDecisionV111[] Choices, string ProviderMode);
+
 public static class NativeCombatRngEntryV111
 {
     /// <summary>
@@ -40,6 +46,12 @@ public static class NativeCombatRngEntryV111
     /// AfterAddedToRoom HP hooks and later scaling are separate boundaries.
     /// </summary>
     public static CombatState AttachAndRollInitialHp(
+        CombatState combat,
+        NativeEncounterFormationV111 formation,
+        RngBundle nativeRunStreams) =>
+        AttachAndRollInitialHpWithAudit(combat, formation, nativeRunStreams).Combat;
+
+    public static NativeInitialHpAuditV111 AttachAndRollInitialHpWithAudit(
         CombatState combat,
         NativeEncounterFormationV111 formation,
         RngBundle nativeRunStreams)
@@ -68,6 +80,8 @@ public static class NativeCombatRngEntryV111
 
         var enemies = combat.Enemies.Select(enemy => enemy.Fork()).ToArray();
         var usedHp = new HashSet<int>();
+        var chooser = new NativeRandomIndexProviderV111();
+        var decisions = new List<RandomIndexDecisionV111>(enemies.Length);
         for (var index = 0; index < enemies.Length; index++)
         {
             var enemy = enemies[index];
@@ -84,27 +98,33 @@ public static class NativeCombatRngEntryV111
                     "Native combat RNG and existing enemy formation disagree.");
             }
             _ = NativeRngV111.ToSnapshot(context.Rng);
-            var range = PrototypeContent.Enemy(enemy.EnemyId)
-                .HpRangeAt(combat.Act, combat.Ascension);
-            var possible = Enumerable.Range(
-                    range.Min, checked(range.Max - range.Min + 1))
-                .Where(hp => !usedHp.Contains(hp))
-                .ToArray();
-            var pool = possible.Length > 0
-                ? possible
-                : Enumerable.Range(
-                    range.Min, checked(range.Max - range.Min + 1)).ToArray();
-            // The native NextItem also consumes one draw for a singleton.
-            var roll = NativeRngV111.NextInt(
-                fresh.RunStreams, "run.niche", pool.Length);
-            var hp = pool[roll];
+            var pool = InitialHpPool(combat, enemy, usedHp);
+            // Native RNG must consume even singleton pools.
+            var choice = chooser.Resolve(new RandomIndexRequestV111(
+                "combat.initial_unique_hp", "run.niche",
+                "creature:" + context.CombatId, index, pool), fresh.RunStreams);
+            decisions.Add(choice);
+            var hp = choice.SelectedValue;
             enemies[index] = enemy with { Hp = hp, MaxHp = hp };
             usedHp.Add(hp);
         }
 
         var attached = combat with { Enemies = enemies, NativeRng = fresh };
         Validate(attached);
-        return attached;
+        return new NativeInitialHpAuditV111(
+            attached, decisions.ToArray(), chooser.Mode);
+    }
+
+    /// <summary>Shared source-shaped eligibility for native and controlled HP.</summary>
+    internal static int[] InitialHpPool(
+        CombatState combat, EnemyCombatState enemy, HashSet<int> usedHp)
+    {
+        var range = PrototypeContent.Enemy(enemy.EnemyId)
+            .HpRangeAt(combat.Act, combat.Ascension);
+        var all = Enumerable.Range(
+            range.Min, checked(range.Max - range.Min + 1)).ToArray();
+        var available = all.Where(hp => !usedHp.Contains(hp)).ToArray();
+        return available.Length > 0 ? available : all;
     }
 
     /// <summary>
@@ -461,6 +481,15 @@ public static class NativeCombatRngEntryV111
                 "Only a native-RNG combat can use this isolated intent API.");
         return PrototypeGameEngine.CommitEnemyIntents(
             combat, RngBundle.Empty);
+    }
+
+    public static NativeIntentAuditV111 CommitIntentsWithAudit(CombatState combat)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        if (combat.NativeRng is null)
+            throw new InvalidOperationException("Native intent audit requires attached native RNG.");
+        var result = PrototypeGameEngine.CommitEnemyIntentsWithAudit(combat, RngBundle.Empty);
+        return new NativeIntentAuditV111(result.Combat, result.Choices, "native-v111");
     }
 
     /// <summary>

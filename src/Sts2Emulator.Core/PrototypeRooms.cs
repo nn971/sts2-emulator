@@ -698,6 +698,9 @@ public sealed partial class PrototypeGameEngine
                 && world.Act <= evt.MaxAct
                 && (evt.Id != PrototypeNativeFakeMerchant.EventId
                     || PrototypeNativeFakeMerchant.IsEligible(state.Player))
+                && (evt.Id != PrototypeNativeFutureOfPotions.EventId
+                    || laterRoute
+                    && PrototypeNativeFutureOfPotions.IsEligible(state.Player))
                 && (laterRoute || evt.Weight > 0)
                 && (!evt.OncePerRun
                     || !world.EventIds.Contains(evt.Id, StringComparer.Ordinal)))
@@ -820,6 +823,15 @@ public sealed partial class PrototypeGameEngine
             };
         }
 
+        if (selected.Id == PrototypeNativeFutureOfPotions.EventId)
+        {
+            world = world with
+            {
+                Event = PrototypeNativeFutureOfPotions.RollOffers(
+                    world.Event!, state.Player, state.Rng)
+            };
+        }
+
         return state with
         {
             World = world,
@@ -895,6 +907,20 @@ public sealed partial class PrototypeGameEngine
                 PrototypeNativeEventCompletionPages.TerminalChoicePageIndex(
                     eventState.EventId))
             return [GameAction.Empty("continue_event")];
+
+        if (eventState.EventId == PrototypeNativeFutureOfPotions.EventId)
+        {
+            return (eventState.NativeFuturePotionOffers
+                    ?? Array.Empty<PrototypeFuturePotionOffer>())
+                .Where(offer =>
+                    (uint)offer.Slot < (uint)state.Player.PotionSlots.Length
+                    && state.Player.PotionSlots[offer.Slot]?.PotionId
+                        == offer.PotionId)
+                .Select(offer => GameAction.Create(
+                    PrototypeNativeFutureOfPotions.TradeAction,
+                    new TradeFuturePotionPayload(offer.Slot)))
+                .ToArray();
+        }
 
         if (eventState.EventId == PrototypeNativeGloryEvents.RoundTeaPartyId)
             return GetNativeRoundTeaPartyActions(eventState);
@@ -1034,6 +1060,9 @@ public sealed partial class PrototypeGameEngine
             }
             return CompleteRoomToMap(state);
         }
+
+        if (eventState.EventId == PrototypeNativeFutureOfPotions.EventId)
+            return StepNativeFutureOfPotions(state, action);
 
         if (eventState.PendingPotionReplacement is { } potionReplacement)
         {

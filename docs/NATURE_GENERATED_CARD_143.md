@@ -1,0 +1,25 @@
+# Nature #143: Live random generated-card continuation
+
+**Implementation branch:** `feature/nature-143-live-random-generated-cards` on the dedicated RNG/Inspector integration head.
+
+## Scope
+
+The ordinary `PrototypeGameEngine.ResolveOperations` kernel now suspends at a random generated-card draw for five source-shaped operation kinds:
+
+- `CreateRandomFreeCharacterCardInHand` (Chaos-style, free during the turn)
+- `AddRandomZeroCostCardsToHand`
+- `CreateRandomCharacterAttackCardsInHand`
+- `CreateRandomCharacterSkillCardsInHand`
+- `CreateRandomCharacterPowerCardsInHand` (including Orobic Acid)
+
+The engine saves the original effect, candidate card IDs in their *source-defined order*, the remaining generation count, remaining queued effects, and parent card/event/choice continuation. `combat.generated_card.select` exposes one finite `choose_index` ticket per selected generated card. Candidate indices are in the typed ticket; actual card model identifiers are available to Nature in the additional `pending.candidateCardIds` field. A stable pool fingerprint is part of the ticket owner, so different eligible pools cannot accidentally share event identity. The chance stream is designated `prototype.combat`, reflecting the emulator source call; native conditional law remains `UNVERIFIED`.
+
+Resumption creates exactly one card using the original generated-card constructor, preserving the requested temporary cost and upgrade. For repeated generation it creates the next chance event; after the last choice it resumes the saved effect queue and parent card/play/event hook chain. Earlier operations never reexecute. Fair `prototype-fair-v0` observation is unavailable while a generation choice is pending.
+
+## Verification and boundaries
+
+The new focused tests cover a real Orobic Acid potion through its Attack, Skill and Power generation calls; result identity, ordered support, stale/illegal indices, independent branch selection, tampered support rejection, and deterministic fifteen-worker repetition. The test injects Orobic Acid as a fixture potion into an isolated playable combat for coverage. The original starter configuration is not asserted to include the potion, and a modified fixture cannot be treated as native-provenance initial state.
+
+This slice intentionally leaves card-selection pool shuffles (`ChooseGeneratedCards`), distinct full-pool shuffles, random-generated insertion into draw piles, randomized card cost, nested death/summon hooks, native RNG parity, and terminal rollout for later stages of issue #143. Unsupported native/prototype calls fail closed.
+
+The frozen Silent gameplay branch and `docs/DESIRED_RNG_IMPLEMENTATION.md`, `docs/NATIVE_FIDELITY_INSPECTOR_PLAN.md` are unchanged.

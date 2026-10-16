@@ -381,7 +381,15 @@ public sealed record PrototypeAutomaticPipelineContinuationState(
     int NextStepIndex,
     PrototypeCombatEventKind? PendingPostDispatchEventKind = null,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
-    PrototypeOpeningCombatStage? OpeningStage = null);
+    PrototypeOpeningCombatStage? OpeningStage = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    int? ControlledDrawRemaining = null,
+    int? ControlledDrawCostRemaining = null,
+    // Separately versioned semantic Nature cursor: it tracks one ordinary
+    // DrawPlayerHand invocation after BeforeHandDraw, independent of the
+    // legacy Fisher-Yates swap and drawn-cost continuation markers.
+    int? ControlledSemanticDrawRemaining = null,
+    int? ControlledSemanticDrawRequested = null);
 
 /// <summary>
 /// A source-owned, blocking choice in the enemy-side action pipeline.
@@ -1766,6 +1774,92 @@ public sealed record PrototypeChoiceResolutionContinuationState(
     };
 }
 
+/// <summary>
+/// Internal Nature-owned random-target suspension. Eligible IDs belong to
+/// enemies, never card identities or the public player choice menu.
+/// </summary>
+public sealed record PrototypeControlledTargetChoiceV111(
+    string Kind,
+    int[] EligibleEnemyInstanceIds,
+    long? SlyCardInstanceId = null)
+{
+    public PrototypeControlledTargetChoiceV111 Fork() => this with
+    {
+        EligibleEnemyInstanceIds = (int[])EligibleEnemyInstanceIds.Clone()
+    };
+}
+
+/// <summary>
+/// Private Nature-owned card-generation choice. The ordered source pool is
+/// preserved by identity and is never part of the fair player observation.
+/// </summary>
+public sealed record PrototypeControlledGeneratedCardV111(
+    PrototypeQueuedOperation Operation,
+    string[] CandidateCardIds)
+{
+    public PrototypeControlledGeneratedCardV111 Fork() => this with
+    {
+        Operation = Operation with { },
+        CandidateCardIds = (string[])CandidateCardIds.Clone()
+    };
+}
+
+/// <summary>Nature-owned source operation suspended before draw pile insertion.
+/// Pending card models are never materialized until Nature selects a position.
+/// </summary>
+public sealed record PrototypeControlledDrawInsertionV111(
+    PrototypeQueuedOperation Operation, string Stage, string? SelectedCardId,
+    string[] CandidateCardIds, long[] EligibleDrawPile)
+{
+    public PrototypeControlledDrawInsertionV111 Fork() => this with
+    {
+        Operation = Operation with { },
+        CandidateCardIds = (string[])CandidateCardIds.Clone(),
+        EligibleDrawPile = (long[])EligibleDrawPile.Clone()
+    };
+}
+
+/// <summary>
+/// Source-ordered full-pool generation shuffle waiting on a Nature swap.
+/// The exact source eligibility, partial permutation and saved effect queue
+/// are private; only the bounded swap ticket and ordered card IDs go to Nature.
+/// </summary>
+public sealed record PrototypeControlledPoolShuffleV111(
+    PrototypeQueuedOperation Operation, string[] OriginalCardIds,
+    string[] CurrentCardIds, int NextSwapIndex, int SelectedCount)
+{
+    public PrototypeControlledPoolShuffleV111 Fork() => this with
+    {
+        Operation = Operation with { },
+        OriginalCardIds = (string[])OriginalCardIds.Clone(),
+        CurrentCardIds = (string[])CurrentCardIds.Clone()
+    };
+}
+
+/// <summary>Nature-owned hand-cost operation with an ordered per-card cursor.
+/// Saved eligibility is checked against live hand instances.</summary>
+public sealed record PrototypeControlledRandomCostV111(
+    PrototypeQueuedOperation Operation, long[] EligibleCardInstanceIds,
+    int NextCardIndex = 0)
+{
+    public PrototypeControlledRandomCostV111 Fork() => this with
+    {
+        Operation = Operation with { },
+        EligibleCardInstanceIds = (long[])EligibleCardInstanceIds.Clone()
+    };
+}
+
+/// <summary>Drawn card already moved to hand. Nature must resolve optional
+/// relic cost then Slither cost before dispatching CardDrawn exactly once.
+/// RemainingCount excludes this card and keeps its physical draw order.</summary>
+public sealed record PrototypeControlledDrawCostV111(
+    long CardInstanceId, int RemainingCount, bool FromHandDraw,
+    int EventDepth, int RelicMaxExclusive, bool HasSlither,
+    string Stage)
+{
+    public PrototypeControlledDrawCostV111 Fork() => this with { };
+}
+
 public sealed record PendingCombatChoiceState(
     string ChoiceId,
     long? SourceCardInstanceId,
@@ -1783,7 +1877,13 @@ public sealed record PendingCombatChoiceState(
     PrototypeTemporaryCardCost? SelectedCardTemporaryCost = null,
     long[]? SequentialSelectedCardInstanceIds = null,
     PrototypeEventDispatchContinuationState? EventDispatchContinuation = null,
-    PrototypeChoiceResolutionContinuationState? OuterChoiceContinuation = null)
+    PrototypeChoiceResolutionContinuationState? OuterChoiceContinuation = null,
+    PrototypeControlledTargetChoiceV111? ControlledTarget = null,
+    PrototypeControlledGeneratedCardV111? ControlledGeneration = null,
+    PrototypeControlledDrawInsertionV111? ControlledDrawInsertion = null,
+    PrototypeControlledPoolShuffleV111? ControlledPoolShuffle = null,
+    PrototypeControlledRandomCostV111? ControlledRandomCost = null,
+    PrototypeControlledDrawCostV111? ControlledDrawCost = null)
 {
     public PendingCombatChoiceState Fork() => this with
     {
@@ -1798,7 +1898,13 @@ public sealed record PendingCombatChoiceState(
                 ? null
                 : (long[])SequentialSelectedCardInstanceIds.Clone(),
         EventDispatchContinuation = EventDispatchContinuation?.Fork(),
-        OuterChoiceContinuation = OuterChoiceContinuation?.Fork()
+        OuterChoiceContinuation = OuterChoiceContinuation?.Fork(),
+        ControlledTarget = ControlledTarget?.Fork(),
+        ControlledGeneration = ControlledGeneration?.Fork(),
+        ControlledDrawInsertion = ControlledDrawInsertion?.Fork(),
+        ControlledPoolShuffle = ControlledPoolShuffle?.Fork(),
+        ControlledRandomCost = ControlledRandomCost?.Fork(),
+        ControlledDrawCost = ControlledDrawCost?.Fork()
     };
 }
 
@@ -1898,7 +2004,10 @@ public sealed record CombatState(
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     string? CurrentMapNodeId = null,
     int PotionExtraTurnsPending = 0,
-    bool IsPlayerSideActive = true)
+    bool IsPlayerSideActive = true,
+    [property: System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    SemanticDeckStateV111? SemanticDeck = null)
 {
     public CombatState Fork() => this with
     {
@@ -1908,6 +2017,7 @@ public sealed record CombatState(
         ExhaustPile = (long[])ExhaustPile.Clone(),
         Enemies = Enemies.Select(enemy => enemy.Fork()).ToArray(),
         NativeRng = NativeRng?.Fork(),
+        SemanticDeck = SemanticDeck?.Fork(),
         Cards = Cards.Select(card => card.Fork()).ToArray(),
         PlayerPowers = PlayerPowers.Select(power => power.Fork()).ToArray(),
         Relics = Relics is null
@@ -2282,7 +2392,8 @@ public sealed record PrototypeCardRewardGenerator(
     int Act,
     PrototypeRoomType? Room = null,
     bool Rerolled = false,
-    PrototypeCardRarity? Rarity = null);
+    PrototypeCardRarity? Rarity = null,
+    PrototypeCardType? CardType = null);
 
 public sealed record ShopOffer(
     int OfferId,
@@ -2420,7 +2531,9 @@ public sealed record EventState(
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     bool? NativeTanxTriEligible = null,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
-    bool? NativeNonupeipeBraceletEligible = null)
+    bool? NativeNonupeipeBraceletEligible = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    PrototypeFuturePotionOffer[]? NativeFuturePotionOffers = null)
 {
     public string[] RemainingPotionIds =>
         QueuedPotionIds ?? Array.Empty<string>();
@@ -2451,9 +2564,18 @@ public sealed record EventState(
         RepyChestPotionIds = RepyChestPotionIds is null
             ? null : (string[])RepyChestPotionIds.Clone(),
         RepyChestRelicIds = RepyChestRelicIds is null
-            ? null : (string[])RepyChestRelicIds.Clone()
+            ? null : (string[])RepyChestRelicIds.Clone(),
+        NativeFuturePotionOffers = NativeFuturePotionOffers is null
+            ? null
+            : (PrototypeFuturePotionOffer[])NativeFuturePotionOffers.Clone()
     };
 }
+
+public sealed record PrototypeFuturePotionOffer(
+    int Slot,
+    string PotionId,
+    PrototypeCardType CardType,
+    PrototypeCardRarity CardRarity);
 
 public sealed record PrototypeUnknownRoomOddsState(
     int MonsterWeight = 100,
@@ -2571,6 +2693,7 @@ public sealed record ChooseExtraPotionRewardPayload(int GroupIndex, int Slot = -
 public sealed record ReplaceShopPotionPayload(int OfferId, int Slot);
 public sealed record BuyOfferPayload(int OfferId);
 public sealed record EventChoicePayload(string ChoiceId);
+public sealed record TradeFuturePotionPayload(int Slot);
 public sealed record ChooseEventDeckCardPayload(long CardInstanceId);
 public sealed record ReplaceEventPotionPayload(int Slot);
 public sealed record UpgradeCardPayload(long CardInstanceId);
