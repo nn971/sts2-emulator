@@ -66,13 +66,21 @@ public static class SemanticPlayerActionEngineV111
         // The allowlisted action may still activate an unmodeled relic,
         // power, draw hook or enemy mechanic. Assert the hidden deck is
         // untouched before accepting the advanced player boundary.
-        ValidateBoundary(run);
-        if (!combat.DrawPile.SequenceEqual(run.World!.Combat!.DrawPile) ||
+        var afterCombat = run.World?.Combat;
+        if (run.Phase != RunPhase.Combat || afterCombat is not
+                { IsPlayerTurn: true, PendingChoice: null,
+                    PendingKnowledgeDemonChoice: null,
+                    AutomaticPipelineContinuation: null })
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
+                "operation=action_crossed_chance_or_turn_boundary");
+        if (!combat.DrawPile.SequenceEqual(afterCombat.DrawPile) ||
             CanonicalJson.Sha256(combat.SemanticDeck) !=
-                CanonicalJson.Sha256(run.World.Combat.SemanticDeck))
+                CanonicalJson.Sha256(afterCombat.SemanticDeck))
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
                 "operation=unmodeled_draw_pile_mutation");
+        ValidateBoundary(run);
 
         var result = new SemanticPlayerActionV111(
             source.Fork(), run, actionId, action.Kind);
