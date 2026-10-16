@@ -174,6 +174,20 @@ public sealed class SemanticPilotCombatV111Tests
             "ExoskeletonsNormal", 20, 0, 1, 3, 5);
 
     [Fact]
+    public void HistoricalV1SnapshotsWithoutCostStreamRemainReplayable()
+    {
+        var original = SemanticPilotCombatEngineV111.Begin(
+            Opening("semantic-v1-old-hash-compat"));
+        var old = original with { OtherChance = null };
+        var saved = SemanticPilotCombatEngineV111.Save(old);
+        var restored = SemanticPilotCombatEngineV111.Restore(saved);
+        Assert.Null(restored.OtherChance);
+        Assert.Equal(old.Fingerprint, restored.Fingerprint);
+        Assert.NotNull(original.OtherChance);
+        Assert.Equal(0, original.OtherChance!.Transcript.Length);
+    }
+
+    [Fact]
     public void SeededSemanticEntryRequiresOnlyTwoExternalChanceSitesAndReplays()
     {
         var entry = Seeded("semantic-p0-seeded-opening");
