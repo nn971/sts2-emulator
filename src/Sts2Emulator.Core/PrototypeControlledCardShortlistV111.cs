@@ -98,7 +98,6 @@ public sealed partial class PrototypeGameEngine
             ControlledChanceGuardV111.EngineOwnedNativeProviderActive ||
             combat.SemanticDeck is not
                 { Mode: SemanticDeckStateV111.NatureMode } ||
-            combat.AutomaticPipelineContinuation is not null ||
             requiredCount <= 0 ||
             sourceCandidates.Length <= requiredCount)
             return false;

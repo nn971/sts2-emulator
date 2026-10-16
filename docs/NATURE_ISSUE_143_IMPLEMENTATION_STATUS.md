@@ -674,9 +674,10 @@ the serializable card-shortlist continuation for Beat Down and Catastrophe.
 After one card is selected, the saved auto-play operation resumes and
 re-evaluates its source pool for each remaining repetition. Catastrophe's
 draw-pile card identity is committed to the semantic deck before movement.
-Multi-candidate automatic-pipeline contexts remain unsupported. The Release
-solution build passes with zero warnings or errors; tests and mechanics
-regressions were not run. Conditional probabilities remain `UNVERIFIED`; see
+The same continuation now retains and resumes an automatic-pipeline cursor,
+including across follow-on shortlist choices. The Release solution build
+passes with zero warnings or errors; tests and mechanics regressions were not
+run. Conditional probabilities remain `UNVERIFIED`; see
 [`NATURE_SEMANTIC_AUTOPLAY_143.md`](NATURE_SEMANTIC_AUTOPLAY_143.md).
 
 ## 2026-10-17: automatic-pipeline random-enemy auto-play target
@@ -699,6 +700,15 @@ unsupported. The Release solution build passes with zero warnings or errors;
 tests and mechanics regressions were not run. Conditional probabilities
 remain `UNVERIFIED`; see
 [`NATURE_SEMANTIC_RANDOM_REPLAY_143.md`](NATURE_SEMANTIC_RANDOM_REPLAY_143.md).
+
+## 2026-10-17: automatic-pipeline card shortlists
+
+Random auto-play card selection, random draw-pile replay selection, and
+random card shortlists can now suspend with an automatic-pipeline cursor
+saved alongside their source operation continuation. Follow-on shortlist
+choices preserve the same cursor until the operation completes. The Release
+solution build passes with zero warnings or errors; tests and mechanics
+regressions were not run. Conditional probabilities remain `UNVERIFIED`.
 
 ## 2026-10-17: player-action Anointed rare-card shuffle
 

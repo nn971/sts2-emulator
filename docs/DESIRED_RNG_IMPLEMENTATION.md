@@ -89,17 +89,18 @@ order. Native effect-random-target and Sly auto-play selections use typed
 index requests on `run.combat_targets`; player-action auto-play targets now
 resume the saved auto-play operation after Nature selects a live enemy. Late
 automatic-pipeline auto-play and native cursor parity remain open. Random-card
-auto-play now has a saved player-action continuation for
+auto-play now has a saved card-shortlist continuation for
 `combat.autoplay.random_card.select`, shared with the serializable card
 shortlist mechanism. Beat Down selects from its discard-pile Attack pool;
 Catastrophe selects from the draw pile and commits the removed identity to the
 semantic deck before playing it. The source pool is re-evaluated after each
-auto-play. Multi-candidate automatic-pipeline contexts and native cursor
-parity remain open; see [the auto-play continuation note](NATURE_SEMANTIC_AUTOPLAY_143.md).
+auto-play. The continuation preserves and resumes automatic-pipeline cursors,
+including across follow-on shortlist choices; native cursor parity remains
+open. See [the auto-play continuation note](NATURE_SEMANTIC_AUTOPLAY_143.md).
 Hidden Gem's random draw-pile replay selection also resumes through the same
 card-shortlist continuation, updating the selected card's replay count while
-preserving draw-pile order. Its multi-candidate automatic-pipeline contexts
-remain unsupported; see [the replay-selection note](NATURE_SEMANTIC_RANDOM_REPLAY_143.md).
+preserving draw-pile order and its automatic-pipeline cursor; see
+[the replay-selection note](NATURE_SEMANTIC_RANDOM_REPLAY_143.md).
 Anointed's full shuffle over Rare draw-pile instances now resumes from each
 saved bounded swap and moves the resulting prefix into hand while updating the
 semantic deck. The player-action fixture route uses stable card-instance

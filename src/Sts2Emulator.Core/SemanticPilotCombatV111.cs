@@ -3336,9 +3336,9 @@ public static class SemanticPilotCombatEngineV111
         var choice = combat?.PendingChoice;
         var shortlist = choice?.ControlledCardShortlist;
         if (run.Phase != RunPhase.Combat ||
-            combat is not { IsPlayerTurn: true,
-                AutomaticPipelineContinuation: null,
-                PendingKnowledgeDemonChoice: null } ||
+            combat is not { PendingKnowledgeDemonChoice: null } ||
+            (combat.AutomaticPipelineContinuation is null &&
+             !combat.IsPlayerTurn) ||
             choice is not { ChoiceId: "controlled_card_shortlist",
                 OuterChoiceContinuation: not null } ||
             shortlist is null ||
@@ -3355,6 +3355,7 @@ public static class SemanticPilotCombatEngineV111
                 .Order().SequenceEqual(combat.DrawPile.Order()))
             throw new InvalidDataException(
                 "Card shortlist changed the hidden draw-pile state.");
+        PrototypeStateInvariants.Validate(run);
     }
 
     private static void ValidateCostDecision(

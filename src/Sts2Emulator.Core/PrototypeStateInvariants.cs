@@ -3468,6 +3468,38 @@ public static class PrototypeStateInvariants
                     throw new InvalidOperationException(
                         "Effect random-target continuation has an unexpected card identity.");
             }
+            if (pending.ControlledCardShortlist is { } cardShortlist)
+            {
+                var automatic = combat.AutomaticPipelineContinuation;
+                var invalidAutomaticCursor = automatic is
+                    { OpeningStage: null } cursor &&
+                    (cursor.NextStepIndex < 0 ||
+                     cursor.NextStepIndex >
+                        PrototypeContent.Rules.EndTurnPipeline.Length ||
+                     cursor.PendingPostDispatchEventKind is { } eventKind &&
+                     !Enum.IsDefined(eventKind));
+                if (pending.ChoiceId != "controlled_card_shortlist" ||
+                    pending.OuterChoiceContinuation is null ||
+                    pending.ControlledTarget is not null ||
+                    pending.ControlledGeneration is not null ||
+                    pending.ControlledPotionGeneration is not null ||
+                    pending.ControlledCardTransform is not null ||
+                    pending.ControlledDrawInsertion is not null ||
+                    pending.ControlledPoolShuffle is not null ||
+                    pending.ControlledRandomCost is not null ||
+                    pending.ControlledDrawCost is not null ||
+                    pending.ControlledRandomPileCard is not null ||
+                    pending.ControlledSemanticDraw is not null ||
+                    combat.PendingKnowledgeDemonChoice is not null ||
+                    combat.SemanticDeck is not
+                        { Mode: SemanticDeckStateV111.NatureMode } ||
+                    (automatic is null && !combat.IsPlayerTurn) ||
+                    invalidAutomaticCursor ||
+                    !PrototypeGameEngine.ValidateControlledCardShortlist(
+                        combat, cardShortlist))
+                    throw new InvalidOperationException(
+                        "Controlled card-shortlist continuation is malformed.");
+            }
             if (pending.ControlledPotionGeneration is { } potionGeneration)
             {
                 if (!PrototypeGameEngine.ValidateControlledPotionGeneration(
