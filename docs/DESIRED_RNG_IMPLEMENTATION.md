@@ -88,9 +88,14 @@ sample and within-tier model index through separate typed providers in source
 order. Native effect-random-target and Sly auto-play selections use typed
 index requests on `run.combat_targets`; player-action auto-play targets now
 resume the saved auto-play operation after Nature selects a live enemy. Late
-automatic-pipeline auto-play and native cursor parity remain open. Other
-automatic card plays have a distinct provider site with trigger coverage still
-open.
+automatic-pipeline auto-play and native cursor parity remain open. Random-card
+auto-play now has a saved player-action continuation for
+`combat.autoplay.random_card.select`, shared with the serializable card
+shortlist mechanism. Beat Down selects from its discard-pile Attack pool;
+Catastrophe selects from the draw pile and commits the removed identity to the
+semantic deck before playing it. The source pool is re-evaluated after each
+auto-play. Multi-candidate automatic-pipeline contexts and native cursor
+parity remain open; see [the auto-play continuation note](NATURE_SEMANTIC_AUTOPLAY_143.md).
 The supported generated draw-pile operations now use typed model-pick requests
 on native `run.combat_card_generation` and position requests on `run.shuffle`;
 the legacy profile preserves `combat`. Post-shuffle relic insertion now has

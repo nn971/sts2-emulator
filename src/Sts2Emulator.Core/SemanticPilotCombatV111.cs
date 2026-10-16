@@ -1245,6 +1245,9 @@ public static class SemanticPilotCombatEngineV111
                     NativeGloryAncientsV111.WishCardId);
             var semanticDrawCard = card is not null &&
                 IsSemanticEffectDrawCard(card.CardId);
+            var semanticAutoplayCard = card?.CardId is
+                ("proto.colorless.beat_down" or
+                 "proto.colorless.catastrophe");
             var fixtureSelectionCard = card?.CardId ==
                     current.SeededEntry?.FixtureSelectionCardId &&
                 card?.CardId == "proto.colorless.seeker_strike";
@@ -1252,6 +1255,7 @@ public static class SemanticPilotCombatEngineV111
                 (SemanticPlayerActionEngineV111.SupportsCard(card.CardId) ||
                  card.CardId == "proto.silent.ricochet" ||
                  semanticDrawCard ||
+                 semanticAutoplayCard ||
                  semanticSelectionCard ||
                  fixtureSelectionCard);
             if (!supportedCardAction)
@@ -1303,7 +1307,8 @@ public static class SemanticPilotCombatEngineV111
                      CanonicalJson.Sha256(previous.SemanticDeck) !=
                          CanonicalJson.Sha256(next.SemanticDeck))
             {
-                if (!semanticDrawCard || next is null)
+                if ((!semanticDrawCard && !semanticAutoplayCard) ||
+                    next is null)
                     throw new NotSupportedException(
                         "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
                         "operation=unmodeled_draw_pile_mutation");
@@ -1819,10 +1824,31 @@ public static class SemanticPilotCombatEngineV111
             current.CardShortlistPending, decision, index);
         ValidateCardShortlistBoundary(current.Run);
         var priorCombat = current.Run.World!.Combat!;
+        bool randomAutoplay = priorCombat.PendingChoice!
+            .ControlledCardShortlist!.Operation.Kind ==
+            PrototypeCombatEffectKind.AutoPlayRandomCardsFromZone;
         RunState result;
         using (ControlledChanceGuardV111.Enter())
             result = PrototypeGameEngine.ResumeControlledCardShortlist(
                 current.Run.Fork(), index);
+        if (randomAutoplay && result.Phase is
+            (RunPhase.Reward or RunPhase.Terminal))
+        {
+            PrototypeStateInvariants.Validate(result);
+            var terminal = current with
+            {
+                Run = result,
+                RewardAudit = result.Phase == RunPhase.Reward
+                    ? RecordRewardAudit(current.Run, result)
+                    : current.RewardAudit,
+                History = current.History.Append(
+                    new SemanticPilotTransitionV111(
+                        "semantic_card_shortlist",
+                        CardShortlistDecision: decision.Fork())).ToArray()
+            };
+            Validate(terminal);
+            return terminal;
+        }
         var nextCombat = result.World?.Combat;
         if (result.Phase != RunPhase.Combat || nextCombat is null)
             throw new NotSupportedException(
@@ -1835,13 +1861,16 @@ public static class SemanticPilotCombatEngineV111
             SemanticCardSelectionEngineV111.ValidatePendingBoundary(result);
         else
             ValidateSemanticCombatBoundary(result);
-        if (!priorCombat.DrawPile.SequenceEqual(nextCombat.DrawPile) ||
-            CanonicalJson.Sha256(priorCombat.SemanticDeck) !=
-                CanonicalJson.Sha256(nextCombat.SemanticDeck))
+        if (!randomAutoplay &&
+            (!priorCombat.DrawPile.SequenceEqual(nextCombat.DrawPile) ||
+             CanonicalJson.Sha256(priorCombat.SemanticDeck) !=
+                 CanonicalJson.Sha256(nextCombat.SemanticDeck)))
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK " +
                 "site=combat.card_selection.random_shortlist " +
                 "operation=unmodeled_draw_pile_mutation");
+        if (randomAutoplay)
+            PrototypeStateInvariants.Validate(result);
         var next = current with
         {
             Run = result,
@@ -2672,7 +2701,8 @@ public static class SemanticPilotCombatEngineV111
     {
         ArgumentNullException.ThrowIfNull(current);
         var combat = current.Run.World?.Combat;
-        var shortlist = combat?.PendingChoice?.ControlledCardShortlist;
+        var choice = combat?.PendingChoice;
+        var shortlist = choice?.ControlledCardShortlist;
         if (shortlist is null) return null;
         ValidateCardShortlistBoundary(current.Run);
         var eligibleIds =
@@ -2685,7 +2715,12 @@ public static class SemanticPilotCombatEngineV111
             card => card.InstanceId == id).CardId).ToArray();
         var selectedIds =
             (long[])shortlist.SelectedCandidateCardInstanceIds.Clone();
-        var selection = shortlist.Operation.Selection!;
+        bool randomAutoplay = shortlist.Operation.Kind ==
+            PrototypeCombatEffectKind.AutoPlayRandomCardsFromZone;
+        var selection = shortlist.Operation.Selection;
+        if (!randomAutoplay && selection is null)
+            throw new InvalidDataException(
+                "Card shortlist lost its source selection specification.");
         var supportFingerprint = CanonicalJson.Sha256(new
         {
             eligibleCardInstanceIds = eligibleIds,
@@ -2695,12 +2730,19 @@ public static class SemanticPilotCombatEngineV111
             candidateCardModelIds = candidateModels,
             requiredCount = shortlist.RequiredCount
         });
-        const string siteId = "combat.card_selection.random_shortlist";
+        var siteId = randomAutoplay
+            ? "combat.autoplay.random_card.select"
+            : "combat.card_selection.random_shortlist";
         const string streamId = "prototype.combat";
         const string operationKind =
             "choose_card_instance_without_replacement";
-        var ownerId = "selection:" + selection.SourceZone + ":pool:" +
-            CanonicalJson.Sha256(eligibleIds);
+        var ownerId = randomAutoplay
+            ? "effect:" + shortlist.Operation.Kind + ":source:" +
+              (choice!.SourceCardInstanceId?.ToString() ?? "none") +
+              ":zone:" + shortlist.Operation.AutoPlaySourceZone +
+              ":pool:" + CanonicalJson.Sha256(eligibleIds)
+            : "selection:" + selection!.SourceZone + ":pool:" +
+              CanonicalJson.Sha256(eligibleIds);
         var ordinal = current.History.Count(transition =>
             transition.Kind == "semantic_card_shortlist");
         var eventId = CanonicalJson.Sha256(new

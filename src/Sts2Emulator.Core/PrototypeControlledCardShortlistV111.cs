@@ -7,6 +7,28 @@ public sealed partial class PrototypeGameEngine
     internal static long[]? ControlledCardShortlistCandidates(
         CombatState combat, PrototypeQueuedOperation operation)
     {
+        if (operation.Kind ==
+            PrototypeCombatEffectKind.AutoPlayRandomCardsFromZone)
+        {
+            var zone = operation.AutoPlaySourceZone ??
+                throw new InvalidDataException(
+                    "Random auto-play has no source pile.");
+            var ids = GetZone(combat, zone);
+            var eligible = ids.Where(id =>
+            {
+                var definition = PrototypeContent.Card(
+                    RequireCombatCard(combat, id).CardId);
+                return !definition.Unplayable &&
+                    definition.MechanicsImplemented &&
+                    (operation.AutoPlayRequiredCardType is null ||
+                     definition.Type == operation.AutoPlayRequiredCardType);
+            }).ToArray();
+            return eligible.Length == 0 &&
+                    operation.AutoPlayFallbackToUnplayable
+                ? (long[])ids.Clone()
+                : eligible;
+        }
+
         if (operation.Kind != PrototypeCombatEffectKind.ChooseCards ||
             operation.Selection is not { RandomCandidateCount: > 0 } selection)
             return null;
@@ -31,6 +53,13 @@ public sealed partial class PrototypeGameEngine
         return (long[])candidates.Clone();
     }
 
+    private static int ControlledCardShortlistRequiredCount(
+        PrototypeQueuedOperation operation) =>
+        operation.Kind == PrototypeCombatEffectKind.AutoPlayRandomCardsFromZone &&
+            operation.Amount > 0
+            ? 1
+            : operation.Selection?.RandomCandidateCount ?? 0;
+
     internal static bool TryMakeControlledCardShortlistChoice(
         CombatState combat, PrototypeQueuedOperation operation,
         long[] sourceCandidates,
@@ -38,12 +67,14 @@ public sealed partial class PrototypeGameEngine
         out CombatState suspended)
     {
         suspended = combat;
+        var requiredCount = ControlledCardShortlistRequiredCount(operation);
         if (!ControlledChanceGuardV111.Active ||
             ControlledChanceGuardV111.EngineOwnedNativeProviderActive ||
             combat.SemanticDeck is not
                 { Mode: SemanticDeckStateV111.NatureMode } ||
-            operation.Selection is not { RandomCandidateCount: > 0 } selection ||
-            sourceCandidates.Length <= selection.RandomCandidateCount)
+            combat.AutomaticPipelineContinuation is not null ||
+            requiredCount <= 0 ||
+            sourceCandidates.Length <= requiredCount)
             return false;
         if (combat.PendingChoice is not null ||
             sourceCandidates.Distinct().Count() != sourceCandidates.Length)
@@ -55,7 +86,11 @@ public sealed partial class PrototypeGameEngine
                 ChoiceId: "controlled_card_shortlist",
                 SourceCardInstanceId: continuation.SourceCardInstanceId,
                 SourceCardDestination: continuation.SourceCardDestination,
-                Selection: selection,
+                Selection: operation.Selection ?? new PrototypeCardSelectionSpec(
+                    operation.AutoPlaySourceZone ??
+                        PrototypeCardZone.DrawPile,
+                    0, 0,
+                    PrototypeCardSelectionResolutionKind.MoveToDiscard),
                 CandidateCardInstanceIds: [],
                 Continuation: [],
                 CompletionEvents: [],
@@ -65,7 +100,7 @@ public sealed partial class PrototypeGameEngine
                         operation with { },
                         (long[])sourceCandidates.Clone(),
                         (long[])sourceCandidates.Clone(), [],
-                        selection.RandomCandidateCount))
+                        requiredCount))
         };
         return true;
     }
@@ -73,17 +108,18 @@ public sealed partial class PrototypeGameEngine
     internal static bool ValidateControlledCardShortlist(
         CombatState combat, PrototypeControlledCardShortlistV111 shortlist)
     {
-        if (shortlist.Operation.Selection is not
-                { RandomCandidateCount: > 0 } selection ||
-            shortlist.RequiredCount != selection.RandomCandidateCount ||
+        var requiredCount = ControlledCardShortlistRequiredCount(
+            shortlist.Operation);
+        if (requiredCount <= 0 ||
+            shortlist.RequiredCount != requiredCount ||
             shortlist.OriginalCandidateCardInstanceIds is not { Length: > 1 } ||
             shortlist.RemainingCandidateCardInstanceIds is null ||
             shortlist.SelectedCandidateCardInstanceIds is null ||
             shortlist.OriginalCandidateCardInstanceIds.Length <=
-                shortlist.RequiredCount ||
+                requiredCount ||
             shortlist.SelectedCandidateCardInstanceIds.Length < 0 ||
             shortlist.SelectedCandidateCardInstanceIds.Length >=
-                shortlist.RequiredCount)
+                requiredCount)
             return false;
         long[]? source;
         try
@@ -153,6 +189,50 @@ public sealed partial class PrototypeGameEngine
                     Combat = combat with { PendingChoice = nextPending }
                 }
             };
+        }
+
+        if (shortlist.Operation.Kind ==
+            PrototypeCombatEffectKind.AutoPlayRandomCardsFromZone)
+        {
+            if (selectedPrefix.Length != 1 ||
+                shortlist.Operation.Amount <= 0 ||
+                shortlist.Operation.AutoPlaySourceZone is not { } sourceZone)
+                throw new InvalidDataException(
+                    "Random auto-play shortlist has an invalid source operation.");
+            combat = combat with { PendingChoice = null };
+            if (sourceZone == PrototypeCardZone.DrawPile)
+            {
+                var deck = combat.SemanticDeck ??
+                    throw new InvalidDataException(
+                        "Draw-pile auto-play lost its semantic deck.");
+                combat = combat with
+                {
+                    SemanticDeck = SemanticDeckEngineV111.RemoveCardInstance(
+                        deck, selected)
+                };
+            }
+            combat = SetZone(combat, sourceZone,
+                GetZone(combat, sourceZone).Where(id => id != selected).ToArray());
+            combat = SetZone(combat, PrototypeCardZone.PlayPile,
+                combat.PlayCardIds.Append(selected).ToArray());
+            var resumedOperations = new List<PrototypeQueuedOperation>
+            {
+                new(PrototypeCombatEffectKind.AutoPlayCombatCard, 0,
+                    SourceKind: shortlist.Operation.SourceKind,
+                    CardInstanceId: selected)
+            };
+            if (shortlist.Operation.Amount > 1)
+                resumedOperations.Add(shortlist.Operation with
+                {
+                    Amount = shortlist.Operation.Amount - 1
+                });
+            resumedOperations.AddRange(continuation.Operations);
+            var autoplay = ResumeChoiceResolutionContinuation(
+                state.Player, combat, state.Rng, continuation with
+                {
+                    Operations = resumedOperations.ToArray()
+                });
+            return ResumeAfterCardShortlist(state, world, autoplay);
         }
 
         combat = combat with { PendingChoice = null };

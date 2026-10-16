@@ -7711,36 +7711,68 @@ public sealed partial class PrototypeGameEngine
                         ?? throw new InvalidOperationException(
                             "Random autoplay requires a source pile.");
                     var ids = GetZone(combat, zone);
-                    var eligible = ids.Where(id =>
-                    {
-                        var definition = PrototypeContent.Card(
-                            RequireCombatCard(combat, id).CardId);
-                        return !definition.Unplayable
-                            && definition.MechanicsImplemented
-                            && (operation.AutoPlayRequiredCardType is null
-                                || definition.Type
-                                    == operation.AutoPlayRequiredCardType);
-                    }).ToArray();
-                    if (eligible.Length == 0
-                        && operation.AutoPlayFallbackToUnplayable)
-                    {
-                        eligible = ids;
-                    }
+                    var eligible = ControlledCardShortlistCandidates(
+                        combat, operation) ?? throw new InvalidDataException(
+                            "Random auto-play lost its eligible card pool.");
 
                     if (eligible.Length == 0)
                     {
                         break;
                     }
 
-                    var selection = ResolveRandomCombatCardIndex(
-                        combat, rng,
-                        "combat.autoplay.random_card.select", "combat",
-                        eligible,
-                        "effect:" + operation.Kind + ":source:" +
-                            (sourceCardInstanceId?.ToString() ?? "none") +
-                            ":zone:" + zone);
+                    (CombatState Combat, int SelectedIndex) selection;
+                    if (ControlledChanceGuardV111.Active &&
+                        !ControlledChanceGuardV111.EngineOwnedNativeProviderActive &&
+                        eligible.Length > 1)
+                    {
+                        var continuation =
+                            new PrototypeChoiceResolutionContinuationState(
+                                SourceCardInstanceId: sourceCardInstanceId,
+                                SourceCardDestination: sourceCardDestination,
+                                Operations: operations.ToArray(),
+                                PendingDiscardEvents: [],
+                                PendingSlyCardInstanceIds: [],
+                                CompletionEvents: completionEvents ?? [],
+                                CardPlaySeries: cardPlaySeries,
+                                MoveSourceCardOnCompletion:
+                                    moveSourceCardOnCompletion,
+                                RemoveSourceCardOnCompletion:
+                                    removeSourceCardOnCompletion,
+                                SourceCardAlreadyMoved:
+                                    sourceCardAlreadyMoved,
+                                EventDispatchContinuation:
+                                    eventDispatchContinuation?.Fork());
+                        if (TryMakeControlledCardShortlistChoice(
+                            combat, operation, eligible, continuation,
+                            out var suspended))
+                            return (player, suspended);
+                    }
+                    if (ControlledChanceGuardV111.Active &&
+                        !ControlledChanceGuardV111.EngineOwnedNativeProviderActive &&
+                        eligible.Length == 1)
+                        selection = (combat, 0);
+                    else
+                        selection = ResolveRandomCombatCardIndex(
+                            combat, rng,
+                            "combat.autoplay.random_card.select", "combat",
+                            eligible,
+                            "effect:" + operation.Kind + ":source:" +
+                                (sourceCardInstanceId?.ToString() ?? "none") +
+                                ":zone:" + zone);
                     combat = selection.Combat;
                     var selected = eligible[selection.SelectedIndex];
+                    if (zone == PrototypeCardZone.DrawPile &&
+                        ControlledChanceGuardV111.Active &&
+                        !ControlledChanceGuardV111.EngineOwnedNativeProviderActive &&
+                        combat.SemanticDeck is
+                            { Mode: SemanticDeckStateV111.NatureMode } deck)
+                    {
+                        combat = combat with
+                        {
+                            SemanticDeck = SemanticDeckEngineV111
+                                .RemoveCardInstance(deck, selected)
+                        };
+                    }
                     combat = SetZone(combat, zone,
                         ids.Where(id => id != selected).ToArray());
                     combat = SetZone(combat, PrototypeCardZone.PlayPile,

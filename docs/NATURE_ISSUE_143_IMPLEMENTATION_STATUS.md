@@ -666,3 +666,15 @@ late automatic-pipeline auto-play still needs an end-turn target boundary.
 The Release solution build passes with zero warnings or errors; tests were not
 run for this checkpoint. Conditional probabilities remain `UNVERIFIED`; see
 [`NATURE_RANDOM_TARGET_143.md`](NATURE_RANDOM_TARGET_143.md).
+
+## 2026-10-17: player-action random-card auto-play
+
+The semantic pilot now exposes `combat.autoplay.random_card.select` through
+the serializable card-shortlist continuation for Beat Down and Catastrophe.
+After one card is selected, the saved auto-play operation resumes and
+re-evaluates its source pool for each remaining repetition. Catastrophe's
+draw-pile card identity is committed to the semantic deck before movement.
+Multi-candidate automatic-pipeline contexts remain unsupported. The Release
+solution build passes with zero warnings or errors; tests and mechanics
+regressions were not run. Conditional probabilities remain `UNVERIFIED`; see
+[`NATURE_SEMANTIC_AUTOPLAY_143.md`](NATURE_SEMANTIC_AUTOPLAY_143.md).

@@ -35,7 +35,8 @@ public sealed record SemanticCardShortlistEventV111(
             string.IsNullOrWhiteSpace(EventId) ||
             string.IsNullOrWhiteSpace(BoundaryFingerprint) ||
             string.IsNullOrWhiteSpace(SupportFingerprint) ||
-            SiteId != "combat.card_selection.random_shortlist" ||
+            SiteId is not ("combat.card_selection.random_shortlist" or
+                "combat.autoplay.random_card.select") ||
             StreamId != "prototype.combat" ||
             string.IsNullOrWhiteSpace(OwnerId) || Ordinal < 0 ||
             OperationKind != "choose_card_instance_without_replacement" ||
