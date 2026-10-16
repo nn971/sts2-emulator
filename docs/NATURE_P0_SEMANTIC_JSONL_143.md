@@ -222,19 +222,27 @@ or advances the native RNG. Encounter/enemy-specific move policies are
 handled by the original move selector.
 
 `hello.semanticIntentSupportSchemaId` =
-`sts2-v111-semantic-weighted-intent-v1`. The existing pending
+`sts2-v111-semantic-weighted-intent-v1`, and
+`hello.semanticIntentEventSchemaId` =
+`sts2-v111-semantic-intent-event-v1`. The existing pending
 `enemy_intent` object now carries `semanticCandidates` in source branch
 order, with stable `intentId`, `moveId`, `moveIndex`,
-`rawWeight`, `ticketStart`; also `rawEligibleWeights`,
-`totalRawWeight` and `semanticSupportFingerprint`. The sum of weights
+`rawWeight`, normalized weight and `ticketStart`; also `rawEligibleWeights`,
+`totalRawWeight`, `semanticSupportFingerprint` and a stable `eventId` bound
+to the exact pending state and support. The sum of weights
 must equal the source primitive pending support count, and contiguous
 `ticketStart` intervals partition it. Each candidate is a **legal
 branch outcome**, allowing two distinct weighted branches to share one
 move ID while retaining different next-AI state effects.
 
-`semantic_resolve_intent(semantic_handle, fingerprint, intent_id)` chooses
-one eligible semantic branch via its ticket interval and resumes the original
-mechanics. Python: `combat.resolve_intent(event["semanticCandidates"][i]["intentId"])`.
+`semantic_resolve_intent(semantic_handle, fingerprint, intent_id)` records a
+typed semantic event containing the event ID, support fingerprint, selected
+branch ID, raw weight and total weight, then resumes the original mechanics.
+The source-shaped selector uses that branch's first ticket internally as a
+deterministic realization; this ticket is not recorded as a second Nature
+event. Snapshot replay preserves the semantic decision identity separately
+from native bounded-ticket transcripts. Python:
+`combat.resolve_intent(event["semanticCandidates"][i]["intentId"])`.
 Old `semantic_resolve` with an integer source ticket remains compatible,
 including replay/fork/save. A stale fingerprint or forged candidate ID fails
 before publishing a new handle.
@@ -242,9 +250,10 @@ before publishing a new handle.
 **Probability status:** these are raw weights produced by the emulator's
 source-shaped selector, **not** independently audited original-game
 conditional probabilities. `weightsVerified=false` and
-`probabilityStatus="UNVERIFIED"` remain explicit until N5 source-law
-calibration. Pure deterministic intent commitments require no random ticket;
-they are already committed in visible player observations.
+`probabilityStatus="UNVERIFIED"` with provenance
+`source-shaped-unverified` remain explicit until N5 source-law calibration.
+Pure deterministic intent commitments require no random ticket; they are
+already committed in visible player observations.
 
 Regression evidence: the focused C# gate exercises ID-to-ticket equivalence,
 raw-weight sums, replay and invalid choices. Both prior and seeded JSONL

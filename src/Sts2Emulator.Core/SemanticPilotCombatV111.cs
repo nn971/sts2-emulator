@@ -7,7 +7,8 @@ namespace Sts2Emulator.Core;
 
 /// <summary>One externally replayable action or Nature decision.</summary>
 public sealed record SemanticPilotTransitionV111(
-    string Kind, string? ActionId = null, int? SelectedIndex = null);
+    string Kind, string? ActionId = null, int? SelectedIndex = null,
+    SemanticIntentDecisionV111? IntentDecision = null);
 
 /// <summary>
 /// Independently replayable setup provenance. The default entry is a
@@ -912,10 +913,17 @@ public static class SemanticPilotCombatEngineV111
 
     public static SemanticPilotCombatV111 Resolve(
         SemanticPilotCombatV111 current, string fingerprint, int selectedIndex)
+        => Resolve(current, fingerprint, selectedIndex, null);
+
+    private static SemanticPilotCombatV111 Resolve(
+        SemanticPilotCombatV111 current, string fingerprint, int selectedIndex,
+        SemanticIntentDecisionV111? semanticIntent)
     {
         Validate(current);
         if (current.Fingerprint != fingerprint)
             throw new InvalidOperationException("Stale semantic Nature fingerprint.");
+        if (semanticIntent is not null)
+            ValidateSemanticIntentDecision(current, semanticIntent, selectedIndex);
         if (current.PendingInitialIntents is { Pending: not null } initialIntents)
         {
             var resolvedInitial = ControlledTurnIntentEngineV111.Resolve(
@@ -962,9 +970,8 @@ public static class SemanticPilotCombatEngineV111
             {
                 Run = nextRun,
                 PendingInitialIntents = pendingInitial,
-                History = current.History.Append(
-                    new SemanticPilotTransitionV111("nature",
-                        SelectedIndex: selectedIndex)).ToArray()
+                History = current.History.Append(NatureTransition(
+                    selectedIndex, semanticIntent)).ToArray()
             };
             Validate(initialState);
             return initialState;
@@ -980,9 +987,8 @@ public static class SemanticPilotCombatEngineV111
         {
             Run = resolved.Run,
             PendingEndTurn = resolved.Complete ? null : resolved,
-            History = current.History.Append(
-                new SemanticPilotTransitionV111("nature",
-                    SelectedIndex: selectedIndex)).ToArray()
+            History = current.History.Append(NatureTransition(
+                selectedIndex, semanticIntent)).ToArray()
         });
     }
 
@@ -1011,8 +1017,75 @@ public static class SemanticPilotCombatEngineV111
             x.IntentId == intentId) ??
             throw new InvalidOperationException(
                 "Illegal or stale semantic intent candidate ID.");
-        return Resolve(current, fingerprint, candidate.TicketStart);
+        var decision = MakeSemanticIntentDecision(current, ticket.Pending,
+            support, candidate);
+        return Resolve(current, fingerprint, candidate.TicketStart, decision);
     }
+
+    /// <summary>
+    /// Stable event identity for the current Nature-facing weighted intent
+    /// support. It is bound to the exact pre-choice state and eligible pool.
+    /// </summary>
+    public static string PendingIntentEventId(
+        SemanticPilotCombatV111 current, SemanticIntentSupportV111 support)
+    {
+        ArgumentNullException.ThrowIfNull(current);
+        ArgumentNullException.ThrowIfNull(support);
+        var boundaryFingerprint = current.Fingerprint;
+        var supportFingerprint = CanonicalJson.Sha256(support);
+        return CanonicalJson.Sha256(new
+        {
+            SchemaId = SemanticIntentDecisionV111.EventSchemaId,
+            BoundaryFingerprint = boundaryFingerprint,
+            SupportFingerprint = supportFingerprint
+        });
+    }
+
+    private static SemanticIntentDecisionV111 MakeSemanticIntentDecision(
+        SemanticPilotCombatV111 current, RandomIndexRequestV111 request,
+        SemanticIntentSupportV111 support,
+        SemanticIntentCandidateV111 candidate)
+    {
+        var supportFingerprint = CanonicalJson.Sha256(support);
+        var decision = new SemanticIntentDecisionV111(
+            SemanticIntentDecisionV111.EventSchemaId,
+            PendingIntentEventId(current, support), current.Fingerprint,
+            supportFingerprint, request.SiteId, request.StreamId,
+            request.OwnerId, request.Ordinal, candidate.IntentId,
+            candidate.RawWeight, support.TotalRawWeight);
+        decision.Validate();
+        return decision;
+    }
+
+    private static void ValidateSemanticIntentDecision(
+        SemanticPilotCombatV111 current,
+        SemanticIntentDecisionV111 decision, int sourceTicket)
+    {
+        decision.Validate();
+        var ticket = current.PendingInitialIntents ??
+            current.PendingEndTurn?.Intents;
+        if (ticket?.Pending is not { } request)
+            throw new InvalidOperationException(
+                "Semantic intent decision has no matching pending event.");
+        var support = ControlledTurnIntentEngineV111
+            .DescribePendingSemanticIntent(ticket) ??
+            throw new InvalidDataException("Missing weighted intent support.");
+        var candidate = support.Candidates.SingleOrDefault(x =>
+            x.IntentId == decision.IntentId);
+        if (candidate is null || sourceTicket != candidate.TicketStart ||
+            MakeSemanticIntentDecision(current, request, support, candidate) !=
+                decision)
+            throw new InvalidOperationException(
+                "Semantic intent event is stale or outside current support.");
+    }
+
+    private static SemanticPilotTransitionV111 NatureTransition(
+        int selectedIndex, SemanticIntentDecisionV111? semanticIntent) =>
+        semanticIntent is null
+            ? new SemanticPilotTransitionV111("nature",
+                SelectedIndex: selectedIndex)
+            : new SemanticPilotTransitionV111("semantic_intent",
+                IntentDecision: semanticIntent);
 
     /// <summary>
     /// The initial two-site pilot does not optimize drawn-card costs.
@@ -1212,6 +1285,9 @@ public static class SemanticPilotCombatEngineV111
             {
                 "player" when transition.ActionId is not null =>
                     Step(replay, replay.Fingerprint, transition.ActionId),
+                "semantic_intent" when transition.IntentDecision is not null =>
+                    ResolveIntent(replay, replay.Fingerprint,
+                        transition.IntentDecision.IntentId),
                 "nature" when transition.SelectedIndex is not null =>
                     Resolve(replay, replay.Fingerprint,
                         transition.SelectedIndex.Value),

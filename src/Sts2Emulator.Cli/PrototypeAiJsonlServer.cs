@@ -82,13 +82,29 @@ internal static class PrototypeAiJsonlServer
                     supportCount = intent.SupportCount,
                     eligibleIndices = Enumerable.Range(0, intent.SupportCount),
                     semanticIntentSupportSchemaId = SemanticIntentSupportV111.SchemaId,
-                    semanticCandidates = support?.Candidates,
+                    semanticIntentEventSchemaId =
+                        SemanticIntentDecisionV111.EventSchemaId,
+                    eventId = support is null ? null :
+                        SemanticPilotCombatEngineV111.PendingIntentEventId(
+                            state, support),
+                    semanticCandidates = support is null ? null :
+                        support.Candidates.Select(candidate => new
+                        {
+                            candidate.IntentId,
+                            candidate.MoveId,
+                            candidate.MoveIndex,
+                            candidate.RawWeight,
+                            candidate.TicketStart,
+                            normalizedWeight = (double)candidate.RawWeight /
+                                support.TotalRawWeight
+                        }).ToArray(),
                     rawEligibleWeights = support?.Candidates
                         .Select(candidate => candidate.RawWeight).ToArray(),
                     totalRawWeight = support?.TotalRawWeight,
                     semanticSupportFingerprint = CanonicalJson.Sha256(support),
                     weightsVerified = false,
                     probabilityStatus = "UNVERIFIED",
+                    probabilityProvenance = "source-shaped-unverified",
                     supportFingerprint = CanonicalJson.Sha256(intent),
                     sourceScope = "source_filtered_semantic_eligible_moves"
                 };
@@ -316,6 +332,8 @@ internal static class PrototypeAiJsonlServer
                                 "engine-owned-seeded-source-shaped-draw-hooks-unverified-v1",
                             semanticIntentSupportSchemaId =
                                 SemanticIntentSupportV111.SchemaId,
+                            semanticIntentEventSchemaId =
+                                SemanticIntentDecisionV111.EventSchemaId,
                             semanticProbabilityStatus = "UNVERIFIED",
                             controlledChanceScope = "isolated-playable-combat-stage-continuations-v1",
                             controlledChanceSupportedSites = new[]
