@@ -3034,7 +3034,11 @@ public sealed partial class PrototypeGameEngine
         {
             var enemy = formation[index];
             Func<int, int> nextIndex = ownedNative is null
-                ? maxExclusive => PrototypeRng.NextInt(rng, "combat", maxExclusive)
+                ? maxExclusive => ResolveLegacyBoundedInteger(
+                    rng,
+                    "combat.committed_intent.index_draw",
+                    "creature:" + enemy.InstanceId,
+                    maxExclusive)
                 : maxExclusive =>
                 {
                     var request = new RandomIndexRequestV111(
@@ -3131,7 +3135,11 @@ public sealed partial class PrototypeGameEngine
             IReadOnlyList<EnemyCombatState> formation,
             RngBundle rng) =>
         SelectEnemyMove(definition, enemy, formation,
-            maxExclusive => PrototypeRng.NextInt(rng, "combat", maxExclusive));
+            maxExclusive => ResolveLegacyBoundedInteger(
+                rng,
+                "combat.committed_intent.index_draw",
+                "creature:" + enemy.InstanceId,
+                maxExclusive));
 
     private static (
         PrototypeEnemyMoveDefinition Move,
