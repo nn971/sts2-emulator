@@ -75,7 +75,8 @@ public sealed partial class PrototypeGameEngine
                 if (UsesNativeRegionalSystems(world))
                 {
                     var draw = PrototypeNativeRelicGrabBag.Draw(
-                        world, player, after.Rng, merchant: false);
+                        world, player, after.Rng, merchant: false,
+                        nativeRunRng: nativeRunRng);
                     world = draw.World;
                     relicId = draw.Id ?? throw new InvalidOperationException(
                         "Native Neow relic draw did not produce a result.");

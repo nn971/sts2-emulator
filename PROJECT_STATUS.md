@@ -1463,6 +1463,10 @@ The configured Shovel rest-site reward now uses the same persistent relic
 rarity stream and retains its advanced RNG bundle while the relic reward is
 pending. Source result/cursor parity remains unverified.
 
+Neow's configured random relic pickup now advances that persistent stream as
+well. The nested reward continuation retains the updated bundle; source
+result/cursor parity remains unverified.
+
 Configured Overgrowth combat rewards now use the persistent `player.rewards`
 stream for potion pity, gold bounds, rarity-weighted potion selection, card
 rarity/model/upgrade draws, relic rarity, boss relic offer shuffling, and Lava
