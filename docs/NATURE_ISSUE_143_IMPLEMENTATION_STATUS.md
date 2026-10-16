@@ -368,3 +368,37 @@ handshake, raw filtered intent weights/IDs, provider parity, and one
 fully replayable true-terminal Silent pilot with deterministic 1-vs-15
 external worker comparison. See
 [Nature P0 semantic JSONL](NATURE_P0_SEMANTIC_JSONL_143.md).
+
+
+## Local feature branch: source-disjoint Nature/native policy comparison
+
+The feature branch `feature/nature-143-native-policy-comparator` adds an
+opt-in `native_policy_baseline` to the seeded semantic JSONL entry. It
+constructs Nature and native-policy sessions from the same pinned weak
+Act 1 Silent opening and exposes a shared source-opening fingerprint and
+the same initial fair observation. The native branch then runs the real
+engine policy step behind a restricted RNG guard, records native-v111
+decision requests/cursors, and uses an exact deck mode that commits each
+recycle Fisher–Yates order once at the source shuffle point. Later draws
+reveal that committed order without treating each physical card identity
+as a new native random choice.
+
+The independent-process smoke replays both branches with the same
+legal-action policy, reaches real terminal boundaries, checks save/load
+replay, and compares one process against fifteen parallel workers. The
+recorded local run produced matching source-opening fingerprints and fair
+opening observations; Nature and native outcomes were both terminal
+victories with different exit HP, and the native path recorded nonzero
+decision and shuffle counts. This is paired weak-entry evidence only.
+The native comparator and conditional probability laws remain explicitly
+`UNVERIFIED`.
+
+This does not close #143. The opening remains a source-shaped weak fixture
+rather than a fully audited native route/entry; stream ownership and
+source timing for all relevant mechanics, including drawn random costs,
+still require source verification. Full route acquisition, complete
+source audit, and any remaining P0 acceptance gates must be completed
+before the issue can be resolved. The focused .NET test invocation in
+this working session could not start because MSBuild was denied its local
+named-pipe bind; the Release CLI build and external-process smoke had
+already succeeded for this slice.

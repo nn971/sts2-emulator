@@ -5,6 +5,29 @@ namespace Sts2Emulator.Core.Tests;
 
 public sealed class SemanticPilotCombatV111Tests
 {
+    [Fact]
+    public void NativePolicyGuardAllowsOnlyDeclaredProviderStreams()
+    {
+        var native = NativeRngV111.CreateBundle(
+            "semantic-native-policy-guard");
+        var prototype = PrototypeRng.CreateBundle(
+            "semantic-native-policy-guard");
+        using (ControlledChanceGuardV111.Enter())
+        using (ControlledChanceGuardV111.AllowEngineOwnedNativeProvider())
+        {
+            Assert.InRange(NativeRngV111.NextInt(
+                native, "run.monster_ai", 2), 0, 1);
+            Assert.InRange(NativeRngV111.NextInt(
+                native, "run.shuffle", 2), 0, 1);
+            Assert.InRange(NativeRngV111.NextInt(
+                native, "run.combat_energy_costs", 4), 0, 3);
+            Assert.Throws<NotSupportedException>(() =>
+                NativeRngV111.NextInt(native, "run.combat_targets", 2));
+            Assert.Throws<NotSupportedException>(() =>
+                PrototypeRng.NextInt(prototype, "combat", 2));
+        }
+    }
+
     private static ControlledPlayableCombatV111 Opening(string seed)
     {
         var pre = PrototypeNativeLaterActFixture.CreateCombatRngPreEntry(

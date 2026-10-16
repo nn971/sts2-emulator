@@ -401,6 +401,37 @@ public static class SemanticDeckEngineV111
         });
     }
 
+    /// <summary>
+    /// Record a source-timed native shuffle of the currently exhausted pile.
+    /// The caller owns the source shuffle hook and its native RNG stream;
+    /// this transition only commits the resulting top-first physical order.
+    /// </summary>
+    public static SemanticDeckStateV111 RecycleNative(
+        SemanticDeckStateV111 state,
+        IReadOnlyCollection<long> recycledCardInstanceIds,
+        IReadOnlyCollection<long> orderedTopFirst)
+    {
+        Validate(state);
+        AssertIdle(state);
+        ArgumentNullException.ThrowIfNull(recycledCardInstanceIds);
+        ArgumentNullException.ThrowIfNull(orderedTopFirst);
+        if (state.Mode != SemanticDeckStateV111.NativeMode || state.Count != 0)
+            throw new InvalidOperationException(
+                "Native recycle requires an exhausted exact deck.");
+        var recycled = recycledCardInstanceIds.ToArray();
+        var order = orderedTopFirst.ToArray();
+        ValidateUnique(recycled);
+        ValidateUnique(order);
+        if (!order.Order().SequenceEqual(recycled.Order()))
+            throw new ArgumentException(
+                "Native recycle order must preserve the recycled instances.");
+        return Checked(state with
+        {
+            Slots = order.Select(id => SemanticDeckSlotV111.Known(id)).ToArray(),
+            ShuffleEpoch = checked(state.ShuffleEpoch + 1)
+        });
+    }
+
     /// <summary>Only information already visible to the player.
     /// Pool contents and private native order are intentionally excluded.</summary>
     public static SemanticDeckPublicViewV111 Observe(SemanticDeckStateV111 state)

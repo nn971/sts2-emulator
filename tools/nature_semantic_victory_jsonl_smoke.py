@@ -18,16 +18,42 @@ COMMAND = ["dotnet", str(DLL), "prototype-ai-jsonl"]
 SEED = "nature-p0-weak-real-victory"
 
 
+def begin_combat(session, *, native_policy_baseline=False):
+    return session.begin_seeded_semantic_combat(
+        SEED, act=1,
+        encounter_id="proto.encounter.shrinker_beetle_weak",
+        native_entry="ShrinkerBeetleWeak", total_floor=2,
+        map_column=3, map_row=1,
+        replay_opening_draw_hooks=True,
+        native_policy_baseline=native_policy_baseline)
+
+
+def choose_action(combat):
+    obs = combat.observe()
+    assert "semanticDeck" not in json.dumps(obs)
+    assert "rng" not in json.dumps(obs).lower()
+    card_ids = {c["instance_id"]: c["card_id"]
+                for c in obs["combat"]["hand"]}
+    actions = combat.actions()
+    strikes = [a for a in actions if a["kind"] == "play_card"
+               and card_ids.get(json.loads(
+                   a["payloadJson"])["CardInstanceId"]) ==
+               "proto.silent.strike"]
+    defends = [a for a in actions if a["kind"] == "play_card"
+               and card_ids.get(json.loads(
+                   a["payloadJson"])["CardInstanceId"]) ==
+               "proto.silent.defend"]
+    chosen = (strikes or defends or
+              [next(a for a in actions if a["kind"] == "end_turn")])[0]
+    return chosen, bool(strikes), obs
+
+
 def play_victory():
     with Session(COMMAND) as session:
-        combat = session.begin_seeded_semantic_combat(
-            SEED, act=1,
-            encounter_id="proto.encounter.shrinker_beetle_weak",
-            native_entry="ShrinkerBeetleWeak", total_floor=2,
-            map_column=3, map_row=1,
-            replay_opening_draw_hooks=True)
+        combat = begin_combat(session)
         assert combat.boundary == "player"
-        assert len(combat.observe()["combat"]["enemies"]) == 1
+        initial_observation = combat.observe()
+        assert len(initial_observation["combat"]["enemies"]) == 1
         initial = combat.fingerprint
         strikes = 0
         turns = 0
@@ -47,23 +73,8 @@ def play_victory():
                     combat = combat.resolve(0)
                 continue
             assert combat.boundary == "player"
-            obs = combat.observe()
-            assert "semanticDeck" not in json.dumps(obs)
-            assert "rng" not in json.dumps(obs).lower()
-            card_ids = {c["instance_id"]: c["card_id"]
-                        for c in obs["combat"]["hand"]}
-            actions = combat.actions()
-            strikes_here = [a for a in actions if a["kind"] == "play_card"
-                            and card_ids.get(json.loads(
-                                a["payloadJson"])["CardInstanceId"]) ==
-                            "proto.silent.strike"]
-            defends_here = [a for a in actions if a["kind"] == "play_card"
-                            and card_ids.get(json.loads(
-                                a["payloadJson"])["CardInstanceId"]) ==
-                            "proto.silent.defend"]
-            chosen = (strikes_here or defends_here or
-                      [next(a for a in actions if a["kind"] == "end_turn")])[0]
-            if strikes_here:
+            chosen, has_strike, _ = choose_action(combat)
+            if has_strike:
                 strikes += 1
             if chosen["kind"] == "end_turn":
                 turns += 1
@@ -81,19 +92,81 @@ def play_victory():
         assert combat.pending is None
         assert combat.fingerprint == session.load_semantic_snapshot(
             combat.save_snapshot()).fingerprint
-        return initial, tuple(transcript), combat.fingerprint, combat.exit_hp, strikes, turns
+        return (initial, session.call(
+            "semantic_status", semantic_handle=combat.handle)["result"][
+                "sourceOpeningFingerprint"], tuple(transcript),
+                combat.fingerprint, combat.outcome, combat.exit_hp,
+                strikes, turns, initial_observation)
+
+
+def play_native_policy_baseline():
+    """Same player policy from an independently rebuilt source snapshot."""
+    with Session(COMMAND) as session:
+        combat = begin_combat(session, native_policy_baseline=True)
+        status = combat.status()
+        assert status["controllerMode"] == (
+            "engine-owned-native-v111-policy-baseline")
+        assert status["nativePolicyProvider"] == (
+            "engine-owned-native-v111-comparator-unverified-v1")
+        assert status["chanceSites"] == []
+        initial = combat.fingerprint
+        initial_observation = combat.observe()
+        history = []
+        strikes = 0
+        turns = 0
+        for step in range(600):
+            if combat.terminal:
+                break
+            assert combat.boundary == "player", combat.status()
+            chosen, has_strike, _ = choose_action(combat)
+            if has_strike:
+                strikes += 1
+            if chosen["kind"] == "end_turn":
+                turns += 1
+            history.append(("player", chosen["actionId"]))
+            combat = combat.step(chosen["actionId"])
+        assert combat.terminal, "Native policy baseline did not reach terminal"
+        final = combat.status()
+        assert final["nativePolicyDecisionCount"] > 0
+        assert final["nativePolicyShuffleCount"] > 0, (
+            "Native comparator must commit exact shuffle epochs")
+        assert final["nativePolicyProvider"] == (
+            "engine-owned-native-v111-comparator-unverified-v1")
+        assert combat.pending is None
+        assert combat.fingerprint == session.load_semantic_snapshot(
+            combat.save_snapshot()).fingerprint
+        return (initial,
+                final["sourceOpeningFingerprint"],
+                tuple(history), combat.fingerprint, combat.outcome,
+                combat.exit_hp, strikes, turns,
+                final["nativePolicyDecisionCount"],
+                final["nativePolicyShuffleCount"],
+                initial_observation)
+
+
+def play_comparison_pair():
+    nature = play_victory()
+    native = play_native_policy_baseline()
+    assert nature[1] == native[1], (
+        "Nature and native branches must start from the same source snapshot")
+    assert nature[8] == native[10], (
+        "Source-disjoint branches must expose the same fair opening view")
+    assert nature[5] is not None and native[5] is not None
+    return nature, native
 
 
 def main():
-    baseline = play_victory()
+    baseline = play_comparison_pair()
     with ThreadPoolExecutor(max_workers=15) as pool:
-        parallel = list(pool.map(lambda _: play_victory(), range(15)))
+        parallel = list(pool.map(lambda _: play_comparison_pair(), range(15)))
     assert all(result == baseline for result in parallel), (
-        "Act 1 terminal victory diverged across independent emulator processes")
+        "Native/Nature paired replay diverged across independent processes")
+    nature, native = baseline
     print("PASS: fair Silent legal-action Act 1 source-pinned weak "
-          f"terminal victory; exitHp={baseline[3]}, "
-          f"strikes={baseline[4]}, endTurns={baseline[5]}; "
-          "complete 1-vs-15 independent process action/Nature replay; "
+          f"paired source-disjoint outcomes Nature={nature[4]}@{nature[5]}, "
+          f"native-v111={native[4]}@{native[5]}; "
+          f"native decisions={native[8]}, shuffles={native[9]}; "
+          "complete 1-vs-15 independent process replay; "
           "source conditional laws remain UNVERIFIED")
 
 

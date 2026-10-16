@@ -1483,6 +1483,7 @@ public sealed partial class PrototypeGameEngine
             // The next-turn intent stage is a separate continuation boundary:
             // Nature commits its finite tickets before this stage's postwork.
             if (ControlledChanceGuardV111.Active &&
+                !ControlledChanceGuardV111.EngineOwnedNativeProviderActive &&
                 automaticStep.Kind == PrototypeAutomaticStepKind.AdvanceTurn)
                 return SetAutomaticPipelineContinuation(
                     state, index, pendingPostDispatchEventKind: null);
@@ -9012,6 +9013,47 @@ public sealed partial class PrototypeGameEngine
         };
     }
 
+    private static CombatState ApplyNativeDrawCardCost(
+        CombatState combat, long cardInstanceId, string cardModelId,
+        string stage, int bound)
+    {
+        var native = combat.NativeRng ?? throw new NotSupportedException(
+            "UNSUPPORTED_SEMANTIC_NATIVE site=combat.card_draw." + stage +
+            "_energy_cost operation=missing_native_stream_owner");
+        if (stage is not ("relic" or "slither") || bound <= 0)
+            throw new ArgumentOutOfRangeException(nameof(bound));
+        var streams = native.RunStreams.Fork();
+        var stream = streams.Streams.SingleOrDefault(item =>
+            item.StreamId == SemanticOtherChanceEngineV111.CostStreamId)
+            ?? throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_NATIVE site=combat.card_draw." + stage +
+                "_energy_cost operation=missing_native_cost_stream");
+        var callCount = stream.CallCount ?? throw new InvalidDataException(
+            "Native draw-cost stream is missing its call counter.");
+        if (callCount > int.MaxValue)
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_NATIVE site=combat.card_draw." + stage +
+                "_energy_cost operation=native_ordinal_overflow");
+        var request = new RandomIndexRequestV111(
+            stage == "relic"
+                ? "combat.card_draw.relic_energy_cost"
+                : "combat.card_draw.slither_energy_cost",
+            SemanticOtherChanceEngineV111.CostStreamId,
+            "card_instance:" + cardInstanceId + ":model:" + cardModelId +
+                ":stage:" + stage,
+            (int)callCount, [], OperationKind: "bounded_integer",
+            BoundedCount: bound);
+        var decision = new NativeRandomIndexProviderV111().Resolve(
+            request, streams);
+        return SetCardTemporaryEnergyCost(
+            combat with
+            {
+                NativeRng = native with { RunStreams = streams }
+            }, cardInstanceId,
+            new PrototypeTemporaryCardCost(
+                decision.SelectedIndex, PrototypeTemporaryCardCostExpiry.None));
+    }
+
     private static CombatState SetCardTemporaryEnergyCost(
         CombatState combat,
         long cardInstanceId,
@@ -13869,11 +13911,6 @@ public sealed partial class PrototypeGameEngine
 
                 if (combat.SemanticDeck is { } deferred)
                 {
-                    if (!ControlledChanceGuardV111.Active ||
-                        !controlledSemanticDrawSuspension)
-                        throw new NotSupportedException(
-                            "UNSUPPORTED_SEMANTIC_DECK site=combat.draw.recycle " +
-                            "operation=missing_semantic_continuation");
                     if (combat.PlayerPowers.Any(power =>
                         power.PowerId == "proto.power.stratagem" &&
                         power.Stacks > 0))
@@ -13895,20 +13932,67 @@ public sealed partial class PrototypeGameEngine
                         RequireCombatCard(combat, id).Enchantment?.Kind
                             == PrototypeCardEnchantmentKind.PerfectFit)
                         .ToArray();
-                    // Ordinary source-time shuffle plus deterministic
-                    // Perfect Fit top-priority hook. Nature commits only
-                    // constraints now; individual card identities remain
-                    // unresolved until their actual draw/reveal.
-                    deferred = SemanticDeckEngineV111.RecycleNature(
-                        deferred, discard, perfectFit);
-                    draw.AddRange(discard);
-                    discard.Clear();
-                    combat = combat with
+                    if (deferred.Mode == SemanticDeckStateV111.NatureMode)
                     {
-                        SemanticDeck = deferred,
-                        DrawPile = draw.ToArray(),
-                        DiscardPile = []
-                    };
+                        if (!ControlledChanceGuardV111.Active ||
+                            !controlledSemanticDrawSuspension)
+                            throw new NotSupportedException(
+                                "UNSUPPORTED_SEMANTIC_DECK site=combat.draw.recycle " +
+                                "operation=missing_semantic_continuation");
+                        // Nature preserves constraints now and chooses each
+                        // unknown physical identity only when DrawCards asks.
+                        deferred = SemanticDeckEngineV111.RecycleNature(
+                            deferred, discard, perfectFit);
+                    }
+                    else if (deferred.Mode == SemanticDeckStateV111.NativeMode)
+                    {
+                        // Native mode commits one exact source-time
+                        // Fisher-Yates permutation per recycle epoch. Later
+                        // card draws reveal this order without a second
+                        // per-card random choice.
+                        var native = combat.NativeRng ??
+                            throw new NotSupportedException(
+                                "UNSUPPORTED_SEMANTIC_NATIVE site=combat.draw.recycle " +
+                                "operation=missing_native_stream_owner");
+                        var nativeStreams = native.RunStreams.Fork();
+                        var shuffle = NativeFisherYatesV111.Execute(
+                            discard, nativeStreams,
+                            new NativeRandomIndexProviderV111());
+                        var postHook = ApplyPerfectFitShuffleOrder(
+                            combat, shuffle.PreHookOutput);
+                        deferred = SemanticDeckEngineV111.RecycleNative(
+                            deferred, discard, postHook.Reverse().ToArray());
+                        combat = combat with
+                        {
+                            NativeRng = native with
+                            {
+                                RunStreams = nativeStreams
+                            }
+                        };
+                        draw.AddRange(postHook);
+                        discard.Clear();
+                        combat = combat with
+                        {
+                            SemanticDeck = deferred,
+                            DrawPile = draw.ToArray(),
+                            DiscardPile = []
+                        };
+                    }
+                    else
+                        throw new InvalidDataException(
+                            "Unsupported provider-owned semantic deck mode.");
+
+                    if (deferred.Mode == SemanticDeckStateV111.NatureMode)
+                    {
+                        draw.AddRange(discard);
+                        discard.Clear();
+                        combat = combat with
+                        {
+                            SemanticDeck = deferred,
+                            DrawPile = draw.ToArray(),
+                            DiscardPile = []
+                        };
+                    }
                 }
                 else
                 {
@@ -13957,11 +14041,17 @@ public sealed partial class PrototypeGameEngine
             long cardInstanceId;
             if (combat.SemanticDeck is { } semantic)
             {
-                if (!ControlledChanceGuardV111.Active ||
-                    !controlledSemanticDrawSuspension)
+                if (semantic.Mode == SemanticDeckStateV111.NatureMode &&
+                    (!ControlledChanceGuardV111.Active ||
+                     !controlledSemanticDrawSuspension))
                     throw new NotSupportedException(
                         "UNSUPPORTED_SEMANTIC_DECK site=combat.draw " +
                         "operation=missing_semantic_continuation");
+                if (semantic.Mode == SemanticDeckStateV111.NativeMode &&
+                    combat.NativeRng is null)
+                    throw new NotSupportedException(
+                        "UNSUPPORTED_SEMANTIC_NATIVE site=combat.draw " +
+                        "operation=missing_native_stream_owner");
                 var members = SemanticDeckEngineV111.AllCardInstanceIds(semantic);
                 if (!members.Order().SequenceEqual(draw.Order()))
                     throw new InvalidDataException(
@@ -14010,7 +14100,29 @@ public sealed partial class PrototypeGameEngine
                 && cardDefinition.Cost.Amount >= 0;
             var hasSlither = card.Enchantment is
                 { Kind: PrototypeCardEnchantmentKind.Slither };
-            if (combat.SemanticDeck is not null && (needsRelicCost || hasSlither))
+            if (combat.SemanticDeck is
+                    { Mode: SemanticDeckStateV111.NativeMode } &&
+                (needsRelicCost || hasSlither))
+            {
+                // Resolve source-timed drawn costs through the separately
+                // owned native stream before CardDrawn dispatch. The v111
+                // stream assignment is still UNVERIFIED against the game.
+                if (needsRelicCost)
+                {
+                    combat = ApplyNativeDrawCardCost(
+                        combat, cardInstanceId, card.CardId, "relic",
+                        randomizedCostUpperBound);
+                    card = RequireCombatCard(combat, cardInstanceId);
+                }
+                if (hasSlither)
+                {
+                    combat = ApplyNativeDrawCardCost(
+                        combat, cardInstanceId, card.CardId, "slither", 4);
+                    card = RequireCombatCard(combat, cardInstanceId);
+                }
+            }
+            else if (combat.SemanticDeck is not null &&
+                     (needsRelicCost || hasSlither))
             {
                 if (!controlledSemanticDrawSuspension)
                     throw new NotSupportedException(

@@ -29,13 +29,22 @@ public sealed record SemanticRewardAuditV111(
     public ulong Calls => AfterCalls - BeforeCalls;
 }
 
+public sealed record SemanticNativePolicyAuditV111(
+    string ProviderId, RandomBoundaryEventV111[] Decisions,
+    string ProbabilityStatus = "UNVERIFIED")
+{
+    public const string NativeProviderId =
+        "engine-owned-native-v111-comparator-unverified-v1";
+}
+
 public sealed record SemanticSeededEntryV111(
     string Seed, int Act, string EncounterId, string NativeEncounterEntry,
     int TotalFloor, int Ascension, long FirstMonsterCombatId,
     int? MapColumn, int? MapRow,
     string? OtherChanceProviderId = null,
     string? FixtureDrawCostRelicId = null,
-    bool ReplayOpeningDrawHooks = false);
+    bool ReplayOpeningDrawHooks = false,
+    bool NativePolicyBaseline = false);
 
 /// <summary>
 /// First external playable semantic boundary. Initial opening order is
@@ -60,6 +69,7 @@ public sealed record SemanticPilotCombatV111(
     /// <summary>Private state for explicitly opted-in non-Nature RNG.</summary>
     public SemanticOtherChanceStateV111? OtherChance { get; init; }
     public SemanticRewardAuditV111? RewardAudit { get; init; }
+    public SemanticNativePolicyAuditV111? NativePolicyAudit { get; init; }
     [JsonIgnore] public string Fingerprint => CanonicalJson.Sha256(this);
     [JsonIgnore] public bool AtPlayerBoundary =>
         PendingEndTurn is null &&
@@ -68,6 +78,16 @@ public sealed record SemanticPilotCombatV111(
             PendingChoice: null, AutomaticPipelineContinuation: null };
     [JsonIgnore] public bool CombatTerminal =>
         Run.Phase is RunPhase.Reward or RunPhase.Terminal;
+    [JsonIgnore] public bool UsesNativePolicyBaseline =>
+        SeededEntry?.NativePolicyBaseline ?? false;
+    [JsonIgnore] public string? SourceOpeningFingerprint =>
+        SeededEntry is { } entry
+            ? CanonicalJson.Sha256(new
+            {
+                Entry = entry with { NativePolicyBaseline = false },
+                OpeningSource
+            })
+            : null;
     [JsonIgnore] public string? CombatOutcome =>
         Run.Phase switch
         {
@@ -86,7 +106,20 @@ public sealed record SemanticPilotCombatV111(
         Run = Run.Fork(),
         PendingEndTurn = PendingEndTurn?.Fork(),
         History = (SemanticPilotTransitionV111[])History.Clone(),
-        OtherChance = OtherChance?.Fork()
+        OtherChance = OtherChance?.Fork(),
+        NativePolicyAudit = NativePolicyAudit is { } audit
+            ? audit with
+            {
+                Decisions = audit.Decisions.Select(decision => decision with
+                {
+                    Request = decision.Request with
+                    {
+                        OrderedCandidates = (int[])decision.Request
+                            .OrderedCandidates.Clone()
+                    }
+                }).ToArray()
+            }
+            : null
     };
 }
 
@@ -146,6 +179,12 @@ public static class SemanticPilotCombatEngineV111
             entry.FirstMonsterCombatId < 1)
             throw new ArgumentOutOfRangeException(nameof(entry),
                 "Seeded Nature combat requires a positive floor and monster IDs.");
+        if (entry.NativePolicyBaseline &&
+            (entry.OtherChanceProviderId is not null ||
+             entry.FixtureDrawCostRelicId is not null))
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_NATIVE site=combat.seeded_entry " +
+                "operation=native_baseline_fixture_cost_provider_conflict");
         // Act 1 fixed weak entry is deliberately isolated from the
         // Hive/Glory fixture's pre-existing public 2/3-only contract.
         var prepared = entry.Act == 1
@@ -158,23 +197,24 @@ public static class SemanticPilotCombatEngineV111
                 entry.NativeEncounterEntry, entry.TotalFloor, entry.Ascension,
                 entry.FirstMonsterCombatId, entry.MapColumn, entry.MapRow);
         var rng = prepared.NativeStreams.Fork();
+        using var setupJournal = RandomBoundaryJournalV111.Begin();
+        var nativeProvider = new NativeRandomIndexProviderV111();
         var hp = ControlledInitialHpV111.Begin(
             prepared.Combat, prepared.Formation, prepared.NativeStreams);
         while (!hp.Complete)
         {
             var pending = hp.Pending!;
-            var choice = NativeRngV111.NextInt(
-                rng, pending.StreamId, pending.SupportCount);
-            hp = ControlledInitialHpV111.Resolve(hp, hp.Fingerprint, choice);
+            var decision = nativeProvider.Resolve(pending, rng);
+            hp = ControlledInitialHpV111.Resolve(
+                hp, hp.Fingerprint, decision.SelectedIndex);
         }
         var intents = ControlledIntentsV111.BeginAfterControlledHp(hp);
         while (!intents.Complete)
         {
             var pending = intents.Pending!;
-            var choice = NativeRngV111.NextInt(
-                rng, pending.StreamId, pending.SupportCount);
+            var decision = nativeProvider.Resolve(pending, rng);
             intents = ControlledIntentsV111.Resolve(
-                intents, intents.Fingerprint, choice);
+                intents, intents.Fingerprint, decision.SelectedIndex);
         }
         var opening = ControlledPlayableCombatEngineV111.Begin(
             intents, entry.Seed);
@@ -186,10 +226,12 @@ public static class SemanticPilotCombatEngineV111
             if (pending.SiteId != ControlledPlayableCombatEngineV111.ShuffleSite)
                 throw new NotSupportedException(
                     "UNSUPPORTED_SEMANTIC_OPENING site=" + pending.SiteId);
-            var choice = NativeRngV111.NextInt(
-                rng, pending.StreamId, pending.SupportCount);
+            var decision = nativeProvider.Resolve(pending with
+            {
+                SiteId = NativeFisherYatesV111.SiteId
+            }, rng);
             opening = ControlledPlayableCombatEngineV111.Resolve(
-                opening, opening.Fingerprint, choice);
+                opening, opening.Fingerprint, decision.SelectedIndex);
         }
         if (entry.OtherChanceProviderId is not null &&
             entry.OtherChanceProviderId != SemanticOtherChanceEngineV111.ProviderId)
@@ -204,6 +246,11 @@ public static class SemanticPilotCombatEngineV111
         };
         if (entry.ReplayOpeningDrawHooks)
             state = ReapplyCommittedOpeningThroughDrawCards(state);
+        if (entry.NativePolicyBaseline)
+            state = AttachNativePolicyBaseline(state, rng,
+                opening.Origin.Formation,
+                setupJournal.Entries.Where(decision =>
+                    decision.ProviderMode == "native-v111").ToArray());
         if (entry.FixtureDrawCostRelicId is { } relicId)
         {
             if (relicId != "proto.relic.snecko_eye")
@@ -243,6 +290,56 @@ public static class SemanticPilotCombatEngineV111
         }
         Validate(state);
         return state;
+    }
+
+    private static SemanticPilotCombatV111 AttachNativePolicyBaseline(
+        SemanticPilotCombatV111 state, RngBundle nativeStreams,
+        NativeEncounterFormationV111 formation,
+        RandomBoundaryEventV111[] setupDecisions)
+    {
+        ArgumentNullException.ThrowIfNull(nativeStreams);
+        ArgumentNullException.ThrowIfNull(formation);
+        var run = state.Run;
+        var world = run.World ?? throw new InvalidDataException(
+            "Native policy entry is missing its run world.");
+        var combat = world.Combat ?? throw new InvalidDataException(
+            "Native policy entry is missing its combat.");
+        if (run.NativeRunRng is not null || combat.NativeRng is not null ||
+            combat.SemanticDeck is null ||
+            combat.SemanticDeck.Mode != SemanticDeckStateV111.NatureMode)
+            throw new InvalidOperationException(
+                "Native policy entry requires a fresh semantic seeded opening.");
+
+        var exactDeck = SemanticDeckEngineV111.BeginNative(
+            combat.DrawPile.Reverse().ToArray());
+        var nativeCombat = combat with
+        {
+            NativeRng = new NativeCombatRngV111(
+                nativeStreams.Fork(), formation.Fork()),
+            SemanticDeck = exactDeck
+        };
+        NativeCombatRngEntryV111.Validate(nativeCombat);
+        var nativeRun = run with
+        {
+            NativeRunRng = nativeStreams.Fork(),
+            World = world with { Combat = nativeCombat }
+        };
+        NativeRunRngV111.Validate(nativeRun);
+        return state with
+        {
+            Run = nativeRun,
+            NativePolicyAudit = new SemanticNativePolicyAuditV111(
+                SemanticNativePolicyAuditV111.NativeProviderId,
+                setupDecisions.Select((decision, index) => decision with
+                {
+                    Sequence = index + 1,
+                    Request = decision.Request with
+                    {
+                        OrderedCandidates = (int[])decision.Request
+                            .OrderedCandidates.Clone()
+                    }
+                }).ToArray())
+        };
     }
 
     /// <summary>
@@ -309,6 +406,8 @@ public static class SemanticPilotCombatEngineV111
             throw new InvalidOperationException("Stale semantic player-action fingerprint.");
         if (!current.AtPlayerBoundary)
             throw new InvalidOperationException("Nature decision or combat terminal is pending.");
+        if (current.UsesNativePolicyBaseline)
+            return StepNativePolicyBaseline(current, actionId);
         var environment = new PrototypeAiEnvironment();
         var frame = environment.Observe(current.Run);
         var action = frame.LegalActions.SingleOrDefault(a =>
@@ -383,6 +482,59 @@ public static class SemanticPilotCombatEngineV111
                 new SemanticPilotTransitionV111("player", actionId)).ToArray()
         };
         return NormalizeNoncontrolledCosts(nextState);
+    }
+
+    private static SemanticPilotCombatV111 StepNativePolicyBaseline(
+        SemanticPilotCombatV111 current, string actionId)
+    {
+        var environment = new PrototypeAiEnvironment();
+        var frame = environment.Observe(current.Run);
+        if (frame.LegalActions.Count(a => a.ActionId == actionId) != 1)
+            throw new InvalidOperationException(
+                "Illegal or ambiguous native-policy player action.");
+        RunState result;
+        using var boundaries = RandomBoundaryJournalV111.Begin();
+        using (ControlledChanceGuardV111.Enter())
+        using (ControlledChanceGuardV111.AllowEngineOwnedNativeProvider())
+        using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
+            result = environment.Step(current.Run.Fork(), actionId).State;
+
+        var audit = current.NativePolicyAudit ??
+            throw new InvalidDataException(
+                "Native policy baseline is missing provider provenance.");
+        int offset = audit.Decisions.Length;
+        var recorded = boundaries.Entries.Select((entry, index) => entry with
+        {
+            Sequence = offset + index + 1,
+            Request = entry.Request with
+            {
+                OrderedCandidates = (int[])entry.Request.OrderedCandidates.Clone()
+            }
+        }).ToArray();
+
+        if (result.Phase == RunPhase.Combat)
+            ValidateNativePolicyBoundary(result);
+        else if (result.Phase is not (RunPhase.Reward or RunPhase.Terminal))
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_NATIVE site=combat.player_action " +
+                "operation=unsupported_post_action_phase");
+
+        var next = current with
+        {
+            Run = result,
+            PendingEndTurn = null,
+            RewardAudit = result.Phase == RunPhase.Reward
+                ? RecordRewardAudit(current.Run, result)
+                : current.RewardAudit,
+            NativePolicyAudit = audit with
+            {
+                Decisions = audit.Decisions.Concat(recorded).ToArray()
+            },
+            History = current.History.Append(
+                new SemanticPilotTransitionV111("player", actionId)).ToArray()
+        };
+        Validate(next);
+        return next;
     }
 
     private static SemanticRewardAuditV111 RecordRewardAudit(
@@ -538,8 +690,48 @@ public static class SemanticPilotCombatEngineV111
               entry.OtherChanceProviderId != state.OtherChance?.ProviderId)))
             throw new InvalidDataException(
                 "Seeded Nature entry provenance disagrees with its opening.");
-        if (state.AtPlayerBoundary)
+        if (state.UsesNativePolicyBaseline)
+        {
+            if (state.OtherChance is not null || state.PendingEndTurn is not null)
+                throw new InvalidDataException(
+                    "Native policy baseline cannot retain Nature-only continuations.");
+            var nativeAudit = state.NativePolicyAudit ??
+                throw new InvalidDataException(
+                    "Native policy baseline is missing provider provenance.");
+            if (nativeAudit.ProviderId !=
+                    SemanticNativePolicyAuditV111.NativeProviderId ||
+                nativeAudit.ProbabilityStatus != "UNVERIFIED" ||
+                nativeAudit.Decisions is null)
+                throw new InvalidDataException(
+                    "Native policy baseline has invalid provider identity.");
+            for (int index = 0; index < nativeAudit.Decisions.Length; index++)
+            {
+                var decision = nativeAudit.Decisions[index];
+                if (decision is null || decision.Sequence != index + 1)
+                    throw new InvalidDataException(
+                        "Native policy decision sequence is invalid at " + index + ".");
+                if (decision.ProviderMode != "native-v111")
+                    throw new InvalidDataException(
+                        "Native policy decision provider is invalid at " + index + ".");
+                if (decision.NativeCursorBefore is null ||
+                    decision.NativeCursorAfter is null)
+                    throw new InvalidDataException(
+                        "Native policy decision cursor is missing at " + index + ".");
+                if (decision.Request is null || decision.Request.Ordinal < 0 ||
+                    string.IsNullOrWhiteSpace(decision.Request.StreamId))
+                    throw new InvalidDataException(
+                        "Native policy decision request is invalid at " + index + ".");
+            }
+            if (state.AtPlayerBoundary)
+                ValidateNativePolicyBoundary(state.Run);
+            else
+                NativeRunRngV111.Validate(state.Run);
+        }
+        else if (state.AtPlayerBoundary)
             SemanticPlayerActionEngineV111.ValidateBoundary(state.Run);
+        else if (state.NativePolicyAudit is not null)
+            throw new InvalidDataException(
+                "Nature-controlled sessions cannot retain native policy decisions.");
         if (state.CombatTerminal && state.PendingEndTurn is not null)
             throw new InvalidDataException(
                 "Terminal combat retained an unresolved chance.");
@@ -577,5 +769,31 @@ public static class SemanticPilotCombatEngineV111
             throw new InvalidDataException(
                 "Semantic playable snapshot disagrees with action/Nature replay.");
         return replay;
+    }
+
+    private static void ValidateNativePolicyBoundary(RunState run)
+    {
+        NativeRunRngV111.Validate(run);
+        if (run.Phase != RunPhase.Combat || run.World?.Combat is not { } combat)
+            throw new InvalidDataException(
+                "Native policy action did not reach an active combat boundary.");
+        if (!combat.IsPlayerTurn || combat.PendingChoice is not null ||
+            combat.PendingKnowledgeDemonChoice is not null ||
+            combat.AutomaticPipelineContinuation is not null)
+            throw new InvalidDataException(
+                "Native policy action did not reach an idle player boundary.");
+        if (combat.NativeRng is null || run.NativeRunRng is null)
+            throw new InvalidDataException(
+                "Native policy combat lost its RNG stream owner.");
+        if (combat.SemanticDeck is not { } deck ||
+            deck.Mode != SemanticDeckStateV111.NativeMode ||
+            deck.Pending is not null)
+            throw new InvalidDataException(
+                "Native policy combat lost its exact semantic deck state.");
+        if (!SemanticDeckEngineV111.AllCardInstanceIds(deck)
+                .Order().SequenceEqual(combat.DrawPile.Order()))
+            throw new InvalidDataException(
+                "Native policy exact deck does not match the physical draw pile.");
+        SemanticDeckEngineV111.Validate(deck);
     }
 }

@@ -357,7 +357,8 @@ class Session:
             map_column: int = 3, map_row: int = 5,
             other_chance_provider_id: str | None = None,
             fixture_draw_cost_relic_id: str | None = None,
-            replay_opening_draw_hooks: bool = False):
+            replay_opening_draw_hooks: bool = False,
+            native_policy_baseline: bool = False):
         """Begin a two-site pilot without external opening chance tickets.
 
         Setup uses source-shaped RNG streams in an isolated Hive/Glory
@@ -366,6 +367,10 @@ class Session:
         if self.capabilities.get("semanticSeededOpeningProvider") != (
                 "engine-owned-seeded-source-shaped-unverified-v1"):
             raise EmulatorError("Emulator lacks seeded semantic entry")
+        if native_policy_baseline and self.capabilities.get(
+                "semanticNativePolicyComparatorId") != (
+                    "engine-owned-native-v111-comparator-unverified-v1"):
+            raise EmulatorError("Emulator lacks the native-policy comparator")
         if other_chance_provider_id is not None and (
                 other_chance_provider_id not in
                 self.capabilities.get("semanticOtherChanceProviders", [])):
@@ -378,7 +383,8 @@ class Session:
             map_column=map_column, map_row=map_row,
             other_chance_provider_id=other_chance_provider_id,
             fixture_draw_cost_relic_id=fixture_draw_cost_relic_id,
-            replay_opening_draw_hooks=replay_opening_draw_hooks))
+            replay_opening_draw_hooks=replay_opening_draw_hooks,
+            native_policy_baseline=native_policy_baseline))
 
     def load_semantic_snapshot(self, snapshot: str):
         if self.capabilities.get("semanticChanceSchemaId") != (

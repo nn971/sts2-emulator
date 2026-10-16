@@ -130,15 +130,30 @@ internal static class PrototypeAiJsonlServer
                 ok = true, schemaId = SemanticChanceSchemaId,
                 semanticHandle = handle, parent,
                 fingerprint = state.Fingerprint,
+                sourceOpeningFingerprint = state.SourceOpeningFingerprint,
                 boundary = state.CombatTerminal ? "terminal" :
                     state.AtPlayerBoundary ? "player" : "nature",
                 pending = DescribeSemanticPending(state),
                 terminal = state.CombatTerminal,
                 outcome = state.CombatOutcome,
                 exitHp = state.CombatTerminal ? state.Run.Player.Hp : (int?)null,
-                chanceSites = new[] { "enemy_intent", "draw_card" },
-                otherChanceProvider = state.OtherChance?.ProviderId ??
-                    "engine-owned-deterministic-unverified-v1",
+                chanceSites = state.UsesNativePolicyBaseline
+                    ? Array.Empty<string>()
+                    : new[] { "enemy_intent", "draw_card" },
+                controllerMode = state.UsesNativePolicyBaseline
+                    ? "engine-owned-native-v111-policy-baseline"
+                    : "nature-two-site",
+                nativePolicyProvider = state.UsesNativePolicyBaseline
+                    ? SemanticNativePolicyAuditV111.NativeProviderId
+                    : null,
+                nativePolicyDecisionCount = state.NativePolicyAudit?.Decisions.Length ?? 0,
+                nativePolicyShuffleCount = state.NativePolicyAudit?.Decisions.Count(
+                    decision => decision.Request.SiteId ==
+                        NativeFisherYatesV111.SiteId) ?? 0,
+                otherChanceProvider = state.UsesNativePolicyBaseline
+                    ? null
+                    : state.OtherChance?.ProviderId ??
+                        "engine-owned-deterministic-unverified-v1",
                 otherChanceDecisionCount = state.OtherChance?.Decisions.Length ?? 0,
                 rewardProvider = state.RewardAudit?.ProviderId,
                 rewardDrawCount = state.RewardAudit?.Calls,
@@ -265,6 +280,8 @@ internal static class PrototypeAiJsonlServer
                             naturePlayable = false,
                             controlledChanceSchemaId = ControlledChanceSchemaId,
                             semanticChanceSchemaId = SemanticChanceSchemaId,
+                            semanticNativePolicyComparatorId =
+                                "engine-owned-native-v111-comparator-unverified-v1",
                             semanticPlayable = true,
                             semanticPlayableScope =
                                 "post-committed-opening-fixture-restricted-Silent-combat",
@@ -596,7 +613,8 @@ internal static class PrototypeAiJsonlServer
                             OptionalInt(request, "map_row"),
                             OptionalString(request, "other_chance_provider_id"),
                             OptionalString(request, "fixture_draw_cost_relic_id"),
-                            OptionalBool(request, "replay_opening_draw_hooks"));
+                            OptionalBool(request, "replay_opening_draw_hooks"),
+                            OptionalBool(request, "native_policy_baseline"));
                         var next = SemanticPilotCombatEngineV111.BeginSeeded(entry);
                         var handle = StoreSemantic(next);
                         Write(new { requestId, ok = true,
