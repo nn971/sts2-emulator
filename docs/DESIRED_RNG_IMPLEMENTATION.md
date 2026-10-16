@@ -139,9 +139,11 @@ before the hand-draw prelude.
 Legacy combat-entry and summoned-enemy HP rolls, Overgrowth encounter-bag
 choices, weighted encounter tickets, encounter-formation selections, and
 opening AI rotation now pass through the shared typed adapter while retaining
-their existing `combat` stream and draw bounds. Native summon-pool selection
-remains fail-closed pending source audit. Controlled continuations for enemy
-and encounter selection remain open.
+their existing `combat` stream and draw bounds. The controlled legacy enemy
+action replay now covers summon-pool choices and any subsequent summoned-enemy
+HP choices, as well as card theft and random pile insertions. Native
+summon-pool selection remains fail-closed pending source audit; encounter
+selection continuations remain open.
 Beautiful Bracelet's eligible-deck shuffle and Fur Coat's current-act combat
 node shuffle now use typed native swap requests as well; controlled relic
 acquisition continuation remains pending. Distinguished Cape's two

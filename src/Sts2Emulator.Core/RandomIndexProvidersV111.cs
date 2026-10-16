@@ -216,12 +216,6 @@ public static class LegacyRandomChoiceV111
         ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
         ArgumentException.ThrowIfNullOrWhiteSpace(streamId);
         ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
-        if (ControlledChanceGuardV111.Active
-            && !ControlledChanceGuardV111.EngineOwnedNativeProviderActive)
-            throw new NotSupportedException(
-                $"UNSUPPORTED_CONTROLLED_CHANCE site={siteId} " +
-                $"operation={operationKind} requires a saved continuation.");
-
         var matchingStreams = streams.Streams.Where(stream =>
             stream.StreamId == streamId).ToArray();
         if (matchingStreams.Length != 1)
@@ -231,16 +225,34 @@ public static class LegacyRandomChoiceV111
         if (streamOrdinal < 0 || streamOrdinal > int.MaxValue)
             throw new NotSupportedException(
                 "Legacy random-choice provider ordinal exceeds the request range.");
+        var request = new RandomIndexRequestV111(
+            siteId,
+            streamId,
+            ownerId,
+            ordinal ?? (int)streamOrdinal,
+            (int[])orderedCandidates.Clone(),
+            OperationKind: operationKind,
+            BoundedCount: boundedCount);
+        if (ControlledChanceGuardV111.Active
+            && !ControlledChanceGuardV111.EngineOwnedNativeProviderActive)
+        {
+            if (ControlledEnemyActionReplayV111.IsActive &&
+                PrototypeControlledEnemyActionContinuationV111
+                    .IsEnemyActionSite(siteId))
+            {
+                var controlledDecision = new RandomIndexDecisionV111(
+                    request,
+                    ControlledEnemyActionReplayV111.Resolve(request),
+                    "controlled-v111");
+                controlledDecision.Validate();
+                return controlledDecision;
+            }
+            throw new NotSupportedException(
+                $"UNSUPPORTED_CONTROLLED_CHANCE site={siteId} " +
+                $"operation={operationKind} requires a saved continuation.");
+        }
         var decision = new LegacyPrototypeRandomIndexProviderV111().Resolve(
-            new RandomIndexRequestV111(
-                siteId,
-                streamId,
-                ownerId,
-                ordinal ?? (int)streamOrdinal,
-                (int[])orderedCandidates.Clone(),
-                OperationKind: operationKind,
-                BoundedCount: boundedCount),
-            streams);
+            request, streams);
         return decision;
     }
 }

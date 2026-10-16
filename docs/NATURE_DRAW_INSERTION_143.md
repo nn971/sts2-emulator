@@ -33,8 +33,10 @@ existing semantic insertion event and resume their saved draw frames;
 automatic hand-draw and other recycle contexts still fail closed until their
 pipeline continuations are serializable. Enemy-side random draw/discard
 insertion uses typed `run.shuffle` sites and now resumes through the saved
-enemy-action frame. Enemy summon-pool selection, enemy theft selection, and
-nested death/summon random effects remain separate continuation gaps.
+enemy-action frame. The same frame also supports legacy Fabricator summon-pool
+choices and any resulting summoned-enemy HP choice. Native summon-pool
+selection remains fail-closed pending source RNG audit; nested death/summon
+random effects remain separate continuation gaps.
 
 The private pending choice records the exact eligible draw-pile instance IDs, source operation, generated card ID or eligible Attack IDs, remaining repetition count in the saved queued-operation continuation, and source-card/event/card-play continuation identity. On completion, the original queue resumes without re-running earlier effects. Multiple insertions generate successive tickets and are recorded chronologically in the existing `LiveTranscript`, with independent fork outcomes and source-eligibility validation. Nature receives card models in `pending.candidateCardIds` for the model-selection stage. The ordinary fair player observation remains inaccessible during pending Nature decisions; source probability status is `UNVERIFIED`.
 
@@ -58,8 +60,10 @@ The automatic enemy-action frame is exposed as `enemy_action_chance` with its
 typed request and eligible indices. JSONL clients resolve it with
 `semantic_resolve_enemy_action` and `selected_index`; subsequent enemy
 insertions or Hopper theft choices are presented one at a time, then the
-semantic turn-intent stage continues. Native stream assignment and probability
-status remain `UNVERIFIED`.
+semantic turn-intent stage continues. It also handles legacy Fabricator
+summon-pool choices and any resulting summoned-enemy HP choices. Native
+summon-pool selection still fails closed pending source audit; stream
+assignment and probability status remain `UNVERIFIED`.
 
 ## Validation scope
 

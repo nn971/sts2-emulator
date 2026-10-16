@@ -65,7 +65,9 @@ public sealed record PrototypeControlledEnemyActionContinuationV111(
     public static bool IsEnemyActionSite(string siteId) => siteId is
         "combat.enemy.discard.random_insert_index" or
         "combat.enemy.draw.random_insert_index" or
-        "combat.enemy.theft_card.select";
+        "combat.enemy.theft_card.select" or
+        "combat.enemy.summon_pool.select" or
+        NativeCombatRngEntryV111.InitialUniqueHpSiteId;
 }
 
 internal sealed class ControlledEnemyActionChanceRequiredException(
@@ -76,7 +78,7 @@ internal sealed class ControlledEnemyActionChanceRequiredException(
 }
 
 /// <summary>
-/// Injects previously selected enemy insertion positions while replaying the
+/// Injects previously selected enemy-action outcomes while replaying the
 /// source resolver from its saved pre-step state. The first unrecorded request
 /// suspends the pipeline with its complete typed support.
 /// </summary>
@@ -88,6 +90,8 @@ internal sealed class ControlledEnemyActionReplayV111 : IDisposable
     private readonly RandomIndexDecisionV111[] _decisions;
     private int _nextDecision;
     private bool _disposed;
+
+    public static bool IsActive => Active.Value is not null;
 
     private ControlledEnemyActionReplayV111(
         RandomIndexDecisionV111[] decisions)

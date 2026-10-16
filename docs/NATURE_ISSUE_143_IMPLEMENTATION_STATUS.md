@@ -762,3 +762,13 @@ zero warnings or errors; tests and mechanics regressions were not run. Native
 stream assignment, cursor parity and conditional probabilities remain
 `UNVERIFIED`; see
 [`NATURE_ENEMY_THEFT_143.md`](NATURE_ENEMY_THEFT_143.md).
+
+## 2026-10-17: controlled legacy enemy summon pools
+
+The enemy-action replay now handles the modeled legacy summon-pool selection.
+When a summoned enemy has a variable HP range, the replay serializes that
+second choice and injects the summon selection again before resolving the HP
+outcome. Native summon-pool selection remains fail-closed pending source RNG
+audit. The Release solution build passes with zero warnings or errors; tests
+and mechanics regressions were not run. The new nested continuation is
+`UNVERIFIED`; see [`NATURE_ENEMY_SUMMON_143.md`](NATURE_ENEMY_SUMMON_143.md).

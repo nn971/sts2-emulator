@@ -812,6 +812,7 @@ internal static class PrototypeAiJsonlServer
                             controlledChanceSupportedSites = new[]
                             {
                                 ControlledPlayableCombatEngineV111.ShuffleSite,
+                                NativeCombatRngEntryV111.InitialUniqueHpSiteId,
                                 ControlledTurnIntentEngineV111.SiteId,
                                 ControlledRecycleShuffleEngineV111.SiteId,
                                 "combat.effect.random_enemy",
@@ -823,6 +824,7 @@ internal static class PrototypeAiJsonlServer
                                 "combat.random_draw_attack.card_model",
                                 "combat.draw_pile.random_insert_index",
                                 "combat.enemy.theft_card.select",
+                                "combat.enemy.summon_pool.select",
                                 "combat.hand_return.draw_pile.shuffle_swap_index",
                                 "combat.generation.full_pool_shuffle.swap_index",
                                 "combat.random_hand_card.select",
@@ -837,7 +839,8 @@ internal static class PrototypeAiJsonlServer
                                 "hand-cost selection/rerolls, random pile shortlists, " +
                                 "per-potion model generation, selected-card transforms, " +
                                 "Bottled Potential hand-return shuffles, and their relic insertions; " +
-                                "enemy persistent-card theft during end turn; " +
+                                "legacy enemy summon pools, summoned-enemy HP and " +
+                                "persistent-card theft during end turn; " +
                                 "other chance sites fail closed; native entry and laws unverified.",
                             natureBoundaryKinds = new[] { "initial_hp", "intents" },
                             coverageSchemaId = V111Coverage.SchemaId,
