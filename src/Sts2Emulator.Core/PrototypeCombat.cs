@@ -5397,8 +5397,19 @@ public sealed partial class PrototypeGameEngine
                                 combat.NextCardInstanceId, null,
                                 "proto.status.dazed", 0, true,
                                 PrototypeJson.EmptyObject());
-                            var slot = PrototypeRng.NextInt(
-                                rng, "combat", combat.DrawPile.Length + 1);
+                            var insertion = ResolveRandomPilePosition(
+                                combat, rng, combat.DrawPile,
+                                instance.CardId, operationKind: null,
+                                sourceCardInstanceId: sourceCardInstanceId,
+                                ordinal: n,
+                                siteId:
+                                    "combat.effect.personal_hive.dazed.random_insert_index",
+                                requestOwnerPrefix:
+                                    "enemy:" + splashTarget.InstanceId +
+                                    ":power:personal_hive:source:" +
+                                    (sourceCardInstanceId?.ToString() ?? "none"));
+                            combat = insertion.Combat;
+                            var slot = insertion.SelectedIndex;
                             var draw = combat.DrawPile.ToList();
                             draw.Insert(slot, instance.InstanceId);
                             combat = combat with
