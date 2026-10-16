@@ -41,11 +41,14 @@ state without revealing its unresolved position, and fail closed if that
 removal would break split-pool constraints. The saved real player-action
 segment admits audited draw-pile-neutral Silent actions: Strike, Defend,
 Deflect, Neutralize, Slice, Poisoned Stab, Deadly Poison, Sucker Punch,
-Dagger Spray, Dash, Cloak and Dagger, Blade Dance and Piercing Wail. It rejects
-a chance or turn boundary it cannot resume with a typed unsupported-operation
-error. The semantic playable pilot also admits Survivor and Hand Trick through
-its persisted source card-selection continuation; the no-choice action engine
-remains limited to the draw-pile-neutral list above.
+Dagger Spray, Dash, Cloak and Dagger, Blade Dance, Piercing Wail, Backstab,
+Leg Sweep, Skewer, Footwork, Accuracy, Phantom Blades, Tracking, Infinite
+Blades, Suppress, Anticipate, Snakebite, Assassinate, Catalyst, Expose,
+Malaise, Crippling Cloud, Blur, Dodge and Roll, Sidestep, Pounce, Finisher,
+Flechettes, Bubble Bubble, Strangle, Corrosive Wave and Leading Strike. It
+rejects a chance or turn boundary it cannot resume with a typed unsupported-
+operation error. The semantic playable pilot also admits Survivor, Hand Trick
+and Wish through its persisted source card-selection continuation.
 Physical draw-pile moves now keep provider state synchronized across exact
 insertions, removals, transformations, and zone transfers. Native hand-return
 shuffles commit the resulting top-first order, and after-shuffle relic cards
