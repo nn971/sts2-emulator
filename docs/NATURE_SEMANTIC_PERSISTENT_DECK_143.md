@@ -25,9 +25,9 @@ Leg Sweep, Skewer, Footwork, Accuracy, Phantom Blades, Tracking, Infinite
 Blades, Suppress, Anticipate, Snakebite, Assassinate, Catalyst, Expose,
 Malaise, Crippling Cloud, Blur, Dodge and Roll, Sidestep, Pounce, Finisher,
 Flechettes, Bubble Bubble, Strangle, Corrosive Wave and Leading Strike. The
-playable pilot separately admits Survivor, Hand Trick and Wish through saved
-source `select_cards` choices. Action effects still use the real game
-mechanics, so card play, energy, target, damage/block, fixed generated cards,
+playable pilot separately admits Survivor, Hand Trick, Nightmare and Wish
+through saved source `select_cards` choices. Action effects still use the real
+game mechanics, so card play, energy, target, damage/block, fixed generated cards,
 relic hooks, hand and discard changes occur normally.
 Unmodeled chance sites abort without publishing a child, even for
 an allowlisted card when other active game modifiers cause extra

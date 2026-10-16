@@ -328,16 +328,21 @@ stable card model ID, resumes the saved effect, and records a typed
 ordering and remain `UNVERIFIED` as probability laws. The test loadout does
 not claim native potion acquisition provenance.
 
-The `select_cards` player-choice extension supports Survivor, Hand Trick and
-Wish when present in hand; `fixture_selection_card_id="proto.silent.survivor"`
-can put Survivor in the first opening-hand slot for a reproducible fixture.
-Their real plays produce a `player_choice` boundary with source-ordered
-candidate identities and legal selection action IDs. `semantic_step` (or
+The `select_cards` player-choice extension supports Survivor, Hand Trick,
+Nightmare and Wish when present in hand;
+`fixture_selection_card_id="proto.silent.survivor"` can put Survivor in the
+first opening-hand slot for a reproducible fixture. Their real plays produce
+a `player_choice` boundary with source-ordered candidate identities and legal
+selection action IDs. `semantic_step` (or
 Python `resolve_card_selection`) resumes the original source continuation and
 records a typed `semantic_card_selection` decision for snapshot replay. This
 is an ordinary player choice, not an added Nature chance site. It does not
 establish native fixture-loadout acquisition or generic support for nested
 random continuations.
+
+Set `fixture_selection_card_id="proto.silent.nightmare"` to exercise the
+selected-card power continuation. Nightmare's source choice preserves one
+hand card and attaches the real copy-on-next-turn power to that instance.
 
 Set `fixture_selection_card_id="proto.native.ancient.wish"` to exercise Wish's
 source choice that moves a selected draw-pile card to hand. The seeded fixture

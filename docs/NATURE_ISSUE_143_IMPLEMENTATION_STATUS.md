@@ -349,11 +349,12 @@ removals, forged hidden pool rejection, complete source replay
 and independent 15-worker outcomes. Focused CI covers this
 versioned choice-resolution slice; see
 [Nature semantic card selection](NATURE_SEMANTIC_CARD_SELECTION_143.md).
-The semantic playable pilot admits Survivor, Hand Trick and Wish whenever one
-is present in hand, then exercises this engine after their real effects. It
-publishes a typed `player_card_selection` event and source legal actions, then
-replays the action/choice pair from the saved source state. The explicit seeded
-fixture remains available to guarantee Survivor in the opening hand. This does
+The semantic playable pilot admits Survivor, Hand Trick, Nightmare and Wish
+whenever one is present in hand, then exercises this engine after their real
+effects. It publishes a typed `player_card_selection` event and source legal
+actions, then replays the action/choice pair from the saved source state. The
+explicit seeded fixture remains available to guarantee Survivor in the opening
+hand. This does
 not establish native acquisition for these cards or generic nested-choice
 coverage. Scry/random-position selection, other insertion effects and
 card-effect draws remain separate integration milestones.
