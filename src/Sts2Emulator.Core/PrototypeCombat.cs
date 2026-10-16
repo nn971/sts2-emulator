@@ -6108,8 +6108,18 @@ public sealed partial class PrototypeGameEngine
                                     sourceCardAlreadyMoved,
                                 EventDispatchContinuation:
                                     eventDispatchContinuation?.Fork());
-                        return (player, AttachOuterChoiceContinuation(
-                            combat, continuation));
+                        combat = AttachOuterChoiceContinuation(
+                            combat, continuation);
+                        if (operation.StandaloneSemanticDrawSegment &&
+                            combat.PendingChoice is { } nestedChoice)
+                            combat = combat with
+                            {
+                                PendingChoice = nestedChoice with
+                                {
+                                    StandaloneSemanticDrawHookChoice = true
+                                }
+                            };
+                        return (player, combat);
                     }
                     if (drawn.ControlledSemanticDrawPending ||
                         drawn.ControlledDrawCostPending ||

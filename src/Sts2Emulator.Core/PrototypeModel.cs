@@ -2008,7 +2008,9 @@ public sealed record PendingCombatChoiceState(
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
     bool SemanticStratagemDrawSelection = false,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-    bool AutomaticSemanticStratagemDrawSelection = false)
+    bool AutomaticSemanticStratagemDrawSelection = false,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    bool StandaloneSemanticDrawHookChoice = false)
 {
     public PendingCombatChoiceState Fork() => this with
     {

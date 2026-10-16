@@ -3482,6 +3482,35 @@ public static class PrototypeStateInvariants
                     throw new InvalidOperationException(
                         "Automatic Stratagem selection is malformed.");
             }
+            if (pending.StandaloneSemanticDrawHookChoice)
+            {
+                bool hasStandaloneDrawResume = pending.Continuation.Any(
+                    operation =>
+                        operation.Kind == PrototypeCombatEffectKind.DrawCards &&
+                        operation.StandaloneSemanticDrawSegment);
+                for (var outer = pending.OuterChoiceContinuation;
+                     !hasStandaloneDrawResume && outer is not null;
+                     outer = outer.Parent)
+                    if (outer.Operations.Any(operation =>
+                            operation.Kind ==
+                                PrototypeCombatEffectKind.DrawCards &&
+                            operation.StandaloneSemanticDrawSegment))
+                    {
+                        hasStandaloneDrawResume = true;
+                        break;
+                    }
+                if (pending.SemanticStratagemDrawSelection ||
+                    pending.AutomaticSemanticStratagemDrawSelection ||
+                    pending.ControlledSemanticDraw is not null ||
+                    pending.ControlledDrawCost is not null ||
+                    !hasStandaloneDrawResume || !combat.IsPlayerTurn ||
+                    combat.AutomaticPipelineContinuation is not null ||
+                    combat.SemanticDeck is not
+                        { Mode: SemanticDeckStateV111.NatureMode,
+                            Pending: null })
+                    throw new InvalidOperationException(
+                        "Standalone CardDrawn hook choice is malformed.");
+            }
             var savedChoiceOperations = new List<PrototypeQueuedOperation>(
                 pending.Continuation);
             for (var outer = pending.OuterChoiceContinuation;

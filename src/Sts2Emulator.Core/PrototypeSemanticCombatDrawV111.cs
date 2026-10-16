@@ -32,7 +32,8 @@ public sealed partial class PrototypeGameEngine
         var result = DrawCards(
             run.Player, combat, count, run.Rng, fromHandDraw,
             controlledSemanticDrawSuspension: true,
-            controlledAfterShuffleInsertionSuspension: true);
+            controlledAfterShuffleInsertionSuspension: true,
+            controlledCardDrawnChoiceSuspension: !automatic);
         if (result.ControlledAfterShuffleInsertions is
             { Length: > 0 } afterShuffleInsertions)
         {
@@ -48,6 +49,21 @@ public sealed partial class PrototypeGameEngine
                     ? combat.AutomaticPipelineContinuation!
                         .ControlledSemanticDrawRequested
                     : null);
+        }
+        if (result.NestedCardDrawnChoicePending)
+        {
+            if (automatic)
+                throw new NotSupportedException(
+                    "UNSUPPORTED_SEMANTIC_DECK site=combat.draw.CardDrawn " +
+                    "operation=automatic_nested_choice");
+            var advancedNestedChoice = run with
+            {
+                Player = result.Player,
+                World = world with { Combat = result.Combat }
+            };
+            return (SuspendStandaloneSemanticDrawForHookChoice(
+                advancedNestedChoice, result, fromHandDraw),
+                result.RemainingCount);
         }
         if (result.ControlledRecyclePending)
             throw new NotSupportedException(
@@ -167,20 +183,29 @@ public sealed partial class PrototypeGameEngine
                 SourceCardInstanceId: cost.CardInstanceId,
                 CardId: card.CardId,
                 FromHandDraw: cost.FromHandDraw),
-            run.Rng, cost.EventDepth);
+            run.Rng, cost.EventDepth,
+            allowSuspension: !automatic);
         var player = dispatched.Player;
         combat = dispatched.Combat;
         if (combat.PendingChoice is not null ||
             combat.PendingKnowledgeDemonChoice is not null)
-            throw new NotSupportedException(
-                "UNSUPPORTED_SEMANTIC_DECK site=combat.draw.CardDrawn " +
-                "operation=nested_choice_continuation");
+        {
+            if (combat.PendingChoice is null || automatic)
+                throw new NotSupportedException(
+                    "UNSUPPORTED_SEMANTIC_DECK site=combat.draw.CardDrawn " +
+                    "operation=nested_choice_continuation");
+            var hookRun = SuspendStandaloneSemanticDrawAtHookChoice(
+                run, player, combat, cost.RemainingCount,
+                cost.FromHandDraw, cost.EventDepth);
+            return (hookRun, cost.RemainingCount);
+        }
 
         var continued = DrawCards(
             player, combat, cost.RemainingCount, run.Rng,
             cost.FromHandDraw, eventDepth: cost.EventDepth,
             controlledSemanticDrawSuspension: true,
-            controlledAfterShuffleInsertionSuspension: true);
+            controlledAfterShuffleInsertionSuspension: true,
+            controlledCardDrawnChoiceSuspension: !automatic);
         if (continued.ControlledAfterShuffleInsertions is
             { Length: > 0 } afterShuffleInsertions)
         {
@@ -196,6 +221,21 @@ public sealed partial class PrototypeGameEngine
                     ? combat.AutomaticPipelineContinuation!
                         .ControlledSemanticDrawRequested
                     : null);
+        }
+        if (continued.NestedCardDrawnChoicePending)
+        {
+            if (automatic)
+                throw new NotSupportedException(
+                    "UNSUPPORTED_SEMANTIC_DECK site=combat.draw.CardDrawn " +
+                    "operation=automatic_nested_choice");
+            var advancedNestedChoice = run with
+            {
+                Player = continued.Player,
+                World = world with { Combat = continued.Combat }
+            };
+            return (SuspendStandaloneSemanticDrawForHookChoice(
+                advancedNestedChoice, continued, cost.FromHandDraw),
+                continued.RemainingCount);
         }
         if (continued.ControlledRecyclePending)
             throw new NotSupportedException(
@@ -350,5 +390,53 @@ public sealed partial class PrototypeGameEngine
         };
         return ResumeControlledStratagemSelection(
             advanced, combat, draw, continuation);
+    }
+
+    private static RunState SuspendStandaloneSemanticDrawForHookChoice(
+        RunState run, PrototypeDrawCardsResult drawn, bool fromHandDraw)
+    {
+        if (!drawn.NestedCardDrawnChoicePending)
+            throw new InvalidDataException(
+                "Expected a nested CardDrawn choice result.");
+        return SuspendStandaloneSemanticDrawAtHookChoice(
+            run, drawn.Player, drawn.Combat, drawn.RemainingCount,
+            fromHandDraw, eventDepth: 0);
+    }
+
+    private static RunState SuspendStandaloneSemanticDrawAtHookChoice(
+        RunState run, PlayerState player, CombatState combat, int remaining,
+        bool fromHandDraw, int eventDepth)
+    {
+        if (!ControlledChanceGuardV111.Active || remaining < 0 ||
+            eventDepth < 0 || combat.PendingChoice is null ||
+            combat.SemanticDeck is not
+                { Mode: SemanticDeckStateV111.NatureMode,
+                    Pending: null })
+            throw new InvalidDataException(
+                "Standalone CardDrawn choice lost its source continuation.");
+        var resumeDraw = CreateDrawResumeOperation(
+            remaining, fromHandDraw, eventDepth,
+            drawnCardKeyword: null,
+            deferredDrawnCardInstanceIds: [],
+            standaloneSemanticDrawSegment: true);
+        var continuation = new PrototypeChoiceResolutionContinuationState(
+            SourceCardInstanceId: null,
+            SourceCardDestination: PrototypeCardZone.DrawPile,
+            Operations: [resumeDraw], PendingDiscardEvents: [],
+            PendingSlyCardInstanceIds: [], CompletionEvents: []);
+        combat = AttachDrawResumeContinuation(
+            combat, resumeDraw, continuation);
+        combat = combat with
+        {
+            PendingChoice = combat.PendingChoice! with
+            {
+                StandaloneSemanticDrawHookChoice = true
+            }
+        };
+        return run with
+        {
+            Player = player,
+            World = run.World! with { Combat = combat }
+        };
     }
 }

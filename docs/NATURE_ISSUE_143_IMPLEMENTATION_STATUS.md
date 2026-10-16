@@ -612,3 +612,14 @@ draw-cost and random pile-card decisions. The Release solution build passes
 with zero warnings or errors; tests were not run for this checkpoint.
 Conditional probabilities remain `UNVERIFIED`; see
 [`NATURE_SEMANTIC_END_TURN_143.md`](NATURE_SEMANTIC_END_TURN_143.md).
+
+## 2026-10-17: standalone CardDrawn hook choices
+
+The standalone semantic draw now persists the remaining `DrawCards` operation
+when a `CardDrawn` hook opens an ordinary source action choice. A typed hook
+choice event records legal action support and replays the selected action;
+the same draw resumes once the choice resolves. Controlled nested chance
+boundaries and automatic hand-draw hook choices remain separate work. The
+Release solution build passes with zero warnings or errors; tests were not run
+for this checkpoint. Conditional probabilities remain `UNVERIFIED`; see
+[`NATURE_SEMANTIC_COMBAT_DRAW_143.md`](NATURE_SEMANTIC_COMBAT_DRAW_143.md).
