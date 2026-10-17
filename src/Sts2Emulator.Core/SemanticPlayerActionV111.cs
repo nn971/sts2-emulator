@@ -104,7 +104,8 @@ public static class SemanticPlayerActionEngineV111
             { MechanicsImplemented: true, MultiplayerOnly: false };
 
     public static string[] SupportedCardIds =>
-        SupportedCards.Order(StringComparer.Ordinal).ToArray();
+        SupportedCards.Where(SupportsCard)
+            .Order(StringComparer.Ordinal).ToArray();
 
     public static SemanticPlayerActionV111 Step(
         RunState source, string actionId)

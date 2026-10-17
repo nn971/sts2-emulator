@@ -33,8 +33,9 @@ non-Nature RNG parity remain **UNVERIFIED**.
   action engine; the action is accepted only when it returns to a player
   boundary without changing the provider-owned semantic deck or physical
   draw-pile sequence. Active modifiers that add unsupported randomness still
-  fail closed. This is the retained-deck action capability, a subset of all
-  card continuations exposed by the playable semantic protocol.
+  fail closed. The list excludes card definitions marked unimplemented or
+  multiplayer-only. This is the retained-deck action capability, a subset of
+  all card continuations exposed by the playable semantic protocol.
 - `semanticDrawChoiceSchemaId = sts2-v111-semantic-deck-v1`.
 - `semanticDrawHookChoiceSchemaId =
   sts2-v111-semantic-draw-hook-choice-v2`.
