@@ -2593,7 +2593,7 @@ class Session:
             "semanticNatureChoiceViewOperations", [])
         session_kinds = self.capabilities.get(
             "semanticNatureChoiceViewSessionKinds", [])
-        if (schema_id != "sts2-v111-semantic-nature-choice-view-v1"
+        if (schema_id != "sts2-v111-semantic-nature-choice-view-v2"
                 or not isinstance(operations, list)
                 or "nature_choice_observe" not in operations):
             raise EmulatorError(

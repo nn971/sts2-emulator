@@ -104,7 +104,9 @@ deck kernel and resolver support pending peek/scry state; source gameplay callsi
 those requests remain outside the current playable mechanics coverage.
 
 The shared `nature_choice_observe` operation projects pending Chance Laws for the session kinds
-advertised by `semanticNatureChoiceViewSessionKinds`. The Python binding's
+advertised by `semanticNatureChoiceViewSessionKinds`. Its v2 view recursively removes provider
+stream, seed, cursor, RNG-state, and call-count metadata while retaining semantic site identity,
+support, conditioning, and boundary fingerprints. The Python binding's
 `Session.observe_nature_choice(session_kind, session_handle)` negotiates that schema and kind
 against `hello`, then checks the response identity. It remains separate from `State.observe()` and
 the fair player observation.

@@ -24,7 +24,7 @@ public sealed record SemanticNatureChoiceViewV111(
     JsonElement EventMetadata)
 {
     public const string CurrentSchemaId =
-        "sts2-v111-semantic-nature-choice-view-v1";
+        "sts2-v111-semantic-nature-choice-view-v2";
 
     private static readonly JsonSerializerOptions WebJsonOptions =
         new(JsonSerializerDefaults.Web);
@@ -56,7 +56,11 @@ public sealed record SemanticNatureChoiceViewV111(
             StringComparer.Ordinal);
         foreach (var property in pendingEvent.EnumerateObject())
             if (property.Name is not "chanceLaw")
-                metadata.Add(property.Name, property.Value.Clone());
+            {
+                var sanitized = StripProviderMetadata(property.Value);
+                if (sanitized is { } value)
+                    metadata.Add(property.Name, value);
+            }
 
         var result = new SemanticNatureChoiceViewV111(
             CurrentSchemaId, eventKind, eventId, siteId, operationKind,
@@ -96,6 +100,7 @@ public sealed record SemanticNatureChoiceViewV111(
             ConditioningFingerprint != ChanceLaw.ConditioningFingerprint ||
             EventMetadata.ValueKind != JsonValueKind.Object ||
             EventMetadata.TryGetProperty("chanceLaw", out _) ||
+            ContainsPrivateProviderMetadata(EventMetadata) ||
             OptionalString(EventMetadata, "kind") is { } metadataKind &&
                 metadataKind != EventKind ||
             OptionalString(EventMetadata, "eventId") is { } metadataEventId &&
@@ -116,6 +121,62 @@ public sealed record SemanticNatureChoiceViewV111(
                 metadataProbabilityStatus != ProbabilityStatus)
             throw new InvalidDataException(
                 "Invalid semantic Nature-choice view envelope.");
+    }
+
+    private static JsonElement? StripProviderMetadata(JsonElement value)
+    {
+        if (value.ValueKind == JsonValueKind.Object)
+        {
+            var properties = new Dictionary<string, JsonElement>(
+                StringComparer.Ordinal);
+            foreach (var property in value.EnumerateObject())
+            {
+                if (IsPrivateProviderMetadataName(property.Name))
+                    continue;
+                var sanitized = StripProviderMetadata(property.Value);
+                if (sanitized is { } child)
+                    properties.Add(property.Name, child);
+            }
+            return JsonSerializer.SerializeToElement(
+                properties, WebJsonOptions);
+        }
+
+        if (value.ValueKind == JsonValueKind.Array)
+        {
+            var items = new List<JsonElement>();
+            foreach (var item in value.EnumerateArray())
+            {
+                var sanitized = StripProviderMetadata(item);
+                if (sanitized is { } child)
+                    items.Add(child);
+            }
+            return JsonSerializer.SerializeToElement(items, WebJsonOptions);
+        }
+
+        return value.Clone();
+    }
+
+    private static bool ContainsPrivateProviderMetadata(JsonElement value)
+    {
+        if (value.ValueKind == JsonValueKind.Object)
+            return value.EnumerateObject().Any(property =>
+                IsPrivateProviderMetadataName(property.Name) ||
+                ContainsPrivateProviderMetadata(property.Value));
+        return value.ValueKind == JsonValueKind.Array &&
+            value.EnumerateArray().Any(ContainsPrivateProviderMetadata);
+    }
+
+    private static bool IsPrivateProviderMetadataName(string name)
+    {
+        var normalized = new string(name.Where(char.IsLetterOrDigit)
+            .Select(char.ToLowerInvariant).ToArray());
+        return normalized.Contains("stream", StringComparison.Ordinal) ||
+            normalized.Contains("seed", StringComparison.Ordinal) ||
+            normalized.Contains("cursor", StringComparison.Ordinal) ||
+            normalized.Contains("rng", StringComparison.Ordinal) ||
+            normalized.Contains("randomstate", StringComparison.Ordinal) ||
+            normalized.Contains("providerstate", StringComparison.Ordinal) ||
+            normalized.Contains("callcount", StringComparison.Ordinal);
     }
 
     private static string RequiredString(
