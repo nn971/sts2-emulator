@@ -16,11 +16,12 @@ import sys
 from collections import Counter
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlparse
 
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = ROOT / "src" / "Sts2Emulator.Core"
-SCHEMA_ID = "emulator-rng-callsite-source-inventory-v4"
+SCHEMA_ID = "emulator-rng-callsite-source-inventory-v5"
 SITE_REGISTRY_PATH = SOURCE_ROOT / "StochasticSiteRegistryV111.cs"
 
 CALL_PATTERN = re.compile(
@@ -156,15 +157,144 @@ def _resolve_site_value(
     return next(iter(candidates)) if len(candidates) == 1 else None
 
 
-def _migration_matrix_site_rows() -> list[tuple[str, str]]:
+def _migration_matrix_site_rows() -> list[dict[str, Any]]:
     matrix_path = ROOT / "docs" / "DESIRED_RNG_MIGRATION_STATUS.md"
-    site_rows: list[tuple[str, str]] = []
+    site_rows: list[dict[str, Any]] = []
     for line in matrix_path.read_text(encoding="utf-8").splitlines():
         match = re.match(r"\|\s*`([^`]+)`\s*\|", line)
         if match:
-            reference_law_status = line.rsplit("|", 2)[-2].strip()
-            site_rows.append((match.group(1), reference_law_status))
+            cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+            if len(cells) != 8:
+                raise ValueError(
+                    f"Migration row for {match.group(1)} has {len(cells)} "
+                    "cells; expected 8."
+                )
+            links = [target for _, target in re.findall(
+                r"\[([^]]+)\]\(([^)]+)\)", line
+            )]
+            site_rows.append({
+                "site_id": match.group(1),
+                "owner": cells[1],
+                "source_audit": cells[2],
+                "native_implemented": cells[3],
+                "native_parity": cells[4],
+                "controlled_implemented": cells[5],
+                "controlled_mechanics": cells[6],
+                "reference_law_status": cells[7],
+                "links": links,
+            })
     return site_rows
+
+
+def _site_matrix_contract_evidence(
+    site_rows: list[dict[str, Any]],
+) -> dict[str, Any]:
+    """Locate row-level S0 evidence without treating keyword matches as proof."""
+    facet_patterns = {
+        "private_constraint": re.compile(
+            r"constraint|fingerprint|eligible|eligibility|ordered pool|filter|support",
+            re.IGNORECASE,
+        ),
+        "audience_projection": re.compile(
+            r"player.?visible|public.?view|observation|nature.?view|"
+            r"privileged.?inspector|inspector.?view|projection",
+            re.IGNORECASE,
+        ),
+        "resolver_continuation": re.compile(
+            r"resolver|continuation|resume|replay|hook.once|source.?owned",
+            re.IGNORECASE,
+        ),
+        "probability_provenance": re.compile(
+            r"provenance|UNVERIFIED|source.verified|calibrated",
+            re.IGNORECASE,
+        ),
+        "unsupported_handling": re.compile(
+            r"fail(?:s|ed)? closed|unsupported|reject|outside|source.?owned|"
+            r"no controlled|not supported",
+            re.IGNORECASE,
+        ),
+    }
+    doc_text: dict[str, str] = {}
+    audit_rows: list[dict[str, Any]] = []
+    missing_by_facet: dict[str, list[str]] = {
+        facet: [] for facet in facet_patterns
+    }
+
+    for row in site_rows:
+        linked_text: list[str] = []
+        linked_docs: list[str] = []
+        for target in row["links"]:
+            parsed = urlparse(target)
+            if parsed.scheme or parsed.netloc:
+                continue
+            doc_path = (ROOT / "docs" / parsed.path).resolve()
+            try:
+                relative = doc_path.relative_to(ROOT.resolve()).as_posix()
+            except ValueError:
+                continue
+            if not doc_path.is_file():
+                continue
+            if relative not in doc_text:
+                doc_text[relative] = doc_path.read_text(encoding="utf-8")
+            linked_docs.append(relative)
+            linked_text.append(doc_text[relative])
+
+        row_text = " ".join(
+            row[key] for key in (
+                "owner", "source_audit", "native_implemented",
+                "native_parity", "controlled_implemented",
+                "controlled_mechanics", "reference_law_status",
+            )
+        )
+        evidence = {
+            "private_constraint": bool(
+                facet_patterns["private_constraint"].search(row["owner"] + " " + row["source_audit"])
+                or any(facet_patterns["private_constraint"].search(doc) for doc in linked_text)
+            ),
+            "audience_projection": bool(
+                facet_patterns["audience_projection"].search(row_text)
+                or any(facet_patterns["audience_projection"].search(doc) for doc in linked_text)
+            ),
+            "resolver_continuation": bool(
+                facet_patterns["resolver_continuation"].search(row_text)
+                or any(facet_patterns["resolver_continuation"].search(doc) for doc in linked_text)
+            ),
+            "probability_provenance": bool(
+                facet_patterns["probability_provenance"].search(row["reference_law_status"])
+                or any(facet_patterns["probability_provenance"].search(doc) for doc in linked_text)
+            ),
+            "unsupported_handling": bool(
+                facet_patterns["unsupported_handling"].search(row["controlled_implemented"])
+                or any(facet_patterns["unsupported_handling"].search(doc) for doc in linked_text)
+            ),
+        }
+        missing = [facet for facet, present in evidence.items() if not present]
+        for facet in missing:
+            missing_by_facet[facet].append(row["site_id"])
+        audit_rows.append({
+            "site_id": row["site_id"],
+            "linked_contract_docs": sorted(set(linked_docs)),
+            "evidence_presence": evidence,
+            "missing_facets": missing,
+        })
+
+    return {
+        "method": (
+            "Keyword and linked-document locator for manual S0 review. A match "
+            "only identifies a place to inspect; it does not prove that the "
+            "site-specific contract is complete or correct."
+        ),
+        "row_count": len(audit_rows),
+        "rows_with_all_facets_located": sum(not row["missing_facets"] for row in audit_rows),
+        "missing_by_facet": {
+            facet: {
+                "count": len(site_ids),
+                "site_ids": site_ids,
+            }
+            for facet, site_ids in missing_by_facet.items()
+        },
+        "rows": audit_rows,
+    }
 
 
 def _law_status_kind(status: str) -> str:
@@ -199,15 +329,19 @@ def collect() -> dict[str, Any]:
     entries: list[dict[str, Any]] = []
     matrix_site_rows = _migration_matrix_site_rows()
     matrix_site_id_counts: Counter[str] = Counter(
-        site_id for site_id, _ in matrix_site_rows
+        row["site_id"] for row in matrix_site_rows
     )
     matrix_site_ids = set(matrix_site_id_counts)
     law_status_counts: Counter[str] = Counter(
-        _law_status_kind(status) for _, status in matrix_site_rows
+        _law_status_kind(row["reference_law_status"])
+        for row in matrix_site_rows
     )
     rows_without_explicit_law_status = sorted(
-        site_id for site_id, status in matrix_site_rows
-        if _law_status_kind(status) == "unspecified"
+        row["site_id"] for row in matrix_site_rows
+        if _law_status_kind(row["reference_law_status"]) == "unspecified"
+    )
+    site_matrix_contract_evidence = _site_matrix_contract_evidence(
+        matrix_site_rows
     )
     sources = {
         path: path.read_text(encoding="utf-8")
@@ -318,7 +452,10 @@ def collect() -> dict[str, Any]:
             "indirect delegates, random provider interfaces, third-party/native "
             "source callsites, or prove that every source operation is mapped. "
             "The site-matrix checks verify registry coverage, unique ledger IDs "
-            "and explicit reference-law status; they do not prove source completeness."
+            "and explicit reference-law status. The S0 locator reports text or "
+            "linked-document matches for private constraints, audience projections, "
+            "resolvers/continuations, probability provenance, and unsupported handling; "
+            "these matches require manual review and do not prove source completeness."
         ),
         "total_direct_calls": len(entries),
         "counts_by_category": counts,
@@ -348,6 +485,7 @@ def collect() -> dict[str, Any]:
                     rows_without_explicit_law_status,
             },
         },
+        "site_matrix_contract_evidence": site_matrix_contract_evidence,
         "entries": entries,
     }
 
@@ -384,8 +522,21 @@ def render_markdown(report: dict[str, Any]) -> str:
         f"**{report['registry_matrix_coverage']['reference_law_status']['unverified_rows']} UNVERIFIED**; "
         f"**{report['registry_matrix_coverage']['reference_law_status']['calibrated_rows']} calibrated**; "
         f"**{report['registry_matrix_coverage']['reference_law_status']['unspecified_rows']} unspecified**.",
+        "S0 contract-evidence locator: "
+        f"**{report['site_matrix_contract_evidence']['rows_with_all_facets_located']}/"
+        f"{report['site_matrix_contract_evidence']['row_count']} rows** have a text or linked-document match for every facet. "
+        "Matches are review pointers, not evidence that a contract is complete.",
+        "Rows without a text or linked-document match by S0 facet:",
+        "",
+        *[
+            f"- `{facet}`: {details['count']}"
+            for facet, details in sorted(
+                report["site_matrix_contract_evidence"]["missing_by_facet"].items()
+            )
+        ],
+        "",
         "Regenerate this report with `python3 tools/rng_callsite_inventory.py "
-        "--check-site-matrix --format markdown > "
+        "--check-site-matrix --check-s0-contract-links --format markdown > "
         "docs/RNG_DIRECT_CALLSITE_CENSUS.md`.",
         "Rows distinguish legacy prototype calls, native primitive calls, "
         "generic shuffle-helper calls, and recognized provider/fixture support. "
@@ -431,6 +582,10 @@ def main() -> int:
         dest="check_site_matrix", action="store_true",
         help="fail on registry gaps, duplicate rows, or unspecified reference-law status",
     )
+    parser.add_argument(
+        "--check-s0-contract-links", action="store_true",
+        help="fail if a matrix row links to a missing local contract document",
+    )
     args = parser.parse_args()
     report = collect()
     if args.check_site_matrix:
@@ -442,6 +597,20 @@ def main() -> int:
                 coverage["reference_law_status"]["rows_without_explicit_status"]):
             print(json.dumps(coverage, indent=2, sort_keys=True),
                   file=sys.stderr)
+            return 1
+    if args.check_s0_contract_links:
+        broken_contract_links = sorted({
+            target
+            for row in _migration_matrix_site_rows()
+            for target in row["links"]
+            if not urlparse(target).scheme
+            and not urlparse(target).netloc
+            and not (ROOT / "docs" / urlparse(target).path).is_file()
+        })
+        if broken_contract_links:
+            print(json.dumps({
+                "broken_local_contract_links": broken_contract_links,
+            }, indent=2, sort_keys=True), file=sys.stderr)
             return 1
     if args.format == "markdown":
         print(render_markdown(report), end="")

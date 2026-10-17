@@ -1,6 +1,6 @@
-# RNG direct-call source inventory (emulator-rng-callsite-source-inventory-v4)
+# RNG direct-call source inventory (emulator-rng-callsite-source-inventory-v5)
 
-Direct qualified calls to PrototypeRng, NativeRngV111, and NativeFisherYatesV111 in Sts2Emulator.Core. This does not include indirect delegates, random provider interfaces, third-party/native source callsites, or prove that every source operation is mapped. The site-matrix checks verify registry coverage, unique ledger IDs and explicit reference-law status; they do not prove source completeness.
+Direct qualified calls to PrototypeRng, NativeRngV111, and NativeFisherYatesV111 in Sts2Emulator.Core. This does not include indirect delegates, random provider interfaces, third-party/native source callsites, or prove that every source operation is mapped. The site-matrix checks verify registry coverage, unique ledger IDs and explicit reference-law status. The S0 locator reports text or linked-document matches for private constraints, audience projections, resolvers/continuations, probability provenance, and unsupported handling; these matches require manual review and do not prove source completeness.
 
 Direct call expressions: **36**.
 
@@ -13,7 +13,16 @@ Counts by direct API family:
 Shuffle site IDs mapped to migration-matrix rows: **19**; dynamic expressions: **6**; unmapped: **0**; missing: **0**.
 ReferenceNature registry IDs mapped to migration-matrix rows: **72/72**; IDs without rows: **0**; duplicate matrix IDs: **0**; unresolved registry references: **0**.
 Reference-law column status: **179 UNVERIFIED**; **0 calibrated**; **0 unspecified**.
-Regenerate this report with `python3 tools/rng_callsite_inventory.py --check-site-matrix --format markdown > docs/RNG_DIRECT_CALLSITE_CENSUS.md`.
+S0 contract-evidence locator: **57/179 rows** have a text or linked-document match for every facet. Matches are review pointers, not evidence that a contract is complete.
+Rows without a text or linked-document match by S0 facet:
+
+- `audience_projection`: 122
+- `private_constraint`: 79
+- `probability_provenance`: 0
+- `resolver_continuation`: 65
+- `unsupported_handling`: 60
+
+Regenerate this report with `python3 tools/rng_callsite_inventory.py --check-site-matrix --check-s0-contract-links --format markdown > docs/RNG_DIRECT_CALLSITE_CENSUS.md`.
 Rows distinguish legacy prototype calls, native primitive calls, generic shuffle-helper calls, and recognized provider/fixture support. Shuffle rows include their `siteId` argument, resolved constant where available, and exact migration-matrix match for static IDs. Dynamic expressions still need caller-level tracing.
 
 | File:line | API | Operation | Stable site ID argument | Matrix row | Source expression | Review status |
