@@ -80,3 +80,20 @@ remain open. Complete end-to-end controlled action-to-terminal rollouts and
 probability calibration remain issue #143 work.
 
 The frozen gameplay `main`, desired RNG and fidelity Inspector specifications, and ordinary gameplay RNG execution are unchanged.
+
+## S0 stochastic boundary: generated and enemy draw-pile insertions
+
+The linked rows cover random Attack model selection, generated-card insertion
+positions, after-shuffle relic insertions, enemy draw/discard insertions, and
+Personal Hive's Dazed insertions. Their private supports are the source-time
+ordered model pool or physical draw-pile positions, scoped to the active card,
+relic, enemy `CombatId`, or operation repetition. Nature receives candidate
+model IDs only at model-selection events; position events expose legal
+indices. The ordinary player view does not reveal those supports or cursors.
+
+Each saved frame replays its original effect, enemy action, or automatic
+pipeline from the pre-operation checkpoint, applies each choice once, and
+resumes the remaining hooks and queue in source order. Unsupported nested
+death/summon and recycle contexts remain fail-closed where stated above. These
+sites have no privileged per-choice transcript or calibrated Chance Law;
+their probability provenance remains **UNVERIFIED**.

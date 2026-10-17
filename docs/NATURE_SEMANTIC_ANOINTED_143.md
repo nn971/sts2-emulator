@@ -34,3 +34,18 @@ native stream assignment, seeded cursor parity, or the source probability
 law. The Release solution build succeeded with zero warnings and errors for
 this change. Tests and mechanics regressions were not run, so controlled
 mechanics remain unverified.
+
+## S0 stochastic boundary: Anointed rare-card shuffle
+
+The shuffle support is the ordered set of physical Rare card instances in the
+draw pile at the saved effect boundary. Duplicate models remain distinct by
+instance identity. The player-visible projection shows the resulting cards
+moved to hand, not the source pool order or swap prefix; Nature receives the
+current swap support in the serialized pool-shuffle event.
+
+The final shuffle resumes the original effect queue and moves the selected
+physical instances through the normal card-zone mechanics. Hidden-position
+removals that would split unresolved deck constraints fail closed. The
+operation remains in its opt-in source action route; no native cursor parity
+or calibrated shuffle law is established. Probability provenance is
+**UNVERIFIED**.

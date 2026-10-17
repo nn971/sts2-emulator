@@ -117,3 +117,21 @@ native game RNG state, so existing consumers are unaffected.
 
 Native source probabilities, enemy intents, full-game mechanical parity and
 the model's conditional reference distributions remain `UNVERIFIED`.
+
+## S0 stochastic boundary: ordinary draw-pile shuffle
+
+The `combat.draw_pile.shuffle.swap` row records native primitive shuffle
+swaps over the physical draw-pile instance order. Native commits the shuffled
+order through its source RNG and primitive journal. Nature represents an
+unresolved shuffle as a provider-owned permutation constraint and chooses a
+physical identity only when mechanics reveal a position; the same shuffle
+must not generate both swap tickets and card-identity decisions.
+
+The player projection exposes pile counts and ordinarily revealed cards, not
+the unresolved order or provider state. The draw-pile adapter applies the
+mechanics membership change and provider transition together; the ordinary
+draw resolver runs the card and hook effects once after an identity is
+committed. A controlled request at an arbitrary shuffle callsite without
+that saved continuation fails closed. Primitive swap laws remain
+**UNVERIFIED**, distinct from the deferred card-draw law, and no privileged
+per-swap transcript is part of Nature's view.

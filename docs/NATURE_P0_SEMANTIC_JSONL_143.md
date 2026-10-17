@@ -808,3 +808,14 @@ the existing card-zone and semantic draw-pile transform logic resumes once.
 Python clients call `SemanticCombat.resolve_card_transform(card_model_id)`.
 Native pool assignment, cursor parity, and mechanics coverage remain
 `UNVERIFIED`.
+
+For `combat.potion_generation.random_model` and
+`combat.card_transform.replacement.index_draw`, pending candidate models and
+the current ordered support are Nature-only metadata; ordinary player
+observations continue to expose the legal player action or resulting card,
+not the hidden candidate pool or provider state. The selected model resumes
+the original potion operation or transform continuation once, preserving its
+source card, zone changes, queued effects, and automatic-pipeline cursor.
+Unsupported nested operations fail closed. These operation-specific laws
+remain **UNVERIFIED**, and the existing semantic transcript is separate from
+any privileged Inspector record.

@@ -95,3 +95,19 @@ parity remain separate gates. The Jeweled Mask and ordinary
 The old `controlled-v111-playable-fixture-v1` swap-ticket schema
 is unchanged. Frozen Silent four-Act `main` is untouched.
 Probability provenance remains `UNVERIFIED`.
+
+## S0 stochastic boundary: Jeweled Mask Power selection
+
+The `combat.relic.jeweled_mask.random_power_draw_card` operation is owned by
+the relic's `BeforeHandDraw` hook. Its private support prefers eligible
+non-Innate Power instances and falls back to the ordered Power pool. Nature
+may inspect that support only in the opt-in pending event; the player's
+fair player-visible projection exposes the resulting card and hand state,
+not pool order or RNG state.
+
+Resolving the card resumes the saved hook and then the same automatic hand
+draw stage, applying the source hand-cap destination and card cost once.
+Nested chance requests without a serialized continuation must fail closed.
+This Jeweled Mask continuation currently lacks mechanics-tested evidence;
+its reference law and native stream parity remain **UNVERIFIED**. No
+privileged per-choice transcript is exposed here.
