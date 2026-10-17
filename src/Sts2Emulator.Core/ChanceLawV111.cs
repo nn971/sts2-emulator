@@ -1,4 +1,6 @@
 using System.Globalization;
+using System.Text.Json;
+using System.Text.Json.Serialization;
 
 namespace Sts2Emulator.Core;
 
@@ -199,6 +201,92 @@ public sealed record ReferenceNatureSelectionV111(
     string LawId, string EventId, string OutcomeId, int OutcomeIndex,
     ReferenceNatureStateV111 NextState);
 
+public sealed record ReferenceNatureResolutionV111(
+    SemanticPilotCombatV111 Combat, ChanceLawV111 Law,
+    ReferenceNatureSelectionV111 Selection);
+
+public sealed record ReferenceNatureSessionSnapshotV111(
+    string SchemaId, string CombatSnapshotJson,
+    ReferenceNatureStateV111 NatureState);
+
+/// <summary>
+/// Atomic ReferenceNature simulation state: semantic mechanics continuation
+/// and the independent sampler cursor share one fork/save/restore boundary.
+/// </summary>
+public sealed record ReferenceNatureSessionV111(
+    string SchemaId, SemanticPilotCombatV111 Combat,
+    ReferenceNatureStateV111 NatureState)
+{
+    public const string CurrentSchemaId = "sts2-v111-reference-nature-session-v1";
+
+    [JsonIgnore]
+    public string Fingerprint => CanonicalJson.Sha256(this);
+
+    public static ReferenceNatureSessionV111 Begin(
+        SemanticPilotCombatV111 combat, ulong seed)
+    {
+        var session = new ReferenceNatureSessionV111(
+            CurrentSchemaId, combat, ReferenceNatureStateV111.Create(seed));
+        session.Validate();
+        return session;
+    }
+
+    public ReferenceNatureSessionV111 Fork()
+    {
+        Validate();
+        return this with { Combat = Combat.Fork(), NatureState = NatureState.Fork() };
+    }
+
+    public ReferenceNatureSessionV111 ResolveNext()
+    {
+        Validate();
+        var resolution = ReferenceNatureV111.ResolvePending(Combat, NatureState);
+        var child = this with
+        {
+            Combat = resolution.Combat,
+            NatureState = resolution.Selection.NextState
+        };
+        child.Validate();
+        return child;
+    }
+
+    public void Validate()
+    {
+        if (SchemaId != CurrentSchemaId || Combat is null || NatureState is null)
+            throw new InvalidDataException("Invalid ReferenceNature session envelope.");
+        SemanticPilotCombatEngineV111.Validate(Combat);
+        NatureState.Validate();
+    }
+
+    public static string Save(ReferenceNatureSessionV111 session)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        session.Validate();
+        var snapshot = new ReferenceNatureSessionSnapshotV111(
+            CurrentSchemaId,
+            SemanticPilotCombatEngineV111.Save(session.Combat),
+            session.NatureState);
+        return JsonSerializer.Serialize(snapshot);
+    }
+
+    public static ReferenceNatureSessionV111 Restore(string json)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(json);
+        var snapshot = JsonSerializer.Deserialize<ReferenceNatureSessionSnapshotV111>(json)
+            ?? throw new InvalidDataException("Null ReferenceNature snapshot.");
+        if (snapshot.SchemaId != CurrentSchemaId ||
+            string.IsNullOrWhiteSpace(snapshot.CombatSnapshotJson) ||
+            snapshot.NatureState is null)
+            throw new InvalidDataException("Invalid ReferenceNature snapshot.");
+        var restored = new ReferenceNatureSessionV111(
+            CurrentSchemaId,
+            SemanticPilotCombatEngineV111.Restore(snapshot.CombatSnapshotJson),
+            snapshot.NatureState);
+        restored.Validate();
+        return restored;
+    }
+}
+
 /// <summary>
 /// Small seeded reference policy that samples the declared law using an
 /// independent SplitMix64 stream. It does not use or advance a game RNG.
@@ -206,6 +294,54 @@ public sealed record ReferenceNatureSelectionV111(
 public static class ReferenceNatureV111
 {
     private const ulong GoldenGamma = 0x9E3779B97F4A7C15UL;
+
+    /// <summary>
+    /// Sample and resolve the next initial Nature site through the existing
+    /// semantic mechanics continuation. The returned child and next sampler
+    /// state are published together only after resolution succeeds.
+    /// </summary>
+    public static ReferenceNatureResolutionV111 ResolvePending(
+        SemanticPilotCombatV111 combat, ReferenceNatureStateV111 state)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(state);
+        SemanticPilotCombatEngineV111.Validate(combat);
+        state.Validate();
+
+        if (combat.IntentPending is not null)
+        {
+            var intentEvent = SemanticPilotCombatEngineV111
+                .DescribePendingIntentEvent(combat);
+            var law = ChanceLawEngineV111.QueryIntent(intentEvent);
+            var selection = Sample(law, state);
+            var child = SemanticPilotCombatEngineV111.ResolveIntent(
+                combat, combat.Fingerprint, selection.OutcomeId);
+            return new ReferenceNatureResolutionV111(child, law, selection);
+        }
+
+        if (combat.DrawPending is { } drawEvent)
+        {
+            var deck = combat.Run.World?.Combat?.SemanticDeck ??
+                throw new InvalidDataException(
+                    "Pending semantic draw lost its provider-owned deck.");
+            var law = ChanceLawEngineV111.QueryDraw(deck);
+            var selection = Sample(law, state);
+            if (selection.EventId != drawEvent.EventId ||
+                selection.OutcomeIndex < 0 ||
+                selection.OutcomeIndex >= drawEvent.CandidateCardInstanceIds.Length)
+                throw new InvalidDataException(
+                    "ReferenceNature law no longer matches the pending draw event.");
+            var cardInstanceId =
+                drawEvent.CandidateCardInstanceIds[selection.OutcomeIndex];
+            var child = SemanticPilotCombatEngineV111.ResolveDrawCard(
+                combat, combat.Fingerprint, drawEvent.EventId,
+                cardInstanceId);
+            return new ReferenceNatureResolutionV111(child, law, selection);
+        }
+
+        throw new NotSupportedException(
+            "UNSUPPORTED_REFERENCE_NATURE site=no_pending_enemy_intent_or_draw_card");
+    }
 
     public static ReferenceNatureSelectionV111 Sample(
         ChanceLawV111 law, ReferenceNatureStateV111 state)
