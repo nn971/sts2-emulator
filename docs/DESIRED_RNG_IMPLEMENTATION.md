@@ -541,9 +541,10 @@ does not imply that the native game made no random call.
 The reproducible direct-call census at
 [`RNG_DIRECT_CALLSITE_CENSUS.md`](RNG_DIRECT_CALLSITE_CENSUS.md) tracks the
 currently visible `PrototypeRng`, `NativeRngV111`, and
-`NativeFisherYatesV111` call expressions by source location. It helps find
-sites missing from the migration matrix, but indirect calls and native game
-source operations still need separate tracing.
+`NativeFisherYatesV111` call expressions by source location. It resolves
+static shuffle `siteId` arguments and checks them against exact migration
+matrix rows; dynamic helper arguments remain visible for caller-level tracing.
+Indirect calls and native game source operations still need separate tracing.
 
 ## 8. First concrete PRs
 

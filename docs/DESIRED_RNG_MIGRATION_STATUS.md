@@ -238,10 +238,12 @@ stored in [`RNG_DIRECT_CALLSITE_CENSUS.md`](RNG_DIRECT_CALLSITE_CENSUS.md).
 The current source has 36 direct calls to the three scanned APIs: 3 legacy
 `PrototypeRng` calls, 8 `NativeRngV111` primitive calls, and 25
 `NativeFisherYatesV111` calls. The report provides file, line, expression and
-review category. It is a code-site tracing aid; indirect provider dispatch,
-delegates and the native game's own source call sites are outside its scope.
-Rows must be linked to stable matrix IDs or classified as infrastructure
-before the D0 inventory can be considered complete.
+review category. All 19 statically resolved shuffle site IDs match an exact
+row in this matrix; six generic helper/replay calls expose dynamic site-ID
+expressions for caller-level tracing. The other eleven direct calls are typed
+provider/codec or fixture/replay plumbing. This source crosswalk does not
+include indirect provider dispatch, delegates or the native game's own source
+calls, and does not prove source-operation completeness.
 
 A literal scan of site-like strings in the core source currently finds no
 unmapped stable site IDs. The one dynamic site prefix,
