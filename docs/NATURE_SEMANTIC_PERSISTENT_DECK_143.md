@@ -27,10 +27,12 @@ Malaise, Crippling Cloud, Blur, Dodge and Roll, Sidestep, Pounce, Finisher,
 Flechettes, Bubble Bubble, Strangle, Corrosive Wave, Leading Strike, Noxious
 Fumes, Speedster, Serpent Form, Envenom, Afterimage, Untouchable, Flick-Flack,
 Abrasive, Haze, Memento Mori, Murder, Precise Cut, Pinpoint, Grand Finale and
-Die Die Die. The playable pilot separately admits Survivor, Hand Trick,
-Nightmare and Wish through saved source `select_cards` choices. Action effects
-still use the real game mechanics, so card play, energy, target, damage/block,
-fixed generated cards, relic hooks, hand and discard changes occur normally.
+Die Die Die, Master Planner, Burst, Bullet Time, Accelerant, Blade of Ink,
+Fan of Knives, Up My Sleeve and Predator. The playable pilot separately admits
+Survivor, Hand Trick, Nightmare and Wish through saved source `select_cards`
+choices. Action effects still use the real game mechanics, so card play, energy,
+target, damage/block, fixed generated cards, relic hooks, hand and discard
+changes occur normally.
 Unmodeled chance sites abort without publishing a child, even for
 an allowlisted card when other active game modifiers cause extra
 RNG/deck mutations. Unsupported action kinds and draw-pile

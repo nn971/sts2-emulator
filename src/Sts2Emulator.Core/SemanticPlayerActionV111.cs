@@ -87,7 +87,15 @@ public static class SemanticPlayerActionEngineV111
             "proto.silent.precise_cut",
             "proto.silent.pinpoint",
             "proto.silent.grand_finale",
-            "proto.silent.die_die_die"
+            "proto.silent.die_die_die",
+            "proto.silent.master_planner",
+            "proto.silent.burst",
+            "proto.silent.bullet_time",
+            "proto.silent.accelerant",
+            "proto.silent.blade_of_ink",
+            "proto.silent.fan_of_knives",
+            "proto.silent.up_my_sleeve",
+            "proto.silent.predator"
         };
 
     internal static bool SupportsCard(string cardId) =>
