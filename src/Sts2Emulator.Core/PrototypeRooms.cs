@@ -4186,6 +4186,18 @@ public sealed partial class PrototypeGameEngine
                         GameAction.Empty("start_run")),
                     PrototypeNativeRestSiteActionsV111.Dig =>
                         BeginRestDigReward(partialState),
+                    "choose_map_node" => new PrototypeGameEngine().Step(
+                        partialState with
+                        {
+                            DecisionIndex = checked(state.DecisionIndex - 1)
+                        },
+                        GameAction.Create(
+                            "choose_map_node",
+                            new ChooseMapNodePayload(
+                                continuation.MapNodeId
+                                    ?? throw new InvalidDataException(
+                                        "Controlled event-entry frame is missing its map node."))))
+                        .State,
                     _ => throw new NotSupportedException(
                         "Controlled run action has no resume implementation.")
                 };
@@ -4193,9 +4205,18 @@ public sealed partial class PrototypeGameEngine
             }
             catch (ControlledEventChoiceChanceRequiredException exception)
             {
-                if (continuation.ActionId != "start_run"
-                    || !ControlledEventChoiceReplayV111.IsRunActionSite(
-                        exception.Request.SiteId)
+                var supportedSite = continuation.ActionId switch
+                {
+                    "start_run" => ControlledEventChoiceReplayV111
+                        .IsRunActionSite(exception.Request.SiteId),
+                    "choose_map_node" => ControlledEventChoiceReplayV111
+                        .IsRunActionEventEntrySite(exception.Request.SiteId),
+                    PrototypeNativeRestSiteActionsV111.Dig =>
+                        exception.Request.SiteId ==
+                            "relic.unowned_random_selection.index_draw",
+                    _ => false
+                };
+                if (!supportedSite
                     || exception.CandidateLabels is null
                     || (exception.CandidateLabels.Length !=
                             exception.Request.SupportCount
@@ -4213,7 +4234,8 @@ public sealed partial class PrototypeGameEngine
                         decisions,
                         decisionCandidateLabels,
                         exception.Request,
-                        exception.CandidateLabels);
+                        exception.CandidateLabels,
+                        continuation.MapNodeId);
                 nextContinuation.Validate();
                 return state with
                 {
@@ -4228,7 +4250,8 @@ public sealed partial class PrototypeGameEngine
         var trace = new ControlledRunActionTraceV111(
             continuation.ActionId,
             decisions,
-            decisionCandidateLabels);
+            decisionCandidateLabels,
+            MapNodeId: continuation.MapNodeId);
         trace.Validate();
         return result with
         {

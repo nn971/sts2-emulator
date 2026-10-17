@@ -563,6 +563,7 @@ internal sealed class ControlledEventChoiceReplayV111 : IDisposable
         "reward.card_model.index_draw" or
         "run.random_pool_distinct.shuffle_swap_index" or
         "event.reward.random_modifier_curse.index_draw" or
+        "event.fake_merchant.relic_offer.shuffle_swap_index" or
         "potion.uncommon_model.index_draw" or
         "relic.acquisition.random_rare_card.model" or
         "relic.acquisition.random_potion.model" or
@@ -583,8 +584,17 @@ internal sealed class ControlledEventChoiceReplayV111 : IDisposable
         "map.legacy.required_room.node.index_draw" or
         "map.legacy.room_assignment.index_draw";
 
+    public static bool IsRunActionEventEntrySite(string siteId) => siteId is
+        "event.selection.weighted_ticket" or
+        "event.generated_gold.index_draw" or
+        "event.stone_of_all_time.potion_slot.index_draw" or
+        "event.fake_merchant.relic_offer.shuffle_swap_index" or
+        "event.endless_conveyor.dish_weighted_ticket" or
+        "event.future_of_potions.card_type.index_draw";
+
     public static bool IsControlledReplaySite(string siteId) =>
-        IsEventChoiceSite(siteId) || IsRunActionSite(siteId);
+        IsEventChoiceSite(siteId) || IsRunActionSite(siteId)
+        || IsRunActionEventEntrySite(siteId);
 }
 
 internal sealed class ControlledEventChoiceRandomIndexProviderV111

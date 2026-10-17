@@ -884,7 +884,7 @@ internal static class PrototypeAiJsonlServer
                             controlledRunActionSchemaId =
                                 ControlledRunActionEngineV111.SchemaId,
                             controlledRunActionScope =
-                                "legacy-run-start-map-and-shovel-selection",
+                                "legacy-run-start-map-event-entry-and-shovel-selection",
                             controlledRunActionMaximumInlineOutcomeActions =
                                 ControlledRunActionEngineV111
                                     .MaximumInlineOutcomeActions,
@@ -901,6 +901,12 @@ internal static class PrototypeAiJsonlServer
                                 "map.legacy.second_edge_target.index_draw",
                                 "map.legacy.required_room.node.index_draw",
                                 "map.legacy.room_assignment.index_draw",
+                                "event.selection.weighted_ticket",
+                                "event.generated_gold.index_draw",
+                                "event.stone_of_all_time.potion_slot.index_draw",
+                                "event.fake_merchant.relic_offer.shuffle_swap_index",
+                                "event.endless_conveyor.dish_weighted_ticket",
+                                "event.future_of_potions.card_type.index_draw",
                                 "relic.unowned_random_selection.index_draw"
                             },
                             controlledEventChoiceEnumerationSchemaId =

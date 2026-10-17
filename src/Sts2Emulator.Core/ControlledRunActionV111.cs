@@ -10,7 +10,8 @@ public sealed record ControlledRunActionTraceV111(
     string ActionId,
     RandomIndexDecisionV111[] Decisions,
     string[][] CandidateLabels,
-    string ProbabilityStatus = "UNVERIFIED")
+    string ProbabilityStatus = "UNVERIFIED",
+    string? MapNodeId = null)
 {
     public ControlledRunActionTraceV111 Fork() => this with
     {
@@ -23,8 +24,13 @@ public sealed record ControlledRunActionTraceV111(
 
     public void Validate()
     {
+        var eventEntryAction = ActionId == "choose_map_node";
         if (ActionId is not ("start_run"
-                or PrototypeNativeRestSiteActionsV111.Dig)
+                or PrototypeNativeRestSiteActionsV111.Dig
+                or "choose_map_node")
+            || (eventEntryAction
+                ? string.IsNullOrWhiteSpace(MapNodeId)
+                : MapNodeId is not null)
             || Decisions is null || CandidateLabels is null
             || Decisions.Length == 0
             || Decisions.Length != CandidateLabels.Length
@@ -44,13 +50,19 @@ public sealed record ControlledRunActionTraceV111(
                 "run.encounter.overgrowth_boss.index_draw";
             var isMapDraw = request.SiteId.StartsWith(
                 "map.legacy.", StringComparison.Ordinal);
+            var isEventEntryDraw = eventEntryAction
+                && ControlledEventChoiceReplayV111
+                    .IsRunActionEventEntrySite(request.SiteId);
             var prefixStream = ActionId ==
                     PrototypeNativeRestSiteActionsV111.Dig
+                || eventEntryAction
                 ? "event" : isBossDraw ? "combat" : "map";
             var validSite = ActionId == "start_run"
                 ? ControlledEventChoiceReplayV111.IsRunActionSite(
                     request.SiteId)
-                : request.SiteId ==
+                : eventEntryAction
+                    ? isEventEntryDraw
+                    : request.SiteId ==
                     "relic.unowned_random_selection.index_draw";
             var prefixOwner = isBossDraw
                 ? "run:act:1:boss_pool:" + CanonicalJson.Sha256(labels)
@@ -63,11 +75,12 @@ public sealed record ControlledRunActionTraceV111(
                     PrototypeNativeRestSiteActionsV111.Dig
                     ? Enumerable.Range(0, labels.Length).ToArray()
                     : (int[])request.OrderedCandidates.Clone();
-            var omittedLabels = isMapDraw
+            var omittedLabels = (isMapDraw || isEventEntryDraw)
                 && request.SupportCount >
                     ControlledRunActionEngineV111.MaximumInlineOutcomeActions
                 && labels.Length == 0;
-            var numericLabels = !isMapDraw || omittedLabels || labels.SequenceEqual(
+            var numericLabels = !(isMapDraw || isEventEntryDraw)
+                || omittedLabels || labels.SequenceEqual(
                 Enumerable.Range(0, labels.Length).Select(index =>
                     index.ToString(CultureInfo.InvariantCulture)),
                 StringComparer.Ordinal);
@@ -97,7 +110,8 @@ public sealed record PrototypeControlledRunActionContinuationV111(
     RandomIndexDecisionV111[] Decisions,
     string[][] DecisionCandidateLabels,
     RandomIndexRequestV111 PendingRequest,
-    string[] PendingCandidateLabels)
+    string[] PendingCandidateLabels,
+    string? MapNodeId = null)
 {
     public PrototypeControlledRunActionContinuationV111 Fork() => this with
     {
@@ -135,6 +149,7 @@ public sealed record PrototypeControlledRunActionContinuationV111(
         string expectedOwner;
         int[] expectedCandidates;
         string[] expectedLabels;
+        var eventEntryRequest = false;
         switch (ActionId)
         {
             case "start_run":
@@ -203,11 +218,46 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                     0, expectedLabels.Length).ToArray();
                 break;
             }
+            case "choose_map_node":
+            {
+                if (state.Phase != RunPhase.MapChoice
+                    || state.World is not { } world
+                    || state.NativeRunRng is not null
+                    || string.IsNullOrWhiteSpace(MapNodeId))
+                    throw new InvalidDataException(
+                        "Controlled event-entry frame is outside the legacy map-node boundary.");
+                var node = PrototypeNativeWingedBoots.AvailableNodes(
+                        world, state.Player)
+                    .SingleOrDefault(candidate => candidate.NodeId == MapNodeId);
+                if (node is null || node.RoomType != PrototypeRoomType.Event)
+                    throw new InvalidDataException(
+                        "Controlled event-entry frame does not reference an available event node.");
+                if (!ControlledEventChoiceReplayV111
+                        .IsRunActionEventEntrySite(PendingRequest.SiteId))
+                    throw new InvalidDataException(
+                        "Controlled event-entry frame has an unsupported chance site.");
+                expectedSite = PendingRequest.SiteId;
+                expectedStream = "event";
+                expectedOwner = PendingRequest.OwnerId;
+                expectedCandidates = PendingRequest.OperationKind ==
+                        "bounded_integer"
+                    ? []
+                    : (int[])PendingRequest.OrderedCandidates.Clone();
+                expectedLabels = PendingRequest.SupportCount >
+                    ControlledRunActionEngineV111.MaximumInlineOutcomeActions
+                    ? []
+                    : Enumerable.Range(0, PendingRequest.SupportCount)
+                        .Select(index => index.ToString(
+                            CultureInfo.InvariantCulture)).ToArray();
+                eventEntryRequest = true;
+                break;
+            }
             default:
                 throw new InvalidDataException(
                     "Controlled run-action frame uses an unsupported action.");
         }
-        if (PendingRequest.SiteId != expectedSite
+        if ((!eventEntryRequest && MapNodeId is not null)
+            || PendingRequest.SiteId != expectedSite
             || PendingRequest.StreamId != expectedStream
             || PendingRequest.OwnerId != expectedOwner
             || !PendingRequest.OrderedCandidates.SequenceEqual(expectedCandidates)
@@ -230,13 +280,19 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                 "run.encounter.overgrowth_boss.index_draw";
             var isMapDraw = request.SiteId.StartsWith(
                 "map.legacy.", StringComparison.Ordinal);
+            var isEventEntryDraw = ActionId == "choose_map_node"
+                && ControlledEventChoiceReplayV111
+                    .IsRunActionEventEntrySite(request.SiteId);
             var prefixStream = ActionId ==
                     PrototypeNativeRestSiteActionsV111.Dig
+                || ActionId == "choose_map_node"
                 ? "event" : isBossDraw ? "combat" : "map";
             var validSite = ActionId == "start_run"
                 ? ControlledEventChoiceReplayV111.IsRunActionSite(
                     request.SiteId)
-                : request.SiteId ==
+                : ActionId == "choose_map_node"
+                    ? isEventEntryDraw
+                    : request.SiteId ==
                     "relic.unowned_random_selection.index_draw";
             var prefixOwner = isBossDraw
                 ? "run:act:1:boss_pool:" + CanonicalJson.Sha256(labels)
@@ -249,11 +305,12 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                     PrototypeNativeRestSiteActionsV111.Dig
                     ? Enumerable.Range(0, labels.Length).ToArray()
                     : (int[])request.OrderedCandidates.Clone();
-            var omittedLabels = isMapDraw
+            var omittedLabels = (isMapDraw || isEventEntryDraw)
                 && request.SupportCount >
                     ControlledRunActionEngineV111.MaximumInlineOutcomeActions
                 && labels.Length == 0;
-            var numericLabels = !isMapDraw || omittedLabels || labels.SequenceEqual(
+            var numericLabels = !(isMapDraw || isEventEntryDraw)
+                || omittedLabels || labels.SequenceEqual(
                 Enumerable.Range(0, labels.Length).Select(index =>
                     index.ToString(CultureInfo.InvariantCulture)),
                 StringComparer.Ordinal);
@@ -316,9 +373,21 @@ public static class ControlledRunActionEngineV111
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(action);
         PrototypeStateInvariants.Validate(source);
+        var mapNodeId = action.Kind == "choose_map_node"
+            ? action.ReadPayload<ChooseMapNodePayload>().NodeId
+            : null;
+        var eventNodeAction = source.Phase == RunPhase.MapChoice
+            && source.NativeRunRng is null
+            && source.World is { } eventNodeWorld
+            && PrototypeNativeWingedBoots.AvailableNodes(
+                    eventNodeWorld, source.Player)
+                .Any(node => node.RoomType == PrototypeRoomType.Event
+                    && node.NodeId == mapNodeId);
         if (source.ControlledRunActionChoice is not null
             || action.Kind is not ("start_run"
-                or PrototypeNativeRestSiteActionsV111.Dig))
+                or PrototypeNativeRestSiteActionsV111.Dig
+                or "choose_map_node")
+            || action.Kind == "choose_map_node" && !eventNodeAction)
             throw new InvalidOperationException(
                 "Controlled run action requires an unsuspended supported action.");
         var engine = new PrototypeGameEngine();
@@ -328,10 +397,51 @@ public static class ControlledRunActionEngineV111
                     PrototypeAiEnvironment.StableActionId(candidate), actionId)))
             throw new InvalidOperationException(
                 "Controlled run action requires a current legal action.");
-        using var guard = ControlledChanceGuardV111.Enter();
-        using var replay = ControlledEventChoiceReplayV111.Begin([]);
-        var result = engine.Step(source, action).State;
-        replay.EnsureConsumed();
+        RunState result;
+        using (ControlledChanceGuardV111.Enter())
+        using (var replay = ControlledEventChoiceReplayV111.Begin([]))
+        {
+            try
+            {
+                result = engine.Step(source, action).State;
+                replay.EnsureConsumed();
+            }
+            catch (ControlledEventChoiceChanceRequiredException exception)
+            {
+                if (!eventNodeAction
+                    || !ControlledEventChoiceReplayV111
+                        .IsRunActionEventEntrySite(exception.Request.SiteId)
+                    || exception.CandidateLabels is null
+                    || (exception.CandidateLabels.Length !=
+                            exception.Request.SupportCount
+                        && !(exception.CandidateLabels.Length == 0
+                            && exception.Request.SupportCount >
+                                MaximumInlineOutcomeActions)))
+                    throw new NotSupportedException(
+                        "Controlled run action reached an unsupported chance request.");
+
+                var partialState = source.Fork() with
+                {
+                    DecisionIndex = checked(source.DecisionIndex + 1)
+                };
+                var continuation =
+                    new PrototypeControlledRunActionContinuationV111(
+                        partialState,
+                        "choose_map_node",
+                        [],
+                        [],
+                        exception.Request,
+                        exception.CandidateLabels,
+                        mapNodeId);
+                continuation.Validate();
+                var suspended = partialState with
+                {
+                    ControlledRunActionChoice = continuation
+                };
+                PrototypeStateInvariants.Validate(suspended);
+                return suspended;
+            }
+        }
         if (result.ControlledRunActionChoice is null)
             throw new NotSupportedException(
                 "The selected action did not reach a supported legacy controlled chance site.");
