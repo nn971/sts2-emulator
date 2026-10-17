@@ -44,7 +44,8 @@ public static class StochasticCapabilitiesV111
             "combat.card_draw.slither_energy_cost",
             "combat.relic.jeweled_mask.random_power_draw_card",
             "combat.card_transform.replacement.index_draw",
-            "combat.potion_generation.random_model"
+            "combat.potion_generation.random_model",
+            "combat.random_hand_card.select"
         ],
         PrototypeAiEnvironment.SchemaId,
         [
@@ -166,6 +167,8 @@ public static class ChanceLawEngineV111
         "uniform-card-transform-replacement-pool-v1";
     public const string PotionGenerationConditioningPolicyId =
         "uniform-potion-generation-model-pool-v1";
+    public const string HandCostSelectionConditioningPolicyId =
+        "uniform-hand-cost-target-support-v1";
 
     public static ChanceLawV111 QueryIntent(SemanticIntentEventV111 intent)
     {
@@ -355,6 +358,35 @@ public static class ChanceLawEngineV111
             potion.OperationKind, potion.OwnerId, potion.Ordinal,
             PotionGenerationConditioningPolicyId, conditioningFingerprint,
             "uniform-potion-model-pool-unverified", outcomes);
+    }
+
+    /// <summary>
+    /// Query the uniform law over eligible physical hand-card identities for
+    /// a pending fixed-cost operation.
+    /// </summary>
+    public static ChanceLawV111 QueryHandCostSelection(
+        SemanticHandCostSelectionEventV111 selection)
+    {
+        ArgumentNullException.ThrowIfNull(selection);
+        selection.Validate();
+        var outcomes = selection.CandidateCardInstanceIds
+            .Select(instanceId => new ChanceLawOutcomeV111(
+                "card_instance:" + instanceId.ToString(
+                    CultureInfo.InvariantCulture), 1L))
+            .ToArray();
+        var conditioningFingerprint = CanonicalJson.Sha256(new
+        {
+            selection.SupportFingerprint,
+            selection.SiteId,
+            selection.OwnerId,
+            selection.Ordinal,
+            selection.AppliedCost,
+            policy = HandCostSelectionConditioningPolicyId
+        });
+        return Create(selection.EventId, selection.SiteId,
+            selection.OperationKind, selection.OwnerId, selection.Ordinal,
+            HandCostSelectionConditioningPolicyId, conditioningFingerprint,
+            "uniform-hand-card-support-unverified", outcomes);
     }
 
     public static ChanceLawV111 QueryDraw(SemanticDeckStateV111 deck)
@@ -683,6 +715,26 @@ public static class ReferenceNatureV111
                 selection.OutcomeIndex];
             var child = SemanticPilotCombatEngineV111.ResolvePotionGeneration(
                 combat, combat.Fingerprint, potionEvent.EventId, potionId);
+            return new ReferenceNatureResolutionV111(child, law, selection);
+        }
+
+        if (combat.HandCostSelectionPending is { } handCostEvent)
+        {
+            var law = ChanceLawEngineV111.QueryHandCostSelection(
+                handCostEvent);
+            var selection = Sample(law, state);
+            if (selection.EventId != handCostEvent.EventId ||
+                selection.OutcomeIndex < 0 ||
+                selection.OutcomeIndex >=
+                    handCostEvent.CandidateCardInstanceIds.Length)
+                throw new InvalidDataException(
+                    "ReferenceNature law no longer matches the pending hand-cost event.");
+            var cardInstanceId = handCostEvent.CandidateCardInstanceIds[
+                selection.OutcomeIndex];
+            var child = SemanticPilotCombatEngineV111
+                .ResolveHandCostSelection(
+                    combat, combat.Fingerprint, handCostEvent.EventId,
+                    cardInstanceId);
             return new ReferenceNatureResolutionV111(child, law, selection);
         }
 
