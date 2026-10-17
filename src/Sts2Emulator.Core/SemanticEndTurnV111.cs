@@ -747,14 +747,15 @@ public static class SemanticEndTurnEngineV111
                 "Cannot finish end turn with pending drawn-card choices.");
         RunState result;
         using (ControlledChanceGuardV111.Enter())
-            result = PrototypeGameEngine.ResumeSemanticAutomaticAfterHandDraw(
+            result = PrototypeGameEngine.ResumeAutomaticPipelineContinuation(
                 draw.Run.Fork());
         if (result.Phase is RunPhase.Terminal or RunPhase.Reward)
             return state with { Run = result, Complete = true };
         if (result.Phase != RunPhase.Combat ||
             result.World?.Combat is not { IsPlayerTurn: true,
                 AutomaticPipelineContinuation: null, PendingChoice: null,
-                PendingKnowledgeDemonChoice: null })
+                PendingKnowledgeDemonChoice: null,
+                SemanticDeck: { Pending: null } })
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.semantic_end_turn " +
                 "operation=not_at_next_player_boundary");

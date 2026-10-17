@@ -178,49 +178,6 @@ public sealed partial class PrototypeGameEngine
         return (CompleteAutomaticHandDrawStage(run), 0);
     }
 
-    /// <summary>Advance the remaining authentic automatic stages after
-    /// semantic DrawPlayerHand cleanup. This yields the next player boundary
-    /// or the source pipeline's terminal reward state.</summary>
-    internal static RunState ResumeSemanticAutomaticAfterHandDraw(RunState run)
-    {
-        if (!ControlledChanceGuardV111.Active)
-            throw new InvalidOperationException(
-                "Semantic post-hand stage requires controlled chance guard.");
-        var world = RequireWorld(run);
-        var combat = world.Combat ??
-            throw new InvalidOperationException("Missing post-hand combat.");
-        var cursor = combat.AutomaticPipelineContinuation ??
-            throw new InvalidOperationException("Missing saved post-hand cursor.");
-        if (cursor.NextStepIndex != SemanticHandDrawStepIndex + 1 ||
-            cursor.ControlledSemanticDrawRequested is not null ||
-            cursor.ControlledSemanticDrawRemaining is not null ||
-            cursor.ControlledDrawRemaining is not null ||
-            cursor.ControlledDrawCostRemaining is not null ||
-            cursor.OpeningStage is not null ||
-            cursor.PendingPostDispatchEventKind is not null ||
-            combat.SemanticDeck is not { Pending: null } ||
-            combat.PendingChoice is not null ||
-            combat.PendingKnowledgeDemonChoice is not null)
-            throw new InvalidDataException(
-                "Semantic post-hand continuation is not at a clean boundary.");
-
-        var continued = ResumeAutomaticPipelineContinuation(run);
-        if (continued.Phase == RunPhase.Combat)
-        {
-            var result = RequireWorld(continued).Combat ??
-                throw new InvalidDataException("Post-hand combat disappeared.");
-            if (!result.IsPlayerTurn ||
-                result.AutomaticPipelineContinuation is not null ||
-                result.PendingChoice is not null ||
-                result.PendingKnowledgeDemonChoice is not null ||
-                result.SemanticDeck is not { Pending: null })
-                throw new NotSupportedException(
-                    "UNSUPPORTED_SEMANTIC_DECK site=combat.post_hand_draw " +
-                    "operation=nested_automatic_choice");
-        }
-        return continued;
-    }
-
     private static (RunState Run, int Requested, int Remaining)
         ResumeSemanticAutomaticHandDrawStep(
             RunState checkpoint,

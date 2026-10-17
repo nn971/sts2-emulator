@@ -289,3 +289,6 @@ Run matched source-state/seed sets; frozen player policy; fair observations/lega
 
 
 **S6 Darv offer continuation (2026-10-17):** The existing Ancient-offer Chance Law and atomic ReferenceNature session now cover Darv's binary Dusty Tome/three-relic offer variant followed by the complete eligible-relic Fisher–Yates shuffle. The session binds each shuffle law to the selected variant and prior swap prefix, replays the full transcript through `NativeDarvEventV111`, and commits offers with the Nature cursor atomically. Both sites are registered for direct query; only the variant root starts the combined session. Source probabilities, full pool/call-order fidelity, and seeded native result/cursor parity remain open, and the laws stay `UNVERIFIED`.
+
+
+**S4 semantic end-turn resumer merge (2026-10-17):** `SemanticEndTurnV111` now resumes the post-hand portion through the same `PrototypeGameEngine.ResumeAutomaticPipelineContinuation` used by controlled choices and draw completion. The redundant semantic-only engine wrapper is removed; the end-turn facade retains its next-player and terminal-boundary checks. Nested semantic draw resolution and cross-provider mechanical equivalence remain open.

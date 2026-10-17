@@ -35,8 +35,9 @@ continue from that saved boundary after Nature resolves it.
    action choices from `BeforeHandDraw` are also resolved at a player-choice
    boundary, then resume the saved dispatcher before the hand-draw prelude.
 4. The ordinary one-time post-hand-draw power cleanup advances the
-   automatic index. `ResumeSemanticAutomaticAfterHandDraw` executes
-   the remaining **real pipeline**. The controller checks that combat
+   automatic index. `PrototypeGameEngine.ResumeAutomaticPipelineContinuation`
+   executes the remaining **real pipeline**, shared with controlled-choice
+   and hand-draw continuations. The end-turn facade checks that combat
    has returned to the player's turn with a legal player action,
    no pending choice and no automatic cursor.
 
