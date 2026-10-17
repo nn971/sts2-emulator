@@ -60,6 +60,9 @@ The supported event-choice sites are:
 - `run.relic.beautiful_bracelet.deck_shuffle.swap_index` for an
   event-gained Beautiful Bracelet's conditional shuffle over eligible
   physical deck cards; each swap carries the current ordered instance-ID labels
+- `run.relic.distinguished_cape.modifier_curse.index_draw` for an
+  event-gained Distinguished Cape's two ordered, without-replacement curse
+  picks; each request carries the remaining curse IDs
 - `relic.sand_castle.acquisition_upgrade.shuffle_swap_index` for the
   event-gained Sand Castle's conditional shuffle over eligible physical deck
   cards; each swap carries the current ordered instance-ID labels

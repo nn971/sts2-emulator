@@ -537,17 +537,25 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                 var curseStreamId = nativeRunRng is null
                     ? "event"
                     : "run.niche";
+                var controlledEventReplay =
+                    ControlledEventChoiceReplayV111.IsActive
+                    && ControlledEventChoiceReplayV111.IsEventChoiceSite(
+                        NativeGloryAncientsV111.DistinguishedCapeCurseSiteId);
                 for (var i = 0; i < 2; i++)
                 {
-                    var selectedIndex = curseProvider.Resolve(
-                        new RandomIndexRequestV111(
-                            NativeGloryAncientsV111
-                                .DistinguishedCapeCurseSiteId,
-                            curseStreamId,
-                            "relic:distinguished_cape:acquisition",
-                            i,
-                            Enumerable.Range(0, curseIds.Count).ToArray()),
-                        curseRng).SelectedIndex;
+                    var request = new RandomIndexRequestV111(
+                        NativeGloryAncientsV111
+                            .DistinguishedCapeCurseSiteId,
+                        curseStreamId,
+                        "relic:distinguished_cape:acquisition",
+                        controlledEventReplay ? 0 : i,
+                        Enumerable.Range(0, curseIds.Count).ToArray());
+                    using var candidateScope =
+                        ControlledEventChoiceReplayV111.DescribeCandidates(
+                            curseIds.ToArray());
+                    var selectedIndex =
+                        StochasticProviderScopeV111.ResolveIndex(
+                            curseProvider, request, curseRng).SelectedIndex;
                     var curseId = curseIds[selectedIndex];
                     curseIds.RemoveAt(selectedIndex);
                     player = AppendCard(player, allocate(), curseId,
