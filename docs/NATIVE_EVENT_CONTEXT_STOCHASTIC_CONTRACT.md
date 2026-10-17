@@ -97,6 +97,14 @@ ReferenceNature event session: the ordinary event action continues to own the
 source cursor draw. Legacy fallback cursor and result behavior remain outside
 this claim.
 
+The entry-time `potion_slot.index_draw` also has a pre-entry conditional law.
+The caller supplies the legal Event-node action and explicitly declares Stone
+of All Time as the event branch; the query checks route eligibility and uses
+the ordered occupied potion-slot support with exact Native `NextInt` grid
+masses. It does not inspect the later Native event-selection result or create
+an entry session. Event selection, legacy fallback behavior, seed frequencies,
+stream attribution, and Native cursor parity remain separate claims.
+
 The resolver is the event-specific page-generation or choice-effect method.
 It applies the selected primitive result synchronously, commits the resulting
 page/effect into

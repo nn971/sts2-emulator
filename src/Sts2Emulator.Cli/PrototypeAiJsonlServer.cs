@@ -2924,6 +2924,50 @@ internal static class PrototypeAiJsonlServer
                             });
                             break;
                         }
+                        if (ChanceLawEngineV111.NativeEventEntryIndexQuerySiteIds
+                            .Contains(siteId, StringComparer.Ordinal))
+                        {
+                            if (priorIndices is not null ||
+                                OptionalString(request, "card_type") is not null ||
+                                OptionalString(request, "rarity") is not null ||
+                                OptionalString(request, "card_id") is not null ||
+                                OptionalString(request, "potion_id") is not null ||
+                                OptionalString(request, "relic_id") is not null ||
+                                OptionalBool(request, "colorless_offer") ||
+                                OptionalBool(request, "sale_reprice") ||
+                                OptionalString(request, "owner_id") is not null ||
+                                OptionalStringArray(request,
+                                    "excluded_potion_ids") is not null ||
+                                OptionalInt(request, "offer_ordinal") is not null ||
+                                OptionalStringArray(request,
+                                    "relic_candidate_ids") is not null ||
+                                OptionalStringArray(request,
+                                    "excluded_relic_ids") is not null)
+                                throw new ArgumentException(
+                                    "Native event entry-index queries accept only state_handle, site_id, ordinal, action_id and event_id.");
+                            var actionId = OptionalString(request, "action_id")
+                                ?? throw new ArgumentException(
+                                    "Native event entry-index query requires action_id.");
+                            var eventId = OptionalString(request, "event_id")
+                                ?? throw new ArgumentException(
+                                    "Native event entry-index query requires event_id as an explicit conditioning branch.");
+                            law = ChanceLawEngineV111
+                                .QueryNativeStoneOfAllTimePotionSlot(
+                                    RequireState(request), siteId, ordinal,
+                                    actionId, eventId);
+                            if (law.SiteId != siteId || law.Ordinal != ordinal)
+                                throw new ArgumentException(
+                                    $"Native event entry-index query expects site '{law.SiteId}' and ordinal {law.Ordinal}.");
+                            Write(new
+                            {
+                                requestId,
+                                ok = true,
+                                chanceLawSchemaId =
+                                    ChanceLawV111.CurrentSchemaId,
+                                law
+                            });
+                            break;
+                        }
                         if (ChanceLawEngineV111.NativeEventGoldQuerySiteIds
                             .Contains(siteId, StringComparer.Ordinal))
                         {

@@ -255,6 +255,8 @@ public static partial class ChanceLawEngineV111
         "event.generated_gold.index_draw";
     public const string NativeEventGoldUnitFloatSiteId =
         "event.generated_gold.unit_float";
+    public const string NativeStoneOfAllTimePotionSlotSiteId =
+        "event.stone_of_all_time.potion_slot.index_draw";
     public const string NativeStoneOfAllTimePushTicketSiteId =
         "event.stone_of_all_time.push_ticket";
     public const string NativeStoneOfAllTimeLiftTicketSiteId =
@@ -272,6 +274,9 @@ public static partial class ChanceLawEngineV111
     public static string[] NativeEventGoldQuerySiteIds =>
         [NativeEventGoldIndexSiteId, NativeEventGoldUnitFloatSiteId];
 
+    public static string[] NativeEventEntryIndexQuerySiteIds =>
+        [NativeStoneOfAllTimePotionSlotSiteId];
+
     public static string[] NativeEventNoEffectIndexQuerySiteIds =>
     [
         NativeStoneOfAllTimePushTicketSiteId,
@@ -284,6 +289,84 @@ public static partial class ChanceLawEngineV111
         PrototypeNativeGloryEvents.ReflectionsUpgradeSiteId,
         PrototypeNativeHiveEvents.InfestedAutomatonCardOfferSiteId
     ];
+
+    /// <summary>
+    /// Query Stone of All Time's event-entry potion-slot draw, conditional on
+    /// an explicit legal Event-node action and the declared event branch.
+    /// </summary>
+    public static ChanceLawV111 QueryNativeStoneOfAllTimePotionSlot(
+        RunState origin, string siteId, int ordinal, string actionId,
+        string eventId)
+    {
+        ArgumentNullException.ThrowIfNull(origin);
+        ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(actionId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
+        if (siteId != NativeStoneOfAllTimePotionSlotSiteId || ordinal != 0 ||
+            eventId != PrototypeNativeStoneOfAllTime.EventId ||
+            origin.Phase != RunPhase.MapChoice ||
+            origin.World is not { Event: null } world ||
+            origin.NativeRunRng is null ||
+            !PrototypeGameEngine.UsesNativeRegionalSystems(world))
+            throw new InvalidOperationException(
+                "Stone of All Time potion-slot laws require a configured pre-entry Native Event-node boundary and explicit Stone branch.");
+        PrototypeStateInvariants.Validate(origin);
+
+        var engine = new PrototypeGameEngine();
+        var action = engine.GetLegalActions(origin).SingleOrDefault(candidate =>
+            PrototypeAiEnvironment.StableActionId(candidate) == actionId)
+            ?? throw new InvalidOperationException(
+                "Stone of All Time potion-slot law requires a current legal Event-node action.");
+        var nodeId = action.Kind == "choose_map_node"
+            ? action.ReadPayload<ChooseMapNodePayload>().NodeId : null;
+        if (nodeId is null ||
+            !PrototypeNativeWingedBoots.AvailableNodes(world, origin.Player)
+                .Any(node => node.NodeId == nodeId &&
+                    node.RoomType == PrototypeRoomType.Event))
+            throw new InvalidOperationException(
+                "Stone of All Time potion-slot law requires a current legal Event-node action.");
+
+        ValidateNativeEventBranch(origin, world, eventId);
+        var eventDefinition = PrototypeContent.Event(eventId);
+        if (!PrototypeNativeHiveEvents.IsEligible(
+                eventDefinition, origin.Player))
+            throw new InvalidOperationException(
+                "Stone of All Time is ineligible because the player has no potion.");
+        var slots = PrototypeNativeStoneOfAllTime.OccupiedPotionSlots(
+            origin.Player);
+        if (slots.Length == 0)
+            throw new InvalidOperationException(
+                "Stone of All Time has no occupied potion slot support.");
+
+        var ownerId = "event:stone_of_all_time:potion_slots:" +
+            CanonicalJson.Sha256(slots);
+        var streamId = NativeRngV111Contexts.EventStreamId(
+            PrototypeNativeStoneOfAllTime.NativeRngEventId);
+        var request = new RandomIndexRequestV111(
+            siteId, streamId, ownerId, ordinal,
+            Enumerable.Range(0, slots.Length).ToArray());
+        request.Validate();
+        var weights = NativeNextIntGridWeights(slots.Length);
+        var outcomes = slots.Select((slot, index) =>
+            new ChanceLawOutcomeV111(
+                $"potion_slot:{slot}:index:{index}", weights[index]))
+            .ToArray();
+        var conditioningFingerprint = CanonicalJson.Sha256(new
+        {
+            boundary = "native_event.stone_of_all_time.entry_potion_slot",
+            actionId,
+            eventId,
+            nodeId,
+            orderedOccupiedPotionSlots = slots,
+            request
+        });
+        return CreateNativeBoundaryLaw(
+            siteId, request.OperationKind, ownerId, ordinal,
+            "native-stone-of-all-time-potion-slot-index-v1",
+            conditioningFingerprint,
+            NativeBoundedIndexSourceVerifiedProvenance,
+            outcomes, ChanceLawV111.SourceVerifiedStatus);
+    }
 
     /// <summary>
     /// Query the event-local bounded ticket which Stone of All Time discards
@@ -395,7 +478,7 @@ public static partial class ChanceLawEngineV111
             throw new InvalidOperationException(
                 "Native event gold law requires a current legal Event-node action.");
 
-        ValidateNativeEventGoldBranch(origin, world, eventId);
+        ValidateNativeEventBranch(origin, world, eventId);
         var (nativeEventEntry, stages) = eventId switch
         {
             PrototypeNativeHiveEvents.LostWispId =>
@@ -478,7 +561,7 @@ public static partial class ChanceLawEngineV111
             throw new InvalidOperationException(
                 "Native event gold law requires a current legal Event-node action.");
 
-        ValidateNativeEventGoldBranch(origin, world, eventId);
+        ValidateNativeEventBranch(origin, world, eventId);
         var (nativeEventEntry, stages, bounds) = eventId switch
         {
             var id when id == PrototypeNativeDenseVegetation.EventId =>
@@ -551,7 +634,7 @@ public static partial class ChanceLawEngineV111
             outcomes, ChanceLawV111.SourceVerifiedStatus);
     }
 
-    private static void ValidateNativeEventGoldBranch(
+    private static void ValidateNativeEventBranch(
         RunState origin, RunWorldState world, string eventId)
     {
         if (!PrototypeContent.Events.TryGetValue(eventId, out var eventDefinition) ||
@@ -560,7 +643,7 @@ public static partial class ChanceLawEngineV111
             world.EventIds.Contains(eventId, StringComparer.Ordinal) &&
                 eventDefinition.OncePerRun)
             throw new InvalidOperationException(
-                "The declared event-gold branch is not available in this run state.");
+                "The declared Native event branch is not available in this run state.");
 
         var overgrowth = world.Act == 1 &&
             PrototypeNativeOvergrowthMap.IsGenerationProfile(
@@ -582,7 +665,7 @@ public static partial class ChanceLawEngineV111
                 .ContainsEvent(eventId, world.Act);
         if (!isSupported || !laterRoute && eventDefinition.Weight <= 0)
             throw new InvalidOperationException(
-                "The declared event-gold branch is outside the configured Native event route.");
+                "The declared event branch is outside the configured Native event route.");
     }
 
     internal static int NativeEventGoldIndexOutcome(
