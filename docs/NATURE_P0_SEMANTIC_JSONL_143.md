@@ -451,6 +451,14 @@ use the same `resolve_pool_shuffle(swap_index)` method for this event as for
 generated-card pool shuffles. Native stream assignment, cursor parity and
 probability law remain `UNVERIFIED`.
 
+When a nested card effect exhausts the draw pile and recycles the discard
+pile, each descending swap is exposed as the
+`combat.draw.recycle.shuffle_swap_index` `pool_shuffle` event. Resolving the
+swaps resumes the saved `DrawCards` effect suffix through the ordinary
+continuation, including later draw hooks and costs. This semantic site is
+separate from the legacy hand-draw recycle continuation; its equal-index law,
+source stream mapping and cross-provider parity remain `UNVERIFIED`.
+
 Set `fixture_top_autoplay_potion_id="proto.potion.distilled_chaos"` to add
 Distilled Chaos to the seeded combat. Using it stages the requested top cards
 and pauses at an unresolved Nature draw identity when needed; resolving the
