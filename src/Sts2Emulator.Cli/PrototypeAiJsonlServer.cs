@@ -963,17 +963,76 @@ internal static class PrototypeAiJsonlServer
             return null;
         }
 
-        SemanticNatureChoiceViewV111? DescribeSemanticNatureChoice(
-            SemanticPilotCombatV111 state)
+        SemanticNatureChoiceViewV111? CreateNatureChoiceView(
+            object? pending)
         {
-            if (state.UsesNativePolicyBaseline) return null;
-            var pending = DescribeSemanticPending(state);
             if (pending is null) return null;
             var payload = JsonSerializer.SerializeToElement(
                 pending, pending.GetType(),
                 new JsonSerializerOptions(JsonSerializerDefaults.Web));
             if (!payload.TryGetProperty("chanceLaw", out _)) return null;
             return SemanticNatureChoiceViewV111.Create(payload);
+        }
+
+        SemanticNatureChoiceViewV111? DescribeSemanticNatureChoice(
+            SemanticPilotCombatV111 state) =>
+            state.UsesNativePolicyBaseline
+                ? null
+                : CreateNatureChoiceView(DescribeSemanticPending(state));
+
+        (string Fingerprint, SemanticNatureChoiceViewV111? Choice)
+            DescribeNatureChoiceStatus(string sessionKind, string handle)
+        {
+            object status = sessionKind switch
+            {
+                "semantic_combat" when semanticStates.TryGetValue(
+                    handle, out var semantic) => SemanticResult(semantic, handle),
+                "reference_combat" when referenceNatureStates.TryGetValue(
+                    handle, out var combatSession) =>
+                    ReferenceNatureResult(combatSession, handle),
+                "run_action" when referenceNatureRunActionStates.TryGetValue(
+                    handle, out var runActionSession) =>
+                    ReferenceNatureRunActionResult(runActionSession, handle),
+                "event_choice" when referenceNatureEventChoiceStates.TryGetValue(
+                    handle, out var eventChoiceSession) =>
+                    ReferenceNatureEventChoiceResult(eventChoiceSession, handle),
+                "ancient_offer" when referenceNatureAncientOfferStates.TryGetValue(
+                    handle, out var ancientOfferSession) =>
+                    ReferenceNatureAncientOfferResult(ancientOfferSession, handle),
+                "merchant" when referenceNatureMerchantStates.TryGetValue(
+                    handle, out var merchantSession) =>
+                    ReferenceNatureMerchantResult(merchantSession, handle),
+                "treasure" when referenceNatureTreasureStates.TryGetValue(
+                    handle, out var treasureSession) =>
+                    ReferenceNatureTreasureResult(treasureSession, handle),
+                "controlled_event_choice" when states.TryGetValue(
+                    handle, out var eventRun) =>
+                    ControlledEventChoiceResult(eventRun, handle, null),
+                "controlled_run_action" when states.TryGetValue(
+                    handle, out var actionRun) =>
+                    ControlledRunActionResult(actionRun, handle, null),
+                "semantic_combat" or "reference_combat" or "run_action" or
+                    "event_choice" or "ancient_offer" or "merchant" or
+                    "treasure" or "controlled_event_choice" or
+                    "controlled_run_action" => throw new InvalidOperationException(
+                        "Unknown Nature session handle for kind " + sessionKind +
+                        ": " + handle),
+                _ => throw new ArgumentException(
+                    "Unsupported Nature session kind: " + sessionKind)
+            };
+            var result = JsonSerializer.SerializeToElement(
+                status, status.GetType(),
+                new JsonSerializerOptions(JsonSerializerDefaults.Web));
+            string fingerprint = RequiredString(result, "fingerprint");
+            var pending = result.TryGetProperty("pending", out var pendingValue) &&
+                pendingValue.ValueKind == JsonValueKind.Object
+                    ? pendingValue
+                    : default;
+            var choice = pending.ValueKind == JsonValueKind.Object &&
+                pending.TryGetProperty("chanceLaw", out _)
+                    ? SemanticNatureChoiceViewV111.Create(pending)
+                    : null;
+            return (fingerprint, choice);
         }
 
         string[] SemanticChanceSites(SemanticPilotCombatV111 state)
@@ -2244,6 +2303,27 @@ internal static class PrototypeAiJsonlServer
                                 SemanticNatureChoiceViewV111.CurrentSchemaId,
                             semanticHandle = handle,
                             fingerprint = current.Fingerprint,
+                            natureChoice
+                        });
+                        break;
+                    }
+
+                    case "nature_choice_observe":
+                    {
+                        var sessionKind = RequiredString(request,
+                            "session_kind");
+                        var handle = RequiredString(request, "session_handle");
+                        var (fingerprint, natureChoice) =
+                            DescribeNatureChoiceStatus(sessionKind, handle);
+                        Write(new
+                        {
+                            requestId,
+                            ok = true,
+                            schemaId =
+                                SemanticNatureChoiceViewV111.CurrentSchemaId,
+                            sessionKind,
+                            sessionHandle = handle,
+                            fingerprint,
                             natureChoice
                         });
                         break;

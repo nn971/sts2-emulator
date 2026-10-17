@@ -31,7 +31,13 @@ public sealed record StochasticCapabilityManifestV111(
     public string SemanticNatureChoiceViewSchemaId { get; init; } =
         SemanticNatureChoiceViewV111.CurrentSchemaId;
     public string[] SemanticNatureChoiceViewOperations { get; init; } =
-        ["semantic_nature_observe"];
+        ["nature_choice_observe", "semantic_nature_observe"];
+    public string[] SemanticNatureChoiceViewSessionKinds { get; init; } =
+    [
+        "semantic_combat", "reference_combat", "run_action",
+        "event_choice", "ancient_offer", "merchant", "treasure",
+        "controlled_event_choice", "controlled_run_action"
+    ];
 }
 
 public static class StochasticCapabilitiesV111
