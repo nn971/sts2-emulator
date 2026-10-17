@@ -28,6 +28,8 @@ public sealed record PrototypeRelicBagState(
 
 public static class PrototypeNativeRelicGrabBag
 {
+    public const string NativeMerchantModelSiteId =
+        "shop.merchant.relic_model.index_draw";
     internal const int RarityWeightScale = 10_000;
     internal const int CommonRarityWeight = 5_000;
     internal const int UncommonRarityWeight = 3_300;
@@ -485,7 +487,8 @@ public sealed record PrototypeRelicBagPullPlanV111(
     public static (RunWorldState World, string? Id) Draw(
         RunWorldState world, PlayerState player, RngBundle rng,
         bool merchant, PrototypeRelicRarity? forcedRarity = null,
-        RngBundle? nativeRunRng = null)
+        RngBundle? nativeRunRng = null,
+        int merchantOfferOrdinal = 0)
     {
         var bag = world.RelicBag ?? (nativeRunRng is null
             ? Create(player, rng)
@@ -493,7 +496,57 @@ public sealed record PrototypeRelicBagPullPlanV111(
         var rarity = forcedRarity ?? (nativeRunRng is null
             ? RollRarity(rng, merchant)
             : RollRarityNative(nativeRunRng, merchant));
-        var (remaining, id) = Pull(bag, rarity, merchant, player);
+        (PrototypeRelicBagState Bag, string? Id) pull;
+        if (merchant && nativeRunRng is not null &&
+            ControlledStochasticChanceReplayV111.IsActive)
+        {
+            if (merchantOfferOrdinal < 0 || merchantOfferOrdinal >= 3)
+                throw new ArgumentOutOfRangeException(
+                    nameof(merchantOfferOrdinal));
+            var plan = PlanPull(bag, rarity, merchant: true, player);
+            if (plan.CandidateIds.Length == 0)
+            {
+                pull = (bag, null);
+            }
+            else
+            {
+                var candidates = plan.CandidateIds
+                    .OrderBy(id => id, StringComparer.Ordinal).ToArray();
+                var ownerId = MerchantModelOwnerId(
+                    world, merchantOfferOrdinal, rarity, candidates);
+                var ordinal = NativePlayerRngV111.NextOrdinal(
+                    nativeRunRng, NativePlayerRngV111.ShopsStreamId);
+                int selectedIndex;
+                using (ControlledStochasticChanceReplayV111
+                    .DescribeCandidates(candidates))
+                {
+                    selectedIndex = NativeRandomChoiceV111.ChooseIndexRange(
+                        nativeRunRng, NativeMerchantModelSiteId,
+                        NativePlayerRngV111.ShopsStreamId, ownerId,
+                        candidates.Length, ordinal).SelectedIndex;
+                }
+                pull = PullSelected(
+                    bag,
+                    plan with { CandidateIds = candidates },
+                    merchant: true, player, candidates[selectedIndex]);
+            }
+        }
+        else
+        {
+            pull = Pull(bag, rarity, merchant, player);
+        }
+        var (remaining, id) = pull;
         return (world with { RelicBag = remaining }, id);
+    }
+
+    public static string MerchantModelOwnerId(
+        RunWorldState world, int offerOrdinal,
+        PrototypeRelicRarity rarity, string[] orderedCandidateIds)
+    {
+        ArgumentNullException.ThrowIfNull(world);
+        ArgumentNullException.ThrowIfNull(orderedCandidateIds);
+        return $"act:{world.Act}:floor:{world.Floor}:merchant_relic:" +
+            $"{offerOrdinal}:rarity:{rarity}:pool:" +
+            CanonicalJson.Sha256(orderedCandidateIds);
     }
 }

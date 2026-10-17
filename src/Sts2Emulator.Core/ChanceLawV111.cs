@@ -616,6 +616,98 @@ public static class ChanceLawEngineV111
     }
 
     /// <summary>
+    /// Query the next identity from a Native merchant relic queue while its
+    /// order remains private. The ordered support is canonicalized by the
+    /// caller and checked against the source fallback plan after prior
+    /// session selections have been removed.
+    /// </summary>
+    public static ChanceLawV111 QueryNativeMerchantRelicSelection(
+        RunState run, RandomIndexRequestV111 request,
+        int offerOrdinal, PrototypeRelicRarity rarity,
+        string[] candidateIds, string[] excludedRelicIds)
+    {
+        ArgumentNullException.ThrowIfNull(run);
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(candidateIds);
+        ArgumentNullException.ThrowIfNull(excludedRelicIds);
+        PrototypeStateInvariants.Validate(run);
+        ValidateNativeMerchantQueryBoundary(run);
+        request.Validate();
+        var world = run.World!;
+        if (request.SiteId !=
+                PrototypeNativeRelicGrabBag.NativeMerchantModelSiteId ||
+            request.StreamId != NativePlayerRngV111.ShopsStreamId ||
+            request.OperationKind != "choose_index" ||
+            offerOrdinal is < 0 or >= 3 ||
+            !Enum.IsDefined(rarity) ||
+            candidateIds.Length == 0 ||
+            request.SupportCount != candidateIds.Length ||
+            !request.OrderedCandidates.SequenceEqual(
+                Enumerable.Range(0, candidateIds.Length)) ||
+            !candidateIds.SequenceEqual(candidateIds.OrderBy(
+                id => id, StringComparer.Ordinal), StringComparer.Ordinal) ||
+            candidateIds.Any(string.IsNullOrWhiteSpace) ||
+            candidateIds.Distinct(StringComparer.Ordinal).Count() !=
+                candidateIds.Length ||
+            excludedRelicIds.Any(string.IsNullOrWhiteSpace) ||
+            excludedRelicIds.Distinct(StringComparer.Ordinal).Count() !=
+                excludedRelicIds.Length ||
+            excludedRelicIds.Length > offerOrdinal ||
+            excludedRelicIds.Any(id =>
+                !PrototypeContent.RelicPool.Contains(id, StringComparer.Ordinal)))
+            throw new ArgumentException(
+                "Native merchant relic selection request is malformed.");
+
+        var ownerId = PrototypeNativeRelicGrabBag.MerchantModelOwnerId(
+            world, offerOrdinal, rarity, candidateIds);
+        if (request.OwnerId != ownerId || world.RelicBag is not { } bag)
+            throw new InvalidDataException(
+                "Native merchant relic request owner or bag differs from its boundary.");
+
+        var excluded = excludedRelicIds.ToHashSet(StringComparer.Ordinal);
+        static string[] RemoveSelected(string[] ids,
+            HashSet<string> selected) => ids.Where(id => !selected.Contains(id))
+            .ToArray();
+        var conditionedBag = bag with
+        {
+            Common = RemoveSelected(bag.Common, excluded),
+            Uncommon = RemoveSelected(bag.Uncommon, excluded),
+            Rare = RemoveSelected(bag.Rare, excluded),
+            Shop = RemoveSelected(bag.Shop, excluded)
+        };
+        var plan = PrototypeNativeRelicGrabBag.PlanPull(
+            conditionedBag, rarity, merchant: true, run.Player);
+        var expectedCandidates = plan.CandidateIds
+            .OrderBy(id => id, StringComparer.Ordinal).ToArray();
+        if (plan.SelectedTier is null ||
+            !candidateIds.SequenceEqual(expectedCandidates,
+                StringComparer.Ordinal))
+            throw new InvalidDataException(
+                "Native merchant relic support differs from the conditioned hidden queue.");
+
+        var policy = NativeMerchantIndexConditioningPolicyId;
+        var conditioning = new
+        {
+            request,
+            offerOrdinal,
+            rarity = rarity.ToString(),
+            selectedTier = plan.SelectedTier.Value.ToString(),
+            candidateIds,
+            excludedRelicIds = excludedRelicIds.OrderBy(
+                id => id, StringComparer.Ordinal).ToArray(),
+            policy
+        };
+        var outcomes = candidateIds.Select((id, index) =>
+            new ChanceLawOutcomeV111(
+                $"relic_model:{id}:index:{index}", 1L)).ToArray();
+        return CreateNativeBoundaryLaw(
+            request.SiteId, request.OperationKind, request.OwnerId,
+            request.Ordinal, policy, CanonicalJson.Sha256(conditioning),
+            "native-merchant-hidden-relic-queue-identity-unverified",
+            outcomes);
+    }
+
+    /// <summary>
     /// Query the mapped integer price produced by one native merchant
     /// NextFloat modifier. The interval masses model the rounded output and
     /// remain UNVERIFIED against the exact native float distribution.

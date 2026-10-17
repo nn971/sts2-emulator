@@ -3062,7 +3062,8 @@ public sealed partial class PrototypeGameEngine
                     world, state.Player, state.Rng,
                     merchant: true,
                     forcedRarity: forcedTier,
-                    nativeRunRng: nativeRunRng);
+                    nativeRunRng: nativeRunRng,
+                    merchantOfferOrdinal: index);
                 world = draw.World;
                 if (draw.Id is not null)
                 {

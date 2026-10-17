@@ -1548,6 +1548,12 @@ internal static class PrototypeAiJsonlServer
                             request, "sale_reprice");
                         var excludedPotionIds = OptionalStringArray(
                             request, "excluded_potion_ids");
+                        var offerOrdinal = OptionalInt(
+                            request, "offer_ordinal");
+                        var relicCandidateIds = OptionalStringArray(
+                            request, "relic_candidate_ids");
+                        var excludedRelicIds = OptionalStringArray(
+                            request, "excluded_relic_ids");
                         ChanceLawV111 law;
                         if (StochasticSiteRegistryV111
                             .AncientOfferSessionSiteIds.Contains(
@@ -1556,7 +1562,10 @@ internal static class PrototypeAiJsonlServer
                             if (cardType is not null || rarity is not null ||
                                 cardId is not null || potionId is not null ||
                                 relicId is not null || colorlessOffer ||
-                                saleReprice || excludedPotionIds is not null)
+                                saleReprice || excludedPotionIds is not null ||
+                                offerOrdinal is not null ||
+                                relicCandidateIds is not null ||
+                                excludedRelicIds is not null)
                                 throw new ArgumentException(
                                     "Ancient offer queries do not accept merchant parameters.");
                             law = ChanceLawEngineV111.QueryAncientOffer(
@@ -1571,7 +1580,10 @@ internal static class PrototypeAiJsonlServer
                                 .IsNativeMerchantPriceSite(siteId))
                             {
                                 if (cardType is not null || rarity is not null ||
-                                    excludedPotionIds is not null)
+                                    excludedPotionIds is not null ||
+                                    offerOrdinal is not null ||
+                                    relicCandidateIds is not null ||
+                                    excludedRelicIds is not null)
                                     throw new ArgumentException(
                                         "Native merchant price queries do not accept model-pool parameters.");
                                 law = ChanceLawEngineV111
@@ -1585,18 +1597,56 @@ internal static class PrototypeAiJsonlServer
                                 if (cardType is not null || rarity is not null ||
                                     cardId is not null || potionId is not null ||
                                     relicId is not null || colorlessOffer ||
-                                    saleReprice || excludedPotionIds is not null)
+                                    saleReprice || excludedPotionIds is not null ||
+                                    offerOrdinal is not null ||
+                                    relicCandidateIds is not null ||
+                                    excludedRelicIds is not null)
                                     throw new ArgumentException(
                                         "Native treasure relic queries do not accept merchant parameters.");
                                 law = ChanceLawEngineV111
                                     .QueryNativeTreasureRelicDraw(
                                         run, siteId, ordinal);
                             }
+                            else if (siteId == PrototypeNativeRelicGrabBag
+                                .NativeMerchantModelSiteId)
+                            {
+                                if (cardType is not null || cardId is not null ||
+                                    potionId is not null || relicId is not null ||
+                                    colorlessOffer || saleReprice ||
+                                    excludedPotionIds is not null ||
+                                    offerOrdinal is null || rarity is null ||
+                                    relicCandidateIds is null ||
+                                    excludedRelicIds is null ||
+                                    run.World is null ||
+                                    !Enum.TryParse<PrototypeRelicRarity>(
+                                        rarity, true, out var relicRarity) ||
+                                    !Enum.IsDefined(relicRarity))
+                                    throw new ArgumentException(
+                                        "Native merchant relic selection requires offer_ordinal, rarity, relic_candidate_ids and excluded_relic_ids only.");
+                                var ownerId = PrototypeNativeRelicGrabBag
+                                    .MerchantModelOwnerId(
+                                        run.World, offerOrdinal.Value,
+                                        relicRarity, relicCandidateIds);
+                                var typedRequest = new RandomIndexRequestV111(
+                                    siteId,
+                                    "player.shops",
+                                    ownerId, ordinal,
+                                    Enumerable.Range(0,
+                                        relicCandidateIds.Length).ToArray());
+                                law = ChanceLawEngineV111
+                                    .QueryNativeMerchantRelicSelection(
+                                        run, typedRequest,
+                                        offerOrdinal.Value, relicRarity,
+                                        relicCandidateIds,
+                                        excludedRelicIds);
+                            }
                             else
                             {
                                 if (cardId is not null || potionId is not null ||
                                     relicId is not null || colorlessOffer ||
-                                    saleReprice)
+                                    saleReprice || offerOrdinal is not null ||
+                                    relicCandidateIds is not null ||
+                                    excludedRelicIds is not null)
                                     throw new ArgumentException(
                                         "Native merchant offer queries do not accept item-price parameters.");
                                 law = ChanceLawEngineV111

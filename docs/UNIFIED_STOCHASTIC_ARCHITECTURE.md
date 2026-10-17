@@ -58,9 +58,16 @@ still open; the mixed replay primitive is not yet wired to a merchant session.
 resolver used by both ordinary relic pulls and the native Treasure Chance
 Law. It retains queue order for Native while exposing the selected fallback
 tier and eligible identities separately; `PullSelected` can remove a legal
-chosen identity while preserving all other queue entries. This supports
-future controlled relic identity resolution, but Nature queue-state ownership
-and native merchant relic continuation remain open.
+chosen identity while preserving all other queue entries. This is the shared
+mechanics apply path for controlled relic identity resolution; persistent
+Nature queue-state ownership remains open.
+
+When a mixed controlled replay is active, merchant `Draw` now inserts the
+Nature-only typed site `shop.merchant.relic_model.index_draw` before removing
+the selected merchant relic. It labels the sorted support and applies the
+chosen identity through the shared pull plan; the matching Chance Law query
+conditions on previous same-shop relic selections without exposing Native
+queue order. No serialized merchant session consumes this site yet.
 
 ## Semantic lifecycle and provider interchangeability
 
