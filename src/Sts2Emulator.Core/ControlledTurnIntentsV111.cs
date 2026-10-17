@@ -206,7 +206,8 @@ public static class ControlledTurnIntentEngineV111
             var enemy = formation[index];
             var prior = state.Transcript.Where(d =>
                 d.Request.OwnerId == "creature:" + enemy.InstanceId).ToArray();
-            int position = 0;
+            var prefix = new ControlledRandomIndexReplayPrefixV111(prior);
+            var firstOrdinal = state.Transcript.Length - prior.Length;
             Func<int, int> getTicket = bound =>
             {
                 if (bound <= 0)
@@ -214,24 +215,19 @@ public static class ControlledTurnIntentEngineV111
                 var request = new RandomIndexRequestV111(
                     state.SiteId, "run.monster_ai",
                     "creature:" + enemy.InstanceId,
-                    state.Transcript.Length - prior.Length + position,
+                    firstOrdinal + prefix.ConsumedCount,
                     [], OperationKind: "bounded_integer", BoundedCount: bound);
-                if (position >= prior.Length)
+                if (!prefix.TryConsume(request,
+                        "Turn-intent ticket prefix diverged.",
+                        out var selectedIndex))
                     throw new PendingTicket(request);
-                var choice = prior[position++];
-                if (choice.ProviderMode != "controlled-v111" ||
-                    CanonicalJson.Sha256(choice.Request) != CanonicalJson.Sha256(request))
-                    throw new InvalidDataException(
-                        "Turn-intent ticket prefix diverged.");
-                choice.Validate();
-                return choice.SelectedIndex;
+                return selectedIndex;
             };
             try
             {
                 var chosen = PrototypeGameEngine.EvaluateEnemyIntentChoice(
                     formation, index, state.NativeEncounterEntry, getTicket);
-                if (position != prior.Length)
-                    throw new InvalidDataException("Unused turn-intent tickets.");
+                prefix.EnsureConsumed("Unused turn-intent tickets.");
                 formation[index] = PrototypeGameEngine
                     .ApplyEnemyIntentOutcome(
                         enemy, chosen.MoveIndex, chosen.NextAiStateId);
