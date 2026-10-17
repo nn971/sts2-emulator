@@ -8322,18 +8322,9 @@ public sealed partial class PrototypeGameEngine
                             }
                             var semanticCardId =
                                 resolvedTop.CardInstanceId!.Value;
-                            if (semanticDeck.Mode ==
-                                SemanticDeckStateV111.NatureMode)
-                            {
-                                cardId = semanticCardId;
-                                if (!draw.Remove(cardId))
-                                    throw new InvalidDataException(
-                                        "Revealed Nature card instance is absent from the autoplay draw pile.");
-                            }
-                            else
-                            {
-                                draw.RemoveAt(draw.Count - 1);
-                            }
+                            cardId = semanticCardId;
+                            draw = resolvedTop.RemainingPhysicalDrawPile
+                                .ToList();
                         }
                         else
                         {
@@ -16371,9 +16362,7 @@ public sealed partial class PrototypeGameEngine
                         RemainingCount: count - drawNumber,
                         ControlledSemanticDrawPending: true);
                 cardInstanceId = resolvedTop.CardInstanceId!.Value;
-                if (!draw.Remove(cardInstanceId))
-                    throw new InvalidDataException(
-                        "Revealed card instance is absent from the draw pile.");
+                draw = resolvedTop.RemainingPhysicalDrawPile.ToList();
                 combat = combat with { SemanticDeck = semantic };
             }
             else

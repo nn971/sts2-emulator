@@ -1,7 +1,9 @@
 namespace Sts2Emulator.Core;
 
 internal readonly record struct SemanticDrawPileTopCardV111(
-    SemanticDeckStateV111 Deck, long? CardInstanceId)
+    SemanticDeckStateV111 Deck,
+    long? CardInstanceId,
+    IReadOnlyList<long> RemainingPhysicalDrawPile)
 {
     public bool IsPending => CardInstanceId is null;
 }
@@ -46,7 +48,8 @@ public static class SemanticDrawPileAdapterV111
 
         var required = SemanticDeckEngineV111.Require(semantic, 0, "draw");
         if (required.Pending is not null)
-            return new SemanticDrawPileTopCardV111(required, null);
+            return new SemanticDrawPileTopCardV111(
+                required, null, physicalDrawPile.ToArray());
 
         var (consumed, cardInstanceId) =
             SemanticDeckEngineV111.DrawKnown(required);
@@ -54,7 +57,21 @@ public static class SemanticDrawPileAdapterV111
             cardInstanceId != physicalDrawPile[^1])
             throw new InvalidDataException(
                 "Native semantic draw disagrees with the physical top card.");
-        return new SemanticDrawPileTopCardV111(consumed, cardInstanceId);
+        var physicalIndex = IndexOf(physicalDrawPile, cardInstanceId);
+        if (physicalIndex < 0)
+            throw new InvalidDataException(
+                "Resolved semantic card instance is absent from the draw pile.");
+        var remainingPhysicalDrawPile = new long[physicalDrawPile.Count - 1];
+        for (var i = 0; i < physicalDrawPile.Count; i++)
+        {
+            if (i < physicalIndex)
+                remainingPhysicalDrawPile[i] = physicalDrawPile[i];
+            else if (i > physicalIndex)
+                remainingPhysicalDrawPile[i - 1] = physicalDrawPile[i];
+        }
+        ValidateProviderCorrespondence(consumed, remainingPhysicalDrawPile);
+        return new SemanticDrawPileTopCardV111(
+            consumed, cardInstanceId, remainingPhysicalDrawPile);
     }
 
     /// <summary>
@@ -136,6 +153,14 @@ public static class SemanticDrawPileAdapterV111
                 .SequenceEqual(physicalDrawPile.Reverse()))
             throw new InvalidDataException(
                 "Native semantic deck order differs from the physical draw pile.");
+    }
+
+    private static int IndexOf(IReadOnlyList<long> values, long value)
+    {
+        for (var i = 0; i < values.Count; i++)
+            if (values[i] == value)
+                return i;
+        return -1;
     }
 
     /// <summary>
