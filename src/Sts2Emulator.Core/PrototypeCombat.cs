@@ -1690,6 +1690,53 @@ public sealed partial class PrototypeGameEngine
     }
 
     /// <summary>
+    /// Attach the semantic intent provider frame to the ordinary automatic
+    /// pipeline cursor. The end-turn facade projects this value into its
+    /// established serialized Intents field.
+    /// </summary>
+    internal static RunState SetControlledTurnIntentContinuation(
+        RunState state, ControlledTurnIntentsV111? intents)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        var world = state.World;
+        var combat = world?.Combat;
+        var pipeline = combat?.AutomaticPipelineContinuation;
+        if (combat is null || pipeline is null)
+        {
+            if (intents is null)
+                return state;
+            throw new InvalidOperationException(
+                "Controlled turn intents require an automatic pipeline checkpoint.");
+        }
+
+        if (intents is null && pipeline.ControlledTurnIntents is null)
+            return state;
+
+        int advanceTurnIndex = Array.FindIndex(
+            PrototypeContent.Rules.EndTurnPipeline,
+            step => step.Kind == PrototypeAutomaticStepKind.AdvanceTurn);
+        if (intents is not null &&
+            (state.Phase != RunPhase.Combat || advanceTurnIndex < 0 ||
+             pipeline.NextStepIndex != advanceTurnIndex || combat.IsPlayerTurn))
+            throw new InvalidOperationException(
+                "Controlled turn intents require the suspended AdvanceTurn stage.");
+
+        return state with
+        {
+            World = world! with
+            {
+                Combat = combat with
+                {
+                    AutomaticPipelineContinuation = pipeline with
+                    {
+                        ControlledTurnIntents = intents?.Fork()
+                    }
+                }
+            }
+        };
+    }
+
+    /// <summary>
     /// Resume after Nature has committed all next-turn intent tickets.
     /// Earlier enemy actions/status hooks remain applied in the RunState.
     /// This method performs AdvanceTurn postwork once and continues from the

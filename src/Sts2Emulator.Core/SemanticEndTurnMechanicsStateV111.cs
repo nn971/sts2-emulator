@@ -21,7 +21,6 @@ public sealed record SemanticEndTurnMechanicsStateV111
     }
 
     public string NativeEncounterEntry { get; init; }
-    public ControlledTurnIntentsV111? Intents { get; init; }
     public SemanticCombatDrawV111? HandDraw { get; init; }
     public bool Complete { get; init; }
     public RunState? PlayerActionSource { get; init; }
@@ -37,11 +36,12 @@ public sealed record SemanticEndTurnMechanicsStateV111
         RunState? PlayerActionSource = null,
         string? PlayerActionId = null)
     {
+        var checkpoint = PrototypeGameEngine
+            .SetControlledTurnIntentContinuation(Run, Intents);
         Continuation = new PrototypeMechanicsContinuationStateV111(
             PrototypeMechanicsContinuationKindV111.SemanticEndTurn,
-            Origin, Run);
+            Origin, checkpoint);
         this.NativeEncounterEntry = NativeEncounterEntry;
-        this.Intents = Intents;
         this.HandDraw = HandDraw;
         this.Complete = Complete;
         this.PlayerActionSource = PlayerActionSource;

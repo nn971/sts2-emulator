@@ -12,11 +12,13 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
     int? ControlledSemanticDrawRequested = null,
     bool ControlledSemanticBeforeHandDrawPending = false,
     bool ControlledRecycleStratagemPending = false,
-    PrototypeControlledEnemyActionContinuationV111? ControlledEnemyAction = null)
+    PrototypeControlledEnemyActionContinuationV111? ControlledEnemyAction = null,
+    ControlledTurnIntentsV111? ControlledTurnIntents = null)
 {
     public PrototypeAutomaticPipelineStochasticStateV111 Fork() => this with
     {
-        ControlledEnemyAction = ControlledEnemyAction?.Fork()
+        ControlledEnemyAction = ControlledEnemyAction?.Fork(),
+        ControlledTurnIntents = ControlledTurnIntents?.Fork()
     };
 
     public void Validate(
@@ -42,6 +44,39 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
             throw new InvalidOperationException(
                 "Controlled recycle Stratagem selection is malformed.");
 
+        if (ControlledTurnIntents is { } turnIntents)
+        {
+            turnIntents.Validate();
+            int advanceTurnIndex = Array.FindIndex(
+                PrototypeContent.Rules.EndTurnPipeline,
+                step => step.Kind == PrototypeAutomaticStepKind.AdvanceTurn);
+            var baseline = turnIntents.BaselineCombat with
+            {
+                AutomaticPipelineContinuation = null
+            };
+            var checkpoint = combat with
+            {
+                AutomaticPipelineContinuation = null
+            };
+            if (advanceTurnIndex < 0 ||
+                continuation.NextStepIndex != advanceTurnIndex ||
+                OpeningStageIsActive(continuation) ||
+                continuation.PendingPostDispatchEventKind is not null ||
+                ControlledEnemyAction is not null ||
+                ControlledDrawRemaining is not null ||
+                ControlledDrawCostRemaining is not null ||
+                ControlledSemanticDrawRemaining is not null ||
+                ControlledSemanticDrawRequested is not null ||
+                ControlledSemanticBeforeHandDrawPending ||
+                ControlledRecycleStratagemPending ||
+                combat.IsPlayerTurn || combat.PendingChoice is not null ||
+                combat.PendingKnowledgeDemonChoice is not null ||
+                CanonicalJson.Sha256(baseline) !=
+                    CanonicalJson.Sha256(checkpoint))
+                throw new InvalidOperationException(
+                    "Controlled turn-intent checkpoint disagrees with the automatic pipeline.");
+        }
+
         if (ControlledEnemyAction is not { } enemyAction) return;
         enemyAction.Validate(PrototypeContent.Rules.EndTurnPipeline.Length);
         if (continuation.NextStepIndex != enemyAction.StepIndex ||
@@ -55,4 +90,8 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
             throw new InvalidOperationException(
                 "Controlled enemy-action checkpoint disagrees with combat state.");
     }
+
+    private static bool OpeningStageIsActive(
+        PrototypeAutomaticPipelineContinuationState continuation) =>
+        continuation.OpeningStage is not null;
 }

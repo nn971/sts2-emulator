@@ -133,8 +133,10 @@ public sealed record SemanticEndTurnV111(
 
     public ControlledTurnIntentsV111? Intents
     {
-        get => Mechanics.Intents;
-        init => Mechanics = Mechanics with { Intents = value };
+        get => Run.World?.Combat?.AutomaticPipelineContinuation?
+            .ControlledTurnIntents;
+        init => Run = PrototypeGameEngine
+            .SetControlledTurnIntentContinuation(Run, value);
     }
 
     public SemanticCombatDrawV111? HandDraw

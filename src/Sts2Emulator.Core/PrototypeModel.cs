@@ -393,7 +393,8 @@ public sealed record PrototypeAutomaticPipelineContinuationState(
     // the deterministic hand-draw prelude and starting DrawCards.
     bool ControlledSemanticBeforeHandDrawPending = false,
     bool ControlledRecycleStratagemPending = false,
-    PrototypeControlledEnemyActionContinuationV111? ControlledEnemyAction = null)
+    PrototypeControlledEnemyActionContinuationV111? ControlledEnemyAction = null,
+    ControlledTurnIntentsV111? ControlledTurnIntents = null)
 {
     /// <summary>
     /// Atomic mechanics/provider envelope for the automatic pipeline. Existing
@@ -411,7 +412,8 @@ public sealed record PrototypeAutomaticPipelineContinuationState(
                 ControlledSemanticDrawRequested,
                 ControlledSemanticBeforeHandDrawPending,
                 ControlledRecycleStratagemPending,
-                ControlledEnemyAction));
+                ControlledEnemyAction,
+                ControlledTurnIntents));
 
     /// <summary>Mechanics projection of <see cref="Simulation"/>.</summary>
     [System.Text.Json.Serialization.JsonIgnore]
@@ -503,6 +505,19 @@ public sealed record PrototypeAutomaticPipelineContinuationState(
         get => Stochastic.ControlledEnemyAction;
         init => Stochastic = Stochastic with
         { ControlledEnemyAction = value };
+    }
+
+    /// <summary>
+    /// Nature's next-turn intent frame is mechanically suspended at this
+    /// pipeline's AdvanceTurn cursor. The semantic facade retains the
+    /// flattened serialized projection for compatibility.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public ControlledTurnIntentsV111? ControlledTurnIntents
+    {
+        get => Stochastic.ControlledTurnIntents;
+        init => Stochastic = Stochastic with
+        { ControlledTurnIntents = value };
     }
 
     public void Validate(CombatState combat)
