@@ -50,10 +50,11 @@ Blades, Suppress, Anticipate, Snakebite, Assassinate, Catalyst, Expose,
 Malaise, Crippling Cloud, Blur, Dodge and Roll, Sidestep, Pounce, Finisher,
 Flechettes, Bubble Bubble, Strangle, Corrosive Wave and Leading Strike. It
 also accepts deterministic Silent effects Noxious Fumes, Speedster, Serpent
-Form, Envenom, Afterimage, Untouchable, Flick-Flack, Abrasive and Haze. It
-rejects a chance or turn boundary it cannot resume with a typed unsupported-
-operation error. The semantic playable pilot also admits Survivor, Hand Trick,
-Nightmare and Wish through its persisted source card-selection continuation.
+Form, Envenom, Afterimage, Untouchable, Flick-Flack, Abrasive, Haze, Memento
+Mori, Murder, Precise Cut, Pinpoint, Grand Finale and Die Die Die. It rejects a
+chance or turn boundary it cannot resume with a typed unsupported-operation
+error. The semantic playable pilot also admits Survivor, Hand Trick, Nightmare
+and Wish through its persisted source card-selection continuation.
 Physical draw-pile moves now keep provider state synchronized across exact
 insertions, removals, transformations, and zone transfers. Native hand-return
 shuffles commit the resulting top-first order; controlled Nature also resumes

@@ -81,7 +81,13 @@ public static class SemanticPlayerActionEngineV111
             "proto.silent.untouchable",
             "proto.silent.flick_flack",
             "proto.silent.abrasive",
-            "proto.silent.haze"
+            "proto.silent.haze",
+            "proto.silent.memento_mori",
+            "proto.silent.murder",
+            "proto.silent.precise_cut",
+            "proto.silent.pinpoint",
+            "proto.silent.grand_finale",
+            "proto.silent.die_die_die"
         };
 
     internal static bool SupportsCard(string cardId) =>
