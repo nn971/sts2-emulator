@@ -1358,21 +1358,25 @@ public sealed partial class PrototypeGameEngine
             return false;
         var choice = definition.Choices.FirstOrDefault(item =>
             StringComparer.Ordinal.Equals(item.Id, choiceId));
-        return choice?.Effects.Any(effect => effect.Kind is
-            PrototypeRunEffectKind.GainRandomRareCard or
-            PrototypeRunEffectKind.GainRandomRelic or
-            PrototypeRunEffectKind.GainRandomPotion or
-            PrototypeRunEffectKind.GainRandomUncommonPotion or
-            PrototypeRunEffectKind.FillPotionSlots or
-            PrototypeRunEffectKind.UpgradeRandomCard or
-            PrototypeRunEffectKind.OfferThreeRareCards or
-            PrototypeRunEffectKind.OfferThreeCardsAndPotion or
-            PrototypeRunEffectKind.OfferFiveClassCards or
-            PrototypeRunEffectKind.OfferThreeColorlessCards or
-            PrototypeRunEffectKind.OfferTwoColorlessCards or
-            PrototypeRunEffectKind.OfferCardBundles or
-            PrototypeRunEffectKind.OfferNeowsBonesRelics or
-            PrototypeRunEffectKind.OfferRandomRelic) == true;
+        return choice?.Effects.Any(effect =>
+            effect.Kind is
+                PrototypeRunEffectKind.GainRandomRareCard or
+                PrototypeRunEffectKind.GainRandomRelic or
+                PrototypeRunEffectKind.GainRandomPotion or
+                PrototypeRunEffectKind.GainRandomUncommonPotion or
+                PrototypeRunEffectKind.FillPotionSlots or
+                PrototypeRunEffectKind.UpgradeRandomCard or
+                PrototypeRunEffectKind.OfferThreeRareCards or
+                PrototypeRunEffectKind.OfferThreeCardsAndPotion or
+                PrototypeRunEffectKind.OfferFiveClassCards or
+                PrototypeRunEffectKind.OfferThreeColorlessCards or
+                PrototypeRunEffectKind.OfferTwoColorlessCards or
+                PrototypeRunEffectKind.OfferCardBundles or
+                PrototypeRunEffectKind.OfferNeowsBonesRelics or
+                PrototypeRunEffectKind.OfferRandomRelic or
+                PrototypeRunEffectKind.OfferWaxRelics
+            || effect.Kind == PrototypeRunEffectKind.GainRelic
+                && effect.RelicId == NativeAncientRewardsV111.ToyBoxId) == true;
     }
 
     private static RunState StepEvent(

@@ -16,8 +16,10 @@ effects finish; earlier effects are not replayed.
 
 The serialized request includes site, legacy stream, owner, ordinal, operation
 kind and ordered integer support. Candidate labels identify event card
-instances, card models, potion models or eligible relics. Completed controlled
-decisions remain in `RunState.ControlledEventChoiceHistory`; pending and
+instances, card models, potion models or eligible relics where those identities
+are the request support; swap positions and rarity tickets retain numeric
+labels. Completed controlled decisions remain in
+`RunState.ControlledEventChoiceHistory`; pending and
 completed transcripts identify `controlled-v111` outcomes and retain
 `UNVERIFIED` probability status. Controlled outcomes do not advance the legacy
 RNG stream.
@@ -35,6 +37,9 @@ The supported event-choice sites are:
   event relic and card offers
 - `event.reward.random_modifier_curse.index_draw` after a supported event's
   post-reward modifier-curse offer is completed
+- `relic_grab_bag.queue_shuffle.swap_index` and
+  `relic_grab_bag.rarity.ticket` while acquiring Toy Box through a supported
+  controlled event choice
 - `event.potion.fill_empty_slots.model`
 - `potion.uncommon_model.index_draw` for the Potion Courier event choice
 - `relic.unowned_random_selection.index_draw` for eligible event options

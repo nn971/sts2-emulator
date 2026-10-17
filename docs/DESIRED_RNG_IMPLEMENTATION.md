@@ -68,7 +68,8 @@ replaying earlier effects. The D4 JSONL/Python adapter exposes this through
 the completed controlled transcript are serialized with the run. This slice
 covers random upgrades, supported random card/potion/relic event rewards,
 selected multi-draw custom card and relic offers, empty-slot potion filling,
-and the post-reward modifier-curse draw through a separate event-reward frame.
+the legacy event-acquired Toy Box wax relic offer, and the post-reward
+modifier-curse draw through a separate event-reward frame.
 Event reward actions advance through `controlled_event_advance`; a suspended
 frame preserves completed reward choices and extends the original event trace.
 Event-effect frames resume the current effect with its saved draw prefix while

@@ -851,6 +851,8 @@ internal static class PrototypeAiJsonlServer
                                 "reward.card_model.index_draw",
                                 "run.random_pool_distinct.shuffle_swap_index",
                                 "event.reward.random_modifier_curse.index_draw",
+                                "relic_grab_bag.queue_shuffle.swap_index",
+                                "relic_grab_bag.rarity.ticket",
                                 "potion.uncommon_model.index_draw",
                                 "relic.unowned_random_selection.index_draw"
                             },

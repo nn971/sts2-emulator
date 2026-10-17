@@ -218,12 +218,21 @@ public static class PrototypeNativeRelicGrabBag
     {
         // Native relic rarity roll: <0.50 Common, <0.83 Uncommon,
         // otherwise Rare. Merchant rolls consume Rewards RNG too.
-        var roll = LegacyRandomChoiceV111.ChooseBoundedInteger(
-            rng,
-            "relic_grab_bag.rarity.ticket",
-            "reward",
-            ownerId + (merchant ? ":merchant" : ":reward"),
-            100).SelectedIndex;
+        var ticketLabels = Enumerable.Range(0, 100).Select(ticket =>
+            (ticket < 50 ? "common:" : ticket < 83 ? "uncommon:" : "rare:")
+                + ticket.ToString(System.Globalization.CultureInfo.InvariantCulture))
+            .ToArray();
+        int roll;
+        using (ControlledEventChoiceReplayV111.DescribeCandidates(
+            ticketLabels))
+        {
+            roll = LegacyRandomChoiceV111.ChooseBoundedInteger(
+                rng,
+                "relic_grab_bag.rarity.ticket",
+                "reward",
+                ownerId + (merchant ? ":merchant" : ":reward"),
+                100).SelectedIndex;
+        }
         return roll < 50
             ? PrototypeRelicRarity.Common
             : roll < 83

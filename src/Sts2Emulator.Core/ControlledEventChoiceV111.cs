@@ -549,6 +549,8 @@ internal sealed class ControlledEventChoiceReplayV111 : IDisposable
         "event.reward.random_potion.model" or
         "event.reward.offer_potion.model.index_draw" or
         "event.reward.card_bundle.shuffle_swap_index" or
+        "relic_grab_bag.queue_shuffle.swap_index" or
+        "relic_grab_bag.rarity.ticket" or
         "event.potion.fill_empty_slots.model" or
         "reward.card_rarity.ticket" or
         "reward.card_model.index_draw" or
