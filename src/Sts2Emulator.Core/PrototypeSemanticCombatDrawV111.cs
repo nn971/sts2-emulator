@@ -175,14 +175,11 @@ public sealed partial class PrototypeGameEngine
                 DeferredKeywordCardInstanceIds: [],
                 StratagemSelectionPending: false,
                 StandaloneSemanticDrawSegment: true);
-            var continuation = new PrototypeChoiceResolutionContinuationState(
-                SourceCardInstanceId: null,
-                SourceCardDestination: PrototypeCardZone.DrawPile,
-                Operations: [], PendingDiscardEvents: [],
-                PendingSlyCardInstanceIds: [], CompletionEvents: []);
-            return (ResumeControlledStratagemSelection(
-                advanced, drawn.Combat, semanticDraw, continuation),
-                drawn.RemainingCount);
+            return (SuspendDrawCardsForStratagemSelection(
+                advanced, drawn, semanticDraw,
+                EmptyDrawChoiceContinuation(),
+                automaticHandDrawRequested: null,
+                accumulateDrawnCardIds: false), drawn.RemainingCount);
         }
 
         bool pending = boundary is
@@ -214,15 +211,8 @@ public sealed partial class PrototypeGameEngine
             StratagemSelectionPending: false,
             StandaloneSemanticDrawSegment: !automatic,
             AutomaticSemanticHandDrawSegment: automatic);
-        var continuation = new PrototypeChoiceResolutionContinuationState(
-            SourceCardInstanceId: null,
-            SourceCardDestination: PrototypeCardZone.DrawPile,
-            Operations: [],
-            PendingDiscardEvents: [],
-            PendingSlyCardInstanceIds: [],
-            CompletionEvents: []);
         return SuspendDrawCardsAfterShuffleInsertion(
-            run, drawn, semanticDraw, continuation,
+            run, drawn, semanticDraw, EmptyDrawChoiceContinuation(),
             automaticHandDrawRequested,
             accumulateDrawnCardIds: false);
     }
@@ -295,41 +285,84 @@ public sealed partial class PrototypeGameEngine
     private static RunState SuspendSemanticAutomaticDrawForStratagemSelection(
         RunState run, PrototypeDrawCardsResult drawn, int requested)
     {
-        int stepIndex = SemanticHandDrawStepIndex;
-        if (stepIndex < 0 || requested <= 0 ||
-            drawn.RemainingCount <= 0 ||
-            !drawn.Combat.PlayerPowers.Any(power =>
-                power.PowerId == "proto.power.stratagem" &&
-                power.Stacks > 0 && drawn.Combat.Hand.Length < 10))
-            throw new InvalidDataException(
-                "Automatic Stratagem draw checkpoint is inconsistent.");
-        var combat = drawn.Combat with
-        {
-            AutomaticPipelineContinuation =
-                new PrototypeAutomaticPipelineContinuationState(
-                    stepIndex,
-                    ControlledSemanticDrawRemaining: drawn.RemainingCount,
-                    ControlledSemanticDrawRequested: requested)
-        };
         var draw = new PrototypeControlledSemanticDrawV111(
             drawn.RemainingCount, FromHandDraw: true, EventDepth: 0,
             DrawnCardKeyword: null,
             DeferredKeywordCardInstanceIds: [],
             StratagemSelectionPending: false,
             AutomaticSemanticHandDrawSegment: true);
-        var continuation = new PrototypeChoiceResolutionContinuationState(
-            SourceCardInstanceId: null,
-            SourceCardDestination: PrototypeCardZone.DrawPile,
-            Operations: [], PendingDiscardEvents: [],
-            PendingSlyCardInstanceIds: [], CompletionEvents: []);
+        var continuation = EmptyDrawChoiceContinuation();
+        return SuspendDrawCardsForStratagemSelection(
+            run, drawn, draw, continuation, requested,
+            accumulateDrawnCardIds: false);
+    }
+
+    private static RunState SuspendDrawCardsForStratagemSelection(
+        RunState run,
+        PrototypeDrawCardsResult drawn,
+        PrototypeControlledSemanticDrawV111 semanticDraw,
+        PrototypeChoiceResolutionContinuationState continuation,
+        int? automaticHandDrawRequested,
+        bool accumulateDrawnCardIds)
+    {
+        if (drawn.BoundaryKind !=
+                PrototypeDrawCardsBoundaryKind.ShuffleSelection ||
+            drawn.RemainingCount <= 0 ||
+            !drawn.Combat.PlayerPowers.Any(power =>
+                power.PowerId == "proto.power.stratagem" &&
+                power.Stacks > 0 && drawn.Combat.Hand.Length < 10))
+            throw new InvalidDataException(
+                "Stratagem draw checkpoint is inconsistent.");
+
+        var deferredKeywordIds = accumulateDrawnCardIds
+            ? (semanticDraw.DeferredKeywordCardInstanceIds ?? [])
+                .Concat(drawn.DrawnCardInstanceIds).Distinct().ToArray()
+            : semanticDraw.DeferredKeywordCardInstanceIds;
+        semanticDraw = semanticDraw with
+        {
+            RemainingCount = drawn.RemainingCount,
+            DeferredKeywordCardInstanceIds = deferredKeywordIds,
+            StratagemSelectionPending = false
+        };
+
+        var combat = drawn.Combat;
+        if (automaticHandDrawRequested is { } requested)
+        {
+            int stepIndex = SemanticHandDrawStepIndex;
+            if (!semanticDraw.AutomaticSemanticHandDrawSegment ||
+                !semanticDraw.FromHandDraw || semanticDraw.EventDepth != 0 ||
+                requested <= 0 || stepIndex < 0 ||
+                (combat.AutomaticPipelineContinuation is { } cursor &&
+                 cursor.NextStepIndex != stepIndex))
+                throw new InvalidDataException(
+                    "Automatic Stratagem draw cursor is inconsistent.");
+            combat = combat with
+            {
+                AutomaticPipelineContinuation =
+                    new PrototypeAutomaticPipelineContinuationState(
+                        stepIndex,
+                        ControlledSemanticDrawRemaining:
+                            drawn.RemainingCount,
+                        ControlledSemanticDrawRequested: requested)
+            };
+        }
+
         var advanced = run with
         {
             Player = drawn.Player,
-            World = run.World! with { Combat = combat }
+            World = RequireWorld(run) with { Combat = combat }
         };
         return ResumeControlledStratagemSelection(
-            advanced, combat, draw, continuation);
+            advanced, combat, semanticDraw, continuation);
     }
+
+    private static PrototypeChoiceResolutionContinuationState
+        EmptyDrawChoiceContinuation() =>
+            new(
+                SourceCardInstanceId: null,
+                SourceCardDestination: PrototypeCardZone.DrawPile,
+                Operations: [], PendingDiscardEvents: [],
+                PendingSlyCardInstanceIds: [], CompletionEvents: []);
 
     private static RunState SuspendStandaloneSemanticDrawForHookChoice(
         RunState run, PrototypeDrawCardsResult drawn, bool fromHandDraw)

@@ -14589,23 +14589,10 @@ public sealed partial class PrototypeGameEngine
         }
         if (boundary == PrototypeDrawCardsBoundaryKind.ShuffleSelection)
         {
-            var stratagemKeywordIds =
-                (draw.DeferredKeywordCardInstanceIds ?? [])
-                .Concat(drawn.DrawnCardInstanceIds).Distinct().ToArray();
-            var drawAfterStratagem = draw with
-            {
-                RemainingCount = drawn.RemainingCount,
-                DeferredKeywordCardInstanceIds = stratagemKeywordIds,
-                StratagemSelectionPending = false
-            };
-            var drawState = state with
-            {
-                Player = drawn.Player,
-                World = state.World! with { Combat = drawn.Combat }
-            };
-            return ResumeControlledStratagemSelection(
-                drawState, drawn.Combat, drawAfterStratagem,
-                continuation);
+            return SuspendDrawCardsForStratagemSelection(
+                state, drawn, draw, continuation,
+                automaticHandDrawRequested: null,
+                accumulateDrawnCardIds: true);
         }
         if (boundary == PrototypeDrawCardsBoundaryKind.ControlledRecycle)
             throw new NotSupportedException(
