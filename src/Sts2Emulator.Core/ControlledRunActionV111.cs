@@ -114,13 +114,50 @@ public sealed record PrototypeControlledRunActionContinuationV111(
     string? MapNodeId = null)
 {
     /// <summary>
-    /// Shared provider payload; the legacy continuation fields below remain
-    /// its flattened snapshot projection.
+    /// Atomic mechanics/provider envelope for the suspended run action. The
+    /// chance payload and continuation fields remain flattened projections.
     /// </summary>
     [System.Text.Json.Serialization.JsonIgnore]
-    public ControlledChanceContinuationStateV111 Chance { get; init; } =
-        new(Decisions, PendingRequest, PendingCandidateLabels,
-            DecisionCandidateLabels);
+    public SimulationStateV111<
+        PrototypeControlledRunActionMechanicsStateV111,
+        ControlledChanceContinuationStateV111> Simulation { get; init; } = new(
+            new PrototypeControlledRunActionMechanicsStateV111(
+                PartialState, ActionId, MapNodeId),
+            new ControlledChanceContinuationStateV111(
+                Decisions, PendingRequest, PendingCandidateLabels,
+                DecisionCandidateLabels));
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public PrototypeControlledRunActionMechanicsStateV111 Mechanics
+    {
+        get => Simulation.Mechanics;
+        init => Simulation = Simulation with { Mechanics = value };
+    }
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public ControlledChanceContinuationStateV111 Chance
+    {
+        get => Simulation.Stochastic;
+        init => Simulation = Simulation with { Stochastic = value };
+    }
+
+    public RunState PartialState
+    {
+        get => Mechanics.PartialState;
+        init => Mechanics = Mechanics with { PartialState = value };
+    }
+
+    public string ActionId
+    {
+        get => Mechanics.ActionId;
+        init => Mechanics = Mechanics with { ActionId = value };
+    }
+
+    public string? MapNodeId
+    {
+        get => Mechanics.MapNodeId;
+        init => Mechanics = Mechanics with { MapNodeId = value };
+    }
 
     public RandomIndexDecisionV111[] Decisions
     {
