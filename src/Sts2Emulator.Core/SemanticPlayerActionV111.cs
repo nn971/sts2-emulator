@@ -103,6 +103,9 @@ public static class SemanticPlayerActionEngineV111
         && PrototypeContent.Card(cardId) is
             { MechanicsImplemented: true, MultiplayerOnly: false };
 
+    public static string[] SupportedCardIds =>
+        SupportedCards.Order(StringComparer.Ordinal).ToArray();
+
     public static SemanticPlayerActionV111 Step(
         RunState source, string actionId)
     {

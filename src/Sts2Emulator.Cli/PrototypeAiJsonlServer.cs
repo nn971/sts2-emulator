@@ -734,6 +734,12 @@ internal static class PrototypeAiJsonlServer
                             naturePlayable = false,
                             controlledChanceSchemaId = ControlledChanceSchemaId,
                             semanticChanceSchemaId = SemanticChanceSchemaId,
+                            semanticPersistentDeckActionSchemaId =
+                                SemanticPlayerActionV111.SchemaId,
+                            semanticPersistentDeckActionScope =
+                                "draw-pile-neutral-single-player",
+                            semanticPersistentDeckActionCardIds =
+                                SemanticPlayerActionEngineV111.SupportedCardIds,
                             semanticNativePolicyComparatorId =
                                 "engine-owned-native-v111-comparator-unverified-v1",
                             semanticSeededRouteEntryProviderId =

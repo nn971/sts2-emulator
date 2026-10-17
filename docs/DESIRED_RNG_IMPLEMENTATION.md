@@ -56,7 +56,8 @@ Burst, Bullet Time, Accelerant, Blade of Ink, Fan of Knives, Up My Sleeve and
 Predator. It rejects a chance or turn boundary it cannot resume with a typed
 unsupported-operation error. The semantic playable pilot also admits Survivor,
 Hand Trick, Nightmare and Wish through its persisted source card-selection
-continuation.
+continuation. JSONL `hello` now advertises the retained-deck action schema,
+its scope and sorted supported card IDs as an explicit capability.
 Physical draw-pile moves now keep provider state synchronized across exact
 insertions, removals, transformations, and zone transfers. Native hand-return
 shuffles commit the resulting top-first order; controlled Nature also resumes

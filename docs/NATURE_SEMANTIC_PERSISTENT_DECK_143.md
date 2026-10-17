@@ -4,6 +4,8 @@
 **Code:** `SemanticPlayerActionV111.cs` and the retained-deck option
 of `SemanticCombatDrawV111.cs` / `SemanticEndTurnV111.cs`.
 **Scope:** restricted multi-turn single-player combat.
+The JSONL `hello` response advertises the adapter ID, its scope, and the sorted
+card IDs accepted by the persistent-deck action path.
 
 ## Provider-owned hidden deck survives the player's decision
 
