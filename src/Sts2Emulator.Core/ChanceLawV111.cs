@@ -2532,18 +2532,20 @@ public static partial class ChanceLawEngineV111
     }
 
     /// <summary>
-    /// Query the uniform law over eligible physical hand-card identities for
-    /// a pending fixed-cost operation.
+    /// Query the Native bounded-index law over eligible physical hand-card
+    /// identities for a pending fixed-cost operation.
     /// </summary>
     public static ChanceLawV111 QueryHandCostSelection(
         SemanticHandCostSelectionEventV111 selection)
     {
         ArgumentNullException.ThrowIfNull(selection);
         selection.Validate();
+        var indexWeights = NativeNextIntGridWeights(
+            selection.CandidateCardInstanceIds.Length);
         var outcomes = selection.CandidateCardInstanceIds
-            .Select(instanceId => new ChanceLawOutcomeV111(
+            .Select((instanceId, index) => new ChanceLawOutcomeV111(
                 "card_instance:" + instanceId.ToString(
-                    CultureInfo.InvariantCulture), 1L))
+                    CultureInfo.InvariantCulture), indexWeights[index]))
             .ToArray();
         var conditioningFingerprint = CanonicalJson.Sha256(new
         {
@@ -2557,7 +2559,8 @@ public static partial class ChanceLawEngineV111
         return Create(selection.EventId, selection.SiteId,
             selection.OperationKind, selection.OwnerId, selection.Ordinal,
             HandCostSelectionConditioningPolicyId, conditioningFingerprint,
-            "uniform-hand-card-support-unverified", outcomes);
+            NativeBoundedIndexSourceVerifiedProvenance, outcomes,
+            ChanceLawV111.SourceVerifiedStatus);
     }
 
     /// <summary>

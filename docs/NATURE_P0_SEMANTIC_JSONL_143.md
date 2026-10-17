@@ -497,7 +497,9 @@ opening hand. Its `random_hand_card_selection` event publishes the ordered
 positive-cost card instance and model IDs, plus the fixed cost applied by the
 source operation. `SemanticCombat.resolve_hand_cost_selection(card_instance_id)`
 resumes the original effect for that card. The fixture is exclusive with the
-all-hand reroll and other pending-choice fixtures; its card-selection law and
+all-hand reroll and other pending-choice fixtures; the ordered-index transform
+has exact Native `NextInt` grid masses marked `SOURCE_VERIFIED` on the declared
+support. Source-pool completeness, stream attribution, cursor parity, and
 fixture provenance remain `UNVERIFIED`.
 
 The draw-pile insertion fixture can use
