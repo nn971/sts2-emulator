@@ -9,6 +9,8 @@ public static class PrototypeNativeEndlessConveyor
 {
     public const string EventId = "proto.native.underdocks.endless_conveyor";
     public const string NativeRngEventId = "ENDLESS_CONVEYOR";
+    public const string DishWeightedTicketSiteId =
+        "event.endless_conveyor.dish_weighted_ticket";
     public const string FeedingFrenzyId = "proto.native.underdocks.feeding_frenzy";
 
     public static PrototypeCardDefinition[] EventCards { get; } =
@@ -61,20 +63,7 @@ public static class PrototypeNativeEndlessConveyor
             };
         }
 
-        var candidates = BaseDishes.ToList();
-        if (state.Player.PotionSlots.Any(slot => slot is null))
-        {
-            candidates.Add(("SUSPICIOUS_CONDIMENT", 3));
-        }
-        if (state.Player.Hp < state.Player.MaxHp)
-        {
-            candidates.Add(("CLAM_ROLL", 6));
-        }
-        if (nextRoll > 1)
-        {
-            candidates.Add(("GOLDEN_FYSH", 1));
-        }
-        candidates.RemoveAll(dish => dish.Id == current.NativeLastDishId);
+        var candidates = GetWeightedDishCandidates(state, current);
         var totalWeight = candidates.Sum(dish => dish.Weight);
         if (totalWeight <= 0)
         {
@@ -92,7 +81,7 @@ public static class PrototypeNativeEndlessConveyor
                 state,
                 current,
                 NativeRngEventId,
-                "event.endless_conveyor.dish_weighted_ticket",
+                DishWeightedTicketSiteId,
                 ownerId);
             state = draw.State;
             world = state.World!;
@@ -104,7 +93,7 @@ public static class PrototypeNativeEndlessConveyor
             // Preserve the legacy prototype's integer-weight approximation.
             roll = LegacyRandomChoiceV111.ChooseBoundedInteger(
                 state.Rng,
-                "event.endless_conveyor.dish_weighted_ticket",
+                DishWeightedTicketSiteId,
                 "event",
                 ownerId,
                 totalWeight).SelectedIndex;
@@ -131,6 +120,26 @@ public static class PrototypeNativeEndlessConveyor
                 }
             }
         };
+    }
+
+    internal static (string Id, int Weight)[] GetWeightedDishCandidates(
+        RunState state, EventState current)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(current);
+        if (current.EventId != EventId ||
+            (current.NativeDishCount + 1) % 5 == 0)
+            throw new InvalidOperationException(
+                "Endless Conveyor dish candidate query is not at a weighted roll.");
+        var candidates = BaseDishes.ToList();
+        if (state.Player.PotionSlots.Any(slot => slot is null))
+            candidates.Add(("SUSPICIOUS_CONDIMENT", 3));
+        if (state.Player.Hp < state.Player.MaxHp)
+            candidates.Add(("CLAM_ROLL", 6));
+        if (current.NativeDishCount + 1 > 1)
+            candidates.Add(("GOLDEN_FYSH", 1));
+        candidates.RemoveAll(dish => dish.Id == current.NativeLastDishId);
+        return candidates.ToArray();
     }
 }
 

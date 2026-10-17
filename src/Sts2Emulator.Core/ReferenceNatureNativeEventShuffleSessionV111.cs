@@ -265,13 +265,13 @@ internal static class NativeEventShufflePlanBuilderV111
         {
             RunState projected;
             NativeEventShuffleCaptureV111[] captures;
-            using (var shuffleProbe = NativeEventShuffleProbeV111.Begin())
+            using (var shuffleProbe = NativeEventRandomProbeV111.Begin())
             using (RandomBoundaryJournalV111.Begin())
             using (NativeEngineEventJournalV111.Begin())
             {
                 projected = new PrototypeGameEngine().Step(
                     origin.Fork(), replayAction).State;
-                captures = shuffleProbe.Captures.ToArray();
+                captures = shuffleProbe.ShuffleCaptures.ToArray();
             }
             var projectedEvent = projected.World?.Event;
             if (battlewornVictoryAction &&
@@ -630,6 +630,8 @@ public static partial class ChanceLawEngineV111
 {
     public const string NativeEventShuffleConditioningPolicyId =
         "native-event-fisher-yates-prefix-v1";
+    public const string NativeEndlessConveyorDishConditioningPolicyId =
+        "native-event-weighted-dish-ticket-v1";
 
     public static string[] NativeEventShuffleSessionSiteIds =>
     [
@@ -682,5 +684,124 @@ public static partial class ChanceLawEngineV111
             NativeEventShuffleConditioningPolicyId,
             conditioningFingerprint,
             "uniform-bounded-event-shuffle-index-unverified", outcomes);
+    }
+
+    public static ChanceLawV111 QueryNativeEndlessConveyorDishEntry(
+        RunState origin, string actionId, int ordinal = 0)
+    {
+        ArgumentNullException.ThrowIfNull(origin);
+        ArgumentException.ThrowIfNullOrWhiteSpace(actionId);
+        if (ordinal != 0 || string.IsNullOrWhiteSpace(origin.RunSeed) ||
+            origin.NativeRunRng is null || origin.Phase != RunPhase.MapChoice ||
+            origin.World is not { Event: null } world)
+            throw new InvalidOperationException(
+                "Endless Conveyor dish law requires a configured map-choice Event-node entry at ordinal 0.");
+        PrototypeStateInvariants.Validate(origin);
+
+        var engine = new PrototypeGameEngine();
+        var action = engine.GetLegalActions(origin).SingleOrDefault(candidate =>
+            PrototypeAiEnvironment.StableActionId(candidate) == actionId);
+        var selectedAction = action ?? throw new InvalidOperationException(
+            "Endless Conveyor dish law requires a current legal Event-node action.");
+        var nodeId = selectedAction.Kind == "choose_map_node"
+            ? selectedAction.ReadPayload<ChooseMapNodePayload>().NodeId
+            : null;
+        if (nodeId is null ||
+            !PrototypeNativeWingedBoots.AvailableNodes(world, origin.Player)
+                .Any(node => node.NodeId == nodeId &&
+                    node.RoomType == PrototypeRoomType.Event))
+            throw new InvalidOperationException(
+                "Endless Conveyor dish law requires a current legal Event-node action.");
+
+        IReadOnlyList<NativeEventUnitFloatCaptureV111> captures;
+        string? selectedEventId;
+        using (var probe = NativeEventRandomProbeV111.Begin())
+        using (RandomBoundaryJournalV111.Begin())
+        using (NativeEngineEventJournalV111.Begin())
+        {
+            var projected = engine.Step(origin.Fork(), selectedAction).State;
+            selectedEventId = projected.World?.Event?.EventId;
+            captures = probe.UnitFloatCaptures;
+        }
+        if (selectedEventId != PrototypeNativeEndlessConveyor.EventId)
+            throw new InvalidOperationException(
+                "The ordinary event-selection provider did not enter Endless Conveyor for this Event node.");
+        var matching = captures.Where(capture =>
+            capture.Request.SiteId == PrototypeNativeEndlessConveyor
+                .DishWeightedTicketSiteId).ToArray();
+        if (matching.Length != 1)
+            throw new InvalidOperationException(
+                "Endless Conveyor entry must perform exactly one weighted dish ticket.");
+
+        var capture = matching[0];
+        var preDraw = capture.PreDrawState;
+        var evt = preDraw.World?.Event;
+        if (preDraw.Phase != RunPhase.Event ||
+            evt?.EventId != PrototypeNativeEndlessConveyor.EventId ||
+            evt.NativePageIndex != 0 || evt.ChosenChoiceId is not null ||
+            evt.NativeDishCount != 0 || evt.NativeDishId is not null ||
+            evt.NativeLastDishId is not null ||
+            evt.NativeEventPotionSlot is not null)
+            throw new InvalidOperationException(
+                "Endless Conveyor dish law was not captured at its initial pre-draw boundary.");
+
+        var expectedStream = NativeRngV111Contexts.ForEvent(
+            preDraw.RunSeed, PrototypeNativeEndlessConveyor.NativeRngEventId);
+        if (evt.NativeEventRng is not { } stream ||
+            NativeRngV111.ToSnapshot(stream) !=
+                NativeRngV111.ToSnapshot(expectedStream) ||
+            capture.Request.StreamId != expectedStream.StreamId ||
+            capture.Request.Ordinal != 0)
+            throw new InvalidOperationException(
+                "Endless Conveyor dish law requires the untouched event-entry stream.");
+
+        var candidates = PrototypeNativeEndlessConveyor
+            .GetWeightedDishCandidates(preDraw, evt);
+        if (candidates.Length == 0 || candidates.Any(candidate =>
+                candidate.Weight <= 0))
+            throw new InvalidOperationException(
+                "Endless Conveyor has no positive weighted dish support.");
+        var ownerId = "dish:1:pool:" + CanonicalJson.Sha256(candidates);
+        if (capture.Request.OwnerId != ownerId)
+            throw new InvalidDataException(
+                "Endless Conveyor dish request owner differs from its weighted support.");
+
+        var request = capture.Request;
+        var conditioningFingerprint = CanonicalJson.Sha256(new
+        {
+            actionId,
+            eventId = evt.EventId,
+            page = evt.NativePageIndex,
+            dishCount = evt.NativeDishCount,
+            lastDishId = evt.NativeLastDishId,
+            hp = preDraw.Player.Hp,
+            maxHp = preDraw.Player.MaxHp,
+            emptyPotionSlots = preDraw.Player.PotionSlots
+                .Select((potion, slot) => (potion, slot))
+                .Where(entry => entry.potion is null)
+                .Select(entry => entry.slot).ToArray(),
+            candidates,
+            request = new
+            {
+                request.SiteId, request.StreamId, request.OwnerId,
+                request.Ordinal, request.SourceVersion
+            },
+            policy = NativeEndlessConveyorDishConditioningPolicyId
+        });
+        var outcomes = candidates.Select(candidate =>
+            new ChanceLawOutcomeV111(
+                "dish:" + candidate.Id, candidate.Weight)).ToArray();
+        var eventId = CanonicalJson.Sha256(new
+        {
+            boundary = "native_event.endless_conveyor.dish_weighted_ticket",
+            actionId,
+            conditioningFingerprint
+        });
+        return Create(eventId, request.SiteId,
+            "unit_float_weighted_ticket", request.OwnerId, request.Ordinal,
+            NativeEndlessConveyorDishConditioningPolicyId,
+            conditioningFingerprint,
+            "native-endless-conveyor-weighted-dish-ticket-unverified",
+            outcomes);
     }
 }

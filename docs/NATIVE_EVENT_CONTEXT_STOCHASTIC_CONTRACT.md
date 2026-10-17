@@ -4,8 +4,9 @@ This contract describes the event-local RNG lifecycle shared by migration
 rows whose owner names `context.event.*` and that link this document. The
 migration matrix remains the site index and retains each row's exact owner,
 ordered support, occurrence, and source-audit status. A small number of rows,
-including Hungry for Mushrooms, Tinker Time, Battleworn Dummy, Fake Merchant,
-the Doors Light shuffle, Reflections, Tablet of Truth, Trial, and Trash Heap rewards, have narrower source and/or
+including Hungry for Mushrooms, Tinker Time, Battleworn Dummy, Endless Conveyor,
+Fake Merchant, the Doors Light shuffle, Reflections, Tablet of Truth, Trial,
+and Trash Heap rewards, have narrower source and/or
 ReferenceNature contracts linked from their own rows.
 
 ## Provider and private state
@@ -47,6 +48,12 @@ limited to the exact event boundaries
 documented in their contracts. Existing controlled event-choice and
 Ancient-offer sessions do not implicitly cover an event merely because it
 uses this RNG helper.
+
+Endless Conveyor exposes a read-only first-dish Chance Law at a configured
+Event-node entry. It conditions on the ordinary event-selection result and the
+pre-draw dish weights, and does not inspect the sampled float outcome. Later
+dish rolls and an atomic ReferenceNature continuation remain outside that
+query boundary ([Endless Conveyor contract](REFERENCE_NATURE_ENDLESS_CONVEYOR_D3.md)).
 
 Reflections exposes read-only conditional laws for its downgrade and upgrade
 card-pick sites. The query rebuilds the projected deck and remaining ordered

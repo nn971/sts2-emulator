@@ -39,6 +39,11 @@ that selects another event is outside this session boundary.
 
 ## Laws and replay
 
+The player-visible event projection exposes the resulting page, offers, and
+effects. The Nature-only choice view exposes the pending conditional shuffle
+law; seeds, Native cursor state, and the unrevealed pool order remain in the
+privileged state.
+
 Each pending law represents one descending Fisher–Yates swap. Its bounded
 integer support is `0..(candidate count - ordinal - 1)`, and its conditioning
 fingerprint includes the ordered eligible card identities and every preceding

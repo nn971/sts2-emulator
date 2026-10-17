@@ -169,6 +169,7 @@ public static class NativeEventContextRngV111
             nativeStream.StreamId,
             ownerId,
             ordinal ?? ResolveRequestOrdinal(nativeStream, bundle));
+        NativeEventRandomProbeV111.CaptureUnitFloat(state, request);
         var decision = StochasticProviderScopeV111.ResolveUnitFloat(
             new NativeRandomUnitFloatProviderV111(), request, bundle);
         var world = state.World
@@ -200,7 +201,7 @@ public static class NativeEventContextRngV111
         if (ordinalOffset is < 0)
             throw new ArgumentOutOfRangeException(nameof(ordinalOffset));
 
-        NativeEventShuffleProbeV111.Capture(siteId, ownerId, values);
+        NativeEventRandomProbeV111.CaptureShuffle(siteId, ownerId, values);
 
         var nativeStream = eventState.NativeEventRng;
         if (nativeStream is null && state.NativeRunRng is not null)

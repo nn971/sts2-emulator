@@ -41,12 +41,12 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
         }
         else
         {
-            using var shuffleProbe = NativeEventShuffleProbeV111.Begin();
+            using var shuffleProbe = NativeEventRandomProbeV111.Begin();
             using var providerScope = StochasticProviderScopeV111.Enter(
                 replayProvider, overrideExplicitProviders: true);
             run = new PrototypeGameEngine().Step(
                 origin.Fork(), action).State;
-            var matchingCaptures = shuffleProbe.Captures.Where(capture =>
+            var matchingCaptures = shuffleProbe.ShuffleCaptures.Where(capture =>
                 capture.SiteId == scriptedSiteId).ToArray();
             if (matchingCaptures.Length != 1 ||
                 expectedOrderedCandidateIds is null ||

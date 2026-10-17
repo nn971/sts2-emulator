@@ -4,8 +4,8 @@ namespace Sts2Emulator.Core;
 
 /// <summary>
 /// Maps one sampled semantic Chance Law outcome back to the typed source
-/// provider value consumed by ordinary mechanics. This covers native
-/// merchant index requests and the merchant rarity/price float laws only.
+/// provider value consumed by ordinary mechanics. Current mappings cover
+/// native merchant index/float laws and the Endless Conveyor dish ticket.
 /// </summary>
 public static class ReferenceNatureChanceLawDecisionV111
 {
@@ -59,6 +59,7 @@ public static class ReferenceNatureChanceLawDecisionV111
 
         if (candidateLabels is not null ||
             law.OperationKind is not ("unit_float_threshold" or
+                "unit_float_weighted_ticket" or
                 "unit_float_mapped_price" or "unit_float_no_effect"))
             throw new NotSupportedException(
                 "Chance Law is not a supported unit-float outcome mapping.");
@@ -161,6 +162,58 @@ public static class ReferenceNatureChanceLawDecisionV111
             throw new NotSupportedException(
                 "No semantic representative is defined for unit-float site '" +
                 request.SiteId + "'.");
+        }
+
+        if (law.OperationKind == "unit_float_weighted_ticket" &&
+            request.SiteId == PrototypeNativeEndlessConveyor
+                .DishWeightedTicketSiteId)
+        {
+            if (conditioningRun?.World is not { Event: null } ||
+                conditioningRun.Phase != RunPhase.MapChoice ||
+                outcomeId is null || !outcomeId.StartsWith(
+                    "dish:", StringComparison.Ordinal))
+                throw new InvalidOperationException(
+                    "Endless Conveyor dish mapping requires its pre-entry run and a dish outcome.");
+            var candidates = PrototypeNativeEndlessConveyor
+                .GetWeightedDishCandidates(conditioningRun,
+                    new EventState(PrototypeNativeEndlessConveyor.EventId));
+            var totalWeight = candidates.Sum(candidate => candidate.Weight);
+            if (totalWeight <= 0 || law.OwnerId != "dish:1:pool:" +
+                    CanonicalJson.Sha256(candidates) ||
+                !law.Outcomes.SequenceEqual(candidates.Select(candidate =>
+                    new ChanceLawOutcomeV111(
+                        "dish:" + candidate.Id, candidate.Weight))))
+                throw new InvalidDataException(
+                    "Endless Conveyor dish law differs from its pre-entry run.");
+            var selectedDish = outcomeId[5..];
+            var precedingWeight = 0;
+            foreach (var candidate in candidates)
+            {
+                if (candidate.Id != selectedDish)
+                {
+                    precedingWeight = checked(
+                        precedingWeight + candidate.Weight);
+                    continue;
+                }
+
+                var representative = (float)(
+                    (precedingWeight + candidate.Weight / 2.0) /
+                    totalWeight);
+                var ticket = representative * totalWeight;
+                foreach (var mapped in candidates)
+                {
+                    if (ticket < mapped.Weight)
+                    {
+                        if (mapped.Id != selectedDish)
+                            break;
+                        return representative;
+                    }
+                    ticket -= mapped.Weight;
+                }
+                break;
+            }
+            throw new InvalidDataException(
+                "Endless Conveyor dish outcome has no source-float representative.");
         }
 
         if (law.OperationKind == "unit_float_mapped_price")

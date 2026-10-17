@@ -19,6 +19,20 @@ with Session(["dotnet", "src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cl
     child.release()
 ```
 
+The initial Endless Conveyor dish law can be queried before resolving a map
+Event-node action:
+
+```python
+law = state.query_chance_law(
+    "event.endless_conveyor.dish_weighted_ticket",
+    action_id=event_node_action_id,
+)
+```
+
+The query is admitted only when the ordinary event-selection provider resolves
+that action to Endless Conveyor. It covers the first dish roll; later rolls
+and a ReferenceNature unit-float continuation are not included yet.
+
 Construction checks wire/snapshot/batch compatibility. Handles belong to one
 session; release invalidates them. Calls are serialized with a lock.
 `EmulatorError` exposes server failures; the context manager closes the server.

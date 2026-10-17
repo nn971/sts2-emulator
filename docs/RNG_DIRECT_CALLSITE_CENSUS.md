@@ -13,10 +13,10 @@ Counts by direct API family:
 Shuffle site IDs mapped to migration-matrix rows: **19**; dynamic expressions: **6**; unmapped: **0**; missing: **0**.
 Registered stochastic site IDs mapped to migration-matrix rows: **108/108**; IDs without rows: **0**; duplicate matrix IDs: **0**; unresolved registry references: **0**.
 Reference-law column status: **182 UNVERIFIED**; **0 calibrated**; **0 unspecified**.
-S0 contract-evidence locator: **181/182 rows** have a text or linked-document match for every facet. Matches are review pointers, not evidence that a contract is complete.
+S0 contract-evidence locator: **182/182 rows** have a text or linked-document match for every facet. Matches are review pointers, not evidence that a contract is complete.
 Rows without a text or linked-document match by S0 facet:
 
-- `audience_projection`: 1
+- `audience_projection`: 0
 - `private_constraint`: 0
 - `probability_provenance`: 0
 - `resolver_continuation`: 0
@@ -29,7 +29,7 @@ Rows distinguish legacy prototype calls, native primitive calls, generic shuffle
 | --- | --- | --- | --- | --- | --- | --- |
 | [`src/Sts2Emulator.Core/NativeDarvEventV111.cs:163`](../src/Sts2Emulator.Core/NativeDarvEventV111.cs#L163) | `NativeFisherYatesV111` | `ShuffleInPlace` | `RelicShuffleSiteId` → `event.darv.relic_offer.shuffle_swap_index` | `mapped` | `decisions.AddRange(NativeFisherYatesV111.ShuffleInPlace(` | `shuffle_site_id_resolved` |
 | [`src/Sts2Emulator.Core/NativeDarvEventV111.cs:252`](../src/Sts2Emulator.Core/NativeDarvEventV111.cs#L252) | `NativeFisherYatesV111` | `ShuffleInPlace` | `RelicShuffleSiteId` → `event.darv.relic_offer.shuffle_swap_index` | `mapped` | `_ = NativeFisherYatesV111.ShuffleInPlace(` | `shuffle_site_id_resolved` |
-| [`src/Sts2Emulator.Core/NativeEventContextRngV111.cs:225`](../src/Sts2Emulator.Core/NativeEventContextRngV111.cs#L225) | `NativeFisherYatesV111` | `ShuffleInPlace` | `siteId` | `dynamic_expression` | `_ = NativeFisherYatesV111.ShuffleInPlace(` | `shuffle_site_id_is_dynamic_or_unresolved` |
+| [`src/Sts2Emulator.Core/NativeEventContextRngV111.cs:226`](../src/Sts2Emulator.Core/NativeEventContextRngV111.cs#L226) | `NativeFisherYatesV111` | `ShuffleInPlace` | `siteId` | `dynamic_expression` | `_ = NativeFisherYatesV111.ShuffleInPlace(` | `shuffle_site_id_is_dynamic_or_unresolved` |
 | [`src/Sts2Emulator.Core/NativeGloryAncientsV111.cs:252`](../src/Sts2Emulator.Core/NativeGloryAncientsV111.cs#L252) | `NativeFisherYatesV111` | `ShuffleInPlace` | `BeautifulBraceletShuffleSiteId` → `run.relic.beautiful_bracelet.deck_shuffle.swap_index` | `mapped` | `_ = NativeFisherYatesV111.ShuffleInPlace(` | `shuffle_site_id_resolved` |
 | [`src/Sts2Emulator.Core/NativeGloryAncientsV111.cs:293`](../src/Sts2Emulator.Core/NativeGloryAncientsV111.cs#L293) | `NativeFisherYatesV111` | `ShuffleInPlace` | `FurCoatShuffleSiteId` → `run.relic.fur_coat.map_node_shuffle.swap_index` | `mapped` | `_ = NativeFisherYatesV111.ShuffleInPlace(` | `shuffle_site_id_resolved` |
 | [`src/Sts2Emulator.Core/NativeNeowEventV111.cs:45`](../src/Sts2Emulator.Core/NativeNeowEventV111.cs#L45) | `NativeFisherYatesV111` | `ShuffleInPlace` | `PrototypeNativeOvergrowthEvents.NeowPositiveRelicShuffleSiteId` → `event.neow.positive_relic.shuffle_swap_index` | `mapped` | `decisions.AddRange(NativeFisherYatesV111.ShuffleInPlace(` | `shuffle_site_id_resolved` |
