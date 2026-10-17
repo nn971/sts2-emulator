@@ -101,15 +101,74 @@ public sealed record SemanticPilotCombatV111(
 {
     public const string SchemaId = "sts2-v111-semantic-playable-p0-v1";
     /// <summary>
+    /// Atomic mechanics/provider envelope for the semantic playable session.
+    /// Existing continuation properties remain flattened snapshot fields.
+    /// </summary>
+    [JsonIgnore]
+    public SimulationStateV111<SemanticPilotMechanicsStateV111,
+        SemanticPilotStochasticStateV111> Simulation { get; init; } = new(
+            new SemanticPilotMechanicsStateV111(
+                OpeningSource, Run, History, NativeEncounterEntry, Mode),
+            new SemanticPilotStochasticStateV111(
+                PendingEndTurn: PendingEndTurn));
+
+    [JsonIgnore]
+    public SemanticPilotMechanicsStateV111 Mechanics
+    {
+        get => Simulation.Mechanics;
+        init => Simulation = Simulation with { Mechanics = value };
+    }
+
+    /// <summary>Private state for opted-in RNG and provider provenance.</summary>
+    [JsonIgnore]
+    public SemanticPilotStochasticStateV111 Stochastic
+    {
+        get => Simulation.Stochastic;
+        init => Simulation = Simulation with { Stochastic = value };
+    }
+
+    public ControlledPlayableCombatV111 OpeningSource
+    {
+        get => Mechanics.OpeningSource;
+        init => Mechanics = Mechanics with { OpeningSource = value };
+    }
+
+    public RunState Run
+    {
+        get => Mechanics.Run;
+        init => Mechanics = Mechanics with { Run = value };
+    }
+
+    public SemanticPilotTransitionV111[] History
+    {
+        get => Mechanics.History;
+        init => Mechanics = Mechanics with { History = value };
+    }
+
+    public string NativeEncounterEntry
+    {
+        get => Mechanics.NativeEncounterEntry;
+        init => Mechanics = Mechanics with
+        { NativeEncounterEntry = value };
+    }
+
+    public string Mode
+    {
+        get => Mechanics.Mode;
+        init => Mechanics = Mechanics with { Mode = value };
+    }
+
+    /// <summary>
     /// Null for legacy precommitted fixtures. Seeded entries are verified by
     /// regenerating the entire source-shaped opening on snapshot restoration.
     /// This field is provider-private and never part of fair observation.
     /// </summary>
-    public SemanticSeededEntryV111? SeededEntry { get; init; }
-    /// <summary>Private state for explicitly opted-in non-Nature RNG.</summary>
-    [JsonIgnore]
-    public SemanticPilotStochasticStateV111 Stochastic { get; init; } =
-        new(PendingEndTurn: PendingEndTurn);
+    public SemanticSeededEntryV111? SeededEntry
+    {
+        get => Stochastic.SeededEntry;
+        init => Stochastic = Stochastic with { SeededEntry = value };
+    }
+
     public SemanticEndTurnV111? PendingEndTurn
     {
         get => Stochastic.PendingEndTurn;

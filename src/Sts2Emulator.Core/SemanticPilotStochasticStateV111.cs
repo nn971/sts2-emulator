@@ -11,7 +11,8 @@ public sealed record SemanticPilotStochasticStateV111(
     SemanticNativePolicyAuditV111? NativePolicyAudit = null,
     SemanticSourceRouteAuditV111? SourceRouteAudit = null,
     SemanticEndTurnV111? PendingEndTurn = null,
-    ControlledTurnIntentsV111? PendingInitialIntents = null)
+    ControlledTurnIntentsV111? PendingInitialIntents = null,
+    SemanticSeededEntryV111? SeededEntry = null)
 {
     public SemanticPilotStochasticStateV111 Fork() => this with
     {
