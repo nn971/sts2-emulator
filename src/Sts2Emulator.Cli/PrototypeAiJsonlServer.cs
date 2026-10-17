@@ -963,6 +963,19 @@ internal static class PrototypeAiJsonlServer
             return null;
         }
 
+        SemanticNatureChoiceViewV111? DescribeSemanticNatureChoice(
+            SemanticPilotCombatV111 state)
+        {
+            if (state.UsesNativePolicyBaseline) return null;
+            var pending = DescribeSemanticPending(state);
+            if (pending is null) return null;
+            var payload = JsonSerializer.SerializeToElement(
+                pending, pending.GetType(),
+                new JsonSerializerOptions(JsonSerializerDefaults.Web));
+            if (!payload.TryGetProperty("chanceLaw", out _)) return null;
+            return SemanticNatureChoiceViewV111.Create(payload);
+        }
+
         string[] SemanticChanceSites(SemanticPilotCombatV111 state)
         {
             if (state.UsesNativePolicyBaseline) return [];
@@ -2214,6 +2227,25 @@ internal static class PrototypeAiJsonlServer
                             observationHash = frame.ObservationHash,
                             actions = frame.LegalActions.Select(ActionWire).ToArray(),
                             terminal = false });
+                        break;
+                    }
+
+                    case "semantic_nature_observe":
+                    {
+                        var handle = RequiredString(request, "semantic_handle");
+                        var current = RequireSemantic(request);
+                        var natureChoice =
+                            DescribeSemanticNatureChoice(current);
+                        Write(new
+                        {
+                            requestId,
+                            ok = true,
+                            schemaId =
+                                SemanticNatureChoiceViewV111.CurrentSchemaId,
+                            semanticHandle = handle,
+                            fingerprint = current.Fingerprint,
+                            natureChoice
+                        });
                         break;
                     }
 

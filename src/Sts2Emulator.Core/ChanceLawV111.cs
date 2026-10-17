@@ -28,6 +28,10 @@ public sealed record StochasticCapabilityManifestV111(
         ReferenceNatureMerchantSessionV111.CurrentSchemaId;
     public string ReferenceNatureTreasureSessionSchemaId { get; init; } =
         ReferenceNatureTreasureSessionV111.CurrentSchemaId;
+    public string SemanticNatureChoiceViewSchemaId { get; init; } =
+        SemanticNatureChoiceViewV111.CurrentSchemaId;
+    public string[] SemanticNatureChoiceViewOperations { get; init; } =
+        ["semantic_nature_observe"];
 }
 
 public static class StochasticCapabilitiesV111

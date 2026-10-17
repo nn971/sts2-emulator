@@ -109,6 +109,8 @@ The **same game mechanics** issues semantic stochastic operations and applies th
 3. **Consume / apply** the resulting physical identity or move through the ordinary engine; run its hooks **exactly once**, and continue to the next mechanical/chance/player boundary.
 4. **Update / reset** the provider's ordering constraints in response to exact insertions, reveals, peeks/scry, removals, card creation, discard/recycle and source-time reshuffles.
 
+The JSONL bridge keeps `semantic_observe` as the fair player projection and exposes the Nature-only pending chance boundary through the separately versioned `semantic_nature_observe` / `SemanticNatureChoiceViewV111` contract. The Nature view binds the event identity and both event/law support fingerprints to its Chance Law and conditioning state; it omits raw run state, Native cursors, and the selected outcome. The capability manifest advertises the view schema and operation.
+
 A native Fisher–Yates shuffle and Nature's later `draw_card` events can express the **same underlying random permutation**. Never expose or likelihood-weight both for that single randomization. Source-native low-level primitive calls (including singleton draws) remain available for native parity instrumentation, independently of semantic Nature events. Preserve stable card **instance** identity and history-dependent eligibility.
 
 ## Chance Law and information conditioning
