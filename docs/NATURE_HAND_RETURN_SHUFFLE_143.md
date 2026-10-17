@@ -13,8 +13,9 @@ them or the unresolved deck order.
 The saved mechanics queue resumes only after the final shuffle swap and
 insertion choice, then executes the ordinary hand draw. An operation that
 cannot preserve the shared unresolved-pool constraints fails closed before a
-partial state is published. Probability provenance remains `UNVERIFIED`; the
-native stream assignment and cursor parity are not certified here.
+partial state is published. The per-swap law is `SOURCE_VERIFIED` for the
+pinned Native `NextInt` transform on the declared bound; stream assignment,
+pool completeness, seed frequencies, and cursor parity are not certified here.
 
 The guarded combat operation `ReturnHandToDrawAndShuffle` now suspends before
 the first Fisher–Yates swap when Bottled Potential is used in a Nature semantic
@@ -34,6 +35,7 @@ continuation and semantic event before the potion draw continues.
 The semantic JSONL protocol exposes `hand_return_shuffle` with the site
 `combat.hand_return.draw_pile.shuffle_swap_index`. This extends the existing
 full-pool shuffle continuation and draw-insertion event; it does not claim a
-new native reference-mod comparison. The native `run.shuffle` assignment,
-seeded provider cursor parity, and reference probability law remain
-unverified. Probability status is `UNVERIFIED`.
+new native reference-mod comparison. Each per-swap law is `SOURCE_VERIFIED`
+for the pinned Native `NextInt` transform on the declared bound. The native
+`run.shuffle` assignment, source-pool completeness, seeded provider cursor
+parity, and seed frequencies remain unverified.

@@ -2551,18 +2551,21 @@ public static partial class ChanceLawEngineV111
     }
 
     /// <summary>
-    /// Query one uniform Fisher–Yates swap in a saved without-replacement
-    /// pool shuffle. Prior swaps remain part of the conditioned state.
+    /// Query one bounded Fisher–Yates swap in a saved without-replacement
+    /// pool shuffle. The pinned Native NextInt masses describe each swap;
+    /// prior swaps remain part of the conditioned state.
     /// </summary>
     public static ChanceLawV111 QueryPoolShuffle(
         SemanticPoolShuffleEventV111 shuffle)
     {
         ArgumentNullException.ThrowIfNull(shuffle);
         shuffle.Validate();
-        var outcomes = Enumerable.Range(0, shuffle.Request.SupportCount)
+        var indexWeights = NativeNextIntGridWeights(
+            shuffle.Request.SupportCount);
+        var outcomes = Enumerable.Range(0, indexWeights.Length)
             .Select(index => new ChanceLawOutcomeV111(
                 "swap_index:" + index.ToString(CultureInfo.InvariantCulture),
-                1L))
+                indexWeights[index]))
             .ToArray();
         var conditioningFingerprint = CanonicalJson.Sha256(new
         {
@@ -2577,7 +2580,8 @@ public static partial class ChanceLawEngineV111
         return Create(shuffle.EventId, shuffle.SiteId,
             shuffle.OperationKind, shuffle.OwnerId, shuffle.Ordinal,
             PoolShuffleConditioningPolicyId, conditioningFingerprint,
-            "uniform-fisher-yates-swap-unverified", outcomes);
+            NativeBoundedIndexSourceVerifiedProvenance, outcomes,
+            ChanceLawV111.SourceVerifiedStatus);
     }
 
     /// <summary>

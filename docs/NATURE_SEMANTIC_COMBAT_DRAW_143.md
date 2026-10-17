@@ -48,6 +48,12 @@ This slice connects the separate provider-owned
 - Ordinary source action choices opened by automatic `DrawPlayerHand`
   `CardDrawn` hooks preserve the automatic stage cursor and resume the same
   hand-draw request after selection.
+- Effect-triggered recycle swaps use the typed
+  `combat.draw.recycle.shuffle_swap_index` continuation. Their per-swap Chance
+  Law has exact `SOURCE_VERIFIED` Native `NextInt` masses on each declared
+  bound; source-site attribution, pool completeness, stream/cursor parity, and
+  seed frequencies remain open. The unresolved physical-card draw law stays
+  `UNVERIFIED`.
 - Exact card instance identities and no replacement within the pile.
 - Draw count up to available pile/hand size; finite exhaustive
   two-draw/three-card enumeration.

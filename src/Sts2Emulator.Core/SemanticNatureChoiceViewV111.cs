@@ -55,12 +55,20 @@ public sealed record SemanticNatureChoiceViewV111(
         var metadata = new Dictionary<string, JsonElement>(
             StringComparer.Ordinal);
         foreach (var property in pendingEvent.EnumerateObject())
-            if (property.Name is not "chanceLaw")
-            {
-                var sanitized = StripProviderMetadata(property.Value);
-                if (sanitized is { } value)
-                    metadata.Add(property.Name, value);
-            }
+        {
+            if (property.Name is "chanceLaw")
+                continue;
+            // ChanceLaw owns probability provenance; event metadata can keep
+            // a conservative compatibility status from an older snapshot.
+            if (property.Name is "probabilityStatus" &&
+                property.Value.ValueKind == JsonValueKind.String &&
+                property.Value.GetString() != law.ProbabilityStatus)
+                continue;
+
+            var sanitized = StripProviderMetadata(property.Value);
+            if (sanitized is { } value)
+                metadata.Add(property.Name, value);
+        }
 
         var result = new SemanticNatureChoiceViewV111(
             CurrentSchemaId, eventKind, eventId, siteId, operationKind,
