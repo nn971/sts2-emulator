@@ -186,6 +186,39 @@ public sealed record PrototypeControlledEventChoiceContinuationV111(
     string[]? PendingCandidateLabels = null,
     string[][]? DecisionCandidateLabels = null)
 {
+    /// <summary>
+    /// Shared provider payload; the legacy continuation fields below remain
+    /// its flattened snapshot projection.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public ControlledChanceContinuationStateV111 Chance { get; init; } =
+        new(Decisions, PendingRequest, PendingCandidateLabels,
+            DecisionCandidateLabels);
+
+    public RandomIndexDecisionV111[] Decisions
+    {
+        get => Chance.Decisions;
+        init => Chance = Chance with { Decisions = value };
+    }
+
+    public RandomIndexRequestV111 PendingRequest
+    {
+        get => Chance.PendingRequest;
+        init => Chance = Chance with { PendingRequest = value };
+    }
+
+    public string[]? PendingCandidateLabels
+    {
+        get => Chance.PendingCandidateLabels;
+        init => Chance = Chance with { PendingCandidateLabels = value };
+    }
+
+    public string[][]? DecisionCandidateLabels
+    {
+        get => Chance.DecisionCandidateLabels;
+        init => Chance = Chance with { DecisionCandidateLabels = value };
+    }
+
     public PrototypeControlledEventChoiceContinuationV111 Fork() => this with
     {
         PartialState = PartialState.Fork(),
@@ -193,12 +226,7 @@ public sealed record PrototypeControlledEventChoiceContinuationV111(
         QueuedDeckChoices = QueuedDeckChoices
             .Select(choice => choice.Fork()).ToArray(),
         DeferredReward = DeferredReward?.Fork(),
-        Decisions = Decisions.Select(CloneDecision).ToArray(),
-        PendingRequest = CloneRequest(PendingRequest),
-        PendingCandidateLabels = PendingCandidateLabels is null
-            ? null : (string[])PendingCandidateLabels.Clone(),
-        DecisionCandidateLabels = DecisionCandidateLabels?.Select(labels =>
-            (string[])labels.Clone()).ToArray()
+        Chance = Chance.Fork()
     };
 
     public void Validate()

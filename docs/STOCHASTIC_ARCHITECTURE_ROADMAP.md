@@ -30,6 +30,8 @@
 
 **S3 event-mechanics increment (2026-10-17):** `EventState.Mechanics` now owns event/choice identity, offered choices, pending deck/potion/reward choices, queued acquisitions, deferred losses, and event-page progress through `EventMechanicsStateV111`. The existing flattened fields project this owner and remain the snapshot representation. Forking an event now clones this mechanics envelope together with its stochastic provider envelope. Controlled event continuations still save their partial run and effect cursor separately, so the complete mechanics/stochastic envelope and common continuation remain open.
 
+**S4 persisted chance-payload increment (2026-10-17):** controlled event, run-action, and automatic enemy-action continuations now share `ControlledChanceContinuationStateV111` for their saved decision prefix, pending typed request, and optional candidate-label transcript. Each boundary keeps its own mechanics checkpoint and validation rules; existing flattened continuation fields still project the shared payload. The ordinary-engine migration and full cross-provider mechanical-equivalence gate remain open.
+
 ## S1 precise design
 
 Implement a **read-only, outcome-blind** Chance Law query in `Sts2Emulator.Core` with:

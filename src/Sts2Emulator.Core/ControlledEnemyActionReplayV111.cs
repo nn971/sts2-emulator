@@ -13,22 +13,30 @@ public sealed record PrototypeControlledEnemyActionContinuationV111(
     RandomIndexDecisionV111[] Decisions,
     RandomIndexRequestV111 PendingRequest)
 {
+    /// <summary>
+    /// Shared provider payload; the legacy continuation fields below remain
+    /// its flattened snapshot projection.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public ControlledChanceContinuationStateV111 Chance { get; init; } =
+        new(Decisions, PendingRequest);
+
+    public RandomIndexDecisionV111[] Decisions
+    {
+        get => Chance.Decisions;
+        init => Chance = Chance with { Decisions = value };
+    }
+
+    public RandomIndexRequestV111 PendingRequest
+    {
+        get => Chance.PendingRequest;
+        init => Chance = Chance with { PendingRequest = value };
+    }
+
     public PrototypeControlledEnemyActionContinuationV111 Fork() => this with
     {
         Checkpoint = Checkpoint.Fork(),
-        Decisions = Decisions.Select(decision => decision with
-        {
-            Request = decision.Request with
-            {
-                OrderedCandidates =
-                    (int[])decision.Request.OrderedCandidates.Clone()
-            }
-        }).ToArray(),
-        PendingRequest = PendingRequest with
-        {
-            OrderedCandidates =
-                (int[])PendingRequest.OrderedCandidates.Clone()
-        }
+        Chance = Chance.Fork()
     };
 
     public void Validate(int pipelineLength)
