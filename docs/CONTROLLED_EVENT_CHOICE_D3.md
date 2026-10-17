@@ -27,14 +27,23 @@ The supported event-choice sites are:
 - `event.random_upgrade.card_instance`
 - `event.reward.random_rare_card.model`
 - `event.reward.random_potion.model` on the legacy uniform-pool route
+- `event.reward.offer_potion.model.index_draw`
+- `event.reward.card_bundle.shuffle_swap_index`
+- `reward.card_rarity.ticket` and `reward.card_model.index_draw` while
+  constructing selected event card offers
+- `run.random_pool_distinct.shuffle_swap_index` while constructing selected
+  event relic and card offers
 - `event.potion.fill_empty_slots.model`
 - `potion.uncommon_model.index_draw` for the Potion Courier event choice
 - `relic.unowned_random_selection.index_draw` for eligible event options
 
 Any other random site reached by the event option continues to fail closed.
-Native regional potion routes, Shovel's relic acquisition, custom event reward
-generation, source-pool differences, native stream ownership and reference
-probabilities remain outside this boundary.
+Native regional potion routes, Shovel's relic acquisition, post-reward curse
+generation, other custom event reward effects, source-pool differences,
+native stream ownership and reference probabilities remain outside this
+boundary. For supported multi-draw reward effects, the frame re-enters only
+the current effect from its saved start and injects that effect's saved
+decision prefix; all completed earlier effects remain in the partial run.
 
 ## JSONL and Python
 

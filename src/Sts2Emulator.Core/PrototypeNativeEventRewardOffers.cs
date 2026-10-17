@@ -105,17 +105,22 @@ public sealed partial class PrototypeGameEngine
             {
                 var cards = PickRewardCards(
                     RequireWorld(state).Act, 3, state.Rng);
-                var potion = CanAcquirePotion(player)
-                    ? PrototypeContent.PotionPool[
+                string? potion = null;
+                if (CanAcquirePotion(player))
+                {
+                    var potionPool = PrototypeContent.PotionPool;
+                    using var labels =
+                        ControlledEventChoiceReplayV111.DescribeCandidates(
+                            (string[])potionPool.Clone());
+                    potion = potionPool[
                         LegacyRandomChoiceV111.ChooseIndexRange(
                             state.Rng,
                             "event.reward.offer_potion.model.index_draw",
                             "reward",
                             prefix + ":potion_pool:"
-                                + CanonicalJson.Sha256(
-                                    PrototypeContent.PotionPool),
-                            PrototypeContent.PotionPool.Length).SelectedIndex]
-                    : null;
+                                + CanonicalJson.Sha256(potionPool),
+                            potionPool.Length).SelectedIndex];
+                }
                 return new RewardState(
                     SourceRoom: prefix,
                     CardOptions: cards,
@@ -295,19 +300,28 @@ public sealed partial class PrototypeGameEngine
                 }
                 var ownerId = prefix + ":unowned_relic_pool:"
                     + CanonicalJson.Sha256(available);
-                var relicIndex = nativeRunRng is { } nativeRewardRng
-                    ? NativePlayerRngV111.ChooseIndex(
+                int relicIndex;
+                if (nativeRunRng is { } nativeRewardRng)
+                {
+                    relicIndex = NativePlayerRngV111.ChooseIndex(
                         nativeRewardRng,
                         "relic.unowned_random_selection.index_draw",
                         NativePlayerRngV111.RewardsStreamId,
                         ownerId,
-                        available.Length)
-                    : LegacyRandomChoiceV111.ChooseIndexRange(
+                        available.Length);
+                }
+                else
+                {
+                    using var labels =
+                        ControlledEventChoiceReplayV111.DescribeCandidates(
+                            (string[])available.Clone());
+                    relicIndex = LegacyRandomChoiceV111.ChooseIndexRange(
                         state.Rng,
                         "relic.unowned_random_selection.index_draw",
                         "reward",
                         ownerId,
                         available.Length).SelectedIndex;
+                }
                 var relicId = available[relicIndex];
                 return new RewardState(
                     SourceRoom: prefix,

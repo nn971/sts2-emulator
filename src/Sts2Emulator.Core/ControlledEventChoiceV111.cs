@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Threading;
 
 namespace Sts2Emulator.Core;
@@ -21,8 +22,13 @@ public static class ControlledEventChoiceEngineV111
                 eventState.EventId, choiceId))
             throw new InvalidOperationException(
                 "Controlled event choice requires a supported option on the current event page.");
-        return Step(source, GameAction.Create(
+        var result = Step(source, GameAction.Create(
             "event_choice", new EventChoicePayload(choiceId)));
+        if (result.World?.Event?.ControlledChoice is null)
+            throw new NotSupportedException(
+                "The selected event option did not reach a supported " +
+                "controlled chance site.");
+        return result;
     }
 
     public static RunState Resolve(RunState source, int selectedIndex)
@@ -108,6 +114,7 @@ public sealed record PrototypeControlledEventChoiceContinuationV111(
     string EventId,
     string ChoiceId,
     int NextEffectIndex,
+    int EffectDecisionStartIndex,
     string[] QueuedPotionIds,
     PrototypePendingEventDeckChoiceState[] QueuedDeckChoices,
     RewardState? DeferredReward,
@@ -143,6 +150,8 @@ public sealed record PrototypeControlledEventChoiceContinuationV111(
             || string.IsNullOrWhiteSpace(ChoiceId)
             || QueuedPotionIds is null || QueuedDeckChoices is null
             || NextEffectIndex < 0
+            || EffectDecisionStartIndex < 0
+            || EffectDecisionStartIndex > Decisions.Length
             || PendingRequest is null)
             throw new InvalidDataException(
                 "Malformed controlled event-choice continuation.");
@@ -226,16 +235,13 @@ public sealed record PrototypeControlledEventChoiceContinuationV111(
 
 internal sealed class ControlledEventChoiceChanceRequiredException(
     RandomIndexRequestV111 request,
-    string[]? candidateLabels,
-    PlayerState? partialPlayerState = null) : Exception(
+    string[]? candidateLabels) : Exception(
         "A controlled event choice needs a random-choice outcome.")
 {
     public RandomIndexRequestV111 Request { get; } =
         PrototypeControlledEventChoiceContinuationV111.CloneRequest(request);
     public string[]? CandidateLabels { get; } = candidateLabels is null
         ? null : (string[])candidateLabels.Clone();
-    public PlayerState? PartialPlayerState { get; set; } =
-        partialPlayerState?.Fork();
 }
 
 /// <summary>
@@ -280,7 +286,9 @@ internal sealed class ControlledEventChoiceReplayV111 : IDisposable
             decisions, priorOrdinalCounts);
     }
 
-    public static int Resolve(RandomIndexRequestV111 request)
+    public static int Resolve(
+        RandomIndexRequestV111 request,
+        bool requestOrdinalIncludesCurrentOperationPrefix = false)
     {
         var active = Active.Value ?? throw new InvalidOperationException(
             "Controlled event-choice replay is not active.");
@@ -294,15 +302,20 @@ internal sealed class ControlledEventChoiceReplayV111 : IDisposable
             active._priorOrdinalCounts.GetValueOrDefault(request.StreamId) +
             active._decisions
             .Take(active._nextDecision)
-            .Count(decision => decision.Request.StreamId == request.StreamId));
+            .Count(decision => decision.Request.StreamId == request.StreamId
+                && (!requestOrdinalIncludesCurrentOperationPrefix
+                    || decision.Request.SiteId != request.SiteId
+                    || decision.Request.OwnerId != request.OwnerId)));
         var normalizedRequest = request with { Ordinal = ordinal };
-        if (active._candidateLabels is not null
-            && active._candidateLabels.Length != normalizedRequest.SupportCount)
+        var candidateLabels = active._candidateLabels ?? Enumerable.Range(
+            0, normalizedRequest.SupportCount).Select(index =>
+                index.ToString(CultureInfo.InvariantCulture)).ToArray();
+        if (candidateLabels.Length != normalizedRequest.SupportCount)
             throw new InvalidDataException(
                 "Event-choice candidate labels do not match the random support.");
         if (active._nextDecision >= active._decisions.Length)
             throw new ControlledEventChoiceChanceRequiredException(
-                normalizedRequest, active._candidateLabels);
+                normalizedRequest, candidateLabels);
 
         var decision = active._decisions[active._nextDecision++];
         decision.Validate();
@@ -365,7 +378,36 @@ internal sealed class ControlledEventChoiceReplayV111 : IDisposable
         "event.random_upgrade.card_instance" or
         "event.reward.random_rare_card.model" or
         "event.reward.random_potion.model" or
+        "event.reward.offer_potion.model.index_draw" or
+        "event.reward.card_bundle.shuffle_swap_index" or
         "event.potion.fill_empty_slots.model" or
+        "reward.card_rarity.ticket" or
+        "reward.card_model.index_draw" or
+        "run.random_pool_distinct.shuffle_swap_index" or
         "potion.uncommon_model.index_draw" or
         "relic.unowned_random_selection.index_draw";
+}
+
+internal sealed class ControlledEventChoiceRandomIndexProviderV111
+    : IRandomIndexProviderV111
+{
+    public string Mode => "controlled-v111";
+
+    public RandomIndexDecisionV111 Resolve(
+        RandomIndexRequestV111 request, RngBundle streams)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(streams);
+        if (!ControlledChanceGuardV111.Active
+            || !ControlledEventChoiceReplayV111.IsActive)
+            throw new InvalidOperationException(
+                "Controlled event shuffle provider requires an active event frame.");
+        var decision = new RandomIndexDecisionV111(
+            PrototypeControlledEventChoiceContinuationV111.CloneRequest(request),
+            ControlledEventChoiceReplayV111.Resolve(
+                request, requestOrdinalIncludesCurrentOperationPrefix: true),
+            Mode);
+        decision.Validate();
+        return decision;
+    }
 }

@@ -802,7 +802,12 @@ internal static class PrototypeAiJsonlServer
                                 "event.random_upgrade.card_instance",
                                 "event.reward.random_rare_card.model",
                                 "event.reward.random_potion.model",
+                                "event.reward.offer_potion.model.index_draw",
+                                "event.reward.card_bundle.shuffle_swap_index",
                                 "event.potion.fill_empty_slots.model",
+                                "reward.card_rarity.ticket",
+                                "reward.card_model.index_draw",
+                                "run.random_pool_distinct.shuffle_swap_index",
                                 "potion.uncommon_model.index_draw",
                                 "relic.unowned_random_selection.index_draw"
                             },

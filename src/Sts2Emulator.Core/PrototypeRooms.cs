@@ -1364,7 +1364,15 @@ public sealed partial class PrototypeGameEngine
             PrototypeRunEffectKind.GainRandomPotion or
             PrototypeRunEffectKind.GainRandomUncommonPotion or
             PrototypeRunEffectKind.FillPotionSlots or
-            PrototypeRunEffectKind.UpgradeRandomCard) == true;
+            PrototypeRunEffectKind.UpgradeRandomCard or
+            PrototypeRunEffectKind.OfferThreeRareCards or
+            PrototypeRunEffectKind.OfferThreeCardsAndPotion or
+            PrototypeRunEffectKind.OfferFiveClassCards or
+            PrototypeRunEffectKind.OfferThreeColorlessCards or
+            PrototypeRunEffectKind.OfferTwoColorlessCards or
+            PrototypeRunEffectKind.OfferCardBundles or
+            PrototypeRunEffectKind.OfferNeowsBonesRelics or
+            PrototypeRunEffectKind.OfferRandomRelic) == true;
     }
 
     private static RunState StepEvent(
@@ -1423,7 +1431,9 @@ public sealed partial class PrototypeGameEngine
                 "Controlled event-choice candidate labels are missing.");
         var decisionCandidateLabels = continuation.DecisionCandidateLabels!
             .Append((string[])candidateLabels.Clone()).ToArray();
-        var priorOrdinals = continuation.Decisions
+        var priorDecisions = continuation.Decisions
+            .Take(continuation.EffectDecisionStartIndex).ToArray();
+        var priorOrdinals = priorDecisions
             .GroupBy(decision => decision.Request.StreamId,
                 StringComparer.Ordinal)
             .ToDictionary(group => group.Key, group => group.Count(),
@@ -1438,7 +1448,8 @@ public sealed partial class PrototypeGameEngine
         try
         {
             using var replay = ControlledEventChoiceReplayV111.Begin(
-                [selectedDecision], priorOrdinals);
+                decisions.Skip(continuation.EffectDecisionStartIndex).ToArray(),
+                priorOrdinals);
             result = StepEventCore(
                 state,
                 GameAction.Create(
@@ -1489,7 +1500,10 @@ public sealed partial class PrototypeGameEngine
             ? rootWorld
             : resume.PartialState.World!.Fork() with
             {
-                Event = rootEvent with { ControlledChoice = resume }
+                Event = resume.PartialState.World!.Event! with
+                {
+                    ControlledChoice = resume
+                }
             };
         state = resume is null
             ? state
@@ -1824,12 +1838,36 @@ public sealed partial class PrototypeGameEngine
         var deferredHpLoss = resume?.DeferredHpLoss ?? 0;
         var deferredGoldLoss = resume?.DeferredGoldLoss ?? 0;
         var deferredCardId = resume?.DeferredCardId;
+        var decisions = resume?.Decisions ?? [];
+        var decisionCandidateLabels =
+            resume?.DecisionCandidateLabels ?? [];
 
         for (var effectIndex = resume?.NextEffectIndex ?? 0;
              effectIndex < choice.Effects.Length;
              effectIndex++)
         {
             var effect = choice.Effects[effectIndex];
+            var effectDecisionStartIndex = resume is not null
+                && effectIndex == resume.NextEffectIndex
+                    ? resume.EffectDecisionStartIndex
+                    : decisions.Length;
+            var effectStartState = state.Fork() with
+            {
+                Player = player.Fork(),
+                NativeRunRng = nativeRunRng?.Fork(),
+                World = world.Fork() with
+                {
+                    NextCardInstanceId = nextId,
+                    Event = eventState with { ControlledChoice = null }
+                }
+            };
+            var effectStartQueuedPotionIds = queuedPotionIds.ToArray();
+            var effectStartQueuedDeckChoices = queuedDeckChoices
+                .Select(item => item.Fork()).ToArray();
+            var effectStartDeferredReward = deferredReward?.Fork();
+            var effectStartDeferredHpLoss = deferredHpLoss;
+            var effectStartDeferredGoldLoss = deferredGoldLoss;
+            var effectStartDeferredCardId = deferredCardId;
             try
             {
                 switch (effect.Kind)
@@ -2339,33 +2377,22 @@ public sealed partial class PrototypeGameEngine
             }
             catch (ControlledEventChoiceChanceRequiredException exception)
             {
-                var partialPlayer = exception.PartialPlayerState ?? player;
-                var partialWorld = world with
-                {
-                    NextCardInstanceId = nextId,
-                    Event = eventState with { ControlledChoice = null }
-                };
-                var partialState = state with
-                {
-                    Player = partialPlayer,
-                    NativeRunRng = nativeRunRng,
-                    World = partialWorld
-                };
                 var continuation = new PrototypeControlledEventChoiceContinuationV111(
-                    partialState,
+                    effectStartState,
                     eventState.EventId,
                     choice.Id,
                     effectIndex,
-                    queuedPotionIds.ToArray(),
-                    queuedDeckChoices.Select(item => item.Fork()).ToArray(),
-                    deferredReward?.Fork(),
-                    deferredHpLoss,
-                    deferredGoldLoss,
-                    deferredCardId,
-                    resume?.Decisions ?? [],
+                    effectDecisionStartIndex,
+                    effectStartQueuedPotionIds,
+                    effectStartQueuedDeckChoices,
+                    effectStartDeferredReward,
+                    effectStartDeferredHpLoss,
+                    effectStartDeferredGoldLoss,
+                    effectStartDeferredCardId,
+                    decisions,
                     exception.Request,
                     exception.CandidateLabels,
-                    resume?.DecisionCandidateLabels ?? []);
+                    decisionCandidateLabels);
                 continuation.Validate();
                 return rootState with
                 {
@@ -2847,29 +2874,17 @@ public sealed partial class PrototypeGameEngine
                 continue;
             }
 
-            int selectedIndex;
-            try
-            {
-                selectedIndex = ResolveLegacyRandomIndex(
-                    rng,
-                    "event.potion.fill_empty_slots.model",
-                    "player:potion_slot:" + index + ":pool:"
-                        + CanonicalJson.Sha256(
-                            PrototypeContent.PotionPool),
-                    Enumerable.Range(
-                        0, PrototypeContent.PotionPool.Length),
-                    streamId: "event",
-                    controlledCandidateLabels:
-                        (string[])PrototypeContent.PotionPool.Clone());
-            }
-            catch (ControlledEventChoiceChanceRequiredException exception)
-            {
-                exception.PartialPlayerState = player with
-                {
-                    PotionSlots = (PotionInstance?[])slots.Clone()
-                };
-                throw;
-            }
+            var selectedIndex = ResolveLegacyRandomIndex(
+                rng,
+                "event.potion.fill_empty_slots.model",
+                "player:potion_slot:" + index + ":pool:"
+                    + CanonicalJson.Sha256(
+                        PrototypeContent.PotionPool),
+                Enumerable.Range(
+                    0, PrototypeContent.PotionPool.Length),
+                streamId: "event",
+                controlledCandidateLabels:
+                    (string[])PrototypeContent.PotionPool.Clone());
             var potionId = PrototypeContent.PotionPool[selectedIndex];
             slots[index] =
                 new PotionInstance(
@@ -5736,7 +5751,9 @@ public sealed partial class PrototypeGameEngine
                     ownerId + ":card:" + selected.Count + ":rarity:" + rarity
                         + ":pool:" + CanonicalJson.Sha256(candidates),
                     Enumerable.Range(0, candidates.Length),
-                    streamId: "reward")];
+                    streamId: "reward",
+                    controlledCandidateLabels:
+                        (string[])candidates.Clone())];
 
             selected.Add(selectedId);
             available.Remove(selectedId);

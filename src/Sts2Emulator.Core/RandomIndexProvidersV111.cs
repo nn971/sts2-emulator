@@ -286,8 +286,14 @@ public static class LegacyFisherYatesV111
         ArgumentException.ThrowIfNullOrWhiteSpace(streamId);
         ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
         ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
+        var controlledEventChoice =
+            ControlledChanceGuardV111.Active
+            && !ControlledChanceGuardV111.EngineOwnedNativeProviderActive
+            && ControlledEventChoiceReplayV111.IsActive
+            && ControlledEventChoiceReplayV111.IsEventChoiceSite(siteId);
         if (ControlledChanceGuardV111.Active
-            && !ControlledChanceGuardV111.EngineOwnedNativeProviderActive)
+            && !ControlledChanceGuardV111.EngineOwnedNativeProviderActive
+            && !controlledEventChoice)
             throw new NotSupportedException(
                 $"UNSUPPORTED_CONTROLLED_CHANCE site={siteId} " +
                 "operation=shuffle requires a saved continuation.");
@@ -304,10 +310,13 @@ public static class LegacyFisherYatesV111
         var callOrdinal = ordinal ?? (int)streamOrdinal;
         if (callOrdinal < 0)
             throw new ArgumentOutOfRangeException(nameof(ordinal));
+        IRandomIndexProviderV111 provider = controlledEventChoice
+            ? new ControlledEventChoiceRandomIndexProviderV111()
+            : new LegacyPrototypeRandomIndexProviderV111();
         return NativeFisherYatesV111.ShuffleInPlace(
             values,
             streams,
-            new LegacyPrototypeRandomIndexProviderV111(),
+            provider,
             streamId,
             ownerId,
             siteId,
