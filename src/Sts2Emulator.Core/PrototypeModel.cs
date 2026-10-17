@@ -2323,19 +2323,260 @@ public sealed record CombatState(
     PrototypeAutoPlayTargetRoll[]? AutoPlayTargetRolls = null,
     bool PaelsEyeExtraTurnPending = false,
     PrototypeCombatPetState[]? Pets = null,
-    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     string? CurrentMapNodeId = null,
     int PotionExtraTurnsPending = 0,
     bool IsPlayerSideActive = true,
     SemanticDeckStateV111? SemanticDeck = null)
 {
     /// <summary>
-    /// Authoritative in-memory provider state for this combat. The legacy
-    /// members below remain its serialized snapshot projection.
+    /// Atomic mechanics/provider envelope for this combat. Existing snapshot
+    /// fields remain flattened projections.
     /// </summary>
     [System.Text.Json.Serialization.JsonIgnore]
-    public CombatStochasticStateV111 Stochastic { get; init; } =
-        new(NativeRng, SemanticDeck);
+    public SimulationStateV111<CombatMechanicsStateV111,
+        CombatStochasticStateV111> Simulation { get; init; } = new(
+            new CombatMechanicsStateV111(
+                Turn, Energy, PlayerBlock, Hand, DrawPile, DiscardPile,
+                ExhaustPile, Enemies, NextCardInstanceId, Cards, PlayerPowers,
+                NextPowerApplicationOrder, Relics, Potions, PendingChoice,
+                Counters, IsPlayerTurn, AutomaticPipelineContinuation, Act,
+                Ascension, ExtraCardRewardsEarned, ChoicePool, PlayPile,
+                ToricShields, TransformedPersistentCardIds,
+                BoundCardPlayedThisTurn, PendingKnowledgeDemonChoice,
+                KnowledgeDemonChoiceResolvedTurn, AutoPlayTargetRolls,
+                PaelsEyeExtraTurnPending, Pets, CurrentMapNodeId,
+                PotionExtraTurnsPending, IsPlayerSideActive),
+            new CombatStochasticStateV111(NativeRng, SemanticDeck));
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public CombatMechanicsStateV111 Mechanics
+    {
+        get => Simulation.Mechanics;
+        init => Simulation = Simulation with { Mechanics = value };
+    }
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public CombatStochasticStateV111 Stochastic
+    {
+        get => Simulation.Stochastic;
+        init => Simulation = Simulation with { Stochastic = value };
+    }
+
+    public int Turn
+    {
+        get => Mechanics.Turn;
+        init => Mechanics = Mechanics with { Turn = value };
+    }
+
+    public int Energy
+    {
+        get => Mechanics.Energy;
+        init => Mechanics = Mechanics with { Energy = value };
+    }
+
+    public int PlayerBlock
+    {
+        get => Mechanics.PlayerBlock;
+        init => Mechanics = Mechanics with { PlayerBlock = value };
+    }
+
+    public long[] Hand
+    {
+        get => Mechanics.Hand;
+        init => Mechanics = Mechanics with { Hand = value };
+    }
+
+    public long[] DrawPile
+    {
+        get => Mechanics.DrawPile;
+        init => Mechanics = Mechanics with { DrawPile = value };
+    }
+
+    public long[] DiscardPile
+    {
+        get => Mechanics.DiscardPile;
+        init => Mechanics = Mechanics with { DiscardPile = value };
+    }
+
+    public long[] ExhaustPile
+    {
+        get => Mechanics.ExhaustPile;
+        init => Mechanics = Mechanics with { ExhaustPile = value };
+    }
+
+    public EnemyCombatState[] Enemies
+    {
+        get => Mechanics.Enemies;
+        init => Mechanics = Mechanics with { Enemies = value };
+    }
+
+    public long NextCardInstanceId
+    {
+        get => Mechanics.NextCardInstanceId;
+        init => Mechanics = Mechanics with { NextCardInstanceId = value };
+    }
+
+    public CombatCardInstance[] Cards
+    {
+        get => Mechanics.Cards;
+        init => Mechanics = Mechanics with { Cards = value };
+    }
+
+    public PrototypePowerInstanceState[] PlayerPowers
+    {
+        get => Mechanics.PlayerPowers;
+        init => Mechanics = Mechanics with { PlayerPowers = value };
+    }
+
+    public long NextPowerApplicationOrder
+    {
+        get => Mechanics.NextPowerApplicationOrder;
+        init => Mechanics = Mechanics with
+        { NextPowerApplicationOrder = value };
+    }
+
+    public CombatRelicState[]? Relics
+    {
+        get => Mechanics.Relics;
+        init => Mechanics = Mechanics with { Relics = value };
+    }
+
+    public CombatPotionState[]? Potions
+    {
+        get => Mechanics.Potions;
+        init => Mechanics = Mechanics with { Potions = value };
+    }
+
+    public PendingCombatChoiceState? PendingChoice
+    {
+        get => Mechanics.PendingChoice;
+        init => Mechanics = Mechanics with { PendingChoice = value };
+    }
+
+    public PrototypeCombatCounters? Counters
+    {
+        get => Mechanics.Counters;
+        init => Mechanics = Mechanics with { Counters = value };
+    }
+
+    public bool IsPlayerTurn
+    {
+        get => Mechanics.IsPlayerTurn;
+        init => Mechanics = Mechanics with { IsPlayerTurn = value };
+    }
+
+    public PrototypeAutomaticPipelineContinuationState?
+        AutomaticPipelineContinuation
+    {
+        get => Mechanics.AutomaticPipelineContinuation;
+        init => Mechanics = Mechanics with
+        { AutomaticPipelineContinuation = value };
+    }
+
+    public int Act
+    {
+        get => Mechanics.Act;
+        init => Mechanics = Mechanics with { Act = value };
+    }
+
+    public int Ascension
+    {
+        get => Mechanics.Ascension;
+        init => Mechanics = Mechanics with { Ascension = value };
+    }
+
+    public int ExtraCardRewardsEarned
+    {
+        get => Mechanics.ExtraCardRewardsEarned;
+        init => Mechanics = Mechanics with { ExtraCardRewardsEarned = value };
+    }
+
+    public long[]? ChoicePool
+    {
+        get => Mechanics.ChoicePool;
+        init => Mechanics = Mechanics with { ChoicePool = value };
+    }
+
+    public long[]? PlayPile
+    {
+        get => Mechanics.PlayPile;
+        init => Mechanics = Mechanics with { PlayPile = value };
+    }
+
+    public PrototypeToricShield[]? ToricShields
+    {
+        get => Mechanics.ToricShields;
+        init => Mechanics = Mechanics with { ToricShields = value };
+    }
+
+    public long[]? TransformedPersistentCardIds
+    {
+        get => Mechanics.TransformedPersistentCardIds;
+        init => Mechanics = Mechanics with
+        { TransformedPersistentCardIds = value };
+    }
+
+    public bool BoundCardPlayedThisTurn
+    {
+        get => Mechanics.BoundCardPlayedThisTurn;
+        init => Mechanics = Mechanics with
+        { BoundCardPlayedThisTurn = value };
+    }
+
+    public PrototypeKnowledgeDemonChoiceState?
+        PendingKnowledgeDemonChoice
+    {
+        get => Mechanics.PendingKnowledgeDemonChoice;
+        init => Mechanics = Mechanics with
+        { PendingKnowledgeDemonChoice = value };
+    }
+
+    public int KnowledgeDemonChoiceResolvedTurn
+    {
+        get => Mechanics.KnowledgeDemonChoiceResolvedTurn;
+        init => Mechanics = Mechanics with
+        { KnowledgeDemonChoiceResolvedTurn = value };
+    }
+
+    public PrototypeAutoPlayTargetRoll[]? AutoPlayTargetRolls
+    {
+        get => Mechanics.AutoPlayTargetRolls;
+        init => Mechanics = Mechanics with { AutoPlayTargetRolls = value };
+    }
+
+    public bool PaelsEyeExtraTurnPending
+    {
+        get => Mechanics.PaelsEyeExtraTurnPending;
+        init => Mechanics = Mechanics with
+        { PaelsEyeExtraTurnPending = value };
+    }
+
+    public PrototypeCombatPetState[]? Pets
+    {
+        get => Mechanics.Pets;
+        init => Mechanics = Mechanics with { Pets = value };
+    }
+
+    [System.Text.Json.Serialization.JsonIgnore(Condition =
+        System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? CurrentMapNodeId
+    {
+        get => Mechanics.CurrentMapNodeId;
+        init => Mechanics = Mechanics with { CurrentMapNodeId = value };
+    }
+
+    public int PotionExtraTurnsPending
+    {
+        get => Mechanics.PotionExtraTurnsPending;
+        init => Mechanics = Mechanics with
+        { PotionExtraTurnsPending = value };
+    }
+
+    public bool IsPlayerSideActive
+    {
+        get => Mechanics.IsPlayerSideActive;
+        init => Mechanics = Mechanics with { IsPlayerSideActive = value };
+    }
 
     [System.Text.Json.Serialization.JsonIgnore(Condition =
         System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
