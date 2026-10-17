@@ -23,8 +23,10 @@ public sealed record ReferenceNatureNativeEventGoldSessionV111(
 {
     public const string CurrentSchemaId =
         "sts2-v111-reference-nature-native-event-gold-session-v1";
-    private const string GoldSiteId =
+    private const string GoldUnitFloatSiteId =
         ChanceLawEngineV111.NativeEventGoldUnitFloatSiteId;
+    private const string GoldIndexSiteId =
+        ChanceLawEngineV111.NativeEventGoldIndexSiteId;
 
     [JsonIgnore]
     public string Fingerprint => CanonicalJson.Sha256(this);
@@ -52,7 +54,8 @@ public sealed record ReferenceNatureNativeEventGoldSessionV111(
         }
     }
 
-    public static string[] SessionSiteIds => [GoldSiteId];
+    public static string[] SessionSiteIds =>
+        [GoldUnitFloatSiteId, GoldIndexSiteId];
 
     public static ReferenceNatureNativeEventGoldSessionV111 Begin(
         RunState source, string actionId, ulong natureSeed) => Begin(
@@ -141,8 +144,7 @@ public sealed record ReferenceNatureNativeEventGoldSessionV111(
     public void Validate()
     {
         if (SchemaId != CurrentSchemaId ||
-            EventId is not (PrototypeNativeHiveEvents.LostWispId or
-                "proto.native.event.jungle_maze_adventure") ||
+            !IsSupportedEventId(EventId) ||
             string.IsNullOrWhiteSpace(ActionId) || Origin is null || Run is null ||
             InitialNatureState is null || NatureState is null ||
             DecisionTranscript is null ||
@@ -302,48 +304,73 @@ public sealed record ReferenceNatureNativeEventGoldSessionV111(
         ControlledStochasticRequestV111 request)
     {
         request.Validate();
-        if (request.UnitFloatRequest is not { } floatRequest ||
-            floatRequest.SiteId != GoldSiteId)
+        var (siteId, ordinal, ownerId, streamId) = request switch
+        {
+            { UnitFloatRequest: { } floatRequest, IndexRequest: null } =>
+                (floatRequest.SiteId, floatRequest.Ordinal,
+                    floatRequest.OwnerId, floatRequest.StreamId),
+            { IndexRequest: { } indexRequest, UnitFloatRequest: null } =>
+                (indexRequest.SiteId, indexRequest.Ordinal,
+                    indexRequest.OwnerId, indexRequest.StreamId),
+            _ => throw new InvalidDataException(
+                "Native event gold request has an invalid typed outcome.")
+        };
+        if (siteId is not (GoldUnitFloatSiteId or GoldIndexSiteId))
             throw new NotSupportedException(
-                $"Native event gold replay reached unsupported site '{request.SiteId}'.");
-        var law = ChanceLawEngineV111.QueryNativeEventGoldUnitFloat(
-            origin, floatRequest.SiteId, floatRequest.Ordinal,
-            actionId, eventId);
-        var expectedStream = eventId == PrototypeNativeHiveEvents.LostWispId
-            ? PrototypeNativeHiveEvents.LostWispNativeRngEventId
-            : "JUNGLE_MAZE_ADVENTURE";
-        if (law.SiteId != floatRequest.SiteId ||
-            law.OwnerId != floatRequest.OwnerId ||
-            law.Ordinal != floatRequest.Ordinal ||
-            floatRequest.StreamId !=
-                NativeRngV111Contexts.EventStreamId(expectedStream))
+                $"Native event gold replay reached unsupported site '{siteId}'.");
+        var law = siteId == GoldUnitFloatSiteId
+            ? ChanceLawEngineV111.QueryNativeEventGoldUnitFloat(
+                origin, siteId, ordinal, actionId, eventId)
+            : ChanceLawEngineV111.QueryNativeEventGoldIndex(
+                origin, siteId, ordinal, actionId, eventId);
+        var expectedStream = NativeRngV111Contexts.EventStreamId(
+            NativeEventEntry(eventId));
+        if (law.SiteId != siteId || law.OwnerId != ownerId ||
+            law.Ordinal != ordinal || streamId != expectedStream)
             throw new InvalidDataException(
                 "Native event gold request differs from its source Chance Law.");
         return law;
     }
 
+    private static string NativeEventEntry(string eventId) => eventId switch
+    {
+        PrototypeNativeDenseVegetation.EventId => "DENSE_VEGETATION",
+        "proto.native.event.whispering_hollow" => "WHISPERING_HOLLOW",
+        "proto.native.event.sunken_statue" or
+            "proto.native.underdocks.sunken_statue" => "SUNKEN_STATUE",
+        "proto.native.event.luminous_choir" => "LUMINOUS_CHOIR",
+        "proto.native.underdocks.sunken_treasury" => "SUNKEN_TREASURY",
+        PrototypeNativePunchOff.EventId =>
+            PrototypeNativePunchOff.NativeRngEventId,
+        PrototypeNativeSharedEvents.ThisOrThatId =>
+            PrototypeNativeSharedEvents.ThisOrThatNativeRngEventId,
+        PrototypeNativeHiveEvents.LostWispId =>
+            PrototypeNativeHiveEvents.LostWispNativeRngEventId,
+        "proto.native.event.jungle_maze_adventure" =>
+            "JUNGLE_MAZE_ADVENTURE",
+        _ => throw new NotSupportedException(
+            $"Native event gold session does not support '{eventId}'.")
+    };
+
     private static string ParseSupportedEventId(
         ControlledStochasticRequestV111 request)
     {
         request.Validate();
-        if (request.UnitFloatRequest is not { } floatRequest ||
-            floatRequest.SiteId != GoldSiteId)
+        if (request.SiteId is not (GoldUnitFloatSiteId or GoldIndexSiteId))
             throw new NotSupportedException(
-                "Configured Event entry did not request Native generated gold.");
+                "Configured Event entry did not request a supported Native gold draw.");
         const string prefix = "event:";
         const string marker = ":gold:";
-        if (!floatRequest.OwnerId.StartsWith(prefix, StringComparison.Ordinal))
+        if (!request.OwnerId.StartsWith(prefix, StringComparison.Ordinal))
             throw new InvalidDataException(
                 "Native event gold owner is malformed.");
-        var markerIndex = floatRequest.OwnerId.IndexOf(
+        var markerIndex = request.OwnerId.IndexOf(
             marker, prefix.Length, StringComparison.Ordinal);
         if (markerIndex < 0)
             throw new InvalidDataException(
                 "Native event gold owner is malformed.");
-        var eventId = floatRequest.OwnerId[prefix.Length..
-            markerIndex];
-        if (eventId is not (PrototypeNativeHiveEvents.LostWispId or
-            "proto.native.event.jungle_maze_adventure"))
+        var eventId = request.OwnerId[prefix.Length..markerIndex];
+        if (!IsSupportedEventId(eventId))
             throw new NotSupportedException(
                 $"Native event gold session does not support '{eventId}'.");
         return eventId;
@@ -351,10 +378,23 @@ public sealed record ReferenceNatureNativeEventGoldSessionV111(
 
     private static int DecisionCount(string eventId) => eventId switch
     {
-        PrototypeNativeHiveEvents.LostWispId => 1,
-        "proto.native.event.jungle_maze_adventure" => 2,
+        "proto.native.event.jungle_maze_adventure" or
+            "proto.native.underdocks.sunken_treasury" => 2,
+        _ when IsSupportedEventId(eventId) => 1,
         _ => throw new ArgumentOutOfRangeException(nameof(eventId))
     };
+
+    private static bool IsSupportedEventId(string eventId) => eventId is
+        PrototypeNativeDenseVegetation.EventId or
+        "proto.native.event.whispering_hollow" or
+        "proto.native.event.sunken_statue" or
+        "proto.native.underdocks.sunken_statue" or
+        "proto.native.event.luminous_choir" or
+        "proto.native.underdocks.sunken_treasury" or
+        PrototypeNativePunchOff.EventId or
+        PrototypeNativeSharedEvents.ThisOrThatId or
+        PrototypeNativeHiveEvents.LostWispId or
+        "proto.native.event.jungle_maze_adventure";
 
     private static void ValidateOpeningBoundary(
         RunState origin, string actionId)
@@ -396,7 +436,8 @@ public sealed record ReferenceNatureNativeEventGoldSessionV111(
             decisions,
             checkpoint => new PrototypeGameEngine().Step(
                 checkpoint, action with { Payload = action.Payload.Clone() }).State,
-            request => request.UnitFloatRequest?.SiteId == GoldSiteId);
+            request => request.SiteId is
+                GoldUnitFloatSiteId or GoldIndexSiteId);
         if (replay.Run is not { } completed)
             return replay;
         var world = completed.World ?? throw new InvalidDataException(

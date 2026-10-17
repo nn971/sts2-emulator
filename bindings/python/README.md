@@ -72,11 +72,12 @@ publishes `.state` after the full shuffle replays. It supports `fork()`, `save_s
 `release()`. See the
 [native event shuffle contract](../../docs/REFERENCE_NATURE_NATIVE_EVENT_SHUFFLE_D3.md).
 
-For configured Native generated gold on a Jungle Maze Adventure or Lost Wisp
-Event-node entry, call `State.begin_reference_nature_native_event_gold(action_id,
-nature_seed=None)` with the stable legal Event-node action ID. Resolve one float law
-per `resolve_next()`; Jungle Maze uses primary then secondary gold draws, and Lost
-Wisp uses one. The session exposes the playable `.state` after entry commits, plus
+For configured Native generated gold on a supported Event-node entry, call
+`State.begin_reference_nature_native_event_gold(action_id, nature_seed=None)`
+with the stable legal Event-node action ID. Resolve one gold law per
+`resolve_next()`. Sunken Treasury and Jungle Maze use primary then secondary
+draws; the other supported events use one. The session exposes the playable
+`.state` after entry commits, plus
 `status()`, `fork()`, `save_snapshot()`,
 `Session.load_reference_nature_native_event_gold_snapshot()`, and `release()`.
 Event selection and other requests keep their current providers. See the

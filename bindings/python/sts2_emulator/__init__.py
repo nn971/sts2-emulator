@@ -443,9 +443,12 @@ class State:
                 "Emulator does not expose ReferenceNature Native event gold sessions")
         if not isinstance(action_id, str) or not action_id:
             raise ValueError("action_id must be a nonempty string")
-        site_id = "event.generated_gold.unit_float"
-        if not self.session.supports_reference_nature_site(
-                site_id, session="native_event_gold"):
+        site_ids = (
+            "event.generated_gold.unit_float",
+            "event.generated_gold.index_draw")
+        if not all(self.session.supports_reference_nature_site(
+                site_id, session="native_event_gold")
+                for site_id in site_ids):
             raise EmulatorError(
                 "No ReferenceNature Native event gold session is advertised")
         if (nature_seed is not None and

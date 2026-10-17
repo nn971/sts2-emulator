@@ -81,10 +81,10 @@ the same gold value. Lost Wisp and Jungle Maze Adventure likewise expose their t
 unit-float formulas, counting 53-bit `NextDouble`-grid preimages after
 `NextFloat` rounding, source float arithmetic, and integer truncation. These
 declared Native transforms are `SOURCE_VERIFIED` under the uniform-grid input
-model. `ReferenceNatureNativeEventGoldSessionV111` consumes these mappings
-while replaying the configured Event-node action for Jungle Maze Adventure
-and Lost Wisp. It suspends only at the generated-gold float requests; event
-selection and any other requests keep their existing providers. See the
+model. `ReferenceNatureNativeEventGoldSessionV111` consumes the supported index and
+float mappings while replaying configured Event-node entry for the mapped
+source events. It suspends only at those generated-gold requests; event
+selection and other requests keep their existing providers. See the
 [Native event gold session contract](REFERENCE_NATURE_NATIVE_EVENT_GOLD_D3.md).
 This does not establish complete event-pool support, Native event seed
 frequencies, stream attribution, or cursor parity. Legacy integer fallbacks
