@@ -1350,6 +1350,47 @@ class Session:
                 and coverage.get("queryOperation") == "chance_law_query"
                 and site_id in coverage.get("siteIds", []))
 
+    def observe_nature_choice(self, session_kind: str,
+                              session_handle: str) -> dict:
+        """Return the negotiated Nature-only view of one pending chance.
+
+        The generic endpoint accepts session handles from semantic combat,
+        ReferenceNature boundaries, and controlled run/event continuations.
+        It is separate from the fair player observation.
+        """
+        schema_id = self.capabilities.get(
+            "semanticNatureChoiceViewSchemaId")
+        operations = self.capabilities.get(
+            "semanticNatureChoiceViewOperations", [])
+        session_kinds = self.capabilities.get(
+            "semanticNatureChoiceViewSessionKinds", [])
+        if (schema_id != "sts2-v111-semantic-nature-choice-view-v1"
+                or not isinstance(operations, list)
+                or "nature_choice_observe" not in operations):
+            raise EmulatorError(
+                "Emulator does not expose the versioned Nature-choice view")
+        if not isinstance(session_kind, str) or not session_kind:
+            raise ValueError("session_kind must be a nonempty string")
+        if (not isinstance(session_kinds, list)
+                or session_kind not in session_kinds):
+            raise EmulatorError(
+                f"Emulator does not advertise Nature-choice session kind "
+                f"{session_kind!r}")
+        if not isinstance(session_handle, str) or not session_handle:
+            raise ValueError("session_handle must be a nonempty string")
+
+        result = self.call(
+            "nature_choice_observe", session_kind=session_kind,
+            session_handle=session_handle)
+        if (result.get("schemaId") != schema_id
+                or result.get("sessionKind") != session_kind
+                or result.get("sessionHandle") != session_handle
+                or (result.get("natureChoice") is not None
+                    and not isinstance(result.get("natureChoice"), dict))):
+            raise EmulatorError(
+                "Nature-choice response differs from the negotiated session")
+        return result
+
     def call(self, operation, **payload):
         with self._lock:
             if self._closed:

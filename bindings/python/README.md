@@ -50,5 +50,11 @@ semantic peek or scry can be resolved by physical card identity with
 `SemanticCombat.resolve_deck_reveal()`; its source gameplay callsites are not
 integrated yet.
 
+`Session.observe_nature_choice(session_kind, session_handle)` checks the
+advertised Nature-choice view schema and session kinds before calling the
+shared `nature_choice_observe` endpoint. It returns the versioned Nature-only
+payload and verifies that the response matches the requested session. Use
+`State.observe()` separately for the fair player view.
+
 All mechanics remain in C#. Search, learning and strategy belong in the parent
 AI repository. See [the versioned contract](../../docs/V111_INTERFACE.md).

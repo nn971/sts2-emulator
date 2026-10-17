@@ -99,6 +99,12 @@ Deck-reveal choices have their own `semanticDeckRevealChoiceSchemaId` and resolv
 deck kernel and resolver support pending peek/scry state; source gameplay callsites that create
 those requests remain outside the current playable mechanics coverage.
 
+The shared `nature_choice_observe` operation projects pending Chance Laws for the session kinds
+advertised by `semanticNatureChoiceViewSessionKinds`. The Python binding's
+`Session.observe_nature_choice(session_kind, session_handle)` negotiates that schema and kind
+against `hello`, then checks the response identity. It remains separate from `State.observe()` and
+the fair player observation.
+
 The opt-in `semantic_reference_*` JSONL operations wrap the semantic combat state and the
 ReferenceNature sampler cursor in one forkable/savable session. Begin with a `semantic_handle` and
 an unsigned 64-bit `nature_seed` for a run that has no committed cursor; omit `nature_seed` to
