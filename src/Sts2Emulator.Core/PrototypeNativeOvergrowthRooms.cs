@@ -11,7 +11,7 @@ public sealed partial class PrototypeGameEngine
     // configured Hive and Glory. Its encounter/event RNG distributions
     // still need native oracle comparison, so legacy and isolated
     // later-act fixtures are kept on their historical code paths.
-    private static bool UsesNativeRegionalSystems(RunWorldState world) =>
+    internal static bool UsesNativeRegionalSystems(RunWorldState world) =>
         UsesNativeActOneSystems(world)
         || (world.RulesetId == V111Build.RulesetId
             && world.Act is 2 or 3
