@@ -203,7 +203,7 @@ public static class SemanticDrawPileAdapterV111
         ArgumentNullException.ThrowIfNull(initializedCardZones);
         var semantic = SynchronizeSemanticDrawPileAfterMutation(
             combat, initializedCardZones.DrawPile);
-        return ApplyCommittedZoneTransition(
+        return CommitZoneTransition(
             combat, initializedCardZones, semantic);
     }
 
@@ -386,22 +386,25 @@ public static class SemanticDrawPileAdapterV111
                 semantic = SemanticDeckEngineV111.InsertKnown(
                     semantic, topOffset, cardInstanceId, publiclyKnown);
         }
-        return ApplyCommittedZoneTransition(combat, zones, semantic);
+        return CommitZoneTransition(combat, zones, semantic);
     }
 
     /// <summary>
     /// Commits removal of known physical identities from DrawPile together
-    /// with any destination-zone changes, while applying the same removal to
-    /// the active provider's hidden-order constraints.
+    /// with destination-zone changes, while applying the same removal to the
+    /// active provider's hidden-order constraints. Identities must move to
+    /// another zone unless explicitly declared removed from combat.
     /// </summary>
     public static CombatState ApplyDrawPileRemoval(
         CombatState combat,
         IReadOnlyCollection<long> removedCardInstanceIds,
-        CombatCardZonesV111 nextCardZones)
+        CombatCardZonesV111 nextCardZones,
+        IReadOnlyCollection<long>? removedFromCombatInstanceIds = null)
     {
         ArgumentNullException.ThrowIfNull(combat);
         ArgumentNullException.ThrowIfNull(removedCardInstanceIds);
         ArgumentNullException.ThrowIfNull(nextCardZones);
+        removedFromCombatInstanceIds ??= Array.Empty<long>();
         var removed = removedCardInstanceIds.ToArray();
         if (removed.Distinct().Count() != removed.Length ||
             removed.Any(id => !combat.DrawPile.Contains(id)))
@@ -413,12 +416,23 @@ public static class SemanticDrawPileAdapterV111
         if (!nextCardZones.DrawPile.SequenceEqual(expectedDrawPile))
             throw new InvalidDataException(
                 "Draw-pile removal does not preserve the remaining physical order.");
+        var currentIds = CardZoneIdentitySet(combat.Mechanics.CardZones);
+        var nextIds = CardZoneIdentitySet(nextCardZones);
+        var removedFromCombat = removedFromCombatInstanceIds.ToArray();
+        if (removedFromCombat.Distinct().Count() != removedFromCombat.Length ||
+            removedFromCombat.Any(id => !removedSet.Contains(id)))
+            throw new InvalidDataException(
+                "Draw-pile removal has an invalid declared combat identity removal.");
+        var expectedIds = currentIds.Except(removedFromCombat).ToHashSet();
+        if (!expectedIds.SetEquals(nextIds))
+            throw new InvalidDataException(
+                "Draw-pile removal transition changed undeclared card identities.");
         if (removed.Length == 0)
             return ApplyZoneTransition(combat, nextCardZones);
 
         var semantic = SynchronizeSemanticDrawPileAfterRemoval(
             combat, removed);
-        return ApplyCommittedZoneTransition(
+        return CommitZoneTransition(
             combat, nextCardZones, semantic);
     }
 
@@ -456,10 +470,19 @@ public static class SemanticDrawPileAdapterV111
             throw new InvalidDataException(
                 "Draw-pile replacement duplicates its new identity in another zone.");
 
+        var currentIds = CardZoneIdentitySet(combat.Mechanics.CardZones);
+        var nextIds = CardZoneIdentitySet(nextCardZones);
+        var expectedIds = currentIds.ToHashSet();
+        if (!expectedIds.Remove(replacedCardInstanceId) ||
+            !expectedIds.Add(replacementCardInstanceId) ||
+            !expectedIds.SetEquals(nextIds))
+            throw new InvalidDataException(
+                "Draw-pile replacement changed undeclared card identities.");
+
         var semantic = ReplaceSemanticDrawPileInstance(
             combat, replacedCardInstanceId, replacementCardInstanceId,
             physicalIndex);
-        return ApplyCommittedZoneTransition(
+        return CommitZoneTransition(
             combat, nextCardZones, semantic);
     }
 
@@ -531,8 +554,10 @@ public static class SemanticDrawPileAdapterV111
     }
 
     /// <summary>
-    /// Publishes a complete zone transition whose provider-side draw-pile
-    /// operation has already been committed by a typed operation.
+    /// Publishes a complete identity-preserving zone transition whose
+    /// provider-side draw-pile operation has already been committed by a
+    /// typed operation. Identity additions, removals, and replacements use
+    /// their dedicated typed methods.
     /// </summary>
     public static CombatState ApplyCommittedZoneTransition(
         CombatState combat,
@@ -545,6 +570,10 @@ public static class SemanticDrawPileAdapterV111
             committedSemanticDeck is null)
             throw new InvalidDataException(
                 "A card-zone mutation cannot drop its provider state.");
+        if (!CardZoneIdentitySet(combat.Mechanics.CardZones)
+            .SetEquals(CardZoneIdentitySet(nextCardZones)))
+            throw new InvalidDataException(
+                "Committed zone transition must preserve every physical card identity.");
         return CommitZoneTransition(
             combat, nextCardZones, committedSemanticDeck);
     }

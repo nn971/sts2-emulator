@@ -4253,7 +4253,9 @@ public sealed partial class PrototypeGameEngine
                             combat = (chosenFromDraw
                                 ? SemanticDrawPileAdapterV111
                                     .ApplyDrawPileRemoval(
-                                        combat, [chosen.InstanceId], nextZones)
+                                        combat, [chosen.InstanceId], nextZones,
+                                        removedFromCombatInstanceIds:
+                                            [chosen.InstanceId])
                                 : SemanticDrawPileAdapterV111
                                     .ApplyZoneIdentityDelta(
                                         combat, nextZones, [],
@@ -14847,7 +14849,10 @@ public sealed partial class PrototypeGameEngine
                 .Where(cardId => !selectionZones.DrawPile.Contains(cardId))
                 .ToArray();
             combat = SemanticDrawPileAdapterV111.ApplyDrawPileRemoval(
-                combat, removed, selectionZones);
+                combat, removed, selectionZones,
+                removedFromCombatInstanceIds:
+                    selection.RemoveUnselectedFromSource
+                        ? unselected : []);
         }
         else if (destinationZone == PrototypeCardZone.DrawPile &&
                  selected.Length > 0)
