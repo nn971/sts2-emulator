@@ -8202,15 +8202,16 @@ public sealed partial class PrototypeGameEngine
                         var cardId = draw[^1];
                         if (semanticDeck is not null)
                         {
-                            if (semanticDeck.Mode ==
-                                    SemanticDeckStateV111.NatureMode &&
-                                semanticDeck.Slots[0].KnownCardInstanceId is null)
+                            var resolvedTop =
+                                SemanticDrawPileAdapterV111.ResolveTopCard(
+                                    semanticDeck, draw);
+                            semanticDeck = resolvedTop.Deck;
+                            if (resolvedTop.IsPending)
                             {
-                                semanticDeck = SemanticDeckEngineV111.Require(
-                                    semanticDeck, 0, "draw");
-                                if (semanticDeck.Pending is null)
+                                if (semanticDeck.Mode !=
+                                    SemanticDeckStateV111.NatureMode)
                                     throw new InvalidDataException(
-                                        "Unknown Nature top card did not create a semantic draw event.");
+                                        "Only a Nature top-card reveal may suspend autoplay.");
                                 combat = SemanticDrawPileAdapterV111
                                     .ApplyCommittedPhysicalMutation(
                                         combat, draw.ToArray(), semanticDeck) with
@@ -8253,25 +8254,8 @@ public sealed partial class PrototypeGameEngine
                                         DrawnCardKeyword: null),
                                     continuation));
                             }
-                            if (!SemanticDeckEngineV111.AllCardInstanceIds(
-                                    semanticDeck).Order()
-                                .SequenceEqual(draw.Order()))
-                                throw new InvalidDataException(
-                                    "Semantic deck membership diverged before top-draw autoplay.");
-                            if (semanticDeck.Mode ==
-                                SemanticDeckStateV111.NativeMode &&
-                                !semanticDeck.Slots.Select(slot =>
-                                        slot.KnownCardInstanceId!.Value)
-                                    .SequenceEqual(draw.AsEnumerable().Reverse()))
-                                throw new InvalidDataException(
-                                    "Native semantic order diverged before top-draw autoplay.");
-                            (semanticDeck, var semanticCardId) =
-                                SemanticDeckEngineV111.DrawKnown(semanticDeck);
-                            if (semanticDeck.Mode ==
-                                    SemanticDeckStateV111.NativeMode &&
-                                semanticCardId != cardId)
-                                throw new InvalidDataException(
-                                    "Native semantic draw disagrees with the physical top card.");
+                            var semanticCardId =
+                                resolvedTop.CardInstanceId!.Value;
                             if (semanticDeck.Mode ==
                                 SemanticDeckStateV111.NatureMode)
                             {
@@ -16320,19 +16304,16 @@ public sealed partial class PrototypeGameEngine
                     throw new NotSupportedException(
                         "UNSUPPORTED_SEMANTIC_NATIVE site=combat.draw " +
                         "operation=missing_native_stream_owner");
-                var members = SemanticDeckEngineV111.AllCardInstanceIds(semantic);
-                if (!members.Order().SequenceEqual(draw.Order()))
-                    throw new InvalidDataException(
-                        "Semantic draw-pile state diverged from physical instances.");
-                semantic = SemanticDeckEngineV111.Require(semantic, 0, "draw");
-                if (semantic.Pending is not null)
+                var resolvedTop = SemanticDrawPileAdapterV111
+                    .ResolveTopCard(semantic, draw);
+                semantic = resolvedTop.Deck;
+                if (resolvedTop.IsPending)
                     return new PrototypeDrawCardsResult(
                         player, combat with { SemanticDeck = semantic },
                         drawnCardInstanceIds.ToArray(),
                         RemainingCount: count - drawNumber,
                         ControlledSemanticDrawPending: true);
-                (semantic, cardInstanceId) =
-                    SemanticDeckEngineV111.DrawKnown(semantic);
+                cardInstanceId = resolvedTop.CardInstanceId!.Value;
                 if (!draw.Remove(cardInstanceId))
                     throw new InvalidDataException(
                         "Revealed card instance is absent from the draw pile.");

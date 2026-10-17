@@ -1,5 +1,11 @@
 namespace Sts2Emulator.Core;
 
+internal readonly record struct SemanticDrawPileTopCardV111(
+    SemanticDeckStateV111 Deck, long? CardInstanceId)
+{
+    public bool IsPending => CardInstanceId is null;
+}
+
 /// <summary>
 /// Keeps the engine-owned draw-pile membership and provider-owned hidden
 /// order constraints synchronized at one mutation boundary. Physical zone
@@ -16,23 +22,59 @@ public static class SemanticDrawPileAdapterV111
     public static void ValidateSynchronized(CombatState combat, bool requireIdle = false)
     {
         ArgumentNullException.ThrowIfNull(combat);
-        if (combat.DrawPile.Distinct().Count() != combat.DrawPile.Length)
+        ValidateProviderCorrespondence(combat.SemanticDeck, combat.DrawPile);
+        if (requireIdle && combat.SemanticDeck?.Pending is not null)
+            throw new InvalidDataException(
+                "Cannot mutate a draw pile with a pending semantic reveal.");
+    }
+
+    /// <summary>
+    /// Resolves the current top card from the shared provider/physical-pile
+    /// contract. A Nature-owned unknown position returns its pending reveal;
+    /// a known position is consumed from the provider state and returned by
+    /// stable physical identity. The caller still runs its own draw hooks.
+    /// </summary>
+    internal static SemanticDrawPileTopCardV111 ResolveTopCard(
+        SemanticDeckStateV111 semantic, IReadOnlyList<long> physicalDrawPile)
+    {
+        ArgumentNullException.ThrowIfNull(semantic);
+        ArgumentNullException.ThrowIfNull(physicalDrawPile);
+        ValidateProviderCorrespondence(semantic, physicalDrawPile);
+        if (physicalDrawPile.Count == 0)
+            throw new InvalidOperationException(
+                "Cannot resolve the top of an empty semantic draw pile.");
+
+        var required = SemanticDeckEngineV111.Require(semantic, 0, "draw");
+        if (required.Pending is not null)
+            return new SemanticDrawPileTopCardV111(required, null);
+
+        var (consumed, cardInstanceId) =
+            SemanticDeckEngineV111.DrawKnown(required);
+        if (semantic.Mode == SemanticDeckStateV111.NativeMode &&
+            cardInstanceId != physicalDrawPile[^1])
+            throw new InvalidDataException(
+                "Native semantic draw disagrees with the physical top card.");
+        return new SemanticDrawPileTopCardV111(consumed, cardInstanceId);
+    }
+
+    private static void ValidateProviderCorrespondence(
+        SemanticDeckStateV111? semantic,
+        IReadOnlyList<long> physicalDrawPile)
+    {
+        if (physicalDrawPile.Distinct().Count() != physicalDrawPile.Count)
             throw new InvalidDataException(
                 "Physical draw pile contains duplicate card instances.");
-        if (combat.SemanticDeck is not { } semantic) return;
+        if (semantic is null) return;
         SemanticDeckEngineV111.Validate(semantic);
         if (!SemanticDeckEngineV111.AllCardInstanceIds(semantic)
-                .Order().SequenceEqual(combat.DrawPile.Order()))
+                .Order().SequenceEqual(physicalDrawPile.Order()))
             throw new InvalidDataException(
                 "Semantic deck membership differs from the combat draw pile.");
         if (semantic.Mode == SemanticDeckStateV111.NativeMode &&
             !semantic.Slots.Select(slot => slot.KnownCardInstanceId!.Value)
-                .SequenceEqual(combat.DrawPile.Reverse()))
+                .SequenceEqual(physicalDrawPile.Reverse()))
             throw new InvalidDataException(
                 "Native semantic deck order differs from the physical draw pile.");
-        if (requireIdle && semantic.Pending is not null)
-            throw new InvalidDataException(
-                "Cannot mutate a draw pile with a pending semantic reveal.");
     }
 
     /// <summary>
