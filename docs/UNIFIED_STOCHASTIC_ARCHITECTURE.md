@@ -54,9 +54,11 @@ providers remain the default, while an enclosing controller scope can replace
 them. Legacy typed index choices and `NativeEventContextRngV111` index and
 unit-float choices also use this provider scope, retaining their existing
 providers as the default fallback. Scope installation remains limited to the
-controlled replay executor and configured Shop entry; routing every ordinary
-engine action through a shared provider scope and proving cross-provider
-mechanical equivalence remain open. `ReferenceNatureMerchantSessionV111` and
+controlled replay executor, configured Shop entry, and Native-policy player
+actions; the Native-policy boundary preserves explicit providers while tracking
+the stream ordinals used by scoped requests. Routing every ordinary engine
+action through a shared provider scope and proving cross-provider mechanical
+equivalence remain open. `ReferenceNatureMerchantSessionV111` and
 `ReferenceNatureTreasureSessionV111` own serialized continuations and use the
 shared law-to-source mapping. Their opening projections sort the existing
 relic bag queues so Native's committed hidden queue order is not retained in

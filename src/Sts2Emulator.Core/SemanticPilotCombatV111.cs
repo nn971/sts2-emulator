@@ -2426,6 +2426,10 @@ public static class SemanticPilotCombatEngineV111
         using (ControlledChanceGuardV111.Enter())
         using (ControlledChanceGuardV111.AllowEngineOwnedNativeProvider())
         using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
+        using (StochasticProviderScopeV111.Enter(
+            new NativeRandomIndexProviderV111(),
+            new NativeRandomUnitFloatProviderV111(),
+            overrideExplicitProviders: false))
             result = environment.Step(current.Run.Fork(), actionId).State;
 
         var audit = current.NativePolicyAudit ??
