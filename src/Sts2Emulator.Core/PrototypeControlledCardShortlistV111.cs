@@ -364,9 +364,6 @@ public sealed partial class PrototypeGameEngine
             World = world with { Combat = resumed.Combat }
         };
         updated = ResumeAutomaticPipelineAfterChoiceResolution(updated);
-        if (updated.Phase == RunPhase.Combat &&
-            updated.World?.Combat is { } live && AllEnemiesDefeated(live))
-            return EnterCombatReward(updated);
         return updated;
     }
 }

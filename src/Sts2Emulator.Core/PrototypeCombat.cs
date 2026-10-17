@@ -1691,32 +1691,37 @@ public sealed partial class PrototypeGameEngine
 
     /// <summary>
     /// Resume a saved automatic pipeline once a controlled choice has
-    /// completed. Choice adapters share this handoff so clearing the cursor
-    /// and selecting its opening or ordinary resume path stay consistent.
+    /// completed, then settle its terminal combat reward boundary. Choice
+    /// adapters share this handoff so cursor clearing and reward timing stay
+    /// consistent.
     /// </summary>
     internal static RunState ResumeAutomaticPipelineAfterChoiceResolution(
         RunState state)
     {
-        if (state.World?.Combat is not
-                { PendingChoice: null,
-                  AutomaticPipelineContinuation: { } continuation } combat)
-            return state;
-
-        var world = RequireWorld(state);
-        state = state with
+        if (state.World?.Combat is
+            { PendingChoice: null,
+              AutomaticPipelineContinuation: { } continuation } combat)
         {
-            World = world with
+            var world = RequireWorld(state);
+            state = state with
             {
-                Combat = combat with
+                World = world with
                 {
-                    AutomaticPipelineContinuation = null
+                    Combat = combat with
+                    {
+                        AutomaticPipelineContinuation = null
+                    }
                 }
-            }
-        };
-        return continuation.OpeningStage is { } openingStage
-            ? ResumeOpeningCombat(state, openingStage)
-            : ResumeAutomaticPipeline(state, continuation.NextStepIndex,
-                continuation.PendingPostDispatchEventKind);
+            };
+            state = continuation.OpeningStage is { } openingStage
+                ? ResumeOpeningCombat(state, openingStage)
+                : ResumeAutomaticPipeline(state, continuation.NextStepIndex,
+                    continuation.PendingPostDispatchEventKind);
+        }
+        return state.Phase == RunPhase.Combat &&
+            state.World?.Combat is { } live && AllEnemiesDefeated(live)
+                ? EnterCombatReward(state)
+                : state;
     }
 
     /// <summary>
@@ -14279,10 +14284,6 @@ public sealed partial class PrototypeGameEngine
             World = world with { Combat = resolved.Combat }
         };
         result = ResumeAutomaticPipelineAfterChoiceResolution(result);
-        if (result.Phase == RunPhase.Combat &&
-            result.World?.Combat is { } live &&
-            AllEnemiesDefeated(live))
-            return EnterCombatReward(result);
         return result;
     }
 
