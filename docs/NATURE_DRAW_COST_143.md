@@ -45,7 +45,10 @@ continuations have not yet been migrated. Randomness inside nested
 `CardDrawn` choice hooks still requires an additional continuation stage.
 Tests use explicit Snecko/Slither fixture modifications; the mutable fixture
 cannot claim native reward provenance or a normal origin-restorable snapshot.
-All reference chance laws remain `UNVERIFIED`.
+The Chance Law reports exact Native `NextInt` grid masses and
+`SOURCE_VERIFIED` for the bounded-cost transform on its declared support.
+Native stream assignment, seed frequencies, cursor parity, and fixture
+provenance remain separate.
 
 Next work should implement the new semantic provider-owned deck protocol,
 then align mid-action card draws and nested `CardDrawn` hooks with that

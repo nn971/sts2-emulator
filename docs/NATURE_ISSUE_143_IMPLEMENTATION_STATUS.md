@@ -116,7 +116,9 @@ applied effects, parent card/choice/event continuation and remaining queued
 operations are preserved. An all-hand reroll visits eligible card instances
 once in their original hand order. Every outstanding ticket is source-validated;
 Nature sees only explicit `choose_index` or `bounded_integer` support,
-with `UNVERIFIED` source probability status.
+and Chance Law queries now report exact Native `NextInt` masses as
+`SOURCE_VERIFIED` for the bounded-cost transform. Card-selection law,
+source-pool completeness, stream attribution, and cursor parity remain open.
 
 Coverage is established with narrow actual-operation fixtures, including
 invalid cursor/support rejection, independent forks and schedule-independent

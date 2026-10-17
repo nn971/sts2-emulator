@@ -487,7 +487,9 @@ opening hand. It publishes one `random_hand_card_cost` event per eligible
 card, in original hand order, with that card's instance/model ID and bounded
 cost values. `SemanticCombat.resolve_cost(cost)` resumes each saved stage;
 the original operation continues after the final card. The provider's draw-pile
-constraints are unchanged. Its law and fixture provenance remain `UNVERIFIED`.
+constraints are unchanged. The bounded-cost transform has exact Native
+`NextInt` grid masses marked `SOURCE_VERIFIED`; fixture provenance, stream
+attribution, and cursor parity remain `UNVERIFIED`.
 
 `fixture_set_random_hand_card_cost=0` opts into the source
 `SetRandomHandCardEnergyCostUntilTurnEndOrPlayed` continuation for the
@@ -495,8 +497,8 @@ opening hand. Its `random_hand_card_selection` event publishes the ordered
 positive-cost card instance and model IDs, plus the fixed cost applied by the
 source operation. `SemanticCombat.resolve_hand_cost_selection(card_instance_id)`
 resumes the original effect for that card. The fixture is exclusive with the
-all-hand reroll and other pending-choice fixtures; its source law and fixture
-provenance remain `UNVERIFIED`.
+all-hand reroll and other pending-choice fixtures; its card-selection law and
+fixture provenance remain `UNVERIFIED`.
 
 The draw-pile insertion fixture can use
 `fixture_generated_draw_insertion_card_id="proto.silent.strike"` (or another
