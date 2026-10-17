@@ -11,6 +11,18 @@ namespace Sts2Emulator.Core;
 /// </summary>
 public static class NativeRngV111Contexts
 {
+    /// <summary>Recognize the context-stream families constructed by this
+    /// source-pinned helper. Seed inputs and request ownership are separate
+    /// from this namespace check.</summary>
+    public static bool IsContextStreamId(string streamId) =>
+        !string.IsNullOrWhiteSpace(streamId) &&
+        ((streamId is "context.act_1_map" or "context.act_2_map" or
+            "context.act_3_map") ||
+         streamId.StartsWith("context.encounter.", StringComparison.Ordinal) ||
+         streamId.StartsWith("context.monster.", StringComparison.Ordinal) ||
+         streamId.StartsWith("context.event.", StringComparison.Ordinal) ||
+         streamId.StartsWith("context.content.", StringComparison.Ordinal));
+
     /// <summary>
     /// Native StandardActMap.CreateFor constructs
     /// Rng(runSeed, "act_{CurrentActIndex+1}_map").

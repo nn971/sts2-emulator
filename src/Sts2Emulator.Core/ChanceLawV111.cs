@@ -653,7 +653,7 @@ public static partial class ChanceLawEngineV111
     {
         ArgumentNullException.ThrowIfNull(indexEvent);
         indexEvent.Validate();
-        var sourceVerifiedNativeIndex = IsCanonicalNativeIndexStream(
+        var sourceVerifiedNativeIndex = NativeRngV111.IsCanonicalStreamId(
             indexEvent.Request.StreamId);
         var indexWeights = sourceVerifiedNativeIndex
             ? NativeNextIntGridWeights(indexEvent.Request.SupportCount)
@@ -697,7 +697,7 @@ public static partial class ChanceLawEngineV111
         ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
         ArgumentNullException.ThrowIfNull(request);
         request.Validate();
-        var nativeIndexLaw = IsCanonicalNativeIndexStream(
+        var nativeIndexLaw = NativeRngV111.IsCanonicalStreamId(
             request.StreamId);
         var policy = nativeIndexLaw
             ? NativeRandomIndexConditioningPolicyId
@@ -726,21 +726,6 @@ public static partial class ChanceLawEngineV111
                 ? ChanceLawV111.SourceVerifiedStatus
                 : ChanceLawV111.UnverifiedStatus);
     }
-
-    private static bool IsCanonicalNativeIndexStream(string streamId) =>
-        streamId is "run.up_front" or "run.shuffle" or
-            "run.unknown_map_point" or "run.combat_card_generation" or
-            "run.combat_potion_generation" or "run.combat_card_selection" or
-            "run.combat_energy_costs" or "run.combat_targets" or
-            "run.monster_ai" or "run.niche" or "run.combat_orbs" or
-            "run.treasure_room_relics" or "player.rewards" or
-            "player.shops" or "player.transformations" ||
-        (streamId.StartsWith("context.act_", StringComparison.Ordinal) &&
-         streamId.EndsWith("_map", StringComparison.Ordinal)) ||
-        streamId.StartsWith("context.encounter.", StringComparison.Ordinal) ||
-        streamId.StartsWith("context.monster.", StringComparison.Ordinal) ||
-        streamId.StartsWith("context.event.", StringComparison.Ordinal) ||
-        streamId.StartsWith("context.content.", StringComparison.Ordinal);
 
     /// <summary>
     /// Query one pre-event Ancient offer decision. Direct offer pools return

@@ -23,6 +23,18 @@ public static class NativeRngV111
     ];
     private static readonly string[] PlayerNames = ["rewards", "shops", "transformations"];
 
+    /// <summary>Recognize stream IDs produced by the pinned Native run,
+    /// player, and context builders. This describes stream identity only; it
+    /// does not validate seed derivation or request-to-stream attribution.</summary>
+    public static bool IsCanonicalStreamId(string streamId)
+    {
+        if (string.IsNullOrWhiteSpace(streamId))
+            return false;
+        return RunNames.Any(name => streamId == "run." + name) ||
+            PlayerNames.Any(name => streamId == "player." + name) ||
+            NativeRngV111Contexts.IsContextStreamId(streamId);
+    }
+
     public static RngBundle CreateBundle(string seed, int playerSlot = 0)
     {
         if (playerSlot != 0)
