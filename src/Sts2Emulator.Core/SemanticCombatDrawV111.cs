@@ -427,7 +427,8 @@ public sealed record SemanticCombatDrawV111(
                   draw.Amount == this.RemainingCount;
             if (!cursorMatches || this.RemainingCount <= 0 ||
                 selectionEvent.MaximumSelections !=
-                    SemanticCombatDrawEngineV111.ExpectedStratagemSelectionCount(combat))
+                    PrototypeGameEngine.ExpectedSemanticStratagemSelectionCount(
+                        combat))
                 throw new InvalidDataException(
                     "Standalone Stratagem selection cursor is inconsistent.");
         }
@@ -566,7 +567,8 @@ public static class SemanticCombatDrawEngineV111
 
         var decision = SemanticCardSelectionEngineV111.DescribePending(
             run, CanonicalJson.Sha256(run));
-        int expectedSelections = ExpectedStratagemSelectionCount(combat);
+        int expectedSelections =
+            PrototypeGameEngine.ExpectedSemanticStratagemSelectionCount(combat);
         if (decision.MaximumSelections != expectedSelections ||
             decision.MinimumSelections != expectedSelections)
             throw new InvalidDataException(
@@ -580,15 +582,6 @@ public static class SemanticCombatDrawEngineV111
         return PrototypeGameEngine.TryGetStandaloneSemanticDrawOperation(
             choice, out _);
     }
-
-    private static int StratagemPickCount(CombatState combat) =>
-        combat.PlayerPowers.Where(power =>
-                power.PowerId == "proto.power.stratagem")
-            .Sum(power => Math.Max(0, power.Stacks));
-
-    internal static int ExpectedStratagemSelectionCount(CombatState combat) =>
-        Math.Min(StratagemPickCount(combat),
-            Math.Min(combat.DrawPile.Length, Math.Max(0, 10 - combat.Hand.Length)));
 
     public static SemanticCombatDrawV111 Begin(
         RunState source, int cardCount, bool fromHandDraw = true)
