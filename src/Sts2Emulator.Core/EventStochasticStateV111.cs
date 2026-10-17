@@ -219,6 +219,80 @@ public sealed record EventStochasticStateV111(
         return false;
     }
 
+    public bool ValidateNativeDishProgress(EventState owner)
+    {
+        ArgumentNullException.ThrowIfNull(owner);
+        var outcomes = RandomOutcomes;
+        if (owner.EventId == PrototypeNativeEndlessConveyor.EventId)
+        {
+            string[] dishes =
+            [
+                "CAVIAR", "SPICY_SNAPPY", "JELLY_LIVER", "FRIED_EEL",
+                "SUSPICIOUS_CONDIMENT", "CLAM_ROLL", "GOLDEN_FYSH",
+                "SEAPUNK_SALAD"
+            ];
+            if (outcomes.NativeDishCount < 1
+                || !dishes.Contains(
+                    outcomes.NativeDishId, StringComparer.Ordinal)
+                || outcomes.NativeDishId != outcomes.NativeLastDishId
+                || (outcomes.NativeDishCount % 5 == 0
+                    && outcomes.NativeDishId != "SEAPUNK_SALAD")
+                || (outcomes.NativeDishCount % 5 != 0
+                    && outcomes.NativeDishId == "SEAPUNK_SALAD"))
+            {
+                throw new InvalidOperationException(
+                    "Endless Conveyor dish progression is inconsistent.");
+            }
+            return true;
+        }
+
+        if (outcomes.NativeDishId is not null
+            || outcomes.NativeLastDishId is not null
+            || outcomes.NativeDishCount != 0
+            || outcomes.NativeDishRollPending)
+            throw new InvalidOperationException(
+                "Conveyor-specific state leaked into another event.");
+        return false;
+    }
+
+    public bool ValidateRepyChestOutcomes(EventState owner)
+    {
+        ArgumentNullException.ThrowIfNull(owner);
+        var outcomes = RandomOutcomes;
+        if (owner.EventId == PrototypeNativeHiveEvents.WarHistorianRepyId)
+        {
+            if (owner.NativePageIndex == 0
+                    && owner.RepyFirstChoiceId is not null
+                || owner.NativePageIndex > 0
+                    && owner.RepyFirstChoiceId is not
+                        ("unlock_chest" or "unlock_cage")
+                || (outcomes.RepyChestPotionIds is null)
+                    != (outcomes.RepyChestRelicIds is null)
+                || owner.RepyChestGroupsResolved is < 0 or > 1
+                || outcomes.RepyChestPotionIds is null
+                    && owner.RepyChestGroupsResolved != 0
+                || outcomes.RepyChestPotionIds is { } potions
+                    && (potions.Length != 2
+                        || potions.Any(id =>
+                            !PrototypeContent.Potions.ContainsKey(id)))
+                || outcomes.RepyChestRelicIds is { } relics
+                    && (relics.Length != 2
+                        || relics.Distinct(StringComparer.Ordinal).Count() != 2
+                        || relics.Any(id =>
+                            !PrototypeContent.Relics.ContainsKey(id))))
+                throw new InvalidOperationException(
+                    "War Historian Repy has invalid page or chest reward state.");
+            return true;
+        }
+        if (owner.RepyFirstChoiceId is not null
+            || outcomes.RepyChestPotionIds is not null
+            || outcomes.RepyChestRelicIds is not null
+            || owner.RepyChestGroupsResolved != 0)
+            throw new InvalidOperationException(
+                "Repy-specific reward state leaked into another event.");
+        return false;
+    }
+
     public void ValidateControlledChoice(
         EventState owner, RunState run)
     {

@@ -612,51 +612,14 @@ public static class PrototypeStateInvariants
 
         eventState.Stochastic.ValidateNativeGoldRolls(eventState);
 
-        if (eventState.EventId == PrototypeNativeEndlessConveyor.EventId)
+        if (eventState.Stochastic.ValidateNativeDishProgress(eventState))
         {
             ValidateConveyorEvent(player, eventState);
             return;
         }
-        if (eventState.NativeDishId is not null
-            || eventState.NativeLastDishId is not null
-            || eventState.NativeDishCount != 0
-            || eventState.NativeDishRollPending)
-        {
-            throw new InvalidOperationException(
-                "Conveyor-specific state leaked into another event.");
-        }
 
-        if (eventState.EventId == PrototypeNativeHiveEvents.WarHistorianRepyId)
-        {
-            if (eventState.NativePageIndex == 0
-                && eventState.RepyFirstChoiceId is not null
-                || eventState.NativePageIndex > 0
-                    && eventState.RepyFirstChoiceId is not
-                        ("unlock_chest" or "unlock_cage")
-                || (eventState.RepyChestPotionIds is null)
-                    != (eventState.RepyChestRelicIds is null)
-                || eventState.RepyChestGroupsResolved is < 0 or > 1
-                || eventState.RepyChestPotionIds is null
-                    && eventState.RepyChestGroupsResolved != 0
-                || eventState.RepyChestPotionIds is { } potions
-                    && (potions.Length != 2
-                        || potions.Any(id =>
-                            !PrototypeContent.Potions.ContainsKey(id)))
-                || eventState.RepyChestRelicIds is { } relics
-                    && (relics.Length != 2
-                        || relics.Distinct(StringComparer.Ordinal).Count() != 2
-                        || relics.Any(id =>
-                            !PrototypeContent.Relics.ContainsKey(id))))
-                throw new InvalidOperationException(
-                    "War Historian Repy has invalid page or chest reward state.");
+        if (eventState.Stochastic.ValidateRepyChestOutcomes(eventState))
             return;
-        }
-        if (eventState.RepyFirstChoiceId is not null
-            || eventState.RepyChestPotionIds is not null
-            || eventState.RepyChestRelicIds is not null
-            || eventState.RepyChestGroupsResolved != 0)
-            throw new InvalidOperationException(
-                "Repy-specific reward state leaked into another event.");
 
         if (eventState.EventId == "proto.native.underdocks.abyssal_baths")
         {
@@ -1023,26 +986,6 @@ public static class PrototypeStateInvariants
     private static void ValidateConveyorEvent(
         PlayerState player, EventState evt)
     {
-        // Source event pages carry the current, player-visible dish.
-        // Even when a grab is suspended, the new dish has not been rolled.
-        string[] dishes =
-        [
-            "CAVIAR", "SPICY_SNAPPY", "JELLY_LIVER", "FRIED_EEL",
-            "SUSPICIOUS_CONDIMENT", "CLAM_ROLL", "GOLDEN_FYSH",
-            "SEAPUNK_SALAD"
-        ];
-        if (evt.NativeDishCount < 1
-            || !dishes.Contains(evt.NativeDishId, StringComparer.Ordinal)
-            || evt.NativeDishId != evt.NativeLastDishId
-            || (evt.NativeDishCount % 5 == 0
-                && evt.NativeDishId != "SEAPUNK_SALAD")
-            || (evt.NativeDishCount % 5 != 0
-                && evt.NativeDishId == "SEAPUNK_SALAD"))
-        {
-            throw new InvalidOperationException(
-                "Endless Conveyor dish progression is inconsistent.");
-        }
-
         if (evt.NativePageIndex == 0)
         {
             if (evt.NativeDishCount != 1
