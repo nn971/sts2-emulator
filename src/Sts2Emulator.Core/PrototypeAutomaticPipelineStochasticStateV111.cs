@@ -44,6 +44,8 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
             throw new InvalidOperationException(
                 "Controlled recycle Stratagem selection is malformed.");
 
+        ValidateSemanticHandDrawCursor(combat, continuation);
+
         if (ControlledTurnIntents is { } turnIntents)
         {
             turnIntents.Validate();
@@ -97,6 +99,50 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
                 }))
             throw new InvalidOperationException(
                 "Controlled enemy-action checkpoint disagrees with combat state.");
+    }
+
+    private void ValidateSemanticHandDrawCursor(
+        CombatState combat,
+        PrototypeAutomaticPipelineContinuationState continuation)
+    {
+        bool hasCursor = ControlledSemanticDrawRemaining is not null ||
+            ControlledSemanticDrawRequested is not null ||
+            ControlledSemanticBeforeHandDrawPending;
+        if (!hasCursor) return;
+
+        int drawStepIndex = PrototypeGameEngine.SemanticHandDrawStepIndex;
+        if (drawStepIndex < 0 ||
+            continuation.NextStepIndex != drawStepIndex ||
+            continuation.OpeningStage is not null ||
+            continuation.PendingPostDispatchEventKind is not null ||
+            ControlledDrawRemaining is not null ||
+            ControlledDrawCostRemaining is not null ||
+            ControlledEnemyAction is not null ||
+            combat.SemanticDeck is not
+                { Mode: SemanticDeckStateV111.NatureMode } ||
+            combat.PendingKnowledgeDemonChoice is not null)
+            throw new InvalidOperationException(
+                "Semantic hand-draw cursor disagrees with the automatic pipeline.");
+
+        if (ControlledSemanticBeforeHandDrawPending)
+        {
+            bool pendingBeforeDrawChoice =
+                combat.PendingChoice?.ControlledRandomPileCard is not null ||
+                combat.PendingChoice?.AutomaticSemanticDrawHookChoice == true;
+            if (ControlledSemanticDrawRemaining is not null ||
+                ControlledSemanticDrawRequested is not null ||
+                combat.SemanticDeck?.Pending is not null ||
+                !pendingBeforeDrawChoice)
+                throw new InvalidOperationException(
+                    "Semantic BeforeHandDraw cursor has no matching choice.");
+            return;
+        }
+
+        if (ControlledSemanticDrawRemaining is not { } remaining ||
+            remaining < 0 || ControlledSemanticDrawRequested is not > 0 ||
+            !PrototypeGameEngine.IsSemanticAutomaticHandDraw(combat))
+            throw new InvalidOperationException(
+                "Semantic automatic hand-draw counters are malformed.");
     }
 
 }
