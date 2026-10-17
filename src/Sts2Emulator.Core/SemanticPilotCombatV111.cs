@@ -4071,51 +4071,23 @@ public static class SemanticPilotCombatEngineV111
             ? insertion.RequestOrdinal
             : current.History.Count(transition =>
                 transition.Kind == "semantic_draw_insertion");
-        var requestOwnerId = afterShuffleRelicMatches
-            ? insertion.RequestOwnerId + ":card:" + insertion.SelectedCardId +
-                ":draw_pile:" + CanonicalJson.Sha256(pile)
-            : personalHiveInsertion
-                ? insertion.RequestOwnerId + ":card:" +
-                    insertion.SelectedCardId + ":draw_pile:" +
-                    CanonicalJson.Sha256(pile)
+        var pileSuffix = ":card:" + insertion.SelectedCardId +
+            ":draw_pile:" + CanonicalJson.Sha256(pile);
+        var legacyOwnerId = afterShuffleRelicMatches || personalHiveInsertion
+            ? insertion.RequestOwnerId + pileSuffix
             : insertion.RequestOwnerId;
         var nativeStreamAvailable = combat!.NativeRng?.RunStreams is not null;
-        if (nativeStreamAvailable)
-        {
-            var ownerPrefix = afterShuffleRelicMatches || personalHiveInsertion
-                ? insertion.RequestOwnerId
-                : choice!.SourceCardInstanceId is { } sourceCardInstanceId
-                    ? "card_instance:" + sourceCardInstanceId
-                    : "effect:" + insertion.Operation.Kind;
-            requestOwnerId = ownerPrefix + ":card:" + insertion.SelectedCardId +
-                ":draw_pile:" + CanonicalJson.Sha256(pile);
-        }
-        var request = new RandomIndexRequestV111(
-            insertion.RequestSiteId,
-            nativeStreamAvailable ? "run.shuffle" : "prototype.combat",
-            requestOwnerId,
-            requestOrdinal, [],
-            OperationKind: "bounded_integer",
-            BoundedCount: pile.Length + 1);
-        request.Validate();
-        var supportFingerprint = CanonicalJson.Sha256(new
-        {
-            Request = request,
-            GeneratedCardModelId = insertion.SelectedCardId!,
-            EligibleDrawPileInstanceIds = pile
-        });
-        var eventId = CanonicalJson.Sha256(new
-        {
-            SchemaId = SemanticDrawInsertionEventV111.EventSchemaId,
-            BoundaryFingerprint = current.Fingerprint,
-            SupportFingerprint = supportFingerprint
-        });
-        var semanticEvent = new SemanticDrawInsertionEventV111(
-            SemanticDrawInsertionEventV111.EventSchemaId, eventId,
-            current.Fingerprint, supportFingerprint, request,
-            insertion.SelectedCardId!, pile);
-        semanticEvent.Validate();
-        return semanticEvent;
+        var nativeOwnerPrefix = afterShuffleRelicMatches || personalHiveInsertion
+            ? insertion.RequestOwnerId
+            : choice!.SourceCardInstanceId is { } sourceCardInstanceId
+                ? "card_instance:" + sourceCardInstanceId
+                : "effect:" + insertion.Operation.Kind;
+        var nativeOwnerId = nativeOwnerPrefix + pileSuffix;
+        var request = SemanticDrawInsertionEventV111.CreateRequest(
+            insertion.RequestSiteId, nativeStreamAvailable, legacyOwnerId,
+            nativeOwnerId, requestOrdinal, pile.Length + 1);
+        return SemanticDrawInsertionEventV111.CreateEvent(
+            current.Fingerprint, request, insertion.SelectedCardId!, pile);
     }
 
     internal static void ValidateDrawInsertionBoundary(RunState run)

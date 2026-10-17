@@ -500,33 +500,14 @@ public static class SemanticCombatDrawEngineV111
 
         var pile = (long[])insertion.EligibleDrawPile.Clone();
         var cardModelId = insertion.SelectedCardId!;
-        var request = new RandomIndexRequestV111(
-            insertion.RequestSiteId,
-            "prototype.combat",
-            insertion.RequestOwnerId + ":card:" + cardModelId +
-                ":draw_pile:" + CanonicalJson.Sha256(pile),
-            insertion.RequestOrdinal, [],
-            OperationKind: "bounded_integer",
-            BoundedCount: pile.Length + 1);
-        request.Validate();
-        var supportFingerprint = CanonicalJson.Sha256(new
-        {
-            Request = request,
-            GeneratedCardModelId = cardModelId,
-            EligibleDrawPileInstanceIds = pile
-        });
-        var eventId = CanonicalJson.Sha256(new
-        {
-            SchemaId = SemanticDrawInsertionEventV111.EventSchemaId,
-            BoundaryFingerprint = state.Fingerprint,
-            SupportFingerprint = supportFingerprint
-        });
-        var result = new SemanticDrawInsertionEventV111(
-            SemanticDrawInsertionEventV111.EventSchemaId, eventId,
-            state.Fingerprint, supportFingerprint, request, cardModelId,
-            pile);
-        result.Validate();
-        return result;
+        var nativeStreamAvailable = combat!.NativeRng?.RunStreams is not null;
+        var ownerId = insertion.RequestOwnerId + ":card:" + cardModelId +
+            ":draw_pile:" + CanonicalJson.Sha256(pile);
+        var request = SemanticDrawInsertionEventV111.CreateRequest(
+            insertion.RequestSiteId, nativeStreamAvailable, ownerId, ownerId,
+            insertion.RequestOrdinal, pile.Length + 1);
+        return SemanticDrawInsertionEventV111.CreateEvent(
+            state.Fingerprint, request, cardModelId, pile);
     }
 
     internal static SemanticCardSelectionEventV111?

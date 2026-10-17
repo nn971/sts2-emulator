@@ -29,11 +29,13 @@ the controlled playable and semantic end-turn continuations.
 
 After-shuffle relic-generated draw-pile cards now use a separate typed
 `run.shuffle` site in native combat and preserve legacy `combat` draws. That
-hook records the inserted position in the native exact semantic deck. A
-Nature card-effect draws and standalone conditioned draw segments reuse the
-existing semantic insertion event and resume their saved draw frames;
-automatic hand-draw and other recycle contexts still fail closed until their
-pipeline continuations are serializable. Enemy-side random draw/discard
+hook records the inserted position in the native exact semantic deck.
+Card-effect draws, standalone conditioned draws, and semantic automatic
+hand-draw segments reuse the insertion event and resume their saved frames;
+other recycle contexts remain fail-closed where their pipeline continuation
+is not serialized. The semantic pilot and draw/end-turn adapters use one
+insertion-event factory and select `run.shuffle` from the same Native
+stream-owner check. Enemy-side random draw/discard
 insertion uses typed `run.shuffle` sites and now resumes through the saved
 enemy-action frame. The same frame also supports legacy Fabricator summon-pool
 choices and any resulting summoned-enemy HP choice. Native summon-pool

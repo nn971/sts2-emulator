@@ -25,6 +25,50 @@ public sealed record SemanticDrawInsertionEventV111(
             (long[])EligibleDrawPileInstanceIds.Clone()
     };
 
+    internal static RandomIndexRequestV111 CreateRequest(
+        string siteId, bool nativeStreamAvailable,
+        string legacyOwnerId, string nativeOwnerId, int ordinal,
+        int supportCount)
+    {
+        var request = new RandomIndexRequestV111(
+            siteId,
+            nativeStreamAvailable ? "run.shuffle" : "prototype.combat",
+            nativeStreamAvailable ? nativeOwnerId : legacyOwnerId,
+            ordinal, [], OperationKind: "bounded_integer",
+            BoundedCount: supportCount);
+        request.Validate();
+        return request;
+    }
+
+    internal static SemanticDrawInsertionEventV111 CreateEvent(
+        string boundaryFingerprint, RandomIndexRequestV111 request,
+        string generatedCardModelId, long[] eligibleDrawPileInstanceIds)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(boundaryFingerprint);
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentException.ThrowIfNullOrWhiteSpace(generatedCardModelId);
+        ArgumentNullException.ThrowIfNull(eligibleDrawPileInstanceIds);
+        request.Validate();
+        var pile = (long[])eligibleDrawPileInstanceIds.Clone();
+        var supportFingerprint = CanonicalJson.Sha256(new
+        {
+            Request = request,
+            GeneratedCardModelId = generatedCardModelId,
+            EligibleDrawPileInstanceIds = pile
+        });
+        var eventId = CanonicalJson.Sha256(new
+        {
+            SchemaId = EventSchemaId,
+            BoundaryFingerprint = boundaryFingerprint,
+            SupportFingerprint = supportFingerprint
+        });
+        var semanticEvent = new SemanticDrawInsertionEventV111(
+            EventSchemaId, eventId, boundaryFingerprint, supportFingerprint,
+            request, generatedCardModelId, pile);
+        semanticEvent.Validate();
+        return semanticEvent;
+    }
+
     public void Validate()
     {
         Request.Validate();
