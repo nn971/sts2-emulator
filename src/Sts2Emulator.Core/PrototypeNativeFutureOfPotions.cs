@@ -59,14 +59,7 @@ public static class PrototypeNativeFutureOfPotions
                     $"The Future of Potions has no rarity mapping for '{potionId}'.");
             }
 
-            var cardTypes = rarity == PrototypeCardRarity.Common
-                ? new[] { PrototypeCardType.Attack, PrototypeCardType.Skill }
-                : new[]
-                {
-                    PrototypeCardType.Attack,
-                    PrototypeCardType.Skill,
-                    PrototypeCardType.Power
-                };
+            var cardTypes = CardTypesForRarity(rarity);
             var draw = NativeEventContextRngV111.ResolveIndex(
                 state,
                 eventState,
@@ -95,6 +88,20 @@ public static class PrototypeNativeFutureOfPotions
         };
         return state with { World = world };
     }
+
+    public static PrototypeCardType[] CardTypesForRarity(
+        PrototypeCardRarity rarity) => rarity switch
+    {
+        PrototypeCardRarity.Common =>
+            [PrototypeCardType.Attack, PrototypeCardType.Skill],
+        PrototypeCardRarity.Uncommon or PrototypeCardRarity.Rare =>
+        [
+            PrototypeCardType.Attack,
+            PrototypeCardType.Skill,
+            PrototypeCardType.Power
+        ],
+        _ => throw new ArgumentOutOfRangeException(nameof(rarity))
+    };
 
     public static bool TryGetCardRarity(
         string potionId, out PrototypeCardRarity rarity)

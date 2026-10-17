@@ -105,6 +105,15 @@ masses. It does not inspect the later Native event-selection result or create
 an entry session. Event selection, legacy fallback behavior, seed frequencies,
 stream attribution, and Native cursor parity remain separate claims.
 
+The Future of Potions `card_type.index_draw` has one pre-entry law per owned
+potion, ordered by slot and conditioned on that explicit event branch. Each
+support is the source-shaped Attack/Skill pair for a Common potion or
+Attack/Skill/Power trio for an Uncommon or Rare potion. The query binds the
+prior request prefix and counts exact Native `NextInt` preimages on the
+declared support; it neither resolves Event selection nor reads a sampled
+card-type result. Native entry still resolves and caches all offers in the
+ordinary event action, and no atomic ReferenceNature session is implied.
+
 The resolver is the event-specific page-generation or choice-effect method.
 It applies the selected primitive result synchronously, commits the resulting
 page/effect into

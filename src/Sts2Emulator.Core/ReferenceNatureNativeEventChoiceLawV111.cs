@@ -257,6 +257,8 @@ public static partial class ChanceLawEngineV111
         "event.generated_gold.unit_float";
     public const string NativeStoneOfAllTimePotionSlotSiteId =
         "event.stone_of_all_time.potion_slot.index_draw";
+    public const string NativeFutureOfPotionsCardTypeSiteId =
+        "event.future_of_potions.card_type.index_draw";
     public const string NativeStoneOfAllTimePushTicketSiteId =
         "event.stone_of_all_time.push_ticket";
     public const string NativeStoneOfAllTimeLiftTicketSiteId =
@@ -275,7 +277,10 @@ public static partial class ChanceLawEngineV111
         [NativeEventGoldIndexSiteId, NativeEventGoldUnitFloatSiteId];
 
     public static string[] NativeEventEntryIndexQuerySiteIds =>
-        [NativeStoneOfAllTimePotionSlotSiteId];
+    [
+        NativeStoneOfAllTimePotionSlotSiteId,
+        NativeFutureOfPotionsCardTypeSiteId
+    ];
 
     public static string[] NativeEventNoEffectIndexQuerySiteIds =>
     [
@@ -364,6 +369,109 @@ public static partial class ChanceLawEngineV111
             siteId, request.OperationKind, ownerId, ordinal,
             "native-stone-of-all-time-potion-slot-index-v1",
             conditioningFingerprint,
+            NativeBoundedIndexSourceVerifiedProvenance,
+            outcomes, ChanceLawV111.SourceVerifiedStatus);
+    }
+
+    /// <summary>
+    /// Query one Future of Potions card-type index draw before Event entry.
+    /// The event branch is explicit, and the ordinal follows occupied potion
+    /// slots in source order without consulting a Native selection result.
+    /// </summary>
+    public static ChanceLawV111 QueryNativeFutureOfPotionsCardType(
+        RunState origin, string siteId, int ordinal, string actionId,
+        string eventId)
+    {
+        ArgumentNullException.ThrowIfNull(origin);
+        ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(actionId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
+        if (siteId != NativeFutureOfPotionsCardTypeSiteId || ordinal < 0 ||
+            eventId != PrototypeNativeFutureOfPotions.EventId ||
+            origin.Phase != RunPhase.MapChoice ||
+            origin.World is not { Event: null } world ||
+            origin.NativeRunRng is null ||
+            !PrototypeGameEngine.UsesNativeRegionalSystems(world))
+            throw new InvalidOperationException(
+                "Future of Potions card-type laws require a configured pre-entry Native Event-node boundary and explicit event branch.");
+        PrototypeStateInvariants.Validate(origin);
+
+        var engine = new PrototypeGameEngine();
+        var action = engine.GetLegalActions(origin).SingleOrDefault(candidate =>
+            PrototypeAiEnvironment.StableActionId(candidate) == actionId)
+            ?? throw new InvalidOperationException(
+                "Future of Potions card-type law requires a current legal Event-node action.");
+        var nodeId = action.Kind == "choose_map_node"
+            ? action.ReadPayload<ChooseMapNodePayload>().NodeId : null;
+        if (nodeId is null ||
+            !PrototypeNativeWingedBoots.AvailableNodes(world, origin.Player)
+                .Any(node => node.NodeId == nodeId &&
+                    node.RoomType == PrototypeRoomType.Event))
+            throw new InvalidOperationException(
+                "Future of Potions card-type law requires a current legal Event-node action.");
+
+        ValidateNativeEventBranch(origin, world, eventId);
+        if (!PrototypeNativeFutureOfPotions.IsEligible(origin.Player))
+            throw new InvalidOperationException(
+                "Future of Potions is ineligible for this potion inventory.");
+        var potionEntries = origin.Player.PotionSlots
+            .Select((potion, slot) => (Potion: potion, Slot: slot))
+            .Where(item => item.Potion is not null)
+            .Select(item => (PotionId: item.Potion!.PotionId, item.Slot))
+            .ToArray();
+        if (ordinal >= potionEntries.Length)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+        var entry = potionEntries[ordinal];
+        if (!PrototypeNativeFutureOfPotions.TryGetCardRarity(
+                entry.PotionId, out var rarity))
+            throw new InvalidOperationException(
+                "Future of Potions source support contains an unsupported potion.");
+        var cardTypes = PrototypeNativeFutureOfPotions
+            .CardTypesForRarity(rarity);
+        var ownerId = $"potion_slot:{entry.Slot}:potion:{entry.PotionId}:pool:" +
+            CanonicalJson.Sha256(cardTypes);
+        var request = new RandomIndexRequestV111(
+            siteId,
+            NativeRngV111Contexts.EventStreamId(
+                PrototypeNativeFutureOfPotions.NativeRngEventId),
+            ownerId, ordinal,
+            Enumerable.Range(0, cardTypes.Length).ToArray());
+        request.Validate();
+        var weights = NativeNextIntGridWeights(cardTypes.Length);
+        var outcomes = cardTypes.Select((cardType, index) =>
+            new ChanceLawOutcomeV111(
+                $"card_type:{cardType}:index:{index}", weights[index]))
+            .ToArray();
+        var priorCalls = potionEntries.Take(ordinal).Select(prior =>
+        {
+            if (!PrototypeNativeFutureOfPotions.TryGetCardRarity(
+                    prior.PotionId, out var priorRarity))
+                throw new InvalidOperationException(
+                    "Future of Potions source prefix contains an unsupported potion.");
+            return new
+            {
+                prior.Slot,
+                prior.PotionId,
+                CardTypes = PrototypeNativeFutureOfPotions
+                    .CardTypesForRarity(priorRarity)
+            };
+        }).ToArray();
+        var conditioningFingerprint = CanonicalJson.Sha256(new
+        {
+            boundary = "native_event.future_of_potions.card_type",
+            actionId,
+            eventId,
+            nodeId,
+            priorCalls,
+            currentSlot = entry.Slot,
+            entry.PotionId,
+            rarity,
+            cardTypes,
+            request
+        });
+        return CreateNativeBoundaryLaw(
+            siteId, request.OperationKind, ownerId, ordinal,
+            "native-event-index-prefix-v1", conditioningFingerprint,
             NativeBoundedIndexSourceVerifiedProvenance,
             outcomes, ChanceLawV111.SourceVerifiedStatus);
     }

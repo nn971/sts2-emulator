@@ -2951,10 +2951,15 @@ internal static class PrototypeAiJsonlServer
                             var eventId = OptionalString(request, "event_id")
                                 ?? throw new ArgumentException(
                                     "Native event entry-index query requires event_id as an explicit conditioning branch.");
-                            law = ChanceLawEngineV111
-                                .QueryNativeStoneOfAllTimePotionSlot(
-                                    RequireState(request), siteId, ordinal,
-                                    actionId, eventId);
+                            var queryRun = RequireState(request);
+                            law = siteId == ChanceLawEngineV111
+                                .NativeStoneOfAllTimePotionSlotSiteId
+                                ? ChanceLawEngineV111
+                                    .QueryNativeStoneOfAllTimePotionSlot(
+                                        queryRun, siteId, ordinal, actionId, eventId)
+                                : ChanceLawEngineV111
+                                    .QueryNativeFutureOfPotionsCardType(
+                                        queryRun, siteId, ordinal, actionId, eventId);
                             if (law.SiteId != siteId || law.Ordinal != ordinal)
                                 throw new ArgumentException(
                                     $"Native event entry-index query expects site '{law.SiteId}' and ordinal {law.Ordinal}.");
