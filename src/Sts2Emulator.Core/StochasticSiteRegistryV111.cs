@@ -34,6 +34,10 @@ public sealed record StochasticSessionCoverageV111(
     string ReferenceNatureEventChoiceSessionSchemaId,
     string[] ReferenceNatureEventChoiceSiteIds)
 {
+    public string ReferenceNatureAncientOfferSessionSchemaId { get; init; } =
+        ReferenceNatureAncientOfferSessionV111.CurrentSchemaId;
+    public string[] ReferenceNatureAncientOfferSiteIds { get; init; } = [];
+
     public const string CurrentSchemaId =
         "sts2-v111-stochastic-session-coverage-v1";
 
@@ -45,13 +49,16 @@ public sealed record StochasticSessionCoverageV111(
             ReferenceNatureRunActionSessionSchemaId !=
                 ReferenceNatureRunActionSessionV111.CurrentSchemaId ||
             ReferenceNatureEventChoiceSessionSchemaId !=
-                ReferenceNatureControlledEventChoiceSessionV111.CurrentSchemaId)
+                ReferenceNatureControlledEventChoiceSessionV111.CurrentSchemaId ||
+            ReferenceNatureAncientOfferSessionSchemaId !=
+                ReferenceNatureAncientOfferSessionV111.CurrentSchemaId)
             throw new InvalidDataException(
                 "Invalid stochastic session coverage schema.");
 
         ValidateSiteIds(SemanticReferenceNatureSiteIds);
         ValidateSiteIds(ReferenceNatureRunActionSiteIds);
         ValidateSiteIds(ReferenceNatureEventChoiceSiteIds);
+        ValidateSiteIds(ReferenceNatureAncientOfferSiteIds);
     }
 
     private static void ValidateSiteIds(string[] siteIds)
@@ -182,6 +189,13 @@ public static class StochasticSiteRegistryV111
         NativeAncientRewardsV111.TezcataraOfferSiteId
     ];
 
+    private static readonly string[] AncientOfferSessionSites =
+    [
+        NativeOrobasEventV111.OfferSiteId,
+        NativePaelRewardsV111.OfferSiteId,
+        NativeAncientRewardsV111.TezcataraOfferSiteId
+    ];
+
     private static readonly HashSet<string> SemanticReferenceNatureSiteSet =
         new(SemanticReferenceNatureSites, StringComparer.Ordinal);
     private static readonly HashSet<string> RunActionSiteSet =
@@ -276,7 +290,12 @@ public static class StochasticSiteRegistryV111
             ReferenceNatureRunActionSessionV111.CurrentSchemaId,
             ControlledRunActionSiteIds,
             ReferenceNatureControlledEventChoiceSessionV111.CurrentSchemaId,
-            ControlledEventChoiceSiteIds);
+            ControlledEventChoiceSiteIds)
+        {
+            ReferenceNatureAncientOfferSessionSchemaId =
+                ReferenceNatureAncientOfferSessionV111.CurrentSchemaId,
+            ReferenceNatureAncientOfferSiteIds = AncientOfferSessionSites
+        };
         coverage.Validate();
         return coverage;
     }

@@ -135,7 +135,9 @@ post-reward modifier-curse continuations. When the event action and any
 controlled reward chance finish, the result provides a normal `stateHandle`
 for continuing play. Unsupported event chance still fails closed; other
 event-page choices, shops and general run actions are not silently absorbed
-into this session. The Python binding exposes
+into this session. Orobas, Pael and Tezcatara opening offers use the separate
+[ReferenceNature Ancient-offer session](REFERENCE_NATURE_ANCIENT_OFFER_D3.md).
+The Python binding exposes
 `State.begin_reference_nature_event_choice(choice_id, nature_seed=None)`, session
 `resolve_next()`, `advance(action_id)`, `fork()`, `save_snapshot()`,
 `Session.load_reference_nature_event_choice_snapshot()` and `release()`.

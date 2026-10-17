@@ -59,6 +59,12 @@ internal static class PrototypeAiJsonlServer
         var referenceNatureEventChoiceRunStateHandles =
             new Dictionary<string, string>(StringComparer.Ordinal);
         long nextReferenceNatureEventChoiceHandle = 1;
+        var referenceNatureAncientOfferStates =
+            new Dictionary<string, ReferenceNatureAncientOfferSessionV111>(
+                StringComparer.Ordinal);
+        var referenceNatureAncientOfferRunStateHandles =
+            new Dictionary<string, string>(StringComparer.Ordinal);
+        long nextReferenceNatureAncientOfferHandle = 1;
 
         string StoreSemantic(SemanticPilotCombatV111 state)
         {
@@ -136,6 +142,30 @@ internal static class PrototypeAiJsonlServer
                 ? session
                 : throw new InvalidOperationException(
                     "Unknown ReferenceNature event-choice session handle: " +
+                    handle);
+        }
+
+        string StoreReferenceNatureAncientOffer(
+            ReferenceNatureAncientOfferSessionV111 session)
+        {
+            var handle = "w" + nextReferenceNatureAncientOfferHandle++;
+            referenceNatureAncientOfferStates.Add(handle, session.Fork());
+            if (session.Complete)
+                referenceNatureAncientOfferRunStateHandles.Add(handle,
+                    Store(session.Run.Fork()));
+            return handle;
+        }
+
+        ReferenceNatureAncientOfferSessionV111
+            RequireReferenceNatureAncientOffer(JsonElement request)
+        {
+            var handle = RequiredString(request,
+                "reference_nature_ancient_offer_handle");
+            return referenceNatureAncientOfferStates.TryGetValue(handle,
+                    out var session)
+                ? session
+                : throw new InvalidOperationException(
+                    "Unknown ReferenceNature Ancient-offer session handle: " +
                     handle);
         }
 
@@ -267,6 +297,53 @@ internal static class PrototypeAiJsonlServer
                 playerActionTranscript = session.Steps
                     .Where(step => step.Kind == "player_action")
                     .Select(step => step.PlayerAction).ToArray(),
+                natureProvider = ReferenceNatureV111.ProviderId,
+                natureSampleCount = session.NatureState.SampleCount,
+                probabilityStatus = ChanceLawV111.UnverifiedStatus
+            };
+        }
+
+        object ReferenceNatureAncientOfferResult(
+            ReferenceNatureAncientOfferSessionV111 session,
+            string handle, string? parent = null)
+        {
+            var eventState = session.Run.World?.Event;
+            var law = session.Complete ? null :
+                ChanceLawEngineV111.QueryAncientOffer(
+                    session.Origin, session.SiteId, session.NextOrdinal);
+            return new
+            {
+                ok = true,
+                schemaId = ReferenceNatureAncientOfferSessionV111.CurrentSchemaId,
+                referenceNatureAncientOfferHandle = handle,
+                stateHandle = referenceNatureAncientOfferRunStateHandles
+                    .GetValueOrDefault(handle),
+                parent,
+                fingerprint = session.Fingerprint,
+                runFingerprint = CanonicalJson.Sha256(session.Run),
+                siteId = session.SiteId,
+                eventId = session.SiteId switch
+                {
+                    var site when site == NativeOrobasEventV111.OfferSiteId =>
+                        NativeOrobasEventV111.EventId,
+                    var site when site == NativePaelRewardsV111.OfferSiteId =>
+                        NativePaelRewardsV111.PaelId,
+                    _ => NativeAncientRewardsV111.TezcataraId
+                },
+                runPhase = session.Run.Phase.ToString(),
+                boundary = session.Complete ? "committed" : "nature",
+                nextOrdinal = session.NextOrdinal,
+                pending = law is null ? null : new
+                {
+                    kind = "ancient_event_offer_random_choice",
+                    boundaryFingerprint = law.EventId,
+                    chanceLaw = law,
+                    probabilityStatus = law.ProbabilityStatus
+                },
+                offeredChoiceIds = eventState?.OfferedChoiceIds,
+                eventRandomProvider = eventState?.NativeEventRngProviderMode ??
+                    (eventState is null ? null : "native-v111"),
+                decisionTranscript = session.DecisionTranscript,
                 natureProvider = ReferenceNatureV111.ProviderId,
                 natureSampleCount = session.NatureState.SampleCount,
                 probabilityStatus = ChanceLawV111.UnverifiedStatus
@@ -2309,6 +2386,107 @@ internal static class PrototypeAiJsonlServer
                                     element.GetString()!))
                                 released++;
                             referenceNatureEventChoiceRunStateHandles.Remove(
+                                element.GetString()!);
+                        }
+                        Write(new { requestId, ok = true, released });
+                        break;
+                    }
+
+                    case "reference_nature_ancient_offer_begin":
+                    {
+                        var source = RequireState(request);
+                        var siteId = RequiredString(request, "site_id");
+                        var seed = OptionalULong(request, "nature_seed");
+                        var session = seed is { } natureSeed
+                            ? ReferenceNatureAncientOfferSessionV111.Begin(
+                                source, siteId, natureSeed)
+                            : ReferenceNatureAncientOfferSessionV111.Begin(
+                                source, siteId);
+                        var handle = StoreReferenceNatureAncientOffer(session);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureAncientOfferResult(session, handle) });
+                        break;
+                    }
+
+                    case "reference_nature_ancient_offer_status":
+                    {
+                        var handle = RequiredString(request,
+                            "reference_nature_ancient_offer_handle");
+                        var session = RequireReferenceNatureAncientOffer(request);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureAncientOfferResult(session, handle) });
+                        break;
+                    }
+
+                    case "reference_nature_ancient_offer_resolve_next":
+                    {
+                        var parentHandle = RequiredString(request,
+                            "reference_nature_ancient_offer_handle");
+                        var session = RequireReferenceNatureAncientOffer(request);
+                        if (session.Fingerprint != RequiredString(request,
+                                "fingerprint"))
+                            throw new InvalidOperationException(
+                                "Stale ReferenceNature Ancient-offer fingerprint.");
+                        var next = session.ResolveNext();
+                        var handle = StoreReferenceNatureAncientOffer(next);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureAncientOfferResult(
+                                next, handle, parentHandle) });
+                        break;
+                    }
+
+                    case "reference_nature_ancient_offer_fork":
+                    {
+                        var parentHandle = RequiredString(request,
+                            "reference_nature_ancient_offer_handle");
+                        var next = RequireReferenceNatureAncientOffer(request).Fork();
+                        var handle = StoreReferenceNatureAncientOffer(next);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureAncientOfferResult(
+                                next, handle, parentHandle) });
+                        break;
+                    }
+
+                    case "reference_nature_ancient_offer_save":
+                    {
+                        var session = RequireReferenceNatureAncientOffer(request);
+                        Write(new { requestId, ok = true,
+                            schemaId =
+                                ReferenceNatureAncientOfferSessionV111.CurrentSchemaId,
+                            snapshot =
+                                ReferenceNatureAncientOfferSessionV111.Save(session) });
+                        break;
+                    }
+
+                    case "reference_nature_ancient_offer_load":
+                    {
+                        var session = ReferenceNatureAncientOfferSessionV111.Restore(
+                            RequiredString(request, "snapshot"));
+                        var handle = StoreReferenceNatureAncientOffer(session);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureAncientOfferResult(session, handle) });
+                        break;
+                    }
+
+                    case "reference_nature_ancient_offer_release_many":
+                    {
+                        if (!request.TryGetProperty(
+                                "reference_nature_ancient_offer_handles",
+                                out var handles) ||
+                            handles.ValueKind != JsonValueKind.Array)
+                            throw new ArgumentException(
+                                "reference_nature_ancient_offer_handles must be an array.");
+                        var released = 0;
+                        foreach (var element in handles.EnumerateArray())
+                        {
+                            if (element.ValueKind != JsonValueKind.String ||
+                                string.IsNullOrWhiteSpace(element.GetString()))
+                                throw new ArgumentException(
+                                    "Invalid ReferenceNature Ancient-offer handle.");
+                            if (referenceNatureAncientOfferStates.Remove(
+                                    element.GetString()!))
+                                released++;
+                            referenceNatureAncientOfferRunStateHandles.Remove(
                                 element.GetString()!);
                         }
                         Write(new { requestId, ok = true, released });

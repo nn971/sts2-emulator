@@ -166,6 +166,31 @@ class State:
         return ReferenceNatureEventChoiceSession.from_wire(
             self.session, result["result"])
 
+    def begin_reference_nature_ancient_offer(self, site_id: str,
+                                             nature_seed: int | None = None):
+        """Begin or continue atomic Nature sampling for a supported Ancient offer."""
+        if self.session.capabilities.get(
+                "referenceNatureAncientOfferSessionSchemaId") != (
+                "sts2-v111-reference-nature-ancient-offer-session-v1"):
+            raise EmulatorError(
+                "Emulator does not expose ReferenceNature Ancient-offer sessions")
+        if not self.session.supports_reference_nature_site(
+                site_id, session="ancient_offer"):
+            raise EmulatorError(
+                f"No ReferenceNature Ancient-offer session is advertised for {site_id!r}")
+        if (nature_seed is not None and
+                (not isinstance(nature_seed, int) or
+                 isinstance(nature_seed, bool) or nature_seed < 0 or
+                 nature_seed > 0xFFFFFFFFFFFFFFFF)):
+            raise ValueError("nature_seed must be an unsigned 64-bit integer")
+        payload = {"state_handle": self.handle, "site_id": site_id}
+        if nature_seed is not None:
+            payload["nature_seed"] = nature_seed
+        result = self.session.call(
+            "reference_nature_ancient_offer_begin", **payload)
+        return ReferenceNatureAncientOfferSession.from_wire(
+            self.session, result["result"])
+
 
 @dataclass(frozen=True)
 class ControlledEventChoice:
@@ -410,6 +435,82 @@ class ReferenceNatureEventChoiceSession:
 
     def release(self):
         return self.session.release_reference_nature_event_choice_many([self])
+
+
+@dataclass(frozen=True)
+class ReferenceNatureAncientOfferSession:
+    """Atomic three-choice Ancient offer generation and sampler cursor."""
+    session: "Session"
+    handle: str
+    fingerprint: str
+    state_handle: str | None
+    site_id: str
+    event_id: str
+    run_phase: str
+    boundary: str
+    next_ordinal: int
+    pending: dict | None
+    offered_choice_ids: list | None
+    event_random_provider: str | None
+    decision_transcript: list
+    nature_sample_count: int
+
+    @classmethod
+    def from_wire(cls, session, payload):
+        if payload.get("schemaId") != (
+                "sts2-v111-reference-nature-ancient-offer-session-v1"):
+            raise EmulatorError(
+                "Unsupported ReferenceNature Ancient-offer session schema")
+        return cls(
+            session, payload["referenceNatureAncientOfferHandle"],
+            payload["fingerprint"], payload["stateHandle"],
+            payload["siteId"], payload["eventId"], payload["runPhase"],
+            payload["boundary"], payload["nextOrdinal"],
+            payload["pending"], payload["offeredChoiceIds"],
+            payload["eventRandomProvider"], payload["decisionTranscript"],
+            payload["natureSampleCount"])
+
+    @property
+    def complete(self):
+        return self.boundary == "committed"
+
+    @property
+    def state(self):
+        if self.state_handle is None:
+            raise EmulatorError(
+                "ReferenceNature Ancient offers have not committed")
+        return State(self.session, self.state_handle)
+
+    def status(self):
+        result = self.session.call(
+            "reference_nature_ancient_offer_status",
+            reference_nature_ancient_offer_handle=self.handle)
+        return ReferenceNatureAncientOfferSession.from_wire(
+            self.session, result["result"])
+
+    def resolve_next(self):
+        """Sample one pending offer and publish the run after all three."""
+        result = self.session.call(
+            "reference_nature_ancient_offer_resolve_next",
+            reference_nature_ancient_offer_handle=self.handle,
+            fingerprint=self.fingerprint)
+        return ReferenceNatureAncientOfferSession.from_wire(
+            self.session, result["result"])
+
+    def fork(self):
+        result = self.session.call(
+            "reference_nature_ancient_offer_fork",
+            reference_nature_ancient_offer_handle=self.handle)
+        return ReferenceNatureAncientOfferSession.from_wire(
+            self.session, result["result"])
+
+    def save_snapshot(self):
+        return self.session.call(
+            "reference_nature_ancient_offer_save",
+            reference_nature_ancient_offer_handle=self.handle)["snapshot"]
+
+    def release(self):
+        return self.session.release_reference_nature_ancient_offer_many([self])
 
 
 @dataclass(frozen=True)
@@ -966,10 +1067,11 @@ class Session:
             "semantic": "semanticReferenceNatureSiteIds",
             "run_action": "referenceNatureRunActionSiteIds",
             "event_choice": "referenceNatureEventChoiceSiteIds",
+            "ancient_offer": "referenceNatureAncientOfferSiteIds",
         }
         if session != "any" and session not in fields:
             raise ValueError(
-                "session must be semantic, run_action, event_choice, or any")
+                "session must be semantic, run_action, event_choice, ancient_offer, or any")
         coverage = self.stochastic_session_coverage
         if not isinstance(coverage, dict) or coverage.get("schemaId") != (
                 "sts2-v111-stochastic-session-coverage-v1"):
@@ -1245,6 +1347,27 @@ class Session:
         return self.call(
             "reference_nature_event_choice_release_many",
             reference_nature_event_choice_handles=[
+                item.handle for item in sessions])["released"]
+
+    def load_reference_nature_ancient_offer_snapshot(self, snapshot: str):
+        if self.capabilities.get(
+                "referenceNatureAncientOfferSessionSchemaId") != (
+                "sts2-v111-reference-nature-ancient-offer-session-v1"):
+            raise EmulatorError(
+                "Emulator does not expose ReferenceNature Ancient-offer sessions")
+        result = self.call("reference_nature_ancient_offer_load",
+                           snapshot=snapshot)
+        return ReferenceNatureAncientOfferSession.from_wire(
+            self, result["result"])
+
+    def release_reference_nature_ancient_offer_many(self, sessions):
+        sessions = list(sessions)
+        if any(item.session is not self for item in sessions):
+            raise ValueError(
+                "ReferenceNature Ancient-offer handle belongs to another session")
+        return self.call(
+            "reference_nature_ancient_offer_release_many",
+            reference_nature_ancient_offer_handles=[
                 item.handle for item in sessions])["released"]
 
     def load_controlled_snapshot(self, snapshot: str):
