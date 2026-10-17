@@ -3287,20 +3287,30 @@ public sealed partial class PrototypeGameEngine
             var chosen = EvaluateEnemyIntentChoice(
                 formation, index, ownedNative?.Formation.NativeEncounterEntry,
                 nextIndex);
-            formation[index] = enemy with
-            {
-                PlannedMoveIndex = chosen.MoveIndex,
-                PlannedNextAiStateId = chosen.NextAiStateId,
-                StunFollowUpMoveIndex =
-                    chosen.MoveIndex.HasValue && enemy.StunFollowUpMoveIndex.HasValue
-                        ? null : enemy.StunFollowUpMoveIndex,
-                StunFollowUpAiStateId =
-                    chosen.MoveIndex.HasValue && enemy.StunFollowUpMoveIndex.HasValue
-                        ? null : enemy.StunFollowUpAiStateId
-            };
+            formation[index] = ApplyEnemyIntentOutcome(
+                enemy, chosen.MoveIndex, chosen.NextAiStateId);
         }
         return combat with { Enemies = formation, NativeRng = ownedNative };
     }
+
+    /// <summary>
+    /// Commits a semantic intent outcome after any provider has selected it.
+    /// Native sampling and controlled Nature therefore apply the same planned
+    /// move, next AI state, and stun-follow-up transition.
+    /// </summary>
+    internal static EnemyCombatState ApplyEnemyIntentOutcome(
+        EnemyCombatState enemy, int? moveIndex, string? nextAiStateId) =>
+        enemy with
+        {
+            PlannedMoveIndex = moveIndex,
+            PlannedNextAiStateId = nextAiStateId,
+            StunFollowUpMoveIndex =
+                moveIndex.HasValue && enemy.StunFollowUpMoveIndex.HasValue
+                    ? null : enemy.StunFollowUpMoveIndex,
+            StunFollowUpAiStateId =
+                moveIndex.HasValue && enemy.StunFollowUpMoveIndex.HasValue
+                    ? null : enemy.StunFollowUpAiStateId
+        };
 
     /// <summary>
     /// Pure source-shaped intent selector shared by the actual game engine and

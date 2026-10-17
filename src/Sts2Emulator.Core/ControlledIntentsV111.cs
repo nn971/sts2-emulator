@@ -188,11 +188,9 @@ public static class ControlledIntentsV111
                     enemies, index, next.Formation.NativeEncounterEntry, ticket);
                 if (prefixCursor != prefix.Length)
                     throw new InvalidDataException("Unused tickets for completed AI selection.");
-                enemies[index] = enemy with
-                {
-                    PlannedMoveIndex = selected.MoveIndex,
-                    PlannedNextAiStateId = selected.NextAiStateId
-                };
+                enemies[index] = PrototypeGameEngine
+                    .ApplyEnemyIntentOutcome(
+                        enemy, selected.MoveIndex, selected.NextAiStateId);
                 index++;
             }
             catch (ChoiceBoundary pending)

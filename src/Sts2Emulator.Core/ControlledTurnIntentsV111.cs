@@ -224,17 +224,9 @@ public static class ControlledTurnIntentEngineV111
                     formation, index, state.NativeEncounterEntry, getTicket);
                 if (position != prior.Length)
                     throw new InvalidDataException("Unused turn-intent tickets.");
-                formation[index] = enemy with
-                {
-                    PlannedMoveIndex = chosen.MoveIndex,
-                    PlannedNextAiStateId = chosen.NextAiStateId,
-                    StunFollowUpMoveIndex =
-                        chosen.MoveIndex.HasValue && enemy.StunFollowUpMoveIndex.HasValue
-                            ? null : enemy.StunFollowUpMoveIndex,
-                    StunFollowUpAiStateId =
-                        chosen.MoveIndex.HasValue && enemy.StunFollowUpMoveIndex.HasValue
-                            ? null : enemy.StunFollowUpAiStateId
-                };
+                formation[index] = PrototypeGameEngine
+                    .ApplyEnemyIntentOutcome(
+                        enemy, chosen.MoveIndex, chosen.NextAiStateId);
                 index++;
             }
             catch (PendingTicket pending)
