@@ -14,6 +14,9 @@ public sealed record SemanticCombatDrawV111(
     bool FromHandDraw, bool AutomaticHandDraw = false)
 {
     public const string SchemaId = "sts2-v111-semantic-real-combat-draw-v1";
+    [JsonIgnore]
+    public SemanticCombatDrawStochasticStateV111 Stochastic { get; init; }
+        = new();
     [JsonIgnore] public string Fingerprint => CanonicalJson.Sha256(this);
     [JsonIgnore] public SemanticDeckEventV111? Pending =>
         Run.World?.Combat?.SemanticDeck is
@@ -72,33 +75,50 @@ public sealed record SemanticCombatDrawV111(
             .Skip(Origin.World?.Combat?.SemanticDeck?.Transcript?.Length ?? 0)
             .ToArray();
     public SemanticRandomPileCardDecisionV111[] RandomPileCardTranscript
-        { get; init; } = [];
+    {
+        get => Stochastic.RandomPileCardTranscript;
+        init => Stochastic = Stochastic with
+        {
+            RandomPileCardTranscript = value
+        };
+    }
     public SemanticDrawInsertionDecisionV111[] DrawInsertionTranscript
-        { get; init; } = [];
+    {
+        get => Stochastic.DrawInsertionTranscript;
+        init => Stochastic = Stochastic with
+        {
+            DrawInsertionTranscript = value
+        };
+    }
     public SemanticCardSelectionDecisionV111[] StratagemSelectionTranscript
-        { get; init; } = [];
+    {
+        get => Stochastic.StratagemSelectionTranscript;
+        init => Stochastic = Stochastic with
+        {
+            StratagemSelectionTranscript = value
+        };
+    }
     public SemanticDrawHookChoiceDecisionV111[] DrawHookChoiceTranscript
-        { get; init; } = [];
-    public RandomIndexDecisionV111[] CostTranscript { get; init; } = [];
+    {
+        get => Stochastic.DrawHookChoiceTranscript;
+        init => Stochastic = Stochastic with
+        {
+            DrawHookChoiceTranscript = value
+        };
+    }
+    public RandomIndexDecisionV111[] CostTranscript
+    {
+        get => Stochastic.CostTranscript;
+        init => Stochastic = Stochastic with
+        {
+            CostTranscript = value
+        };
+    }
 
     public SemanticCombatDrawV111 Fork() => this with
     {
         Origin = Origin.Fork(), Run = Run.Fork(),
-        CostTranscript = CostTranscript.Select(x => x with
-        {
-            Request = x.Request with
-            {
-                OrderedCandidates = (int[])x.Request.OrderedCandidates.Clone()
-            }
-        }).ToArray(),
-        RandomPileCardTranscript = RandomPileCardTranscript
-            .Select(decision => decision.Fork()).ToArray(),
-        DrawInsertionTranscript = DrawInsertionTranscript
-            .Select(decision => decision.Fork()).ToArray(),
-        StratagemSelectionTranscript = StratagemSelectionTranscript
-            .Select(decision => decision.Fork()).ToArray(),
-        DrawHookChoiceTranscript = DrawHookChoiceTranscript
-            .Select(decision => decision.Fork()).ToArray()
+        Stochastic = Stochastic.Fork()
     };
 }
 

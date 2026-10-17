@@ -36,6 +36,8 @@
 
 **S3 end-turn transcript ownership increment (2026-10-17):** `SemanticEndTurnStochasticStateV111` now owns the intent, automatic enemy-action, target, and interleaving transcripts for the specialized semantic end-turn facade. Existing transcript fields remain flattened projections, while one owner fork deep-copies their typed requests and stable-identity decisions. The ordinary engine still owns mechanical execution through its automatic-pipeline continuation; unification of all semantic facades remains S4 work.
 
+**S3 semantic draw transcript ownership increment (2026-10-17):** `SemanticCombatDrawStochasticStateV111` now owns the semantic draw frame's random pile-card, draw-insertion, Stratagem-selection, draw-hook and energy-cost transcripts. Existing properties remain flattened projections, and the owner deep-forks each typed decision. Draw mechanics checkpoints and pending stages remain on the specialized frame, so common continuation remains open.
+
 ## S1 precise design
 
 Implement a **read-only, outcome-blind** Chance Law query in `Sts2Emulator.Core` with:
