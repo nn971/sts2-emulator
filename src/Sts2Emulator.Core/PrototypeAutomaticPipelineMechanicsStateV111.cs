@@ -19,15 +19,32 @@ public sealed record PrototypeAutomaticPipelineMechanicsStateV111(
     {
         get
         {
+            if (TryGetCurrentStepKind(out var stepKind))
+                return stepKind;
             if (OpeningStage is not null ||
                 PendingPostDispatchEventKind is not null)
                 return null;
-            var pipeline = PrototypeContent.Rules.EndTurnPipeline;
-            if (NextStepIndex < 0 || NextStepIndex >= pipeline.Length)
-                throw new InvalidDataException(
-                    "Automatic pipeline cursor has no current step.");
-            return pipeline[NextStepIndex].Kind;
+            throw new InvalidDataException(
+                "Automatic pipeline cursor has no current step.");
         }
+    }
+
+    public bool IsAtStep(PrototypeAutomaticStepKind expectedStep) =>
+        TryGetCurrentStepKind(out var stepKind) &&
+        stepKind == expectedStep;
+
+    public bool TryGetCurrentStepKind(
+        out PrototypeAutomaticStepKind stepKind)
+    {
+        stepKind = default;
+        if (OpeningStage is not null ||
+            PendingPostDispatchEventKind is not null)
+            return false;
+        var pipeline = PrototypeContent.Rules.EndTurnPipeline;
+        if (NextStepIndex < 0 || NextStepIndex >= pipeline.Length)
+            return false;
+        stepKind = pipeline[NextStepIndex].Kind;
+        return true;
     }
 
     public void Validate(CombatState combat)

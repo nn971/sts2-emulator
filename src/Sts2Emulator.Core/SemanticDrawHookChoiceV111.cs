@@ -103,8 +103,8 @@ public static class SemanticDrawHookChoiceEngineV111
             choice.AutomaticSemanticStratagemDrawSelection ||
             (automatic
                 ? beforeHandDraw
-                    ? combat.AutomaticPipelineContinuation?.NextStepIndex !=
-                        PrototypeGameEngine.SemanticHandDrawStepIndex ||
+                    ? combat.AutomaticPipelineContinuation?.Mechanics.IsAtStep(
+                          PrototypeAutomaticStepKind.DrawPlayerHand) != true ||
                       combat.AutomaticPipelineContinuation
                           .ControlledSemanticDrawRemaining is not null ||
                       combat.AutomaticPipelineContinuation

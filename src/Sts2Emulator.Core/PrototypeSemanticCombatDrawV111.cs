@@ -476,7 +476,8 @@ public sealed partial class PrototypeGameEngine
             combat.SemanticDeck is not
                 { Mode: SemanticDeckStateV111.NatureMode,
                     Pending: null } ||
-            cursor?.NextStepIndex != SemanticHandDrawStepIndex ||
+            cursor?.Mechanics.IsAtStep(
+                PrototypeAutomaticStepKind.DrawPlayerHand) != true ||
             (cursor.ControlledSemanticDrawRequested is { } savedRequested &&
              savedRequested != requested) ||
             cursor.ControlledSemanticBeforeHandDrawPending ||

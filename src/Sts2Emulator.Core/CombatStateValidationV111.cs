@@ -829,8 +829,8 @@ public sealed partial record CombatState
                           { ControlledSemanticBeforeHandDrawPending: true,
                             ControlledSemanticDrawRemaining: null,
                             ControlledSemanticDrawRequested: null } cursor &&
-                      cursor.NextStepIndex ==
-                          PrototypeGameEngine.SemanticHandDrawStepIndex) ||
+                      cursor.Mechanics.IsAtStep(
+                          PrototypeAutomaticStepKind.DrawPlayerHand)) ||
                     combat.SemanticDeck is not
                         { Mode: SemanticDeckStateV111.NatureMode,
                             Pending: null })

@@ -16,7 +16,8 @@ public sealed partial class PrototypeGameEngine
         var cursor = combat.AutomaticPipelineContinuation;
         return cursor?.ControlledSemanticDrawRemaining is not null &&
             cursor.ControlledSemanticDrawRequested is > 0 &&
-            cursor.NextStepIndex == SemanticHandDrawStepIndex &&
+            cursor.Mechanics.IsAtStep(
+                PrototypeAutomaticStepKind.DrawPlayerHand) &&
             !cursor.ControlledSemanticBeforeHandDrawPending &&
             cursor.ControlledDrawRemaining is null &&
             cursor.ControlledDrawCostRemaining is null &&
@@ -36,7 +37,8 @@ public sealed partial class PrototypeGameEngine
         if (combat.SemanticDeck is null ||
             combat.PendingChoice is not null ||
             combat.PendingKnowledgeDemonChoice is not null ||
-            cursor?.NextStepIndex != SemanticHandDrawStepIndex ||
+            cursor?.Mechanics.IsAtStep(
+                PrototypeAutomaticStepKind.DrawPlayerHand) != true ||
             cursor.ControlledSemanticDrawRemaining is not null ||
             cursor.ControlledSemanticBeforeHandDrawPending ||
             cursor.ControlledDrawRemaining is not null ||
@@ -63,8 +65,8 @@ public sealed partial class PrototypeGameEngine
         // interruption. Preserve original hooks and advance the cursor
         // exactly once, as the surrounding ResumeAutomaticPipeline would.
         if (!IsSemanticAutomaticHandDraw(after) &&
-            after.AutomaticPipelineContinuation?.NextStepIndex ==
-                SemanticHandDrawStepIndex &&
+            after.AutomaticPipelineContinuation?.Mechanics.IsAtStep(
+                PrototypeAutomaticStepKind.DrawPlayerHand) == true &&
             after.SemanticDeck is { Pending: null } &&
             after.PendingChoice is null &&
             after.PendingKnowledgeDemonChoice is null)
@@ -117,7 +119,8 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidOperationException(
                 "Missing combat for semantic pre-draw resumption.");
         var cursor = combat.AutomaticPipelineContinuation;
-        if (cursor?.NextStepIndex != SemanticHandDrawStepIndex ||
+        if (cursor?.Mechanics.IsAtStep(
+                PrototypeAutomaticStepKind.DrawPlayerHand) != true ||
             !cursor.ControlledSemanticBeforeHandDrawPending ||
             cursor.ControlledSemanticDrawRemaining is not null ||
             cursor.ControlledSemanticDrawRequested is not null ||
@@ -290,7 +293,8 @@ public sealed partial class PrototypeGameEngine
         var pending = pendingChoice?.ControlledRandomPileCard;
         var currentEvent = SemanticRandomPileCardEngineV111
             .DescribePending(run);
-        if (cursor?.NextStepIndex != SemanticHandDrawStepIndex ||
+        if (cursor?.Mechanics.IsAtStep(
+                PrototypeAutomaticStepKind.DrawPlayerHand) != true ||
             !cursor.ControlledSemanticBeforeHandDrawPending ||
             pending is null || pendingChoice?.ChoiceId !=
                 "controlled_random_pile_card" ||

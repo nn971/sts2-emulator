@@ -1744,9 +1744,6 @@ public sealed partial class PrototypeGameEngine
 
         bool initialIntent = intents?.SiteId ==
             NativeCombatRngEntryV111.CommittedIntentSiteId;
-        int advanceTurnIndex = Array.FindIndex(
-            PrototypeContent.Rules.EndTurnPipeline,
-            step => step.Kind == PrototypeAutomaticStepKind.AdvanceTurn);
         if (intents is not null)
         {
             if (state.Phase != RunPhase.Combat ||
@@ -1767,8 +1764,8 @@ public sealed partial class PrototypeGameEngine
                 pipeline.NextStepIndex ==
                     PrototypeContent.Rules.EndTurnPipeline.Length;
             bool atAdvanceTurn = !initialIntent && pipeline is not null &&
-                pipeline.OpeningStage is null && advanceTurnIndex >= 0 &&
-                pipeline.NextStepIndex == advanceTurnIndex &&
+                pipeline.Mechanics.IsAtStep(
+                    PrototypeAutomaticStepKind.AdvanceTurn) &&
                 !combat.IsPlayerTurn;
             if (!atInitialIntentStage && !atAdvanceTurn)
                 throw new InvalidOperationException(

@@ -35,12 +35,8 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
                 "Invalid suspended initial-enemy-intent stage.");
 
         if (ControlledRecycleStratagemPending &&
-            (continuation.NextStepIndex < 0 ||
-             continuation.NextStepIndex >=
-                PrototypeContent.Rules.EndTurnPipeline.Length ||
-             PrototypeContent.Rules.EndTurnPipeline[
-                    continuation.NextStepIndex].Kind !=
-                PrototypeAutomaticStepKind.DrawPlayerHand ||
+            (!continuation.Mechanics.IsAtStep(
+                 PrototypeAutomaticStepKind.DrawPlayerHand) ||
              ControlledDrawRemaining is not > 0 ||
              ControlledDrawCostRemaining is not null ||
              combat.PendingChoice is not
@@ -57,9 +53,6 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
             turnIntents.Validate();
             bool initialIntentStage = continuation.OpeningStage ==
                 PrototypeOpeningCombatStage.InitialEnemyIntents;
-            int advanceTurnIndex = Array.FindIndex(
-                PrototypeContent.Rules.EndTurnPipeline,
-                step => step.Kind == PrototypeAutomaticStepKind.AdvanceTurn);
             var baseline = turnIntents.BaselineCombat with
             {
                 AutomaticPipelineContinuation = null
@@ -68,13 +61,12 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
             {
                 AutomaticPipelineContinuation = null
             };
-            if (advanceTurnIndex < 0 ||
-                turnIntents.SiteId != (initialIntentStage
+            if (turnIntents.SiteId != (initialIntentStage
                     ? NativeCombatRngEntryV111.CommittedIntentSiteId
                     : ControlledTurnIntentEngineV111.SiteId) ||
                 (!initialIntentStage &&
-                 (continuation.NextStepIndex != advanceTurnIndex ||
-                  continuation.OpeningStage is not null)) ||
+                 !continuation.Mechanics.IsAtStep(
+                    PrototypeAutomaticStepKind.AdvanceTurn)) ||
                 (initialIntentStage && continuation.NextStepIndex !=
                     PrototypeContent.Rules.EndTurnPipeline.Length) ||
                 continuation.PendingPostDispatchEventKind is not null ||
@@ -116,11 +108,8 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
             ControlledSemanticBeforeHandDrawPending;
         if (!hasCursor) return;
 
-        int drawStepIndex = PrototypeGameEngine.SemanticHandDrawStepIndex;
-        if (drawStepIndex < 0 ||
-            continuation.NextStepIndex != drawStepIndex ||
-            continuation.OpeningStage is not null ||
-            continuation.PendingPostDispatchEventKind is not null ||
+        if (!continuation.Mechanics.IsAtStep(
+                PrototypeAutomaticStepKind.DrawPlayerHand) ||
             ControlledDrawRemaining is not null ||
             ControlledDrawCostRemaining is not null ||
             ControlledEnemyAction is not null ||

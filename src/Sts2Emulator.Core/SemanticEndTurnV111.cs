@@ -717,8 +717,8 @@ public static class SemanticEndTurnEngineV111
                 stopBeforeSemanticHandDraw: true);
         var combat = handCheckpoint.World?.Combat ??
             throw new InvalidOperationException("Next-turn combat disappeared.");
-        if (combat.AutomaticPipelineContinuation?.NextStepIndex !=
-                PrototypeGameEngine.SemanticHandDrawStepIndex ||
+        if (combat.AutomaticPipelineContinuation?.Mechanics.IsAtStep(
+                PrototypeAutomaticStepKind.DrawPlayerHand) != true ||
             !IsSupportedSemanticSourceDeck(combat) ||
             combat.PendingChoice is not null ||
             combat.PendingKnowledgeDemonChoice is not null)

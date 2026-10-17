@@ -211,7 +211,8 @@ public sealed record SemanticCombatDrawV111(
              originCombat.AutomaticPipelineContinuation is not null) ||
             (this.AutomaticHandDraw &&
              (originCombat.AutomaticPipelineContinuation is not { } initial ||
-              initial.NextStepIndex != PrototypeGameEngine.SemanticHandDrawStepIndex ||
+              !initial.Mechanics.IsAtStep(
+                  PrototypeAutomaticStepKind.DrawPlayerHand) ||
               initial.ControlledSemanticDrawRemaining is not null ||
               initial.ControlledSemanticBeforeHandDrawPending)) ||
             this.Run.Phase != RunPhase.Combat ||
@@ -239,8 +240,8 @@ public sealed record SemanticCombatDrawV111(
             if (randomPileCardPending is not null)
             {
                 if (cursor is null ||
-                    cursor.NextStepIndex !=
-                        PrototypeGameEngine.SemanticHandDrawStepIndex ||
+                    !cursor.Mechanics.IsAtStep(
+                        PrototypeAutomaticStepKind.DrawPlayerHand) ||
                     !cursor.ControlledSemanticBeforeHandDrawPending ||
                     this.RequestedCount != 0 || this.RemainingCount != 0 ||
                     combat.PendingChoice?.ControlledRandomPileCard is null ||
@@ -251,8 +252,8 @@ public sealed record SemanticCombatDrawV111(
             else if (drawHookChoicePending?.BeforeHandDraw == true)
             {
                 if (cursor is null ||
-                    cursor.NextStepIndex !=
-                        PrototypeGameEngine.SemanticHandDrawStepIndex ||
+                    !cursor.Mechanics.IsAtStep(
+                        PrototypeAutomaticStepKind.DrawPlayerHand) ||
                     !cursor.ControlledSemanticBeforeHandDrawPending ||
                     cursor.ControlledSemanticDrawRemaining is not null ||
                     cursor.ControlledSemanticDrawRequested is not null ||
@@ -309,8 +310,8 @@ public sealed record SemanticCombatDrawV111(
                   (hookChoice.BeforeHandDraw
                       ? combat.AutomaticPipelineContinuation?
                             .ControlledSemanticBeforeHandDrawPending == true &&
-                        combat.AutomaticPipelineContinuation.NextStepIndex ==
-                            PrototypeGameEngine.SemanticHandDrawStepIndex &&
+                        combat.AutomaticPipelineContinuation.Mechanics.IsAtStep(
+                            PrototypeAutomaticStepKind.DrawPlayerHand) &&
                         this.RequestedCount == 0 && this.RemainingCount == 0
                       : PrototypeGameEngine.IsSemanticAutomaticHandDraw(combat) &&
                         combat.AutomaticPipelineContinuation!
@@ -599,7 +600,8 @@ public static class SemanticCombatDrawEngineV111
                   .Order().SequenceEqual(sourceCombat.DrawPile.Order()))) ||
             sourceCombat.PendingKnowledgeDemonChoice is not null ||
             sourceCombat.AutomaticPipelineContinuation is not { } cursor ||
-            cursor.NextStepIndex != PrototypeGameEngine.SemanticHandDrawStepIndex ||
+            !cursor.Mechanics.IsAtStep(
+                PrototypeAutomaticStepKind.DrawPlayerHand) ||
             cursor.ControlledDrawRemaining is not null ||
             cursor.ControlledDrawCostRemaining is not null ||
             cursor.ControlledSemanticDrawRemaining is not null ||

@@ -159,14 +159,9 @@ public sealed partial class PrototypeGameEngine
                     if (handRemaining <= 0 ||
                         choice.AfterShuffleRelic is null ||
                         combat.SemanticDeck is not null || cursor is null ||
-                        cursor.OpeningStage is not null ||
                         cursor.ControlledDrawRemaining != handRemaining ||
-                        cursor.NextStepIndex < 0 ||
-                        cursor.NextStepIndex >=
-                            PrototypeContent.Rules.EndTurnPipeline.Length ||
-                        PrototypeContent.Rules.EndTurnPipeline[
-                            cursor.NextStepIndex].Kind !=
-                            PrototypeAutomaticStepKind.DrawPlayerHand ||
+                        !cursor.Mechanics.IsAtStep(
+                            PrototypeAutomaticStepKind.DrawPlayerHand) ||
                         cursor.ControlledDrawCostRemaining is not null ||
                         cursor.ControlledRecycleStratagemPending)
                         return false;
