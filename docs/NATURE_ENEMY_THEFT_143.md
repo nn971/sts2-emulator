@@ -13,9 +13,11 @@ projection.
 The existing replay frame resolves the selected physical identity once and
 resumes the enemy action. A draw-pile selection that would split an unresolved
 semantic deck pool fails closed before support is published; discard-pile
-selection does not alter hidden draw order. The generic index law remains
-`UNVERIFIED`, and native stream ownership and source probability calibration
-remain open.
+selection does not alter hidden draw order. The Chance Law uses exact Native
+`NextInt` grid masses when the pending request names a recognized Native
+stream, reporting `SOURCE_VERIFIED` for that bounded transform. Legacy or
+unknown stream requests retain equal `UNVERIFIED` weights; Native stream
+ownership and source-pool completeness remain open.
 
 Thieving Hopper's `combat.enemy.theft_card.select` choice now uses the saved
 enemy-action replay frame. The emulator replays the enemy action from its
@@ -31,10 +33,10 @@ deck. If any draw candidate would split an unresolved pool, the end-turn action
 fails closed before exposing a partial support.
 
 The JSONL bridge exposes the choice through the existing `enemy_action_chance`
-event and `semantic_resolve_enemy_action` request. Its Chance Law now exposes
-the saved index support with an explicitly `UNVERIFIED` uniform index law.
-The stable request retains enemy ownership, ordered card-instance support
-identity and source ordinal.
+event and `semantic_resolve_enemy_action` request. Its Chance Law exposes the
+saved index support and uses the typed Native stream ID to choose between
+exact bounded-transform masses and the legacy equal-index model. The stable
+request retains enemy ownership, ordered card-instance support identity and
+source ordinal.
 Native combat currently identifies `run.combat_card_generation` as a stream
-hypothesis; its native assignment, cursor parity and conditional law remain
-`UNVERIFIED`.
+hypothesis; its native assignment and cursor parity remain `UNVERIFIED`.

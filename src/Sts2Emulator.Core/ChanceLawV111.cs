@@ -634,18 +634,18 @@ public static partial class ChanceLawEngineV111
     }
 
     /// <summary>
-    /// Query the declared uniform index law at a suspended automatic
-    /// enemy-action boundary. This preserves index identity even when
-    /// candidate values repeat.
+    /// Query the declared index law at a suspended automatic enemy-action
+    /// boundary. Canonical Native streams use exact NextInt grid masses;
+    /// legacy and unknown streams keep equal request-index weights. This
+    /// preserves index identity even when candidate values repeat.
     /// </summary>
     public static ChanceLawV111 QueryEndTurnIndex(
         SemanticEndTurnIndexEventV111 indexEvent)
     {
         ArgumentNullException.ThrowIfNull(indexEvent);
         indexEvent.Validate();
-        var sourceVerifiedNativeIndex = indexEvent.Request.SiteId is
-            NativeCombatRngEntryV111.InitialUniqueHpSiteId or
-            NativeCombatRngEntryV111.ToughEggHatchHpSiteId;
+        var sourceVerifiedNativeIndex = IsCanonicalNativeIndexStream(
+            indexEvent.Request.StreamId);
         var indexWeights = sourceVerifiedNativeIndex
             ? NativeNextIntGridWeights(indexEvent.Request.SupportCount)
             : Enumerable.Repeat(1L,
