@@ -341,6 +341,11 @@ public static partial class ChanceLawEngineV111
         "to binary32 before the source threshold comparisons. Exact grid " +
         "preimages include float rounding and comparison inclusivity; seed " +
         "frequencies and stream derivation are outside this claim.";
+    public const string NativeUnitFloatMappedOutcomeSourceVerifiedProvenance =
+        "v0.111.0 Rng.NextFloat() rounds the uniform 53-bit NextDouble grid " +
+        "to binary32 before the source outcome mapping. Exact grid " +
+        "preimages include subsequent source float and integer rounding; " +
+        "seed frequencies and stream derivation are outside this claim.";
 
     /// <summary>Exact integer masses for each result of the pinned Native
     /// bounded-index transform, scaled by the 2^53 input-grid size. This
@@ -402,8 +407,7 @@ public static partial class ChanceLawEngineV111
         while (low < high)
         {
             var middle = low + ((high - low) >> 1);
-            var unitDouble = middle * (1.0 / NativeNextDoubleGridSize);
-            var sourceFloat = (float)unitDouble;
+            var sourceFloat = NativeUnitFloatGridValue(middle);
             if (includes(sourceFloat))
                 low = middle + 1;
             else
@@ -411,6 +415,9 @@ public static partial class ChanceLawEngineV111
         }
         return low;
     }
+
+    private static float NativeUnitFloatGridValue(long gridIndex) =>
+        (float)(gridIndex * (1.0 / NativeNextDoubleGridSize));
 
     private static (long Rare, long Uncommon, long Common)
         NativeCardRarityGridWeights(int rareThreshold, int uncommonEnd)
@@ -1079,9 +1086,9 @@ public static partial class ChanceLawEngineV111
     }
 
     /// <summary>
-    /// Query the mapped integer price produced by one native merchant
-    /// NextFloat modifier. The interval masses model the rounded output and
-    /// remain UNVERIFIED against the exact native float distribution.
+    /// Query the mapped integer price produced by one native merchant unit
+    /// float. We count exact source-grid preimages through the unit-float
+    /// rounding and the source price conversion.
     /// </summary>
     public static ChanceLawV111 QueryNativeMerchantPrice(
         RunState run, string siteId, int ordinal,
@@ -1157,8 +1164,25 @@ public static partial class ChanceLawEngineV111
                 $"Native merchant price query does not support site '{siteId}'.");
         }
 
-        var outcomes = RoundedPriceOutcomes(
-            baseCost, minimumModifier, maximumModifier, saleReprice);
+        int MapPrice(float roll)
+        {
+            if (siteId == "shop.merchant.card_price_modifier.unit_float")
+            {
+                var price = PrototypeGameEngine
+                    .ResolveNativeMerchantCardPrice(itemId, roll);
+                return saleReprice ? price / 2 : price;
+            }
+            if (siteId == "shop.merchant.potion_price_modifier.unit_float")
+                return PrototypeNativePotionShop
+                    .ResolveMerchantPriceNative(itemId, roll);
+            if (siteId == "shop.merchant.relic_price_modifier.unit_float")
+                return PrototypeNativeRelicGrabBag
+                    .ResolveMerchantPriceNative(itemId, roll);
+            throw new NotSupportedException(
+                $"Native merchant price mapping does not support '{siteId}'.");
+        }
+
+        var outcomes = NativeNextFloatMappedIntegerOutcomes(MapPrice);
         var conditioning = new
         {
             siteId, ownerId, ordinal, itemId, baseCost,
@@ -1169,8 +1193,8 @@ public static partial class ChanceLawEngineV111
             siteId, "unit_float_mapped_price", ownerId, ordinal,
             NativeMerchantPriceConditioningPolicyId,
             CanonicalJson.Sha256(conditioning),
-            "native-unit-float-rounded-price-intervals-unverified",
-            outcomes);
+            NativeUnitFloatMappedOutcomeSourceVerifiedProvenance,
+            outcomes, ChanceLawV111.SourceVerifiedStatus);
     }
 
     /// <summary>
@@ -1506,48 +1530,53 @@ public static partial class ChanceLawEngineV111
         return checked(left / GreatestCommonDivisor(left, right) * right);
     }
 
-    private static ChanceLawOutcomeV111[] RoundedPriceOutcomes(
-        int baseCost, double minimumModifier, double maximumModifier,
-        bool halvePrice)
+    /// <summary>
+    /// Counts exact 53-bit NextDouble grid preimages for a monotone integer
+    /// mapping of the source-rounded unit NextFloat. Binary search locates
+    /// each integer outcome's contiguous grid interval.
+    /// </summary>
+    private static ChanceLawOutcomeV111[]
+        NativeNextFloatMappedIntegerOutcomes(Func<float, int> mapOutcome)
     {
-        if (baseCost <= 0 || minimumModifier < 0 ||
-            maximumModifier <= minimumModifier)
-            throw new ArgumentOutOfRangeException(nameof(baseCost));
-
-        var minimumRounded = Math.Max(1, (int)MathF.Round(
-            baseCost * (float)minimumModifier,
-            MidpointRounding.ToEven));
-        var maximumRounded = Math.Max(1, (int)MathF.Round(
-            baseCost * (float)maximumModifier,
-            MidpointRounding.ToEven));
-        var range = maximumModifier - minimumModifier;
-        var probabilities = new SortedDictionary<int, double>();
-        for (var rounded = Math.Max(1, minimumRounded - 1);
-             rounded <= maximumRounded + 1; rounded++)
+        ArgumentNullException.ThrowIfNull(mapOutcome);
+        var weights = new SortedDictionary<int, long>();
+        long firstGridIndex = 0;
+        long totalWeight = 0;
+        while (firstGridIndex < NativeNextDoubleGridSize)
         {
-            var lower = Math.Max(0,
-                (((rounded - 0.5) / baseCost) - minimumModifier) / range);
-            var upper = Math.Min(1,
-                (((rounded + 0.5) / baseCost) - minimumModifier) / range);
-            var mass = Math.Max(0, upper - lower);
-            if (mass <= 0)
-                continue;
-            var mappedPrice = halvePrice ? rounded / 2 : rounded;
-            probabilities[mappedPrice] = probabilities.GetValueOrDefault(
-                mappedPrice) + mass;
+            var mappedOutcome = mapOutcome(
+                NativeUnitFloatGridValue(firstGridIndex));
+            var low = firstGridIndex + 1;
+            var high = NativeNextDoubleGridSize;
+            while (low < high)
+            {
+                var middle = low + ((high - low) >> 1);
+                var candidate = mapOutcome(
+                    NativeUnitFloatGridValue(middle));
+                if (candidate > mappedOutcome)
+                    high = middle;
+                else
+                    low = middle + 1;
+            }
+
+            var endGridIndex = low;
+            var weight = checked(endGridIndex - firstGridIndex);
+            if (weight <= 0 ||
+                weights.Count > 0 && weights.Last().Key >= mappedOutcome)
+                throw new InvalidDataException(
+                    "Native unit-float outcome mapping is not monotone.");
+            weights.Add(mappedOutcome, weight);
+            totalWeight = checked(totalWeight + weight);
+            firstGridIndex = endGridIndex;
         }
 
-        const double WeightScale = 1_000_000_000;
-        var outcomes = probabilities.Select(pair =>
-            new ChanceLawOutcomeV111(
-                "price:" + pair.Key.ToString(CultureInfo.InvariantCulture),
-                Math.Max(1L, (long)Math.Round(
-                    pair.Value * WeightScale,
-                    MidpointRounding.AwayFromZero)))).ToArray();
-        if (outcomes.Length == 0)
+        if (weights.Count == 0 ||
+            totalWeight != NativeNextDoubleGridSize)
             throw new InvalidOperationException(
-                "Native merchant price modifier has no rounded outcomes.");
-        return outcomes;
+                "Native unit-float outcome masses do not cover the input grid.");
+        return weights.Select(pair => new ChanceLawOutcomeV111(
+            "price:" + pair.Key.ToString(CultureInfo.InvariantCulture),
+            pair.Value)).ToArray();
     }
 
     private static ChanceLawV111 CreateNativeBoundaryLaw(
