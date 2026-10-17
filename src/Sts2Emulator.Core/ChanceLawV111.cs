@@ -539,6 +539,8 @@ public static partial class ChanceLawEngineV111
 
     public const string IntentConditioningPolicyId =
         "source-filtered-intent-weights-v1";
+    public const string NativeRandomIndexConditioningPolicyId =
+        "source-native-random-index-nextint-grid-v1";
     public const string EndTurnIndexConditioningPolicyId =
         "uniform-saved-automatic-index-support-v1";
     public const string RandomIndexConditioningPolicyId =
@@ -675,31 +677,61 @@ public static partial class ChanceLawEngineV111
                 : ChanceLawV111.UnverifiedStatus);
     }
 
-    /// <summary>Query a uniform law over the legal indices in a saved typed
-    /// random request. Only the typed request enters the law fingerprint; the
-    /// selected index, enclosing run state and private RNG state do not.</summary>
+    /// <summary>Query legal indices in a saved typed random request. Canonical
+    /// Native stream IDs use exact NextInt grid masses; legacy or unknown
+    /// streams retain the unverified uniform request-index model. Only the
+    /// typed request enters the law fingerprint; selected outcomes, enclosing
+    /// run state and private RNG state do not.</summary>
     public static ChanceLawV111 QueryRandomIndex(
         string eventId, RandomIndexRequestV111 request)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
         ArgumentNullException.ThrowIfNull(request);
         request.Validate();
+        var nativeIndexLaw = IsCanonicalNativeIndexStream(
+            request.StreamId);
+        var policy = nativeIndexLaw
+            ? NativeRandomIndexConditioningPolicyId
+            : RandomIndexConditioningPolicyId;
+        var weights = nativeIndexLaw
+            ? NativeNextIntGridWeights(request.SupportCount)
+            : Enumerable.Repeat(1L, request.SupportCount).ToArray();
         var outcomes = Enumerable.Range(0,
                 request.SupportCount)
             .Select(index => new ChanceLawOutcomeV111(
                 "choice_index:" + index.ToString(CultureInfo.InvariantCulture),
-                1L))
+                weights[index]))
             .ToArray();
         var conditioningFingerprint = CanonicalJson.Sha256(new
         {
             RequestFingerprint = CanonicalJson.Sha256(request),
-            policy = RandomIndexConditioningPolicyId
+            policy
         });
         return Create(eventId, request.SiteId,
             request.OperationKind, request.OwnerId, request.Ordinal,
-            RandomIndexConditioningPolicyId, conditioningFingerprint,
-            "uniform-saved-index-support-unverified", outcomes);
+            policy, conditioningFingerprint,
+            nativeIndexLaw
+                ? NativeBoundedIndexSourceVerifiedProvenance
+                : "uniform-saved-index-support-unverified", outcomes,
+            nativeIndexLaw
+                ? ChanceLawV111.SourceVerifiedStatus
+                : ChanceLawV111.UnverifiedStatus);
     }
+
+    private static bool IsCanonicalNativeIndexStream(string streamId) =>
+        streamId is "run.up_front" or "run.shuffle" or
+            "run.unknown_map_point" or "run.combat_card_generation" or
+            "run.combat_potion_generation" or "run.combat_card_selection" or
+            "run.combat_energy_costs" or "run.combat_targets" or
+            "run.monster_ai" or "run.niche" or "run.combat_orbs" or
+            "run.treasure_room_relics" or "player.rewards" or
+            "player.shops" or "player.transformations" ||
+        (streamId.StartsWith("context.act_", StringComparison.Ordinal) &&
+         streamId.EndsWith("_map", StringComparison.Ordinal)) ||
+        streamId.StartsWith("context.encounter.", StringComparison.Ordinal) ||
+        streamId.StartsWith("context.monster.", StringComparison.Ordinal) ||
+        streamId.StartsWith("context.event.", StringComparison.Ordinal) ||
+        streamId.StartsWith("context.content.", StringComparison.Ordinal);
 
     /// <summary>
     /// Query one pre-event Ancient offer decision. Direct offer pools return

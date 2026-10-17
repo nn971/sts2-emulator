@@ -42,13 +42,16 @@ completed transcripts identify `controlled-v111` outcomes and retain
 or Native RNG stream.
 
 Pending event-effect and post-reward modifier-curse responses also include a
-read-only `chanceLaw` and `boundaryFingerprint`. For generic requests, the law
-assigns equal weight to each legal request index (`choice_index:n`); candidate
-labels describe the mechanical result associated with an index but do not
-change these index weights. Stone push and lift each collapse all 100 bounded
-indices to a single `no_effect` outcome under a `SOURCE_VERIFIED` law.
-Generic source weights, stream parity and original-game probabilities remain
-`UNVERIFIED`.
+read-only `chanceLaw` and `boundaryFingerprint`. For generic requests on
+recognized Native `run.*` and `player.*` streams or context streams created by
+`NativeRngV111Contexts`, the law assigns exact Native `NextInt` 53-bit grid
+masses to each legal request index (`choice_index:n`); legacy and unknown
+streams retain equal index weights.
+Candidate labels describe the mechanical result associated with an index but
+do not change those index masses. Stone push and lift each collapse all 100
+bounded indices to a single `no_effect` outcome under a `SOURCE_VERIFIED` law.
+Source-pool completeness, stream parity and original-game probabilities
+remain separate.
 The pending boundary fingerprint binds the event/choice/request context and
 excludes private RNG state. The response's top-level `fingerprint` remains the
 exact-state stale-request guard.

@@ -96,12 +96,16 @@ Beautiful Bracelet and Distinguished Cape shuffles, Sand Castle upgrades,
 random rare-card and potion acquisitions, potion-slot fills, and
 persistent-card transform replacement. It replays the exact Shop action and
 validates the pending request and labels against the saved source state.
-Their generic request-index laws remain `UNVERIFIED`; these controlled choices
-do not advance game RNG. Unit-float acquisition effects and all other
-unregistered purchase hooks remain fail-closed. The session keeps supported
-Chance Law samples and run-state resolution atomic across fork/save/restore;
-it does not enable native regional merchant or treasure entry providers or
-other run/reward/map operations.
+Their generic request-index laws use exact Native `NextInt` grid masses and
+report `SOURCE_VERIFIED` on canonical Native stream IDs such as `run.niche`
+and `player.rewards`; legacy and unknown stream requests remain
+`UNVERIFIED`. This claim covers only the bounded transform on the declared
+support, not stream attribution, source-pool completeness, seed frequencies,
+or cursor parity. Controlled choices do not advance game RNG. Unit-float
+acquisition effects and all other unregistered purchase hooks remain
+fail-closed. The session keeps supported Chance Law samples and run-state
+resolution atomic across fork/save/restore; it does not enable native regional
+merchant or treasure entry providers or other run/reward/map operations.
 Once committed, the session result also provides a regular `stateHandle` for
 continuing play through the ordinary run API; no state handle is published
 while a Nature choice remains pending.
@@ -163,10 +167,13 @@ sites above, and adds these encounter-pool selections:
 
 This entry boundary requires the matching Act 1 region and encounter pool,
 with Underdocks additionally requiring its native-shaped map profile. It
-excludes configured Native runs and later-act encounters. The generic
-request-index laws remain `UNVERIFIED` for source probabilities and stream
-parity. The two `potion.*` requests use the legacy `event` stream and are
-intercepted only at this combat-entry boundary.
+excludes configured Native runs and later-act encounters. Generic
+request-index laws on canonical Native stream IDs report exact Native
+`NextInt` grid masses for the declared bound; legacy `combat` and `event`
+requests remain `UNVERIFIED`. Native stream attribution, source-pool
+completeness, seed frequencies and cursor parity remain separate. The two
+`potion.*` requests use the legacy `event` stream and are intercepted only at
+this combat-entry boundary.
 
 The registered index-only Shop-purchase acquisition sites are:
 
