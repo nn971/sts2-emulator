@@ -2417,17 +2417,20 @@ public static partial class ChanceLawEngineV111
     }
 
     /// <summary>
-    /// Query the uniform bounded-integer law declared by a pending semantic
-    /// cost event. Card identity and source stage remain in its conditioning
+    /// Query the Native bounded-index law declared by a pending semantic cost
+    /// event. Card identity and source stage remain in its conditioning
     /// fingerprint through the event's support fingerprint.
     /// </summary>
     public static ChanceLawV111 QueryCost(SemanticCostEventV111 cost)
     {
         ArgumentNullException.ThrowIfNull(cost);
         cost.Validate();
+        var indexWeights = NativeNextIntGridWeights(
+            cost.CandidateCosts.Length);
         var outcomes = cost.CandidateCosts
-            .Select(value => new ChanceLawOutcomeV111(
-                "cost:" + value.ToString(CultureInfo.InvariantCulture), 1L))
+            .Select((value, index) => new ChanceLawOutcomeV111(
+                "cost:" + value.ToString(CultureInfo.InvariantCulture),
+                indexWeights[index]))
             .ToArray();
         var conditioningFingerprint = CanonicalJson.Sha256(new
         {
@@ -2440,7 +2443,8 @@ public static partial class ChanceLawEngineV111
         return Create(cost.EventId, cost.SiteId, cost.OperationKind,
             cost.OwnerId, cost.Ordinal, CostConditioningPolicyId,
             conditioningFingerprint,
-            "uniform-bounded-cost-unverified", outcomes);
+            NativeBoundedIndexSourceVerifiedProvenance, outcomes,
+            ChanceLawV111.SourceVerifiedStatus);
     }
 
     /// <summary>

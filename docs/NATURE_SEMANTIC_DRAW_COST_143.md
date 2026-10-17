@@ -22,9 +22,11 @@ schema does not expose a separate numeric temporary-cost preview.
 The saved draw continuation resolves the cost by the same physical card
 identity and dispatches `CardDrawn` once before resuming the remaining draw
 count. Unsupported draw sources and stale or mismatched cost requests fail
-closed at their existing continuation boundary. Both sites' probability
-provenance remains `UNVERIFIED`; this contract does not establish source-game
-cost calibration or native cursor parity.
+closed at their existing continuation boundary. The read-only Chance Law
+counts exact Native `NextInt` 53-bit grid masses for the declared bounded
+support and reports `SOURCE_VERIFIED` for that transform. Native stream
+assignment, seed frequencies, cursor parity, and any source-specific cost
+eligibility beyond that support remain separate.
 
 ## Ordering contract
 
