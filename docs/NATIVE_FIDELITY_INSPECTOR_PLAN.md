@@ -8,9 +8,17 @@ No authentic native-versus-emulator parity result has yet been established.
 **Repository ownership:** `sts2-emulator`
 **First application:** Native-versus-emulator fidelity checking for single-player Silent, beginning with Act 1 Overgrowth.
 **Implementation location:** `native/Sts2ReferenceMod/`
-**Priority:** Native evidence acquisition and deterministic parity before agent playback, exact RNG reproduction, or Nature-controlled training.
+**Priority:** Independent native evidence acquisition, mechanical differential tests, and eventually exact RNG parity. This track runs independently of the playable Nature training milestone and is not a prerequisite for issue #143.
 
 This is the execution plan for [REFERENCE_BRIDGE.md](REFERENCE_BRIDGE.md) and [PARITY_TESTING.md](PARITY_TESTING.md), under the standards of [FIDELITY_CONTRACT.md](FIDELITY_CONTRACT.md). It complements the desired RNG work rather than replacing it.
+
+## Scope ownership
+
+[Nature issue #143](https://github.com/nn971/sts2-emulator/issues/143) owns the playable two-site Nature interface, engine-owned ordinary stochastic control arm, and emulator A/B training smoke. It requires reproducible mechanics and fair player observations, not native-game parity.
+
+This plan and [Inspector issue #122](https://github.com/nn971/sts2-emulator/issues/122) own installed-game capture, mechanical differential comparison, source hook order and exact native stream/cursor audits. N5 separately owns source-verified conditional probabilities and original-game importance-correction claims.
+
+The Nature training A/B compares emulator-owned policies. A native-game comparison of a Nature-created trajectory remains diagnostic Inspector work, not a #143 gate. This split reuses semantic events and traces without combining the tracks' acceptance criteria.
 
 ## 1. Objective and first demonstrable result
 
@@ -200,12 +208,13 @@ The local transport may start with HTTP/JSON on an explicitly configured loopbac
 - [ ] Feed curated failing fixtures into CI; keep large/private game-derived traces outside source control.
 **Gate:** growing version-pinned fixture corpus, complete first-difference reporting, and explicit per-mechanic parity confidence labels.
 
-### P5 — future integrations (separate milestones)
+### P5 — exact native RNG parity and optional consumers (Inspector-owned)
 
-- [ ] Exact native RNG stream inventory, codecs, cursor/fingerprint parity, hook consumption order.
-- [ ] Full-run exact lockstep once RNG and state restoration requirements are met.
-- [ ] Attach `sts2-ai` inference to the same decision/controller protocol for agent playback.
-- [ ] Later extend to Nature-controlled training experiments; keep fidelity mode semantics distinct.
+- [ ] Verify relevant native streams, initialization, codecs, callsite ownership, cursors and consumption order against the installed build.
+- [ ] Audit source-timed shuffle epochs, hidden order commitment, intent choices and stochastic hooks separately from deferred Nature events.
+- [ ] Compare pinned source-disjoint checkpoints and classify the earliest mechanical or chance-induced divergence.
+- [ ] Achieve full-run lockstep only after RNG and state restoration gates pass; publish a coverage manifest.
+- [ ] Optionally attach `sts2-ai` inference for viewing and diagnosing runs. Nature training and its emulator-owned baseline remain #143 work.
 
 ## 9. Required tests and quality bar
 

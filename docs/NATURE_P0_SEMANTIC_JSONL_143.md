@@ -2,6 +2,8 @@
 
 This versioned pilot remains the protocol history for #143. The [unified architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md) and [roadmap](STOCHASTIC_ARCHITECTURE_ROADMAP.md) now define provider ownership and the separate Chance Law/ReferenceNature contract; existing event schemas and snapshots are not reinterpreted.
 
+> **Scope revision:** Older P0 acceptance notes below are implementation checkpoints, not the current #143 closure definition. #143 owns the playable two-site Nature/control experiment; native fidelity is #122, and source-law calibration is N5. Chance Law results remain `UNVERIFIED` until independently validated.
+
 **Schema:** `sts2-v111-semantic-playable-p0-v1`  
 **API:** `prototype-ai-jsonl` and `bindings/python/sts2_emulator`  
 **Source:** pinned v0.111.0 engine, opt-in RNG/Inspector integration branch

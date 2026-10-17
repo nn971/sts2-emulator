@@ -1,11 +1,13 @@
 # Desired RNG Implementation
 
-**Status:** target architecture with incremental implementation in progress.
+**Status:** accepted architecture target (2026-10-16), partially implemented through independent versioned slices. Earlier D0–D6 sequencing notes retain their historical context.
 **Scope:** `sts2-emulator`, pinned STS2 v0.111.0, single-player first.
 **Primary goal:** faithful mechanics and ordered triggers with an interchangeable source of random decisions.
 **Related plans:** [RNG model](RNG.md), [v111 native RNG fidelity matrix](reference-builds/v0.111.0-native-rng-fidelity-matrix.md), [complete implementation roadmap](FULL_IMPLEMENTATION_ROADMAP.md), [configured v111 interface](V111_INTERFACE.md), [controlled event-choice continuation](CONTROLLED_EVENT_CHOICE_D3.md).
 
 **Normative ownership and Chance Law contract:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md), [ADR 0004](adr/0004-provider-owned-stochastic-state-and-chance-law.md), and [staged roadmap](STOCHASTIC_ARCHITECTURE_ROADMAP.md). This document retains detailed migration guidance; it does not define a second ownership model.
+
+Chance Law is an optional read-only service over pre-outcome support and declared constraints. Native RNG and the game bridge never call it. ReferenceNature consumes the law through the same mechanics continuation; native cursor parity and original-game probability calibration remain separate gates.
 
 This document records the **desired RNG implementation** for the emulator. It
 specifies the target architecture; it does not claim that the full interface,

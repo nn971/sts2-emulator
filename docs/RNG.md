@@ -8,7 +8,7 @@ Native sampling remains on its source provider path. Chance Law is a separate re
 
 ## Principle
 
-RNG is part of the state, not a global service.
+Provider-owned RNG and stochastic realizations/constraints are part of the **complete simulation state**, not global services. Mechanics owns physical objects and deterministic consequences; the active provider owns private stream state, committed outcomes or unresolved constraints.
 
 Conceptually, each random stream is a deterministic transition:
 
@@ -16,13 +16,13 @@ Conceptually, each random stream is a deterministic transition:
 (result, R') = Next(R, request)
 ```
 
-and the whole game transition becomes deterministic:
+and auto-resolving seeded execution becomes deterministic:
 
 ```text
 S' = Step(S, action)
 ```
 
-because `S` contains the RNG bundle.
+because the complete state contains the active provider's private state. Nature mode instead suspends at a declared stochastic boundary until a legal choice is supplied.
 
 ## Multiple streams
 

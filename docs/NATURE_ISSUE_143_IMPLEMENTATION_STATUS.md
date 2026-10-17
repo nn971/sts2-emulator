@@ -1,10 +1,12 @@
 # Nature issue #143: playable controlled-chance integration
 
+> **Scope revision:** The chronological implementation notes below preserve interim acceptance language. Current #143 scope is the playable two-site Nature opponent, engine-owned ordinary stochastic delegation and emulator A/B control experiment. Native game parity belongs to [Inspector issue #122](https://github.com/nn971/sts2-emulator/issues/122); original-game probability calibration belongs to N5.
+
 **Architecture and acceptance:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md) defines ownership; [roadmap](STOCHASTIC_ARCHITECTURE_ROADMAP.md) separates structural Chance Law acceptance, the two-site #143 comparator, and native inspector fidelity.
 
 **Tracking issue:** [#143](https://github.com/nn971/sts2-emulator/issues/143).
 **Base:** the isolated fidelity/RNG integration branch (PR [#137](https://github.com/nn971/sts2-emulator/pull/137)); the Silent all-Act gameplay snapshot in `main` is unchanged.
-**Status:** PRs #144–#152, #155–#157 and #159–#165 are merged into the isolated RNG/Inspector integration branch. The P0 JSONL protocol now has an opt-in real Act 1 source route, pre-intent suspension, source-filtered weighted intent IDs, deferred card identities, and a paired native-policy baseline. The source-routed victory smoke, replay check and 1-vs-15 process comparison pass. Issue #143 stays OPEN for native probability/source-law calibration, non-Nature reward parity, broader encounter coverage, and consumer verification; the conditional laws remain `UNVERIFIED`.
+**Status:** PRs #144–#152, #155–#157 and #159–#165 are merged into the isolated RNG/Inspector integration branch. The P0 JSONL protocol has an opt-in real Act 1 source route, pre-intent suspension, source-filtered weighted intent IDs, deferred card identities, and a paired engine-owned policy baseline. The source-routed victory smoke, replay check and 1-vs-15 process comparison pass. Remaining #143 acceptance is complete declared engine-owned stochastic delegation and the matched two-site Nature/control A/B. Conditional laws remain `UNVERIFIED`; native fidelity and source-law calibration are separately gated by #122 and N5.
 
 ## Delivered by the event-metadata slice
 

@@ -7,6 +7,8 @@ public sealed record ChanceLawOutcomeV111(string OutcomeId, long Weight);
 
 /// <summary>
 /// Read-only conditional distribution for one unresolved semantic event.
+/// EventId correlates the query with mechanics; LawId fingerprints only the
+/// declared support and conditioning, never the full engine boundary identity.
 /// Weights are exact integer numerators over TotalWeight; provenance makes no
 /// claim that an emulator model has been verified against the original game.
 /// </summary>

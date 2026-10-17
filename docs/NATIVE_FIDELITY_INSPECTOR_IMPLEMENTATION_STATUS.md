@@ -1,5 +1,7 @@
 # Inspector implementation status
 
+> **Chronology:** The P0–P5 table below is a foundation-branch snapshot, not an exhaustive inventory of later integration-branch RNG and spectator work. The [Inspector plan](NATIVE_FIDELITY_INSPECTOR_PLAN.md) and [issue #122](https://github.com/nn971/sts2-emulator/issues/122) own native source evidence and parity; Chance Law and ReferenceNature have no runtime role in native execution.
+
 **Scope:** [Inspector plan](NATIVE_FIDELITY_INSPECTOR_PLAN.md) and [issue #122](https://github.com/nn971/sts2-emulator/issues/122) own native source captures, mechanics differential checks and exact RNG provenance. These gates run independently of the Chance Law/ReferenceNature structure and the #143 training comparator.
 
 **Feature branch:** `feature/native-fidelity-inspector-foundation`
