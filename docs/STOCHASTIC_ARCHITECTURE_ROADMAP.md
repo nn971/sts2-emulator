@@ -54,6 +54,8 @@
 
 **S3 event simulation envelope increment (2026-10-17):** `EventState.Simulation` now composes its existing mechanics and stochastic owners in one generic `SimulationStateV111` envelope. The prior `Mechanics` and `Stochastic` properties are projections onto that single composite value, and snapshot fields remain flattened.
 
+**S3 active event validation boundary increment (2026-10-17):** Active event invariant checks now live on `EventState.Validate`, called from the existing Event and Repy reward boundaries. The event owner delegates provider-owned outcome validation to `EventStochasticStateV111`; map history, phase routing and other run-level checks remain on the run invariant path.
+
 ## S1 precise design
 
 Implement a **read-only, outcome-blind** Chance Law query in `Sts2Emulator.Core` with:

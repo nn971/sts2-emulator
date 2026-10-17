@@ -2797,7 +2797,7 @@ public sealed record PrototypePendingEventPotionReplacementState(
     };
 }
 
-public sealed record EventState(
+public sealed partial record EventState(
     string EventId,
     string? ChosenChoiceId = null,
     PrototypePendingEventDeckChoiceState? PendingDeckChoice = null,
