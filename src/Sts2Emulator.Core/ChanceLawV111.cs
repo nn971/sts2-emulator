@@ -737,38 +737,36 @@ public static class ChanceLawEngineV111
             throw new InvalidOperationException(
                 "Native treasure Chance Laws require a non-skipped configured Treasure node before entry.");
 
-        var ownedIds = run.Player.Relics.Select(relic => relic.RelicId)
-            .ToHashSet(StringComparer.Ordinal);
         var candidatesByTier = new Dictionary<PrototypeRelicRarity, string[]>
         {
-            [PrototypeRelicRarity.Common] = bag.Common
-                .Where(id => !ownedIds.Contains(id))
+            [PrototypeRelicRarity.Common] =
+                PrototypeNativeRelicGrabBag.EligiblePullIds(
+                    bag, PrototypeRelicRarity.Common, merchant: false,
+                    player: run.Player)
                 .OrderBy(id => id, StringComparer.Ordinal).ToArray(),
-            [PrototypeRelicRarity.Uncommon] = bag.Uncommon
-                .Where(id => !ownedIds.Contains(id))
+            [PrototypeRelicRarity.Uncommon] =
+                PrototypeNativeRelicGrabBag.EligiblePullIds(
+                    bag, PrototypeRelicRarity.Uncommon, merchant: false,
+                    player: run.Player)
                 .OrderBy(id => id, StringComparer.Ordinal).ToArray(),
-            [PrototypeRelicRarity.Rare] = bag.Rare
-                .Where(id => !ownedIds.Contains(id))
+            [PrototypeRelicRarity.Rare] =
+                PrototypeNativeRelicGrabBag.EligiblePullIds(
+                    bag, PrototypeRelicRarity.Rare, merchant: false,
+                    player: run.Player)
                 .OrderBy(id => id, StringComparer.Ordinal).ToArray()
         };
-        var rarityBranches = new (string Rarity, int BasisPoints,
-            PrototypeRelicRarity[] Fallbacks)[]
-        {
-            ("common", 5000, [PrototypeRelicRarity.Common,
-                PrototypeRelicRarity.Uncommon, PrototypeRelicRarity.Rare]),
-            ("uncommon", 3300, [PrototypeRelicRarity.Uncommon,
-                PrototypeRelicRarity.Rare]),
-            ("rare", 1700, [PrototypeRelicRarity.Rare])
-        };
+        var rarityBranches =
+            PrototypeNativeRelicGrabBag.NativeRarityBranches();
         var resolvedBranches = rarityBranches.Select(branch =>
         {
-            PrototypeRelicRarity? selectedTier = branch.Fallbacks
+            PrototypeRelicRarity? selectedTier =
+                PrototypeNativeRelicGrabBag.PullFallbackTiers(branch.Rarity)
                 .Where(tier => candidatesByTier[tier].Length > 0)
                 .Select(tier => (PrototypeRelicRarity?)tier)
                 .FirstOrDefault();
             var candidates = selectedTier is { } tier
                 ? candidatesByTier[tier] : [];
-            return (Rarity: branch.Rarity,
+            return (Rarity: branch.Rarity.ToString(),
                 BasisPoints: branch.BasisPoints,
                 SelectedTier: selectedTier, Candidates: candidates);
         }).ToArray();
@@ -804,7 +802,14 @@ public static class ChanceLawEngineV111
             $"act:{world.Act}:floor:{world.Floor}:treasure:relic_grab_bag";
         var conditioning = new
         {
-            siteId, ownerId, ordinal, rarityBranches,
+            siteId, ownerId, ordinal,
+            rarityBranches = rarityBranches.Select(branch => new
+            {
+                rarity = branch.Rarity.ToString(), branch.BasisPoints,
+                fallbackTiers = PrototypeNativeRelicGrabBag
+                    .PullFallbackTiers(branch.Rarity)
+                    .Select(tier => tier.ToString()).ToArray()
+            }).ToArray(),
             candidatesByTier = candidatesByTier.OrderBy(
                 pair => pair.Key.ToString(), StringComparer.Ordinal)
                 .Select(pair => new

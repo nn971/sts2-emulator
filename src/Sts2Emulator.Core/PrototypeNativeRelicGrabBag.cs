@@ -28,6 +28,20 @@ public sealed record PrototypeRelicBagState(
 
 public static class PrototypeNativeRelicGrabBag
 {
+    internal const int RarityWeightScale = 10_000;
+    internal const int CommonRarityWeight = 5_000;
+    internal const int UncommonRarityWeight = 3_300;
+    internal const int RareRarityWeight = RarityWeightScale -
+        CommonRarityWeight - UncommonRarityWeight;
+
+    internal static (PrototypeRelicRarity Rarity, int BasisPoints)[]
+        NativeRarityBranches() =>
+    [
+        (PrototypeRelicRarity.Common, CommonRarityWeight),
+        (PrototypeRelicRarity.Uncommon, UncommonRarityWeight),
+        (PrototypeRelicRarity.Rare, RareRarityWeight)
+    ];
+
     // Pinned v0.111.0 relic models' Rarity properties. Event-only
     // and source-absent legacy prototype relics are not eligible here.
     private static readonly Dictionary<string, PrototypeRelicRarity> Rarities =
@@ -249,10 +263,14 @@ public static class PrototypeNativeRelicGrabBag
         RngBundle rng, bool merchant = false,
         string ownerId = "relic_grab_bag:reward")
     {
-        // Native relic rarity roll: <0.50 Common, <0.83 Uncommon,
-        // otherwise Rare. Merchant rolls consume Rewards RNG too.
+        // The legacy ticket approximation and native float path share the
+        // native nominal 50/33/17 rarity partition.
+        var commonTicketCount = CommonRarityWeight / 100;
+        var uncommonTicketEnd = (CommonRarityWeight +
+            UncommonRarityWeight) / 100;
         var ticketLabels = Enumerable.Range(0, 100).Select(ticket =>
-            (ticket < 50 ? "common:" : ticket < 83 ? "uncommon:" : "rare:")
+            (ticket < commonTicketCount ? "common:" :
+                ticket < uncommonTicketEnd ? "uncommon:" : "rare:")
                 + ticket.ToString(System.Globalization.CultureInfo.InvariantCulture))
             .ToArray();
         int roll;
@@ -266,9 +284,9 @@ public static class PrototypeNativeRelicGrabBag
                 ownerId + (merchant ? ":merchant" : ":reward"),
                 100).SelectedIndex;
         }
-        return roll < 50
+        return roll < commonTicketCount
             ? PrototypeRelicRarity.Common
-            : roll < 83
+            : roll < uncommonTicketEnd
                 ? PrototypeRelicRarity.Uncommon
                 : PrototypeRelicRarity.Rare;
     }
@@ -277,14 +295,18 @@ public static class PrototypeNativeRelicGrabBag
         RngBundle nativeRunRng, bool merchant = false,
         string ownerId = "relic_grab_bag:reward")
     {
+        var commonThreshold = CommonRarityWeight /
+            (float)RarityWeightScale;
+        var uncommonThreshold = (CommonRarityWeight +
+            UncommonRarityWeight) / (float)RarityWeightScale;
         var roll = NativePlayerRngV111.NextUnitFloat(
             nativeRunRng,
             "relic_grab_bag.rarity.unit_float",
             NativePlayerRngV111.RewardsStreamId,
             ownerId + (merchant ? ":merchant" : ":reward"));
-        return roll < 0.50f
+        return roll < commonThreshold
             ? PrototypeRelicRarity.Common
-            : roll < 0.83f
+            : roll < uncommonThreshold
                 ? PrototypeRelicRarity.Uncommon
                 : PrototypeRelicRarity.Rare;
     }
@@ -293,36 +315,11 @@ public static class PrototypeNativeRelicGrabBag
         PrototypeRelicBagState bag, PrototypeRelicRarity rarity,
         bool merchant, PlayerState player)
     {
-        // Native empty-queue fallback: Shop -> Common -> Uncommon
-        // -> Rare. Rare has no further tier.
-        var chain = rarity switch
+        foreach (var tier in PullFallbackTiers(rarity))
         {
-            PrototypeRelicRarity.Shop =>
-                new[] { PrototypeRelicRarity.Shop, PrototypeRelicRarity.Common,
-                    PrototypeRelicRarity.Uncommon, PrototypeRelicRarity.Rare },
-            PrototypeRelicRarity.Common =>
-                new[] { PrototypeRelicRarity.Common,
-                    PrototypeRelicRarity.Uncommon, PrototypeRelicRarity.Rare },
-            PrototypeRelicRarity.Uncommon =>
-                new[] { PrototypeRelicRarity.Uncommon, PrototypeRelicRarity.Rare },
-            _ => new[] { PrototypeRelicRarity.Rare }
-        };
-        foreach (var tier in chain)
-        {
-            var ids = tier switch
-            {
-                PrototypeRelicRarity.Common => bag.Common,
-                PrototypeRelicRarity.Uncommon => bag.Uncommon,
-                PrototypeRelicRarity.Rare => bag.Rare,
-                _ => bag.Shop
-            };
-            var candidates = merchant
-                ? ids.Reverse().ToArray()
-                : ids;
-            var id = candidates.FirstOrDefault(candidate =>
-                !player.Relics.Any(relic =>
-                    StringComparer.Ordinal.Equals(relic.RelicId, candidate))
-                && (!merchant || !NotSoldInShops.Contains(candidate)));
+            var ids = QueueForTier(bag, tier);
+            var id = EligiblePullIds(bag, tier, merchant, player)
+                .FirstOrDefault();
             if (id is null)
             {
                 continue;
@@ -342,6 +339,55 @@ public static class PrototypeNativeRelicGrabBag
 
         return (bag, null);
     }
+
+    /// <summary>
+    /// Source fallback order shared by mechanics resolution and conditional
+    /// laws for a still-hidden rarity-queue permutation.
+    /// </summary>
+    internal static PrototypeRelicRarity[] PullFallbackTiers(
+        PrototypeRelicRarity rarity) => rarity switch
+    {
+        PrototypeRelicRarity.Shop =>
+            [PrototypeRelicRarity.Shop, PrototypeRelicRarity.Common,
+                PrototypeRelicRarity.Uncommon, PrototypeRelicRarity.Rare],
+        PrototypeRelicRarity.Common =>
+            [PrototypeRelicRarity.Common, PrototypeRelicRarity.Uncommon,
+                PrototypeRelicRarity.Rare],
+        PrototypeRelicRarity.Uncommon =>
+            [PrototypeRelicRarity.Uncommon, PrototypeRelicRarity.Rare],
+        PrototypeRelicRarity.Rare => [PrototypeRelicRarity.Rare],
+        _ => throw new ArgumentOutOfRangeException(nameof(rarity))
+    };
+
+    /// <summary>
+    /// Returns the source-ordered, currently eligible identities in one
+    /// rarity queue. Merchant draws inspect the back of each queue and apply
+    /// the source merchant exclusion set; reward draws inspect the front.
+    /// </summary>
+    internal static string[] EligiblePullIds(
+        PrototypeRelicBagState bag, PrototypeRelicRarity tier,
+        bool merchant, PlayerState player)
+    {
+        ArgumentNullException.ThrowIfNull(bag);
+        ArgumentNullException.ThrowIfNull(player);
+        var ids = QueueForTier(bag, tier);
+        var orderedIds = merchant ? ids.Reverse() : ids;
+        return orderedIds.Where(candidate =>
+            !player.Relics.Any(relic => StringComparer.Ordinal.Equals(
+                relic.RelicId, candidate))
+            && (!merchant || !NotSoldInShops.Contains(candidate)))
+            .ToArray();
+    }
+
+    private static string[] QueueForTier(
+        PrototypeRelicBagState bag, PrototypeRelicRarity tier) => tier switch
+    {
+        PrototypeRelicRarity.Common => bag.Common,
+        PrototypeRelicRarity.Uncommon => bag.Uncommon,
+        PrototypeRelicRarity.Rare => bag.Rare,
+        PrototypeRelicRarity.Shop => bag.Shop,
+        _ => throw new ArgumentOutOfRangeException(nameof(tier))
+    };
 
     /// <summary>
     /// RelicCmd.Obtain can grant a specific relic outside the ordinary

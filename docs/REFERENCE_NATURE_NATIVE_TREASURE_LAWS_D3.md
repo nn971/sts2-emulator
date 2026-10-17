@@ -21,6 +21,12 @@ to Uncommon and then Rare, Uncommon falls back to Rare, and Rare has no
 fallback. Shop relics are not a treasure-room outcome. If all eligible queues
 are empty, `no_relic` is the outcome.
 
+The query and mechanics share the rarity weights, fallback-tier sequence, and
+queue eligibility helper in `PrototypeNativeRelicGrabBag`. That helper applies
+ownership filtering to both reward and merchant draws, and merchant-only
+exclusions only to merchant draws. The query sorts identities after applying
+the reward filters, so its fingerprint is independent of private queue order.
+
 The query conditions on the currently remaining identities, not their private
 queue order. This models the distribution over a uniform hidden permutation
 after prior relic outcomes have removed known identities. The query does not
