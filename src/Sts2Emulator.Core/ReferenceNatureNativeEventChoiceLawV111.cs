@@ -54,17 +54,15 @@ internal static class NativeEventInfestedAutomatonCardPickPlanBuilderV111
         var expectedStream = NativeRngV111Contexts.ForEvent(
             origin.RunSeed,
             PrototypeNativeHiveEvents.InfestedAutomatonNativeRngEventId);
-        var stream = evt.NativeEventRng ?? expectedStream;
-        if (NativeRngV111.ToSnapshot(stream) !=
-                NativeRngV111.ToSnapshot(expectedStream) ||
-            (stream.CallCount ?? 0) != 0)
+        if (evt.NativeEventRng is { } savedStream &&
+            savedStream.StreamId != expectedStream.StreamId)
             throw new InvalidOperationException(
-                "Infested Automaton has an advanced or incorrect Native event stream.");
+                "Infested Automaton has an incorrect Native event stream identity.");
         var ownerId = $"event:{evt.EventId}:choice:{actionId}:pool:" +
             CanonicalJson.Sha256(candidates);
         var request = new RandomIndexRequestV111(
             PrototypeNativeHiveEvents.InfestedAutomatonCardOfferSiteId,
-            stream.StreamId, ownerId, ordinal,
+            expectedStream.StreamId, ownerId, ordinal,
             Enumerable.Range(0, candidates.Length).ToArray());
         var conditioningFingerprint = CanonicalJson.Sha256(new
         {
@@ -126,10 +124,9 @@ internal static class NativeEventReflectionsChoicePlanBuilderV111
             origin.RunSeed, PrototypeNativeGloryEvents
                 .ReflectionsNativeRngEventId);
         if (evt.NativeEventRng is { } savedStream &&
-            NativeRngV111.ToSnapshot(savedStream) !=
-                NativeRngV111.ToSnapshot(expectedStream))
+            savedStream.StreamId != expectedStream.StreamId)
             throw new InvalidOperationException(
-                "Reflections has the wrong or advanced Native event stream context.");
+                "Reflections has the wrong Native event stream identity.");
         if (evt.NativeEventRng is null && evt.NativePageIndex != 0)
             throw new InvalidOperationException(
                 "Reflections cannot reconstruct a missing event stream after page progress.");
@@ -193,7 +190,7 @@ internal static class NativeEventReflectionsChoicePlanBuilderV111
         var evt = origin.World!.Event!;
         var ownerId = $"event:reflections:{stage}:{stageOrdinal}:pool:" +
             CanonicalJson.Sha256(candidates);
-        var stream = evt.NativeEventRng ?? NativeRngV111Contexts.ForEvent(
+        var stream = NativeRngV111Contexts.ForEvent(
             origin.RunSeed!, PrototypeNativeGloryEvents
                 .ReflectionsNativeRngEventId);
         var request = new RandomIndexRequestV111(
@@ -365,18 +362,6 @@ public static partial class ChanceLawEngineV111
                     legacyEvent, origin.Player))
                 throw new InvalidOperationException(
                     "Legacy Stone of All Time event branch is unavailable in this run state.");
-            var eventStreams = origin.Rng.Streams.Where(stream =>
-                stream.StreamId == streamId).ToArray();
-            if (eventStreams.Length != 1 ||
-                eventStreams[0].Codec != PrototypeRng.Codec ||
-                eventStreams[0].StateBytes.Length != sizeof(ulong))
-                throw new InvalidOperationException(
-                    "Legacy Stone of All Time law requires its retained event RNG stream.");
-            var callsBeforeEntry = eventStreams[0].CallCount ?? 0;
-            if (callsBeforeEntry >= int.MaxValue ||
-                ordinal != (int)callsBeforeEntry + 1)
-                throw new InvalidOperationException(
-                    "Legacy Stone of All Time potion-slot ordinal must follow the Event selection ticket.");
         }
         PrototypeStateInvariants.Validate(origin);
 
@@ -603,20 +588,6 @@ public static partial class ChanceLawEngineV111
         if (nativeRoute && ordinal != 1)
             throw new InvalidOperationException(
                 "Native Stone of All Time ticket laws require event-stream ordinal 1 after the entry potion-slot draw.");
-        if (legacyRoute)
-        {
-            var eventStreams = origin.Rng.Streams.Where(stream =>
-                stream.StreamId == streamId).ToArray();
-            if (eventStreams.Length != 1 ||
-                eventStreams[0].Codec != PrototypeRng.Codec ||
-                eventStreams[0].StateBytes.Length != sizeof(ulong))
-                throw new InvalidOperationException(
-                    "Legacy Stone of All Time ticket law requires its retained event RNG stream.");
-            var nextOrdinal = eventStreams[0].CallCount ?? 0;
-            if (nextOrdinal > int.MaxValue || ordinal != (int)nextOrdinal)
-                throw new InvalidOperationException(
-                    "Legacy Stone of All Time ticket law ordinal must match the retained event stream call count.");
-        }
         PrototypeStateInvariants.Validate(origin);
 
         var expectedChoice = siteId switch

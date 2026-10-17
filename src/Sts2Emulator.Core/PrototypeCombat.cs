@@ -14506,10 +14506,6 @@ public sealed partial class PrototypeGameEngine
             };
             resumedState = ResumeAutomaticPipelineContinuation(
                 resumedState);
-            if (resumedState.Phase == RunPhase.Combat &&
-                resumedState.World?.Combat is { } live &&
-                AllEnemiesDefeated(live))
-                return EnterCombatReward(resumedState);
             return resumedState;
         }
         var drawn = DrawCards(
