@@ -2134,8 +2134,8 @@ public static partial class ChanceLawEngineV111
         RunState run)
     {
         NativeDarvEventV111.ValidateOpeningBoundary(run);
-        var streamId = NativeRngV111Contexts.ForEvent(
-            run.RunSeed, NativeDarvEventV111.NativeRngEventId).StreamId;
+        var streamId = NativeRngV111Contexts.EventStreamId(
+            NativeDarvEventV111.NativeRngEventId);
         var ownerId = $"event:DARV:act:{run.World!.Act}:floor:0";
         var request = new RandomIndexRequestV111(
             NativeDarvEventV111.OfferVariantSiteId,
@@ -2151,8 +2151,8 @@ public static partial class ChanceLawEngineV111
         NativeDarvEventV111.ValidateOpeningBoundary(run);
         var relics = NativeDarvEventV111.PoolOneRelicIdsForAct(
             run.World!.Act, run.Player);
-        var streamId = NativeRngV111Contexts.ForEvent(
-            run.RunSeed, NativeDarvEventV111.NativeRngEventId).StreamId;
+        var streamId = NativeRngV111Contexts.EventStreamId(
+            NativeDarvEventV111.NativeRngEventId);
         var ownerId = $"event:DARV:act:{run.World.Act}:floor:0";
         var requests = new List<RandomIndexRequestV111>();
         for (var end = relics.Length - 1; end > 0; end--)

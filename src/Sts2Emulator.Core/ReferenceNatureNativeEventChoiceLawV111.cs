@@ -20,8 +20,8 @@ internal static class NativeEventInfestedAutomatonCardPickPlanBuilderV111
     {
         ArgumentNullException.ThrowIfNull(origin);
         ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
-        if (ordinal != 0 || string.IsNullOrWhiteSpace(origin.RunSeed) ||
-            origin.NativeRunRng is null || origin.Phase != RunPhase.Event ||
+        if (ordinal != 0 || origin.NativeRunRng is null ||
+            origin.Phase != RunPhase.Event ||
             origin.World is not { Act: 2, Event: { } evt } ||
             evt.EventId != PrototypeNativeHiveEvents.InfestedAutomatonId ||
             evt.NativePageIndex != 0 || evt.ChosenChoiceId is not null ||
@@ -51,18 +51,17 @@ internal static class NativeEventInfestedAutomatonCardPickPlanBuilderV111
             throw new InvalidOperationException(
                 "Infested Automaton has no card draw for this choice because its eligible pool is empty.");
 
-        var expectedStream = NativeRngV111Contexts.ForEvent(
-            origin.RunSeed,
+        var expectedStreamId = NativeRngV111Contexts.EventStreamId(
             PrototypeNativeHiveEvents.InfestedAutomatonNativeRngEventId);
         if (evt.NativeEventRng is { } savedStream &&
-            savedStream.StreamId != expectedStream.StreamId)
+            savedStream.StreamId != expectedStreamId)
             throw new InvalidOperationException(
                 "Infested Automaton has an incorrect Native event stream identity.");
         var ownerId = $"event:{evt.EventId}:choice:{actionId}:pool:" +
             CanonicalJson.Sha256(candidates);
         var request = new RandomIndexRequestV111(
             PrototypeNativeHiveEvents.InfestedAutomatonCardOfferSiteId,
-            expectedStream.StreamId, ownerId, ordinal,
+            expectedStreamId, ownerId, ordinal,
             Enumerable.Range(0, candidates.Length).ToArray());
         var conditioningFingerprint = CanonicalJson.Sha256(new
         {
@@ -99,8 +98,7 @@ internal static class NativeEventReflectionsChoicePlanBuilderV111
             priorIndices.Any(index => index < 0))
             throw new InvalidOperationException(
                 "Reflections Chance Law requires its complete nonnegative index prefix.");
-        if (string.IsNullOrWhiteSpace(origin.RunSeed) ||
-            origin.NativeRunRng is null || origin.Phase != RunPhase.Event ||
+        if (origin.NativeRunRng is null || origin.Phase != RunPhase.Event ||
             origin.World is not { Act: 3, Event: { } evt } ||
             evt.EventId != PrototypeNativeGloryEvents.ReflectionsId ||
             evt.NativePageIndex != 0 || evt.ChosenChoiceId is not null ||
@@ -120,11 +118,10 @@ internal static class NativeEventReflectionsChoicePlanBuilderV111
             throw new InvalidOperationException(
                 "Reflections touch_mirror is not legal in the current state.");
 
-        var expectedStream = NativeRngV111Contexts.ForEvent(
-            origin.RunSeed, PrototypeNativeGloryEvents
-                .ReflectionsNativeRngEventId);
+        var expectedStreamId = NativeRngV111Contexts.EventStreamId(
+            PrototypeNativeGloryEvents.ReflectionsNativeRngEventId);
         if (evt.NativeEventRng is { } savedStream &&
-            savedStream.StreamId != expectedStream.StreamId)
+            savedStream.StreamId != expectedStreamId)
             throw new InvalidOperationException(
                 "Reflections has the wrong Native event stream identity.");
         if (evt.NativeEventRng is null && evt.NativePageIndex != 0)
@@ -190,11 +187,10 @@ internal static class NativeEventReflectionsChoicePlanBuilderV111
         var evt = origin.World!.Event!;
         var ownerId = $"event:reflections:{stage}:{stageOrdinal}:pool:" +
             CanonicalJson.Sha256(candidates);
-        var stream = NativeRngV111Contexts.ForEvent(
-            origin.RunSeed!, PrototypeNativeGloryEvents
-                .ReflectionsNativeRngEventId);
+        var streamId = NativeRngV111Contexts.EventStreamId(
+            PrototypeNativeGloryEvents.ReflectionsNativeRngEventId);
         var request = new RandomIndexRequestV111(
-            expectedSiteId, stream.StreamId, ownerId, ordinal,
+            expectedSiteId, streamId, ownerId, ordinal,
             Enumerable.Range(0, candidates.Count).ToArray());
         var conditioningFingerprint = CanonicalJson.Sha256(new
         {
