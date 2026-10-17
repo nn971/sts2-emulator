@@ -193,6 +193,7 @@ internal sealed class ControlledStochasticChanceReplayV111 :
     private readonly ControlledStochasticChanceReplayV111? _previous;
     private readonly ControlledStochasticDecisionV111[] _decisions;
     private int _cursor;
+    private string[]? _candidateLabels;
     private bool _disposed;
 
     private ControlledStochasticChanceReplayV111(
@@ -209,6 +210,7 @@ internal sealed class ControlledStochasticChanceReplayV111 :
     }
 
     public string Mode => "controlled-v111";
+    public static bool IsActive => Active.Value is not null;
 
     public static ControlledStochasticChanceReplayV111 Begin(
         ControlledStochasticDecisionV111[] decisions)
@@ -226,7 +228,8 @@ internal sealed class ControlledStochasticChanceReplayV111 :
         var active = Active.Value ?? throw new InvalidOperationException(
             "Typed stochastic replay is not active.");
         var expected = active.Take(
-            ControlledStochasticRequestV111.FromIndex(request));
+            ControlledStochasticRequestV111.FromIndex(request),
+            active._candidateLabels);
         if (expected.IndexDecision is not { } index ||
             !SameRequest(index.Request, request))
             throw new InvalidDataException(
@@ -250,7 +253,7 @@ internal sealed class ControlledStochasticChanceReplayV111 :
         var active = Active.Value ?? throw new InvalidOperationException(
             "Typed stochastic replay is not active.");
         var expected = active.Take(
-            ControlledStochasticRequestV111.FromUnitFloat(request));
+            ControlledStochasticRequestV111.FromUnitFloat(request), null);
         if (expected.UnitFloatDecision is not { } unitFloat ||
             !SameRequest(unitFloat.Request, request))
             throw new InvalidDataException(
@@ -263,10 +266,12 @@ internal sealed class ControlledStochasticChanceReplayV111 :
     }
 
     private ControlledStochasticDecisionV111 Take(
-        ControlledStochasticRequestV111 request)
+        ControlledStochasticRequestV111 request,
+        string[]? candidateLabels)
     {
         if (_cursor >= _decisions.Length)
-            throw new ControlledStochasticChanceRequiredExceptionV111(request);
+            throw new ControlledStochasticChanceRequiredExceptionV111(
+                request, candidateLabels);
         var expected = _decisions[_cursor];
         var expectedRequest = expected.IndexDecision is { } index
             ? ControlledStochasticRequestV111.FromIndex(index.Request)
@@ -275,8 +280,30 @@ internal sealed class ControlledStochasticChanceReplayV111 :
         if (!SameRequest(expectedRequest, request))
             throw new InvalidDataException(
                 "Typed stochastic replay diverged from its ordered saved prefix.");
+        if ((expected.CandidateLabels is null) !=
+                (candidateLabels is null) ||
+            expected.CandidateLabels is { } savedLabels &&
+                !savedLabels.SequenceEqual(candidateLabels!,
+                    StringComparer.Ordinal))
+            throw new InvalidDataException(
+                "Typed stochastic replay diverged from its saved candidate labels.");
         _cursor++;
         return expected;
+    }
+
+    public static IDisposable DescribeCandidates(string[]? candidateLabels)
+    {
+        var active = Active.Value;
+        if (active is null)
+            return EmptyScope.Instance;
+        if (candidateLabels is not null &&
+            candidateLabels.Any(string.IsNullOrWhiteSpace))
+            throw new ArgumentException(
+                "Candidate labels cannot be blank.", nameof(candidateLabels));
+        var previous = active._candidateLabels;
+        active._candidateLabels = candidateLabels is null
+            ? null : (string[])candidateLabels.Clone();
+        return new CandidateScope(active, previous);
     }
 
     public void EnsureConsumed()
@@ -295,6 +322,30 @@ internal sealed class ControlledStochasticChanceReplayV111 :
                 "Typed stochastic replay scopes must be disposed in stack order.");
         Active.Value = _previous;
         _disposed = true;
+    }
+
+    private sealed class CandidateScope(
+        ControlledStochasticChanceReplayV111 owner,
+        string[]? previous) : IDisposable
+    {
+        private bool _disposed;
+
+        public void Dispose()
+        {
+            if (_disposed)
+                return;
+            if (!ReferenceEquals(Active.Value, owner))
+                throw new InvalidOperationException(
+                    "Candidate-label scopes must be disposed inside their typed replay scope.");
+            owner._candidateLabels = previous;
+            _disposed = true;
+        }
+    }
+
+    private sealed class EmptyScope : IDisposable
+    {
+        public static EmptyScope Instance { get; } = new();
+        public void Dispose() { }
     }
 
     private static bool SameRequest(
