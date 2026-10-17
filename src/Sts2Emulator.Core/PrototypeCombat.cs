@@ -13466,21 +13466,14 @@ public sealed partial class PrototypeGameEngine
             { ControlledRecycleStratagemPending: true })
             return ResumeControlledRecycleStratagemSelection(state);
 
-        if (!pending.AutomaticSemanticStratagemDrawSelection &&
-            !pending.AutomaticSemanticDrawHookChoice)
-            state = ResumeAutomaticPipelineContinuation(state);
-
-        if (state.Phase != RunPhase.Combat)
-        {
+        // These choices are nested inside the active hand-draw stage. Their
+        // owning draw continuation must finish before the ordinary pipeline
+        // can settle a terminal reward boundary.
+        if (pending.AutomaticSemanticStratagemDrawSelection ||
+            pending.AutomaticSemanticDrawHookChoice)
             return state;
-        }
 
-        var currentCombat = RequireWorld(state).Combat
-            ?? throw new InvalidOperationException(
-                "Combat unexpectedly disappeared.");
-        return AllEnemiesDefeated(currentCombat)
-            ? EnterCombatReward(state)
-            : state;
+        return ResumeAutomaticPipelineContinuation(state);
     }
 
     private static (PlayerState Player, CombatState Combat)
