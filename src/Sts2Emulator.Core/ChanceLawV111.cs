@@ -618,11 +618,18 @@ public static partial class ChanceLawEngineV111
     {
         ArgumentNullException.ThrowIfNull(indexEvent);
         indexEvent.Validate();
+        var sourceVerifiedNativeIndex = indexEvent.Request.SiteId is
+            NativeCombatRngEntryV111.InitialUniqueHpSiteId or
+            NativeCombatRngEntryV111.ToughEggHatchHpSiteId;
+        var indexWeights = sourceVerifiedNativeIndex
+            ? NativeNextIntGridWeights(indexEvent.Request.SupportCount)
+            : Enumerable.Repeat(1L,
+                indexEvent.Request.SupportCount).ToArray();
         var outcomes = Enumerable.Range(0,
                 indexEvent.Request.SupportCount)
             .Select(index => new ChanceLawOutcomeV111(
                 "choice_index:" + index.ToString(CultureInfo.InvariantCulture),
-                1L))
+                indexWeights[index]))
             .ToArray();
         var conditioningFingerprint = CanonicalJson.Sha256(new
         {
@@ -637,7 +644,12 @@ public static partial class ChanceLawEngineV111
             indexEvent.Request.OperationKind, indexEvent.Request.OwnerId,
             indexEvent.Request.Ordinal,
             EndTurnIndexConditioningPolicyId, conditioningFingerprint,
-            "uniform-saved-enemy-action-index-support-unverified", outcomes);
+            sourceVerifiedNativeIndex
+                ? NativeBoundedIndexSourceVerifiedProvenance
+                : "uniform-saved-enemy-action-index-support-unverified",
+            outcomes, sourceVerifiedNativeIndex
+                ? ChanceLawV111.SourceVerifiedStatus
+                : ChanceLawV111.UnverifiedStatus);
     }
 
     /// <summary>Query a uniform law over the legal indices in a saved typed

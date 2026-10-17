@@ -15,7 +15,10 @@ the eligible summon list or unselected HP values. The saved enemy-action
 continuation replays prior decisions and resumes the mechanics owner once the
 pending choice is resolved. Native summon-pool selection remains fail-closed
 until its source RNG assignment is audited; unsupported nested mechanics do
-not publish partial support. All three reference probabilities remain
+not publish partial support. The unique-HP and Tough Egg Chance Laws use
+exact Native `NextInt` grid masses and are `SOURCE_VERIFIED` for the bounded
+index transform on their declared HP supports. The summon-pool law, legacy
+modulo probabilities, Native stream attribution, and cursor parity remain
 `UNVERIFIED`.
 
 The saved enemy-action replay can suspend at the modeled legacy
@@ -36,5 +39,6 @@ through its separately audited run-level HP provider.
 
 This continuation covers the existing legacy combat model. Native summon-pool
 selection remains fail-closed until its source RNG assignment is audited.
-Probability status is `UNVERIFIED`; the new nested controlled mechanics path
-has build evidence only.
+The Native HP transform is source-verified on its declared support; legacy
+modulo probabilities remain `UNVERIFIED`. The new nested controlled mechanics
+path has build evidence only.
