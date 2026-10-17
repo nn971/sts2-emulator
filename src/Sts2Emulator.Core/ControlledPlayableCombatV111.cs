@@ -120,13 +120,54 @@ public sealed record ControlledPlayableCombatV111(
     public ControlledRecycleShuffleV111? Recycle
     {
         get => Stochastic.Recycle;
-        init => Stochastic = Stochastic with { Recycle = value };
+        init
+        {
+            var prefix = Stochastic.RecycleTranscriptPrefix ??
+                throw new InvalidDataException(
+                    "Missing completed recycle transcript prefix.");
+            if (value is { Transcript.Length: > 0 } stage &&
+                prefix.Length >= stage.Transcript.Length &&
+                CanonicalJson.Sha256(prefix[^stage.Transcript.Length..]) ==
+                    CanonicalJson.Sha256(stage.Transcript))
+                prefix = prefix[..^stage.Transcript.Length];
+            Stochastic = Stochastic with
+            {
+                Recycle = value,
+                RecycleTranscriptPrefix = prefix
+            };
+        }
     }
 
     public RandomIndexDecisionV111[] RecycleTranscript
     {
-        get => Stochastic.RecycleTranscript;
-        init => Stochastic = Stochastic with { RecycleTranscript = value };
+        get
+        {
+            var prefix = Stochastic.RecycleTranscriptPrefix;
+            if (prefix is null) return null!;
+            if (Recycle is not { } stage) return prefix;
+            return stage.Transcript is null
+                ? null!
+                : prefix.Concat(stage.Transcript).ToArray();
+        }
+        init
+        {
+            var prefix = value ?? throw new InvalidDataException(
+                "Missing recycle transcript projection.");
+            if (Recycle is { } stage)
+            {
+                if (value is null || stage.Transcript is null ||
+                    value.Length < stage.Transcript.Length ||
+                    CanonicalJson.Sha256(value[^stage.Transcript.Length..]) !=
+                        CanonicalJson.Sha256(stage.Transcript))
+                    throw new InvalidDataException(
+                        "Recycle transcript projection disagrees with its active stage.");
+                prefix = value[..^stage.Transcript.Length];
+            }
+            Stochastic = Stochastic with
+            {
+                RecycleTranscriptPrefix = prefix
+            };
+        }
     }
 
     // Chronological live chance transcript, interleaving intents/recycles.
@@ -404,6 +445,7 @@ public sealed record ControlledPlayableCombatV111(
             this.Run.Phase is not (RunPhase.Combat or RunPhase.Reward or RunPhase.Terminal) ||
             this.Run.World?.Combat is null && this.Pending is not null ||
             this.ShuffleTranscript is null || this.PlayerActions is null ||
+            this.Stochastic.RecycleTranscriptPrefix is null ||
             this.TurnTranscript is null || this.RecycleTranscript is null ||
             this.LiveTranscript is null || this.TargetTranscript is null ||
             this.GeneratedCardTranscript is null ||
@@ -1050,7 +1092,6 @@ public static class ControlledPlayableCombatEngineV111
         var updated = state.Fork() with
         {
             Recycle = next,
-            RecycleTranscript = state.RecycleTranscript.Append(choice).ToArray(),
             LiveTranscript = state.LiveTranscript.Append(choice).ToArray()
         };
         return next.Complete ? FinishRecycle(updated) : updated;
@@ -1071,6 +1112,7 @@ public static class ControlledPlayableCombatEngineV111
         return StartPendingTurn(state with
         {
             Recycle = null,
+            RecycleTranscript = state.RecycleTranscript,
             Run = result
         });
     }

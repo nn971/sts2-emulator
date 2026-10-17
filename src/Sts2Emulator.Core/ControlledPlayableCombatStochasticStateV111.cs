@@ -12,7 +12,11 @@ public sealed record ControlledPlayableCombatStochasticStateV111
     public RandomIndexRequestV111? Pending { get; init; }
     public RandomIndexDecisionV111[] TurnTranscript { get; init; } = [];
     public ControlledRecycleShuffleV111? Recycle { get; init; }
-    public RandomIndexDecisionV111[] RecycleTranscript { get; init; } = [];
+    /// <summary>
+    /// Completed recycle decisions. While a recycle is active, its current
+    /// segment remains solely in <see cref="Recycle"/>.
+    /// </summary>
+    public RandomIndexDecisionV111[] RecycleTranscriptPrefix { get; init; } = [];
     public RandomIndexDecisionV111[] LiveTranscript { get; init; } = [];
     public RandomIndexDecisionV111[] TargetTranscript { get; init; } = [];
     public RandomIndexDecisionV111[] GeneratedCardTranscript { get; init; } = [];
@@ -29,7 +33,7 @@ public sealed record ControlledPlayableCombatStochasticStateV111
         Pending = CloneRequest(Pending),
         TurnTranscript = DeepCopy(TurnTranscript),
         Recycle = Recycle?.Fork(),
-        RecycleTranscript = DeepCopy(RecycleTranscript),
+        RecycleTranscriptPrefix = DeepCopy(RecycleTranscriptPrefix),
         LiveTranscript = DeepCopy(LiveTranscript),
         TargetTranscript = DeepCopy(TargetTranscript),
         GeneratedCardTranscript = DeepCopy(GeneratedCardTranscript),
