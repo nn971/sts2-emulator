@@ -44,6 +44,122 @@ public sealed record EventStochasticStateV111(
     public EventCommittedRandomStateV111 RandomOutcomes =>
         CommittedRandom ?? new EventCommittedRandomStateV111();
 
+    public void ValidateFuturePotionOffers(
+        EventState owner, PlayerState player)
+    {
+        ArgumentNullException.ThrowIfNull(owner);
+        ArgumentNullException.ThrowIfNull(player);
+        if (owner.EventId == PrototypeNativeFutureOfPotions.EventId)
+        {
+            if (owner.NativePageIndex == 0
+                && owner.ChosenChoiceId is null)
+            {
+                var owned = player.PotionSlots
+                    .Select((potion, slot) => (Potion: potion, Slot: slot))
+                    .Where(item => item.Potion is not null)
+                    .ToArray();
+                var expected = owned.Take(3).ToArray();
+                var offers = RandomOutcomes.FuturePotionOffers;
+                if (owned.Length < 2
+                    || offers is null
+                    || offers.Length != expected.Length
+                    || offers.Select(offer => offer.Slot).Distinct().Count()
+                        != offers.Length
+                    || offers.Where((offer, index) =>
+                        offer.Slot != expected[index].Slot
+                        || offer.PotionId != expected[index].Potion!.PotionId
+                        || !PrototypeNativeFutureOfPotions.TryGetCardRarity(
+                            offer.PotionId, out var rarity)
+                        || offer.CardRarity != rarity
+                        || offer.CardType is not (PrototypeCardType.Attack
+                            or PrototypeCardType.Skill
+                            or PrototypeCardType.Power)
+                        || offer.CardRarity == PrototypeCardRarity.Common
+                            && offer.CardType == PrototypeCardType.Power)
+                        .Any())
+                {
+                    throw new InvalidOperationException(
+                        "The Future of Potions opening offers are invalid.");
+                }
+            }
+            else if (RandomOutcomes.FuturePotionOffers is not null)
+            {
+                throw new InvalidOperationException(
+                    "The Future of Potions retained offers after the player traded a potion.");
+            }
+        }
+        else if (RandomOutcomes.FuturePotionOffers is not null)
+        {
+            throw new InvalidOperationException(
+                "Future of Potions offers leaked into another event.");
+        }
+    }
+
+    public void ValidateNativeGoldRolls(EventState owner)
+    {
+        ArgumentNullException.ThrowIfNull(owner);
+        var outcomes = RandomOutcomes;
+        if (outcomes.NativeEventGold != 0
+            && (owner.EventId switch
+            {
+                PrototypeNativeDenseVegetation.EventId =>
+                    outcomes.NativeEventGold is >= 61 and <= 99,
+                "proto.native.event.whispering_hollow" =>
+                    outcomes.NativeEventGold is >= 26 and <= 44,
+                "proto.native.event.sunken_statue" =>
+                    outcomes.NativeEventGold is >= 101 and <= 121,
+                "proto.native.event.luminous_choir" =>
+                    outcomes.NativeEventGold is >= 100 and <= 149,
+                "proto.native.event.jungle_maze_adventure" =>
+                    outcomes.NativeEventGold is >= 135 and <= 165,
+                "proto.native.underdocks.sunken_statue" =>
+                    outcomes.NativeEventGold is >= 101 and <= 121,
+                "proto.native.underdocks.sunken_treasury" =>
+                    outcomes.NativeEventGold is >= 52 and <= 67,
+                PrototypeNativeHiveEvents.LostWispId =>
+                    outcomes.NativeEventGold is >= 45 and <= 75,
+                PrototypeNativePunchOff.EventId =>
+                    outcomes.NativeEventGold is >= 91 and <= 98,
+                PrototypeNativeSharedEvents.ThisOrThatId =>
+                    outcomes.NativeEventGold is >= 41 and <= 68,
+                _ => false
+            }) == false)
+        {
+            throw new InvalidOperationException(
+                "Native event gold roll is invalid.");
+        }
+
+        if (outcomes.NativeEventSecondaryGold != 0
+            && !(owner.EventId switch
+            {
+                "proto.native.event.jungle_maze_adventure" =>
+                    outcomes.NativeEventSecondaryGold is >= 35 and <= 65,
+                "proto.native.underdocks.sunken_treasury" =>
+                    outcomes.NativeEventSecondaryGold is >= 303 and <= 363,
+                _ => false
+            }))
+        {
+            throw new InvalidOperationException(
+                "Native event secondary gold roll is invalid.");
+        }
+
+        if (owner.EventId == "proto.native.event.jungle_maze_adventure"
+            && (outcomes.NativeEventGold == 0)
+                != (outcomes.NativeEventSecondaryGold == 0))
+        {
+            throw new InvalidOperationException(
+                "Jungle Maze must preserve both independent gold rolls.");
+        }
+
+        if (owner.EventId == "proto.native.underdocks.sunken_treasury"
+            && (outcomes.NativeEventGold == 0)
+                != (outcomes.NativeEventSecondaryGold == 0))
+        {
+            throw new InvalidOperationException(
+                "Sunken Treasury must preserve both independent gold rolls.");
+        }
+    }
+
     public EventStochasticStateV111 Fork() => this with
     {
         NativeRng = NativeRng?.Fork(),

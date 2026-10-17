@@ -638,51 +638,8 @@ public static class PrototypeStateInvariants
         var definition =
             PrototypeContent.Event(
                 eventState.EventId);
-
-        if (eventState.EventId == PrototypeNativeFutureOfPotions.EventId)
-        {
-            if (eventState.NativePageIndex == 0
-                && eventState.ChosenChoiceId is null)
-            {
-                var owned = player.PotionSlots
-                    .Select((potion, slot) => (Potion: potion, Slot: slot))
-                    .Where(item => item.Potion is not null)
-                    .ToArray();
-                var expected = owned.Take(3).ToArray();
-                var offers = eventState.NativeFuturePotionOffers;
-                if (owned.Length < 2
-                    || offers is null
-                    || offers.Length != expected.Length
-                    || offers.Select(offer => offer.Slot).Distinct().Count()
-                        != offers.Length
-                    || offers.Where((offer, index) =>
-                        offer.Slot != expected[index].Slot
-                        || offer.PotionId != expected[index].Potion!.PotionId
-                        || !PrototypeNativeFutureOfPotions.TryGetCardRarity(
-                            offer.PotionId, out var rarity)
-                        || offer.CardRarity != rarity
-                        || offer.CardType is not (PrototypeCardType.Attack
-                            or PrototypeCardType.Skill
-                            or PrototypeCardType.Power)
-                        || offer.CardRarity == PrototypeCardRarity.Common
-                            && offer.CardType == PrototypeCardType.Power)
-                        .Any())
-                {
-                    throw new InvalidOperationException(
-                        "The Future of Potions opening offers are invalid.");
-                }
-            }
-            else if (eventState.NativeFuturePotionOffers is not null)
-            {
-                throw new InvalidOperationException(
-                    "The Future of Potions retained offers after the player traded a potion.");
-            }
-        }
-        else if (eventState.NativeFuturePotionOffers is not null)
-        {
-            throw new InvalidOperationException(
-                "Future of Potions offers leaked into another event.");
-        }
+        eventState.Stochastic.ValidateFuturePotionOffers(
+            eventState, player);
 
         if (eventState.OfferedChoiceIds is { } offered
             && (offered.Length == 0
@@ -827,65 +784,7 @@ public static class PrototypeStateInvariants
             return;
         }
 
-        if (eventState.NativeEventGold != 0
-            && (eventState.EventId switch
-            {
-                PrototypeNativeDenseVegetation.EventId =>
-                    eventState.NativeEventGold is >= 61 and <= 99,
-                "proto.native.event.whispering_hollow" =>
-                    eventState.NativeEventGold is >= 26 and <= 44,
-                "proto.native.event.sunken_statue" =>
-                    eventState.NativeEventGold is >= 101 and <= 121,
-                "proto.native.event.luminous_choir" =>
-                    eventState.NativeEventGold is >= 100 and <= 149,
-                "proto.native.event.jungle_maze_adventure" =>
-                    eventState.NativeEventGold is >= 135 and <= 165,
-                "proto.native.underdocks.sunken_statue" =>
-                    eventState.NativeEventGold is >= 101 and <= 121,
-                "proto.native.underdocks.sunken_treasury" =>
-                    eventState.NativeEventGold is >= 52 and <= 67,
-                PrototypeNativeHiveEvents.LostWispId =>
-                    eventState.NativeEventGold is >= 45 and <= 75,
-                PrototypeNativePunchOff.EventId =>
-                    eventState.NativeEventGold is >= 91 and <= 98,
-                PrototypeNativeSharedEvents.ThisOrThatId =>
-                    eventState.NativeEventGold is >= 41 and <= 68,
-                _ => false
-            }) == false)
-        {
-            throw new InvalidOperationException(
-                "Native event gold roll is invalid.");
-        }
-
-        if (eventState.NativeEventSecondaryGold != 0
-            && !(eventState.EventId switch
-            {
-                "proto.native.event.jungle_maze_adventure" =>
-                    eventState.NativeEventSecondaryGold is >= 35 and <= 65,
-                "proto.native.underdocks.sunken_treasury" =>
-                    eventState.NativeEventSecondaryGold is >= 303 and <= 363,
-                _ => false
-            }))
-        {
-            throw new InvalidOperationException(
-                "Native event secondary gold roll is invalid.");
-        }
-
-        if (eventState.EventId == "proto.native.event.jungle_maze_adventure"
-            && (eventState.NativeEventGold == 0)
-                != (eventState.NativeEventSecondaryGold == 0))
-        {
-            throw new InvalidOperationException(
-                "Jungle Maze must preserve both independent gold rolls.");
-        }
-
-        if (eventState.EventId == "proto.native.underdocks.sunken_treasury"
-            && (eventState.NativeEventGold == 0)
-                != (eventState.NativeEventSecondaryGold == 0))
-        {
-            throw new InvalidOperationException(
-                "Sunken Treasury must preserve both independent gold rolls.");
-        }
+        eventState.Stochastic.ValidateNativeGoldRolls(eventState);
 
         if (eventState.EventId == PrototypeNativeEndlessConveyor.EventId)
         {
