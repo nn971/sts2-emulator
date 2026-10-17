@@ -203,6 +203,8 @@ public static class ChanceLawEngineV111
         "uniform-sequential-without-replacement-v1";
     public const string EventOfferConditioningPolicyId =
         "uniform-ordered-event-offer-entry-v1";
+    public const string AncientOfferShuffleConditioningPolicyId =
+        "uniform-ancient-offer-fisher-yates-swap-v1";
 
     public static ChanceLawV111 QueryIntent(SemanticIntentEventV111 intent)
     {
@@ -285,16 +287,28 @@ public static class ChanceLawEngineV111
     }
 
     /// <summary>
-    /// Query a pre-event ancient offer law over stable choice identities.
-    /// The same ordered pool builders and opening boundaries are used by the
-    /// event resolvers. Repeated entries remain probability mass on the same
-    /// choice; a selected index and private RNG state never enter the query.
+    /// Query one pre-event Ancient offer decision. Direct offer pools return
+    /// stable choice identities; shuffle-based offers return the bounded
+    /// Fisher-Yates swap index at the requested ordinal. The same pool builders
+    /// and opening boundaries are shared with the event resolvers.
     /// </summary>
     public static ChanceLawV111 QueryAncientOffer(
-        RunState run, string siteId, int ordinal)
+        RunState run, string siteId, int ordinal) =>
+        QueryAncientOffer(run, siteId, ordinal, null);
+
+    public static ChanceLawV111 QueryAncientOffer(
+        RunState run, string siteId, int ordinal,
+        int[]? priorIndices)
     {
         ArgumentNullException.ThrowIfNull(run);
         ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
+        if (IsShuffleAncientOfferSite(siteId))
+            return QueryAncientOfferShuffle(
+                run, siteId, ordinal, priorIndices);
+        if (priorIndices is { Length: > 0 })
+            throw new ArgumentException(
+                "prior_indices apply only to shuffle-based Ancient offers.",
+                nameof(priorIndices));
         string ownerId;
         string[] candidates;
         if (siteId == NativeOrobasEventV111.OfferSiteId)
@@ -372,6 +386,174 @@ public static class ChanceLawEngineV111
     public static ChanceLawV111 QueryOrobasOffer(
         RunState run, int ordinal) => QueryAncientOffer(
             run, NativeOrobasEventV111.OfferSiteId, ordinal);
+
+    public static int AncientOfferDecisionCount(RunState run, string siteId)
+    {
+        ArgumentNullException.ThrowIfNull(run);
+        ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
+        if (IsChoiceAncientOfferSite(siteId))
+        {
+            ValidateAncientOfferOpeningBoundary(run, siteId);
+            return 3;
+        }
+        ValidateAncientOfferOpeningBoundary(run, siteId);
+        var pools = AncientOfferShuffleChoicePools(run, siteId);
+        return AncientOfferShuffleRequests(siteId, pools).Length;
+    }
+
+    internal static bool IsSupportedAncientOfferSite(string siteId) =>
+        IsChoiceAncientOfferSite(siteId) || IsShuffleAncientOfferSite(siteId);
+
+    public static bool IsShuffleAncientOfferSite(string siteId) =>
+        siteId is NativeNonupeipeEventV111.ShuffleSiteId or
+            NativeTanxEventV111.ShuffleSiteId or
+            NativeVakuuEventV111.ShuffleSiteId;
+
+    internal static void ValidateAncientOfferOpeningBoundary(
+        RunState run, string siteId)
+    {
+        if (siteId == NativeOrobasEventV111.OfferSiteId)
+            NativeOrobasEventV111.ValidateOpeningBoundary(run);
+        else if (siteId == NativePaelRewardsV111.OfferSiteId)
+            NativePaelRewardsV111.ValidateOpeningBoundary(run);
+        else if (siteId == NativeAncientRewardsV111.TezcataraOfferSiteId)
+            NativeAncientRewardsV111.ValidateTezcataraOpeningBoundary(run);
+        else if (siteId == NativeNonupeipeEventV111.ShuffleSiteId)
+            NativeNonupeipeEventV111.ValidateOpeningBoundary(run);
+        else if (siteId == NativeTanxEventV111.ShuffleSiteId)
+            NativeTanxEventV111.ValidateOpeningBoundary(run);
+        else if (siteId == NativeVakuuEventV111.ShuffleSiteId)
+            NativeVakuuEventV111.ValidateOpeningBoundary(run);
+        else
+            throw new NotSupportedException(
+                $"Ancient offer query does not support site '{siteId}'.");
+    }
+
+    internal static string[][] AncientOfferShuffleChoicePools(
+        RunState run, string siteId)
+    {
+        if (siteId == NativeNonupeipeEventV111.ShuffleSiteId)
+            return [NativeNonupeipeEventV111.CandidateRelics(
+                    NativeNonupeipeEventV111.HasBeautifulBraceletEligibility(
+                        run.Player))
+                .Select(id => "take_" + id).ToArray()];
+        if (siteId == NativeTanxEventV111.ShuffleSiteId)
+            return [NativeTanxEventV111.CandidateRelics(
+                    NativeTanxEventV111.HasTriBoomerangEligibility(run.Player))
+                .Select(id => "take_" + id).ToArray()];
+        if (siteId == NativeVakuuEventV111.ShuffleSiteId)
+            return NativeVakuuEventV111.RelicPools.Select(pool =>
+                pool.Select(id => "take_" + id).ToArray()).ToArray();
+        throw new NotSupportedException(
+            $"Ancient offer query does not support shuffle site '{siteId}'.");
+    }
+
+    internal static AncientOfferShuffleRequestV111[]
+        AncientOfferShuffleRequests(string siteId, string[][] pools)
+    {
+        ArgumentNullException.ThrowIfNull(pools);
+        var streamId = siteId switch
+        {
+            NativeNonupeipeEventV111.ShuffleSiteId =>
+                "context.event.NONUPEIPE.player_0",
+            NativeTanxEventV111.ShuffleSiteId =>
+                "context.event.TANX.player_0",
+            NativeVakuuEventV111.ShuffleSiteId =>
+                "context.event.VAKUU.player_0",
+            _ => throw new NotSupportedException(
+                $"Ancient offer query does not support shuffle site '{siteId}'.")
+        };
+        var ownerId = siteId switch
+        {
+            NativeNonupeipeEventV111.ShuffleSiteId =>
+                "event:NONUPEIPE:act:3:floor:0",
+            NativeTanxEventV111.ShuffleSiteId =>
+                "event:TANX:act:3:floor:0",
+            NativeVakuuEventV111.ShuffleSiteId =>
+                "event:VAKUU:act:3:floor:0",
+            _ => throw new NotSupportedException(
+                $"Ancient offer query does not support shuffle site '{siteId}'.")
+        };
+        var requests = new List<AncientOfferShuffleRequestV111>();
+        for (var poolIndex = 0; poolIndex < pools.Length; poolIndex++)
+        {
+            var pool = pools[poolIndex];
+            for (var end = pool.Length - 1; end > 0; end--)
+            {
+                var ordinal = requests.Count;
+                requests.Add(new AncientOfferShuffleRequestV111(
+                    poolIndex, end,
+                    new RandomIndexRequestV111(
+                        siteId, streamId, ownerId, ordinal, [],
+                        OperationKind: "bounded_integer",
+                        BoundedCount: end + 1)));
+            }
+        }
+        return requests.ToArray();
+    }
+
+    private static ChanceLawV111 QueryAncientOfferShuffle(
+        RunState run, string siteId, int ordinal, int[]? priorIndices)
+    {
+        ValidateAncientOfferOpeningBoundary(run, siteId);
+        var initialPools = AncientOfferShuffleChoicePools(run, siteId);
+        var requests = AncientOfferShuffleRequests(siteId, initialPools);
+        if (ordinal < 0 || ordinal >= requests.Length)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+        priorIndices ??= [];
+        if (priorIndices.Length != ordinal)
+            throw new ArgumentException(
+                "Shuffle-based Ancient offer queries require one prior index for every earlier ordinal.",
+                nameof(priorIndices));
+
+        var currentPools = initialPools
+            .Select(pool => (string[])pool.Clone()).ToArray();
+        for (var index = 0; index < ordinal; index++)
+        {
+            var request = requests[index];
+            var selectedIndex = priorIndices[index];
+            if (selectedIndex < 0 ||
+                selectedIndex >= request.Request.SupportCount)
+                throw new ArgumentOutOfRangeException(nameof(priorIndices),
+                    $"Prior swap index {index} is outside its saved support.");
+            (currentPools[request.PoolIndex][request.EndIndex],
+                currentPools[request.PoolIndex][selectedIndex]) =
+                (currentPools[request.PoolIndex][selectedIndex],
+                    currentPools[request.PoolIndex][request.EndIndex]);
+        }
+
+        var selectedRequest = requests[ordinal].Request;
+        var ownerId = selectedRequest.OwnerId;
+        var conditioningFingerprint = CanonicalJson.Sha256(new
+        {
+            InitialChoicePools = initialPools,
+            CurrentChoicePools = currentPools,
+            PriorIndices = priorIndices,
+            RequestFingerprint = CanonicalJson.Sha256(selectedRequest),
+            policy = AncientOfferShuffleConditioningPolicyId
+        });
+        var eventId = CanonicalJson.Sha256(new
+        {
+            schemaId = ChanceLawV111.CurrentSchemaId,
+            siteId,
+            ownerId,
+            ordinal,
+            conditioningFingerprint
+        });
+        var outcomes = Enumerable.Range(0, selectedRequest.SupportCount)
+            .Select(index => new ChanceLawOutcomeV111(
+                "swap_index:" + index.ToString(CultureInfo.InvariantCulture),
+                1L)).ToArray();
+        return Create(eventId, siteId, selectedRequest.OperationKind,
+            ownerId, ordinal, AncientOfferShuffleConditioningPolicyId,
+            conditioningFingerprint,
+            "uniform-fisher-yates-swap-unverified", outcomes);
+    }
+
+    private static bool IsChoiceAncientOfferSite(string siteId) =>
+        siteId is NativeOrobasEventV111.OfferSiteId or
+            NativePaelRewardsV111.OfferSiteId or
+            NativeAncientRewardsV111.TezcataraOfferSiteId;
 
     /// <summary>Query a controlled legacy run-action request without exposing
     /// the selected result. The event identity binds the action and request
@@ -830,6 +1012,9 @@ public static class ChanceLawEngineV111
         return law;
     }
 }
+
+internal sealed record AncientOfferShuffleRequestV111(
+    int PoolIndex, int EndIndex, RandomIndexRequestV111 Request);
 
 /// <summary>Forkable state for the independent ReferenceNature sampler.</summary>
 public sealed record ReferenceNatureStateV111(
@@ -1318,9 +1503,9 @@ public sealed record ReferenceNatureAncientOfferSessionSnapshotV111(
     ReferenceNatureDecisionV111[] DecisionTranscript);
 
 /// <summary>
-/// Atomic ReferenceNature envelope for a three-choice Ancient offer set.
-/// Individual choices remain private to the session until the complete set
-/// has been sampled and replayed through the event's injected index provider.
+/// Atomic ReferenceNature envelope for Ancient offer generation. Individual
+/// decisions remain private to the session until every source event-offer or
+/// Fisher-Yates request has been sampled and replayed through its generator.
 /// </summary>
 public sealed record ReferenceNatureAncientOfferSessionV111(
     string SchemaId, string SiteId, RunState Origin, RunState Run,
@@ -1337,7 +1522,8 @@ public sealed record ReferenceNatureAncientOfferSessionV111(
     public string Fingerprint => CanonicalJson.Sha256(this);
 
     [JsonIgnore]
-    public bool Complete => DecisionTranscript.Length == 3;
+    public bool Complete => DecisionTranscript.Length ==
+        ChanceLawEngineV111.AncientOfferDecisionCount(Origin, SiteId);
 
     [JsonIgnore]
     public int NextOrdinal => DecisionTranscript.Length;
@@ -1397,8 +1583,11 @@ public sealed record ReferenceNatureAncientOfferSessionV111(
             throw new InvalidOperationException(
                 "ReferenceNature Ancient-offer session is already complete.");
 
+        var priorIndices = ChanceLawEngineV111.IsShuffleAncientOfferSite(SiteId)
+            ? DecisionTranscript.Select(decision => decision.OutcomeIndex).ToArray()
+            : null;
         var law = ChanceLawEngineV111.QueryAncientOffer(
-            Origin, SiteId, NextOrdinal);
+            Origin, SiteId, NextOrdinal, priorIndices);
         var selection = ReferenceNatureV111.SampleValidated(law, NatureState);
         var transcript = DecisionTranscript.Append(
             new ReferenceNatureDecisionV111(
@@ -1406,7 +1595,8 @@ public sealed record ReferenceNatureAncientOfferSessionV111(
                 selection.OutcomeIndex)).ToArray();
         var nextNatureState = selection.NextState;
         var nextRun = Origin.Fork();
-        if (transcript.Length == 3)
+        if (transcript.Length ==
+            ChanceLawEngineV111.AncientOfferDecisionCount(Origin, SiteId))
         {
             nextRun = GenerateEvent(Origin, SiteId, transcript);
             nextRun = ReferenceNatureRunCursorV111.Commit(
@@ -1427,10 +1617,14 @@ public sealed record ReferenceNatureAncientOfferSessionV111(
         if (SchemaId != CurrentSchemaId ||
             !IsSupportedSite(SiteId) || Origin is null || Run is null ||
             InitialNatureState is null || NatureState is null ||
-            DecisionTranscript is null || DecisionTranscript.Length > 3)
+            DecisionTranscript is null)
             throw new InvalidDataException(
                 "Invalid ReferenceNature Ancient-offer session envelope.");
         ValidateOpeningBoundary(Origin, SiteId);
+        if (DecisionTranscript.Length >
+            ChanceLawEngineV111.AncientOfferDecisionCount(Origin, SiteId))
+            throw new InvalidDataException(
+                "ReferenceNature Ancient-offer transcript exceeds its source draw count.");
         PrototypeStateInvariants.Validate(Origin);
         PrototypeStateInvariants.Validate(Run);
         InitialNatureState.Validate();
@@ -1446,8 +1640,13 @@ public sealed record ReferenceNatureAncientOfferSessionV111(
         {
             var decision = DecisionTranscript[ordinal];
             decision.Validate();
+            var priorIndices =
+                ChanceLawEngineV111.IsShuffleAncientOfferSite(SiteId)
+                    ? DecisionTranscript.Take(ordinal)
+                        .Select(previous => previous.OutcomeIndex).ToArray()
+                    : null;
             var law = ChanceLawEngineV111.QueryAncientOffer(
-                Origin, SiteId, ordinal);
+                Origin, SiteId, ordinal, priorIndices);
             var selection = ReferenceNatureV111.SampleValidated(
                 law, expectedNatureState);
             if (CanonicalJson.Sha256(new ReferenceNatureDecisionV111(
@@ -1507,7 +1706,7 @@ public sealed record ReferenceNatureAncientOfferSessionV111(
         {
             if (replay.Complete)
                 throw new InvalidDataException(
-                    "ReferenceNature Ancient-offer replay exceeded its three choices.");
+                    "ReferenceNature Ancient-offer replay exceeded its source draw count.");
             replay = replay.ResolveNext();
             if (CanonicalJson.Sha256(replay.DecisionTranscript[^1]) !=
                 CanonicalJson.Sha256(snapshot.DecisionTranscript[index]))
@@ -1529,23 +1728,50 @@ public sealed record ReferenceNatureAncientOfferSessionV111(
         RunState origin, string siteId,
         ReferenceNatureDecisionV111[] transcript)
     {
-        if (transcript.Length != 3)
+        var isShuffle = ChanceLawEngineV111.IsShuffleAncientOfferSite(siteId);
+        var expectedCount = ChanceLawEngineV111.AncientOfferDecisionCount(
+            origin, siteId);
+        if (transcript.Length != expectedCount)
             throw new InvalidOperationException(
-                "Ancient offer generation requires all three sampled choices.");
-        var candidates = Enumerable.Range(0, 3).Select(ordinal =>
-            CandidateChoiceIds(origin, siteId, ordinal)).ToArray();
-        var scripted = transcript.Select((decision, ordinal) =>
+                "Ancient offer generation requires its complete sampled transcript.");
+        AncientOfferReplayChoiceV111[] scripted;
+        if (isShuffle)
         {
-            var selectedIndex = Array.FindIndex(candidates[ordinal], choiceId =>
-                EventOfferOutcomePrefix + choiceId == decision.OutcomeId);
-            if (selectedIndex < 0)
-                throw new InvalidDataException(
-                    "Sampled Ancient offer is outside its source candidate pool.");
-            var request = new RandomIndexRequestV111(
-                siteId, StreamId(siteId), OwnerId(siteId), ordinal,
-                Enumerable.Range(0, candidates[ordinal].Length).ToArray());
-            return new AncientOfferReplayChoiceV111(request, selectedIndex);
-        }).ToArray();
+            var pools = ChanceLawEngineV111.AncientOfferShuffleChoicePools(
+                origin, siteId);
+            var requests = ChanceLawEngineV111.AncientOfferShuffleRequests(
+                siteId, pools);
+            scripted = transcript.Select((decision, ordinal) =>
+            {
+                var expectedOutcome = "swap_index:" +
+                    decision.OutcomeIndex.ToString(CultureInfo.InvariantCulture);
+                if (decision.OutcomeId != expectedOutcome ||
+                    decision.OutcomeIndex < 0 ||
+                    decision.OutcomeIndex >=
+                        requests[ordinal].Request.SupportCount)
+                    throw new InvalidDataException(
+                        "Sampled Ancient offer shuffle index is outside its source support.");
+                return new AncientOfferReplayChoiceV111(
+                    requests[ordinal].Request, decision.OutcomeIndex);
+            }).ToArray();
+        }
+        else
+        {
+            var candidates = Enumerable.Range(0, 3).Select(ordinal =>
+                CandidateChoiceIds(origin, siteId, ordinal)).ToArray();
+            scripted = transcript.Select((decision, ordinal) =>
+            {
+                var selectedIndex = Array.FindIndex(candidates[ordinal], choiceId =>
+                    EventOfferOutcomePrefix + choiceId == decision.OutcomeId);
+                if (selectedIndex < 0)
+                    throw new InvalidDataException(
+                        "Sampled Ancient offer is outside its source candidate pool.");
+                var request = new RandomIndexRequestV111(
+                    siteId, StreamId(siteId), OwnerId(siteId), ordinal,
+                    Enumerable.Range(0, candidates[ordinal].Length).ToArray());
+                return new AncientOfferReplayChoiceV111(request, selectedIndex);
+            }).ToArray();
+        }
         var provider = new AncientOfferReplayProviderV111(scripted);
         var run = siteId switch
         {
@@ -1555,6 +1781,15 @@ public sealed record ReferenceNatureAncientOfferSessionV111(
                 NativePaelRewardsV111.BeginPaelOpeningWithAudit(origin, provider).State,
             NativeAncientRewardsV111.TezcataraOfferSiteId =>
                 NativeAncientRewardsV111.BeginTezcataraOpeningWithAudit(
+                    origin, provider).State,
+            NativeNonupeipeEventV111.ShuffleSiteId =>
+                NativeNonupeipeEventV111.BeginOpeningWithAudit(
+                    origin, provider).State,
+            NativeTanxEventV111.ShuffleSiteId =>
+                NativeTanxEventV111.BeginOpeningWithAudit(
+                    origin, provider).State,
+            NativeVakuuEventV111.ShuffleSiteId =>
+                NativeVakuuEventV111.BeginOpeningWithAudit(
                     origin, provider).State,
             _ => throw new NotSupportedException(
                 $"ReferenceNature Ancient-offer session does not support '{siteId}'.")
@@ -1582,21 +1817,11 @@ public sealed record ReferenceNatureAncientOfferSessionV111(
 
     private static void ValidateOpeningBoundary(RunState run, string siteId)
     {
-        if (siteId == NativeOrobasEventV111.OfferSiteId)
-            NativeOrobasEventV111.ValidateOpeningBoundary(run);
-        else if (siteId == NativePaelRewardsV111.OfferSiteId)
-            NativePaelRewardsV111.ValidateOpeningBoundary(run);
-        else if (siteId == NativeAncientRewardsV111.TezcataraOfferSiteId)
-            NativeAncientRewardsV111.ValidateTezcataraOpeningBoundary(run);
-        else
-            throw new NotSupportedException(
-                $"ReferenceNature Ancient-offer session does not support '{siteId}'.");
+        ChanceLawEngineV111.ValidateAncientOfferOpeningBoundary(run, siteId);
     }
 
     private static bool IsSupportedSite(string siteId) =>
-        siteId is NativeOrobasEventV111.OfferSiteId or
-            NativePaelRewardsV111.OfferSiteId or
-            NativeAncientRewardsV111.TezcataraOfferSiteId;
+        ChanceLawEngineV111.IsSupportedAncientOfferSite(siteId);
 
     private static string StreamId(string siteId) => siteId switch
     {

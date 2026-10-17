@@ -308,9 +308,15 @@ internal static class PrototypeAiJsonlServer
             string handle, string? parent = null)
         {
             var eventState = session.Run.World?.Event;
+            var priorIndices =
+                ChanceLawEngineV111.IsShuffleAncientOfferSite(session.SiteId)
+                    ? session.DecisionTranscript
+                        .Select(decision => decision.OutcomeIndex).ToArray()
+                    : null;
             var law = session.Complete ? null :
                 ChanceLawEngineV111.QueryAncientOffer(
-                    session.Origin, session.SiteId, session.NextOrdinal);
+                    session.Origin, session.SiteId, session.NextOrdinal,
+                    priorIndices);
             return new
             {
                 ok = true,
@@ -328,7 +334,15 @@ internal static class PrototypeAiJsonlServer
                         NativeOrobasEventV111.EventId,
                     var site when site == NativePaelRewardsV111.OfferSiteId =>
                         NativePaelRewardsV111.PaelId,
-                    _ => NativeAncientRewardsV111.TezcataraId
+                    var site when site ==
+                        NativeAncientRewardsV111.TezcataraOfferSiteId =>
+                        NativeAncientRewardsV111.TezcataraId,
+                    var site when site ==
+                        NativeNonupeipeEventV111.ShuffleSiteId =>
+                        NativeNonupeipeEventV111.EventId,
+                    var site when site == NativeTanxEventV111.ShuffleSiteId =>
+                        NativeTanxEventV111.EventId,
+                    _ => NativeVakuuEventV111.EventId
                 },
                 runPhase = session.Run.Phase.ToString(),
                 boundary = session.Complete ? "committed" : "nature",
@@ -1498,11 +1512,33 @@ internal static class PrototypeAiJsonlServer
                                 .IsChanceLawQuerySite(siteId))
                             throw new NotSupportedException(
                                 $"Chance Law query does not support site '{siteId}'.");
+                        int[]? priorIndices = null;
+                        if (request.TryGetProperty(
+                                "prior_indices", out var priorIndicesElement))
+                        {
+                            if (priorIndicesElement.ValueKind !=
+                                JsonValueKind.Array)
+                                throw new ArgumentException(
+                                    "Request field 'prior_indices' must be an integer array.");
+                            var parsedPriorIndices = new List<int>();
+                            foreach (var element in
+                                priorIndicesElement.EnumerateArray())
+                            {
+                                if (element.ValueKind != JsonValueKind.Number ||
+                                    !element.TryGetInt32(out var selectedIndex) ||
+                                    selectedIndex < 0)
+                                    throw new ArgumentException(
+                                        "Request field 'prior_indices' must contain nonnegative integers.");
+                                parsedPriorIndices.Add(selectedIndex);
+                            }
+                            priorIndices = parsedPriorIndices.ToArray();
+                        }
                         var law = ChanceLawEngineV111.QueryAncientOffer(
                             RequireState(request), siteId,
                             OptionalInt(request, "ordinal") ??
                                 throw new ArgumentException(
-                                    "Request field 'ordinal' is required."));
+                                    "Request field 'ordinal' is required."),
+                            priorIndices);
                         Write(new
                         {
                             requestId,

@@ -186,14 +186,20 @@ public static class StochasticSiteRegistryV111
     [
         NativeOrobasEventV111.OfferSiteId,
         NativePaelRewardsV111.OfferSiteId,
-        NativeAncientRewardsV111.TezcataraOfferSiteId
+        NativeAncientRewardsV111.TezcataraOfferSiteId,
+        NativeNonupeipeEventV111.ShuffleSiteId,
+        NativeTanxEventV111.ShuffleSiteId,
+        NativeVakuuEventV111.ShuffleSiteId
     ];
 
     private static readonly string[] AncientOfferSessionSites =
     [
         NativeOrobasEventV111.OfferSiteId,
         NativePaelRewardsV111.OfferSiteId,
-        NativeAncientRewardsV111.TezcataraOfferSiteId
+        NativeAncientRewardsV111.TezcataraOfferSiteId,
+        NativeNonupeipeEventV111.ShuffleSiteId,
+        NativeTanxEventV111.ShuffleSiteId,
+        NativeVakuuEventV111.ShuffleSiteId
     ];
 
     private static readonly HashSet<string> SemanticReferenceNatureSiteSet =

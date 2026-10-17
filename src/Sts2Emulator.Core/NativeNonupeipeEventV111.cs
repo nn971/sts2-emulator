@@ -41,13 +41,25 @@ public static class NativeNonupeipeEventV111
 
     private static string ChoiceId(string relicId) => "take_" + relicId;
 
-    private static string[] CandidateRelics(bool includeBeautifulBracelet) =>
+    internal static string[] CandidateRelics(bool includeBeautifulBracelet) =>
         includeBeautifulBracelet
             ? [.. BaseRelicIds, NativeGloryAncientsV111.BeautifulBraceletId]
             : (string[])BaseRelicIds.Clone();
 
-    private static bool HasBeautifulBraceletEligibility(PlayerState player) =>
+    internal static bool HasBeautifulBraceletEligibility(PlayerState player) =>
         NativeGloryAncientsV111.IsBeautifulBraceletEligible(player);
+
+    internal static void ValidateOpeningBoundary(RunState state)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        if (state.World is not { Act: 3, Floor: 0, Combat: null,
+                Reward: null, Event: null } world
+            || world.Map.CurrentNodeId is not null
+            || state.Phase != RunPhase.MapChoice
+            || world.EventIds.Contains(EventId, StringComparer.Ordinal))
+            throw new InvalidOperationException(
+                "Nonupeipe requires an unvisited Glory Ancient boundary.");
+    }
 
     public static bool IsOpeningEvent(RunWorldState world) =>
         world.Act == 3 && world.Floor == 0
@@ -72,13 +84,8 @@ public static class NativeNonupeipeEventV111
             throw new ArgumentException(
                 "Nonupeipe offer generation requires a supported random provider mode.",
                 nameof(provider));
-        if (state.World is not { Act: 3, Floor: 0, Combat: null,
-                Reward: null, Event: null } world
-            || world.Map.CurrentNodeId is not null
-            || state.Phase != RunPhase.MapChoice
-            || world.EventIds.Contains(EventId, StringComparer.Ordinal))
-            throw new InvalidOperationException(
-                "Nonupeipe requires an unvisited Glory Ancient boundary.");
+        ValidateOpeningBoundary(state);
+        var world = state.World!;
 
         var fork = state.Fork();
         var includeBracelet = HasBeautifulBraceletEligibility(fork.Player);

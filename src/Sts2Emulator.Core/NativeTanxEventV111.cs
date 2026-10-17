@@ -41,19 +41,19 @@ public static class NativeTanxEventV111
 
     private static string ChoiceId(string relicId) => "take_" + relicId;
 
-    private static bool HasTriBoomerangEligibility(PlayerState player) =>
+    internal static bool HasTriBoomerangEligibility(PlayerState player) =>
         player.Deck.Count(card =>
             PrototypeContent.Card(card.CardId).Type == PrototypeCardType.Attack
             && PrototypeGameEngine.CanSelectEventDeckCard(card,
                 PrototypePersistentDeckChoiceKind.Enchant, null,
                 PrototypeCardEnchantmentKind.Instinct, false)) >= 3;
 
-    private static string[] CandidateRelics(bool includeTriBoomerang) =>
+    internal static string[] CandidateRelics(bool includeTriBoomerang) =>
         includeTriBoomerang
             ? [.. BaseRelicIds, NativeGloryAncientsV111.TriBoomerangId]
             : (string[])BaseRelicIds.Clone();
 
-    private static string[] CandidateRelics(PlayerState player,
+    internal static string[] CandidateRelics(PlayerState player,
         bool? includeTriBoomerang)
     {
         return CandidateRelics(includeTriBoomerang
@@ -64,6 +64,18 @@ public static class NativeTanxEventV111
         world.Act == 3 && world.Floor == 0
         && world.Map.CurrentNodeId is null
         && world.Event?.EventId == EventId;
+
+    internal static void ValidateOpeningBoundary(RunState state)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        if (state.World is not { Act: 3, Floor: 0, Combat: null,
+                Reward: null, Event: null } world
+            || world.Map.CurrentNodeId is not null
+            || state.Phase != RunPhase.MapChoice
+            || world.EventIds.Contains(EventId, StringComparer.Ordinal))
+            throw new InvalidOperationException(
+                "Tanx requires an unvisited Glory Ancient boundary.");
+    }
 
     /// <summary>
     /// Begin Tanx at Glory's Ancient boundary without selecting the run's
@@ -88,13 +100,8 @@ public static class NativeTanxEventV111
             throw new ArgumentException(
                 "Tanx offer generation requires a supported random provider mode.",
                 nameof(provider));
-        if (state.World is not { Act: 3, Floor: 0, Combat: null,
-                Reward: null, Event: null } world
-            || world.Map.CurrentNodeId is not null
-            || state.Phase != RunPhase.MapChoice
-            || world.EventIds.Contains(EventId, StringComparer.Ordinal))
-            throw new InvalidOperationException(
-                "Tanx requires an unvisited Glory Ancient boundary.");
+        ValidateOpeningBoundary(state);
+        var world = state.World!;
 
         var fork = state.Fork();
         var stream = NativeRngV111Contexts.ForEvent(fork.RunSeed, RngEventId);

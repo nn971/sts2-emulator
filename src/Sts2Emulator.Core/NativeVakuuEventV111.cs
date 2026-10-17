@@ -58,6 +58,18 @@ public static class NativeVakuuEventV111
         && world.Map.CurrentNodeId is null
         && world.Event?.EventId == EventId;
 
+    internal static void ValidateOpeningBoundary(RunState state)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        if (state.World is not { Act: 3, Floor: 0, Combat: null,
+                Reward: null, Event: null } world
+            || world.Map.CurrentNodeId is not null
+            || state.Phase != RunPhase.MapChoice
+            || world.EventIds.Contains(EventId, StringComparer.Ordinal))
+            throw new InvalidOperationException(
+                "Vakuu requires an unvisited Glory Ancient boundary.");
+    }
+
     public static RunState BeginOpening(RunState state) =>
         BeginOpeningWithAudit(state, new NativeRandomIndexProviderV111()).State;
 
@@ -76,13 +88,8 @@ public static class NativeVakuuEventV111
             throw new ArgumentException(
                 "Vakuu offer generation requires a supported random provider mode.",
                 nameof(provider));
-        if (state.World is not { Act: 3, Floor: 0, Combat: null,
-                Reward: null, Event: null } world
-            || world.Map.CurrentNodeId is not null
-            || state.Phase != RunPhase.MapChoice
-            || world.EventIds.Contains(EventId, StringComparer.Ordinal))
-            throw new InvalidOperationException(
-                "Vakuu requires an unvisited Glory Ancient boundary.");
+        ValidateOpeningBoundary(state);
+        var world = state.World!;
 
         var fork = state.Fork();
         var stream = NativeRngV111Contexts.ForEvent(

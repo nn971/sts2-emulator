@@ -32,16 +32,25 @@ class State:
     def exact_hash(self):
         return self.session.call("exact_hash", state_handle=self.handle)["exactHash"]
 
-    def query_chance_law(self, site_id: str, *, ordinal: int = 0):
+    def query_chance_law(self, site_id: str, *, ordinal: int = 0,
+                         prior_indices=None):
         """Read an advertised pre-outcome Chance Law without changing state."""
         if not self.session.supports_chance_law_query(site_id):
             raise EmulatorError(
                 f"No direct Chance Law query is advertised for site {site_id!r}")
         if type(ordinal) is not int or ordinal < 0:
             raise ValueError("ordinal must be a nonnegative integer")
+        payload = {"state_handle": self.handle,
+                   "site_id": site_id, "ordinal": ordinal}
+        if prior_indices is not None:
+            if not isinstance(prior_indices, (list, tuple)) or any(
+                    type(index) is not int or index < 0
+                    for index in prior_indices):
+                raise ValueError(
+                    "prior_indices must be a sequence of nonnegative integers")
+            payload["prior_indices"] = list(prior_indices)
         result = self.session.call(
-            "chance_law_query", state_handle=self.handle,
-            site_id=site_id, ordinal=ordinal)
+            "chance_law_query", **payload)
         return result["law"]
 
     def save_snapshot(self):
