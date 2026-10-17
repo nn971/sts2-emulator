@@ -103,11 +103,12 @@ Stone of All Time's `push_ticket` and `lift_ticket` each have a read-only
 one-outcome law at the legal active-event choice boundary. On Native runs both
 tickets are at event-stream ordinal 1 because the entry potion-slot draw owns
 ordinal 0. On the retained legacy route the query binds the caller-supplied
-ordinal to the current `event` stream call count. The query conditions on the
-requested action and confirms that it is currently legal; all 100 bounded
-indices map to `no_effect`. This mapping is `SOURCE_VERIFIED` from the pinned
-resolver, which discards the selected index. Neither route's RNG state is
-advanced by the query.
+ordinal as source-call metadata without reading the current `event` stream
+call count. The query conditions on the requested action and confirms that it
+is currently legal; all 100 bounded indices map to `no_effect`. This mapping
+is `SOURCE_VERIFIED` from the pinned resolver, which discards the selected
+index. Replay matches the typed request to its saved boundary and ordered
+prefix. Neither route's RNG state is advanced by the query.
 
 Both Native tickets use the existing atomic controlled event-choice session.
 Lift suspends from the untouched pre-choice state, then replays the ordinary
@@ -126,10 +127,11 @@ of All Time as the event branch; the query checks route eligibility and uses
 the ordered occupied potion-slot support. Native uses exact `NextInt` grid
 masses and is `SOURCE_VERIFIED`; the legacy ReferenceNature route uses equal
 weights and remains `UNVERIFIED`. Native ordinal is 0; the legacy request
-ordinal follows the event-selection ticket and is checked against the saved
-`event` stream call count. The query does not inspect the later event-selection
-result or create an entry session. Event selection, seed frequencies, stream
-attribution, and Native cursor parity remain separate claims.
+ordinal follows the event-selection ticket but is supplied explicitly rather
+than derived from the saved `event` stream call count. The query does not
+inspect the later event-selection result or create an entry session. Event
+selection, seed frequencies, stream attribution, and Native cursor parity
+remain separate claims.
 
 The Future of Potions `card_type.index_draw` has one pre-entry law per owned
 potion, ordered by slot and conditioned on that explicit event branch. Each
