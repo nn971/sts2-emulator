@@ -51,7 +51,10 @@ event selection retains its existing provider. The selected initial dish and
 ReferenceNature sampler cursor commit together, while the Endless Conveyor
 Native event cursor remains at event entry. Fork, save/restore, replay
 validation, release, capability coverage, and the Nature-only pending choice
-view are supported.
+view are supported. Jelly Liver and Suspicious Condiment retain the scripted
+marker while their existing grab prompt is pending. Resolving that prompt and
+rolling another dish returns to the ordinary Native provider and clears the
+marker. Choosing Observe also clears it after the ordinary upgrade action.
 
 ## Limits
 

@@ -57,7 +57,8 @@ public static class PrototypeNativeEndlessConveyor
                     {
                         NativeDishCount = nextRoll,
                         NativeLastDishId = "SEAPUNK_SALAD",
-                        NativeDishId = "SEAPUNK_SALAD"
+                        NativeDishId = "SEAPUNK_SALAD",
+                        NativeEventRngProviderMode = null
                     }
                 }
             };
@@ -116,7 +117,8 @@ public static class PrototypeNativeEndlessConveyor
                 {
                     NativeDishCount = nextRoll,
                     NativeDishId = selected,
-                    NativeLastDishId = selected
+                    NativeLastDishId = selected,
+                    NativeEventRngProviderMode = null
                 }
             }
         };
@@ -147,10 +149,20 @@ public static class PrototypeNativeEndlessConveyor
     {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(current);
+        var initialEntryBoundary = current.NativePageIndex == 0 &&
+            current.ChosenChoiceId is null && !current.NativeDishRollPending;
+        var deferredGrabBoundary = current.NativePageIndex == 1 &&
+            current.ChosenChoiceId == "grab" && current.NativeDishRollPending &&
+            (current.NativeDishId == "JELLY_LIVER" &&
+                (current.PendingDeckChoice is not null ||
+                 current.RemainingDeckChoices.Length > 0) ||
+             current.NativeDishId == "SUSPICIOUS_CONDIMENT" &&
+                (current.PendingPotionReplacement is not null ||
+                 current.RemainingPotionIds.Length > 0));
         if (state.Phase != RunPhase.Event ||
             state.World?.Combat is not null ||
-            current.EventId != EventId || current.NativePageIndex != 0 ||
-            current.ChosenChoiceId is not null ||
+            current.EventId != EventId ||
+            !(initialEntryBoundary || deferredGrabBoundary) ||
             current.NativeDishCount != 1 ||
             current.NativeDishId is null ||
             current.NativeDishId != current.NativeLastDishId ||
@@ -266,7 +278,11 @@ public sealed partial class PrototypeGameEngine
             {
                 World = world with
                 {
-                    Event = evt with { ChosenChoiceId = choice }
+                    Event = evt with
+                    {
+                        ChosenChoiceId = choice,
+                        NativeEventRngProviderMode = null
+                    }
                 }
             };
             return PreserveNativeEventCompletionPage(result, choice);
