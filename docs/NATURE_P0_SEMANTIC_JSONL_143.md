@@ -459,9 +459,9 @@ operations in order. These autoplayed cards do not dispatch `CardDrawn`
 hooks. Mayhem's `AutoPrePlay` route also resumes through its saved automatic
 pipeline cursor and preserves the History Course post-dispatch policy. A
 required draw-pile recycle creates a deferred Nature shuffle and continues
-through the same top-card event. The path still rejects after-shuffle relics
-that insert generated cards until their insertion continuation is composed.
-The draw law remains `UNVERIFIED`.
+through the same top-card event. After-shuffle relics that insert generated
+cards resolve through the existing controlled insertion continuation before
+autoplay resumes. The draw law remains `UNVERIFIED`.
 
 Set `fixture_selection_card_id="proto.colorless.anointed"` to reach Anointed's
 `random_rare_to_hand_shuffle` event. Its `originalCardIds` and

@@ -105,9 +105,9 @@ preserves staged identities and the effect queue, then uses the ordinary
 autoplay operation for each card. Mayhem's automatic-pipeline cursor resumes
 after `AutoPrePlay`, including the History Course post-dispatch policy. A
 discard recycle creates a deferred Nature shuffle and resumes through the same
-top-card event; relics that insert generated cards after shuffling still need
-a composed insertion continuation. This integration does not claim
-source-calibrated draw probabilities.
+top-card event; after-shuffle generated-card insertions use the existing
+controlled insertion continuation before autoplay resumes. This integration
+does not claim source-calibrated draw probabilities.
 `ReferenceNatureMerchantSessionV111` and
 `ReferenceNatureTreasureSessionV111` own serialized continuations and use the
 shared law-to-source mapping. Their opening projections sort the existing

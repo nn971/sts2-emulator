@@ -51,9 +51,9 @@ This boundary supports manual Distilled Chaos and Mayhem's automatic
 `AutoPrePlay` trigger. Mayhem resumes its saved pipeline after the event and
 preserves History Course's post-dispatch action. An empty draw pile with an
 empty discard produces no autoplay. A required recycle creates a deferred
-Nature shuffle and continues through the same top-card event. It still rejects
-relics that insert generated cards after shuffling until their insertion
-continuation is composed. A seeded semantic fixture can include Distilled Chaos with
+Nature shuffle and continues through the same top-card event. After-shuffle
+relics that insert generated cards resolve through the existing controlled
+insertion continuation. A seeded semantic fixture can include Distilled Chaos with
 `fixture_top_autoplay_potion_id`.
 
 ## Limits and verification

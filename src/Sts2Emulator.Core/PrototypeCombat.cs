@@ -8087,12 +8087,53 @@ public sealed partial class PrototypeGameEngine
                                 {
                                     DiscardPile = []
                                 };
-                                if (ControlledAfterShuffleRelicInsertions(
-                                        combat).Length > 0)
-                                    throw new NotSupportedException(
-                                        "UNSUPPORTED_SEMANTIC_DECK " +
-                                        "site=combat.autoplay.top_draw " +
-                                        "operation=after_shuffle_insertion_requires_composed_continuation");
+                                var afterShuffleInsertions =
+                                    ControlledAfterShuffleRelicInsertions(
+                                        combat);
+                                if (afterShuffleInsertions.Length > 0)
+                                {
+                                    var resumeOperation = operation with
+                                    {
+                                        Amount = count - index,
+                                        DeferredDrawnCardInstanceIds =
+                                            (long[])staged.ToArray().Clone()
+                                    };
+                                    combat = combat with
+                                    {
+                                        PlayPile = combat.PlayCardIds
+                                            .Concat(staged.Skip(
+                                                previouslyStagedCount))
+                                            .ToArray()
+                                    };
+                                    var continuation = new
+                                        PrototypeChoiceResolutionContinuationState(
+                                            SourceCardInstanceId:
+                                                sourceCardInstanceId,
+                                            SourceCardDestination:
+                                                sourceCardDestination,
+                                            Operations: new[] { resumeOperation }
+                                                .Concat(operations).ToArray(),
+                                            PendingDiscardEvents: [],
+                                            PendingSlyCardInstanceIds: [],
+                                            CompletionEvents:
+                                                completionEvents ?? [],
+                                            CardPlaySeries: cardPlaySeries,
+                                            MoveSourceCardOnCompletion:
+                                                moveSourceCardOnCompletion,
+                                            RemoveSourceCardOnCompletion:
+                                                removeSourceCardOnCompletion,
+                                            SourceCardAlreadyMoved:
+                                                sourceCardAlreadyMoved,
+                                            EventDispatchContinuation:
+                                                eventDispatchContinuation?.Fork());
+                                    return (player,
+                                        MakeControlledAfterShuffleInsertionChoice(
+                                            combat,
+                                            afterShuffleInsertions[0],
+                                            afterShuffleInsertions.Skip(1)
+                                                .ToArray(), [], null,
+                                            continuation, ordinal: 0));
+                                }
                             }
                             else if (semanticDeck is
                                 { Mode: SemanticDeckStateV111.NativeMode })
