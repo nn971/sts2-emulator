@@ -43,7 +43,8 @@ public static class StochasticCapabilitiesV111
             "combat.card_draw.relic_energy_cost",
             "combat.card_draw.slither_energy_cost",
             "combat.relic.jeweled_mask.random_power_draw_card",
-            "combat.card_transform.replacement.index_draw"
+            "combat.card_transform.replacement.index_draw",
+            "combat.potion_generation.random_model"
         ],
         PrototypeAiEnvironment.SchemaId,
         [
@@ -163,6 +164,8 @@ public static class ChanceLawEngineV111
         "uniform-ordered-physical-pile-card-support-v1";
     public const string CardTransformConditioningPolicyId =
         "uniform-card-transform-replacement-pool-v1";
+    public const string PotionGenerationConditioningPolicyId =
+        "uniform-potion-generation-model-pool-v1";
 
     public static ChanceLawV111 QueryIntent(SemanticIntentEventV111 intent)
     {
@@ -325,6 +328,33 @@ public static class ChanceLawEngineV111
             transform.OperationKind, transform.OwnerId, transform.Ordinal,
             CardTransformConditioningPolicyId, conditioningFingerprint,
             "uniform-transform-pool-unverified", outcomes);
+    }
+
+    /// <summary>
+    /// Query the uniform law over the ordered source potion-model pool for
+    /// one pending generated-potion choice.
+    /// </summary>
+    public static ChanceLawV111 QueryPotionGeneration(
+        SemanticPotionGenerationEventV111 potion)
+    {
+        ArgumentNullException.ThrowIfNull(potion);
+        potion.Validate();
+        var outcomes = potion.CandidatePotionIds
+            .Select(potionId => new ChanceLawOutcomeV111(
+                "potion_model:" + potionId, 1L))
+            .ToArray();
+        var conditioningFingerprint = CanonicalJson.Sha256(new
+        {
+            potion.SupportFingerprint,
+            potion.SiteId,
+            potion.OwnerId,
+            potion.Ordinal,
+            policy = PotionGenerationConditioningPolicyId
+        });
+        return Create(potion.EventId, potion.SiteId,
+            potion.OperationKind, potion.OwnerId, potion.Ordinal,
+            PotionGenerationConditioningPolicyId, conditioningFingerprint,
+            "uniform-potion-model-pool-unverified", outcomes);
     }
 
     public static ChanceLawV111 QueryDraw(SemanticDeckStateV111 deck)
@@ -637,6 +667,22 @@ public static class ReferenceNatureV111
                 selection.OutcomeIndex];
             var child = SemanticPilotCombatEngineV111.ResolveCardTransform(
                 combat, combat.Fingerprint, transformEvent.EventId, cardId);
+            return new ReferenceNatureResolutionV111(child, law, selection);
+        }
+
+        if (combat.PotionGenerationPending is { } potionEvent)
+        {
+            var law = ChanceLawEngineV111.QueryPotionGeneration(potionEvent);
+            var selection = Sample(law, state);
+            if (selection.EventId != potionEvent.EventId ||
+                selection.OutcomeIndex < 0 ||
+                selection.OutcomeIndex >= potionEvent.CandidatePotionIds.Length)
+                throw new InvalidDataException(
+                    "ReferenceNature law no longer matches the pending potion event.");
+            var potionId = potionEvent.CandidatePotionIds[
+                selection.OutcomeIndex];
+            var child = SemanticPilotCombatEngineV111.ResolvePotionGeneration(
+                combat, combat.Fingerprint, potionEvent.EventId, potionId);
             return new ReferenceNatureResolutionV111(child, law, selection);
         }
 
