@@ -2090,7 +2090,7 @@ public sealed record PrototypePersonalHiveDamageContinuationV111(
 }
 
 /// <summary>
-/// Source-ordered full-pool generation shuffle waiting on a Nature swap.
+/// Source-ordered full-pool shuffle waiting on a Nature swap.
 /// The exact source eligibility, partial permutation and saved effect queue
 /// are private; only the bounded swap ticket and ordered card IDs go to Nature.
 /// </summary>

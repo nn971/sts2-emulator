@@ -3887,6 +3887,8 @@ public static class SemanticPilotCombatEngineV111
         if (shuffle is null) return null;
         bool randomRareToHand = shuffle.Operation.Kind ==
             PrototypeCombatEffectKind.MoveRandomRareDrawCardsToHand;
+        bool randomShortlist = shuffle.Operation.Kind ==
+            PrototypeCombatEffectKind.ChooseCards;
         bool handReturn = shuffle.Operation.Kind ==
             PrototypeCombatEffectKind.ReturnHandToDrawAndShuffle;
         bool recycle = shuffle.Operation.Kind ==
@@ -3897,8 +3899,10 @@ public static class SemanticPilotCombatEngineV111
         var fixtureMatches = handReturn || recycle || (randomRareToHand
             ? current.SeededEntry?.FixtureSelectionCardId ==
                 "proto.colorless.anointed"
-            : current.SeededEntry?.FixturePoolGenerationPotionId ==
-                "proto.potion.colorless");
+            : randomShortlist
+                ? current.SeededEntry?.FixtureSelectionCardId is not null
+                : current.SeededEntry?.FixturePoolGenerationPotionId ==
+                    "proto.potion.colorless");
         if (!fixtureMatches ||
             (current.PendingEndTurn is not null && !mayhemRecycle) ||
             current.PendingInitialIntents is not null ||
@@ -3911,12 +3915,20 @@ public static class SemanticPilotCombatEngineV111
         ValidatePoolShuffleBoundary(current.Run);
         var original = (string[])shuffle.OriginalCardIds.Clone();
         var currentPool = (string[])shuffle.CurrentCardIds.Clone();
+        var shortlistCardIds = randomShortlist
+            ? PrototypeGameEngine.ControlledCardShortlistCandidates(
+                combat!, shuffle.Operation) ?? throw new InvalidDataException(
+                    "Random shortlist lost its source card pool.")
+            : [];
         var sourceCardId = choice!.SourceCardInstanceId;
         var owner = handReturn || recycle
             ? "effect:" + shuffle.Operation.Kind + ":source:" +
                 (sourceCardId?.ToString() ?? "none") + ":pool:" +
                 CanonicalJson.Sha256(original)
-            : "card:" + (sourceCardId?.ToString() ?? "effect") +
+            : randomShortlist
+                ? "selection:" + shuffle.Operation.Selection!.SourceZone +
+                    ":pool:" + CanonicalJson.Sha256(shortlistCardIds)
+                : "card:" + (sourceCardId?.ToString() ?? "effect") +
                 ":operation:" + shuffle.Operation.Kind +
                 ":pool:" + CanonicalJson.Sha256(original);
         var ordinal = current.History.Count(transition =>
@@ -3924,6 +3936,8 @@ public static class SemanticPilotCombatEngineV111
         var streamId = handReturn || recycle
             ? combat!.NativeRng is not null
                 ? "run.shuffle" : "prototype.combat"
+            : randomShortlist && combat!.NativeRng?.RunStreams is not null
+                ? "run.combat_card_selection"
             : shuffle.Operation.GeneratedChoiceUsesNativeCardGenerationRng &&
               combat!.NativeRng?.RunStreams is not null
                 ? "run.combat_card_generation" : "prototype.combat";
@@ -3933,7 +3947,9 @@ public static class SemanticPilotCombatEngineV111
                 ? "combat.draw.recycle.shuffle_swap_index"
                 : randomRareToHand
                     ? "combat.draw_pile.random_rare_to_hand.shuffle_swap_index"
-                    : "combat.generation.full_pool_shuffle.swap_index";
+                    : randomShortlist
+                        ? "combat.card_selection.random_shortlist"
+                        : "combat.generation.full_pool_shuffle.swap_index";
         var request = new RandomIndexRequestV111(
             siteId, streamId,
             owner, ordinal, [], OperationKind: "bounded_integer",

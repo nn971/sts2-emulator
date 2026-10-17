@@ -7125,6 +7125,33 @@ public sealed partial class PrototypeGameEngine
                     if (selection.RandomCandidateCount > 0
                         && candidates.Length > selection.RandomCandidateCount)
                     {
+                        if (ControlledChanceGuardV111.Active &&
+                            !ControlledChanceGuardV111
+                                .EngineOwnedNativeProviderActive)
+                        {
+                            var continuation =
+                                new PrototypeChoiceResolutionContinuationState(
+                                    SourceCardInstanceId: sourceCardInstanceId,
+                                    SourceCardDestination: sourceCardDestination,
+                                    Operations: operations.ToArray(),
+                                    PendingDiscardEvents: [],
+                                    PendingSlyCardInstanceIds: [],
+                                    CompletionEvents: completionEvents ?? [],
+                                    CardPlaySeries: cardPlaySeries,
+                                    MoveSourceCardOnCompletion:
+                                        moveSourceCardOnCompletion,
+                                    RemoveSourceCardOnCompletion:
+                                        removeSourceCardOnCompletion,
+                                    SourceCardAlreadyMoved:
+                                        sourceCardAlreadyMoved,
+                                    EventDispatchContinuation:
+                                        eventDispatchContinuation?.Fork());
+                            if (TryMakeControlledPoolShuffleChoice(
+                                    combat, operation, sourceCardInstanceId,
+                                    continuation, out var suspended))
+                                return (player, suspended);
+                        }
+
                         // Native pile selectors may offer only a random
                         // shortlist. Filter by type before choosing it.
                         var shuffledCandidates = (long[])candidates.Clone();

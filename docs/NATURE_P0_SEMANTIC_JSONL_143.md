@@ -406,16 +406,17 @@ constraints.
 
 For the source random-pile shortlist, set
 `fixture_selection_card_id="proto.colorless.seeker_strike"`. Its actual
-`ChooseCards` effect exposes a sequence of ordered
-`random_pile_selection_shortlist` events, sampling eligible draw-pile card
-instances without replacement. After the required prefix is selected, the
-source `select_cards` player choice is exposed normally. Python clients use
-`resolve_card_shortlist(card_instance_id)` for each Nature choice, then
-`resolve_card_selection(action_id)`. The fixture begins with a committed
-exact draw-pile order. Later, a selected identity can be removed from one
-contiguous unresolved semantic pool without revealing its old position;
-removal fails closed when a known inserted card splits that shared pool into
-multiple positional runs.
+`ChooseCards` effect exposes each descending Fisher–Yates swap through the
+existing `pool_shuffle` event, then exposes the source `select_cards` player
+choice over the shuffled prefix. Python clients use
+`resolve_pool_shuffle(swap_index)` for each Nature swap, then
+`resolve_card_selection(action_id)`. Each Native swap law uses the exact
+bounded-index grid mass on its current bound; legacy and compatibility
+shortlist routes remain unverified. The fixture begins with a committed exact
+draw-pile order. Later, a selected identity can be removed from one contiguous
+unresolved semantic pool without revealing its old position; removal fails
+closed when a known inserted card splits that shared pool into multiple
+positional runs.
 
 The same `fixture_selection_card_id` loadout hook can substitute
 `proto.colorless.beat_down`, `proto.colorless.catastrophe`, or

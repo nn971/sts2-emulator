@@ -44,6 +44,21 @@ public sealed partial class PrototypeGameEngine
                     ":" + card.CardId;
             }).ToArray();
         }
+        if (op.Kind == PrototypeCombatEffectKind.ChooseCards &&
+            op.Selection is { RandomCandidateCount: > 0 } selection)
+        {
+            var candidates = ControlledCardShortlistCandidates(combat, op);
+            if (candidates is null ||
+                candidates.Length <= selection.RandomCandidateCount)
+                return null;
+            return candidates.Select(id =>
+            {
+                var card = RequireCombatCard(combat, id);
+                return "card-instance:" + card.InstanceId.ToString(
+                    System.Globalization.CultureInfo.InvariantCulture) +
+                    ":" + card.CardId;
+            }).ToArray();
+        }
 
         if (op.Kind == PrototypeCombatEffectKind.CreateDistinctCharacterCommonCardsInHand)
             return PrototypeContent.NativeSilentCardPool.Where(id =>
@@ -103,6 +118,8 @@ public sealed partial class PrototypeGameEngine
             PrototypeCombatEffectKind.RecycleDrawPileForEffectDraw =>
                 poolCount,
             PrototypeCombatEffectKind.ReturnHandToDrawAndShuffle => poolCount,
+            PrototypeCombatEffectKind.ChooseCards =>
+                op.Selection?.RandomCandidateCount ?? 0,
             _ => op.Amount
         };
         return Math.Min(Math.Max(0, count), poolCount);
@@ -140,6 +157,10 @@ public sealed partial class PrototypeGameEngine
             return false;
         if (operation.Kind ==
                 PrototypeCombatEffectKind.MoveRandomRareDrawCardsToHand &&
+            combat.SemanticDeck is not
+                { Mode: SemanticDeckStateV111.NatureMode })
+            return false;
+        if (operation.Kind == PrototypeCombatEffectKind.ChooseCards &&
             combat.SemanticDeck is not
                 { Mode: SemanticDeckStateV111.NatureMode })
             return false;
@@ -306,6 +327,80 @@ public sealed partial class PrototypeGameEngine
                     SourceCardAlreadyMoved: continuation.SourceCardAlreadyMoved,
                     EventDispatchContinuation:
                         continuation.EventDispatchContinuation?.Fork())
+            };
+            return state with { World = world with { Combat = combat } };
+        }
+
+        if (op.Kind == PrototypeCombatEffectKind.ChooseCards)
+        {
+            var selection = op.Selection ?? throw new InvalidDataException(
+                "Controlled random shortlist lost its selection operation.");
+            var candidates = values.Take(shuffle.SelectedCount)
+                .Select(ParseShuffledCardInstanceToken).ToArray();
+            if (selection.RequireEnergyCostingCard)
+                candidates = candidates.Where(id =>
+                {
+                    var card = RequireCombatCard(combat, id);
+                    var definition = PrototypeContent.Card(card.CardId);
+                    return !definition.Unplayable &&
+                        (definition.Cost.Kind == PrototypeCardCostKind.X ||
+                         definition.Cost.Kind == PrototypeCardCostKind.Fixed &&
+                         definition.Cost.Amount >= 0);
+                }).ToArray();
+
+            const int maxHandSize = 10;
+            var capacity = selection.Resolution ==
+                    PrototypeCardSelectionResolutionKind.MoveToHand
+                ? Math.Max(0, maxHandSize - combat.Hand.Length)
+                : int.MaxValue;
+            var maximum = Math.Min(
+                Math.Min(selection.MaxSelections, candidates.Length), capacity);
+            if (candidates.Length == 0 || maximum <= 0)
+            {
+                var resumed = ResumeChoiceResolutionContinuation(
+                    state.Player, combat, state.Rng, continuation);
+                return ResumeAutomaticPipelineContinuation(state with
+                {
+                    Player = resumed.Player,
+                    World = world with { Combat = resumed.Combat }
+                });
+            }
+
+            var effective = selection with
+            {
+                MinSelections = Math.Min(selection.MinSelections, maximum),
+                MaxSelections = maximum
+            };
+            combat = combat with
+            {
+                PendingChoice = new PendingCombatChoiceState(
+                    ChoiceId: "select_cards",
+                    SourceCardInstanceId: continuation.SourceCardInstanceId,
+                    SourceCardDestination: continuation.SourceCardDestination,
+                    Selection: effective,
+                    CandidateCardInstanceIds: candidates,
+                    Continuation: (PrototypeQueuedOperation[])
+                        continuation.Operations.Clone(),
+                    CompletionEvents: (PrototypeCombatEvent[])
+                        continuation.CompletionEvents.Clone(),
+                    CardPlaySeries: continuation.CardPlaySeries,
+                    MoveSourceCardOnCompletion:
+                        continuation.MoveSourceCardOnCompletion,
+                    RemoveSourceCardOnCompletion:
+                        continuation.RemoveSourceCardOnCompletion,
+                    SourceCardAlreadyMoved:
+                        continuation.SourceCardAlreadyMoved,
+                    SelectedCardPower: op.SelectedCardPower,
+                    SelectedCardKeyword: op.SelectedCardKeyword,
+                    SelectedCardTemporaryCost:
+                        op.SelectedCardTemporaryCost is null
+                            ? null : op.SelectedCardTemporaryCost with { },
+                    EventDispatchContinuation:
+                        continuation.EventDispatchContinuation?.Fork(),
+                    SemanticStratagemDrawSelection:
+                        op.SemanticStratagemDrawSelection,
+                    AutomaticSemanticStratagemDrawSelection:
+                        op.AutomaticSemanticStratagemDrawSelection)
             };
             return state with { World = world with { Combat = combat } };
         }

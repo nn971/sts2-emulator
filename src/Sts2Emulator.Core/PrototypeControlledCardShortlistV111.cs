@@ -94,6 +94,8 @@ public sealed partial class PrototypeGameEngine
     {
         suspended = combat;
         var requiredCount = ControlledCardShortlistRequiredCount(operation);
+        if (operation.Kind == PrototypeCombatEffectKind.ChooseCards)
+            return false;
         if (!ControlledChanceGuardV111.Active ||
             ControlledChanceGuardV111.EngineOwnedNativeProviderActive ||
             combat.SemanticDeck is not

@@ -1,6 +1,9 @@
 namespace Sts2Emulator.Core;
 
-/// <summary>One bounded source swap in a full combat-pool shuffle.</summary>
+/// <summary>
+/// One bounded source swap in a full combat-pool shuffle, including the
+/// random shortlist performed before a source card selection.
+/// </summary>
 public sealed record SemanticPoolShuffleEventV111(
     string SchemaId, string EventId, string BoundaryFingerprint,
     string SupportFingerprint, RandomIndexRequestV111 Request,
@@ -38,6 +41,8 @@ public sealed record SemanticPoolShuffleEventV111(
                 "combat.draw_pile.random_rare_to_hand.shuffle_swap_index",
             nameof(PrototypeCombatEffectKind.RecycleDrawPileForEffectDraw) =>
                 "combat.draw.recycle.shuffle_swap_index",
+            nameof(PrototypeCombatEffectKind.ChooseCards) =>
+                "combat.card_selection.random_shortlist",
             _ => "combat.generation.full_pool_shuffle.swap_index"
         };
         if (SchemaId != EventSchemaId || string.IsNullOrWhiteSpace(EventId) ||
@@ -47,7 +52,8 @@ public sealed record SemanticPoolShuffleEventV111(
                 "combat.hand_return.draw_pile.shuffle_swap_index" or
                 "combat.generation.full_pool_shuffle.swap_index" or
                 "combat.draw_pile.random_rare_to_hand.shuffle_swap_index" or
-                "combat.draw.recycle.shuffle_swap_index") ||
+                "combat.draw.recycle.shuffle_swap_index" or
+                "combat.card_selection.random_shortlist") ||
             Request.SiteId != expectedSite ||
             Request.OperationKind != "bounded_integer" ||
             OriginalCardIds is not { Length: > 1 } ||
@@ -61,6 +67,9 @@ public sealed record SemanticPoolShuffleEventV111(
             NextSwapIndex < 1 || NextSwapIndex >= OriginalCardIds.Length ||
             Request.SupportCount != NextSwapIndex + 1 ||
             SelectedCount <= 0 || SelectedCount > OriginalCardIds.Length ||
+            (SourceOperationKind ==
+                nameof(PrototypeCombatEffectKind.ChooseCards) &&
+             SelectedCount >= OriginalCardIds.Length) ||
             string.IsNullOrWhiteSpace(SourceOperationKind) ||
             ProbabilityStatus != "UNVERIFIED")
             throw new InvalidDataException(
