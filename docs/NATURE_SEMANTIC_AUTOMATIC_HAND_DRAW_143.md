@@ -108,6 +108,9 @@ not pool order or RNG state.
 Resolving the card resumes the saved hook and then the same automatic hand
 draw stage, applying the source hand-cap destination and card cost once.
 Nested chance requests without a serialized continuation must fail closed.
-This Jeweled Mask continuation currently lacks mechanics-tested evidence;
-its reference law and native stream parity remain **UNVERIFIED**. No
-privileged per-choice transcript is exposed here.
+The read-only Chance Law now reports exact Native `NextInt` 53-bit grid
+masses and `SOURCE_VERIFIED` for the bounded-index transform on the declared
+physical-card support. This Jeweled Mask continuation still lacks
+mechanics-tested evidence; pool completeness, Native stream attribution,
+seed frequencies, and cursor parity remain open. No privileged per-choice
+transcript is exposed here.

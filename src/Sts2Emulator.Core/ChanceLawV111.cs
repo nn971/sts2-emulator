@@ -2448,18 +2448,20 @@ public static partial class ChanceLawEngineV111
     }
 
     /// <summary>
-    /// Query the uniform law over physical card instances in the ordered
-    /// source support for a random pile-card effect.
+    /// Query the Native bounded-index law over physical card instances in
+    /// the ordered source support for a random pile-card effect.
     /// </summary>
     public static ChanceLawV111 QueryRandomPileCard(
         SemanticRandomPileCardEventV111 pileCard)
     {
         ArgumentNullException.ThrowIfNull(pileCard);
         pileCard.Validate();
+        var indexWeights = NativeNextIntGridWeights(
+            pileCard.CandidateCardInstanceIds.Length);
         var outcomes = pileCard.CandidateCardInstanceIds
-            .Select(instanceId => new ChanceLawOutcomeV111(
+            .Select((instanceId, index) => new ChanceLawOutcomeV111(
                 "card_instance:" + instanceId.ToString(
-                    CultureInfo.InvariantCulture), 1L))
+                    CultureInfo.InvariantCulture), indexWeights[index]))
             .ToArray();
         var conditioningFingerprint = CanonicalJson.Sha256(new
         {
@@ -2472,7 +2474,8 @@ public static partial class ChanceLawEngineV111
         return Create(pileCard.EventId, pileCard.SiteId,
             pileCard.OperationKind, pileCard.OwnerId, pileCard.Ordinal,
             RandomPileCardConditioningPolicyId, conditioningFingerprint,
-            "uniform-physical-pile-card-support-unverified", outcomes);
+            NativeBoundedIndexSourceVerifiedProvenance, outcomes,
+            ChanceLawV111.SourceVerifiedStatus);
     }
 
     /// <summary>
