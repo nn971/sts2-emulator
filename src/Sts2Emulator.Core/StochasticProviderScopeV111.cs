@@ -88,12 +88,10 @@ internal static class StochasticProviderScopeV111
         {
             EnsureOrdinal(frame, streams, request.StreamId);
         }
-        var nativeCursorBefore = frame is null
-            ? 0 : GetStreamCallCount(streams, request.StreamId);
         var decision = SelectIndexProvider(explicitProvider)
             .Resolve(request, streams);
         if (frame is not null)
-            AdvanceOrdinal(frame, request.StreamId, nativeCursorBefore,
+            AdvanceOrdinal(frame, streams, request.StreamId,
                 GetStreamCallCount(streams, request.StreamId));
         return decision;
     }
@@ -126,12 +124,10 @@ internal static class StochasticProviderScopeV111
         {
             EnsureOrdinal(frame, streams, request.StreamId);
         }
-        var nativeCursorBefore = frame is null
-            ? 0 : GetStreamCallCount(streams, request.StreamId);
         var decision = SelectUnitFloatProvider(explicitProvider)
             .Resolve(request, streams);
         if (frame is not null)
-            AdvanceOrdinal(frame, request.StreamId, nativeCursorBefore,
+            AdvanceOrdinal(frame, streams, request.StreamId,
                 GetStreamCallCount(streams, request.StreamId));
         return decision;
     }
@@ -142,7 +138,7 @@ internal static class StochasticProviderScopeV111
         ArgumentNullException.ThrowIfNull(streams);
         ArgumentException.ThrowIfNullOrWhiteSpace(streamId);
         var frame = Current.Value;
-        if (frame is null)
+        if (frame is null || !HasOverridingProvider(frame))
             return null;
         EnsureOrdinal(frame, streams, streamId);
         lock (frame.OrdinalSync)
@@ -155,14 +151,28 @@ internal static class StochasticProviderScopeV111
         }
     }
 
+    private static bool HasOverridingProvider(Frame? frame)
+    {
+        for (; frame is not null; frame = frame.Parent)
+            if (frame.OverrideExplicitProviders &&
+                (frame.IndexProvider is not null ||
+                 frame.UnitFloatProvider is not null))
+                return true;
+        return false;
+    }
+
     private static void EnsureOrdinal(
         Frame frame, RngBundle streams, string streamId)
     {
+        if (frame.Parent is { } parent)
+            EnsureOrdinal(parent, streams, streamId);
         lock (frame.OrdinalSync)
         {
             if (frame.NextOrdinals.ContainsKey(streamId))
                 return;
-            var initialOrdinal = GetStreamCallCount(streams, streamId);
+            var initialOrdinal = frame.Parent is { } parentFrame
+                ? parentFrame.NextOrdinals[streamId]
+                : GetStreamCallCount(streams, streamId);
             if (initialOrdinal > int.MaxValue)
                 throw new NotSupportedException(
                     "Scoped native provider ordinal exceeds the request range.");
@@ -171,18 +181,19 @@ internal static class StochasticProviderScopeV111
     }
 
     private static void AdvanceOrdinal(
-        Frame frame, string streamId, ulong cursorBefore, ulong cursorAfter)
+        Frame frame, RngBundle streams, string streamId, ulong cursorAfter)
     {
-        lock (frame.OrdinalSync)
+        for (var current = frame; current is not null;
+             current = current.Parent)
         {
-            if (cursorAfter > cursorBefore)
+            EnsureOrdinal(current, streams, streamId);
+            lock (current.OrdinalSync)
             {
-                frame.NextOrdinals[streamId] = cursorAfter;
-                return;
+                var nextOrdinal = checked(
+                    current.NextOrdinals[streamId] + 1);
+                current.NextOrdinals[streamId] = Math.Max(
+                    nextOrdinal, cursorAfter);
             }
-
-            frame.NextOrdinals[streamId] = checked(
-                frame.NextOrdinals[streamId] + 1);
         }
     }
 

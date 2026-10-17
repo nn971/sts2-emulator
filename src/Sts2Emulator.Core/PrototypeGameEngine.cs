@@ -59,6 +59,10 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
     public TransitionResult Step(RunState state, GameAction action)
     {
         RunConfiguration.ValidateState(state);
+        using var providerScope = StochasticProviderScopeV111.Enter(
+            new NativeRandomIndexProviderV111(),
+            new NativeRandomUnitFloatProviderV111(),
+            overrideExplicitProviders: false);
         if ((state.Phase == RunPhase.Event
                 && state.World?.Event?.ControlledChoice is not null
             || state.ControlledEventRewardChoice is not null

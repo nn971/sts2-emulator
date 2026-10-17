@@ -53,12 +53,15 @@ a replacement provider leaves the native cursor untouched. Its local Native
 providers remain the default, while an enclosing controller scope can replace
 them. Legacy typed index choices and `NativeEventContextRngV111` index and
 unit-float choices also use this provider scope, retaining their existing
-providers as the default fallback. Scope installation remains limited to the
-controlled replay executor, configured Shop entry, and Native-policy player
-actions; the Native-policy boundary preserves explicit providers while tracking
-the stream ordinals used by scoped requests. Routing every ordinary engine
-action through a shared provider scope and proving cross-provider mechanical
-equivalence remain open. `ReferenceNatureMerchantSessionV111` and
+providers as the default fallback. The controlled replay executor, configured
+Shop entry and Native-policy player actions install replacement scopes.
+Every ordinary `PrototypeGameEngine.Step` now opens a pass-through scope: it
+keeps explicit providers and gives an enclosing controller scope a single
+boundary to replace providers for the whole action. Logical stream ordinals
+are used only when an overriding provider is active, so pass-through execution
+retains existing request identities. Proving cross-provider mechanical
+equivalence remains open.
+`ReferenceNatureMerchantSessionV111` and
 `ReferenceNatureTreasureSessionV111` own serialized continuations and use the
 shared law-to-source mapping. Their opening projections sort the existing
 relic bag queues so Native's committed hidden queue order is not retained in
