@@ -2945,14 +2945,7 @@ public sealed partial class PrototypeGameEngine
             var semanticDeck = combat.SemanticDeck;
             if (fromDraw && semanticDeck is not null)
             {
-                if (!SemanticDeckEngineV111.AllCardInstanceIds(semanticDeck)
-                    .Order().SequenceEqual(combat.DrawPile.Order()) ||
-                    (semanticDeck.Mode == SemanticDeckStateV111.NativeMode &&
-                     !semanticDeck.Slots.Select(slot =>
-                             slot.KnownCardInstanceId!.Value)
-                         .SequenceEqual(combat.DrawPile.Reverse())))
-                    throw new InvalidDataException(
-                        "Rebound card return found stale semantic draw-pile state.");
+                SemanticDrawPileAdapterV111.ValidateSynchronized(combat);
                 // The played Rebound identity is known to mechanics, but its
                 // current draw-pile position may still be unresolved.
                 semanticDeck = SemanticDeckEngineV111.RemoveCardInstance(
@@ -4167,7 +4160,7 @@ public sealed partial class PrototypeGameEngine
                                 card.InstanceId == persistentId);
                             var semanticDeck = combat.DrawPile.Contains(
                                     chosen.InstanceId)
-                                ? SynchronizeSemanticDrawPileAfterRemoval(
+                                ? SemanticDrawPileAdapterV111.SynchronizeSemanticDrawPileAfterRemoval(
                                     combat, [chosen.InstanceId])
                                 : combat.SemanticDeck;
                             player = player with
@@ -4612,7 +4605,7 @@ public sealed partial class PrototypeGameEngine
                                 draw.Insert(insertion.SelectedIndex,
                                     instance.InstanceId);
                                 var semanticDeck =
-                                    SynchronizeSemanticDrawPileAfterInsertion(
+                                    SemanticDrawPileAdapterV111.SynchronizeSemanticDrawPileAfterInsertion(
                                         combat, insertion.SelectedIndex,
                                         instance.InstanceId);
                                 combat = combat with
@@ -5729,7 +5722,7 @@ public sealed partial class PrototypeGameEngine
                                 for (var position = 0;
                                      position <= combat.DrawPile.Length;
                                      position++)
-                                    _ = SynchronizeSemanticDrawPileAfterInsertion(
+                                    _ = SemanticDrawPileAdapterV111.SynchronizeSemanticDrawPileAfterInsertion(
                                         combat, position,
                                         combat.NextCardInstanceId);
                             }
@@ -5809,7 +5802,7 @@ public sealed partial class PrototypeGameEngine
                             var draw = combat.DrawPile.ToList();
                             draw.Insert(slot, instance.InstanceId);
                             var semanticDeck =
-                                SynchronizeSemanticDrawPileAfterInsertion(
+                                SemanticDrawPileAdapterV111.SynchronizeSemanticDrawPileAfterInsertion(
                                     combat, slot, instance.InstanceId);
                             combat = combat with
                             {
@@ -6773,7 +6766,7 @@ public sealed partial class PrototypeGameEngine
                     var selected = rareCards.Take(take).ToArray();
                     var selectedIds = selected.ToHashSet();
                     var semanticDeck =
-                        SynchronizeSemanticDrawPileAfterRemoval(
+                        SemanticDrawPileAdapterV111.SynchronizeSemanticDrawPileAfterRemoval(
                             combat, selected);
                     combat = combat with
                     {
@@ -6860,7 +6853,7 @@ public sealed partial class PrototypeGameEngine
                             | PrototypeTemporaryCardCostExpiry.WhenPlayed));
                     var handHasSpace = combat.Hand.Length < 10;
                     var semanticDeck =
-                        SynchronizeSemanticDrawPileAfterRemoval(
+                        SemanticDrawPileAdapterV111.SynchronizeSemanticDrawPileAfterRemoval(
                             combat, [selectedId]);
                     combat = combat with
                     {
@@ -7428,7 +7421,7 @@ public sealed partial class PrototypeGameEngine
                         var draw = combat.DrawPile.ToList();
                         draw.Insert(insertion.SelectedIndex, id);
                         var semanticDeck =
-                            SynchronizeSemanticDrawPileAfterInsertion(
+                            SemanticDrawPileAdapterV111.SynchronizeSemanticDrawPileAfterInsertion(
                                 combat, insertion.SelectedIndex, id);
                         combat = combat with
                         {
@@ -7468,7 +7461,7 @@ public sealed partial class PrototypeGameEngine
                         var draw = combat.DrawPile.ToList();
                         draw.Insert(insertion.SelectedIndex, id);
                         var semanticDeck =
-                            SynchronizeSemanticDrawPileAfterInsertion(
+                            SemanticDrawPileAdapterV111.SynchronizeSemanticDrawPileAfterInsertion(
                                 combat, insertion.SelectedIndex, id);
                         combat = combat with
                         {
@@ -8770,7 +8763,7 @@ public sealed partial class PrototypeGameEngine
             var draw = combat.DrawPile.ToList();
             draw.Insert(insertion.SelectedIndex, instanceId);
             var semanticDeck =
-                SynchronizeSemanticDrawPileAfterInsertion(
+                SemanticDrawPileAdapterV111.SynchronizeSemanticDrawPileAfterInsertion(
                     combat, insertion.SelectedIndex, instanceId);
             combat = combat with
             {
@@ -14611,7 +14604,7 @@ public sealed partial class PrototypeGameEngine
                 var transformedDrawPile = combat.DrawPile.Select(id =>
                     id == instanceId ? replacementId : id).ToArray();
                 var semanticDeck = combat.DrawPile.Contains(instanceId)
-                    ? ReplaceSemanticDrawPileInstance(
+                    ? SemanticDrawPileAdapterV111.ReplaceSemanticDrawPileInstance(
                         combat, instanceId, replacementId,
                         Array.IndexOf(combat.DrawPile, instanceId))
                     : combat.SemanticDeck;
@@ -14687,16 +14680,8 @@ public sealed partial class PrototypeGameEngine
             (selection.SourceZone == PrototypeCardZone.DrawPile ||
              destinationZone == PrototypeCardZone.DrawPile))
         {
-            SemanticDeckEngineV111.Validate(semantic);
-            if (semantic.Pending is not null ||
-                !SemanticDeckEngineV111.AllCardInstanceIds(semantic)
-                    .Order().SequenceEqual(combat.DrawPile.Order()) ||
-                (semantic.Mode == SemanticDeckStateV111.NativeMode &&
-                 !semantic.Slots.Select(slot =>
-                         slot.KnownCardInstanceId!.Value)
-                     .SequenceEqual(combat.DrawPile.Reverse())))
-                throw new InvalidDataException(
-                    "Semantic card-selection source has stale hidden pile state.");
+            SemanticDrawPileAdapterV111.ValidateSynchronized(
+                combat, requireIdle: true);
             if (selection.RemoveUnselectedFromSource &&
                 selection.SourceZone == PrototypeCardZone.DrawPile)
                 throw new NotSupportedException(
@@ -14777,93 +14762,6 @@ public sealed partial class PrototypeGameEngine
             _ => throw new ArgumentOutOfRangeException(nameof(zone))
         };
 
-    private static SemanticDeckStateV111? SynchronizeSemanticDrawPileAfterMutation(
-        CombatState combat, long[] nextPhysicalDrawPile)
-    {
-        var semantic = combat.SemanticDeck;
-        if (semantic is null) return null;
-        SemanticDeckEngineV111.Validate(semantic);
-        if (semantic.Pending is not null)
-            throw new InvalidDataException(
-                "Cannot mutate a draw pile with a pending semantic reveal.");
-        if (nextPhysicalDrawPile.Distinct().Count() !=
-            nextPhysicalDrawPile.Length)
-            throw new InvalidDataException(
-                "Semantic draw-pile mutation produced duplicate instances.");
-
-        var semanticIds = SemanticDeckEngineV111.AllCardInstanceIds(semantic);
-        var oldIds = combat.DrawPile;
-        var oldMembersMatch = semanticIds.Order().SequenceEqual(oldIds.Order());
-        var nextMembersMatch = semanticIds.Order().SequenceEqual(
-            nextPhysicalDrawPile.Order());
-
-        if (semantic.Mode == SemanticDeckStateV111.NativeMode)
-        {
-            var currentTopFirst = semantic.Slots
-                .Select(slot => slot.KnownCardInstanceId!.Value).ToArray();
-            var oldOrderMatches = currentTopFirst.SequenceEqual(
-                oldIds.Reverse());
-            if (nextMembersMatch && currentTopFirst.SequenceEqual(
-                    nextPhysicalDrawPile.Reverse()))
-                return semantic;
-            if (!oldMembersMatch || !oldOrderMatches)
-                throw new InvalidDataException(
-                    "Native semantic draw pile is stale before a physical mutation.");
-
-            var publiclyRevealed = semantic.Slots
-                .Where(slot => slot.PubliclyRevealed)
-                .Select(slot => slot.KnownCardInstanceId!.Value)
-                .ToHashSet();
-            var synchronized = new SemanticDeckStateV111(
-                SemanticDeckStateV111.NativeMode,
-                nextPhysicalDrawPile.Reverse().Select(id =>
-                    SemanticDeckSlotV111.Known(
-                        id, publiclyRevealed.Contains(id))).ToArray(),
-                [], semantic.ShuffleEpoch, Transcript: []);
-            SemanticDeckEngineV111.Validate(synchronized);
-            return synchronized;
-        }
-
-        // Nature transitions may already have updated the provider before
-        // the physical zone array is assigned (card selection is one such
-        // path). Accept that state only when its instance membership equals
-        // the destination pile.
-        if (nextMembersMatch && !oldMembersMatch)
-            return semantic;
-        if (!oldMembersMatch)
-            throw new InvalidDataException(
-                "Semantic draw pile is stale before a physical mutation.");
-
-        if (IsOrderedSubsequence(nextPhysicalDrawPile, oldIds))
-        {
-            var nextSet = nextPhysicalDrawPile.ToHashSet();
-            var removed = oldIds.Where(id => !nextSet.Contains(id)).ToArray();
-            semantic = SemanticDeckEngineV111.RemoveCardInstances(
-                semantic, removed);
-        }
-        else if (nextPhysicalDrawPile.Length >= oldIds.Length &&
-                 nextPhysicalDrawPile.Take(oldIds.Length).SequenceEqual(oldIds))
-        {
-            // DrawPile is bottom-first, so appending physical entries places
-            // each card at the semantic top. Applying PlaceTop in append
-            // order yields the reversed top-first prefix.
-            foreach (var id in nextPhysicalDrawPile.Skip(oldIds.Length))
-                semantic = SemanticDeckEngineV111.PlaceTop(semantic, id);
-        }
-        else if (!oldIds.SequenceEqual(nextPhysicalDrawPile))
-        {
-            throw new NotSupportedException(
-                "UNSUPPORTED_SEMANTIC_DECK site=combat.draw_pile.zone_move " +
-                "operation=unmodeled_hidden_order_change");
-        }
-
-        if (!SemanticDeckEngineV111.AllCardInstanceIds(semantic).Order()
-                .SequenceEqual(nextPhysicalDrawPile.Order()))
-            throw new InvalidDataException(
-                "Semantic draw-pile zone transition produced stale membership.");
-        return semantic;
-    }
-
     private static void RequireSemanticNativeStreamOwner(
         CombatState combat, string siteId)
     {
@@ -14875,123 +14773,6 @@ public sealed partial class PrototypeGameEngine
                 "operation=missing_native_stream_owner");
     }
 
-    private static SemanticDeckStateV111? SynchronizeSemanticDrawPileAfterRemoval(
-        CombatState combat, IReadOnlyCollection<long> removedCardInstanceIds)
-    {
-        var semantic = combat.SemanticDeck;
-        if (semantic is null) return null;
-        SemanticDeckEngineV111.Validate(semantic);
-        if (semantic.Pending is not null ||
-            !SemanticDeckEngineV111.AllCardInstanceIds(semantic).Order()
-                .SequenceEqual(combat.DrawPile.Order()) ||
-            (semantic.Mode == SemanticDeckStateV111.NativeMode &&
-             !semantic.Slots.Select(slot =>
-                     slot.KnownCardInstanceId!.Value)
-                 .SequenceEqual(combat.DrawPile.Reverse())))
-            throw new InvalidDataException(
-                "Semantic draw pile is stale before removing card instances.");
-        var removed = removedCardInstanceIds.ToArray();
-        if (removed.Distinct().Count() != removed.Length ||
-            removed.Any(id => !combat.DrawPile.Contains(id)))
-            throw new InvalidDataException(
-                "Semantic draw-pile removal contains a missing card instance.");
-        semantic = SemanticDeckEngineV111.RemoveCardInstances(
-            semantic, removed);
-        var nextIds = combat.DrawPile.Where(id => !removed.Contains(id));
-        if (!SemanticDeckEngineV111.AllCardInstanceIds(semantic).Order()
-                .SequenceEqual(nextIds.Order()))
-            throw new InvalidDataException(
-                "Semantic draw-pile removal produced stale membership.");
-        return semantic;
-    }
-
-    private static SemanticDeckStateV111? SynchronizeSemanticDrawPileAfterInsertion(
-        CombatState combat, int physicalIndex, long insertedCardInstanceId)
-    {
-        var semantic = combat.SemanticDeck;
-        if (semantic is null) return null;
-        SemanticDeckEngineV111.Validate(semantic);
-        if (semantic.Pending is not null ||
-            physicalIndex < 0 || physicalIndex > combat.DrawPile.Length ||
-            SemanticDeckEngineV111.AllCardInstanceIds(semantic).Order()
-                .SequenceEqual(combat.DrawPile.Order()) is false)
-            throw new InvalidDataException(
-                "Semantic draw pile is stale before inserting a card instance.");
-        if (semantic.Mode == SemanticDeckStateV111.NativeMode &&
-            !semantic.Slots.Select(slot => slot.KnownCardInstanceId!.Value)
-                .SequenceEqual(combat.DrawPile.Reverse()))
-            throw new InvalidDataException(
-                "Native semantic draw-pile order is stale before insertion.");
-
-        // The source index addresses the physical bottom-first array. The
-        // provider deck uses top-first offsets, so invert the index.
-        return SemanticDeckEngineV111.InsertKnown(
-            semantic, combat.DrawPile.Length - physicalIndex,
-            insertedCardInstanceId, publiclyKnown: false);
-    }
-
-    private static SemanticDeckStateV111? ReplaceSemanticDrawPileInstance(
-        CombatState combat, long replacedCardInstanceId,
-        long replacementCardInstanceId, int physicalIndex)
-    {
-        var semantic = combat.SemanticDeck;
-        if (semantic is null) return null;
-        SemanticDeckEngineV111.Validate(semantic);
-        if (semantic.Pending is not null ||
-            physicalIndex < 0 || physicalIndex >= combat.DrawPile.Length ||
-            combat.DrawPile[physicalIndex] != replacedCardInstanceId ||
-            !SemanticDeckEngineV111.AllCardInstanceIds(semantic).Order()
-                .SequenceEqual(combat.DrawPile.Order()) ||
-            (semantic.Mode == SemanticDeckStateV111.NativeMode &&
-             !semantic.Slots.Select(slot =>
-                     slot.KnownCardInstanceId!.Value)
-                 .SequenceEqual(combat.DrawPile.Reverse())))
-            throw new InvalidDataException(
-                "Semantic draw pile is stale before replacing a card instance.");
-        semantic = SemanticDeckEngineV111.RemoveCardInstance(
-            semantic, replacedCardInstanceId);
-        return SemanticDeckEngineV111.InsertKnown(
-            semantic, combat.DrawPile.Length - 1 - physicalIndex,
-            replacementCardInstanceId, publiclyKnown: false);
-    }
-
-    private static SemanticDeckStateV111? CommitSemanticDrawPileShuffle(
-        CombatState combat, IReadOnlyCollection<long> shuffledPhysicalDrawPile,
-        IReadOnlyCollection<long> cardsMovedIntoDrawPile)
-    {
-        var semantic = combat.SemanticDeck;
-        if (semantic is null) return null;
-        SemanticDeckEngineV111.Validate(semantic);
-        if (semantic.Mode != SemanticDeckStateV111.NativeMode ||
-            semantic.Pending is not null ||
-            !semantic.Slots.Select(slot => slot.KnownCardInstanceId!.Value)
-                .SequenceEqual(combat.DrawPile.Reverse()))
-            throw new NotSupportedException(
-                "UNSUPPORTED_SEMANTIC_DECK site=combat.hand_return.draw_shuffle " +
-                "operation=requires_native_exact_deck");
-        var added = cardsMovedIntoDrawPile.ToArray();
-        if (added.Distinct().Count() != added.Length ||
-            added.Any(id => SemanticDeckEngineV111.AllCardInstanceIds(semantic)
-                .Contains(id)))
-            throw new InvalidDataException(
-                "Native draw-pile shuffle received duplicate incoming cards.");
-        foreach (var id in added)
-            semantic = SemanticDeckEngineV111.PlaceBottom(
-                semantic, id, publiclyKnown: false);
-        return SemanticDeckEngineV111.CommitNativeShuffle(
-            semantic, shuffledPhysicalDrawPile.Reverse().ToArray());
-    }
-
-    private static bool IsOrderedSubsequence(
-        IReadOnlyList<long> candidate, IReadOnlyList<long> source)
-    {
-        var index = 0;
-        foreach (var id in source)
-            if (index < candidate.Count && candidate[index] == id)
-                index++;
-        return index == candidate.Count;
-    }
-
     private static CombatState SetZone(
         CombatState combat,
         PrototypeCardZone zone,
@@ -15001,7 +14782,7 @@ public sealed partial class PrototypeGameEngine
             return combat with
             {
                 DrawPile = cards,
-                SemanticDeck = SynchronizeSemanticDrawPileAfterMutation(
+                SemanticDeck = SemanticDrawPileAdapterV111.SynchronizeSemanticDrawPileAfterMutation(
                     combat, cards)
             };
         return zone switch

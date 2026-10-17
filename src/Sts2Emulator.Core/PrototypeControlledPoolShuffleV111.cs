@@ -100,7 +100,7 @@ public sealed partial class PrototypeGameEngine
         if (semantic is null) return null;
         SemanticDeckEngineV111.Validate(semantic);
         if (semantic.Mode == SemanticDeckStateV111.NativeMode)
-            return CommitSemanticDrawPileShuffle(
+            return SemanticDrawPileAdapterV111.CommitSemanticDrawPileShuffle(
                 combat, shuffledPhysicalDrawPile, returnedHandIds);
         if (semantic.Mode != SemanticDeckStateV111.NatureMode)
             throw new InvalidDataException(
@@ -303,7 +303,8 @@ public sealed partial class PrototypeGameEngine
                 throw new InvalidDataException(
                     "Rare-card shuffle selected a stale draw-pile identity.");
             var selectedSet = selected.ToHashSet();
-            var semanticDeck = SynchronizeSemanticDrawPileAfterRemoval(
+            var semanticDeck =
+                SemanticDrawPileAdapterV111.SynchronizeSemanticDrawPileAfterRemoval(
                 combat, selected);
             combat = combat with
             {

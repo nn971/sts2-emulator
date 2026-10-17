@@ -55,7 +55,8 @@ Run matched source-state/seed sets; frozen player policy; fair observations/lega
 
 ## S3–S5: migration without breaking the running project
 
-- First introduce an adapter around existing `RunState`, `CombatState.DrawPile`, `SemanticDeckStateV111`, `SemanticOtherChanceStateV111` and named RNG bundles. Identify the sole writer of physical membership versus hidden order; reject mismatches atomically.
+- `SemanticDrawPileAdapterV111` now owns draw-pile membership/order correspondence checks and the shared semantic insert, remove, replace, and shuffle synchronization helpers. `CombatState.DrawPile` remains the mechanics membership source. The broader `RunState` provider-state envelope and migration of all provider lifecycles are still open.
+- Continue the adapter around `RunState`, `SemanticOtherChanceStateV111`, and named RNG bundles. Keep the single physical membership source and reject mismatches before publishing a state.
 - Make the choice/continuation path consume semantic outcome identity, with a separate low-level native primitive journal. Preserve and version primitive-index scripts for compatibility.
 - For each moved mechanic, add a native/scripted/ReferenceNature equivalence fixture and a legacy compatibility fixture **before** changing the default routing.
 - Merge/rebase native inspector spectator/stream PRs independently on their current approved base. Carry forward source-specific hooks without binding them to Chance Law.
@@ -66,7 +67,7 @@ Run matched source-state/seed sets; frozen player policy; fair observations/lega
 - **S0:** ownership documents and a cross-linked site/state inventory are present; row-level coverage of every acceptance field remains open. This is partial inventory work, not a completed audit.
 - **S1:** initial core Chance Law and simple ReferenceNature implementation is in `ChanceLawV111.cs`; the first independent exact small-state and seeded replay suite passes, while the complete acceptance matrix remains open.
 - **S2:** the emulator has an opt-in seeded native-policy comparator with private stream state, replay traces and fail-closed provider guards, plus an atomic ReferenceNature JSONL session. The real Act 1 weak-combat source route now reaches its ordinary terminal reward through a narrowly allowlisted engine-owned reward stream. The learned-vs-reference A/B trainer and 15-worker report live in `sts2-ai`. Equivalence through one shared mechanics continuation remains part of S4.
-- **S3–S4:** shared provider-state ownership and common mechanics continuation remain migration work; existing semantic and native-policy routes are still separate.
+- **S3–S4:** the draw-pile ownership adapter now centralizes membership/order validation and semantic zone synchronization. The broader shared provider-state envelope and common mechanics continuation remain migration work; existing semantic and native-policy routes are still separate.
 - **S5:** the player schema remains unchanged; versioned stochastic capabilities now negotiate the initial Chance Law sites and ReferenceNature operations, and semantic Nature pending payloads expose the typed law. A JSONL exercise reached both an intent law and a 10-card deferred draw law while confirming the fair player view omitted Chance Law data. Broader cross-mode observations and capability tests remain open.
 - **S6:** supported semantic sites still cover only selected operations; expanded stochastic-family coverage remains open.
 - **S7:** probability evidence/calibration; separately gated from #143.

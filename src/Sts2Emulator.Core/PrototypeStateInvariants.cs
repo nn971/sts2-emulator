@@ -3218,22 +3218,11 @@ public static class PrototypeStateInvariants
         NativeCombatRngEntryV111.Validate(combat);
         if (combat.SemanticDeck is { } semanticDeck)
         {
-            SemanticDeckEngineV111.Validate(semanticDeck);
-            if (!SemanticDeckEngineV111.AllCardInstanceIds(semanticDeck)
-                    .Order().SequenceEqual(combat.DrawPile.Order()))
+            SemanticDrawPileAdapterV111.ValidateSynchronized(combat);
+            if (semanticDeck.Mode == SemanticDeckStateV111.NativeMode &&
+                combat.NativeRng is null)
                 throw new InvalidOperationException(
-                    "Semantic deck membership differs from the combat draw pile.");
-            if (semanticDeck.Mode == SemanticDeckStateV111.NativeMode)
-            {
-                if (combat.NativeRng is null)
-                    throw new InvalidOperationException(
-                        "Native exact semantic deck has no native combat RNG owner.");
-                if (!semanticDeck.Slots.Select(slot =>
-                        slot.KnownCardInstanceId!.Value)
-                    .SequenceEqual(combat.DrawPile.Reverse()))
-                    throw new InvalidOperationException(
-                        "Native exact semantic deck order differs from the physical draw pile.");
-            }
+                    "Native exact semantic deck has no native combat RNG owner.");
         }
         if (combat.AutomaticPipelineContinuation is { OpeningStage: { } opening } openingContinuation
             && (!Enum.IsDefined(opening)
@@ -4040,10 +4029,7 @@ public static class PrototypeStateInvariants
                     (!isSemanticDrawChoice && !isEffectDrawCostChoice))
                     throw new InvalidOperationException(
                         "Controlled semantic draw checkpoint is malformed.");
-                if (!SemanticDeckEngineV111.AllCardInstanceIds(deck!)
-                        .Order().SequenceEqual(combat.DrawPile.Order()))
-                    throw new InvalidOperationException(
-                        "Controlled semantic draw frame has inconsistent pile membership.");
+                SemanticDrawPileAdapterV111.ValidateSynchronized(combat);
                 if (isSemanticDrawChoice)
                 {
                     var drawEvent = SemanticDeckEngineV111.Inspect(deck!);

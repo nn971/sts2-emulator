@@ -389,9 +389,9 @@ public sealed partial class PrototypeGameEngine
         var semanticDeck = choice.SemanticDrawContinuation is null
             ? choice.AfterShuffleRelic is null
                 ? combat.SemanticDeck
-                : SynchronizeSemanticDrawPileAfterInsertion(
+                : SemanticDrawPileAdapterV111.SynchronizeSemanticDrawPileAfterInsertion(
                     combat, chosen, instanceId)
-            : SynchronizeSemanticDrawPileAfterInsertion(
+            : SemanticDrawPileAdapterV111.SynchronizeSemanticDrawPileAfterInsertion(
                 combat, chosen, instanceId);
         combat = combat with
         {
