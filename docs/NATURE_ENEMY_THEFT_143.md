@@ -1,5 +1,22 @@
 # Nature #143 — Thieving Hopper card selection
 
+## S0 stochastic site contract
+
+`combat.enemy.theft_card.select` is conditioned on the source-eligible
+persistent card instances in the draw and discard piles and the thief's
+saved enemy-action boundary. Nature receives the ordered candidate identities
+through that pending request; the player observation does not expose the
+candidate list or its support fingerprint. After resolution, the selected
+card's committed zone/deck change is visible through the ordinary combat
+projection.
+
+The existing replay frame resolves the selected physical identity once and
+resumes the enemy action. A draw-pile selection that would split an unresolved
+semantic deck pool fails closed before support is published; discard-pile
+selection does not alter hidden draw order. The generic index law remains
+`UNVERIFIED`, and native stream ownership and source probability calibration
+remain open.
+
 Thieving Hopper's `combat.enemy.theft_card.select` choice now uses the saved
 enemy-action replay frame. The emulator replays the enemy action from its
 pre-step `RunState`, injects earlier controlled enemy choices in order, then

@@ -7,6 +7,25 @@
 `sts2-v111-semantic-real-combat-draw-v1` segment. The underlying deck
 provider is `sts2-v111-semantic-deck-v1`.
 
+## S0 stochastic site contract
+
+The `combat.card_draw.relic_energy_cost` and
+`combat.card_draw.slither_energy_cost` rows are owned by the selected physical
+card instance and the matching draw-time source rule. Eligibility, printed
+cost, current enchantment and active relic bounds remain private engine
+constraints. Nature receives the bounded candidate cost only at the saved
+pre-`CardDrawn` boundary. The fair player observation does not expose the
+candidate cost set, pending request fingerprint or Nature transcript. After
+resolution the card appears in the ordinary hand projection; the observation
+schema does not expose a separate numeric temporary-cost preview.
+
+The saved draw continuation resolves the cost by the same physical card
+identity and dispatches `CardDrawn` once before resuming the remaining draw
+count. Unsupported draw sources and stale or mismatched cost requests fail
+closed at their existing continuation boundary. Both sites' probability
+provenance remains `UNVERIFIED`; this contract does not establish source-game
+cost calibration or native cursor parity.
+
 ## Ordering contract
 
 The actual card draw first resolves the semantic

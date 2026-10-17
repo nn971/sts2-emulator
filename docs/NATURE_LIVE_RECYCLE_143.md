@@ -5,6 +5,22 @@
 
 ## Completed slice
 
+### S0 stochastic site contract: `combat.draw_pile_recycle.swap_index`
+
+At the supported end-turn hand-draw boundary, this site owns the descending
+Fisher–Yates swaps over the remaining discard-pile card instances. The saved
+draw-pile/hand counts, current source pool and next swap ordinal constrain
+each Nature request. The player observation exposes drawn cards and visible
+zones, not the unresolved permutation, remaining instance list, or swap
+transcript.
+
+`SemanticCombatDrawEngineV111` resumes the saved draw stage after the final
+swap, applies Perfect Fit ordering and after-shuffle effects, then continues
+the requested draw count. Other `DrawCards` callers that need a recycle do not
+have this continuation and fail closed. The conditional probability remains
+`UNVERIFIED`; neither source pool description nor current mechanics coverage
+calibrates it against the native game.
+
 The actual combat `DrawPlayerHand` stage now executes pre-draw hooks and prior card draws until the draw pile becomes empty while discarded cards are still eligible. It persists the current `RunState`, remaining hand-draw count, and automatic-pipeline cursor. The controller then exposes a series of ordered finite `combat.draw_pile_recycle.swap_index` tickets on `run.shuffle`.
 
 Nature selects each Fisher–Yates swap index. The engine applies the original postshuffle PerfectFit ordering and after-shuffle relic effects, draws the remaining cards, applies end-of-hand-draw effects, and continues from the **next** pipeline stage. Previous effects are preserved, including health, block, draw triggers and consumed card positions.

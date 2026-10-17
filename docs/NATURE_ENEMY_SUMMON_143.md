@@ -1,5 +1,23 @@
 # Nature #143 — controlled legacy enemy summons
 
+## S0 stochastic site contract
+
+This continuation covers `combat.enemy.summon_pool.select`,
+`combat.initial_unique_hp`, and `combat.tough_egg.hatchling_hp` when those
+requests occur in the supported legacy enemy-action frame. The summon pool is
+ordered after the source Fabricator last-spawn exclusion, with a full-pool
+fallback if every entry is excluded. HP support is constrained by each
+encounter's declared range and the already-selected unique HP values. Native
+initial HP and Tough Egg ownership are documented in the [native HP audit](reference-builds/v0.111.0-native-combat-hp-ai-rng.md) and [Tough Egg audit](reference-builds/v0.111.0-native-tough-egg-hatch.md).
+
+The player observation reveals the committed summon and current enemy HP, not
+the eligible summon list or unselected HP values. The saved enemy-action
+continuation replays prior decisions and resumes the mechanics owner once the
+pending choice is resolved. Native summon-pool selection remains fail-closed
+until its source RNG assignment is audited; unsupported nested mechanics do
+not publish partial support. All three reference probabilities remain
+`UNVERIFIED`.
+
 The saved enemy-action replay can suspend at the modeled legacy
 `combat.enemy.summon_pool.select` site. It preserves the current source-shaped
 pool, including the Fabricator last-spawn exclusion and fallback to the full

@@ -1,5 +1,21 @@
 # Nature #143 — Bottled Potential hand-return shuffle
 
+## S0 stochastic site contract
+
+`combat.hand_return.draw_pile.shuffle_swap_index` is conditioned on the saved
+draw-pile-plus-hand instance order, current permutation and next descending
+swap ordinal. The same continuation can publish
+`combat.relic.after_shuffle.generated_card.random_insert_index` for each
+generated insertion in relic application order. Those pool constraints and
+swap transcripts are private; the fair player observation does not expose
+them or the unresolved deck order.
+
+The saved mechanics queue resumes only after the final shuffle swap and
+insertion choice, then executes the ordinary hand draw. An operation that
+cannot preserve the shared unresolved-pool constraints fails closed before a
+partial state is published. Probability provenance remains `UNVERIFIED`; the
+native stream assignment and cursor parity are not certified here.
+
 The guarded combat operation `ReturnHandToDrawAndShuffle` now suspends before
 the first Fisher–Yates swap when Bottled Potential is used in a Nature semantic
 combat. Its private continuation stores the original draw-pile-plus-hand pool,
