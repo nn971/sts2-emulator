@@ -831,6 +831,7 @@ public static class SemanticEndTurnEngineV111
     public static void Validate(SemanticEndTurnV111 state)
     {
         ArgumentNullException.ThrowIfNull(state);
+        state.Stochastic.Validate();
         if (state.EnemyActionPending is not null)
         {
             if (state.Complete || state.Intents is not null ||
@@ -886,48 +887,6 @@ public static class SemanticEndTurnEngineV111
              state.TargetPending is null) ||
             (state.Intents is not null && state.HandDraw is not null))
             throw new InvalidDataException("Invalid semantic end-turn stages.");
-        foreach (var decision in state.EnemyActionTranscript)
-        {
-            decision.Validate();
-            if (decision.ProviderMode != "controlled-v111" ||
-                decision.NativeCursorBefore is not null ||
-                decision.NativeCursorAfter is not null ||
-                !PrototypeControlledEnemyActionContinuationV111
-                    .IsEnemyActionSite(decision.Request.SiteId))
-                throw new InvalidDataException(
-                    "Invalid semantic enemy-action Nature decision.");
-        }
-        for (int i = 0; i < state.TargetTranscript.Length; i++)
-        {
-            var decision = state.TargetTranscript[i];
-            decision.Validate();
-            if (decision.Event.Ordinal != i)
-                throw new InvalidDataException(
-                    "Semantic end-turn target transcript ordinal is invalid.");
-        }
-        int transcriptEnemyActions = 0, transcriptTargets = 0;
-        foreach (var boundary in state.BoundaryTranscript)
-        {
-            boundary.Validate();
-            if (boundary.Kind == "enemy_action")
-            {
-                if (boundary.TranscriptIndex != transcriptEnemyActions++ ||
-                    transcriptEnemyActions > state.EnemyActionTranscript.Length)
-                    throw new InvalidDataException(
-                        "Semantic end-turn enemy-action boundary order is invalid.");
-            }
-            else if (boundary.TranscriptIndex != transcriptTargets++ ||
-                     transcriptTargets > state.TargetTranscript.Length)
-                throw new InvalidDataException(
-                    "Semantic end-turn target boundary order is invalid.");
-        }
-        if ((state.BoundaryTranscript.Length > 0 &&
-             (transcriptEnemyActions != state.EnemyActionTranscript.Length ||
-              transcriptTargets != state.TargetTranscript.Length)) ||
-            (state.BoundaryTranscript.Length == 0 &&
-             state.TargetTranscript.Length != 0))
-            throw new InvalidDataException(
-                "Semantic end-turn boundary transcript is incomplete.");
         if (state.Intents is { } intents)
         {
             ControlledTurnIntentEngineV111.Validate(intents);
