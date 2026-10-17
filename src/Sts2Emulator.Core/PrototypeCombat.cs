@@ -2851,54 +2851,11 @@ public sealed partial class PrototypeGameEngine
                         recycleSite: "combat.DrawPlayerHand",
                         recycleOperation: "unsupported_nested_stage").Run;
                 }
-                if (drawBoundary ==
-                    PrototypeDrawCardsBoundaryKind.ControlledDrawCost)
-                {
-                    int stageIndex = Array.FindIndex(
-                        PrototypeContent.Rules.EndTurnPipeline,
-                        step => step.Kind ==
-                            PrototypeAutomaticStepKind.DrawPlayerHand);
-                    if (stageIndex < 0 || combat.PendingChoice?.ControlledDrawCost is null)
-                        throw new InvalidOperationException(
-                            "Controlled draw-cost stage lost its pending card.");
-                    return state with
-                    {
-                        Player = player,
-                        World = world with
-                        {
-                            Combat = combat with
-                            {
-                                AutomaticPipelineContinuation = new(
-                                    stageIndex,
-                                    ControlledDrawCostRemaining: drawn.RemainingCount)
-                            }
-                        }
-                    };
-                }
-                if (drawBoundary ==
+                if (drawBoundary is
+                    PrototypeDrawCardsBoundaryKind.ControlledDrawCost or
                     PrototypeDrawCardsBoundaryKind.ControlledRecycle)
-                {
-                    int index = Array.FindIndex(
-                        PrototypeContent.Rules.EndTurnPipeline,
-                        step => step.Kind ==
-                            PrototypeAutomaticStepKind.DrawPlayerHand);
-                    if (index < 0 || combat.DrawPile.Length != 0 ||
-                        combat.DiscardPile.Length == 0)
-                        throw new InvalidOperationException(
-                            "Invalid controlled draw recycle boundary.");
-                    return state with
-                    {
-                        Player = player,
-                        World = world with
-                        {
-                            Combat = combat with
-                            {
-                                AutomaticPipelineContinuation = new(
-                                    index, ControlledDrawRemaining: drawn.RemainingCount)
-                            }
-                        }
-                    };
-                }
+                    return ContinueInitialControlledHandDrawBoundary(
+                        state, drawn);
                 if (drawBoundary ==
                     PrototypeDrawCardsBoundaryKind.ShuffleSelection)
                 {

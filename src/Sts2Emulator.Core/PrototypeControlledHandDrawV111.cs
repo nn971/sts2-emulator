@@ -5,6 +5,43 @@ namespace Sts2Emulator.Core;
 /// subsequent recycle tickets all resume the same saved pipeline cursor.</summary>
 public sealed partial class PrototypeGameEngine
 {
+    private static RunState ContinueInitialControlledHandDrawBoundary(
+        RunState state, PrototypeDrawCardsResult drawn)
+    {
+        if (!ControlledChanceGuardV111.Active ||
+            drawn.BoundaryKind is not (
+                PrototypeDrawCardsBoundaryKind.ControlledDrawCost or
+                PrototypeDrawCardsBoundaryKind.ControlledRecycle))
+            throw new InvalidOperationException(
+                "Initial controlled hand draw is not at a resumable legacy boundary.");
+        var world = RequireWorld(state);
+        var combat = world.Combat ?? throw new InvalidDataException(
+            "Initial controlled hand draw has no combat.");
+        if (combat.AutomaticPipelineContinuation is not null ||
+            combat.SemanticDeck is not null)
+            throw new InvalidDataException(
+                "Initial controlled hand draw boundary has an incompatible owner.");
+        int stageIndex = SemanticHandDrawStepIndex;
+        if (stageIndex < 0)
+            throw new InvalidDataException(
+                "DrawPlayerHand has no automatic pipeline index.");
+
+        var suspendedCombat = drawn.Combat with
+        {
+            AutomaticPipelineContinuation = new(stageIndex)
+        };
+        var checkpoint = state with
+        {
+            Player = drawn.Player,
+            World = world with
+            {
+                Combat = suspendedCombat
+            }
+        };
+        return ContinueControlledHandDraw(
+            checkpoint, drawn with { Combat = suspendedCombat });
+    }
+
     private static RunState BeginControlledRecycleStratagemSelection(
         RunState state, PlayerState player, CombatState combat, int remaining)
     {
