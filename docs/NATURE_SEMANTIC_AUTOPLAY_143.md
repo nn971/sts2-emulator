@@ -61,10 +61,11 @@ insertion continuation. A seeded semantic fixture can include Distilled Chaos wi
 The continuation resumes its saved automatic stage after all selected
 auto-play operations and nested choices finish. Semantic draw and draw-cost
 choices reached inside a Mayhem-autoplayed card preserve its card-play frame
-and pipeline cursor through the draw hooks. Recycle inside those nested card
-effect draws and other unrelated controlled chance sites remain separate.
-Native stream assignment, seeded native cursor parity, and the conditional
-source law remain unverified.
+and pipeline cursor through the draw hooks. Nested Nature draws reuse the
+semantic recycle and after-shuffle insertion path in `DrawCards`; the legacy
+recycle ticket without a semantic deck remains unsupported. Other unrelated
+controlled chance sites remain separate. Native stream assignment, seeded
+native cursor parity, and the conditional source law remain unverified.
 
 The Release solution build succeeded with zero warnings and errors for this
 change. Tests and mechanics regressions were not run, so controlled mechanics
