@@ -187,13 +187,102 @@ public sealed record PrototypeControlledEventChoiceContinuationV111(
     string[][]? DecisionCandidateLabels = null)
 {
     /// <summary>
-    /// Shared provider payload; the legacy continuation fields below remain
-    /// its flattened snapshot projection.
+    /// Atomic mechanics/provider envelope for the suspended event effects.
+    /// Existing continuation fields remain flattened snapshot projections.
     /// </summary>
     [System.Text.Json.Serialization.JsonIgnore]
-    public ControlledChanceContinuationStateV111 Chance { get; init; } =
-        new(Decisions, PendingRequest, PendingCandidateLabels,
-            DecisionCandidateLabels);
+    public SimulationStateV111<
+        PrototypeControlledEventChoiceMechanicsStateV111,
+        ControlledChanceContinuationStateV111> Simulation { get; init; } = new(
+            new PrototypeControlledEventChoiceMechanicsStateV111(
+                PartialState, EventId, ChoiceId, NextEffectIndex,
+                EffectDecisionStartIndex, QueuedPotionIds,
+                QueuedDeckChoices, DeferredReward, DeferredHpLoss,
+                DeferredGoldLoss, DeferredCardId),
+            new ControlledChanceContinuationStateV111(
+                Decisions, PendingRequest, PendingCandidateLabels,
+                DecisionCandidateLabels));
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public PrototypeControlledEventChoiceMechanicsStateV111 Mechanics
+    {
+        get => Simulation.Mechanics;
+        init => Simulation = Simulation with { Mechanics = value };
+    }
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public ControlledChanceContinuationStateV111 Chance
+    {
+        get => Simulation.Stochastic;
+        init => Simulation = Simulation with { Stochastic = value };
+    }
+
+    public RunState PartialState
+    {
+        get => Mechanics.PartialState;
+        init => Mechanics = Mechanics with { PartialState = value };
+    }
+
+    public string EventId
+    {
+        get => Mechanics.EventId;
+        init => Mechanics = Mechanics with { EventId = value };
+    }
+
+    public string ChoiceId
+    {
+        get => Mechanics.ChoiceId;
+        init => Mechanics = Mechanics with { ChoiceId = value };
+    }
+
+    public int NextEffectIndex
+    {
+        get => Mechanics.NextEffectIndex;
+        init => Mechanics = Mechanics with { NextEffectIndex = value };
+    }
+
+    public int EffectDecisionStartIndex
+    {
+        get => Mechanics.EffectDecisionStartIndex;
+        init => Mechanics = Mechanics with
+        { EffectDecisionStartIndex = value };
+    }
+
+    public string[] QueuedPotionIds
+    {
+        get => Mechanics.QueuedPotionIds;
+        init => Mechanics = Mechanics with { QueuedPotionIds = value };
+    }
+
+    public PrototypePendingEventDeckChoiceState[] QueuedDeckChoices
+    {
+        get => Mechanics.QueuedDeckChoices;
+        init => Mechanics = Mechanics with { QueuedDeckChoices = value };
+    }
+
+    public RewardState? DeferredReward
+    {
+        get => Mechanics.DeferredReward;
+        init => Mechanics = Mechanics with { DeferredReward = value };
+    }
+
+    public int DeferredHpLoss
+    {
+        get => Mechanics.DeferredHpLoss;
+        init => Mechanics = Mechanics with { DeferredHpLoss = value };
+    }
+
+    public int DeferredGoldLoss
+    {
+        get => Mechanics.DeferredGoldLoss;
+        init => Mechanics = Mechanics with { DeferredGoldLoss = value };
+    }
+
+    public string? DeferredCardId
+    {
+        get => Mechanics.DeferredCardId;
+        init => Mechanics = Mechanics with { DeferredCardId = value };
+    }
 
     public RandomIndexDecisionV111[] Decisions
     {
