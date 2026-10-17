@@ -1,5 +1,14 @@
 namespace Sts2Emulator.Core;
 
+public static class PrototypeNativeUnderdocksDoors
+{
+    public const string EventId =
+        "proto.native.underdocks.doors_of_light_and_dark";
+    public const string NativeRngEventId = "DOORS_OF_LIGHT_AND_DARK";
+    public const string ShuffleSiteId =
+        "event.doors_light.shuffle_swap_index";
+}
+
 public sealed partial class PrototypeGameEngine
 {
     private static RunState StepNativeDoorsLight(
@@ -11,8 +20,7 @@ public sealed partial class PrototypeGameEngine
             ?? throw new InvalidOperationException(
                 "Doors of Light and Dark requires an active event.");
         var choiceId = action.ReadPayload<EventChoicePayload>().ChoiceId;
-        if (eventState.EventId !=
-                "proto.native.underdocks.doors_of_light_and_dark"
+        if (eventState.EventId != PrototypeNativeUnderdocksDoors.EventId
             || eventState.NativePageIndex != 0
             || choiceId != "light"
             || !CanTakeEventChoice(state.Player,
@@ -35,9 +43,9 @@ public sealed partial class PrototypeGameEngine
         state = NativeEventContextRngV111.ShuffleInPlace(
             state,
             eventState,
-            "DOORS_OF_LIGHT_AND_DARK",
+            PrototypeNativeUnderdocksDoors.NativeRngEventId,
             shuffled,
-            "event.doors_light.shuffle_swap_index",
+            PrototypeNativeUnderdocksDoors.ShuffleSiteId,
             "event:doors_light:eligible_cards:"
                 + CanonicalJson.Sha256(shuffled));
         world = RequireWorld(state);

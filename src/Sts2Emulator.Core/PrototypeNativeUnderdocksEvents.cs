@@ -18,7 +18,7 @@ public static class PrototypeNativeUnderdocksEvents
         "proto.native.underdocks.spiraling_whirlpool",
         "proto.native.underdocks.sunken_statue",
         "proto.native.underdocks.sunken_treasury",
-        "proto.native.underdocks.doors_of_light_and_dark",
+        PrototypeNativeUnderdocksDoors.EventId,
         "proto.native.underdocks.trash_heap",
         "proto.native.underdocks.waterlogged_scriptorium",
         PrototypeNativeSharedEvents.ThisOrThatId
@@ -36,7 +36,7 @@ public static class PrototypeNativeUnderdocksEvents
         "proto.native.underdocks.waterlogged_scriptorium",
         "proto.native.underdocks.spiraling_whirlpool",
         "proto.native.underdocks.sunken_treasury",
-        "proto.native.underdocks.doors_of_light_and_dark",
+        PrototypeNativeUnderdocksDoors.EventId,
         "proto.native.underdocks.sunken_statue",
         PrototypeNativeSharedEvents.ThisOrThatId
     ];
@@ -209,7 +209,7 @@ public static class PrototypeNativeUnderdocksEvents
             ],
             MaxAct: 1),
         new(
-            "proto.native.underdocks.doors_of_light_and_dark",
+            PrototypeNativeUnderdocksDoors.EventId,
             "Doors of Light and Dark",
             [
                 new("light", "Upgrade up to two random cards",

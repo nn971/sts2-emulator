@@ -89,6 +89,12 @@ internal static class PrototypeAiJsonlServer
         var referenceNatureTrialRunStateHandles =
             new Dictionary<string, string>(StringComparer.Ordinal);
         long nextReferenceNatureTrialHandle = 1;
+        var referenceNatureNativeEventShuffleStates =
+            new Dictionary<string, ReferenceNatureNativeEventShuffleSessionV111>(
+                StringComparer.Ordinal);
+        var referenceNatureNativeEventShuffleRunStateHandles =
+            new Dictionary<string, string>(StringComparer.Ordinal);
+        long nextReferenceNatureNativeEventShuffleHandle = 1;
         var referenceNatureMerchantStates =
             new Dictionary<string, ReferenceNatureMerchantSessionV111>(
                 StringComparer.Ordinal);
@@ -298,6 +304,30 @@ internal static class PrototypeAiJsonlServer
                 ? session
                 : throw new InvalidOperationException(
                     "Unknown ReferenceNature Trial session handle: " + handle);
+        }
+
+        string StoreReferenceNatureNativeEventShuffle(
+            ReferenceNatureNativeEventShuffleSessionV111 session)
+        {
+            var handle = "es" + nextReferenceNatureNativeEventShuffleHandle++;
+            referenceNatureNativeEventShuffleStates.Add(handle, session.Fork());
+            if (session.Complete)
+                referenceNatureNativeEventShuffleRunStateHandles.Add(handle,
+                    Store(session.Run.Fork()));
+            return handle;
+        }
+
+        ReferenceNatureNativeEventShuffleSessionV111
+            RequireReferenceNatureNativeEventShuffle(JsonElement request)
+        {
+            var handle = RequiredString(request,
+                "reference_nature_native_event_shuffle_handle");
+            return referenceNatureNativeEventShuffleStates.TryGetValue(handle,
+                    out var session)
+                ? session
+                : throw new InvalidOperationException(
+                    "Unknown ReferenceNature native event shuffle session handle: " +
+                    handle);
         }
 
         string StoreReferenceNatureMerchant(
@@ -726,6 +756,50 @@ internal static class PrototypeAiJsonlServer
                     chanceLaw = law,
                     probabilityStatus = law.ProbabilityStatus
                 },
+                nextPage = eventState?.NativePageIndex,
+                eventRandomProvider = eventState?.NativeEventRngProviderMode ??
+                    (eventState is null ? null : "native-v111"),
+                decisionTranscript = session.DecisionTranscript,
+                natureProvider = ReferenceNatureV111.ProviderId,
+                natureSampleCount = session.NatureState.SampleCount,
+                probabilityStatus = ChanceLawV111.UnverifiedStatus
+            };
+        }
+
+        object ReferenceNatureNativeEventShuffleResult(
+            ReferenceNatureNativeEventShuffleSessionV111 session,
+            string handle, string? parent = null)
+        {
+            var law = session.PendingLaw;
+            var eventState = session.Run.World?.Event;
+            return new
+            {
+                ok = true,
+                schemaId =
+                    ReferenceNatureNativeEventShuffleSessionV111.CurrentSchemaId,
+                referenceNatureNativeEventShuffleHandle = handle,
+                stateHandle = referenceNatureNativeEventShuffleRunStateHandles
+                    .GetValueOrDefault(handle),
+                parent,
+                fingerprint = session.Fingerprint,
+                runFingerprint = CanonicalJson.Sha256(session.Run),
+                siteId = law?.SiteId ??
+                    PrototypeNativeUnderdocksDoors.ShuffleSiteId,
+                eventId = law?.EventId ??
+                    session.DecisionTranscript.LastOrDefault()?.EventId,
+                choiceId = "light",
+                page = session.Origin.World?.Event?.NativePageIndex,
+                runPhase = session.Run.Phase.ToString(),
+                boundary = session.Complete ? "committed" : "nature",
+                nextOrdinal = session.NextOrdinal,
+                pending = law is null ? null : new
+                {
+                    kind = "native_event_shuffle_swap_random_choice",
+                    boundaryFingerprint = law.EventId,
+                    chanceLaw = law,
+                    probabilityStatus = law.ProbabilityStatus
+                },
+                selectedChoiceId = eventState?.ChosenChoiceId,
                 nextPage = eventState?.NativePageIndex,
                 eventRandomProvider = eventState?.NativeEventRngProviderMode ??
                     (eventState is null ? null : "native-v111"),
@@ -1288,6 +1362,10 @@ internal static class PrototypeAiJsonlServer
                 "trial" when referenceNatureTrialStates.TryGetValue(
                     handle, out var trialSession) =>
                     ReferenceNatureTrialResult(trialSession, handle),
+                "event_shuffle" when referenceNatureNativeEventShuffleStates
+                    .TryGetValue(handle, out var nativeEventShuffleSession) =>
+                    ReferenceNatureNativeEventShuffleResult(
+                        nativeEventShuffleSession, handle),
                 "merchant" when referenceNatureMerchantStates.TryGetValue(
                     handle, out var merchantSession) =>
                     ReferenceNatureMerchantResult(merchantSession, handle),
@@ -1303,7 +1381,7 @@ internal static class PrototypeAiJsonlServer
                 "semantic_combat" or "reference_combat" or "run_action" or
                     "event_choice" or "ancient_offer" or "merchant" or
                     "neow_offer" or "trash_heap" or "tablet_of_truth" or
-                    "trial" or "treasure" or "controlled_event_choice" or
+                    "trial" or "event_shuffle" or "treasure" or "controlled_event_choice" or
                     "controlled_run_action" => throw new InvalidOperationException(
                         "Unknown Nature session handle for kind " + sessionKind +
                         ": " + handle),
@@ -2170,6 +2248,42 @@ internal static class PrototypeAiJsonlServer
                             if (law.SiteId != siteId || law.Ordinal != ordinal)
                                 throw new ArgumentException(
                                     $"Trial case query expects site '{law.SiteId}' and ordinal {law.Ordinal}.");
+                            Write(new
+                            {
+                                requestId,
+                                ok = true,
+                                chanceLawSchemaId =
+                                    ChanceLawV111.CurrentSchemaId,
+                                law
+                            });
+                            break;
+                        }
+                        if (StochasticSiteRegistryV111
+                            .NativeEventShuffleSessionSiteIds.Contains(
+                                siteId, StringComparer.Ordinal))
+                        {
+                            if (OptionalString(request, "card_type") is not null ||
+                                OptionalString(request, "rarity") is not null ||
+                                OptionalString(request, "card_id") is not null ||
+                                OptionalString(request, "potion_id") is not null ||
+                                OptionalString(request, "relic_id") is not null ||
+                                OptionalBool(request, "colorless_offer") ||
+                                OptionalBool(request, "sale_reprice") ||
+                                OptionalString(request, "owner_id") is not null ||
+                                OptionalStringArray(request,
+                                    "excluded_potion_ids") is not null ||
+                                OptionalInt(request, "offer_ordinal") is not null ||
+                                OptionalStringArray(request,
+                                    "relic_candidate_ids") is not null ||
+                                OptionalStringArray(request,
+                                    "excluded_relic_ids") is not null)
+                                throw new ArgumentException(
+                                    "Native event shuffle queries accept only state_handle, site_id, ordinal and prior_indices.");
+                            law = ChanceLawEngineV111.QueryNativeEventShuffle(
+                                RequireState(request), ordinal, priorIndices);
+                            if (law.SiteId != siteId || law.Ordinal != ordinal)
+                                throw new ArgumentException(
+                                    $"Native event shuffle expects site '{law.SiteId}' and ordinal {law.Ordinal}.");
                             Write(new
                             {
                                 requestId,
@@ -3791,6 +3905,112 @@ internal static class PrototypeAiJsonlServer
                                     element.GetString()!))
                                 released++;
                             referenceNatureTrialRunStateHandles.Remove(
+                                element.GetString()!);
+                        }
+                        Write(new { requestId, ok = true, released });
+                        break;
+                    }
+
+                    case "reference_nature_native_event_shuffle_begin":
+                    {
+                        var source = RequireState(request);
+                        var seed = OptionalULong(request, "nature_seed");
+                        var session = seed is { } natureSeed
+                            ? ReferenceNatureNativeEventShuffleSessionV111.Begin(
+                                source, natureSeed)
+                            : ReferenceNatureNativeEventShuffleSessionV111.Begin(
+                                source);
+                        var handle = StoreReferenceNatureNativeEventShuffle(session);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureNativeEventShuffleResult(
+                                session, handle) });
+                        break;
+                    }
+
+                    case "reference_nature_native_event_shuffle_status":
+                    {
+                        var handle = RequiredString(request,
+                            "reference_nature_native_event_shuffle_handle");
+                        var session = RequireReferenceNatureNativeEventShuffle(request);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureNativeEventShuffleResult(
+                                session, handle) });
+                        break;
+                    }
+
+                    case "reference_nature_native_event_shuffle_resolve_next":
+                    {
+                        var parentHandle = RequiredString(request,
+                            "reference_nature_native_event_shuffle_handle");
+                        var session = RequireReferenceNatureNativeEventShuffle(request);
+                        if (session.Fingerprint != RequiredString(request,
+                                "fingerprint"))
+                            throw new InvalidOperationException(
+                                "Stale ReferenceNature native event shuffle fingerprint.");
+                        var next = session.ResolveNext();
+                        var handle = StoreReferenceNatureNativeEventShuffle(next);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureNativeEventShuffleResult(
+                                next, handle, parentHandle) });
+                        break;
+                    }
+
+                    case "reference_nature_native_event_shuffle_fork":
+                    {
+                        var parentHandle = RequiredString(request,
+                            "reference_nature_native_event_shuffle_handle");
+                        var next = RequireReferenceNatureNativeEventShuffle(request)
+                            .Fork();
+                        var handle = StoreReferenceNatureNativeEventShuffle(next);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureNativeEventShuffleResult(
+                                next, handle, parentHandle) });
+                        break;
+                    }
+
+                    case "reference_nature_native_event_shuffle_save":
+                    {
+                        var session = RequireReferenceNatureNativeEventShuffle(request);
+                        Write(new { requestId, ok = true,
+                            schemaId =
+                                ReferenceNatureNativeEventShuffleSessionV111.CurrentSchemaId,
+                            snapshot =
+                                ReferenceNatureNativeEventShuffleSessionV111.Save(
+                                    session) });
+                        break;
+                    }
+
+                    case "reference_nature_native_event_shuffle_load":
+                    {
+                        var session =
+                            ReferenceNatureNativeEventShuffleSessionV111.Restore(
+                                RequiredString(request, "snapshot"));
+                        var handle = StoreReferenceNatureNativeEventShuffle(session);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureNativeEventShuffleResult(
+                                session, handle) });
+                        break;
+                    }
+
+                    case "reference_nature_native_event_shuffle_release_many":
+                    {
+                        if (!request.TryGetProperty(
+                                "reference_nature_native_event_shuffle_handles",
+                                out var handles) ||
+                            handles.ValueKind != JsonValueKind.Array)
+                            throw new ArgumentException(
+                                "reference_nature_native_event_shuffle_handles must be an array.");
+                        var released = 0;
+                        foreach (var element in handles.EnumerateArray())
+                        {
+                            if (element.ValueKind != JsonValueKind.String ||
+                                string.IsNullOrWhiteSpace(element.GetString()))
+                                throw new ArgumentException(
+                                    "Invalid ReferenceNature native event shuffle handle.");
+                            if (referenceNatureNativeEventShuffleStates.Remove(
+                                    element.GetString()!))
+                                released++;
+                            referenceNatureNativeEventShuffleRunStateHandles.Remove(
                                 element.GetString()!);
                         }
                         Write(new { requestId, ok = true, released });

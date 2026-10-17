@@ -3,8 +3,9 @@
 This contract describes the event-local RNG lifecycle shared by migration
 rows whose owner names `context.event.*` and that link this document. The
 migration matrix remains the site index and retains each row's exact owner,
-ordered support, occurrence, and source-audit status. Neow, Tablet of Truth,
-and the Trash Heap relic reward have narrower source contracts linked from
+ordered support, occurrence, and source-audit status. A small number of rows,
+including the Doors Light shuffle, Tablet of Truth, Trial, and Trash Heap
+rewards, have narrower source and/or ReferenceNature contracts linked from
 their own rows.
 
 ## Provider and private state
@@ -34,10 +35,12 @@ The player-visible event view contains the current event page, legal choices,
 and committed effect or reward. It omits candidate-pool order, seed, and RNG
 cursor. The event's persisted stream snapshot and committed stochastic
 values belong to the privileged state; they are not Nature observations.
-There is currently no family-wide Nature-view Chance Law or atomic
-ReferenceNature session for the rows linked here. Existing controlled event
-choice and Ancient-offer sessions have narrower site allowlists and do not
-implicitly cover an event merely because it uses this RNG helper.
+There is no family-wide Nature-view Chance Law or atomic ReferenceNature
+session for the rows linked here. Site-specific sessions such as the Doors
+Light shuffle, Tablet of Truth, Trial, and Trash Heap rewards remain limited
+to the exact event boundaries documented in their contracts. Existing
+controlled event-choice and Ancient-offer sessions do not implicitly cover an
+event merely because it uses this RNG helper.
 
 The resolver is the event-specific page-generation or choice-effect method.
 It applies the selected primitive result synchronously, commits the resulting
@@ -45,10 +48,10 @@ page/effect into
 [`EventMechanicsStateV111`](../src/Sts2Emulator.Core/EventMechanicsStateV111.cs),
 and carries the event provider state through
 [`EventStochasticStateV111`](../src/Sts2Emulator.Core/EventStochasticStateV111.cs).
-These helpers do not save a pending
-Nature request or a replayable mechanic continuation. Existing source-owned
-event effects remain the resolver; a new Nature boundary must preserve their
-ordering and apply effects once.
+These helpers do not themselves save a pending Nature request or a replayable
+mechanic continuation. Site-specific sessions keep their scripted transcript
+at the owning event boundary, then invoke the existing source-owned event
+effect once.
 
 ## Provenance and unsupported handling
 
@@ -58,9 +61,9 @@ not conditional probabilities or call-order parity. No event helper match or
 source-shaped candidate pool is evidence of calibrated `p`.
 
 The current Native event path may continue to resolve a source-owned event
-with its configured provider. A controlled Nature request for one of the
-linked rows has no atomic law-to-resolver continuation and must remain
-unsupported and fail closed; it must not silently fall back to a different
-event or prototype stream. Acceptance requires site-specific pre-outcome
-support and constraint fingerprints, a declared law and provenance, an
-ordinary event resolver replay, and an atomic event/run snapshot boundary.
+with its configured provider. Rows without a linked site-specific contract
+remain unsupported for a controlled Nature request and must fail closed; they
+must not silently fall back to a different event or prototype stream.
+Acceptance requires site-specific pre-outcome support and constraint
+fingerprints, a declared law and provenance, an ordinary event resolver
+replay, and an atomic event/run snapshot boundary.

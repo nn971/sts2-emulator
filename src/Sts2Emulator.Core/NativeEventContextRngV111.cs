@@ -3,7 +3,7 @@ namespace Sts2Emulator.Core;
 /// <summary>
 /// Owns EventModel.Begin-compatible event streams for configured native runs.
 /// The stream is persisted on EventState and copied forward after each draw.
-/// Scripted Trash Heap, Tablet of Truth, and Trial resolutions retain
+/// Scripted Trash Heap, Tablet of Truth, Trial, and event-shuffle resolutions retain
 /// counterfactual provider markers, with event-specific cursor and result
 /// invariants checked at the event boundary.
 /// </summary>
@@ -326,6 +326,16 @@ public static class NativeEventContextRngV111
                 eventState.ChosenChoiceId));
         if (prototypeEventId == PrototypeNativeGloryEvents.TrialId &&
             providerMode == "scripted-v111" && trialChoiceIsExpected)
+            return;
+        var doorsLightChoiceIsExpected =
+            NativeRngV111.ToSnapshot(stream) ==
+                NativeRngV111.ToSnapshot(initial) &&
+            eventState.NativePageIndex ==
+                PrototypeNativeEventCompletionPages.TerminalChoicePageIndex(
+                    PrototypeNativeUnderdocksDoors.EventId) &&
+            eventState.ChosenChoiceId == "light";
+        if (prototypeEventId == PrototypeNativeUnderdocksDoors.EventId &&
+            providerMode == "scripted-v111" && doorsLightChoiceIsExpected)
             return;
         throw new InvalidOperationException(
             "Native event state cannot use this counterfactual RNG provider.");

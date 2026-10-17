@@ -32,6 +32,8 @@ public sealed record StochasticCapabilityManifestV111(
         ReferenceNatureTabletOfTruthSessionV111.CurrentSchemaId;
     public string ReferenceNatureTrialSessionSchemaId { get; init; } =
         ReferenceNatureTrialSessionV111.CurrentSchemaId;
+    public string ReferenceNatureNativeEventShuffleSessionSchemaId { get; init; } =
+        ReferenceNatureNativeEventShuffleSessionV111.CurrentSchemaId;
     public string ReferenceNatureMerchantSessionSchemaId { get; init; } =
         ReferenceNatureMerchantSessionV111.CurrentSchemaId;
     public string ReferenceNatureTreasureSessionSchemaId { get; init; } =
@@ -44,7 +46,7 @@ public sealed record StochasticCapabilityManifestV111(
     [
         "semantic_combat", "reference_combat", "run_action",
         "event_choice", "ancient_offer", "neow_offer", "trash_heap",
-        "tablet_of_truth", "trial",
+        "tablet_of_truth", "trial", "event_shuffle",
         "merchant", "treasure",
         "controlled_event_choice", "controlled_run_action"
     ];
@@ -125,6 +127,13 @@ public static class StochasticCapabilitiesV111
             "reference_nature_trial_save",
             "reference_nature_trial_load",
             "reference_nature_trial_release_many",
+            "reference_nature_native_event_shuffle_begin",
+            "reference_nature_native_event_shuffle_status",
+            "reference_nature_native_event_shuffle_resolve_next",
+            "reference_nature_native_event_shuffle_fork",
+            "reference_nature_native_event_shuffle_save",
+            "reference_nature_native_event_shuffle_load",
+            "reference_nature_native_event_shuffle_release_many",
             "reference_nature_merchant_begin",
             "reference_nature_merchant_status",
             "reference_nature_merchant_resolve_next",
@@ -155,6 +164,8 @@ public static class StochasticCapabilitiesV111
             ReferenceNatureTabletOfTruthSessionV111.CurrentSchemaId,
         ReferenceNatureTrialSessionSchemaId =
             ReferenceNatureTrialSessionV111.CurrentSchemaId,
+        ReferenceNatureNativeEventShuffleSessionSchemaId =
+            ReferenceNatureNativeEventShuffleSessionV111.CurrentSchemaId,
         ReferenceNatureMerchantSessionSchemaId =
             ReferenceNatureMerchantSessionV111.CurrentSchemaId,
         ReferenceNatureTreasureSessionSchemaId =
@@ -2188,8 +2199,10 @@ public sealed record ReferenceNatureDecisionV111(
         if (string.IsNullOrWhiteSpace(LawId) ||
             string.IsNullOrWhiteSpace(EventId) ||
             string.IsNullOrWhiteSpace(OutcomeId) || OutcomeIndex < 0 ||
-            OutcomeId != "choice_index:" +
-                OutcomeIndex.ToString(CultureInfo.InvariantCulture))
+            (OutcomeId != "choice_index:" +
+                OutcomeIndex.ToString(CultureInfo.InvariantCulture) &&
+            OutcomeId != "swap_index:" +
+                OutcomeIndex.ToString(CultureInfo.InvariantCulture)))
             throw new InvalidDataException(
                 "Invalid ReferenceNature decision.");
     }

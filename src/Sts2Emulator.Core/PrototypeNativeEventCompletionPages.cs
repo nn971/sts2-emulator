@@ -52,7 +52,7 @@ public static class PrototypeNativeEventCompletionPages
             or NativeDarvEventV111.EventId
             or PrototypeNativeSharedEvents.ThisOrThatId
             or PrototypeNativeFutureOfPotions.EventId
-            or "proto.native.underdocks.doors_of_light_and_dark"
+            or PrototypeNativeUnderdocksDoors.EventId
             or "proto.native.underdocks.drowning_beacon"
             or "proto.native.underdocks.spiraling_whirlpool"
             or "proto.native.underdocks.sunken_treasury"
@@ -160,7 +160,7 @@ public static class PrototypeNativeEventCompletionPages
             && choiceId is "plain" or "ornate"
         || eventId == PrototypeNativeFutureOfPotions.EventId
             && choiceId == PrototypeNativeFutureOfPotions.TradeChoiceId
-        || eventId == "proto.native.underdocks.doors_of_light_and_dark"
+        || eventId == PrototypeNativeUnderdocksDoors.EventId
             && choiceId is "light" or "dark"
         || eventId == "proto.native.underdocks.drowning_beacon"
             && choiceId is "bottle" or "climb"

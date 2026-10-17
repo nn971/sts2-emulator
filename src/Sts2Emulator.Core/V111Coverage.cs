@@ -451,7 +451,7 @@ public static class V111Coverage
             && item.Id == "DOORS_OF_LIGHT_AND_DARK"
             && missingBranches.Length == 0
             && engineIds.Contains(
-                "proto.native.underdocks.doors_of_light_and_dark",
+                PrototypeNativeUnderdocksDoors.EventId,
                 StringComparer.Ordinal))
             implementation = "implemented";
         if (item.Scope == "single-player" && item.Kind == "events"

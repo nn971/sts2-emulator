@@ -42,8 +42,18 @@ reward actions and event Nature choices in one replay order; the committed
 session exposes `.state` for ordinary play. See the
 [event-choice contract](../../docs/CONTROLLED_EVENT_CHOICE_D3.md).
 
+The event-local shuffle session is available through
+`State.begin_reference_nature_native_event_shuffle(nature_seed=None)`. It
+currently covers the Light shuffle in Doors of Light and Dark, resolving one
+conditional swap per `resolve_next()` and publishing `.state` after the full
+shuffle replays. It supports `fork()`, `save_snapshot()`,
+`Session.load_reference_nature_native_event_shuffle_snapshot()`, and
+`release()`. See the
+[native event shuffle contract](../../docs/REFERENCE_NATURE_NATIVE_EVENT_SHUFFLE_D3.md).
+
 `Session.stochastic_session_coverage` reports the site IDs accepted by the
-semantic, run-action, and event-choice ReferenceNature session schemas.
+semantic, run-action, event-choice and native event-shuffle ReferenceNature
+session schemas.
 `Session.supports_reference_nature_site(site_id, session="any")` checks that
 versioned capability report before a client starts a continuation. A pending
 semantic peek or scry can be resolved by physical card identity with

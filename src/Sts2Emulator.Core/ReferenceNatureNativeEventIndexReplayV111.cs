@@ -7,21 +7,26 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
     public static RunState Replay(
         RunState origin, RandomIndexRequestV111 request,
         int selectedIndex, GameAction action, string nativeEventRngEventId,
+        string eventName) => Replay(
+            origin,
+            [new RandomIndexDecisionV111(
+                request, selectedIndex, "scripted-v111")],
+            action, nativeEventRngEventId, eventName);
+
+    public static RunState Replay(
+        RunState origin, IEnumerable<RandomIndexDecisionV111> decisions,
+        GameAction action, string nativeEventRngEventId,
         string eventName)
     {
         ArgumentNullException.ThrowIfNull(origin);
-        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(decisions);
         ArgumentNullException.ThrowIfNull(action);
         ArgumentException.ThrowIfNullOrWhiteSpace(nativeEventRngEventId);
         ArgumentException.ThrowIfNullOrWhiteSpace(eventName);
         var expectedStream = origin.World?.Event?.NativeEventRng ??
             NativeRngV111Contexts.ForEvent(
                 origin.RunSeed, nativeEventRngEventId);
-        var scripted = new ScriptedRandomIndexProviderV111(
-        [
-            new RandomIndexDecisionV111(
-                request, selectedIndex, "scripted-v111")
-        ]);
+        var scripted = new ScriptedRandomIndexProviderV111(decisions);
         using var providerScope = StochasticProviderScopeV111.Enter(
             scripted, overrideExplicitProviders: true);
         var run = new PrototypeGameEngine().Step(

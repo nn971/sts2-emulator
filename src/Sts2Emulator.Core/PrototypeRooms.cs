@@ -971,8 +971,8 @@ public sealed partial class PrototypeGameEngine
                             PrototypeNativeUnderdocksTrashHeap.NativeRngEventId,
                         PrototypeNativeTabletOfTruth.EventId =>
                             PrototypeNativeTabletOfTruth.NativeRngEventId,
-                        "proto.native.underdocks.doors_of_light_and_dark" =>
-                            "DOORS_OF_LIGHT_AND_DARK",
+                        PrototypeNativeUnderdocksDoors.EventId =>
+                            PrototypeNativeUnderdocksDoors.NativeRngEventId,
                         PrototypeNativeFakeMerchant.EventId =>
                             PrototypeNativeFakeMerchant.NativeRngEventId,
                         PrototypeNativeGloryEvents.TinkerTimeId =>
@@ -1779,7 +1779,7 @@ public sealed partial class PrototypeGameEngine
             }
 
             if (eventState.EventId ==
-                "proto.native.underdocks.doors_of_light_and_dark"
+                PrototypeNativeUnderdocksDoors.EventId
                 && action.Kind == "event_choice"
                 && action.ReadPayload<EventChoicePayload>().ChoiceId == "light")
             {

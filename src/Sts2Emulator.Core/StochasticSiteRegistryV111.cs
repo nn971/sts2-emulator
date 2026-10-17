@@ -48,6 +48,9 @@ public sealed record StochasticSessionCoverageV111(
     public string ReferenceNatureTrialSessionSchemaId { get; init; } =
         ReferenceNatureTrialSessionV111.CurrentSchemaId;
     public string[] ReferenceNatureTrialSiteIds { get; init; } = [];
+    public string ReferenceNatureNativeEventShuffleSessionSchemaId { get; init; } =
+        ReferenceNatureNativeEventShuffleSessionV111.CurrentSchemaId;
+    public string[] ReferenceNatureNativeEventShuffleSiteIds { get; init; } = [];
     public string[] ReferenceNatureAncientOfferSiteIds { get; init; } = [];
     public string ReferenceNatureMerchantSessionSchemaId { get; init; } =
         ReferenceNatureMerchantSessionV111.CurrentSchemaId;
@@ -78,6 +81,8 @@ public sealed record StochasticSessionCoverageV111(
                 ReferenceNatureTabletOfTruthSessionV111.CurrentSchemaId ||
             ReferenceNatureTrialSessionSchemaId !=
                 ReferenceNatureTrialSessionV111.CurrentSchemaId ||
+            ReferenceNatureNativeEventShuffleSessionSchemaId !=
+                ReferenceNatureNativeEventShuffleSessionV111.CurrentSchemaId ||
             ReferenceNatureMerchantSessionSchemaId !=
                 ReferenceNatureMerchantSessionV111.CurrentSchemaId ||
             ReferenceNatureTreasureSessionSchemaId !=
@@ -93,6 +98,7 @@ public sealed record StochasticSessionCoverageV111(
         ValidateSiteIds(ReferenceNatureTrashHeapSiteIds);
         ValidateSiteIds(ReferenceNatureTabletOfTruthSiteIds);
         ValidateSiteIds(ReferenceNatureTrialSiteIds);
+        ValidateSiteIds(ReferenceNatureNativeEventShuffleSiteIds);
         ValidateSiteIds(ReferenceNatureMerchantSiteIds);
         ValidateSiteIds(ReferenceNatureTreasureSiteIds);
     }
@@ -230,6 +236,7 @@ public static class StochasticSiteRegistryV111
         .. ChanceLawEngineV111.TrashHeapSessionSiteIds,
         .. ChanceLawEngineV111.TabletOfTruthSessionSiteIds,
         .. ChanceLawEngineV111.TrialSessionSiteIds,
+        .. ChanceLawEngineV111.NativeEventShuffleSessionSiteIds,
         "shop.merchant.sale_slot.index_draw",
         "card_rarity.roll.unit_float",
         "shop.merchant.card_model.index_draw",
@@ -293,6 +300,8 @@ public static class StochasticSiteRegistryV111
         ChanceLawEngineV111.TabletOfTruthSessionSiteIds;
     private static readonly string[] TrialSessionSites =
         ChanceLawEngineV111.TrialSessionSiteIds;
+    private static readonly string[] NativeEventShuffleSessionSites =
+        ChanceLawEngineV111.NativeEventShuffleSessionSiteIds;
 
     private static readonly HashSet<string> SemanticReferenceNatureSiteSet =
         new(SemanticReferenceNatureSites, StringComparer.Ordinal);
@@ -328,6 +337,7 @@ public static class StochasticSiteRegistryV111
             .Concat(TrashHeapSessionSites)
             .Concat(TabletOfTruthSessionSites)
             .Concat(TrialSessionSites)
+            .Concat(NativeEventShuffleSessionSites)
             .Distinct(StringComparer.Ordinal)
             .ToArray();
 
@@ -364,6 +374,8 @@ public static class StochasticSiteRegistryV111
         (string[])TabletOfTruthSessionSites.Clone();
     public static string[] TrialSessionSiteIds =>
         (string[])TrialSessionSites.Clone();
+    public static string[] NativeEventShuffleSessionSiteIds =>
+        (string[])NativeEventShuffleSessionSites.Clone();
     public static string[] NatureChoiceSiteIds =>
         (string[])NatureChoiceSites.Clone();
 
@@ -435,7 +447,11 @@ public static class StochasticSiteRegistryV111
             ReferenceNatureTabletOfTruthSiteIds = TabletOfTruthSessionSites,
             ReferenceNatureTrialSessionSchemaId =
                 ReferenceNatureTrialSessionV111.CurrentSchemaId,
-            ReferenceNatureTrialSiteIds = TrialSessionSites
+            ReferenceNatureTrialSiteIds = TrialSessionSites,
+            ReferenceNatureNativeEventShuffleSessionSchemaId =
+                ReferenceNatureNativeEventShuffleSessionV111.CurrentSchemaId,
+            ReferenceNatureNativeEventShuffleSiteIds =
+                NativeEventShuffleSessionSites
         };
         coverage.Validate();
         return coverage;

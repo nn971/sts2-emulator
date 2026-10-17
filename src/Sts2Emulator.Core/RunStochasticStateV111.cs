@@ -110,8 +110,8 @@ public sealed record RunStochasticStateV111(
             PrototypeNativeTabletOfTruth.NativeRngEventId);
         NativeEventContextRngV111.Validate(
             owner,
-            "proto.native.underdocks.doors_of_light_and_dark",
-            "DOORS_OF_LIGHT_AND_DARK");
+            PrototypeNativeUnderdocksDoors.EventId,
+            PrototypeNativeUnderdocksDoors.NativeRngEventId);
         NativeEventContextRngV111.Validate(
             owner,
             PrototypeNativeFakeMerchant.EventId,
