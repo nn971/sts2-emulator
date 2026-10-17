@@ -76,7 +76,7 @@ public sealed record PlayerState(
 /// rulesets; ExtensionState remains available for versioned reference data that has not
 /// yet earned a stable typed representation.
 /// </summary>
-public sealed record RunState(
+public sealed partial record RunState(
     string GameBuild,
     string EmulatorSchema,
     string RunId,
