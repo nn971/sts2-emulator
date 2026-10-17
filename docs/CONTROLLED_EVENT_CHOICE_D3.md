@@ -1,8 +1,10 @@
 # Controlled event-choice continuation
 
 This opt-in D3 boundary suspends selected ordinary event choices at supported
-legacy random-index sites. The ordinary engine step and legacy six-stream
-behavior remain unchanged.
+legacy random-index sites. It also supports the Native Stone of All Time
+`lift_ticket` as a synthetic one-request boundary around its existing custom
+event action. Ordinary event steps and legacy six-stream behavior remain
+unchanged.
 
 ## Saved state and continuation
 
@@ -14,23 +16,34 @@ continues in source order. If the option reaches another supported random
 site, it suspends again with that next request. The option commits after all
 effects finish; earlier effects are not replayed.
 
-The serialized request includes site, legacy stream, owner, ordinal, operation
-kind and ordered integer support. Candidate labels identify event card
-instances, card models, potion models, eligible relics, and Sand Castle's
-physical deck-card instances where those identities describe the request
-support; other swap positions and rarity tickets retain numeric labels.
+Stone of All Time lift is the custom-action exception: its saved partial run
+is the untouched pre-choice state, so consuming the potion and granting Max HP
+wait until the Nature outcome is selected. Resume replays the existing lift
+action once with that ticket and commits the terminal page. Its request is at
+Native event-stream ordinal 1 because the event-entry potion-slot draw owns
+ordinal 0. The Native cursor is not advanced by the controlled outcome.
+
+The serialized request includes site, stream, owner, ordinal, operation kind
+and ordered integer support. Generic D3 event requests use the legacy stream;
+Stone lift retains its Native event stream and bounded count. Candidate labels
+identify event card instances, card models, potion models, eligible relics,
+and Sand Castle's physical deck-card instances where those identities describe
+the request support; other swap positions and rarity tickets retain numeric
+labels.
 Completed controlled decisions remain in
 `RunState.ControlledEventChoiceHistory`; pending and
 completed transcripts identify `controlled-v111` outcomes and retain
-`UNVERIFIED` probability status. Controlled outcomes do not advance the legacy
-RNG stream.
+`UNVERIFIED` outcome provenance. Controlled outcomes do not advance the legacy
+or Native RNG stream.
 
 Pending event-effect and post-reward modifier-curse responses also include a
-read-only `chanceLaw` and `boundaryFingerprint`. The law assigns equal weight
-to each legal request index (`choice_index:n`); candidate labels describe the
-mechanical result associated with an index but do not change these index
-weights. The response is useful for a caller-managed sampler, while source
-weights, stream parity and original-game probabilities remain `UNVERIFIED`.
+read-only `chanceLaw` and `boundaryFingerprint`. For generic requests, the law
+assigns equal weight to each legal request index (`choice_index:n`); candidate
+labels describe the mechanical result associated with an index but do not
+change these index weights. Stone lift instead collapses all 100 bounded
+indices to its single `no_effect` outcome under a `SOURCE_VERIFIED` law.
+Generic source weights, stream parity and original-game probabilities remain
+`UNVERIFIED`.
 The pending boundary fingerprint binds the event/choice/request context and
 excludes private RNG state. The response's top-level `fingerprint` remains the
 exact-state stale-request guard.
@@ -48,6 +61,9 @@ The supported event-choice sites are:
   event relic and card offers
 - `event.reward.random_modifier_curse.index_draw` after a supported event's
   post-reward modifier-curse offer is completed
+- `event.stone_of_all_time.lift_ticket` for the configured Native Stone of All
+  Time event; all 100 source ticket indices map to one `no_effect` outcome and
+  the read-only Chance Law is `SOURCE_VERIFIED`
 - `relic_grab_bag.queue_shuffle.swap_index` and
   `relic_grab_bag.rarity.ticket` while acquiring Toy Box through a supported
   controlled event choice
@@ -75,7 +91,7 @@ The supported event-choice sites are:
 - `relic.unowned_random_selection.index_draw` for eligible event options
 
 Any other random site reached by the event option continues to fail closed.
-Native regional potion routes, post-reward random generation outside the
+Other Native regional potion routes, post-reward random generation outside the
 modifier-curse site, other custom event reward effects,
 source-pool differences, native stream ownership and reference probabilities
 remain outside this boundary. The post-reward modifier-curse draw has a
@@ -84,6 +100,11 @@ extends the original event-choice transcript when resumed. For supported
 multi-draw event effects, the frame re-enters only the current effect from its
 saved start and injects that effect's saved decision prefix; all completed
 earlier effects remain in the partial run.
+
+Stone of All Time `push_ticket` remains a read-only law only. Its ticket runs
+after a player deck-card choice, so it is not part of this atomic event-choice
+session. The lift session requires the configured Native event stream;
+legacy lift fallback and cursor parity remain outside its law.
 
 Legacy run-start and Shovel action draws use the separate
 [`CONTROLLED_RUN_ACTION_D3.md`](CONTROLLED_RUN_ACTION_D3.md) boundary.

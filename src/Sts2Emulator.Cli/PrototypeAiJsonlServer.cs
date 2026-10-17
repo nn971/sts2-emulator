@@ -619,6 +619,8 @@ internal static class PrototypeAiJsonlServer
             var request = effect?.PendingRequest ?? reward?.PendingRequest;
             var candidateLabels = effect?.PendingCandidateLabels ??
                 reward?.PendingCandidateLabels;
+            var pendingProbabilityStatus = chanceLaw?.ProbabilityStatus ??
+                ChanceLawV111.UnverifiedStatus;
             object? pending = session.NaturePending ? new
             {
                 kind = effect is null
@@ -629,7 +631,7 @@ internal static class PrototypeAiJsonlServer
                 request,
                 candidateLabels,
                 chanceLaw,
-                probabilityStatus = ChanceLawV111.UnverifiedStatus
+                probabilityStatus = pendingProbabilityStatus
             } : null;
             var actions = session.CanAdvancePlayer
                 ? environment.Observe(session.Run).LegalActions
@@ -658,7 +660,7 @@ internal static class PrototypeAiJsonlServer
                     .Select(step => step.PlayerAction).ToArray(),
                 natureProvider = ReferenceNatureV111.ProviderId,
                 natureSampleCount = session.NatureState.SampleCount,
-                probabilityStatus = ChanceLawV111.UnverifiedStatus
+                probabilityStatus = pendingProbabilityStatus
             };
         }
 
@@ -2102,6 +2104,13 @@ internal static class PrototypeAiJsonlServer
                 };
             if (!isPending)
                 transcript = completedTrace;
+            var pendingLaw = continuation is not null
+                ? ChanceLawEngineV111.QueryControlledEventChoice(state)
+                : rewardContinuation is not null
+                    ? ChanceLawEngineV111.QueryRandomIndex(
+                        rewardContinuation.EventId,
+                        rewardContinuation.PendingRequest)
+                    : null;
             object? pending = continuation is not null
                 ? (object)new
                 {
@@ -2119,9 +2128,8 @@ internal static class PrototypeAiJsonlServer
                     }),
                     request = continuation.PendingRequest,
                     candidateLabels = continuation.PendingCandidateLabels,
-                    chanceLaw = ChanceLawEngineV111.QueryRandomIndex(
-                        continuation.EventId, continuation.PendingRequest),
-                    probabilityStatus = "UNVERIFIED"
+                    chanceLaw = pendingLaw,
+                    probabilityStatus = pendingLaw!.ProbabilityStatus
                 }
                 : rewardContinuation is not null
                     ? (object)new
@@ -2140,10 +2148,8 @@ internal static class PrototypeAiJsonlServer
                         }),
                         request = rewardContinuation.PendingRequest,
                         candidateLabels = rewardContinuation.PendingCandidateLabels,
-                        chanceLaw = ChanceLawEngineV111.QueryRandomIndex(
-                            rewardContinuation.EventId,
-                            rewardContinuation.PendingRequest),
-                        probabilityStatus = "UNVERIFIED"
+                        chanceLaw = pendingLaw,
+                        probabilityStatus = pendingLaw!.ProbabilityStatus
                     }
                     : null;
             return new

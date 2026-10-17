@@ -488,7 +488,7 @@ public static partial class ChanceLawEngineV111
         ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
         ArgumentException.ThrowIfNullOrWhiteSpace(actionId);
         if (!NativeEventNoEffectIndexQuerySiteIds.Contains(
-                siteId, StringComparer.Ordinal) || ordinal != 0 ||
+                siteId, StringComparer.Ordinal) || ordinal != 1 ||
             origin.Phase != RunPhase.Event ||
             origin.World is not { Act: 2, Event: { } evt } world ||
             origin.NativeRunRng is null ||
@@ -530,7 +530,7 @@ public static partial class ChanceLawEngineV111
             throw new InvalidOperationException(
                 $"Stone of All Time choice '{expectedChoice}' is not legal in the current state.");
 
-        var ownerId = $"event:stone_of_all_time:{expectedChoice}:ticket";
+        var ownerId = $"event:stone_of_all_time:{expectedChoice}";
         var streamId = NativeRngV111Contexts.EventStreamId(
             PrototypeNativeStoneOfAllTime.NativeRngEventId);
         var conditioningFingerprint = CanonicalJson.Sha256(new

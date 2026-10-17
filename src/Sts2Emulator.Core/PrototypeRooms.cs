@@ -1358,6 +1358,9 @@ public sealed partial class PrototypeGameEngine
             return false;
         var choice = definition.Choices.FirstOrDefault(item =>
             StringComparer.Ordinal.Equals(item.Id, choiceId));
+        if (eventId == PrototypeNativeStoneOfAllTime.EventId
+            && choiceId == "lift")
+            return choice is not null;
         return choice?.Effects.Any(effect =>
             effect.Kind is
                 PrototypeRunEffectKind.GainRandomRareCard or
@@ -1536,13 +1539,62 @@ public sealed partial class PrototypeGameEngine
         var nextId = world.NextCardInstanceId;
         var nativeRunRng = state.NativeRunRng?.Fork();
 
+        if (resume is not null
+            && eventState.EventId == PrototypeNativeStoneOfAllTime.EventId
+            && resume.ChoiceId == "lift")
+        {
+            var result = StepNativeStoneOfAllTimeLift(state);
+            var resultWorld = RequireWorld(result);
+            return result with
+            {
+                World = resultWorld with
+                {
+                    Event = resultWorld.Event! with { ControlledChoice = null }
+                }
+            };
+        }
+
         if (resume is null)
         {
             if (eventState.EventId == PrototypeNativeStoneOfAllTime.EventId
                 && action.Kind == "event_choice"
                 && action.ReadPayload<EventChoicePayload>().ChoiceId == "lift")
             {
-                return StepNativeStoneOfAllTimeLift(state);
+                try
+                {
+                    return StepNativeStoneOfAllTimeLift(state);
+                }
+                catch (ControlledEventChoiceChanceRequiredException exception)
+                {
+                    var continuation =
+                        new PrototypeControlledEventChoiceContinuationV111(
+                            state,
+                            eventState.EventId,
+                            "lift",
+                            0,
+                            0,
+                            [],
+                            [],
+                            null,
+                            0,
+                            0,
+                            null,
+                            [],
+                            exception.Request,
+                            exception.CandidateLabels,
+                            []);
+                    continuation.Validate();
+                    return state with
+                    {
+                        World = world with
+                        {
+                            Event = eventState with
+                            {
+                                ControlledChoice = continuation
+                            }
+                        }
+                    };
+                }
             }
 
             if (eventState.EventId == PrototypeNativeFakeMerchant.EventId)

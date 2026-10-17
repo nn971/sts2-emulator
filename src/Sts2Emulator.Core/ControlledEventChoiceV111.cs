@@ -22,6 +22,13 @@ public static class ControlledEventChoiceEngineV111
                 eventState.EventId, choiceId))
             throw new InvalidOperationException(
                 "Controlled event choice requires a supported option on the current event page.");
+        if (eventState.EventId == PrototypeNativeStoneOfAllTime.EventId
+            && choiceId == "lift"
+            && (source.NativeRunRng is null
+                || source.World is not { } world
+                || !PrototypeGameEngine.UsesNativeRegionalSystems(world)))
+            throw new NotSupportedException(
+                "ReferenceNature Stone of All Time lift requires the configured Native event stream.");
         var result = Step(source, GameAction.Create(
             "event_choice", new EventChoicePayload(choiceId)));
         if (result.World?.Event?.ControlledChoice is null)
@@ -348,7 +355,35 @@ public sealed record PrototypeControlledEventChoiceContinuationV111(
             item => item.Id == ChoiceId)
             ?? throw new InvalidDataException(
                 "Controlled event-choice frame references an unknown option.");
-        if (NextEffectIndex >= choice.Effects.Length)
+        var isStoneLiftTicket = EventId ==
+                PrototypeNativeStoneOfAllTime.EventId
+            && ChoiceId == "lift"
+            && choice.Effects.Length == 0
+            && NextEffectIndex == 0
+            && EffectDecisionStartIndex == 0
+            && Decisions.Length == 0
+            && QueuedPotionIds.Length == 0
+            && QueuedDeckChoices.Length == 0
+            && DeferredReward is null
+            && DeferredHpLoss == 0
+            && DeferredGoldLoss == 0
+            && DeferredCardId is null
+            && PendingRequest.SiteId ==
+                ChanceLawEngineV111.NativeStoneOfAllTimeLiftTicketSiteId
+            && PendingRequest.StreamId == NativeRngV111Contexts.EventStreamId(
+                PrototypeNativeStoneOfAllTime.NativeRngEventId)
+            && PendingRequest.OwnerId == "event:stone_of_all_time:lift"
+            && PendingRequest.Ordinal == 1
+            && PendingRequest.OperationKind == "bounded_integer"
+            && PendingRequest.BoundedCount == 100
+            && PartialState.NativeRunRng is not null
+            && PartialState.World is { } partialWorld
+            && PrototypeGameEngine.UsesNativeRegionalSystems(partialWorld)
+            && partialEvent.NativeEventPotionSlot is { } potionSlot
+            && potionSlot >= 0
+            && potionSlot < PartialState.Player.PotionSlots.Length
+            && PartialState.Player.PotionSlots[potionSlot] is not null;
+        if (NextEffectIndex >= choice.Effects.Length && !isStoneLiftTicket)
             throw new InvalidDataException(
                 "Controlled event-choice frame has no unresolved effect.");
         foreach (var potionId in QueuedPotionIds)
@@ -370,6 +405,13 @@ public sealed record PrototypeControlledEventChoiceContinuationV111(
         if (PendingCandidateLabels is null)
             throw new InvalidDataException(
                 "Controlled event-choice continuation is missing candidate labels.");
+        if (isStoneLiftTicket &&
+            !PendingCandidateLabels.SequenceEqual(
+                Enumerable.Range(0, 100).Select(index =>
+                    index.ToString(CultureInfo.InvariantCulture)),
+                StringComparer.Ordinal))
+            throw new InvalidDataException(
+                "Stone of All Time lift continuation has malformed ticket labels.");
         for (var index = 0; index < Decisions.Length; index++)
         {
             var decision = Decisions[index];

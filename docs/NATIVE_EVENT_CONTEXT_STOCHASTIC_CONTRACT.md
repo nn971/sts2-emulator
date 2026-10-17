@@ -88,14 +88,21 @@ integer fallbacks and adjacent unsupported source alternatives remain
 `UNVERIFIED`.
 
 Stone of All Time's `push_ticket` and `lift_ticket` each have a read-only
-one-outcome law at the legal active-event choice boundary. The query conditions
-on the requested `push` or `lift` action and confirms that it is currently
-legal; all 100 bounded indices map to `no_effect`. This mapping is
-`SOURCE_VERIFIED` from the pinned resolver, which discards the selected index.
-The law does not inspect the saved Native cursor and does not create a
-ReferenceNature event session: the ordinary event action continues to own the
-source cursor draw. Legacy fallback cursor and result behavior remain outside
-this claim.
+one-outcome law at the legal active-event choice boundary. Both tickets are at
+ordinal 1: the entry potion-slot draw owns ordinal 0. The query conditions on
+the requested action and confirms that it is currently legal; all 100 bounded
+indices map to `no_effect`. This mapping is `SOURCE_VERIFIED` from the pinned
+resolver, which discards the selected index. The law does not inspect the
+saved Native cursor.
+
+The Native `lift_ticket` also uses the existing atomic controlled event-choice
+session. It suspends from the untouched pre-choice state, then replays the
+ordinary lift action after Nature selects `no_effect`; potion removal, Max HP,
+and the terminal page commit together. The controlled provider leaves the
+Native event cursor at its post-entry-slot value. `push_ticket` remains a
+read-only law because its draw follows a player deck-card choice. Neither
+the lift session nor the read-only push law claims seeded Native cursor parity
+or models the legacy fallback.
 
 The entry-time `potion_slot.index_draw` also has a pre-entry conditional law.
 The caller supplies the legal Event-node action and explicitly declares Stone

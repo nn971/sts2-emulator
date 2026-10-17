@@ -2087,7 +2087,54 @@ public static partial class ChanceLawEngineV111
     {
         ArgumentNullException.ThrowIfNull(run);
         var description = DescribeControlledEventChoice(run);
+        if (run.World?.Event?.EventId ==
+                PrototypeNativeStoneOfAllTime.EventId &&
+            run.World?.Event?.ControlledChoice?.ChoiceId == "lift")
+            return QueryControlledStoneOfAllTimeLiftTicket(
+                run, description.Request,
+                description.BoundaryFingerprint);
         return QueryRandomIndex(description.EventId, description.Request);
+    }
+
+    private static ChanceLawV111 QueryControlledStoneOfAllTimeLiftTicket(
+        RunState run, RandomIndexRequestV111 request,
+        string boundaryFingerprint)
+    {
+        var continuation = run.World?.Event?.ControlledChoice ??
+            throw new InvalidOperationException(
+                "Stone of All Time lift law requires a pending controlled event choice.");
+        continuation.Validate();
+        var expectedStreamId = NativeRngV111Contexts.EventStreamId(
+            PrototypeNativeStoneOfAllTime.NativeRngEventId);
+        if (continuation.EventId != PrototypeNativeStoneOfAllTime.EventId ||
+            continuation.ChoiceId != "lift" ||
+            request.SiteId != NativeStoneOfAllTimeLiftTicketSiteId ||
+            request.StreamId != expectedStreamId ||
+            request.OwnerId != "event:stone_of_all_time:lift" ||
+            request.Ordinal != 1 ||
+            request.OperationKind != "bounded_integer" ||
+            request.BoundedCount != 100)
+            throw new InvalidOperationException(
+                "Pending Stone of All Time lift request disagrees with its source ticket boundary.");
+
+        var law = QueryNativeStoneOfAllTimeNoEffectIndex(
+            continuation.PartialState,
+            NativeStoneOfAllTimeLiftTicketSiteId,
+            request.Ordinal,
+            "lift");
+        var conditioningFingerprint = CanonicalJson.Sha256(new
+        {
+            boundary = "reference_nature.controlled_event.stone_of_all_time.lift_ticket",
+            boundaryFingerprint,
+            nativeConditioningFingerprint = law.ConditioningFingerprint,
+            request
+        });
+        return CreateNativeBoundaryLaw(
+            request.SiteId, law.OperationKind, request.OwnerId,
+            request.Ordinal, law.ConditioningPolicyId,
+            conditioningFingerprint,
+            law.ProbabilityProvenance, law.Outcomes,
+            law.ProbabilityStatus);
     }
 
     public static string ControlledEventChoiceBoundaryFingerprint(RunState run)

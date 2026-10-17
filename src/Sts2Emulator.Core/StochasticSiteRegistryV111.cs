@@ -246,6 +246,7 @@ public static class StochasticSiteRegistryV111
         "run.random_pool_distinct.shuffle_swap_index",
         "event.reward.random_modifier_curse.index_draw",
         "event.fake_merchant.relic_offer.shuffle_swap_index",
+        "event.stone_of_all_time.lift_ticket",
         NativeGloryAncientsV111.BeautifulBraceletShuffleSiteId,
         NativeGloryAncientsV111.DistinguishedCapeCurseSiteId,
         NativeGloryAncientsV111.FurCoatShuffleSiteId,
