@@ -323,8 +323,8 @@ public static class ChanceLawEngineV111
     }
 
     /// <summary>Query a controlled legacy run-action request without exposing
-    /// the selected result. The event identity includes the exact saved run
-    /// boundary, action, support and candidate labels.</summary>
+    /// the selected result. The event identity binds the action and request
+    /// context without incorporating private run-provider state.</summary>
     public static ChanceLawV111 QueryControlledRunAction(RunState run)
     {
         ArgumentNullException.ThrowIfNull(run);

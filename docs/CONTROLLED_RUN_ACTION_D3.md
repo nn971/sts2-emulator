@@ -16,9 +16,10 @@ Shovel commits the relic as the normal reward.
 The pending continuation is part of ordinary run snapshots. Player-facing
 observations hide its Nature actions; the explicit controller exposes only
 `choose_controlled_run_action_outcome` actions while the frame is pending.
-Chance supports larger than the advertised inline-action limit keep their
-compact request bounds and omit expanded labels/actions; clients can still
-resolve a selected index through `controlled_run_action_resolve`.
+For supports larger than the advertised inline-action limit, the controller
+omits expanded action objects and candidate labels but retains the compact
+request bounds. The Chance Law still lists each legal request index, which
+clients resolve through `controlled_run_action_resolve`.
 
 Each pending response now includes a read-only `chanceLaw`, its
 `boundaryFingerprint`, and an `eventId`. The law assigns equal weight to each
