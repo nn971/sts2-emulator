@@ -1,5 +1,25 @@
 namespace Sts2Emulator.Core;
 
+/// <summary>Versioned list of stable sites served by the direct Chance Law
+/// query operation. Query-only sites are distinct from resumable session
+/// coverage.</summary>
+public sealed record StochasticChanceLawQueryCoverageV111(
+    string SchemaId, string QueryOperation, string[] SiteIds)
+{
+    public const string CurrentSchemaId =
+        "sts2-v111-stochastic-chance-law-query-coverage-v1";
+
+    public void Validate()
+    {
+        if (SchemaId != CurrentSchemaId ||
+            QueryOperation != "chance_law_query" || SiteIds is null ||
+            SiteIds.Any(string.IsNullOrWhiteSpace) ||
+            SiteIds.Distinct(StringComparer.Ordinal).Count() != SiteIds.Length)
+            throw new InvalidDataException(
+                "Invalid stochastic Chance Law query coverage.");
+    }
+}
+
 /// <summary>
 /// Versioned report of which stochastic sites each atomic ReferenceNature
 /// session can resolve. This is separate from the union of Nature-choice
@@ -155,6 +175,11 @@ public static class StochasticSiteRegistryV111
         UnownedRandomRelicSelectionSiteId
     ];
 
+    private static readonly string[] ChanceLawQuerySites =
+    [
+        NativeOrobasEventV111.OfferSiteId
+    ];
+
     private static readonly HashSet<string> SemanticReferenceNatureSiteSet =
         new(SemanticReferenceNatureSites, StringComparer.Ordinal);
     private static readonly HashSet<string> RunActionSiteSet =
@@ -201,6 +226,8 @@ public static class StochasticSiteRegistryV111
         (string[])RunActionSessionSites.Clone();
     public static string[] ControlledEventChoiceSiteIds =>
         (string[])ControlledEventChoiceSites.Clone();
+    public static string[] ChanceLawQuerySiteIds =>
+        (string[])ChanceLawQuerySites.Clone();
     public static string[] NatureChoiceSiteIds =>
         (string[])NatureChoiceSites.Clone();
 
@@ -224,6 +251,19 @@ public static class StochasticSiteRegistryV111
 
     public static bool IsControlledEventChoiceSite(string siteId) =>
         ControlledEventChoiceSiteSet.Contains(siteId);
+
+    public static bool IsChanceLawQuerySite(string siteId) =>
+        ChanceLawQuerySites.Contains(siteId, StringComparer.Ordinal);
+
+    public static StochasticChanceLawQueryCoverageV111
+        CreateChanceLawQueryCoverage()
+    {
+        var coverage = new StochasticChanceLawQueryCoverageV111(
+            StochasticChanceLawQueryCoverageV111.CurrentSchemaId,
+            "chance_law_query", ChanceLawQuerySiteIds);
+        coverage.Validate();
+        return coverage;
+    }
 
     public static StochasticSessionCoverageV111 CreateSessionCoverage()
     {

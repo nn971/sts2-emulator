@@ -190,6 +190,8 @@ public static class ChanceLawEngineV111
         "uniform-bounded-draw-pile-insertion-position-v1";
     public const string CardShortlistConditioningPolicyId =
         "uniform-sequential-without-replacement-v1";
+    public const string EventOfferConditioningPolicyId =
+        "uniform-ordered-event-offer-support-v1";
 
     public static ChanceLawV111 QueryIntent(SemanticIntentEventV111 intent)
     {
@@ -269,6 +271,45 @@ public static class ChanceLawEngineV111
             request.OperationKind, request.OwnerId, request.Ordinal,
             RandomIndexConditioningPolicyId, conditioningFingerprint,
             "uniform-saved-index-support-unverified", outcomes);
+    }
+
+    /// <summary>
+    /// Query Orobas's pre-event offer law over stable choice identities. The
+    /// same eligible support builder is used by the opening resolver; neither
+    /// a selected index nor private RNG state enters this query.
+    /// </summary>
+    public static ChanceLawV111 QueryOrobasOffer(
+        RunState run, int ordinal)
+    {
+        ArgumentNullException.ThrowIfNull(run);
+        NativeOrobasEventV111.ValidateOpeningBoundary(run);
+        var siteId = NativeOrobasEventV111.OfferSiteId;
+        var ownerId = "event:OROBAS:act:2:floor:0";
+        var candidates = NativeOrobasEventV111.OfferCandidateIds(
+            run.Player, ordinal);
+        var outcomes = candidates.Select(choiceId =>
+            new ChanceLawOutcomeV111("event_choice:" + choiceId, 1L))
+            .ToArray();
+        var conditioningFingerprint = CanonicalJson.Sha256(new
+        {
+            siteId,
+            ownerId,
+            ordinal,
+            CandidateChoiceIds = candidates,
+            policy = EventOfferConditioningPolicyId
+        });
+        var eventId = CanonicalJson.Sha256(new
+        {
+            schemaId = ChanceLawV111.CurrentSchemaId,
+            siteId,
+            ownerId,
+            ordinal,
+            conditioningFingerprint
+        });
+        return Create(eventId, siteId, "event_offer_index", ownerId,
+            ordinal, EventOfferConditioningPolicyId,
+            conditioningFingerprint,
+            "uniform-eligible-event-offer-pool-unverified", outcomes);
     }
 
     /// <summary>Query a controlled legacy run-action request without exposing

@@ -45,6 +45,29 @@ public static class NativeOrobasEventV111
         && (choiceId != ChoiceId(PrototypeNativeOrobasRelics.ArchaicToothId)
             || PrototypeNativeOrobasRelics.IsArchaicToothEligible(player));
 
+    internal static string[] OfferCandidateIds(PlayerState player, int ordinal)
+    {
+        ArgumentNullException.ThrowIfNull(player);
+        if (ordinal < 0 || ordinal >= RelicPools.Length)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+
+        var eligible = RelicPools[ordinal].Select(ChoiceId)
+            .Where(id => IsChoiceEligible(player, id)).ToArray();
+        return eligible.Length == 0 ? [LockedChoiceId] : eligible;
+    }
+
+    internal static void ValidateOpeningBoundary(RunState state)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        if (state.World is not { Act: 2, Floor: 0, Combat: null,
+                Reward: null, Event: null } world
+            || world.Map.CurrentNodeId is not null
+            || state.Phase != RunPhase.MapChoice
+            || world.EventIds.Contains(EventId, StringComparer.Ordinal))
+            throw new InvalidOperationException(
+                "Orobas requires an unvisited Hive Ancient boundary.");
+    }
+
     public static bool IsOpeningEvent(RunWorldState world) =>
         world.Act == 2 && world.Floor == 0 && world.Map.CurrentNodeId is null
         && world.Event?.EventId == EventId;
@@ -69,24 +92,16 @@ public static class NativeOrobasEventV111
             throw new ArgumentException(
                 "Orobas offer generation requires a supported random provider mode.",
                 nameof(provider));
-        if (state.World is not { Act: 2, Floor: 0, Combat: null,
-                Reward: null, Event: null } world
-            || world.Map.CurrentNodeId is not null
-            || state.Phase != RunPhase.MapChoice
-            || world.EventIds.Contains(EventId, StringComparer.Ordinal))
-            throw new InvalidOperationException(
-                "Orobas requires an unvisited Hive Ancient boundary.");
+        ValidateOpeningBoundary(state);
 
+        var world = state.World!;
         var fork = state.Fork();
         var context = NativeRngV111Contexts.ForEvent(fork.RunSeed, "OROBAS");
         var rng = new RngBundle([context]);
         var decisions = new List<RandomIndexDecisionV111>(RelicPools.Length);
-        var offers = RelicPools.Select((pool, ordinal) =>
+        var offers = Enumerable.Range(0, RelicPools.Length).Select(ordinal =>
         {
-            var eligible = pool.Select(ChoiceId)
-                .Where(id => IsChoiceEligible(fork.Player, id)).ToArray();
-            if (eligible.Length == 0)
-                eligible = [LockedChoiceId];
+            var eligible = OfferCandidateIds(fork.Player, ordinal);
             var decision = provider.Resolve(new RandomIndexRequestV111(
                 OfferSiteId, context.StreamId,
                 "event:OROBAS:act:2:floor:0", ordinal,
@@ -159,22 +174,20 @@ public static class NativeOrobasEventV111
             var bundle = new RngBundle([initial]);
             var replayProvider = new NativeRandomIndexProviderV111(
                 recordToJournal: false);
-            var expectedOffers = RelicPools.Select((pool, ordinal) =>
-            {
-                var eligible = pool.Select(ChoiceId)
-                    .Where(id => IsChoiceEligible(state.Player, id)).ToArray();
-                if (eligible.Length == 0)
-                    eligible = [LockedChoiceId];
-                var decision = replayProvider.Resolve(
-                    new RandomIndexRequestV111(
-                        OfferSiteId,
-                        initial.StreamId,
-                        "event:OROBAS:act:2:floor:0",
-                        ordinal,
-                        Enumerable.Range(0, eligible.Length).ToArray()),
-                    bundle);
-                return eligible[decision.SelectedIndex];
-            }).ToArray();
+            var expectedOffers = Enumerable.Range(0, RelicPools.Length)
+                .Select(ordinal =>
+                {
+                    var eligible = OfferCandidateIds(state.Player, ordinal);
+                    var decision = replayProvider.Resolve(
+                        new RandomIndexRequestV111(
+                            OfferSiteId,
+                            initial.StreamId,
+                            "event:OROBAS:act:2:floor:0",
+                            ordinal,
+                            Enumerable.Range(0, eligible.Length).ToArray()),
+                        bundle);
+                    return eligible[decision.SelectedIndex];
+                }).ToArray();
             if (!offers.SequenceEqual(expectedOffers, StringComparer.Ordinal)
                 || NativeRngV111.ToSnapshot(stream)
                     != NativeRngV111.ToSnapshot(bundle.Streams[0]))

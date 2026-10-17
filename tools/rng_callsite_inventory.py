@@ -512,7 +512,7 @@ def render_markdown(report: dict[str, Any]) -> str:
         f"expressions: **{report['shuffle_matrix_mapping_counts']['dynamic_expression']}**; "
         f"unmapped: **{report['shuffle_matrix_mapping_counts']['unmapped']}**; "
         f"missing: **{report['shuffle_matrix_mapping_counts']['missing']}**.",
-        "ReferenceNature registry IDs mapped to migration-matrix rows: "
+        "Registered stochastic site IDs mapped to migration-matrix rows: "
         f"**{report['registry_matrix_coverage']['mapped_site_count']}/"
         f"{report['registry_matrix_coverage']['registered_site_count']}**; "
         f"IDs without rows: **{len(report['registry_matrix_coverage']['site_ids_without_matrix_rows'])}**; "

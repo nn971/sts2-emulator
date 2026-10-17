@@ -1214,6 +1214,9 @@ internal static class PrototypeAiJsonlServer
                                 StochasticCapabilitiesV111.Create(),
                             stochasticSessionCoverage =
                                 StochasticSiteRegistryV111.CreateSessionCoverage(),
+                            stochasticChanceLawQueryCoverage =
+                                StochasticSiteRegistryV111
+                                    .CreateChanceLawQueryCoverage(),
                             referenceNatureStateSnapshotSchemaId =
                                 RunSnapshot.ReferenceNatureSchemaId,
                             referenceNatureSessionSchemaId =
@@ -1410,6 +1413,28 @@ internal static class PrototypeAiJsonlServer
                             manifest = PrototypeCapabilities.Create()
                         });
                         break;
+
+                    case "chance_law_query":
+                    {
+                        var siteId = RequiredString(request, "site_id");
+                        if (!StochasticSiteRegistryV111
+                                .IsChanceLawQuerySite(siteId))
+                            throw new NotSupportedException(
+                                $"Chance Law query does not support site '{siteId}'.");
+                        var law = ChanceLawEngineV111.QueryOrobasOffer(
+                            RequireState(request),
+                            OptionalInt(request, "ordinal") ??
+                                throw new ArgumentException(
+                                    "Request field 'ordinal' is required."));
+                        Write(new
+                        {
+                            requestId,
+                            ok = true,
+                            chanceLawSchemaId = ChanceLawV111.CurrentSchemaId,
+                            law
+                        });
+                        break;
+                    }
 
                     case "v111_coverage":
                         Write(new { requestId, ok = true, coverage = V111Coverage.Create() });

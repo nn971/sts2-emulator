@@ -32,6 +32,18 @@ class State:
     def exact_hash(self):
         return self.session.call("exact_hash", state_handle=self.handle)["exactHash"]
 
+    def query_chance_law(self, site_id: str, *, ordinal: int = 0):
+        """Read an advertised pre-outcome Chance Law without changing state."""
+        if not self.session.supports_chance_law_query(site_id):
+            raise EmulatorError(
+                f"No direct Chance Law query is advertised for site {site_id!r}")
+        if type(ordinal) is not int or ordinal < 0:
+            raise ValueError("ordinal must be a nonnegative integer")
+        result = self.session.call(
+            "chance_law_query", state_handle=self.handle,
+            site_id=site_id, ordinal=ordinal)
+        return result["law"]
+
     def save_snapshot(self):
         """Return hidden exact state; this is not a fair-policy observation."""
         return self.session.call("save_snapshot", state_handle=self.handle)["snapshot"]
@@ -966,6 +978,15 @@ class Session:
             return any(site_id in coverage.get(field, [])
                        for field in fields.values())
         return site_id in coverage.get(fields[session], [])
+
+    def supports_chance_law_query(self, site_id: str) -> bool:
+        """Check the separate, versioned read-only Chance Law query coverage."""
+        coverage = self.capabilities.get(
+            "stochasticChanceLawQueryCoverage") or {}
+        return (coverage.get("schemaId") ==
+                "sts2-v111-stochastic-chance-law-query-coverage-v1"
+                and coverage.get("queryOperation") == "chance_law_query"
+                and site_id in coverage.get("siteIds", []))
 
     def call(self, operation, **payload):
         with self._lock:
