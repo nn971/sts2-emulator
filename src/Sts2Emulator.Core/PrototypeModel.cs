@@ -382,7 +382,6 @@ public sealed record PrototypeAutomaticPipelineContinuationState(
     PrototypeCombatEventKind? PendingPostDispatchEventKind = null,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     PrototypeOpeningCombatStage? OpeningStage = null,
-    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     int? ControlledDrawRemaining = null,
     int? ControlledDrawCostRemaining = null,
     // Separately versioned semantic Nature cursor: it tracks one ordinary
@@ -394,10 +393,80 @@ public sealed record PrototypeAutomaticPipelineContinuationState(
     // resumes after the saved event-dispatch continuation, before applying
     // the deterministic hand-draw prelude and starting DrawCards.
     bool ControlledSemanticBeforeHandDrawPending = false,
-    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
     bool ControlledRecycleStratagemPending = false,
-    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
-    PrototypeControlledEnemyActionContinuationV111? ControlledEnemyAction = null);
+    PrototypeControlledEnemyActionContinuationV111? ControlledEnemyAction = null)
+{
+    /// <summary>
+    /// Provider-owned decisions and resume cursors for this mechanics
+    /// continuation. Its members below retain their flattened snapshot names.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public PrototypeAutomaticPipelineStochasticStateV111 Stochastic { get; init; } =
+        new(ControlledDrawRemaining, ControlledDrawCostRemaining,
+            ControlledSemanticDrawRemaining, ControlledSemanticDrawRequested,
+            ControlledSemanticBeforeHandDrawPending,
+            ControlledRecycleStratagemPending, ControlledEnemyAction);
+
+    [System.Text.Json.Serialization.JsonIgnore(Condition =
+        System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public int? ControlledDrawRemaining
+    {
+        get => Stochastic.ControlledDrawRemaining;
+        init => Stochastic = Stochastic with { ControlledDrawRemaining = value };
+    }
+
+    public int? ControlledDrawCostRemaining
+    {
+        get => Stochastic.ControlledDrawCostRemaining;
+        init => Stochastic = Stochastic with
+        { ControlledDrawCostRemaining = value };
+    }
+
+    public int? ControlledSemanticDrawRemaining
+    {
+        get => Stochastic.ControlledSemanticDrawRemaining;
+        init => Stochastic = Stochastic with
+        { ControlledSemanticDrawRemaining = value };
+    }
+
+    public int? ControlledSemanticDrawRequested
+    {
+        get => Stochastic.ControlledSemanticDrawRequested;
+        init => Stochastic = Stochastic with
+        { ControlledSemanticDrawRequested = value };
+    }
+
+    public bool ControlledSemanticBeforeHandDrawPending
+    {
+        get => Stochastic.ControlledSemanticBeforeHandDrawPending;
+        init => Stochastic = Stochastic with
+        { ControlledSemanticBeforeHandDrawPending = value };
+    }
+
+    [System.Text.Json.Serialization.JsonIgnore(Condition =
+        System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public bool ControlledRecycleStratagemPending
+    {
+        get => Stochastic.ControlledRecycleStratagemPending;
+        init => Stochastic = Stochastic with
+        { ControlledRecycleStratagemPending = value };
+    }
+
+    [System.Text.Json.Serialization.JsonIgnore(Condition =
+        System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public PrototypeControlledEnemyActionContinuationV111?
+        ControlledEnemyAction
+    {
+        get => Stochastic.ControlledEnemyAction;
+        init => Stochastic = Stochastic with
+        { ControlledEnemyAction = value };
+    }
+
+    public PrototypeAutomaticPipelineContinuationState Fork() => this with
+    {
+        Stochastic = Stochastic.Fork()
+    };
+}
 
 /// <summary>
 /// A source-owned, blocking choice in the enemy-side action pipeline.
@@ -2280,11 +2349,7 @@ public sealed record CombatState(
         AutomaticPipelineContinuation =
             AutomaticPipelineContinuation is null
                 ? null
-                : AutomaticPipelineContinuation with
-                {
-                    ControlledEnemyAction =
-                        AutomaticPipelineContinuation.ControlledEnemyAction?.Fork()
-                }
+                : AutomaticPipelineContinuation.Fork()
     };
 
     public CombatRelicState[] RelicStates =>
