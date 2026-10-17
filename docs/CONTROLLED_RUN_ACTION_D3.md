@@ -115,9 +115,9 @@ during initial legacy map generation. It does not cover later-act map
 regeneration or native map generation. Event-entry continuation covers legacy
 `event.selection.weighted_ticket` and listed legacy event initialization draws
 when a map Event node is selected. The separate
-`event.unknown_room.odds.ticket` request is supported only when a legacy run
-with no `NativeRunRng` enters an available Unknown node in a regional map
-profile; its 1000 equal request indices remain `UNVERIFIED` because they
+`event.unknown_room.odds.ticket` request is supported only when an unconfigured
+legacy run with no `NativeRunRng` enters an available Unknown node in a regional
+map profile; its 1000 equal request indices remain `UNVERIFIED` because they
 approximate the source unit-float mapping. Configured Native run streams and
 source cursor parity remain outside this boundary.
 

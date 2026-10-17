@@ -386,6 +386,7 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                             PendingRequest.SiteId);
                 var legacyUnknownRoomNode = node?.RoomType ==
                         PrototypeRoomType.Unknown
+                    && state.Configuration is null
                     && state.NativeRunRng is null
                     && PrototypeGameEngine.UsesNativeRegionalSystems(world);
                 var legacyShopNode = node?.RoomType == PrototypeRoomType.Shop
@@ -895,6 +896,7 @@ public static class ControlledRunActionEngineV111
     {
         if (action.Kind != "choose_map_node"
             || source.Phase != RunPhase.MapChoice
+            || source.Configuration is not null
             || source.NativeRunRng is not null
             || source.World is not { } world
             || !PrototypeGameEngine.UsesNativeRegionalSystems(world))
