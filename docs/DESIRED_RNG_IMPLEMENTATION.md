@@ -103,6 +103,11 @@ and card-selection draws, plus Punch Off and This or That's entry gold rolls
 and Lost Wisp's entry unit-float roll, through their event contexts. Other
 supported Overgrowth and Underdocks entry-gold rolls now use their per-event
 contexts too; native event result/cursor parity remains unverified.
+The opt-in native Punch Off event fight now persists the fixed
+`PunchOffEventEncounter` formation and each construct's `MonsterModel.Rng`
+cursor; its 2–9 HP reduction uses the matching CombatId-owned stream.
+Unopted and legacy combat retain the prototype path, and seeded native
+combat parity remains open.
 Configured merchant generation now routes sale-slot, card-pool, potion-pool,
 and item-price draws through the existing native player streams. Card and
 relic rarity use `player.rewards`; card and potion offers and merchant prices

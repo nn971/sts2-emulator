@@ -164,17 +164,29 @@ public sealed partial class PrototypeGameEngine
         // elite and boss initial formations, each with independent
         // encounter RNG. Unsupported entries must never fall back
         // to the prototype combat RNG.
-        var nativeFormation =
+        var nativePunchOffCombat =
             state.Configuration?.UsesExperimentalNativeWeakCombatEntry == true
-                ? NativeActOneEliteBossCombatEntryV111.IsSupported(encounter.Id)
+            && encounter.Id == PrototypeNativePunchOff.EncounterId;
+        NativeEncounterFormationV111? nativeFormation = null;
+        if (nativePunchOffCombat)
+        {
+            nativeFormation =
+                PrototypeNativePunchOff.PrepareNativeCombatFormation(
+                    state, world, encounter);
+        }
+        else if (state.Configuration?.UsesExperimentalNativeWeakCombatEntry
+            == true)
+        {
+            nativeFormation =
+                NativeActOneEliteBossCombatEntryV111.IsSupported(encounter.Id)
                     ? NativeActOneEliteBossCombatEntryV111.Prepare(
                         state, world, encounter)
                     : NativeActOneNormalCombatEntryV111.IsSupported(encounter.Id)
                         ? NativeActOneNormalCombatEntryV111.Prepare(
                             state, world, encounter)
                         : NativeActOneWeakCombatEntryV111.Prepare(
-                            state, world, encounter)
-                : null;
+                            state, world, encounter);
+        }
         var enemySpecs = nativeFormation?.Enemies
             ?? encounter.ResolveEnemySpecs(
                 state.Rng,

@@ -143,6 +143,9 @@ public static class PrototypeNativePunchOff
     public const string EventId = "proto.native.underdocks.punch_off";
     public const string NativeRngEventId = "PUNCH_OFF";
     public const string EncounterId = "proto.encounter.punch_off_event";
+    public const string NativeEncounterEntry = "PunchOffEventEncounter";
+    public const string ConstructHpOffsetSiteId =
+        "event.punch_off.construct_hp_offset.index_draw";
 
     public static PrototypeEncounterDefinition Encounter { get; } = new(
         EncounterId,
@@ -151,6 +154,45 @@ public static class PrototypeNativePunchOff
         MinAct: 1,
         MaxAct: 1,
         Weight: 0);
+
+    public static NativeEncounterFormationV111 PrepareNativeCombatFormation(
+        RunState state, RunWorldState world,
+        PrototypeEncounterDefinition encounter)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(world);
+        ArgumentNullException.ThrowIfNull(encounter);
+        if (state.NativeRunRng is null
+            || world.Act != 1
+            || world.ActOneRegion != PrototypeActOneRegion.Underdocks
+            || world.Event?.EventId != EventId
+            || encounter.Id != EncounterId
+            || world.Map.GenerationProfileId
+                != PrototypeNativeUnderdocks.GenerationProfileId)
+            throw new NotSupportedException(
+                "Native Punch Off combat requires its configured Act 1 event run.");
+
+        var coordinate = world.Map.CurrentNodeId?.Split(':');
+        if (coordinate is not { Length: 3 }
+            || coordinate[0] != "1"
+            || !int.TryParse(coordinate[1], out var floor)
+            || !int.TryParse(coordinate[2], out var column)
+            || floor != world.Floor
+            || floor is < 1 or > 16
+            || column is < 0 or >= PrototypeNativeOvergrowthMap.MapWidth)
+            throw new NotSupportedException(
+                "Native Punch Off combat requires a valid Act 1 map coordinate.");
+
+        return NativeEncounterFormationFactoryV111.Generate(
+            state.RunSeed,
+            encounter,
+            NativeEncounterEntry,
+            totalFloor: world.Floor,
+            currentActIndex: 0,
+            firstMonsterCombatId: 1,
+            mapColumn: column,
+            mapRow: floor - 1);
+    }
 }
 
 public sealed partial class PrototypeGameEngine
@@ -482,18 +524,38 @@ public sealed partial class PrototypeGameEngine
                 throw new InvalidOperationException(
                     "Punch Off must start exactly two Constructs.");
             }
-            var enemies = combat.Enemies.Select((enemy, index) =>
-                enemy with
+            var enemies = new EnemyCombatState[combat.Enemies.Length];
+            for (var index = 0; index < combat.Enemies.Length; index++)
+            {
+                var enemy = combat.Enemies[index];
+                int selectedIndex;
+                if (combat.NativeRng is not null)
                 {
-                    Hp = Math.Max(1, enemy.Hp -
-                        (2 + LegacyRandomChoiceV111.ChooseBoundedInteger(
+                    combat = NativeCombatRngEntryV111.AdvanceMonsterLocal(
+                        combat,
+                        enemy.InstanceId,
+                        PrototypeNativePunchOff.ConstructHpOffsetSiteId,
+                        $"event:punch_off:construct_combat_id:{enemy.InstanceId}",
+                        maxExclusive: 8,
+                        ordinal: 0,
+                        out selectedIndex);
+                }
+                else
+                {
+                    selectedIndex = LegacyRandomChoiceV111
+                        .ChooseBoundedInteger(
                             state.Rng,
-                            "event.punch_off.construct_hp_offset.index_draw",
+                            PrototypeNativePunchOff.ConstructHpOffsetSiteId,
                             "combat",
                             $"enemy:{enemy.InstanceId}:construct:{index}",
-                            8).SelectedIndex)),
+                            8).SelectedIndex;
+                }
+                enemies[index] = enemy with
+                {
+                    Hp = Math.Max(1, enemy.Hp - (2 + selectedIndex)),
                     MoveIndex = index == 0 ? 1 : 0
-                }).ToArray();
+                };
+            }
             var combatWorld = RequireWorld(started);
             return started with
             {

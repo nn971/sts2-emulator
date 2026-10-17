@@ -519,9 +519,30 @@ public static class NativeCombatRngEntryV111
     /// </summary>
     public static CombatState AdvanceMonsterLocal(
         CombatState combat, long combatId, int maxExclusive,
-        out int sampled)
+        out int sampled) =>
+        AdvanceMonsterLocal(
+            combat,
+            combatId,
+            "diagnostic.monster_local.index_sample",
+            "creature:" + combatId,
+            maxExclusive,
+            ordinal: 0,
+            out sampled);
+
+    /// <summary>
+    /// Resolve one audited bounded operation on a creature-local stream and
+    /// persist the advanced cursor on that creature's native CombatId owner.
+    /// </summary>
+    public static CombatState AdvanceMonsterLocal(
+        CombatState combat, long combatId, string siteId, string ownerId,
+        int maxExclusive, int ordinal, out int sampled)
     {
         ArgumentNullException.ThrowIfNull(combat);
+        ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+        Validate(combat);
         var native = combat.NativeRng?.Fork() ??
             throw new InvalidOperationException(
                 "Combat has no native RNG owner.");
@@ -534,10 +555,10 @@ public static class NativeCombatRngEntryV111
         var bundle = new RngBundle([owned.Rng.Fork()]);
         var decision = new NativeRandomIndexProviderV111().Resolve(
             new RandomIndexRequestV111(
-                "diagnostic.monster_local.index_sample",
+                siteId,
                 owned.Rng.StreamId,
-                "creature:" + combatId,
-                0,
+                ownerId,
+                ordinal,
                 Array.Empty<int>(),
                 OperationKind: "bounded_integer",
                 BoundedCount: maxExclusive),
@@ -547,6 +568,8 @@ public static class NativeCombatRngEntryV111
         {
             Rng = bundle.Streams[0]
         };
-        return combat with { NativeRng = native };
+        var advanced = combat with { NativeRng = native };
+        Validate(advanced);
+        return advanced;
     }
 }
