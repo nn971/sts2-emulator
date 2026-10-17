@@ -435,7 +435,7 @@ class State:
 
     def begin_reference_nature_native_event_gold(
             self, action_id: str, nature_seed: int | None = None):
-        """Control generated gold on a configured Jungle Maze or Lost Wisp entry."""
+        """Control supported gold, Stone potion-slot, or Future potion-card draws during Native event entry."""
         if self.session.capabilities.get(
                 "referenceNatureNativeEventGoldSessionSchemaId") != (
                 "sts2-v111-reference-nature-native-event-gold-session-v1"):
@@ -445,7 +445,9 @@ class State:
             raise ValueError("action_id must be a nonempty string")
         site_ids = (
             "event.generated_gold.unit_float",
-            "event.generated_gold.index_draw")
+            "event.generated_gold.index_draw",
+            "event.stone_of_all_time.potion_slot.index_draw",
+            "event.future_of_potions.card_type.index_draw")
         if not all(self.session.supports_reference_nature_site(
                 site_id, session="native_event_gold")
                 for site_id in site_ids):
@@ -1364,7 +1366,7 @@ class ReferenceNatureNativeEventShuffleSession:
 
 @dataclass(frozen=True)
 class ReferenceNatureNativeEventGoldSession:
-    """Atomic generated-gold event entry and ReferenceNature sampler cursor."""
+    """Atomic supported Native event entry and ReferenceNature sampler cursor."""
     session: "Session"
     handle: str
     fingerprint: str

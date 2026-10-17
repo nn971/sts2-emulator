@@ -302,6 +302,52 @@ public static class NativeEventContextRngV111
                 prototypeEventId, eventState.ChosenChoiceId) &&
             scriptedTrashHeapRewardPresent)
             return;
+        var scriptedStoneEntryIsExpected =
+            prototypeEventId == PrototypeNativeStoneOfAllTime.EventId &&
+            state.Phase == RunPhase.Event &&
+            NativeRngV111.ToSnapshot(stream) ==
+                NativeRngV111.ToSnapshot(initial) &&
+            eventState.NativePageIndex == 0 &&
+            eventState.ChosenChoiceId is null &&
+            eventState.NativeEventGold == 0 &&
+            eventState.NativeEventSecondaryGold == 0 &&
+            eventState.NativeEventPotionSlot is { } stonePotionSlot &&
+            stonePotionSlot >= 0 &&
+            stonePotionSlot < state.Player.PotionSlots.Length &&
+            state.Player.PotionSlots[stonePotionSlot] is not null;
+        if (providerMode == "scripted-v111" &&
+            scriptedStoneEntryIsExpected)
+            return;
+        var futurePotionEntries = state.Player.PotionSlots
+            .Select((potion, slot) => (Potion: potion, Slot: slot))
+            .Where(item => item.Potion is not null)
+            .Take(3).ToArray();
+        var futurePotionOffers = eventState.NativeFuturePotionOffers;
+        var scriptedFutureOfPotionsEntryIsExpected =
+            prototypeEventId == PrototypeNativeFutureOfPotions.EventId &&
+            state.Phase == RunPhase.Event &&
+            NativeRngV111.ToSnapshot(stream) ==
+                NativeRngV111.ToSnapshot(initial) &&
+            eventState.NativePageIndex == 0 &&
+            eventState.ChosenChoiceId is null &&
+            futurePotionEntries.Length >= 2 &&
+            futurePotionOffers is not null &&
+            futurePotionOffers.Length == futurePotionEntries.Length &&
+            futurePotionOffers.Select((offer, index) =>
+            {
+                var entry = futurePotionEntries[index];
+                if (!PrototypeNativeFutureOfPotions.TryGetCardRarity(
+                        entry.Potion!.PotionId, out var rarity))
+                    return false;
+                return offer.Slot == entry.Slot &&
+                    offer.PotionId == entry.Potion.PotionId &&
+                    offer.CardRarity == rarity &&
+                    PrototypeNativeFutureOfPotions.CardTypesForRarity(rarity)
+                        .Contains(offer.CardType);
+            }).All(valid => valid);
+        if (providerMode == "scripted-v111" &&
+            scriptedFutureOfPotionsEntryIsExpected)
+            return;
         var tabletPageIsExpected =
             eventState.NativePageIndex is >= 1 and <= 4 &&
                 eventState.ChosenChoiceId is null ||

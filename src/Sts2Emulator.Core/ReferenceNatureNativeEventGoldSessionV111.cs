@@ -11,8 +11,7 @@ public sealed record ReferenceNatureNativeEventGoldSessionSnapshotV111(
     ReferenceNatureDecisionV111[] DecisionTranscript);
 
 /// <summary>
-/// Atomic ReferenceNature replay for Native generated-gold floats during the
-/// configured Jungle Maze Adventure or Lost Wisp Event-node entry.
+/// Atomic ReferenceNature replay for supported Native Event-node entry draws.
 /// </summary>
 public sealed record ReferenceNatureNativeEventGoldSessionV111(
     string SchemaId, string EventId, string ActionId,
@@ -33,7 +32,7 @@ public sealed record ReferenceNatureNativeEventGoldSessionV111(
 
     [JsonIgnore]
     public bool Complete => DecisionTranscript.Length ==
-        DecisionCount(EventId);
+        DecisionCount(EventId, Origin);
 
     [JsonIgnore]
     public int NextOrdinal => DecisionTranscript.Length;
@@ -55,7 +54,9 @@ public sealed record ReferenceNatureNativeEventGoldSessionV111(
     }
 
     public static string[] SessionSiteIds =>
-        [GoldUnitFloatSiteId, GoldIndexSiteId];
+        [GoldUnitFloatSiteId, GoldIndexSiteId,
+            ChanceLawEngineV111.NativeStoneOfAllTimePotionSlotSiteId,
+            ChanceLawEngineV111.NativeFutureOfPotionsCardTypeSiteId];
 
     public static ReferenceNatureNativeEventGoldSessionV111 Begin(
         RunState source, string actionId, ulong natureSeed) => Begin(
@@ -82,7 +83,7 @@ public sealed record ReferenceNatureNativeEventGoldSessionV111(
         var replay = Replay(origin, actionId, []);
         var request = replay.PendingChance?.Request ??
             throw new NotSupportedException(
-                "Configured Event entry did not reach a supported Native gold float.");
+                "Configured Event entry did not reach a supported Native event-entry draw.");
         var eventId = ParseSupportedEventId(request);
         _ = QueryLaw(origin, actionId, eventId, request);
         var session = new ReferenceNatureNativeEventGoldSessionV111(
@@ -148,7 +149,7 @@ public sealed record ReferenceNatureNativeEventGoldSessionV111(
             string.IsNullOrWhiteSpace(ActionId) || Origin is null || Run is null ||
             InitialNatureState is null || NatureState is null ||
             DecisionTranscript is null ||
-            DecisionTranscript.Length > DecisionCount(EventId))
+            DecisionTranscript.Length > DecisionCount(EventId, Origin))
             throw new InvalidDataException(
                 "Invalid ReferenceNature Native event gold session envelope.");
         ValidateOpeningBoundary(Origin, ActionId);
@@ -315,25 +316,40 @@ public sealed record ReferenceNatureNativeEventGoldSessionV111(
             _ => throw new InvalidDataException(
                 "Native event gold request has an invalid typed outcome.")
         };
-        if (siteId is not (GoldUnitFloatSiteId or GoldIndexSiteId))
+        if (siteId is not (GoldUnitFloatSiteId or GoldIndexSiteId or
+            ChanceLawEngineV111.NativeStoneOfAllTimePotionSlotSiteId or
+            ChanceLawEngineV111.NativeFutureOfPotionsCardTypeSiteId))
             throw new NotSupportedException(
-                $"Native event gold replay reached unsupported site '{siteId}'.");
-        var law = siteId == GoldUnitFloatSiteId
-            ? ChanceLawEngineV111.QueryNativeEventGoldUnitFloat(
+                $"Native event-entry replay reached unsupported site '{siteId}'.");
+        var law = siteId switch
+        {
+            GoldUnitFloatSiteId =>
+                ChanceLawEngineV111.QueryNativeEventGoldUnitFloat(
+                    origin, siteId, ordinal, actionId, eventId),
+            GoldIndexSiteId => ChanceLawEngineV111.QueryNativeEventGoldIndex(
+                origin, siteId, ordinal, actionId, eventId),
+            var id when id == ChanceLawEngineV111
+                .NativeStoneOfAllTimePotionSlotSiteId =>
+                ChanceLawEngineV111.QueryNativeStoneOfAllTimePotionSlot(
+                    origin, siteId, ordinal, actionId, eventId),
+            _ => ChanceLawEngineV111.QueryNativeFutureOfPotionsCardType(
                 origin, siteId, ordinal, actionId, eventId)
-            : ChanceLawEngineV111.QueryNativeEventGoldIndex(
-                origin, siteId, ordinal, actionId, eventId);
+        };
         var expectedStream = NativeRngV111Contexts.EventStreamId(
             NativeEventEntry(eventId));
         if (law.SiteId != siteId || law.OwnerId != ownerId ||
             law.Ordinal != ordinal || streamId != expectedStream)
             throw new InvalidDataException(
-                "Native event gold request differs from its source Chance Law.");
+                "Native event-entry request differs from its source Chance Law.");
         return law;
     }
 
     private static string NativeEventEntry(string eventId) => eventId switch
     {
+        PrototypeNativeStoneOfAllTime.EventId =>
+            PrototypeNativeStoneOfAllTime.NativeRngEventId,
+        PrototypeNativeFutureOfPotions.EventId =>
+            PrototypeNativeFutureOfPotions.NativeRngEventId,
         PrototypeNativeDenseVegetation.EventId => "DENSE_VEGETATION",
         "proto.native.event.whispering_hollow" => "WHISPERING_HOLLOW",
         "proto.native.event.sunken_statue" or
@@ -356,9 +372,15 @@ public sealed record ReferenceNatureNativeEventGoldSessionV111(
         ControlledStochasticRequestV111 request)
     {
         request.Validate();
+        if (request.SiteId == ChanceLawEngineV111
+            .NativeStoneOfAllTimePotionSlotSiteId)
+            return PrototypeNativeStoneOfAllTime.EventId;
+        if (request.SiteId == ChanceLawEngineV111
+            .NativeFutureOfPotionsCardTypeSiteId)
+            return PrototypeNativeFutureOfPotions.EventId;
         if (request.SiteId is not (GoldUnitFloatSiteId or GoldIndexSiteId))
             throw new NotSupportedException(
-                "Configured Event entry did not request a supported Native gold draw.");
+                "Configured Event entry did not request a supported Native event-entry draw.");
         const string prefix = "event:";
         const string marker = ":gold:";
         if (!request.OwnerId.StartsWith(prefix, StringComparison.Ordinal))
@@ -376,8 +398,11 @@ public sealed record ReferenceNatureNativeEventGoldSessionV111(
         return eventId;
     }
 
-    private static int DecisionCount(string eventId) => eventId switch
+    private static int DecisionCount(string eventId, RunState origin) => eventId switch
     {
+        PrototypeNativeStoneOfAllTime.EventId => 1,
+        PrototypeNativeFutureOfPotions.EventId => origin.Player.PotionSlots
+            .Count(potion => potion is not null),
         "proto.native.event.jungle_maze_adventure" or
             "proto.native.underdocks.sunken_treasury" => 2,
         _ when IsSupportedEventId(eventId) => 1,
@@ -386,6 +411,8 @@ public sealed record ReferenceNatureNativeEventGoldSessionV111(
 
     private static bool IsSupportedEventId(string eventId) => eventId is
         PrototypeNativeDenseVegetation.EventId or
+        PrototypeNativeStoneOfAllTime.EventId or
+        PrototypeNativeFutureOfPotions.EventId or
         "proto.native.event.whispering_hollow" or
         "proto.native.event.sunken_statue" or
         "proto.native.underdocks.sunken_statue" or
@@ -437,7 +464,9 @@ public sealed record ReferenceNatureNativeEventGoldSessionV111(
             checkpoint => new PrototypeGameEngine().Step(
                 checkpoint, action with { Payload = action.Payload.Clone() }).State,
             request => request.SiteId is
-                GoldUnitFloatSiteId or GoldIndexSiteId);
+                GoldUnitFloatSiteId or GoldIndexSiteId or
+                ChanceLawEngineV111.NativeStoneOfAllTimePotionSlotSiteId or
+                ChanceLawEngineV111.NativeFutureOfPotionsCardTypeSiteId);
         if (replay.Run is not { } completed)
             return replay;
         var world = completed.World ?? throw new InvalidDataException(

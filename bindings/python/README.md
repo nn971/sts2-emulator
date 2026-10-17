@@ -72,16 +72,19 @@ publishes `.state` after the full shuffle replays. It supports `fork()`, `save_s
 `release()`. See the
 [native event shuffle contract](../../docs/REFERENCE_NATURE_NATIVE_EVENT_SHUFFLE_D3.md).
 
-For configured Native generated gold on a supported Event-node entry, call
+For supported configured Native event-entry draws, call
 `State.begin_reference_nature_native_event_gold(action_id, nature_seed=None)`
-with the stable legal Event-node action ID. Resolve one gold law per
-`resolve_next()`. Sunken Treasury and Jungle Maze use primary then secondary
-draws; the other supported events use one. The session exposes the playable
+with the stable legal Event-node action ID. The session covers generated gold,
+Stone of All Time's occupied-potion-slot choice, and The Future of Potions'
+ordered card-type offers. Resolve one law per `resolve_next()`; Future of
+Potions uses one draw per owned potion in slot order. Sunken Treasury and
+Jungle Maze use primary then secondary draws; the other gold branches use one.
+The session exposes the playable
 `.state` after entry commits, plus
 `status()`, `fork()`, `save_snapshot()`,
 `Session.load_reference_nature_native_event_gold_snapshot()`, and `release()`.
 Event selection and other requests keep their current providers. See the
-[Native event gold contract](../../docs/REFERENCE_NATURE_NATIVE_EVENT_GOLD_D3.md).
+[Native event-entry contract](../../docs/REFERENCE_NATURE_NATIVE_EVENT_GOLD_D3.md).
 
 For an Endless Conveyor weighted dish roll, call
 `State.begin_reference_nature_endless_conveyor_dish(action_id,
