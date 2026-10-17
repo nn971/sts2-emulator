@@ -2746,8 +2746,6 @@ public sealed record EventState(
     string? DeferredCardId = null,
     int NativeEventGold = 0,
     int NativeEventSecondaryGold = 0,
-    [property: System.Text.Json.Serialization.JsonIgnore(
-        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     int? NativeEventPotionSlot = null,
     string? NativeDishId = null,
     string? NativeLastDishId = null,
@@ -2768,7 +2766,6 @@ public sealed record EventState(
     bool? NativeTanxTriEligible = null,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     bool? NativeNonupeipeBraceletEligible = null,
-    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     PrototypeFuturePotionOffer[]? NativeFuturePotionOffers = null,
     string? NativeEventRngProviderMode = null,
     PrototypeControlledEventChoiceContinuationV111? ControlledChoice = null)
@@ -2779,7 +2776,97 @@ public sealed record EventState(
     /// </summary>
     [System.Text.Json.Serialization.JsonIgnore]
     public EventStochasticStateV111 Stochastic { get; init; } =
-        new(NativeEventRng, NativeEventRngProviderMode, ControlledChoice);
+        new(NativeEventRng, NativeEventRngProviderMode, ControlledChoice,
+            new EventCommittedRandomStateV111(
+                DeferredCardId, NativeEventGold, NativeEventSecondaryGold,
+                NativeEventPotionSlot, NativeDishId, NativeLastDishId,
+                NativeDishCount, NativeDishRollPending, RepyChestPotionIds,
+                RepyChestRelicIds, NativeTinkerType,
+                NativeFuturePotionOffers));
+
+    public string? DeferredCardId
+    {
+        get => Stochastic.RandomOutcomes.DeferredCardId;
+        init => Stochastic = EventStochasticStateV111.WithCommittedRandom(
+            Stochastic, Stochastic.RandomOutcomes with { DeferredCardId = value });
+    }
+
+    public int NativeEventGold
+    {
+        get => Stochastic.RandomOutcomes.NativeEventGold;
+        init => Stochastic = EventStochasticStateV111.WithCommittedRandom(
+            Stochastic, Stochastic.RandomOutcomes with { NativeEventGold = value });
+    }
+
+    public int NativeEventSecondaryGold
+    {
+        get => Stochastic.RandomOutcomes.NativeEventSecondaryGold;
+        init => Stochastic = EventStochasticStateV111.WithCommittedRandom(
+            Stochastic, Stochastic.RandomOutcomes with
+            { NativeEventSecondaryGold = value });
+    }
+
+    [System.Text.Json.Serialization.JsonIgnore(Condition =
+        System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public int? NativeEventPotionSlot
+    {
+        get => Stochastic.RandomOutcomes.NativeEventPotionSlot;
+        init => Stochastic = EventStochasticStateV111.WithCommittedRandom(
+            Stochastic, Stochastic.RandomOutcomes with
+            { NativeEventPotionSlot = value });
+    }
+
+    public string? NativeDishId
+    {
+        get => Stochastic.RandomOutcomes.NativeDishId;
+        init => Stochastic = EventStochasticStateV111.WithCommittedRandom(
+            Stochastic, Stochastic.RandomOutcomes with { NativeDishId = value });
+    }
+
+    public string? NativeLastDishId
+    {
+        get => Stochastic.RandomOutcomes.NativeLastDishId;
+        init => Stochastic = EventStochasticStateV111.WithCommittedRandom(
+            Stochastic, Stochastic.RandomOutcomes with { NativeLastDishId = value });
+    }
+
+    public int NativeDishCount
+    {
+        get => Stochastic.RandomOutcomes.NativeDishCount;
+        init => Stochastic = EventStochasticStateV111.WithCommittedRandom(
+            Stochastic, Stochastic.RandomOutcomes with { NativeDishCount = value });
+    }
+
+    public bool NativeDishRollPending
+    {
+        get => Stochastic.RandomOutcomes.NativeDishRollPending;
+        init => Stochastic = EventStochasticStateV111.WithCommittedRandom(
+            Stochastic, Stochastic.RandomOutcomes with
+            { NativeDishRollPending = value });
+    }
+
+    public string[]? RepyChestPotionIds
+    {
+        get => Stochastic.RandomOutcomes.RepyChestPotionIds;
+        init => Stochastic = EventStochasticStateV111.WithCommittedRandom(
+            Stochastic, Stochastic.RandomOutcomes with
+            { RepyChestPotionIds = value });
+    }
+
+    public string[]? RepyChestRelicIds
+    {
+        get => Stochastic.RandomOutcomes.RepyChestRelicIds;
+        init => Stochastic = EventStochasticStateV111.WithCommittedRandom(
+            Stochastic, Stochastic.RandomOutcomes with
+            { RepyChestRelicIds = value });
+    }
+
+    public string? NativeTinkerType
+    {
+        get => Stochastic.RandomOutcomes.NativeTinkerType;
+        init => Stochastic = EventStochasticStateV111.WithCommittedRandom(
+            Stochastic, Stochastic.RandomOutcomes with { NativeTinkerType = value });
+    }
 
     [System.Text.Json.Serialization.JsonIgnore(Condition =
         System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
@@ -2808,6 +2895,16 @@ public sealed record EventState(
             Stochastic, value);
     }
 
+    [System.Text.Json.Serialization.JsonIgnore(Condition =
+        System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public PrototypeFuturePotionOffer[]? NativeFuturePotionOffers
+    {
+        get => Stochastic.RandomOutcomes.FuturePotionOffers;
+        init => Stochastic = EventStochasticStateV111.WithCommittedRandom(
+            Stochastic, Stochastic.RandomOutcomes with
+            { FuturePotionOffers = value });
+    }
+
     public string[] RemainingPotionIds =>
         QueuedPotionIds ?? Array.Empty<string>();
 
@@ -2833,14 +2930,7 @@ public sealed record EventState(
             OfferedChoiceIds is null
                 ? null
                 : (string[])OfferedChoiceIds.Clone(),
-        PendingReward = PendingReward?.Fork(),
-        RepyChestPotionIds = RepyChestPotionIds is null
-            ? null : (string[])RepyChestPotionIds.Clone(),
-        RepyChestRelicIds = RepyChestRelicIds is null
-            ? null : (string[])RepyChestRelicIds.Clone(),
-        NativeFuturePotionOffers = NativeFuturePotionOffers is null
-            ? null
-            : (PrototypeFuturePotionOffer[])NativeFuturePotionOffers.Clone()
+        PendingReward = PendingReward?.Fork()
     };
 }
 
