@@ -2909,13 +2909,54 @@ public sealed record RunWorldState(
     // Native IRunState.ExtraFields.FreedRepy, set by unlocking Repy's cage.
     bool FreedRepy = false,
     PrototypeLaterActEncounterBagV111? LaterActEncounterBag = null,
-    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     PrototypeLaterActEncounterBagV111[]? PreparedLaterActEncounterBags = null,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     long? LastCombatEndDecisionIndex = null,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     PrototypeCustomRewardReturnState? CustomRewardReturn = null)
 {
+    /// <summary>
+    /// Authoritative in-memory owner for persistent run-world random orders.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public RunWorldStochasticStateV111 Stochastic { get; init; } =
+        new(ActOneEncounterPool, RelicBag, LaterActEncounterBag,
+            PreparedLaterActEncounterBags);
+
+    public PrototypeActOneEncounterPoolState? ActOneEncounterPool
+    {
+        get => Stochastic.ActOneEncounterPool;
+        init => Stochastic =
+            RunWorldStochasticStateV111.WithActOneEncounterPool(
+                Stochastic, value);
+    }
+
+    public PrototypeRelicBagState? RelicBag
+    {
+        get => Stochastic.RelicBag;
+        init => Stochastic = RunWorldStochasticStateV111.WithRelicBag(
+            Stochastic, value);
+    }
+
+    public PrototypeLaterActEncounterBagV111? LaterActEncounterBag
+    {
+        get => Stochastic.LaterActEncounterBag;
+        init => Stochastic =
+            RunWorldStochasticStateV111.WithLaterActEncounterBag(
+                Stochastic, value);
+    }
+
+    [System.Text.Json.Serialization.JsonIgnore(Condition =
+        System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public PrototypeLaterActEncounterBagV111[]?
+        PreparedLaterActEncounterBags
+    {
+        get => Stochastic.PreparedLaterActEncounterBags;
+        init => Stochastic =
+            RunWorldStochasticStateV111.WithPreparedLaterActEncounterBags(
+                Stochastic, value);
+    }
+
     public RunWorldState Fork() => this with
     {
         Map = Map.Fork(),
@@ -2933,11 +2974,7 @@ public sealed record RunWorldState(
         CompletedRoomHistory = CompletedRoomHistory is null
             ? null
             : (PrototypeCompletedRoomRecord[])CompletedRoomHistory.Clone(),
-        ActOneEncounterPool = ActOneEncounterPool?.Fork(),
-        LaterActEncounterBag = LaterActEncounterBag?.Fork(),
-        PreparedLaterActEncounterBags = PreparedLaterActEncounterBags?
-            .Select(bag => bag.Fork()).ToArray(),
-        RelicBag = RelicBag?.Fork()
+        Stochastic = Stochastic.Fork()
     };
 
     public string[] EncounterIds =>
