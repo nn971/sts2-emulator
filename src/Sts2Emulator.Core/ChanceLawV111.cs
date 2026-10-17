@@ -49,7 +49,10 @@ public static class StochasticCapabilitiesV111
             "combat.generation.full_pool_shuffle.swap_index",
             "combat.draw_pile.random_rare_to_hand.shuffle_swap_index",
             "combat.draw_pile.random_insert_index",
-            "combat.relic.after_shuffle.generated_card.random_insert_index"
+            "combat.relic.after_shuffle.generated_card.random_insert_index",
+            "combat.card_selection.random_shortlist",
+            "combat.autoplay.random_card.select",
+            "combat.draw_pile.random_replay_card.select"
         ],
         PrototypeAiEnvironment.SchemaId,
         [
@@ -177,6 +180,8 @@ public static class ChanceLawEngineV111
         "uniform-fisher-yates-bounded-swap-v1";
     public const string DrawInsertionConditioningPolicyId =
         "uniform-bounded-draw-pile-insertion-position-v1";
+    public const string CardShortlistConditioningPolicyId =
+        "uniform-sequential-without-replacement-v1";
 
     public static ChanceLawV111 QueryIntent(SemanticIntentEventV111 intent)
     {
@@ -455,6 +460,37 @@ public static class ChanceLawEngineV111
             insertion.OperationKind, insertion.OwnerId, insertion.Ordinal,
             DrawInsertionConditioningPolicyId, conditioningFingerprint,
             "uniform-bounded-insertion-position-unverified", outcomes);
+    }
+
+    /// <summary>
+    /// Query one conditional pick from a saved without-replacement shortlist.
+    /// The remaining physical identities and all prior picks are included in
+    /// the event conditioning fingerprint.
+    /// </summary>
+    public static ChanceLawV111 QueryCardShortlist(
+        SemanticCardShortlistEventV111 shortlist)
+    {
+        ArgumentNullException.ThrowIfNull(shortlist);
+        shortlist.Validate();
+        var outcomes = shortlist.CandidateCardInstanceIds
+            .Select(instanceId => new ChanceLawOutcomeV111(
+                "card_instance:" + instanceId.ToString(
+                    CultureInfo.InvariantCulture), 1L))
+            .ToArray();
+        var conditioningFingerprint = CanonicalJson.Sha256(new
+        {
+            shortlist.SupportFingerprint,
+            shortlist.SiteId,
+            shortlist.OwnerId,
+            shortlist.Ordinal,
+            shortlist.RequiredCount,
+            shortlist.SelectedCardInstanceIds,
+            policy = CardShortlistConditioningPolicyId
+        });
+        return Create(shortlist.EventId, shortlist.SiteId,
+            shortlist.OperationKind, shortlist.OwnerId, shortlist.Ordinal,
+            CardShortlistConditioningPolicyId, conditioningFingerprint,
+            "uniform-sequential-card-shortlist-unverified", outcomes);
     }
 
     public static ChanceLawV111 QueryDraw(SemanticDeckStateV111 deck)
@@ -833,6 +869,24 @@ public static class ReferenceNatureV111
             var child = SemanticPilotCombatEngineV111.ResolveDrawInsertion(
                 combat, combat.Fingerprint, insertionEvent.EventId,
                 selection.OutcomeIndex);
+            return new ReferenceNatureResolutionV111(child, law, selection);
+        }
+
+        if (combat.CardShortlistPending is { } shortlistEvent)
+        {
+            var law = ChanceLawEngineV111.QueryCardShortlist(shortlistEvent);
+            var selection = Sample(law, state);
+            if (selection.EventId != shortlistEvent.EventId ||
+                selection.OutcomeIndex < 0 ||
+                selection.OutcomeIndex >=
+                    shortlistEvent.CandidateCardInstanceIds.Length)
+                throw new InvalidDataException(
+                    "ReferenceNature law no longer matches the pending shortlist event.");
+            var cardInstanceId = shortlistEvent.CandidateCardInstanceIds[
+                selection.OutcomeIndex];
+            var child = SemanticPilotCombatEngineV111.ResolveCardShortlist(
+                combat, combat.Fingerprint, shortlistEvent.EventId,
+                cardInstanceId);
             return new ReferenceNatureResolutionV111(child, law, selection);
         }
 

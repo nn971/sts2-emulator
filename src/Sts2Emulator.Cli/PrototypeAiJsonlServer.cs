@@ -417,6 +417,8 @@ internal static class PrototypeAiJsonlServer
             }
             if (state.CardShortlistPending is { } shortlist)
             {
+                var chanceLaw = ChanceLawEngineV111
+                    .QueryCardShortlist(shortlist);
                 return new
                 {
                     kind = shortlist.SiteId switch
@@ -435,6 +437,7 @@ internal static class PrototypeAiJsonlServer
                     ordinal = shortlist.Ordinal,
                     operationKind = shortlist.OperationKind,
                     supportFingerprint = shortlist.SupportFingerprint,
+                    chanceLaw,
                     requiredCount = shortlist.RequiredCount,
                     eligibleCards = shortlist.EligibleCardInstanceIds
                         .Select((id, index) => new
