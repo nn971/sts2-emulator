@@ -320,6 +320,8 @@ public sealed record PrototypeControlledEventChoiceContinuationV111(
 
     public void Validate()
     {
+        this.Mechanics.Continuation.Validate(
+            PrototypeMechanicsContinuationKindV111.ControlledEventChoice);
         if (PartialState is null || Decisions is null
             || DecisionCandidateLabels is null
             || DecisionCandidateLabels.Length != Decisions.Length
@@ -509,6 +511,8 @@ public sealed record PrototypeControlledEventRewardChoiceContinuationV111(
 
     public void Validate()
     {
+        this.Mechanics.Continuation.Validate(
+            PrototypeMechanicsContinuationKindV111.ControlledEventRewardChoice);
         if (PartialState is null || Decisions is null
             || DecisionCandidateLabels is null
             || DecisionCandidateLabels.Length != Decisions.Length

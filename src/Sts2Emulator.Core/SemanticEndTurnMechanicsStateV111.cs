@@ -6,18 +6,18 @@ namespace Sts2Emulator.Core;
 /// </summary>
 public sealed record SemanticEndTurnMechanicsStateV111
 {
-    public PrototypeMechanicsTransitionV111 Transition { get; init; }
+    public PrototypeMechanicsContinuationStateV111 Continuation { get; init; }
 
     public RunState Origin
     {
-        get => Transition.Origin;
-        init => Transition = Transition with { Origin = value };
+        get => Continuation.Origin!;
+        init => Continuation = Continuation with { Origin = value };
     }
 
     public RunState Run
     {
-        get => Transition.Current;
-        init => Transition = Transition with { Current = value };
+        get => Continuation.Current;
+        init => Continuation = Continuation with { Current = value };
     }
 
     public string NativeEncounterEntry { get; init; }
@@ -37,8 +37,8 @@ public sealed record SemanticEndTurnMechanicsStateV111
         RunState? PlayerActionSource = null,
         string? PlayerActionId = null)
     {
-        Transition = new PrototypeMechanicsTransitionV111(
-            PrototypeMechanicsTransitionKindV111.SemanticEndTurn,
+        Continuation = new PrototypeMechanicsContinuationStateV111(
+            PrototypeMechanicsContinuationKindV111.SemanticEndTurn,
             Origin, Run);
         this.NativeEncounterEntry = NativeEncounterEntry;
         this.Intents = Intents;

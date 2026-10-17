@@ -395,6 +395,8 @@ public sealed record ControlledPlayableCombatV111(
     public string Fingerprint => CanonicalJson.Sha256(this);
     public void Validate()
     {
+        this.Mechanics.Continuation.Validate(
+            PrototypeMechanicsContinuationKindV111.ControlledPlayableCombat);
         if (this.Mode != "controlled-v111-playable-fixture-v1" ||
             this.Run.Phase is not (RunPhase.Combat or RunPhase.Reward or RunPhase.Terminal) ||
             this.Run.World?.Combat is null && this.Pending is not null ||

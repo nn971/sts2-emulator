@@ -191,6 +191,8 @@ public sealed record PrototypeControlledRunActionContinuationV111(
 
     public void Validate()
     {
+        this.Mechanics.Continuation.Validate(
+            PrototypeMechanicsContinuationKindV111.ControlledRunAction);
         if (PartialState is null || ActionId is null
             || Decisions is null || DecisionCandidateLabels is null
             || DecisionCandidateLabels.Length != Decisions.Length

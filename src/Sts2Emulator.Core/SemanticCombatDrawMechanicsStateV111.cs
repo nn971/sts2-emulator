@@ -6,18 +6,18 @@ namespace Sts2Emulator.Core;
 /// </summary>
 public sealed record SemanticCombatDrawMechanicsStateV111
 {
-    public PrototypeMechanicsTransitionV111 Transition { get; init; }
+    public PrototypeMechanicsContinuationStateV111 Continuation { get; init; }
 
     public RunState Origin
     {
-        get => Transition.Origin;
-        init => Transition = Transition with { Origin = value };
+        get => Continuation.Origin!;
+        init => Continuation = Continuation with { Origin = value };
     }
 
     public RunState Run
     {
-        get => Transition.Current;
-        init => Transition = Transition with { Current = value };
+        get => Continuation.Current;
+        init => Continuation = Continuation with { Current = value };
     }
 
     public int RequestedCount { get; init; }
@@ -33,8 +33,8 @@ public sealed record SemanticCombatDrawMechanicsStateV111
         bool FromHandDraw,
         bool AutomaticHandDraw)
     {
-        Transition = new PrototypeMechanicsTransitionV111(
-            PrototypeMechanicsTransitionKindV111.SemanticCombatDraw,
+        Continuation = new PrototypeMechanicsContinuationStateV111(
+            PrototypeMechanicsContinuationKindV111.SemanticCombatDraw,
             Origin, Run);
         this.RequestedCount = RequestedCount;
         this.RemainingCount = RemainingCount;

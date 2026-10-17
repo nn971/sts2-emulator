@@ -6,7 +6,7 @@ using System.Text;
 namespace Sts2Emulator.Core;
 
 /// <summary>One externally replayable action or Nature decision.</summary>
-public sealed record SemanticPilotTransitionV111(
+public sealed record SemanticPilotContinuationV111(
     string Kind, string? ActionId = null, int? SelectedIndex = null,
     SemanticIntentDecisionV111? IntentDecision = null,
     SemanticDrawDecisionV111? DrawDecision = null,
@@ -95,7 +95,7 @@ public sealed record SemanticSeededEntryV111(
 public sealed record SemanticPilotCombatV111(
     ControlledPlayableCombatV111 OpeningSource,
     RunState Run, SemanticEndTurnV111? PendingEndTurn,
-    SemanticPilotTransitionV111[] History,
+    SemanticPilotContinuationV111[] History,
     string NativeEncounterEntry,
     string Mode = "sts2-v111-semantic-playable-p0-v1")
 {
@@ -139,7 +139,7 @@ public sealed record SemanticPilotCombatV111(
         init => Mechanics = Mechanics with { Run = value };
     }
 
-    public SemanticPilotTransitionV111[] History
+    public SemanticPilotContinuationV111[] History
     {
         get => Mechanics.History;
         init => Mechanics = Mechanics with { History = value };
@@ -311,8 +311,8 @@ public sealed record SemanticPilotCombatV111(
 
     public void Validate()
     {
-        this.Mechanics.Transition.Validate(
-            PrototypeMechanicsTransitionKindV111.SemanticPilot);
+        this.Mechanics.Continuation.Validate(
+            PrototypeMechanicsContinuationKindV111.SemanticPilot);
         if (this.Mode != SemanticPilotCombatV111.SchemaId ||
             this.History is null ||
             this.NativeEncounterEntry != this.OpeningSource.Origin
@@ -2059,7 +2059,7 @@ public static class SemanticPilotCombatEngineV111
             // The next player decision must be immediately available.
             PendingEndTurn = endTurn is { Complete: true } ? null : endTurn,
             History = current.History.Append(
-                new SemanticPilotTransitionV111("player", actionId)).ToArray()
+                new SemanticPilotContinuationV111("player", actionId)).ToArray()
         };
         return NormalizeNoncontrolledCosts(nextState);
     }
@@ -2083,7 +2083,7 @@ public static class SemanticPilotCombatEngineV111
                 ? RecordRewardAudit(current.Run, selection.Run)
                 : current.RewardAudit,
             History = current.History.Append(
-                new SemanticPilotTransitionV111(
+                new SemanticPilotContinuationV111(
                     "semantic_card_selection",
                     CardSelectionDecision: decision.Fork())).ToArray()
         };
@@ -2115,7 +2115,7 @@ public static class SemanticPilotCombatEngineV111
             Run = nextEndTurn.Run,
             PendingEndTurn = nextEndTurn.Complete ? null : nextEndTurn,
             History = current.History.Append(
-                new SemanticPilotTransitionV111(
+                new SemanticPilotContinuationV111(
                     "semantic_draw_hook_choice",
                     DrawHookChoiceDecision: decision.Fork())).ToArray()
         };
@@ -2164,7 +2164,7 @@ public static class SemanticPilotCombatEngineV111
                     ? RecordRewardAudit(current.Run, resolvedRun)
                     : current.RewardAudit,
                 History = current.History.Append(
-                    new SemanticPilotTransitionV111(
+                    new SemanticPilotContinuationV111(
                         "semantic_target", TargetDecision: expected.Fork()))
                     .ToArray()
             };
@@ -2200,7 +2200,7 @@ public static class SemanticPilotCombatEngineV111
                 ? RecordRewardAudit(current.Run, result)
                 : current.RewardAudit,
             History = current.History.Append(
-                new SemanticPilotTransitionV111(
+                new SemanticPilotContinuationV111(
                     "semantic_target", TargetDecision: expected.Fork()))
                 .ToArray()
         };
@@ -2268,7 +2268,7 @@ public static class SemanticPilotCombatEngineV111
                 ? RecordRewardAudit(current.Run, result)
                 : current.RewardAudit,
             History = current.History.Append(
-                new SemanticPilotTransitionV111(
+                new SemanticPilotContinuationV111(
                     "semantic_generated_card",
                     GeneratedCardDecision: expected.Fork())).ToArray()
         };
@@ -2320,7 +2320,7 @@ public static class SemanticPilotCombatEngineV111
         {
             Run = result,
             History = current.History.Append(
-                new SemanticPilotTransitionV111(
+                new SemanticPilotContinuationV111(
                     "semantic_potion_generation",
                     PotionGenerationDecision: expected.Fork())).ToArray()
         });
@@ -2368,7 +2368,7 @@ public static class SemanticPilotCombatEngineV111
                 ? RecordRewardAudit(current.Run, result)
                 : current.RewardAudit,
             History = current.History.Append(
-                new SemanticPilotTransitionV111(
+                new SemanticPilotContinuationV111(
                     "semantic_card_transform",
                     CardTransformDecision: expected.Fork())).ToArray()
         });
@@ -2423,7 +2423,7 @@ public static class SemanticPilotCombatEngineV111
                 Decisions = audit.Decisions.Concat(recorded).ToArray()
             },
             History = current.History.Append(
-                new SemanticPilotTransitionV111("player", actionId)).ToArray()
+                new SemanticPilotContinuationV111("player", actionId)).ToArray()
         };
         Validate(next);
         return next;
@@ -2531,7 +2531,7 @@ public static class SemanticPilotCombatEngineV111
             {
                 Run = result,
                 History = current.History.Append(
-                    new SemanticPilotTransitionV111(
+                    new SemanticPilotContinuationV111(
                         "semantic_cost", CostDecision: decision.Fork()))
                     .ToArray()
             };
@@ -2592,7 +2592,7 @@ public static class SemanticPilotCombatEngineV111
         {
             Run = result,
             History = current.History.Append(
-                new SemanticPilotTransitionV111(
+                new SemanticPilotContinuationV111(
                     "semantic_hand_cost_selection",
                     HandCostSelectionDecision: decision.Fork()))
                 .ToArray()
@@ -2647,7 +2647,7 @@ public static class SemanticPilotCombatEngineV111
                     ? RecordRewardAudit(current.Run, result)
                     : current.RewardAudit,
                 History = current.History.Append(
-                    new SemanticPilotTransitionV111(
+                    new SemanticPilotContinuationV111(
                         "semantic_card_shortlist",
                         CardShortlistDecision: decision.Fork())).ToArray()
             };
@@ -2680,7 +2680,7 @@ public static class SemanticPilotCombatEngineV111
         {
             Run = result,
             History = current.History.Append(
-                new SemanticPilotTransitionV111(
+                new SemanticPilotContinuationV111(
                     "semantic_card_shortlist",
                     CardShortlistDecision: decision.Fork()))
                 .ToArray()
@@ -2751,7 +2751,7 @@ public static class SemanticPilotCombatEngineV111
         {
             Run = result,
             History = current.History.Append(
-                new SemanticPilotTransitionV111(
+                new SemanticPilotContinuationV111(
                     "semantic_pool_shuffle",
                     PoolShuffleDecision: decision.Fork())).ToArray()
         };
@@ -2874,7 +2874,7 @@ public static class SemanticPilotCombatEngineV111
                 ? RecordRewardAudit(current.Run, result)
                 : current.RewardAudit,
             History = current.History.Append(
-                new SemanticPilotTransitionV111(
+                new SemanticPilotContinuationV111(
                     "semantic_draw_insertion",
                     DrawInsertionDecision: decision.Fork())).ToArray()
         };
@@ -2974,7 +2974,7 @@ public static class SemanticPilotCombatEngineV111
             {
                 Run = nextRun,
                 PendingInitialIntents = pendingInitial,
-                History = current.History.Append(NatureTransition(
+                History = current.History.Append(NatureContinuation(
                     selectedIndex, semanticIntent, null)).ToArray()
             };
             Validate(initialState);
@@ -3030,7 +3030,7 @@ public static class SemanticPilotCombatEngineV111
                     ? RecordRewardAudit(current.Run, effectCostResult)
                     : current.RewardAudit,
                 History = current.History.Append(
-                    new SemanticPilotTransitionV111(
+                    new SemanticPilotContinuationV111(
                         "semantic_cost",
                         CostDecision: effectCostDecision.Fork())).ToArray()
             };
@@ -3111,7 +3111,7 @@ public static class SemanticPilotCombatEngineV111
                     ? RecordRewardAudit(current.Run, effectDrawResult)
                     : current.RewardAudit,
                 History = current.History.Append(
-                    new SemanticPilotTransitionV111(
+                    new SemanticPilotContinuationV111(
                         "semantic_draw",
                         DrawDecision: effectDrawDecision.Fork())).ToArray()
             };
@@ -3204,7 +3204,7 @@ public static class SemanticPilotCombatEngineV111
         {
             Run = resolved.Run,
             PendingEndTurn = resolved.Complete ? null : resolved,
-            History = current.History.Append(NatureTransition(
+            History = current.History.Append(NatureContinuation(
                 selectedIndex, semanticIntent,
                 recordSemanticDraw ? deckDecision : null,
                 costDecision, randomPileCardDecision)).ToArray()
@@ -3323,7 +3323,7 @@ public static class SemanticPilotCombatEngineV111
         {
             Run = nextRun,
             History = current.History.Append(
-                new SemanticPilotTransitionV111(
+                new SemanticPilotContinuationV111(
                     "semantic_deck_reveal",
                     DeckRevealDecision: decision.Fork())).ToArray()
         };
@@ -4459,24 +4459,24 @@ public static class SemanticPilotCombatEngineV111
                 "Semantic draw decision is outside its pending event support.");
     }
 
-    private static SemanticPilotTransitionV111 NatureTransition(
+    private static SemanticPilotContinuationV111 NatureContinuation(
         int selectedIndex, SemanticIntentDecisionV111? semanticIntent,
         SemanticDrawDecisionV111? deckDecision,
         SemanticCostDecisionV111? costDecision = null,
         SemanticRandomPileCardDecisionV111? randomPileCardDecision = null) =>
         costDecision is not null
-            ? new SemanticPilotTransitionV111("semantic_cost",
+            ? new SemanticPilotContinuationV111("semantic_cost",
                 CostDecision: costDecision.Fork())
             : randomPileCardDecision is not null
-            ? new SemanticPilotTransitionV111("semantic_random_pile_card",
+            ? new SemanticPilotContinuationV111("semantic_random_pile_card",
                 RandomPileCardDecision: randomPileCardDecision.Fork())
             : semanticIntent is not null
-            ? new SemanticPilotTransitionV111("semantic_intent",
+            ? new SemanticPilotContinuationV111("semantic_intent",
                 IntentDecision: semanticIntent)
             : deckDecision is not null
-                ? new SemanticPilotTransitionV111("semantic_draw",
+                ? new SemanticPilotContinuationV111("semantic_draw",
                     DrawDecision: deckDecision.Fork())
-                : new SemanticPilotTransitionV111("nature",
+                : new SemanticPilotContinuationV111("nature",
                     SelectedIndex: selectedIndex);
 
     /// <summary>
