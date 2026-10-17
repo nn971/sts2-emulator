@@ -72,7 +72,16 @@ public static class SemanticPlayerActionEngineV111
             "proto.silent.bubble_bubble",
             "proto.silent.strangle",
             "proto.silent.corrosive_wave",
-            "proto.silent.leading_strike"
+            "proto.silent.leading_strike",
+            "proto.silent.noxious_fumes",
+            "proto.silent.speedster",
+            "proto.silent.serpent_form",
+            "proto.silent.envenom",
+            "proto.silent.afterimage",
+            "proto.silent.untouchable",
+            "proto.silent.flick_flack",
+            "proto.silent.abrasive",
+            "proto.silent.haze"
         };
 
     internal static bool SupportsCard(string cardId) =>

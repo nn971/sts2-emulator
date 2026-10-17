@@ -49,6 +49,8 @@ Leg Sweep, Skewer, Footwork, Accuracy, Phantom Blades, Tracking, Infinite
 Blades, Suppress, Anticipate, Snakebite, Assassinate, Catalyst, Expose,
 Malaise, Crippling Cloud, Blur, Dodge and Roll, Sidestep, Pounce, Finisher,
 Flechettes, Bubble Bubble, Strangle, Corrosive Wave and Leading Strike. It
+also accepts deterministic Silent effects Noxious Fumes, Speedster, Serpent
+Form, Envenom, Afterimage, Untouchable, Flick-Flack, Abrasive and Haze. It
 rejects a chance or turn boundary it cannot resume with a typed unsupported-
 operation error. The semantic playable pilot also admits Survivor, Hand Trick,
 Nightmare and Wish through its persisted source card-selection continuation.
