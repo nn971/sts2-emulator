@@ -3,8 +3,9 @@ namespace Sts2Emulator.Core;
 /// <summary>
 /// Owns EventModel.Begin-compatible event streams for configured native runs.
 /// The stream is persisted on EventState and copied forward after each draw.
-/// A completed scripted Trash Heap choice may retain its unchanged entry
-/// cursor, with the selected fixed-pool result checked at the event boundary.
+/// Scripted Trash Heap, Tablet of Truth, and Trial resolutions retain
+/// counterfactual provider markers, with event-specific cursor and result
+/// invariants checked at the event boundary.
 /// </summary>
 public static class NativeEventContextRngV111
 {
@@ -311,6 +312,20 @@ public static class NativeEventContextRngV111
                     eventState.ChosenChoiceId);
         if (prototypeEventId == PrototypeNativeTabletOfTruth.EventId &&
             providerMode == "scripted-v111" && tabletPageIsExpected)
+            return;
+        var trialChoiceIsExpected =
+            NativeRngV111.ToSnapshot(stream) ==
+                NativeRngV111.ToSnapshot(initial) &&
+            (eventState.NativePageIndex is >= 2 and <= 4 &&
+                eventState.ChosenChoiceId is null ||
+             eventState.NativePageIndex ==
+                PrototypeNativeEventCompletionPages.TerminalChoicePageIndex(
+                    PrototypeNativeGloryEvents.TrialId) &&
+             PrototypeNativeEventCompletionPages.HasTerminalChoice(
+                PrototypeNativeGloryEvents.TrialId,
+                eventState.ChosenChoiceId));
+        if (prototypeEventId == PrototypeNativeGloryEvents.TrialId &&
+            providerMode == "scripted-v111" && trialChoiceIsExpected)
             return;
         throw new InvalidOperationException(
             "Native event state cannot use this counterfactual RNG provider.");

@@ -326,6 +326,31 @@ class State:
         return ReferenceNatureTabletOfTruthSession.from_wire(
             self.session, result["result"])
 
+    def begin_reference_nature_trial(
+            self, nature_seed: int | None = None):
+        """Begin or continue the Glory Trial three-case choice."""
+        if self.session.capabilities.get(
+                "referenceNatureTrialSessionSchemaId") != (
+                "sts2-v111-reference-nature-trial-session-v1"):
+            raise EmulatorError(
+                "Emulator does not expose ReferenceNature Trial sessions")
+        site_id = "event.glory_trial.damage_amount.index_draw"
+        if not self.session.supports_reference_nature_site(
+                site_id, session="trial"):
+            raise EmulatorError(
+                "No ReferenceNature Trial session is advertised")
+        if (nature_seed is not None and
+                (not isinstance(nature_seed, int) or
+                 isinstance(nature_seed, bool) or nature_seed < 0 or
+                 nature_seed > 0xFFFFFFFFFFFFFFFF)):
+            raise ValueError("nature_seed must be an unsigned 64-bit integer")
+        payload = {"state_handle": self.handle}
+        if nature_seed is not None:
+            payload["nature_seed"] = nature_seed
+        result = self.session.call("reference_nature_trial_begin", **payload)
+        return ReferenceNatureTrialSession.from_wire(
+            self.session, result["result"])
+
     def begin_reference_nature_merchant(self, action_id: str,
                                         nature_seed: int | None = None):
         """Begin atomic ReferenceNature generation for a configured Shop node."""
@@ -922,6 +947,82 @@ class ReferenceNatureTabletOfTruthSession:
     def release(self):
         return self.session.release_reference_nature_tablet_of_truth_many(
             [self])
+
+
+@dataclass(frozen=True)
+class ReferenceNatureTrialSession:
+    """Atomic Trial case selection and ReferenceNature cursor."""
+    session: "Session"
+    handle: str
+    fingerprint: str
+    state_handle: str | None
+    event_id: str | None
+    choice_id: str
+    page: int
+    run_phase: str
+    boundary: str
+    next_ordinal: int
+    pending: dict | None
+    next_page: int | None
+    event_random_provider: str | None
+    decision_transcript: list
+    nature_sample_count: int
+
+    @classmethod
+    def from_wire(cls, session, payload):
+        if payload.get("schemaId") != (
+                "sts2-v111-reference-nature-trial-session-v1"):
+            raise EmulatorError(
+                "Unsupported ReferenceNature Trial session schema")
+        return cls(
+            session, payload["referenceNatureTrialHandle"],
+            payload["fingerprint"], payload["stateHandle"],
+            payload["eventId"], payload["choiceId"], payload["page"],
+            payload["runPhase"], payload["boundary"],
+            payload["nextOrdinal"], payload["pending"],
+            payload["nextPage"], payload["eventRandomProvider"],
+            payload["decisionTranscript"], payload["natureSampleCount"])
+
+    @property
+    def complete(self):
+        return self.boundary == "committed"
+
+    @property
+    def state(self):
+        if self.state_handle is None:
+            raise EmulatorError("Trial case has not committed")
+        return State(self.session, self.state_handle)
+
+    def status(self):
+        result = self.session.call(
+            "reference_nature_trial_status",
+            reference_nature_trial_handle=self.handle)
+        return ReferenceNatureTrialSession.from_wire(
+            self.session, result["result"])
+
+    def resolve_next(self):
+        """Sample and commit the Trial case selection."""
+        result = self.session.call(
+            "reference_nature_trial_resolve_next",
+            reference_nature_trial_handle=self.handle,
+            fingerprint=self.fingerprint)
+        return ReferenceNatureTrialSession.from_wire(
+            self.session, result["result"])
+
+    def fork(self):
+        result = self.session.call(
+            "reference_nature_trial_fork",
+            reference_nature_trial_handle=self.handle)
+        return ReferenceNatureTrialSession.from_wire(
+            self.session, result["result"])
+
+    def save_snapshot(self):
+        return self.session.call(
+            "reference_nature_trial_save",
+            reference_nature_trial_handle=self.handle)["snapshot"]
+
+    def release(self):
+        return self.session.release_reference_nature_trial_many([self])
 
 
 @dataclass(frozen=True)
@@ -1630,12 +1731,13 @@ class Session:
             "neow_offer": "referenceNatureNeowOfferSiteIds",
             "trash_heap": "referenceNatureTrashHeapSiteIds",
             "tablet_of_truth": "referenceNatureTabletOfTruthSiteIds",
+            "trial": "referenceNatureTrialSiteIds",
             "merchant": "referenceNatureMerchantSiteIds",
             "treasure": "referenceNatureTreasureSiteIds",
         }
         if session != "any" and session not in fields:
             raise ValueError(
-                "session must be semantic, run_action, event_choice, ancient_offer, neow_offer, trash_heap, tablet_of_truth, merchant, treasure, or any")
+                "session must be semantic, run_action, event_choice, ancient_offer, neow_offer, trash_heap, tablet_of_truth, trial, merchant, treasure, or any")
         coverage = self.stochastic_session_coverage
         if not isinstance(coverage, dict) or coverage.get("schemaId") != (
                 "sts2-v111-stochastic-session-coverage-v1"):
@@ -2036,6 +2138,26 @@ class Session:
         return self.call(
             "reference_nature_tablet_of_truth_release_many",
             reference_nature_tablet_of_truth_handles=[
+                item.handle for item in sessions])["released"]
+
+    def load_reference_nature_trial_snapshot(self, snapshot: str):
+        if self.capabilities.get(
+                "referenceNatureTrialSessionSchemaId") != (
+                "sts2-v111-reference-nature-trial-session-v1"):
+            raise EmulatorError(
+                "Emulator does not expose ReferenceNature Trial sessions")
+        result = self.call("reference_nature_trial_load", snapshot=snapshot)
+        return ReferenceNatureTrialSession.from_wire(
+            self, result["result"])
+
+    def release_reference_nature_trial_many(self, sessions):
+        sessions = list(sessions)
+        if any(item.session is not self for item in sessions):
+            raise ValueError(
+                "ReferenceNature Trial handle belongs to another session")
+        return self.call(
+            "reference_nature_trial_release_many",
+            reference_nature_trial_handles=[
                 item.handle for item in sessions])["released"]
 
     def load_reference_nature_merchant_snapshot(self, snapshot: str):

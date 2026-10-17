@@ -251,3 +251,6 @@ Run matched source-state/seed sets; frozen player policy; fair observations/lega
 
 
 **S6 Tablet of Truth page continuation increment (2026-10-17):** The first four eligible-card draws now have conditional Chance Laws and one-page ReferenceNatureTabletOfTruthSessionV111 continuations. Each sampled physical card is applied by replaying the ordinary decipher action, with the page result and sampler cursor committed together while the Native event cursor stays unchanged. Page 4, lethal decipher, and empty eligible-card pools remain draw-free. The CLI and Python bindings expose query, session, snapshot, and Nature-choice coverage. Native source filtering, seeded cursor parity, law calibration, and the broader S6 gate remain open.
+
+
+**S6 Trial case continuation increment (2026-10-17):** Glory Trial acceptance now has a three-outcome Chance Law and an atomic ReferenceNature session. The session replays the ordinary acceptance action, commits the case page and sampler cursor together, and preserves the TRIAL Native event cursor with a validated scripted provider marker. Reject and later case decisions remain ordinary player actions. Case-law calibration, source reward fidelity, seeded Native parity, and the broader S6 gate remain open.

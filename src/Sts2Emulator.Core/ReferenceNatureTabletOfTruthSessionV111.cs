@@ -287,33 +287,12 @@ public sealed record ReferenceNatureTabletOfTruthSessionV111(
     private static RunState Replay(
         RunState origin, TabletOfTruthChoicePlanV111 plan,
         int selectedIndex)
-    {
-        var scripted = new ScriptedRandomIndexProviderV111(
-        [
-            new RandomIndexDecisionV111(
-                plan.Request, selectedIndex, "scripted-v111")
-        ]);
-        using var providerScope = StochasticProviderScopeV111.Enter(
-            scripted, overrideExplicitProviders: true);
-        var run = new PrototypeGameEngine().Step(
-            origin.Fork(), GameAction.Create("event_choice",
-                new EventChoicePayload("decipher"))).State;
-        scripted.AssertComplete();
-        var world = run.World ?? throw new InvalidDataException(
-            "Tablet of Truth scripted resolution lost its event world.");
-        var eventState = world.Event ?? throw new InvalidDataException(
-            "Tablet of Truth scripted resolution lost its event page.");
-        return run with
-        {
-            World = world with
-            {
-                Event = eventState with
-                {
-                    NativeEventRngProviderMode = "scripted-v111"
-                }
-            }
-        };
-    }
+        => ReferenceNatureNativeEventIndexReplayV111.Replay(
+            origin, plan.Request, selectedIndex,
+            GameAction.Create("event_choice",
+                new EventChoicePayload("decipher")),
+            PrototypeNativeTabletOfTruth.NativeRngEventId,
+            "Tablet of Truth");
 }
 
 public static partial class ChanceLawEngineV111
