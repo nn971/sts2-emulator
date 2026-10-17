@@ -1702,7 +1702,11 @@ public sealed partial class PrototypeGameEngine
               PendingKnowledgeDemonChoice: null,
               AutomaticPipelineContinuation: { } continuation } combat)
         {
-            if (combat.SemanticDeck?.Pending is not null)
+            var stochastic = continuation.Stochastic;
+            if (combat.SemanticDeck?.Pending is not null ||
+                stochastic.HandDrawProgress is not null ||
+                stochastic.ControlledEnemyAction is not null ||
+                stochastic.ControlledTurnIntents is not null)
                 return state;
             var world = RequireWorld(state);
             state = state with
