@@ -224,7 +224,7 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidDataException(
                 "Semantic post-hand continuation is not at a clean boundary.");
 
-        var continued = ResumeAutomaticPipeline(run, cursor.NextStepIndex);
+        var continued = ResumeAutomaticPipelineContinuation(run);
         if (continued.Phase == RunPhase.Combat)
         {
             var result = RequireWorld(continued).Combat ??

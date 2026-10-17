@@ -1690,12 +1690,12 @@ public sealed partial class PrototypeGameEngine
     }
 
     /// <summary>
-    /// Resume a saved automatic pipeline once a controlled choice has
-    /// completed, then settle its terminal combat reward boundary. Choice
-    /// adapters share this handoff so cursor clearing and reward timing stay
-    /// consistent.
+    /// Resume a saved automatic pipeline after its boundary outcome is
+    /// committed, then settle its terminal combat reward boundary. Choice
+    /// and semantic end-turn adapters share this handoff so cursor clearing,
+    /// remaining stages, and reward timing stay consistent.
     /// </summary>
-    internal static RunState ResumeAutomaticPipelineAfterChoiceResolution(
+    internal static RunState ResumeAutomaticPipelineContinuation(
         RunState state)
     {
         if (state.World?.Combat is
@@ -1723,6 +1723,10 @@ public sealed partial class PrototypeGameEngine
                 ? EnterCombatReward(state)
                 : state;
     }
+
+    /// <summary>Compatibility name retained for controlled-choice adapters.</summary>
+    internal static RunState ResumeAutomaticPipelineAfterChoiceResolution(
+        RunState state) => ResumeAutomaticPipelineContinuation(state);
 
     /// <summary>
     /// Attach the semantic intent provider frame to the ordinary automatic
