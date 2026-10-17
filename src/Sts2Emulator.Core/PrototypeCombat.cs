@@ -14632,9 +14632,6 @@ public sealed partial class PrototypeGameEngine
             Player = resumed.Player,
             World = state.World! with { Combat = resumed.Combat }
         };
-        if (result.Phase == RunPhase.Combat &&
-            result.World?.Combat is { } live && AllEnemiesDefeated(live))
-            return EnterCombatReward(result);
         return result;
     }
 
