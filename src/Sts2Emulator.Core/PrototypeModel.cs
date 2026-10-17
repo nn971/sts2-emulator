@@ -2290,7 +2290,7 @@ public sealed record PrototypeAutoPlayTargetRoll(
     int SelectedIndex,
     int TargetEnemyInstanceId);
 
-public sealed record CombatState(
+public sealed partial record CombatState(
     int Turn,
     int Energy,
     int PlayerBlock,
