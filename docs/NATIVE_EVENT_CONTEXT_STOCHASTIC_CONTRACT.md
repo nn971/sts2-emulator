@@ -81,11 +81,14 @@ the same gold value. Lost Wisp and Jungle Maze Adventure likewise expose their t
 unit-float formulas, counting 53-bit `NextDouble`-grid preimages after
 `NextFloat` rounding, source float arithmetic, and integer truncation. These
 declared Native transforms are `SOURCE_VERIFIED` under the uniform-grid input
-model. These are conditional gold mappings, not a complete Event-node law or
-an atomic event-entry session. Event-pool completeness, Native event seed
-frequencies, stream attribution, and cursor parity remain open. Legacy
-integer fallbacks and adjacent unsupported source alternatives remain
-`UNVERIFIED`.
+model. `ReferenceNatureNativeEventGoldSessionV111` consumes these mappings
+while replaying the configured Event-node action for Jungle Maze Adventure
+and Lost Wisp. It suspends only at the generated-gold float requests; event
+selection and any other requests keep their existing providers. See the
+[Native event gold session contract](REFERENCE_NATURE_NATIVE_EVENT_GOLD_D3.md).
+This does not establish complete event-pool support, Native event seed
+frequencies, stream attribution, or cursor parity. Legacy integer fallbacks
+and adjacent unsupported source alternatives remain `UNVERIFIED`.
 
 Stone of All Time's `push_ticket` and `lift_ticket` each have a read-only
 one-outcome law at the legal active-event choice boundary. On Native runs both

@@ -40,15 +40,18 @@ internal static class ControlledChanceContinuationExecutorV111
     public static ControlledStochasticReplayResultV111 ResumeStochastic(
         RunState checkpoint,
         ControlledStochasticDecisionV111[] decisions,
-        Func<RunState, RunState> mechanics)
+        Func<RunState, RunState> mechanics,
+        Func<ControlledStochasticRequestV111, bool>? requestFilter = null)
     {
         ArgumentNullException.ThrowIfNull(checkpoint);
         ArgumentNullException.ThrowIfNull(decisions);
         ArgumentNullException.ThrowIfNull(mechanics);
 
         using var replay = ControlledStochasticChanceReplayV111.Begin(decisions);
-        using var providers = StochasticProviderScopeV111.Enter(
-            replay, replay);
+        using var providers = requestFilter is null
+            ? StochasticProviderScopeV111.Enter(replay, replay)
+            : StochasticProviderScopeV111.EnterFiltered(
+                replay, replay, requestFilter);
         try
         {
             var run = mechanics(checkpoint) ?? throw new InvalidDataException(

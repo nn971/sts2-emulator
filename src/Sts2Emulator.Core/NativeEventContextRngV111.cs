@@ -4,8 +4,9 @@ namespace Sts2Emulator.Core;
 /// Owns EventModel.Begin-compatible event streams for configured native runs.
 /// The stream is persisted on EventState and copied forward after each draw.
 /// Scripted Trash Heap, Tablet of Truth, Trial, Endless Conveyor dish-ticket,
-/// and event-shuffle resolutions retain counterfactual provider markers,
-/// with event-specific cursor and result invariants checked at the boundary.
+/// Native event-gold, and event-shuffle resolutions retain counterfactual
+/// provider markers, with event-specific cursor and result invariants checked
+/// at the boundary.
 /// </summary>
 public static class NativeEventContextRngV111
 {
@@ -406,6 +407,21 @@ public static class NativeEventContextRngV111
             eventState.ChosenChoiceId == "light";
         if (prototypeEventId == PrototypeNativeUnderdocksDoors.EventId &&
             providerMode == "scripted-v111" && doorsLightChoiceIsExpected)
+            return;
+        var scriptedGoldEntryIsExpected =
+            NativeRngV111.ToSnapshot(stream) ==
+                NativeRngV111.ToSnapshot(initial) &&
+            eventState.NativePageIndex == 0 &&
+            eventState.ChosenChoiceId is null &&
+            (prototypeEventId == PrototypeNativeHiveEvents.LostWispId &&
+                eventState.NativeEventGold is >= 45 and <= 75 &&
+                eventState.NativeEventSecondaryGold == 0 ||
+             prototypeEventId ==
+                "proto.native.event.jungle_maze_adventure" &&
+                eventState.NativeEventGold is >= 135 and <= 165 &&
+                eventState.NativeEventSecondaryGold is >= 35 and <= 65);
+        if (providerMode == "scripted-v111" &&
+            scriptedGoldEntryIsExpected)
             return;
         throw new InvalidOperationException(
             "Native event state cannot use this counterfactual RNG provider.");

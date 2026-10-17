@@ -326,25 +326,8 @@ public sealed record ReferenceNatureTreasureSessionV111(
     }
 
     private static RunState CreateNatureReplayOrigin(RunState source)
-    {
-        var world = source.World!;
-        var bag = world.RelicBag ??
-            PrototypeNativeRelicGrabBag.CreateNatureUnordered(source.Player);
-        static string[] Canonical(string[] ids) => ids
-            .OrderBy(id => id, StringComparer.Ordinal).ToArray();
-        return source with
-        {
-            World = world with
-            {
-                RelicBag = new PrototypeRelicBagState(
-                    Canonical(bag.Common), Canonical(bag.Uncommon),
-                    Canonical(bag.Rare), Canonical(bag.Shop))
-                {
-                    OrderMode = PrototypeRelicBagOrderMode.NatureUnordered
-                }
-            }
-        };
-    }
+        => ReferenceNatureRunProjectionV111.CreateNatureReplayOrigin(
+            source, createRelicBagWhenMissing: true);
 
     private static void ValidateOpeningBoundary(
         RunState source, GameAction action)

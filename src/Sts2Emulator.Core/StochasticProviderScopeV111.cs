@@ -14,6 +14,7 @@ internal static class StochasticProviderScopeV111
         IRandomIndexProviderV111? indexProvider,
         IRandomUnitFloatProviderV111? unitFloatProvider,
         bool overrideExplicitProviders,
+        Func<ControlledStochasticRequestV111, bool>? requestFilter,
         Frame? parent)
     {
         public IRandomIndexProviderV111? IndexProvider { get; } = indexProvider;
@@ -21,6 +22,8 @@ internal static class StochasticProviderScopeV111
             unitFloatProvider;
         public bool OverrideExplicitProviders { get; } =
             overrideExplicitProviders;
+        public Func<ControlledStochasticRequestV111, bool>? RequestFilter { get; } =
+            requestFilter;
         public Frame? Parent { get; } = parent;
         public object OrdinalSync { get; } = new();
         public Dictionary<string, ulong> NextOrdinals { get; } =
@@ -52,25 +55,52 @@ internal static class StochasticProviderScopeV111
         IRandomIndexProviderV111? indexProvider = null,
         IRandomUnitFloatProviderV111? unitFloatProvider = null,
         bool overrideExplicitProviders = true)
+        => EnterCore(indexProvider, unitFloatProvider,
+            overrideExplicitProviders, null);
+
+    public static IDisposable EnterFiltered(
+        IRandomIndexProviderV111? indexProvider,
+        IRandomUnitFloatProviderV111? unitFloatProvider,
+        Func<ControlledStochasticRequestV111, bool> requestFilter,
+        bool overrideExplicitProviders = true)
+    {
+        ArgumentNullException.ThrowIfNull(requestFilter);
+        return EnterCore(indexProvider, unitFloatProvider,
+            overrideExplicitProviders, requestFilter);
+    }
+
+    private static IDisposable EnterCore(
+        IRandomIndexProviderV111? indexProvider,
+        IRandomUnitFloatProviderV111? unitFloatProvider,
+        bool overrideExplicitProviders,
+        Func<ControlledStochasticRequestV111, bool>? requestFilter)
     {
         if (indexProvider is null && unitFloatProvider is null)
             throw new ArgumentException(
                 "A stochastic provider scope must replace at least one provider.");
         var frame = new Frame(
             indexProvider, unitFloatProvider, overrideExplicitProviders,
-            Current.Value);
+            requestFilter, Current.Value);
         Current.Value = frame;
         return new ScopeLease(frame);
     }
 
     public static IRandomIndexProviderV111 SelectIndexProvider(
         IRandomIndexProviderV111? explicitProvider)
+        => SelectIndexProvider(explicitProvider, null);
+
+    private static IRandomIndexProviderV111 SelectIndexProvider(
+        IRandomIndexProviderV111? explicitProvider,
+        ControlledStochasticRequestV111? request)
     {
         IRandomIndexProviderV111? fallback = null;
         for (var frame = Current.Value; frame is not null;
              frame = frame.Parent)
         {
             if (frame.IndexProvider is not { } scopedProvider)
+                continue;
+            if (frame.RequestFilter is { } filter &&
+                (request is null || !filter(request)))
                 continue;
             fallback ??= scopedProvider;
             if (frame.OverrideExplicitProviders)
@@ -91,7 +121,9 @@ internal static class StochasticProviderScopeV111
         {
             EnsureOrdinal(frame, streams, request.StreamId);
         }
-        var decision = SelectIndexProvider(explicitProvider)
+        var decision = SelectIndexProvider(
+                explicitProvider,
+                ControlledStochasticRequestV111.FromIndex(request))
             .Resolve(request, streams);
         if (frame is not null)
             AdvanceOrdinal(frame, streams, request.StreamId,
@@ -101,12 +133,20 @@ internal static class StochasticProviderScopeV111
 
     public static IRandomUnitFloatProviderV111 SelectUnitFloatProvider(
         IRandomUnitFloatProviderV111? explicitProvider)
+        => SelectUnitFloatProvider(explicitProvider, null);
+
+    private static IRandomUnitFloatProviderV111 SelectUnitFloatProvider(
+        IRandomUnitFloatProviderV111? explicitProvider,
+        ControlledStochasticRequestV111? request)
     {
         IRandomUnitFloatProviderV111? fallback = null;
         for (var frame = Current.Value; frame is not null;
              frame = frame.Parent)
         {
             if (frame.UnitFloatProvider is not { } scopedProvider)
+                continue;
+            if (frame.RequestFilter is { } filter &&
+                (request is null || !filter(request)))
                 continue;
             fallback ??= scopedProvider;
             if (frame.OverrideExplicitProviders)
@@ -127,7 +167,9 @@ internal static class StochasticProviderScopeV111
         {
             EnsureOrdinal(frame, streams, request.StreamId);
         }
-        var decision = SelectUnitFloatProvider(explicitProvider)
+        var decision = SelectUnitFloatProvider(
+                explicitProvider,
+                ControlledStochasticRequestV111.FromUnitFloat(request))
             .Resolve(request, streams);
         if (frame is not null)
             AdvanceOrdinal(frame, streams, request.StreamId,

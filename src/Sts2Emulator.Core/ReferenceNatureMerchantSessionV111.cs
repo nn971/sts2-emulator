@@ -79,7 +79,8 @@ public sealed record ReferenceNatureMerchantSessionV111(
         ReferenceNatureRunCursorV111.ValidateInitial(
             source, initialNatureState, "Native merchant");
 
-        var natureOrigin = CreateNatureReplayOrigin(source);
+        var natureOrigin =
+            ReferenceNatureRunProjectionV111.CreateNatureReplayOrigin(source);
         var replay = Replay(natureOrigin, action, []);
         var run = replay.Run is { } completed
             ? ReferenceNatureRunCursorV111.Commit(
@@ -406,30 +407,11 @@ public sealed record ReferenceNatureMerchantSessionV111(
         ControlledStochasticDecisionV111[] decisions)
     {
         var replay = ControlledChanceContinuationExecutorV111.ResumeStochastic(
-            CreateNatureReplayOrigin(source), decisions,
+            ReferenceNatureRunProjectionV111.CreateNatureReplayOrigin(source), decisions,
             checkpoint => new PrototypeGameEngine().Step(
                 checkpoint, CloneAction(action)).State);
         return new MerchantReplayResultV111(
             replay.Run, replay.PendingChance);
-    }
-
-    private static RunState CreateNatureReplayOrigin(RunState source)
-    {
-        var world = source.World!;
-        var bag = world.RelicBag ?? throw new NotSupportedException(
-            "Native merchant Nature replay requires a committed relic bag; bag construction remains a separate Nature boundary.");
-        static string[] Canonical(string[] ids) => ids
-            .OrderBy(id => id, StringComparer.Ordinal).ToArray();
-        var projectedBag = new PrototypeRelicBagState(
-            Canonical(bag.Common), Canonical(bag.Uncommon),
-            Canonical(bag.Rare), Canonical(bag.Shop))
-        {
-            OrderMode = PrototypeRelicBagOrderMode.NatureUnordered
-        };
-        return source with
-        {
-            World = world with { RelicBag = projectedBag }
-        };
     }
 
     private static void ValidateOpeningBoundary(

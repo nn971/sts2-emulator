@@ -39,6 +39,8 @@ public sealed record StochasticCapabilityManifestV111(
         ReferenceNatureTrialSessionV111.CurrentSchemaId;
     public string ReferenceNatureNativeEventShuffleSessionSchemaId { get; init; } =
         ReferenceNatureNativeEventShuffleSessionV111.CurrentSchemaId;
+    public string ReferenceNatureNativeEventGoldSessionSchemaId { get; init; } =
+        ReferenceNatureNativeEventGoldSessionV111.CurrentSchemaId;
     public string ReferenceNatureEndlessConveyorSessionSchemaId { get; init; } =
         ReferenceNatureEndlessConveyorSessionV111.CurrentSchemaId;
     public string ReferenceNatureGloryReflectionsSessionSchemaId { get; init; } =
@@ -61,7 +63,7 @@ public sealed record StochasticCapabilityManifestV111(
     [
         "semantic_combat", "reference_combat", "run_action",
         "event_choice", "ancient_offer", "neow_offer", "trash_heap",
-        "tablet_of_truth", "trial", "event_shuffle",
+        "tablet_of_truth", "trial", "event_shuffle", "native_event_gold",
         "endless_conveyor",
         "merchant", "treasure", "glory_reflections",
         "infested_automaton",
@@ -152,6 +154,13 @@ public static class StochasticCapabilitiesV111
             "reference_nature_native_event_shuffle_save",
             "reference_nature_native_event_shuffle_load",
             "reference_nature_native_event_shuffle_release_many",
+            "reference_nature_native_event_gold_begin",
+            "reference_nature_native_event_gold_status",
+            "reference_nature_native_event_gold_resolve_next",
+            "reference_nature_native_event_gold_fork",
+            "reference_nature_native_event_gold_save",
+            "reference_nature_native_event_gold_load",
+            "reference_nature_native_event_gold_release_many",
             "reference_nature_endless_conveyor_begin",
             "reference_nature_endless_conveyor_status",
             "reference_nature_endless_conveyor_resolve_next",
@@ -224,6 +233,8 @@ public static class StochasticCapabilitiesV111
             ReferenceNatureTrialSessionV111.CurrentSchemaId,
         ReferenceNatureNativeEventShuffleSessionSchemaId =
             ReferenceNatureNativeEventShuffleSessionV111.CurrentSchemaId,
+        ReferenceNatureNativeEventGoldSessionSchemaId =
+            ReferenceNatureNativeEventGoldSessionV111.CurrentSchemaId,
         ReferenceNatureEndlessConveyorSessionSchemaId =
             ReferenceNatureEndlessConveyorSessionV111.CurrentSchemaId,
         ReferenceNatureGloryReflectionsSessionSchemaId =
@@ -2981,10 +2992,16 @@ public sealed record ReferenceNatureDecisionV111(
             int.TryParse(hpOffsetId["hp_offset:".Length..],
                 NumberStyles.None, CultureInfo.InvariantCulture,
                 out var hpOffset) && hpOffset is >= 2 and <= 9;
+        var mappedGold = OutcomeId is { } goldId &&
+            goldId.StartsWith("gold:", StringComparison.Ordinal) &&
+            int.TryParse(goldId["gold:".Length..],
+                NumberStyles.None, CultureInfo.InvariantCulture, out var gold) &&
+            gold >= 0;
         if (string.IsNullOrWhiteSpace(LawId) ||
             string.IsNullOrWhiteSpace(EventId) ||
             string.IsNullOrWhiteSpace(OutcomeId) || OutcomeIndex < 0 ||
-            !(indexedOutcome || identifiedReward || identifiedHpOffset))
+            !(indexedOutcome || identifiedReward || identifiedHpOffset ||
+                mappedGold))
             throw new InvalidDataException(
                 "Invalid ReferenceNature decision.");
     }

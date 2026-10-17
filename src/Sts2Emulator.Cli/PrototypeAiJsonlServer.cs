@@ -95,6 +95,12 @@ internal static class PrototypeAiJsonlServer
         var referenceNatureNativeEventShuffleRunStateHandles =
             new Dictionary<string, string>(StringComparer.Ordinal);
         long nextReferenceNatureNativeEventShuffleHandle = 1;
+        var referenceNatureNativeEventGoldStates =
+            new Dictionary<string, ReferenceNatureNativeEventGoldSessionV111>(
+                StringComparer.Ordinal);
+        var referenceNatureNativeEventGoldRunStateHandles =
+            new Dictionary<string, string>(StringComparer.Ordinal);
+        long nextReferenceNatureNativeEventGoldHandle = 1;
         var referenceNatureEndlessConveyorStates =
             new Dictionary<string, ReferenceNatureEndlessConveyorSessionV111>(
                 StringComparer.Ordinal);
@@ -357,6 +363,30 @@ internal static class PrototypeAiJsonlServer
                 ? session
                 : throw new InvalidOperationException(
                     "Unknown ReferenceNature native event shuffle session handle: " +
+                    handle);
+        }
+
+        string StoreReferenceNatureNativeEventGold(
+            ReferenceNatureNativeEventGoldSessionV111 session)
+        {
+            var handle = "eg" + nextReferenceNatureNativeEventGoldHandle++;
+            referenceNatureNativeEventGoldStates.Add(handle, session.Fork());
+            if (session.Complete)
+                referenceNatureNativeEventGoldRunStateHandles.Add(handle,
+                    Store(session.Run.Fork()));
+            return handle;
+        }
+
+        ReferenceNatureNativeEventGoldSessionV111
+            RequireReferenceNatureNativeEventGold(JsonElement request)
+        {
+            var handle = RequiredString(request,
+                "reference_nature_native_event_gold_handle");
+            return referenceNatureNativeEventGoldStates.TryGetValue(handle,
+                    out var session)
+                ? session
+                : throw new InvalidOperationException(
+                    "Unknown ReferenceNature native event gold session handle: " +
                     handle);
         }
 
@@ -971,6 +1001,43 @@ internal static class PrototypeAiJsonlServer
                 natureSampleCount = session.NatureState.SampleCount,
                 probabilityStatus = law?.ProbabilityStatus ??
                     ChanceLawV111.UnverifiedStatus
+            };
+        }
+
+        object ReferenceNatureNativeEventGoldResult(
+            ReferenceNatureNativeEventGoldSessionV111 session,
+            string handle, string? parent = null)
+        {
+            var law = session.PendingLaw;
+            return new
+            {
+                ok = true,
+                schemaId =
+                    ReferenceNatureNativeEventGoldSessionV111.CurrentSchemaId,
+                referenceNatureNativeEventGoldHandle = handle,
+                stateHandle = referenceNatureNativeEventGoldRunStateHandles
+                    .GetValueOrDefault(handle),
+                parent,
+                fingerprint = session.Fingerprint,
+                runFingerprint = CanonicalJson.Sha256(session.Run),
+                siteId = law?.SiteId ??
+                    ChanceLawEngineV111.NativeEventGoldUnitFloatSiteId,
+                eventId = session.EventId,
+                actionId = session.ActionId,
+                runPhase = session.Run.Phase.ToString(),
+                boundary = session.Complete ? "committed" : "nature",
+                nextOrdinal = session.NextOrdinal,
+                pending = law is null ? null : new
+                {
+                    kind = "native_event_generated_gold_random_choice",
+                    boundaryFingerprint = law.EventId,
+                    chanceLaw = law,
+                    probabilityStatus = law.ProbabilityStatus
+                },
+                decisionTranscript = session.DecisionTranscript,
+                natureProvider = ReferenceNatureV111.ProviderId,
+                natureSampleCount = session.NatureState.SampleCount,
+                probabilityStatus = ChanceLawV111.UnverifiedStatus
             };
         }
 
@@ -1800,6 +1867,10 @@ internal static class PrototypeAiJsonlServer
                     .TryGetValue(handle, out var nativeEventShuffleSession) =>
                     ReferenceNatureNativeEventShuffleResult(
                         nativeEventShuffleSession, handle),
+                "native_event_gold" when referenceNatureNativeEventGoldStates
+                    .TryGetValue(handle, out var nativeEventGoldSession) =>
+                    ReferenceNatureNativeEventGoldResult(
+                        nativeEventGoldSession, handle),
                 "endless_conveyor" when referenceNatureEndlessConveyorStates
                     .TryGetValue(handle, out var endlessConveyorSession) =>
                     ReferenceNatureEndlessConveyorResult(
@@ -2362,6 +2433,9 @@ internal static class PrototypeAiJsonlServer
                                 ReferenceNatureRunActionSessionV111.CurrentSchemaId,
                             referenceNatureEventChoiceSessionSchemaId =
                                 ReferenceNatureControlledEventChoiceSessionV111
+                                    .CurrentSchemaId,
+                            referenceNatureNativeEventGoldSessionSchemaId =
+                                ReferenceNatureNativeEventGoldSessionV111
                                     .CurrentSchemaId,
                             referenceNatureProviderId =
                                 ReferenceNatureV111.ProviderId,
@@ -4861,6 +4935,113 @@ internal static class PrototypeAiJsonlServer
                                     element.GetString()!))
                                 released++;
                             referenceNatureNativeEventShuffleRunStateHandles.Remove(
+                                element.GetString()!);
+                        }
+                        Write(new { requestId, ok = true, released });
+                        break;
+                    }
+
+                    case "reference_nature_native_event_gold_begin":
+                    {
+                        var source = RequireState(request);
+                        var actionId = RequiredString(request, "action_id");
+                        var seed = OptionalULong(request, "nature_seed");
+                        var session = seed is { } natureSeed
+                            ? ReferenceNatureNativeEventGoldSessionV111.Begin(
+                                source, actionId, natureSeed)
+                            : ReferenceNatureNativeEventGoldSessionV111.Begin(
+                                source, actionId);
+                        var handle = StoreReferenceNatureNativeEventGold(session);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureNativeEventGoldResult(
+                                session, handle) });
+                        break;
+                    }
+
+                    case "reference_nature_native_event_gold_status":
+                    {
+                        var handle = RequiredString(request,
+                            "reference_nature_native_event_gold_handle");
+                        var session = RequireReferenceNatureNativeEventGold(request);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureNativeEventGoldResult(
+                                session, handle) });
+                        break;
+                    }
+
+                    case "reference_nature_native_event_gold_resolve_next":
+                    {
+                        var parentHandle = RequiredString(request,
+                            "reference_nature_native_event_gold_handle");
+                        var session = RequireReferenceNatureNativeEventGold(request);
+                        if (session.Fingerprint != RequiredString(request,
+                                "fingerprint"))
+                            throw new InvalidOperationException(
+                                "Stale ReferenceNature native event gold fingerprint.");
+                        var next = session.ResolveNext();
+                        var handle = StoreReferenceNatureNativeEventGold(next);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureNativeEventGoldResult(
+                                next, handle, parentHandle) });
+                        break;
+                    }
+
+                    case "reference_nature_native_event_gold_fork":
+                    {
+                        var parentHandle = RequiredString(request,
+                            "reference_nature_native_event_gold_handle");
+                        var next = RequireReferenceNatureNativeEventGold(request)
+                            .Fork();
+                        var handle = StoreReferenceNatureNativeEventGold(next);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureNativeEventGoldResult(
+                                next, handle, parentHandle) });
+                        break;
+                    }
+
+                    case "reference_nature_native_event_gold_save":
+                    {
+                        var session = RequireReferenceNatureNativeEventGold(request);
+                        Write(new { requestId, ok = true,
+                            schemaId =
+                                ReferenceNatureNativeEventGoldSessionV111.CurrentSchemaId,
+                            snapshot =
+                                ReferenceNatureNativeEventGoldSessionV111.Save(
+                                    session) });
+                        break;
+                    }
+
+                    case "reference_nature_native_event_gold_load":
+                    {
+                        var session =
+                            ReferenceNatureNativeEventGoldSessionV111.Restore(
+                                RequiredString(request, "snapshot"));
+                        var handle = StoreReferenceNatureNativeEventGold(session);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureNativeEventGoldResult(
+                                session, handle) });
+                        break;
+                    }
+
+                    case "reference_nature_native_event_gold_release_many":
+                    {
+                        if (!request.TryGetProperty(
+                                "reference_nature_native_event_gold_handles",
+                                out var handles) ||
+                            handles.ValueKind != JsonValueKind.Array)
+                            throw new ArgumentException(
+                                "reference_nature_native_event_gold_handles must be an array.");
+                        var released = 0;
+                        foreach (var element in handles.EnumerateArray())
+                        {
+                            if (element.ValueKind != JsonValueKind.String ||
+                                string.IsNullOrWhiteSpace(element.GetString()))
+                                throw new ArgumentException(
+                                    "Invalid ReferenceNature native event gold handle.");
+                            if (referenceNatureNativeEventGoldStates.Remove(
+                                    element.GetString()!))
+                                released++;
+                            referenceNatureNativeEventGoldRunStateHandles.Remove(
                                 element.GetString()!);
                         }
                         Write(new { requestId, ok = true, released });
