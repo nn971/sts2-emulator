@@ -210,6 +210,7 @@ public static class StochasticSiteRegistryV111
     private static readonly string[] RunActionEventEntrySites =
     [
         "event.selection.weighted_ticket",
+        "event.unknown_room.odds.ticket",
         "event.generated_gold.index_draw",
         "event.stone_of_all_time.potion_slot.index_draw",
         "event.fake_merchant.relic_offer.shuffle_swap_index",

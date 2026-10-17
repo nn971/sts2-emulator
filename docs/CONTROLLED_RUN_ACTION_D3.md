@@ -3,8 +3,9 @@
 This opt-in D3 boundary saves the legacy `start_run` action at its Act 1 boss
 encounter draw, map choices that enter an Event node at supported legacy event
 entry draws, legacy Shop-node offer generation, eligible legacy Treasure-node
-relic selection, legal legacy Act 1 Overgrowth and Underdocks Combat/Elite
-node entry, and the Shovel dig action at its unowned-relic draw. Combat entry
+relic selection, eligible legacy regional Unknown-node entry, legal legacy
+Act 1 Overgrowth and Underdocks Combat/Elite node entry, and the Shovel dig
+action at its unowned-relic draw. Combat entry
 controls registered `combat`-stream requests and the two legacy
 potion-factory index sites used by pre-combat relic hooks through ordinary
 room initialization; other requests and streams retain their existing
@@ -20,9 +21,9 @@ and ordered candidate labels. Event-entry and Act 1 combat-entry frames retain
 the selected map-node ID. Resolving one index replays the action from that
 checkpoint and records the controlled decision in
 `RunState.ControlledRunActionHistory`. Run start commits the selected boss
-encounter; map entry commits the selected Event, Shop, Treasure, or supported
-Act 1 Combat/Elite room through ordinary initialization; Shovel commits the
-relic as the normal reward.
+encounter; map entry commits the selected Event, Shop, Treasure, Unknown, or
+supported Act 1 Combat/Elite room through ordinary initialization; Shovel
+commits the relic as the normal reward.
 The pending continuation is part of ordinary run snapshots. Player-facing
 observations hide its Nature actions; the explicit controller exposes only
 `choose_controlled_run_action_outcome` actions while the frame is pending.
@@ -76,7 +77,8 @@ cursor use `sts2-exact-snapshot-v2-reference-nature-state`, and snapshots
 without a cursor retain `sts2-exact-snapshot-v1`.
 
 The session supports the `start_run` boss encounter draw, legacy map
-Event-node entry draws, seven `shop.*` sites in legacy Shop-node generation,
+Event-node entry draws, the legacy regional Unknown-room 1000-way ticket,
+seven `shop.*` sites in legacy Shop-node generation,
 the `treasure.relic_model.index_draw` legacy Treasure-node site, registered
 combat-stream requests and the two legacy potion-factory index requests during
 legal legacy Overgrowth or Underdocks Combat/Elite node entry, and Shovel's
@@ -112,8 +114,12 @@ Run-start map continuation covers the listed `map.legacy.*` request sites
 during initial legacy map generation. It does not cover later-act map
 regeneration or native map generation. Event-entry continuation covers legacy
 `event.selection.weighted_ticket` and listed legacy event initialization draws
-when a map Event node is selected. Configured native event streams remain
-outside this boundary.
+when a map Event node is selected. The separate
+`event.unknown_room.odds.ticket` request is supported only when a legacy run
+with no `NativeRunRng` enters an available Unknown node in a regional map
+profile; its 1000 equal request indices remain `UNVERIFIED` because they
+approximate the source unit-float mapping. Configured Native run streams and
+source cursor parity remain outside this boundary.
 
 The supported legacy event-entry initialization sites are:
 

@@ -371,6 +371,8 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                     .IsRunActionTreasureSite(PendingRequest.SiteId);
                 var combatSite = ControlledEventChoiceReplayV111
                     .IsRunActionCombatSite(PendingRequest.SiteId);
+                var unknownRoomSite = PendingRequest.SiteId ==
+                    "event.unknown_room.odds.ticket";
                 var combatPotionSite = ControlledEventChoiceReplayV111
                     .IsRunActionCombatEntryPotionSite(
                         PendingRequest.SiteId);
@@ -382,6 +384,10 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                     ControlledEventChoiceReplayV111
                         .IsRunActionUnderdocksCombatEntrySite(
                             PendingRequest.SiteId);
+                var legacyUnknownRoomNode = node?.RoomType ==
+                        PrototypeRoomType.Unknown
+                    && state.NativeRunRng is null
+                    && PrototypeGameEngine.UsesNativeRegionalSystems(world);
                 var legacyShopNode = node?.RoomType == PrototypeRoomType.Shop
                     && !PrototypeGameEngine.UsesNativeRegionalSystems(world);
                 var availableRelics = node?.RoomType == PrototypeRoomType.Treasure
@@ -404,6 +410,7 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                 if (node is null
                     || (node.RoomType != PrototypeRoomType.Event
                         && !legacyShopNode && !legacyTreasureNode
+                        && !legacyUnknownRoomNode
                         && !legacyOvergrowthCombatNode
                         && !legacyUnderdocksCombatNode))
                     throw new InvalidDataException(
@@ -411,6 +418,7 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                 if (!(node.RoomType == PrototypeRoomType.Event && eventEntrySite)
                     && !(legacyShopNode && shopSite)
                     && !(legacyTreasureNode && treasureSite)
+                    && !(legacyUnknownRoomNode && unknownRoomSite)
                     && !(legacyOvergrowthCombatNode
                         && overgrowthCombatEntrySite)
                     && !(legacyUnderdocksCombatNode
@@ -427,6 +435,19 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                         "bounded_integer"
                     ? []
                     : (int[])PendingRequest.OrderedCandidates.Clone();
+                if (unknownRoomSite)
+                {
+                    var oddsOwner =
+                        $"act:{world.Act}:floor:{world.Floor}:unknown_room";
+                    if (!legacyUnknownRoomNode ||
+                        PendingRequest.OperationKind != "bounded_integer" ||
+                        PendingRequest.SupportCount !=
+                            PrototypeUnknownRoomOddsState.Scale ||
+                        PendingRequest.OwnerId != oddsOwner)
+                        throw new InvalidDataException(
+                            "Controlled Unknown-room request differs from its regional map boundary.");
+                    expectedOwner = oddsOwner;
+                }
                 expectedLabels = PendingRequest.SupportCount >
                     ControlledRunActionEngineV111.MaximumInlineOutcomeActions
                     ? []
@@ -706,6 +727,8 @@ public static class ControlledRunActionEngineV111
                             source, node.RoomType)
                         || IsLegacyUnderdocksCombatRoom(
                             source, node.RoomType)));
+        supportedMapNodeAction |=
+            IsLegacyUnknownRoomEntryAction(source, action);
         var overgrowthCombatEntryAction =
             IsLegacyOvergrowthCombatEntryAction(source, action);
         var underdocksCombatEntryAction =
@@ -865,6 +888,21 @@ public static class ControlledRunActionEngineV111
         return PrototypeNativeWingedBoots.AvailableNodes(world, source.Player)
             .Any(node => node.NodeId == nodeId
                 && IsLegacyUnderdocksCombatRoom(source, node.RoomType));
+    }
+
+    internal static bool IsLegacyUnknownRoomEntryAction(
+        RunState source, GameAction action)
+    {
+        if (action.Kind != "choose_map_node"
+            || source.Phase != RunPhase.MapChoice
+            || source.NativeRunRng is not null
+            || source.World is not { } world
+            || !PrototypeGameEngine.UsesNativeRegionalSystems(world))
+            return false;
+        var nodeId = action.ReadPayload<ChooseMapNodePayload>().NodeId;
+        return PrototypeNativeWingedBoots.AvailableNodes(world, source.Player)
+            .Any(node => node.NodeId == nodeId
+                && node.RoomType == PrototypeRoomType.Unknown);
     }
 
     internal static bool IsLegacyActOneCombatEntryAction(
