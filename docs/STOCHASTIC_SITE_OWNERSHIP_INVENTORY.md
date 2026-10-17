@@ -16,6 +16,8 @@ This document joins existing inventories instead of copying their site rows. The
 
 The census and matrix have different units. Census rows are source expressions; migration rows are semantic sampling sites. One site can have many call expressions, and one generic provider expression can serve many semantic sites. Neither count should be used as the other's completion denominator.
 
+Stone of All Time's pre-entry potion-slot query covers Native and retained legacy routes. Native uses the exact bounded-index transform; the legacy route uses an equal-support ReferenceNature model marked `UNVERIFIED`, with its request ordinal following the Event-selection ticket.
+
 ## State ownership crosswalk
 
 | State or path | Current representation | Target authority | Visibility and lifecycle | Migration note |

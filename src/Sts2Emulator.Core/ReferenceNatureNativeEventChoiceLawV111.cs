@@ -267,11 +267,25 @@ public static partial class ChanceLawEngineV111
     private const string NativeStoneOfAllTimeNoEffectProvenance =
         "v0.111.0 Stone of All Time consumes the bounded ticket after the " +
         "push or lift effect and discards the selected index; every source " +
-        "index therefore has the same no_effect mechanic. RNG provider " +
+        "index therefore has the same no_effect mechanic. Native event " +
         "cursor advancement is outside this Chance Law.";
+
+    private const string LegacyStoneOfAllTimeNoEffectProvenance =
+        "v0.111.0 Stone of All Time consumes the bounded ticket after the " +
+        "push or lift effect and discards the selected index; every source " +
+        "index therefore has the same no_effect mechanic. Legacy event " +
+        "stream advancement is outside this Chance Law.";
 
     private const string NativeStoneOfAllTimeNoEffectPolicyId =
         "native-stone-of-all-time-ticket-no-effect-v1";
+
+    private const string LegacyStoneOfAllTimeNoEffectPolicyId =
+        "legacy-stone-of-all-time-ticket-no-effect-v1";
+
+    private const string LegacyStoneOfAllTimePotionSlotProvenance =
+        "ReferenceNature models the retained legacy Stone of All Time " +
+        "potion-slot draw as equal weight over the ordered occupied slots; " +
+        "legacy seed frequencies and exact provider parity remain unverified.";
 
     public static string[] NativeEventGoldQuerySiteIds =>
         [NativeEventGoldIndexSiteId, NativeEventGoldUnitFloatSiteId];
@@ -302,19 +316,68 @@ public static partial class ChanceLawEngineV111
     public static ChanceLawV111 QueryNativeStoneOfAllTimePotionSlot(
         RunState origin, string siteId, int ordinal, string actionId,
         string eventId)
+        => QueryStoneOfAllTimePotionSlot(
+            origin, siteId, ordinal, actionId, eventId);
+
+    public static ChanceLawV111 QueryStoneOfAllTimePotionSlot(
+        RunState origin, string siteId, int ordinal, string actionId,
+        string eventId)
     {
         ArgumentNullException.ThrowIfNull(origin);
         ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
         ArgumentException.ThrowIfNullOrWhiteSpace(actionId);
         ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
-        if (siteId != NativeStoneOfAllTimePotionSlotSiteId || ordinal != 0 ||
+        if (siteId != NativeStoneOfAllTimePotionSlotSiteId || ordinal < 0 ||
             eventId != PrototypeNativeStoneOfAllTime.EventId ||
             origin.Phase != RunPhase.MapChoice ||
-            origin.World is not { Event: null } world ||
-            origin.NativeRunRng is null ||
-            !PrototypeGameEngine.UsesNativeRegionalSystems(world))
+            origin.World is not { Event: null } world)
             throw new InvalidOperationException(
-                "Stone of All Time potion-slot laws require a configured pre-entry Native Event-node boundary and explicit Stone branch.");
+                "Stone of All Time potion-slot laws require a pre-entry Event-node boundary and explicit Stone branch.");
+
+        var nativeRoute = origin.NativeRunRng is not null &&
+            PrototypeGameEngine.UsesNativeRegionalSystems(world);
+        var legacyRoute = origin.NativeRunRng is null &&
+            !PrototypeGameEngine.UsesNativeRegionalSystems(world);
+        if (!nativeRoute && !legacyRoute)
+            throw new InvalidOperationException(
+                "Stone of All Time potion-slot law requires a complete Native or legacy event RNG route.");
+        var streamId = nativeRoute
+            ? NativeRngV111Contexts.EventStreamId(
+                PrototypeNativeStoneOfAllTime.NativeRngEventId)
+            : "event";
+        if (nativeRoute && ordinal != 0)
+            throw new InvalidOperationException(
+                "Native Stone of All Time potion-slot law requires event-stream ordinal 0.");
+        if (legacyRoute)
+        {
+            if (origin.Configuration?.UsesExperimentalSilentThreeActRoute
+                    != true ||
+                !ExperimentalSilentThreeActRouteV111.ContainsEvent(
+                    eventId, world.Act))
+                throw new InvalidOperationException(
+                    "Legacy Stone of All Time branch is outside the supported later-act event route.");
+            var legacyEvent = PrototypeContent.Event(eventId);
+            if (world.Act < legacyEvent.MinAct ||
+                world.Act > legacyEvent.MaxAct ||
+                legacyEvent.OncePerRun && world.EventIds.Contains(
+                    eventId, StringComparer.Ordinal) ||
+                !PrototypeNativeHiveEvents.IsEligible(
+                    legacyEvent, origin.Player))
+                throw new InvalidOperationException(
+                    "Legacy Stone of All Time event branch is unavailable in this run state.");
+            var eventStreams = origin.Rng.Streams.Where(stream =>
+                stream.StreamId == streamId).ToArray();
+            if (eventStreams.Length != 1 ||
+                eventStreams[0].Codec != PrototypeRng.Codec ||
+                eventStreams[0].StateBytes.Length != sizeof(ulong))
+                throw new InvalidOperationException(
+                    "Legacy Stone of All Time law requires its retained event RNG stream.");
+            var callsBeforeEntry = eventStreams[0].CallCount ?? 0;
+            if (callsBeforeEntry >= int.MaxValue ||
+                ordinal != (int)callsBeforeEntry + 1)
+                throw new InvalidOperationException(
+                    "Legacy Stone of All Time potion-slot ordinal must follow the Event selection ticket.");
+        }
         PrototypeStateInvariants.Validate(origin);
 
         var engine = new PrototypeGameEngine();
@@ -345,32 +408,50 @@ public static partial class ChanceLawEngineV111
 
         var ownerId = "event:stone_of_all_time:potion_slots:" +
             CanonicalJson.Sha256(slots);
-        var streamId = NativeRngV111Contexts.EventStreamId(
-            PrototypeNativeStoneOfAllTime.NativeRngEventId);
         var request = new RandomIndexRequestV111(
             siteId, streamId, ownerId, ordinal,
             Enumerable.Range(0, slots.Length).ToArray());
         request.Validate();
-        var weights = NativeNextIntGridWeights(slots.Length);
+        var weights = nativeRoute
+            ? NativeNextIntGridWeights(slots.Length)
+            : Enumerable.Repeat(1L, slots.Length).ToArray();
         var outcomes = slots.Select((slot, index) =>
             new ChanceLawOutcomeV111(
                 $"potion_slot:{slot}:index:{index}", weights[index]))
             .ToArray();
-        var conditioningFingerprint = CanonicalJson.Sha256(new
-        {
-            boundary = "native_event.stone_of_all_time.entry_potion_slot",
-            actionId,
-            eventId,
-            nodeId,
-            orderedOccupiedPotionSlots = slots,
-            request
-        });
+        var conditioningFingerprint = nativeRoute
+            ? CanonicalJson.Sha256(new
+            {
+                boundary = "native_event.stone_of_all_time.entry_potion_slot",
+                actionId,
+                eventId,
+                nodeId,
+                orderedOccupiedPotionSlots = slots,
+                request
+            })
+            : CanonicalJson.Sha256(new
+            {
+                boundary = "reference_nature.stone_of_all_time.entry_potion_slot",
+                actionId,
+                eventId,
+                nodeId,
+                providerRoute = "legacy",
+                orderedOccupiedPotionSlots = slots,
+                request
+            });
         return CreateNativeBoundaryLaw(
             siteId, request.OperationKind, ownerId, ordinal,
-            "native-stone-of-all-time-potion-slot-index-v1",
+            nativeRoute
+                ? "native-stone-of-all-time-potion-slot-index-v1"
+                : "legacy-stone-of-all-time-potion-slot-index-v1",
             conditioningFingerprint,
-            NativeBoundedIndexSourceVerifiedProvenance,
-            outcomes, ChanceLawV111.SourceVerifiedStatus);
+            nativeRoute
+                ? NativeBoundedIndexSourceVerifiedProvenance
+                : LegacyStoneOfAllTimePotionSlotProvenance,
+            outcomes,
+            nativeRoute
+                ? ChanceLawV111.SourceVerifiedStatus
+                : ChanceLawV111.UnverifiedStatus);
     }
 
     /// <summary>
@@ -565,27 +646,46 @@ public static partial class ChanceLawEngineV111
                 $"Stone of All Time choice '{expectedChoice}' is not legal in the current state.");
 
         var ownerId = $"event:stone_of_all_time:{expectedChoice}";
-        var conditioningFingerprint = CanonicalJson.Sha256(new
-        {
-            boundary = "reference_nature.stone_of_all_time.no_effect_ticket",
-            eventId = evt.EventId,
-            actionId,
-            providerRoute = nativeRoute ? "native" : "legacy",
-            sourceOperation = new
+        var conditioningFingerprint = nativeRoute
+            ? CanonicalJson.Sha256(new
             {
-                siteId,
-                streamId,
-                ownerId,
-                ordinal,
-                operationKind = "bounded_integer",
-                boundedCount = 100
-            }
-        });
+                boundary = "native_event.stone_of_all_time.no_effect_ticket",
+                eventId = evt.EventId,
+                actionId,
+                sourceOperation = new
+                {
+                    siteId,
+                    streamId,
+                    ownerId,
+                    operationKind = "bounded_integer",
+                    boundedCount = 100
+                }
+            })
+            : CanonicalJson.Sha256(new
+            {
+                boundary = "reference_nature.stone_of_all_time.no_effect_ticket",
+                eventId = evt.EventId,
+                actionId,
+                providerRoute = "legacy",
+                sourceOperation = new
+                {
+                    siteId,
+                    streamId,
+                    ownerId,
+                    ordinal,
+                    operationKind = "bounded_integer",
+                    boundedCount = 100
+                }
+            });
         return CreateNativeBoundaryLaw(
             siteId, "bounded_integer_no_effect", ownerId, ordinal,
-            NativeStoneOfAllTimeNoEffectPolicyId,
+            nativeRoute
+                ? NativeStoneOfAllTimeNoEffectPolicyId
+                : LegacyStoneOfAllTimeNoEffectPolicyId,
             conditioningFingerprint,
-            NativeStoneOfAllTimeNoEffectProvenance,
+            nativeRoute
+                ? NativeStoneOfAllTimeNoEffectProvenance
+                : LegacyStoneOfAllTimeNoEffectProvenance,
             [new ChanceLawOutcomeV111("no_effect", 1L)],
             ChanceLawV111.SourceVerifiedStatus);
     }

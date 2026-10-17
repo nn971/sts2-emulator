@@ -111,10 +111,13 @@ not advance that cursor either. Neither route claims seeded cursor parity.
 The entry-time `potion_slot.index_draw` also has a pre-entry conditional law.
 The caller supplies the legal Event-node action and explicitly declares Stone
 of All Time as the event branch; the query checks route eligibility and uses
-the ordered occupied potion-slot support with exact Native `NextInt` grid
-masses. It does not inspect the later Native event-selection result or create
-an entry session. Event selection, legacy fallback behavior, seed frequencies,
-stream attribution, and Native cursor parity remain separate claims.
+the ordered occupied potion-slot support. Native uses exact `NextInt` grid
+masses and is `SOURCE_VERIFIED`; the legacy ReferenceNature route uses equal
+weights and remains `UNVERIFIED`. Native ordinal is 0; the legacy request
+ordinal follows the event-selection ticket and is checked against the saved
+`event` stream call count. The query does not inspect the later event-selection
+result or create an entry session. Event selection, seed frequencies, stream
+attribution, and Native cursor parity remain separate claims.
 
 The Future of Potions `card_type.index_draw` has one pre-entry law per owned
 potion, ordered by slot and conditioned on that explicit event branch. Each

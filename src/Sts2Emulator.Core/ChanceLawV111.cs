@@ -2163,9 +2163,14 @@ public static partial class ChanceLawEngineV111
         });
         return CreateNativeBoundaryLaw(
             request.SiteId, "bounded_integer_no_effect", request.OwnerId,
-            request.Ordinal, NativeStoneOfAllTimeNoEffectPolicyId,
+            request.Ordinal,
+            nativeRoute
+                ? NativeStoneOfAllTimeNoEffectPolicyId
+                : LegacyStoneOfAllTimeNoEffectPolicyId,
             conditioningFingerprint,
-            NativeStoneOfAllTimeNoEffectProvenance,
+            nativeRoute
+                ? NativeStoneOfAllTimeNoEffectProvenance
+                : LegacyStoneOfAllTimeNoEffectProvenance,
             [new ChanceLawOutcomeV111("no_effect", 1L)],
             ChanceLawV111.SourceVerifiedStatus);
     }

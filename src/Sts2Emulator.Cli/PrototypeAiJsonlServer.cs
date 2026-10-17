@@ -2970,7 +2970,7 @@ internal static class PrototypeAiJsonlServer
                             law = siteId == ChanceLawEngineV111
                                 .NativeStoneOfAllTimePotionSlotSiteId
                                 ? ChanceLawEngineV111
-                                    .QueryNativeStoneOfAllTimePotionSlot(
+                                    .QueryStoneOfAllTimePotionSlot(
                                         queryRun, siteId, ordinal, actionId, eventId)
                                 : ChanceLawEngineV111
                                     .QueryNativeFutureOfPotionsCardType(
