@@ -87,6 +87,7 @@ internal static class PrototypeAiJsonlServer
                 var semanticEvent = SemanticPilotCombatEngineV111
                     .DescribePendingIntentEvent(state);
                 var support = semanticEvent.Support;
+                var chanceLaw = ChanceLawEngineV111.QueryIntent(semanticEvent);
                 return new
                 {
                     kind = "enemy_intent",
@@ -101,6 +102,7 @@ internal static class PrototypeAiJsonlServer
                     semanticIntentEventSchemaId =
                         SemanticIntentEventV111.EventSchemaId,
                     semanticEvent,
+                    chanceLaw,
                     eventId = semanticEvent.EventId,
                     semanticCandidates =
                         support.Candidates.Select(candidate => new
@@ -175,6 +177,9 @@ internal static class PrototypeAiJsonlServer
             {
                 var combat = state.Run.World?.Combat ??
                     throw new InvalidDataException("Draw event missing its combat.");
+                var chanceLaw = ChanceLawEngineV111.QueryDraw(
+                    combat.SemanticDeck ?? throw new InvalidDataException(
+                        "Draw event missing its provider-owned deck."));
                 return new
                 {
                     kind = "draw_card",
@@ -189,6 +194,7 @@ internal static class PrototypeAiJsonlServer
                     operationKind = drawn.OperationKind,
                     supportFingerprint = drawn.SupportFingerprint,
                     constraintFingerprint = combat.SemanticDeck.Fingerprint,
+                    chanceLaw,
                     probabilityStatus = drawn.ProbabilityStatus,
                     candidates = drawn.CandidateCardInstanceIds
                         .Select((id, index) => new
@@ -877,6 +883,8 @@ internal static class PrototypeAiJsonlServer
                             naturePlayable = false,
                             controlledChanceSchemaId = ControlledChanceSchemaId,
                             semanticChanceSchemaId = SemanticChanceSchemaId,
+                            stochasticCapabilities =
+                                StochasticCapabilitiesV111.Create(),
                             controlledEventChoiceSchemaId =
                                 ControlledEventChoiceEngineV111.SchemaId,
                             controlledEventChoiceScope =

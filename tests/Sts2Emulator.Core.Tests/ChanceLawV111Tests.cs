@@ -5,6 +5,35 @@ namespace Sts2Emulator.Core.Tests;
 
 public sealed class ChanceLawV111Tests
 {
+    [Fact]
+    public void StochasticCapabilitiesNegotiateOnlyImplementedUnverifiedSites()
+    {
+        var capabilities = StochasticCapabilitiesV111.Create();
+
+        Assert.Equal(StochasticCapabilitiesV111.SchemaId,
+            capabilities.SchemaId);
+        Assert.Equal(ChanceLawV111.CurrentSchemaId,
+            capabilities.ChanceLawSchemaId);
+        Assert.Equal("UNVERIFIED", capabilities.ProbabilityStatus);
+        Assert.Equal(PrototypeAiEnvironment.SchemaId,
+            capabilities.PlayerObservationSchemaId);
+        Assert.Contains("combat.committed_intent.index_draw",
+            capabilities.NatureChoiceSiteIds);
+        Assert.Contains("combat.next_turn_intent.index_draw",
+            capabilities.NatureChoiceSiteIds);
+        Assert.Contains("combat.draw_pile.draw_card",
+            capabilities.NatureChoiceSiteIds);
+        Assert.Contains(ReferenceNatureV111.ProviderId,
+            capabilities.ProviderModes);
+        Assert.Contains(SemanticNativePolicyAuditV111.NativeProviderId,
+            capabilities.ProviderModes);
+        Assert.Contains(StochasticCapabilitiesV111.ExternalSelectionProviderId,
+            capabilities.ProviderModes);
+        Assert.Equal(CanonicalJson.Serialize(capabilities),
+            CanonicalJson.Serialize(
+                PrototypeCapabilities.Create().StochasticV111));
+    }
+
     private static SemanticIntentEventV111 IntentEvent(
         string eventId, string boundaryFingerprint)
     {

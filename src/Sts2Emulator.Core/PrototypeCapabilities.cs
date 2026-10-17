@@ -14,7 +14,10 @@ public sealed record PrototypeCapabilityManifest(
     string[] CombatEffectKinds,
     string[] CombatEventKinds,
     string[] RunPhases,
-    V111CoverageSummary[]? V111Coverage = null);
+    V111CoverageSummary[]? V111Coverage = null)
+{
+    public StochasticCapabilityManifestV111? StochasticV111 { get; init; }
+}
 
 public static class PrototypeCapabilities
 {
@@ -42,5 +45,8 @@ public static class PrototypeCapabilities
             RunPhases: Enum.GetNames<RunPhase>()
                 .Order(StringComparer.Ordinal)
                 .ToArray(),
-            V111Coverage: Sts2Emulator.Core.V111Coverage.Create().Summary);
+            V111Coverage: Sts2Emulator.Core.V111Coverage.Create().Summary)
+        {
+            StochasticV111 = StochasticCapabilitiesV111.Create()
+        };
 }

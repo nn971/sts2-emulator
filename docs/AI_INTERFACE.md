@@ -76,6 +76,11 @@ ideas—reset, observe, legal actions, step, fork/batch—behind a versioned cro
 
 `PrototypeCapabilities.Create()` returns a machine-readable manifest containing the active
 ruleset ID, AI schema ID, character ID, supported content IDs, effect/event kinds, and run phases.
+It also contains `stochasticV111`, a separately versioned capability envelope for the semantic
+Nature interface. The JSONL `hello` response advertises the same envelope as
+`stochasticCapabilities`. It lists the supported Chance Law sites and provider modes, along with
+the `UNVERIFIED` probability status; consumers should negotiate this instead of inferring law
+support from a generic semantic session.
 
 The developer CLI prints the same manifest with:
 
@@ -85,6 +90,11 @@ dotnet run --project src/Sts2Emulator.Cli -- prototype-manifest
 
 Experiment metadata in the parent AI project should record at least the emulator commit,
 `RulesetId`, and `AiSchemaId`.
+
+Semantic session results include a typed `chanceLaw` inside the Nature-only `pending` payload for
+supported enemy-intent and unresolved draw-card choices. It carries stable outcome IDs, exact
+integer weights, support and conditioning fingerprints, and explicit provenance. The ordinary
+`semantic_observe` response remains the fair player projection and does not include this payload.
 
 ## Native-shaped Overgrowth training reset (live-run JSONL)
 

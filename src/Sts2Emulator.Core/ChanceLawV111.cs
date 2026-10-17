@@ -7,6 +7,39 @@ namespace Sts2Emulator.Core;
 /// <summary>An exact, integer-weighted outcome in a conditional chance law.</summary>
 public sealed record ChanceLawOutcomeV111(string OutcomeId, long Weight);
 
+public sealed record StochasticCapabilityManifestV111(
+    string SchemaId,
+    string ChanceLawSchemaId,
+    string ReferenceNatureProviderId,
+    string ProbabilityStatus,
+    string[] NatureChoiceSiteIds,
+    string PlayerObservationSchemaId,
+    string[] ProviderModes);
+
+public static class StochasticCapabilitiesV111
+{
+    public const string SchemaId = "sts2-v111-stochastic-capabilities-v1";
+    public const string ExternalSelectionProviderId =
+        "external-semantic-selection-v1";
+
+    public static StochasticCapabilityManifestV111 Create() => new(
+        SchemaId,
+        ChanceLawV111.CurrentSchemaId,
+        ReferenceNatureV111.ProviderId,
+        ChanceLawV111.UnverifiedStatus,
+        [
+            "combat.committed_intent.index_draw",
+            "combat.next_turn_intent.index_draw",
+            "combat.draw_pile.draw_card"
+        ],
+        PrototypeAiEnvironment.SchemaId,
+        [
+            ReferenceNatureV111.ProviderId,
+            SemanticNativePolicyAuditV111.NativeProviderId,
+            ExternalSelectionProviderId
+        ]);
+}
+
 /// <summary>
 /// Read-only conditional distribution for one unresolved semantic event.
 /// EventId correlates the query with mechanics; LawId fingerprints only the
@@ -293,6 +326,7 @@ public sealed record ReferenceNatureSessionV111(
 /// </summary>
 public static class ReferenceNatureV111
 {
+    public const string ProviderId = "reference-nature-splitmix64-v1";
     private const ulong GoldenGamma = 0x9E3779B97F4A7C15UL;
 
     /// <summary>
