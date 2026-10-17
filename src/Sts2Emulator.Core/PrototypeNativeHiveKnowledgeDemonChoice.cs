@@ -163,13 +163,10 @@ public sealed partial class PrototypeGameEngine
             PendingKnowledgeDemonChoice = null,
             KnowledgeDemonChoiceResolvedTurn = combat.Turn
         };
-        var continuation = combat.AutomaticPipelineContinuation
-            ?? throw new InvalidOperationException(
+        if (combat.AutomaticPipelineContinuation is null)
+            throw new InvalidOperationException(
                 "Knowledge Demon choice lost its automatic-step continuation.");
-        combat = combat with { AutomaticPipelineContinuation = null };
-        return ResumeAutomaticPipeline(
-            state with { World = world with { Combat = combat } },
-            continuation.NextStepIndex,
-            continuation.PendingPostDispatchEventKind);
+        return ResumeAutomaticPipelineAfterChoiceResolution(
+            state with { World = world with { Combat = combat } });
     }
 }

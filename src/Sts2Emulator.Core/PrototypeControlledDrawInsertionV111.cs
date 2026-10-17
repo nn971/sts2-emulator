@@ -602,25 +602,8 @@ public sealed partial class PrototypeGameEngine
 
     private static RunState ResumeControlledInsertionPipeline(RunState state)
     {
-        if (state.Phase == RunPhase.Combat &&
-            state.World?.Combat is { PendingChoice: null,
-                AutomaticPipelineContinuation: { } automatic } combat)
-        {
-            state = state with
-            {
-                World = state.World with
-                {
-                    Combat = combat with
-                    {
-                        AutomaticPipelineContinuation = null
-                    }
-                }
-            };
-            state = automatic.OpeningStage is { } openingStage
-                ? ResumeOpeningCombat(state, openingStage)
-                : ResumeAutomaticPipeline(state, automatic.NextStepIndex,
-                    automatic.PendingPostDispatchEventKind);
-        }
+        if (state.Phase == RunPhase.Combat)
+            state = ResumeAutomaticPipelineAfterChoiceResolution(state);
         if (state.Phase == RunPhase.Combat &&
             state.World?.Combat is { } live && AllEnemiesDefeated(live))
             return EnterCombatReward(state);

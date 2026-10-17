@@ -13300,31 +13300,8 @@ public sealed partial class PrototypeGameEngine
             return ResumeControlledRecycleStratagemSelection(state);
 
         if (!pending.AutomaticSemanticStratagemDrawSelection &&
-            !pending.AutomaticSemanticDrawHookChoice &&
-            resolved.Combat.PendingChoice is null
-            && resolved.Combat.AutomaticPipelineContinuation is
-                { } automaticContinuation)
-        {
-            var resumedWorld = RequireWorld(state);
-            var resumedCombat = resumedWorld.Combat
-                ?? throw new InvalidOperationException(
-                    "Combat unexpectedly disappeared.");
-            state = state with
-            {
-                World = resumedWorld with
-                {
-                    Combat = resumedCombat with
-                    {
-                        AutomaticPipelineContinuation = null
-                    }
-                }
-            };
-            state = automaticContinuation.OpeningStage is { } openingStage
-                ? ResumeOpeningCombat(state, openingStage)
-                : ResumeAutomaticPipeline(state,
-                    automaticContinuation.NextStepIndex,
-                    automaticContinuation.PendingPostDispatchEventKind);
-        }
+            !pending.AutomaticSemanticDrawHookChoice)
+            state = ResumeAutomaticPipelineAfterChoiceResolution(state);
 
         if (state.Phase != RunPhase.Combat)
         {
