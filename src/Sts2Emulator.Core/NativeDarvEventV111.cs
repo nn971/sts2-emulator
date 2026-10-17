@@ -16,7 +16,7 @@ public static class NativeDarvEventV111
     public const string PandorasBoxId = "proto.relic.pandoras_box";
     public const string DustyTomeCardId = "proto.silent.wraith_form";
     public const string CurseOfTheBellCardId = "proto.native.shared.curse_of_the_bell";
-    private const string RngEventId = "DARV";
+    public const string NativeRngEventId = "DARV";
     public const string OfferVariantSiteId =
         "event.darv.offer_variant.index_draw";
     public const string RelicShuffleSiteId =
@@ -80,7 +80,7 @@ public static class NativeDarvEventV111
                 && id != "proto.relic.ectoplasm") || act == 2).ToArray();
     }
 
-    private static string[] PoolOneRelicIdsForAct(
+    internal static string[] PoolOneRelicIdsForAct(
         int act, PlayerState player) => SupportedRelicIdsForAct(act)
         .Where(id => id != DustyTomeId
             && (id != PandorasBoxId || HasPandorasBoxTarget(player)))
@@ -121,6 +121,18 @@ public static class NativeDarvEventV111
     public static RunState BeginOpening(RunState state) =>
         BeginOpeningWithAudit(state, new NativeRandomIndexProviderV111()).State;
 
+    internal static void ValidateOpeningBoundary(RunState state)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        if (state.World is not { Act: 2 or 3, Floor: 0, Combat: null,
+                Reward: null, Event: null } world
+            || world.Map.CurrentNodeId is not null
+            || state.Phase != RunPhase.MapChoice
+            || world.EventIds.Contains(EventId, StringComparer.Ordinal))
+            throw new InvalidOperationException(
+                "Darv requires an unvisited Hive or Glory Ancient boundary.");
+    }
+
     /// <summary>
     /// Resolve Darv's offer-variant and relic-shuffle choices through the
     /// supplied provider. The compatibility entry point uses native-v111.
@@ -136,17 +148,12 @@ public static class NativeDarvEventV111
             throw new ArgumentException(
                 "Darv offer generation requires a supported random provider mode.",
                 nameof(provider));
-        if (state.World is not { Act: 2 or 3, Floor: 0, Combat: null,
-                Reward: null, Event: null } world
-            || world.Map.CurrentNodeId is not null
-            || state.Phase != RunPhase.MapChoice
-            || world.EventIds.Contains(EventId, StringComparer.Ordinal))
-            throw new InvalidOperationException(
-                "Darv requires an unvisited Hive or Glory Ancient boundary.");
+        ValidateOpeningBoundary(state);
+        var world = state.World!;
 
         var fork = state.Fork();
         var bundle = new RngBundle([NativeRngV111Contexts.ForEvent(
-            fork.RunSeed, RngEventId)]);
+            fork.RunSeed, NativeRngEventId)]);
         // Source sets do not exclude relics already owned by the player.
         // Sozu is only eligible in Hive; its source set is filtered in Glory.
         var streamId = bundle.Streams[0].StreamId;
@@ -192,7 +199,8 @@ public static class NativeDarvEventV111
     {
         if (state.World?.Event is not { EventId: EventId } evt)
             return;
-        var initial = NativeRngV111Contexts.ForEvent(state.RunSeed, RngEventId);
+        var initial = NativeRngV111Contexts.ForEvent(
+            state.RunSeed, NativeRngEventId);
         if (state.World.Act is not (2 or 3)
             || evt.NativeEventRng is not { } stream
             || stream.StreamId != "context.event.DARV.player_0"

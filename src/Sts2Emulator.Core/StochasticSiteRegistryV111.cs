@@ -248,6 +248,8 @@ public static class StochasticSiteRegistryV111
         NativeNonupeipeEventV111.ShuffleSiteId,
         NativeTanxEventV111.ShuffleSiteId,
         NativeVakuuEventV111.ShuffleSiteId,
+        NativeDarvEventV111.OfferVariantSiteId,
+        NativeDarvEventV111.RelicShuffleSiteId,
         .. ChanceLawEngineV111.NeowOfferSessionSiteIds,
         .. ChanceLawEngineV111.TrashHeapSessionSiteIds,
         .. ChanceLawEngineV111.TabletOfTruthSessionSiteIds,
@@ -309,7 +311,8 @@ public static class StochasticSiteRegistryV111
         NativeAncientRewardsV111.TezcataraOfferSiteId,
         NativeNonupeipeEventV111.ShuffleSiteId,
         NativeTanxEventV111.ShuffleSiteId,
-        NativeVakuuEventV111.ShuffleSiteId
+        NativeVakuuEventV111.ShuffleSiteId,
+        NativeDarvEventV111.OfferVariantSiteId
     ];
 
     private static readonly string[] NeowOfferSessionSites =

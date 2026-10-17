@@ -577,15 +577,7 @@ internal static class PrototypeAiJsonlServer
             string handle, string? parent = null)
         {
             var eventState = session.Run.World?.Event;
-            var priorIndices =
-                ChanceLawEngineV111.IsShuffleAncientOfferSite(session.SiteId)
-                    ? session.DecisionTranscript
-                        .Select(decision => decision.OutcomeIndex).ToArray()
-                    : null;
-            var law = session.Complete ? null :
-                ChanceLawEngineV111.QueryAncientOffer(
-                    session.Origin, session.SiteId, session.NextOrdinal,
-                    priorIndices);
+            var law = session.PendingLaw;
             return new
             {
                 ok = true,
@@ -611,6 +603,9 @@ internal static class PrototypeAiJsonlServer
                         NativeNonupeipeEventV111.EventId,
                     var site when site == NativeTanxEventV111.ShuffleSiteId =>
                         NativeTanxEventV111.EventId,
+                    var site when site ==
+                        NativeDarvEventV111.OfferVariantSiteId =>
+                        NativeDarvEventV111.EventId,
                     _ => NativeVakuuEventV111.EventId
                 },
                 runPhase = session.Run.Phase.ToString(),
@@ -2603,9 +2598,8 @@ internal static class PrototypeAiJsonlServer
                             request, "relic_candidate_ids");
                         var excludedRelicIds = OptionalStringArray(
                             request, "excluded_relic_ids");
-                        if (StochasticSiteRegistryV111
-                            .AncientOfferSessionSiteIds.Contains(
-                                siteId, StringComparer.Ordinal))
+                        if (ChanceLawEngineV111
+                            .IsSupportedAncientOfferQuerySite(siteId))
                         {
                             if (cardType is not null || rarity is not null ||
                                 cardId is not null || potionId is not null ||

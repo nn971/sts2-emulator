@@ -317,6 +317,8 @@ public static partial class ChanceLawEngineV111
         "uniform-ordered-event-offer-entry-v1";
     public const string AncientOfferShuffleConditioningPolicyId =
         "uniform-ancient-offer-fisher-yates-swap-v1";
+    public const string DarvOfferVariantConditioningPolicyId =
+        "uniform-darv-offer-variant-v1";
     public const string NativeMerchantIndexConditioningPolicyId =
         "uniform-native-merchant-index-support-v1";
     public const string NativeMerchantThresholdConditioningPolicyId =
@@ -422,6 +424,11 @@ public static partial class ChanceLawEngineV111
     {
         ArgumentNullException.ThrowIfNull(run);
         ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
+        if (siteId == NativeDarvEventV111.OfferVariantSiteId)
+            return QueryDarvOfferVariant(run, ordinal, priorIndices);
+        if (siteId == NativeDarvEventV111.RelicShuffleSiteId)
+            return QueryDarvRelicShuffle(
+                run, ordinal, priorIndices, priorVariantIndex: null);
         if (IsShuffleAncientOfferSite(siteId))
             return QueryAncientOfferShuffle(
                 run, siteId, ordinal, priorIndices);
@@ -1347,23 +1354,63 @@ public static partial class ChanceLawEngineV111
             ValidateAncientOfferOpeningBoundary(run, siteId);
             return 3;
         }
+        if (siteId == NativeDarvEventV111.OfferVariantSiteId)
+        {
+            NativeDarvEventV111.ValidateOpeningBoundary(run);
+            return checked(1 + DarvOfferShuffleRequests(run).Length);
+        }
         ValidateAncientOfferOpeningBoundary(run, siteId);
+        if (siteId == NativeDarvEventV111.RelicShuffleSiteId)
+            return DarvOfferShuffleRequests(run).Length;
         var pools = AncientOfferShuffleChoicePools(run, siteId);
         return AncientOfferShuffleRequests(siteId, pools).Length;
     }
 
     internal static bool IsSupportedAncientOfferSite(string siteId) =>
-        IsChoiceAncientOfferSite(siteId) || IsShuffleAncientOfferSite(siteId);
+        IsChoiceAncientOfferSite(siteId) || IsShuffleAncientOfferSite(siteId) ||
+        siteId == NativeDarvEventV111.OfferVariantSiteId;
+
+    public static bool IsSupportedAncientOfferQuerySite(string siteId) =>
+        IsSupportedAncientOfferSite(siteId);
+
+    internal static bool IsSupportedAncientOfferSessionSite(string siteId) =>
+        siteId != NativeDarvEventV111.RelicShuffleSiteId &&
+        IsSupportedAncientOfferSite(siteId);
 
     public static bool IsShuffleAncientOfferSite(string siteId) =>
         siteId is NativeNonupeipeEventV111.ShuffleSiteId or
             NativeTanxEventV111.ShuffleSiteId or
-            NativeVakuuEventV111.ShuffleSiteId;
+            NativeVakuuEventV111.ShuffleSiteId or
+            NativeDarvEventV111.RelicShuffleSiteId;
+
+    internal static ChanceLawV111 QueryAncientOfferSessionStep(
+        RunState run, string sessionSiteId,
+        ReferenceNatureDecisionV111[] prefix)
+    {
+        ArgumentNullException.ThrowIfNull(prefix);
+        if (sessionSiteId == NativeDarvEventV111.OfferVariantSiteId)
+        {
+            if (prefix.Length == 0)
+                return QueryDarvOfferVariant(run, 0, null);
+            return QueryDarvRelicShuffle(run, prefix.Length - 1,
+                prefix.Skip(1).Select(decision => decision.OutcomeIndex)
+                    .ToArray(),
+                prefix[0].OutcomeIndex);
+        }
+        var priorIndices = IsShuffleAncientOfferSite(sessionSiteId)
+            ? prefix.Select(decision => decision.OutcomeIndex).ToArray()
+            : null;
+        return QueryAncientOffer(run, sessionSiteId, prefix.Length,
+            priorIndices);
+    }
 
     internal static void ValidateAncientOfferOpeningBoundary(
         RunState run, string siteId)
     {
-        if (siteId == NativeOrobasEventV111.OfferSiteId)
+        if (siteId is NativeDarvEventV111.OfferVariantSiteId or
+            NativeDarvEventV111.RelicShuffleSiteId)
+            NativeDarvEventV111.ValidateOpeningBoundary(run);
+        else if (siteId == NativeOrobasEventV111.OfferSiteId)
             NativeOrobasEventV111.ValidateOpeningBoundary(run);
         else if (siteId == NativePaelRewardsV111.OfferSiteId)
             NativePaelRewardsV111.ValidateOpeningBoundary(run);
@@ -1383,6 +1430,10 @@ public static partial class ChanceLawEngineV111
     internal static string[][] AncientOfferShuffleChoicePools(
         RunState run, string siteId)
     {
+        if (siteId == NativeDarvEventV111.RelicShuffleSiteId)
+            return [NativeDarvEventV111.PoolOneRelicIdsForAct(
+                    run.World!.Act, run.Player)
+                .Select(id => "take_" + id).ToArray()];
         if (siteId == NativeNonupeipeEventV111.ShuffleSiteId)
             return [NativeNonupeipeEventV111.CandidateRelics(
                     NativeNonupeipeEventV111.HasBeautifulBraceletEligibility(
@@ -1499,6 +1550,140 @@ public static partial class ChanceLawEngineV111
             ownerId, ordinal, AncientOfferShuffleConditioningPolicyId,
             conditioningFingerprint,
             "uniform-fisher-yates-swap-unverified", outcomes);
+    }
+
+    private static ChanceLawV111 QueryDarvOfferVariant(
+        RunState run, int ordinal, int[]? priorIndices)
+    {
+        NativeDarvEventV111.ValidateOpeningBoundary(run);
+        if (ordinal != 0 || priorIndices is { Length: > 0 })
+            throw new InvalidOperationException(
+                "Darv offer-variant law supports only ordinal zero without a prefix.");
+        var request = DarvOfferVariantRequest(run);
+        var ownerId = request.OwnerId;
+        var conditioningFingerprint = CanonicalJson.Sha256(new
+        {
+            act = run.World!.Act,
+            request,
+            outcomes = new[] { "offer_variant:dusty_tome",
+                "offer_variant:three_relics" },
+            policy = DarvOfferVariantConditioningPolicyId
+        });
+        var eventId = CanonicalJson.Sha256(new
+        {
+            schemaId = ChanceLawV111.CurrentSchemaId,
+            siteId = request.SiteId,
+            ownerId,
+            ordinal,
+            conditioningFingerprint
+        });
+        var outcomes = new[]
+        {
+            new ChanceLawOutcomeV111("offer_variant:dusty_tome", 1L),
+            new ChanceLawOutcomeV111("offer_variant:three_relics", 1L)
+        };
+        return Create(eventId, request.SiteId, request.OperationKind,
+            ownerId, ordinal, DarvOfferVariantConditioningPolicyId,
+            conditioningFingerprint,
+            "uniform-darv-offer-variant-unverified", outcomes);
+    }
+
+    private static ChanceLawV111 QueryDarvRelicShuffle(
+        RunState run, int ordinal, int[]? priorIndices,
+        int? priorVariantIndex)
+    {
+        NativeDarvEventV111.ValidateOpeningBoundary(run);
+        var requests = DarvOfferShuffleRequests(run);
+        if (ordinal < 0 || ordinal >= requests.Length)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+        priorIndices ??= [];
+        if (priorIndices.Length != ordinal)
+            throw new ArgumentException(
+                "Darv shuffle queries require one prior index per earlier swap.",
+                nameof(priorIndices));
+        if (priorVariantIndex is { } variant && variant is not (0 or 1))
+            throw new ArgumentOutOfRangeException(nameof(priorVariantIndex));
+
+        var initial = NativeDarvEventV111.PoolOneRelicIdsForAct(
+            run.World!.Act, run.Player);
+        var current = (string[])initial.Clone();
+        for (var index = 0; index < ordinal; index++)
+        {
+            var selectedIndex = priorIndices[index];
+            if (selectedIndex < 0 ||
+                selectedIndex >= requests[index].SupportCount)
+                throw new ArgumentOutOfRangeException(nameof(priorIndices),
+                    $"Prior Darv swap index {index} is outside its support.");
+            var end = initial.Length - index - 1;
+            (current[end], current[selectedIndex]) =
+                (current[selectedIndex], current[end]);
+        }
+
+        var selectedRequest = requests[ordinal];
+        var conditioningFingerprint = CanonicalJson.Sha256(new
+        {
+            act = run.World.Act,
+            initial,
+            current,
+            priorVariantIndex,
+            priorIndices,
+            request = CanonicalJson.Sha256(selectedRequest),
+            policy = AncientOfferShuffleConditioningPolicyId
+        });
+        var eventId = CanonicalJson.Sha256(new
+        {
+            schemaId = ChanceLawV111.CurrentSchemaId,
+            siteId = selectedRequest.SiteId,
+            ownerId = selectedRequest.OwnerId,
+            ordinal,
+            conditioningFingerprint
+        });
+        var outcomes = Enumerable.Range(0, selectedRequest.SupportCount)
+            .Select(index => new ChanceLawOutcomeV111(
+                "swap_index:" + index.ToString(CultureInfo.InvariantCulture),
+                1L)).ToArray();
+        return Create(eventId, selectedRequest.SiteId,
+            selectedRequest.OperationKind, selectedRequest.OwnerId,
+            ordinal, AncientOfferShuffleConditioningPolicyId,
+            conditioningFingerprint,
+            "uniform-darv-fisher-yates-swap-unverified", outcomes);
+    }
+
+    internal static RandomIndexRequestV111 DarvOfferVariantRequest(
+        RunState run)
+    {
+        NativeDarvEventV111.ValidateOpeningBoundary(run);
+        var streamId = NativeRngV111Contexts.ForEvent(
+            run.RunSeed, NativeDarvEventV111.NativeRngEventId).StreamId;
+        var ownerId = $"event:DARV:act:{run.World!.Act}:floor:0";
+        var request = new RandomIndexRequestV111(
+            NativeDarvEventV111.OfferVariantSiteId,
+            streamId, ownerId, 0, [],
+            OperationKind: "bounded_integer", BoundedCount: 2);
+        request.Validate();
+        return request;
+    }
+
+    internal static RandomIndexRequestV111[] DarvOfferShuffleRequests(
+        RunState run)
+    {
+        NativeDarvEventV111.ValidateOpeningBoundary(run);
+        var relics = NativeDarvEventV111.PoolOneRelicIdsForAct(
+            run.World!.Act, run.Player);
+        var streamId = NativeRngV111Contexts.ForEvent(
+            run.RunSeed, NativeDarvEventV111.NativeRngEventId).StreamId;
+        var ownerId = $"event:DARV:act:{run.World.Act}:floor:0";
+        var requests = new List<RandomIndexRequestV111>();
+        for (var end = relics.Length - 1; end > 0; end--)
+        {
+            var request = new RandomIndexRequestV111(
+                NativeDarvEventV111.RelicShuffleSiteId,
+                streamId, ownerId, requests.Count, [],
+                OperationKind: "bounded_integer", BoundedCount: end + 1);
+            request.Validate();
+            requests.Add(request);
+        }
+        return requests.ToArray();
     }
 
     private static bool IsChoiceAncientOfferSite(string siteId) =>
@@ -2481,6 +2666,11 @@ public sealed record ReferenceNatureAncientOfferSessionV111(
     [JsonIgnore]
     public int NextOrdinal => DecisionTranscript.Length;
 
+    [JsonIgnore]
+    public ChanceLawV111? PendingLaw => Complete ? null :
+        ChanceLawEngineV111.QueryAncientOfferSessionStep(
+            Origin, SiteId, DecisionTranscript);
+
     public static ReferenceNatureAncientOfferSessionV111 Begin(
         RunState source, string siteId, ulong seed) =>
         Begin(source, siteId, (ulong?)seed);
@@ -2536,11 +2726,8 @@ public sealed record ReferenceNatureAncientOfferSessionV111(
             throw new InvalidOperationException(
                 "ReferenceNature Ancient-offer session is already complete.");
 
-        var priorIndices = ChanceLawEngineV111.IsShuffleAncientOfferSite(SiteId)
-            ? DecisionTranscript.Select(decision => decision.OutcomeIndex).ToArray()
-            : null;
-        var law = ChanceLawEngineV111.QueryAncientOffer(
-            Origin, SiteId, NextOrdinal, priorIndices);
+        var law = ChanceLawEngineV111.QueryAncientOfferSessionStep(
+            Origin, SiteId, DecisionTranscript);
         var selection = ReferenceNatureV111.SampleValidated(law, NatureState);
         var transcript = DecisionTranscript.Append(
             new ReferenceNatureDecisionV111(
@@ -2593,13 +2780,8 @@ public sealed record ReferenceNatureAncientOfferSessionV111(
         {
             var decision = DecisionTranscript[ordinal];
             decision.Validate();
-            var priorIndices =
-                ChanceLawEngineV111.IsShuffleAncientOfferSite(SiteId)
-                    ? DecisionTranscript.Take(ordinal)
-                        .Select(previous => previous.OutcomeIndex).ToArray()
-                    : null;
-            var law = ChanceLawEngineV111.QueryAncientOffer(
-                Origin, SiteId, ordinal, priorIndices);
+            var law = ChanceLawEngineV111.QueryAncientOfferSessionStep(
+                Origin, SiteId, DecisionTranscript.Take(ordinal).ToArray());
             var selection = ReferenceNatureV111.SampleValidated(
                 law, expectedNatureState);
             if (CanonicalJson.Sha256(new ReferenceNatureDecisionV111(
@@ -2681,6 +2863,8 @@ public sealed record ReferenceNatureAncientOfferSessionV111(
         RunState origin, string siteId,
         ReferenceNatureDecisionV111[] transcript)
     {
+        if (siteId == NativeDarvEventV111.OfferVariantSiteId)
+            return GenerateDarvEvent(origin, transcript);
         var isShuffle = ChanceLawEngineV111.IsShuffleAncientOfferSite(siteId);
         var expectedCount = ChanceLawEngineV111.AncientOfferDecisionCount(
             origin, siteId);
@@ -2753,6 +2937,55 @@ public sealed record ReferenceNatureAncientOfferSessionV111(
         return run;
     }
 
+    private static RunState GenerateDarvEvent(
+        RunState origin, ReferenceNatureDecisionV111[] transcript)
+    {
+        var shuffleRequests = ChanceLawEngineV111
+            .DarvOfferShuffleRequests(origin);
+        if (transcript.Length != shuffleRequests.Length + 1)
+            throw new InvalidOperationException(
+                "Darv generation requires the offer variant and complete shuffle prefix.");
+        var variant = transcript[0];
+        var expectedVariant = variant.OutcomeIndex switch
+        {
+            0 => "offer_variant:dusty_tome",
+            1 => "offer_variant:three_relics",
+            _ => null
+        };
+        if (variant.LawId is null ||
+            variant.OutcomeId != expectedVariant)
+            throw new InvalidDataException(
+                "Sampled Darv offer variant is outside its binary support.");
+
+        var scripted = new List<AncientOfferReplayChoiceV111>(
+            shuffleRequests.Length + 1)
+        {
+            new(ChanceLawEngineV111.DarvOfferVariantRequest(origin),
+                variant.OutcomeIndex)
+        };
+        for (var index = 0; index < shuffleRequests.Length; index++)
+        {
+            var decision = transcript[index + 1];
+            var expectedOutcome = "swap_index:" +
+                decision.OutcomeIndex.ToString(CultureInfo.InvariantCulture);
+            if (decision.OutcomeId != expectedOutcome ||
+                decision.OutcomeIndex < 0 ||
+                decision.OutcomeIndex >= shuffleRequests[index].SupportCount)
+                throw new InvalidDataException(
+                    "Sampled Darv shuffle index is outside its source support.");
+            scripted.Add(new AncientOfferReplayChoiceV111(
+                shuffleRequests[index], decision.OutcomeIndex));
+        }
+
+        var provider = new AncientOfferReplayProviderV111(scripted.ToArray());
+        var run = NativeDarvEventV111
+            .BeginOpeningWithAudit(origin, provider).State;
+        if (provider.Remaining != 0)
+            throw new InvalidOperationException(
+                "Darv generator did not consume the complete Nature transcript.");
+        return run;
+    }
+
     private static string[] CandidateChoiceIds(
         RunState run, string siteId, int ordinal)
     {
@@ -2774,7 +3007,7 @@ public sealed record ReferenceNatureAncientOfferSessionV111(
     }
 
     private static bool IsSupportedSite(string siteId) =>
-        ChanceLawEngineV111.IsSupportedAncientOfferSite(siteId);
+        ChanceLawEngineV111.IsSupportedAncientOfferSessionSite(siteId);
 
     private static string StreamId(string siteId) => siteId switch
     {
