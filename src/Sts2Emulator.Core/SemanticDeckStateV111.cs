@@ -1,3 +1,5 @@
+using System.Globalization;
+using System.Numerics;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -53,6 +55,34 @@ public sealed record SemanticDeckPublicCardV111(
 
 public sealed record SemanticDeckPublicViewV111(
     int Count, SemanticDeckPublicCardV111[] RevealedPositions);
+
+public sealed record SemanticDeckOrderV111(long[] CardInstanceIds)
+{
+    public SemanticDeckOrderV111 Fork() => this with
+    {
+        CardInstanceIds = (long[])CardInstanceIds.Clone()
+    };
+}
+
+/// <summary>
+/// Bounded exact enumeration of completions of one Nature-owned deck
+/// constraint state. The listed completions have equal mass only under the
+/// explicitly unverified independent-uniform-pool model.
+/// </summary>
+public sealed record SemanticDeckEnumerationV111(
+    string SchemaId, string StateFingerprint, string ConditioningPolicyId,
+    string ProbabilityStatus, string ProbabilityProvenance,
+    string CompletionCount, string OutcomeFingerprint,
+    SemanticDeckOrderV111[] Outcomes)
+{
+    public const string CurrentSchemaId =
+        "sts2-v111-semantic-deck-enumeration-v1";
+
+    public SemanticDeckEnumerationV111 Fork() => this with
+    {
+        Outcomes = Outcomes.Select(outcome => outcome.Fork()).ToArray()
+    };
+}
 
 public sealed record SemanticDeckEventV111(
     string SchemaId, string EventId, string SiteId, string Purpose,
@@ -170,6 +200,10 @@ public sealed record SemanticDeckStateV111(
 /// </summary>
 public static class SemanticDeckEngineV111
 {
+    public const string UniformPoolEnumerationPolicyId =
+        "uniform-independent-shared-pool-permutation-unverified-v1";
+    public const int MaximumEnumeratedDeckOrders = 65_536;
+
     public static SemanticDeckStateV111 BeginNature(
         IReadOnlyCollection<long> cardInstanceIds)
     {
@@ -665,6 +699,96 @@ public static class SemanticDeckEngineV111
                     x.i, x.slot.KnownCardInstanceId!.Value)).ToArray());
     }
 
+    /// <summary>
+    /// Enumerate every full top-first order compatible with the saved Nature
+    /// deck constraints. Each pool independently permutes its remaining
+    /// physical identities across all of that pool's positions, including
+    /// positions on both sides of known insertions. This is an exact
+    /// combinatorial model for small states; its equal completion weights
+    /// remain UNVERIFIED and are not a source-calibrated Chance Law.
+    /// </summary>
+    public static SemanticDeckEnumerationV111 EnumeratePossibleOrders(
+        SemanticDeckStateV111 state, int maximumOrders = 4096)
+    {
+        Validate(state);
+        if (state.Mode != SemanticDeckStateV111.NatureMode)
+            throw new InvalidOperationException(
+                "Exact constrained-order enumeration requires Nature-owned state; " +
+                "a committed Native order is not Chance Law input.");
+        if (maximumOrders is < 1 or > MaximumEnumeratedDeckOrders)
+            throw new ArgumentOutOfRangeException(nameof(maximumOrders),
+                $"Enumeration cap must be between 1 and {MaximumEnumeratedDeckOrders}.");
+
+        var groups = state.Pools
+            .OrderBy(pool => pool.PoolId, StringComparer.Ordinal)
+            .Select(pool => (Pool: pool, Positions: state.Slots
+                    .Select((slot, index) => (slot, index))
+                    .Where(entry => entry.slot.PoolId == pool.PoolId)
+                    .Select(entry => entry.index).ToArray()))
+            .ToArray();
+        var completionCount = groups.Aggregate(BigInteger.One,
+            (count, group) => count * Factorial(
+                group.Pool.RemainingCardInstanceIds.Length));
+        if (completionCount > maximumOrders)
+            throw new InvalidOperationException(
+                $"Constrained deck has {completionCount.ToString(CultureInfo.InvariantCulture)} " +
+                $"possible orders, exceeding the requested enumeration cap " +
+                $"of {maximumOrders}.");
+
+        var order = new long[state.Count];
+        foreach (var (slot, index) in state.Slots
+                     .Select((slot, index) => (slot, index)))
+            if (slot.KnownCardInstanceId is long cardInstanceId)
+                order[index] = cardInstanceId;
+
+        var outcomes = new List<SemanticDeckOrderV111>((int)completionCount);
+        AssignPool(0);
+        var outcomeFingerprint = CanonicalJson.Sha256(
+            outcomes.Select(outcome => outcome.CardInstanceIds).ToArray());
+        return new SemanticDeckEnumerationV111(
+            SemanticDeckEnumerationV111.CurrentSchemaId,
+            state.Fingerprint, UniformPoolEnumerationPolicyId,
+            "UNVERIFIED",
+            "uniform-independent-shared-pool-permutation-unverified",
+            completionCount.ToString(CultureInfo.InvariantCulture),
+            outcomeFingerprint, outcomes.ToArray());
+
+        void AssignPool(int poolIndex)
+        {
+            if (poolIndex == groups.Length)
+            {
+                outcomes.Add(new SemanticDeckOrderV111((long[])order.Clone()));
+                return;
+            }
+
+            var group = groups[poolIndex];
+            var cardIds = group.Pool.RemainingCardInstanceIds.Order().ToArray();
+            var assigned = new bool[cardIds.Length];
+            var permutation = new long[cardIds.Length];
+            AssignCard(0);
+
+            void AssignCard(int positionIndex)
+            {
+                if (positionIndex == group.Positions.Length)
+                {
+                    for (int index = 0; index < group.Positions.Length; index++)
+                        order[group.Positions[index]] = permutation[index];
+                    AssignPool(poolIndex + 1);
+                    return;
+                }
+
+                for (int cardIndex = 0; cardIndex < cardIds.Length; cardIndex++)
+                {
+                    if (assigned[cardIndex]) continue;
+                    assigned[cardIndex] = true;
+                    permutation[positionIndex] = cardIds[cardIndex];
+                    AssignCard(positionIndex + 1);
+                    assigned[cardIndex] = false;
+                }
+            }
+        }
+    }
+
     /// <summary>Used only by mechanics to validate physical card-zone
     /// identity, never exposed in the fair player observation.</summary>
     public static long[] AllCardInstanceIds(SemanticDeckStateV111 state)
@@ -800,5 +924,12 @@ public static class SemanticDeckEngineV111
     {
         if (ids.Distinct().Count() != ids.Length)
             throw new ArgumentException("Duplicate card instance identity.");
+    }
+
+    private static BigInteger Factorial(int value)
+    {
+        var result = BigInteger.One;
+        for (int factor = 2; factor <= value; factor++) result *= factor;
+        return result;
     }
 }
