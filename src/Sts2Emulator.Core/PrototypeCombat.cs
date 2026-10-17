@@ -14477,7 +14477,7 @@ public sealed partial class PrototypeGameEngine
         var continuation = pending?.OuterChoiceContinuation;
         var deck = combat.SemanticDeck;
         bool mayhemPipelineDraw = pending is not null &&
-            IsMayhemTopAutoplayDrawContinuation(combat, pending);
+            IsMayhemSemanticDrawContinuation(combat, pending);
         if (state.Phase != RunPhase.Combat ||
             combat is not { IsPlayerTurn: true,
                 PendingKnowledgeDemonChoice: null } ||
@@ -14529,8 +14529,9 @@ public sealed partial class PrototypeGameEngine
             controlledSemanticDrawSuspension: true,
             controlledAfterShuffleInsertionSuspension: true,
             controlledCardDrawnChoiceSuspension: true);
-        return ContinueControlledSemanticEffectDraw(
+        var continued = ContinueControlledSemanticEffectDraw(
             state, drawn, draw, continuation);
+        return ResumeAutomaticPipelineAfterChoiceResolution(continued);
     }
 
     private static RunState ContinueControlledSemanticEffectDraw(

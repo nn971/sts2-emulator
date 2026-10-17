@@ -871,8 +871,9 @@ public sealed partial record CombatState
                 var stagedTopAutoplayCards = isTopAutoplayDraw
                     ? topAutoplayOperation?.DeferredDrawnCardInstanceIds ?? []
                     : [];
-                bool mayhemPipelineDraw = isTopAutoplayDraw &&
-                    PrototypeGameEngine.IsMayhemTopAutoplayDrawContinuation(
+                bool mayhemPipelineDraw =
+                    (isSemanticDrawChoice || isEffectDrawCostChoice) &&
+                    PrototypeGameEngine.IsMayhemSemanticDrawContinuation(
                         combat, pending);
                 var deck = combat.SemanticDeck;
                 if (combat.IsPlayerTurn is false ||

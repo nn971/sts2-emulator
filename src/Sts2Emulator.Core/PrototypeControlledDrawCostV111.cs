@@ -85,8 +85,10 @@ public sealed partial class PrototypeGameEngine
         var continuation = pending?.OuterChoiceContinuation;
         if (state.Phase != RunPhase.Combat ||
             combat is not { IsPlayerTurn: true,
-                AutomaticPipelineContinuation: null,
                 PendingKnowledgeDemonChoice: null } ||
+            (combat.AutomaticPipelineContinuation is not null &&
+             (pending is null ||
+              !IsMayhemSemanticDrawContinuation(combat, pending))) ||
             pending is not { ChoiceId: "controlled_draw_cost" } ||
             cost is null || draw is null || continuation is null ||
             draw.RemainingCount != cost.RemainingCount ||
@@ -162,8 +164,9 @@ public sealed partial class PrototypeGameEngine
             controlledSemanticDrawSuspension: true,
             controlledAfterShuffleInsertionSuspension: true,
             controlledCardDrawnChoiceSuspension: true);
-        return ContinueControlledSemanticEffectDraw(
+        var continued = ContinueControlledSemanticEffectDraw(
             state, drawn, draw, continuation);
+        return ResumeAutomaticPipelineAfterChoiceResolution(continued);
     }
 
     /// <summary>Advance one cost decision, then dispatch CardDrawn once and

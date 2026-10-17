@@ -7,11 +7,75 @@ public sealed partial class PrototypeGameEngine
     {
         ArgumentNullException.ThrowIfNull(combat);
         ArgumentNullException.ThrowIfNull(operation);
-        var pipeline = combat.AutomaticPipelineContinuation;
         if (operation.Kind !=
                 PrototypeCombatEffectKind.AutoPlayTopDrawCards ||
             operation.SourceKind != PrototypeEffectSourceKind.Power ||
-            !combat.PlayerPowers.Any(power =>
+            !IsMayhemAutoPrePlayPipelineCursor(combat))
+            return false;
+
+        return true;
+    }
+
+    /// <summary>
+    /// Admit a saved top-autoplay draw or a nested draw/cost frame from one
+    /// of its autoplayed cards while the exact Mayhem AutoPrePlay cursor is
+    /// suspended. Other pipeline-owned semantic draws remain unsupported.
+    /// </summary>
+    internal static bool IsMayhemSemanticDrawContinuation(
+        CombatState combat, PendingCombatChoiceState pending)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(pending);
+        if (!IsMayhemAutoPrePlayPipelineCursor(combat) ||
+            pending.ControlledSemanticDraw is not { } draw ||
+            pending.ChoiceId is not (
+                "controlled_semantic_draw" or "controlled_draw_cost") ||
+            combat.SemanticDeck is not
+                { Mode: SemanticDeckStateV111.NatureMode })
+            return false;
+
+        var continuation = pending.OuterChoiceContinuation;
+        if (continuation is null) return false;
+        var operation = continuation.Operations.FirstOrDefault();
+        bool topAutoplay = pending.ChoiceId == "controlled_semantic_draw" &&
+            draw is { FromHandDraw: false, RemainingCount: > 0 } &&
+            operation is not null &&
+            operation.Kind == PrototypeCombatEffectKind.AutoPlayTopDrawCards &&
+            operation.Amount == draw.RemainingCount &&
+            (operation.DeferredDrawnCardInstanceIds is not { } staged ||
+             (staged.Distinct().Count() == staged.Length &&
+              staged.All(combat.PlayCardIds.Contains))) &&
+            IsMayhemTopAutoplayPipelineOperation(combat, operation);
+        bool nestedAutoplayCard =
+            (pending.ChoiceId != "controlled_draw_cost" ||
+             pending.ControlledDrawCost is not null);
+        if (nestedAutoplayCard)
+        {
+            nestedAutoplayCard = false;
+            for (var frame = continuation;
+                 frame is not null; frame = frame.Parent)
+                if (frame.CardPlaySeries is { IsAutoPlay: true })
+                {
+                    nestedAutoplayCard = true;
+                    break;
+                }
+        }
+
+        if (!topAutoplay && !nestedAutoplayCard) return false;
+        if (pending.ChoiceId == "controlled_draw_cost" &&
+            pending.ControlledDrawCost is { } cost &&
+            (cost.RemainingCount != draw.RemainingCount ||
+             cost.FromHandDraw != draw.FromHandDraw ||
+             cost.EventDepth != draw.EventDepth))
+            return false;
+        return true;
+    }
+
+    private static bool IsMayhemAutoPrePlayPipelineCursor(
+        CombatState combat)
+    {
+        var pipeline = combat.AutomaticPipelineContinuation;
+        if (!combat.PlayerPowers.Any(power =>
                 power.PowerId == "proto.power.mayhem" && power.Stacks > 0) ||
             pipeline is null)
             return false;
@@ -37,31 +101,4 @@ public sealed partial class PrototypeGameEngine
         return openingContinuation || turnContinuation;
     }
 
-    /// <summary>
-    /// The only automatic-pipeline suspension supported for a semantic
-    /// AutoPlayTopDrawCards operation is Mayhem's AutoPrePlay trigger. Its
-    /// saved cursor must point at the post-dispatch policy boundary, where
-    /// History Course runs before the next opening or turn stage.
-    /// </summary>
-    internal static bool IsMayhemTopAutoplayDrawContinuation(
-        CombatState combat, PendingCombatChoiceState pending)
-    {
-        ArgumentNullException.ThrowIfNull(combat);
-        ArgumentNullException.ThrowIfNull(pending);
-        var draw = pending.ControlledSemanticDraw;
-        var operation = pending.OuterChoiceContinuation?.Operations
-            .FirstOrDefault();
-        if (pending.ChoiceId != "controlled_semantic_draw" ||
-            draw is not { FromHandDraw: false, RemainingCount: > 0 } ||
-            operation is null || operation.Amount != draw.RemainingCount ||
-            operation.DeferredDrawnCardInstanceIds is { } staged &&
-                (staged.Distinct().Count() != staged.Length ||
-                 staged.Any(id => !combat.PlayCardIds.Contains(id))) ||
-            !IsMayhemTopAutoplayPipelineOperation(combat, operation) ||
-            combat.SemanticDeck is not
-                { Mode: SemanticDeckStateV111.NatureMode,
-                  Pending: { Purpose: "draw", TopOffset: 0 } })
-            return false;
-        return true;
-    }
 }

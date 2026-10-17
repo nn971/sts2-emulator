@@ -4325,7 +4325,7 @@ public static class SemanticPilotCombatEngineV111
                 PendingKnowledgeDemonChoice: null } ||
             (combat.AutomaticPipelineContinuation is not null &&
              (choice is null ||
-              !PrototypeGameEngine.IsMayhemTopAutoplayDrawContinuation(
+              !PrototypeGameEngine.IsMayhemSemanticDrawContinuation(
                   combat, choice))) ||
             choice is not { ChoiceId: "controlled_semantic_draw",
                 ControlledSemanticDraw: not null,
@@ -4359,8 +4359,11 @@ public static class SemanticPilotCombatEngineV111
         var deck = combat?.SemanticDeck;
         if (run.Phase != RunPhase.Combat ||
             combat is not { IsPlayerTurn: true,
-                AutomaticPipelineContinuation: null,
                 PendingKnowledgeDemonChoice: null } ||
+            (combat.AutomaticPipelineContinuation is not null &&
+             (choice is null ||
+              !PrototypeGameEngine.IsMayhemSemanticDrawContinuation(
+                  combat, choice))) ||
             choice is not { ChoiceId: "controlled_draw_cost",
                 ControlledSemanticDraw: not null,
                 ControlledDrawCost: not null,
