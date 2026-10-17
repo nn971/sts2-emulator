@@ -180,27 +180,56 @@ public static class SemanticDrawPileAdapterV111
         CombatState combat,
         int physicalIndex,
         long cardInstanceId,
-        CombatCardZonesV111? nextCardZones = null)
+        CombatCardZonesV111? nextCardZones = null,
+        bool publiclyKnown = false) =>
+        ApplyDrawPileInsertionSequence(
+            combat, physicalIndex, [cardInstanceId], nextCardZones,
+            publiclyKnown);
+
+    /// <summary>
+    /// Commits a source-ordered run of known card identities at one physical
+    /// draw-pile index. The resulting membership, order, provider constraints,
+    /// and source-zone removals are published together.
+    /// </summary>
+    internal static CombatState ApplyDrawPileInsertionSequence(
+        CombatState combat,
+        int physicalIndex,
+        IReadOnlyList<long> insertedCardInstanceIds,
+        CombatCardZonesV111? nextCardZones = null,
+        bool publiclyKnown = false)
     {
         ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(insertedCardInstanceIds);
         if (physicalIndex < 0 || physicalIndex > combat.DrawPile.Length)
             throw new ArgumentOutOfRangeException(nameof(physicalIndex));
 
         var expectedDrawPile = combat.DrawPile.ToList();
-        expectedDrawPile.Insert(physicalIndex, cardInstanceId);
+        var inserted = insertedCardInstanceIds.ToArray();
+        if (inserted.Distinct().Count() != inserted.Length ||
+            inserted.Any(combat.DrawPile.Contains))
+            throw new InvalidDataException(
+                "Draw-pile insertion sequence contains duplicate identities.");
+        expectedDrawPile.InsertRange(physicalIndex, inserted);
         var zones = nextCardZones ?? combat.Mechanics.CardZones.WithCardsIn(
             PrototypeCardZone.DrawPile, expectedDrawPile.ToArray());
         if (!zones.DrawPile.SequenceEqual(expectedDrawPile))
             throw new InvalidDataException(
-                "Draw-pile insertion does not match the requested physical index.");
+                "Draw-pile insertion sequence does not match the requested physical index.");
         if (Enum.GetValues<PrototypeCardZone>()
             .Where(zone => zone != PrototypeCardZone.DrawPile)
-            .Any(zone => zones.CardsIn(zone).Contains(cardInstanceId)))
+            .Any(zone => inserted.Any(zones.CardsIn(zone).Contains)))
             throw new InvalidDataException(
-                "Draw-pile insertion duplicates an identity in its resulting zones.");
+                "Draw-pile insertion sequence duplicates an identity in its resulting zones.");
 
-        var semantic = SynchronizeSemanticDrawPileAfterInsertion(
-            combat, physicalIndex, cardInstanceId);
+        ValidateSynchronized(combat, requireIdle: true);
+        var semantic = combat.SemanticDeck;
+        if (semantic is not null)
+        {
+            var topOffset = combat.DrawPile.Length - physicalIndex;
+            foreach (var cardInstanceId in inserted)
+                semantic = SemanticDeckEngineV111.InsertKnown(
+                    semantic, topOffset, cardInstanceId, publiclyKnown);
+        }
         return ApplyCommittedZoneTransition(combat, zones, semantic);
     }
 
@@ -497,7 +526,8 @@ public static class SemanticDrawPileAdapterV111
     }
 
     internal static SemanticDeckStateV111? SynchronizeSemanticDrawPileAfterInsertion(
-        CombatState combat, int physicalIndex, long insertedCardInstanceId)
+        CombatState combat, int physicalIndex, long insertedCardInstanceId,
+        bool publiclyKnown = false)
     {
         var semantic = combat.SemanticDeck;
         if (semantic is null) return null;
@@ -510,7 +540,7 @@ public static class SemanticDrawPileAdapterV111
         // provider deck uses top-first offsets, so invert the index.
         return SemanticDeckEngineV111.InsertKnown(
             semantic, combat.DrawPile.Length - physicalIndex,
-            insertedCardInstanceId, publiclyKnown: false);
+            insertedCardInstanceId, publiclyKnown);
     }
 
     internal static SemanticDeckStateV111? ReplaceSemanticDrawPileInstance(

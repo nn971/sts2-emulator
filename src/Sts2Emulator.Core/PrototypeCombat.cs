@@ -14933,11 +14933,11 @@ public sealed partial class PrototypeGameEngine
         }
 
         // Source card-selection movement can alter the hidden draw pile
-        // without any RNG call. Commit the SAME source-visible movement to
-        // the provider before mutating physical zones. In particular,
-        // MoveToDrawTop appends to the engine's bottom-first array: each
-        // selected card becomes a new top-first known semantic slot.
-        if (combat.SemanticDeck is { } semantic &&
+        // without an RNG call. The adapter commits provider constraints and
+        // physical zones together. MoveToDrawTop appends to the engine's
+        // bottom-first array and preserves the selected identities as known
+        // semantic slots.
+        if (combat.SemanticDeck is not null &&
             (selection.SourceZone == PrototypeCardZone.DrawPile ||
              destinationZone == PrototypeCardZone.DrawPile))
         {
@@ -14948,25 +14948,6 @@ public sealed partial class PrototypeGameEngine
                 throw new NotSupportedException(
                     "UNSUPPORTED_SEMANTIC_DECK site=combat.card_selection " +
                     "operation=remove_unselected_hidden_draw_cards");
-
-            if (selection.SourceZone == PrototypeCardZone.DrawPile)
-            {
-                // Known identities can be removed directly. An unresolved
-                // identity can be removed without exposing its old position
-                // when its shared pool occupies one contiguous run; pools
-                // split around known anchors need a latent-position
-                // continuation and are rejected by the deck kernel.
-                semantic = SemanticDeckEngineV111.RemoveCardInstances(
-                    semantic, selected);
-            }
-            if (selection.Resolution ==
-                PrototypeCardSelectionResolutionKind.MoveToDrawTop)
-            {
-                foreach (var cardId in selected)
-                    semantic = SemanticDeckEngineV111.PlaceTop(
-                        semantic, cardId);
-            }
-            combat = combat with { SemanticDeck = semantic };
         }
 
         var unselected = source
@@ -15000,9 +14981,29 @@ public sealed partial class PrototypeGameEngine
                 destinationCards.Concat(selected).ToArray();
         }
 
-        combat = SemanticDrawPileAdapterV111.ApplyZoneTransition(
-            combat,
-            combat.Mechanics.CardZones.WithZoneChanges(zoneChanges));
+        var selectionZones = combat.Mechanics.CardZones
+            .WithZoneChanges(zoneChanges);
+        if (selection.SourceZone == PrototypeCardZone.DrawPile)
+        {
+            var removed = combat.DrawPile
+                .Where(cardId => !selectionZones.DrawPile.Contains(cardId))
+                .ToArray();
+            combat = SemanticDrawPileAdapterV111.ApplyDrawPileRemoval(
+                combat, removed, selectionZones);
+        }
+        else if (destinationZone == PrototypeCardZone.DrawPile &&
+                 selected.Length > 0)
+        {
+            combat = SemanticDrawPileAdapterV111
+                .ApplyDrawPileInsertionSequence(
+                    combat, combat.DrawPile.Length, selected,
+                    selectionZones, publiclyKnown: true);
+        }
+        else
+        {
+            combat = SemanticDrawPileAdapterV111.ApplyZoneTransition(
+                combat, selectionZones);
+        }
         if (selection.RemoveUnselectedFromSource)
         {
             var unselectedSet = unselected.ToHashSet();

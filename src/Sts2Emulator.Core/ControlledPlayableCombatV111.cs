@@ -1259,8 +1259,8 @@ public static class ControlledPlayableCombatEngineV111
             hand.Add(pile[index]);
             pile.RemoveAt(index);
         }
-        combat = SemanticDrawPileAdapterV111.ApplyZoneTransition(
-            combat,
+        combat = SemanticDrawPileAdapterV111.ApplyDrawPileRemoval(
+            combat, hand,
             combat.Mechanics.CardZones.WithZoneChanges(
                 new Dictionary<PrototypeCardZone, long[]>
                 {
