@@ -26,6 +26,8 @@
 
 **Latest continuation increment:** the semantic deck reveal kernel's existing peek/scry support now flows through typed semantic result, external resolver, replay transcript and `ReferenceNatureSessionV111`. This adds the existing `combat.draw_pile.reveal_card` site to session coverage. No source gameplay callsite currently initiates a peek/scry request, so this is resolver infrastructure and does not claim broader card-hook support.
 
+**S4 replay-prefix increment (2026-10-17):** controlled event/run-action replay and automatic enemy-action replay now use one `ControlledRandomIndexReplayPrefixV111` for saved-decision cloning, cursor advancement, typed request matching, and unused-prefix rejection. Event/run-action ordinal normalization and candidate labels remain owned by their boundary adapter; enemy-action requests retain exact source ordinals. This removes duplicated prefix mechanics while preserving the existing continuation frames and does not complete the common-mechanics-continuation acceptance gate.
+
 ## S1 precise design
 
 Implement a **read-only, outcome-blind** Chance Law query in `Sts2Emulator.Core` with:

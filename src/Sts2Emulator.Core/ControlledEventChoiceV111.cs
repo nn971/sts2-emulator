@@ -425,10 +425,9 @@ internal sealed class ControlledEventChoiceReplayV111 : IDisposable
     private static readonly AsyncLocal<ControlledEventChoiceReplayV111?> Active =
         new();
     private readonly ControlledEventChoiceReplayV111? _previous;
-    private readonly RandomIndexDecisionV111[] _decisions;
+    private readonly ControlledRandomIndexReplayPrefixV111 _prefix;
     private readonly Dictionary<string, int> _priorOrdinalCounts;
     private string[]? _candidateLabels;
-    private int _nextDecision;
     private bool _disposed;
 
     public static bool IsActive => Active.Value is not null;
@@ -438,9 +437,7 @@ internal sealed class ControlledEventChoiceReplayV111 : IDisposable
         IReadOnlyDictionary<string, int>? priorOrdinalCounts)
     {
         _previous = Active.Value;
-        _decisions = decisions.Select(
-            PrototypeControlledEventChoiceContinuationV111.CloneDecision)
-            .ToArray();
+        _prefix = new ControlledRandomIndexReplayPrefixV111(decisions);
         _priorOrdinalCounts = priorOrdinalCounts is null
             ? new Dictionary<string, int>(StringComparer.Ordinal)
             : new Dictionary<string, int>(priorOrdinalCounts,
@@ -471,8 +468,8 @@ internal sealed class ControlledEventChoiceReplayV111 : IDisposable
 
         var ordinal = checked(request.Ordinal +
             active._priorOrdinalCounts.GetValueOrDefault(request.StreamId) +
-            active._decisions
-            .Take(active._nextDecision)
+            active._prefix.Decisions
+            .Take(active._prefix.ConsumedCount)
             .Count(decision => decision.Request.StreamId == request.StreamId
                 && (!requestOrdinalIncludesCurrentOperationPrefix
                     || decision.Request.SiteId != request.SiteId
@@ -489,24 +486,19 @@ internal sealed class ControlledEventChoiceReplayV111 : IDisposable
             && candidateLabels.Length != normalizedRequest.SupportCount)
             throw new InvalidDataException(
                 "Event-choice candidate labels do not match the random support.");
-        if (active._nextDecision >= active._decisions.Length)
+        if (!active._prefix.TryConsume(
+                normalizedRequest,
+                "Event-choice replay diverged from its saved chance request.",
+                out var selectedIndex))
             throw new ControlledEventChoiceChanceRequiredException(
                 normalizedRequest, candidateLabels);
-
-        var decision = active._decisions[active._nextDecision++];
-        decision.Validate();
-        if (CanonicalJson.Sha256(decision.Request) !=
-            CanonicalJson.Sha256(normalizedRequest))
-            throw new InvalidDataException(
-                "Event-choice replay diverged from its saved chance request.");
-        return decision.SelectedIndex;
+        return selectedIndex;
     }
 
     public void EnsureConsumed()
     {
-        if (_nextDecision != _decisions.Length)
-            throw new InvalidDataException(
-                "Event-choice replay left saved controlled outcomes unused.");
+        _prefix.EnsureConsumed(
+            "Event-choice replay left saved controlled outcomes unused.");
     }
 
     public static IDisposable DescribeCandidates(string[]? candidateLabels)

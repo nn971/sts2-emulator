@@ -88,8 +88,7 @@ internal sealed class ControlledEnemyActionReplayV111 : IDisposable
     private static readonly AsyncLocal<ControlledEnemyActionReplayV111?> Active =
         new();
     private readonly ControlledEnemyActionReplayV111? _previous;
-    private readonly RandomIndexDecisionV111[] _decisions;
-    private int _nextDecision;
+    private readonly ControlledRandomIndexReplayPrefixV111 _prefix;
     private bool _disposed;
 
     public static bool IsActive => Active.Value is not null;
@@ -98,7 +97,7 @@ internal sealed class ControlledEnemyActionReplayV111 : IDisposable
         RandomIndexDecisionV111[] decisions)
     {
         _previous = Active.Value;
-        _decisions = decisions;
+        _prefix = new ControlledRandomIndexReplayPrefixV111(decisions);
         Active.Value = this;
     }
 
@@ -119,28 +118,23 @@ internal sealed class ControlledEnemyActionReplayV111 : IDisposable
             throw new NotSupportedException(
                 "UNSUPPORTED_CONTROLLED_CHANCE site=" + request.SiteId +
                 " operation=" + request.OperationKind);
-        if (active._nextDecision >= active._decisions.Length)
+        if (!active._prefix.TryConsume(
+                request,
+                "Enemy-action replay diverged from its saved chance request.",
+                out var selectedIndex))
             throw new ControlledEnemyActionChanceRequiredException(
                 request with
                 {
                     OrderedCandidates =
                         (int[])request.OrderedCandidates.Clone()
                 });
-
-        var decision = active._decisions[active._nextDecision++];
-        decision.Validate();
-        if (CanonicalJson.Sha256(decision.Request) !=
-            CanonicalJson.Sha256(request))
-            throw new InvalidDataException(
-                "Enemy-action replay diverged from its saved chance request.");
-        return decision.SelectedIndex;
+        return selectedIndex;
     }
 
     public void EnsureConsumed()
     {
-        if (_nextDecision != _decisions.Length)
-            throw new InvalidDataException(
-                "Enemy-action replay left saved chance decisions unused.");
+        _prefix.EnsureConsumed(
+            "Enemy-action replay left saved chance decisions unused.");
     }
 
     public void Dispose()
