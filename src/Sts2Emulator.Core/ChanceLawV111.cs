@@ -865,7 +865,7 @@ public sealed record ReferenceNatureSessionV111(
     {
         if (SchemaId != CurrentSchemaId || Combat is null || NatureState is null)
             throw new InvalidDataException("Invalid ReferenceNature session envelope.");
-        SemanticPilotCombatEngineV111.Validate(Combat);
+        Combat.Validate();
         NatureState.Validate();
         if (Combat.CombatTerminal &&
             !NatureState.SameCursor(Combat.Run.ReferenceNatureState))
@@ -1533,7 +1533,7 @@ public static class ReferenceNatureV111
     {
         ArgumentNullException.ThrowIfNull(combat);
         ArgumentNullException.ThrowIfNull(state);
-        SemanticPilotCombatEngineV111.Validate(combat);
+        combat.Validate();
         state.Validate();
 
         if (combat.IntentPending is not null)

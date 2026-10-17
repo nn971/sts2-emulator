@@ -28,7 +28,7 @@ public static class SemanticNatureEnumeratorV111
         if (maximumOutcomes is < 1 or > MaximumSupportedOutcomes)
             throw new ArgumentOutOfRangeException(nameof(maximumOutcomes),
                 $"Enumeration cap must be between 1 and {MaximumSupportedOutcomes}.");
-        SemanticPilotCombatEngineV111.Validate(current);
+        current.Validate();
         if (current.Fingerprint != fingerprint)
             throw new InvalidOperationException(
                 "Stale semantic enumeration fingerprint.");

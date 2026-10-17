@@ -90,6 +90,8 @@
 
 **S3 controlled playable validation ownership increment (2026-10-17):** `ControlledPlayableCombatV111.Validate` now owns its pending-stage consistency checks and delegates nested intent/recycle checks to their frame owners. Existing engine save/replay paths call the frame validator.
 
+**S3 semantic pilot validation ownership increment (2026-10-17):** `SemanticPilotCombatV111.Validate` now owns playable session boundary, nested continuation, and provider provenance checks. Engine validation and save/replay paths delegate to the pilot frame.
+
 ## S1 precise design
 
 Implement a **read-only, outcome-blind** Chance Law query in `Sts2Emulator.Core` with:
