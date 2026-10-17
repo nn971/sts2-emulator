@@ -180,6 +180,11 @@ public sealed record SemanticPilotCombatV111(
         PendingInitialIntents?.Pending ?? PendingEndTurn?.IntentPending;
     [JsonIgnore] public RandomIndexRequestV111? EnemyActionPending =>
         PendingEndTurn?.EnemyActionPending;
+    [JsonIgnore] public SemanticEndTurnIndexEventV111?
+        EnemyActionEventPending => PendingEndTurn is { } endTurn &&
+            endTurn.EnemyActionPending is { } request
+                ? SemanticEndTurnIndexEventV111.Create(Fingerprint, request)
+                : null;
     [JsonIgnore] public SemanticDeckEventV111? DrawPending
     {
         get

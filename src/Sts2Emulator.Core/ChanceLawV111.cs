@@ -33,6 +33,12 @@ public static class StochasticCapabilitiesV111
         [
             "combat.committed_intent.index_draw",
             "combat.next_turn_intent.index_draw",
+            "combat.enemy.discard.random_insert_index",
+            "combat.enemy.draw.random_insert_index",
+            "combat.enemy.theft_card.select",
+            "combat.enemy.summon_pool.select",
+            NativeCombatRngEntryV111.InitialUniqueHpSiteId,
+            NativeCombatRngEntryV111.ToughEggHatchHpSiteId,
             "combat.draw_pile.draw_card",
             "combat.effect.random_enemy",
             "combat.sly_autoplay.random_enemy",
@@ -158,6 +164,8 @@ public static class ChanceLawEngineV111
 {
     public const string IntentConditioningPolicyId =
         "source-filtered-intent-weights-v1";
+    public const string EndTurnIndexConditioningPolicyId =
+        "uniform-saved-automatic-index-support-v1";
     public const string DrawConditioningPolicyId =
         "uniform-unresolved-pool-permutation-v1";
     public const string RevealConditioningPolicyId =
@@ -203,6 +211,38 @@ public static class ChanceLawEngineV111
         return Create(intent.EventId, intent.SiteId, intent.OperationKind,
             intent.OwnerId, intent.Ordinal, IntentConditioningPolicyId,
             conditioningFingerprint, "source-shaped-unverified", outcomes);
+    }
+
+    /// <summary>
+    /// Query the declared uniform index law at a suspended automatic
+    /// enemy-action boundary. This preserves index identity even when
+    /// candidate values repeat.
+    /// </summary>
+    public static ChanceLawV111 QueryEndTurnIndex(
+        SemanticEndTurnIndexEventV111 indexEvent)
+    {
+        ArgumentNullException.ThrowIfNull(indexEvent);
+        indexEvent.Validate();
+        var outcomes = Enumerable.Range(0,
+                indexEvent.Request.SupportCount)
+            .Select(index => new ChanceLawOutcomeV111(
+                "choice_index:" + index.ToString(CultureInfo.InvariantCulture),
+                1L))
+            .ToArray();
+        var conditioningFingerprint = CanonicalJson.Sha256(new
+        {
+            indexEvent.SupportFingerprint,
+            indexEvent.Request.SiteId,
+            indexEvent.Request.OwnerId,
+            indexEvent.Request.Ordinal,
+            indexEvent.Request.OperationKind,
+            policy = EndTurnIndexConditioningPolicyId
+        });
+        return Create(indexEvent.EventId, indexEvent.Request.SiteId,
+            indexEvent.Request.OperationKind, indexEvent.Request.OwnerId,
+            indexEvent.Request.Ordinal,
+            EndTurnIndexConditioningPolicyId, conditioningFingerprint,
+            "uniform-saved-enemy-action-index-support-unverified", outcomes);
     }
 
     /// <summary>
@@ -713,6 +753,25 @@ public static class ReferenceNatureV111
             var selection = Sample(law, state);
             var child = SemanticPilotCombatEngineV111.ResolveIntent(
                 combat, combat.Fingerprint, selection.OutcomeId);
+            return new ReferenceNatureResolutionV111(child, law, selection);
+        }
+
+        if (combat.EnemyActionEventPending is { } enemyActionEvent)
+        {
+            var law = ChanceLawEngineV111.QueryEndTurnIndex(
+                enemyActionEvent);
+            var selection = Sample(law, state);
+            if (selection.EventId != enemyActionEvent.EventId ||
+                selection.OutcomeIndex < 0 ||
+                selection.OutcomeIndex >=
+                    enemyActionEvent.Request.SupportCount ||
+                selection.OutcomeId != "choice_index:" +
+                    selection.OutcomeIndex.ToString(
+                        CultureInfo.InvariantCulture))
+                throw new InvalidDataException(
+                    "ReferenceNature law no longer matches the pending enemy-action index event.");
+            var child = SemanticPilotCombatEngineV111.Resolve(
+                combat, combat.Fingerprint, selection.OutcomeIndex);
             return new ReferenceNatureResolutionV111(child, law, selection);
         }
 

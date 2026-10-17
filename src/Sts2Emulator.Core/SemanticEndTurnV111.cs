@@ -17,6 +17,59 @@ public sealed record SemanticEndTurnBoundaryChoiceV111(
     }
 }
 
+/// <summary>Chance event for one bounded random index suspended inside the
+/// automatic enemy-action pipeline.</summary>
+public sealed record SemanticEndTurnIndexEventV111(
+    string SchemaId, string EventId, string BoundaryFingerprint,
+    RandomIndexRequestV111 Request, string SupportFingerprint)
+{
+    public const string CurrentSchemaId =
+        "sts2-v111-semantic-end-turn-index-event-v1";
+
+    public void Validate()
+    {
+        ArgumentNullException.ThrowIfNull(Request);
+        Request.Validate();
+        var supportFingerprint = CanonicalJson.Sha256(Request);
+        var eventId = CanonicalJson.Sha256(new
+        {
+            schemaId = SemanticPilotCombatV111.SchemaId,
+            boundaryFingerprint = BoundaryFingerprint,
+            request = Request
+        });
+        if (SchemaId != CurrentSchemaId ||
+            string.IsNullOrWhiteSpace(BoundaryFingerprint) ||
+            !PrototypeControlledEnemyActionContinuationV111
+                .IsEnemyActionSite(Request.SiteId) ||
+            SupportFingerprint != supportFingerprint || EventId != eventId)
+            throw new InvalidDataException(
+                "Invalid semantic end-turn index event.");
+    }
+
+    public static SemanticEndTurnIndexEventV111 Create(
+        string boundaryFingerprint, RandomIndexRequestV111 request)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(boundaryFingerprint);
+        ArgumentNullException.ThrowIfNull(request);
+        request.Validate();
+        var detachedRequest = request with
+        {
+            OrderedCandidates = (int[])request.OrderedCandidates.Clone()
+        };
+        var eventId = CanonicalJson.Sha256(new
+        {
+            schemaId = SemanticPilotCombatV111.SchemaId,
+            boundaryFingerprint,
+            request = detachedRequest
+        });
+        var semanticEvent = new SemanticEndTurnIndexEventV111(
+            CurrentSchemaId, eventId, boundaryFingerprint, detachedRequest,
+            CanonicalJson.Sha256(detachedRequest));
+        semanticEvent.Validate();
+        return semanticEvent;
+    }
+}
+
 /// <summary>
 /// A versioned end-turn continuation: commit real next-turn intents, execute
 /// the genuine automatic hand-draw stage with deferred Nature card identities,
@@ -45,6 +98,11 @@ public sealed record SemanticEndTurnV111(
             ? null
             : SemanticPilotCombatEngineV111.DescribePendingTargetEvent(
                 Run, Fingerprint, TargetTranscript.Length);
+    [JsonIgnore] public SemanticEndTurnIndexEventV111?
+        EnemyActionEventPending =>
+            !Complete && EnemyActionPending is { } request
+                ? SemanticEndTurnIndexEventV111.Create(Fingerprint, request)
+                : null;
     [JsonIgnore] public RandomIndexRequestV111? EnemyActionPending =>
         Complete ? null : Run.World?.Combat?.AutomaticPipelineContinuation?
             .ControlledEnemyAction?.PendingRequest;
@@ -805,6 +863,7 @@ public static class SemanticEndTurnEngineV111
         {
             ValidateOrigin(state.Origin);
         }
+        state.EnemyActionEventPending?.Validate();
         if (string.IsNullOrWhiteSpace(state.NativeEncounterEntry) ||
             state.IntentTranscript is null ||
             state.EnemyActionTranscript is null ||

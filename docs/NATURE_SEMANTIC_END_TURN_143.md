@@ -13,7 +13,9 @@ capability. `BeginFromPlayerAction` receives a valid player-turn combat
 `end_turn` is a legal action, then executes that action through the
 ordinary `PrototypeAiEnvironment.Step` under the controlled RNG guard.
 The action executes its true source-shaped end-of-turn, enemy actions
-and statuses until the original `AdvanceTurn` intent checkpoint.
+and statuses until the original `AdvanceTurn` intent checkpoint. It can
+suspend at a controlled random target or random enemy-action index and
+continue from that saved boundary after Nature resolves it.
 
 1. `ControlledTurnIntentEngineV111` emits successive source-shaped,
    bounded enemy intent tickets with the stable creature ID and current
@@ -41,11 +43,20 @@ and statuses until the original `AdvanceTurn` intent checkpoint.
 `SemanticEndTurnV111` preserves the original player-action source,
 post-action AdvanceTurn source checkpoint, every enemy intent ticket,
 the complete semantic hand-draw state, card, cost, insertion and Stratagem
-selection transcripts, and the resulting combat state. The `Restore` path
+selection transcripts, automatic target and enemy-action transcripts, and the
+resulting combat state. The `Restore` path
 **re-executes the genuine player action** and then each Nature ticket or
 source selection in the actual observed mechanical order before comparing
 the full state. `ResolveStratagemSelection` exposes the source card action
 through the end-turn wrapper.
+
+The continuation also suspends controlled random targets during the
+automatic pipeline and exposes bounded enemy-action indices as typed Chance
+Law events. `ReferenceNature` resolves those indices through the same saved
+enemy-action replay. Its uniform support law is `UNVERIFIED`; it records no
+claim that the emulator's modeled weights match the source game. Target and
+enemy-action outcomes share a chronological boundary transcript so replay
+does not reorder decisions from nested hooks.
 
 ## Critical hidden-state restriction
 

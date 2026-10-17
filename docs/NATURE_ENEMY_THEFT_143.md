@@ -14,8 +14,10 @@ deck. If any draw candidate would split an unresolved pool, the end-turn action
 fails closed before exposing a partial support.
 
 The JSONL bridge exposes the choice through the existing `enemy_action_chance`
-event and `semantic_resolve_enemy_action` request. The stable request retains
-enemy ownership, ordered card-instance support identity and source ordinal.
+event and `semantic_resolve_enemy_action` request. Its Chance Law now exposes
+the saved index support with an explicitly `UNVERIFIED` uniform index law.
+The stable request retains enemy ownership, ordered card-instance support
+identity and source ordinal.
 Native combat currently identifies `run.combat_card_generation` as a stream
 hypothesis; its native assignment, cursor parity and conditional law remain
 `UNVERIFIED`.

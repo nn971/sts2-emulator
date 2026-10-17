@@ -177,18 +177,18 @@ internal static class PrototypeAiJsonlServer
                     sourceScope = "source_filtered_semantic_eligible_moves"
                 };
             }
-            if (state.EnemyActionPending is { } enemyAction)
+            if (state.EnemyActionEventPending is { } enemyActionEvent)
             {
-                var eventId = CanonicalJson.Sha256(new
-                {
-                    schemaId = SemanticChanceSchemaId,
-                    boundaryFingerprint = state.Fingerprint,
-                    request = enemyAction
-                });
+                var enemyAction = enemyActionEvent.Request;
+                var chanceLaw = ChanceLawEngineV111.QueryEndTurnIndex(
+                    enemyActionEvent);
                 return new
                 {
                     kind = "enemy_action_chance",
-                    eventId,
+                    schemaId = enemyActionEvent.SchemaId,
+                    eventId = enemyActionEvent.EventId,
+                    boundaryFingerprint =
+                        enemyActionEvent.BoundaryFingerprint,
                     siteId = enemyAction.SiteId,
                     streamId = enemyAction.StreamId,
                     ownerId = enemyAction.OwnerId,
@@ -197,8 +197,10 @@ internal static class PrototypeAiJsonlServer
                     supportCount = enemyAction.SupportCount,
                     eligibleIndices = Enumerable.Range(
                         0, enemyAction.SupportCount).ToArray(),
-                    supportFingerprint = CanonicalJson.Sha256(enemyAction),
-                    probabilityStatus = "UNVERIFIED"
+                    supportFingerprint =
+                        enemyActionEvent.SupportFingerprint,
+                    chanceLaw,
+                    probabilityStatus = chanceLaw.ProbabilityStatus
                 };
             }
             if (state.RandomPileCardPending is { } pileCard)
@@ -1078,6 +1080,8 @@ internal static class PrototypeAiJsonlServer
                                 SemanticIntentEventV111.EventSchemaId,
                             semanticChanceEventContractId =
                                 SemanticChanceEventContractV111.SchemaId,
+                            semanticEndTurnIndexEventSchemaId =
+                                SemanticEndTurnIndexEventV111.CurrentSchemaId,
                             semanticDrawChoiceSchemaId =
                                 SemanticDeckStateV111.SchemaId,
                             semanticDrawHookChoiceSchemaId =
