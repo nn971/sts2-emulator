@@ -112,7 +112,14 @@ public sealed record RunState(
     /// </summary>
     [System.Text.Json.Serialization.JsonIgnore]
     public RunStochasticStateV111 Stochastic { get; init; } =
-        new(NativeRunRng, ReferenceNatureState);
+        new(Rng, NativeRunRng, ReferenceNatureState);
+
+    public RngBundle Rng
+    {
+        get => Stochastic.PrototypeRng;
+        init => Stochastic = RunStochasticStateV111.WithPrototypeRng(
+            Stochastic, value);
+    }
 
     [System.Text.Json.Serialization.JsonIgnore(Condition =
         System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
@@ -135,7 +142,6 @@ public sealed record RunState(
     public RunState Fork() => this with
     {
         Player = Player.Fork(),
-        Rng = Rng.Fork(),
         Stochastic = Stochastic.Fork(),
         ControlledEventChoiceHistory = ControlledEventChoiceHistory?.Select(
             trace => trace.Fork()).ToArray(),
