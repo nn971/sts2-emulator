@@ -112,7 +112,9 @@ public sealed record SemanticPilotCombatV111(
     public SemanticSourceRouteAuditV111? SourceRouteAudit { get; init; }
     public ControlledTurnIntentsV111? PendingInitialIntents { get; init; }
     [JsonIgnore] public SemanticTargetEventV111? TargetPending =>
-        SemanticPilotCombatEngineV111.DescribePendingTargetEvent(this);
+        PendingEndTurn is { } endTurn
+            ? endTurn.TargetPending
+            : SemanticPilotCombatEngineV111.DescribePendingTargetEvent(this);
     [JsonIgnore] public SemanticGeneratedCardEventV111? GeneratedCardPending =>
         SemanticPilotCombatEngineV111.DescribePendingGeneratedCardEvent(this);
     [JsonIgnore] public SemanticPotionGenerationEventV111?
@@ -1621,6 +1623,28 @@ public static class SemanticPilotCombatEngineV111
             pending, index, enemyInstanceId);
         expected.Validate();
 
+        if (current.PendingEndTurn is { TargetPending: not null } endTurn)
+        {
+            var resolvedEndTurn = SemanticEndTurnEngineV111.ResolveTarget(
+                endTurn, endTurn.Fingerprint, eventId, enemyInstanceId);
+            var resolvedRun = resolvedEndTurn.Run;
+            var resolvedSession = current with
+            {
+                Run = resolvedRun,
+                PendingEndTurn = resolvedEndTurn.Complete
+                    ? null : resolvedEndTurn,
+                RewardAudit = resolvedRun.Phase == RunPhase.Reward
+                    ? RecordRewardAudit(current.Run, resolvedRun)
+                    : current.RewardAudit,
+                History = current.History.Append(
+                    new SemanticPilotTransitionV111(
+                        "semantic_target", TargetDecision: expected.Fork()))
+                    .ToArray()
+            };
+            Validate(resolvedSession);
+            return NormalizeNoncontrolledCosts(resolvedSession);
+        }
+
         RunState result;
         using (ControlledChanceGuardV111.Enter())
         using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
@@ -2345,6 +2369,15 @@ public static class SemanticPilotCombatEngineV111
         if (current.DrawHookChoicePending is not null)
             throw new InvalidOperationException(
                 "Resolve the pending CardDrawn hook action by action ID.");
+        if (current.PendingEndTurn?.TargetPending is { } automaticTarget)
+        {
+            if (selectedIndex < 0 || selectedIndex >=
+                    automaticTarget.CandidateEnemyInstanceIds.Length)
+                throw new ArgumentOutOfRangeException(nameof(selectedIndex));
+            return ResolveRandomTarget(current, fingerprint,
+                automaticTarget.EventId,
+                automaticTarget.CandidateEnemyInstanceIds[selectedIndex]);
+        }
         if (semanticIntent is not null)
             ValidateSemanticIntentDecision(current, semanticIntent, selectedIndex);
         var drawEvent = current.DrawPending;
@@ -2739,11 +2772,25 @@ public static class SemanticPilotCombatEngineV111
         SemanticPilotCombatV111 current)
     {
         ArgumentNullException.ThrowIfNull(current);
-        var combat = current.Run.World?.Combat;
+        if (current.PendingEndTurn is { } endTurn)
+            return endTurn.TargetPending;
+        return DescribePendingTargetEvent(current.Run, current.Fingerprint,
+            current.History.Count(transition =>
+                transition.Kind == "semantic_target"));
+    }
+
+    internal static SemanticTargetEventV111? DescribePendingTargetEvent(
+        RunState run, string boundaryFingerprint, int ordinal)
+    {
+        ArgumentNullException.ThrowIfNull(run);
+        ArgumentException.ThrowIfNullOrWhiteSpace(boundaryFingerprint);
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+        var combat = run.World?.Combat;
         var choice = combat?.PendingChoice;
         var target = choice?.ControlledTarget;
         if (target is null) return null;
-        ValidateTargetBoundary(current.Run);
+        ValidateTargetBoundary(run);
         var candidates = (int[])target.EligibleEnemyInstanceIds.Clone();
         var siteId = target.Kind switch
         {
@@ -2758,13 +2805,11 @@ public static class SemanticPilotCombatEngineV111
             : choice!.SourceCardInstanceId is { } sourceCardId
                 ? "card_instance:" + sourceCardId
                 : "effect_operation";
-        var ordinal = current.History.Count(transition =>
-            transition.Kind == "semantic_target");
         var supportFingerprint = CanonicalJson.Sha256(candidates);
         var eventId = CanonicalJson.Sha256(new
         {
             SchemaId = SemanticTargetChoiceV111.SchemaId,
-            BoundaryFingerprint = current.Fingerprint,
+            BoundaryFingerprint = boundaryFingerprint,
             SiteId = siteId,
             OwnerId = ownerId,
             Ordinal = ordinal,
@@ -3691,17 +3736,34 @@ public static class SemanticPilotCombatEngineV111
         var combat = run.World?.Combat;
         var choice = combat?.PendingChoice;
         var target = choice?.ControlledTarget;
+        var automatic = combat?.AutomaticPipelineContinuation;
+        var playerActionBoundary = combat is
+            { IsPlayerTurn: true, AutomaticPipelineContinuation: null };
+        var automaticPipelineBoundary = combat is { IsPlayerTurn: false } &&
+            automatic is
+            {
+                OpeningStage: null,
+                PendingPostDispatchEventKind: null,
+                ControlledDrawRemaining: null,
+                ControlledDrawCostRemaining: null,
+                ControlledSemanticDrawRemaining: null,
+                ControlledSemanticDrawRequested: null,
+                ControlledEnemyAction: null
+            } && automatic.NextStepIndex >= 0 &&
+            automatic.NextStepIndex <
+                PrototypeContent.Rules.EndTurnPipeline.Length;
         if (run.Phase != RunPhase.Combat ||
-            combat is not { IsPlayerTurn: true,
-                AutomaticPipelineContinuation: null } ||
+            (!playerActionBoundary && !automaticPipelineBoundary) ||
             choice is not { ChoiceId: "controlled_random_target",
                 OuterChoiceContinuation: not null } ||
             target is null ||
             target.Kind is not ("effect_random_enemy" or "sly_auto_play" or
                 "autoplay_random_enemy"))
             throw new InvalidDataException(
-                "Semantic target continuation is not at a supported player action.");
-        var eligible = combat.Enemies.Where(enemy => enemy.Hp > 0 &&
+                "Semantic target continuation is not at a supported player or automatic pipeline boundary.");
+        var liveCombat = combat ?? throw new InvalidDataException(
+            "Semantic target continuation is missing its combat state.");
+        var eligible = liveCombat.Enemies.Where(enemy => enemy.Hp > 0 &&
                 (target.Kind != "sly_auto_play" || !enemy.Escaped))
             .Select(enemy => enemy.InstanceId).ToArray();
         if (eligible.Length == 0 ||
@@ -3710,14 +3772,14 @@ public static class SemanticPilotCombatEngineV111
                 "Semantic target support disagrees with live enemy eligibility.");
         if (target.Kind == "sly_auto_play" &&
             (target.SlyCardInstanceId is not { } slyCardId ||
-             !combat.DiscardPile.Contains(slyCardId) ||
+             !liveCombat.DiscardPile.Contains(slyCardId) ||
              target.AutoPlayCardInstanceId is not null))
             throw new InvalidDataException(
                 "Sly auto-play target lost its discarded source card.");
         if (target.Kind == "autoplay_random_enemy")
         {
             if (target.AutoPlayCardInstanceId is not { } autoPlayCardId ||
-                !combat.PlayCardIds.Contains(autoPlayCardId) ||
+                !liveCombat.PlayCardIds.Contains(autoPlayCardId) ||
                 target.SlyCardInstanceId is not null ||
                 choice?.OuterChoiceContinuation?.Operations is not
                     { Length: > 0 } operations ||
@@ -3733,15 +3795,19 @@ public static class SemanticPilotCombatEngineV111
                   target.AutoPlayCardInstanceId is not null))
             throw new InvalidDataException(
                 "Effect random-target event carries an auto-play card identity.");
-        var deck = combat.SemanticDeck ?? throw new InvalidDataException(
-            "Semantic target continuation lost its provider-owned deck.");
-        SemanticDeckEngineV111.Validate(deck);
-        if (deck.Mode != SemanticDeckStateV111.NatureMode ||
-            deck.Pending is not null ||
-            !SemanticDeckEngineV111.AllCardInstanceIds(deck)
-                .Order().SequenceEqual(combat.DrawPile.Order()))
+        if (liveCombat.SemanticDeck is { } deck)
+        {
+            SemanticDeckEngineV111.Validate(deck);
+            if (deck.Mode != SemanticDeckStateV111.NatureMode ||
+                deck.Pending is not null ||
+                !SemanticDeckEngineV111.AllCardInstanceIds(deck)
+                    .Order().SequenceEqual(liveCombat.DrawPile.Order()))
+                throw new InvalidDataException(
+                    "Semantic target continuation changed the hidden draw pile.");
+        }
+        else if (liveCombat.DrawPile.Length != 0)
             throw new InvalidDataException(
-                "Semantic target continuation changed the hidden draw pile.");
+                "A semantic target without a provider deck must have an empty draw pile.");
     }
 
     private static SemanticIntentEventV111 MakeSemanticIntentEvent(
@@ -4006,7 +4072,8 @@ public static class SemanticPilotCombatEngineV111
         if (state.TargetPending is { } targetPending)
         {
             targetPending.Validate();
-            if (state.PendingEndTurn is not null ||
+            if ((state.PendingEndTurn is not null &&
+                 state.PendingEndTurn.TargetPending is null) ||
                 state.PendingInitialIntents is not null ||
                 state.GeneratedCardPending is not null ||
                 state.PotionGenerationPending is not null ||
