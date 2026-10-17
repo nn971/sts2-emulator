@@ -98,6 +98,14 @@ boundary to replace providers for the whole action. Logical stream ordinals
 are used only when an overriding provider is active, so pass-through execution
 retains existing request identities. Proving cross-provider mechanical
 equivalence remains open.
+
+The semantic pilot now resumes Distilled Chaos top-card autoplay through the
+same saved semantic draw choice used by card-effect draws. It preserves the
+staged identities and effect queue, then uses the ordinary autoplay operation
+for each card. The current boundary is a manual potion action whose requested
+cards do not require recycling; discard recycle and Mayhem's automatic-pipeline
+route remain unsupported until their continuations are composed. This
+integration does not claim source-calibrated draw probabilities.
 `ReferenceNatureMerchantSessionV111` and
 `ReferenceNatureTreasureSessionV111` own serialized continuations and use the
 shared law-to-source mapping. Their opening projections sort the existing

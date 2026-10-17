@@ -105,6 +105,12 @@ native game RNG state, so existing consumers are unaffected.
 
 ## Next integration milestones
 
+Manual Distilled Chaos now uses the `draw` purpose to stage selected top-card
+identities and resume the saved autoplay operation queue. This covers the
+non-recycling player-action boundary; Mayhem's automatic-pipeline path and
+discard recycle remain unsupported. No current gameplay callsite initiates a
+`peek` or `scry` request, so those reveal APIs remain kernel-only.
+
 1. Integrate the semantic provider with the actual `DrawCards` action/
    automatic/initial hand-draw continuations, preserving one
    `CardDrawn` hook per physical draw and source-timed recycle hooks.

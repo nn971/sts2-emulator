@@ -1972,6 +1972,7 @@ internal static class PrototypeAiJsonlServer
                   state.SeededEntry?.FixtureSelectionCardId is not null ||
                   state.SeededEntry?.FixtureNatureDrawCosts == true ||
                   state.SeededEntry?.FixturePoolGenerationPotionId is not null ||
+                  state.SeededEntry?.FixtureTopAutoplayPotionId is not null ||
                   state.SeededEntry?.FixtureGeneratedDrawInsertionCardId is not null ||
                   state.SeededEntry?.FixtureRandomFreeAttackDrawInsertion == true ||
                   state.DeckRevealPending is not null ||
@@ -3630,7 +3631,9 @@ internal static class PrototypeAiJsonlServer
                             OptionalString(request,
                                 "fixture_selection_potion_id"),
                             OptionalString(request,
-                                "fixture_potion_generation_card_id"));
+                                "fixture_potion_generation_card_id"),
+                            OptionalString(request,
+                                "fixture_top_autoplay_potion_id"));
                         var next = SemanticPilotCombatEngineV111.BeginSeeded(entry);
                         var handle = StoreSemantic(next);
                         Write(new { requestId, ok = true,

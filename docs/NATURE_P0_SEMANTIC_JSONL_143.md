@@ -451,6 +451,15 @@ use the same `resolve_pool_shuffle(swap_index)` method for this event as for
 generated-card pool shuffles. Native stream assignment, cursor parity and
 probability law remain `UNVERIFIED`.
 
+Set `fixture_top_autoplay_potion_id="proto.potion.distilled_chaos"` to add
+Distilled Chaos to the seeded combat. Using it stages the requested top cards
+and pauses at an unresolved Nature draw identity when needed; resolving the
+ordinary `draw_card` Nature event resumes the staged `AutoPlayCombatCard`
+operations in order. These autoplayed cards do not dispatch `CardDrawn`
+hooks. The current boundary rejects a required draw-pile recycle and Mayhem's
+automatic-pipeline route, which need composed continuations. The draw law
+remains `UNVERIFIED`.
+
 Set `fixture_selection_card_id="proto.colorless.anointed"` to reach Anointed's
 `random_rare_to_hand_shuffle` event. Its `originalCardIds` and
 `currentCardIds` are stable `card-instance:<instanceId>:<cardModelId>` tokens,

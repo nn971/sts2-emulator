@@ -34,6 +34,26 @@ When a controlled source pool has one card, the engine selects it directly
 and synchronizes the semantic deck for draw-pile removal. No Nature event is
 needed when support is a singleton.
 
+## Distilled Chaos top-draw continuation
+
+The semantic pilot also admits manual **Distilled Chaos** use. Its
+`AutoPlayTopDrawCards` operation consumes known top identities directly and
+suspends on an unresolved Nature top card through the existing semantic draw
+event. The continuation saves the remaining count, already staged physical
+instances, and queued effects. After Nature selects an identity, the ordinary
+operation resumes, stages the rest of the requested cards, then queues the
+same `AutoPlayCombatCard` operations. This is a card autoplay, not a hand
+draw: it does not dispatch `CardDrawn` hooks. ReferenceNature and controlled
+resolvers use the existing conditional draw law; its equal remaining-pool
+weights remain `UNVERIFIED`.
+
+This boundary currently supports the manual potion action when the draw pile
+has enough cards to fulfill it; an empty pile with an empty discard produces
+no autoplay. It rejects a required discard recycle and the automatic-pipeline
+route used by Mayhem, since those need a composed recycle or pipeline
+continuation. A seeded semantic fixture can include Distilled Chaos with
+`fixture_top_autoplay_potion_id`.
+
 ## Limits and verification
 
 The continuation resumes its saved automatic stage after all selected

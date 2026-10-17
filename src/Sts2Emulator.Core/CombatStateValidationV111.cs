@@ -863,6 +863,14 @@ public sealed partial record CombatState
             if (draw is not null)
             {
                 var continuation = pending.OuterChoiceContinuation;
+                var topAutoplayOperation = continuation?.Operations
+                    .FirstOrDefault();
+                var isTopAutoplayDraw = isSemanticDrawChoice &&
+                    topAutoplayOperation?.Kind ==
+                        PrototypeCombatEffectKind.AutoPlayTopDrawCards;
+                var stagedTopAutoplayCards = isTopAutoplayDraw
+                    ? topAutoplayOperation?.DeferredDrawnCardInstanceIds ?? []
+                    : [];
                 var deck = combat.SemanticDeck;
                 if (combat.IsPlayerTurn is false ||
                     combat.AutomaticPipelineContinuation is not null ||
@@ -907,6 +915,13 @@ public sealed partial record CombatState
                      (pending.ControlledDrawCost is not null ||
                       deck.Pending is not
                         { Purpose: "draw", TopOffset: 0 })) ||
+                    (isTopAutoplayDraw &&
+                     (draw.FromHandDraw || topAutoplayOperation is null ||
+                      topAutoplayOperation.Amount != draw.RemainingCount ||
+                      stagedTopAutoplayCards.Distinct().Count() !=
+                          stagedTopAutoplayCards.Length ||
+                      stagedTopAutoplayCards.Any(id =>
+                          !combat.PlayCardIds.Contains(id)))) ||
                     (isEffectDrawCostChoice &&
                      (pending.ControlledDrawCost is not { } cost ||
                       pending.SourceCardDestination !=
