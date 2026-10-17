@@ -67,12 +67,12 @@ public sealed partial class PrototypeGameEngine
             SuppressedUpgradeLevels: lastAttack.SuppressedUpgradeLevels,
             WitherFakeUpgradeLevel: lastAttack.WitherFakeUpgradeLevel,
             IsHistoryCourseDupe: true);
-        combat = combat with
+        combat = SetZone(
+            combat, PrototypeCardZone.PlayPile,
+            combat.PlayCardIds.Append(duplicate.InstanceId).ToArray()) with
         {
             NextCardInstanceId = combat.NextCardInstanceId + 1,
-            Cards = combat.Cards.Append(duplicate).ToArray(),
-            PlayPile = combat.PlayCardIds.Append(duplicate.InstanceId)
-                .ToArray()
+            Cards = combat.Cards.Append(duplicate).ToArray()
         };
 
         // AutoPlayCombatCard already implements the native CardCmd:

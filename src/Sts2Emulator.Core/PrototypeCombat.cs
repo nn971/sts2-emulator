@@ -1108,11 +1108,10 @@ public sealed partial class PrototypeGameEngine
                 card,
                 definition);
 
-        combat = combat with
-        {
-            Energy = combat.Energy - energySpent,
-            Hand = combat.Hand.Where(id => id != payload.CardInstanceId).ToArray()
-        };
+        combat = SetZone(
+            combat, PrototypeCardZone.Hand,
+            combat.Hand.Where(id => id != payload.CardInstanceId).ToArray())
+            with { Energy = combat.Energy - energySpent };
         NativeEngineEventJournalV111.Record(
             "resource", "energy_spent",
             sourceCardInstanceId: payload.CardInstanceId,
@@ -1918,12 +1917,14 @@ public sealed partial class PrototypeGameEngine
                 eligible, postHook, perfectFit);
         }
         else
-            combat = SemanticDrawPileAdapterV111
-                .ApplyCommittedPhysicalMutation(combat, postHook, null);
-        combat = combat with
-        {
-            DiscardPile = []
-        };
+            combat = SemanticDrawPileAdapterV111.ApplyZoneTransition(
+                combat,
+                combat.Mechanics.CardZones.WithZoneChanges(
+                    new Dictionary<PrototypeCardZone, long[]>
+                    {
+                        [PrototypeCardZone.DrawPile] = postHook,
+                        [PrototypeCardZone.DiscardPile] = []
+                    }));
         var remainingHandDraw = continuation.ControlledDrawRemaining.Value;
         var afterShuffleInsertions = ControlledAfterShuffleRelicInsertions(
             combat);
@@ -2444,12 +2445,17 @@ public sealed partial class PrototypeGameEngine
                         CardId: card.CardId);
                 }).ToArray();
 
-                combat = combat with
-                {
-                    ExhaustPile = combat.ExhaustPile.Concat(ethereal).ToArray(),
-                    DiscardPile = combat.DiscardPile.Concat(discarded).ToArray(),
-                    Hand = retained
-                };
+                combat = SemanticDrawPileAdapterV111.ApplyZoneTransition(
+                    combat,
+                    combat.Mechanics.CardZones.WithZoneChanges(
+                        new Dictionary<PrototypeCardZone, long[]>
+                        {
+                            [PrototypeCardZone.ExhaustPile] = combat.ExhaustPile
+                                .Concat(ethereal).ToArray(),
+                            [PrototypeCardZone.DiscardPile] = combat.DiscardPile
+                                .Concat(discarded).ToArray(),
+                            [PrototypeCardZone.Hand] = retained
+                        }));
 
                 foreach (var cardInstanceId in ethereal)
                 {
@@ -3057,16 +3063,19 @@ public sealed partial class PrototypeGameEngine
                     semanticDeck, id);
             }
 
-            combat = SemanticDrawPileAdapterV111
-                .ApplyCommittedPhysicalMutation(
-                    combat,
-                    combat.DrawPile.Where(x => x != id).ToArray(),
-                    semanticDeck) with
-            {
-                DiscardPile = combat.DiscardPile.Where(x => x != id).ToArray(),
-                ExhaustPile = combat.ExhaustPile.Where(x => x != id).ToArray(),
-                Hand = combat.Hand.Append(id).ToArray()
-            };
+            var nextZones = combat.Mechanics.CardZones.WithZoneChanges(
+                new Dictionary<PrototypeCardZone, long[]>
+                {
+                    [PrototypeCardZone.DrawPile] = combat.DrawPile
+                        .Where(x => x != id).ToArray(),
+                    [PrototypeCardZone.DiscardPile] = combat.DiscardPile
+                        .Where(x => x != id).ToArray(),
+                    [PrototypeCardZone.ExhaustPile] = combat.ExhaustPile
+                        .Where(x => x != id).ToArray(),
+                    [PrototypeCardZone.Hand] = combat.Hand.Append(id).ToArray()
+                });
+            combat = SemanticDrawPileAdapterV111.ApplyCommittedZoneTransition(
+                combat, nextZones, semanticDeck);
         }
         return combat;
     }
@@ -4286,15 +4295,20 @@ public sealed partial class PrototypeGameEngine
                                     card.InstanceId != persistentId)
                                     .ToArray()
                             };
+                            var zoneChanges = new Dictionary<PrototypeCardZone, long[]>
+                            {
+                                [PrototypeCardZone.DrawPile] = combat.DrawPile
+                                    .Where(id => id != chosen.InstanceId).ToArray(),
+                                [PrototypeCardZone.DiscardPile] = combat.DiscardPile
+                                    .Where(id => id != chosen.InstanceId).ToArray()
+                            };
                             combat = SemanticDrawPileAdapterV111
-                                .ApplyCommittedPhysicalMutation(
+                                .ApplyCommittedZoneTransition(
                                     combat,
-                                    combat.DrawPile.Where(id =>
-                                        id != chosen.InstanceId).ToArray(),
+                                    combat.Mechanics.CardZones
+                                        .WithZoneChanges(zoneChanges),
                                     semanticDeck) with
                             {
-                                DiscardPile = combat.DiscardPile.Where(id =>
-                                    id != chosen.InstanceId).ToArray(),
                                 Cards = combat.Cards.Where(card =>
                                     card.InstanceId != chosen.InstanceId)
                                     .ToArray(),
@@ -4684,10 +4698,11 @@ public sealed partial class PrototypeGameEngine
                                 var pile = combat.DiscardPile.ToList();
                                 pile.Insert(insertion.SelectedIndex,
                                     instance.InstanceId);
-                                combat = combat with
+                                combat = SetZone(
+                                    combat, PrototypeCardZone.DiscardPile,
+                                    pile.ToArray()) with
                                 {
                                     Cards = combat.Cards.Append(instance).ToArray(),
-                                    DiscardPile = pile.ToArray(),
                                     NextCardInstanceId =
                                         combat.NextCardInstanceId + 1
                                 };
@@ -6458,10 +6473,6 @@ public sealed partial class PrototypeGameEngine
                     var shuffled = combat.DrawPile
                         .Concat(combat.Hand)
                         .ToArray();
-                    combat = combat with
-                    {
-                        Hand = Array.Empty<long>()
-                    };
                     combat = ShuffleCombatCardPool(
                         combat, rng, shuffled,
                         "combat.hand_return.draw_pile.shuffle_swap_index",
@@ -6474,8 +6485,15 @@ public sealed partial class PrototypeGameEngine
                         CommitSemanticHandReturnShuffle(
                             combat, shuffledDrawPile, returnedHandIds);
                     combat = SemanticDrawPileAdapterV111
-                        .ApplyCommittedPhysicalMutation(
-                            combat, shuffledDrawPile, semanticDeck);
+                        .ApplyCommittedZoneTransition(
+                            combat,
+                            combat.Mechanics.CardZones.WithZoneChanges(
+                                new Dictionary<PrototypeCardZone, long[]>
+                                {
+                                    [PrototypeCardZone.DrawPile] = shuffledDrawPile,
+                                    [PrototypeCardZone.Hand] = []
+                                }),
+                            semanticDeck);
                     var afterShuffleInsertions =
                         ControlledAfterShuffleRelicInsertions(combat);
                     if (ControlledChanceGuardV111.Active &&
@@ -6543,12 +6561,15 @@ public sealed partial class PrototypeGameEngine
                     // dispatcher so CardExhausted hooks run in hand order,
                     // including hooks which suspend for a player choice.
                     var exhausted = (long[])combat.Hand.Clone();
-                    combat = combat with
-                    {
-                        Hand = Array.Empty<long>(),
-                        ExhaustPile = combat.ExhaustPile
-                            .Concat(exhausted).ToArray()
-                    };
+                    combat = SemanticDrawPileAdapterV111.ApplyZoneTransition(
+                        combat,
+                        combat.Mechanics.CardZones.WithZoneChanges(
+                            new Dictionary<PrototypeCardZone, long[]>
+                            {
+                                [PrototypeCardZone.Hand] = [],
+                                [PrototypeCardZone.ExhaustPile] = combat.ExhaustPile
+                                    .Concat(exhausted).ToArray()
+                            }));
                     if (exhausted.Length == 0)
                     {
                         break;
@@ -6595,13 +6616,15 @@ public sealed partial class PrototypeGameEngine
                                 PrototypeCardKeyword.Sly))
                         .ToArray();
 
-                    combat = combat with
-                    {
-                        Hand = Array.Empty<long>(),
-                        DiscardPile = combat.DiscardPile
-                            .Concat(discarded)
-                            .ToArray()
-                    };
+                    combat = SemanticDrawPileAdapterV111.ApplyZoneTransition(
+                        combat,
+                        combat.Mechanics.CardZones.WithZoneChanges(
+                            new Dictionary<PrototypeCardZone, long[]>
+                            {
+                                [PrototypeCardZone.Hand] = [],
+                                [PrototypeCardZone.DiscardPile] = combat.DiscardPile
+                                    .Concat(discarded).ToArray()
+                            }));
 
                     var discardEvents = discarded
                         .Select(cardInstanceId =>
@@ -6885,16 +6908,17 @@ public sealed partial class PrototypeGameEngine
                     var semanticDeck =
                         SemanticDrawPileAdapterV111.SynchronizeSemanticDrawPileAfterRemoval(
                             combat, selected);
+                    var nextZones = combat.Mechanics.CardZones.WithZoneChanges(
+                        new Dictionary<PrototypeCardZone, long[]>
+                        {
+                            [PrototypeCardZone.DrawPile] = combat.DrawPile
+                                .Where(id => !selectedIds.Contains(id)).ToArray(),
+                            [PrototypeCardZone.Hand] = combat.Hand
+                                .Concat(selected).ToArray()
+                        });
                     combat = SemanticDrawPileAdapterV111
-                        .ApplyCommittedPhysicalMutation(
-                            combat,
-                            combat.DrawPile
-                                .Where(id => !selectedIds.Contains(id))
-                                .ToArray(),
-                            semanticDeck) with
-                    {
-                        Hand = combat.Hand.Concat(selected).ToArray(),
-                    };
+                        .ApplyCommittedZoneTransition(
+                            combat, nextZones, semanticDeck);
                     break;
                 }
 
@@ -6974,20 +6998,23 @@ public sealed partial class PrototypeGameEngine
                     var semanticDeck =
                         SemanticDrawPileAdapterV111.SynchronizeSemanticDrawPileAfterRemoval(
                             combat, [selectedId]);
+                    var zoneChanges = new Dictionary<PrototypeCardZone, long[]>
+                    {
+                        [PrototypeCardZone.DrawPile] = combat.DrawPile
+                            .Where(id => id != selectedId).ToArray(),
+                        [handHasSpace
+                            ? PrototypeCardZone.Hand
+                            : PrototypeCardZone.DiscardPile] = handHasSpace
+                                ? combat.Hand.Append(selectedId).ToArray()
+                                : combat.DiscardPile.Append(selectedId).ToArray()
+                    };
                     combat = SemanticDrawPileAdapterV111
-                        .ApplyCommittedPhysicalMutation(
+                        .ApplyCommittedZoneTransition(
                             combat,
-                            combat.DrawPile
-                                .Where(id => id != selectedId)
-                                .ToArray(),
+                            combat.Mechanics.CardZones
+                                .WithZoneChanges(zoneChanges),
                             semanticDeck) with
                     {
-                        Hand = handHasSpace
-                            ? combat.Hand.Append(selectedId).ToArray()
-                            : combat.Hand,
-                        DiscardPile = handHasSpace
-                            ? combat.DiscardPile
-                            : combat.DiscardPile.Append(selectedId).ToArray(),
                         NativeRng = nativeRunStreams is null
                             ? combat.NativeRng
                             : combat.NativeRng! with
@@ -8085,13 +8112,10 @@ public sealed partial class PrototypeGameEngine
                                         DeferredDrawnCardInstanceIds =
                                             (long[])staged.ToArray().Clone()
                                     };
-                                    combat = combat with
-                                    {
-                                        PlayPile = combat.PlayCardIds
-                                            .Concat(staged.Skip(
-                                                previouslyStagedCount))
-                                            .ToArray()
-                                    };
+                                    combat = SetZone(
+                                        combat, PrototypeCardZone.PlayPile,
+                                        combat.PlayCardIds.Concat(staged.Skip(
+                                            previouslyStagedCount)).ToArray());
                                     var continuation = new
                                         PrototypeChoiceResolutionContinuationState(
                                             SourceCardInstanceId:
@@ -8170,13 +8194,18 @@ public sealed partial class PrototypeGameEngine
                                     throw new InvalidDataException(
                                         "Only a Nature top-card reveal may suspend autoplay.");
                                 combat = SemanticDrawPileAdapterV111
-                                    .ApplyCommittedPhysicalMutation(
-                                        combat, draw.ToArray(), semanticDeck) with
-                                {
-                                    PlayPile = combat.PlayCardIds
-                                        .Concat(staged.Skip(previouslyStagedCount))
-                                        .ToArray()
-                                };
+                                    .ApplyCommittedZoneTransition(
+                                        combat,
+                                        combat.Mechanics.CardZones
+                                            .WithZoneChanges(
+                                                new Dictionary<PrototypeCardZone, long[]>
+                                                {
+                                                    [PrototypeCardZone.DrawPile] = draw.ToArray(),
+                                                    [PrototypeCardZone.PlayPile] = combat.PlayCardIds
+                                                        .Concat(staged.Skip(previouslyStagedCount))
+                                                        .ToArray()
+                                                }),
+                                        semanticDeck);
                                 var remainingCount = count - index;
                                 var resumeOperation = operation with
                                 {
@@ -8239,16 +8268,18 @@ public sealed partial class PrototypeGameEngine
                     }
 
                     combat = SemanticDrawPileAdapterV111
-                        .ApplyCommittedPhysicalMutation(
-                            combat, draw.ToArray(), semanticDeck) with
-                    {
-                        DiscardPile =
-                            discard.ToArray(),
-                        PlayPile =
-                            combat.PlayCardIds
-                                .Concat(staged.Skip(previouslyStagedCount))
-                                .ToArray()
-                    };
+                        .ApplyCommittedZoneTransition(
+                            combat,
+                            combat.Mechanics.CardZones.WithZoneChanges(
+                                new Dictionary<PrototypeCardZone, long[]>
+                                {
+                                    [PrototypeCardZone.DrawPile] = draw.ToArray(),
+                                    [PrototypeCardZone.DiscardPile] = discard.ToArray(),
+                                    [PrototypeCardZone.PlayPile] = combat.PlayCardIds
+                                        .Concat(staged.Skip(previouslyStagedCount))
+                                        .ToArray()
+                                }),
+                            semanticDeck);
 
                     operations = new Queue<
                         PrototypeQueuedOperation>(
@@ -8925,14 +8956,16 @@ public sealed partial class PrototypeGameEngine
             instance = ApplyActiveSourceBoundAfflictionToCard(
                 combat, instance);
             var fits = combat.Hand.Length < maxHandSize;
-            combat = combat with
+            var destination = fits
+                ? PrototypeCardZone.Hand
+                : PrototypeCardZone.DiscardPile;
+            combat = SetZone(
+                combat, destination,
+                GetZone(combat, destination).Append(instance.InstanceId)
+                    .ToArray()) with
             {
                 NextCardInstanceId = combat.NextCardInstanceId + 1,
-                Cards = combat.Cards.Append(instance).ToArray(),
-                Hand = fits ? combat.Hand.Append(instance.InstanceId).ToArray()
-                    : combat.Hand,
-                DiscardPile = fits ? combat.DiscardPile
-                    : combat.DiscardPile.Append(instance.InstanceId).ToArray()
+                Cards = combat.Cards.Append(instance).ToArray()
             };
         }
 
@@ -8968,12 +9001,16 @@ public sealed partial class PrototypeGameEngine
             var semanticDeck =
                 SemanticDrawPileAdapterV111.SynchronizeSemanticDrawPileAfterInsertion(
                     combat, insertion.SelectedIndex, instanceId);
-            combat = SemanticDrawPileAdapterV111
-                .ApplyCommittedPhysicalMutation(
-                    combat, draw.ToArray(), semanticDeck) with
+            var zoneChanges = new Dictionary<PrototypeCardZone, long[]>
             {
-                DiscardPile = combat.DiscardPile.Where(id => id != instanceId).ToArray()
+                [PrototypeCardZone.DrawPile] = draw.ToArray(),
+                [PrototypeCardZone.DiscardPile] = combat.DiscardPile
+                    .Where(id => id != instanceId).ToArray()
             };
+            combat = SemanticDrawPileAdapterV111.ApplyCommittedZoneTransition(
+                combat,
+                combat.Mechanics.CardZones.WithZoneChanges(zoneChanges),
+                semanticDeck);
         }
         return combat;
     }
@@ -9002,13 +9039,12 @@ public sealed partial class PrototypeGameEngine
                 combat,
                 instance);
 
-            combat = combat with
+            combat = SetZone(
+                combat, PrototypeCardZone.DiscardPile,
+                combat.DiscardPile.Append(instance.InstanceId).ToArray()) with
             {
                 NextCardInstanceId = combat.NextCardInstanceId + 1,
-                Cards = combat.Cards.Append(instance).ToArray(),
-                DiscardPile = combat.DiscardPile
-                    .Append(instance.InstanceId)
-                    .ToArray()
+                Cards = combat.Cards.Append(instance).ToArray()
             };
         }
 
@@ -9061,11 +9097,12 @@ public sealed partial class PrototypeGameEngine
                 State: PrototypeJson.EmptyObject());
             instance = ApplyActiveSourceBoundAfflictionToCard(
                 combat, instance);
-            combat = combat with
+            combat = SetZone(
+                combat, PrototypeCardZone.Hand,
+                combat.Hand.Append(instance.InstanceId).ToArray()) with
             {
                 NextCardInstanceId = combat.NextCardInstanceId + 1,
-                Cards = combat.Cards.Append(instance).ToArray(),
-                Hand = combat.Hand.Append(instance.InstanceId).ToArray()
+                Cards = combat.Cards.Append(instance).ToArray()
             };
         }
 
@@ -9150,14 +9187,13 @@ public sealed partial class PrototypeGameEngine
                 instance);
 
             generatedIds.Add(instance.InstanceId);
-            combat = combat with
+            combat = SetZone(
+                combat, PrototypeCardZone.ChoicePool,
+                combat.ChoiceCardIds.Append(instance.InstanceId).ToArray()) with
             {
                 NextCardInstanceId =
                     combat.NextCardInstanceId + 1,
-                Cards = combat.Cards.Append(instance).ToArray(),
-                ChoicePool = combat.ChoiceCardIds
-                    .Append(instance.InstanceId)
-                    .ToArray()
+                Cards = combat.Cards.Append(instance).ToArray()
             };
         }
 
@@ -9202,16 +9238,16 @@ public sealed partial class PrototypeGameEngine
                 instance);
 
             var addToHand = combat.Hand.Length < maxHandSize;
-            combat = combat with
+            var destination = addToHand
+                ? PrototypeCardZone.Hand
+                : PrototypeCardZone.DiscardPile;
+            combat = SetZone(
+                combat, destination,
+                GetZone(combat, destination).Append(instance.InstanceId)
+                    .ToArray()) with
             {
                 NextCardInstanceId = combat.NextCardInstanceId + 1,
-                Cards = combat.Cards.Append(instance).ToArray(),
-                Hand = addToHand
-                    ? combat.Hand.Append(instance.InstanceId).ToArray()
-                    : combat.Hand,
-                DiscardPile = addToHand
-                    ? combat.DiscardPile
-                    : combat.DiscardPile.Append(instance.InstanceId).ToArray()
+                Cards = combat.Cards.Append(instance).ToArray()
             };
         }
 
@@ -14658,12 +14694,9 @@ public sealed partial class PrototypeGameEngine
             };
         }
 
-        combat = combat with
-        {
-            DiscardPile = combat.DiscardPile
-                .Where(id => id != cardInstanceId)
-                .ToArray()
-        };
+        combat = SetZone(
+            combat, PrototypeCardZone.DiscardPile,
+            combat.DiscardPile.Where(id => id != cardInstanceId).ToArray());
 
         if (IsCardFreeByPower(combat, definition))
         {
@@ -16149,11 +16182,14 @@ public sealed partial class PrototypeGameEngine
                             ? Math.Max(0, power.Stacks) : 0);
                     if (stratagemCount > 0 && combat.Hand.Length < maxHandSize)
                     {
-                        combat = SemanticDrawPileAdapterV111
-                            .ApplyPhysicalMutation(combat, draw.ToArray()) with
-                        {
-                            DiscardPile = discard.ToArray()
-                        };
+                        combat = SemanticDrawPileAdapterV111.ApplyZoneTransition(
+                            combat,
+                            combat.Mechanics.CardZones.WithZoneChanges(
+                                new Dictionary<PrototypeCardZone, long[]>
+                                {
+                                    [PrototypeCardZone.DrawPile] = draw.ToArray(),
+                                    [PrototypeCardZone.DiscardPile] = discard.ToArray()
+                                }));
                         return new PrototypeDrawCardsResult(
                             player, combat,
                             drawnCardInstanceIds.ToArray(),
@@ -16188,11 +16224,14 @@ public sealed partial class PrototypeGameEngine
                     {
                         // Persist the recycled draw pile before prompting.
                         // The suspended draw resumes after this choice.
-                        combat = SemanticDrawPileAdapterV111
-                            .ApplyPhysicalMutation(combat, draw.ToArray()) with
-                        {
-                            DiscardPile = discard.ToArray()
-                        };
+                        combat = SemanticDrawPileAdapterV111.ApplyZoneTransition(
+                            combat,
+                            combat.Mechanics.CardZones.WithZoneChanges(
+                                new Dictionary<PrototypeCardZone, long[]>
+                                {
+                                    [PrototypeCardZone.DrawPile] = draw.ToArray(),
+                                    [PrototypeCardZone.DiscardPile] = discard.ToArray()
+                                }));
                         return new PrototypeDrawCardsResult(
                             player, combat, drawnCardInstanceIds.ToArray(),
                             RemainingCount: count - drawNumber,
@@ -16237,13 +16276,17 @@ public sealed partial class PrototypeGameEngine
                 draw.RemoveAt(index);
             }
 
-            combat = SemanticDrawPileAdapterV111
-                .ApplyCommittedPhysicalMutation(
-                    combat, draw.ToArray(), combat.SemanticDeck) with
-            {
-                Hand = combat.Hand.Append(cardInstanceId).ToArray(),
-                DiscardPile = discard.ToArray()
-            };
+            combat = SemanticDrawPileAdapterV111.ApplyCommittedZoneTransition(
+                combat,
+                combat.Mechanics.CardZones.WithZoneChanges(
+                    new Dictionary<PrototypeCardZone, long[]>
+                    {
+                        [PrototypeCardZone.DrawPile] = draw.ToArray(),
+                        [PrototypeCardZone.Hand] = combat.Hand
+                            .Append(cardInstanceId).ToArray(),
+                        [PrototypeCardZone.DiscardPile] = discard.ToArray()
+                    }),
+                combat.SemanticDeck);
             drawnCardInstanceIds.Add(cardInstanceId);
 
             var card = RequireCombatCard(combat, cardInstanceId);

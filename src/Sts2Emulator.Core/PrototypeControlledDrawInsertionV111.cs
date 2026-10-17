@@ -388,15 +388,17 @@ public sealed partial class PrototypeGameEngine
                     combat, chosen, instanceId)
             : SemanticDrawPileAdapterV111.SynchronizeSemanticDrawPileAfterInsertion(
                 combat, chosen, instanceId);
-        combat = SemanticDrawPileAdapterV111
-            .ApplyCommittedPhysicalMutation(
-                combat, draw.ToArray(), semanticDeck) with
+        var zoneChanges = new Dictionary<PrototypeCardZone, long[]>
         {
-            PendingChoice = null,
-            DiscardPile = choice.AfterShuffleRelic is null
-                ? combat.DiscardPile
-                : combat.DiscardPile.Where(id => id != instanceId).ToArray()
+            [PrototypeCardZone.DrawPile] = draw.ToArray()
         };
+        if (choice.AfterShuffleRelic is not null)
+            zoneChanges[PrototypeCardZone.DiscardPile] =
+                combat.DiscardPile.Where(id => id != instanceId).ToArray();
+        combat = SemanticDrawPileAdapterV111.ApplyCommittedZoneTransition(
+            combat,
+            combat.Mechanics.CardZones.WithZoneChanges(zoneChanges),
+            semanticDeck) with { PendingChoice = null };
 
         var remainingAfterShuffleRelics =
             choice.RemainingAfterShuffleRelics ?? [];

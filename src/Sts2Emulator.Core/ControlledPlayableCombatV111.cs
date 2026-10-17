@@ -713,16 +713,24 @@ public static class ControlledPlayableCombatEngineV111
         {
             Cards = cards,
             NextCardInstanceId = cards.Length + 1L,
-            Hand = [],
-            DiscardPile = [],
-            ExhaustPile = [],
             Relics = relics,
             Potions = potions,
             CurrentMapNodeId = run.World!.Map.CurrentNodeId,
             IsPlayerTurn = true
         };
-        combat = SemanticDrawPileAdapterV111.ApplyPhysicalMutation(
-            combat, cards.Select(c => c.InstanceId).ToArray());
+        combat = SemanticDrawPileAdapterV111.ApplyZoneTransition(
+            combat,
+            combat.Mechanics.CardZones.WithZoneChanges(
+                new Dictionary<PrototypeCardZone, long[]>
+                {
+                    [PrototypeCardZone.Hand] = [],
+                    [PrototypeCardZone.DrawPile] = cards
+                        .Select(c => c.InstanceId).ToArray(),
+                    [PrototypeCardZone.DiscardPile] = [],
+                    [PrototypeCardZone.ExhaustPile] = [],
+                    [PrototypeCardZone.PlayPile] = [],
+                    [PrototypeCardZone.ChoicePool] = []
+                }));
         run = run with
         {
             Phase = RunPhase.Combat,
@@ -1247,11 +1255,14 @@ public static class ControlledPlayableCombatEngineV111
             hand.Add(pile[index]);
             pile.RemoveAt(index);
         }
-        combat = SemanticDrawPileAdapterV111.ApplyPhysicalMutation(
-            combat, pile.ToArray()) with
-        {
-            Hand = hand.ToArray()
-        };
+        combat = SemanticDrawPileAdapterV111.ApplyZoneTransition(
+            combat,
+            combat.Mechanics.CardZones.WithZoneChanges(
+                new Dictionary<PrototypeCardZone, long[]>
+                {
+                    [PrototypeCardZone.DrawPile] = pile.ToArray(),
+                    [PrototypeCardZone.Hand] = hand.ToArray()
+                }));
         return state with
         {
             Run = state.Run with

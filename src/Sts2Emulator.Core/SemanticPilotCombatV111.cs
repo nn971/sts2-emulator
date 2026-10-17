@@ -1918,13 +1918,16 @@ public static class SemanticPilotCombatEngineV111
                 "Reconstituted opening pile duplicated physical card identity.");
         var initialDeck = SemanticDeckEngineV111.FromCommittedOpening(
             full.Reverse().ToArray());
-        var openingCombat = combat with
-        {
-            Hand = []
-        };
-        openingCombat = SemanticDrawPileAdapterV111
-            .ApplyCommittedPhysicalMutation(
-                openingCombat, full, initialDeck);
+        var openingCombat = SemanticDrawPileAdapterV111
+            .ApplyCommittedZoneTransition(
+                combat,
+                combat.Mechanics.CardZones.WithZoneChanges(
+                    new Dictionary<PrototypeCardZone, long[]>
+                    {
+                        [PrototypeCardZone.Hand] = [],
+                        [PrototypeCardZone.DrawPile] = full
+                    }),
+                initialDeck);
         var prepared = run with
         {
             World = world with

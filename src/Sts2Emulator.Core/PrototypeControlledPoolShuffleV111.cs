@@ -260,11 +260,12 @@ public sealed partial class PrototypeGameEngine
                         : null);
                 card = ApplyActiveSourceBoundAfflictionToCard(combat, card);
                 ids.Add(card.InstanceId);
-                combat = combat with
+                combat = SetZone(
+                    combat, PrototypeCardZone.ChoicePool,
+                    combat.ChoiceCardIds.Append(card.InstanceId).ToArray()) with
                 {
                     NextCardInstanceId = combat.NextCardInstanceId + 1,
-                    Cards = combat.Cards.Append(card).ToArray(),
-                    ChoicePool = combat.ChoiceCardIds.Append(card.InstanceId).ToArray()
+                    Cards = combat.Cards.Append(card).ToArray()
                 };
             }
             combat = combat with
@@ -306,15 +307,17 @@ public sealed partial class PrototypeGameEngine
             var semanticDeck =
                 SemanticDrawPileAdapterV111.SynchronizeSemanticDrawPileAfterRemoval(
                 combat, selected);
-            combat = SemanticDrawPileAdapterV111
-                .ApplyCommittedPhysicalMutation(
-                    combat,
-                    combat.DrawPile
+            var nextZones = combat.Mechanics.CardZones.WithZoneChanges(
+                new Dictionary<PrototypeCardZone, long[]>
+                {
+                    [PrototypeCardZone.DrawPile] = combat.DrawPile
                         .Where(id => !selectedSet.Contains(id)).ToArray(),
-                    semanticDeck) with
-            {
-                Hand = combat.Hand.Concat(selected).ToArray(),
-            };
+                    [PrototypeCardZone.Hand] = combat.Hand
+                        .Concat(selected).ToArray()
+                });
+            combat = SemanticDrawPileAdapterV111
+                .ApplyCommittedZoneTransition(
+                    combat, nextZones, semanticDeck);
         }
         else if (op.Kind ==
             PrototypeCombatEffectKind.ReturnHandToDrawAndShuffle)
@@ -327,14 +330,19 @@ public sealed partial class PrototypeGameEngine
                     combat.DrawPile.Concat(returnedHandIds).Order()))
                 throw new InvalidDataException(
                     "Hand-return shuffle changed or duplicated card identities.");
-            combat = combat with { PendingChoice = null, Hand = [] };
+            combat = combat with { PendingChoice = null };
             var shuffledDrawPile = ApplyPerfectFitShuffleOrder(
                 combat, shuffled);
             var semanticDeck = CommitSemanticHandReturnShuffle(
                 combat, shuffledDrawPile, returnedHandIds);
-            combat = SemanticDrawPileAdapterV111
-                .ApplyCommittedPhysicalMutation(
-                    combat, shuffledDrawPile, semanticDeck);
+            var nextZones = combat.Mechanics.CardZones.WithZoneChanges(
+                new Dictionary<PrototypeCardZone, long[]>
+                {
+                    [PrototypeCardZone.DrawPile] = shuffledDrawPile,
+                    [PrototypeCardZone.Hand] = []
+                });
+            combat = SemanticDrawPileAdapterV111.ApplyCommittedZoneTransition(
+                combat, nextZones, semanticDeck);
             var afterShuffleInsertions =
                 ControlledAfterShuffleRelicInsertions(combat);
             if (afterShuffleInsertions.Length > 0 &&
@@ -365,11 +373,12 @@ public sealed partial class PrototypeGameEngine
                         combat.NextCardInstanceId, null, cardId, 0, true,
                         PrototypeJson.EmptyObject());
                     card = ApplyActiveSourceBoundAfflictionToCard(combat, card);
-                    combat = combat with
+                    combat = SetZone(
+                        combat, PrototypeCardZone.Hand,
+                        combat.Hand.Append(card.InstanceId).ToArray()) with
                     {
                         NextCardInstanceId = combat.NextCardInstanceId + 1,
-                        Cards = combat.Cards.Append(card).ToArray(),
-                        Hand = combat.Hand.Append(card.InstanceId).ToArray()
+                        Cards = combat.Cards.Append(card).ToArray()
                     };
                 }
                 else

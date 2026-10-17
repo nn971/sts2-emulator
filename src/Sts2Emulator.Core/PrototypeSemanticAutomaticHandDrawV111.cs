@@ -292,20 +292,20 @@ public sealed partial class PrototypeGameEngine
             new PrototypeTemporaryCardCost(
                 0, PrototypeTemporaryCardCostExpiry.EndOfTurn |
                     PrototypeTemporaryCardCostExpiry.WhenPlayed));
-        combat = SemanticDrawPileAdapterV111
-            .ApplyCommittedPhysicalMutation(
-                combat,
-                combat.DrawPile.Where(id => id != selectedId).ToArray(),
-                deck) with
+        var zoneChanges = new Dictionary<PrototypeCardZone, long[]>
         {
-            Hand = handHasSpace
-                ? combat.Hand.Append(selectedId).ToArray()
-                : combat.Hand,
-            DiscardPile = handHasSpace
-                ? combat.DiscardPile
-                : combat.DiscardPile.Append(selectedId).ToArray(),
-            PendingChoice = null
+            [PrototypeCardZone.DrawPile] = combat.DrawPile
+                .Where(id => id != selectedId).ToArray(),
+            [handHasSpace
+                ? PrototypeCardZone.Hand
+                : PrototypeCardZone.DiscardPile] = handHasSpace
+                    ? combat.Hand.Append(selectedId).ToArray()
+                    : combat.DiscardPile.Append(selectedId).ToArray()
         };
+        combat = SemanticDrawPileAdapterV111.ApplyCommittedZoneTransition(
+            combat,
+            combat.Mechanics.CardZones.WithZoneChanges(zoneChanges),
+            deck) with { PendingChoice = null };
         var resumedEvent = ResumeChoiceResolutionContinuation(
             run.Player, combat, run.Rng, continuation);
         if (resumedEvent.Combat.PendingChoice is not null ||
