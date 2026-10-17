@@ -47,6 +47,8 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
         if (ControlledTurnIntents is { } turnIntents)
         {
             turnIntents.Validate();
+            bool initialIntentStage = continuation.OpeningStage ==
+                PrototypeOpeningCombatStage.InitialEnemyIntents;
             int advanceTurnIndex = Array.FindIndex(
                 PrototypeContent.Rules.EndTurnPipeline,
                 step => step.Kind == PrototypeAutomaticStepKind.AdvanceTurn);
@@ -59,8 +61,14 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
                 AutomaticPipelineContinuation = null
             };
             if (advanceTurnIndex < 0 ||
-                continuation.NextStepIndex != advanceTurnIndex ||
-                OpeningStageIsActive(continuation) ||
+                turnIntents.SiteId != (initialIntentStage
+                    ? NativeCombatRngEntryV111.CommittedIntentSiteId
+                    : ControlledTurnIntentEngineV111.SiteId) ||
+                (!initialIntentStage &&
+                 (continuation.NextStepIndex != advanceTurnIndex ||
+                  continuation.OpeningStage is not null)) ||
+                (initialIntentStage && continuation.NextStepIndex !=
+                    PrototypeContent.Rules.EndTurnPipeline.Length) ||
                 continuation.PendingPostDispatchEventKind is not null ||
                 ControlledEnemyAction is not null ||
                 ControlledDrawRemaining is not null ||
@@ -91,7 +99,4 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
                 "Controlled enemy-action checkpoint disagrees with combat state.");
     }
 
-    private static bool OpeningStageIsActive(
-        PrototypeAutomaticPipelineContinuationState continuation) =>
-        continuation.OpeningStage is not null;
 }

@@ -202,9 +202,11 @@ public sealed record SemanticPilotCombatV111(
     }
     public ControlledTurnIntentsV111? PendingInitialIntents
     {
-        get => Stochastic.PendingInitialIntents;
-        init => Stochastic = Stochastic with
-        { PendingInitialIntents = value };
+        get => Run.World?.Combat?.AutomaticPipelineContinuation is
+            { OpeningStage: PrototypeOpeningCombatStage.InitialEnemyIntents }
+            continuation ? continuation.ControlledTurnIntents : null;
+        init => Run = PrototypeGameEngine
+            .SetControlledTurnIntentContinuation(Run, value);
     }
     [JsonIgnore] public SemanticTargetEventV111? TargetPending =>
         PendingEndTurn is { } endTurn
@@ -313,6 +315,7 @@ public sealed record SemanticPilotCombatV111(
     {
         this.Mechanics.Continuation.Validate(
             PrototypeMechanicsContinuationKindV111.SemanticPilot);
+        this.Run.Validate();
         if (this.Mode != SemanticPilotCombatV111.SchemaId ||
             this.History is null ||
             this.NativeEncounterEntry != this.OpeningSource.Origin
@@ -343,8 +346,14 @@ public sealed record SemanticPilotCombatV111(
             if (initialIntents.Complete || this.PendingEndTurn is not null ||
                 this.SeededEntry?.SourceRouteEntry != true ||
                 this.Run.World?.Combat is not { } entryCombat ||
-                CanonicalJson.Sha256(entryCombat) !=
-                    CanonicalJson.Sha256(initialIntents.Combat) ||
+                CanonicalJson.Sha256(entryCombat with
+                {
+                    AutomaticPipelineContinuation = null
+                }) !=
+                    CanonicalJson.Sha256(initialIntents.BaselineCombat with
+                    {
+                        AutomaticPipelineContinuation = null
+                    }) ||
                 entryCombat.NativeRng is not null ||
                 entryCombat.SemanticDeck is not null ||
                 this.Run.NativeRunRng is not null)
@@ -1724,7 +1733,7 @@ public static class SemanticPilotCombatEngineV111
             }
             else
             {
-                semanticCombat = pendingInitialIntents.Combat.Fork();
+                semanticCombat = pendingInitialIntents.BaselineCombat.Fork();
                 semanticRun = semanticRun with
                 {
                     World = routeWorld with { Combat = semanticCombat }
@@ -2932,12 +2941,7 @@ public static class SemanticPilotCombatEngineV111
         {
             var resolvedInitial = ControlledTurnIntentEngineV111.Resolve(
                 initialIntents, selectedIndex, current.Run.Rng);
-            var world = current.Run.World ?? throw new InvalidDataException(
-                "Initial intent resolution lost the source route world.");
-            var nextRun = current.Run with
-            {
-                World = world with { Combat = resolvedInitial.Combat }
-            };
+            var nextRun = current.Run;
             ControlledTurnIntentsV111? pendingInitial = resolvedInitial.Complete
                 ? null : resolvedInitial;
             if (resolvedInitial.Complete)

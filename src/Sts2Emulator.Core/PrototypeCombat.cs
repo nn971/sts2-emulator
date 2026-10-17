@@ -1701,7 +1701,7 @@ public sealed partial class PrototypeGameEngine
         var world = state.World;
         var combat = world?.Combat;
         var pipeline = combat?.AutomaticPipelineContinuation;
-        if (combat is null || pipeline is null)
+        if (combat is null)
         {
             if (intents is null)
                 return state;
@@ -1709,17 +1709,44 @@ public sealed partial class PrototypeGameEngine
                 "Controlled turn intents require an automatic pipeline checkpoint.");
         }
 
-        if (intents is null && pipeline.ControlledTurnIntents is null)
+        if (intents is null && pipeline?.ControlledTurnIntents is null)
             return state;
 
+        bool initialIntent = intents?.SiteId ==
+            NativeCombatRngEntryV111.CommittedIntentSiteId;
         int advanceTurnIndex = Array.FindIndex(
             PrototypeContent.Rules.EndTurnPipeline,
             step => step.Kind == PrototypeAutomaticStepKind.AdvanceTurn);
-        if (intents is not null &&
-            (state.Phase != RunPhase.Combat || advanceTurnIndex < 0 ||
-             pipeline.NextStepIndex != advanceTurnIndex || combat.IsPlayerTurn))
-            throw new InvalidOperationException(
-                "Controlled turn intents require the suspended AdvanceTurn stage.");
+        if (intents is not null)
+        {
+            if (state.Phase != RunPhase.Combat ||
+                intents.SiteId != ControlledTurnIntentEngineV111.SiteId &&
+                !initialIntent)
+                throw new InvalidOperationException(
+                    "Controlled turn intents use an unsupported mechanics site.");
+
+            if (pipeline is null && initialIntent)
+                pipeline = new PrototypeAutomaticPipelineContinuationState(
+                    PrototypeContent.Rules.EndTurnPipeline.Length,
+                    OpeningStage:
+                        PrototypeOpeningCombatStage.InitialEnemyIntents);
+
+            bool atInitialIntentStage = initialIntent &&
+                pipeline?.OpeningStage ==
+                    PrototypeOpeningCombatStage.InitialEnemyIntents &&
+                pipeline.NextStepIndex ==
+                    PrototypeContent.Rules.EndTurnPipeline.Length;
+            bool atAdvanceTurn = !initialIntent && pipeline is not null &&
+                pipeline.OpeningStage is null && advanceTurnIndex >= 0 &&
+                pipeline.NextStepIndex == advanceTurnIndex &&
+                !combat.IsPlayerTurn;
+            if (!atInitialIntentStage && !atAdvanceTurn)
+                throw new InvalidOperationException(
+                    "Controlled turn intents require their suspended automatic-pipeline stage.");
+        }
+
+        if (pipeline is null)
+            return state;
 
         return state with
         {

@@ -374,7 +374,8 @@ public enum PrototypeOpeningCombatStage
     ImbuedAutoPlay,
     LateRelicAutoPlay,
     Complete,
-    BoneTeaAfterTurnStart
+    BoneTeaAfterTurnStart,
+    InitialEnemyIntents
 }
 
 public sealed record PrototypeAutomaticPipelineContinuationState(
@@ -508,9 +509,9 @@ public sealed record PrototypeAutomaticPipelineContinuationState(
     }
 
     /// <summary>
-    /// Nature's next-turn intent frame is mechanically suspended at this
-    /// pipeline's AdvanceTurn cursor. The semantic facade retains the
-    /// flattened serialized projection for compatibility.
+    /// Nature's intent frame is mechanically suspended at this pipeline's
+    /// AdvanceTurn cursor, or at the source-route InitialEnemyIntents opening
+    /// cursor. Facades retain flattened serialized projections for compatibility.
     /// </summary>
     [System.Text.Json.Serialization.JsonIgnore]
     public ControlledTurnIntentsV111? ControlledTurnIntents
@@ -523,7 +524,19 @@ public sealed record PrototypeAutomaticPipelineContinuationState(
     public void Validate(CombatState combat)
     {
         ArgumentNullException.ThrowIfNull(combat);
-        if (OpeningStage is { } opening &&
+        if (OpeningStage == PrototypeOpeningCombatStage.InitialEnemyIntents)
+        {
+            if (combat.Turn != 1 || combat.IsPlayerTurn ||
+                combat.PendingChoice is not null ||
+                combat.PendingKnowledgeDemonChoice is not null ||
+                ControlledTurnIntents is null ||
+                NextStepIndex !=
+                    PrototypeContent.Rules.EndTurnPipeline.Length ||
+                PendingPostDispatchEventKind is not null)
+                throw new InvalidOperationException(
+                    "Invalid suspended initial-enemy-intent stage.");
+        }
+        else if (OpeningStage is { } opening &&
             (!Enum.IsDefined(opening)
                 || opening <= PrototypeOpeningCombatStage.PlayerSideStart
                 || combat.Turn != 1 || !combat.IsPlayerTurn
