@@ -2763,7 +2763,6 @@ public sealed record EventState(
     // Glory Tinker Time chooses type and rider on separate pages;
     // the type is persisted independently of the random rider offer.
     string? NativeTinkerType = null,
-    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     RngStreamState? NativeEventRng = null,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     bool? NativeTanxTriEligible = null,
@@ -2771,11 +2770,44 @@ public sealed record EventState(
     bool? NativeNonupeipeBraceletEligible = null,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     PrototypeFuturePotionOffer[]? NativeFuturePotionOffers = null,
-    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     string? NativeEventRngProviderMode = null,
-    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     PrototypeControlledEventChoiceContinuationV111? ControlledChoice = null)
 {
+    /// <summary>
+    /// Authoritative in-memory stochastic state for the event. The existing
+    /// members below remain the flattened snapshot representation.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public EventStochasticStateV111 Stochastic { get; init; } =
+        new(NativeEventRng, NativeEventRngProviderMode, ControlledChoice);
+
+    [System.Text.Json.Serialization.JsonIgnore(Condition =
+        System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public RngStreamState? NativeEventRng
+    {
+        get => Stochastic.NativeRng;
+        init => Stochastic = EventStochasticStateV111.WithNativeRng(
+            Stochastic, value);
+    }
+
+    [System.Text.Json.Serialization.JsonIgnore(Condition =
+        System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string? NativeEventRngProviderMode
+    {
+        get => Stochastic.ProviderMode;
+        init => Stochastic = EventStochasticStateV111.WithProviderMode(
+            Stochastic, value);
+    }
+
+    [System.Text.Json.Serialization.JsonIgnore(Condition =
+        System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public PrototypeControlledEventChoiceContinuationV111? ControlledChoice
+    {
+        get => Stochastic.ControlledChoice;
+        init => Stochastic = EventStochasticStateV111.WithControlledChoice(
+            Stochastic, value);
+    }
+
     public string[] RemainingPotionIds =>
         QueuedPotionIds ?? Array.Empty<string>();
 
@@ -2784,8 +2816,7 @@ public sealed record EventState(
 
     public EventState Fork() => this with
     {
-        NativeEventRng = NativeEventRng?.Fork(),
-        ControlledChoice = ControlledChoice?.Fork(),
+        Stochastic = Stochastic.Fork(),
         PendingDeckChoice =
             PendingDeckChoice?.Fork(),
         PendingPotionReplacement =
