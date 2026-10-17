@@ -234,7 +234,9 @@ public static class LegacyRandomChoiceV111
             OperationKind: operationKind,
             BoundedCount: boundedCount);
         if (ControlledChanceGuardV111.Active
-            && !ControlledChanceGuardV111.EngineOwnedNativeProviderActive)
+            && !ControlledChanceGuardV111.EngineOwnedNativeProviderActive
+            && !ControlledChanceGuardV111.IsEngineOwnedPrototypeRewardRequest(
+                siteId, streamId, operationKind))
         {
             if (ControlledEventChoiceReplayV111.IsActive &&
                 ControlledEventChoiceReplayV111.IsControlledReplaySite(siteId))

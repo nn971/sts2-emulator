@@ -30,6 +30,32 @@ public sealed class SemanticPilotCombatV111Tests
         }
     }
 
+    [Fact]
+    public void EngineOwnedRewardScopeAllowsOnlyDeclaredLegacyRewardSites()
+    {
+        var streams = PrototypeRng.CreateBundle(
+            "semantic-engine-owned-reward-guard");
+        using (ControlledChanceGuardV111.Enter())
+        {
+            Assert.Throws<NotSupportedException>(() =>
+                LegacyRandomChoiceV111.ChooseBoundedInteger(
+                    streams, "reward.card_rarity.ticket", "reward", "cards", 3));
+            using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
+            {
+                var decision = LegacyRandomChoiceV111.ChooseBoundedInteger(
+                    streams, "reward.card_rarity.ticket", "reward", "cards", 3);
+                Assert.InRange(decision.SelectedIndex, 0, 2);
+                Assert.Throws<NotSupportedException>(() =>
+                    LegacyRandomChoiceV111.ChooseBoundedInteger(
+                        streams, "reward.potion.rarity_roll.ticket",
+                        "reward", "potion", 3));
+            }
+            Assert.Throws<NotSupportedException>(() =>
+                LegacyRandomChoiceV111.ChooseBoundedInteger(
+                    streams, "reward.card_rarity.ticket", "reward", "cards", 3));
+        }
+    }
+
     private static ControlledPlayableCombatV111 Opening(string seed)
     {
         var pre = PrototypeNativeLaterActFixture.CreateCombatRngPreEntry(

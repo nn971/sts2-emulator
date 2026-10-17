@@ -1,5 +1,7 @@
 using System.Globalization;
+using System.Text.Json;
 using Sts2Emulator.Core;
+using Sts2Emulator.Cli;
 
 namespace Sts2Emulator.Core.Tests;
 
@@ -29,9 +31,101 @@ public sealed class ChanceLawV111Tests
             capabilities.ProviderModes);
         Assert.Contains(StochasticCapabilitiesV111.ExternalSelectionProviderId,
             capabilities.ProviderModes);
+        Assert.Contains("semantic_reference_resolve_next",
+            capabilities.ReferenceNatureOperations);
+        Assert.Contains("semantic_reference_save",
+            capabilities.ReferenceNatureOperations);
+        Assert.Contains("semantic_reference_load",
+            capabilities.ReferenceNatureOperations);
         Assert.Equal(CanonicalJson.Serialize(capabilities),
             CanonicalJson.Serialize(
                 PrototypeCapabilities.Create().StochasticV111));
+    }
+
+    [Fact]
+    public void JsonlReferenceNatureSessionCarriesLawAndSamplerThroughLifecycle()
+    {
+        var entry = Seeded("jsonl-reference-nature-lifecycle");
+        var combat = SemanticPilotCombatEngineV111.BeginSeeded(entry);
+        var environment = new PrototypeAiEnvironment();
+        var endTurn = Assert.Single(environment.Observe(combat.Run).LegalActions,
+            action => action.Kind == "end_turn");
+        var initial = ReferenceNatureSessionV111.Begin(combat, 441);
+        var stepped = initial with
+        {
+            Combat = SemanticPilotCombatEngineV111.Step(
+                combat, combat.Fingerprint, endTurn.ActionId)
+        };
+        var resolved = stepped.ResolveNext();
+
+        var requests = new object[]
+        {
+            new { op = "hello" },
+            new
+            {
+                op = "semantic_begin_seeded",
+                seed = entry.Seed,
+                act = entry.Act,
+                encounter_id = entry.EncounterId,
+                native_entry = entry.NativeEncounterEntry,
+                total_floor = entry.TotalFloor,
+                ascension = entry.Ascension,
+                first_monster_combat_id = entry.FirstMonsterCombatId,
+                map_column = entry.MapColumn,
+                map_row = entry.MapRow
+            },
+            new { op = "semantic_reference_begin", semantic_handle = "m1",
+                nature_seed = 441UL },
+            new { op = "semantic_reference_observe",
+                reference_nature_handle = "r1", policy_id = "prototype-fair-v0" },
+            new { op = "semantic_reference_step", reference_nature_handle = "r1",
+                fingerprint = initial.Fingerprint, action_id = endTurn.ActionId },
+            new { op = "semantic_reference_resolve_next",
+                reference_nature_handle = "r2", fingerprint = stepped.Fingerprint },
+            new { op = "semantic_reference_save", reference_nature_handle = "r3" },
+            new { op = "semantic_reference_load",
+                snapshot = ReferenceNatureSessionV111.Save(resolved) },
+            new { op = "semantic_reference_fork", reference_nature_handle = "r3" }
+        };
+        using var input = new StringReader(string.Join(Environment.NewLine,
+            requests.Select(request => JsonSerializer.Serialize(request))));
+        using var output = new StringWriter(CultureInfo.InvariantCulture);
+        PrototypeAiJsonlServer.Run(input, output);
+        var responses = output.ToString().Split(
+            Environment.NewLine, StringSplitOptions.RemoveEmptyEntries)
+            .Select(line => JsonDocument.Parse(line)).ToArray();
+        try
+        {
+            var hello = responses[0].RootElement;
+            Assert.Equal(StochasticCapabilitiesV111.SchemaId,
+                hello.GetProperty("stochasticCapabilities")
+                    .GetProperty("schemaId").GetString());
+
+            var referenceStep = responses[4].RootElement
+                .GetProperty("result");
+            Assert.Equal("nature", referenceStep.GetProperty("boundary").GetString());
+            var pending = referenceStep.GetProperty("pending");
+            Assert.Equal("sts2-v111-chance-law-v1",
+                pending.GetProperty("chanceLaw").GetProperty("schemaId").GetString());
+            Assert.DoesNotContain("chanceLaw",
+                responses[3].RootElement.GetProperty("payloadJson").GetString());
+
+            var resolvedResult = responses[5].RootElement.GetProperty("result");
+            Assert.Equal(1, resolvedResult.GetProperty("natureSampleCount").GetInt64());
+            Assert.Equal(resolved.Fingerprint,
+                resolvedResult.GetProperty("fingerprint").GetString());
+            Assert.Equal(resolved.Fingerprint,
+                responses[7].RootElement.GetProperty("result")
+                    .GetProperty("fingerprint").GetString());
+            Assert.Equal(resolved.Fingerprint,
+                responses[8].RootElement.GetProperty("result")
+                    .GetProperty("fingerprint").GetString());
+        }
+        finally
+        {
+            foreach (var response in responses)
+                response.Dispose();
+        }
     }
 
     private static SemanticIntentEventV111 IntentEvent(

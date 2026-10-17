@@ -9,18 +9,31 @@ namespace Sts2Emulator.Core;
 /// </summary>
 public static class ControlledChanceGuardV111
 {
+    private static readonly Dictionary<string, string> EngineOwnedRewardSites = new(
+        StringComparer.Ordinal)
+    {
+        ["reward.card_rarity.ticket"] = "bounded_integer",
+        ["reward.card_model.index_draw"] = "choose_index",
+        ["reward.random_potion.drop.ticket"] = "bounded_integer",
+        ["reward.random_potion.model"] = "choose_index"
+    };
     private static readonly AsyncLocal<int> Depth = new();
     private static readonly AsyncLocal<int> EngineOwnedRewardDepth = new();
     private static readonly AsyncLocal<int> EngineOwnedNativeDepth = new();
     public static bool Active => Depth.Value > 0;
     internal static bool EngineOwnedNativeProviderActive =>
         EngineOwnedNativeDepth.Value > 0;
+    internal static bool IsEngineOwnedPrototypeRewardRequest(
+        string siteId, string streamId, string operationKind) =>
+        Active && EngineOwnedRewardDepth.Value > 0 && streamId == "reward" &&
+        EngineOwnedRewardSites.TryGetValue(siteId, out var expectedOperation) &&
+        operationKind == expectedOperation;
 
     /// <summary>
-    /// An explicit, narrowly scoped *prototype* reward RNG fallback.
-    /// This is used only for terminal reward population after a legal
-    /// action in the restricted semantic pilot. It does not authorize
-    /// combat/targeting/deck/monster RNG calls or claim native parity.
+    /// An explicit, narrowly scoped engine-owned reward fallback. It permits
+    /// the prototype reward stream and the exact allowlisted legacy reward
+    /// sites used to populate a terminal reward after a legal action. It does
+    /// not authorize other reward sites or combat/targeting/deck/monster RNG.
     /// </summary>
     public static IDisposable AllowEngineOwnedPrototypeReward()
     {

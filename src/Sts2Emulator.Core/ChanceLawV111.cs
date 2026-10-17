@@ -11,10 +11,12 @@ public sealed record StochasticCapabilityManifestV111(
     string SchemaId,
     string ChanceLawSchemaId,
     string ReferenceNatureProviderId,
+    string ReferenceNatureSessionSchemaId,
     string ProbabilityStatus,
     string[] NatureChoiceSiteIds,
     string PlayerObservationSchemaId,
-    string[] ProviderModes);
+    string[] ProviderModes,
+    string[] ReferenceNatureOperations);
 
 public static class StochasticCapabilitiesV111
 {
@@ -26,6 +28,7 @@ public static class StochasticCapabilitiesV111
         SchemaId,
         ChanceLawV111.CurrentSchemaId,
         ReferenceNatureV111.ProviderId,
+        ReferenceNatureSessionV111.CurrentSchemaId,
         ChanceLawV111.UnverifiedStatus,
         [
             "combat.committed_intent.index_draw",
@@ -37,6 +40,13 @@ public static class StochasticCapabilitiesV111
             ReferenceNatureV111.ProviderId,
             SemanticNativePolicyAuditV111.NativeProviderId,
             ExternalSelectionProviderId
+        ],
+        [
+            "semantic_reference_begin", "semantic_reference_observe",
+            "semantic_reference_step", "semantic_reference_resolve_next",
+            "semantic_reference_status", "semantic_reference_fork",
+            "semantic_reference_save", "semantic_reference_load",
+            "semantic_reference_release_many"
         ]);
 }
 

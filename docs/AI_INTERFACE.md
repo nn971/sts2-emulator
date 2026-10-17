@@ -96,6 +96,13 @@ supported enemy-intent and unresolved draw-card choices. It carries stable outco
 integer weights, support and conditioning fingerprints, and explicit provenance. The ordinary
 `semantic_observe` response remains the fair player projection and does not include this payload.
 
+The opt-in `semantic_reference_*` JSONL operations wrap the semantic combat state and the seeded
+ReferenceNature sampler cursor in one forkable/savable session. Begin with a `semantic_handle` and
+an unsigned 64-bit `nature_seed`. `semantic_reference_resolve_next` auto-samples the pending Chance
+Law, while `semantic_reference_step` advances a legal player action through the same semantic
+combat engine. Status, observation, fork, save/load, and release operations use the separate
+`reference_nature_handle`. Its observation operation uses the existing fair policy.
+
 ## Native-shaped Overgrowth training reset (live-run JSONL)
 
 The long-lived CLI `prototype-ai-jsonl` server advertises

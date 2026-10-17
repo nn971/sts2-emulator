@@ -44,6 +44,9 @@ internal static class PrototypeAiJsonlServer
         var semanticStates = new Dictionary<string, SemanticPilotCombatV111>(
             StringComparer.Ordinal);
         long nextSemanticHandle = 1;
+        var referenceNatureStates = new Dictionary<string, ReferenceNatureSessionV111>(
+            StringComparer.Ordinal);
+        long nextReferenceNatureHandle = 1;
 
         string StoreSemantic(SemanticPilotCombatV111 state)
         {
@@ -59,6 +62,54 @@ internal static class PrototypeAiJsonlServer
                 ? state
                 : throw new InvalidOperationException(
                     "Unknown semantic session handle: " + handle);
+        }
+
+        string StoreReferenceNature(ReferenceNatureSessionV111 session)
+        {
+            var handle = "r" + nextReferenceNatureHandle++;
+            referenceNatureStates.Add(handle, session.Fork());
+            return handle;
+        }
+
+        ReferenceNatureSessionV111 RequireReferenceNature(JsonElement request)
+        {
+            var handle = RequiredString(request, "reference_nature_handle");
+            return referenceNatureStates.TryGetValue(handle, out var state)
+                ? state
+                : throw new InvalidOperationException(
+                    "Unknown ReferenceNature session handle: " + handle);
+        }
+
+        object ReferenceNatureResult(
+            ReferenceNatureSessionV111 session, string handle,
+            string? parent = null)
+        {
+            var combat = session.Combat;
+            return new
+            {
+                ok = true,
+                schemaId = ReferenceNatureSessionV111.CurrentSchemaId,
+                referenceNatureHandle = handle,
+                parent,
+                fingerprint = session.Fingerprint,
+                combatFingerprint = combat.Fingerprint,
+                boundary = combat.CombatTerminal ? "terminal" :
+                    combat.AtPlayerBoundary ? "player" :
+                    combat.AtPlayerChoiceBoundary ? "player_choice" : "nature",
+                pending = DescribeSemanticPending(combat),
+                terminal = combat.CombatTerminal,
+                outcome = combat.CombatOutcome,
+                natureProvider = ReferenceNatureV111.ProviderId,
+                natureSampleCount = session.NatureState.SampleCount,
+                probabilityStatus = ChanceLawV111.UnverifiedStatus,
+                sourceOpeningFingerprint = combat.SourceOpeningFingerprint,
+                sourceRouteProvider = combat.SourceRouteAudit?.ProviderId,
+                otherChanceProvider = combat.OtherChance?.ProviderId ??
+                    "engine-owned-deterministic-unverified-v1",
+                otherChanceDecisionCount = combat.OtherChance?.Decisions.Length ?? 0,
+                rewardProvider = combat.RewardAudit?.ProviderId,
+                rewardDrawCount = combat.RewardAudit?.Calls
+            };
         }
 
         object? DescribeSemanticPending(SemanticPilotCombatV111 state)
@@ -885,6 +936,10 @@ internal static class PrototypeAiJsonlServer
                             semanticChanceSchemaId = SemanticChanceSchemaId,
                             stochasticCapabilities =
                                 StochasticCapabilitiesV111.Create(),
+                            referenceNatureSessionSchemaId =
+                                ReferenceNatureSessionV111.CurrentSchemaId,
+                            referenceNatureProviderId =
+                                ReferenceNatureV111.ProviderId,
                             controlledEventChoiceSchemaId =
                                 ControlledEventChoiceEngineV111.SchemaId,
                             controlledEventChoiceScope =
@@ -1698,6 +1753,136 @@ internal static class PrototypeAiJsonlServer
                         var handle = StoreSemantic(state);
                         Write(new { requestId, ok = true,
                             result = SemanticResult(state, handle) });
+                        break;
+                    }
+
+                    case "semantic_reference_begin":
+                    {
+                        var combat = RequireSemantic(request);
+                        if (combat.UsesNativePolicyBaseline)
+                            throw new NotSupportedException(
+                                "ReferenceNature cannot start from a native-policy session.");
+                        var session = ReferenceNatureSessionV111.Begin(
+                            combat, RequiredULong(request, "nature_seed"));
+                        var handle = StoreReferenceNature(session);
+                        Write(new { requestId, result =
+                            ReferenceNatureResult(session, handle) });
+                        break;
+                    }
+
+                    case "semantic_reference_status":
+                    {
+                        var handle = RequiredString(request,
+                            "reference_nature_handle");
+                        var session = RequireReferenceNature(request);
+                        Write(new { requestId, result =
+                            ReferenceNatureResult(session, handle) });
+                        break;
+                    }
+
+                    case "semantic_reference_observe":
+                    {
+                        var session = RequireReferenceNature(request);
+                        if (RequiredString(request, "policy_id") != FairPolicyId)
+                            throw new NotSupportedException(
+                                "ReferenceNature observation requires the existing fair policy.");
+                        if (!session.Combat.AtPlayerBoundary &&
+                            !session.Combat.AtPlayerChoiceBoundary)
+                            throw new InvalidOperationException(
+                                "ReferenceNature observation is available only at a player boundary.");
+                        var frame = environment.Observe(session.Combat.Run);
+                        Write(new { requestId, ok = true,
+                            schemaId = SemanticChanceSchemaId,
+                            policyId = FairPolicyId,
+                            payloadJson = CanonicalJson.Serialize(frame.Observation),
+                            observationHash = frame.ObservationHash,
+                            actions = frame.LegalActions.Select(ActionWire).ToArray(),
+                            terminal = false });
+                        break;
+                    }
+
+                    case "semantic_reference_step":
+                    {
+                        var parentHandle = RequiredString(request,
+                            "reference_nature_handle");
+                        var session = RequireReferenceNature(request);
+                        if (session.Fingerprint != RequiredString(request, "fingerprint"))
+                            throw new InvalidOperationException(
+                                "Stale ReferenceNature session fingerprint.");
+                        var combat = SemanticPilotCombatEngineV111.Step(
+                            session.Combat, session.Combat.Fingerprint,
+                            RequiredString(request, "action_id"));
+                        var next = session with { Combat = combat };
+                        next.Validate();
+                        var handle = StoreReferenceNature(next);
+                        Write(new { requestId, result =
+                            ReferenceNatureResult(next, handle, parentHandle) });
+                        break;
+                    }
+
+                    case "semantic_reference_resolve_next":
+                    {
+                        var parentHandle = RequiredString(request,
+                            "reference_nature_handle");
+                        var session = RequireReferenceNature(request);
+                        if (session.Fingerprint != RequiredString(request, "fingerprint"))
+                            throw new InvalidOperationException(
+                                "Stale ReferenceNature session fingerprint.");
+                        var next = session.ResolveNext();
+                        var handle = StoreReferenceNature(next);
+                        Write(new { requestId, result =
+                            ReferenceNatureResult(next, handle, parentHandle) });
+                        break;
+                    }
+
+                    case "semantic_reference_fork":
+                    {
+                        var parentHandle = RequiredString(request,
+                            "reference_nature_handle");
+                        var next = RequireReferenceNature(request).Fork();
+                        var handle = StoreReferenceNature(next);
+                        Write(new { requestId, result =
+                            ReferenceNatureResult(next, handle, parentHandle) });
+                        break;
+                    }
+
+                    case "semantic_reference_save":
+                    {
+                        var session = RequireReferenceNature(request);
+                        Write(new { requestId, ok = true,
+                            schemaId = ReferenceNatureSessionV111.CurrentSchemaId,
+                            snapshot = ReferenceNatureSessionV111.Save(session) });
+                        break;
+                    }
+
+                    case "semantic_reference_load":
+                    {
+                        var session = ReferenceNatureSessionV111.Restore(
+                            RequiredString(request, "snapshot"));
+                        var handle = StoreReferenceNature(session);
+                        Write(new { requestId, result =
+                            ReferenceNatureResult(session, handle) });
+                        break;
+                    }
+
+                    case "semantic_reference_release_many":
+                    {
+                        if (!request.TryGetProperty("reference_nature_handles",
+                                out var handles) ||
+                            handles.ValueKind != JsonValueKind.Array)
+                            throw new ArgumentException(
+                                "reference_nature_handles must be an array.");
+                        var released = 0;
+                        foreach (var element in handles.EnumerateArray())
+                        {
+                            if (element.ValueKind != JsonValueKind.String ||
+                                string.IsNullOrWhiteSpace(element.GetString()))
+                                throw new ArgumentException(
+                                    "Invalid ReferenceNature handle.");
+                            if (referenceNatureStates.Remove(element.GetString()!))
+                                released++;
+                        }
+                        Write(new { requestId, released });
                         break;
                     }
 
@@ -2824,6 +3009,16 @@ internal static class PrototypeAiJsonlServer
             !value.TryGetInt64(out var result))
             throw new InvalidOperationException(
                 $"Request field '{name}' must be an integer.");
+        return result;
+    }
+
+    private static ulong RequiredULong(JsonElement request, string name)
+    {
+        if (!request.TryGetProperty(name, out var value) ||
+            value.ValueKind != JsonValueKind.Number ||
+            !value.TryGetUInt64(out var result))
+            throw new InvalidOperationException(
+                $"Request field '{name}' must be a non-negative integer.");
         return result;
     }
 
