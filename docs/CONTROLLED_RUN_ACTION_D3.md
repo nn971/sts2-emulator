@@ -143,7 +143,10 @@ Use a legacy random profile for run-start, map generation, Event/Treasure
 entry, and Shovel flows. Shop purchase actions can also start from a
 configured native Shop state, but only the registered index-only acquisition
 sites above are controlled; configured native Shop entry and relic-bag
-generation remain outside this controller.
+generation remain outside this controller. The configured Native merchant
+session separately handles Alchemical Coffer's four mixed PotionFactory
+rarity and model picks during its legal relic purchase; other Native unit-float
+purchase hooks remain unsupported.
 
 This boundary does not verify native player-stream ownership, source map or
 relic-pool parity, cursor parity or reference probabilities. Native bag draws

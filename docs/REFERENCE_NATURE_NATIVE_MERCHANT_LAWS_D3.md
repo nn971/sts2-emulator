@@ -1,8 +1,9 @@
 # Native merchant Chance Laws and session (D3 contract)
 
 This contract defines read-only Chance Law queries and an atomic
-ReferenceNature session for offer and price outcomes in the configured native
-merchant generator. It uses the versioned `chance_law_query` coverage and
+ReferenceNature session for configured Native Shop entry, offer and price
+outcomes, and the Alchemical Coffer potion-generation effect. It uses the
+versioned `chance_law_query` coverage and
 `ReferenceNatureMerchantSessionV111`; player observation fields stay unchanged.
 
 ## Boundary and inputs
@@ -19,12 +20,14 @@ potion-model query requires the preceding rarity and exactly one unique
 explicit conditional inputs and are fingerprinted; the query never infers a
 selected result from Native RNG state.
 
-The session begins from a current legal `choose_map_node` action for a
-configured Shop. It reruns the normal map-entry and `StartShop` mechanics from
-the pre-entry checkpoint under the mixed typed provider replay. Each suspension
-is conditioned on the exact source request and the already sampled prefix. It
-commits the generated shop and run-scoped Nature cursor together after the
-source mechanics finish. Its operations are `reference_nature_merchant_begin`,
+For Shop generation, the session begins from a current legal `choose_map_node`
+action for a configured Shop. For the Alchemical Coffer effect, it begins from
+the current legal `buy_relic` action for an unsold Coffer offer. In both cases
+it reruns the ordinary action from its checkpoint under the mixed typed
+provider replay. Each suspension is conditioned on the exact source request
+and the already sampled prefix. It commits the completed action and run-scoped
+Nature cursor together after the source mechanics finish. Its operations are
+`reference_nature_merchant_begin`,
 `status`, `resolve_next`, `fork`, `save`, `load`, and `release_many`.
 
 The Nature-only `shop.merchant.relic_model.index_draw` boundary uses the
@@ -34,6 +37,17 @@ earlier offers in the same shop. The query removes those earlier selections
 from the run's hidden bag sets, reuses the source fallback plan, and verifies
 that the canonical support matches. It does not reveal the bag's committed
 queue order.
+
+Buying Alchemical Coffer uses the existing mixed typed session for four
+source-ordered PotionFactory picks. Each pick first samples a rarity float,
+then selects a model index from the remaining models of that rarity. The
+rarity law counts the exact rounded Native `NextFloat` grid at the inclusive
+0.1 and 0.35 thresholds; each model law counts exact Native bounded-index
+preimages on the source-ordered remaining pool. The prefix records the four
+rarities and selected potion IDs through request replay, so no duplicate
+purchase-session type is needed. These transforms are `SOURCE_VERIFIED` on
+their declared source and support; candidate-pool completeness, seed
+frequencies, stream attribution, and Native cursor parity remain separate.
 
 | Site | Conditioned support |
 | --- | --- |
@@ -74,7 +88,8 @@ mutate the run or provider state.
 
 ## Unsupported scope
 
-The session replays the full Shop-entry mechanics under its provider scope,
+The session replays the full Shop-entry or supported purchase mechanics under
+its provider scope,
 but it does not reproduce Native source cursor advancement. To keep the
 committed Native queue order private, it stores a canonicalized Nature-owned
 projection of the existing persistent relic bag in its origin and resulting
@@ -86,8 +101,8 @@ omit it and retain their existing shape. A snapshot carrying the tag uses
 Nature-owned set unless a controlled Chance Law replay selects an identity.
 The boundary
 requires that bag to exist, so Native bag construction is outside this
-session. Stochastic consequences of merchant purchases, later Treasure draws,
-and Native cursor parity remain unsupported. Legacy Shop-node generation continues to use its existing
+session. Other stochastic purchase effects, later Treasure draws, and Native
+cursor parity remain unsupported. Legacy Shop-node generation continues to use its existing
 run-action contract. The four legacy `shop.merchant.*` rows linked from the
 migration matrix remain separate: three price rows use discrete integer
 percentage bins that approximate the Native unit-float price sites, and the
@@ -107,5 +122,6 @@ law also accepts `offer_ordinal`, `relic_candidate_ids`, and
 `colorless_offer`, and `sale_reprice`. The no-effect float law accepts its
 typed `owner_id`. These arguments affect only the returned law and are not
 submitted as player actions. `State.begin_reference_nature_merchant(action_id,
-nature_seed=...)` starts the session; its Python object exposes status, fork,
-save/load, release, and the committed playable state.
+nature_seed=...)` starts the session from a legal configured Shop entry or
+Alchemical Coffer purchase; its Python object exposes status, fork, save/load,
+release, and the committed playable state.

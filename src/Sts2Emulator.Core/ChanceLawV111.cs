@@ -566,6 +566,10 @@ public static partial class ChanceLawEngineV111
         "uniform-native-merchant-index-support-v1";
     public const string NativeMerchantThresholdConditioningPolicyId =
         "source-threshold-native-merchant-category-v1";
+    public const string NativePotionFactoryIndexConditioningPolicyId =
+        "source-bounded-potion-factory-model-index-v1";
+    public const string NativePotionFactoryThresholdConditioningPolicyId =
+        "source-threshold-potion-factory-rarity-v1";
     public const string NativeMerchantPriceConditioningPolicyId =
         "native-merchant-rounded-price-modifier-v1";
     public const string NativeTreasureRelicConditioningPolicyId =
@@ -1271,6 +1275,118 @@ public static partial class ChanceLawEngineV111
             "native-merchant-upgrade-roll-always-has-no-mechanical-effect",
             [new ChanceLawOutcomeV111("no_effect", 1L)],
             ChanceLawV111.SourceVerifiedStatus);
+    }
+
+    /// <summary>
+    /// Query one source-ordered potion-factory request made while buying an
+    /// Alchemical Coffer from a configured Native shop. The request and exact
+    /// legal purchase action bind the law; prior selected models condition the
+    /// remaining rarity pool without consulting either run RNG stream.
+    /// </summary>
+    public static ChanceLawV111 QueryNativeAlchemicalCofferPotionRequest(
+        RunState run, GameAction action,
+        ControlledStochasticRequestV111 request,
+        PrototypeNativePotionRarity? rarity,
+        string[] excludedPotionIds)
+    {
+        ArgumentNullException.ThrowIfNull(run);
+        ArgumentNullException.ThrowIfNull(action);
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(excludedPotionIds);
+        PrototypeStateInvariants.Validate(run);
+        request.Validate();
+        if (run.Phase != RunPhase.Shop || run.World is not { } world ||
+            run.NativeRunRng is null || run.ControlledRunActionChoice is not null ||
+            !PrototypeGameEngine.UsesNativeRegionalSystems(world) ||
+            world.RelicBag is null || action.Kind != "buy_relic" ||
+            world.Shop is not { } shop)
+            throw new InvalidOperationException(
+                "Alchemical Coffer potion laws require a configured Native Shop purchase boundary.");
+
+        var payload = action.ReadPayload<BuyOfferPayload>();
+        if (!shop.RelicOffers.Any(offer =>
+                offer.OfferId == payload.OfferId && !offer.Sold &&
+                offer.ItemId == PrototypeNativeOrobasRelics.AlchemicalCofferId) ||
+            !new PrototypeGameEngine().GetLegalActions(run).Any(candidate =>
+                PrototypeAiEnvironment.StableActionId(candidate) ==
+                PrototypeAiEnvironment.StableActionId(action)))
+            throw new InvalidOperationException(
+                "Alchemical Coffer potion laws require its current legal relic purchase.");
+
+        const string ownerId = "relic:alchemical_coffer:acquisition";
+        const string streamId = "run.combat_potion_generation";
+        if (request.StreamId != streamId || request.OwnerId != ownerId ||
+            request.Ordinal >= 4)
+            throw new InvalidDataException(
+                "Alchemical Coffer potion request has an invalid source identity.");
+
+        var actionFingerprint = PrototypeAiEnvironment.StableActionId(action);
+        if (request.UnitFloatRequest is { } floatRequest &&
+            floatRequest.SiteId == "potion_factory.rarity_roll.unit_float")
+        {
+            if (rarity is not null || excludedPotionIds.Length != 0)
+                throw new ArgumentException(
+                    "Coffer rarity laws do not accept a model-pool prefix.");
+            var rare = NativeNextFloatGridCountAtOrBelow(0.1f);
+            var uncommonEnd = NativeNextFloatGridCountAtOrBelow(0.35f);
+            var common = checked(NativeNextDoubleGridSize - uncommonEnd);
+            var uncommon = checked(uncommonEnd - rare);
+            var conditioning = new
+            {
+                actionFingerprint, request = floatRequest,
+                rareInclusiveThreshold = 0.1f,
+                uncommonInclusiveThreshold = 0.35f,
+                common, uncommon, rare
+            };
+            return CreateNativeBoundaryLaw(
+                floatRequest.SiteId, "unit_float_threshold", ownerId,
+                floatRequest.Ordinal,
+                NativePotionFactoryThresholdConditioningPolicyId,
+                CanonicalJson.Sha256(conditioning),
+                NativeUnitFloatThresholdSourceVerifiedProvenance,
+                [
+                    new ChanceLawOutcomeV111("rarity:common", common),
+                    new ChanceLawOutcomeV111("rarity:uncommon", uncommon),
+                    new ChanceLawOutcomeV111("rarity:rare", rare)
+                ], ChanceLawV111.SourceVerifiedStatus);
+        }
+
+        if (request.IndexRequest is not { } indexRequest ||
+            indexRequest.SiteId != "potion_factory.model_within_rarity.index_draw" ||
+            rarity is null || excludedPotionIds.Length != indexRequest.Ordinal ||
+            excludedPotionIds.Any(string.IsNullOrWhiteSpace) ||
+            excludedPotionIds.Distinct(StringComparer.Ordinal).Count() !=
+                excludedPotionIds.Length ||
+            excludedPotionIds.Any(id =>
+                !PrototypeNativePotionShop.NativePotionPoolOrder.Contains(
+                    id, StringComparer.Ordinal)))
+            throw new InvalidDataException(
+                "Alchemical Coffer potion model request has an invalid rarity prefix.");
+
+        var candidates = PrototypeNativePotionShop.CandidatesForRarity(
+            rarity.Value, excludedPotionIds);
+        if (candidates.Length == 0 ||
+            indexRequest.SupportCount != candidates.Length ||
+            !indexRequest.OrderedCandidates.SequenceEqual(
+                Enumerable.Range(0, candidates.Length)))
+            throw new InvalidDataException(
+                "Alchemical Coffer potion model support differs from its source pool.");
+        var weights = NativeNextIntGridWeights(candidates.Length);
+        var outcomes = candidates.Select((id, index) =>
+            new ChanceLawOutcomeV111(
+                $"potion_model:{id}:index:{index}", weights[index])).ToArray();
+        var modelConditioning = new
+        {
+            actionFingerprint, request = indexRequest,
+            rarity = rarity.Value.ToString(), excludedPotionIds, candidates
+        };
+        return CreateNativeBoundaryLaw(
+            indexRequest.SiteId, indexRequest.OperationKind, ownerId,
+            indexRequest.Ordinal,
+            NativePotionFactoryIndexConditioningPolicyId,
+            CanonicalJson.Sha256(modelConditioning),
+            NativeBoundedIndexSourceVerifiedProvenance,
+            outcomes, ChanceLawV111.SourceVerifiedStatus);
     }
 
     /// <summary>

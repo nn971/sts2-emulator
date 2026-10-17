@@ -577,14 +577,14 @@ class State:
 
     def begin_reference_nature_merchant(self, action_id: str,
                                         nature_seed: int | None = None):
-        """Begin atomic ReferenceNature generation for a configured Shop node."""
+        """Begin a configured Shop entry or Alchemical Coffer purchase session."""
         if self.session.capabilities.get(
                 "referenceNatureMerchantSessionSchemaId") != (
                 "sts2-v111-reference-nature-merchant-session-v1"):
             raise EmulatorError(
                 "Emulator does not expose ReferenceNature merchant sessions")
         if not isinstance(action_id, str) or not action_id:
-            raise ValueError("action_id must be a nonempty legal Shop-node action ID")
+            raise ValueError("action_id must be a nonempty legal configured Shop action ID")
         if not self.session.supports_reference_nature_site(
                 "shop.merchant.sale_slot.index_draw", session="merchant"):
             raise EmulatorError(

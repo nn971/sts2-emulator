@@ -27,9 +27,10 @@ public sealed record ReferenceNatureMerchantSessionSnapshotV111(
     string[]? PendingCandidateLabels);
 
 /// <summary>
-/// Atomic configured native Shop entry driven by conditional Chance Laws.
-/// The source mechanics are rerun from the pre-entry checkpoint for each
-/// prefix; only the completed shop and ReferenceNature cursor are published.
+/// Atomic configured Native Shop entry and supported purchase boundaries
+/// driven by conditional Chance Laws. The source mechanics are rerun from the
+/// action checkpoint for each prefix; only the completed action and
+/// ReferenceNature cursor are published.
 /// </summary>
 public sealed record ReferenceNatureMerchantSessionV111(
     string SchemaId, RunState Origin, GameAction Action, RunState Run,
@@ -54,7 +55,7 @@ public sealed record ReferenceNatureMerchantSessionV111(
 
     [JsonIgnore]
     public ChanceLawV111? PendingLaw => PendingRequest is null ? null :
-        QueryLaw(Origin, PendingRequest, PendingCandidateLabels,
+        QueryLaw(Origin, Action, PendingRequest, PendingCandidateLabels,
             ProviderDecisions);
 
     public static ReferenceNatureMerchantSessionV111 Begin(
@@ -121,7 +122,7 @@ public sealed record ReferenceNatureMerchantSessionV111(
             throw new InvalidOperationException(
                 "ReferenceNature merchant session is already complete.");
 
-        var law = QueryLaw(Origin, PendingRequest!, PendingCandidateLabels,
+        var law = QueryLaw(Origin, Action, PendingRequest!, PendingCandidateLabels,
             ProviderDecisions);
         var selection = ReferenceNatureV111.SampleValidated(law, NatureState);
         var providerDecision = ReferenceNatureChanceLawDecisionV111.FromSelection(
@@ -201,7 +202,7 @@ public sealed record ReferenceNatureMerchantSessionV111(
                 throw new InvalidDataException(
                     "ReferenceNature merchant provider transcript changed its request.");
 
-            var law = QueryLaw(Origin, request, labels, prefix);
+            var law = QueryLaw(Origin, Action, request, labels, prefix);
             var selection = ReferenceNatureV111.SampleValidated(
                 law, expectedNatureState);
             var expectedTranscript = new ReferenceNatureMerchantLawDecisionV111(
@@ -290,7 +291,8 @@ public sealed record ReferenceNatureMerchantSessionV111(
     }
 
     private static ChanceLawV111 QueryLaw(
-        RunState source, ControlledStochasticRequestV111 request,
+        RunState source, GameAction action,
+        ControlledStochasticRequestV111 request,
         string[]? candidateLabels, ControlledStochasticDecisionV111[] prefix)
     {
         request.Validate();
@@ -326,6 +328,15 @@ public sealed record ReferenceNatureMerchantSessionV111(
         {
             var ordinal = prefix.Count(decision =>
                 decision.UnitFloatDecision?.Request.SiteId == siteId);
+            if (IsAlchemicalCofferPurchase(source, action))
+            {
+                if (request.Ordinal != ordinal)
+                    throw new InvalidDataException(
+                        "Alchemical Coffer rarity request ordinal differs from its replay prefix.");
+                return ChanceLawEngineV111
+                    .QueryNativeAlchemicalCofferPotionRequest(
+                        source, action, request, null, []);
+            }
             return ChanceLawEngineV111.QueryNativeMerchantOffer(
                 source, siteId, ordinal);
         }
@@ -334,6 +345,17 @@ public sealed record ReferenceNatureMerchantSessionV111(
             var ordinal = prefix.Count(decision =>
                 decision.IndexDecision?.Request.SiteId == siteId);
             var (rarity, excluded) = ResolvePotionPrefix(prefix);
+            if (IsAlchemicalCofferPurchase(source, action))
+            {
+                if (request.Ordinal != ordinal)
+                    throw new InvalidDataException(
+                        "Alchemical Coffer model request ordinal differs from its replay prefix.");
+                return ChanceLawEngineV111
+                    .QueryNativeAlchemicalCofferPotionRequest(
+                        source, action, request,
+                        Enum.Parse<PrototypeNativePotionRarity>(rarity),
+                        excluded);
+            }
             return ChanceLawEngineV111.QueryNativeMerchantOffer(
                 source, siteId, ordinal, rarity: rarity,
                 excludedPotionIds: excluded);
@@ -413,22 +435,38 @@ public sealed record ReferenceNatureMerchantSessionV111(
     private static void ValidateOpeningBoundary(
         RunState source, GameAction action)
     {
-        if (source.Phase != RunPhase.MapChoice || source.World is not { } world ||
-            source.NativeRunRng is null || source.ControlledRunActionChoice is not null ||
+        if (source.World is not { } world || source.NativeRunRng is null ||
+            source.ControlledRunActionChoice is not null ||
             !PrototypeGameEngine.UsesNativeRegionalSystems(world) ||
-            action.Kind != "choose_map_node" || world.RelicBag is null)
+            world.RelicBag is null)
             throw new InvalidOperationException(
-                "ReferenceNature merchant session requires a configured pre-entry Shop choice and committed relic bag.");
-        var payload = action.ReadPayload<ChooseMapNodePayload>();
-        if (!PrototypeNativeWingedBoots.AvailableNodes(world, source.Player)
-                .Any(node => node.NodeId == payload.NodeId &&
-                    node.RoomType == PrototypeRoomType.Shop) ||
-            !new PrototypeGameEngine().GetLegalActions(source).Any(candidate =>
-                PrototypeAiEnvironment.StableActionId(candidate) ==
-                PrototypeAiEnvironment.StableActionId(action)))
+                "ReferenceNature merchant session requires configured Native Shop state and a committed relic bag.");
+        var legal = new PrototypeGameEngine().GetLegalActions(source).Any(
+            candidate => PrototypeAiEnvironment.StableActionId(candidate) ==
+                PrototypeAiEnvironment.StableActionId(action));
+        var validShopEntry = source.Phase == RunPhase.MapChoice &&
+            action.Kind == "choose_map_node" &&
+            PrototypeNativeWingedBoots.AvailableNodes(world, source.Player)
+                .Any(node => node.NodeId ==
+                    action.ReadPayload<ChooseMapNodePayload>().NodeId &&
+                    node.RoomType == PrototypeRoomType.Shop);
+        var validCofferPurchase = IsAlchemicalCofferPurchase(source, action);
+        if ((!validShopEntry && !validCofferPurchase) || !legal)
             throw new InvalidOperationException(
-                "ReferenceNature merchant session requires a current legal Shop-node action.");
+                "ReferenceNature merchant session requires a current legal configured Shop-entry action or Alchemical Coffer purchase.");
         PrototypeStateInvariants.Validate(source);
+    }
+
+    private static bool IsAlchemicalCofferPurchase(
+        RunState source, GameAction action)
+    {
+        if (source.Phase != RunPhase.Shop || action.Kind != "buy_relic" ||
+            source.World?.Shop is not { } shop)
+            return false;
+        var payload = action.ReadPayload<BuyOfferPayload>();
+        return shop.RelicOffers.Any(offer => offer.OfferId == payload.OfferId &&
+            !offer.Sold && offer.ItemId ==
+                PrototypeNativeOrobasRelics.AlchemicalCofferId);
     }
 
     private static (PrototypeCardType CardType, int Ordinal)
