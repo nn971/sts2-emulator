@@ -70,15 +70,19 @@ resolved and commits its mechanic result with the Nature cursor. The Native
 event cursor remains at entry under scripted replay. The session is limited to
 the pending configured action when at least one card-pick draw exists.
 
-Lost Wisp and Jungle Maze Adventure expose a read-only gold law for their
-primary and secondary unit-float stages. The query observes the event-entry
-projection and typed pre-draw request, then counts exact 53-bit
-`NextDouble`-grid preimages after `NextFloat` rounding, the source float
-arithmetic, and integer truncation. `SOURCE_VERIFIED` applies to those three
-gold mappings under the uniform-grid input model. This is a conditional gold
-law only: it does not add an atomic event-entry session, establish event-pool
-completeness, or verify Native event seed frequencies, stream attribution, or
-cursor parity. The legacy integer fallback remains `UNVERIFIED`.
+Pinned Native event gold index formulas for Dense Vegetation, Whispering
+Hollow, both Sunken Statues, Luminous Choir, Sunken Treasury, Punch Off, and
+This or That expose read-only conditional laws. The query observes the
+projected event-entry branch and typed pre-draw bounded request, then counts
+exact `NextInt` preimages and aggregates source indices that map to the same
+gold value. Lost Wisp and Jungle Maze Adventure likewise expose their three
+unit-float formulas, counting 53-bit `NextDouble`-grid preimages after
+`NextFloat` rounding, source float arithmetic, and integer truncation. These
+declared Native transforms are `SOURCE_VERIFIED` under the uniform-grid input
+model. The queries do not add an atomic event-entry session, establish
+event-pool completeness, or verify Native event seed frequencies, stream
+attribution, or cursor parity. Legacy integer fallbacks and adjacent
+unsupported source alternatives remain `UNVERIFIED`.
 
 The resolver is the event-specific page-generation or choice-effect method.
 It applies the selected primitive result synchronously, commits the resulting
@@ -93,11 +97,11 @@ effect once.
 
 ## Provenance and unsupported handling
 
-The Reflections downgrade and upgrade, Infested Automaton card-pick, and
-Endless Conveyor card-index laws mark their bounded-index transform
-`SOURCE_VERIFIED` on the declared support. Lost Wisp and Jungle Maze Adventure
-gold laws mark their unit-float-to-integer mappings `SOURCE_VERIFIED` on the
-three declared formulas. Infested Automaton's pool remains restricted to
+The Reflections downgrade and upgrade, Infested Automaton card-pick, Endless
+Conveyor card-index, and pinned Native generated-gold index laws mark their
+bounded-index transform `SOURCE_VERIFIED` on the declared support. Lost Wisp
+and Jungle Maze Adventure gold laws mark their unit-float-to-integer mappings
+`SOURCE_VERIFIED` on the three declared formulas. Infested Automaton's pool remains restricted to
 supported cards, and Endless Conveyor's Colorless pool remains restricted to
 implemented solo-safe models. A pinned event RNG seed
 derivation and a persisted cursor establish provider ownership, not seed

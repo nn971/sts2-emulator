@@ -36,6 +36,61 @@ public static class ReferenceNatureChanceLawDecisionV111
         var outcome = law.Outcomes[selection.OutcomeIndex];
         if (request.IndexRequest is { } indexRequest)
         {
+            if (law.OperationKind == "index_mapped_gold")
+            {
+                if (candidateLabels is not null ||
+                    indexRequest.SiteId != ChanceLawEngineV111
+                        .NativeEventGoldIndexSiteId ||
+                    indexRequest.OperationKind != "bounded_integer" ||
+                    !outcome.OutcomeId.StartsWith(
+                        "gold:", StringComparison.Ordinal) ||
+                    !int.TryParse(outcome.OutcomeId[5..],
+                        NumberStyles.Integer, CultureInfo.InvariantCulture,
+                        out var gold))
+                    throw new InvalidDataException(
+                        "Mapped-gold Chance Law does not match its bounded-index request.");
+                var (eventId, stage) = ParseNativeEventGoldOwner(
+                    indexRequest.OwnerId);
+                var indexWeights = ChanceLawEngineV111
+                    .NativeNextIntGridWeights(indexRequest.SupportCount);
+                var expectedGoldWeights = new SortedDictionary<int, long>();
+                for (var index = 0; index < indexWeights.Length; index++)
+                {
+                    var mappedGold = ChanceLawEngineV111
+                        .NativeEventGoldIndexOutcome(eventId, stage, index);
+                    expectedGoldWeights[mappedGold] = checked(
+                        expectedGoldWeights.GetValueOrDefault(mappedGold) +
+                        indexWeights[index]);
+                }
+                var expectedOutcomes = expectedGoldWeights.Select(pair =>
+                    new ChanceLawOutcomeV111(
+                        "gold:" + pair.Key.ToString(
+                            CultureInfo.InvariantCulture), pair.Value))
+                    .ToArray();
+                if (law.SiteId != indexRequest.SiteId ||
+                    !law.Outcomes.SequenceEqual(expectedOutcomes))
+                    throw new InvalidDataException(
+                        "Mapped-gold Chance Law differs from the bounded-index source mapping.");
+                var selectedIndex = Enumerable.Range(
+                        0, indexRequest.SupportCount)
+                    .FirstOrDefault(index =>
+                        ChanceLawEngineV111.NativeEventGoldIndexOutcome(
+                            eventId, stage, index) == gold, -1);
+                if (selectedIndex < 0)
+                    throw new InvalidDataException(
+                        "Selected gold outcome has no source bounded-index representative.");
+                var mappedDecision = new RandomIndexDecisionV111(
+                    indexRequest with
+                    {
+                        OrderedCandidates = (int[])
+                            indexRequest.OrderedCandidates.Clone()
+                    }, selectedIndex, "controlled-v111");
+                mappedDecision.Validate();
+                var mappedControlled = ControlledStochasticDecisionV111
+                    .FromIndex(mappedDecision);
+                mappedControlled.Validate();
+                return mappedControlled;
+            }
             if (law.OperationKind != indexRequest.OperationKind ||
                 law.Outcomes.Length != indexRequest.SupportCount ||
                 !OutcomeEndsInIndex(outcome.OutcomeId,
@@ -257,7 +312,15 @@ public static class ReferenceNatureChanceLawDecisionV111
         foreach (var eventId in new[]
         {
             PrototypeNativeHiveEvents.LostWispId,
-            "proto.native.event.jungle_maze_adventure"
+            "proto.native.event.jungle_maze_adventure",
+            PrototypeNativeDenseVegetation.EventId,
+            "proto.native.event.whispering_hollow",
+            "proto.native.event.sunken_statue",
+            "proto.native.underdocks.sunken_statue",
+            "proto.native.event.luminous_choir",
+            "proto.native.underdocks.sunken_treasury",
+            PrototypeNativePunchOff.EventId,
+            PrototypeNativeSharedEvents.ThisOrThatId
         })
         {
             var prefix = $"event:{eventId}:gold:";

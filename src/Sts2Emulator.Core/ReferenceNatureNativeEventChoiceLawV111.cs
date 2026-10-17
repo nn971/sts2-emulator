@@ -251,11 +251,13 @@ public static partial class ChanceLawEngineV111
 {
     public const string NativeEventCardPickConditioningPolicyId =
         "native-event-card-pick-prefix-v1";
+    public const string NativeEventGoldIndexSiteId =
+        "event.generated_gold.index_draw";
     public const string NativeEventGoldUnitFloatSiteId =
         "event.generated_gold.unit_float";
 
     public static string[] NativeEventGoldQuerySiteIds =>
-        [NativeEventGoldUnitFloatSiteId];
+        [NativeEventGoldIndexSiteId, NativeEventGoldUnitFloatSiteId];
 
     public static string[] NativeEventCardPickQuerySiteIds =>
     [
@@ -374,6 +376,190 @@ public static partial class ChanceLawEngineV111
             NativeUnitFloatMappedOutcomeSourceVerifiedProvenance,
             outcomes, ChanceLawV111.SourceVerifiedStatus);
     }
+
+    public static ChanceLawV111 QueryNativeEventGoldIndex(
+        RunState origin, string siteId, int ordinal, string actionId)
+    {
+        ArgumentNullException.ThrowIfNull(origin);
+        ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(actionId);
+        if (siteId != NativeEventGoldIndexSiteId || ordinal < 0 ||
+            string.IsNullOrWhiteSpace(origin.RunSeed) ||
+            origin.NativeRunRng is null || origin.Phase != RunPhase.MapChoice ||
+            origin.World is not { Event: null } world ||
+            !PrototypeGameEngine.UsesNativeRegionalSystems(world))
+            throw new InvalidOperationException(
+                "Native event gold laws require a configured pre-entry Event-node boundary.");
+        PrototypeStateInvariants.Validate(origin);
+
+        var engine = new PrototypeGameEngine();
+        var action = engine.GetLegalActions(origin).SingleOrDefault(candidate =>
+            PrototypeAiEnvironment.StableActionId(candidate) == actionId)
+            ?? throw new InvalidOperationException(
+                "Native event gold law requires a current legal Event-node action.");
+        var nodeId = action.Kind == "choose_map_node"
+            ? action.ReadPayload<ChooseMapNodePayload>().NodeId : null;
+        if (nodeId is null ||
+            !PrototypeNativeWingedBoots.AvailableNodes(world, origin.Player)
+                .Any(node => node.NodeId == nodeId &&
+                    node.RoomType == PrototypeRoomType.Event))
+            throw new InvalidOperationException(
+                "Native event gold law requires a current legal Event-node action.");
+
+        IReadOnlyList<RandomBoundaryEventV111> entries;
+        string? selectedEventId;
+        string? selectedEventStreamId;
+        using (var journal = RandomBoundaryJournalV111.Begin())
+        using (NativeEngineEventJournalV111.Begin())
+        {
+            var projected = engine.Step(origin.Fork(), action).State;
+            selectedEventId = projected.World?.Event?.EventId;
+            selectedEventStreamId = projected.World?.Event?.NativeEventRng
+                ?.StreamId;
+            // SelectedIndex and SelectedValue are deliberately not consumed:
+            // this law models the pre-draw request's source mapping only.
+            entries = journal.Entries;
+        }
+
+        var (eventId, nativeEventEntry, stages, bounds) = selectedEventId switch
+        {
+            var id when id == PrototypeNativeDenseVegetation.EventId =>
+                (id, "DENSE_VEGETATION", new[] { "primary" },
+                    new[] { 39 }),
+            "proto.native.event.whispering_hollow" =>
+                ("proto.native.event.whispering_hollow", "WHISPERING_HOLLOW",
+                    new[] { "primary" }, new[] { 19 }),
+            "proto.native.event.sunken_statue" or
+                "proto.native.underdocks.sunken_statue" =>
+                (selectedEventId!, "SUNKEN_STATUE", new[] { "primary" },
+                    new[] { 21 }),
+            "proto.native.event.luminous_choir" =>
+                ("proto.native.event.luminous_choir", "LUMINOUS_CHOIR",
+                    new[] { "primary" }, new[] { 50 }),
+            "proto.native.underdocks.sunken_treasury" =>
+                ("proto.native.underdocks.sunken_treasury", "SUNKEN_TREASURY",
+                    new[] { "primary", "secondary" }, new[] { 16, 61 }),
+            var id when id == PrototypeNativePunchOff.EventId =>
+                (id, PrototypeNativePunchOff.NativeRngEventId,
+                    new[] { "primary" }, new[] { 8 }),
+            var id when id == PrototypeNativeSharedEvents.ThisOrThatId =>
+                (id, PrototypeNativeSharedEvents.ThisOrThatNativeRngEventId,
+                    new[] { "primary" }, new[] { 28 }),
+            _ => throw new InvalidOperationException(
+                "The Event-node action did not enter an event with a pinned Native gold index mapping.")
+        };
+        if (ordinal >= stages.Length)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+
+        var requests = entries.Where(entry =>
+                entry.Request.SiteId == siteId &&
+                entry.Request.OwnerId.StartsWith(
+                    $"event:{eventId}:gold:", StringComparison.Ordinal))
+            .Select(entry => entry.Request)
+            .ToArray();
+        if (requests.Length != stages.Length)
+            throw new InvalidOperationException(
+                "Event entry did not produce the expected ordered gold index requests.");
+
+        var stage = stages[ordinal];
+        var ownerId = $"event:{eventId}:gold:{stage}";
+        var request = requests[ordinal];
+        var expectedStream = NativeRngV111Contexts.ForEvent(
+            origin.RunSeed, nativeEventEntry);
+        if (request.OwnerId != ownerId || request.Ordinal != ordinal ||
+            request.OperationKind != "bounded_integer" ||
+            request.BoundedCount != bounds[ordinal] ||
+            request.StreamId != expectedStream.StreamId ||
+            selectedEventStreamId != expectedStream.StreamId)
+            throw new InvalidDataException(
+                "Native event gold index request differs from its declared entry stage.");
+
+        var indexWeights = NativeNextIntGridWeights(request.SupportCount);
+        var goldWeights = new SortedDictionary<int, long>();
+        for (var index = 0; index < indexWeights.Length; index++)
+        {
+            var gold = NativeEventGoldIndexOutcome(eventId, stage, index);
+            goldWeights[gold] = checked(
+                goldWeights.GetValueOrDefault(gold) + indexWeights[index]);
+        }
+        var sourceMapping = NativeEventGoldIndexMappingId(eventId, stage);
+        var conditioning = new
+        {
+            boundary = "native_event.generated_gold.index_draw",
+            actionId,
+            eventId,
+            stage,
+            sourceMapping,
+            request
+        };
+        var conditioningFingerprint = CanonicalJson.Sha256(conditioning);
+        var eventLawId = CanonicalJson.Sha256(new
+        {
+            siteId, ownerId, ordinal, conditioningFingerprint
+        });
+        var outcomes = goldWeights.Select(pair => new ChanceLawOutcomeV111(
+            "gold:" + pair.Key.ToString(CultureInfo.InvariantCulture),
+            pair.Value)).ToArray();
+        return Create(eventLawId, siteId, "index_mapped_gold",
+            ownerId, ordinal, "native-event-gold-index-v1",
+            conditioningFingerprint,
+            NativeBoundedIndexSourceVerifiedProvenance,
+            outcomes, ChanceLawV111.SourceVerifiedStatus);
+    }
+
+    internal static int NativeEventGoldIndexOutcome(
+        string eventId, string stage, int index)
+    {
+        if (index < 0)
+            throw new ArgumentOutOfRangeException(nameof(index));
+        return (eventId, stage) switch
+        {
+            ("proto.native.event.dense_vegetation", "primary") =>
+                61 + index,
+            ("proto.native.event.whispering_hollow", "primary") =>
+                26 + index,
+            ("proto.native.event.sunken_statue", "primary") or
+                ("proto.native.underdocks.sunken_statue", "primary") =>
+                101 + index,
+            ("proto.native.event.luminous_choir", "primary") =>
+                149 - index,
+            ("proto.native.underdocks.sunken_treasury", "primary") =>
+                52 + index,
+            ("proto.native.underdocks.sunken_treasury", "secondary") =>
+                303 + index,
+            ("proto.native.underdocks.punch_off", "primary") =>
+                91 + index,
+            ("proto.native.event.this_or_that", "primary") =>
+                41 + index,
+            _ => throw new NotSupportedException(
+                $"Native bounded-index gold mapping does not support '{eventId}' stage '{stage}'.")
+        };
+    }
+
+    private static string NativeEventGoldIndexMappingId(
+        string eventId, string stage) => (eventId, stage) switch
+    {
+        ("proto.native.event.dense_vegetation", "primary") =>
+            "dense-vegetation-61-plus-index-v1",
+        ("proto.native.event.whispering_hollow", "primary") =>
+            "whispering-hollow-26-plus-index-v1",
+        ("proto.native.event.sunken_statue", "primary") =>
+            "sunken-statue-101-plus-index-v1",
+        ("proto.native.underdocks.sunken_statue", "primary") =>
+            "underdocks-sunken-statue-101-plus-index-v1",
+        ("proto.native.event.luminous_choir", "primary") =>
+            "luminous-choir-149-minus-index-v1",
+        ("proto.native.underdocks.sunken_treasury", "primary") =>
+            "sunken-treasury-52-plus-index-v1",
+        ("proto.native.underdocks.sunken_treasury", "secondary") =>
+            "sunken-treasury-303-plus-index-v1",
+        ("proto.native.underdocks.punch_off", "primary") =>
+            "punch-off-91-plus-index-v1",
+        ("proto.native.event.this_or_that", "primary") =>
+            "this-or-that-41-plus-index-v1",
+        _ => throw new NotSupportedException(
+            $"Native bounded-index gold mapping does not support '{eventId}' stage '{stage}'.")
+    };
 
     internal static int NativeEventGoldUnitFloatOutcome(
         string eventId, string stage, float roll)
