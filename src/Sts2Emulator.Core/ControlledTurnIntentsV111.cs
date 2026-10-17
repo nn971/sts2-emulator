@@ -16,21 +16,32 @@ public sealed record ControlledTurnIntentsV111(
     string SiteId = ControlledTurnIntentEngineV111.SiteId)
 {
     public bool Complete => Pending is null;
+
+    /// <summary>
+    /// Provider request and decision history. Transcript and Pending remain
+    /// flattened compatibility projections for existing snapshots.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public ControlledTurnIntentStochasticStateV111 Stochastic { get; init; } =
+        new(Transcript, Pending);
+
+    public RandomIndexDecisionV111[] Transcript
+    {
+        get => Stochastic.Transcript;
+        init => Stochastic = Stochastic with { Transcript = value };
+    }
+
+    public RandomIndexRequestV111? Pending
+    {
+        get => Stochastic.Pending;
+        init => Stochastic = Stochastic with { Pending = value };
+    }
+
     public ControlledTurnIntentsV111 Fork() => this with
     {
         BaselineCombat = BaselineCombat.Fork(),
         Combat = Combat.Fork(),
-        Transcript = Transcript.Select(d => d with
-        {
-            Request = d.Request with
-            {
-                OrderedCandidates = (int[])d.Request.OrderedCandidates.Clone()
-            }
-        }).ToArray(),
-        Pending = Pending is null ? null : Pending with
-        {
-            OrderedCandidates = (int[])Pending.OrderedCandidates.Clone()
-        }
+        Stochastic = Stochastic.Fork()
     };
 }
 
@@ -141,9 +152,10 @@ public static class ControlledTurnIntentEngineV111
 
     public static void Validate(ControlledTurnIntentsV111 state)
     {
+        ArgumentNullException.ThrowIfNull(state);
+        state.Stochastic.Validate();
         if (string.IsNullOrWhiteSpace(state.NativeEncounterEntry) ||
             string.IsNullOrWhiteSpace(state.SiteId) ||
-            state.Transcript is null ||
             state.NextEnemyIndex < 0 ||
             state.NextEnemyIndex > state.BaselineCombat.Enemies.Length ||
             state.BaselineCombat.Enemies.Length != state.Combat.Enemies.Length)
