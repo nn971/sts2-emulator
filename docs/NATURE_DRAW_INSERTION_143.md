@@ -73,7 +73,9 @@ insertions or Hopper theft choices are presented one at a time, then the
 semantic turn-intent stage continues. It also handles legacy Fabricator
 summon-pool choices and any resulting summoned-enemy HP choices. Native
 summon-pool selection still fails closed pending source audit; stream
-assignment and probability status remain `UNVERIFIED`.
+assignment and pool eligibility remain open. Canonical Native `run.shuffle`
+insertion requests receive exact bounded-index `SOURCE_VERIFIED` masses;
+legacy insertion requests remain `UNVERIFIED`.
 
 ## Validation scope
 
