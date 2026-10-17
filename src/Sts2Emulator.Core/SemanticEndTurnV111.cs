@@ -87,11 +87,37 @@ public sealed record SemanticEndTurnV111(
     bool Complete = false)
 {
     public const string SchemaId = "sts2-v111-semantic-end-turn-v1";
+    /// <summary>
+    /// Provider-owned chance decisions and their chronological interleaving.
+    /// The transcript fields below remain the flattened session representation.
+    /// </summary>
+    [JsonIgnore]
+    public SemanticEndTurnStochasticStateV111 Stochastic { get; init; } =
+        new(IntentTranscript, [], [], []);
+
+    public RandomIndexDecisionV111[] IntentTranscript
+    {
+        get => Stochastic.IntentTranscript;
+        init => Stochastic = Stochastic with { IntentTranscript = value };
+    }
+
     public RunState? PlayerActionSource { get; init; }
     public string? PlayerActionId { get; init; }
-    public RandomIndexDecisionV111[] EnemyActionTranscript { get; init; } = [];
-    public SemanticTargetDecisionV111[] TargetTranscript { get; init; } = [];
-    public SemanticEndTurnBoundaryChoiceV111[] BoundaryTranscript { get; init; } = [];
+    public RandomIndexDecisionV111[] EnemyActionTranscript
+    {
+        get => Stochastic.EnemyActionTranscript;
+        init => Stochastic = Stochastic with { EnemyActionTranscript = value };
+    }
+    public SemanticTargetDecisionV111[] TargetTranscript
+    {
+        get => Stochastic.TargetTranscript;
+        init => Stochastic = Stochastic with { TargetTranscript = value };
+    }
+    public SemanticEndTurnBoundaryChoiceV111[] BoundaryTranscript
+    {
+        get => Stochastic.BoundaryTranscript;
+        init => Stochastic = Stochastic with { BoundaryTranscript = value };
+    }
     [JsonIgnore] public string Fingerprint => CanonicalJson.Sha256(this);
     [JsonIgnore] public SemanticTargetEventV111? TargetPending =>
         Complete || HandDraw is not null
@@ -135,26 +161,7 @@ public sealed record SemanticEndTurnV111(
         Origin = Origin.Fork(), Run = Run.Fork(),
         Intents = Intents?.Fork(), HandDraw = HandDraw?.Fork(),
         PlayerActionSource = PlayerActionSource?.Fork(),
-        EnemyActionTranscript = EnemyActionTranscript.Select(decision =>
-            decision with
-            {
-                Request = decision.Request with
-                {
-                    OrderedCandidates =
-                        (int[])decision.Request.OrderedCandidates.Clone()
-                }
-            }).ToArray(),
-        TargetTranscript = TargetTranscript.Select(decision =>
-            decision.Fork()).ToArray(),
-        BoundaryTranscript = (SemanticEndTurnBoundaryChoiceV111[])
-            BoundaryTranscript.Clone(),
-        IntentTranscript = IntentTranscript.Select(t => t with
-        {
-            Request = t.Request with
-            {
-                OrderedCandidates = (int[])t.Request.OrderedCandidates.Clone()
-            }
-        }).ToArray()
+        Stochastic = Stochastic.Fork()
     };
 }
 

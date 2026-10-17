@@ -34,6 +34,8 @@
 
 **S3 pilot continuation ownership increment (2026-10-17):** `SemanticPilotStochasticStateV111` now owns the pending `SemanticEndTurnV111` and `ControlledTurnIntentsV111` frames along with their provider provenance. `SemanticPilotCombatV111` preserves its existing serialized fields as projections, and its single stochastic-owner fork now deep-forks both frames. This groups the playable pilot's pending provider continuation atomically but does not yet merge all adapters into one engine continuation.
 
+**S3 end-turn transcript ownership increment (2026-10-17):** `SemanticEndTurnStochasticStateV111` now owns the intent, automatic enemy-action, target, and interleaving transcripts for the specialized semantic end-turn facade. Existing transcript fields remain flattened projections, while one owner fork deep-copies their typed requests and stable-identity decisions. The ordinary engine still owns mechanical execution through its automatic-pipeline continuation; unification of all semantic facades remains S4 work.
+
 ## S1 precise design
 
 Implement a **read-only, outcome-blind** Chance Law query in `Sts2Emulator.Core` with:
