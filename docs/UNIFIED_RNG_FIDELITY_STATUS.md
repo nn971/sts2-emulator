@@ -239,11 +239,13 @@ hide Nature outcome actions. See
 supported sites and JSONL contract.
 
 The same opt-in bridge now has saved run-action frames for the legacy `start_run`
-boss encounter draw, map event entry (event selection and listed legacy
-event-initialization draws), and Shovel's unowned-relic index draw, with
-JSONL/Python begin, resolve and inspect support. Native configured event
-streams and the source-owned native relic-bag route remain outside that
-controlled frame.
+boss encounter draw, map Event-node entry (event selection and listed legacy
+event-initialization draws), seven legacy Shop-node generation sites, eligible
+legacy Treasure-node relic selection, and Shovel's unowned-relic index draw,
+with JSONL/Python begin, resolve and inspect support. The `hello` capability
+response reports those run-action site groups from `StochasticSiteRegistryV111`.
+Native configured event streams, merchant and treasure providers, and the
+source-owned regional relic-bag route remain outside that controlled frame.
 See [`CONTROLLED_RUN_ACTION_D3.md`](CONTROLLED_RUN_ACTION_D3.md).
 
 The saved event-effect frame also supports the legacy persistent-deck

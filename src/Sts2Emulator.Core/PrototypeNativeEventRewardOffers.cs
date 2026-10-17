@@ -305,7 +305,8 @@ public sealed partial class PrototypeGameEngine
                 {
                     relicIndex = NativePlayerRngV111.ChooseIndex(
                         nativeRewardRng,
-                        "relic.unowned_random_selection.index_draw",
+                        StochasticSiteRegistryV111
+                            .UnownedRandomRelicSelectionSiteId,
                         NativePlayerRngV111.RewardsStreamId,
                         ownerId,
                         available.Length);
@@ -317,7 +318,8 @@ public sealed partial class PrototypeGameEngine
                             (string[])available.Clone());
                     relicIndex = LegacyRandomChoiceV111.ChooseIndexRange(
                         state.Rng,
-                        "relic.unowned_random_selection.index_draw",
+                        StochasticSiteRegistryV111
+                            .UnownedRandomRelicSelectionSiteId,
                         "reward",
                         ownerId,
                         available.Length).SelectedIndex;

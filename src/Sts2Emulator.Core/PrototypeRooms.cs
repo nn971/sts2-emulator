@@ -2483,7 +2483,7 @@ public sealed partial class PrototypeGameEngine
         }
         return available[ResolveLegacyRandomIndex(
             rng,
-            "relic.unowned_random_selection.index_draw",
+            StochasticSiteRegistryV111.UnownedRandomRelicSelectionSiteId,
             ownerId + ":pool:" + CanonicalJson.Sha256(available),
             Enumerable.Range(0, available.Length),
             streamId: "event",
@@ -3964,8 +3964,8 @@ public sealed partial class PrototypeGameEngine
                 }
                 catch (ControlledEventChoiceChanceRequiredException exception)
                 {
-                    if (exception.Request.SiteId !=
-                        "relic.unowned_random_selection.index_draw"
+                    if (!ControlledEventChoiceReplayV111
+                            .IsRunActionShovelSite(exception.Request.SiteId)
                         || exception.CandidateLabels is not { Length: > 0 }
                         || exception.CandidateLabels.Length !=
                             exception.Request.SupportCount)
@@ -4216,8 +4216,8 @@ public sealed partial class PrototypeGameEngine
                         || ControlledEventChoiceReplayV111
                             .IsRunActionTreasureSite(exception.Request.SiteId),
                     PrototypeNativeRestSiteActionsV111.Dig =>
-                        exception.Request.SiteId ==
-                            "relic.unowned_random_selection.index_draw",
+                        ControlledEventChoiceReplayV111
+                            .IsRunActionShovelSite(exception.Request.SiteId),
                     _ => false
                 };
                 if (!supportedSite

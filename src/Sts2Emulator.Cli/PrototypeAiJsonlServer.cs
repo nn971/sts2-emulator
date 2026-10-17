@@ -1232,7 +1232,24 @@ internal static class PrototypeAiJsonlServer
                             controlledRunActionSchemaId =
                                 ControlledRunActionEngineV111.SchemaId,
                             controlledRunActionScope =
-                                "legacy-run-start-map-event-entry-and-shovel-selection",
+                                "legacy-run-start-map-event-shop-treasure-entry-and-shovel-selection",
+                            controlledRunActionSiteGroups = new
+                            {
+                                runStartAndMapGeneration =
+                                    StochasticSiteRegistryV111.RunActionSiteIds,
+                                eventNodeEntry =
+                                    StochasticSiteRegistryV111
+                                        .RunActionEventEntrySiteIds,
+                                legacyShopNodeGeneration =
+                                    StochasticSiteRegistryV111
+                                        .RunActionShopSiteIds,
+                                legacyTreasureNodeSelection =
+                                    StochasticSiteRegistryV111
+                                        .RunActionTreasureSiteIds,
+                                shovelDig =
+                                    StochasticSiteRegistryV111
+                                        .RunActionShovelSiteIds
+                            },
                             controlledRunActionMaximumInlineOutcomeActions =
                                 ControlledRunActionEngineV111
                                     .MaximumInlineOutcomeActions,

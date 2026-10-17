@@ -2,9 +2,13 @@
 
 This opt-in D3 boundary saves the legacy `start_run` action at its Act 1 boss
 encounter draw, map choices that enter an Event node at supported legacy event
-entry draws, and the Shovel dig action at its unowned-relic draw. It uses
-ordinary run-state handles and does not change normal `step` behavior or the
-source-owned regional relic-bag route.
+entry draws, legacy Shop-node offer generation, eligible legacy Treasure-node
+relic selection, and the Shovel dig action at its unowned-relic draw. Shop and
+Treasure generation require non-native regional systems and a legacy run RNG.
+Treasure selection is not offered when Silver Crucible suppresses the first
+treasure or the legacy relic pool is exhausted. The boundary uses ordinary
+run-state handles and does not change normal `step` behavior or source-owned
+regional merchant/treasure routes.
 
 The pending frame stores the exact pre-action run state, action kind, request,
 and ordered candidate labels. Event-entry frames also retain the selected
@@ -12,7 +16,8 @@ map-node ID. Resolving one index replays the action from that checkpoint and
 records the controlled decision in
 `RunState.ControlledRunActionHistory`. Run start commits the selected boss
 encounter; map event entry commits the selected event and its initial state;
-Shovel commits the relic as the normal reward.
+Shop entry commits its generated offers; Treasure entry commits the selected
+relic as a normal reward; Shovel commits the relic as the normal reward.
 The pending continuation is part of ordinary run snapshots. Player-facing
 observations hide its Nature actions; the explicit controller exposes only
 `choose_controlled_run_action_outcome` actions while the frame is pending.
@@ -31,12 +36,15 @@ pending boundary fingerprint binds action/request context without including
 private RNG state. The top-level `fingerprint` is the exact-state
 stale-request guard.
 
-The JSONL server advertises `controlledRunActionSchemaId` and supports:
+The JSONL server advertises `controlledRunActionSchemaId`. Its `hello`
+response exposes `controlledRunActionSiteGroups`, with registry-owned arrays
+for run-start/map generation, Event-node entry, legacy Shop-node generation,
+legacy Treasure-node selection, and Shovel dig. The controller supports:
 
 | Operation | Inputs | Result |
 | --- | --- | --- |
 | `controlled_run_action_begin` | current `state_handle`, legal `action_id` | Pending request, labels and controlled outcome actions |
-| `controlled_run_action_resolve` | pending `state_handle`, `selected_index` | Child run handle with the selected run-start, event-entry or Shovel result |
+| `controlled_run_action_resolve` | pending `state_handle`, `selected_index` | Child run handle with the selected run-start, event-entry, Shop, Treasure or Shovel result |
 | `controlled_run_action_inspect` | pending `state_handle` | Restore the pending request and legal outcomes after snapshot load |
 
 The JSONL server also exposes an atomic ReferenceNature envelope for these
@@ -60,11 +68,13 @@ seed. Snapshots that carry the cursor advertise
 `sts2-exact-snapshot-v1`.
 
 The session supports only the `start_run` boss encounter draw, legacy map
-Event-node entry draws, and Shovel's unowned-relic draw that have a controlled
-continuation here. It keeps the Chance Law sample and run-state resolution
-atomic across fork/save/restore; it does not turn other run, shop, reward or
-map operations into supported ReferenceNature sites. The sample uses the
-independent ReferenceNature stream and does not advance the game's RNG.
+Event-node entry draws, seven `shop.*` sites in legacy Shop-node generation,
+the `treasure.relic_model.index_draw` legacy Treasure-node site, and Shovel's
+unowned-relic draw. It keeps the Chance Law sample and run-state resolution
+atomic across fork/save/restore; it does not enable native regional merchant
+or treasure providers, purchases, or other run/reward/map operations. The
+sample uses the independent ReferenceNature stream and does not advance the
+game's RNG.
 Once committed, the session result also provides a regular `stateHandle` for
 continuing play through the ordinary run API; no state handle is published
 while a Nature choice remains pending.
@@ -87,6 +97,18 @@ The supported legacy event-entry initialization sites are:
 - `event.fake_merchant.relic_offer.shuffle_swap_index`
 - `event.endless_conveyor.dish_weighted_ticket`
 - `event.future_of_potions.card_type.index_draw`
+
+The supported legacy Shop-node generation sites are:
+
+- `shop.card_rarity.ticket`
+- `shop.card_model.index_draw`
+- `shop.card.price.index_draw`
+- `shop.potion_offer.shuffle_swap_index`
+- `shop.potion_offer.price.index_draw`
+- `shop.relic_offer.shuffle_swap_index`
+- `shop.relic_offer.price.index_draw`
+
+The supported legacy Treasure-node site is `treasure.relic_model.index_draw`.
 
 The Python binding exposes `State.begin_controlled_run_start()`,
 `State.begin_controlled_run_action(action_id)`,

@@ -362,8 +362,9 @@ intent IDs, typed draw/target/generated-card resolution, and exact snapshot
 replay through the same JSONL/Python bridge.
 Opt-in event and run-action adapters expose whole-run begin, resolve and inspect
 operations on ordinary run-state handles; event rewards also support advance
-and one-request enumeration. Legacy run start and Shovel dig use saved
-run-action continuations. Existing `step` and native RNG paths retain semantics.
+and one-request enumeration. Legacy run start, Event-node entry, Shop-node
+generation, Treasure-node relic selection, and Shovel dig use saved run-action
+continuations. Existing `step` and native RNG paths retain semantics.
 Next D3/D4 work must wire controlled choices into more general game action
 continuation, broaden supported event-effect sites and add trained
 agent-facing observations.

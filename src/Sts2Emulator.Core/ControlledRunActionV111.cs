@@ -70,8 +70,8 @@ public sealed record ControlledRunActionTraceV111(
                     request.SiteId)
                 : mapNodeAction
                     ? isEventEntryDraw || isShopDraw || isTreasureDraw
-                    : request.SiteId ==
-                    "relic.unowned_random_selection.index_draw";
+                    : ControlledEventChoiceReplayV111
+                        .IsRunActionShovelSite(request.SiteId);
             var prefixOwner = isBossDraw
                 ? "run:act:1:boss_pool:" + CanonicalJson.Sha256(labels)
                 : ActionId == PrototypeNativeRestSiteActionsV111.Dig
@@ -280,7 +280,8 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                     || !PrototypeNativeRestSiteRelics.CanDig(state.Player))
                     throw new InvalidDataException(
                         "Controlled Shovel frame is outside the legacy rest-site boundary.");
-                expectedSite = "relic.unowned_random_selection.index_draw";
+                expectedSite = StochasticSiteRegistryV111
+                    .UnownedRandomRelicSelectionSiteId;
                 expectedStream = "event";
                 expectedLabels = PrototypeContent.RelicPool
                     .Where(id => !state.Player.Relics.Any(relic =>
@@ -413,8 +414,8 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                     request.SiteId)
                 : ActionId == "choose_map_node"
                     ? isEventEntryDraw || isShopDraw || isTreasureDraw
-                    : request.SiteId ==
-                    "relic.unowned_random_selection.index_draw";
+                    : ControlledEventChoiceReplayV111
+                        .IsRunActionShovelSite(request.SiteId);
             var prefixOwner = isBossDraw
                 ? "run:act:1:boss_pool:" + CanonicalJson.Sha256(labels)
                 : ActionId == PrototypeNativeRestSiteActionsV111.Dig

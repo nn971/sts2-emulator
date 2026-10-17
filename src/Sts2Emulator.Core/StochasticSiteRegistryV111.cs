@@ -50,6 +50,9 @@ public sealed record StochasticSessionCoverageV111(
 /// </summary>
 public static class StochasticSiteRegistryV111
 {
+    public const string UnownedRandomRelicSelectionSiteId =
+        "relic.unowned_random_selection.index_draw";
+
     private static readonly string[] SemanticReferenceNatureSites =
     [
         "combat.committed_intent.index_draw",
@@ -124,6 +127,11 @@ public static class StochasticSiteRegistryV111
         "treasure.relic_model.index_draw"
     ];
 
+    private static readonly string[] RunActionShovelSites =
+    [
+        UnownedRandomRelicSelectionSiteId
+    ];
+
     private static readonly string[] ControlledEventChoiceSites =
     [
         "event.random_upgrade.card_instance",
@@ -144,7 +152,7 @@ public static class StochasticSiteRegistryV111
         "relic.acquisition.random_potion.model",
         "run.potion.fill_empty_slots.model",
         "reward.card_transform.replacement.index_draw",
-        "relic.unowned_random_selection.index_draw"
+        UnownedRandomRelicSelectionSiteId
     ];
 
     private static readonly HashSet<string> SemanticReferenceNatureSiteSet =
@@ -157,13 +165,15 @@ public static class StochasticSiteRegistryV111
         new(RunActionShopSites, StringComparer.Ordinal);
     private static readonly HashSet<string> RunActionTreasureSiteSet =
         new(RunActionTreasureSites, StringComparer.Ordinal);
+    private static readonly HashSet<string> RunActionShovelSiteSet =
+        new(RunActionShovelSites, StringComparer.Ordinal);
     private static readonly HashSet<string> ControlledEventChoiceSiteSet =
         new(ControlledEventChoiceSites, StringComparer.Ordinal);
     private static readonly string[] RunActionSessionSites = RunActionSites
         .Concat(RunActionEventEntrySites)
         .Concat(RunActionShopSites)
         .Concat(RunActionTreasureSites)
-        .Append("relic.unowned_random_selection.index_draw")
+        .Concat(RunActionShovelSites)
         .Distinct(StringComparer.Ordinal)
         .ToArray();
     private static readonly string[] NatureChoiceSites =
@@ -185,6 +195,8 @@ public static class StochasticSiteRegistryV111
         (string[])RunActionShopSites.Clone();
     public static string[] RunActionTreasureSiteIds =>
         (string[])RunActionTreasureSites.Clone();
+    public static string[] RunActionShovelSiteIds =>
+        (string[])RunActionShovelSites.Clone();
     public static string[] ControlledRunActionSiteIds =>
         (string[])RunActionSessionSites.Clone();
     public static string[] ControlledEventChoiceSiteIds =>
@@ -206,6 +218,9 @@ public static class StochasticSiteRegistryV111
 
     public static bool IsRunActionTreasureSite(string siteId) =>
         RunActionTreasureSiteSet.Contains(siteId);
+
+    public static bool IsRunActionShovelSite(string siteId) =>
+        RunActionShovelSiteSet.Contains(siteId);
 
     public static bool IsControlledEventChoiceSite(string siteId) =>
         ControlledEventChoiceSiteSet.Contains(siteId);

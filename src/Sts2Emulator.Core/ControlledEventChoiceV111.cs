@@ -746,11 +746,15 @@ internal sealed class ControlledEventChoiceReplayV111 : IDisposable
     public static bool IsRunActionTreasureSite(string siteId) =>
         StochasticSiteRegistryV111.IsRunActionTreasureSite(siteId);
 
+    public static bool IsRunActionShovelSite(string siteId) =>
+        StochasticSiteRegistryV111.IsRunActionShovelSite(siteId);
+
     public static bool IsControlledReplaySite(string siteId) =>
         IsEventChoiceSite(siteId) || IsRunActionSite(siteId)
         || IsRunActionEventEntrySite(siteId)
         || IsRunActionShopSite(siteId)
-        || IsRunActionTreasureSite(siteId);
+        || IsRunActionTreasureSite(siteId)
+        || IsRunActionShovelSite(siteId);
 }
 
 internal sealed class ControlledEventChoiceRandomIndexProviderV111
