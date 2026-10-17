@@ -238,59 +238,30 @@ public sealed partial class PrototypeGameEngine
             !ValidateControlledDrawCost(state.Player, combat, cost))
             throw new InvalidDataException(
                 "Saved drawn-card cost does not match the hand-draw checkpoint.");
-        int bound = cost.Stage == "relic"
-            ? cost.RelicMaxExclusive : 4;
-        if (value < 0 || value >= bound)
-            throw new ArgumentOutOfRangeException(nameof(value));
+        var progress = ResolveDrawCostAndDispatchCardDrawn(
+            state, cost, value, allowHookSuspension: false);
+        if (progress.CostStagePending)
+            return progress.Run;
 
-        combat = SetCardTemporaryEnergyCost(
-            combat, cost.CardInstanceId,
-            new PrototypeTemporaryCardCost(
-                value, PrototypeTemporaryCardCostExpiry.None));
-        if (cost.Stage == "relic" && cost.HasSlither)
-        {
-            return state with
-            {
-                World = world with
-                {
-                    Combat = combat with
-                    {
-                        PendingChoice = pending with
-                        {
-                            ControlledDrawCost = cost with
-                            {
-                                Stage = "slither"
-                            }
-                        }
-                    }
-                }
-            };
-        }
-
-        combat = combat with { PendingChoice = null };
-        var card = RequireCombatCard(combat, cost.CardInstanceId);
-        var dispatched = DispatchCombatEvent(
-            state.Player, combat,
-            new PrototypeCombatEvent(
-                PrototypeCombatEventKind.CardDrawn,
-                SourceCardInstanceId: cost.CardInstanceId,
-                CardId: card.CardId,
-                FromHandDraw: cost.FromHandDraw),
-            state.Rng, cost.EventDepth);
-        var player = dispatched.Player;
-        combat = dispatched.Combat;
+        var resumedRun = progress.Run;
+        var resumedWorld = RequireWorld(resumedRun);
+        var resumedCombat = resumedWorld.Combat ??
+            throw new InvalidDataException(
+                "Draw-cost resume removed combat.");
         // Nested choice/relic chains need their own explicit continuation.
         // Do not allow an unsupported event suspension to be overwritten.
-        if (combat.PendingChoice is not null ||
-            combat.PendingKnowledgeDemonChoice is not null)
+        if (progress.DrawnHookSuspended ||
+            resumedCombat.PendingChoice is not null ||
+            resumedCombat.PendingKnowledgeDemonChoice is not null)
             throw new NotSupportedException(
                 "UNSUPPORTED_CONTROLLED_CHANCE site=combat.draw_cost." +
                 "drawn_event operation=nested_choice");
 
-        var drawn = DrawCards(player, combat, cost.RemainingCount,
-            state.Rng, fromHandDraw: true, eventDepth: cost.EventDepth,
+        var drawn = DrawCards(
+            resumedRun.Player, resumedCombat, cost.RemainingCount,
+            resumedRun.Rng, fromHandDraw: true, eventDepth: cost.EventDepth,
             controlledRecycleSuspension: true,
             controlledDrawCostSuspension: true);
-        return ContinueControlledHandDraw(state, drawn);
+        return ContinueControlledHandDraw(resumedRun, drawn);
     }
 }
