@@ -336,6 +336,15 @@ public static class NativeEventContextRngV111
             providerMode == "scripted-v111" &&
             scriptedFragrantMushroomShuffleIsExpected)
             return;
+        var scriptedReflectionsChoiceIsExpected =
+            NativeRngV111.ToSnapshot(stream) ==
+                NativeRngV111.ToSnapshot(initial) &&
+            PrototypeGameEngine.IsValidScriptedEventShuffleState(
+                eventState);
+        if (prototypeEventId == PrototypeNativeGloryEvents.ReflectionsId &&
+            providerMode == "scripted-v111" &&
+            scriptedReflectionsChoiceIsExpected)
+            return;
         var scriptedTinkerShuffleIsExpected =
             NativeRngV111.ToSnapshot(stream) ==
                 NativeRngV111.ToSnapshot(initial) &&

@@ -55,9 +55,18 @@ publishes `.state` after the full shuffle replays. It supports `fork()`, `save_s
 `release()`. See the
 [native event shuffle contract](../../docs/REFERENCE_NATURE_NATIVE_EVENT_SHUFFLE_D3.md).
 
-`Session.stochastic_session_coverage` reports the site IDs accepted by the
-semantic, run-action, event-choice and native event-shuffle ReferenceNature
-session schemas.
+Reflections' `touch_mirror` action has an atomic continuation through
+`State.begin_reference_nature_glory_reflections(nature_seed=None)`. It samples
+the downgrade and upgrade card identities in source order, rebuilding the
+eligible deck after each pick, and publishes `.state` after the ordinary event
+action completes. The session supports `status()`, `resolve_next()`, `fork()`,
+`save_snapshot()`, `release()`, and
+`Session.load_reference_nature_glory_reflections_snapshot()`. Its two card-pick
+site IDs are advertised under the `glory_reflections` session kind. Laws remain
+`UNVERIFIED`; see the [Native event-context contract](../../docs/NATIVE_EVENT_CONTEXT_STOCHASTIC_CONTRACT.md).
+
+`Session.stochastic_session_coverage` reports the site IDs admitted by the
+advertised ReferenceNature session schemas.
 `Session.supports_reference_nature_site(site_id, session="any")` checks that
 versioned capability report before a client starts a continuation. A pending
 semantic peek or scry can be resolved by physical card identity with

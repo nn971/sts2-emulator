@@ -405,6 +405,34 @@ class State:
         return ReferenceNatureNativeEventShuffleSession.from_wire(
             self.session, result["result"])
 
+    def begin_reference_nature_glory_reflections(
+            self, nature_seed: int | None = None):
+        """Begin atomic Nature replay of Reflections' touch_mirror picks."""
+        if self.session.capabilities.get(
+                "referenceNatureGloryReflectionsSessionSchemaId") != (
+                "sts2-v111-reference-nature-glory-reflections-session-v1"):
+            raise EmulatorError(
+                "Emulator does not expose ReferenceNature Glory Reflections sessions")
+        sites = (
+            "event.glory_reflections.downgrade_card.index_draw",
+            "event.glory_reflections.upgrade_card.index_draw")
+        if not all(self.session.supports_reference_nature_site(
+                site_id, session="glory_reflections") for site_id in sites):
+            raise EmulatorError(
+                "No ReferenceNature Glory Reflections session coverage is advertised")
+        if (nature_seed is not None and
+                (not isinstance(nature_seed, int) or
+                 isinstance(nature_seed, bool) or nature_seed < 0 or
+                 nature_seed > 0xFFFFFFFFFFFFFFFF)):
+            raise ValueError("nature_seed must be an unsigned 64-bit integer")
+        payload = {"state_handle": self.handle}
+        if nature_seed is not None:
+            payload["nature_seed"] = nature_seed
+        result = self.session.call(
+            "reference_nature_glory_reflections_begin", **payload)
+        return ReferenceNatureGloryReflectionsSession.from_wire(
+            self.session, result["result"])
+
     def begin_reference_nature_merchant(self, action_id: str,
                                         nature_seed: int | None = None):
         """Begin atomic ReferenceNature generation for a configured Shop node."""
@@ -1159,6 +1187,86 @@ class ReferenceNatureNativeEventShuffleSession:
 
 
 @dataclass(frozen=True)
+class ReferenceNatureGloryReflectionsSession:
+    """Atomic Reflections card picks and ReferenceNature sampler cursor."""
+    session: "Session"
+    handle: str
+    fingerprint: str
+    state_handle: str | None
+    event_id: str | None
+    site_id: str | None
+    choice_id: str
+    page: int | None
+    run_phase: str
+    boundary: str
+    next_ordinal: int
+    pending: dict | None
+    selected_choice_id: str | None
+    next_page: int | None
+    event_random_provider: str | None
+    decision_transcript: list
+    nature_sample_count: int
+
+    @classmethod
+    def from_wire(cls, session, payload):
+        if payload.get("schemaId") != (
+                "sts2-v111-reference-nature-glory-reflections-session-v1"):
+            raise EmulatorError(
+                "Unsupported ReferenceNature Glory Reflections session schema")
+        return cls(
+            session, payload["referenceNatureGloryReflectionsHandle"],
+            payload["fingerprint"], payload.get("stateHandle"),
+            payload.get("eventId"), payload.get("siteId"),
+            payload["choiceId"], payload.get("page"), payload["runPhase"],
+            payload["boundary"], payload["nextOrdinal"],
+            payload.get("pending"), payload.get("selectedChoiceId"),
+            payload.get("nextPage"), payload.get("eventRandomProvider"),
+            payload["decisionTranscript"], payload["natureSampleCount"])
+
+    @property
+    def complete(self):
+        return self.boundary == "committed"
+
+    @property
+    def state(self):
+        if self.state_handle is None:
+            raise EmulatorError("Glory Reflections has not committed")
+        return State(self.session, self.state_handle)
+
+    def status(self):
+        result = self.session.call(
+            "reference_nature_glory_reflections_status",
+            reference_nature_glory_reflections_handle=self.handle)
+        return ReferenceNatureGloryReflectionsSession.from_wire(
+            self.session, result["result"])
+
+    def resolve_next(self):
+        """Sample one conditional card identity; commit after touch_mirror."""
+        result = self.session.call(
+            "reference_nature_glory_reflections_resolve_next",
+            reference_nature_glory_reflections_handle=self.handle,
+            fingerprint=self.fingerprint)
+        return ReferenceNatureGloryReflectionsSession.from_wire(
+            self.session, result["result"])
+
+    def fork(self):
+        result = self.session.call(
+            "reference_nature_glory_reflections_fork",
+            reference_nature_glory_reflections_handle=self.handle)
+        return ReferenceNatureGloryReflectionsSession.from_wire(
+            self.session, result["result"])
+
+    def save_snapshot(self):
+        return self.session.call(
+            "reference_nature_glory_reflections_save",
+            reference_nature_glory_reflections_handle=self.handle)["snapshot"]
+
+    def release(self):
+        return self.session.release_reference_nature_glory_reflections_many(
+            [self])
+
+
+@dataclass(frozen=True)
 class ReferenceNatureMerchantSession:
     """Atomic native Shop entry, mixed Chance Law replay and Nature cursor."""
     session: "Session"
@@ -1866,12 +1974,13 @@ class Session:
             "tablet_of_truth": "referenceNatureTabletOfTruthSiteIds",
             "trial": "referenceNatureTrialSiteIds",
             "event_shuffle": "referenceNatureNativeEventShuffleSiteIds",
+            "glory_reflections": "referenceNatureGloryReflectionsSiteIds",
             "merchant": "referenceNatureMerchantSiteIds",
             "treasure": "referenceNatureTreasureSiteIds",
         }
         if session != "any" and session not in fields:
             raise ValueError(
-                "session must be semantic, run_action, event_choice, ancient_offer, neow_offer, trash_heap, tablet_of_truth, trial, event_shuffle, merchant, treasure, or any")
+                "session must be semantic, run_action, event_choice, ancient_offer, neow_offer, trash_heap, tablet_of_truth, trial, event_shuffle, glory_reflections, merchant, treasure, or any")
         coverage = self.stochastic_session_coverage
         if not isinstance(coverage, dict) or coverage.get("schemaId") != (
                 "sts2-v111-stochastic-session-coverage-v1"):
@@ -2314,6 +2423,28 @@ class Session:
         return self.call(
             "reference_nature_native_event_shuffle_release_many",
             reference_nature_native_event_shuffle_handles=[
+                item.handle for item in sessions])["released"]
+
+    def load_reference_nature_glory_reflections_snapshot(
+            self, snapshot: str):
+        if self.capabilities.get(
+                "referenceNatureGloryReflectionsSessionSchemaId") != (
+                "sts2-v111-reference-nature-glory-reflections-session-v1"):
+            raise EmulatorError(
+                "Emulator does not expose ReferenceNature Glory Reflections sessions")
+        result = self.call(
+            "reference_nature_glory_reflections_load", snapshot=snapshot)
+        return ReferenceNatureGloryReflectionsSession.from_wire(
+            self, result["result"])
+
+    def release_reference_nature_glory_reflections_many(self, sessions):
+        sessions = list(sessions)
+        if any(item.session is not self for item in sessions):
+            raise ValueError(
+                "ReferenceNature Glory Reflections handle belongs to another session")
+        return self.call(
+            "reference_nature_glory_reflections_release_many",
+            reference_nature_glory_reflections_handles=[
                 item.handle for item in sessions])["released"]
 
     def load_reference_nature_merchant_snapshot(self, snapshot: str):

@@ -19,6 +19,12 @@ public sealed partial class PrototypeGameEngine
 
     internal static bool IsValidScriptedEventShuffleState(EventState evt)
     {
+        if (evt.EventId == PrototypeNativeGloryEvents.ReflectionsId)
+            return evt.NativePageIndex ==
+                    PrototypeNativeEventCompletionPages
+                        .TerminalChoicePageIndex(evt.EventId) &&
+                evt.ChosenChoiceId == "touch_mirror" &&
+                evt.OfferedChoiceIds is null;
         if (evt.EventId ==
             PrototypeNativeGloryEvents.HungryForMushroomsId)
             return evt.NativePageIndex ==

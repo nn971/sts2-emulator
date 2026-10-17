@@ -4,8 +4,8 @@ This contract describes the event-local RNG lifecycle shared by migration
 rows whose owner names `context.event.*` and that link this document. The
 migration matrix remains the site index and retains each row's exact owner,
 ordered support, occurrence, and source-audit status. A small number of rows,
-including Hungry for Mushrooms, Tinker Time, the Doors Light shuffle, Tablet
-of Truth, Trial, and Trash Heap rewards, have narrower source and/or
+including Hungry for Mushrooms, Tinker Time, the Doors Light shuffle,
+Reflections, Tablet of Truth, Trial, and Trash Heap rewards, have narrower source and/or
 ReferenceNature contracts linked from their own rows.
 
 ## Provider and private state
@@ -41,18 +41,21 @@ cursor. The event's persisted stream snapshot and committed stochastic
 values belong to the privileged state; they are not Nature observations.
 There is no family-wide Nature-view Chance Law or atomic ReferenceNature
 session for the rows linked here. Site-specific sessions for Hungry for
-Mushrooms, Tinker Time, the Doors Light shuffle, Tablet of Truth, Trial, and
-Trash Heap rewards remain limited to the exact event boundaries documented in
-their contracts. Existing
-controlled event-choice and Ancient-offer sessions do not implicitly cover an
-event merely because it uses this RNG helper.
+Mushrooms, Tinker Time, the Doors Light shuffle, Reflections, Tablet of Truth,
+Trial, and Trash Heap rewards remain limited to the exact event boundaries
+documented in their contracts. Existing controlled event-choice and
+Ancient-offer sessions do not implicitly cover an event merely because it
+uses this RNG helper.
 
 Reflections exposes read-only conditional laws for its downgrade and upgrade
 card-pick sites. The query rebuilds the projected deck and remaining ordered
 physical-card support from the complete prior index prefix, including the
-eligibility changes caused by prior downgrades. These queries do not provide
-an atomic Nature continuation; the `touch_mirror` action remains outside a
-ReferenceNature session.
+eligibility changes caused by prior downgrades. The atomic
+`ReferenceNatureGloryReflectionsSessionV111` uses these laws as an ordered
+prefix, then replays the ordinary `touch_mirror` action once all picks are
+resolved and commits its mechanic result with the Nature cursor. The Native
+event cursor remains at entry under scripted replay. The session is limited to
+the pending configured action when at least one card-pick draw exists.
 
 The resolver is the event-specific page-generation or choice-effect method.
 It applies the selected primitive result synchronously, commits the resulting

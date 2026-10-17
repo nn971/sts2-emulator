@@ -95,6 +95,12 @@ internal static class PrototypeAiJsonlServer
         var referenceNatureNativeEventShuffleRunStateHandles =
             new Dictionary<string, string>(StringComparer.Ordinal);
         long nextReferenceNatureNativeEventShuffleHandle = 1;
+        var referenceNatureGloryReflectionsStates =
+            new Dictionary<string, ReferenceNatureGloryReflectionsSessionV111>(
+                StringComparer.Ordinal);
+        var referenceNatureGloryReflectionsRunStateHandles =
+            new Dictionary<string, string>(StringComparer.Ordinal);
+        long nextReferenceNatureGloryReflectionsHandle = 1;
         var referenceNatureMerchantStates =
             new Dictionary<string, ReferenceNatureMerchantSessionV111>(
                 StringComparer.Ordinal);
@@ -327,6 +333,30 @@ internal static class PrototypeAiJsonlServer
                 ? session
                 : throw new InvalidOperationException(
                     "Unknown ReferenceNature native event shuffle session handle: " +
+                    handle);
+        }
+
+        string StoreReferenceNatureGloryReflections(
+            ReferenceNatureGloryReflectionsSessionV111 session)
+        {
+            var handle = "gr" + nextReferenceNatureGloryReflectionsHandle++;
+            referenceNatureGloryReflectionsStates.Add(handle, session.Fork());
+            if (session.Complete)
+                referenceNatureGloryReflectionsRunStateHandles.Add(handle,
+                    Store(session.Run.Fork()));
+            return handle;
+        }
+
+        ReferenceNatureGloryReflectionsSessionV111
+            RequireReferenceNatureGloryReflections(JsonElement request)
+        {
+            var handle = RequiredString(request,
+                "reference_nature_glory_reflections_handle");
+            return referenceNatureGloryReflectionsStates.TryGetValue(handle,
+                    out var session)
+                ? session
+                : throw new InvalidOperationException(
+                    "Unknown ReferenceNature Glory Reflections session handle: " +
                     handle);
         }
 
@@ -795,6 +825,53 @@ internal static class PrototypeAiJsonlServer
                 pending = law is null ? null : new
                 {
                     kind = "native_event_shuffle_swap_random_choice",
+                    boundaryFingerprint = law.EventId,
+                    chanceLaw = law,
+                    probabilityStatus = law.ProbabilityStatus
+                },
+                selectedChoiceId = eventState?.ChosenChoiceId,
+                nextPage = eventState?.NativePageIndex,
+                eventRandomProvider = eventState?.NativeEventRngProviderMode ??
+                    (eventState is null ? null : "native-v111"),
+                decisionTranscript = session.DecisionTranscript,
+                natureProvider = ReferenceNatureV111.ProviderId,
+                natureSampleCount = session.NatureState.SampleCount,
+                probabilityStatus = ChanceLawV111.UnverifiedStatus
+            };
+        }
+
+        object ReferenceNatureGloryReflectionsResult(
+            ReferenceNatureGloryReflectionsSessionV111 session,
+            string handle, string? parent = null)
+        {
+            var law = session.PendingLaw;
+            var eventState = session.Run.World?.Event;
+            return new
+            {
+                ok = true,
+                schemaId =
+                    ReferenceNatureGloryReflectionsSessionV111.CurrentSchemaId,
+                referenceNatureGloryReflectionsHandle = handle,
+                stateHandle = referenceNatureGloryReflectionsRunStateHandles
+                    .GetValueOrDefault(handle),
+                parent,
+                fingerprint = session.Fingerprint,
+                runFingerprint = CanonicalJson.Sha256(session.Run),
+                siteId = law?.SiteId ?? session.LastSiteId,
+                eventId = law?.EventId ??
+                    session.DecisionTranscript.LastOrDefault()?.EventId,
+                choiceId = "touch_mirror",
+                page = session.Origin.World?.Event?.NativePageIndex,
+                runPhase = session.Run.Phase.ToString(),
+                boundary = session.Complete ? "committed" : "nature",
+                nextOrdinal = session.DecisionTranscript.Length,
+                pending = law is null ? null : new
+                {
+                    kind = "native_event_card_pick_random_choice",
+                    eventId = law.EventId,
+                    siteId = law.SiteId,
+                    operationKind = law.OperationKind,
+                    supportFingerprint = law.SupportFingerprint,
                     boundaryFingerprint = law.EventId,
                     chanceLaw = law,
                     probabilityStatus = law.ProbabilityStatus
@@ -1366,6 +1443,10 @@ internal static class PrototypeAiJsonlServer
                     .TryGetValue(handle, out var nativeEventShuffleSession) =>
                     ReferenceNatureNativeEventShuffleResult(
                         nativeEventShuffleSession, handle),
+                "glory_reflections" when referenceNatureGloryReflectionsStates
+                    .TryGetValue(handle, out var gloryReflectionsSession) =>
+                    ReferenceNatureGloryReflectionsResult(
+                        gloryReflectionsSession, handle),
                 "merchant" when referenceNatureMerchantStates.TryGetValue(
                     handle, out var merchantSession) =>
                     ReferenceNatureMerchantResult(merchantSession, handle),
@@ -1381,7 +1462,8 @@ internal static class PrototypeAiJsonlServer
                 "semantic_combat" or "reference_combat" or "run_action" or
                     "event_choice" or "ancient_offer" or "merchant" or
                     "neow_offer" or "trash_heap" or "tablet_of_truth" or
-                    "trial" or "event_shuffle" or "treasure" or "controlled_event_choice" or
+                    "trial" or "event_shuffle" or "glory_reflections" or
+                    "treasure" or "controlled_event_choice" or
                     "controlled_run_action" => throw new InvalidOperationException(
                         "Unknown Nature session handle for kind " + sessionKind +
                         ": " + handle),
@@ -4054,6 +4136,115 @@ internal static class PrototypeAiJsonlServer
                                     element.GetString()!))
                                 released++;
                             referenceNatureNativeEventShuffleRunStateHandles.Remove(
+                                element.GetString()!);
+                        }
+                        Write(new { requestId, ok = true, released });
+                        break;
+                    }
+
+                    case "reference_nature_glory_reflections_begin":
+                    {
+                        var source = RequireState(request);
+                        var seed = OptionalULong(request, "nature_seed");
+                        var session = seed is { } natureSeed
+                            ? ReferenceNatureGloryReflectionsSessionV111.Begin(
+                                source, natureSeed)
+                            : ReferenceNatureGloryReflectionsSessionV111.Begin(
+                                source);
+                        var handle = StoreReferenceNatureGloryReflections(session);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureGloryReflectionsResult(
+                                session, handle) });
+                        break;
+                    }
+
+                    case "reference_nature_glory_reflections_status":
+                    {
+                        var handle = RequiredString(request,
+                            "reference_nature_glory_reflections_handle");
+                        var session =
+                            RequireReferenceNatureGloryReflections(request);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureGloryReflectionsResult(
+                                session, handle) });
+                        break;
+                    }
+
+                    case "reference_nature_glory_reflections_resolve_next":
+                    {
+                        var parentHandle = RequiredString(request,
+                            "reference_nature_glory_reflections_handle");
+                        var session =
+                            RequireReferenceNatureGloryReflections(request);
+                        if (session.Fingerprint != RequiredString(request,
+                                "fingerprint"))
+                            throw new InvalidOperationException(
+                                "Stale ReferenceNature Glory Reflections fingerprint.");
+                        var next = session.ResolveNext();
+                        var handle = StoreReferenceNatureGloryReflections(next);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureGloryReflectionsResult(
+                                next, handle, parentHandle) });
+                        break;
+                    }
+
+                    case "reference_nature_glory_reflections_fork":
+                    {
+                        var parentHandle = RequiredString(request,
+                            "reference_nature_glory_reflections_handle");
+                        var next = RequireReferenceNatureGloryReflections(request)
+                            .Fork();
+                        var handle = StoreReferenceNatureGloryReflections(next);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureGloryReflectionsResult(
+                                next, handle, parentHandle) });
+                        break;
+                    }
+
+                    case "reference_nature_glory_reflections_save":
+                    {
+                        var session =
+                            RequireReferenceNatureGloryReflections(request);
+                        Write(new { requestId, ok = true,
+                            schemaId =
+                                ReferenceNatureGloryReflectionsSessionV111.CurrentSchemaId,
+                            snapshot =
+                                ReferenceNatureGloryReflectionsSessionV111.Save(
+                                    session) });
+                        break;
+                    }
+
+                    case "reference_nature_glory_reflections_load":
+                    {
+                        var session =
+                            ReferenceNatureGloryReflectionsSessionV111.Restore(
+                                RequiredString(request, "snapshot"));
+                        var handle = StoreReferenceNatureGloryReflections(session);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureGloryReflectionsResult(
+                                session, handle) });
+                        break;
+                    }
+
+                    case "reference_nature_glory_reflections_release_many":
+                    {
+                        if (!request.TryGetProperty(
+                                "reference_nature_glory_reflections_handles",
+                                out var handles) ||
+                            handles.ValueKind != JsonValueKind.Array)
+                            throw new ArgumentException(
+                                "reference_nature_glory_reflections_handles must be an array.");
+                        var released = 0;
+                        foreach (var element in handles.EnumerateArray())
+                        {
+                            if (element.ValueKind != JsonValueKind.String ||
+                                string.IsNullOrWhiteSpace(element.GetString()))
+                                throw new ArgumentException(
+                                    "Invalid ReferenceNature Glory Reflections handle.");
+                            if (referenceNatureGloryReflectionsStates.Remove(
+                                    element.GetString()!))
+                                released++;
+                            referenceNatureGloryReflectionsRunStateHandles.Remove(
                                 element.GetString()!);
                         }
                         Write(new { requestId, ok = true, released });

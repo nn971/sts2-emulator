@@ -34,6 +34,8 @@ public sealed record StochasticCapabilityManifestV111(
         ReferenceNatureTrialSessionV111.CurrentSchemaId;
     public string ReferenceNatureNativeEventShuffleSessionSchemaId { get; init; } =
         ReferenceNatureNativeEventShuffleSessionV111.CurrentSchemaId;
+    public string ReferenceNatureGloryReflectionsSessionSchemaId { get; init; } =
+        ReferenceNatureGloryReflectionsSessionV111.CurrentSchemaId;
     public string ReferenceNatureMerchantSessionSchemaId { get; init; } =
         ReferenceNatureMerchantSessionV111.CurrentSchemaId;
     public string ReferenceNatureTreasureSessionSchemaId { get; init; } =
@@ -47,7 +49,7 @@ public sealed record StochasticCapabilityManifestV111(
         "semantic_combat", "reference_combat", "run_action",
         "event_choice", "ancient_offer", "neow_offer", "trash_heap",
         "tablet_of_truth", "trial", "event_shuffle",
-        "merchant", "treasure",
+        "merchant", "treasure", "glory_reflections",
         "controlled_event_choice", "controlled_run_action"
     ];
 }
@@ -134,6 +136,13 @@ public static class StochasticCapabilitiesV111
             "reference_nature_native_event_shuffle_save",
             "reference_nature_native_event_shuffle_load",
             "reference_nature_native_event_shuffle_release_many",
+            "reference_nature_glory_reflections_begin",
+            "reference_nature_glory_reflections_status",
+            "reference_nature_glory_reflections_resolve_next",
+            "reference_nature_glory_reflections_fork",
+            "reference_nature_glory_reflections_save",
+            "reference_nature_glory_reflections_load",
+            "reference_nature_glory_reflections_release_many",
             "reference_nature_merchant_begin",
             "reference_nature_merchant_status",
             "reference_nature_merchant_resolve_next",
@@ -166,6 +175,8 @@ public static class StochasticCapabilitiesV111
             ReferenceNatureTrialSessionV111.CurrentSchemaId,
         ReferenceNatureNativeEventShuffleSessionSchemaId =
             ReferenceNatureNativeEventShuffleSessionV111.CurrentSchemaId,
+        ReferenceNatureGloryReflectionsSessionSchemaId =
+            ReferenceNatureGloryReflectionsSessionV111.CurrentSchemaId,
         ReferenceNatureMerchantSessionSchemaId =
             ReferenceNatureMerchantSessionV111.CurrentSchemaId,
         ReferenceNatureTreasureSessionSchemaId =
