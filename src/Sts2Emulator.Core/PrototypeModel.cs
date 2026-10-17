@@ -3210,24 +3210,206 @@ public sealed record RunWorldState(
     int CardRarityOffsetBasisPoints =
         PrototypeNativeCardRarityOdds.InitialOffsetBasisPoints,
     bool NativeOvergrowthOpening = false,
-    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     ActIdentity? ActIdentity = null,
     // Native IRunState.ExtraFields.FreedRepy, set by unlocking Repy's cage.
     bool FreedRepy = false,
     PrototypeLaterActEncounterBagV111? LaterActEncounterBag = null,
     PrototypeLaterActEncounterBagV111[]? PreparedLaterActEncounterBags = null,
-    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     long? LastCombatEndDecisionIndex = null,
-    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     PrototypeCustomRewardReturnState? CustomRewardReturn = null)
 {
     /// <summary>
-    /// Authoritative in-memory owner for persistent run-world random orders.
+    /// Atomic mechanics/provider envelope for persistent run-world state.
+    /// Existing snapshot fields remain flattened projections.
     /// </summary>
     [System.Text.Json.Serialization.JsonIgnore]
-    public RunWorldStochasticStateV111 Stochastic { get; init; } =
-        new(ActOneEncounterPool, RelicBag, LaterActEncounterBag,
-            PreparedLaterActEncounterBags);
+    public SimulationStateV111<RunWorldMechanicsStateV111,
+        RunWorldStochasticStateV111> Simulation { get; init; } = new(
+            new RunWorldMechanicsStateV111(
+                RulesetId, CharacterId, Act, Floor, NextCardInstanceId,
+                ActiveRoom, Map, Combat, Reward, Shop, Event, TerminalOutcome,
+                EncounterHistory, EventHistory, ActOneRegion,
+                CompletedRoomHistory, UnknownRoomOdds, ShopRemovalsUsed,
+                PotionRewardOddsThousandths, CardRarityOffsetBasisPoints,
+                NativeOvergrowthOpening, ActIdentity, FreedRepy,
+                LastCombatEndDecisionIndex, CustomRewardReturn),
+            new RunWorldStochasticStateV111(
+                ActOneEncounterPool, RelicBag, LaterActEncounterBag,
+                PreparedLaterActEncounterBags));
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public RunWorldMechanicsStateV111 Mechanics
+    {
+        get => Simulation.Mechanics;
+        init => Simulation = Simulation with { Mechanics = value };
+    }
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public RunWorldStochasticStateV111 Stochastic
+    {
+        get => Simulation.Stochastic;
+        init => Simulation = Simulation with { Stochastic = value };
+    }
+
+    public string RulesetId
+    {
+        get => Mechanics.RulesetId;
+        init => Mechanics = Mechanics with { RulesetId = value };
+    }
+
+    public string CharacterId
+    {
+        get => Mechanics.CharacterId;
+        init => Mechanics = Mechanics with { CharacterId = value };
+    }
+
+    public int Act
+    {
+        get => Mechanics.Act;
+        init => Mechanics = Mechanics with { Act = value };
+    }
+
+    public int Floor
+    {
+        get => Mechanics.Floor;
+        init => Mechanics = Mechanics with { Floor = value };
+    }
+
+    public long NextCardInstanceId
+    {
+        get => Mechanics.NextCardInstanceId;
+        init => Mechanics = Mechanics with { NextCardInstanceId = value };
+    }
+
+    public PrototypeRoomType? ActiveRoom
+    {
+        get => Mechanics.ActiveRoom;
+        init => Mechanics = Mechanics with { ActiveRoom = value };
+    }
+
+    public MapState Map
+    {
+        get => Mechanics.Map;
+        init => Mechanics = Mechanics with { Map = value };
+    }
+
+    public CombatState? Combat
+    {
+        get => Mechanics.Combat;
+        init => Mechanics = Mechanics with { Combat = value };
+    }
+
+    public RewardState? Reward
+    {
+        get => Mechanics.Reward;
+        init => Mechanics = Mechanics with { Reward = value };
+    }
+
+    public ShopState? Shop
+    {
+        get => Mechanics.Shop;
+        init => Mechanics = Mechanics with { Shop = value };
+    }
+
+    public EventState? Event
+    {
+        get => Mechanics.Event;
+        init => Mechanics = Mechanics with { Event = value };
+    }
+
+    public string? TerminalOutcome
+    {
+        get => Mechanics.TerminalOutcome;
+        init => Mechanics = Mechanics with { TerminalOutcome = value };
+    }
+
+    public string[]? EncounterHistory
+    {
+        get => Mechanics.EncounterHistory;
+        init => Mechanics = Mechanics with { EncounterHistory = value };
+    }
+
+    public string[]? EventHistory
+    {
+        get => Mechanics.EventHistory;
+        init => Mechanics = Mechanics with { EventHistory = value };
+    }
+
+    public PrototypeActOneRegion? ActOneRegion
+    {
+        get => Mechanics.ActOneRegion;
+        init => Mechanics = Mechanics with { ActOneRegion = value };
+    }
+
+    public PrototypeCompletedRoomRecord[]? CompletedRoomHistory
+    {
+        get => Mechanics.CompletedRoomHistory;
+        init => Mechanics = Mechanics with { CompletedRoomHistory = value };
+    }
+
+    public PrototypeUnknownRoomOddsState? UnknownRoomOdds
+    {
+        get => Mechanics.UnknownRoomOdds;
+        init => Mechanics = Mechanics with { UnknownRoomOdds = value };
+    }
+
+    public int ShopRemovalsUsed
+    {
+        get => Mechanics.ShopRemovalsUsed;
+        init => Mechanics = Mechanics with { ShopRemovalsUsed = value };
+    }
+
+    public int PotionRewardOddsThousandths
+    {
+        get => Mechanics.PotionRewardOddsThousandths;
+        init => Mechanics = Mechanics with
+        { PotionRewardOddsThousandths = value };
+    }
+
+    public int CardRarityOffsetBasisPoints
+    {
+        get => Mechanics.CardRarityOffsetBasisPoints;
+        init => Mechanics = Mechanics with
+        { CardRarityOffsetBasisPoints = value };
+    }
+
+    public bool NativeOvergrowthOpening
+    {
+        get => Mechanics.NativeOvergrowthOpening;
+        init => Mechanics = Mechanics with
+        { NativeOvergrowthOpening = value };
+    }
+
+    [System.Text.Json.Serialization.JsonIgnore(Condition =
+        System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public ActIdentity? ActIdentity
+    {
+        get => Mechanics.ActIdentity;
+        init => Mechanics = Mechanics with { ActIdentity = value };
+    }
+
+    public bool FreedRepy
+    {
+        get => Mechanics.FreedRepy;
+        init => Mechanics = Mechanics with { FreedRepy = value };
+    }
+
+    [System.Text.Json.Serialization.JsonIgnore(Condition =
+        System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public long? LastCombatEndDecisionIndex
+    {
+        get => Mechanics.LastCombatEndDecisionIndex;
+        init => Mechanics = Mechanics with
+        { LastCombatEndDecisionIndex = value };
+    }
+
+    [System.Text.Json.Serialization.JsonIgnore(Condition =
+        System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public PrototypeCustomRewardReturnState? CustomRewardReturn
+    {
+        get => Mechanics.CustomRewardReturn;
+        init => Mechanics = Mechanics with { CustomRewardReturn = value };
+    }
 
     public PrototypeActOneEncounterPoolState? ActOneEncounterPool
     {
