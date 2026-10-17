@@ -304,6 +304,10 @@ public static class NativeGloryAncientsV111
                     or PrototypeRoomType.Elite)
             .ToArray();
         NativeRngSnapshot? snapshot = null;
+        var controlledEventReplay =
+            ControlledEventChoiceReplayV111.IsActive
+            && ControlledEventChoiceReplayV111.IsEventChoiceSite(
+                FurCoatShuffleSiteId);
         if (nativeRng)
         {
             var stream = NativeRngV111Contexts.ForPlayerContent(
@@ -312,8 +316,10 @@ public static class NativeGloryAncientsV111
             _ = NativeFisherYatesV111.ShuffleInPlace(
                 candidates, bundle, new NativeRandomIndexProviderV111(),
                 stream.StreamId, $"relic:fur_coat:act:{act}",
-                FurCoatShuffleSiteId);
-            snapshot = NativeRngV111.ToSnapshot(bundle.Streams[0]);
+                FurCoatShuffleSiteId,
+                controlledCandidateLabel: node => node.NodeId);
+            if (!controlledEventReplay)
+                snapshot = NativeRngV111.ToSnapshot(bundle.Streams[0]);
         }
         else
         {
@@ -322,7 +328,8 @@ public static class NativeGloryAncientsV111
                 prototypeRng,
                 "event",
                 FurCoatShuffleSiteId,
-                $"relic:fur_coat:act:{act}");
+                $"relic:fur_coat:act:{act}",
+                controlledCandidateLabel: node => node.NodeId);
         }
 
         var selected = candidates.Take(Math.Min(8, candidates.Length))

@@ -63,6 +63,9 @@ The supported event-choice sites are:
 - `run.relic.distinguished_cape.modifier_curse.index_draw` for an
   event-gained Distinguished Cape's two ordered, without-replacement curse
   picks; each request carries the remaining curse IDs
+- `run.relic.fur_coat.map_node_shuffle.swap_index` for an event-gained Fur
+  Coat's conditional shuffle over current-act Combat and Elite node IDs; each
+  swap carries the current ordered node-ID labels
 - `relic.sand_castle.acquisition_upgrade.shuffle_swap_index` for the
   event-gained Sand Castle's conditional shuffle over eligible physical deck
   cards; each swap carries the current ordered instance-ID labels

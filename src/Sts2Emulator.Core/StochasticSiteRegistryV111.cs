@@ -230,6 +230,7 @@ public static class StochasticSiteRegistryV111
         "event.fake_merchant.relic_offer.shuffle_swap_index",
         NativeGloryAncientsV111.BeautifulBraceletShuffleSiteId,
         NativeGloryAncientsV111.DistinguishedCapeCurseSiteId,
+        NativeGloryAncientsV111.FurCoatShuffleSiteId,
         "relic.sand_castle.acquisition_upgrade.shuffle_swap_index",
         "potion.uncommon_model.index_draw",
         "relic.acquisition.random_rare_card.model",
