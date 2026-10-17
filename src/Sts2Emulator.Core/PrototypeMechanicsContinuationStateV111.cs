@@ -47,6 +47,7 @@ public enum PrototypeMechanicsContinuationKindV111
     SemanticCombatDraw,
     SemanticPilot,
     ControlledPlayableCombat,
+    ControlledEnemyAction,
     ControlledRunAction,
     ControlledEventChoice,
     ControlledEventRewardChoice

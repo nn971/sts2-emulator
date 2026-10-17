@@ -14,12 +14,42 @@ public sealed record PrototypeControlledEnemyActionContinuationV111(
     RandomIndexRequestV111 PendingRequest)
 {
     /// <summary>
+    /// Atomic mechanics/provider envelope for the suspended enemy action.
+    /// Existing checkpoint and chance properties remain flattened snapshot
+    /// projections; the pipeline index remains boundary-owned.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public SimulationStateV111<PrototypeMechanicsContinuationStateV111,
+        ControlledChanceContinuationStateV111> Simulation { get; init; } = new(
+            new PrototypeMechanicsContinuationStateV111(
+                PrototypeMechanicsContinuationKindV111.ControlledEnemyAction,
+                null, Checkpoint),
+            new ControlledChanceContinuationStateV111(
+                Decisions, PendingRequest));
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public PrototypeMechanicsContinuationStateV111 Mechanics
+    {
+        get => Simulation.Mechanics;
+        init => Simulation = Simulation with { Mechanics = value };
+    }
+
+    /// <summary>
     /// Shared provider payload; the legacy continuation fields below remain
     /// its flattened snapshot projection.
     /// </summary>
     [System.Text.Json.Serialization.JsonIgnore]
-    public ControlledChanceContinuationStateV111 Chance { get; init; } =
-        new(Decisions, PendingRequest);
+    public ControlledChanceContinuationStateV111 Chance
+    {
+        get => Simulation.Stochastic;
+        init => Simulation = Simulation with { Stochastic = value };
+    }
+
+    public RunState Checkpoint
+    {
+        get => Mechanics.Current;
+        init => Mechanics = Mechanics with { Current = value };
+    }
 
     public RandomIndexDecisionV111[] Decisions
     {
@@ -41,6 +71,8 @@ public sealed record PrototypeControlledEnemyActionContinuationV111(
 
     public void Validate(int pipelineLength)
     {
+        Mechanics.Validate(
+            PrototypeMechanicsContinuationKindV111.ControlledEnemyAction);
         if (Checkpoint is null || Decisions is null || PendingRequest is null ||
             StepIndex < 0 || StepIndex >= pipelineLength ||
             PrototypeContent.Rules.EndTurnPipeline[StepIndex].Kind !=
