@@ -29,7 +29,7 @@ integer weights; probability provenance stays `UNVERIFIED`.
 
 | Operation | Inputs | Result |
 | --- | --- | --- |
-| `chance_law_query` for an Ancient-offer site | current `state_handle`, `site_id`, `ordinal`; shuffle sites also need `prior_indices` for every earlier swap | Direct offer law, Darv variant law, or one conditioned Fisher–Yates swap law |
+| `chance_law_query` for an Ancient-offer site | current `state_handle`, `site_id`, `ordinal`; shuffle sites also need `prior_indices` for every earlier swap; Darv shuffle queries may include `prior_variant_index` | Direct offer law, Darv variant law, or one conditioned Fisher–Yates swap law |
 | `reference_nature_ancient_offer_begin` | current `state_handle`, supported session-root `site_id`, optional `nature_seed` | Session before its first offer decision |
 | `reference_nature_ancient_offer_status` | session handle | Current ordinal and pending Chance Law, or committed offers |
 | `reference_nature_ancient_offer_resolve_next` | handle and current session `fingerprint` | Child after one sampled decision; commits after all draws in the selected generator |
@@ -42,8 +42,9 @@ session roots remain available. Darv's combined session begins at the offer
 variant site; its relic-shuffle site is queryable directly but is not a session
 root. Direct variant queries accept only ordinal 0. For any standalone shuffle
 query, ordinal 0 uses an empty `prior_indices` array and later queries supply
-every previous `swap_index` in ordinal order. Within the Darv session, the
-pending shuffle laws also bind the sampled variant. `nature_seed` is required
+every previous `swap_index` in ordinal order. A standalone Darv shuffle query
+may also supply `prior_variant_index` (`0` for Dusty Tome/two relics or `1`
+for three relics); the session binds this value automatically. `nature_seed` is required
 for the first ReferenceNature session on a run; after a session commits its
 cursor into the run state, later sessions omit the seed. An incomplete session
 has no ordinary `stateHandle`, and its cursor is not published to the source
@@ -63,7 +64,8 @@ player-facing observation schema.
 returns a session for any supported session root, including Darv's offer
 variant root. `State.query_chance_law(site_id, ordinal=..., prior_indices=...)`
 supports the registered direct-query sites, including Darv's variant and
-relic-shuffle sites. A session supports `status()`, `resolve_next()`, `fork()`,
+relic-shuffle sites; pass `prior_variant_index` when querying a Darv swap after
+the variant decision. A session supports `status()`, `resolve_next()`, `fork()`,
 `save_snapshot()`, `release()`, and its ordinary `state` property after all
 source draws complete. Restore with
 `Session.load_reference_nature_ancient_offer_snapshot(snapshot)` and release

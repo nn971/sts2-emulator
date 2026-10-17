@@ -416,19 +416,29 @@ public static partial class ChanceLawEngineV111
     /// </summary>
     public static ChanceLawV111 QueryAncientOffer(
         RunState run, string siteId, int ordinal) =>
-        QueryAncientOffer(run, siteId, ordinal, null);
+        QueryAncientOffer(run, siteId, ordinal, null, null);
 
     public static ChanceLawV111 QueryAncientOffer(
         RunState run, string siteId, int ordinal,
-        int[]? priorIndices)
+        int[]? priorIndices, int? priorVariantIndex = null)
     {
         ArgumentNullException.ThrowIfNull(run);
         ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
         if (siteId == NativeDarvEventV111.OfferVariantSiteId)
+        {
+            if (priorVariantIndex is not null)
+                throw new ArgumentException(
+                    "prior_variant_index applies only to Darv relic-shuffle queries.",
+                    nameof(priorVariantIndex));
             return QueryDarvOfferVariant(run, ordinal, priorIndices);
+        }
         if (siteId == NativeDarvEventV111.RelicShuffleSiteId)
             return QueryDarvRelicShuffle(
-                run, ordinal, priorIndices, priorVariantIndex: null);
+                run, ordinal, priorIndices, priorVariantIndex);
+        if (priorVariantIndex is not null)
+            throw new ArgumentException(
+                "prior_variant_index applies only to Darv relic-shuffle queries.",
+                nameof(priorVariantIndex));
         if (IsShuffleAncientOfferSite(siteId))
             return QueryAncientOfferShuffle(
                 run, siteId, ordinal, priorIndices);

@@ -2277,6 +2277,12 @@ internal static class PrototypeAiJsonlServer
                             }
                             priorIndices = parsedPriorIndices.ToArray();
                         }
+                        var priorVariantIndex = OptionalInt(
+                            request, "prior_variant_index");
+                        if (priorVariantIndex is not null && siteId !=
+                            NativeDarvEventV111.RelicShuffleSiteId)
+                            throw new ArgumentException(
+                                "prior_variant_index applies only to Darv relic-shuffle queries.");
                         var suppliedOrdinal = OptionalInt(request, "ordinal");
                         if (suppliedOrdinal is null && siteId is not
                                 (PrototypeNativeEndlessConveyor
@@ -2611,7 +2617,8 @@ internal static class PrototypeAiJsonlServer
                                 throw new ArgumentException(
                                     "Ancient offer queries do not accept merchant parameters.");
                             law = ChanceLawEngineV111.QueryAncientOffer(
-                                run, siteId, ordinal, priorIndices);
+                                run, siteId, ordinal, priorIndices,
+                                priorVariantIndex);
                         }
                         else
                         {

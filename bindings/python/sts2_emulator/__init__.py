@@ -39,11 +39,13 @@ class State:
                          colorless_offer=False, sale_reprice=False,
                          owner_id=None, offer_ordinal=None,
                          relic_candidate_ids=None, excluded_relic_ids=None,
-                         action_id=None):
+                         action_id=None, prior_variant_index=None):
         """Read a pre-outcome law; native event queries may need action_id.
 
         Reflections card-pick laws use action_id="touch_mirror" and the
         complete prior index prefix.
+        Darv relic-shuffle laws accept prior_variant_index to bind the earlier
+        offer-variant decision to the query fingerprint.
         """
         if not self.session.supports_chance_law_query(site_id):
             raise EmulatorError(
@@ -109,6 +111,11 @@ class State:
                 raise ValueError(
                     "prior_indices must be a sequence of nonnegative integers")
             payload["prior_indices"] = list(prior_indices)
+        if prior_variant_index is not None:
+            if (type(prior_variant_index) is not int or
+                    prior_variant_index not in (0, 1)):
+                raise ValueError("prior_variant_index must be 0 or 1")
+            payload["prior_variant_index"] = prior_variant_index
         result = self.session.call(
             "chance_law_query", **payload)
         return result["law"]
