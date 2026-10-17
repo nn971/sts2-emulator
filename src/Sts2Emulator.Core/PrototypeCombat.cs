@@ -6279,6 +6279,11 @@ public sealed partial class PrototypeGameEngine
                         ControlledChanceGuardV111.Active &&
                         combat.SemanticDeck is
                             { Mode: SemanticDeckStateV111.NatureMode };
+                    var controlledLegacyRecycleSuspension =
+                        ControlledChanceGuardV111.Active &&
+                        !ControlledChanceGuardV111
+                            .EngineOwnedNativeProviderActive &&
+                        combat.SemanticDeck is null;
                     var drawn = DrawCards(
                         player,
                         combat,
@@ -6286,6 +6291,8 @@ public sealed partial class PrototypeGameEngine
                         rng,
                         fromHandDraw: operation.FromHandDraw,
                         eventDepth: drawEventDepth,
+                        controlledRecycleSuspension:
+                            controlledLegacyRecycleSuspension,
                         controlledDrawCostSuspension:
                             semanticDrawSuspension,
                         controlledSemanticDrawSuspension:
@@ -6296,6 +6303,90 @@ public sealed partial class PrototypeGameEngine
                             semanticDrawSuspension);
                     player = drawn.Player;
                     combat = drawn.Combat;
+                    if (drawn.ControlledRecyclePending)
+                    {
+                        var deferredKeywordIds =
+                            (operation.DeferredDrawnCardInstanceIds ?? [])
+                            .Concat(drawn.DrawnCardInstanceIds)
+                            .Distinct().ToArray();
+                        var resumeDraw = CreateDrawResumeOperation(
+                            drawn.RemainingCount,
+                            operation.FromHandDraw,
+                            drawEventDepth,
+                            operation.DrawnCardKeyword,
+                            deferredKeywordIds,
+                            operation.StandaloneSemanticDrawSegment);
+                        var recycleContinuation =
+                            new PrototypeChoiceResolutionContinuationState(
+                                SourceCardInstanceId: sourceCardInstanceId,
+                                SourceCardDestination: sourceCardDestination,
+                                Operations: new[] { resumeDraw }
+                                    .Concat(operations).ToArray(),
+                                PendingDiscardEvents: [],
+                                PendingSlyCardInstanceIds: [],
+                                CompletionEvents: completionEvents ?? [],
+                                CardPlaySeries: cardPlaySeries,
+                                MoveSourceCardOnCompletion:
+                                    moveSourceCardOnCompletion,
+                                RemoveSourceCardOnCompletion:
+                                    removeSourceCardOnCompletion,
+                                SourceCardAlreadyMoved:
+                                    sourceCardAlreadyMoved,
+                                EventDispatchContinuation:
+                                    eventDispatchContinuation?.Fork());
+                        if (combat.SemanticDeck is not null ||
+                            drawn.RemainingCount <= 0 ||
+                            combat.DrawPile.Length != 0 ||
+                            combat.DiscardPile.Length == 0)
+                            throw new InvalidDataException(
+                                "Legacy effect-draw recycle boundary is inconsistent.");
+
+                        var recycleOperation = new PrototypeQueuedOperation(
+                            PrototypeCombatEffectKind
+                                .RecycleDrawPileForEffectDraw,
+                            0);
+                        if (combat.DiscardPile.Length > 1)
+                        {
+                            if (!TryMakeControlledPoolShuffleChoice(
+                                    combat, recycleOperation,
+                                    sourceCardInstanceId,
+                                    recycleContinuation,
+                                    out var suspended))
+                                throw new NotSupportedException(
+                                    "UNSUPPORTED_CONTROLLED_CHANCE " +
+                                    "site=combat.draw.recycle " +
+                                    "operation=missing_saved_shuffle_continuation");
+                            return (player, suspended);
+                        }
+
+                        var recycled = (long[])combat.DiscardPile.Clone();
+                        var postHook = NativeShuffleStepReplayV111.CheckPostHook(
+                            ApplyPerfectFitShuffleOrder(combat, recycled));
+                        var nextZones = combat.Mechanics.CardZones
+                            .WithZoneChanges(
+                                new Dictionary<PrototypeCardZone, long[]>
+                                {
+                                    [PrototypeCardZone.DrawPile] = postHook,
+                                    [PrototypeCardZone.DiscardPile] = []
+                                });
+                        combat = SemanticDrawPileAdapterV111
+                            .ApplyDrawPileShuffle(
+                                combat, postHook, recycled, nextZones,
+                                committedSemanticDeck: null);
+                        var afterShuffleInsertions =
+                            ControlledAfterShuffleRelicInsertions(combat);
+                        if (afterShuffleInsertions.Length > 0)
+                        {
+                            combat = MakeControlledAfterShuffleInsertionChoice(
+                                combat, afterShuffleInsertions[0],
+                                afterShuffleInsertions.Skip(1).ToArray(), [],
+                                null, recycleContinuation, ordinal: 0);
+                            return (player, combat);
+                        }
+                        var resumed = ResumeChoiceResolutionContinuation(
+                            player, combat, rng, recycleContinuation);
+                        return (resumed.Player, resumed.Combat);
+                    }
                     if (drawn.NestedCardDrawnChoicePending)
                     {
                         var resumeDraw = CreateDrawResumeOperation(

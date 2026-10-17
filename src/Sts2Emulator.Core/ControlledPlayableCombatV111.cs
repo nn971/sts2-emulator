@@ -292,8 +292,10 @@ public sealed record ControlledPlayableCombatV111(
             if (shuffle is null) return null;
             var handReturn = shuffle.Operation.Kind ==
                 PrototypeCombatEffectKind.ReturnHandToDrawAndShuffle;
+            var recycle = shuffle.Operation.Kind ==
+                PrototypeCombatEffectKind.RecycleDrawPileForEffectDraw;
             var sourceCardId = combat!.PendingChoice!.SourceCardInstanceId;
-            var ownerId = handReturn
+            var ownerId = handReturn || recycle
                 ? "effect:" + shuffle.Operation.Kind + ":source:" +
                     (sourceCardId?.ToString() ?? "none") + ":pool:" +
                     CanonicalJson.Sha256(shuffle.OriginalCardIds)
@@ -303,8 +305,10 @@ public sealed record ControlledPlayableCombatV111(
             return new RandomIndexRequestV111(
                 handReturn
                     ? "combat.hand_return.draw_pile.shuffle_swap_index"
-                    : "combat.generation.full_pool_shuffle.swap_index",
-                handReturn
+                    : recycle
+                        ? "combat.draw.recycle.shuffle_swap_index"
+                        : "combat.generation.full_pool_shuffle.swap_index",
+                handReturn || recycle
                     ? combat.NativeRng is not null
                         ? "run.shuffle" : "prototype.combat"
                     : shuffle.Operation.GeneratedChoiceUsesNativeCardGenerationRng &&

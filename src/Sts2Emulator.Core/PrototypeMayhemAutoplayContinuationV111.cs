@@ -71,6 +71,28 @@ public sealed partial class PrototypeGameEngine
         return true;
     }
 
+    internal static bool IsMayhemLegacyRecycleContinuation(
+        CombatState combat, PendingCombatChoiceState pending)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(pending);
+        if (!IsMayhemAutoPrePlayPipelineCursor(combat) ||
+            combat.SemanticDeck is not null ||
+            pending.ChoiceId != "controlled_pool_shuffle" ||
+            pending.ControlledPoolShuffle?.Operation.Kind !=
+                PrototypeCombatEffectKind.RecycleDrawPileForEffectDraw ||
+            pending.OuterChoiceContinuation is not { } continuation ||
+            continuation.Operations.FirstOrDefault() is not
+                { Kind: PrototypeCombatEffectKind.DrawCards, Amount: > 0 })
+            return false;
+
+        for (var frame = continuation;
+             frame is not null; frame = frame.Parent)
+            if (frame.CardPlaySeries is { IsAutoPlay: true })
+                return true;
+        return false;
+    }
+
     private static bool IsMayhemAutoPrePlayPipelineCursor(
         CombatState combat)
     {

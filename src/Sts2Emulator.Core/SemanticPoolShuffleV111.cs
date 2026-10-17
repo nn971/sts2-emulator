@@ -33,13 +33,17 @@ public sealed record SemanticPoolShuffleEventV111(
         var expectedSite = SourceOperationKind ==
                 PrototypeCombatEffectKind.MoveRandomRareDrawCardsToHand.ToString()
             ? "combat.draw_pile.random_rare_to_hand.shuffle_swap_index"
+            : SourceOperationKind ==
+                PrototypeCombatEffectKind.RecycleDrawPileForEffectDraw.ToString()
+                ? "combat.draw.recycle.shuffle_swap_index"
             : "combat.generation.full_pool_shuffle.swap_index";
         if (SchemaId != EventSchemaId || string.IsNullOrWhiteSpace(EventId) ||
             string.IsNullOrWhiteSpace(BoundaryFingerprint) ||
             string.IsNullOrWhiteSpace(SupportFingerprint) ||
             Request.SiteId is not (
                 "combat.generation.full_pool_shuffle.swap_index" or
-                "combat.draw_pile.random_rare_to_hand.shuffle_swap_index") ||
+                "combat.draw_pile.random_rare_to_hand.shuffle_swap_index" or
+                "combat.draw.recycle.shuffle_swap_index") ||
             Request.SiteId != expectedSite ||
             Request.OperationKind != "bounded_integer" ||
             OriginalCardIds is not { Length: > 1 } ||

@@ -58,7 +58,7 @@ The versioned `ControlledStochasticChanceReplayV111` primitive now replays one c
 
 The ordinary engine resumes `DrawPlayerHand` through one helper for a saved `BeforeHandDraw` action choice, a random-pile hook choice, and the initial semantic hand-draw entry. That helper interprets semantic suspension, supported pre-draw choices, and deterministic source-ordered completion, advances the stage cursor once, and keeps requested/remaining counts with the pipeline when mechanics suspend again. `PrototypeGameEngine` also owns remaining-count interpretation across standalone draw operations, nested draw/cost/insertion continuations, the active automatic pipeline, and the expected count for the Stratagem draw selection; `SemanticCombatDrawV111` delegates to those mechanics rules. The semantic draw and end-turn facades still own boundary selection, typed outcome history, and their saved schema; full resume consolidation and cross-provider mechanical equivalence remain open.
 
-Initial and post-cost semantic draws now pass their `DrawCards` result through the same engine handler. It owns after-shuffle insertion, nested CardDrawn choice, Nature's deferred recycle transition, Stratagem selection, pending draw/cost, and automatic-pipeline progress interpretation; legacy controlled recycle without a semantic deck remains fail-closed. The facade retains the selected outcome and transcript boundary.
+Initial and post-cost semantic draws now pass their `DrawCards` result through the same engine handler. It owns after-shuffle insertion, nested CardDrawn choice, Nature's deferred recycle transition, Stratagem selection, pending draw/cost, and automatic-pipeline progress interpretation. Nested legacy effect draws without a semantic deck now suspend at a conditioned discard-pile shuffle and resume the saved draw/effect suffix; standalone semantic draw entry without a semantic provider remains fail-closed. The facade retains the selected outcome and transcript boundary.
 
 When the resumed ordinary pipeline ends in Reward or Terminal after hand draw, `SemanticEndTurnV111` now completes with that engine result and keeps the completed draw projection for transcript replay. It still rejects an unfinished draw and checks the next-player boundary for combat-phase completion.
 
@@ -118,9 +118,10 @@ controlled insertion continuation before autoplay resumes. Semantic draws and
 draw-cost choices reached from an autoplayed card keep that card-play frame
 and the Mayhem pipeline cursor until their hooks finish. Nested semantic
 card-effect draws reuse `DrawCards`' Nature recycle and after-shuffle
-continuations. The legacy recycle ticket without a semantic deck remains
-fail-closed. This integration does not claim source-calibrated draw
-probabilities.
+continuations. A legacy recycle without a semantic deck now saves each
+conditioned discard-pile swap and resumes the same draw/effect suffix before
+the Mayhem pipeline advances. This integration does not claim source-calibrated
+draw probabilities.
 `ReferenceNatureMerchantSessionV111`,
 `ReferenceNatureTreasureSessionV111`, and
 `ReferenceNatureNativeEventGoldSessionV111` provide serialized continuations

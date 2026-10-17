@@ -593,7 +593,11 @@ public sealed record SemanticPilotCombatV111(
         {
             poolShufflePending.Validate();
             SemanticPilotCombatEngineV111.ValidatePoolShuffleBoundary(this.Run);
-            if (this.PendingEndTurn is not null ||
+            var combat = this.Run.World?.Combat;
+            var mayhemRecycle = combat?.PendingChoice is { } pendingChoice &&
+                PrototypeGameEngine.IsMayhemLegacyRecycleContinuation(
+                    combat, pendingChoice);
+            if ((this.PendingEndTurn is not null && !mayhemRecycle) ||
                 this.PendingInitialIntents is not null ||
                 this.IntentPending is not null || this.DrawPending is not null ||
                 this.TargetPending is not null ||
@@ -2845,14 +2849,17 @@ public static class SemanticPilotCombatEngineV111
         bool handReturn = priorCombat.PendingChoice!
             .ControlledPoolShuffle!.Operation.Kind ==
             PrototypeCombatEffectKind.ReturnHandToDrawAndShuffle;
-        if (!randomRareToHand && !handReturn &&
+        bool recycle = priorCombat.PendingChoice!
+            .ControlledPoolShuffle!.Operation.Kind ==
+            PrototypeCombatEffectKind.RecycleDrawPileForEffectDraw;
+        if (!randomRareToHand && !handReturn && !recycle &&
             (!priorCombat.DrawPile.SequenceEqual(resultCombat.DrawPile) ||
              CanonicalJson.Sha256(priorCombat.SemanticDeck) !=
                  CanonicalJson.Sha256(resultCombat.SemanticDeck)))
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=" + pending.SiteId + " " +
                 "operation=unmodeled_draw_pile_mutation");
-        if (randomRareToHand || handReturn)
+        if (randomRareToHand || handReturn || recycle)
             PrototypeStateInvariants.Validate(result);
         var next = current with
         {
@@ -3885,13 +3892,18 @@ public static class SemanticPilotCombatEngineV111
             PrototypeCombatEffectKind.MoveRandomRareDrawCardsToHand;
         bool handReturn = shuffle.Operation.Kind ==
             PrototypeCombatEffectKind.ReturnHandToDrawAndShuffle;
-        var fixtureMatches = handReturn || (randomRareToHand
+        bool recycle = shuffle.Operation.Kind ==
+            PrototypeCombatEffectKind.RecycleDrawPileForEffectDraw;
+        bool mayhemRecycle = recycle && combat is not null && choice is not null &&
+            PrototypeGameEngine.IsMayhemLegacyRecycleContinuation(
+                combat, choice);
+        var fixtureMatches = handReturn || recycle || (randomRareToHand
             ? current.SeededEntry?.FixtureSelectionCardId ==
                 "proto.colorless.anointed"
             : current.SeededEntry?.FixturePoolGenerationPotionId ==
                 "proto.potion.colorless");
         if (!fixtureMatches ||
-            current.PendingEndTurn is not null ||
+            (current.PendingEndTurn is not null && !mayhemRecycle) ||
             current.PendingInitialIntents is not null ||
             current.TargetPending is not null ||
             current.GeneratedCardPending is not null ||
@@ -3903,7 +3915,7 @@ public static class SemanticPilotCombatEngineV111
         var original = (string[])shuffle.OriginalCardIds.Clone();
         var currentPool = (string[])shuffle.CurrentCardIds.Clone();
         var sourceCardId = choice!.SourceCardInstanceId;
-        var owner = handReturn
+        var owner = handReturn || recycle
             ? "effect:" + shuffle.Operation.Kind + ":source:" +
                 (sourceCardId?.ToString() ?? "none") + ":pool:" +
                 CanonicalJson.Sha256(original)
@@ -3912,7 +3924,7 @@ public static class SemanticPilotCombatEngineV111
                 ":pool:" + CanonicalJson.Sha256(original);
         var ordinal = current.History.Count(transition =>
             transition.Kind == "semantic_pool_shuffle");
-        var streamId = handReturn
+        var streamId = handReturn || recycle
             ? combat!.NativeRng is not null
                 ? "run.shuffle" : "prototype.combat"
             : shuffle.Operation.GeneratedChoiceUsesNativeCardGenerationRng &&
@@ -3920,9 +3932,11 @@ public static class SemanticPilotCombatEngineV111
                 ? "run.combat_card_generation" : "prototype.combat";
         var siteId = handReturn
             ? "combat.hand_return.draw_pile.shuffle_swap_index"
-            : randomRareToHand
-                ? "combat.draw_pile.random_rare_to_hand.shuffle_swap_index"
-                : "combat.generation.full_pool_shuffle.swap_index";
+            : recycle
+                ? "combat.draw.recycle.shuffle_swap_index"
+                : randomRareToHand
+                    ? "combat.draw_pile.random_rare_to_hand.shuffle_swap_index"
+                    : "combat.generation.full_pool_shuffle.swap_index";
         var request = new RandomIndexRequestV111(
             siteId, streamId,
             owner, ordinal, [], OperationKind: "bounded_integer",
@@ -3965,6 +3979,21 @@ public static class SemanticPilotCombatEngineV111
                 combat, shuffle, choice.SourceCardInstanceId))
             throw new InvalidDataException(
                 "Full-pool shuffle is not source-reachable.");
+        if (shuffle.Operation.Kind ==
+            PrototypeCombatEffectKind.RecycleDrawPileForEffectDraw)
+        {
+            if (combat!.SemanticDeck is not null ||
+                combat.DrawPile.Length != 0 || combat.DiscardPile.Length <= 1 ||
+                choice!.OuterChoiceContinuation!.Operations.FirstOrDefault() is not
+                    { Kind: PrototypeCombatEffectKind.DrawCards, Amount: > 0 } ||
+                (combat.AutomaticPipelineContinuation is not null &&
+                 !PrototypeGameEngine.IsMayhemLegacyRecycleContinuation(
+                     combat, choice)))
+                throw new InvalidDataException(
+                    "Legacy recycle shuffle lost its saved draw continuation.");
+            PrototypeStateInvariants.Validate(run);
+            return;
+        }
         var deck = combat.SemanticDeck ?? throw new InvalidDataException(
             "Full-pool shuffle lost the provider-owned deck.");
         SemanticDeckEngineV111.Validate(deck);

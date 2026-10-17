@@ -184,6 +184,7 @@ public static class StochasticSiteRegistryV111
         "combat.random_hand_card.select",
         "combat.generation.full_pool_shuffle.swap_index",
         "combat.draw_pile.random_rare_to_hand.shuffle_swap_index",
+        "combat.draw.recycle.shuffle_swap_index",
         "combat.draw_pile.random_insert_index",
         "combat.relic.after_shuffle.generated_card.random_insert_index",
         "combat.card_selection.random_shortlist",

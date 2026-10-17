@@ -30,6 +30,20 @@ public sealed partial class PrototypeGameEngine
                         System.Globalization.CultureInfo.InvariantCulture) +
                         ":" + card.CardId;
                 }).ToArray();
+        if (op.Kind ==
+            PrototypeCombatEffectKind.RecycleDrawPileForEffectDraw)
+        {
+            if (combat.SemanticDeck is not null ||
+                combat.DrawPile.Length != 0 || combat.DiscardPile.Length <= 1)
+                return null;
+            return combat.DiscardPile.Select(id =>
+            {
+                var card = RequireCombatCard(combat, id);
+                return "card-instance:" + card.InstanceId.ToString(
+                    System.Globalization.CultureInfo.InvariantCulture) +
+                    ":" + card.CardId;
+            }).ToArray();
+        }
 
         if (op.Kind == PrototypeCombatEffectKind.CreateDistinctCharacterCommonCardsInHand)
             return PrototypeContent.NativeSilentCardPool.Where(id =>
@@ -86,6 +100,8 @@ public sealed partial class PrototypeGameEngine
             PrototypeCombatEffectKind.MoveRandomRareDrawCardsToHand =>
                 Math.Min(Math.Max(0, op.Amount),
                     Math.Max(0, 10 - combat.Hand.Length)),
+            PrototypeCombatEffectKind.RecycleDrawPileForEffectDraw =>
+                poolCount,
             PrototypeCombatEffectKind.ReturnHandToDrawAndShuffle => poolCount,
             _ => op.Amount
         };
@@ -295,6 +311,47 @@ public sealed partial class PrototypeGameEngine
         }
 
         if (op.Kind ==
+            PrototypeCombatEffectKind.RecycleDrawPileForEffectDraw)
+        {
+            var shuffled = values.Select(ParseShuffledCardInstanceToken)
+                .ToArray();
+            var recycled = (long[])combat.DiscardPile.Clone();
+            if (combat.SemanticDeck is not null ||
+                combat.DrawPile.Length != 0 || recycled.Length <= 1 ||
+                shuffled.Distinct().Count() != shuffled.Length ||
+                !shuffled.Order().SequenceEqual(recycled.Order()))
+                throw new InvalidDataException(
+                    "Legacy controlled recycle changed its discard identity set.");
+            var postHook = NativeShuffleStepReplayV111.CheckPostHook(
+                ApplyPerfectFitShuffleOrder(combat, shuffled));
+            var nextZones = combat.Mechanics.CardZones.WithZoneChanges(
+                new Dictionary<PrototypeCardZone, long[]>
+                {
+                    [PrototypeCardZone.DrawPile] = postHook,
+                    [PrototypeCardZone.DiscardPile] = []
+                });
+            combat = SemanticDrawPileAdapterV111.ApplyDrawPileShuffle(
+                combat, postHook, recycled, nextZones,
+                committedSemanticDeck: null);
+            var afterShuffleInsertions =
+                ControlledAfterShuffleRelicInsertions(combat);
+            if (afterShuffleInsertions.Length > 0 &&
+                ControlledChanceGuardV111.Active &&
+                !ControlledChanceGuardV111.EngineOwnedNativeProviderActive)
+            {
+                var nextCombat = MakeControlledAfterShuffleInsertionChoice(
+                    combat, afterShuffleInsertions[0],
+                    afterShuffleInsertions.Skip(1).ToArray(), [], null,
+                    continuation, ordinal: 0);
+                return state with
+                {
+                    World = world with { Combat = nextCombat }
+                };
+            }
+            if (afterShuffleInsertions.Length > 0)
+                combat = ApplyRelicAfterShuffleCards(combat, state.Rng);
+        }
+        else if (op.Kind ==
             PrototypeCombatEffectKind.MoveRandomRareDrawCardsToHand)
         {
             var selected = values.Take(shuffle.SelectedCount)
