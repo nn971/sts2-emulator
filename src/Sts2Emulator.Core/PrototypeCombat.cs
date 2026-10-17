@@ -3053,16 +3053,6 @@ public sealed partial class PrototypeGameEngine
                 continue;
             }
 
-            var semanticDeck = combat.SemanticDeck;
-            if (fromDraw && semanticDeck is not null)
-            {
-                SemanticDrawPileAdapterV111.ValidateSynchronized(combat);
-                // The played Rebound identity is known to mechanics, but its
-                // current draw-pile position may still be unresolved.
-                semanticDeck = SemanticDeckEngineV111.RemoveCardInstance(
-                    semanticDeck, id);
-            }
-
             var nextZones = combat.Mechanics.CardZones.WithZoneChanges(
                 new Dictionary<PrototypeCardZone, long[]>
                 {
@@ -3074,8 +3064,11 @@ public sealed partial class PrototypeGameEngine
                         .Where(x => x != id).ToArray(),
                     [PrototypeCardZone.Hand] = combat.Hand.Append(id).ToArray()
                 });
-            combat = SemanticDrawPileAdapterV111.ApplyCommittedZoneTransition(
-                combat, nextZones, semanticDeck);
+            combat = fromDraw
+                ? SemanticDrawPileAdapterV111.ApplyDrawPileRemoval(
+                    combat, [id], nextZones)
+                : SemanticDrawPileAdapterV111.ApplyZoneTransition(
+                    combat, nextZones);
         }
         return combat;
     }
@@ -4284,11 +4277,8 @@ public sealed partial class PrototypeGameEngine
                                 chosen.PersistentCardInstanceId!.Value;
                             var persistentCard = player.Deck.Single(card =>
                                 card.InstanceId == persistentId);
-                            var semanticDeck = combat.DrawPile.Contains(
-                                    chosen.InstanceId)
-                                ? SemanticDrawPileAdapterV111.SynchronizeSemanticDrawPileAfterRemoval(
-                                    combat, [chosen.InstanceId])
-                                : combat.SemanticDeck;
+                            var chosenFromDraw = combat.DrawPile.Contains(
+                                chosen.InstanceId);
                             player = player with
                             {
                                 Deck = player.Deck.Where(card =>
@@ -4302,12 +4292,14 @@ public sealed partial class PrototypeGameEngine
                                 [PrototypeCardZone.DiscardPile] = combat.DiscardPile
                                     .Where(id => id != chosen.InstanceId).ToArray()
                             };
-                            combat = SemanticDrawPileAdapterV111
-                                .ApplyCommittedZoneTransition(
-                                    combat,
-                                    combat.Mechanics.CardZones
-                                        .WithZoneChanges(zoneChanges),
-                                    semanticDeck) with
+                            var nextZones = combat.Mechanics.CardZones
+                                .WithZoneChanges(zoneChanges);
+                            combat = (chosenFromDraw
+                                ? SemanticDrawPileAdapterV111
+                                    .ApplyDrawPileRemoval(
+                                        combat, [chosen.InstanceId], nextZones)
+                                : SemanticDrawPileAdapterV111
+                                    .ApplyZoneTransition(combat, nextZones)) with
                             {
                                 Cards = combat.Cards.Where(card =>
                                     card.InstanceId != chosen.InstanceId)
@@ -4735,16 +4727,10 @@ public sealed partial class PrototypeGameEngine
                                         ":move:" + move.Id +
                                         ":effect:" + effect.Kind);
                                 combat = insertion.Combat;
-                                var draw = combat.DrawPile.ToList();
-                                draw.Insert(insertion.SelectedIndex,
-                                    instance.InstanceId);
-                                var semanticDeck =
-                                    SemanticDrawPileAdapterV111.SynchronizeSemanticDrawPileAfterInsertion(
-                                        combat, insertion.SelectedIndex,
-                                        instance.InstanceId);
                                 combat = SemanticDrawPileAdapterV111
-                                    .ApplyCommittedPhysicalMutation(
-                                        combat, draw.ToArray(), semanticDeck) with
+                                    .ApplyDrawPileInsertion(
+                                        combat, insertion.SelectedIndex,
+                                        instance.InstanceId) with
                                 {
                                     Cards = combat.Cards.Append(instance).ToArray(),
                                     NextCardInstanceId = combat.NextCardInstanceId + 1
@@ -5933,14 +5919,9 @@ public sealed partial class PrototypeGameEngine
                                     (sourceCardInstanceId?.ToString() ?? "none"));
                             combat = insertion.Combat;
                             var slot = insertion.SelectedIndex;
-                            var draw = combat.DrawPile.ToList();
-                            draw.Insert(slot, instance.InstanceId);
-                            var semanticDeck =
-                                SemanticDrawPileAdapterV111.SynchronizeSemanticDrawPileAfterInsertion(
-                                    combat, slot, instance.InstanceId);
                             combat = SemanticDrawPileAdapterV111
-                                .ApplyCommittedPhysicalMutation(
-                                    combat, draw.ToArray(), semanticDeck) with
+                                .ApplyDrawPileInsertion(
+                                    combat, slot, instance.InstanceId) with
                             {
                                 Cards = combat.Cards.Append(instance).ToArray(),
                                 NextCardInstanceId =
@@ -6905,9 +6886,6 @@ public sealed partial class PrototypeGameEngine
                             ":zone:draw");
                     var selected = rareCards.Take(take).ToArray();
                     var selectedIds = selected.ToHashSet();
-                    var semanticDeck =
-                        SemanticDrawPileAdapterV111.SynchronizeSemanticDrawPileAfterRemoval(
-                            combat, selected);
                     var nextZones = combat.Mechanics.CardZones.WithZoneChanges(
                         new Dictionary<PrototypeCardZone, long[]>
                         {
@@ -6917,8 +6895,7 @@ public sealed partial class PrototypeGameEngine
                                 .Concat(selected).ToArray()
                         });
                     combat = SemanticDrawPileAdapterV111
-                        .ApplyCommittedZoneTransition(
-                            combat, nextZones, semanticDeck);
+                        .ApplyDrawPileRemoval(combat, selected, nextZones);
                     break;
                 }
 
@@ -6995,9 +6972,6 @@ public sealed partial class PrototypeGameEngine
                             PrototypeTemporaryCardCostExpiry.EndOfTurn
                             | PrototypeTemporaryCardCostExpiry.WhenPlayed));
                     var handHasSpace = combat.Hand.Length < 10;
-                    var semanticDeck =
-                        SemanticDrawPileAdapterV111.SynchronizeSemanticDrawPileAfterRemoval(
-                            combat, [selectedId]);
                     var zoneChanges = new Dictionary<PrototypeCardZone, long[]>
                     {
                         [PrototypeCardZone.DrawPile] = combat.DrawPile
@@ -7009,11 +6983,11 @@ public sealed partial class PrototypeGameEngine
                                 : combat.DiscardPile.Append(selectedId).ToArray()
                     };
                     combat = SemanticDrawPileAdapterV111
-                        .ApplyCommittedZoneTransition(
+                        .ApplyDrawPileRemoval(
                             combat,
+                            [selectedId],
                             combat.Mechanics.CardZones
-                                .WithZoneChanges(zoneChanges),
-                            semanticDeck) with
+                                .WithZoneChanges(zoneChanges)) with
                     {
                         NativeRng = nativeRunStreams is null
                             ? combat.NativeRng
@@ -7566,14 +7540,9 @@ public sealed partial class PrototypeGameEngine
                             operation.Kind, sourceCardInstanceId,
                             drawInsertionOrdinal++);
                         combat = insertion.Combat;
-                        var draw = combat.DrawPile.ToList();
-                        draw.Insert(insertion.SelectedIndex, id);
-                        var semanticDeck =
-                            SemanticDrawPileAdapterV111.SynchronizeSemanticDrawPileAfterInsertion(
-                                combat, insertion.SelectedIndex, id);
                         combat = SemanticDrawPileAdapterV111
-                            .ApplyCommittedPhysicalMutation(
-                                combat, draw.ToArray(), semanticDeck) with
+                            .ApplyDrawPileInsertion(
+                                combat, insertion.SelectedIndex, id) with
                         {
                             NextCardInstanceId = id + 1,
                             Cards = combat.Cards.Append(
@@ -7606,14 +7575,9 @@ public sealed partial class PrototypeGameEngine
                             operation.Kind, sourceCardInstanceId,
                             drawInsertionOrdinal++);
                         combat = insertion.Combat;
-                        var draw = combat.DrawPile.ToList();
-                        draw.Insert(insertion.SelectedIndex, id);
-                        var semanticDeck =
-                            SemanticDrawPileAdapterV111.SynchronizeSemanticDrawPileAfterInsertion(
-                                combat, insertion.SelectedIndex, id);
                         combat = SemanticDrawPileAdapterV111
-                            .ApplyCommittedPhysicalMutation(
-                                combat, draw.ToArray(), semanticDeck) with
+                            .ApplyDrawPileInsertion(
+                                combat, insertion.SelectedIndex, id) with
                         {
                             NextCardInstanceId = id + 1,
                             Cards = combat.Cards.Append(
@@ -7996,18 +7960,6 @@ public sealed partial class PrototypeGameEngine
                                 ":zone:" + zone);
                     combat = selection.Combat;
                     var selected = eligible[selection.SelectedIndex];
-                    if (zone == PrototypeCardZone.DrawPile &&
-                        ControlledChanceGuardV111.Active &&
-                        !ControlledChanceGuardV111.EngineOwnedNativeProviderActive &&
-                        combat.SemanticDeck is
-                            { Mode: SemanticDeckStateV111.NatureMode } deck)
-                    {
-                        combat = combat with
-                        {
-                            SemanticDeck = SemanticDeckEngineV111
-                                .RemoveCardInstance(deck, selected)
-                        };
-                    }
                     combat = MoveCards(
                         combat, zone, PrototypeCardZone.PlayPile,
                         [selected]);
@@ -8998,19 +8950,17 @@ public sealed partial class PrototypeGameEngine
             combat = insertion.Combat;
             var draw = combat.DrawPile.ToList();
             draw.Insert(insertion.SelectedIndex, instanceId);
-            var semanticDeck =
-                SemanticDrawPileAdapterV111.SynchronizeSemanticDrawPileAfterInsertion(
-                    combat, insertion.SelectedIndex, instanceId);
             var zoneChanges = new Dictionary<PrototypeCardZone, long[]>
             {
                 [PrototypeCardZone.DrawPile] = draw.ToArray(),
                 [PrototypeCardZone.DiscardPile] = combat.DiscardPile
                     .Where(id => id != instanceId).ToArray()
             };
-            combat = SemanticDrawPileAdapterV111.ApplyCommittedZoneTransition(
+            combat = SemanticDrawPileAdapterV111.ApplyDrawPileInsertion(
                 combat,
-                combat.Mechanics.CardZones.WithZoneChanges(zoneChanges),
-                semanticDeck);
+                insertion.SelectedIndex,
+                instanceId,
+                combat.Mechanics.CardZones.WithZoneChanges(zoneChanges));
         }
         return combat;
     }
@@ -14986,11 +14936,16 @@ public sealed partial class PrototypeGameEngine
         CombatState combat,
         PrototypeCardZone sourceZone,
         PrototypeCardZone destinationZone,
-        IReadOnlyCollection<long> cardInstanceIds) =>
-        SemanticDrawPileAdapterV111.ApplyZoneTransition(
-            combat,
-            combat.Mechanics.CardZones.MoveCards(
-                sourceZone, destinationZone, cardInstanceIds));
+        IReadOnlyCollection<long> cardInstanceIds)
+    {
+        var nextZones = combat.Mechanics.CardZones.MoveCards(
+            sourceZone, destinationZone, cardInstanceIds);
+        if (sourceZone == PrototypeCardZone.DrawPile)
+            return SemanticDrawPileAdapterV111.ApplyDrawPileRemoval(
+                combat, cardInstanceIds, nextZones);
+        return SemanticDrawPileAdapterV111.ApplyZoneTransition(
+            combat, nextZones);
+    }
 
     private static void RequireSemanticNativeStreamOwner(
         CombatState combat, string siteId)

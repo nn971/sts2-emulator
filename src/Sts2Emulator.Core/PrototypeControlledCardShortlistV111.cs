@@ -227,14 +227,9 @@ public sealed partial class PrototypeGameEngine
             combat = combat with { PendingChoice = null };
             if (sourceZone == PrototypeCardZone.DrawPile)
             {
-                var deck = combat.SemanticDeck ??
+                if (combat.SemanticDeck is null)
                     throw new InvalidDataException(
                         "Draw-pile auto-play lost its semantic deck.");
-                combat = combat with
-                {
-                    SemanticDeck = SemanticDeckEngineV111.RemoveCardInstance(
-                        deck, selected)
-                };
             }
             combat = MoveCards(
                 combat, sourceZone, PrototypeCardZone.PlayPile, [selected]);

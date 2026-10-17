@@ -282,10 +282,9 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidDataException(
                 "Jeweled Mask support changed before the Nature outcome.");
         var selectedId = candidates[decision.SelectedIndex];
-        var deck = combat.SemanticDeck ??
+        if (combat.SemanticDeck is null)
             throw new InvalidDataException(
                 "Random pile-card choice lost its semantic deck.");
-        deck = SemanticDeckEngineV111.RemoveCardInstance(deck, selectedId);
         var handHasSpace = combat.Hand.Length < 10;
         combat = SetCardTemporaryEnergyCost(
             combat, selectedId,
@@ -302,10 +301,13 @@ public sealed partial class PrototypeGameEngine
                     ? combat.Hand.Append(selectedId).ToArray()
                     : combat.DiscardPile.Append(selectedId).ToArray()
         };
-        combat = SemanticDrawPileAdapterV111.ApplyCommittedZoneTransition(
+        combat = SemanticDrawPileAdapterV111.ApplyDrawPileRemoval(
             combat,
-            combat.Mechanics.CardZones.WithZoneChanges(zoneChanges),
-            deck) with { PendingChoice = null };
+            [selectedId],
+            combat.Mechanics.CardZones.WithZoneChanges(zoneChanges)) with
+        {
+            PendingChoice = null
+        };
         var resumedEvent = ResumeChoiceResolutionContinuation(
             run.Player, combat, run.Rng, continuation);
         if (resumedEvent.Combat.PendingChoice is not null ||

@@ -172,6 +172,72 @@ public static class SemanticDrawPileAdapterV111
     }
 
     /// <summary>
+    /// Commits a source-visible insertion at one physical bottom-first
+    /// draw-pile index, including the corresponding provider constraint and
+    /// any other zone changes supplied by the caller.
+    /// </summary>
+    public static CombatState ApplyDrawPileInsertion(
+        CombatState combat,
+        int physicalIndex,
+        long cardInstanceId,
+        CombatCardZonesV111? nextCardZones = null)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        if (physicalIndex < 0 || physicalIndex > combat.DrawPile.Length)
+            throw new ArgumentOutOfRangeException(nameof(physicalIndex));
+
+        var expectedDrawPile = combat.DrawPile.ToList();
+        expectedDrawPile.Insert(physicalIndex, cardInstanceId);
+        var zones = nextCardZones ?? combat.Mechanics.CardZones.WithCardsIn(
+            PrototypeCardZone.DrawPile, expectedDrawPile.ToArray());
+        if (!zones.DrawPile.SequenceEqual(expectedDrawPile))
+            throw new InvalidDataException(
+                "Draw-pile insertion does not match the requested physical index.");
+        if (Enum.GetValues<PrototypeCardZone>()
+            .Where(zone => zone != PrototypeCardZone.DrawPile)
+            .Any(zone => zones.CardsIn(zone).Contains(cardInstanceId)))
+            throw new InvalidDataException(
+                "Draw-pile insertion duplicates an identity in its resulting zones.");
+
+        var semantic = SynchronizeSemanticDrawPileAfterInsertion(
+            combat, physicalIndex, cardInstanceId);
+        return ApplyCommittedZoneTransition(combat, zones, semantic);
+    }
+
+    /// <summary>
+    /// Commits removal of known physical identities from DrawPile together
+    /// with any destination-zone changes, while applying the same removal to
+    /// the active provider's hidden-order constraints.
+    /// </summary>
+    public static CombatState ApplyDrawPileRemoval(
+        CombatState combat,
+        IReadOnlyCollection<long> removedCardInstanceIds,
+        CombatCardZonesV111 nextCardZones)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(removedCardInstanceIds);
+        ArgumentNullException.ThrowIfNull(nextCardZones);
+        var removed = removedCardInstanceIds.ToArray();
+        if (removed.Distinct().Count() != removed.Length ||
+            removed.Any(id => !combat.DrawPile.Contains(id)))
+            throw new InvalidDataException(
+                "Draw-pile removal contains duplicate or missing identities.");
+        var removedSet = removed.ToHashSet();
+        var expectedDrawPile = combat.DrawPile
+            .Where(id => !removedSet.Contains(id)).ToArray();
+        if (!nextCardZones.DrawPile.SequenceEqual(expectedDrawPile))
+            throw new InvalidDataException(
+                "Draw-pile removal does not preserve the remaining physical order.");
+        if (removed.Length == 0)
+            return ApplyZoneTransition(combat, nextCardZones);
+
+        var semantic = SynchronizeSemanticDrawPileAfterRemoval(
+            combat, removed);
+        return ApplyCommittedZoneTransition(
+            combat, nextCardZones, semantic);
+    }
+
+    /// <summary>
     /// Publishes a physical mutation whose provider-side transition was
     /// already committed by a typed semantic operation. Correspondence is
     /// validated before the combined state is returned.

@@ -304,9 +304,6 @@ public sealed partial class PrototypeGameEngine
                 throw new InvalidDataException(
                     "Rare-card shuffle selected a stale draw-pile identity.");
             var selectedSet = selected.ToHashSet();
-            var semanticDeck =
-                SemanticDrawPileAdapterV111.SynchronizeSemanticDrawPileAfterRemoval(
-                combat, selected);
             var nextZones = combat.Mechanics.CardZones.WithZoneChanges(
                 new Dictionary<PrototypeCardZone, long[]>
                 {
@@ -316,8 +313,7 @@ public sealed partial class PrototypeGameEngine
                         .Concat(selected).ToArray()
                 });
             combat = SemanticDrawPileAdapterV111
-                .ApplyCommittedZoneTransition(
-                    combat, nextZones, semanticDeck);
+                .ApplyDrawPileRemoval(combat, selected, nextZones);
         }
         else if (op.Kind ==
             PrototypeCombatEffectKind.ReturnHandToDrawAndShuffle)

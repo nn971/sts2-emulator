@@ -381,13 +381,6 @@ public sealed partial class PrototypeGameEngine
         }
         var draw = combat.DrawPile.ToList();
         draw.Insert(chosen, instanceId);
-        var semanticDeck = choice.SemanticDrawContinuation is null
-            ? choice.AfterShuffleRelic is null
-                ? combat.SemanticDeck
-                : SemanticDrawPileAdapterV111.SynchronizeSemanticDrawPileAfterInsertion(
-                    combat, chosen, instanceId)
-            : SemanticDrawPileAdapterV111.SynchronizeSemanticDrawPileAfterInsertion(
-                combat, chosen, instanceId);
         var zoneChanges = new Dictionary<PrototypeCardZone, long[]>
         {
             [PrototypeCardZone.DrawPile] = draw.ToArray()
@@ -395,10 +388,14 @@ public sealed partial class PrototypeGameEngine
         if (choice.AfterShuffleRelic is not null)
             zoneChanges[PrototypeCardZone.DiscardPile] =
                 combat.DiscardPile.Where(id => id != instanceId).ToArray();
-        combat = SemanticDrawPileAdapterV111.ApplyCommittedZoneTransition(
+        combat = SemanticDrawPileAdapterV111.ApplyDrawPileInsertion(
             combat,
-            combat.Mechanics.CardZones.WithZoneChanges(zoneChanges),
-            semanticDeck) with { PendingChoice = null };
+            chosen,
+            instanceId,
+            combat.Mechanics.CardZones.WithZoneChanges(zoneChanges)) with
+        {
+            PendingChoice = null
+        };
 
         var remainingAfterShuffleRelics =
             choice.RemainingAfterShuffleRelics ?? [];
