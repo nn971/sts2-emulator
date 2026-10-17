@@ -39,15 +39,14 @@ class State:
                          colorless_offer=False, sale_reprice=False,
                          owner_id=None, offer_ordinal=None,
                          relic_candidate_ids=None, excluded_relic_ids=None,
-                         action_id=None, prior_variant_index=None):
+                         action_id=None, prior_variant_index=None,
+                         event_id=None):
         """Read a pre-outcome law; native event queries may need action_id.
 
         Reflections card-pick laws use action_id="touch_mirror" and the
         complete prior index prefix.
-        Native Lost Wisp and Jungle Maze Adventure gold laws use the pending
-        Event-node action_id and ordinal 0 or 1 for the gold stage.
-        Native generated-gold index laws use the same action boundary and the
-        ordered gold-request ordinal for that event.
+        Native event gold laws require event_id as an explicit branch
+        condition, plus the pending Event-node action_id and stage ordinal.
         Darv relic-shuffle laws accept prior_variant_index to bind the earlier
         offer-variant decision to the query fingerprint.
         Repy potion laws use ordinal 0 or 1 and prior_indices containing the
@@ -64,6 +63,10 @@ class State:
             if not isinstance(action_id, str) or not action_id:
                 raise ValueError("action_id must be a nonempty string")
             payload["action_id"] = action_id
+        if event_id is not None:
+            if not isinstance(event_id, str) or not event_id:
+                raise ValueError("event_id must be a nonempty string")
+            payload["event_id"] = event_id
         if card_type is not None:
             if not isinstance(card_type, str) or not card_type:
                 raise ValueError("card_type must be a nonempty string")

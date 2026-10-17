@@ -78,13 +78,19 @@ public static class NativeRngV111Contexts
     public static RngStreamState ForEvent(
         string seed, string eventEntry, int playerSlot = 0, bool shared = false)
     {
+        return NativeRngV111.CreateContentStream(
+            EventStreamId(eventEntry, playerSlot, shared),
+            NativeRngV111.RunSeed(seed), eventEntry,
+            shared ? 0UL : (ulong)playerSlot);
+    }
+
+    public static string EventStreamId(
+        string eventEntry, int playerSlot = 0, bool shared = false)
+    {
         ArgumentException.ThrowIfNullOrWhiteSpace(eventEntry);
         if (playerSlot < 0)
             throw new ArgumentOutOfRangeException(nameof(playerSlot));
-        return NativeRngV111.CreateContentStream(
-            $"context.event.{eventEntry}.{(shared ? "shared" : $"player_{playerSlot}")}",
-            NativeRngV111.RunSeed(seed), eventEntry,
-            shared ? 0UL : (ulong)playerSlot);
+        return $"context.event.{eventEntry}.{(shared ? "shared" : $"player_{playerSlot}")}";
     }
 
     /// <summary>

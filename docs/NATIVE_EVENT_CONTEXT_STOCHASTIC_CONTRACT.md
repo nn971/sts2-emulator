@@ -72,17 +72,20 @@ the pending configured action when at least one card-pick draw exists.
 
 Pinned Native event gold index formulas for Dense Vegetation, Whispering
 Hollow, both Sunken Statues, Luminous Choir, Sunken Treasury, Punch Off, and
-This or That expose read-only conditional laws. The query observes the
-projected event-entry branch and typed pre-draw bounded request, then counts
-exact `NextInt` preimages and aggregates source indices that map to the same
-gold value. Lost Wisp and Jungle Maze Adventure likewise expose their three
+This or That expose read-only conditional laws. A caller supplies `event_id`
+as a declared branch condition; the query validates that the event belongs to
+the configured route and constructs the typed pre-draw request without
+running event selection or inspecting a Native realization, seed, or cursor.
+It counts exact `NextInt` preimages and aggregates source indices that map to
+the same gold value. Lost Wisp and Jungle Maze Adventure likewise expose their three
 unit-float formulas, counting 53-bit `NextDouble`-grid preimages after
 `NextFloat` rounding, source float arithmetic, and integer truncation. These
 declared Native transforms are `SOURCE_VERIFIED` under the uniform-grid input
-model. The queries do not add an atomic event-entry session, establish
-event-pool completeness, or verify Native event seed frequencies, stream
-attribution, or cursor parity. Legacy integer fallbacks and adjacent
-unsupported source alternatives remain `UNVERIFIED`.
+model. These are conditional gold mappings, not a complete Event-node law or
+an atomic event-entry session. Event-pool completeness, Native event seed
+frequencies, stream attribution, and cursor parity remain open. Legacy
+integer fallbacks and adjacent unsupported source alternatives remain
+`UNVERIFIED`.
 
 The resolver is the event-specific page-generation or choice-effect method.
 It applies the selected primitive result synchronously, commits the resulting

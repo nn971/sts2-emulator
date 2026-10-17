@@ -2948,15 +2948,18 @@ internal static class PrototypeAiJsonlServer
                             var actionId = OptionalString(request, "action_id")
                                 ?? throw new ArgumentException(
                                     "Native event gold query requires action_id.");
+                            var eventId = OptionalString(request, "event_id")
+                                ?? throw new ArgumentException(
+                                    "Native event gold query requires event_id as an explicit conditioning branch.");
                             law = siteId == ChanceLawEngineV111
                                 .NativeEventGoldUnitFloatSiteId
                                 ? ChanceLawEngineV111
                                     .QueryNativeEventGoldUnitFloat(
                                         RequireState(request), siteId, ordinal,
-                                        actionId)
+                                        actionId, eventId)
                                 : ChanceLawEngineV111.QueryNativeEventGoldIndex(
                                     RequireState(request), siteId, ordinal,
-                                    actionId);
+                                    actionId, eventId);
                             if (law.SiteId != siteId || law.Ordinal != ordinal)
                                 throw new ArgumentException(
                                     $"Native event gold query expects site '{law.SiteId}' and ordinal {law.Ordinal}.");

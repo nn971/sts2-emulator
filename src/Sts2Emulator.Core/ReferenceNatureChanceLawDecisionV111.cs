@@ -5,7 +5,7 @@ namespace Sts2Emulator.Core;
 /// <summary>
 /// Maps one sampled semantic Chance Law outcome back to the typed source
 /// provider value consumed by ordinary mechanics. Current mappings cover
-/// native merchant index/float laws and the Endless Conveyor dish ticket.
+/// native merchant laws, Native event gold, and the Endless Conveyor ticket.
 /// </summary>
 public static class ReferenceNatureChanceLawDecisionV111
 {
@@ -291,7 +291,9 @@ public static class ReferenceNatureChanceLawDecisionV111
 
         if (law.OperationKind == "unit_float_mapped_gold")
         {
-            if (!outcomeId.StartsWith("gold:", StringComparison.Ordinal) ||
+            if (request.SiteId != ChanceLawEngineV111
+                    .NativeEventGoldUnitFloatSiteId ||
+                !outcomeId.StartsWith("gold:", StringComparison.Ordinal) ||
                 !int.TryParse(outcomeId[5..], NumberStyles.Integer,
                     CultureInfo.InvariantCulture, out var gold))
                 throw new InvalidDataException(

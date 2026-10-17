@@ -267,14 +267,15 @@ public static partial class ChanceLawEngineV111
     ];
 
     public static ChanceLawV111 QueryNativeEventGoldUnitFloat(
-        RunState origin, string siteId, int ordinal, string actionId)
+        RunState origin, string siteId, int ordinal, string actionId,
+        string eventId)
     {
         ArgumentNullException.ThrowIfNull(origin);
         ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
         ArgumentException.ThrowIfNullOrWhiteSpace(actionId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
         if (siteId != NativeEventGoldUnitFloatSiteId || ordinal < 0 ||
-            string.IsNullOrWhiteSpace(origin.RunSeed) ||
-            origin.NativeRunRng is null || origin.Phase != RunPhase.MapChoice ||
+            origin.Phase != RunPhase.MapChoice ||
             origin.World is not { Event: null } world ||
             !PrototypeGameEngine.UsesNativeRegionalSystems(world))
             throw new InvalidOperationException(
@@ -295,56 +296,27 @@ public static partial class ChanceLawEngineV111
             throw new InvalidOperationException(
                 "Native event gold law requires a current legal Event-node action.");
 
-        IReadOnlyList<NativeEventUnitFloatCaptureV111> captures;
-        string? selectedEventId;
-        using (var probe = NativeEventRandomProbeV111.Begin())
-        using (RandomBoundaryJournalV111.Begin())
-        using (NativeEngineEventJournalV111.Begin())
-        {
-            var projected = engine.Step(origin.Fork(), action).State;
-            selectedEventId = projected.World?.Event?.EventId;
-            captures = probe.UnitFloatCaptures;
-        }
-
-        var (eventId, nativeEventEntry, stages) = selectedEventId switch
+        ValidateNativeEventGoldBranch(origin, world, eventId);
+        var (nativeEventEntry, stages) = eventId switch
         {
             PrototypeNativeHiveEvents.LostWispId =>
-                (PrototypeNativeHiveEvents.LostWispId,
-                    PrototypeNativeHiveEvents.LostWispNativeRngEventId,
+                (PrototypeNativeHiveEvents.LostWispNativeRngEventId,
                     new[] { "primary" }),
             "proto.native.event.jungle_maze_adventure" =>
-                ("proto.native.event.jungle_maze_adventure",
-                    "JUNGLE_MAZE_ADVENTURE",
+                ("JUNGLE_MAZE_ADVENTURE",
                     new[] { "primary", "secondary" }),
             _ => throw new InvalidOperationException(
-                "The Event-node action did not enter Lost Wisp or Jungle Maze Adventure.")
+                "The requested Event ID has no pinned Native gold unit-float mapping.")
         };
         if (ordinal >= stages.Length)
             throw new ArgumentOutOfRangeException(nameof(ordinal));
 
-        var matching = captures.Where(capture =>
-            capture.Request.SiteId == siteId &&
-            capture.Request.OwnerId.StartsWith(
-                $"event:{eventId}:gold:", StringComparison.Ordinal))
-            .ToArray();
-        if (matching.Length != stages.Length)
-            throw new InvalidOperationException(
-                "Event entry did not produce the expected ordered gold unit-float requests.");
-
         var stage = stages[ordinal];
         var ownerId = $"event:{eventId}:gold:{stage}";
-        var captureAtOrdinal = matching[ordinal];
-        var request = captureAtOrdinal.Request;
-        var preDrawEvent = captureAtOrdinal.PreDrawState.World?.Event;
-        var expectedStream = NativeRngV111Contexts.ForEvent(
-            origin.RunSeed, nativeEventEntry);
-        if (request.OwnerId != ownerId || request.Ordinal != ordinal ||
-            request.StreamId != expectedStream.StreamId ||
-            preDrawEvent?.EventId != eventId ||
-            preDrawEvent.NativeEventRng is not { } stream ||
-            stream.StreamId != expectedStream.StreamId)
-            throw new InvalidDataException(
-                "Native event gold request differs from its declared entry stage.");
+        var streamId = NativeRngV111Contexts.EventStreamId(nativeEventEntry);
+        var request = new RandomUnitFloatRequestV111(
+            siteId, streamId, ownerId, ordinal);
+        request.Validate();
 
         int MapGold(float roll) => NativeEventGoldUnitFloatOutcome(
             eventId, stage, roll);
@@ -378,14 +350,15 @@ public static partial class ChanceLawEngineV111
     }
 
     public static ChanceLawV111 QueryNativeEventGoldIndex(
-        RunState origin, string siteId, int ordinal, string actionId)
+        RunState origin, string siteId, int ordinal, string actionId,
+        string eventId)
     {
         ArgumentNullException.ThrowIfNull(origin);
         ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
         ArgumentException.ThrowIfNullOrWhiteSpace(actionId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
         if (siteId != NativeEventGoldIndexSiteId || ordinal < 0 ||
-            string.IsNullOrWhiteSpace(origin.RunSeed) ||
-            origin.NativeRunRng is null || origin.Phase != RunPhase.MapChoice ||
+            origin.Phase != RunPhase.MapChoice ||
             origin.World is not { Event: null } world ||
             !PrototypeGameEngine.UsesNativeRegionalSystems(world))
             throw new InvalidOperationException(
@@ -406,73 +379,45 @@ public static partial class ChanceLawEngineV111
             throw new InvalidOperationException(
                 "Native event gold law requires a current legal Event-node action.");
 
-        IReadOnlyList<RandomBoundaryEventV111> entries;
-        string? selectedEventId;
-        string? selectedEventStreamId;
-        using (var journal = RandomBoundaryJournalV111.Begin())
-        using (NativeEngineEventJournalV111.Begin())
-        {
-            var projected = engine.Step(origin.Fork(), action).State;
-            selectedEventId = projected.World?.Event?.EventId;
-            selectedEventStreamId = projected.World?.Event?.NativeEventRng
-                ?.StreamId;
-            // SelectedIndex and SelectedValue are deliberately not consumed:
-            // this law models the pre-draw request's source mapping only.
-            entries = journal.Entries;
-        }
-
-        var (eventId, nativeEventEntry, stages, bounds) = selectedEventId switch
+        ValidateNativeEventGoldBranch(origin, world, eventId);
+        var (nativeEventEntry, stages, bounds) = eventId switch
         {
             var id when id == PrototypeNativeDenseVegetation.EventId =>
-                (id, "DENSE_VEGETATION", new[] { "primary" },
+                ("DENSE_VEGETATION", new[] { "primary" },
                     new[] { 39 }),
             "proto.native.event.whispering_hollow" =>
-                ("proto.native.event.whispering_hollow", "WHISPERING_HOLLOW",
+                ("WHISPERING_HOLLOW",
                     new[] { "primary" }, new[] { 19 }),
             "proto.native.event.sunken_statue" or
                 "proto.native.underdocks.sunken_statue" =>
-                (selectedEventId!, "SUNKEN_STATUE", new[] { "primary" },
+                ("SUNKEN_STATUE", new[] { "primary" },
                     new[] { 21 }),
             "proto.native.event.luminous_choir" =>
-                ("proto.native.event.luminous_choir", "LUMINOUS_CHOIR",
+                ("LUMINOUS_CHOIR",
                     new[] { "primary" }, new[] { 50 }),
             "proto.native.underdocks.sunken_treasury" =>
-                ("proto.native.underdocks.sunken_treasury", "SUNKEN_TREASURY",
+                ("SUNKEN_TREASURY",
                     new[] { "primary", "secondary" }, new[] { 16, 61 }),
             var id when id == PrototypeNativePunchOff.EventId =>
-                (id, PrototypeNativePunchOff.NativeRngEventId,
+                (PrototypeNativePunchOff.NativeRngEventId,
                     new[] { "primary" }, new[] { 8 }),
             var id when id == PrototypeNativeSharedEvents.ThisOrThatId =>
-                (id, PrototypeNativeSharedEvents.ThisOrThatNativeRngEventId,
+                (PrototypeNativeSharedEvents.ThisOrThatNativeRngEventId,
                     new[] { "primary" }, new[] { 28 }),
             _ => throw new InvalidOperationException(
-                "The Event-node action did not enter an event with a pinned Native gold index mapping.")
+                "The requested Event ID has no pinned Native gold index mapping.")
         };
         if (ordinal >= stages.Length)
             throw new ArgumentOutOfRangeException(nameof(ordinal));
 
-        var requests = entries.Where(entry =>
-                entry.Request.SiteId == siteId &&
-                entry.Request.OwnerId.StartsWith(
-                    $"event:{eventId}:gold:", StringComparison.Ordinal))
-            .Select(entry => entry.Request)
-            .ToArray();
-        if (requests.Length != stages.Length)
-            throw new InvalidOperationException(
-                "Event entry did not produce the expected ordered gold index requests.");
-
         var stage = stages[ordinal];
         var ownerId = $"event:{eventId}:gold:{stage}";
-        var request = requests[ordinal];
-        var expectedStream = NativeRngV111Contexts.ForEvent(
-            origin.RunSeed, nativeEventEntry);
-        if (request.OwnerId != ownerId || request.Ordinal != ordinal ||
-            request.OperationKind != "bounded_integer" ||
-            request.BoundedCount != bounds[ordinal] ||
-            request.StreamId != expectedStream.StreamId ||
-            selectedEventStreamId != expectedStream.StreamId)
-            throw new InvalidDataException(
-                "Native event gold index request differs from its declared entry stage.");
+        var streamId = NativeRngV111Contexts.EventStreamId(nativeEventEntry);
+        var request = new RandomIndexRequestV111(
+            siteId, streamId, ownerId, ordinal, [],
+            OperationKind: "bounded_integer",
+            BoundedCount: bounds[ordinal]);
+        request.Validate();
 
         var indexWeights = NativeNextIntGridWeights(request.SupportCount);
         var goldWeights = new SortedDictionary<int, long>();
@@ -505,6 +450,40 @@ public static partial class ChanceLawEngineV111
             conditioningFingerprint,
             NativeBoundedIndexSourceVerifiedProvenance,
             outcomes, ChanceLawV111.SourceVerifiedStatus);
+    }
+
+    private static void ValidateNativeEventGoldBranch(
+        RunState origin, RunWorldState world, string eventId)
+    {
+        if (!PrototypeContent.Events.TryGetValue(eventId, out var eventDefinition) ||
+            world.Act < eventDefinition.MinAct ||
+            world.Act > eventDefinition.MaxAct ||
+            world.EventIds.Contains(eventId, StringComparer.Ordinal) &&
+                eventDefinition.OncePerRun)
+            throw new InvalidOperationException(
+                "The declared event-gold branch is not available in this run state.");
+
+        var overgrowth = world.Act == 1 &&
+            PrototypeNativeOvergrowthMap.IsGenerationProfile(
+                world.Map.GenerationProfileId);
+        var underdocks = world.Act == 1 &&
+            world.Map.GenerationProfileId ==
+                PrototypeNativeUnderdocks.GenerationProfileId;
+        var laterRoute = world.Act is 2 or 3 &&
+            origin.Configuration?.UsesExperimentalSilentThreeActRoute == true &&
+            world.Map.GenerationProfileId is
+                PrototypeNativeLaterActMap.HiveProfileId or
+                PrototypeNativeLaterActMap.GloryProfileId or
+                PrototypeGoldenPathMapV111.ProfileId;
+        var isSupported = overgrowth &&
+                (PrototypeNativeOvergrowthEvents.IsNativeRegionEvent(eventId) ||
+                    PrototypeNativeSharedEvents.IsSupported(eventId)) ||
+            underdocks && PrototypeNativeUnderdocksEvents.IsSupported(eventId) ||
+            laterRoute && ExperimentalSilentThreeActRouteV111
+                .ContainsEvent(eventId, world.Act);
+        if (!isSupported || !laterRoute && eventDefinition.Weight <= 0)
+            throw new InvalidOperationException(
+                "The declared event-gold branch is outside the configured Native event route.");
     }
 
     internal static int NativeEventGoldIndexOutcome(
