@@ -18,23 +18,118 @@ public sealed record ControlledPlayableCombatV111(
     RandomIndexRequestV111? Pending,
     string Mode = "controlled-v111-playable-fixture-v1")
 {
-    // All ticket decisions are preserved in a single chance transcript.
-    // The in-flight intent checkpoint additionally stores the unmodified
-    // post-enemy-action combat state and the current pure selector stage.
-    public ControlledTurnIntentsV111? TurnIntents { get; init; }
-    public RandomIndexDecisionV111[] TurnTranscript { get; init; } = [];
-    public ControlledRecycleShuffleV111? Recycle { get; init; }
-    public RandomIndexDecisionV111[] RecycleTranscript { get; init; } = [];
+    /// <summary>
+    /// Provider-owned pending requests, cursors and decision history. The
+    /// existing public fields below remain flattened snapshot projections.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public ControlledPlayableCombatStochasticStateV111 Stochastic
+        { get; init; } = new()
+        {
+            NextShuffleIndex = NextShuffleIndex,
+            ShuffleTranscript = ShuffleTranscript,
+            Pending = Pending
+        };
+
+    public int NextShuffleIndex
+    {
+        get => Stochastic.NextShuffleIndex;
+        init => Stochastic = Stochastic with { NextShuffleIndex = value };
+    }
+
+    public RandomIndexDecisionV111[] ShuffleTranscript
+    {
+        get => Stochastic.ShuffleTranscript;
+        init => Stochastic = Stochastic with { ShuffleTranscript = value };
+    }
+
+    public RandomIndexRequestV111? Pending
+    {
+        get => Stochastic.Pending;
+        init => Stochastic = Stochastic with { Pending = value };
+    }
+
+    // The in-flight intent checkpoint stores the unmodified post-enemy-action
+    // combat state and the current pure selector stage.
+    public ControlledTurnIntentsV111? TurnIntents
+    {
+        get => Stochastic.TurnIntents;
+        init => Stochastic = Stochastic with { TurnIntents = value };
+    }
+
+    public RandomIndexDecisionV111[] TurnTranscript
+    {
+        get => Stochastic.TurnTranscript;
+        init => Stochastic = Stochastic with { TurnTranscript = value };
+    }
+
+    public ControlledRecycleShuffleV111? Recycle
+    {
+        get => Stochastic.Recycle;
+        init => Stochastic = Stochastic with { Recycle = value };
+    }
+
+    public RandomIndexDecisionV111[] RecycleTranscript
+    {
+        get => Stochastic.RecycleTranscript;
+        init => Stochastic = Stochastic with { RecycleTranscript = value };
+    }
+
     // Chronological live chance transcript, interleaving intents/recycles.
-    public RandomIndexDecisionV111[] LiveTranscript { get; init; } = [];
-    public RandomIndexDecisionV111[] TargetTranscript { get; init; } = [];
-    public RandomIndexDecisionV111[] GeneratedCardTranscript { get; init; } = [];
-    public RandomIndexDecisionV111[] DrawInsertionTranscript { get; init; } = [];
-    public RandomIndexDecisionV111[] PoolShuffleTranscript { get; init; } = [];
-    public RandomIndexDecisionV111[] RandomCostTranscript { get; init; } = [];
-    public RandomIndexDecisionV111[] DrawCostTranscript { get; init; } = [];
-    public RandomIndexDecisionV111[] PotionGenerationTranscript { get; init; } = [];
-    public RandomIndexDecisionV111[] CardTransformTranscript { get; init; } = [];
+    public RandomIndexDecisionV111[] LiveTranscript
+    {
+        get => Stochastic.LiveTranscript;
+        init => Stochastic = Stochastic with { LiveTranscript = value };
+    }
+
+    public RandomIndexDecisionV111[] TargetTranscript
+    {
+        get => Stochastic.TargetTranscript;
+        init => Stochastic = Stochastic with { TargetTranscript = value };
+    }
+
+    public RandomIndexDecisionV111[] GeneratedCardTranscript
+    {
+        get => Stochastic.GeneratedCardTranscript;
+        init => Stochastic = Stochastic with { GeneratedCardTranscript = value };
+    }
+
+    public RandomIndexDecisionV111[] DrawInsertionTranscript
+    {
+        get => Stochastic.DrawInsertionTranscript;
+        init => Stochastic = Stochastic with { DrawInsertionTranscript = value };
+    }
+
+    public RandomIndexDecisionV111[] PoolShuffleTranscript
+    {
+        get => Stochastic.PoolShuffleTranscript;
+        init => Stochastic = Stochastic with { PoolShuffleTranscript = value };
+    }
+
+    public RandomIndexDecisionV111[] RandomCostTranscript
+    {
+        get => Stochastic.RandomCostTranscript;
+        init => Stochastic = Stochastic with { RandomCostTranscript = value };
+    }
+
+    public RandomIndexDecisionV111[] DrawCostTranscript
+    {
+        get => Stochastic.DrawCostTranscript;
+        init => Stochastic = Stochastic with { DrawCostTranscript = value };
+    }
+
+    public RandomIndexDecisionV111[] PotionGenerationTranscript
+    {
+        get => Stochastic.PotionGenerationTranscript;
+        init => Stochastic = Stochastic with
+        { PotionGenerationTranscript = value };
+    }
+
+    public RandomIndexDecisionV111[] CardTransformTranscript
+    {
+        get => Stochastic.CardTransformTranscript;
+        init => Stochastic = Stochastic with { CardTransformTranscript = value };
+    }
 
     [System.Text.Json.Serialization.JsonIgnore]
     public RandomIndexRequestV111? ActivePending =>
@@ -250,41 +345,9 @@ public sealed record ControlledPlayableCombatV111(
     {
         Origin = Origin.Fork(),
         Run = Run.Fork(),
-        ShuffleTranscript = ShuffleTranscript.Select(x => x with
-        {
-            Request = x.Request with
-            {
-                OrderedCandidates = (int[])x.Request.OrderedCandidates.Clone()
-            }
-        }).ToArray(),
         PlayerActions = (string[])PlayerActions.Clone(),
-        TurnIntents = TurnIntents?.Fork(),
-        Recycle = Recycle?.Fork(),
-        TurnTranscript = DeepCopy(TurnTranscript),
-        RecycleTranscript = DeepCopy(RecycleTranscript),
-        LiveTranscript = DeepCopy(LiveTranscript),
-        TargetTranscript = DeepCopy(TargetTranscript),
-        GeneratedCardTranscript = DeepCopy(GeneratedCardTranscript),
-        DrawInsertionTranscript = DeepCopy(DrawInsertionTranscript),
-        PoolShuffleTranscript = DeepCopy(PoolShuffleTranscript),
-        RandomCostTranscript = DeepCopy(RandomCostTranscript),
-        DrawCostTranscript = DeepCopy(DrawCostTranscript),
-        PotionGenerationTranscript = DeepCopy(PotionGenerationTranscript),
-        CardTransformTranscript = DeepCopy(CardTransformTranscript),
-        Pending = Pending is null ? null : Pending with
-        {
-            OrderedCandidates = (int[])Pending.OrderedCandidates.Clone()
-        }
+        Stochastic = Stochastic.Fork()
     };
-
-    private static RandomIndexDecisionV111[] DeepCopy(RandomIndexDecisionV111[] decisions) =>
-        decisions.Select(d => d with
-        {
-            Request = d.Request with
-            {
-                OrderedCandidates = (int[])d.Request.OrderedCandidates.Clone()
-            }
-        }).ToArray();
 }
 
 public static class ControlledPlayableCombatEngineV111
