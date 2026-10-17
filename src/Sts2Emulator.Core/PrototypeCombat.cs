@@ -14972,16 +14972,7 @@ public sealed partial class PrototypeGameEngine
     }
 
     private static long[] GetZone(CombatState combat, PrototypeCardZone zone) =>
-        zone switch
-        {
-            PrototypeCardZone.Hand => combat.Hand,
-            PrototypeCardZone.DrawPile => combat.DrawPile,
-            PrototypeCardZone.DiscardPile => combat.DiscardPile,
-            PrototypeCardZone.ExhaustPile => combat.ExhaustPile,
-            PrototypeCardZone.PlayPile => combat.PlayCardIds,
-            PrototypeCardZone.ChoicePool => combat.ChoiceCardIds,
-            _ => throw new ArgumentOutOfRangeException(nameof(zone))
-        };
+        combat.Mechanics.CardZones.CardsIn(zone);
 
     private static void RequireSemanticNativeStreamOwner(
         CombatState combat, string siteId)
@@ -15002,14 +14993,13 @@ public sealed partial class PrototypeGameEngine
         if (zone == PrototypeCardZone.DrawPile)
             return SemanticDrawPileAdapterV111.ApplyPhysicalMutation(
                 combat, cards);
-        return zone switch
+        return combat with
         {
-            PrototypeCardZone.Hand => combat with { Hand = cards },
-            PrototypeCardZone.DiscardPile => combat with { DiscardPile = cards },
-            PrototypeCardZone.ExhaustPile => combat with { ExhaustPile = cards },
-            PrototypeCardZone.PlayPile => combat with { PlayPile = cards },
-            PrototypeCardZone.ChoicePool => combat with { ChoicePool = cards },
-            _ => throw new ArgumentOutOfRangeException(nameof(zone))
+            Mechanics = combat.Mechanics with
+            {
+                CardZones = combat.Mechanics.CardZones.WithCardsIn(
+                    zone, cards)
+            }
         };
     }
 

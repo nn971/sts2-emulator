@@ -416,13 +416,10 @@ public sealed partial record CombatState
             throw new InvalidOperationException("Next event-subscriber application order is not fresh.");
         }
 
-        var zoneLocations = combat.Hand
-            .Select(id => (Id: id, Location: "Hand"))
-            .Concat(combat.DrawPile.Select(id => (Id: id, Location: "DrawPile")))
-            .Concat(combat.DiscardPile.Select(id => (Id: id, Location: "DiscardPile")))
-            .Concat(combat.ExhaustPile.Select(id => (Id: id, Location: "ExhaustPile")))
-            .Concat(combat.PlayCardIds.Select(id => (Id: id, Location: "PlayPile")))
-            .Concat(combat.ChoiceCardIds.Select(id => (Id: id, Location: "ChoicePool")))
+        var cardZones = combat.Mechanics.CardZones;
+        var zoneLocations = Enum.GetValues<PrototypeCardZone>()
+            .SelectMany(zone => cardZones.CardsIn(zone).Select(id =>
+                (Id: id, Location: zone.ToString())))
             .ToList();
         var zones = zoneLocations
             .Select(item => item.Id)
@@ -953,16 +950,8 @@ public sealed partial record CombatState
                             "Controlled semantic draw has no live Nature support.");
                 }
             }
-            var sourceZone = pending.Selection.SourceZone switch
-            {
-                PrototypeCardZone.Hand => combat.Hand,
-                PrototypeCardZone.DrawPile => combat.DrawPile,
-                PrototypeCardZone.DiscardPile => combat.DiscardPile,
-                PrototypeCardZone.ExhaustPile => combat.ExhaustPile,
-                PrototypeCardZone.PlayPile => combat.PlayCardIds,
-                PrototypeCardZone.ChoicePool => combat.ChoiceCardIds,
-                _ => throw new ArgumentOutOfRangeException()
-            };
+            var sourceZone = cardZones.CardsIn(
+                pending.Selection.SourceZone);
 
             if (pending.CandidateCardInstanceIds.Length
                 != pending.CandidateCardInstanceIds.Distinct().Count())

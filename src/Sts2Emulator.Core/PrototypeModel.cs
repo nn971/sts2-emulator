@@ -2360,11 +2360,14 @@ public sealed partial record CombatState(
     public SimulationStateV111<CombatMechanicsStateV111,
         CombatStochasticStateV111> Simulation { get; init; } = new(
             new CombatMechanicsStateV111(
-                Turn, Energy, PlayerBlock, Hand, DrawPile, DiscardPile,
-                ExhaustPile, Enemies, NextCardInstanceId, Cards, PlayerPowers,
+                Turn, Energy, PlayerBlock,
+                new CombatCardZonesV111(
+                    Hand, DrawPile, DiscardPile, ExhaustPile,
+                    PlayPile, ChoicePool),
+                Enemies, NextCardInstanceId, Cards, PlayerPowers,
                 NextPowerApplicationOrder, Relics, Potions, PendingChoice,
                 Counters, IsPlayerTurn, AutomaticPipelineContinuation, Act,
-                Ascension, ExtraCardRewardsEarned, ChoicePool, PlayPile,
+                Ascension, ExtraCardRewardsEarned,
                 ToricShields, TransformedPersistentCardIds,
                 BoundCardPlayedThisTurn, PendingKnowledgeDemonChoice,
                 KnowledgeDemonChoiceResolvedTurn, AutoPlayTargetRolls,
@@ -2622,10 +2625,10 @@ public sealed partial record CombatState(
 
     public CombatState Fork() => this with
     {
-        Hand = (long[])Hand.Clone(),
-        DrawPile = (long[])DrawPile.Clone(),
-        DiscardPile = (long[])DiscardPile.Clone(),
-        ExhaustPile = (long[])ExhaustPile.Clone(),
+        Mechanics = Mechanics with
+        {
+            CardZones = Mechanics.CardZones.Fork()
+        },
         Enemies = Enemies.Select(enemy => enemy.Fork()).ToArray(),
         Stochastic = Stochastic.Fork(),
         Cards = Cards.Select(card => card.Fork()).ToArray(),
@@ -2636,12 +2639,6 @@ public sealed partial record CombatState(
         Potions = Potions is null
             ? null
             : Potions.Select(potion => potion.Fork()).ToArray(),
-        ChoicePool = ChoicePool is null
-            ? null
-            : (long[])ChoicePool.Clone(),
-        PlayPile = PlayPile is null
-            ? null
-            : (long[])PlayPile.Clone(),
         ToricShields = ToricShields is null
             ? null
             : (PrototypeToricShield[])ToricShields.Clone(),
