@@ -65,6 +65,75 @@ public sealed partial class PrototypeGameEngine
             (pending.Stage != "slither" || slither);
     }
 
+    private sealed record PrototypeDrawCostProgressV111(
+        RunState Run,
+        bool CostStagePending,
+        bool DrawnHookSuspended);
+
+    /// <summary>
+    /// Applies one saved draw-cost outcome, advances Relic to Slither when
+    /// required, and dispatches CardDrawn exactly once. Callers retain only
+    /// the continuation policy for a suspended hook or the next draw.
+    /// </summary>
+    private static PrototypeDrawCostProgressV111
+        ResolveDrawCostAndDispatchCardDrawn(
+            RunState run,
+            PrototypeControlledDrawCostV111 cost,
+            int selectedValue,
+            bool allowHookSuspension)
+    {
+        var world = RequireWorld(run);
+        var combat = world.Combat ?? throw new InvalidOperationException(
+            "Draw-cost continuation has no combat.");
+        if (combat.PendingChoice?.ControlledDrawCost != cost)
+            throw new InvalidDataException(
+                "Draw-cost outcome no longer matches its pending choice.");
+        int bound = cost.Stage == "relic"
+            ? cost.RelicMaxExclusive : 4;
+        if (selectedValue < 0 || selectedValue >= bound)
+            throw new ArgumentOutOfRangeException(nameof(selectedValue));
+
+        combat = SetCardTemporaryEnergyCost(
+            combat, cost.CardInstanceId,
+            new PrototypeTemporaryCardCost(
+                selectedValue, PrototypeTemporaryCardCostExpiry.None));
+        if (cost.Stage == "relic" && cost.HasSlither)
+        {
+            combat = combat with
+            {
+                PendingChoice = combat.PendingChoice! with
+                {
+                    ControlledDrawCost = cost with { Stage = "slither" }
+                }
+            };
+            return new PrototypeDrawCostProgressV111(
+                run with { World = world with { Combat = combat } },
+                CostStagePending: true, DrawnHookSuspended: false);
+        }
+
+        combat = combat with { PendingChoice = null };
+        var card = RequireCombatCard(combat, cost.CardInstanceId);
+        var dispatched = DispatchCombatEvent(
+            run.Player, combat,
+            new PrototypeCombatEvent(
+                PrototypeCombatEventKind.CardDrawn,
+                SourceCardInstanceId: cost.CardInstanceId,
+                CardId: card.CardId,
+                FromHandDraw: cost.FromHandDraw),
+            run.Rng, cost.EventDepth,
+            allowSuspension: allowHookSuspension);
+        var nextRun = run with
+        {
+            Player = dispatched.Player,
+            World = world with { Combat = dispatched.Combat }
+        };
+        return new PrototypeDrawCostProgressV111(
+            nextRun, CostStagePending: false,
+            DrawnHookSuspended:
+                dispatched.Combat.PendingChoice is not null ||
+                dispatched.Combat.PendingKnowledgeDemonChoice is not null);
+    }
+
     /// <summary>
     /// Resume a drawn-card cost nested inside a player card's DrawCards
     /// operation. The source effect queue and the draw's deferred keyword
@@ -100,44 +169,21 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidDataException(
                 "Semantic effect-draw cost checkpoint is inconsistent.");
 
-        int bound = cost.Stage == "relic"
-            ? cost.RelicMaxExclusive : 4;
-        if (value < 0 || value >= bound)
-            throw new ArgumentOutOfRangeException(nameof(value));
-        combat = SetCardTemporaryEnergyCost(
-            combat, cost.CardInstanceId,
-            new PrototypeTemporaryCardCost(
-                value, PrototypeTemporaryCardCostExpiry.None));
-        if (cost.Stage == "relic" && cost.HasSlither)
-            return state with
-            {
-                World = world with
-                {
-                    Combat = combat with
-                    {
-                        PendingChoice = pending! with
-                        {
-                            ControlledDrawCost = cost with
-                            {
-                                Stage = "slither"
-                            }
-                        }
-                    }
-                }
-            };
-
-        combat = combat with { PendingChoice = null };
-        var card = RequireCombatCard(combat, cost.CardInstanceId);
-        var dispatched = DispatchCombatEvent(
-            state.Player, combat,
-            new PrototypeCombatEvent(
-                PrototypeCombatEventKind.CardDrawn,
-                SourceCardInstanceId: cost.CardInstanceId,
-                CardId: card.CardId,
-                FromHandDraw: cost.FromHandDraw),
-            state.Rng, cost.EventDepth, allowSuspension: true);
-        if (dispatched.Combat.PendingChoice is not null)
+        var progress = ResolveDrawCostAndDispatchCardDrawn(
+            state, cost, value, allowHookSuspension: true);
+        if (progress.CostStagePending)
+            return progress.Run;
+        var resumedRun = progress.Run;
+        var resumedWorld = RequireWorld(resumedRun);
+        var resumedCombat = resumedWorld.Combat ??
+            throw new InvalidDataException(
+                "Draw-cost resume removed combat.");
+        if (progress.DrawnHookSuspended)
         {
+            if (resumedCombat.PendingChoice is null)
+                throw new NotSupportedException(
+                    "UNSUPPORTED_SEMANTIC_DECK site=combat.draw.CardDrawn " +
+                    "operation=nested_choice_continuation");
             var resumeDraw = CreateDrawResumeOperation(
                 cost.RemainingCount,
                 draw.FromHandDraw,
@@ -145,27 +191,22 @@ public sealed partial class PrototypeGameEngine
                 draw.DrawnCardKeyword,
                 draw.DeferredKeywordCardInstanceIds);
             var combatWithDraw = AttachDrawResumeContinuation(
-                dispatched.Combat, resumeDraw, continuation);
-            return state with
+                resumedCombat, resumeDraw, continuation);
+            return resumedRun with
             {
-                Player = dispatched.Player,
-                World = world with { Combat = combatWithDraw }
+                World = resumedWorld with { Combat = combatWithDraw }
             };
         }
-        if (dispatched.Combat.PendingKnowledgeDemonChoice is not null)
-            throw new NotSupportedException(
-                "UNSUPPORTED_SEMANTIC_DECK site=combat.draw.CardDrawn " +
-                "operation=nested_choice_continuation");
 
         var drawn = DrawCards(
-            dispatched.Player, dispatched.Combat, cost.RemainingCount,
-            state.Rng, cost.FromHandDraw, eventDepth: cost.EventDepth,
+            resumedRun.Player, resumedCombat, cost.RemainingCount,
+            resumedRun.Rng, cost.FromHandDraw, eventDepth: cost.EventDepth,
             controlledDrawCostSuspension: true,
             controlledSemanticDrawSuspension: true,
             controlledAfterShuffleInsertionSuspension: true,
             controlledCardDrawnChoiceSuspension: true);
         var continued = ContinueControlledSemanticEffectDraw(
-            state, drawn, draw, continuation);
+            resumedRun, drawn, draw, continuation);
         return ResumeAutomaticPipelineContinuation(continued);
     }
 
