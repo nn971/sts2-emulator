@@ -9,10 +9,11 @@ schema is unchanged.
 
 `treasure.relic_grab_bag.draw` remains a compact pre-entry query at `MapChoice`
 when a configured native Treasure node is reachable, the next entry will not
-be skipped by Silver Crucible, and the run has its persistent relic bag. Its
-outcomes combine rarity and identity into a final relic result or `no_relic`.
-The query uses the remaining identities by rarity after ownership filtering;
-it sorts them and never returns the private order of the shuffled queues.
+be skipped by Silver Crucible. Its outcomes combine rarity and identity into a
+final relic result or `no_relic`. If no relic bag is stored yet, the query
+builds sorted eligible rarity sets from the same source catalog and ownership
+filter used by bag construction. It never returns or requires the private
+order of shuffled queues.
 
 The granular rarity query uses `site_id: relic_grab_bag.rarity.unit_float`,
 the exact `owner_id: relic_grab_bag:reward`, and the typed request ordinal. It
@@ -30,8 +31,9 @@ identity law is conditional on the sampled rarity and source fallback plan.
 The replay applies the selected identity through `PlanPull`/`PullSelected` and
 commits the resulting Reward or completed room with the ReferenceNature cursor
 atomically. The session supports fork, save/restore, status, resolve and
-release through JSONL and Python. Its Nature origin sorts each rarity queue so
-Native's committed hidden order is not included in the session snapshot.
+release through JSONL and Python. Its Nature origin sorts stored queues, or
+constructs sorted eligible rarity sets when the source run has no bag, so
+Native's committed hidden order is never included in the session snapshot.
 
 The law combines the relic-rarity draw's nominal 50/33/17 Common/Uncommon/Rare
 partition with the conditional equal support of each still-hidden queue
@@ -53,13 +55,20 @@ the Native RNG cursor or queue order. The session does not advance that Native
 cursor. The laws remain `UNVERIFIED` against original-game probabilities,
 float-edge masses, and shuffle/cursor behavior.
 
+Constructing the sorted Nature pools does not replay Native's run-start queue
+shuffles. For the first Treasure pull, sequential conditional identity sampling
+represents the hidden uniformly shuffled queue without exposing or committing
+its order. Continued relic-bag pulls require a provider-owned residual-set
+continuation; ordinary Native execution must retain its source-created order.
+
 ## Projection and unsupported scope
 
 Nature receives stable outcome IDs, sorted support, and conditioning
 fingerprints. The ordinary player view receives the relic only after the
 normal Treasure mechanics commits it; it never receives remaining queue order
 or RNG state. Ordinary Native execution keeps its source rarity roll and
-queue-front pull. The Nature session requires a committed relic bag; bag
-construction, skipped chests, non-native profiles, missing bags and
-unavailable Treasure nodes fail closed. Native cursor parity, later Treasure
-draws after purchases, and source probability calibration remain open.
+queue-front pull. The session can construct Nature's eligible pools without a
+committed Native bag. Skipped chests, non-native profiles, and unavailable
+Treasure nodes fail closed. Native queue-shuffle cursor parity, continued bag
+draws after the session, later Treasure draws after purchases, and source
+probability calibration remain open.

@@ -77,9 +77,10 @@ equivalence remains open.
 `ReferenceNatureTreasureSessionV111` own serialized continuations and use the
 shared law-to-source mapping. Their opening projections sort the existing
 relic bag queues so Native's committed hidden queue order is not retained in
-Nature snapshots. Both require an already constructed bag and do not model
-Native cursor advancement; merchant purchases and bag construction remain
-outside their boundaries.
+Nature snapshots. The merchant session still requires a constructed bag;
+the Treasure session can seed sorted eligible rarity sets if the source run
+has no bag. Neither models Native cursor advancement; merchant purchases and
+continued relic-bag pulls remain outside their boundaries.
 
 `PrototypeNativeRelicGrabBag.PlanPull` is now the shared source fallback
 resolver used by ordinary relic pulls and native Treasure laws. It retains

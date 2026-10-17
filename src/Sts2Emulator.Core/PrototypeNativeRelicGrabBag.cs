@@ -174,12 +174,7 @@ public static class PrototypeNativeRelicGrabBag
     {
         string[] Make(PrototypeRelicRarity rarity)
         {
-            var ids = PrototypeContent.RelicPool
-                .Where(id => Rarities.TryGetValue(id, out var value)
-                    && value == rarity
-                    && !player.Relics.Any(relic =>
-                        StringComparer.Ordinal.Equals(relic.RelicId, id)))
-                .ToArray();
+            var ids = EligibleIds(player, rarity);
             _ = LegacyFisherYatesV111.ShuffleInPlace(
                 ids,
                 rng,
@@ -197,6 +192,35 @@ public static class PrototypeNativeRelicGrabBag
     }
 
     /// <summary>
+    /// Build Nature's canonical rarity sets without committing a hidden
+    /// queue order. Nature draws identities conditionally from these sets,
+    /// so Native's shuffled queue order is not an input to the first pull.
+    /// </summary>
+    internal static PrototypeRelicBagState CreateNatureUnordered(
+        PlayerState player)
+    {
+        ArgumentNullException.ThrowIfNull(player);
+        static string[] Canonical(string[] ids) => ids
+            .OrderBy(id => id, StringComparer.Ordinal).ToArray();
+        var bag = new PrototypeRelicBagState(
+            Canonical(EligibleIds(player, PrototypeRelicRarity.Common)),
+            Canonical(EligibleIds(player, PrototypeRelicRarity.Uncommon)),
+            Canonical(EligibleIds(player, PrototypeRelicRarity.Rare)),
+            Canonical(EligibleIds(player, PrototypeRelicRarity.Shop)));
+        Validate(bag, player);
+        return bag;
+    }
+
+    private static string[] EligibleIds(
+        PlayerState player, PrototypeRelicRarity rarity) =>
+        PrototypeContent.RelicPool
+            .Where(id => Rarities.TryGetValue(id, out var value)
+                && value == rarity
+                && !player.Relics.Any(relic =>
+                    StringComparer.Ordinal.Equals(relic.RelicId, id)))
+            .ToArray();
+
+    /// <summary>
     /// Native RelicGrabBag construction shuffles each ordered rarity pool
     /// with the persistent treasure-room relic stream.
     /// </summary>
@@ -207,12 +231,7 @@ public static class PrototypeNativeRelicGrabBag
         ArgumentNullException.ThrowIfNull(nativeRunRng);
         string[] Make(PrototypeRelicRarity rarity)
         {
-            var ids = PrototypeContent.RelicPool
-                .Where(id => Rarities.TryGetValue(id, out var value)
-                    && value == rarity
-                    && !player.Relics.Any(relic =>
-                        StringComparer.Ordinal.Equals(relic.RelicId, id)))
-                .ToArray();
+            var ids = EligibleIds(player, rarity);
             _ = NativeFisherYatesV111.ShuffleInPlace(
                 ids,
                 nativeRunRng,

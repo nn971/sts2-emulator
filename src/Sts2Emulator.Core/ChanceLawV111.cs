@@ -885,11 +885,12 @@ public static class ChanceLawEngineV111
             !PrototypeGameEngine.UsesNativeRegionalSystems(world) ||
             !PrototypeNativeWingedBoots.AvailableNodes(world, run.Player)
                 .Any(node => node.RoomType == PrototypeRoomType.Treasure) ||
-            PrototypeGameEngine.WillSkipNextTreasure(run.Player) ||
-            world.RelicBag is not { } bag)
+            PrototypeGameEngine.WillSkipNextTreasure(run.Player))
             throw new InvalidOperationException(
                 "Native treasure Chance Laws require a non-skipped configured Treasure node before entry.");
 
+        var bag = world.RelicBag ??
+            PrototypeNativeRelicGrabBag.CreateNatureUnordered(run.Player);
         var candidatesByTier = new Dictionary<PrototypeRelicRarity, string[]>
         {
             [PrototypeRelicRarity.Common] =
@@ -1003,7 +1004,8 @@ public static class ChanceLawEngineV111
             throw new ArgumentException(
                 "Native treasure rarity request differs from its entry boundary.");
 
-        var bag = world.RelicBag!;
+        var bag = world.RelicBag ??
+            PrototypeNativeRelicGrabBag.CreateNatureUnordered(run.Player);
         var conditioning = new
         {
             request,
@@ -1088,8 +1090,10 @@ public static class ChanceLawEngineV111
             throw new ArgumentException(
                 "Native treasure relic selection request is malformed.");
 
+        var bag = world.RelicBag ??
+            PrototypeNativeRelicGrabBag.CreateNatureUnordered(run.Player);
         var plan = PrototypeNativeRelicGrabBag.PlanPull(
-            world.RelicBag!, rarity, merchant: false, run.Player);
+            bag, rarity, merchant: false, run.Player);
         var expectedCandidates = plan.CandidateIds.OrderBy(
             id => id, StringComparer.Ordinal).ToArray();
         var ownerId = PrototypeNativeRelicGrabBag.TreasureModelOwnerId(
@@ -1129,8 +1133,7 @@ public static class ChanceLawEngineV111
             !PrototypeGameEngine.UsesNativeRegionalSystems(world) ||
             !PrototypeNativeWingedBoots.AvailableNodes(world, run.Player)
                 .Any(node => node.RoomType == PrototypeRoomType.Treasure) ||
-            PrototypeGameEngine.WillSkipNextTreasure(run.Player) ||
-            world.RelicBag is null)
+            PrototypeGameEngine.WillSkipNextTreasure(run.Player))
             throw new InvalidOperationException(
                 "Native treasure Chance Laws require a non-skipped configured Treasure node before entry.");
         return world;

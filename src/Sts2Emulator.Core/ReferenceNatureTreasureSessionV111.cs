@@ -328,8 +328,8 @@ public sealed record ReferenceNatureTreasureSessionV111(
     private static RunState CreateNatureReplayOrigin(RunState source)
     {
         var world = source.World!;
-        var bag = world.RelicBag ?? throw new NotSupportedException(
-            "Native treasure Nature replay requires a committed relic bag; bag construction remains a separate Nature boundary.");
+        var bag = world.RelicBag ??
+            PrototypeNativeRelicGrabBag.CreateNatureUnordered(source.Player);
         static string[] Canonical(string[] ids) => ids
             .OrderBy(id => id, StringComparer.Ordinal).ToArray();
         return source with
@@ -350,11 +350,10 @@ public sealed record ReferenceNatureTreasureSessionV111(
             source.NativeRunRng is null ||
             source.ControlledRunActionChoice is not null ||
             !PrototypeGameEngine.UsesNativeRegionalSystems(world) ||
-            world.RelicBag is null ||
             PrototypeGameEngine.WillSkipNextTreasure(source.Player) ||
             action.Kind != "choose_map_node")
             throw new InvalidOperationException(
-                "ReferenceNature treasure session requires a non-skipped configured Treasure choice and committed relic bag.");
+                "ReferenceNature treasure session requires a non-skipped configured Treasure choice.");
         var payload = action.ReadPayload<ChooseMapNodePayload>();
         if (!PrototypeNativeWingedBoots.AvailableNodes(world, source.Player)
                 .Any(node => node.NodeId == payload.NodeId &&
