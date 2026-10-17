@@ -33,7 +33,8 @@ class State:
         return self.session.call("exact_hash", state_handle=self.handle)["exactHash"]
 
     def query_chance_law(self, site_id: str, *, ordinal: int = 0,
-                         prior_indices=None):
+                         prior_indices=None, card_type=None, rarity=None,
+                         excluded_potion_ids=None):
         """Read an advertised pre-outcome Chance Law without changing state."""
         if not self.session.supports_chance_law_query(site_id):
             raise EmulatorError(
@@ -42,6 +43,21 @@ class State:
             raise ValueError("ordinal must be a nonnegative integer")
         payload = {"state_handle": self.handle,
                    "site_id": site_id, "ordinal": ordinal}
+        if card_type is not None:
+            if not isinstance(card_type, str) or not card_type:
+                raise ValueError("card_type must be a nonempty string")
+            payload["card_type"] = card_type
+        if rarity is not None:
+            if not isinstance(rarity, str) or not rarity:
+                raise ValueError("rarity must be a nonempty string")
+            payload["rarity"] = rarity
+        if excluded_potion_ids is not None:
+            if not isinstance(excluded_potion_ids, (list, tuple)) or any(
+                    not isinstance(potion_id, str) or not potion_id
+                    for potion_id in excluded_potion_ids):
+                raise ValueError(
+                    "excluded_potion_ids must be a sequence of nonempty strings")
+            payload["excluded_potion_ids"] = list(excluded_potion_ids)
         if prior_indices is not None:
             if not isinstance(prior_indices, (list, tuple)) or any(
                     type(index) is not int or index < 0

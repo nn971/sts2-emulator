@@ -44,6 +44,33 @@ public static class PrototypeNativeCardRarityOdds
         };
     }
 
+    /// <summary>
+    /// Nominal basis-point partition of the native merchant rarity roll.
+    /// The source still samples a float, so Chance Law consumers must retain
+    /// the UNVERIFIED provenance attached by the query boundary.
+    /// </summary>
+    public static (long Rare, long Uncommon, long Common)
+        MerchantRarityWeights(int offsetBasisPoints, int ascension)
+    {
+        if (offsetBasisPoints is < InitialOffsetBasisPoints or
+            > MaximumOffsetBasisPoints)
+            throw new ArgumentOutOfRangeException(nameof(offsetBasisPoints));
+        var (rareBase, uncommonBase) = Thresholds(
+            ascension, PrototypeNativeCardOddsSource.Shop);
+        var rareThreshold = checked(rareBase + offsetBasisPoints);
+        if (rareThreshold >= 10000)
+            return (10000, 0, 0);
+        var rare = Math.Clamp(rareThreshold, 0, 10000);
+        var uncommonEnd = Math.Clamp(
+            checked(rareThreshold + uncommonBase), 0, 10000);
+        var uncommon = Math.Max(0, uncommonEnd - rare);
+        var common = checked(10000 - rare - uncommon);
+        if (uncommon < 0 || common < 0)
+            throw new InvalidOperationException(
+                "Native merchant rarity thresholds do not partition the unit interval.");
+        return (rare, uncommon, common);
+    }
+
     private static int RareThreshold(
         int offsetBasisPoints, PrototypeNativeCardOddsSource source,
         int ascension) =>

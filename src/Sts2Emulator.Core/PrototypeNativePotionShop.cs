@@ -159,6 +159,13 @@ public static class PrototypeNativePotionShop
         string potionId, out PrototypeNativePotionRarity rarity) =>
         Rarities.TryGetValue(potionId, out rarity);
 
+    /// <summary>Source-ordered potion models for one merchant rarity tier.</summary>
+    public static string[] CandidatesForRarity(
+        PrototypeNativePotionRarity rarity,
+        IReadOnlyCollection<string>? excluded = null) =>
+        NativePotionPoolOrder.Where(id => Rarities[id] == rarity &&
+            (excluded is null || !excluded.Contains(id))).ToArray();
+
     /// <summary>
     /// PotionFactory.CreateRandomPotions first rolls rarity (10% Rare,
     /// 25% Uncommon, 65% Common), then chooses an item of that rarity.
@@ -185,10 +192,7 @@ public static class PrototypeNativePotionShop
         string ownerId = "potion:weighted_offer")
     {
         var rarity = RollRarity(rng, streamId, ownerId + ":rarity");
-        var candidates = NativePotionPoolOrder
-            .Where(id => Rarities[id] == rarity
-                && (excluded is null || !excluded.Contains(id)))
-            .ToArray();
+        var candidates = CandidatesForRarity(rarity, excluded);
         if (candidates.Length == 0)
         {
             // Native PotionFactory does not silently substitute a

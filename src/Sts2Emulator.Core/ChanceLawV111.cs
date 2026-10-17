@@ -205,6 +205,10 @@ public static class ChanceLawEngineV111
         "uniform-ordered-event-offer-entry-v1";
     public const string AncientOfferShuffleConditioningPolicyId =
         "uniform-ancient-offer-fisher-yates-swap-v1";
+    public const string NativeMerchantIndexConditioningPolicyId =
+        "uniform-native-merchant-index-support-v1";
+    public const string NativeMerchantThresholdConditioningPolicyId =
+        "source-threshold-native-merchant-category-v1";
 
     public static ChanceLawV111 QueryIntent(SemanticIntentEventV111 intent)
     {
@@ -386,6 +390,289 @@ public static class ChanceLawEngineV111
     public static ChanceLawV111 QueryOrobasOffer(
         RunState run, int ordinal) => QueryAncientOffer(
             run, NativeOrobasEventV111.OfferSiteId, ordinal);
+
+    /// <summary>
+    /// Query discrete native merchant offer decisions before entering an
+    /// available configured Shop node. The returned laws describe the
+    /// emulator's pinned source-shaped support and thresholds; probability
+    /// provenance remains UNVERIFIED.
+    /// </summary>
+    public static ChanceLawV111 QueryNativeMerchantOffer(
+        RunState run, string siteId, int ordinal,
+        string? cardType = null, string? rarity = null,
+        string[]? excludedPotionIds = null)
+    {
+        ArgumentNullException.ThrowIfNull(run);
+        ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
+        PrototypeStateInvariants.Validate(run);
+        ValidateNativeMerchantQueryBoundary(run);
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+
+        var world = run.World!;
+        var actFloor = $"act:{world.Act}:floor:{world.Floor}";
+        string ownerId;
+        string operationKind;
+        string policy;
+        string provenance;
+        object conditioning;
+        ChanceLawOutcomeV111[] outcomes;
+
+        if (siteId == "shop.merchant.sale_slot.index_draw")
+        {
+            if (ordinal != 0 || cardType is not null || rarity is not null ||
+                excludedPotionIds is not null)
+                throw new ArgumentException(
+                    "Merchant sale-slot queries use ordinal 0 and no pool parameters.");
+            ownerId = $"merchant:act:{world.Act}:floor:{world.Floor}";
+            operationKind = "choose_index";
+            policy = NativeMerchantIndexConditioningPolicyId;
+            provenance = "native-merchant-five-card-sale-slots-unverified";
+            conditioning = new { siteId, ownerId, candidateCount = 5 };
+            outcomes = Enumerable.Range(0, 5)
+                .Select(index => new ChanceLawOutcomeV111(
+                    "sale_slot:" + index.ToString(CultureInfo.InvariantCulture), 1L))
+                .ToArray();
+        }
+        else if (siteId == "card_rarity.roll.unit_float")
+        {
+            var type = ParseMerchantCardType(cardType);
+            if (rarity is not null || excludedPotionIds is not null)
+                throw new ArgumentException(
+                    "Merchant card-rarity queries accept only card_type.");
+            var count = MerchantCardCount(type);
+            if (ordinal >= count)
+                throw new ArgumentOutOfRangeException(nameof(ordinal));
+            var weights = PrototypeNativeCardRarityOdds.MerchantRarityWeights(
+                world.CardRarityOffsetBasisPoints, run.Ascension);
+            ownerId = $"type:{type}:offer:{ordinal}:offset:{world.CardRarityOffsetBasisPoints}";
+            operationKind = "unit_float_threshold";
+            policy = NativeMerchantThresholdConditioningPolicyId;
+            provenance = "native-card-rarity-threshold-basis-points-unverified";
+            conditioning = new
+            {
+                siteId, ownerId, cardType = type.ToString(),
+                world.CardRarityOffsetBasisPoints, run.Ascension,
+                weights
+            };
+            outcomes = new[]
+                {
+                    new ChanceLawOutcomeV111("rarity:rare", weights.Rare),
+                    new ChanceLawOutcomeV111("rarity:uncommon", weights.Uncommon),
+                    new ChanceLawOutcomeV111("rarity:common", weights.Common)
+                }
+                .Where(outcome => outcome.Weight > 0).ToArray();
+        }
+        else if (siteId == "shop.merchant.card_model.index_draw")
+        {
+            var type = ParseMerchantCardType(cardType);
+            var selectedRarity = ParseCardRarity(rarity);
+            if (excludedPotionIds is not null)
+                throw new ArgumentException(
+                    "Merchant card-model queries do not accept potion exclusions.");
+            var count = MerchantCardCount(type);
+            if (ordinal >= count)
+                throw new ArgumentOutOfRangeException(nameof(ordinal));
+            var candidates = PrototypeContent.NativeSilentRewardCardPool
+                .Where(id => PrototypeContent.Card(id).Type == type &&
+                    PrototypeContent.Card(id).Rarity == selectedRarity)
+                .ToArray();
+            if (candidates.Length == 0)
+                throw new InvalidOperationException(
+                    "Native merchant card pool has no models for the requested rarity.");
+            ownerId = $"type:{type}:offer:{ordinal}:rarity:{selectedRarity}:pool:" +
+                CanonicalJson.Sha256(candidates);
+            operationKind = "choose_index";
+            policy = NativeMerchantIndexConditioningPolicyId;
+            provenance = "native-merchant-ordered-card-pool-unverified";
+            conditioning = new
+            {
+                siteId, ownerId, cardType = type.ToString(),
+                rarity = selectedRarity.ToString(), candidates
+            };
+            outcomes = candidates.Select((id, index) =>
+                new ChanceLawOutcomeV111(
+                    $"card_model:{id}:index:{index}", 1L)).ToArray();
+        }
+        else if (siteId == "shop.colorless_card_model.index_draw")
+        {
+            if (cardType is not null || excludedPotionIds is not null)
+                throw new ArgumentException(
+                    "Colorless merchant model queries accept only ordinal and optional rarity.");
+            var selectedRarity = ordinal switch
+            {
+                0 => PrototypeCardRarity.Uncommon,
+                1 => PrototypeCardRarity.Rare,
+                _ => throw new ArgumentOutOfRangeException(nameof(ordinal))
+            };
+            if (rarity is not null &&
+                ParseCardRarity(rarity) != selectedRarity)
+                throw new ArgumentException(
+                    "Colorless merchant offer rarity is fixed by its ordinal.", nameof(rarity));
+            var candidates = PrototypeColorlessCards.Implemented
+                .Where(card => card.Rarity == selectedRarity &&
+                    !card.MultiplayerOnly && card.MechanicsImplemented)
+                .Select(card => card.Id).ToArray();
+            if (candidates.Length == 0)
+                throw new InvalidOperationException(
+                    "Native merchant colorless pool is empty for this rarity.");
+            ownerId = $"rarity:{selectedRarity}:pool:" +
+                CanonicalJson.Sha256(candidates);
+            operationKind = "choose_index";
+            policy = NativeMerchantIndexConditioningPolicyId;
+            provenance = "native-merchant-colorless-card-pool-unverified";
+            conditioning = new
+            {
+                siteId, ownerId, ordinal,
+                rarity = selectedRarity.ToString(), candidates
+            };
+            outcomes = candidates.Select((id, index) =>
+                new ChanceLawOutcomeV111(
+                    $"card_model:{id}:index:{index}", 1L)).ToArray();
+        }
+        else if (siteId == "potion_factory.rarity_roll.unit_float")
+        {
+            if (ordinal >= 3 || cardType is not null || rarity is not null ||
+                excludedPotionIds is not null)
+                throw new ArgumentOutOfRangeException(nameof(ordinal));
+            ownerId = $"merchant:act:{world.Act}:floor:{world.Floor}:potions";
+            operationKind = "unit_float_threshold";
+            policy = NativeMerchantThresholdConditioningPolicyId;
+            provenance = "native-potion-rarity-threshold-basis-points-unverified";
+            conditioning = new { siteId, ownerId, ordinal, common = 6500, uncommon = 2500, rare = 1000 };
+            outcomes =
+            [
+                new ChanceLawOutcomeV111("rarity:common", 6500),
+                new ChanceLawOutcomeV111("rarity:uncommon", 2500),
+                new ChanceLawOutcomeV111("rarity:rare", 1000)
+            ];
+        }
+        else if (siteId == "potion_factory.model_within_rarity.index_draw")
+        {
+            if (cardType is not null || rarity is null || ordinal >= 3)
+                throw new ArgumentException(
+                    "Potion model queries require a supported rarity and offer ordinal 0-2.");
+            if (excludedPotionIds is null)
+                excludedPotionIds = [];
+            if (excludedPotionIds.Any(string.IsNullOrWhiteSpace) ||
+                excludedPotionIds.Distinct(StringComparer.Ordinal).Count() !=
+                    excludedPotionIds.Length || excludedPotionIds.Length != ordinal ||
+                excludedPotionIds.Any(id =>
+                    !PrototypeNativePotionShop.NativePotionPoolOrder.Contains(
+                        id, StringComparer.Ordinal)))
+                throw new ArgumentException(
+                    "excluded_potion_ids must contain exactly one unique native potion ID per preceding offer.");
+            var selectedRarity = ParsePotionRarity(rarity);
+            var candidates = PrototypeNativePotionShop.CandidatesForRarity(
+                selectedRarity, excludedPotionIds);
+            if (candidates.Length == 0)
+                throw new InvalidOperationException(
+                    "Native merchant potion pool is empty for the requested rarity and exclusions.");
+            ownerId = $"merchant:act:{world.Act}:floor:{world.Floor}:potions";
+            operationKind = "choose_index";
+            policy = NativeMerchantIndexConditioningPolicyId;
+            provenance = "native-merchant-ordered-potion-tier-pool-unverified";
+            conditioning = new
+            {
+                siteId, ownerId, ordinal,
+                rarity = selectedRarity.ToString(),
+                excludedPotionIds, candidates
+            };
+            outcomes = candidates.Select((id, index) =>
+                new ChanceLawOutcomeV111(
+                    $"potion_model:{id}:index:{index}", 1L)).ToArray();
+        }
+        else if (siteId == "relic_grab_bag.rarity.unit_float")
+        {
+            if (ordinal >= 2 || cardType is not null || rarity is not null ||
+                excludedPotionIds is not null)
+                throw new ArgumentException(
+                    "Merchant relic-rarity queries support only the first two offer ordinals.");
+            ownerId = $"{actFloor}:merchant_relic:{ordinal}:merchant";
+            operationKind = "unit_float_threshold";
+            policy = NativeMerchantThresholdConditioningPolicyId;
+            provenance = "native-relic-rarity-threshold-basis-points-unverified";
+            conditioning = new { siteId, ownerId, ordinal, common = 5000, uncommon = 3300, rare = 1700 };
+            outcomes =
+            [
+                new ChanceLawOutcomeV111("rarity:common", 5000),
+                new ChanceLawOutcomeV111("rarity:uncommon", 3300),
+                new ChanceLawOutcomeV111("rarity:rare", 1700)
+            ];
+        }
+        else
+        {
+            throw new NotSupportedException(
+                $"Native merchant Chance Law query does not support site '{siteId}'.");
+        }
+
+        return CreateNativeMerchantLaw(
+            siteId, operationKind, ownerId, ordinal, policy,
+            CanonicalJson.Sha256(conditioning), provenance, outcomes);
+    }
+
+    private static ChanceLawV111 CreateNativeMerchantLaw(
+        string siteId, string operationKind, string ownerId, int ordinal,
+        string policy, string conditioningFingerprint,
+        string provenance, ChanceLawOutcomeV111[] outcomes)
+    {
+        var eventId = CanonicalJson.Sha256(new
+        {
+            schemaId = ChanceLawV111.CurrentSchemaId,
+            siteId, ownerId, ordinal, conditioningFingerprint
+        });
+        return Create(eventId, siteId, operationKind, ownerId, ordinal,
+            policy, conditioningFingerprint, provenance, outcomes);
+    }
+
+    private static void ValidateNativeMerchantQueryBoundary(RunState run)
+    {
+        if (run.Phase != RunPhase.MapChoice || run.World is not { } world ||
+            run.NativeRunRng is null || run.ControlledRunActionChoice is not null ||
+            !PrototypeGameEngine.UsesNativeRegionalSystems(world) ||
+            !PrototypeNativeWingedBoots.AvailableNodes(world, run.Player)
+                .Any(node => node.RoomType == PrototypeRoomType.Shop))
+            throw new InvalidOperationException(
+                "Native merchant Chance Laws require an available configured Shop node before entry.");
+    }
+
+    private static PrototypeCardType ParseMerchantCardType(string? value)
+    {
+        if (!Enum.TryParse<PrototypeCardType>(value, ignoreCase: true,
+                out var parsed) || !Enum.IsDefined(parsed) ||
+            parsed is not (PrototypeCardType.Attack or PrototypeCardType.Skill or
+                PrototypeCardType.Power))
+            throw new ArgumentException(
+                "card_type must be Attack, Skill, or Power.", nameof(value));
+        return parsed;
+    }
+
+    private static PrototypeCardRarity ParseCardRarity(string? value)
+    {
+        if (!Enum.TryParse<PrototypeCardRarity>(value, ignoreCase: true,
+                out var parsed) || !Enum.IsDefined(parsed) ||
+            parsed is not (PrototypeCardRarity.Common or
+                PrototypeCardRarity.Uncommon or PrototypeCardRarity.Rare))
+            throw new ArgumentException(
+                "rarity must be Common, Uncommon, or Rare.", nameof(value));
+        return parsed;
+    }
+
+    private static PrototypeNativePotionRarity ParsePotionRarity(string value)
+    {
+        if (!Enum.TryParse<PrototypeNativePotionRarity>(value, ignoreCase: true,
+                out var parsed) || !Enum.IsDefined(parsed))
+            throw new ArgumentException(
+                "Potion rarity must be Common, Uncommon, or Rare.", nameof(value));
+        return parsed;
+    }
+
+    private static int MerchantCardCount(PrototypeCardType type) => type switch
+    {
+        PrototypeCardType.Attack or PrototypeCardType.Skill => 2,
+        PrototypeCardType.Power => 1,
+        _ => throw new ArgumentOutOfRangeException(nameof(type))
+    };
 
     public static int AncientOfferDecisionCount(RunState run, string siteId)
     {

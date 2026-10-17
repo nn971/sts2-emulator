@@ -1533,12 +1533,35 @@ internal static class PrototypeAiJsonlServer
                             }
                             priorIndices = parsedPriorIndices.ToArray();
                         }
-                        var law = ChanceLawEngineV111.QueryAncientOffer(
-                            RequireState(request), siteId,
-                            OptionalInt(request, "ordinal") ??
+                        var run = RequireState(request);
+                        var ordinal = OptionalInt(request, "ordinal") ??
+                            throw new ArgumentException(
+                                "Request field 'ordinal' is required.");
+                        var cardType = OptionalString(request, "card_type");
+                        var rarity = OptionalString(request, "rarity");
+                        var excludedPotionIds = OptionalStringArray(
+                            request, "excluded_potion_ids");
+                        ChanceLawV111 law;
+                        if (StochasticSiteRegistryV111
+                            .AncientOfferSessionSiteIds.Contains(
+                                siteId, StringComparer.Ordinal))
+                        {
+                            if (cardType is not null || rarity is not null ||
+                                excludedPotionIds is not null)
                                 throw new ArgumentException(
-                                    "Request field 'ordinal' is required."),
-                            priorIndices);
+                                    "Ancient offer queries do not accept merchant pool parameters.");
+                            law = ChanceLawEngineV111.QueryAncientOffer(
+                                run, siteId, ordinal, priorIndices);
+                        }
+                        else
+                        {
+                            if (priorIndices is not null)
+                                throw new ArgumentException(
+                                    "prior_indices apply only to Ancient offer shuffle queries.");
+                            law = ChanceLawEngineV111.QueryNativeMerchantOffer(
+                                run, siteId, ordinal, cardType, rarity,
+                                excludedPotionIds);
+                        }
                         Write(new
                         {
                             requestId,
@@ -3859,5 +3882,25 @@ internal static class PrototypeAiJsonlServer
         }
 
         return value.GetString();
+    }
+
+    private static string[]? OptionalStringArray(
+        JsonElement request, string name)
+    {
+        if (!request.TryGetProperty(name, out var value))
+            return null;
+        if (value.ValueKind != JsonValueKind.Array)
+            throw new ArgumentException(
+                $"Request field '{name}' must be an array of strings.");
+        var items = new List<string>();
+        foreach (var item in value.EnumerateArray())
+        {
+            if (item.ValueKind != JsonValueKind.String ||
+                string.IsNullOrWhiteSpace(item.GetString()))
+                throw new ArgumentException(
+                    $"Request field '{name}' must contain nonempty strings.");
+            items.Add(item.GetString()!);
+        }
+        return items.ToArray();
     }
 }

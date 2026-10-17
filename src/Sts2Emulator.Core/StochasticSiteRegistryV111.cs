@@ -189,7 +189,14 @@ public static class StochasticSiteRegistryV111
         NativeAncientRewardsV111.TezcataraOfferSiteId,
         NativeNonupeipeEventV111.ShuffleSiteId,
         NativeTanxEventV111.ShuffleSiteId,
-        NativeVakuuEventV111.ShuffleSiteId
+        NativeVakuuEventV111.ShuffleSiteId,
+        "shop.merchant.sale_slot.index_draw",
+        "card_rarity.roll.unit_float",
+        "shop.merchant.card_model.index_draw",
+        "shop.colorless_card_model.index_draw",
+        "potion_factory.rarity_roll.unit_float",
+        "potion_factory.model_within_rarity.index_draw",
+        "relic_grab_bag.rarity.unit_float"
     ];
 
     private static readonly string[] AncientOfferSessionSites =
@@ -250,6 +257,8 @@ public static class StochasticSiteRegistryV111
         (string[])ControlledEventChoiceSites.Clone();
     public static string[] ChanceLawQuerySiteIds =>
         (string[])ChanceLawQuerySites.Clone();
+    public static string[] AncientOfferSessionSiteIds =>
+        (string[])AncientOfferSessionSites.Clone();
     public static string[] NatureChoiceSiteIds =>
         (string[])NatureChoiceSites.Clone();
 
