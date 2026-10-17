@@ -759,16 +759,13 @@ public static class ChanceLawEngineV111
             PrototypeNativeRelicGrabBag.NativeRarityBranches();
         var resolvedBranches = rarityBranches.Select(branch =>
         {
-            PrototypeRelicRarity? selectedTier =
-                PrototypeNativeRelicGrabBag.PullFallbackTiers(branch.Rarity)
-                .Where(tier => candidatesByTier[tier].Length > 0)
-                .Select(tier => (PrototypeRelicRarity?)tier)
-                .FirstOrDefault();
-            var candidates = selectedTier is { } tier
+            var plan = PrototypeNativeRelicGrabBag.PlanPull(
+                bag, branch.Rarity, merchant: false, run.Player);
+            var candidates = plan.SelectedTier is { } tier
                 ? candidatesByTier[tier] : [];
             return (Rarity: branch.Rarity.ToString(),
                 BasisPoints: branch.BasisPoints,
-                SelectedTier: selectedTier, Candidates: candidates);
+                SelectedTier: plan.SelectedTier, Candidates: candidates);
         }).ToArray();
 
         var denominator = resolvedBranches

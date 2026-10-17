@@ -54,6 +54,14 @@ providers remain the default, while an enclosing controller scope can replace
 them. A serialized merchant continuation and law-to-float outcome mapping are
 still open; the mixed replay primitive is not yet wired to a merchant session.
 
+`PrototypeNativeRelicGrabBag.PlanPull` is now the shared source fallback
+resolver used by both ordinary relic pulls and the native Treasure Chance
+Law. It retains queue order for Native while exposing the selected fallback
+tier and eligible identities separately; `PullSelected` can remove a legal
+chosen identity while preserving all other queue entries. This supports
+future controlled relic identity resolution, but Nature queue-state ownership
+and native merchant relic continuation remain open.
+
 ## Semantic lifecycle and provider interchangeability
 
 The **same game mechanics** issues semantic stochastic operations and applies their resolved outcomes regardless of provider:

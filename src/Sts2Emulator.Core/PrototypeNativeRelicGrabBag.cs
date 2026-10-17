@@ -228,6 +228,13 @@ public static class PrototypeNativeRelicGrabBag
         };
     }
 
+/// <summary>Source fallback result before the queue's hidden identity order is
+/// resolved. CandidateIds preserve the committed queue order for Native.</summary>
+public sealed record PrototypeRelicBagPullPlanV111(
+    PrototypeRelicRarity RequestedRarity,
+    PrototypeRelicRarity? SelectedTier,
+    string[] CandidateIds);
+
     /// <summary>
     /// MerchantRelicEntry.CalcCost uses Shops.NextFloat(0.85, 1.15)
     /// and Math.Round. This retained legacy overload approximates it with
@@ -331,29 +338,74 @@ public static class PrototypeNativeRelicGrabBag
         PrototypeRelicBagState bag, PrototypeRelicRarity rarity,
         bool merchant, PlayerState player)
     {
+        var plan = PlanPull(bag, rarity, merchant, player);
+        return plan.CandidateIds.Length == 0
+            ? (bag, null)
+            : PullSelected(bag, plan, merchant, player,
+                plan.CandidateIds[0]);
+    }
+
+    /// <summary>
+    /// Selects the first nonempty fallback tier and returns its eligible IDs
+    /// in source queue order. Native pulls choose CandidateIds[0]; a semantic
+    /// continuation can canonicalize the support and pass its chosen identity
+    /// to PullSelected.
+    /// </summary>
+    public static PrototypeRelicBagPullPlanV111 PlanPull(
+        PrototypeRelicBagState bag, PrototypeRelicRarity rarity,
+        bool merchant, PlayerState player)
+    {
+        ArgumentNullException.ThrowIfNull(bag);
+        ArgumentNullException.ThrowIfNull(player);
         foreach (var tier in PullFallbackTiers(rarity))
         {
-            var ids = QueueForTier(bag, tier);
-            var id = EligiblePullIds(bag, tier, merchant, player)
-                .FirstOrDefault();
-            if (id is null)
-            {
-                continue;
-            }
-
-            var updated = ids.Where(candidate =>
-                    !StringComparer.Ordinal.Equals(candidate, id))
-                .ToArray();
-            return (tier switch
-            {
-                PrototypeRelicRarity.Common => bag with { Common = updated },
-                PrototypeRelicRarity.Uncommon => bag with { Uncommon = updated },
-                PrototypeRelicRarity.Rare => bag with { Rare = updated },
-                _ => bag with { Shop = updated }
-            }, id);
+            var candidateIds = EligiblePullIds(
+                bag, tier, merchant, player);
+            if (candidateIds.Length > 0)
+                return new PrototypeRelicBagPullPlanV111(
+                    rarity, tier, candidateIds);
         }
 
-        return (bag, null);
+        return new PrototypeRelicBagPullPlanV111(rarity, null, []);
+    }
+
+    /// <summary>Removes one legal identity selected from PlanPull's currently
+    /// active fallback tier while preserving all other queue entries.</summary>
+    public static (PrototypeRelicBagState Bag, string? Id) PullSelected(
+        PrototypeRelicBagState bag, PrototypeRelicBagPullPlanV111 plan,
+        bool merchant, PlayerState player, string? selectedId)
+    {
+        ArgumentNullException.ThrowIfNull(bag);
+        ArgumentNullException.ThrowIfNull(plan);
+        ArgumentNullException.ThrowIfNull(player);
+        if (plan.SelectedTier is not { } tier || selectedId is null)
+        {
+            if (plan.SelectedTier is null && plan.CandidateIds.Length == 0 &&
+                selectedId is null)
+                return (bag, null);
+            throw new InvalidOperationException(
+                "A relic pull selection does not match a nonempty fallback plan.");
+        }
+        var currentPlan = PlanPull(
+            bag, plan.RequestedRarity, merchant, player);
+        if (currentPlan.SelectedTier != tier ||
+            !currentPlan.CandidateIds.OrderBy(id => id, StringComparer.Ordinal)
+                .SequenceEqual(plan.CandidateIds.OrderBy(
+                    id => id, StringComparer.Ordinal), StringComparer.Ordinal) ||
+            !currentPlan.CandidateIds.Contains(selectedId,
+                StringComparer.Ordinal))
+            throw new InvalidOperationException(
+                "Relic pull plan is stale or the selected identity is ineligible.");
+
+        var remaining = QueueForTier(bag, tier).Where(candidate =>
+            !StringComparer.Ordinal.Equals(candidate, selectedId)).ToArray();
+        return (tier switch
+        {
+            PrototypeRelicRarity.Common => bag with { Common = remaining },
+            PrototypeRelicRarity.Uncommon => bag with { Uncommon = remaining },
+            PrototypeRelicRarity.Rare => bag with { Rare = remaining },
+            _ => bag with { Shop = remaining }
+        }, selectedId);
     }
 
     /// <summary>
