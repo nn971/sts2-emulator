@@ -91,18 +91,10 @@ public sealed record RunState(
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     RunConfiguration? Configuration = null,
     RngBundle? NativeRunRng = null,
-    [property: System.Text.Json.Serialization.JsonIgnore(
-        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     ControlledEventChoiceTraceV111[]? ControlledEventChoiceHistory = null,
-    [property: System.Text.Json.Serialization.JsonIgnore(
-        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     PrototypeControlledEventRewardChoiceContinuationV111?
         ControlledEventRewardChoice = null,
-    [property: System.Text.Json.Serialization.JsonIgnore(
-        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     ControlledRunActionTraceV111[]? ControlledRunActionHistory = null,
-    [property: System.Text.Json.Serialization.JsonIgnore(
-        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     PrototypeControlledRunActionContinuationV111? ControlledRunActionChoice = null,
     ReferenceNatureStateV111? ReferenceNatureState = null)
 {
@@ -112,7 +104,9 @@ public sealed record RunState(
     /// </summary>
     [System.Text.Json.Serialization.JsonIgnore]
     public RunStochasticStateV111 Stochastic { get; init; } =
-        new(Rng, NativeRunRng, ReferenceNatureState);
+        new(Rng, NativeRunRng, ReferenceNatureState,
+            ControlledEventChoiceHistory, ControlledEventRewardChoice,
+            ControlledRunActionHistory, ControlledRunActionChoice);
 
     public RngBundle Rng
     {
@@ -139,16 +133,52 @@ public sealed record RunState(
             Stochastic, value);
     }
 
+    [System.Text.Json.Serialization.JsonIgnore(Condition =
+        System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public ControlledEventChoiceTraceV111[]? ControlledEventChoiceHistory
+    {
+        get => Stochastic.ControlledEventChoiceHistory;
+        init => Stochastic =
+            RunStochasticStateV111.WithControlledEventChoiceHistory(
+                Stochastic, value);
+    }
+
+    [System.Text.Json.Serialization.JsonIgnore(Condition =
+        System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public PrototypeControlledEventRewardChoiceContinuationV111?
+        ControlledEventRewardChoice
+    {
+        get => Stochastic.ControlledEventRewardChoice;
+        init => Stochastic =
+            RunStochasticStateV111.WithControlledEventRewardChoice(
+                Stochastic, value);
+    }
+
+    [System.Text.Json.Serialization.JsonIgnore(Condition =
+        System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public ControlledRunActionTraceV111[]? ControlledRunActionHistory
+    {
+        get => Stochastic.ControlledRunActionHistory;
+        init => Stochastic =
+            RunStochasticStateV111.WithControlledRunActionHistory(
+                Stochastic, value);
+    }
+
+    [System.Text.Json.Serialization.JsonIgnore(Condition =
+        System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public PrototypeControlledRunActionContinuationV111?
+        ControlledRunActionChoice
+    {
+        get => Stochastic.ControlledRunActionChoice;
+        init => Stochastic =
+            RunStochasticStateV111.WithControlledRunActionChoice(
+                Stochastic, value);
+    }
+
     public RunState Fork() => this with
     {
         Player = Player.Fork(),
         Stochastic = Stochastic.Fork(),
-        ControlledEventChoiceHistory = ControlledEventChoiceHistory?.Select(
-            trace => trace.Fork()).ToArray(),
-        ControlledEventRewardChoice = ControlledEventRewardChoice?.Fork(),
-        ControlledRunActionHistory = ControlledRunActionHistory?.Select(
-            trace => trace.Fork()).ToArray(),
-        ControlledRunActionChoice = ControlledRunActionChoice?.Fork(),
         ExtensionState = ExtensionState.Clone(),
         World = World?.Fork(),
         Configuration = Configuration?.Fork()
