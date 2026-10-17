@@ -99,7 +99,9 @@ public static class SemanticPlayerActionEngineV111
         };
 
     internal static bool SupportsCard(string cardId) =>
-        SupportedCards.Contains(cardId);
+        SupportedCards.Contains(cardId)
+        && PrototypeContent.Card(cardId) is
+            { MechanicsImplemented: true, MultiplayerOnly: false };
 
     public static SemanticPlayerActionV111 Step(
         RunState source, string actionId)

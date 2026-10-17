@@ -17,7 +17,9 @@ previous Nature transcript**.
 and one currently legal action ID, invokes the actual
 `PrototypeAiEnvironment.Step` under the controlled RNG guard and
 accepts the result only if the **private semantic deck fingerprint**
-and the **physical draw-pile member sequence** stay exactly unchanged.
+and the **physical draw-pile member sequence** stay exactly unchanged. The
+allowlist also requires the card definition to be mechanics-implemented and
+single-player.
 The allowlist covers draw-pile-neutral Silent actions: Strike, Defend,
 Deflect, Neutralize, Slice, Poisoned Stab, Deadly Poison, Sucker Punch,
 Dagger Spray, Dash, Cloak and Dagger, Blade Dance, Piercing Wail, Backstab,
