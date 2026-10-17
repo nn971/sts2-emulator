@@ -1,5 +1,18 @@
 namespace Sts2Emulator.Core;
 
+public sealed record SimulationMechanicsDifferenceV111(
+    string Path, string LeftJson, string RightJson);
+
+public sealed record SimulationMechanicsComparisonV111(
+    string LeftFingerprint,
+    string RightFingerprint,
+    SimulationMechanicsDifferenceV111[] Differences,
+    bool DifferencesTruncated)
+{
+    public bool Equivalent => StringComparer.Ordinal.Equals(
+        LeftFingerprint, RightFingerprint);
+}
+
 /// <summary>
 /// Provider-independent projection of one run's committed game mechanics.
 /// Nested domain owners are projected through their existing mechanics
@@ -73,6 +86,161 @@ public static class SimulationMechanicsProjectionEngineV111
         RunState left, RunState right) =>
         StringComparer.Ordinal.Equals(
             Fingerprint(left), Fingerprint(right));
+
+    /// <summary>
+    /// Compares provider-independent mechanics and reports the first bounded
+    /// set of differing JSON-pointer paths. This is a replay diagnostic, not
+    /// an assertion that either provider made equivalent choices.
+    /// </summary>
+    public static SimulationMechanicsComparisonV111 Compare(
+        RunState left, RunState right, int maximumDifferences = 64)
+    {
+        ArgumentNullException.ThrowIfNull(left);
+        ArgumentNullException.ThrowIfNull(right);
+        if (maximumDifferences <= 0)
+            throw new ArgumentOutOfRangeException(nameof(maximumDifferences));
+
+        var leftProjection = Project(left);
+        var rightProjection = Project(right);
+        var leftFingerprint = CanonicalJson.Sha256(leftProjection);
+        var rightFingerprint = CanonicalJson.Sha256(rightProjection);
+        var differences = new List<SimulationMechanicsDifferenceV111>();
+        bool truncated = false;
+        if (!StringComparer.Ordinal.Equals(
+                leftFingerprint, rightFingerprint))
+        {
+            using var leftDocument = System.Text.Json.JsonDocument.Parse(
+                CanonicalJson.Serialize(leftProjection));
+            using var rightDocument = System.Text.Json.JsonDocument.Parse(
+                CanonicalJson.Serialize(rightProjection));
+            CompareJson(
+                leftDocument.RootElement, true,
+                rightDocument.RootElement, true,
+                string.Empty, differences, maximumDifferences,
+                ref truncated);
+        }
+
+        return new SimulationMechanicsComparisonV111(
+            leftFingerprint, rightFingerprint, differences.ToArray(),
+            truncated);
+    }
+
+    private static void CompareJson(
+        System.Text.Json.JsonElement left, bool hasLeft,
+        System.Text.Json.JsonElement right, bool hasRight,
+        string path,
+        List<SimulationMechanicsDifferenceV111> differences,
+        int maximumDifferences, ref bool truncated)
+    {
+        if (truncated) return;
+        if (!hasLeft || !hasRight)
+        {
+            AddDifference(path, left, hasLeft, right, hasRight,
+                differences, maximumDifferences, ref truncated);
+            return;
+        }
+        if (left.ValueKind != right.ValueKind)
+        {
+            AddDifference(path, left, true, right, true,
+                differences, maximumDifferences, ref truncated);
+            return;
+        }
+
+        if (left.ValueKind == System.Text.Json.JsonValueKind.Object)
+        {
+            var leftProperties = left.EnumerateObject().ToDictionary(
+                property => property.Name, property => property.Value,
+                StringComparer.Ordinal);
+            var rightProperties = right.EnumerateObject().ToDictionary(
+                property => property.Name, property => property.Value,
+                StringComparer.Ordinal);
+            foreach (var name in leftProperties.Keys
+                         .Union(rightProperties.Keys, StringComparer.Ordinal)
+                         .OrderBy(name => name, StringComparer.Ordinal))
+            {
+                if (truncated) return;
+                bool foundLeft = leftProperties.TryGetValue(name,
+                    out var leftValue);
+                bool foundRight = rightProperties.TryGetValue(name,
+                    out var rightValue);
+                CompareJson(leftValue, foundLeft, rightValue, foundRight,
+                    path + "/" + EscapeJsonPointer(name), differences,
+                    maximumDifferences, ref truncated);
+            }
+            return;
+        }
+
+        if (left.ValueKind == System.Text.Json.JsonValueKind.Array)
+        {
+            int leftLength = left.GetArrayLength();
+            int rightLength = right.GetArrayLength();
+            if (leftLength != rightLength)
+            {
+                AddRawDifference(path + "/length",
+                    leftLength.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    rightLength.ToString(System.Globalization.CultureInfo.InvariantCulture),
+                    differences, maximumDifferences, ref truncated);
+                if (truncated) return;
+            }
+            int commonLength = Math.Min(leftLength, rightLength);
+            for (int index = 0; index < commonLength; index++)
+            {
+                if (truncated) return;
+                CompareJson(left[index], true, right[index], true,
+                    path + "/" + index.ToString(
+                        System.Globalization.CultureInfo.InvariantCulture),
+                    differences, maximumDifferences, ref truncated);
+            }
+            return;
+        }
+
+        if (!JsonScalarsEqual(left, right))
+            AddDifference(path, left, true, right, true,
+                differences, maximumDifferences, ref truncated);
+    }
+
+    private static bool JsonScalarsEqual(
+        System.Text.Json.JsonElement left,
+        System.Text.Json.JsonElement right) => left.ValueKind switch
+    {
+        System.Text.Json.JsonValueKind.String => StringComparer.Ordinal.Equals(
+            left.GetString(), right.GetString()),
+        System.Text.Json.JsonValueKind.Number or
+            System.Text.Json.JsonValueKind.True or
+            System.Text.Json.JsonValueKind.False or
+            System.Text.Json.JsonValueKind.Null =>
+                StringComparer.Ordinal.Equals(left.GetRawText(), right.GetRawText()),
+        _ => true
+    };
+
+    private static string EscapeJsonPointer(string segment) =>
+        segment.Replace("~", "~0", StringComparison.Ordinal)
+            .Replace("/", "~1", StringComparison.Ordinal);
+
+    private static void AddDifference(
+        string path,
+        System.Text.Json.JsonElement left, bool hasLeft,
+        System.Text.Json.JsonElement right, bool hasRight,
+        List<SimulationMechanicsDifferenceV111> differences,
+        int maximumDifferences, ref bool truncated) =>
+        AddRawDifference(path,
+            hasLeft ? left.GetRawText() : "<missing>",
+            hasRight ? right.GetRawText() : "<missing>",
+            differences, maximumDifferences, ref truncated);
+
+    private static void AddRawDifference(
+        string path, string leftJson, string rightJson,
+        List<SimulationMechanicsDifferenceV111> differences,
+        int maximumDifferences, ref bool truncated)
+    {
+        if (differences.Count >= maximumDifferences)
+        {
+            truncated = true;
+            return;
+        }
+        differences.Add(new SimulationMechanicsDifferenceV111(
+            path.Length == 0 ? "/" : path, leftJson, rightJson));
+    }
 
     private static PendingCombatChoiceState? WithoutProviderPayload(
         PendingCombatChoiceState? pending) => pending is null
