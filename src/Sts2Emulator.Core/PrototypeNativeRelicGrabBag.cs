@@ -98,6 +98,39 @@ public static class PrototypeNativeRelicGrabBag
     public static bool TryGetRarity(string id, out PrototypeRelicRarity rarity) =>
         Rarities.TryGetValue(id, out rarity);
 
+    public static void Validate(PrototypeRelicBagState bag, PlayerState player)
+    {
+        ArgumentNullException.ThrowIfNull(bag);
+        ArgumentNullException.ThrowIfNull(player);
+        if (bag.Common is null || bag.Uncommon is null || bag.Rare is null ||
+            bag.Shop is null)
+            throw new InvalidOperationException(
+                "Native relic bag is missing a rarity queue.");
+
+        var remaining = bag.Remaining;
+        if (remaining.Length != remaining.Distinct(StringComparer.Ordinal).Count()
+            || remaining.Any(id => !PrototypeContent.RelicPool.Contains(
+                    id, StringComparer.Ordinal))
+            || remaining.Any(id => player.Relics.Any(relic =>
+                    StringComparer.Ordinal.Equals(relic.RelicId, id))))
+            throw new InvalidOperationException(
+                "Native relic bag contains duplicates, invalid or owned relics.");
+
+        foreach (var (tier, ids) in new[]
+        {
+            (PrototypeRelicRarity.Common, bag.Common),
+            (PrototypeRelicRarity.Uncommon, bag.Uncommon),
+            (PrototypeRelicRarity.Rare, bag.Rare),
+            (PrototypeRelicRarity.Shop, bag.Shop)
+        })
+        {
+            if (ids.Any(id =>
+                !TryGetRarity(id, out var actual) || actual != tier))
+                throw new InvalidOperationException(
+                    "Native relic bag has incorrectly partitioned relics.");
+        }
+    }
+
     public static PrototypeRelicBagState Create(
         PlayerState player, RngBundle rng)
     {

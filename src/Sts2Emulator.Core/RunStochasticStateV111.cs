@@ -35,6 +35,7 @@ public sealed record RunStochasticStateV111(
         ArgumentNullException.ThrowIfNull(owner);
         NativeRunRngV111.Validate(owner);
         ReferenceNature?.Validate();
+        owner.World?.Stochastic.Validate(owner.Player);
     }
 
     internal static RunStochasticStateV111 WithNativeRunRng(

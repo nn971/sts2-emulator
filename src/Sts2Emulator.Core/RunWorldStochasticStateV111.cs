@@ -20,6 +20,13 @@ public sealed record RunWorldStochasticStateV111(
             .Select(bag => bag.Fork()).ToArray()
     };
 
+    public void Validate(PlayerState player)
+    {
+        ArgumentNullException.ThrowIfNull(player);
+        if (RelicBag is { } relicBag)
+            PrototypeNativeRelicGrabBag.Validate(relicBag, player);
+    }
+
     internal static RunWorldStochasticStateV111 WithActOneEncounterPool(
         RunWorldStochasticStateV111? current,
         PrototypeActOneEncounterPoolState? pool) =>
