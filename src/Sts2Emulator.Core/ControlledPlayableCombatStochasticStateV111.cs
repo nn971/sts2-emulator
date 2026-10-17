@@ -10,7 +10,6 @@ public sealed record ControlledPlayableCombatStochasticStateV111
     public int NextShuffleIndex { get; init; }
     public RandomIndexDecisionV111[] ShuffleTranscript { get; init; } = [];
     public RandomIndexRequestV111? Pending { get; init; }
-    public ControlledTurnIntentsV111? TurnIntents { get; init; }
     public RandomIndexDecisionV111[] TurnTranscript { get; init; } = [];
     public ControlledRecycleShuffleV111? Recycle { get; init; }
     public RandomIndexDecisionV111[] RecycleTranscript { get; init; } = [];
@@ -28,7 +27,6 @@ public sealed record ControlledPlayableCombatStochasticStateV111
     {
         ShuffleTranscript = DeepCopy(ShuffleTranscript),
         Pending = CloneRequest(Pending),
-        TurnIntents = TurnIntents?.Fork(),
         TurnTranscript = DeepCopy(TurnTranscript),
         Recycle = Recycle?.Fork(),
         RecycleTranscript = DeepCopy(RecycleTranscript),

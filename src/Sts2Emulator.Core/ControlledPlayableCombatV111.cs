@@ -105,8 +105,10 @@ public sealed record ControlledPlayableCombatV111(
     // combat state and the current pure selector stage.
     public ControlledTurnIntentsV111? TurnIntents
     {
-        get => Stochastic.TurnIntents;
-        init => Stochastic = Stochastic with { TurnIntents = value };
+        get => Run.World?.Combat?.AutomaticPipelineContinuation?
+            .ControlledTurnIntents;
+        init => Run = PrototypeGameEngine
+            .SetControlledTurnIntentContinuation(Run, value);
     }
 
     public RandomIndexDecisionV111[] TurnTranscript
@@ -397,6 +399,7 @@ public sealed record ControlledPlayableCombatV111(
     {
         this.Mechanics.Continuation.Validate(
             PrototypeMechanicsContinuationKindV111.ControlledPlayableCombat);
+        this.Run.Validate();
         if (this.Mode != "controlled-v111-playable-fixture-v1" ||
             this.Run.Phase is not (RunPhase.Combat or RunPhase.Reward or RunPhase.Terminal) ||
             this.Run.World?.Combat is null && this.Pending is not null ||
@@ -605,15 +608,6 @@ public sealed record ControlledPlayableCombatV111(
                 combat.AutomaticPipelineContinuation?.ControlledDrawRemaining is not > 0)
                 throw new InvalidDataException(
                     "Recycle chance state disagrees with suspended draw.");
-        }
-        if (this.TurnIntents is { } intent)
-        {
-            intent.Validate();
-            if (this.Run.World?.Combat is not { } combat ||
-                CanonicalJson.Sha256(combat) !=
-                    CanonicalJson.Sha256(intent.BaselineCombat))
-                throw new InvalidDataException(
-                    "Controlled turn-intent checkpoint lost its precommit this.");
         }
     }
 
