@@ -95,7 +95,6 @@ public sealed partial class PrototypeGameEngine
         var cursor = combat.AutomaticPipelineContinuation ??
             throw new InvalidDataException(
                 "Controlled hand draw lost its automatic pipeline cursor.");
-        int index = cursor.NextStepIndex;
         if (cursor.Mechanics.CurrentStepKind !=
                 PrototypeAutomaticStepKind.DrawPlayerHand ||
             drawn.RemainingCount < 0)
@@ -170,18 +169,59 @@ public sealed partial class PrototypeGameEngine
                 "UNSUPPORTED_CONTROLLED_CHANCE site=combat.draw.recycle " +
                 "operation=nested_draw_continuation");
 
+        var advanced = state with
+        {
+            Player = drawn.Player,
+            World = world with { Combat = combat }
+        };
+        return ResumeAutomaticPipelineContinuation(
+            CompleteAutomaticHandDrawStage(advanced));
+    }
+
+    /// <summary>
+    /// Apply the source DrawPlayerHand post-stage cleanup and advance its
+    /// ordinary pipeline cursor. Controlled and semantic providers share
+    /// this mechanics boundary before the common pipeline resumes.
+    /// </summary>
+    internal static RunState CompleteAutomaticHandDrawStage(RunState state)
+    {
+        if (!ControlledChanceGuardV111.Active)
+            throw new InvalidOperationException(
+                "Controlled hand-draw completion requires the RNG guard.");
+        var world = RequireWorld(state);
+        var combat = world.Combat ?? throw new InvalidDataException(
+            "Automatic hand-draw completion has no combat.");
+        var cursor = combat.AutomaticPipelineContinuation ??
+            throw new InvalidDataException(
+                "Automatic hand-draw completion lost its pipeline cursor.");
+        if (!cursor.Mechanics.IsAtStep(
+                PrototypeAutomaticStepKind.DrawPlayerHand) ||
+            cursor.OpeningStage is not null ||
+            cursor.PendingPostDispatchEventKind is not null ||
+            cursor.ControlledSemanticBeforeHandDrawPending ||
+            combat.PendingChoice is not null ||
+            combat.PendingKnowledgeDemonChoice is not null ||
+            combat.SemanticDeck?.Pending is not null)
+            throw new InvalidDataException(
+                "Automatic hand-draw completion is not at a clean boundary.");
+
         combat = RemovePlayerPowers(
             combat, definition => definition.RemoveAfterHandDraw);
         combat = DecrementPlayerPowers(
             combat, definition => definition.DecrementAfterHandDraw);
-        var resumed = state with
+        combat = combat with
         {
-            Player = drawn.Player,
-            World = world with
+            AutomaticPipelineContinuation = cursor with
             {
-                Combat = combat with { AutomaticPipelineContinuation = null }
+                NextStepIndex = cursor.NextStepIndex + 1,
+                ControlledDrawRemaining = null,
+                ControlledDrawCostRemaining = null,
+                ControlledSemanticDrawRemaining = null,
+                ControlledSemanticDrawRequested = null,
+                ControlledSemanticBeforeHandDrawPending = false,
+                ControlledRecycleStratagemPending = false
             }
         };
-        return ResumeAutomaticPipeline(resumed, index + 1);
+        return state with { World = world with { Combat = combat } };
     }
 }

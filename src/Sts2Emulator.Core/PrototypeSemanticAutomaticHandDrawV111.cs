@@ -169,27 +169,13 @@ public sealed partial class PrototypeGameEngine
         }
 
         if (combat.SemanticDeck?.Pending is not null ||
-            combat.PendingChoice is not null)
+            combat.PendingChoice is not null ||
+            combat.PendingKnowledgeDemonChoice is not null)
             throw new InvalidDataException(
                 "Cannot finish hand draw with an unresolved choice.");
-        // Exact post-DrawPlayerHand cleanup from ResolveAutomaticStep.
-        combat = RemovePlayerPowers(
-            combat, definition => definition.RemoveAfterHandDraw);
-        combat = DecrementPlayerPowers(
-            combat, definition => definition.DecrementAfterHandDraw);
-        combat = combat with
-        {
-            AutomaticPipelineContinuation = cursor with
-            {
-                NextStepIndex = SemanticHandDrawStepIndex + 1,
-                ControlledSemanticDrawRemaining = null,
-                ControlledSemanticDrawRequested = null
-            }
-        };
-        // The remaining automatic steps can be resumed by the future
-        // full-action Nature controller. This segment ends after the
-        // authentic hand-draw stage, not at a fabricated player turn.
-        return (run with { World = world with { Combat = combat } }, 0);
+        // The ordinary engine owns the shared source cleanup and cursor
+        // advance for controlled and semantic hand-draw continuations.
+        return (CompleteAutomaticHandDrawStage(run), 0);
     }
 
     /// <summary>Advance the remaining authentic automatic stages after

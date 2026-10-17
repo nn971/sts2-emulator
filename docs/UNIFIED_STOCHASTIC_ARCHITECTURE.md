@@ -49,6 +49,8 @@ When the resumed ordinary pipeline ends in Reward or Terminal after hand draw, `
 
 `PrototypeGameEngine.ResumeAutomaticPipelineContinuation` now owns the shared handoff after both controlled choices and semantic end-turn hand draw. It clears the saved cursor, runs the remaining ordinary pipeline, and settles terminal combat rewards; the established choice method remains a compatibility facade.
 
+Controlled and semantic `DrawPlayerHand` continuations now share `PrototypeGameEngine.CompleteAutomaticHandDrawStage` for after-hand power cleanup and pipeline-cursor advancement, then enter that common resumer. Provider-specific choice selection and transcript replay remain with their boundary adapters; broader resume consolidation and cross-provider mechanical equivalence remain open.
+
 For a live automatic hand draw, `PrototypeAutomaticPipelineStochasticStateV111` is now the sole owner of requested/remaining counts. `SemanticCombatDrawV111` and the end-turn/pilot facades project those counts from the pipeline; their flattened snapshot fields remain populated, while local fallback metadata is retained only for standalone or completed draw segments.
 
 The pipeline stochastic owner also provides `TryGetSemanticHandDrawProgress`, used by the engine guard, continuation validator, and draw facade. This keeps active-stage interpretation with the owner of the saved cursor.
