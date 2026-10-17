@@ -740,6 +740,28 @@ public sealed record ReferenceNatureStateV111(
 
     public ReferenceNatureStateV111 Fork() => this;
 
+    public static ReferenceNatureStateV111 ForRunSession(
+        RunState run, ulong? seed)
+    {
+        ArgumentNullException.ThrowIfNull(run);
+        if (run.ReferenceNatureState is { } saved)
+        {
+            if (seed is not null)
+                throw new InvalidOperationException(
+                    "This run already owns a ReferenceNature cursor; omit nature_seed to continue it.");
+            saved.Validate();
+            return saved.Fork();
+        }
+        if (seed is null)
+            throw new InvalidOperationException(
+                "A first ReferenceNature session requires nature_seed.");
+        return Create(seed.Value);
+    }
+
+    public bool SameCursor(ReferenceNatureStateV111? other) =>
+        other is not null &&
+        CanonicalJson.Sha256(this) == CanonicalJson.Sha256(other);
+
     public void Validate()
     {
         if (SchemaId != CurrentSchemaId || SampleCount < 0)
@@ -773,10 +795,34 @@ public sealed record ReferenceNatureSessionV111(
     public string Fingerprint => CanonicalJson.Sha256(this);
 
     public static ReferenceNatureSessionV111 Begin(
-        SemanticPilotCombatV111 combat, ulong seed)
+        SemanticPilotCombatV111 combat, ulong seed) => Begin(combat, (ulong?)seed);
+
+    public static ReferenceNatureSessionV111 Begin(
+        SemanticPilotCombatV111 combat) => Begin(combat, null);
+
+    private static ReferenceNatureSessionV111 Begin(
+        SemanticPilotCombatV111 combat, ulong? seed)
     {
+        ArgumentNullException.ThrowIfNull(combat);
+        var natureState = ReferenceNatureStateV111.ForRunSession(
+            combat.Run, seed);
+        if (combat.CombatTerminal &&
+            !natureState.SameCursor(combat.Run.ReferenceNatureState))
+        {
+            var committedRun = combat.Run with
+            {
+                ReferenceNatureState = natureState.Fork()
+            };
+            combat = combat with
+            {
+                Run = committedRun,
+                PendingEndTurn = combat.PendingEndTurn is { } endTurn
+                    ? endTurn with { Run = committedRun }
+                    : null
+            };
+        }
         var session = new ReferenceNatureSessionV111(
-            CurrentSchemaId, combat, ReferenceNatureStateV111.Create(seed));
+            CurrentSchemaId, combat.Fork(), natureState);
         session.Validate();
         return session;
     }
@@ -791,9 +837,24 @@ public sealed record ReferenceNatureSessionV111(
     {
         Validate();
         var resolution = ReferenceNatureV111.ResolvePending(Combat, NatureState);
+        var resolvedCombat = resolution.Combat;
+        if (resolvedCombat.CombatTerminal)
+        {
+            var committedRun = resolvedCombat.Run with
+            {
+                ReferenceNatureState = resolution.Selection.NextState
+            };
+            resolvedCombat = resolvedCombat with
+            {
+                Run = committedRun,
+                PendingEndTurn = resolvedCombat.PendingEndTurn is { } endTurn
+                    ? endTurn with { Run = committedRun }
+                    : null
+            };
+        }
         var child = this with
         {
-            Combat = resolution.Combat,
+            Combat = resolvedCombat,
             NatureState = resolution.Selection.NextState
         };
         child.Validate();
@@ -806,6 +867,10 @@ public sealed record ReferenceNatureSessionV111(
             throw new InvalidDataException("Invalid ReferenceNature session envelope.");
         SemanticPilotCombatEngineV111.Validate(Combat);
         NatureState.Validate();
+        if (Combat.CombatTerminal &&
+            !NatureState.SameCursor(Combat.Run.ReferenceNatureState))
+            throw new InvalidDataException(
+                "ReferenceNature sampler cursor differs from the committed run state.");
     }
 
     public static string Save(ReferenceNatureSessionV111 session)
@@ -828,10 +893,24 @@ public sealed record ReferenceNatureSessionV111(
             string.IsNullOrWhiteSpace(snapshot.CombatSnapshotJson) ||
             snapshot.NatureState is null)
             throw new InvalidDataException("Invalid ReferenceNature snapshot.");
+        var combat = SemanticPilotCombatEngineV111.Restore(
+            snapshot.CombatSnapshotJson);
+        if (combat.CombatTerminal && combat.Run.ReferenceNatureState is null)
+        {
+            var committedRun = combat.Run with
+            {
+                ReferenceNatureState = snapshot.NatureState.Fork()
+            };
+            combat = combat with
+            {
+                Run = committedRun,
+                PendingEndTurn = combat.PendingEndTurn is { } endTurn
+                    ? endTurn with { Run = committedRun }
+                    : null
+            };
+        }
         var restored = new ReferenceNatureSessionV111(
-            CurrentSchemaId,
-            SemanticPilotCombatEngineV111.Restore(snapshot.CombatSnapshotJson),
-            snapshot.NatureState);
+            CurrentSchemaId, combat, snapshot.NatureState);
         restored.Validate();
         return restored;
     }
@@ -880,7 +959,13 @@ public sealed record ReferenceNatureRunActionSessionV111(
 
     public static ReferenceNatureRunActionSessionV111 Begin(
         RunState source, GameAction action, ulong seed) =>
-        Begin(source, action, ReferenceNatureStateV111.Create(seed));
+        Begin(source, action,
+            ReferenceNatureStateV111.ForRunSession(source, seed));
+
+    public static ReferenceNatureRunActionSessionV111 Begin(
+        RunState source, GameAction action) =>
+        Begin(source, action,
+            ReferenceNatureStateV111.ForRunSession(source, null));
 
     private static ReferenceNatureRunActionSessionV111 Begin(
         RunState source, GameAction action,
@@ -889,12 +974,24 @@ public sealed record ReferenceNatureRunActionSessionV111(
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(action);
         ArgumentNullException.ThrowIfNull(initialNatureState);
+        if (source.ReferenceNatureState is { } sourceNatureState &&
+            !initialNatureState.SameCursor(sourceNatureState))
+            throw new InvalidOperationException(
+                "Run-action session cannot replace the run's ReferenceNature cursor.");
         var detachedAction = CloneAction(action);
         var run = ControlledRunActionEngineV111.Begin(
             source.Fork(), detachedAction);
         var session = new ReferenceNatureRunActionSessionV111(
             CurrentSchemaId, source.Fork(), detachedAction, run,
             initialNatureState.Fork(), initialNatureState.Fork(), []);
+        if (session.Complete)
+            session = session with
+            {
+                Run = session.Run with
+                {
+                    ReferenceNatureState = initialNatureState.Fork()
+                }
+            };
         session.Validate();
         return session;
     }
@@ -926,6 +1023,11 @@ public sealed record ReferenceNatureRunActionSessionV111(
                 "ReferenceNature run-action law no longer matches its saved support.");
         var resolvedRun = ControlledRunActionEngineV111.Resolve(
             Run.Fork(), selection.OutcomeIndex);
+        if (resolvedRun.ControlledRunActionChoice is null)
+            resolvedRun = resolvedRun with
+            {
+                ReferenceNatureState = selection.NextState
+            };
         var next = this with
         {
             Run = resolvedRun,
@@ -952,6 +1054,16 @@ public sealed record ReferenceNatureRunActionSessionV111(
         PrototypeStateInvariants.Validate(Run);
         InitialNatureState.Validate();
         NatureState.Validate();
+        var runCursorMatchesOrigin = Origin.ReferenceNatureState is { } originCursor
+            ? originCursor.SameCursor(Run.ReferenceNatureState)
+            : Run.ReferenceNatureState is null;
+        if ((Origin.ReferenceNatureState is { } originNatureState &&
+             !InitialNatureState.SameCursor(originNatureState)) ||
+            (Complete
+                ? !NatureState.SameCursor(Run.ReferenceNatureState)
+                : !runCursorMatchesOrigin))
+            throw new InvalidDataException(
+                "ReferenceNature run-action cursor differs from the run envelope.");
         if (NatureState.SampleCount != checked(
                 InitialNatureState.SampleCount + DecisionTranscript.Length))
             throw new InvalidDataException(
@@ -1034,6 +1146,11 @@ public sealed record ReferenceNatureRunActionSessionV111(
                 throw new InvalidDataException(
                     "ReferenceNature run-action replay selected a different outcome.");
         }
+        if (replay.Complete && savedRun.ReferenceNatureState is null)
+            savedRun = savedRun with
+            {
+                ReferenceNatureState = snapshot.NatureState.Fork()
+            };
         if (CanonicalJson.Sha256(replay.Run) != CanonicalJson.Sha256(savedRun) ||
             CanonicalJson.Sha256(replay.NatureState) !=
                 CanonicalJson.Sha256(snapshot.NatureState) ||
@@ -1139,7 +1256,13 @@ public sealed record ReferenceNatureControlledEventChoiceSessionV111(
 
     public static ReferenceNatureControlledEventChoiceSessionV111 Begin(
         RunState source, string choiceId, ulong seed) =>
-        Begin(source, choiceId, ReferenceNatureStateV111.Create(seed));
+        Begin(source, choiceId,
+            ReferenceNatureStateV111.ForRunSession(source, seed));
+
+    public static ReferenceNatureControlledEventChoiceSessionV111 Begin(
+        RunState source, string choiceId) =>
+        Begin(source, choiceId,
+            ReferenceNatureStateV111.ForRunSession(source, null));
 
     private static ReferenceNatureControlledEventChoiceSessionV111 Begin(
         RunState source, string choiceId,
@@ -1148,11 +1271,23 @@ public sealed record ReferenceNatureControlledEventChoiceSessionV111(
         ArgumentNullException.ThrowIfNull(source);
         ArgumentException.ThrowIfNullOrWhiteSpace(choiceId);
         ArgumentNullException.ThrowIfNull(initialNatureState);
+        if (source.ReferenceNatureState is { } sourceNatureState &&
+            !initialNatureState.SameCursor(sourceNatureState))
+            throw new InvalidOperationException(
+                "Event-choice session cannot replace the run's ReferenceNature cursor.");
         var run = ControlledEventChoiceEngineV111.Begin(
             source.Fork(), choiceId);
         var session = new ReferenceNatureControlledEventChoiceSessionV111(
             CurrentSchemaId, source.Fork(), choiceId, run,
             initialNatureState.Fork(), initialNatureState.Fork(), []);
+        if (session.Complete)
+            session = session with
+            {
+                Run = session.Run with
+                {
+                    ReferenceNatureState = initialNatureState.Fork()
+                }
+            };
         session.Validate();
         return session;
     }
@@ -1194,6 +1329,14 @@ public sealed record ReferenceNatureControlledEventChoiceSessionV111(
                     law.LawId, law.EventId, selection.OutcomeId,
                     selection.OutcomeIndex))).ToArray()
         };
+        if (next.Complete)
+            next = next with
+            {
+                Run = next.Run with
+                {
+                    ReferenceNatureState = selection.NextState
+                }
+            };
         next.Validate();
         return next;
     }
@@ -1221,6 +1364,14 @@ public sealed record ReferenceNatureControlledEventChoiceSessionV111(
             Steps = Steps.Append(new ReferenceNatureControlledEventChoiceStepV111(
                 "player_action", PlayerAction: CloneAction(action))).ToArray()
         };
+        if (next.Complete)
+            next = next with
+            {
+                Run = next.Run with
+                {
+                    ReferenceNatureState = NatureState.Fork()
+                }
+            };
         next.Validate();
         return next;
     }
@@ -1239,6 +1390,16 @@ public sealed record ReferenceNatureControlledEventChoiceSessionV111(
         PrototypeStateInvariants.Validate(Run);
         InitialNatureState.Validate();
         NatureState.Validate();
+        var runCursorMatchesOrigin = Origin.ReferenceNatureState is { } originCursor
+            ? originCursor.SameCursor(Run.ReferenceNatureState)
+            : Run.ReferenceNatureState is null;
+        if ((Origin.ReferenceNatureState is { } originNatureState &&
+             !InitialNatureState.SameCursor(originNatureState)) ||
+            (Complete
+                ? !NatureState.SameCursor(Run.ReferenceNatureState)
+                : !runCursorMatchesOrigin))
+            throw new InvalidDataException(
+                "ReferenceNature event-choice cursor differs from the run envelope.");
         var decisions = DecisionTranscript;
         if (NatureState.SampleCount != checked(
                 InitialNatureState.SampleCount + decisions.Length))
@@ -1331,6 +1492,11 @@ public sealed record ReferenceNatureControlledEventChoiceSessionV111(
                 throw new InvalidDataException(
                     "ReferenceNature event-choice replay diverged from its transcript.");
         }
+        if (replay.Complete && savedRun.ReferenceNatureState is null)
+            savedRun = savedRun with
+            {
+                ReferenceNatureState = snapshot.NatureState.Fork()
+            };
         if (CanonicalJson.Sha256(replay.Run) != CanonicalJson.Sha256(savedRun) ||
             CanonicalJson.Sha256(replay.NatureState) !=
                 CanonicalJson.Sha256(snapshot.NatureState) ||

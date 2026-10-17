@@ -44,13 +44,20 @@ supported run-action continuations:
 
 | Operation | Inputs | Result |
 | --- | --- | --- |
-| `reference_nature_run_action_begin` | current `state_handle`, `nature_seed`, optional legal `action_id` (Shovel dig is the only default) | Session handle with pending law and sampler cursor |
+| `reference_nature_run_action_begin` | current `state_handle`, optional `nature_seed`, optional legal `action_id` (Shovel dig is the only default) | Session handle with pending law and sampler cursor |
 | `reference_nature_run_action_status` | run-action session handle | Current pending or committed boundary; ordinary `stateHandle` after commit |
 | `reference_nature_run_action_resolve_next` | handle and current session `fingerprint` | Child session after one sampled index is resolved through ordinary run mechanics |
 | `reference_nature_run_action_fork` | run-action session handle | Independent child session |
 | `reference_nature_run_action_save` | run-action session handle | Replay-validated snapshot payload |
 | `reference_nature_run_action_load` | snapshot | New session handle after transcript replay |
 | `reference_nature_run_action_release_many` | `reference_nature_run_action_handles` | Number of released sessions |
+
+Supply `nature_seed` the first time a run uses ReferenceNature. Once a session
+commits, its cursor is stored in the run snapshot and later sessions continue
+it when `nature_seed` is omitted. Runs without a committed cursor require a
+seed. Snapshots that carry the cursor advertise
+`sts2-exact-snapshot-v2-reference-nature-state`; snapshots without it retain
+`sts2-exact-snapshot-v1`.
 
 The session supports only the `start_run` boss encounter draw, legacy map
 Event-node entry draws, and Shovel's unowned-relic draw that have a controlled
@@ -61,7 +68,7 @@ independent ReferenceNature stream and does not advance the game's RNG.
 Once committed, the session result also provides a regular `stateHandle` for
 continuing play through the ordinary run API; no state handle is published
 while a Nature choice remains pending.
-The Python binding exposes `State.begin_reference_nature_run_action(seed,
+The Python binding exposes `State.begin_reference_nature_run_action(nature_seed=None,
 action_id=...)` and session `resolve_next()`, `fork()`, `save_snapshot()`,
 `Session.load_reference_nature_run_action_snapshot()`, `release()` and the
 committed session's `.state` property.

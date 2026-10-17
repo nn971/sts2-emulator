@@ -22,6 +22,7 @@ public static class PrototypeStateInvariants
                 trace.Validate();
         }
         NativeRunRngV111.Validate(state);
+        state.ReferenceNatureState?.Validate();
         if (state.ControlledRunActionChoice is { } controlledRunActionChoice)
         {
             controlledRunActionChoice.Validate();

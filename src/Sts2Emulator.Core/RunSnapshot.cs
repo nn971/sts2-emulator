@@ -11,6 +11,8 @@ public sealed record RunSnapshotEnvelope(
 public static class RunSnapshot
 {
     public const string SchemaId = "sts2-exact-snapshot-v1";
+    public const string ReferenceNatureSchemaId =
+        "sts2-exact-snapshot-v2-reference-nature-state";
     private static readonly JsonSerializerOptions Options = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
@@ -22,7 +24,9 @@ public static class RunSnapshot
         ValidateSupportedState(state);
         var owned = state.Fork();
         return CanonicalJson.Serialize(new RunSnapshotEnvelope(
-            SchemaId, owned.GameBuild, owned.EmulatorSchema,
+            owned.ReferenceNatureState is null
+                ? SchemaId : ReferenceNatureSchemaId,
+            owned.GameBuild, owned.EmulatorSchema,
             CanonicalJson.Sha256(owned), owned));
     }
 
@@ -30,10 +34,17 @@ public static class RunSnapshot
     {
         var envelope = JsonSerializer.Deserialize<RunSnapshotEnvelope>(json, Options)
             ?? throw new InvalidDataException("Snapshot is empty.");
-        if (envelope.Schema != SchemaId || envelope.State is null
+        if (envelope.Schema is not (SchemaId or ReferenceNatureSchemaId) ||
+            envelope.State is null
             || envelope.GameBuild != envelope.State.GameBuild
             || envelope.StateSchema != envelope.State.EmulatorSchema)
             throw new InvalidDataException("Snapshot schema/build does not match its state.");
+        if ((envelope.Schema == SchemaId &&
+             envelope.State.ReferenceNatureState is not null) ||
+            (envelope.Schema == ReferenceNatureSchemaId &&
+             envelope.State.ReferenceNatureState is null))
+            throw new InvalidDataException(
+                "Snapshot schema does not match its stochastic provider state.");
         ValidateSupportedState(envelope.State);
         if (!StringComparer.Ordinal.Equals(envelope.StateHash, CanonicalJson.Sha256(envelope.State)))
             throw new InvalidDataException("Snapshot canonical hash does not match its state.");

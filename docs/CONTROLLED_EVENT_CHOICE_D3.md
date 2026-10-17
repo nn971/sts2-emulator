@@ -115,7 +115,7 @@ same sampler state:
 
 | Operation | Inputs | Result |
 | --- | --- | --- |
-| `reference_nature_event_choice_begin` | current `state_handle`, `choice_id`, `nature_seed` | Session at a Nature or player reward boundary |
+| `reference_nature_event_choice_begin` | current `state_handle`, `choice_id`, optional `nature_seed` | Session at a Nature or player reward boundary |
 | `reference_nature_event_choice_status` | event-choice session handle | Current boundary, pending Chance Law and legal reward actions |
 | `reference_nature_event_choice_resolve_next` | handle and current session `fingerprint` | Child after one sampled index is resolved by the saved event continuation |
 | `reference_nature_event_choice_advance` | handle, fingerprint and legal reward `action_id` | Child after one player reward action; Chance Law resolution remains in the session |
@@ -123,13 +123,20 @@ same sampler state:
 | `reference_nature_event_choice_save` / `reference_nature_event_choice_load` | handle / snapshot | Replay-validated session snapshot and restored handle |
 | `reference_nature_event_choice_release_many` | `reference_nature_event_choice_handles` | Number of released sessions |
 
+Supply `nature_seed` the first time a run uses ReferenceNature. Once a session
+commits, its cursor is stored in the run snapshot and later sessions continue
+it when `nature_seed` is omitted. Runs without a committed cursor require a
+seed. Snapshots that carry the cursor advertise
+`sts2-exact-snapshot-v2-reference-nature-state`; snapshots without it retain
+`sts2-exact-snapshot-v1`.
+
 The session covers only the allowlisted controlled event-choice and
 post-reward modifier-curse continuations. When the event action and any
 controlled reward chance finish, the result provides a normal `stateHandle`
 for continuing play. Unsupported event chance still fails closed; other
 event-page choices, shops and general run actions are not silently absorbed
 into this session. The Python binding exposes
-`State.begin_reference_nature_event_choice(choice_id, nature_seed)`, session
+`State.begin_reference_nature_event_choice(choice_id, nature_seed=None)`, session
 `resolve_next()`, `advance(action_id)`, `fork()`, `save_snapshot()`,
 `Session.load_reference_nature_event_choice_snapshot()` and `release()`.
 

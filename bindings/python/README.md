@@ -27,15 +27,17 @@ Act 1 mechanics with explicit prototype RNG fidelity; unsupported characters
 fail on start. Exact snapshots contain hidden state; `observe()` is fair.
 
 The opt-in controlled run-action controller can be sampled atomically with
-`State.begin_reference_nature_run_action(seed, action_id=...)`. Its typed
-session supports `resolve_next()`, `fork()`, `save_snapshot()`,
+`State.begin_reference_nature_run_action(nature_seed=None, action_id=...)`. Supply a seed
+for the first ReferenceNature session on a run; after a session commits, its
+sampler cursor is saved with the run and later sessions can omit the seed. Its
+typed session supports `resolve_next()`, `fork()`, `save_snapshot()`,
 `Session.load_reference_nature_run_action_snapshot()`, `release()` and a
 playable `.state` after its Nature choice commits. It is
 limited to the run-start, legacy Event-node entry and Shovel continuations
 listed in the [run-action contract](../../docs/CONTROLLED_RUN_ACTION_D3.md).
 
 Supported event choices also have an atomic ReferenceNature session through
-`State.begin_reference_nature_event_choice(choice_id, nature_seed)`. It keeps
+`State.begin_reference_nature_event_choice(choice_id, nature_seed=None)`. It keeps
 reward actions and event Nature choices in one replay order; the committed
 session exposes `.state` for ordinary play. See the
 [event-choice contract](../../docs/CONTROLLED_EVENT_CHOICE_D3.md).

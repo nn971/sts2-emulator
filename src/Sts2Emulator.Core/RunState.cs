@@ -105,13 +105,17 @@ public sealed record RunState(
     ControlledRunActionTraceV111[]? ControlledRunActionHistory = null,
     [property: System.Text.Json.Serialization.JsonIgnore(
         Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
-    PrototypeControlledRunActionContinuationV111? ControlledRunActionChoice = null)
+    PrototypeControlledRunActionContinuationV111? ControlledRunActionChoice = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    ReferenceNatureStateV111? ReferenceNatureState = null)
 {
     public RunState Fork() => this with
     {
         Player = Player.Fork(),
         Rng = Rng.Fork(),
         NativeRunRng = NativeRunRng?.Fork(),
+        ReferenceNatureState = ReferenceNatureState?.Fork(),
         ControlledEventChoiceHistory = ControlledEventChoiceHistory?.Select(
             trace => trace.Fork()).ToArray(),
         ControlledEventRewardChoice = ControlledEventRewardChoice?.Fork(),

@@ -1176,6 +1176,8 @@ internal static class PrototypeAiJsonlServer
                                 StochasticCapabilitiesV111.Create(),
                             stochasticSessionCoverage =
                                 StochasticSiteRegistryV111.CreateSessionCoverage(),
+                            referenceNatureStateSnapshotSchemaId =
+                                RunSnapshot.ReferenceNatureSchemaId,
                             referenceNatureSessionSchemaId =
                                 ReferenceNatureSessionV111.CurrentSchemaId,
                             referenceNatureRunActionSessionSchemaId =
@@ -1991,9 +1993,12 @@ internal static class PrototypeAiJsonlServer
                                 ?? throw new InvalidOperationException(
                                     "Missing action_id; only Shovel dig has a default.");
                         }
-                        var session = ReferenceNatureRunActionSessionV111.Begin(
-                            source, action,
-                            RequiredULong(request, "nature_seed"));
+                        var seed = OptionalULong(request, "nature_seed");
+                        var session = seed is { } natureSeed
+                            ? ReferenceNatureRunActionSessionV111.Begin(
+                                source, action, natureSeed)
+                            : ReferenceNatureRunActionSessionV111.Begin(
+                                source, action);
                         var handle = StoreReferenceNatureRunAction(session);
                         Write(new { requestId, ok = true, result =
                             ReferenceNatureRunActionResult(session, handle) });
@@ -2086,11 +2091,14 @@ internal static class PrototypeAiJsonlServer
 
                     case "reference_nature_event_choice_begin":
                     {
-                        var session =
-                            ReferenceNatureControlledEventChoiceSessionV111.Begin(
-                                RequireState(request),
-                                RequiredString(request, "choice_id"),
-                                RequiredULong(request, "nature_seed"));
+                        var source = RequireState(request);
+                        var choiceId = RequiredString(request, "choice_id");
+                        var seed = OptionalULong(request, "nature_seed");
+                        var session = seed is { } natureSeed
+                            ? ReferenceNatureControlledEventChoiceSessionV111.Begin(
+                                source, choiceId, natureSeed)
+                            : ReferenceNatureControlledEventChoiceSessionV111.Begin(
+                                source, choiceId);
                         var handle = StoreReferenceNatureEventChoice(session);
                         Write(new { requestId, ok = true, result =
                             ReferenceNatureEventChoiceResult(session, handle) });
@@ -2216,8 +2224,10 @@ internal static class PrototypeAiJsonlServer
                         if (combat.UsesNativePolicyBaseline)
                             throw new NotSupportedException(
                                 "ReferenceNature cannot start from a native-policy session.");
-                        var session = ReferenceNatureSessionV111.Begin(
-                            combat, RequiredULong(request, "nature_seed"));
+                        var seed = OptionalULong(request, "nature_seed");
+                        var session = seed is { } natureSeed
+                            ? ReferenceNatureSessionV111.Begin(combat, natureSeed)
+                            : ReferenceNatureSessionV111.Begin(combat);
                         var handle = StoreReferenceNature(session);
                         Write(new { requestId, result =
                             ReferenceNatureResult(session, handle) });
@@ -3470,6 +3480,18 @@ internal static class PrototypeAiJsonlServer
     {
         if (!request.TryGetProperty(name, out var value) ||
             value.ValueKind != JsonValueKind.Number ||
+            !value.TryGetUInt64(out var result))
+            throw new InvalidOperationException(
+                $"Request field '{name}' must be a non-negative integer.");
+        return result;
+    }
+
+    private static ulong? OptionalULong(JsonElement request, string name)
+    {
+        if (!request.TryGetProperty(name, out var value) ||
+            value.ValueKind is JsonValueKind.Null or JsonValueKind.Undefined)
+            return null;
+        if (value.ValueKind != JsonValueKind.Number ||
             !value.TryGetUInt64(out var result))
             throw new InvalidOperationException(
                 $"Request field '{name}' must be a non-negative integer.");

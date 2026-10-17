@@ -103,18 +103,26 @@ class State:
             "controlled_run_action_inspect", state_handle=self.handle)
         return ControlledRunActionChoice.from_wire(self.session, result)
 
-    def begin_reference_nature_run_action(self, nature_seed: int, *,
+    def begin_reference_nature_run_action(self, nature_seed: int | None = None, *,
                                           action_id: str | None = None):
-        """Begin atomic ReferenceNature sampling for a supported run action."""
+        """Begin or continue atomic ReferenceNature sampling for a run action.
+
+        Pass a seed for the first session on a run. Omit it to continue the
+        cursor already saved in the run state.
+        """
         if self.session.capabilities.get(
                 "referenceNatureRunActionSessionSchemaId") != (
                 "sts2-v111-reference-nature-run-action-session-v1"):
             raise EmulatorError(
                 "Emulator does not expose ReferenceNature run-action sessions")
-        if (not isinstance(nature_seed, int) or isinstance(nature_seed, bool)
-                or nature_seed < 0 or nature_seed > 0xFFFFFFFFFFFFFFFF):
+        if (nature_seed is not None and
+                (not isinstance(nature_seed, int) or
+                 isinstance(nature_seed, bool) or nature_seed < 0 or
+                 nature_seed > 0xFFFFFFFFFFFFFFFF)):
             raise ValueError("nature_seed must be an unsigned 64-bit integer")
-        payload = {"state_handle": self.handle, "nature_seed": nature_seed}
+        payload = {"state_handle": self.handle}
+        if nature_seed is not None:
+            payload["nature_seed"] = nature_seed
         if action_id is not None:
             payload["action_id"] = action_id
         result = self.session.call("reference_nature_run_action_begin", **payload)
@@ -122,20 +130,27 @@ class State:
             self.session, result["result"])
 
     def begin_reference_nature_event_choice(self, choice_id: str,
-                                            nature_seed: int):
-        """Begin atomic sampling for a supported controlled event choice."""
+                                            nature_seed: int | None = None):
+        """Begin or continue a supported controlled event choice.
+
+        Pass a seed for the first ReferenceNature session on a run. Omit it
+        to continue the cursor saved in the run state.
+        """
         if self.session.capabilities.get(
                 "referenceNatureEventChoiceSessionSchemaId") != (
                 "sts2-v111-reference-nature-event-choice-session-v1"):
             raise EmulatorError(
                 "Emulator does not expose ReferenceNature event-choice sessions")
-        if (not isinstance(nature_seed, int) or isinstance(nature_seed, bool)
-                or nature_seed < 0 or nature_seed > 0xFFFFFFFFFFFFFFFF):
+        if (nature_seed is not None and
+                (not isinstance(nature_seed, int) or
+                 isinstance(nature_seed, bool) or nature_seed < 0 or
+                 nature_seed > 0xFFFFFFFFFFFFFFFF)):
             raise ValueError("nature_seed must be an unsigned 64-bit integer")
+        payload = {"state_handle": self.handle, "choice_id": choice_id}
+        if nature_seed is not None:
+            payload["nature_seed"] = nature_seed
         result = self.session.call(
-            "reference_nature_event_choice_begin",
-            state_handle=self.handle, choice_id=choice_id,
-            nature_seed=nature_seed)
+            "reference_nature_event_choice_begin", **payload)
         return ReferenceNatureEventChoiceSession.from_wire(
             self.session, result["result"])
 
@@ -894,6 +909,8 @@ class Session:
             self.capabilities = self.call("hello")
             self.stochastic_session_coverage = self.capabilities.get(
                 "stochasticSessionCoverage")
+            self.reference_nature_state_snapshot_schema_id = (
+                self.capabilities.get("referenceNatureStateSnapshotSchemaId"))
             if self.capabilities.get("wireSchemaId") != "prototype-ai-jsonl-v0":
                 raise EmulatorError("Unsupported emulator wire schema")
             if self.capabilities.get("snapshotSchemaId") != "sts2-exact-snapshot-v1":
