@@ -1610,10 +1610,19 @@ public static partial class ChanceLawEngineV111
             .Select(index => new ChanceLawOutcomeV111(
                 "swap_index:" + index.ToString(CultureInfo.InvariantCulture),
                 1L)).ToArray();
+        var sourceVerified = HasEqualNativeBoundedIndexGridBins(
+            selectedRequest.SupportCount);
         return Create(eventId, siteId, selectedRequest.OperationKind,
             ownerId, ordinal, AncientOfferShuffleConditioningPolicyId,
             conditioningFingerprint,
-            "uniform-fisher-yates-swap-unverified", outcomes);
+            sourceVerified
+                ? NativeBoundedIndexSourceVerifiedProvenance
+                : "equal-weight Ancient-offer swap indices; source bin " +
+                  "masses are not exact for this bound",
+            outcomes,
+            sourceVerified
+                ? ChanceLawV111.SourceVerifiedStatus
+                : ChanceLawV111.UnverifiedStatus);
     }
 
     private static ChanceLawV111 QueryDarvOfferVariant(
@@ -1646,10 +1655,19 @@ public static partial class ChanceLawEngineV111
             new ChanceLawOutcomeV111("offer_variant:dusty_tome", 1L),
             new ChanceLawOutcomeV111("offer_variant:three_relics", 1L)
         };
+        var sourceVerified = HasEqualNativeBoundedIndexGridBins(
+            request.SupportCount);
         return Create(eventId, request.SiteId, request.OperationKind,
             ownerId, ordinal, DarvOfferVariantConditioningPolicyId,
             conditioningFingerprint,
-            "uniform-darv-offer-variant-unverified", outcomes);
+            sourceVerified
+                ? NativeBoundedIndexSourceVerifiedProvenance
+                : "equal-weight Darv offer variant; source bin masses " +
+                  "are not exact for this bound",
+            outcomes,
+            sourceVerified
+                ? ChanceLawV111.SourceVerifiedStatus
+                : ChanceLawV111.UnverifiedStatus);
     }
 
     private static ChanceLawV111 QueryDarvRelicShuffle(
@@ -1706,11 +1724,20 @@ public static partial class ChanceLawEngineV111
             .Select(index => new ChanceLawOutcomeV111(
                 "swap_index:" + index.ToString(CultureInfo.InvariantCulture),
                 1L)).ToArray();
+        var sourceVerified = HasEqualNativeBoundedIndexGridBins(
+            selectedRequest.SupportCount);
         return Create(eventId, selectedRequest.SiteId,
             selectedRequest.OperationKind, selectedRequest.OwnerId,
             ordinal, AncientOfferShuffleConditioningPolicyId,
             conditioningFingerprint,
-            "uniform-darv-fisher-yates-swap-unverified", outcomes);
+            sourceVerified
+                ? NativeBoundedIndexSourceVerifiedProvenance
+                : "equal-weight Darv shuffle indices; source bin masses " +
+                  "are not exact for this bound",
+            outcomes,
+            sourceVerified
+                ? ChanceLawV111.SourceVerifiedStatus
+                : ChanceLawV111.UnverifiedStatus);
     }
 
     internal static RandomIndexRequestV111 DarvOfferVariantRequest(

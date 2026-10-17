@@ -23,7 +23,12 @@ integer outcome weights. The Ancient generators perform the actual offer
 generation through provider mode `scripted-v111`. This counterfactual provider
 does not advance the Native event RNG cursor, and the completed event retains
 its provider-mode marker. The variant and swap laws currently have uniform
-integer weights; probability provenance stays `UNVERIFIED`.
+integer weights. Darv's binary variant law is `SOURCE_VERIFIED` under the
+uniform 53-bit input model. Its Fisher–Yates swaps, and the Nonupeipe, Tanx,
+and Vakuu swaps, are source-verified individually only when their bounded
+count is a power of two; other bounds retain the equal-weight law as
+`UNVERIFIED`. Orobas, Pael and Tezcatara direct offer laws remain
+`UNVERIFIED`.
 
 ## JSONL operations
 
