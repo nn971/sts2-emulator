@@ -22,6 +22,10 @@ public static class PrototypeNativeGloryEvents
     public const string ReflectionsId =
         "proto.native.glory.reflections";
     public const string ReflectionsNativeRngEventId = "REFLECTIONS";
+    public const string ReflectionsDowngradeSiteId =
+        "event.glory_reflections.downgrade_card.index_draw";
+    public const string ReflectionsUpgradeSiteId =
+        "event.glory_reflections.upgrade_card.index_draw";
     public const string BadLuckId =
         "proto.native.glory.bad_luck";
     public const string RoundTeaPartyId =

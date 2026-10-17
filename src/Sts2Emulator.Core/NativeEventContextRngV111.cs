@@ -58,8 +58,7 @@ public static class NativeEventContextRngV111
             siteId,
             nativeStream.StreamId,
             ownerId,
-            ordinal ?? StochasticProviderScopeV111.GetNextOrdinal(
-                bundle, nativeStream.StreamId) ?? 0,
+            ordinal ?? ResolveRequestOrdinal(nativeStream, bundle),
             Enumerable.Range(0, candidateCount).ToArray());
         var decision = StochasticProviderScopeV111.ResolveIndex(
             new NativeRandomIndexProviderV111(), request, bundle);
@@ -116,8 +115,7 @@ public static class NativeEventContextRngV111
             siteId,
             nativeStream.StreamId,
             ownerId,
-            ordinal ?? StochasticProviderScopeV111.GetNextOrdinal(
-                bundle, nativeStream.StreamId) ?? 0,
+            ordinal ?? ResolveRequestOrdinal(nativeStream, bundle),
             Array.Empty<int>(),
             OperationKind: "bounded_integer",
             BoundedCount: boundedCount);
@@ -140,7 +138,7 @@ public static class NativeEventContextRngV111
 
     public static (RunState State, float SelectedValue) ResolveUnitFloat(
         RunState state, EventState eventState, string nativeEventEntry,
-        string siteId, string ownerId, int ordinal = 0)
+        string siteId, string ownerId, int? ordinal = null)
     {
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(eventState);
@@ -170,8 +168,7 @@ public static class NativeEventContextRngV111
             siteId,
             nativeStream.StreamId,
             ownerId,
-            StochasticProviderScopeV111.GetNextOrdinal(
-                bundle, nativeStream.StreamId) ?? ordinal);
+            ordinal ?? ResolveRequestOrdinal(nativeStream, bundle));
         var decision = StochasticProviderScopeV111.ResolveUnitFloat(
             new NativeRandomUnitFloatProviderV111(), request, bundle);
         var world = state.World
@@ -360,5 +357,18 @@ public static class NativeEventContextRngV111
             return;
         throw new InvalidOperationException(
             "Native event state cannot use this counterfactual RNG provider.");
+    }
+
+    private static int ResolveRequestOrdinal(
+        RngStreamState stream, RngBundle bundle)
+    {
+        if (StochasticProviderScopeV111.GetNextOrdinal(
+                bundle, stream.StreamId) is { } scopedOrdinal)
+            return scopedOrdinal;
+        var nativeCallCount = stream.CallCount ?? 0;
+        if (nativeCallCount > int.MaxValue)
+            throw new NotSupportedException(
+                "Native event request ordinal exceeds the supported range.");
+        return (int)nativeCallCount;
     }
 }

@@ -40,7 +40,11 @@ class State:
                          owner_id=None, offer_ordinal=None,
                          relic_candidate_ids=None, excluded_relic_ids=None,
                          action_id=None):
-        """Read an advertised pre-outcome Chance Law without changing state."""
+        """Read a pre-outcome law; native event queries may need action_id.
+
+        Reflections card-pick laws use action_id="touch_mirror" and the
+        complete prior index prefix.
+        """
         if not self.session.supports_chance_law_query(site_id):
             raise EmulatorError(
                 f"No direct Chance Law query is advertised for site {site_id!r}")

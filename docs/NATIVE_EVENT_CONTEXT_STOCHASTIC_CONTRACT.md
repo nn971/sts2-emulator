@@ -14,7 +14,11 @@ For configured Native runs,
 [`NativeEventContextRngV111`](../src/Sts2Emulator.Core/NativeEventContextRngV111.cs)
 creates the `EventModel.Begin`-compatible stream. Index, bounded-integer,
 unit-float, and shuffle helpers advance that event stream and write its new
-snapshot back to `EventState.NativeEventRng`. Legacy index, bounded-integer, and shuffle
+snapshot back to `EventState.NativeEventRng`. When no replacement provider
+supplies a logical ordinal, index, bounded-integer, and unit-float requests
+use the event stream's current call count; scripted scopes retain their
+logical prefix ordinal while leaving the Native cursor unchanged. Legacy index,
+bounded-integer, and shuffle
 calls retain the prototype `event` stream; legacy integer substitutes for
 Native event unit floats are identified in their migration rows. The event
 instance, page/action stage, prior event effects, and the current ordered
@@ -42,6 +46,13 @@ Trash Heap rewards remain limited to the exact event boundaries documented in
 their contracts. Existing
 controlled event-choice and Ancient-offer sessions do not implicitly cover an
 event merely because it uses this RNG helper.
+
+Reflections exposes read-only conditional laws for its downgrade and upgrade
+card-pick sites. The query rebuilds the projected deck and remaining ordered
+physical-card support from the complete prior index prefix, including the
+eligibility changes caused by prior downgrades. These queries do not provide
+an atomic Nature continuation; the `touch_mirror` action remains outside a
+ReferenceNature session.
 
 The resolver is the event-specific page-generation or choice-effect method.
 It applies the selected primitive result synchronously, commits the resulting

@@ -34,7 +34,8 @@ public sealed partial class PrototypeGameEngine
                     state, evt,
                     PrototypeNativeGloryEvents
                         .ReflectionsNativeRngEventId,
-                    "event.glory_reflections.downgrade_card.index_draw",
+                    PrototypeNativeGloryEvents
+                        .ReflectionsDowngradeSiteId,
                     $"event:reflections:downgrade:{i}:pool:"
                         + CanonicalJson.Sha256(downgradable),
                     downgradable.Count);
@@ -63,7 +64,7 @@ public sealed partial class PrototypeGameEngine
                     state, evt,
                     PrototypeNativeGloryEvents
                         .ReflectionsNativeRngEventId,
-                    "event.glory_reflections.upgrade_card.index_draw",
+                    PrototypeNativeGloryEvents.ReflectionsUpgradeSiteId,
                     $"event:reflections:upgrade:{i}:pool:"
                         + CanonicalJson.Sha256(upgradable),
                     upgradable.Count);

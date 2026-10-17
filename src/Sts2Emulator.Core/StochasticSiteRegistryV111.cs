@@ -237,6 +237,7 @@ public static class StochasticSiteRegistryV111
         .. ChanceLawEngineV111.TabletOfTruthSessionSiteIds,
         .. ChanceLawEngineV111.TrialSessionSiteIds,
         .. ChanceLawEngineV111.NativeEventShuffleSessionSiteIds,
+        .. ChanceLawEngineV111.NativeEventCardPickQuerySiteIds,
         "shop.merchant.sale_slot.index_draw",
         "card_rarity.roll.unit_float",
         "shop.merchant.card_model.index_draw",
@@ -338,6 +339,7 @@ public static class StochasticSiteRegistryV111
             .Concat(TabletOfTruthSessionSites)
             .Concat(TrialSessionSites)
             .Concat(NativeEventShuffleSessionSites)
+            .Concat(ChanceLawEngineV111.NativeEventCardPickQuerySiteIds)
             .Distinct(StringComparer.Ordinal)
             .ToArray();
 

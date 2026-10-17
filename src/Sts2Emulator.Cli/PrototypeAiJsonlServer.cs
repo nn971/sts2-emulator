@@ -2296,6 +2296,46 @@ internal static class PrototypeAiJsonlServer
                             });
                             break;
                         }
+                        if (StochasticSiteRegistryV111
+                            .ChanceLawQuerySiteIds.Contains(
+                                siteId, StringComparer.Ordinal) &&
+                            ChanceLawEngineV111.NativeEventCardPickQuerySiteIds
+                                .Contains(siteId, StringComparer.Ordinal))
+                        {
+                            if (OptionalString(request, "card_type") is not null ||
+                                OptionalString(request, "rarity") is not null ||
+                                OptionalString(request, "card_id") is not null ||
+                                OptionalString(request, "potion_id") is not null ||
+                                OptionalString(request, "relic_id") is not null ||
+                                OptionalBool(request, "colorless_offer") ||
+                                OptionalBool(request, "sale_reprice") ||
+                                OptionalString(request, "owner_id") is not null ||
+                                OptionalStringArray(request,
+                                    "excluded_potion_ids") is not null ||
+                                OptionalInt(request, "offer_ordinal") is not null ||
+                                OptionalStringArray(request,
+                                    "relic_candidate_ids") is not null ||
+                                OptionalStringArray(request,
+                                    "excluded_relic_ids") is not null)
+                                throw new ArgumentException(
+                                    "Native event card-pick queries accept only state_handle, site_id, ordinal, prior_indices and action_id.");
+                            law = ChanceLawEngineV111.QueryNativeEventCardPick(
+                                RequireState(request), siteId, ordinal,
+                                priorIndices,
+                                OptionalString(request, "action_id"));
+                            if (law.SiteId != siteId || law.Ordinal != ordinal)
+                                throw new ArgumentException(
+                                    $"Native event card-pick query expects site '{law.SiteId}' and ordinal {law.Ordinal}.");
+                            Write(new
+                            {
+                                requestId,
+                                ok = true,
+                                chanceLawSchemaId =
+                                    ChanceLawV111.CurrentSchemaId,
+                                law
+                            });
+                            break;
+                        }
                         var run = RequireState(request);
                         var cardType = OptionalString(request, "card_type");
                         var rarity = OptionalString(request, "rarity");
