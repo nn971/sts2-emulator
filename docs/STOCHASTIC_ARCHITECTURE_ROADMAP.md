@@ -60,6 +60,8 @@
 
 **S3 turn-intent simulation envelope increment (2026-10-17):** `ControlledTurnIntentsV111.Simulation` now composes its baseline/current combat checkpoints, encounter cursor and request site with the existing intent transcript/pending request owner. Legacy fields remain flattened in snapshots.
 
+**S3 semantic end-turn simulation envelope increment (2026-10-17):** `SemanticEndTurnV111.Simulation` now composes its run, intent, and hand-draw mechanics checkpoint with `SemanticEndTurnStochasticStateV111` transcripts and boundary chronology. The existing continuation properties remain flattened in snapshots.
+
 ## S1 precise design
 
 Implement a **read-only, outcome-blind** Chance Law query in `Sts2Emulator.Core` with:

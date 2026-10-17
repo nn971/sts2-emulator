@@ -88,12 +88,66 @@ public sealed record SemanticEndTurnV111(
 {
     public const string SchemaId = "sts2-v111-semantic-end-turn-v1";
     /// <summary>
-    /// Provider-owned chance decisions and their chronological interleaving.
-    /// The transcript fields below remain the flattened session representation.
+    /// Atomic mechanics/provider envelope for the suspended end-turn action.
+    /// Existing continuation properties remain flattened snapshot fields.
     /// </summary>
     [JsonIgnore]
-    public SemanticEndTurnStochasticStateV111 Stochastic { get; init; } =
-        new(IntentTranscript, [], [], []);
+    public SimulationStateV111<SemanticEndTurnMechanicsStateV111,
+        SemanticEndTurnStochasticStateV111> Simulation { get; init; } = new(
+            new SemanticEndTurnMechanicsStateV111(
+                Origin, Run, NativeEncounterEntry, Intents, HandDraw, Complete),
+            new SemanticEndTurnStochasticStateV111(
+                IntentTranscript, [], [], []));
+
+    [JsonIgnore]
+    public SemanticEndTurnMechanicsStateV111 Mechanics
+    {
+        get => Simulation.Mechanics;
+        init => Simulation = Simulation with { Mechanics = value };
+    }
+
+    [JsonIgnore]
+    public SemanticEndTurnStochasticStateV111 Stochastic
+    {
+        get => Simulation.Stochastic;
+        init => Simulation = Simulation with { Stochastic = value };
+    }
+
+    public RunState Origin
+    {
+        get => Mechanics.Origin;
+        init => Mechanics = Mechanics with { Origin = value };
+    }
+
+    public RunState Run
+    {
+        get => Mechanics.Run;
+        init => Mechanics = Mechanics with { Run = value };
+    }
+
+    public string NativeEncounterEntry
+    {
+        get => Mechanics.NativeEncounterEntry;
+        init => Mechanics = Mechanics with { NativeEncounterEntry = value };
+    }
+
+    public ControlledTurnIntentsV111? Intents
+    {
+        get => Mechanics.Intents;
+        init => Mechanics = Mechanics with { Intents = value };
+    }
+
+    public SemanticCombatDrawV111? HandDraw
+    {
+        get => Mechanics.HandDraw;
+        init => Mechanics = Mechanics with { HandDraw = value };
+    }
+
+    public bool Complete
+    {
+        get => Mechanics.Complete;
+        init => Mechanics = Mechanics with { Complete = value };
+    }
 
     public RandomIndexDecisionV111[] IntentTranscript
     {
@@ -101,8 +155,17 @@ public sealed record SemanticEndTurnV111(
         init => Stochastic = Stochastic with { IntentTranscript = value };
     }
 
-    public RunState? PlayerActionSource { get; init; }
-    public string? PlayerActionId { get; init; }
+    public RunState? PlayerActionSource
+    {
+        get => Mechanics.PlayerActionSource;
+        init => Mechanics = Mechanics with { PlayerActionSource = value };
+    }
+
+    public string? PlayerActionId
+    {
+        get => Mechanics.PlayerActionId;
+        init => Mechanics = Mechanics with { PlayerActionId = value };
+    }
     public RandomIndexDecisionV111[] EnemyActionTranscript
     {
         get => Stochastic.EnemyActionTranscript;
