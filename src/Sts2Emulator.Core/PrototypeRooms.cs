@@ -1414,15 +1414,12 @@ public sealed partial class PrototypeGameEngine
                 eventState.EventId,
                 action.ReadPayload<EventChoicePayload>().ChoiceId))
         {
-            try
-            {
-                using var replay = ControlledEventChoiceReplayV111.Begin([]);
-                return StepEventCore(state, action);
-            }
-            catch (ControlledEventChoiceChanceRequiredException exception)
-            {
-                throw UnsupportedControlledEventContinuation(exception);
-            }
+            var replay = ControlledChanceContinuationExecutorV111.Resume(
+                state, [], checkpoint => StepEventCore(checkpoint, action));
+            if (replay.PendingChance is { } pendingChance)
+                throw UnsupportedControlledEventContinuation(pendingChance);
+            return replay.Run ?? throw new InvalidDataException(
+                "Controlled event begin returned neither a run nor a pending chance request.");
         }
 
         return StepEventCore(state, action);
@@ -1466,24 +1463,20 @@ public sealed partial class PrototypeGameEngine
             DecisionCandidateLabels = decisionCandidateLabels
         };
 
-        RunState result;
-        try
-        {
-            using var replay = ControlledEventChoiceReplayV111.Begin(
-                decisions.Skip(continuation.EffectDecisionStartIndex).ToArray(),
-                priorOrdinals);
-            result = StepEventCore(
-                state,
+        var replay = ControlledChanceContinuationExecutorV111.Resume(
+            state,
+            decisions.Skip(continuation.EffectDecisionStartIndex).ToArray(),
+            checkpoint => StepEventCore(
+                checkpoint,
                 GameAction.Create(
                     "event_choice",
                     new EventChoicePayload(continuation.ChoiceId)),
-                resumeFrame);
-            replay.EnsureConsumed();
-        }
-        catch (ControlledEventChoiceChanceRequiredException exception)
-        {
-            throw UnsupportedControlledEventContinuation(exception);
-        }
+                resumeFrame),
+            priorOrdinals);
+        if (replay.PendingChance is { } pendingChance)
+            throw UnsupportedControlledEventContinuation(pendingChance);
+        var result = replay.Run ?? throw new InvalidDataException(
+            "Controlled event replay returned neither a run nor a pending chance request.");
         if (result.World?.Event?.ControlledChoice is not null)
             return result;
 
@@ -4170,83 +4163,81 @@ public sealed partial class PrototypeGameEngine
         var decisionCandidateLabels =
             continuation.DecisionCandidateLabels.Append(
                 (string[])continuation.PendingCandidateLabels.Clone()).ToArray();
-        RunState result;
-        using (var replay = ControlledEventChoiceReplayV111.Begin(decisions))
+        var partialState = continuation.PartialState.Fork() with
         {
-            var partialState = continuation.PartialState.Fork() with
+            DecisionIndex = state.DecisionIndex
+        };
+        var replay = ControlledChanceContinuationExecutorV111.Resume(
+            partialState,
+            decisions,
+            checkpoint => continuation.ActionId switch
             {
-                DecisionIndex = state.DecisionIndex
+                "start_run" => StartRun(
+                    checkpoint,
+                    GameAction.Empty("start_run")),
+                PrototypeNativeRestSiteActionsV111.Dig =>
+                    BeginRestDigReward(checkpoint),
+                "choose_map_node" => new PrototypeGameEngine().Step(
+                    checkpoint with
+                    {
+                        DecisionIndex = checked(state.DecisionIndex - 1)
+                    },
+                    GameAction.Create(
+                        "choose_map_node",
+                        new ChooseMapNodePayload(
+                            continuation.MapNodeId
+                                ?? throw new InvalidDataException(
+                                    "Controlled event-entry frame is missing its map node."))))
+                    .State,
+                _ => throw new NotSupportedException(
+                    "Controlled run action has no resume implementation.")
+            });
+        if (replay.PendingChance is { } pendingChance)
+        {
+            var supportedSite = continuation.ActionId switch
+            {
+                "start_run" => ControlledEventChoiceReplayV111
+                    .IsRunActionSite(pendingChance.Request.SiteId),
+                "choose_map_node" => ControlledEventChoiceReplayV111
+                    .IsRunActionEventEntrySite(pendingChance.Request.SiteId)
+                    || ControlledEventChoiceReplayV111
+                        .IsRunActionShopSite(pendingChance.Request.SiteId)
+                    || ControlledEventChoiceReplayV111
+                        .IsRunActionTreasureSite(pendingChance.Request.SiteId),
+                PrototypeNativeRestSiteActionsV111.Dig =>
+                    ControlledEventChoiceReplayV111
+                        .IsRunActionShovelSite(pendingChance.Request.SiteId),
+                _ => false
             };
-            try
-            {
-                result = continuation.ActionId switch
-                {
-                    "start_run" => StartRun(
-                        partialState,
-                        GameAction.Empty("start_run")),
-                    PrototypeNativeRestSiteActionsV111.Dig =>
-                        BeginRestDigReward(partialState),
-                    "choose_map_node" => new PrototypeGameEngine().Step(
-                        partialState with
-                        {
-                            DecisionIndex = checked(state.DecisionIndex - 1)
-                        },
-                        GameAction.Create(
-                            "choose_map_node",
-                            new ChooseMapNodePayload(
-                                continuation.MapNodeId
-                                    ?? throw new InvalidDataException(
-                                        "Controlled event-entry frame is missing its map node."))))
-                        .State,
-                    _ => throw new NotSupportedException(
-                        "Controlled run action has no resume implementation.")
-                };
-                replay.EnsureConsumed();
-            }
-            catch (ControlledEventChoiceChanceRequiredException exception)
-            {
-                var supportedSite = continuation.ActionId switch
-                {
-                    "start_run" => ControlledEventChoiceReplayV111
-                        .IsRunActionSite(exception.Request.SiteId),
-                    "choose_map_node" => ControlledEventChoiceReplayV111
-                        .IsRunActionEventEntrySite(exception.Request.SiteId)
-                        || ControlledEventChoiceReplayV111
-                            .IsRunActionShopSite(exception.Request.SiteId)
-                        || ControlledEventChoiceReplayV111
-                            .IsRunActionTreasureSite(exception.Request.SiteId),
-                    PrototypeNativeRestSiteActionsV111.Dig =>
-                        ControlledEventChoiceReplayV111
-                            .IsRunActionShovelSite(exception.Request.SiteId),
-                    _ => false
-                };
-                if (!supportedSite
-                    || exception.CandidateLabels is null
-                    || (exception.CandidateLabels.Length !=
-                            exception.Request.SupportCount
-                        && !(exception.CandidateLabels.Length == 0
-                            && exception.Request.SupportCount >
-                                ControlledRunActionEngineV111
-                                    .MaximumInlineOutcomeActions)))
-                    throw new NotSupportedException(
-                        "Controlled run action reached an unsupported chance request.");
+            if (!supportedSite
+                || pendingChance.CandidateLabels is null
+                || (pendingChance.CandidateLabels.Length !=
+                        pendingChance.Request.SupportCount
+                    && !(pendingChance.CandidateLabels.Length == 0
+                        && pendingChance.Request.SupportCount >
+                            ControlledRunActionEngineV111
+                                .MaximumInlineOutcomeActions)))
+                throw new NotSupportedException(
+                    "Controlled run action reached an unsupported chance request.");
 
-                var nextContinuation =
-                    new PrototypeControlledRunActionContinuationV111(
-                        state with { ControlledRunActionChoice = null },
-                        continuation.ActionId,
-                        decisions,
-                        decisionCandidateLabels,
-                        exception.Request,
-                        exception.CandidateLabels,
-                        continuation.MapNodeId);
-                nextContinuation.Validate();
-                return state with
-                {
-                    ControlledRunActionChoice = nextContinuation
-                };
-            }
+            var nextContinuation =
+                new PrototypeControlledRunActionContinuationV111(
+                    state with { ControlledRunActionChoice = null },
+                    continuation.ActionId,
+                    decisions,
+                    decisionCandidateLabels,
+                    pendingChance.Request,
+                    pendingChance.CandidateLabels,
+                    continuation.MapNodeId);
+            nextContinuation.Validate();
+            return state with
+            {
+                ControlledRunActionChoice = nextContinuation
+            };
         }
+
+        var result = replay.Run ?? throw new InvalidDataException(
+            "Controlled run-action replay returned neither a run nor a pending chance request.");
 
         if (result.ControlledRunActionChoice is not null)
             throw new NotSupportedException(
@@ -5227,14 +5218,15 @@ public sealed partial class PrototypeGameEngine
             DecisionIndex = state.DecisionIndex
         };
 
-        RunState result;
-        using (var replay = ControlledEventChoiceReplayV111.Begin(
+        var replay = ControlledChanceContinuationExecutorV111.Resume(
+            partialState,
             decisions.Skip(continuation.DecisionPrefixLength).ToArray(),
-            continuation.PrefixOrdinalCounts()))
-        {
-            result = CompleteReward(partialState, resumeFrame);
-            replay.EnsureConsumed();
-        }
+            checkpoint => CompleteReward(checkpoint, resumeFrame),
+            continuation.PrefixOrdinalCounts());
+        if (replay.PendingChance is { } pendingChance)
+            throw pendingChance;
+        var result = replay.Run ?? throw new InvalidDataException(
+            "Controlled event-reward replay returned neither a run nor a pending chance request.");
         if (result.ControlledEventRewardChoice is not null)
             return result;
 

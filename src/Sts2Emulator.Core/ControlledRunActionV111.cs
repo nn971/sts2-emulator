@@ -535,27 +535,23 @@ public static class ControlledRunActionEngineV111
                 "Controlled run action requires a current legal action.");
         RunState result;
         using (ControlledChanceGuardV111.Enter())
-        using (var replay = ControlledEventChoiceReplayV111.Begin([]))
         {
-            try
-            {
-                result = engine.Step(source, action).State;
-                replay.EnsureConsumed();
-            }
-            catch (ControlledEventChoiceChanceRequiredException exception)
+            var replay = ControlledChanceContinuationExecutorV111.Resume(
+                source, [], checkpoint => engine.Step(checkpoint, action).State);
+            if (replay.PendingChance is { } pendingChance)
             {
                 if (!supportedMapNodeAction
                     || !(ControlledEventChoiceReplayV111
-                            .IsRunActionEventEntrySite(exception.Request.SiteId)
+                            .IsRunActionEventEntrySite(pendingChance.Request.SiteId)
                         || ControlledEventChoiceReplayV111
-                            .IsRunActionShopSite(exception.Request.SiteId)
+                            .IsRunActionShopSite(pendingChance.Request.SiteId)
                         || ControlledEventChoiceReplayV111
-                            .IsRunActionTreasureSite(exception.Request.SiteId))
-                    || exception.CandidateLabels is null
-                    || (exception.CandidateLabels.Length !=
-                            exception.Request.SupportCount
-                        && !(exception.CandidateLabels.Length == 0
-                            && exception.Request.SupportCount >
+                            .IsRunActionTreasureSite(pendingChance.Request.SiteId))
+                    || pendingChance.CandidateLabels is null
+                    || (pendingChance.CandidateLabels.Length !=
+                            pendingChance.Request.SupportCount
+                        && !(pendingChance.CandidateLabels.Length == 0
+                            && pendingChance.Request.SupportCount >
                                 MaximumInlineOutcomeActions)))
                     throw new NotSupportedException(
                         "Controlled run action reached an unsupported chance request.");
@@ -570,8 +566,8 @@ public static class ControlledRunActionEngineV111
                         "choose_map_node",
                         [],
                         [],
-                        exception.Request,
-                        exception.CandidateLabels,
+                        pendingChance.Request,
+                        pendingChance.CandidateLabels,
                         mapNodeId);
                 continuation.Validate();
                 var suspended = partialState with
@@ -581,6 +577,9 @@ public static class ControlledRunActionEngineV111
                 PrototypeStateInvariants.Validate(suspended);
                 return suspended;
             }
+
+            result = replay.Run ?? throw new InvalidDataException(
+                "Controlled run-action begin returned neither a run nor a pending chance request.");
         }
         if (result.ControlledRunActionChoice is null)
             throw new NotSupportedException(

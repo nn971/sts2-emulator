@@ -40,6 +40,8 @@ The census and matrix have different units. Census rows are source expressions; 
 
 `ReferenceNatureRunCursorV111` centralizes run-scoped cursor initialization, transcript-count validation and committed-cursor publication for semantic-combat, run-action and event-choice sessions. `ReferenceNatureV111.SampleValidated` is the shared law-identity and ordered-support guard. This closes a provider-lifecycle duplication; it does not close the row-level S0 inventory audit or source-law calibration.
 
+`ControlledChanceContinuationExecutorV111` centralizes replay-scope lifetime, saved-prefix consumption and typed suspension capture for run-action and controlled event/reward mechanics. The enclosing continuation still owns its mechanics checkpoint, allowlist, and serialized frame.
+
 ## Site-family crosswalk
 
 Use the stable row IDs in the migration matrix as the site-level index. These families describe their current responsibility boundary; a family label does not imply every row is implemented or supported.

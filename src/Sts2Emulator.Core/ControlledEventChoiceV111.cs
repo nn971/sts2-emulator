@@ -77,23 +77,23 @@ public static class ControlledEventChoiceEngineV111
             throw new InvalidOperationException(
                 "Controlled event-reward advance requires a current legal reward action.");
 
-        try
-        {
-            using var guard = ControlledChanceGuardV111.Enter();
-            using var replay = ControlledEventChoiceReplayV111.Begin(
-                [], OrdinalCounts(trace.Decisions));
-            var result = engine.Step(source, action).State;
-            replay.EnsureConsumed();
-            PrototypeStateInvariants.Validate(result);
-            return result;
-        }
-        catch (ControlledEventChoiceChanceRequiredException exception)
+        using var guard = ControlledChanceGuardV111.Enter();
+        var replay = ControlledChanceContinuationExecutorV111.Resume(
+            source,
+            [],
+            checkpoint => engine.Step(checkpoint, action).State,
+            OrdinalCounts(trace.Decisions));
+        if (replay.PendingChance is { } pendingChance)
         {
             throw new NotSupportedException(
-                "Controlled event chance site '" + exception.Request.SiteId +
-                "' (operation '" + exception.Request.OperationKind +
+                "Controlled event chance site '" + pendingChance.Request.SiteId +
+                "' (operation '" + pendingChance.Request.OperationKind +
                 "') is outside the saved event-reward continuation.");
         }
+        var result = replay.Run ?? throw new InvalidDataException(
+            "Controlled event-reward advance returned neither a run nor a pending chance request.");
+        PrototypeStateInvariants.Validate(result);
+        return result;
     }
 
     private static IReadOnlyDictionary<string, int> OrdinalCounts(
