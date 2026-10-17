@@ -87,6 +87,45 @@ public sealed record ControlledTurnIntentsV111(
         init => Stochastic = Stochastic with { Pending = value };
     }
 
+    public void Validate()
+    {
+        this.Stochastic.Validate();
+        if (string.IsNullOrWhiteSpace(this.NativeEncounterEntry) ||
+            string.IsNullOrWhiteSpace(this.SiteId) ||
+            this.NextEnemyIndex < 0 ||
+            this.NextEnemyIndex > this.BaselineCombat.Enemies.Length ||
+            this.BaselineCombat.Enemies.Length != this.Combat.Enemies.Length)
+            throw new InvalidDataException("Malformed controlled turn-intent continuation.");
+        // Recomputes only pure enemy move-choice evaluation from saved
+        // eligibility/ticket prefixes, never gameplay effect stages.
+        var replay = ControlledTurnIntentEngineV111.AdvanceToBoundary(this with
+        {
+            Combat = this.BaselineCombat.Fork(),
+            NextEnemyIndex = 0,
+            Transcript = [],
+            Pending = null
+        });
+        var streams = NativeRngV111.CreateBundle("validation-no-native-consumption");
+        foreach (var choice in this.Transcript)
+        {
+            if (replay.Pending is null ||
+                CanonicalJson.Sha256(replay.Pending) != CanonicalJson.Sha256(choice.Request))
+                throw new InvalidDataException(
+                    "Turn-intent decisions diverge from saved eligibility.");
+            // Do not recursively validate while reconstructing the prefix.
+            var ticket = new ControlledRandomIndexProviderV111(choice.SelectedIndex)
+                .Resolve(choice.Request, streams);
+            replay = ControlledTurnIntentEngineV111.AdvanceToBoundary(replay with
+            {
+                Transcript = replay.Transcript.Append(ticket).ToArray(),
+                Pending = null
+            });
+        }
+        if (CanonicalJson.Sha256(replay) != CanonicalJson.Sha256(this))
+            throw new InvalidDataException(
+                "Turn-intent continuation differs from its pure ticket replay.");
+    }
+
     public ControlledTurnIntentsV111 Fork() => this with
     {
         BaselineCombat = BaselineCombat.Fork(),
@@ -200,52 +239,15 @@ public static class ControlledTurnIntentEngineV111
         return new SemanticIntentSupportV111(owner, candidates, total);
     }
 
-    public static void Validate(ControlledTurnIntentsV111 state)
-    {
-        ArgumentNullException.ThrowIfNull(state);
-        state.Stochastic.Validate();
-        if (string.IsNullOrWhiteSpace(state.NativeEncounterEntry) ||
-            string.IsNullOrWhiteSpace(state.SiteId) ||
-            state.NextEnemyIndex < 0 ||
-            state.NextEnemyIndex > state.BaselineCombat.Enemies.Length ||
-            state.BaselineCombat.Enemies.Length != state.Combat.Enemies.Length)
-            throw new InvalidDataException("Malformed controlled turn-intent continuation.");
-        // Recomputes only pure enemy move-choice evaluation from saved
-        // eligibility/ticket prefixes, never gameplay effect stages.
-        var replay = AdvanceToBoundary(state with
-        {
-            Combat = state.BaselineCombat.Fork(),
-            NextEnemyIndex = 0,
-            Transcript = [],
-            Pending = null
-        });
-        var streams = NativeRngV111.CreateBundle("validation-no-native-consumption");
-        foreach (var choice in state.Transcript)
-        {
-            if (replay.Pending is null ||
-                CanonicalJson.Sha256(replay.Pending) != CanonicalJson.Sha256(choice.Request))
-                throw new InvalidDataException(
-                    "Turn-intent decisions diverge from saved eligibility.");
-            // Do not recursively validate while reconstructing the prefix.
-            var ticket = new ControlledRandomIndexProviderV111(choice.SelectedIndex)
-                .Resolve(choice.Request, streams);
-            replay = AdvanceToBoundary(replay with
-            {
-                Transcript = replay.Transcript.Append(ticket).ToArray(),
-                Pending = null
-            });
-        }
-        if (CanonicalJson.Sha256(replay) != CanonicalJson.Sha256(state))
-            throw new InvalidDataException(
-                "Turn-intent continuation differs from its pure ticket replay.");
-    }
+    public static void Validate(ControlledTurnIntentsV111 state) =>
+        state.Validate();
 
     private sealed class PendingTicket(RandomIndexRequestV111 request) : Exception
     {
         public RandomIndexRequestV111 Request { get; } = request;
     }
 
-    private static ControlledTurnIntentsV111 AdvanceToBoundary(
+    internal static ControlledTurnIntentsV111 AdvanceToBoundary(
         ControlledTurnIntentsV111 start)
     {
         var state = start.Fork();

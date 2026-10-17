@@ -38,7 +38,7 @@
 
 **S3 semantic draw transcript ownership increment (2026-10-17):** `SemanticCombatDrawStochasticStateV111` now owns the semantic draw frame's random pile-card, draw-insertion, Stratagem-selection, draw-hook and energy-cost transcripts. Existing properties remain flattened projections, and the owner deep-forks and validates typed decisions and provenance. Draw mechanics checkpoints and pending stages remain on the specialized frame, so common continuation remains open.
 
-**S3 turn-intent provider ownership increment (2026-10-17):** `ControlledTurnIntentStochasticStateV111` now owns the pending typed random-index request and decision prefix in `ControlledTurnIntentsV111`. The old fields remain flattened projections, the stochastic owner deep-forks and validates the provider payload, and the intent engine retains its pure replay check against saved enemy eligibility and mechanics.
+**S3 turn-intent provider ownership increment (2026-10-17):** `ControlledTurnIntentStochasticStateV111` owns the pending typed random-index request and decision prefix in `ControlledTurnIntentsV111`. The old fields remain flattened projections, the stochastic owner deep-forks and validates the provider payload, and `ControlledTurnIntentsV111.Validate` owns pure replay checking against saved enemy eligibility and mechanics.
 
 **S3 automatic-pipeline provider validation increment (2026-10-17):** `PrototypeAutomaticPipelineStochasticStateV111` now validates the controlled recycle-Stratagem stage and nested enemy-action checkpoint against its automatic-pipeline mechanics boundary. `CombatStochasticStateV111.Validate` invokes this check, removing those provider-specific branches from the general combat invariant routine while preserving the mechanics-state checks there.
 

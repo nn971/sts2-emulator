@@ -279,7 +279,7 @@ public sealed record SemanticEndTurnV111(
             throw new InvalidDataException("Invalid semantic end-turn stages.");
         if (this.Intents is { } intents)
         {
-            ControlledTurnIntentEngineV111.Validate(intents);
+            intents.Validate();
             if (CanonicalJson.Sha256(intents.Transcript) !=
                 CanonicalJson.Sha256(this.IntentTranscript) ||
                 CanonicalJson.Sha256(this.Run) !=
@@ -699,7 +699,7 @@ public static class SemanticEndTurnEngineV111
             throw new InvalidOperationException("No source intent checkpoint.");
         if (!intents.Complete)
             throw new InvalidOperationException("Enemy intent tickets are pending.");
-        ControlledTurnIntentEngineV111.Validate(intents);
+        intents.Validate();
         RunState handCheckpoint;
         using (ControlledChanceGuardV111.Enter())
             handCheckpoint = PrototypeGameEngine.ResumeControlledTurnAfterIntents(

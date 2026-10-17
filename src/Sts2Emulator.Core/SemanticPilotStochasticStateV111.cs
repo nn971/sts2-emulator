@@ -56,7 +56,7 @@ public sealed record SemanticPilotStochasticStateV111(
         if (PendingEndTurn is not null)
             PendingEndTurn.Validate();
         if (PendingInitialIntents is not null)
-            ControlledTurnIntentEngineV111.Validate(PendingInitialIntents);
+            PendingInitialIntents.Validate();
     }
 
     internal static SemanticPilotStochasticStateV111 WithOtherChance(

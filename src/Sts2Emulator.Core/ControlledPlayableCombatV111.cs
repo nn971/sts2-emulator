@@ -864,7 +864,7 @@ public static class ControlledPlayableCombatEngineV111
             throw new InvalidOperationException("No turn intents to commit.");
         if (!current.Complete)
             throw new InvalidOperationException("Nature intent tickets still pending.");
-        ControlledTurnIntentEngineV111.Validate(current);
+        current.Validate();
         RunState result;
         using (ControlledChanceGuardV111.Enter())
             result = PrototypeGameEngine.ResumeControlledTurnAfterIntents(
@@ -1185,7 +1185,7 @@ public static class ControlledPlayableCombatEngineV111
         }
         if (state.TurnIntents is { } intent)
         {
-            ControlledTurnIntentEngineV111.Validate(intent);
+            intent.Validate();
             if (state.Run.World?.Combat is not { } combat ||
                 CanonicalJson.Sha256(combat) !=
                     CanonicalJson.Sha256(intent.BaselineCombat))
