@@ -1,5 +1,7 @@
 # Canonical state model
 
+**Stochastic ownership:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md). The engine owns mechanical lifecycle and complete snapshot/fork behavior; the active provider owns private committed or unresolved stochastic state. Player observations omit that private state.
+
 ## Representations and purposes
 
 The emulator distinguishes:
@@ -44,6 +46,8 @@ RunState
 ```
 
 The scaffold intentionally contains only a minimal typed subset. New fields should be promoted when their semantics are understood.
+
+**Target stochastic envelope:** the [unified architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md) treats mechanical state and active-provider stochastic state as one atomically forked/serialized simulation state. Existing versioned fields are being reconciled incrementally; this document's `RNG bundle` is not a claim that every unresolved Nature constraint already lives there.
 
 ## Canonical identity
 

@@ -1,5 +1,7 @@
 # Inspector implementation status
 
+**Scope:** [Inspector plan](NATIVE_FIDELITY_INSPECTOR_PLAN.md) and [issue #122](https://github.com/nn971/sts2-emulator/issues/122) own native source captures, mechanics differential checks and exact RNG provenance. These gates run independently of the Chance Law/ReferenceNature structure and the #143 training comparator.
+
 **Feature branch:** `feature/native-fidelity-inspector-foundation`
 
 | Gate | Status | Evidence / blocker |

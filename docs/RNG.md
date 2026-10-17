@@ -2,6 +2,10 @@
 
 > **Desired implementation:** [Interchangeable native RNG / controlled Nature architecture](DESIRED_RNG_IMPLEMENTATION.md) (partially implemented; see the [migration matrix](DESIRED_RNG_MIGRATION_STATUS.md)). It separates ordered mechanical random-choice boundaries from the provider selecting the outcome, while preserving native seeded replay as its own fidelity gate.
 
+The [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md) is the canonical ownership contract; the [staged roadmap](STOCHASTIC_ARCHITECTURE_ROADMAP.md) records Chance Law and ReferenceNature acceptance.
+
+Native sampling remains on its source provider path. Chance Law is a separate read-only query over a declared pre-outcome support/constraint state, not a runtime sampling dependency.
+
 ## Principle
 
 RNG is part of the state, not a global service.

@@ -1,5 +1,7 @@
 # Native Reference Mod and Fidelity Inspector: implementation plan
 
+**Architecture boundary:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md) and [roadmap](STOCHASTIC_ARCHITECTURE_ROADMAP.md) define Chance Law as optional and read-only. Native source sampling and bridge operation have no runtime dependency on it; native parity remains the inspector track.
+
 **Status:** In progress. Implementation evidence and remaining gates:
 [NATIVE_FIDELITY_INSPECTOR_IMPLEMENTATION_STATUS.md](NATIVE_FIDELITY_INSPECTOR_IMPLEMENTATION_STATUS.md).
 No authentic native-versus-emulator parity result has yet been established.

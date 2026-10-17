@@ -1,5 +1,7 @@
 # Architecture
 
+**Canonical stochastic contract:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md) and [implementation roadmap](STOCHASTIC_ARCHITECTURE_ROADMAP.md). The oracle diagram below describes evidence flow; Native RNG and the game bridge do not call Chance Law. Complete snapshots include mechanics plus the active provider's private stochastic state.
+
 ## Core design
 
 The repository separates **native truth**, **exact simulation**, and **consumer interfaces**.
@@ -57,7 +59,7 @@ Load(snapshot)     -> S
 
 High-throughput consumers also need batch variants, but batch operations must preserve identical semantics.
 
-`Step` is deterministic because every continuation-relevant RNG stream belongs to `S`.
+In auto-resolving seeded execution, `Step` is deterministic because complete state includes the active provider's private RNG and committed outcomes. In Nature mode, mechanics suspend at an explicit stochastic boundary until a legal choice is supplied; state plus choice is deterministic.
 
 ## Exact state vs projections
 

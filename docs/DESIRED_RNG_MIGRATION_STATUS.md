@@ -1,5 +1,7 @@
 # Desired RNG implementation — migration matrix (D0–D5 partial)
 
+> This is the detailed per-site migration ledger. The [canonical architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md) owns responsibility and information boundaries; the [roadmap](STOCHASTIC_ARCHITECTURE_ROADMAP.md) owns stage acceptance. Existing rows remain the source for site-level implementation and parity status, not an alternate architecture.
+
 **Baseline:** `agent/v111-hive-glory-pregenerated-encounter-queues-v20`
 (pinned native v0.111.0 code). This work is stacked on that emulator
 integration branch, **not** the lightweight inspector foundation branch.

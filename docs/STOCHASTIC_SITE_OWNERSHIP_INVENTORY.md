@@ -1,0 +1,55 @@
+# Stochastic site and state ownership inventory
+
+**Snapshot:** 2026-10-17, `feature/nature-143-native-policy-comparator`. **Status:** assembled index and ownership crosswalk; row-level acceptance audit remains in progress. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md) and [implementation roadmap](STOCHASTIC_ARCHITECTURE_ROADMAP.md).
+
+This document joins existing inventories instead of copying their site rows. The detailed stable-site ledger stays in [Desired RNG migration status](DESIRED_RNG_MIGRATION_STATUS.md); the static direct-call report stays in [RNG direct-call census](RNG_DIRECT_CALLSITE_CENSUS.md). Semantic protocol and reference-build documents linked from those rows retain the mechanism-specific evidence.
+
+## Inventory sources and limits
+
+| Source | What it covers | Current limit |
+| --- | --- | --- |
+| [Migration matrix](DESIRED_RNG_MIGRATION_STATUS.md) | Stable stochastic site ID, owner/stream, source-audit status, native and controlled implementation/parity status, calibrated-law status | Does not yet assign every row a complete constraint fingerprint, audience projection, concrete continuation/resolver, provenance record and fail-closed outcome |
+| [Direct-call census](RNG_DIRECT_CALLSITE_CENSUS.md) | Direct `PrototypeRng`, `NativeRngV111` and `NativeFisherYatesV111` calls found by the repository inventory tool | It excludes indirect provider calls, game-side source callsites, and proof that every source operation is mapped; dynamic expressions still need caller tracing |
+| [Semantic Nature protocol](NATURE_P0_SEMANTIC_JSONL_143.md) and linked operation documents | Current opt-in semantic event envelopes, supported continuations, transcript/replay rules and explicit unsupported cases | Versioned pilot coverage; it does not imply all stochastic sites are controlled or that its probabilities are source-calibrated |
+| [Native RNG fidelity matrix](reference-builds/v0.111.0-native-rng-fidelity-matrix.md) and [Inspector plan](NATIVE_FIDELITY_INSPECTOR_PLAN.md) | Pinned-source RNG streams, native evidence and fidelity acceptance | Inspector evidence is separate from Chance Law and the two-site Nature comparator |
+
+The census and matrix have different units. Census rows are source expressions; migration rows are semantic sampling sites. One site can have many call expressions, and one generic provider expression can serve many semantic sites. Neither count should be used as the other's completion denominator.
+
+## State ownership crosswalk
+
+| State or path | Current representation | Target authority | Visibility and lifecycle | Migration note |
+| --- | --- | --- | --- | --- |
+| Mechanical zones, card instances, combat history, eligibility, and effects | `RunState`, `CombatState`, and the engine's source-shaped mechanics | Game mechanics | Complete snapshots/forks preserve it; player projection reveals only ordinary game information | Mechanics determines legal support and applies a chosen result once |
+| Prototype RNG | `RunState.Rng` and `PrototypeRng` | Legacy prototype provider | Private continuation state; not native stream evidence | Keep versioned; new strict profiles must not silently fall back to it |
+| Native committed stochastic state | Named run/player streams, context streams, and `NativeRunRng` / event RNG state | Native RNG provider | Private; snapshots/forks include streams and committed outcomes atomically | Source-call and cursor evidence belongs to the Inspector track |
+| Nature unresolved deck order | `SemanticDeckStateV111` slots, shared pools, pending event and transcript | Nature provider | Candidates/constraints are Nature-side; hidden pool order is not in the player view | `CombatState.DrawPile` still coexists with this provider state during migration; the target contract permits one authoritative membership path |
+| Nature semantic event continuation | Typed pending events and saved `Semantic*` / controlled frames | Nature provider plus engine continuation | Nature sees legal support and declared constraints; mechanics retains ordered effects and resumes hooks | Event IDs and support fingerprints reject stale or unsupported resolutions |
+| Two-site control-arm randomness | `SemanticOtherChanceStateV111` and the engine-owned private stream used by the opt-in #143 route | Engine-owned control provider | Private from Nature; included in the fork/save/replay lifecycle | Its source-law and native-cursor status remain separately labeled |
+| Scripted replay | Ordered typed request/outcome transcript | Replay provider | Privileged replay input; validates site, support and order | Does not claim native stream parity unless the transcript itself is native and audited |
+| Public observations | `PrototypeAiEnvironment` / versioned AI projections | Observation layer | Player-visible fields only; excludes hidden order, seed, RNG cursors and private candidate constraints | `prototype-ai-v0` remains unchanged; Nature and inspector projections are separate contracts |
+
+## Site-family crosswalk
+
+Use the stable row IDs in the migration matrix as the site-level index. These families describe their current responsibility boundary; a family label does not imply every row is implemented or supported.
+
+| Site family in the matrix | Operation and support source | Private state / constraint | Resolver and continuation | Audience, provenance, and unsupported behavior |
+| --- | --- | --- | --- | --- |
+| Run start, map, route, and event entry | Bounded index, weighted ticket, float/range draw or shuffle over an ordered source pool | Native named/context streams or legacy `RunState.Rng`; a Nature continuation may store an unresolved selected site/outcome | Native helper or opt-in serialized `ControlledRunActionContinuationV111`; ordinary map/event mechanics resumes after selection | Player sees resulting route/event, not stream state. Per-site law status is in the matrix. Unlisted controlled event-entry sites fail closed. |
+| Event, reward, shop, and relic offers | Weighted/index selection or ordered without-replacement Fisher–Yates swaps | Source-ordered eligible pool, saved pool conditions, provider stream/cursor | Native event/reward helper or matching typed continuation; event outcome feeds ordinary effects | Resulting offers may be visible; pool order and RNG are private. Source audit, cursor parity and reference-law calibration are separate matrix fields. Unsupported provider mode rejects before state publication. |
+| Encounter formation, combat setup, summons, and enemy intent | Bounded index or weighted eligible move support after combat/history filters | Native stream or source-filtered semantic support; live formation and previous-move constraints | Native source selector, semantic intent resolver, or saved controlled combat continuation | Player sees the committed intent only at the normal boundary. Intent weights remain `UNVERIFIED` until independently calibrated. Unknown random sites are guarded in controlled paths where listed. |
+| Draw-pile shuffle, recycle, card reveal, insertion, and reposition | Fisher–Yates commitment, deferred physical-instance choice, or bounded placement | Native committed order, or Nature shared-pool/known-position constraints in `SemanticDeckStateV111` | `SemanticDeckStateV111` resolves an unknown card once; `DrawCards` and hooks run through the saved engine continuation | Player sees count and ordinary revealed cards; Nature sees support only at its boundary. Split-pool mutations that are not representable fail closed. |
+| Generated cards, random targets, card costs, and potion choices | Pool shuffle, bounded support, or sampled cost | Native/engine-owned stream or event-specific eligible identities and continuation stage | Typed semantic event resolver resumes the saved effect/action pipeline once | Player sees the resulting target/card/cost when mechanics reveals it. Provenance is per-row; unsupported nested operations abort atomically where guarded. |
+| Remaining direct or indirect source sites | Operation varies by site and may not yet have a semantic descriptor | May remain legacy, native-only, context-owned or unmapped | See row-level matrix and direct-call census; unresolved continuations are not inferred from a matching RNG wrapper | Do not claim support from a generic provider call. Mark `UNMAPPED`, `UNSUPPORTED` or `NOT_AUDITED` until the exact boundary is identified. |
+
+## S0 row-level acceptance fields
+
+For each stable site row, the implementation ledger must eventually point to all of these fields, directly or through a site-specific linked contract:
+
+1. owner, operation kind, occurrence identity and ordered legal support;
+2. active provider and private state/constraint fingerprint;
+3. player-visible, Nature-visible and privileged-inspector projections;
+4. resolver and ordinary mechanics continuation, including hook-once behavior;
+5. probability status and provenance, distinct from native cursor/parity status;
+6. exact unsupported/fail-closed handling and evidence link.
+
+Current sources provide a usable site list and broad owner map, but not every row has all six links. Therefore **S0 inventory acceptance is still open**. The next inventory update should annotate existing matrix rows or link their operation documents; it should not introduce a second copy of the site list.

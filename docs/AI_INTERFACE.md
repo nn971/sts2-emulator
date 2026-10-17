@@ -1,5 +1,7 @@
 # AI consumer interface
 
+**Information boundaries:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md). The ordinary agent view remains player-visible; semantic Nature support is a separate negotiated view, and hidden provider state belongs to privileged diagnostics. The Chance Law and ReferenceNature APIs do not change `prototype-ai-v0`.
+
 The canonical emulator API remains `IDeterministicEngine` over `RunState` and `GameAction`.
 Search and learning code should normally use `PrototypeAiEnvironment` instead of depending on
 CLI formatting or raw JSON layout.

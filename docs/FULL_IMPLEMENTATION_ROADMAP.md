@@ -1,5 +1,7 @@
 # Complete single-player STS2 emulator roadmap
 
+**Independent stochastic track:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md) and [Chance Law/ReferenceNature roadmap](STOCHASTIC_ARCHITECTURE_ROADMAP.md). This document remains the gameplay breadth plan; Nature, provider-state migration and native inspector work have separate acceptance gates.
+
 Recorded 2026-10-10 for `nn971/sts2-emulator`. Baseline: emulator revision `3e897c8`.
 
 The goal is a fully implemented, deterministic, headless emulator covering

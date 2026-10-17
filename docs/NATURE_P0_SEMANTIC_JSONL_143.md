@@ -1,5 +1,7 @@
 # Issue #143 P0 — first external playable semantic Nature API
 
+This versioned pilot remains the protocol history for #143. The [unified architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md) and [roadmap](STOCHASTIC_ARCHITECTURE_ROADMAP.md) now define provider ownership and the separate Chance Law/ReferenceNature contract; existing event schemas and snapshots are not reinterpreted.
+
 **Schema:** `sts2-v111-semantic-playable-p0-v1`  
 **API:** `prototype-ai-jsonl` and `bindings/python/sts2_emulator`  
 **Source:** pinned v0.111.0 engine, opt-in RNG/Inspector integration branch
