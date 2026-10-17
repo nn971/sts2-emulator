@@ -33,7 +33,10 @@ public static class StochasticCapabilitiesV111
         [
             "combat.committed_intent.index_draw",
             "combat.next_turn_intent.index_draw",
-            "combat.draw_pile.draw_card"
+            "combat.draw_pile.draw_card",
+            "combat.effect.random_enemy",
+            "combat.sly_autoplay.random_enemy",
+            "combat.autoplay.random_enemy"
         ],
         PrototypeAiEnvironment.SchemaId,
         [
@@ -131,7 +134,7 @@ public sealed record ChanceLawV111(
 }
 
 /// <summary>
-/// Outcome-blind queries for the two initial Nature sites. Queries inspect
+/// Outcome-blind queries for supported semantic Nature sites. Queries inspect
 /// only declared semantic support and provider constraints; Native RNG state
 /// and selected current outcomes are not inputs.
 /// </summary>
@@ -143,6 +146,8 @@ public static class ChanceLawEngineV111
         "uniform-unresolved-pool-permutation-v1";
     public const string RevealConditioningPolicyId =
         "uniform-unresolved-pool-reveal-v1";
+    public const string TargetConditioningPolicyId =
+        "uniform-live-enemy-instance-support-v1";
 
     public static ChanceLawV111 QueryIntent(SemanticIntentEventV111 intent)
     {
@@ -164,6 +169,35 @@ public static class ChanceLawEngineV111
         return Create(intent.EventId, intent.SiteId, intent.OperationKind,
             intent.OwnerId, intent.Ordinal, IntentConditioningPolicyId,
             conditioningFingerprint, "source-shaped-unverified", outcomes);
+    }
+
+    /// <summary>
+    /// Query the uniform conditional law over the live physical enemy
+    /// identities at a suspended random-target boundary. The selected index
+    /// is not part of the event, so querying cannot depend on a prior result.
+    /// </summary>
+    public static ChanceLawV111 QueryTarget(SemanticTargetEventV111 target)
+    {
+        ArgumentNullException.ThrowIfNull(target);
+        target.Validate();
+        var outcomes = target.CandidateEnemyInstanceIds
+            .Select(instanceId => new ChanceLawOutcomeV111(
+                "enemy_instance:" + instanceId.ToString(
+                    CultureInfo.InvariantCulture), 1L))
+            .ToArray();
+        var conditioningFingerprint = CanonicalJson.Sha256(new
+        {
+            target.SupportFingerprint,
+            target.SiteId,
+            target.OwnerId,
+            target.Ordinal,
+            target.TargetKind,
+            policy = TargetConditioningPolicyId
+        });
+        return Create(target.EventId, target.SiteId, target.OperationKind,
+            target.OwnerId, target.Ordinal, TargetConditioningPolicyId,
+            conditioningFingerprint,
+            "uniform-live-source-support-unverified", outcomes);
     }
 
     public static ChanceLawV111 QueryDraw(SemanticDeckStateV111 deck)
@@ -366,7 +400,7 @@ public static class ReferenceNatureV111
     private const ulong GoldenGamma = 0x9E3779B97F4A7C15UL;
 
     /// <summary>
-    /// Sample and resolve the next initial Nature site through the existing
+    /// Sample and resolve the next supported Nature site through the existing
     /// semantic mechanics continuation. The returned child and next sampler
     /// state are published together only after resolution succeeds.
     /// </summary>
@@ -386,6 +420,24 @@ public static class ReferenceNatureV111
             var selection = Sample(law, state);
             var child = SemanticPilotCombatEngineV111.ResolveIntent(
                 combat, combat.Fingerprint, selection.OutcomeId);
+            return new ReferenceNatureResolutionV111(child, law, selection);
+        }
+
+        if (combat.TargetPending is { } targetEvent)
+        {
+            var law = ChanceLawEngineV111.QueryTarget(targetEvent);
+            var selection = Sample(law, state);
+            if (selection.EventId != targetEvent.EventId ||
+                selection.OutcomeIndex < 0 ||
+                selection.OutcomeIndex >=
+                    targetEvent.CandidateEnemyInstanceIds.Length)
+                throw new InvalidDataException(
+                    "ReferenceNature law no longer matches the pending target event.");
+            var enemyInstanceId =
+                targetEvent.CandidateEnemyInstanceIds[selection.OutcomeIndex];
+            var child = SemanticPilotCombatEngineV111.ResolveRandomTarget(
+                combat, combat.Fingerprint, targetEvent.EventId,
+                enemyInstanceId);
             return new ReferenceNatureResolutionV111(child, law, selection);
         }
 
@@ -410,7 +462,7 @@ public static class ReferenceNatureV111
         }
 
         throw new NotSupportedException(
-            "UNSUPPORTED_REFERENCE_NATURE site=no_pending_enemy_intent_or_draw_card");
+            "UNSUPPORTED_REFERENCE_NATURE site=no_supported_pending_event");
     }
 
     public static ReferenceNatureSelectionV111 Sample(
