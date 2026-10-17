@@ -22,7 +22,11 @@ public static class SimulationMechanicsProjectionEngineV111
     public static SimulationMechanicsProjectionV111 Project(RunState run)
     {
         ArgumentNullException.ThrowIfNull(run);
-        var world = run.World;
+        // The owners contain arrays for compatibility with existing update
+        // code, so project a fork to keep this read-only view from exposing
+        // mutable aliases into the caller's snapshot.
+        var snapshot = run.Fork();
+        var world = snapshot.World;
         var combat = world?.Combat?.Mechanics;
         if (combat is not null)
         {
@@ -41,7 +45,7 @@ public static class SimulationMechanicsProjectionEngineV111
             };
         }
 
-        var runMechanics = run.Mechanics with
+        var runMechanics = snapshot.Mechanics with
         {
             // The seed selects provider realizations, not game mechanics.
             RunSeed = string.Empty,
