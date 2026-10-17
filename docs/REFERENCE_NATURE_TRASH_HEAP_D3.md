@@ -51,7 +51,7 @@ release. A direct law query uses
 ## Limits
 
 The session covers only the two fixed Trash Heap reward pools. Other event
-choices, Tablet of Truth pages, and event-triggered relic effects remain
+other event choices and event-triggered relic effects remain
 outside this continuation. Native source filtering, installed-game RNG cursor
 parity, and probability calibration remain open; no reference mod or Fidelity
 Inspector work is included.

@@ -42,6 +42,9 @@ public sealed record StochasticSessionCoverageV111(
     public string ReferenceNatureTrashHeapSessionSchemaId { get; init; } =
         ReferenceNatureTrashHeapSessionV111.CurrentSchemaId;
     public string[] ReferenceNatureTrashHeapSiteIds { get; init; } = [];
+    public string ReferenceNatureTabletOfTruthSessionSchemaId { get; init; } =
+        ReferenceNatureTabletOfTruthSessionV111.CurrentSchemaId;
+    public string[] ReferenceNatureTabletOfTruthSiteIds { get; init; } = [];
     public string[] ReferenceNatureAncientOfferSiteIds { get; init; } = [];
     public string ReferenceNatureMerchantSessionSchemaId { get; init; } =
         ReferenceNatureMerchantSessionV111.CurrentSchemaId;
@@ -68,6 +71,8 @@ public sealed record StochasticSessionCoverageV111(
                 ReferenceNatureNeowOfferSessionV111.CurrentSchemaId ||
             ReferenceNatureTrashHeapSessionSchemaId !=
                 ReferenceNatureTrashHeapSessionV111.CurrentSchemaId ||
+            ReferenceNatureTabletOfTruthSessionSchemaId !=
+                ReferenceNatureTabletOfTruthSessionV111.CurrentSchemaId ||
             ReferenceNatureMerchantSessionSchemaId !=
                 ReferenceNatureMerchantSessionV111.CurrentSchemaId ||
             ReferenceNatureTreasureSessionSchemaId !=
@@ -81,6 +86,7 @@ public sealed record StochasticSessionCoverageV111(
         ValidateSiteIds(ReferenceNatureAncientOfferSiteIds);
         ValidateSiteIds(ReferenceNatureNeowOfferSiteIds);
         ValidateSiteIds(ReferenceNatureTrashHeapSiteIds);
+        ValidateSiteIds(ReferenceNatureTabletOfTruthSiteIds);
         ValidateSiteIds(ReferenceNatureMerchantSiteIds);
         ValidateSiteIds(ReferenceNatureTreasureSiteIds);
     }
@@ -216,6 +222,7 @@ public static class StochasticSiteRegistryV111
         NativeVakuuEventV111.ShuffleSiteId,
         .. ChanceLawEngineV111.NeowOfferSessionSiteIds,
         .. ChanceLawEngineV111.TrashHeapSessionSiteIds,
+        .. ChanceLawEngineV111.TabletOfTruthSessionSiteIds,
         "shop.merchant.sale_slot.index_draw",
         "card_rarity.roll.unit_float",
         "shop.merchant.card_model.index_draw",
@@ -275,6 +282,8 @@ public static class StochasticSiteRegistryV111
         ChanceLawEngineV111.NeowOfferSessionSiteIds;
     private static readonly string[] TrashHeapSessionSites =
         ChanceLawEngineV111.TrashHeapSessionSiteIds;
+    private static readonly string[] TabletOfTruthSessionSites =
+        ChanceLawEngineV111.TabletOfTruthSessionSiteIds;
 
     private static readonly HashSet<string> SemanticReferenceNatureSiteSet =
         new(SemanticReferenceNatureSites, StringComparer.Ordinal);
@@ -308,6 +317,7 @@ public static class StochasticSiteRegistryV111
             .Concat(NativeTreasureSessionSites)
             .Concat(NeowOfferSessionSites)
             .Concat(TrashHeapSessionSites)
+            .Concat(TabletOfTruthSessionSites)
             .Distinct(StringComparer.Ordinal)
             .ToArray();
 
@@ -340,6 +350,8 @@ public static class StochasticSiteRegistryV111
         (string[])NeowOfferSessionSites.Clone();
     public static string[] TrashHeapSessionSiteIds =>
         (string[])TrashHeapSessionSites.Clone();
+    public static string[] TabletOfTruthSessionSiteIds =>
+        (string[])TabletOfTruthSessionSites.Clone();
     public static string[] NatureChoiceSiteIds =>
         (string[])NatureChoiceSites.Clone();
 
@@ -405,7 +417,10 @@ public static class StochasticSiteRegistryV111
             ReferenceNatureNeowOfferSiteIds = NeowOfferSessionSites,
             ReferenceNatureTrashHeapSessionSchemaId =
                 ReferenceNatureTrashHeapSessionV111.CurrentSchemaId,
-            ReferenceNatureTrashHeapSiteIds = TrashHeapSessionSites
+            ReferenceNatureTrashHeapSiteIds = TrashHeapSessionSites,
+            ReferenceNatureTabletOfTruthSessionSchemaId =
+                ReferenceNatureTabletOfTruthSessionV111.CurrentSchemaId,
+            ReferenceNatureTabletOfTruthSiteIds = TabletOfTruthSessionSites
         };
         coverage.Validate();
         return coverage;

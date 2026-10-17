@@ -300,6 +300,32 @@ class State:
         return ReferenceNatureTrashHeapSession.from_wire(
             self.session, result["result"])
 
+    def begin_reference_nature_tablet_of_truth(
+            self, nature_seed: int | None = None):
+        """Begin or continue one Tablet of Truth decipher draw."""
+        if self.session.capabilities.get(
+                "referenceNatureTabletOfTruthSessionSchemaId") != (
+                "sts2-v111-reference-nature-tablet-of-truth-session-v1"):
+            raise EmulatorError(
+                "Emulator does not expose ReferenceNature Tablet of Truth sessions")
+        site_id = "event.tablet_of_truth.card.index_draw"
+        if not self.session.supports_reference_nature_site(
+                site_id, session="tablet_of_truth"):
+            raise EmulatorError(
+                "No ReferenceNature Tablet of Truth session is advertised")
+        if (nature_seed is not None and
+                (not isinstance(nature_seed, int) or
+                 isinstance(nature_seed, bool) or nature_seed < 0 or
+                 nature_seed > 0xFFFFFFFFFFFFFFFF)):
+            raise ValueError("nature_seed must be an unsigned 64-bit integer")
+        payload = {"state_handle": self.handle}
+        if nature_seed is not None:
+            payload["nature_seed"] = nature_seed
+        result = self.session.call(
+            "reference_nature_tablet_of_truth_begin", **payload)
+        return ReferenceNatureTabletOfTruthSession.from_wire(
+            self.session, result["result"])
+
     def begin_reference_nature_merchant(self, action_id: str,
                                         nature_seed: int | None = None):
         """Begin atomic ReferenceNature generation for a configured Shop node."""
@@ -819,6 +845,83 @@ class ReferenceNatureTrashHeapSession:
 
     def release(self):
         return self.session.release_reference_nature_trash_heap_many([self])
+
+
+@dataclass(frozen=True)
+class ReferenceNatureTabletOfTruthSession:
+    """Atomic one-page Tablet of Truth card upgrade and Nature cursor."""
+    session: "Session"
+    handle: str
+    fingerprint: str
+    state_handle: str | None
+    event_id: str | None
+    choice_id: str
+    page: int
+    run_phase: str
+    boundary: str
+    next_ordinal: int
+    pending: dict | None
+    next_page: int | None
+    event_random_provider: str | None
+    decision_transcript: list
+    nature_sample_count: int
+
+    @classmethod
+    def from_wire(cls, session, payload):
+        if payload.get("schemaId") != (
+                "sts2-v111-reference-nature-tablet-of-truth-session-v1"):
+            raise EmulatorError(
+                "Unsupported ReferenceNature Tablet of Truth session schema")
+        return cls(
+            session, payload["referenceNatureTabletOfTruthHandle"],
+            payload["fingerprint"], payload["stateHandle"],
+            payload["eventId"], payload["choiceId"], payload["page"],
+            payload["runPhase"], payload["boundary"],
+            payload["nextOrdinal"], payload["pending"],
+            payload["nextPage"], payload["eventRandomProvider"],
+            payload["decisionTranscript"], payload["natureSampleCount"])
+
+    @property
+    def complete(self):
+        return self.boundary == "committed"
+
+    @property
+    def state(self):
+        if self.state_handle is None:
+            raise EmulatorError("Tablet of Truth page has not committed")
+        return State(self.session, self.state_handle)
+
+    def status(self):
+        result = self.session.call(
+            "reference_nature_tablet_of_truth_status",
+            reference_nature_tablet_of_truth_handle=self.handle)
+        return ReferenceNatureTabletOfTruthSession.from_wire(
+            self.session, result["result"])
+
+    def resolve_next(self):
+        """Sample and commit this page's eligible-card upgrade."""
+        result = self.session.call(
+            "reference_nature_tablet_of_truth_resolve_next",
+            reference_nature_tablet_of_truth_handle=self.handle,
+            fingerprint=self.fingerprint)
+        return ReferenceNatureTabletOfTruthSession.from_wire(
+            self.session, result["result"])
+
+    def fork(self):
+        result = self.session.call(
+            "reference_nature_tablet_of_truth_fork",
+            reference_nature_tablet_of_truth_handle=self.handle)
+        return ReferenceNatureTabletOfTruthSession.from_wire(
+            self.session, result["result"])
+
+    def save_snapshot(self):
+        return self.session.call(
+            "reference_nature_tablet_of_truth_save",
+            reference_nature_tablet_of_truth_handle=self.handle)["snapshot"]
+
+    def release(self):
+        return self.session.release_reference_nature_tablet_of_truth_many(
+            [self])
 
 
 @dataclass(frozen=True)
@@ -1526,12 +1629,13 @@ class Session:
             "ancient_offer": "referenceNatureAncientOfferSiteIds",
             "neow_offer": "referenceNatureNeowOfferSiteIds",
             "trash_heap": "referenceNatureTrashHeapSiteIds",
+            "tablet_of_truth": "referenceNatureTabletOfTruthSiteIds",
             "merchant": "referenceNatureMerchantSiteIds",
             "treasure": "referenceNatureTreasureSiteIds",
         }
         if session != "any" and session not in fields:
             raise ValueError(
-                "session must be semantic, run_action, event_choice, ancient_offer, neow_offer, trash_heap, merchant, treasure, or any")
+                "session must be semantic, run_action, event_choice, ancient_offer, neow_offer, trash_heap, tablet_of_truth, merchant, treasure, or any")
         coverage = self.stochastic_session_coverage
         if not isinstance(coverage, dict) or coverage.get("schemaId") != (
                 "sts2-v111-stochastic-session-coverage-v1"):
@@ -1911,6 +2015,27 @@ class Session:
         return self.call(
             "reference_nature_trash_heap_release_many",
             reference_nature_trash_heap_handles=[
+                item.handle for item in sessions])["released"]
+
+    def load_reference_nature_tablet_of_truth_snapshot(self, snapshot: str):
+        if self.capabilities.get(
+                "referenceNatureTabletOfTruthSessionSchemaId") != (
+                "sts2-v111-reference-nature-tablet-of-truth-session-v1"):
+            raise EmulatorError(
+                "Emulator does not expose ReferenceNature Tablet of Truth sessions")
+        result = self.call("reference_nature_tablet_of_truth_load",
+                           snapshot=snapshot)
+        return ReferenceNatureTabletOfTruthSession.from_wire(
+            self, result["result"])
+
+    def release_reference_nature_tablet_of_truth_many(self, sessions):
+        sessions = list(sessions)
+        if any(item.session is not self for item in sessions):
+            raise ValueError(
+                "ReferenceNature Tablet of Truth handle belongs to another session")
+        return self.call(
+            "reference_nature_tablet_of_truth_release_many",
+            reference_nature_tablet_of_truth_handles=[
                 item.handle for item in sessions])["released"]
 
     def load_reference_nature_merchant_snapshot(self, snapshot: str):

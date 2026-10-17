@@ -10,6 +10,42 @@ public static class PrototypeNativeTabletOfTruth
 {
     public const string EventId = "proto.native.event.tablet_of_truth";
     public const string NativeRngEventId = "TABLET_OF_TRUTH";
+    public const string CardDrawSiteId =
+        "event.tablet_of_truth.card.index_draw";
+
+    internal static int DecipherCost(int page, int maxHp) => page switch
+    {
+        0 => 3,
+        1 => 6,
+        2 => 12,
+        3 => 24,
+        4 => Math.Max(0, maxHp - 1),
+        _ => throw new ArgumentOutOfRangeException(nameof(page))
+    };
+
+    internal static PlayerState ApplyDecipherCost(
+        PlayerState player, int cost)
+    {
+        var newMaxHp = player.MaxHp - cost;
+        return player with
+        {
+            MaxHp = newMaxHp,
+            Hp = Math.Min(player.Hp, newMaxHp)
+        };
+    }
+
+    internal static long[] EligibleCardInstanceIds(PlayerState player) =>
+        player.Deck
+            .Where(card =>
+            {
+                var definition = PrototypeContent.Card(card.CardId);
+                return card.UpgradeLevel == 0 && !definition.Unplayable &&
+                    definition.Rarity is not PrototypeCardRarity.Curse and
+                        not PrototypeCardRarity.Status and
+                        not PrototypeCardRarity.Quest;
+            })
+            .Select(card => card.InstanceId)
+            .ToArray();
 }
 
 public sealed partial class PrototypeGameEngine
@@ -75,16 +111,8 @@ public sealed partial class PrototypeGameEngine
         }
 
         var page = current.NativePageIndex;
-        var cost = page switch
-        {
-            0 => 3,
-            1 => 6,
-            2 => 12,
-            3 => 24,
-            4 => Math.Max(0, state.Player.MaxHp - 1),
-            _ => throw new InvalidOperationException(
-                "Invalid Tablet of Truth decipher progress.")
-        };
+        var cost = PrototypeNativeTabletOfTruth.DecipherCost(
+            page, state.Player.MaxHp);
 
         if (cost >= state.Player.MaxHp)
         {
@@ -94,26 +122,10 @@ public sealed partial class PrototypeGameEngine
             return EndRun(state, "defeat");
         }
 
-        var newMaxHp = state.Player.MaxHp - cost;
-        var playerAfterCost = state.Player with
-        {
-            MaxHp = newMaxHp,
-            Hp = Math.Min(state.Player.Hp, newMaxHp)
-        };
-
-        var eligible = playerAfterCost.Deck
-            .Where(card =>
-            {
-                var definition = PrototypeContent.Card(card.CardId);
-                return card.UpgradeLevel == 0
-                    && !definition.Unplayable
-                    && definition.Rarity is not
-                        PrototypeCardRarity.Curse
-                        and not PrototypeCardRarity.Status
-                        and not PrototypeCardRarity.Quest;
-            })
-            .Select(card => card.InstanceId)
-            .ToArray();
+        var playerAfterCost = PrototypeNativeTabletOfTruth
+            .ApplyDecipherCost(state.Player, cost);
+        var eligible = PrototypeNativeTabletOfTruth
+            .EligibleCardInstanceIds(playerAfterCost);
 
         if (page == 4)
         {
@@ -137,7 +149,7 @@ public sealed partial class PrototypeGameEngine
                 state,
                 current,
                 PrototypeNativeTabletOfTruth.NativeRngEventId,
-                "event.tablet_of_truth.card.index_draw",
+                PrototypeNativeTabletOfTruth.CardDrawSiteId,
                 "event:tablet_of_truth:eligible_cards:"
                     + CanonicalJson.Sha256(eligible),
                 eligible.Length,

@@ -300,6 +300,18 @@ public static class NativeEventContextRngV111
                 prototypeEventId, eventState.ChosenChoiceId) &&
             scriptedTrashHeapRewardPresent)
             return;
+        var tabletPageIsExpected =
+            eventState.NativePageIndex is >= 1 and <= 4 &&
+                eventState.ChosenChoiceId is null ||
+            eventState.NativePageIndex ==
+                PrototypeNativeEventCompletionPages.TerminalChoicePageIndex(
+                    PrototypeNativeTabletOfTruth.EventId) &&
+                PrototypeNativeEventCompletionPages.HasTerminalChoice(
+                    PrototypeNativeTabletOfTruth.EventId,
+                    eventState.ChosenChoiceId);
+        if (prototypeEventId == PrototypeNativeTabletOfTruth.EventId &&
+            providerMode == "scripted-v111" && tabletPageIsExpected)
+            return;
         throw new InvalidOperationException(
             "Native event state cannot use this counterfactual RNG provider.");
     }

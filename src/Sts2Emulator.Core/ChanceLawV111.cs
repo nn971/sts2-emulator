@@ -28,6 +28,8 @@ public sealed record StochasticCapabilityManifestV111(
         ReferenceNatureNeowOfferSessionV111.CurrentSchemaId;
     public string ReferenceNatureTrashHeapSessionSchemaId { get; init; } =
         ReferenceNatureTrashHeapSessionV111.CurrentSchemaId;
+    public string ReferenceNatureTabletOfTruthSessionSchemaId { get; init; } =
+        ReferenceNatureTabletOfTruthSessionV111.CurrentSchemaId;
     public string ReferenceNatureMerchantSessionSchemaId { get; init; } =
         ReferenceNatureMerchantSessionV111.CurrentSchemaId;
     public string ReferenceNatureTreasureSessionSchemaId { get; init; } =
@@ -40,6 +42,7 @@ public sealed record StochasticCapabilityManifestV111(
     [
         "semantic_combat", "reference_combat", "run_action",
         "event_choice", "ancient_offer", "neow_offer", "trash_heap",
+        "tablet_of_truth",
         "merchant", "treasure",
         "controlled_event_choice", "controlled_run_action"
     ];
@@ -106,6 +109,13 @@ public static class StochasticCapabilitiesV111
             "reference_nature_trash_heap_save",
             "reference_nature_trash_heap_load",
             "reference_nature_trash_heap_release_many",
+            "reference_nature_tablet_of_truth_begin",
+            "reference_nature_tablet_of_truth_status",
+            "reference_nature_tablet_of_truth_resolve_next",
+            "reference_nature_tablet_of_truth_fork",
+            "reference_nature_tablet_of_truth_save",
+            "reference_nature_tablet_of_truth_load",
+            "reference_nature_tablet_of_truth_release_many",
             "reference_nature_merchant_begin",
             "reference_nature_merchant_status",
             "reference_nature_merchant_resolve_next",
@@ -132,6 +142,8 @@ public static class StochasticCapabilitiesV111
             ReferenceNatureNeowOfferSessionV111.CurrentSchemaId,
         ReferenceNatureTrashHeapSessionSchemaId =
             ReferenceNatureTrashHeapSessionV111.CurrentSchemaId,
+        ReferenceNatureTabletOfTruthSessionSchemaId =
+            ReferenceNatureTabletOfTruthSessionV111.CurrentSchemaId,
         ReferenceNatureMerchantSessionSchemaId =
             ReferenceNatureMerchantSessionV111.CurrentSchemaId,
         ReferenceNatureTreasureSessionSchemaId =

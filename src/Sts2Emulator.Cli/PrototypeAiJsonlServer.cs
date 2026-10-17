@@ -77,6 +77,12 @@ internal static class PrototypeAiJsonlServer
         var referenceNatureTrashHeapRunStateHandles =
             new Dictionary<string, string>(StringComparer.Ordinal);
         long nextReferenceNatureTrashHeapHandle = 1;
+        var referenceNatureTabletOfTruthStates =
+            new Dictionary<string, ReferenceNatureTabletOfTruthSessionV111>(
+                StringComparer.Ordinal);
+        var referenceNatureTabletOfTruthRunStateHandles =
+            new Dictionary<string, string>(StringComparer.Ordinal);
+        long nextReferenceNatureTabletOfTruthHandle = 1;
         var referenceNatureMerchantStates =
             new Dictionary<string, ReferenceNatureMerchantSessionV111>(
                 StringComparer.Ordinal);
@@ -238,6 +244,30 @@ internal static class PrototypeAiJsonlServer
                 ? session
                 : throw new InvalidOperationException(
                     "Unknown ReferenceNature Trash Heap session handle: " +
+                    handle);
+        }
+
+        string StoreReferenceNatureTabletOfTruth(
+            ReferenceNatureTabletOfTruthSessionV111 session)
+        {
+            var handle = "tt" + nextReferenceNatureTabletOfTruthHandle++;
+            referenceNatureTabletOfTruthStates.Add(handle, session.Fork());
+            if (session.Complete)
+                referenceNatureTabletOfTruthRunStateHandles.Add(handle,
+                    Store(session.Run.Fork()));
+            return handle;
+        }
+
+        ReferenceNatureTabletOfTruthSessionV111
+            RequireReferenceNatureTabletOfTruth(JsonElement request)
+        {
+            var handle = RequiredString(request,
+                "reference_nature_tablet_of_truth_handle");
+            return referenceNatureTabletOfTruthStates.TryGetValue(handle,
+                    out var session)
+                ? session
+                : throw new InvalidOperationException(
+                    "Unknown ReferenceNature Tablet of Truth session handle: " +
                     handle);
         }
 
@@ -587,6 +617,48 @@ internal static class PrototypeAiJsonlServer
                     probabilityStatus = law.ProbabilityStatus
                 },
                 selectedChoiceId = session.Run.World?.Event?.ChosenChoiceId,
+                decisionTranscript = session.DecisionTranscript,
+                natureProvider = ReferenceNatureV111.ProviderId,
+                natureSampleCount = session.NatureState.SampleCount,
+                probabilityStatus = ChanceLawV111.UnverifiedStatus
+            };
+        }
+
+        object ReferenceNatureTabletOfTruthResult(
+            ReferenceNatureTabletOfTruthSessionV111 session,
+            string handle, string? parent = null)
+        {
+            var law = session.PendingLaw;
+            var eventState = session.Run.World?.Event;
+            return new
+            {
+                ok = true,
+                schemaId =
+                    ReferenceNatureTabletOfTruthSessionV111.CurrentSchemaId,
+                referenceNatureTabletOfTruthHandle = handle,
+                stateHandle = referenceNatureTabletOfTruthRunStateHandles
+                    .GetValueOrDefault(handle),
+                parent,
+                fingerprint = session.Fingerprint,
+                runFingerprint = CanonicalJson.Sha256(session.Run),
+                siteId = law?.SiteId,
+                eventId = law?.EventId ??
+                    session.DecisionTranscript.LastOrDefault()?.EventId,
+                choiceId = "decipher",
+                page = session.Origin.World?.Event?.NativePageIndex,
+                runPhase = session.Run.Phase.ToString(),
+                boundary = session.Complete ? "committed" : "nature",
+                nextOrdinal = session.NextOrdinal,
+                pending = law is null ? null : new
+                {
+                    kind = "tablet_of_truth_card_upgrade_random_choice",
+                    boundaryFingerprint = law.EventId,
+                    chanceLaw = law,
+                    probabilityStatus = law.ProbabilityStatus
+                },
+                nextPage = eventState?.NativePageIndex,
+                eventRandomProvider = eventState?.NativeEventRngProviderMode ??
+                    (eventState is null ? null : "native-v111"),
                 decisionTranscript = session.DecisionTranscript,
                 natureProvider = ReferenceNatureV111.ProviderId,
                 natureSampleCount = session.NatureState.SampleCount,
@@ -1139,6 +1211,10 @@ internal static class PrototypeAiJsonlServer
                 "trash_heap" when referenceNatureTrashHeapStates.TryGetValue(
                     handle, out var trashHeapSession) =>
                     ReferenceNatureTrashHeapResult(trashHeapSession, handle),
+                "tablet_of_truth" when referenceNatureTabletOfTruthStates.TryGetValue(
+                    handle, out var tabletOfTruthSession) =>
+                    ReferenceNatureTabletOfTruthResult(
+                        tabletOfTruthSession, handle),
                 "merchant" when referenceNatureMerchantStates.TryGetValue(
                     handle, out var merchantSession) =>
                     ReferenceNatureMerchantResult(merchantSession, handle),
@@ -1153,7 +1229,7 @@ internal static class PrototypeAiJsonlServer
                     ControlledRunActionResult(actionRun, handle, null),
                 "semantic_combat" or "reference_combat" or "run_action" or
                     "event_choice" or "ancient_offer" or "merchant" or
-                    "neow_offer" or "trash_heap" or "treasure" or "controlled_event_choice" or
+                    "neow_offer" or "trash_heap" or "tablet_of_truth" or "treasure" or "controlled_event_choice" or
                     "controlled_run_action" => throw new InvalidOperationException(
                         "Unknown Nature session handle for kind " + sessionKind +
                         ": " + handle),
@@ -1946,6 +2022,43 @@ internal static class PrototypeAiJsonlServer
                             if (law.Ordinal != ordinal)
                                 throw new ArgumentException(
                                     $"Trash Heap site '{siteId}' expects ordinal {law.Ordinal}, not {ordinal}.");
+                            Write(new
+                            {
+                                requestId,
+                                ok = true,
+                                chanceLawSchemaId =
+                                    ChanceLawV111.CurrentSchemaId,
+                                law
+                            });
+                            break;
+                        }
+                        if (StochasticSiteRegistryV111
+                            .TabletOfTruthSessionSiteIds.Contains(
+                                siteId, StringComparer.Ordinal))
+                        {
+                            if (priorIndices is { Length: > 0 } ||
+                                OptionalString(request, "card_type") is not null ||
+                                OptionalString(request, "rarity") is not null ||
+                                OptionalString(request, "card_id") is not null ||
+                                OptionalString(request, "potion_id") is not null ||
+                                OptionalString(request, "relic_id") is not null ||
+                                OptionalBool(request, "colorless_offer") ||
+                                OptionalBool(request, "sale_reprice") ||
+                                OptionalString(request, "owner_id") is not null ||
+                                OptionalStringArray(request,
+                                    "excluded_potion_ids") is not null ||
+                                OptionalInt(request, "offer_ordinal") is not null ||
+                                OptionalStringArray(request,
+                                    "relic_candidate_ids") is not null ||
+                                OptionalStringArray(request,
+                                    "excluded_relic_ids") is not null)
+                                throw new ArgumentException(
+                                    "Tablet of Truth queries accept only state_handle, site_id and page ordinal.");
+                            law = ChanceLawEngineV111.QueryTabletOfTruth(
+                                RequireState(request));
+                            if (law.SiteId != siteId || law.Ordinal != ordinal)
+                                throw new ArgumentException(
+                                    $"Tablet of Truth page expects site '{law.SiteId}' and ordinal {law.Ordinal}.");
                             Write(new
                             {
                                 requestId,
@@ -3369,6 +3482,106 @@ internal static class PrototypeAiJsonlServer
                                     element.GetString()!))
                                 released++;
                             referenceNatureTrashHeapRunStateHandles.Remove(
+                                element.GetString()!);
+                        }
+                        Write(new { requestId, ok = true, released });
+                        break;
+                    }
+
+                    case "reference_nature_tablet_of_truth_begin":
+                    {
+                        var source = RequireState(request);
+                        var seed = OptionalULong(request, "nature_seed");
+                        var session = seed is { } natureSeed
+                            ? ReferenceNatureTabletOfTruthSessionV111.Begin(
+                                source, natureSeed)
+                            : ReferenceNatureTabletOfTruthSessionV111.Begin(
+                                source);
+                        var handle = StoreReferenceNatureTabletOfTruth(session);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureTabletOfTruthResult(session, handle) });
+                        break;
+                    }
+
+                    case "reference_nature_tablet_of_truth_status":
+                    {
+                        var handle = RequiredString(request,
+                            "reference_nature_tablet_of_truth_handle");
+                        var session = RequireReferenceNatureTabletOfTruth(request);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureTabletOfTruthResult(session, handle) });
+                        break;
+                    }
+
+                    case "reference_nature_tablet_of_truth_resolve_next":
+                    {
+                        var parentHandle = RequiredString(request,
+                            "reference_nature_tablet_of_truth_handle");
+                        var session = RequireReferenceNatureTabletOfTruth(request);
+                        if (session.Fingerprint != RequiredString(request,
+                                "fingerprint"))
+                            throw new InvalidOperationException(
+                                "Stale ReferenceNature Tablet of Truth fingerprint.");
+                        var next = session.ResolveNext();
+                        var handle = StoreReferenceNatureTabletOfTruth(next);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureTabletOfTruthResult(
+                                next, handle, parentHandle) });
+                        break;
+                    }
+
+                    case "reference_nature_tablet_of_truth_fork":
+                    {
+                        var parentHandle = RequiredString(request,
+                            "reference_nature_tablet_of_truth_handle");
+                        var next = RequireReferenceNatureTabletOfTruth(request).Fork();
+                        var handle = StoreReferenceNatureTabletOfTruth(next);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureTabletOfTruthResult(
+                                next, handle, parentHandle) });
+                        break;
+                    }
+
+                    case "reference_nature_tablet_of_truth_save":
+                    {
+                        var session = RequireReferenceNatureTabletOfTruth(request);
+                        Write(new { requestId, ok = true,
+                            schemaId =
+                                ReferenceNatureTabletOfTruthSessionV111.CurrentSchemaId,
+                            snapshot =
+                                ReferenceNatureTabletOfTruthSessionV111.Save(session) });
+                        break;
+                    }
+
+                    case "reference_nature_tablet_of_truth_load":
+                    {
+                        var session = ReferenceNatureTabletOfTruthSessionV111.Restore(
+                            RequiredString(request, "snapshot"));
+                        var handle = StoreReferenceNatureTabletOfTruth(session);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureTabletOfTruthResult(session, handle) });
+                        break;
+                    }
+
+                    case "reference_nature_tablet_of_truth_release_many":
+                    {
+                        if (!request.TryGetProperty(
+                                "reference_nature_tablet_of_truth_handles",
+                                out var handles) ||
+                            handles.ValueKind != JsonValueKind.Array)
+                            throw new ArgumentException(
+                                "reference_nature_tablet_of_truth_handles must be an array.");
+                        var released = 0;
+                        foreach (var element in handles.EnumerateArray())
+                        {
+                            if (element.ValueKind != JsonValueKind.String ||
+                                string.IsNullOrWhiteSpace(element.GetString()))
+                                throw new ArgumentException(
+                                    "Invalid ReferenceNature Tablet of Truth handle.");
+                            if (referenceNatureTabletOfTruthStates.Remove(
+                                    element.GetString()!))
+                                released++;
+                            referenceNatureTabletOfTruthRunStateHandles.Remove(
                                 element.GetString()!);
                         }
                         Write(new { requestId, ok = true, released });
