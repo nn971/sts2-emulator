@@ -21,8 +21,10 @@ public sealed class SemanticPilotCombatV111Tests
                 native, "run.shuffle", 2), 0, 1);
             Assert.InRange(NativeRngV111.NextInt(
                 native, "run.combat_energy_costs", 4), 0, 3);
+            Assert.InRange(NativeRngV111.NextInt(
+                native, "run.combat_targets", 2), 0, 1);
             Assert.Throws<NotSupportedException>(() =>
-                NativeRngV111.NextInt(native, "run.combat_targets", 2));
+                NativeRngV111.NextInt(native, "run.combat_orbs", 2));
             Assert.Throws<NotSupportedException>(() =>
                 PrototypeRng.NextInt(prototype, "combat", 2));
         }

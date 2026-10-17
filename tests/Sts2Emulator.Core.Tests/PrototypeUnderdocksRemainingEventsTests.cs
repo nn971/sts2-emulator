@@ -31,16 +31,22 @@ public sealed class PrototypeUnderdocksRemainingEventsTests
     [Fact]
     public void ConveyorRollsNoImmediateRepeatAndForcesEveryFifthDish()
     {
-        var player = PrototypeNativeUnderdocksRunFactory.Create(
-            "conveyor-rolls").Player with { Gold = 500 };
-        var rng = PrototypeRng.CreateBundle("conveyor-rolls");
-        var evt = new EventState(PrototypeNativeEndlessConveyor.EventId);
+        var initial = PrototypeNativeUnderdocksRunFactory.Create(
+            "conveyor-rolls");
+        var state = initial with
+        {
+            Player = initial.Player with { Gold = 500 },
+            World = initial.World! with
+            {
+                Event = new EventState(PrototypeNativeEndlessConveyor.EventId)
+            }
+        };
         var previous = "";
         var all = new HashSet<string>(StringComparer.Ordinal);
         for (var i = 1; i <= 25; i++)
         {
-            evt = PrototypeNativeEndlessConveyor.RollNextDish(
-                evt, player, rng);
+            state = PrototypeNativeEndlessConveyor.RollNextDish(state);
+            var evt = state.World!.Event!;
             Assert.Equal(i, evt.NativeDishCount);
             Assert.NotEqual(previous, evt.NativeDishId);
             Assert.Equal(evt.NativeDishId, evt.NativeLastDishId);

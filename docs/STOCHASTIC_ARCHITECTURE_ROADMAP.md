@@ -20,7 +20,7 @@
 | **S7 — Source-law calibration (N5)** | Parallel, independent | Audited source conditional laws, `p` provenance, original-game importance-correction eligibility | Explicit independent mathematical/source evidence for each law; no `UNVERIFIED` `p` used as original-game-unbiased likelihood |
 | **F — Native Fidelity Inspector** | **Parallel / #122** | Source capture, hook/event/state diff, named RNG stream/cursor audits, exact source-based replay | Independently validated installed-game traces; no requirement for S1–S2 structural acceptance |
 
-**Implementation checkpoint (2026-10-17):** Initial typed, read-only queries and an independent seeded `ReferenceNatureV111` sampler cover the existing filtered intent event and pending unresolved semantic deck draw. `ReferenceNatureSessionV111` keeps the sampler cursor and semantic combat continuation together across fork/save/restore; `ResolveNext` applies the sampled ID through the existing intent/draw resolver. Both laws remain `UNVERIFIED`; the independent exact small-state acceptance suite is still required. S0 inventory acceptance is also open because some existing site rows lack explicit constraint, audience, continuation and fail-closed links.
+**Implementation checkpoint (2026-10-17):** Typed, read-only queries and an independent seeded `ReferenceNatureV111` sampler cover the existing filtered intent event and pending unresolved semantic deck draw. `ReferenceNatureSessionV111` keeps the sampler cursor and semantic combat continuation together across fork/save/restore; `ResolveNext` applies the sampled ID through the existing intent/draw resolver. Both laws remain `UNVERIFIED`. Focused acceptance now independently enumerates all 24 hidden orders of a four-card physical pool across forced top, middle and bottom cards, checks conditional draw probabilities and complete path probabilities, verifies query immutability and intent support invalidation, and checks a 24,000-sample weighted smoke plus fork/save/restore replay. The full S1 gate remains open for duplicate-model fixtures, every constrained-deck operation in the exact enumerator, the complete mechanical and observation invariants, and broader stale-event/mode coverage. S0 inventory acceptance is also open because some existing site rows lack explicit constraint, audience, continuation and fail-closed links.
 
 ## S1 precise design
 
@@ -64,8 +64,8 @@ Run matched source-state/seed sets; frozen player policy; fair observations/lega
 ## Deliverables, status discipline and ownership
 
 - **S0:** ownership documents and a cross-linked site/state inventory are present; row-level coverage of every acceptance field remains open. This is partial inventory work, not a completed audit.
-- **S1:** initial core Chance Law and simple ReferenceNature implementation is in `ChanceLawV111.cs`; independent exact small-state acceptance and seeded replay evidence remain pending.
-- **S2:** #143 training-owned default/non-Nature delegation + reproducible A/B report; the AI-side trainer is in `sts2-ai`.
+- **S1:** initial core Chance Law and simple ReferenceNature implementation is in `ChanceLawV111.cs`; the first independent exact small-state and seeded replay suite passes, while the complete acceptance matrix remains open.
+- **S2:** the emulator has an opt-in seeded native-policy comparator with private stream state, replay traces and fail-closed provider guards; the learned-vs-reference A/B trainer and 15-worker report live in `sts2-ai`. Equivalence through one shared mechanics continuation remains part of S4.
 - **S3–S6:** follow-up opt-in implementation PRs with versioned capabilities and targeted tests.
 - **S7:** probability evidence/calibration; separately gated from #143.
 - **F:** [inspector issue #122](https://github.com/nn971/sts2-emulator/issues/122) and [native plan](NATIVE_FIDELITY_INSPECTOR_PLAN.md).
