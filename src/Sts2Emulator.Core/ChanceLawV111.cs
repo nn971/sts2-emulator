@@ -42,6 +42,8 @@ public sealed record StochasticCapabilityManifestV111(
         ReferenceNatureInfestedAutomatonSessionV111.CurrentSchemaId;
     public string ReferenceNaturePunchOffRewardSessionSchemaId { get; init; } =
         ReferenceNaturePunchOffRewardSessionV111.CurrentSchemaId;
+    public string ReferenceNaturePunchOffFightSessionSchemaId { get; init; } =
+        ReferenceNaturePunchOffFightSessionV111.CurrentSchemaId;
     public string ReferenceNatureMerchantSessionSchemaId { get; init; } =
         ReferenceNatureMerchantSessionV111.CurrentSchemaId;
     public string ReferenceNatureTreasureSessionSchemaId { get; init; } =
@@ -58,7 +60,7 @@ public sealed record StochasticCapabilityManifestV111(
         "endless_conveyor",
         "merchant", "treasure", "glory_reflections",
         "infested_automaton",
-        "punch_off_reward",
+        "punch_off_reward", "punch_off_fight",
         "controlled_event_choice", "controlled_run_action"
     ];
 }
@@ -173,6 +175,13 @@ public static class StochasticCapabilitiesV111
             "reference_nature_punch_off_reward_save",
             "reference_nature_punch_off_reward_load",
             "reference_nature_punch_off_reward_release_many",
+            "reference_nature_punch_off_fight_begin",
+            "reference_nature_punch_off_fight_status",
+            "reference_nature_punch_off_fight_resolve_next",
+            "reference_nature_punch_off_fight_fork",
+            "reference_nature_punch_off_fight_save",
+            "reference_nature_punch_off_fight_load",
+            "reference_nature_punch_off_fight_release_many",
             "reference_nature_merchant_begin",
             "reference_nature_merchant_status",
             "reference_nature_merchant_resolve_next",
@@ -213,6 +222,8 @@ public static class StochasticCapabilitiesV111
             ReferenceNatureInfestedAutomatonSessionV111.CurrentSchemaId,
         ReferenceNaturePunchOffRewardSessionSchemaId =
             ReferenceNaturePunchOffRewardSessionV111.CurrentSchemaId,
+        ReferenceNaturePunchOffFightSessionSchemaId =
+            ReferenceNaturePunchOffFightSessionV111.CurrentSchemaId,
         ReferenceNatureMerchantSessionSchemaId =
             ReferenceNatureMerchantSessionV111.CurrentSchemaId,
         ReferenceNatureTreasureSessionSchemaId =
@@ -2446,10 +2457,15 @@ public sealed record ReferenceNatureDecisionV111(
                 outcomeId.Length > "relic:".Length ||
              outcomeId.StartsWith("potion:", StringComparison.Ordinal) &&
                 outcomeId.Length > "potion:".Length);
+        var identifiedHpOffset = OutcomeId is { } hpOffsetId &&
+            hpOffsetId.StartsWith("hp_offset:", StringComparison.Ordinal) &&
+            int.TryParse(hpOffsetId["hp_offset:".Length..],
+                NumberStyles.None, CultureInfo.InvariantCulture,
+                out var hpOffset) && hpOffset is >= 2 and <= 9;
         if (string.IsNullOrWhiteSpace(LawId) ||
             string.IsNullOrWhiteSpace(EventId) ||
             string.IsNullOrWhiteSpace(OutcomeId) || OutcomeIndex < 0 ||
-            !(indexedOutcome || identifiedReward))
+            !(indexedOutcome || identifiedReward || identifiedHpOffset))
             throw new InvalidDataException(
                 "Invalid ReferenceNature decision.");
     }

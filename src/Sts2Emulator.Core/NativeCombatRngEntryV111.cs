@@ -553,7 +553,8 @@ public static class NativeCombatRngEntryV111
                 "Combat id has no native monster RNG context.");
         var owned = native.Formation.MonsterContexts[index];
         var bundle = new RngBundle([owned.Rng.Fork()]);
-        var decision = new NativeRandomIndexProviderV111().Resolve(
+        var decision = StochasticProviderScopeV111.ResolveIndex(
+            new NativeRandomIndexProviderV111(),
             new RandomIndexRequestV111(
                 siteId,
                 owned.Rng.StreamId,

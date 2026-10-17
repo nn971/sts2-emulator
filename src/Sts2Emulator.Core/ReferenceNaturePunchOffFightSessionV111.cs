@@ -1,0 +1,456 @@
+using System.Text.Json;
+
+namespace Sts2Emulator.Core;
+
+internal sealed class SelectiveScriptedIndexReplayProviderV111(
+    ScriptedRandomIndexProviderV111 script, string[] siteIds)
+    : IRandomIndexProviderV111
+{
+    private readonly HashSet<string> _siteIds =
+        new(siteIds, StringComparer.Ordinal);
+
+    public string Mode => "selective-scripted-index-replay-v1";
+
+    public RandomIndexDecisionV111 Resolve(
+        RandomIndexRequestV111 request, RngBundle streams)
+    {
+        if (_siteIds.Contains(request.SiteId))
+            return script.Resolve(request, streams);
+        var stream = streams.Streams.SingleOrDefault(item =>
+            item.StreamId == request.StreamId)
+            ?? throw new InvalidOperationException(
+                "Selective replay request has no matching stream.");
+        IRandomIndexProviderV111 fallback =
+            stream.Codec == PrototypeRng.Codec
+                ? new LegacyPrototypeRandomIndexProviderV111()
+                : new NativeRandomIndexProviderV111();
+        return fallback.Resolve(request, streams);
+    }
+}
+
+internal sealed record NativePunchOffFightPlanV111(
+    RandomIndexRequestV111[] Requests,
+    int[] ConstructHpBeforeOffsets,
+    NativeRngSnapshot[] MonsterCursorsBefore,
+    NativeRngSnapshot[] RunCursorsAfterProbe,
+    NativeRngSnapshot? EventCursorBefore,
+    string ConditioningFingerprint);
+
+internal static class NativePunchOffFightPlanBuilderV111
+{
+    public static NativePunchOffFightPlanV111 Build(
+        RunState origin, string actionId, int ordinal, int[] priorIndices)
+    {
+        ArgumentNullException.ThrowIfNull(origin);
+        ArgumentException.ThrowIfNullOrWhiteSpace(actionId);
+        ArgumentNullException.ThrowIfNull(priorIndices);
+        if (ordinal is < 0 or >= 2 || priorIndices.Length != ordinal ||
+            priorIndices.Any(index => index is < 0 or >= 8))
+            throw new InvalidOperationException(
+                "Punch Off fight queries require the complete preceding HP-offset prefix.");
+        if (string.IsNullOrWhiteSpace(origin.RunSeed) ||
+            origin.NativeRunRng is null || origin.Phase != RunPhase.Event ||
+            origin.World is not { Act: 1, Event: { } evt, Combat: null } world ||
+            evt.EventId != PrototypeNativePunchOff.EventId ||
+            evt.NativePageIndex != 1 || evt.ChosenChoiceId is not null ||
+            evt.NativeEventRngProviderMode is not null ||
+            world.ActiveRoom != PrototypeRoomType.Event ||
+            world.Reward is not null ||
+            origin.ControlledEventRewardChoice is not null ||
+            !PrototypeGameEngine.UsesNativeRegionalSystems(world))
+            throw new InvalidOperationException(
+                "Punch Off fight laws require its live configured Fight page.");
+
+        var engine = new PrototypeGameEngine();
+        var action = engine.GetLegalActions(origin).SingleOrDefault(candidate =>
+            PrototypeAiEnvironment.StableActionId(candidate) == actionId)
+            ?? throw new InvalidOperationException(
+                "Punch Off fight action is not legal in the current event state.");
+        if (action.Kind != "event_choice" ||
+            action.ReadPayload<EventChoicePayload>().ChoiceId != "fight")
+            throw new InvalidOperationException(
+                "Punch Off fight law requires the Fight choice.");
+
+        var eventCursorBefore = evt.NativeEventRng is { } eventRng
+            ? NativeRngV111.ToSnapshot(eventRng) : null;
+        using var journal = RandomBoundaryJournalV111.Begin();
+        using var providerScope = StochasticProviderScopeV111.Enter(
+            new NativeRandomIndexProviderV111(),
+            overrideExplicitProviders: false);
+        var projected = engine.Step(origin.Fork(), action).State;
+        var projectedEvent = projected.World?.Event;
+        var projectedCombat = projected.World?.Combat;
+        var entries = journal.Entries.Where(entry =>
+            entry.Request.SiteId ==
+                PrototypeNativePunchOff.ConstructHpOffsetSiteId).ToArray();
+        if (projected.Phase != RunPhase.Combat ||
+            projected.World is not { Act: 1, ActiveRoom: PrototypeRoomType.Combat } ||
+            projectedEvent is not
+                { EventId: PrototypeNativePunchOff.EventId, NativePageIndex: 2 } ||
+            projectedCombat is not { Enemies.Length: 2, NativeRng: not null } ||
+            entries.Length != 2 ||
+            entries.Any(entry => entry.ProviderMode != "native-v111" ||
+                entry.Request.OperationKind != "bounded_integer" ||
+                entry.Request.BoundedCount != 8 || entry.Request.Ordinal != 0 ||
+                !entry.Request.StreamId.StartsWith(
+                    "context.monster.", StringComparison.Ordinal) ||
+                entry.NativeCursorBefore is null ||
+                entry.NativeCursorAfter is null) ||
+            entries.Select(entry => entry.Request.OwnerId)
+                .Distinct(StringComparer.Ordinal).Count() != 2 ||
+            eventCursorBefore != (projectedEvent.NativeEventRng is { } afterEvent
+                ? NativeRngV111.ToSnapshot(afterEvent) : null))
+            throw new InvalidOperationException(
+                "Punch Off Fight must produce exactly two ordered monster-local 2–9 HP requests and preserve its event cursor.");
+
+        var enemyContexts = projectedCombat.NativeRng!.Formation.MonsterContexts;
+        if (enemyContexts.Length != 2 ||
+            entries.Where((entry, index) =>
+                entry.Request.OwnerId !=
+                    "event:punch_off:construct_combat_id:" +
+                        projectedCombat.Enemies[index].InstanceId ||
+                entry.Request.StreamId != enemyContexts[index].Rng.StreamId ||
+                entry.Request.OwnerId.EndsWith(
+                    ":" + enemyContexts[index].CombatId,
+                    StringComparison.Ordinal) is false ||
+                entry.NativeCursorAfter !=
+                    NativeRngV111.ToSnapshot(enemyContexts[index].Rng)).Any())
+            throw new InvalidOperationException(
+                "Punch Off HP offsets are not owned by the matching construct CombatIds.");
+
+        var requests = entries.Select(entry => entry.Request with
+        {
+            OrderedCandidates = (int[])entry.Request.OrderedCandidates.Clone()
+        }).ToArray();
+        var constructHpBeforeOffsets = projectedCombat.Enemies
+            .Select((enemy, index) => checked(
+                enemy.Hp + 2 + entries[index].SelectedIndex)).ToArray();
+        var hpRange = PrototypeContent.Enemy(
+            "proto.enemy.punch_construct").HpRangeAt(1, origin.Ascension);
+        if (constructHpBeforeOffsets.Any(hp =>
+                hp < hpRange.Min || hp > hpRange.Max))
+            throw new InvalidOperationException(
+                "Punch Off probe produced an impossible pre-offset construct HP.");
+        var monsterCursorsBefore = entries.Select(entry =>
+            entry.NativeCursorBefore!).ToArray();
+        var runCursorsAfterProbe = projectedCombat.NativeRng.RunStreams.Streams
+            .OrderBy(stream => stream.StreamId, StringComparer.Ordinal)
+            .Select(NativeRngV111.ToSnapshot).ToArray();
+        var fingerprint = CanonicalJson.Sha256(new
+        {
+            boundary = "punch_off.native_fight_entry",
+            origin = CanonicalJson.Sha256(origin),
+            actionId,
+            requestOrder = requests,
+            constructHpBeforeOffsets,
+            monsterCursorsBefore,
+            runCursorsAfterProbe,
+            eventCursorBefore,
+            probabilityModel =
+                "uniform-index-for-each-2-to-9-offset-under-unverified-source-law"
+        });
+        return new(requests, constructHpBeforeOffsets, monsterCursorsBefore,
+            runCursorsAfterProbe, eventCursorBefore, fingerprint);
+    }
+}
+
+public static partial class ChanceLawEngineV111
+{
+    public static string[] NativePunchOffFightQuerySiteIds =>
+        ["event.punch_off.construct_hp_offset.index_draw"];
+
+    public static ChanceLawV111 QueryNativePunchOffFight(
+        RunState origin, string siteId, int ordinal, int[]? priorIndices,
+        string actionId)
+    {
+        ArgumentNullException.ThrowIfNull(origin);
+        if (!NativePunchOffFightQuerySiteIds.Contains(
+                siteId, StringComparer.Ordinal))
+            throw new InvalidOperationException(
+                $"Unsupported Punch Off fight site '{siteId}'.");
+        priorIndices ??= [];
+        var plan = NativePunchOffFightPlanBuilderV111.Build(
+            origin, actionId, ordinal, priorIndices);
+        var request = plan.Requests[ordinal];
+        var outcomes = Enumerable.Range(0, 8).Select(index =>
+            new ChanceLawOutcomeV111(
+                "hp_offset:" + (index + 2).ToString(
+                    System.Globalization.CultureInfo.InvariantCulture), 1L))
+            .ToArray();
+        var conditioning = CanonicalJson.Sha256(new
+        {
+            plan.ConditioningFingerprint,
+            ordinal,
+            priorIndices,
+            request
+        });
+        var eventId = CanonicalJson.Sha256(new
+        {
+            boundary = "native_event.punch_off_construct_hp_offset",
+            conditioning
+        });
+        return Create(eventId, siteId, request.OperationKind,
+            request.OwnerId, ordinal,
+            "native-punch-off-construct-hp-prefix-v1", conditioning,
+            "uniform-bounded-index-under-unverified-monster-local-source-law",
+            outcomes);
+    }
+}
+
+public sealed record ReferenceNaturePunchOffFightSessionSnapshotV111(
+    string SchemaId, string OriginSnapshotJson, string ActionId,
+    string RunSnapshotJson, ReferenceNatureStateV111 InitialNatureState,
+    ReferenceNatureStateV111 NatureState,
+    ReferenceNatureDecisionV111[] DecisionTranscript);
+
+/// <summary>Atomic Nature sampling for the two Punch Off construct HP offsets.</summary>
+public sealed record ReferenceNaturePunchOffFightSessionV111(
+    string SchemaId, string ActionId, RunState Origin, RunState Run,
+    ReferenceNatureStateV111 InitialNatureState,
+    ReferenceNatureStateV111 NatureState,
+    ReferenceNatureDecisionV111[] DecisionTranscript)
+{
+    public const string CurrentSchemaId =
+        "sts2-v111-reference-nature-punch-off-fight-session-v1";
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string Fingerprint => CanonicalJson.Sha256(this);
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool Complete => DecisionTranscript.Length == 2;
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public ChanceLawV111? PendingLaw => Complete ? null :
+        ChanceLawEngineV111.QueryNativePunchOffFight(
+            Origin, PrototypeNativePunchOff.ConstructHpOffsetSiteId,
+            DecisionTranscript.Length,
+            DecisionTranscript.Select(decision => decision.OutcomeIndex)
+                .ToArray(), ActionId);
+
+    public static string[] SessionSiteIds =>
+        ChanceLawEngineV111.NativePunchOffFightQuerySiteIds;
+
+    public static ReferenceNaturePunchOffFightSessionV111 Begin(
+        RunState origin, string actionId, ulong natureSeed) => Begin(
+            origin, actionId, ReferenceNatureRunCursorV111.Begin(
+                origin, natureSeed, "Punch Off fight"));
+
+    public static ReferenceNaturePunchOffFightSessionV111 Begin(
+        RunState origin, string actionId) => Begin(
+            origin, actionId, ReferenceNatureRunCursorV111.Begin(
+                origin, null, "Punch Off fight"));
+
+    private static ReferenceNaturePunchOffFightSessionV111 Begin(
+        RunState origin, string actionId,
+        ReferenceNatureStateV111 initial)
+    {
+        ArgumentNullException.ThrowIfNull(origin);
+        ArgumentNullException.ThrowIfNull(initial);
+        _ = NativePunchOffFightPlanBuilderV111.Build(
+            origin, actionId, 0, []);
+        ReferenceNatureRunCursorV111.ValidateInitial(
+            origin, initial, "Punch Off fight");
+        var session = new ReferenceNaturePunchOffFightSessionV111(
+            CurrentSchemaId, actionId, origin.Fork(), origin.Fork(),
+            initial.Fork(), initial.Fork(), []);
+        session.Validate();
+        return session;
+    }
+
+    public ReferenceNaturePunchOffFightSessionV111 Fork()
+    {
+        Validate();
+        return this with
+        {
+            Origin = Origin.Fork(),
+            Run = Run.Fork(),
+            InitialNatureState = InitialNatureState.Fork(),
+            NatureState = NatureState.Fork(),
+            DecisionTranscript = (ReferenceNatureDecisionV111[])
+                DecisionTranscript.Clone()
+        };
+    }
+
+    public ReferenceNaturePunchOffFightSessionV111 ResolveNext()
+    {
+        Validate();
+        var law = PendingLaw ?? throw new InvalidOperationException(
+            "Punch Off Nature fight session is already complete.");
+        var selection = ReferenceNatureV111.SampleValidated(law, NatureState);
+        var transcript = DecisionTranscript.Append(
+            new ReferenceNatureDecisionV111(
+                law.LawId, law.EventId, selection.OutcomeId,
+                selection.OutcomeIndex)).ToArray();
+        var nextRun = transcript.Length == 2
+            ? Replay(Origin, ActionId, transcript)
+            : Run;
+        var next = this with
+        {
+            Run = transcript.Length == 2
+                ? ReferenceNatureRunCursorV111.Commit(
+                    nextRun, selection.NextState)
+                : nextRun,
+            NatureState = selection.NextState,
+            DecisionTranscript = transcript
+        };
+        next.Validate();
+        return next;
+    }
+
+    public void Validate()
+    {
+        if (SchemaId != CurrentSchemaId ||
+            string.IsNullOrWhiteSpace(ActionId) || Origin is null ||
+            Run is null || InitialNatureState is null || NatureState is null ||
+            DecisionTranscript is null || DecisionTranscript.Length > 2)
+            throw new InvalidDataException(
+                "Invalid ReferenceNature Punch Off fight session envelope.");
+        PrototypeStateInvariants.Validate(Origin);
+        PrototypeStateInvariants.Validate(Run);
+        InitialNatureState.Validate();
+        NatureState.Validate();
+        var expectedNature = InitialNatureState.Fork();
+        var priorIndices = new List<int>();
+        for (var ordinal = 0; ordinal < DecisionTranscript.Length; ordinal++)
+        {
+            var law = ChanceLawEngineV111.QueryNativePunchOffFight(
+                Origin, PrototypeNativePunchOff.ConstructHpOffsetSiteId,
+                ordinal, priorIndices.ToArray(), ActionId);
+            var selection = ReferenceNatureV111.SampleValidated(
+                law, expectedNature);
+            DecisionTranscript[ordinal].Validate();
+            if (CanonicalJson.Sha256(new ReferenceNatureDecisionV111(
+                    law.LawId, law.EventId, selection.OutcomeId,
+                    selection.OutcomeIndex)) !=
+                CanonicalJson.Sha256(DecisionTranscript[ordinal]))
+                throw new InvalidDataException(
+                    "Punch Off fight transcript does not replay its conditioned prefix.");
+            expectedNature = selection.NextState;
+            priorIndices.Add(selection.OutcomeIndex);
+        }
+        var expectedRun = Complete
+            ? ReferenceNatureRunCursorV111.Commit(
+                Replay(Origin, ActionId, DecisionTranscript), expectedNature)
+            : Origin.Fork();
+        if (!ReferenceNatureRunCursorV111.MatchesRunSession(
+                Origin, Run, InitialNatureState, NatureState,
+                DecisionTranscript.Length, Complete) ||
+            CanonicalJson.Sha256(expectedNature) !=
+                CanonicalJson.Sha256(NatureState) ||
+            CanonicalJson.Sha256(expectedRun) != CanonicalJson.Sha256(Run))
+            throw new InvalidDataException(
+                "Punch Off fight replay differs from its session envelope.");
+    }
+
+    public static string Save(ReferenceNaturePunchOffFightSessionV111 session)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        session.Validate();
+        return JsonSerializer.Serialize(
+            new ReferenceNaturePunchOffFightSessionSnapshotV111(
+                CurrentSchemaId, RunSnapshot.Save(session.Origin),
+                session.ActionId, RunSnapshot.Save(session.Run),
+                session.InitialNatureState, session.NatureState,
+                (ReferenceNatureDecisionV111[])
+                    session.DecisionTranscript.Clone()));
+    }
+
+    public static ReferenceNaturePunchOffFightSessionV111 Restore(string json)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(json);
+        var snapshot = JsonSerializer.Deserialize<
+                ReferenceNaturePunchOffFightSessionSnapshotV111>(json)
+            ?? throw new InvalidDataException(
+                "Null ReferenceNature Punch Off fight snapshot.");
+        if (snapshot.SchemaId != CurrentSchemaId ||
+            string.IsNullOrWhiteSpace(snapshot.OriginSnapshotJson) ||
+            string.IsNullOrWhiteSpace(snapshot.ActionId) ||
+            string.IsNullOrWhiteSpace(snapshot.RunSnapshotJson) ||
+            snapshot.InitialNatureState is null ||
+            snapshot.NatureState is null ||
+            snapshot.DecisionTranscript is null ||
+            snapshot.DecisionTranscript.Length > 2)
+            throw new InvalidDataException(
+                "Invalid ReferenceNature Punch Off fight snapshot.");
+        var origin = RunSnapshot.Load(snapshot.OriginSnapshotJson);
+        var savedRun = RunSnapshot.Load(snapshot.RunSnapshotJson);
+        var session = Begin(origin, snapshot.ActionId,
+            snapshot.InitialNatureState.Fork());
+        foreach (var _ in snapshot.DecisionTranscript)
+            session = session.ResolveNext();
+        session.Validate();
+        if (CanonicalJson.Sha256(session.Run) !=
+                CanonicalJson.Sha256(savedRun) ||
+            CanonicalJson.Sha256(session.NatureState) !=
+                CanonicalJson.Sha256(snapshot.NatureState) ||
+            !session.DecisionTranscript.SequenceEqual(
+                snapshot.DecisionTranscript))
+            throw new InvalidDataException(
+                "Punch Off fight snapshot does not replay from its origin.");
+        return session;
+    }
+
+    private static RunState Replay(
+        RunState origin, string actionId,
+        ReferenceNatureDecisionV111[] transcript)
+    {
+        var plan = NativePunchOffFightPlanBuilderV111.Build(
+            origin, actionId, 0, []);
+        var script = new ScriptedRandomIndexProviderV111(
+            plan.Requests.Select((request, index) =>
+                new RandomIndexDecisionV111(
+                    request, transcript[index].OutcomeIndex,
+                    "scripted-v111")).ToArray());
+        using var journal = RandomBoundaryJournalV111.Begin();
+        using var scope = StochasticProviderScopeV111.Enter(
+            new SelectiveScriptedIndexReplayProviderV111(script,
+            [PrototypeNativePunchOff.ConstructHpOffsetSiteId]),
+            overrideExplicitProviders: true);
+        var engine = new PrototypeGameEngine();
+        var action = engine.GetLegalActions(origin).SingleOrDefault(candidate =>
+            PrototypeAiEnvironment.StableActionId(candidate) == actionId)
+            ?? throw new InvalidDataException(
+                "Punch Off Fight action is no longer legal at replay origin.");
+        var run = engine.Step(origin.Fork(), action).State;
+        script.AssertComplete();
+        var entries = journal.Entries.Where(entry =>
+            entry.Request.SiteId ==
+                PrototypeNativePunchOff.ConstructHpOffsetSiteId).ToArray();
+        var combat = run.World?.Combat;
+        var eventCursor = run.World?.Event?.NativeEventRng is { } eventRng
+            ? NativeRngV111.ToSnapshot(eventRng) : null;
+        var relicOffsets = transcript.Select(decision =>
+            int.Parse(decision.OutcomeId["hp_offset:".Length..],
+                System.Globalization.CultureInfo.InvariantCulture)).ToArray();
+        var expectedCursors = plan.RunCursorsAfterProbe;
+        var actualCursors = combat?.NativeRng?.RunStreams.Streams
+            .OrderBy(stream => stream.StreamId, StringComparer.Ordinal)
+            .Select(NativeRngV111.ToSnapshot).ToArray();
+        var expectedMonsterCursors = plan.MonsterCursorsBefore;
+        if (run.Phase != RunPhase.Combat ||
+            combat is not { Enemies.Length: 2, NativeRng: not null } ||
+            run.World?.Event is not
+                { EventId: PrototypeNativePunchOff.EventId, NativePageIndex: 2 } ||
+            !combat.Enemies.Select(enemy => enemy.Hp).SequenceEqual(
+                plan.ConstructHpBeforeOffsets.Select((hp, index) =>
+                    hp - relicOffsets[index])) ||
+            !combat.Enemies.Select(enemy => enemy.MoveIndex)
+                .SequenceEqual([1, 0]) ||
+            entries.Length != 2 || entries.Any(entry =>
+                entry.ProviderMode != "scripted-v111") ||
+            entries.Where((entry, index) =>
+                CanonicalJson.Sha256(entry.Request) !=
+                    CanonicalJson.Sha256(plan.Requests[index]) ||
+                entry.SelectedIndex !=
+                    transcript[index].OutcomeIndex).Any() ||
+            !expectedCursors.SequenceEqual(actualCursors ?? []) ||
+            !expectedMonsterCursors.SequenceEqual(
+                combat.NativeRng.Formation.MonsterContexts
+                    .Select(context => NativeRngV111.ToSnapshot(context.Rng))) ||
+            eventCursor != plan.EventCursorBefore)
+            throw new InvalidDataException(
+                "Punch Off Nature fight replay changed construct HP, cursor ownership, or event state.");
+        return run;
+    }
+
+}

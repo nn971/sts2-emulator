@@ -120,6 +120,18 @@ owner remains a `player.rewards` hypothesis, so the laws and Native parity are
 unverified. Both sites are advertised under `punch_off_reward`; direct queries
 require the action ID, ordinal, and full prior index prefix.
 
+Punch Off's two construct HP reductions can be sampled before combat with
+`State.begin_reference_nature_punch_off_fight(action_id, nature_seed=None)`.
+Begin on the configured event's Fight page with its stable legal fight action
+ID. The session samples both CombatId-owned 2–9 offsets, replays the ordinary
+event action after both picks, and publishes `.state` in combat. It supports
+`status()`, `resolve_next()`, `fork()`, `save_snapshot()`, `release()`, and
+`Session.load_reference_nature_punch_off_fight_snapshot()`. The two local
+Native monster cursors stay at entry during Nature replay; the bounded-index
+law and Native parity remain unverified. The site is advertised under
+`punch_off_fight`; direct queries require the action ID, ordinal, and complete
+preceding offset-index prefix.
+
 `Session.stochastic_session_coverage` reports the site IDs admitted by the
 advertised ReferenceNature session schemas.
 `Session.supports_reference_nature_site(site_id, session="any")` checks that

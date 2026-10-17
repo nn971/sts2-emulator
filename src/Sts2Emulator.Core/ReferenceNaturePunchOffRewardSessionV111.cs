@@ -488,7 +488,9 @@ public sealed record ReferenceNaturePunchOffRewardSessionV111(
         ]);
         using var journal = RandomBoundaryJournalV111.Begin();
         using var providerScope = StochasticProviderScopeV111.Enter(
-            new PunchOffSelectiveReplayProvider(script),
+            new SelectiveScriptedIndexReplayProviderV111(script,
+            [PrototypeNativePunchOff.RelicRewardSiteId,
+             PrototypeNativePunchOff.PotionRewardSiteId]),
             overrideExplicitProviders: true);
         var action = new PrototypeGameEngine().GetLegalActions(origin)
             .SingleOrDefault(candidate =>
@@ -531,28 +533,4 @@ public sealed record ReferenceNaturePunchOffRewardSessionV111(
         return run;
     }
 
-    private sealed class PunchOffSelectiveReplayProvider(
-        ScriptedRandomIndexProviderV111 script)
-        : IRandomIndexProviderV111
-    {
-        public string Mode => "selective-punch-off-replay-v1";
-
-        public RandomIndexDecisionV111 Resolve(
-            RandomIndexRequestV111 request, RngBundle streams)
-        {
-            if (request.SiteId is
-                PrototypeNativePunchOff.RelicRewardSiteId or
-                PrototypeNativePunchOff.PotionRewardSiteId)
-                return script.Resolve(request, streams);
-            var stream = streams.Streams.SingleOrDefault(item =>
-                item.StreamId == request.StreamId)
-                ?? throw new InvalidOperationException(
-                    "Punch Off replay request has no matching stream.");
-            IRandomIndexProviderV111 fallback =
-                stream.Codec == PrototypeRng.Codec
-                    ? new LegacyPrototypeRandomIndexProviderV111()
-                    : new NativeRandomIndexProviderV111();
-            return fallback.Resolve(request, streams);
-        }
-    }
 }

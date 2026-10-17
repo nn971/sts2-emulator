@@ -119,6 +119,12 @@ internal static class PrototypeAiJsonlServer
         var referenceNaturePunchOffRewardRunStateHandles =
             new Dictionary<string, string>(StringComparer.Ordinal);
         long nextReferenceNaturePunchOffRewardHandle = 1;
+        var referenceNaturePunchOffFightStates =
+            new Dictionary<string, ReferenceNaturePunchOffFightSessionV111>(
+                StringComparer.Ordinal);
+        var referenceNaturePunchOffFightRunStateHandles =
+            new Dictionary<string, string>(StringComparer.Ordinal);
+        long nextReferenceNaturePunchOffFightHandle = 1;
         var referenceNatureMerchantStates =
             new Dictionary<string, ReferenceNatureMerchantSessionV111>(
                 StringComparer.Ordinal);
@@ -447,6 +453,30 @@ internal static class PrototypeAiJsonlServer
                 ? session
                 : throw new InvalidOperationException(
                     "Unknown ReferenceNature Punch Off reward session handle: " +
+                    handle);
+        }
+
+        string StoreReferenceNaturePunchOffFight(
+            ReferenceNaturePunchOffFightSessionV111 session)
+        {
+            var handle = "pf" + nextReferenceNaturePunchOffFightHandle++;
+            referenceNaturePunchOffFightStates.Add(handle, session.Fork());
+            if (session.Complete)
+                referenceNaturePunchOffFightRunStateHandles.Add(handle,
+                    Store(session.Run.Fork()));
+            return handle;
+        }
+
+        ReferenceNaturePunchOffFightSessionV111
+            RequireReferenceNaturePunchOffFight(JsonElement request)
+        {
+            var handle = RequiredString(request,
+                "reference_nature_punch_off_fight_handle");
+            return referenceNaturePunchOffFightStates.TryGetValue(handle,
+                    out var session)
+                ? session
+                : throw new InvalidOperationException(
+                    "Unknown ReferenceNature Punch Off fight session handle: " +
                     handle);
         }
 
@@ -1158,6 +1188,57 @@ internal static class PrototypeAiJsonlServer
             };
         }
 
+        object ReferenceNaturePunchOffFightResult(
+            ReferenceNaturePunchOffFightSessionV111 session,
+            string handle, string? parent = null)
+        {
+            var law = session.PendingLaw;
+            var offsets = session.DecisionTranscript.Select(decision =>
+                int.Parse(decision.OutcomeId["hp_offset:".Length..],
+                    System.Globalization.CultureInfo.InvariantCulture)).ToArray();
+            var contexts = session.Run.World?.Combat?.NativeRng?.Formation
+                .MonsterContexts ?? [];
+            return new
+            {
+                ok = true,
+                schemaId =
+                    ReferenceNaturePunchOffFightSessionV111.CurrentSchemaId,
+                referenceNaturePunchOffFightHandle = handle,
+                stateHandle = referenceNaturePunchOffFightRunStateHandles
+                    .GetValueOrDefault(handle),
+                parent,
+                fingerprint = session.Fingerprint,
+                runFingerprint = CanonicalJson.Sha256(session.Run),
+                actionId = session.ActionId,
+                sourceEventId = PrototypeNativePunchOff.EventId,
+                eventId = law?.EventId ??
+                    session.DecisionTranscript.LastOrDefault()?.EventId,
+                siteId = PrototypeNativePunchOff.ConstructHpOffsetSiteId,
+                runPhase = session.Run.Phase.ToString(),
+                boundary = session.Complete ? "committed" : "nature",
+                nextOrdinal = session.DecisionTranscript.Length,
+                pending = law is { } pendingLaw ? new
+                {
+                    kind = "punch_off_construct_hp_offset_random_choice",
+                    eventId = pendingLaw.EventId,
+                    siteId = pendingLaw.SiteId,
+                    operationKind = pendingLaw.OperationKind,
+                    supportFingerprint = pendingLaw.SupportFingerprint,
+                    boundaryFingerprint = pendingLaw.EventId,
+                    chanceLaw = pendingLaw,
+                    probabilityStatus = pendingLaw.ProbabilityStatus
+                } : null,
+                selectedHpOffsets = offsets,
+                monsterCombatIds = contexts.Select(context => context.CombatId)
+                    .ToArray(),
+                monsterCursorsUnadvanced = session.Complete,
+                decisionTranscript = session.DecisionTranscript,
+                natureProvider = ReferenceNatureV111.ProviderId,
+                natureSampleCount = session.NatureState.SampleCount,
+                probabilityStatus = ChanceLawV111.UnverifiedStatus
+            };
+        }
+
         object ReferenceNatureTreasureResult(
             ReferenceNatureTreasureSessionV111 session, string handle,
             string? parent = null)
@@ -1730,6 +1811,10 @@ internal static class PrototypeAiJsonlServer
                     .TryGetValue(handle, out var punchOffRewardSession) =>
                     ReferenceNaturePunchOffRewardResult(
                         punchOffRewardSession, handle),
+                "punch_off_fight" when referenceNaturePunchOffFightStates
+                    .TryGetValue(handle, out var punchOffFightSession) =>
+                    ReferenceNaturePunchOffFightResult(
+                        punchOffFightSession, handle),
                 "merchant" when referenceNatureMerchantStates.TryGetValue(
                     handle, out var merchantSession) =>
                     ReferenceNatureMerchantResult(merchantSession, handle),
@@ -1747,6 +1832,7 @@ internal static class PrototypeAiJsonlServer
                     "neow_offer" or "trash_heap" or "tablet_of_truth" or
                     "trial" or "event_shuffle" or "glory_reflections" or
                     "infested_automaton" or "punch_off_reward" or
+                    "punch_off_fight" or
                     "endless_conveyor" or
                     "treasure" or "controlled_event_choice" or
                     "controlled_run_action" => throw new InvalidOperationException(
@@ -2693,6 +2779,48 @@ internal static class PrototypeAiJsonlServer
                                     law.Ordinal != requestedOrdinal)
                                 throw new ArgumentException(
                                     $"Endless Conveyor query expects site '{law.SiteId}' and ordinal {law.Ordinal}.");
+                            Write(new
+                            {
+                                requestId,
+                                ok = true,
+                                chanceLawSchemaId =
+                                    ChanceLawV111.CurrentSchemaId,
+                                law
+                            });
+                            break;
+                        }
+                        if (ChanceLawEngineV111
+                            .NativePunchOffFightQuerySiteIds.Contains(
+                                siteId, StringComparer.Ordinal))
+                        {
+                            if (OptionalString(request, "card_type") is not null ||
+                                OptionalString(request, "rarity") is not null ||
+                                OptionalString(request, "card_id") is not null ||
+                                OptionalString(request, "potion_id") is not null ||
+                                OptionalString(request, "relic_id") is not null ||
+                                OptionalBool(request, "colorless_offer") ||
+                                OptionalBool(request, "sale_reprice") ||
+                                OptionalString(request, "owner_id") is not null ||
+                                OptionalStringArray(request,
+                                    "excluded_potion_ids") is not null ||
+                                OptionalInt(request, "offer_ordinal") is not null ||
+                                OptionalStringArray(request,
+                                    "relic_candidate_ids") is not null ||
+                                OptionalStringArray(request,
+                                    "excluded_relic_ids") is not null ||
+                                OptionalInt(request,
+                                    "prior_variant_index") is not null)
+                                throw new ArgumentException(
+                                    "Punch Off fight queries accept only state_handle, site_id, ordinal, prior_indices and action_id.");
+                            var actionId = OptionalString(request, "action_id")
+                                ?? throw new ArgumentException(
+                                    "Punch Off fight query requires action_id.");
+                            law = ChanceLawEngineV111.QueryNativePunchOffFight(
+                                RequireState(request), siteId, ordinal,
+                                priorIndices, actionId);
+                            if (law.SiteId != siteId || law.Ordinal != ordinal)
+                                throw new ArgumentException(
+                                    $"Punch Off fight query expects site '{law.SiteId}' and ordinal {law.Ordinal}.");
                             Write(new
                             {
                                 requestId,
@@ -5000,6 +5128,109 @@ internal static class PrototypeAiJsonlServer
                                     element.GetString()!))
                                 released++;
                             referenceNaturePunchOffRewardRunStateHandles.Remove(
+                                element.GetString()!);
+                        }
+                        Write(new { requestId, ok = true, released });
+                        break;
+                    }
+
+                    case "reference_nature_punch_off_fight_begin":
+                    {
+                        var source = RequireState(request);
+                        var actionId = RequiredString(request, "action_id");
+                        var seed = OptionalULong(request, "nature_seed");
+                        var session = seed is { } natureSeed
+                            ? ReferenceNaturePunchOffFightSessionV111.Begin(
+                                source, actionId, natureSeed)
+                            : ReferenceNaturePunchOffFightSessionV111.Begin(
+                                source, actionId);
+                        var handle = StoreReferenceNaturePunchOffFight(session);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNaturePunchOffFightResult(session, handle) });
+                        break;
+                    }
+
+                    case "reference_nature_punch_off_fight_status":
+                    {
+                        var handle = RequiredString(request,
+                            "reference_nature_punch_off_fight_handle");
+                        var session = RequireReferenceNaturePunchOffFight(request);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNaturePunchOffFightResult(session, handle) });
+                        break;
+                    }
+
+                    case "reference_nature_punch_off_fight_resolve_next":
+                    {
+                        var parentHandle = RequiredString(request,
+                            "reference_nature_punch_off_fight_handle");
+                        var session = RequireReferenceNaturePunchOffFight(request);
+                        if (session.Fingerprint != RequiredString(request,
+                                "fingerprint"))
+                            throw new InvalidOperationException(
+                                "Stale ReferenceNature Punch Off fight fingerprint.");
+                        var next = session.ResolveNext();
+                        var handle = StoreReferenceNaturePunchOffFight(next);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNaturePunchOffFightResult(
+                                next, handle, parentHandle) });
+                        break;
+                    }
+
+                    case "reference_nature_punch_off_fight_fork":
+                    {
+                        var parentHandle = RequiredString(request,
+                            "reference_nature_punch_off_fight_handle");
+                        var next = RequireReferenceNaturePunchOffFight(request)
+                            .Fork();
+                        var handle = StoreReferenceNaturePunchOffFight(next);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNaturePunchOffFightResult(
+                                next, handle, parentHandle) });
+                        break;
+                    }
+
+                    case "reference_nature_punch_off_fight_save":
+                    {
+                        var session = RequireReferenceNaturePunchOffFight(request);
+                        Write(new { requestId, ok = true,
+                            schemaId =
+                                ReferenceNaturePunchOffFightSessionV111.CurrentSchemaId,
+                            snapshot = ReferenceNaturePunchOffFightSessionV111.Save(
+                                session) });
+                        break;
+                    }
+
+                    case "reference_nature_punch_off_fight_load":
+                    {
+                        var session =
+                            ReferenceNaturePunchOffFightSessionV111.Restore(
+                                RequiredString(request, "snapshot"));
+                        var handle = StoreReferenceNaturePunchOffFight(session);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNaturePunchOffFightResult(session, handle) });
+                        break;
+                    }
+
+                    case "reference_nature_punch_off_fight_release_many":
+                    {
+                        if (!request.TryGetProperty(
+                                "reference_nature_punch_off_fight_handles",
+                                out var handles) ||
+                            handles.ValueKind != JsonValueKind.Array)
+                            throw new ArgumentException(
+                                "reference_nature_punch_off_fight_handles must be an array.");
+                        var released = 0;
+                        foreach (var element in handles.EnumerateArray())
+                        {
+                            if (element.ValueKind != JsonValueKind.String ||
+                                string.IsNullOrWhiteSpace(element.GetString()))
+                                throw new ArgumentException(
+                                    "Invalid ReferenceNature Punch Off fight handle.");
+                            if (referenceNaturePunchOffFightStates.Remove(
+                                    element.GetString()!))
+                                released++;
+                            referenceNaturePunchOffFightRunStateHandles.Remove(
                                 element.GetString()!);
                         }
                         Write(new { requestId, ok = true, released });
