@@ -203,6 +203,8 @@ internal static class PrototypeAiJsonlServer
             }
             if (state.RandomPileCardPending is { } pileCard)
             {
+                var chanceLaw = ChanceLawEngineV111
+                    .QueryRandomPileCard(pileCard);
                 return new
                 {
                     kind = "random_pile_card",
@@ -214,6 +216,7 @@ internal static class PrototypeAiJsonlServer
                     ordinal = pileCard.Ordinal,
                     operationKind = pileCard.OperationKind,
                     supportFingerprint = pileCard.SupportFingerprint,
+                    chanceLaw,
                     probabilityStatus = pileCard.ProbabilityStatus,
                     candidates = pileCard.CandidateCardInstanceIds
                         .Select((id, index) => new
@@ -259,6 +262,7 @@ internal static class PrototypeAiJsonlServer
             }
             if (state.TargetPending is { } target)
             {
+                var chanceLaw = ChanceLawEngineV111.QueryTarget(target);
                 return new
                 {
                     kind = "random_target",
@@ -271,6 +275,7 @@ internal static class PrototypeAiJsonlServer
                     targetKind = target.TargetKind,
                     operationKind = target.OperationKind,
                     supportFingerprint = target.SupportFingerprint,
+                    chanceLaw,
                     probabilityStatus = target.ProbabilityStatus,
                     candidates = target.CandidateEnemyInstanceIds
                         .Select((id, index) => new
@@ -282,6 +287,8 @@ internal static class PrototypeAiJsonlServer
             }
             if (state.GeneratedCardPending is { } generated)
             {
+                var chanceLaw = ChanceLawEngineV111
+                    .QueryGeneratedCard(generated);
                 return new
                 {
                     kind = "generated_card",
@@ -293,6 +300,7 @@ internal static class PrototypeAiJsonlServer
                     ordinal = generated.Ordinal,
                     operationKind = generated.OperationKind,
                     supportFingerprint = generated.SupportFingerprint,
+                    chanceLaw,
                     probabilityStatus = generated.ProbabilityStatus,
                     candidates = generated.CandidateCardIds
                         .Select((id, index) => new
@@ -304,6 +312,8 @@ internal static class PrototypeAiJsonlServer
             }
             if (state.PotionGenerationPending is { } potionGeneration)
             {
+                var chanceLaw = ChanceLawEngineV111
+                    .QueryPotionGeneration(potionGeneration);
                 return new
                 {
                     kind = "potion_generation",
@@ -315,6 +325,7 @@ internal static class PrototypeAiJsonlServer
                     ordinal = potionGeneration.Ordinal,
                     operationKind = potionGeneration.OperationKind,
                     supportFingerprint = potionGeneration.SupportFingerprint,
+                    chanceLaw,
                     probabilityStatus = potionGeneration.ProbabilityStatus,
                     candidates = potionGeneration.CandidatePotionIds
                         .Select((id, index) => new
@@ -326,6 +337,8 @@ internal static class PrototypeAiJsonlServer
             }
             if (state.CardTransformPending is { } cardTransform)
             {
+                var chanceLaw = ChanceLawEngineV111
+                    .QueryCardTransform(cardTransform);
                 return new
                 {
                     kind = "card_transform",
@@ -337,6 +350,7 @@ internal static class PrototypeAiJsonlServer
                     ordinal = cardTransform.Ordinal,
                     operationKind = cardTransform.OperationKind,
                     supportFingerprint = cardTransform.SupportFingerprint,
+                    chanceLaw,
                     sourceCardInstanceId = cardTransform.SourceCardInstanceId,
                     originalCardId = cardTransform.OriginalCardId,
                     probabilityStatus = cardTransform.ProbabilityStatus,
@@ -376,6 +390,8 @@ internal static class PrototypeAiJsonlServer
             }
             if (state.HandCostSelectionPending is { } handCost)
             {
+                var chanceLaw = ChanceLawEngineV111
+                    .QueryHandCostSelection(handCost);
                 return new
                 {
                     kind = "random_hand_card_selection",
@@ -387,6 +403,7 @@ internal static class PrototypeAiJsonlServer
                     ordinal = handCost.Ordinal,
                     operationKind = handCost.OperationKind,
                     supportFingerprint = handCost.SupportFingerprint,
+                    chanceLaw,
                     appliedCost = handCost.AppliedCost,
                     probabilityStatus = handCost.ProbabilityStatus,
                     candidates = handCost.CandidateCardInstanceIds
@@ -439,6 +456,7 @@ internal static class PrototypeAiJsonlServer
             }
             if (state.CostPending is { } cost)
             {
+                var chanceLaw = ChanceLawEngineV111.QueryCost(cost);
                 return new
                 {
                     kind = cost.TargetCardInstanceId is null
@@ -451,6 +469,7 @@ internal static class PrototypeAiJsonlServer
                     ordinal = cost.Request.Ordinal,
                     operationKind = cost.Request.OperationKind,
                     supportFingerprint = cost.SupportFingerprint,
+                    chanceLaw,
                     probabilityStatus = cost.ProbabilityStatus,
                     targetCardInstanceId = cost.TargetCardInstanceId,
                     targetCardModelId = cost.TargetCardModelId,
@@ -593,6 +612,22 @@ internal static class PrototypeAiJsonlServer
             if (state.HandCostSelectionPending is not null &&
                 !sites.Contains("random_hand_card_select"))
                 sites.Add("random_hand_card_select");
+            if (state.TargetPending is not null &&
+                !sites.Contains("random_target"))
+                sites.Add("random_target");
+            if (state.GeneratedCardPending is not null &&
+                !sites.Contains("generated_card"))
+                sites.Add("generated_card");
+            if (state.PotionGenerationPending is not null &&
+                !sites.Contains("random_potion_generation"))
+                sites.Add("random_potion_generation");
+            if (state.CardTransformPending is not null &&
+                !sites.Contains("random_card_transform"))
+                sites.Add("random_card_transform");
+            if (state.CostPending is
+                    { TargetCardInstanceId: null } &&
+                !sites.Contains("drawn_card_cost"))
+                sites.Add("drawn_card_cost");
             if (state.CostPending?.TargetCardInstanceId is not null &&
                 !sites.Contains("random_hand_card_energy_cost"))
                 sites.Add("random_hand_card_energy_cost");
