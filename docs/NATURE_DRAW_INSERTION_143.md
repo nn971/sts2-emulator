@@ -11,9 +11,11 @@ Native combat routes the model draw through `run.combat_card_generation` and
 the random position through `run.shuffle`; `CardPileCmd` uses
 `RunState.Rng.Shuffle` for `CardPilePosition.Random`. The retained
 prototype profile preserves its `combat` stream through the legacy adapter.
-The semantic v1 protocol continues to label its controlled event
-`prototype.combat` for compatibility. Native cursor parity and the full
-unlocked candidate pool remain open.
+The semantic v1 event retains `prototype.combat` for legacy routes and uses
+`run.shuffle` when a Native combat stream owner is present. On that Native
+request route, the insertion-position Chance Law uses exact `NextInt` grid
+masses. Native cursor parity and the full unlocked candidate pool remain
+open.
 
 When either supported insertion operation is reached inside an automatic
 pipeline stage, its saved cursor now stays attached through model selection,
@@ -41,7 +43,7 @@ created by powered hits use the saved card-operation continuation; the hit is
 committed once, each insertion is resolved in order, the rest of that hit's
 hooks resume, and then the remaining effect queue continues.
 
-The private pending choice records the exact eligible draw-pile instance IDs, source operation, generated card ID or eligible Attack IDs, remaining repetition count in the saved queued-operation continuation, and source-card/event/card-play continuation identity. On completion, the original queue resumes without re-running earlier effects. Multiple insertions generate successive tickets and are recorded chronologically in the existing `LiveTranscript`, with independent fork outcomes and source-eligibility validation. Nature receives card models in `pending.candidateCardIds` for the model-selection stage. The ordinary fair player observation remains inaccessible during pending Nature decisions; source probability status is `UNVERIFIED`.
+The private pending choice records the exact eligible draw-pile instance IDs, source operation, generated card ID or eligible Attack IDs, remaining repetition count in the saved queued-operation continuation, and source-card/event/card-play continuation identity. On completion, the original queue resumes without re-running earlier effects. Multiple insertions generate successive tickets and are recorded chronologically in the existing `LiveTranscript`, with independent fork outcomes and source-eligibility validation. Nature receives card models in `pending.candidateCardIds` for the model-selection stage. The ordinary fair player observation remains inaccessible during pending Nature decisions. Native insertion-position transforms are `SOURCE_VERIFIED` on canonical `run.shuffle`; legacy insertion laws remain `UNVERIFIED`.
 
 ## Semantic JSONL/Python fixture bridge
 
@@ -60,8 +62,9 @@ with `resolve_generated_card(card_model_id)`. The model-selection Chance Law
 reports exact Native `NextInt` grid masses and `SOURCE_VERIFIED` on the
 declared supported Attack pool; full Native pool eligibility, stream
 attribution, seed frequencies, and cursor parity remain open. The Native law
-for insertion position and fixture acquisition provenance remain
-`UNVERIFIED`.
+for insertion position is `SOURCE_VERIFIED` when its typed request uses
+canonical `run.shuffle`; legacy positions and fixture acquisition provenance
+remain `UNVERIFIED`.
 
 The automatic enemy-action frame is exposed as `enemy_action_chance` with its
 typed request and eligible indices. JSONL clients resolve it with
@@ -99,5 +102,6 @@ Each saved frame replays its original effect, enemy action, or automatic
 pipeline from the pre-operation checkpoint, applies each choice once, and
 resumes the remaining hooks and queue in source order. Unsupported nested
 death/summon and recycle contexts remain fail-closed where stated above. These
-sites have no privileged per-choice transcript or calibrated Chance Law;
-their probability provenance remains **UNVERIFIED**.
+sites have no privileged per-choice transcript. Their Nature insertion law is
+conditional: Native `run.shuffle` positions have source-verified bounded-index
+masses, while legacy positions remain `UNVERIFIED`.

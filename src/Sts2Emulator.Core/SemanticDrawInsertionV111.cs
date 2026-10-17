@@ -30,17 +30,24 @@ public sealed record SemanticDrawInsertionEventV111(
         Request.Validate();
         var supportedSite = Request.SiteId ==
                 "combat.draw_pile.random_insert_index" &&
-                Request.OwnerId == "prototype.combat" ||
+                (Request.OwnerId == "prototype.combat" ||
+                 IsNativePositionOwner(Request.OwnerId)) ||
             Request.SiteId ==
                 "combat.relic.after_shuffle.generated_card.random_insert_index" &&
                 Request.OwnerId.StartsWith("relic:", StringComparison.Ordinal) &&
                 Request.OwnerId.Contains(":application:",
-                    StringComparison.Ordinal);
+                    StringComparison.Ordinal) ||
+            Request.SiteId ==
+                PrototypeControlledDrawInsertionV111.PersonalHiveDazedSiteId &&
+                Request.OwnerId.StartsWith("enemy:", StringComparison.Ordinal) &&
+                Request.OwnerId.Contains(":power:personal_hive:source:",
+                    StringComparison.Ordinal) &&
+                GeneratedCardModelId == "proto.status.dazed";
         if (SchemaId != EventSchemaId ||
             string.IsNullOrWhiteSpace(BoundaryFingerprint) ||
             string.IsNullOrWhiteSpace(GeneratedCardModelId) ||
             !supportedSite ||
-            Request.StreamId != "prototype.combat" ||
+            Request.StreamId is not ("prototype.combat" or "run.shuffle") ||
             Request.OperationKind != "bounded_integer" ||
             EligibleDrawPileInstanceIds is null ||
             EligibleDrawPileInstanceIds.Distinct().Count() !=
@@ -67,6 +74,12 @@ public sealed record SemanticDrawInsertionEventV111(
             throw new InvalidDataException(
                 "Draw-insertion event ID is inconsistent.");
     }
+
+    private static bool IsNativePositionOwner(string ownerId) =>
+        (ownerId.StartsWith("card_instance:", StringComparison.Ordinal) ||
+         ownerId.StartsWith("effect:", StringComparison.Ordinal)) &&
+        ownerId.Contains(":card:", StringComparison.Ordinal) &&
+        ownerId.Contains(":draw_pile:", StringComparison.Ordinal);
 }
 
 /// <summary>

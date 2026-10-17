@@ -4079,8 +4079,21 @@ public static class SemanticPilotCombatEngineV111
                     insertion.SelectedCardId + ":draw_pile:" +
                     CanonicalJson.Sha256(pile)
             : insertion.RequestOwnerId;
+        var nativeStreamAvailable = combat!.NativeRng?.RunStreams is not null;
+        if (nativeStreamAvailable)
+        {
+            var ownerPrefix = afterShuffleRelicMatches || personalHiveInsertion
+                ? insertion.RequestOwnerId
+                : choice!.SourceCardInstanceId is { } sourceCardInstanceId
+                    ? "card_instance:" + sourceCardInstanceId
+                    : "effect:" + insertion.Operation.Kind;
+            requestOwnerId = ownerPrefix + ":card:" + insertion.SelectedCardId +
+                ":draw_pile:" + CanonicalJson.Sha256(pile);
+        }
         var request = new RandomIndexRequestV111(
-            insertion.RequestSiteId, "prototype.combat", requestOwnerId,
+            insertion.RequestSiteId,
+            nativeStreamAvailable ? "run.shuffle" : "prototype.combat",
+            requestOwnerId,
             requestOrdinal, [],
             OperationKind: "bounded_integer",
             BoundedCount: pile.Length + 1);

@@ -576,6 +576,8 @@ public static partial class ChanceLawEngineV111
         "uniform-fisher-yates-bounded-swap-v1";
     public const string DrawInsertionConditioningPolicyId =
         "uniform-bounded-draw-pile-insertion-position-v1";
+    public const string NativeDrawInsertionConditioningPolicyId =
+        "source-bounded-draw-insertion-nextint-grid-v1";
     public const string CardShortlistConditioningPolicyId =
         "uniform-sequential-without-replacement-v1";
     public const string EventOfferConditioningPolicyId =
@@ -2669,19 +2671,28 @@ public static partial class ChanceLawEngineV111
     }
 
     /// <summary>
-    /// Query the uniform bounded insertion position for a generated card.
-    /// The eligible physical pile and generated model are in the saved
-    /// support fingerprint.
+    /// Query a bounded draw-pile insertion position for a generated card.
+    /// Recognized Native streams use exact NextInt grid masses; legacy routes
+    /// retain the equal-position model.
     /// </summary>
     public static ChanceLawV111 QueryDrawInsertion(
         SemanticDrawInsertionEventV111 insertion)
     {
         ArgumentNullException.ThrowIfNull(insertion);
         insertion.Validate();
-        var outcomes = Enumerable.Range(0, insertion.Request.SupportCount)
-            .Select(position => new ChanceLawOutcomeV111(
-                "draw_position:" + position.ToString(
-                    CultureInfo.InvariantCulture), 1L))
+        var hasNativeIndexLaw = NativeRngV111.IsCanonicalStreamId(
+            insertion.Request.StreamId);
+        var indexWeights = hasNativeIndexLaw
+            ? NativeNextIntGridWeights(insertion.Request.SupportCount)
+            : Enumerable.Repeat(1L,
+                insertion.Request.SupportCount).ToArray();
+        var policy = hasNativeIndexLaw
+            ? NativeDrawInsertionConditioningPolicyId
+            : DrawInsertionConditioningPolicyId;
+        var outcomes = indexWeights.Select((weight, position) =>
+                new ChanceLawOutcomeV111(
+                    "draw_position:" + position.ToString(
+                        CultureInfo.InvariantCulture), weight))
             .ToArray();
         var conditioningFingerprint = CanonicalJson.Sha256(new
         {
@@ -2690,12 +2701,17 @@ public static partial class ChanceLawEngineV111
             insertion.OwnerId,
             insertion.Ordinal,
             insertion.GeneratedCardModelId,
-            policy = DrawInsertionConditioningPolicyId
+            policy
         });
         return Create(insertion.EventId, insertion.SiteId,
             insertion.OperationKind, insertion.OwnerId, insertion.Ordinal,
-            DrawInsertionConditioningPolicyId, conditioningFingerprint,
-            "uniform-bounded-insertion-position-unverified", outcomes);
+            policy, conditioningFingerprint,
+            hasNativeIndexLaw
+                ? NativeBoundedIndexSourceVerifiedProvenance
+                : "uniform-bounded-insertion-position-unverified",
+            outcomes, hasNativeIndexLaw
+                ? ChanceLawV111.SourceVerifiedStatus
+                : ChanceLawV111.UnverifiedStatus);
     }
 
     /// <summary>
