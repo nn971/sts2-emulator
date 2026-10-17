@@ -66,7 +66,8 @@ public static class NativeFisherYatesV111
                 siteId, streamId, ownerId, ordinalOffset + decisions.Count,
                 Array.Empty<int>(), OperationKind: "bounded_integer",
                 BoundedCount: end + 1);
-            var decision = provider.Resolve(request, streams);
+            var decision = StochasticProviderScopeV111.ResolveIndex(
+                provider, request, streams);
             decision.Validate();
             (values[end], values[decision.SelectedIndex]) =
                 (values[decision.SelectedIndex], values[end]);

@@ -41,6 +41,14 @@ Controlled event/run-action, automatic enemy-action, and next-turn intent resume
 
 `ControlledChanceContinuationExecutorV111` now owns the replay-scope lifetime, exact saved-prefix consumption, and capture of the next unresolved typed request for run-action, event-effect, event-reward, event-choice entry, event-reward advance, and automatic enemy-action mechanics. Boundary owners still select checkpoints, enforce site allowlists, preserve event candidate labels, and persist their established continuation frames. `ReferenceNatureRunCursorV111` owns run-scoped cursor initialization, validation against the session transcript, and commit publication across semantic-combat, run-action, and event-choice sessions. Boundary sessions retain their typed mechanics resolvers, while the sampler support check is shared by every ReferenceNature path.
 
+The configured native merchant now runs `StartShop` inside
+`StochasticProviderScopeV111`. The scope routes default `NativePlayerRngV111`
+calls and explicitly passed Native index/unit-float providers through one
+replaceable provider pair. It tracks logical per-stream request ordinals when
+a replacement provider leaves the native cursor untouched. The current scope
+binds Native providers and has no serialized merchant continuation yet; it is
+the shared adapter seam for the next continuation increment.
+
 ## Semantic lifecycle and provider interchangeability
 
 The **same game mechanics** issues semantic stochastic operations and applies their resolved outcomes regardless of provider:

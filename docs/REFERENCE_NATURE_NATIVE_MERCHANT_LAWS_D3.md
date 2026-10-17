@@ -44,9 +44,13 @@ run or its provider state.
 
 Source call/cursor replay, the full native shop-entry continuation, and
 stochastic consequences of merchant purchases remain unsupported by this
-contract. Native shop generation still fails closed in controlled run-action
-sessions. Legacy Shop-node generation continues to use its existing run-action
-contract.
+contract. Configured `StartShop` now resolves default and explicitly passed
+native index/unit-float providers through `StochasticProviderScopeV111`, whose
+logical stream ordinals advance independently when a replacement provider
+does not advance Native RNG. It currently binds Native providers and does not
+add a merchant continuation. Native shop generation still fails closed in
+controlled run-action sessions. Legacy Shop-node generation continues to use
+its existing run-action contract.
 
 ## Python binding
 

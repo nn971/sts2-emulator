@@ -2918,6 +2918,11 @@ public sealed partial class PrototypeGameEngine
         var world = RequireWorld(state);
         var nativeMerchant = UsesNativeRegionalSystems(world);
         var nativeRunRng = state.NativeRunRng?.Fork();
+        using var nativeProviderScope = nativeMerchant && nativeRunRng is not null
+            ? StochasticProviderScopeV111.Enter(
+                new NativeRandomIndexProviderV111(),
+                new NativeRandomUnitFloatProviderV111())
+            : null;
         // MerchantInventory chooses one of the five character-card
         // slots before populating the inventory.
         var saleIndex = -1;

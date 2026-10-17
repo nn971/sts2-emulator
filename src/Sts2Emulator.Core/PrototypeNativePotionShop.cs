@@ -262,8 +262,10 @@ public static class PrototypeNativePotionShop
         if (count < 0)
             throw new ArgumentOutOfRangeException(nameof(count));
 
-        var effectiveFloatProvider = floatProvider
-            ?? new NativeRandomUnitFloatProviderV111();
+        var effectiveIndexProvider =
+            StochasticProviderScopeV111.SelectIndexProvider(provider);
+        var effectiveFloatProvider =
+            StochasticProviderScopeV111.SelectUnitFloatProvider(floatProvider);
         var workingRng = rng.Fork();
         var remaining = NativePotionPoolOrder.ToList();
         var selected = new List<string>(count);
@@ -271,7 +273,8 @@ public static class PrototypeNativePotionShop
         var rarityRolls = new List<RandomUnitFloatDecisionV111>(count);
         for (var index = 0; index < count; index++)
         {
-            var rarityDecision = effectiveFloatProvider.Resolve(
+            var rarityDecision = StochasticProviderScopeV111.ResolveUnitFloat(
+                effectiveFloatProvider,
                 new RandomUnitFloatRequestV111(
                     "potion_factory.rarity_roll.unit_float", streamId,
                     ownerId, index), workingRng);
@@ -288,7 +291,9 @@ public static class PrototypeNativePotionShop
             if (candidates.Length == 0)
                 throw new InvalidOperationException(
                     $"No unselected {rarity} potions remain.");
-            var decision = provider.Resolve(new RandomIndexRequestV111(
+            var decision = StochasticProviderScopeV111.ResolveIndex(
+                effectiveIndexProvider,
+                new RandomIndexRequestV111(
                 "potion_factory.model_within_rarity.index_draw", streamId,
                 ownerId, index,
                 Enumerable.Range(0, candidates.Length).ToArray()), workingRng);
@@ -302,7 +307,7 @@ public static class PrototypeNativePotionShop
             rng.Streams[streamIndex] = workingRng.Streams[streamIndex].Fork();
         return new NativePotionModelSelectionAuditV111(
             selected.ToArray(), choices.ToArray(), rarityRolls.ToArray(),
-            provider.Mode, effectiveFloatProvider.Mode);
+            effectiveIndexProvider.Mode, effectiveFloatProvider.Mode);
     }
 
     /// <summary>

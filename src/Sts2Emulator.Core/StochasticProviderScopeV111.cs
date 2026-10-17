@@ -1,0 +1,185 @@
+using System.Threading;
+
+namespace Sts2Emulator.Core;
+
+/// <summary>
+/// Boundary-scoped provider selection shared by native adapter calls that
+/// receive providers explicitly and calls that use the default provider.
+/// A Nature or replay boundary can replace both paths for one synchronous
+/// mechanics continuation without changing the mechanics call graph.
+/// </summary>
+internal static class StochasticProviderScopeV111
+{
+    private sealed class Frame(
+        IRandomIndexProviderV111? indexProvider,
+        IRandomUnitFloatProviderV111? unitFloatProvider,
+        bool overrideExplicitProviders,
+        Frame? parent)
+    {
+        public IRandomIndexProviderV111? IndexProvider { get; } = indexProvider;
+        public IRandomUnitFloatProviderV111? UnitFloatProvider { get; } =
+            unitFloatProvider;
+        public bool OverrideExplicitProviders { get; } =
+            overrideExplicitProviders;
+        public Frame? Parent { get; } = parent;
+        public object OrdinalSync { get; } = new();
+        public Dictionary<string, ulong> NextOrdinals { get; } =
+            new(StringComparer.Ordinal);
+    }
+
+    private sealed class ScopeLease(Frame frame) : IDisposable
+    {
+        private bool _disposed;
+
+        public void Dispose()
+        {
+            if (_disposed)
+                return;
+            if (!ReferenceEquals(Current.Value, frame))
+                throw new InvalidOperationException(
+                    "Stochastic provider scopes must be disposed in stack order.");
+            Current.Value = frame.Parent;
+            _disposed = true;
+        }
+    }
+
+    private static readonly AsyncLocal<Frame?> Current = new();
+
+    public static IDisposable Enter(
+        IRandomIndexProviderV111? indexProvider = null,
+        IRandomUnitFloatProviderV111? unitFloatProvider = null,
+        bool overrideExplicitProviders = true)
+    {
+        if (indexProvider is null && unitFloatProvider is null)
+            throw new ArgumentException(
+                "A stochastic provider scope must replace at least one provider.");
+        var frame = new Frame(
+            indexProvider, unitFloatProvider, overrideExplicitProviders,
+            Current.Value);
+        Current.Value = frame;
+        return new ScopeLease(frame);
+    }
+
+    public static IRandomIndexProviderV111 SelectIndexProvider(
+        IRandomIndexProviderV111? explicitProvider)
+    {
+        var frame = Current.Value;
+        if (frame?.IndexProvider is { } scopedProvider &&
+            (frame.OverrideExplicitProviders || explicitProvider is null))
+            return scopedProvider;
+        return explicitProvider ?? new NativeRandomIndexProviderV111();
+    }
+
+    public static RandomIndexDecisionV111 ResolveIndex(
+        IRandomIndexProviderV111? explicitProvider,
+        RandomIndexRequestV111 request, RngBundle streams)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(streams);
+        var frame = Current.Value;
+        if (frame is not null)
+        {
+            EnsureOrdinal(frame, streams, request.StreamId);
+        }
+        var nativeCursorBefore = frame is null
+            ? 0 : GetStreamCallCount(streams, request.StreamId);
+        var decision = SelectIndexProvider(explicitProvider)
+            .Resolve(request, streams);
+        if (frame is not null)
+            AdvanceOrdinal(frame, request.StreamId, nativeCursorBefore,
+                GetStreamCallCount(streams, request.StreamId));
+        return decision;
+    }
+
+    public static IRandomUnitFloatProviderV111 SelectUnitFloatProvider(
+        IRandomUnitFloatProviderV111? explicitProvider)
+    {
+        var frame = Current.Value;
+        if (frame?.UnitFloatProvider is { } scopedProvider &&
+            (frame.OverrideExplicitProviders || explicitProvider is null))
+            return scopedProvider;
+        return explicitProvider ?? new NativeRandomUnitFloatProviderV111();
+    }
+
+    public static RandomUnitFloatDecisionV111 ResolveUnitFloat(
+        IRandomUnitFloatProviderV111? explicitProvider,
+        RandomUnitFloatRequestV111 request, RngBundle streams)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(streams);
+        var frame = Current.Value;
+        if (frame is not null)
+        {
+            EnsureOrdinal(frame, streams, request.StreamId);
+        }
+        var nativeCursorBefore = frame is null
+            ? 0 : GetStreamCallCount(streams, request.StreamId);
+        var decision = SelectUnitFloatProvider(explicitProvider)
+            .Resolve(request, streams);
+        if (frame is not null)
+            AdvanceOrdinal(frame, request.StreamId, nativeCursorBefore,
+                GetStreamCallCount(streams, request.StreamId));
+        return decision;
+    }
+
+    public static int? GetNextOrdinal(
+        RngBundle streams, string streamId)
+    {
+        ArgumentNullException.ThrowIfNull(streams);
+        ArgumentException.ThrowIfNullOrWhiteSpace(streamId);
+        var frame = Current.Value;
+        if (frame is null)
+            return null;
+        EnsureOrdinal(frame, streams, streamId);
+        lock (frame.OrdinalSync)
+        {
+            var nextOrdinal = frame.NextOrdinals[streamId];
+            if (nextOrdinal > int.MaxValue)
+                throw new NotSupportedException(
+                    "Scoped native provider ordinal exceeds the request range.");
+            return checked((int)nextOrdinal);
+        }
+    }
+
+    private static void EnsureOrdinal(
+        Frame frame, RngBundle streams, string streamId)
+    {
+        lock (frame.OrdinalSync)
+        {
+            if (frame.NextOrdinals.ContainsKey(streamId))
+                return;
+            var initialOrdinal = GetStreamCallCount(streams, streamId);
+            if (initialOrdinal > int.MaxValue)
+                throw new NotSupportedException(
+                    "Scoped native provider ordinal exceeds the request range.");
+            frame.NextOrdinals.Add(streamId, initialOrdinal);
+        }
+    }
+
+    private static void AdvanceOrdinal(
+        Frame frame, string streamId, ulong cursorBefore, ulong cursorAfter)
+    {
+        lock (frame.OrdinalSync)
+        {
+            if (cursorAfter > cursorBefore)
+            {
+                frame.NextOrdinals[streamId] = cursorAfter;
+                return;
+            }
+
+            frame.NextOrdinals[streamId] = checked(
+                frame.NextOrdinals[streamId] + 1);
+        }
+    }
+
+    private static ulong GetStreamCallCount(
+        RngBundle streams, string streamId)
+    {
+        var matches = streams.Streams.Where(stream =>
+            stream.StreamId == streamId).ToArray();
+        if (matches.Length != 1)
+            throw new InvalidOperationException(
+                "Scoped native random stream ownership is ambiguous.");
+        return matches[0].CallCount ?? 0;
+    }
+}

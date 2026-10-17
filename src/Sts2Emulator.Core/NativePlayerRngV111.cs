@@ -12,6 +12,9 @@ internal static class NativePlayerRngV111
     public static int NextOrdinal(RngBundle streams, string streamId)
     {
         ArgumentNullException.ThrowIfNull(streams);
+        if (StochasticProviderScopeV111.GetNextOrdinal(
+                streams, streamId) is { } scopedOrdinal)
+            return scopedOrdinal;
         var matching = streams.Streams.Where(stream =>
             stream.StreamId == streamId).ToArray();
         if (matching.Length != 1)

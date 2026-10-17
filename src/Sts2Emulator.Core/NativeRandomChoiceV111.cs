@@ -18,7 +18,8 @@ public static class NativeRandomChoiceV111
     {
         if (candidateCount <= 0)
             throw new ArgumentOutOfRangeException(nameof(candidateCount));
-        return (provider ?? new NativeRandomIndexProviderV111()).Resolve(
+        return StochasticProviderScopeV111.ResolveIndex(
+            provider,
             new RandomIndexRequestV111(
                 siteId, streamId, ownerId, ordinal,
                 Enumerable.Range(0, candidateCount).ToArray()),
@@ -36,7 +37,8 @@ public static class NativeRandomChoiceV111
     {
         if (boundedCount <= 0)
             throw new ArgumentOutOfRangeException(nameof(boundedCount));
-        return (provider ?? new NativeRandomIndexProviderV111()).Resolve(
+        return StochasticProviderScopeV111.ResolveIndex(
+            provider,
             new RandomIndexRequestV111(
                 siteId, streamId, ownerId, ordinal, [],
                 OperationKind: "bounded_integer",
@@ -51,7 +53,8 @@ public static class NativeRandomChoiceV111
         string ownerId,
         int ordinal,
         IRandomUnitFloatProviderV111? provider = null) =>
-        (provider ?? new NativeRandomUnitFloatProviderV111()).Resolve(
+        StochasticProviderScopeV111.ResolveUnitFloat(
+            provider,
             new RandomUnitFloatRequestV111(
                 siteId, streamId, ownerId, ordinal),
             streams);
