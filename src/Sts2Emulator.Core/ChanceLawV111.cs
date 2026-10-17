@@ -593,19 +593,21 @@ public static partial class ChanceLawEngineV111
         }
 
         var orderedChoiceIds = candidates;
+        var indexWeights = NativeNextIntGridWeights(orderedChoiceIds.Length);
         var weights = new Dictionary<string, long>(StringComparer.Ordinal);
         var outcomeOrder = new List<string>();
-        foreach (var choiceId in orderedChoiceIds)
+        for (var index = 0; index < orderedChoiceIds.Length; index++)
         {
+            var choiceId = orderedChoiceIds[index];
             var outcomeId = "event_choice:" + choiceId;
             if (!weights.TryGetValue(outcomeId, out var weight))
             {
-                weights.Add(outcomeId, 1L);
+                weights.Add(outcomeId, indexWeights[index]);
                 outcomeOrder.Add(outcomeId);
             }
             else
             {
-                weights[outcomeId] = checked(weight + 1L);
+                weights[outcomeId] = checked(weight + indexWeights[index]);
             }
         }
         var outcomes = outcomeOrder.Select(outcomeId =>
@@ -629,7 +631,8 @@ public static partial class ChanceLawEngineV111
         return Create(eventId, siteId, "event_offer_index", ownerId,
             ordinal, EventOfferConditioningPolicyId,
             conditioningFingerprint,
-            "uniform-ordered-event-offer-entries-unverified", outcomes);
+            NativeBoundedIndexSourceVerifiedProvenance, outcomes,
+            ChanceLawV111.SourceVerifiedStatus);
     }
 
     /// <summary>Compatibility entry point for the original query-only site.</summary>

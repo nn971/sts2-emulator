@@ -22,12 +22,15 @@ validation. Pael duplicate entries remain separate probability mass through
 integer outcome weights. The Ancient generators perform the actual offer
 generation through provider mode `scripted-v111`. This counterfactual provider
 does not advance the Native event RNG cursor, and the completed event retains
-its provider-mode marker. Darv's binary variant law and all four Native
-Fisher–Yates shuffle families use exact source bin masses from the 53-bit
-`NextDouble` grid, including binary64 rounding, and are `SOURCE_VERIFIED`
-under the uniform-grid input model. Power-of-two bounds yield equal weights;
-other bounds can have unequal weights. Orobas, Pael and Tezcatara
-direct offer laws remain `UNVERIFIED`.
+its provider-mode marker. Orobas, Pael and Tezcatara direct offer laws,
+Darv's binary variant law, and all four Native Fisher–Yates shuffle families
+use exact source bin masses from the 53-bit `NextDouble` grid, including
+binary64 rounding, and are `SOURCE_VERIFIED` under the uniform-grid input
+model. Pael's repeated entries aggregate the preimage masses of their
+distinct source indices. Power-of-two bounds yield equal weights; other
+bounds can have unequal weights. This verifies the bounded-index transform
+on each declared support; native stream assignment, full source-pool
+fidelity, seed frequencies, and seeded parity remain open.
 
 ## JSONL operations
 
@@ -79,8 +82,9 @@ and atomic session coverage remain separate capability registries.
 
 ## Limits
 
-The session does not certify source probabilities, Darv's complete source pool
-and call order, or native cursor parity. EventState keeps its established
+The session's direct-choice and bounded-index laws carry source-verified
+transform masses on their declared supports. It does not certify full pool
+fidelity, Darv's complete source call order, or native cursor parity. EventState keeps its established
 compatibility shape; a saved session reconstructs support from its origin run
 instead of adding a separate event-level support fingerprint. Ancient
 assignment and other Ancient offer sites remain outside this session. No native
