@@ -43,7 +43,7 @@ categories.
 `QueryNativeEndlessConveyorUpgrade` handles two boundaries: first-dish Observe
 and a legal Grab on Spicy Snappy. Both use the deck-order
 `CanSelectEventDeckCard(Upgrade)` filter, preserve physical card-instance
-identities, and bind an equal-weight index law to the persisted
+identities, and bind exact Native bounded-index grid masses to the persisted
 `ENDLESS_CONVEYOR` cursor and request ordinal. Observe upgrades one eligible
 card and leaves the event. Spicy Snappy upgrades one eligible card before the
 next dish ticket. An empty eligible pool skips the index draw; a singleton
@@ -52,10 +52,12 @@ instance with its source index.
 
 `QueryNativeEndlessConveyorColorlessCard` handles a legal Fried Eel Grab. Its
 ordered support is the implemented, solo-safe Colorless catalog used by the
-mechanics. The equal-weight outcomes pair each card model with its source
-index. The current pool excludes multiplayer-only and mechanics-unimplemented
-catalog entries. This support restriction and its probability law remain
-`UNVERIFIED` pending native source and pool-order calibration.
+mechanics. The outcomes pair each card model with its source index and use
+the exact preimage counts for Native `NextInt(supportCount)` on the 53-bit
+`NextDouble` grid, including binary64 multiplication rounding. This
+bounded-index transform is `SOURCE_VERIFIED` on the declared support. The
+current pool excludes multiplayer-only and mechanics-unimplemented catalog
+entries, so native pool completeness and source-order fidelity remain open.
 
 The player-visible event projection may expose these ordered supports only
 through the Nature choice view. It does not expose deck order, card pools, or
@@ -98,8 +100,9 @@ authoritative for dish effects and roll timing.
 Observe covers only the first dish and requires a nonempty upgradable-card
 support. Empty support and later-page Observe actions are outside this Nature
 boundary. Fried Eel currently uses the restricted implemented solo-safe
-Colorless catalog. Native seeded-result parity, exact source pool fidelity,
-and all laws' probability calibration remain open; every law is
+Colorless catalog. Native seeded-result parity and exact source pool fidelity
+remain open. The upgrade and Colorless card-index transforms are
+`SOURCE_VERIFIED` on their declared supports; dish-ticket calibration remains
 `UNVERIFIED`.
 
 Actions that do not produce one of the covered draws, or that trigger the

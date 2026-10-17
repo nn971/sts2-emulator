@@ -75,8 +75,9 @@ uniform-grid input model. Power-of-two bounds have equal weights; other bounds
 can have unequal weights. This status does not establish stream
 attribution, seed frequencies, or seeded parity. Repy's two potion laws expose
 indices into the configured potion pool, use stable potion-and-index
-identities, and include the full preceding shuffle and potion prefix; they
-remain `UNVERIFIED`.
+identities, and include the full preceding shuffle and potion prefix. Their
+bounded-index transform is `SOURCE_VERIFIED` on that declared support; the
+`player.rewards` stream assignment remains a hypothesis.
 
 The Fragrant Mushroom, Tinker type, Tinker rider, and Fake Merchant stock
 shuffle sites have separate laws. A rider law is conditioned on the prior
@@ -90,8 +91,9 @@ pool, captured `player.rewards` cursor, and preceding swap indices. Its source
 stream attribution remains a hypothesis; its bounded-index transform law is
 `SOURCE_VERIFIED` under the uniform-grid model. Its two potion-index laws use
 the full relic-swap prefix and preceding potion indices; the potion picks
-remain independent with replacement in the modeled support, and their source
-probability provenance remains `UNVERIFIED`.
+remain independent with replacement in the configured support and use the
+same `SOURCE_VERIFIED` bounded-index transform. These statuses do not verify
+stream attribution, seed frequencies, or seeded parity.
 
 `ReferenceNatureNativeEventShuffleSessionV111` stores the original run and
 sampler cursor while outcomes are pending. Once every swap has been sampled,

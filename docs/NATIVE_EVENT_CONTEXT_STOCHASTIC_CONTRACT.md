@@ -61,7 +61,9 @@ continuation ([Endless Conveyor contract](REFERENCE_NATURE_ENDLESS_CONVEYOR_D3.m
 Reflections exposes read-only conditional laws for its downgrade and upgrade
 card-pick sites. The query rebuilds the projected deck and remaining ordered
 physical-card support from the complete prior index prefix, including the
-eligibility changes caused by prior downgrades. The atomic
+eligibility changes caused by prior downgrades. Its index outcomes use exact
+Native `NextInt(supportCount)` preimage counts on the uniform 53-bit
+`NextDouble` grid, including binary64 multiplication rounding. The atomic
 `ReferenceNatureGloryReflectionsSessionV111` uses these laws as an ordered
 prefix, then replays the ordinary `touch_mirror` action once all picks are
 resolved and commits its mechanic result with the Nature cursor. The Native
@@ -81,10 +83,15 @@ effect once.
 
 ## Provenance and unsupported handling
 
-Every linked row still marks its probability law **UNVERIFIED**. A pinned
-event RNG seed derivation and a persisted cursor establish provider ownership,
-not conditional probabilities or call-order parity. No event helper match or
-source-shaped candidate pool is evidence of calibrated `p`.
+The Reflections downgrade and upgrade, Infested Automaton card-pick, and
+Endless Conveyor card-index laws mark their bounded-index transform
+`SOURCE_VERIFIED` on the declared support. Infested Automaton's pool remains
+restricted to supported cards, and Endless Conveyor's Colorless pool remains
+restricted to implemented solo-safe models. A pinned event RNG seed
+derivation and a persisted cursor establish provider ownership, not seed
+frequencies, source-pool completeness, or call-order parity. The remaining
+linked rows stay **UNVERIFIED**; no event helper match or source-shaped
+candidate pool is by itself evidence of calibrated `p`.
 
 The current Native event path may continue to resolve a source-owned event
 with its configured provider. Rows without a linked site-specific contract

@@ -639,9 +639,9 @@ public static partial class ChanceLawEngineV111
 
     /// <summary>
     /// Query discrete native merchant offer decisions before entering an
-    /// available configured Shop node. The returned laws describe the
-    /// emulator's pinned source-shaped support and thresholds; probability
-    /// provenance remains UNVERIFIED.
+    /// available configured Shop node. Bounded-index transforms are
+    /// source-verified on the declared support; model-pool completeness and
+    /// threshold/float provenance remain separate claims.
     /// </summary>
     public static ChanceLawV111 QueryNativeMerchantOffer(
         RunState run, string siteId, int ordinal,
@@ -661,6 +661,7 @@ public static partial class ChanceLawEngineV111
         string operationKind;
         string policy;
         string provenance;
+        var probabilityStatus = ChanceLawV111.UnverifiedStatus;
         object conditioning;
         ChanceLawOutcomeV111[] outcomes;
 
@@ -673,12 +674,15 @@ public static partial class ChanceLawEngineV111
             ownerId = $"merchant:act:{world.Act}:floor:{world.Floor}";
             operationKind = "choose_index";
             policy = NativeMerchantIndexConditioningPolicyId;
-            provenance = "native-merchant-five-card-sale-slots-unverified";
+            provenance = NativeBoundedIndexSourceVerifiedProvenance;
             conditioning = new { siteId, ownerId, candidateCount = 5 };
+            var weights = NativeNextIntGridWeights(5);
             outcomes = Enumerable.Range(0, 5)
                 .Select(index => new ChanceLawOutcomeV111(
-                    "sale_slot:" + index.ToString(CultureInfo.InvariantCulture), 1L))
+                    "sale_slot:" + index.ToString(CultureInfo.InvariantCulture),
+                    weights[index]))
                 .ToArray();
+            probabilityStatus = ChanceLawV111.SourceVerifiedStatus;
         }
         else if (siteId == "card_rarity.roll.unit_float")
         {
@@ -730,15 +734,17 @@ public static partial class ChanceLawEngineV111
                 CanonicalJson.Sha256(candidates);
             operationKind = "choose_index";
             policy = NativeMerchantIndexConditioningPolicyId;
-            provenance = "native-merchant-ordered-card-pool-unverified";
+            provenance = NativeBoundedIndexSourceVerifiedProvenance;
             conditioning = new
             {
                 siteId, ownerId, cardType = type.ToString(),
                 rarity = selectedRarity.ToString(), candidates
             };
+            var weights = NativeNextIntGridWeights(candidates.Length);
             outcomes = candidates.Select((id, index) =>
                 new ChanceLawOutcomeV111(
-                    $"card_model:{id}:index:{index}", 1L)).ToArray();
+                    $"card_model:{id}:index:{index}", weights[index])).ToArray();
+            probabilityStatus = ChanceLawV111.SourceVerifiedStatus;
         }
         else if (siteId == "shop.colorless_card_model.index_draw")
         {
@@ -766,15 +772,17 @@ public static partial class ChanceLawEngineV111
                 CanonicalJson.Sha256(candidates);
             operationKind = "choose_index";
             policy = NativeMerchantIndexConditioningPolicyId;
-            provenance = "native-merchant-colorless-card-pool-unverified";
+            provenance = NativeBoundedIndexSourceVerifiedProvenance;
             conditioning = new
             {
                 siteId, ownerId, ordinal,
                 rarity = selectedRarity.ToString(), candidates
             };
+            var weights = NativeNextIntGridWeights(candidates.Length);
             outcomes = candidates.Select((id, index) =>
                 new ChanceLawOutcomeV111(
-                    $"card_model:{id}:index:{index}", 1L)).ToArray();
+                    $"card_model:{id}:index:{index}", weights[index])).ToArray();
+            probabilityStatus = ChanceLawV111.SourceVerifiedStatus;
         }
         else if (siteId == "potion_factory.rarity_roll.unit_float")
         {
@@ -817,16 +825,18 @@ public static partial class ChanceLawEngineV111
             ownerId = $"merchant:act:{world.Act}:floor:{world.Floor}:potions";
             operationKind = "choose_index";
             policy = NativeMerchantIndexConditioningPolicyId;
-            provenance = "native-merchant-ordered-potion-tier-pool-unverified";
+            provenance = NativeBoundedIndexSourceVerifiedProvenance;
             conditioning = new
             {
                 siteId, ownerId, ordinal,
                 rarity = selectedRarity.ToString(),
                 excludedPotionIds, candidates
             };
+            var weights = NativeNextIntGridWeights(candidates.Length);
             outcomes = candidates.Select((id, index) =>
                 new ChanceLawOutcomeV111(
-                    $"potion_model:{id}:index:{index}", 1L)).ToArray();
+                    $"potion_model:{id}:index:{index}", weights[index])).ToArray();
+            probabilityStatus = ChanceLawV111.SourceVerifiedStatus;
         }
         else if (siteId == "relic_grab_bag.rarity.unit_float")
         {
@@ -854,7 +864,8 @@ public static partial class ChanceLawEngineV111
 
         return CreateNativeBoundaryLaw(
             siteId, operationKind, ownerId, ordinal, policy,
-            CanonicalJson.Sha256(conditioning), provenance, outcomes);
+            CanonicalJson.Sha256(conditioning), provenance, outcomes,
+            probabilityStatus);
     }
 
     /// <summary>
@@ -1408,7 +1419,8 @@ public static partial class ChanceLawEngineV111
     private static ChanceLawV111 CreateNativeBoundaryLaw(
         string siteId, string operationKind, string ownerId, int ordinal,
         string policy, string conditioningFingerprint,
-        string provenance, ChanceLawOutcomeV111[] outcomes)
+        string provenance, ChanceLawOutcomeV111[] outcomes,
+        string probabilityStatus = ChanceLawV111.UnverifiedStatus)
     {
         var eventId = CanonicalJson.Sha256(new
         {
@@ -1416,7 +1428,8 @@ public static partial class ChanceLawEngineV111
             siteId, ownerId, ordinal, conditioningFingerprint
         });
         return Create(eventId, siteId, operationKind, ownerId, ordinal,
-            policy, conditioningFingerprint, provenance, outcomes);
+            policy, conditioningFingerprint, provenance, outcomes,
+            probabilityStatus);
     }
 
     private static void ValidateNativeMerchantQueryBoundary(RunState run)

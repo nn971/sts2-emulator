@@ -1035,14 +1035,16 @@ public static partial class ChanceLawEngineV111
             boundary = "native_event.repy_potion_offer_index",
             conditioning
         });
+        var weights = NativeNextIntGridWeights(potionPool.Length);
         var outcomes = potionPool.Select((potionId, index) =>
             new ChanceLawOutcomeV111(
-                $"potion:{potionId}:index:{index}", 1L)).ToArray();
+                $"potion:{potionId}:index:{index}", weights[index])).ToArray();
         return Create(
             eventId, request.SiteId, request.OperationKind,
             request.OwnerId, request.Ordinal,
             NativeRepyChestOfferConditioningPolicyId, conditioning,
-            "uniform-native-player-potion-index-unverified", outcomes);
+            NativeBoundedIndexSourceVerifiedProvenance, outcomes,
+            ChanceLawV111.SourceVerifiedStatus);
     }
 
     public static ChanceLawV111 QueryNativeEndlessConveyorDishEntry(
@@ -1264,9 +1266,11 @@ public static partial class ChanceLawEngineV111
             request,
             policy = NativeEndlessConveyorUpgradeConditioningPolicyId
         });
+        var weights = NativeNextIntGridWeights(request.SupportCount);
         var outcomes = candidates.Select((candidate, index) =>
             new ChanceLawOutcomeV111(
-                $"card-instance:{candidate}:index:{index}", 1L)).ToArray();
+                $"card-instance:{candidate}:index:{index}",
+                weights[index])).ToArray();
         var eventId = CanonicalJson.Sha256(new
         {
             boundary = "native_event.endless_conveyor.random_upgrade",
@@ -1277,8 +1281,8 @@ public static partial class ChanceLawEngineV111
             request.OwnerId, request.Ordinal,
             NativeEndlessConveyorUpgradeConditioningPolicyId,
             conditioningFingerprint,
-            "native-endless-conveyor-ordered-card-upgrade-index-unverified",
-            outcomes);
+            NativeBoundedIndexSourceVerifiedProvenance, outcomes,
+            ChanceLawV111.SourceVerifiedStatus);
     }
 
     public static ChanceLawV111 QueryNativeEndlessConveyorColorlessCard(
@@ -1355,9 +1359,11 @@ public static partial class ChanceLawEngineV111
             request,
             policy = NativeEndlessConveyorColorlessConditioningPolicyId
         });
+        var weights = NativeNextIntGridWeights(request.SupportCount);
         var outcomes = candidates.Select((candidate, index) =>
             new ChanceLawOutcomeV111(
-                $"card-model:{candidate}:index:{index}", 1L)).ToArray();
+                $"card-model:{candidate}:index:{index}",
+                weights[index])).ToArray();
         var eventId = CanonicalJson.Sha256(new
         {
             boundary = "native_event.endless_conveyor.colorless_card",
@@ -1368,8 +1374,8 @@ public static partial class ChanceLawEngineV111
             request.OwnerId, request.Ordinal,
             NativeEndlessConveyorColorlessConditioningPolicyId,
             conditioningFingerprint,
-            "native-endless-conveyor-restricted-colorless-pool-unverified",
-            outcomes);
+            NativeBoundedIndexSourceVerifiedProvenance, outcomes,
+            ChanceLawV111.SourceVerifiedStatus);
     }
 
     private static ChanceLawV111 QueryNativeEndlessConveyorDishContinuation(

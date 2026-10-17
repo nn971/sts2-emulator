@@ -37,12 +37,12 @@ queue order.
 
 | Site | Conditioned support |
 | --- | --- |
-| `shop.merchant.sale_slot.index_draw` | Five character-card slots, equal weight |
+| `shop.merchant.sale_slot.index_draw` | Five character-card slots, with exact Native bounded-index grid masses |
 | `card_rarity.roll.unit_float` | Rare, Uncommon, Common, using the current act-independent rarity offset and Ascension shop thresholds |
-| `shop.merchant.card_model.index_draw` | Ordered native Silent card models matching card type and supplied rarity |
-| `shop.colorless_card_model.index_draw` | Ordered implemented single-player Colorless models; ordinal 0 is Uncommon and ordinal 1 is Rare |
+| `shop.merchant.card_model.index_draw` | Ordered native Silent card models matching card type and supplied rarity, with exact Native bounded-index grid masses |
+| `shop.colorless_card_model.index_draw` | Ordered implemented single-player Colorless models; ordinal 0 is Uncommon and ordinal 1 is Rare, with exact Native bounded-index grid masses |
 | `potion_factory.rarity_roll.unit_float` | Common, Uncommon, Rare at the PotionFactory's 65/25/10 nominal partition |
-| `potion_factory.model_within_rarity.index_draw` | Ordered potion models in the requested tier after supplied exclusions |
+| `potion_factory.model_within_rarity.index_draw` | Ordered potion models in the requested tier after supplied exclusions, with exact Native bounded-index grid masses on the merchant branch |
 | `relic_grab_bag.rarity.unit_float` | Common, Uncommon, Rare at the grab bag's 50/33/17 nominal partition; the third merchant relic offer is forced Shop rarity and has no draw |
 | `shop.merchant.relic_model.index_draw` | Eligible relic identities from the first nonempty fallback tier after the selected rarity, with earlier same-shop selections removed and queue order hidden |
 | `shop.merchant.card_price_modifier.unit_float` | Rounded card price under the 0.95–1.05 modifier; `card_id`, `colorless_offer`, and optional `sale_reprice` identify the source branch |
@@ -50,16 +50,22 @@ queue order.
 | `shop.merchant.relic_price_modifier.unit_float` | Rounded relic price under the 0.85–1.15 modifier for the supplied `relic_id` |
 | `shop.merchant.card_upgrade_roll.unit_float` | One `no_effect` outcome: every source float is mechanically equivalent because the merchant upgrade chance is negative |
 
-The index laws use equal integer weights over the same ordered candidate pools
-used by the generator. Threshold laws use the source-shaped nominal
-basis-point partitions. Price laws map intervals of the nominal modifier
-range through the source rounding rule; they do not model the exact finite
-distribution of native float values. The no-effect upgrade law is degenerate
-because the float cannot change the generated card; its representative is
-only a mechanics-preserving replay value. Every law remains `UNVERIFIED`:
-these structures do not establish original conditional probabilities,
-float-edge calibration, or native cursor parity. Read-only queries do not
-mutate the run or provider state.
+The sale-slot, merchant card-model, Colorless card-model, and merchant
+potion-model index laws count the exact preimages of each result under the
+pinned Native `NextInt(maxExclusive)` transform: a uniform 53-bit `NextDouble`
+grid, binary64 multiplication, then truncation. These laws report
+`SOURCE_VERIFIED` for that transform on the declared support. This does not
+certify that a restricted candidate pool is complete, establish Native
+stream assignment or seed frequencies, or prove seeded cursor parity. The
+hidden relic queue identity law remains `UNVERIFIED` because its queue order
+is private. Threshold laws use the source-shaped nominal basis-point
+partitions. Price laws map intervals of the nominal modifier range through
+the source rounding rule; they do not model the exact finite distribution of
+native float values. The no-effect upgrade law is degenerate because the
+float cannot change the generated card; its representative is only a
+mechanics-preserving replay value. These remaining laws stay `UNVERIFIED`;
+float-edge calibration and native cursor parity remain open. Read-only
+queries do not mutate the run or provider state.
 
 ## Unsupported scope
 

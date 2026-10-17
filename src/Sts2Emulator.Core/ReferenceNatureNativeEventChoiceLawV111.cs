@@ -274,9 +274,11 @@ public static partial class ChanceLawEngineV111
             var infestedPlan =
                 NativeEventInfestedAutomatonCardPickPlanBuilderV111.Build(
                     origin, siteId, ordinal, actionId);
+            var infestedWeights = NativeNextIntGridWeights(
+                infestedPlan.Request.SupportCount);
             var infestedOutcomes = infestedPlan.CandidateCardIds.Select(
-                cardId => new ChanceLawOutcomeV111(
-                    "card:" + cardId, 1L)).ToArray();
+                (cardId, index) => new ChanceLawOutcomeV111(
+                    "card:" + cardId, infestedWeights[index])).ToArray();
             var infestedEventId = CanonicalJson.Sha256(new
             {
                 boundary = "native_event.card_pick",
@@ -288,15 +290,17 @@ public static partial class ChanceLawEngineV111
                 infestedPlan.Request.Ordinal,
                 NativeEventCardPickConditioningPolicyId,
                 infestedPlan.ConditioningFingerprint,
-                "uniform-single-event-card-unverified",
-                infestedOutcomes);
+                NativeBoundedIndexSourceVerifiedProvenance,
+                infestedOutcomes,
+                ChanceLawV111.SourceVerifiedStatus);
         }
         var plan = NativeEventReflectionsChoicePlanBuilderV111.BuildNext(
             origin, siteId, ordinal, priorIndices, actionId);
-        var outcomes = plan.CandidateCardInstanceIds.Select(instanceId =>
+        var weights = NativeNextIntGridWeights(plan.Request.SupportCount);
+        var outcomes = plan.CandidateCardInstanceIds.Select((instanceId, index) =>
             new ChanceLawOutcomeV111(
                 "card_instance:" + instanceId.ToString(
-                    CultureInfo.InvariantCulture), 1L)).ToArray();
+                    CultureInfo.InvariantCulture), weights[index])).ToArray();
         var eventId = CanonicalJson.Sha256(new
         {
             boundary = "native_event.card_pick",
@@ -306,6 +310,7 @@ public static partial class ChanceLawEngineV111
             plan.Request.OperationKind, plan.Request.OwnerId,
             plan.Request.Ordinal, NativeEventCardPickConditioningPolicyId,
             plan.ConditioningFingerprint,
-            "uniform-without-replacement-event-card-unverified", outcomes);
+            NativeBoundedIndexSourceVerifiedProvenance, outcomes,
+            ChanceLawV111.SourceVerifiedStatus);
     }
 }
