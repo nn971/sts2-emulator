@@ -72,7 +72,15 @@ requires that bag to exist, so Native bag construction is outside this
 session. Stochastic consequences of merchant purchases, later Treasure draws,
 exact native float-edge probabilities, and Native cursor parity remain
 unsupported. Legacy Shop-node generation continues to use its existing
-run-action contract.
+run-action contract. The four legacy `shop.merchant.*` rows linked from the
+migration matrix remain separate: three price rows use discrete integer
+percentage bins that approximate the Native unit-float price sites, and the
+legacy card-upgrade row consumes a 10,000-way ticket even though the generated
+merchant card cannot be upgraded. These legacy requests do not enter the
+configured Native merchant session, and the Native no-effect float law does
+not certify their legacy cursor behavior. A ReferenceNature request for those
+legacy boundaries remains unsupported and must fail closed until a matching
+legacy merchant continuation exists.
 
 ## Python binding
 
