@@ -3064,7 +3064,7 @@ internal static class PrototypeAiJsonlServer
                                 ?? throw new ArgumentException(
                                     "Stone of All Time ticket query requires action_id.");
                             law = ChanceLawEngineV111
-                                .QueryNativeStoneOfAllTimeNoEffectIndex(
+                                .QueryStoneOfAllTimeNoEffectIndex(
                                     RequireState(request), siteId, ordinal,
                                     actionId);
                             if (law.SiteId != siteId || law.Ordinal != ordinal)

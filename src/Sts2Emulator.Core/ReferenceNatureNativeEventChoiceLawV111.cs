@@ -267,7 +267,7 @@ public static partial class ChanceLawEngineV111
     private const string NativeStoneOfAllTimeNoEffectProvenance =
         "v0.111.0 Stone of All Time consumes the bounded ticket after the " +
         "push or lift effect and discards the selected index; every source " +
-        "index therefore has the same no_effect mechanic. Native event " +
+        "index therefore has the same no_effect mechanic. RNG provider " +
         "cursor advancement is outside this Chance Law.";
 
     private const string NativeStoneOfAllTimeNoEffectPolicyId =
@@ -479,29 +479,63 @@ public static partial class ChanceLawEngineV111
     /// <summary>
     /// Query the event-local bounded ticket which Stone of All Time discards
     /// after either choice. The event action is a declared conditioning
-    /// branch; the query does not inspect or advance the Native stream.
+    /// branch; the query does not inspect or advance either RNG provider.
     /// </summary>
     public static ChanceLawV111 QueryNativeStoneOfAllTimeNoEffectIndex(
+        RunState origin, string siteId, int ordinal, string actionId)
+        => QueryStoneOfAllTimeNoEffectIndex(
+            origin, siteId, ordinal, actionId);
+
+    public static ChanceLawV111 QueryStoneOfAllTimeNoEffectIndex(
         RunState origin, string siteId, int ordinal, string actionId)
     {
         ArgumentNullException.ThrowIfNull(origin);
         ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
         ArgumentException.ThrowIfNullOrWhiteSpace(actionId);
         if (!NativeEventNoEffectIndexQuerySiteIds.Contains(
-                siteId, StringComparer.Ordinal) || ordinal != 1 ||
+                siteId, StringComparer.Ordinal) || ordinal < 0 ||
             origin.Phase != RunPhase.Event ||
             origin.World is not { Act: 2, Event: { } evt } world ||
-            origin.NativeRunRng is null ||
-            !PrototypeGameEngine.UsesNativeRegionalSystems(world) ||
             evt.EventId != PrototypeNativeStoneOfAllTime.EventId ||
             evt.NativePageIndex != 0 || evt.ChosenChoiceId is not null ||
             evt.ControlledChoice is not null ||
             evt.NativeEventRngProviderMode is not null ||
-            evt.NativeEventRng?.StreamId !=
-                NativeRngV111Contexts.EventStreamId(
-                    PrototypeNativeStoneOfAllTime.NativeRngEventId))
+            origin.ControlledEventRewardChoice is not null)
             throw new InvalidOperationException(
-                "Stone of All Time ticket laws require its configured Native event choice boundary.");
+                "Stone of All Time ticket laws require its active event-choice boundary.");
+
+        var nativeRoute = origin.NativeRunRng is not null &&
+            PrototypeGameEngine.UsesNativeRegionalSystems(world) &&
+            evt.NativeEventRng?.StreamId ==
+                NativeRngV111Contexts.EventStreamId(
+                    PrototypeNativeStoneOfAllTime.NativeRngEventId);
+        var legacyRoute = origin.NativeRunRng is null &&
+            !PrototypeGameEngine.UsesNativeRegionalSystems(world) &&
+            evt.NativeEventRng is null;
+        if (!nativeRoute && !legacyRoute)
+            throw new InvalidOperationException(
+                "Stone of All Time ticket laws require a complete Native or legacy event RNG route.");
+        var streamId = nativeRoute
+            ? NativeRngV111Contexts.EventStreamId(
+                PrototypeNativeStoneOfAllTime.NativeRngEventId)
+            : "event";
+        if (nativeRoute && ordinal != 1)
+            throw new InvalidOperationException(
+                "Native Stone of All Time ticket laws require event-stream ordinal 1 after the entry potion-slot draw.");
+        if (legacyRoute)
+        {
+            var eventStreams = origin.Rng.Streams.Where(stream =>
+                stream.StreamId == streamId).ToArray();
+            if (eventStreams.Length != 1 ||
+                eventStreams[0].Codec != PrototypeRng.Codec ||
+                eventStreams[0].StateBytes.Length != sizeof(ulong))
+                throw new InvalidOperationException(
+                    "Legacy Stone of All Time ticket law requires its retained event RNG stream.");
+            var nextOrdinal = eventStreams[0].CallCount ?? 0;
+            if (nextOrdinal > int.MaxValue || ordinal != (int)nextOrdinal)
+                throw new InvalidOperationException(
+                    "Legacy Stone of All Time ticket law ordinal must match the retained event stream call count.");
+        }
         PrototypeStateInvariants.Validate(origin);
 
         var expectedChoice = siteId switch
@@ -531,18 +565,18 @@ public static partial class ChanceLawEngineV111
                 $"Stone of All Time choice '{expectedChoice}' is not legal in the current state.");
 
         var ownerId = $"event:stone_of_all_time:{expectedChoice}";
-        var streamId = NativeRngV111Contexts.EventStreamId(
-            PrototypeNativeStoneOfAllTime.NativeRngEventId);
         var conditioningFingerprint = CanonicalJson.Sha256(new
         {
-            boundary = "native_event.stone_of_all_time.no_effect_ticket",
+            boundary = "reference_nature.stone_of_all_time.no_effect_ticket",
             eventId = evt.EventId,
             actionId,
+            providerRoute = nativeRoute ? "native" : "legacy",
             sourceOperation = new
             {
                 siteId,
                 streamId,
                 ownerId,
+                ordinal,
                 operationKind = "bounded_integer",
                 boundedCount = 100
             }

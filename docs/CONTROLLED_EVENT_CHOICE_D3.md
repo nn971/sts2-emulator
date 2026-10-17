@@ -70,7 +70,8 @@ The supported event-choice sites are:
   `event.stone_of_all_time.lift_ticket` at the lift action; on the configured
   Native and retained legacy routes, all 100 ticket indices map to one
   `no_effect` outcome and the pending Chance Law is `SOURCE_VERIFIED`; direct
-  pre-choice ticket-law queries remain Native-only
+  pre-choice queries also support both routes, using Native ordinal 1 or the
+  caller's validated retained `event` stream call ordinal
 - `relic_grab_bag.queue_shuffle.swap_index` and
   `relic_grab_bag.rarity.ticket` while acquiring Toy Box through a supported
   controlled event choice
@@ -110,8 +111,9 @@ earlier effects remain in the partial run.
 
 Stone of All Time push and lift sessions accept the configured Native event
 route and the retained legacy event route. Their pending Chance Law collapses
-the discarded ticket to `no_effect`; direct pre-choice ticket-law queries are
-Native-only. Seeded stream parity remains open.
+the discarded ticket to `no_effect`. Direct pre-choice ticket-law queries
+accept both routes; the legacy query binds the current `event` call count as
+its next request ordinal. Seeded stream parity remains open.
 
 Legacy run-start and Shovel action draws use the separate
 [`CONTROLLED_RUN_ACTION_D3.md`](CONTROLLED_RUN_ACTION_D3.md) boundary.

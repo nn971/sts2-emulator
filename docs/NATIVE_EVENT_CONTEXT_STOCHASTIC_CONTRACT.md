@@ -88,12 +88,14 @@ integer fallbacks and adjacent unsupported source alternatives remain
 `UNVERIFIED`.
 
 Stone of All Time's `push_ticket` and `lift_ticket` each have a read-only
-one-outcome law at the legal active-event choice boundary. Both tickets are at
-ordinal 1: the entry potion-slot draw owns ordinal 0. The query conditions on
-the requested action and confirms that it is currently legal; all 100 bounded
+one-outcome law at the legal active-event choice boundary. On Native runs both
+tickets are at event-stream ordinal 1 because the entry potion-slot draw owns
+ordinal 0. On the retained legacy route the query binds the caller-supplied
+ordinal to the current `event` stream call count. The query conditions on the
+requested action and confirms that it is currently legal; all 100 bounded
 indices map to `no_effect`. This mapping is `SOURCE_VERIFIED` from the pinned
-resolver, which discards the selected index. The law does not inspect the
-saved Native cursor.
+resolver, which discards the selected index. Neither route's RNG state is
+advanced by the query.
 
 Both Native tickets use the existing atomic controlled event-choice session.
 Lift suspends from the untouched pre-choice state, then replays the ordinary
