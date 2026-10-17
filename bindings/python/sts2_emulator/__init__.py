@@ -50,12 +50,22 @@ class State:
         return ControlledEventChoice.from_wire(self.session, result)
 
     def resume_controlled_event_choice(self):
-        """Inspect a pending boundary restored from an exact run snapshot."""
+        """Inspect a pending event or event-reward boundary from a snapshot."""
         if self.session.capabilities.get("controlledEventChoiceSchemaId") != (
                 "sts2-v111-controlled-event-choice-v1"):
             raise EmulatorError("Emulator does not expose controlled event choices")
         result = self.session.call(
             "controlled_event_inspect", state_handle=self.handle)
+        return ControlledEventChoice.from_wire(self.session, result)
+
+    def advance_controlled_event_reward(self, action_id: str):
+        """Apply one legal event-reward action under controlled chance."""
+        if self.session.capabilities.get("controlledEventChoiceSchemaId") != (
+                "sts2-v111-controlled-event-choice-v1"):
+            raise EmulatorError("Emulator does not expose controlled event choices")
+        result = self.session.call(
+            "controlled_event_advance", state_handle=self.handle,
+            action_id=action_id)
         return ControlledEventChoice.from_wire(self.session, result)
 
 
@@ -107,7 +117,7 @@ class ControlledEventChoice:
             self.session, result)
 
     def save_snapshot(self):
-        """Return a hidden exact run snapshot, including its saved effect frame."""
+        """Return a hidden exact snapshot, including its pending event frame."""
         return self.session.call("save_snapshot", state_handle=self.handle)["snapshot"]
 
     def release(self):

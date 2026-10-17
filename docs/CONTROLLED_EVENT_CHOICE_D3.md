@@ -33,17 +33,22 @@ The supported event-choice sites are:
   constructing selected event card offers
 - `run.random_pool_distinct.shuffle_swap_index` while constructing selected
   event relic and card offers
+- `event.reward.random_modifier_curse.index_draw` after a supported event's
+  post-reward modifier-curse offer is completed
 - `event.potion.fill_empty_slots.model`
 - `potion.uncommon_model.index_draw` for the Potion Courier event choice
 - `relic.unowned_random_selection.index_draw` for eligible event options
 
 Any other random site reached by the event option continues to fail closed.
-Native regional potion routes, Shovel's relic acquisition, post-reward curse
-generation, other custom event reward effects, source-pool differences,
-native stream ownership and reference probabilities remain outside this
-boundary. For supported multi-draw reward effects, the frame re-enters only
-the current effect from its saved start and injects that effect's saved
-decision prefix; all completed earlier effects remain in the partial run.
+Native regional potion routes, Shovel's relic acquisition, post-reward random
+generation outside the modifier-curse site, other custom event reward effects,
+source-pool differences, native stream ownership and reference probabilities
+remain outside this boundary. The post-reward modifier-curse draw has a
+separate saved reward frame. It preserves completed player reward choices and
+extends the original event-choice transcript when resumed. For supported
+multi-draw event effects, the frame re-enters only the current effect from its
+saved start and injects that effect's saved decision prefix; all completed
+earlier effects remain in the partial run.
 
 ## JSONL and Python
 
@@ -53,18 +58,21 @@ ordinary run `state_handle`:
 | Operation | Inputs | Result |
 | --- | --- | --- |
 | `controlled_event_begin` | `state_handle`, `choice_id` | Child run handle, pending request and labels, transcript, legal actions |
+| `controlled_event_advance` | completed controlled event-choice `state_handle`, legal `action_id` | Apply one reward action under the controlled guard; suspend if it reaches the post-reward modifier-curse draw |
 | `controlled_event_resolve` | pending `state_handle`, `selected_index` | Child run handle with the next request or committed option |
 | `controlled_event_inspect` | pending `state_handle` | Restore the Nature-facing request and legal outcome actions after loading a snapshot |
 | `controlled_event_enumerate` | pending `state_handle`, current `fingerprint`, optional `maximum_outcomes` | Independent child run handle for each outcome of this one request |
 
-The exact continuation frame is part of the ordinary run snapshot. A pending
-continuation exposes only `choose_controlled_event_outcome` actions through
+The exact event-effect or event-reward continuation frame is part of the
+ordinary run snapshot. A pending continuation exposes only
+`choose_controlled_event_outcome` actions through
 the explicit controller response. Player-facing observations hide those
 Nature actions, and the ordinary step endpoint cannot submit them. Other
 actions, including out-of-combat potions, are rejected until it resumes. The
 Python binding exposes `State.begin_controlled_event_choice()`,
-`State.resume_controlled_event_choice()` after snapshot restore, and
-`ControlledEventChoice.resolve()`. The optional one-boundary enumerator is
+`State.resume_controlled_event_choice()` after snapshot restore,
+`State.advance_controlled_event_reward()` and `ControlledEventChoice.resolve()`.
+The optional one-boundary enumerator is
 advertised as `sts2-v111-controlled-event-enumeration-v1`; its cap is 256
 outcomes. Each branch resolves only the current request, leaving any next
 request pending in that child.

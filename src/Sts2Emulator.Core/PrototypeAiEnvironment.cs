@@ -370,6 +370,7 @@ public sealed class PrototypeAiEnvironment
     {
         var actions = _engine.GetLegalActions(state);
         return state.World?.Event?.ControlledChoice is null
+            && state.ControlledEventRewardChoice is null
             ? actions
             : Array.Empty<GameAction>();
     }

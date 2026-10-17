@@ -95,7 +95,11 @@ public sealed record RunState(
     RngBundle? NativeRunRng = null,
     [property: System.Text.Json.Serialization.JsonIgnore(
         Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
-    ControlledEventChoiceTraceV111[]? ControlledEventChoiceHistory = null)
+    ControlledEventChoiceTraceV111[]? ControlledEventChoiceHistory = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    PrototypeControlledEventRewardChoiceContinuationV111?
+        ControlledEventRewardChoice = null)
 {
     public RunState Fork() => this with
     {
@@ -104,6 +108,7 @@ public sealed record RunState(
         NativeRunRng = NativeRunRng?.Fork(),
         ControlledEventChoiceHistory = ControlledEventChoiceHistory?.Select(
             trace => trace.Fork()).ToArray(),
+        ControlledEventRewardChoice = ControlledEventRewardChoice?.Fork(),
         ExtensionState = ExtensionState.Clone(),
         World = World?.Fork(),
         Configuration = Configuration?.Fork()

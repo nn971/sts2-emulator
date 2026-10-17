@@ -624,8 +624,14 @@ internal static class PrototypeAiJsonlServer
             RunState state, string handle, string? parent)
         {
             var continuation = state.World?.Event?.ControlledChoice;
+            var rewardContinuation = state.ControlledEventRewardChoice;
+            if (continuation is not null && rewardContinuation is not null)
+                throw new InvalidDataException(
+                    "A state cannot suspend both an event effect and its reward.");
+            var isPending = continuation is not null
+                || rewardContinuation is not null;
             var frame = environment.Observe(state);
-            var actions = continuation is null
+            var actions = !isPending
                 ? frame.LegalActions
                 : new PrototypeGameEngine().GetLegalActions(state)
                     .Select(action => new PrototypeAiAction(
@@ -634,17 +640,29 @@ internal static class PrototypeAiJsonlServer
                         action.Payload.Clone()))
                     .ToArray();
             var history = state.ControlledEventChoiceHistory;
-            var parentHistoryCount = parent is not null
-                && states.TryGetValue(parent, out var parentState)
-                ? parentState.ControlledEventChoiceHistory?.Length ?? 0
-                : 0;
-            var completedTrace = history is not null
-                && history.Length > parentHistoryCount
-                ? history[^1]
+            RunState? parentState = null;
+            if (parent is not null
+                && states.TryGetValue(parent, out var foundParent))
+                parentState = foundParent;
+            var parentHistory = parentState?.ControlledEventChoiceHistory;
+            var changedTraceIndex = -1;
+            if (history is not null)
+            {
+                for (var index = 0; index < history.Length; index++)
+                {
+                    if (parentHistory is null
+                        || index >= parentHistory.Length
+                        || CanonicalJson.Sha256(history[index]) !=
+                            CanonicalJson.Sha256(parentHistory[index]))
+                        changedTraceIndex = index;
+                }
+            }
+            var completedTrace = changedTraceIndex >= 0
+                ? history![changedTraceIndex]
                 : null;
-            object? transcript = continuation is null
-                ? completedTrace
-                : new
+            object? transcript = null;
+            if (continuation is not null)
+                transcript = new
                 {
                     eventId = continuation.EventId,
                     choiceId = continuation.ChoiceId,
@@ -652,15 +670,19 @@ internal static class PrototypeAiJsonlServer
                     candidateLabels = continuation.DecisionCandidateLabels,
                     probabilityStatus = "UNVERIFIED"
                 };
-            return new
-            {
-                ok = true,
-                schemaId = ControlledEventChoiceEngineV111.SchemaId,
-                stateHandle = handle,
-                parent,
-                fingerprint = CanonicalJson.Sha256(state),
-                boundary = continuation is null ? "committed" : "nature",
-                pending = continuation is null ? null : new
+            if (rewardContinuation is not null)
+                transcript = new
+                {
+                    eventId = rewardContinuation.EventId,
+                    choiceId = rewardContinuation.ChoiceId,
+                    decisions = rewardContinuation.Decisions,
+                    candidateLabels = rewardContinuation.DecisionCandidateLabels,
+                    probabilityStatus = "UNVERIFIED"
+                };
+            if (!isPending)
+                transcript = completedTrace;
+            object? pending = continuation is not null
+                ? (object)new
                 {
                     kind = "event_random_choice",
                     eventId = continuation.EventId,
@@ -668,7 +690,27 @@ internal static class PrototypeAiJsonlServer
                     request = continuation.PendingRequest,
                     candidateLabels = continuation.PendingCandidateLabels,
                     probabilityStatus = "UNVERIFIED"
-                },
+                }
+                : rewardContinuation is not null
+                    ? (object)new
+                    {
+                        kind = "event_reward_random_choice",
+                        eventId = rewardContinuation.EventId,
+                        choiceId = rewardContinuation.ChoiceId,
+                        request = rewardContinuation.PendingRequest,
+                        candidateLabels = rewardContinuation.PendingCandidateLabels,
+                        probabilityStatus = "UNVERIFIED"
+                    }
+                    : null;
+            return new
+            {
+                ok = true,
+                schemaId = ControlledEventChoiceEngineV111.SchemaId,
+                stateHandle = handle,
+                parent,
+                fingerprint = CanonicalJson.Sha256(state),
+                boundary = isPending ? "nature" : "committed",
+                pending,
                 transcript,
                 actions = actions.Select(ActionWire).ToArray()
             };
@@ -791,7 +833,7 @@ internal static class PrototypeAiJsonlServer
                             controlledEventChoiceSchemaId =
                                 ControlledEventChoiceEngineV111.SchemaId,
                             controlledEventChoiceScope =
-                                "saved-event-effect-frame",
+                                "saved-event-effect-and-event-reward-frame",
                             controlledEventChoiceEnumerationSchemaId =
                                 ControlledEventChoiceEnumeratorV111.SchemaId,
                             controlledEventChoiceEnumerationMaximumOutcomes =
@@ -808,6 +850,7 @@ internal static class PrototypeAiJsonlServer
                                 "reward.card_rarity.ticket",
                                 "reward.card_model.index_draw",
                                 "run.random_pool_distinct.shuffle_swap_index",
+                                "event.reward.random_modifier_curse.index_draw",
                                 "potion.uncommon_model.index_draw",
                                 "relic.unowned_random_selection.index_draw"
                             },
@@ -1780,13 +1823,36 @@ internal static class PrototypeAiJsonlServer
                         break;
                     }
 
+                    case "controlled_event_advance":
+                    {
+                        var parentHandle = RequiredString(request, "state_handle");
+                        var source = RequireState(request);
+                        var actionId = RequiredString(request, "action_id");
+                        var frame = environment.Observe(source);
+                        var action = frame.LegalActions.SingleOrDefault(candidate =>
+                            StringComparer.Ordinal.Equals(
+                                candidate.ActionId, actionId))
+                            ?? throw new InvalidOperationException(
+                                $"Action '{actionId}' is not a player-legal reward action in state '{parentHandle}'.");
+                        var next = ControlledEventChoiceEngineV111.Advance(
+                            source,
+                            GameAction.Create(action.Kind, action.Payload));
+                        var handle = Store(next, parentHandle);
+                        Write(ControlledEventChoiceResult(
+                            next, handle, parentHandle));
+                        break;
+                    }
+
                     case "controlled_event_inspect":
                     {
                         var handle = RequiredString(request, "state_handle");
                         var state = RequireState(request);
                         if (state.World?.Event?.ControlledChoice is null)
-                            throw new InvalidOperationException(
-                                "State has no pending controlled event choice.");
+                        {
+                            if (state.ControlledEventRewardChoice is null)
+                                throw new InvalidOperationException(
+                                    "State has no pending controlled event choice.");
+                        }
                         Write(ControlledEventChoiceResult(state, handle, null));
                         break;
                     }

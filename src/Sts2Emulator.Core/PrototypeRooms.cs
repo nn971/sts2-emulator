@@ -4453,6 +4453,9 @@ public sealed partial class PrototypeGameEngine
 
     private static RunState StepReward(RunState state, GameAction action)
     {
+        if (state.ControlledEventRewardChoice is { } controlledRewardChoice)
+            return ResumeControlledEventRewardChoice(
+                state, action, controlledRewardChoice);
         if (action.Kind is "sacrifice_reward_card" or "sacrifice_reward_card_group")
             return SacrificePaelCardReward(state, action);
         if (action.Kind == "reroll_reward_card")
@@ -5014,6 +5017,69 @@ public sealed partial class PrototypeGameEngine
         };
     }
 
+    private static RunState ResumeControlledEventRewardChoice(
+        RunState state,
+        GameAction action,
+        PrototypeControlledEventRewardChoiceContinuationV111 continuation)
+    {
+        if (action.Kind != "choose_controlled_event_outcome")
+            throw new InvalidOperationException(
+                "A suspended controlled event reward requires a Nature outcome.");
+        continuation.Validate();
+        var payload = action.ReadPayload<ChooseControlledEventOutcomePayload>();
+        var request = continuation.PendingRequest;
+        if (payload.SelectedIndex < 0
+            || payload.SelectedIndex >= request.SupportCount)
+            throw new InvalidOperationException(
+                "Selected event reward outcome is outside the pending ordered support.");
+
+        var selectedDecision = new RandomIndexDecisionV111(
+            request, payload.SelectedIndex, "controlled-v111");
+        selectedDecision.Validate();
+        var decisions = continuation.Decisions.Append(selectedDecision).ToArray();
+        var decisionCandidateLabels = continuation.DecisionCandidateLabels
+            .Append((string[])continuation.PendingCandidateLabels.Clone())
+            .ToArray();
+        var resumeFrame = continuation with
+        {
+            Decisions = decisions,
+            DecisionCandidateLabels = decisionCandidateLabels
+        };
+        var partialState = continuation.PartialState.Fork() with
+        {
+            DecisionIndex = state.DecisionIndex
+        };
+
+        RunState result;
+        using (var replay = ControlledEventChoiceReplayV111.Begin(
+            decisions.Skip(continuation.DecisionPrefixLength).ToArray(),
+            continuation.PrefixOrdinalCounts()))
+        {
+            result = CompleteReward(partialState, resumeFrame);
+            replay.EnsureConsumed();
+        }
+        if (result.ControlledEventRewardChoice is not null)
+            return result;
+
+        var history = result.ControlledEventChoiceHistory
+            ?? throw new InvalidDataException(
+                "Completed controlled event reward lost its event-choice history.");
+        if (history.Length == 0
+            || history[^1].EventId != continuation.EventId
+            || history[^1].ChoiceId != continuation.ChoiceId)
+            throw new InvalidDataException(
+                "Completed controlled event reward no longer matches its event-choice trace.");
+        var completedTrace = history[^1] with
+        {
+            Decisions = decisions,
+            CandidateLabels = decisionCandidateLabels
+        };
+        completedTrace.Validate();
+        var nextHistory = (ControlledEventChoiceTraceV111[])history.Clone();
+        nextHistory[^1] = completedTrace;
+        return result with { ControlledEventChoiceHistory = nextHistory };
+    }
+
     private static RunState EnterReward(RunState state)
     {
         var world = RequireWorld(state);
@@ -5408,7 +5474,9 @@ public sealed partial class PrototypeGameEngine
         };
     }
 
-    private static RunState CompleteReward(RunState state)
+    private static RunState CompleteReward(
+        RunState state,
+        PrototypeControlledEventRewardChoiceContinuationV111? resume = null)
     {
         var world = RequireWorld(state);
         var reward = world.Reward
@@ -5465,13 +5533,43 @@ public sealed partial class PrototypeGameEngine
             {
                 var cursePool = NativeGloryAncientsV111
                     .ModifierGeneratedCurseIds;
-                var curseId = cursePool[ResolveLegacyRandomIndex(
-                    state.Rng,
-                    "event.reward.random_modifier_curse.index_draw",
-                    "event:" + world.Event.EventId + ":pool:"
-                        + CanonicalJson.Sha256(cursePool),
-                    Enumerable.Range(0, cursePool.Length),
-                    streamId: "reward")];
+                string curseId;
+                try
+                {
+                    using (ControlledEventChoiceReplayV111.DescribeCandidates(
+                        cursePool))
+                    {
+                        curseId = cursePool[ResolveLegacyRandomIndex(
+                            state.Rng,
+                            "event.reward.random_modifier_curse.index_draw",
+                            "event:" + world.Event.EventId + ":pool:"
+                                + CanonicalJson.Sha256(cursePool),
+                            Enumerable.Range(0, cursePool.Length),
+                            streamId: "reward")];
+                    }
+                }
+                catch (ControlledEventChoiceChanceRequiredException exception)
+                {
+                    if (!ControlledChanceGuardV111.Active
+                        || !ControlledEventChoiceReplayV111.IsActive)
+                        throw;
+                    var continuation = resume is null
+                        ? CreateControlledEventRewardContinuation(
+                            state, world.Event, exception)
+                        : resume with
+                        {
+                            PartialState = state,
+                            PendingRequest = exception.Request,
+                            PendingCandidateLabels = exception.CandidateLabels
+                                ?? throw new InvalidDataException(
+                                    "Controlled event reward omitted its candidate labels.")
+                        };
+                    continuation.Validate();
+                    return state with
+                    {
+                        ControlledEventRewardChoice = continuation
+                    };
+                }
                 player = AppendCard(player, nextId++, curseId, state.Rng);
             }
             else if (reward.AddCardAfterReward is { } additionalCardId)
@@ -5515,6 +5613,38 @@ public sealed partial class PrototypeGameEngine
         }
 
         return state with { Phase = RunPhase.ActTransition };
+    }
+
+    private static PrototypeControlledEventRewardChoiceContinuationV111
+        CreateControlledEventRewardContinuation(
+            RunState state,
+            EventState eventState,
+            ControlledEventChoiceChanceRequiredException exception)
+    {
+        var choiceId = eventState.ChosenChoiceId
+            ?? throw new InvalidDataException(
+                "Controlled event reward has no committed event option.");
+        var history = state.ControlledEventChoiceHistory;
+        var trace = history is { Length: > 0 } ? history[^1] : null;
+        if (trace is null
+            || trace.EventId != eventState.EventId
+            || trace.ChoiceId != choiceId)
+            throw new InvalidDataException(
+                "Controlled event reward has no matching committed event-choice trace.");
+        return new PrototypeControlledEventRewardChoiceContinuationV111(
+            state,
+            eventState.EventId,
+            choiceId,
+            trace.Decisions.Length,
+            trace.Decisions.Select(
+                PrototypeControlledEventChoiceContinuationV111.CloneDecision)
+                .ToArray(),
+            trace.CandidateLabels.Select(labels =>
+                (string[])labels.Clone()).ToArray(),
+            exception.Request,
+            exception.CandidateLabels
+                ?? throw new InvalidDataException(
+                    "Controlled event reward omitted its candidate labels."));
     }
 
     private static RunState CompleteRoomToMap(RunState state)

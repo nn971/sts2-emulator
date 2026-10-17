@@ -143,6 +143,28 @@ public static class PrototypeStateInvariants
                     "Suspended controlled event choice conflicts with committed event state.");
         }
 
+        if (state.ControlledEventRewardChoice is { } controlledEventRewardChoice)
+        {
+            controlledEventRewardChoice.Validate();
+            var rewardEvent = world.Event;
+            var reward = world.Reward;
+            if (world.Event?.ControlledChoice is not null
+                || state.Phase != RunPhase.Reward
+                || rewardEvent is null
+                || rewardEvent.EventId != controlledEventRewardChoice.EventId
+                || rewardEvent.ChosenChoiceId !=
+                    controlledEventRewardChoice.ChoiceId
+                || reward?.SourceRoom !=
+                    "Event:" + controlledEventRewardChoice.EventId
+                || reward?.AddRandomCurseAfterReward != true
+                || CanonicalJson.Sha256(state with
+                    { ControlledEventRewardChoice = null }) !=
+                    CanonicalJson.Sha256(
+                        controlledEventRewardChoice.PartialState))
+                throw new InvalidOperationException(
+                    "Suspended controlled event reward conflicts with committed reward state.");
+        }
+
         if (!StringComparer.Ordinal.Equals(world.RulesetId, state.Configuration?.RulesetId ?? PrototypeContent.RulesetId))
         {
             throw new InvalidOperationException($"Unexpected prototype ruleset '{world.RulesetId}'.");

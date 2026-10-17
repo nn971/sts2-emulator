@@ -6,7 +6,7 @@ namespace Sts2Emulator.Core;
 /// <summary>
 /// Opt-in adapter for controlled stochastic event options. Ordinary engine
 /// steps retain the legacy random profile; callers use this adapter to begin
-/// or resume a saved event-effect continuation.
+/// or resume saved event-effect and event-reward continuations.
 /// </summary>
 public static class ControlledEventChoiceEngineV111
 {
@@ -34,14 +34,74 @@ public static class ControlledEventChoiceEngineV111
     public static RunState Resolve(RunState source, int selectedIndex)
     {
         ArgumentNullException.ThrowIfNull(source);
-        if (source.Phase != RunPhase.Event
-            || source.World?.Event?.ControlledChoice is null)
+        if (source.World?.Event?.ControlledChoice is null
+            && source.ControlledEventRewardChoice is null)
             throw new InvalidOperationException(
                 "No controlled event outcome is pending.");
         return Step(source, GameAction.Create(
             "choose_controlled_event_outcome",
             new ChooseControlledEventOutcomePayload(selectedIndex)));
     }
+
+    public static RunState Advance(RunState source, GameAction action)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(action);
+        PrototypeStateInvariants.Validate(source);
+        var eventState = source.World?.Event;
+        var reward = source.World?.Reward;
+        var trace = source.ControlledEventChoiceHistory is { Length: > 0 } history
+            ? history[^1]
+            : null;
+        if (source.Phase != RunPhase.Reward
+            || source.ControlledEventRewardChoice is not null
+            || eventState is null
+            || eventState.ControlledChoice is not null
+            || eventState.ChosenChoiceId is not { } choiceId
+            || reward is null
+            || reward.SourceRoom != "Event:" + eventState.EventId
+            || !reward.AddRandomCurseAfterReward
+            || !PrototypeGameEngine.IsControlledEventChoice(
+                eventState.EventId, choiceId)
+            || trace is null
+            || trace.EventId != eventState.EventId
+            || trace.ChoiceId != choiceId)
+            throw new InvalidOperationException(
+                "Controlled event-reward advance requires a completed supported event choice with a pending reward.");
+
+        var engine = new PrototypeGameEngine();
+        var actionId = PrototypeAiEnvironment.StableActionId(action);
+        if (!engine.GetLegalActions(source).Any(candidate =>
+                StringComparer.Ordinal.Equals(
+                    PrototypeAiEnvironment.StableActionId(candidate), actionId)))
+            throw new InvalidOperationException(
+                "Controlled event-reward advance requires a current legal reward action.");
+
+        try
+        {
+            using var guard = ControlledChanceGuardV111.Enter();
+            using var replay = ControlledEventChoiceReplayV111.Begin(
+                [], OrdinalCounts(trace.Decisions));
+            var result = engine.Step(source, action).State;
+            replay.EnsureConsumed();
+            PrototypeStateInvariants.Validate(result);
+            return result;
+        }
+        catch (ControlledEventChoiceChanceRequiredException exception)
+        {
+            throw new NotSupportedException(
+                "Controlled event chance site '" + exception.Request.SiteId +
+                "' (operation '" + exception.Request.OperationKind +
+                "') is outside the saved event-reward continuation.");
+        }
+    }
+
+    private static IReadOnlyDictionary<string, int> OrdinalCounts(
+        RandomIndexDecisionV111[] decisions) => decisions
+        .GroupBy(decision => decision.Request.StreamId,
+            StringComparer.Ordinal)
+        .ToDictionary(group => group.Key, group => group.Count(),
+            StringComparer.Ordinal);
 
     private static RunState Step(RunState source, GameAction action)
     {
@@ -233,6 +293,115 @@ public sealed record PrototypeControlledEventChoiceContinuationV111(
     }
 }
 
+/// <summary>
+/// Suspended post-reward event chance. The partial state retains all player
+/// reward decisions; the decision prefix identifies the already committed
+/// event-effect outcomes that belong to the same event-choice transcript.
+/// </summary>
+public sealed record PrototypeControlledEventRewardChoiceContinuationV111(
+    RunState PartialState,
+    string EventId,
+    string ChoiceId,
+    int DecisionPrefixLength,
+    RandomIndexDecisionV111[] Decisions,
+    string[][] DecisionCandidateLabels,
+    RandomIndexRequestV111 PendingRequest,
+    string[] PendingCandidateLabels)
+{
+    public PrototypeControlledEventRewardChoiceContinuationV111 Fork() => this with
+    {
+        PartialState = PartialState.Fork(),
+        Decisions = Decisions.Select(
+            PrototypeControlledEventChoiceContinuationV111.CloneDecision)
+            .ToArray(),
+        DecisionCandidateLabels = DecisionCandidateLabels.Select(labels =>
+            (string[])labels.Clone()).ToArray(),
+        PendingRequest =
+            PrototypeControlledEventChoiceContinuationV111.CloneRequest(
+                PendingRequest),
+        PendingCandidateLabels = (string[])PendingCandidateLabels.Clone()
+    };
+
+    public void Validate()
+    {
+        if (PartialState is null || Decisions is null
+            || DecisionCandidateLabels is null
+            || DecisionCandidateLabels.Length != Decisions.Length
+            || string.IsNullOrWhiteSpace(EventId)
+            || string.IsNullOrWhiteSpace(ChoiceId)
+            || DecisionPrefixLength < 1
+            || DecisionPrefixLength > Decisions.Length
+            || PendingRequest is null
+            || PendingCandidateLabels is null)
+            throw new InvalidDataException(
+                "Malformed controlled event-reward continuation.");
+
+        var world = PartialState.World;
+        var eventState = world?.Event;
+        var reward = world?.Reward;
+        if (PartialState.Phase != RunPhase.Reward
+            || PartialState.ControlledEventRewardChoice is not null
+            || eventState is null
+            || eventState.ControlledChoice is not null
+            || eventState.EventId != EventId
+            || eventState.ChosenChoiceId != ChoiceId
+            || reward?.SourceRoom != "Event:" + EventId
+            || !reward.AddRandomCurseAfterReward
+            || !PrototypeGameEngine.IsControlledEventChoice(EventId, ChoiceId))
+            throw new InvalidDataException(
+                "Controlled event-reward frame is outside its post-reward boundary.");
+
+        var history = PartialState.ControlledEventChoiceHistory;
+        var trace = history is { Length: > 0 } ? history[^1] : null;
+        if (trace is null
+            || trace.EventId != EventId
+            || trace.ChoiceId != ChoiceId
+            || trace.Decisions.Length != DecisionPrefixLength
+            || CanonicalJson.Sha256(trace.Decisions) !=
+                CanonicalJson.Sha256(Decisions.Take(DecisionPrefixLength).ToArray())
+            || CanonicalJson.Sha256(trace.CandidateLabels) !=
+                CanonicalJson.Sha256(DecisionCandidateLabels
+                    .Take(DecisionPrefixLength).ToArray()))
+            throw new InvalidDataException(
+                "Controlled event-reward frame has no matching committed event-choice prefix.");
+
+        PendingRequest.Validate();
+        if (PendingRequest.SiteId !=
+                "event.reward.random_modifier_curse.index_draw"
+            || PendingCandidateLabels.Length != PendingRequest.SupportCount
+            || PendingCandidateLabels.Any(string.IsNullOrWhiteSpace))
+            throw new InvalidDataException(
+                "Controlled event-reward candidate labels do not match their ordered support.");
+
+        for (var index = 0; index < Decisions.Length; index++)
+        {
+            var decision = Decisions[index];
+            decision.Validate();
+            if (decision.ProviderMode != "controlled-v111"
+                || decision.NativeCursorBefore is not null
+                || decision.NativeCursorAfter is not null
+                || !ControlledEventChoiceReplayV111.IsEventChoiceSite(
+                    decision.Request.SiteId)
+                || DecisionCandidateLabels[index] is null
+                || DecisionCandidateLabels[index].Length !=
+                    decision.Request.SupportCount
+                || DecisionCandidateLabels[index].Any(
+                    string.IsNullOrWhiteSpace))
+                throw new InvalidDataException(
+                    "Controlled event-reward prefix contains an invalid outcome.");
+        }
+
+        PrototypeStateInvariants.Validate(PartialState);
+    }
+
+    internal IReadOnlyDictionary<string, int> PrefixOrdinalCounts() =>
+        Decisions.Take(DecisionPrefixLength)
+            .GroupBy(decision => decision.Request.StreamId,
+                StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.Count(),
+                StringComparer.Ordinal);
+}
+
 internal sealed class ControlledEventChoiceChanceRequiredException(
     RandomIndexRequestV111 request,
     string[]? candidateLabels) : Exception(
@@ -384,6 +553,7 @@ internal sealed class ControlledEventChoiceReplayV111 : IDisposable
         "reward.card_rarity.ticket" or
         "reward.card_model.index_draw" or
         "run.random_pool_distinct.shuffle_swap_index" or
+        "event.reward.random_modifier_curse.index_draw" or
         "potion.uncommon_model.index_draw" or
         "relic.unowned_random_selection.index_draw";
 }

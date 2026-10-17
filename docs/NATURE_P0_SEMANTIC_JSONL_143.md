@@ -28,7 +28,7 @@ non-Nature RNG parity remain **UNVERIFIED**.
 - `semanticChanceSchemaId = sts2-v111-semantic-playable-p0-v1`.
 - `controlledEventChoiceSchemaId =
   sts2-v111-controlled-event-choice-v1`, a separate whole-run event-choice
-  continuation with its own `controlled_event_begin` and
+  continuation with `controlled_event_begin`, `controlled_event_advance` and
   `controlled_event_resolve` operations. It uses regular run-state handles,
   exposes the current ordered support labels, and retains controlled outcome
   transcripts in exact snapshots. See the [D3 event continuation

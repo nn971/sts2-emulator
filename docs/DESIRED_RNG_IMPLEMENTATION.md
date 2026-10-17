@@ -67,11 +67,14 @@ replaying earlier effects. The D4 JSONL/Python adapter exposes this through
 `controlled_event_begin` and `controlled_event_resolve`; candidate labels and
 the completed controlled transcript are serialized with the run. This slice
 covers random upgrades, supported random card/potion/relic event rewards,
-selected multi-draw custom card and relic offers, and empty-slot potion
-filling. A suspended frame resumes the current effect with its saved draw
-prefix while retaining earlier completed effects. It does not establish native
-v0.111.0 stream ownership, source pool parity or reference probabilities;
-other event, reward and relic continuations remain separate gaps.
+selected multi-draw custom card and relic offers, empty-slot potion filling,
+and the post-reward modifier-curse draw through a separate event-reward frame.
+Event reward actions advance through `controlled_event_advance`; a suspended
+frame preserves completed reward choices and extends the original event trace.
+Event-effect frames resume the current effect with its saved draw prefix while
+retaining earlier completed effects. This does not establish native v0.111.0
+stream ownership, source pool parity or reference probabilities; other event,
+reward and relic continuations remain separate gaps.
 Physical draw-pile moves now keep provider state synchronized across exact
 insertions, removals, transformations, and zone transfers. Native hand-return
 shuffles commit the resulting top-first order; controlled Nature also resumes

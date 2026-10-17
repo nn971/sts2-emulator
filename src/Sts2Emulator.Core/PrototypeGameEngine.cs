@@ -5,6 +5,15 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
     public IReadOnlyList<GameAction> GetLegalActions(RunState state)
     {
         RunConfiguration.ValidateState(state);
+        if (state.ControlledEventRewardChoice is { } rewardChoice)
+        {
+            var request = rewardChoice.PendingRequest;
+            return Enumerable.Range(0, request.SupportCount)
+                .Select(index => GameAction.Create(
+                    "choose_controlled_event_outcome",
+                    new ChooseControlledEventOutcomePayload(index)))
+                .ToArray();
+        }
         var phaseActions = state.Phase switch
         {
             RunPhase.RunStart => [GameAction.Empty("start_run")],
@@ -23,7 +32,8 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             or RunPhase.Combat
             or RunPhase.Terminal
             || state.Phase == RunPhase.Event
-                && state.World?.Event?.ControlledChoice is not null)
+                && state.World?.Event?.ControlledChoice is not null
+            || state.ControlledEventRewardChoice is not null)
         {
             return phaseActions;
         }
@@ -36,8 +46,9 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
     public TransitionResult Step(RunState state, GameAction action)
     {
         RunConfiguration.ValidateState(state);
-        if (state.Phase == RunPhase.Event
-            && state.World?.Event?.ControlledChoice is not null
+        if ((state.Phase == RunPhase.Event
+                && state.World?.Event?.ControlledChoice is not null
+            || state.ControlledEventRewardChoice is not null)
             && (!ControlledChanceGuardV111.Active
                 || action.Kind != "choose_controlled_event_outcome"))
         {
