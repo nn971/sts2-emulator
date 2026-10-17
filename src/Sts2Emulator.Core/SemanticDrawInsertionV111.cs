@@ -28,20 +28,26 @@ public sealed record SemanticDrawInsertionEventV111(
     public void Validate()
     {
         Request.Validate();
-        var supportedSite = Request.SiteId ==
-                "combat.draw_pile.random_insert_index" &&
-                (Request.OwnerId == "prototype.combat" ||
-                 IsNativePositionOwner(Request.OwnerId)) ||
+        var standardSite = Request.SiteId ==
+            "combat.draw_pile.random_insert_index";
+        var standardOwnerMatchesStream =
+            Request.StreamId == "prototype.combat"
+                ? Request.OwnerId == "prototype.combat"
+                : IsNativePositionOwner(Request.OwnerId);
+        var supportedSite = standardSite &&
+                standardOwnerMatchesStream ||
             Request.SiteId ==
                 "combat.relic.after_shuffle.generated_card.random_insert_index" &&
                 Request.OwnerId.StartsWith("relic:", StringComparison.Ordinal) &&
                 Request.OwnerId.Contains(":application:",
-                    StringComparison.Ordinal) ||
+                    StringComparison.Ordinal) &&
+                HasInsertedCardAndPile(Request.OwnerId) ||
             Request.SiteId ==
                 PrototypeControlledDrawInsertionV111.PersonalHiveDazedSiteId &&
                 Request.OwnerId.StartsWith("enemy:", StringComparison.Ordinal) &&
                 Request.OwnerId.Contains(":power:personal_hive:source:",
                     StringComparison.Ordinal) &&
+                HasInsertedCardAndPile(Request.OwnerId) &&
                 GeneratedCardModelId == "proto.status.dazed";
         if (SchemaId != EventSchemaId ||
             string.IsNullOrWhiteSpace(BoundaryFingerprint) ||
@@ -78,6 +84,9 @@ public sealed record SemanticDrawInsertionEventV111(
     private static bool IsNativePositionOwner(string ownerId) =>
         (ownerId.StartsWith("card_instance:", StringComparison.Ordinal) ||
          ownerId.StartsWith("effect:", StringComparison.Ordinal)) &&
+        HasInsertedCardAndPile(ownerId);
+
+    private static bool HasInsertedCardAndPile(string ownerId) =>
         ownerId.Contains(":card:", StringComparison.Ordinal) &&
         ownerId.Contains(":draw_pile:", StringComparison.Ordinal);
 }
