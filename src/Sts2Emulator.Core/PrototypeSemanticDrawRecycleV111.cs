@@ -3,6 +3,43 @@ namespace Sts2Emulator.Core;
 public sealed partial class PrototypeGameEngine
 {
     /// <summary>
+    /// Commits the legacy non-semantic recycle used by ordinary draws and
+    /// top autoplay. Both callers share the same shuffle/post-hook and zone
+    /// transfer; their continuation policies remain separate.
+    /// </summary>
+    private static CombatState CommitLegacyDrawPileRecycle(
+        CombatState combat,
+        IReadOnlyList<long> currentPhysicalDrawPile,
+        IReadOnlyList<long> currentDiscardPile,
+        RngBundle rng)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(currentPhysicalDrawPile);
+        ArgumentNullException.ThrowIfNull(currentDiscardPile);
+        ArgumentNullException.ThrowIfNull(rng);
+        if (combat.SemanticDeck is not null ||
+            currentPhysicalDrawPile.Count != 0 ||
+            currentDiscardPile.Count == 0 ||
+            currentDiscardPile.Distinct().Count() != currentDiscardPile.Count ||
+            !combat.DiscardPile.Order().SequenceEqual(
+                currentDiscardPile.Order()))
+            throw new InvalidDataException(
+                "Legacy recycle requires an exhausted synchronized draw pile.");
+
+        var checkpoint = combat with
+        {
+            DrawPile = currentPhysicalDrawPile.ToArray(),
+            DiscardPile = currentDiscardPile.ToArray()
+        };
+        var shuffled = NativeShuffleStepReplayV111.ShuffleRecycle(
+            currentDiscardPile.ToArray(), rng);
+        var postHook = NativeShuffleStepReplayV111.CheckPostHook(
+            ApplyPerfectFitShuffleOrder(checkpoint, shuffled));
+        return SemanticDrawPileAdapterV111.ApplyPhysicalMutation(
+            checkpoint, postHook) with { DiscardPile = [] };
+    }
+
+    /// <summary>
     /// Applies one source-time Native shuffle to an exhausted exact semantic
     /// deck. The same mechanics path serves ordinary draws and top autoplay;
     /// callers continue their own post-shuffle effects afterward.

@@ -8149,24 +8149,16 @@ public sealed partial class PrototypeGameEngine
                             }
                             else
                             {
-                                var shuffled =
-                                    NativeShuffleStepReplayV111.ShuffleRecycle(
-                                        discard.ToArray(), rng);
-                                draw.AddRange(
-                                    NativeShuffleStepReplayV111.CheckPostHook(
-                                        ApplyPerfectFitShuffleOrder(
-                                            combat, shuffled)));
+                                combat = CommitLegacyDrawPileRecycle(
+                                    combat, draw, discard, rng);
+                                semanticDeck = combat.SemanticDeck;
+                                draw = combat.DrawPile.ToList();
+                                discard = combat.DiscardPile.ToList();
                             }
                             discard.Clear();
                             if (semanticDeck is not
                                 { Mode: SemanticDeckStateV111.NatureMode })
                             {
-                                combat = SemanticDrawPileAdapterV111
-                                    .ApplyCommittedPhysicalMutation(
-                                        combat, draw.ToArray(), semanticDeck) with
-                                {
-                                    DiscardPile = discard.ToArray()
-                                };
                                 combat = ApplyRelicAfterShuffleCards(combat, rng);
                                 semanticDeck = combat.SemanticDeck;
                                 draw = combat.DrawPile.ToList();
@@ -16215,19 +16207,13 @@ public sealed partial class PrototypeGameEngine
                             RemainingCount: count - drawNumber,
                             ControlledRecyclePending: true);
 
-                    var recycled = NativeShuffleStepReplayV111.ShuffleRecycle(
-                        discard.ToArray(), rng);
-                    discard.Clear();
-                    draw.AddRange(NativeShuffleStepReplayV111.CheckPostHook(
-                        ApplyPerfectFitShuffleOrder(
-                            combat, recycled)));
-                    combat = SemanticDrawPileAdapterV111
-                        .ApplyPhysicalMutation(combat, draw.ToArray()) with
-                    {
-                        DiscardPile = discard.ToArray()
-                    };
+                    combat = CommitLegacyDrawPileRecycle(
+                        combat, draw, discard, rng);
+                    draw = combat.DrawPile.ToList();
+                    discard = combat.DiscardPile.ToList();
                     combat = ApplyRelicAfterShuffleCards(combat, rng);
                     draw = combat.DrawPile.ToList();
+                    discard = combat.DiscardPile.ToList();
                     var stratagem = combat.PlayerPowers.Sum(power =>
                         power.PowerId == "proto.power.stratagem"
                             ? Math.Max(0, power.Stacks) : 0);
