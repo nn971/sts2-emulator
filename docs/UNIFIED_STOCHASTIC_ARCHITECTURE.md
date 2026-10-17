@@ -45,6 +45,8 @@ The versioned `ControlledStochasticChanceReplayV111` primitive now replays one c
 
 The ordinary engine now resumes `DrawPlayerHand` through one helper for both a saved `BeforeHandDraw` action choice and a random-pile hook choice. It keeps the pipeline-owned requested/remaining draw cursor when mechanics suspend again and clears the request when the step completes. The semantic draw and end-turn facades still own boundary selection, typed outcome history, and their saved schema; full resume consolidation and cross-provider mechanical equivalence remain open.
 
+When the resumed ordinary pipeline ends in Reward or Terminal after hand draw, `SemanticEndTurnV111` now completes with that engine result and keeps the completed draw projection for transcript replay. It still rejects an unfinished draw and checks the next-player boundary for combat-phase completion.
+
 `ReferenceNatureChanceLawDecisionV111` maps sampled one-to-one index laws to typed index outcomes and maps configured merchant and Treasure rarity laws to representative source floats, plus merchant rounded-price laws to floats that produce the selected integer price. The price mapper searches the source conversion functions used by ordinary Native shop generation. `ReferenceNatureMerchantSessionV111` replays the actual Shop-node map action; `ReferenceNatureTreasureSessionV111` replays the actual Treasure-node map action. Both use the mixed typed provider, query conditional laws from the pre-entry origin and sampled prefix, and commit the completed room result with the sampler cursor atomically. These representatives preserve the selected mechanic result, while Chance Law weights and float-edge fidelity remain `UNVERIFIED`.
 
 The configured native merchant now runs `StartShop` inside

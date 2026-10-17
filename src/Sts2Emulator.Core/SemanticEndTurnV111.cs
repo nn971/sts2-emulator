@@ -287,7 +287,7 @@ public sealed record SemanticEndTurnV111(
             (this.PlayerActionSource is null) != (this.PlayerActionId is null) ||
             (this.Complete && (this.Intents is not null ||
                 (this.Run.Phase is RunPhase.Terminal or RunPhase.Reward
-                    ? this.HandDraw is not null
+                    ? this.HandDraw is { AtBoundary: false }
                     : this.HandDraw is not { AtBoundary: true }))) ||
             (!this.Complete && this.Intents is null &&
              this.HandDraw is null && this.EnemyActionPending is null &&
@@ -310,9 +310,15 @@ public sealed record SemanticEndTurnV111(
                 CanonicalJson.Sha256(this.Run) != CanonicalJson.Sha256(hand.Run))
                 throw new InvalidDataException(
                     "Pending end-turn hand state differs from the draw continuation.");
-            if (this.Complete && !this.AtPlayerBoundary)
+            if (this.Complete && this.Run.Phase == RunPhase.Combat &&
+                !this.AtPlayerBoundary)
                 throw new InvalidDataException(
                     "Completed end-turn result is not a player decision.");
+            if (this.Complete &&
+                (this.Run.Phase is RunPhase.Terminal or RunPhase.Reward) &&
+                !hand.AtBoundary)
+                throw new InvalidDataException(
+                    "Terminal end-turn retained an incomplete hand draw.");
         }
     }
 
@@ -743,6 +749,8 @@ public static class SemanticEndTurnEngineV111
         using (ControlledChanceGuardV111.Enter())
             result = PrototypeGameEngine.ResumeSemanticAutomaticAfterHandDraw(
                 draw.Run.Fork());
+        if (result.Phase is RunPhase.Terminal or RunPhase.Reward)
+            return state with { Run = result, Complete = true };
         if (result.Phase != RunPhase.Combat ||
             result.World?.Combat is not { IsPlayerTurn: true,
                 AutomaticPipelineContinuation: null, PendingChoice: null,

@@ -199,8 +199,8 @@ public sealed partial class PrototypeGameEngine
     }
 
     /// <summary>Advance the remaining authentic automatic stages after
-    /// semantic DrawPlayerHand cleanup. This yields an actual next-player
-    /// boundary when no subsequent unsupported stochastic site fires.</summary>
+    /// semantic DrawPlayerHand cleanup. This yields the next player boundary
+    /// or the source pipeline's terminal reward state.</summary>
     internal static RunState ResumeSemanticAutomaticAfterHandDraw(RunState run)
     {
         if (!ControlledChanceGuardV111.Active)
