@@ -219,6 +219,86 @@ public sealed record SemanticEndTurnV111(
             AutomaticPipelineContinuation: null, PendingChoice: null,
             PendingKnowledgeDemonChoice: null };
 
+    public void Validate()
+    {
+        this.Stochastic.Validate();
+        if (this.EnemyActionPending is not null)
+        {
+            if (this.Complete || this.Intents is not null ||
+                this.HandDraw is not null ||
+                this.PlayerActionSource is not { } playerSource ||
+                playerSource.Phase != RunPhase.Combat ||
+                playerSource.World?.Combat is not { IsPlayerTurn: true,
+                    PendingChoice: null,
+                    AutomaticPipelineContinuation: null })
+                throw new InvalidDataException(
+                    "Invalid pending semantic enemy-action stage.");
+            var cursor = this.Run.World!.Combat!
+                .AutomaticPipelineContinuation!.ControlledEnemyAction!;
+            cursor.Validate(PrototypeContent.Rules.EndTurnPipeline.Length);
+            if (CanonicalJson.Sha256(cursor.Decisions) !=
+                CanonicalJson.Sha256(this.EnemyActionTranscript))
+                throw new InvalidDataException(
+                    "Semantic enemy-action transcript differs from its replay frame.");
+        }
+        else if (this.TargetPending is { } target)
+        {
+            target.Validate();
+            if (this.Complete || this.Intents is not null ||
+                this.HandDraw is not null ||
+                this.PlayerActionSource is not { } playerSource ||
+                playerSource.Phase != RunPhase.Combat ||
+                this.Run.World?.Combat?.PendingChoice?
+                    .ControlledTarget is null)
+                throw new InvalidDataException(
+                    "Invalid automatic-pipeline target stage.");
+            if (target.Ordinal != this.TargetTranscript.Length)
+                throw new InvalidDataException(
+                    "Automatic-pipeline target ordinal differs from its transcript.");
+        }
+        else if (!this.Complete ||
+                 this.Run.Phase is not (RunPhase.Terminal or RunPhase.Reward))
+        {
+            SemanticEndTurnEngineV111.ValidateOrigin(this.Origin);
+        }
+        this.EnemyActionEventPending?.Validate();
+        if (string.IsNullOrWhiteSpace(this.NativeEncounterEntry) ||
+            this.IntentTranscript is null ||
+            this.EnemyActionTranscript is null ||
+            this.TargetTranscript is null ||
+            this.BoundaryTranscript is null ||
+            (this.PlayerActionSource is null) != (this.PlayerActionId is null) ||
+            (this.Complete && (this.Intents is not null ||
+                (this.Run.Phase is RunPhase.Terminal or RunPhase.Reward
+                    ? this.HandDraw is not null
+                    : this.HandDraw is not { AtBoundary: true }))) ||
+            (!this.Complete && this.Intents is null &&
+             this.HandDraw is null && this.EnemyActionPending is null &&
+             this.TargetPending is null) ||
+            (this.Intents is not null && this.HandDraw is not null))
+            throw new InvalidDataException("Invalid semantic end-turn stages.");
+        if (this.Intents is { } intents)
+        {
+            ControlledTurnIntentEngineV111.Validate(intents);
+            if (CanonicalJson.Sha256(intents.Transcript) !=
+                CanonicalJson.Sha256(this.IntentTranscript) ||
+                CanonicalJson.Sha256(this.Run) !=
+                CanonicalJson.Sha256(this.Origin))
+                throw new InvalidDataException("Invalid pending intent stage.");
+        }
+        if (this.HandDraw is { } hand)
+        {
+            SemanticCombatDrawEngineV111.Validate(hand);
+            if (!this.Complete &&
+                CanonicalJson.Sha256(this.Run) != CanonicalJson.Sha256(hand.Run))
+                throw new InvalidDataException(
+                    "Pending end-turn hand state differs from the draw continuation.");
+            if (this.Complete && !this.AtPlayerBoundary)
+                throw new InvalidDataException(
+                    "Completed end-turn result is not a player decision.");
+        }
+    }
+
     public SemanticEndTurnV111 Fork() => this with
     {
         Origin = Origin.Fork(), Run = Run.Fork(),
@@ -891,86 +971,8 @@ public static class SemanticEndTurnEngineV111
         return reproduced;
     }
 
-    public static void Validate(SemanticEndTurnV111 state)
-    {
-        ArgumentNullException.ThrowIfNull(state);
-        state.Stochastic.Validate();
-        if (state.EnemyActionPending is not null)
-        {
-            if (state.Complete || state.Intents is not null ||
-                state.HandDraw is not null ||
-                state.PlayerActionSource is not { } playerSource ||
-                playerSource.Phase != RunPhase.Combat ||
-                playerSource.World?.Combat is not { IsPlayerTurn: true,
-                    PendingChoice: null,
-                    AutomaticPipelineContinuation: null })
-                throw new InvalidDataException(
-                    "Invalid pending semantic enemy-action stage.");
-            var cursor = state.Run.World!.Combat!
-                .AutomaticPipelineContinuation!.ControlledEnemyAction!;
-            cursor.Validate(PrototypeContent.Rules.EndTurnPipeline.Length);
-            if (CanonicalJson.Sha256(cursor.Decisions) !=
-                CanonicalJson.Sha256(state.EnemyActionTranscript))
-                throw new InvalidDataException(
-                    "Semantic enemy-action transcript differs from its replay frame.");
-        }
-        else if (state.TargetPending is { } target)
-        {
-            target.Validate();
-            if (state.Complete || state.Intents is not null ||
-                state.HandDraw is not null ||
-                state.PlayerActionSource is not { } playerSource ||
-                playerSource.Phase != RunPhase.Combat ||
-                state.Run.World?.Combat?.PendingChoice?
-                    .ControlledTarget is null)
-                throw new InvalidDataException(
-                    "Invalid automatic-pipeline target stage.");
-            if (target.Ordinal != state.TargetTranscript.Length)
-                throw new InvalidDataException(
-                    "Automatic-pipeline target ordinal differs from its transcript.");
-        }
-        else if (!state.Complete ||
-                 state.Run.Phase is not (RunPhase.Terminal or RunPhase.Reward))
-        {
-            ValidateOrigin(state.Origin);
-        }
-        state.EnemyActionEventPending?.Validate();
-        if (string.IsNullOrWhiteSpace(state.NativeEncounterEntry) ||
-            state.IntentTranscript is null ||
-            state.EnemyActionTranscript is null ||
-            state.TargetTranscript is null ||
-            state.BoundaryTranscript is null ||
-            (state.PlayerActionSource is null) != (state.PlayerActionId is null) ||
-            (state.Complete && (state.Intents is not null ||
-                (state.Run.Phase is RunPhase.Terminal or RunPhase.Reward
-                    ? state.HandDraw is not null
-                    : state.HandDraw is not { AtBoundary: true }))) ||
-            (!state.Complete && state.Intents is null &&
-             state.HandDraw is null && state.EnemyActionPending is null &&
-             state.TargetPending is null) ||
-            (state.Intents is not null && state.HandDraw is not null))
-            throw new InvalidDataException("Invalid semantic end-turn stages.");
-        if (state.Intents is { } intents)
-        {
-            ControlledTurnIntentEngineV111.Validate(intents);
-            if (CanonicalJson.Sha256(intents.Transcript) !=
-                CanonicalJson.Sha256(state.IntentTranscript) ||
-                CanonicalJson.Sha256(state.Run) !=
-                CanonicalJson.Sha256(state.Origin))
-                throw new InvalidDataException("Invalid pending intent stage.");
-        }
-        if (state.HandDraw is { } hand)
-        {
-            SemanticCombatDrawEngineV111.Validate(hand);
-            if (!state.Complete &&
-                CanonicalJson.Sha256(state.Run) != CanonicalJson.Sha256(hand.Run))
-                throw new InvalidDataException(
-                    "Pending end-turn hand state differs from the draw continuation.");
-            if (state.Complete && !state.AtPlayerBoundary)
-                throw new InvalidDataException(
-                    "Completed end-turn result is not a player decision.");
-        }
-    }
+    public static void Validate(SemanticEndTurnV111 state) =>
+        state.Validate();
 
     /// <summary>Without a provider-owned deck, accept only a truly empty,
     /// uncommitted draw pile with a nonempty discard. Existing Nature decks
@@ -989,7 +991,7 @@ public static class SemanticEndTurnEngineV111
                 .Order().SequenceEqual(combat.DrawPile.Order());
     }
 
-    private static void ValidateOrigin(RunState run)
+    internal static void ValidateOrigin(RunState run)
     {
         if (run.Phase != RunPhase.Combat ||
             run.World?.Combat is not { } combat ||

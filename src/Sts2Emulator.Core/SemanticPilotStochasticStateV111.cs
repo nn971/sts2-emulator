@@ -54,7 +54,7 @@ public sealed record SemanticPilotStochasticStateV111(
         if (OtherChance is not null)
             SemanticOtherChanceEngineV111.Validate(OtherChance);
         if (PendingEndTurn is not null)
-            SemanticEndTurnEngineV111.Validate(PendingEndTurn);
+            PendingEndTurn.Validate();
         if (PendingInitialIntents is not null)
             ControlledTurnIntentEngineV111.Validate(PendingInitialIntents);
     }
