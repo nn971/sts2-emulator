@@ -19,6 +19,8 @@ public sealed record CombatStochasticStateV111(
     {
         ArgumentNullException.ThrowIfNull(owner);
         NativeCombatRngEntryV111.Validate(owner);
+        if (owner.AutomaticPipelineContinuation is { } pipeline)
+            pipeline.Stochastic.Validate(owner, pipeline);
         if (owner.SemanticDeck is not { } semanticDeck) return;
 
         SemanticDrawPileAdapterV111.ValidateSynchronized(owner);

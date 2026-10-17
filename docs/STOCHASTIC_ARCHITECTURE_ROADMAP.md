@@ -40,6 +40,8 @@
 
 **S3 turn-intent provider ownership increment (2026-10-17):** `ControlledTurnIntentStochasticStateV111` now owns the pending typed random-index request and decision prefix in `ControlledTurnIntentsV111`. The old fields remain flattened projections, the stochastic owner deep-forks and validates the provider payload, and the intent engine retains its pure replay check against saved enemy eligibility and mechanics.
 
+**S3 automatic-pipeline provider validation increment (2026-10-17):** `PrototypeAutomaticPipelineStochasticStateV111` now validates the controlled recycle-Stratagem stage and nested enemy-action checkpoint against its automatic-pipeline mechanics boundary. `CombatStochasticStateV111.Validate` invokes this check, removing those provider-specific branches from the general combat invariant routine while preserving the mechanics-state checks there.
+
 ## S1 precise design
 
 Implement a **read-only, outcome-blind** Chance Law query in `Sts2Emulator.Core` with:

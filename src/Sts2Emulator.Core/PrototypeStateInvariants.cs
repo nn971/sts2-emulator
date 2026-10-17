@@ -3233,37 +3233,6 @@ public static class PrototypeStateInvariants
                 { } eventKind && !Enum.IsDefined(eventKind)))
             throw new InvalidOperationException(
                 "Invalid suspended automatic-combat pipeline.");
-        if (combat.AutomaticPipelineContinuation is
-                { ControlledRecycleStratagemPending: true } stratagemContinuation &&
-            (stratagemContinuation.NextStepIndex < 0 ||
-             stratagemContinuation.NextStepIndex >=
-                PrototypeContent.Rules.EndTurnPipeline.Length ||
-             PrototypeContent.Rules.EndTurnPipeline[
-                    stratagemContinuation.NextStepIndex].Kind !=
-                PrototypeAutomaticStepKind.DrawPlayerHand ||
-             stratagemContinuation.ControlledDrawRemaining is not > 0 ||
-             stratagemContinuation.ControlledDrawCostRemaining is not null ||
-             combat.PendingChoice is not
-                { ChoiceId: "select_cards",
-                  Selection.SourceZone: PrototypeCardZone.DrawPile } ||
-             combat.SemanticDeck is not null))
-            throw new InvalidOperationException(
-                "Controlled recycle Stratagem selection is malformed.");
-        if (combat.AutomaticPipelineContinuation is
-                { ControlledEnemyAction: { } enemyAction } enemyActionCursor)
-        {
-            enemyAction.Validate(PrototypeContent.Rules.EndTurnPipeline.Length);
-            if (enemyActionCursor.NextStepIndex != enemyAction.StepIndex ||
-                combat.IsPlayerTurn || combat.PendingChoice is not null ||
-                combat.PendingKnowledgeDemonChoice is not null ||
-                CanonicalJson.Sha256(enemyAction.Checkpoint.World?.Combat) !=
-                    CanonicalJson.Sha256(combat with
-                    {
-                        AutomaticPipelineContinuation = null
-                    }))
-                throw new InvalidOperationException(
-                    "Controlled enemy-action checkpoint disagrees with combat state.");
-        }
         if (combat.ToricShields is { } shields
             && shields.Any(shield =>
                 shield.BlockAmount <= 0

@@ -18,4 +18,41 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
     {
         ControlledEnemyAction = ControlledEnemyAction?.Fork()
     };
+
+    public void Validate(
+        CombatState combat,
+        PrototypeAutomaticPipelineContinuationState continuation)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(continuation);
+
+        if (ControlledRecycleStratagemPending &&
+            (continuation.NextStepIndex < 0 ||
+             continuation.NextStepIndex >=
+                PrototypeContent.Rules.EndTurnPipeline.Length ||
+             PrototypeContent.Rules.EndTurnPipeline[
+                    continuation.NextStepIndex].Kind !=
+                PrototypeAutomaticStepKind.DrawPlayerHand ||
+             ControlledDrawRemaining is not > 0 ||
+             ControlledDrawCostRemaining is not null ||
+             combat.PendingChoice is not
+                { ChoiceId: "select_cards",
+                  Selection.SourceZone: PrototypeCardZone.DrawPile } ||
+             combat.SemanticDeck is not null))
+            throw new InvalidOperationException(
+                "Controlled recycle Stratagem selection is malformed.");
+
+        if (ControlledEnemyAction is not { } enemyAction) return;
+        enemyAction.Validate(PrototypeContent.Rules.EndTurnPipeline.Length);
+        if (continuation.NextStepIndex != enemyAction.StepIndex ||
+            combat.IsPlayerTurn || combat.PendingChoice is not null ||
+            combat.PendingKnowledgeDemonChoice is not null ||
+            CanonicalJson.Sha256(enemyAction.Checkpoint.World?.Combat) !=
+                CanonicalJson.Sha256(combat with
+                {
+                    AutomaticPipelineContinuation = null
+                }))
+            throw new InvalidOperationException(
+                "Controlled enemy-action checkpoint disagrees with combat state.");
+    }
 }
