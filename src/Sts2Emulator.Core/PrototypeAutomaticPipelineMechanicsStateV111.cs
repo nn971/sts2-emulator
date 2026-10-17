@@ -29,4 +29,38 @@ public sealed record PrototypeAutomaticPipelineMechanicsStateV111(
             return pipeline[NextStepIndex].Kind;
         }
     }
+
+    public void Validate(CombatState combat)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        if (OpeningStage == PrototypeOpeningCombatStage.InitialEnemyIntents)
+        {
+            if (combat.Turn != 1 || combat.IsPlayerTurn ||
+                combat.PendingChoice is not null ||
+                combat.PendingKnowledgeDemonChoice is not null ||
+                NextStepIndex !=
+                    PrototypeContent.Rules.EndTurnPipeline.Length ||
+                PendingPostDispatchEventKind is not null)
+                throw new InvalidOperationException(
+                    "Invalid suspended initial-enemy-intent stage.");
+        }
+        else if (OpeningStage is { } opening &&
+            (!Enum.IsDefined(opening)
+                || opening <= PrototypeOpeningCombatStage.PlayerSideStart
+                || combat.Turn != 1 || !combat.IsPlayerTurn
+                || combat.PendingChoice is null
+                || NextStepIndex !=
+                    PrototypeContent.Rules.EndTurnPipeline.Length
+                || PendingPostDispatchEventKind is not null))
+            throw new InvalidOperationException(
+                "Invalid suspended opening-combat stage.");
+
+        if (OpeningStage is null &&
+            (NextStepIndex < 0 ||
+             NextStepIndex > PrototypeContent.Rules.EndTurnPipeline.Length ||
+             PendingPostDispatchEventKind is { } eventKind &&
+                !Enum.IsDefined(eventKind)))
+            throw new InvalidOperationException(
+                "Invalid suspended automatic-combat pipeline.");
+    }
 }

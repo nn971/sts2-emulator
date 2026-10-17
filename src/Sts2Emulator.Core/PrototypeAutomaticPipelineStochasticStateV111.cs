@@ -28,6 +28,12 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
         ArgumentNullException.ThrowIfNull(combat);
         ArgumentNullException.ThrowIfNull(continuation);
 
+        if (continuation.OpeningStage ==
+                PrototypeOpeningCombatStage.InitialEnemyIntents &&
+            ControlledTurnIntents is null)
+            throw new InvalidOperationException(
+                "Invalid suspended initial-enemy-intent stage.");
+
         if (ControlledRecycleStratagemPending &&
             (continuation.NextStepIndex < 0 ||
              continuation.NextStepIndex >=
