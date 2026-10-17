@@ -1573,20 +1573,20 @@ public sealed partial class PrototypeGameEngine
                         "Enemy-action replay cursor points at another pipeline stage.");
                 var checkpoint = replay?.Checkpoint ??
                     ClearAutomaticPipelineContinuation(state.Fork());
-                try
-                {
-                    using var replayScope =
-                        ControlledEnemyActionReplayV111.Begin(
-                            replay?.Decisions ?? []);
-                    state = ResolveAutomaticStep(state, automaticStep);
-                    replayScope.EnsureConsumed();
-                }
-                catch (ControlledEnemyActionChanceRequiredException required)
+                var replayResult =
+                    ControlledChanceContinuationExecutorV111.ResumeEnemyAction(
+                        state,
+                        replay?.Decisions ?? [],
+                        checkpointState => ResolveAutomaticStep(
+                            checkpointState, automaticStep));
+                if (replayResult.PendingChance is { } required)
                 {
                     return SetControlledEnemyActionContinuation(
                         checkpoint, index, replay?.Decisions ?? [],
                         required.Request);
                 }
+                state = replayResult.Run ?? throw new InvalidDataException(
+                    "Enemy-action replay returned neither a run nor a pending chance request.");
                 controlledEnemyActionReplay = null;
             }
             else

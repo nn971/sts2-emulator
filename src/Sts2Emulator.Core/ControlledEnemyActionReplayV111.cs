@@ -91,7 +91,8 @@ internal sealed class ControlledEnemyActionChanceRequiredException(
 /// source resolver from its saved pre-step state. The first unrecorded request
 /// suspends the pipeline with its complete typed support.
 /// </summary>
-internal sealed class ControlledEnemyActionReplayV111 : IDisposable
+internal sealed class ControlledEnemyActionReplayV111 :
+    IControlledChanceReplayScopeV111
 {
     private static readonly AsyncLocal<ControlledEnemyActionReplayV111?> Active =
         new();

@@ -607,7 +607,8 @@ internal sealed class ControlledEventChoiceChanceRequiredException(
 /// resumes from its saved frame. The first unknown request suspends that
 /// option with its exact ordered support.
 /// </summary>
-internal sealed class ControlledEventChoiceReplayV111 : IDisposable
+internal sealed class ControlledEventChoiceReplayV111 :
+    IControlledChanceReplayScopeV111
 {
     public const int MaximumMaterializedCandidateLabels = 4096;
 

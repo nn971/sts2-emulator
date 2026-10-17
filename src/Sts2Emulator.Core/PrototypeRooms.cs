@@ -1496,7 +1496,7 @@ public sealed partial class PrototypeGameEngine
     }
 
     private static NotSupportedException UnsupportedControlledEventContinuation(
-        ControlledEventChoiceChanceRequiredException exception) =>
+        ControlledChanceReplaySuspensionV111 exception) =>
         new($"Controlled event chance site '{exception.Request.SiteId}' " +
             $"(operation '{exception.Request.OperationKind}') is outside " +
             "the resumable generic event-effect frame.");
@@ -5224,7 +5224,8 @@ public sealed partial class PrototypeGameEngine
             checkpoint => CompleteReward(checkpoint, resumeFrame),
             continuation.PrefixOrdinalCounts());
         if (replay.PendingChance is { } pendingChance)
-            throw pendingChance;
+            throw new ControlledEventChoiceChanceRequiredException(
+                pendingChance.Request, pendingChance.CandidateLabels);
         var result = replay.Run ?? throw new InvalidDataException(
             "Controlled event-reward replay returned neither a run nor a pending chance request.");
         if (result.ControlledEventRewardChoice is not null)
