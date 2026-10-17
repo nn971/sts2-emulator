@@ -24,6 +24,8 @@ public sealed record StochasticCapabilityManifestV111(
         ReferenceNatureControlledEventChoiceSessionV111.CurrentSchemaId;
     public string ReferenceNatureAncientOfferSessionSchemaId { get; init; } =
         ReferenceNatureAncientOfferSessionV111.CurrentSchemaId;
+    public string ReferenceNatureNeowOfferSessionSchemaId { get; init; } =
+        ReferenceNatureNeowOfferSessionV111.CurrentSchemaId;
     public string ReferenceNatureMerchantSessionSchemaId { get; init; } =
         ReferenceNatureMerchantSessionV111.CurrentSchemaId;
     public string ReferenceNatureTreasureSessionSchemaId { get; init; } =
@@ -35,7 +37,7 @@ public sealed record StochasticCapabilityManifestV111(
     public string[] SemanticNatureChoiceViewSessionKinds { get; init; } =
     [
         "semantic_combat", "reference_combat", "run_action",
-        "event_choice", "ancient_offer", "merchant", "treasure",
+        "event_choice", "ancient_offer", "neow_offer", "merchant", "treasure",
         "controlled_event_choice", "controlled_run_action"
     ];
 }
@@ -87,6 +89,13 @@ public static class StochasticCapabilitiesV111
             "reference_nature_ancient_offer_save",
             "reference_nature_ancient_offer_load",
             "reference_nature_ancient_offer_release_many",
+            "reference_nature_neow_offer_begin",
+            "reference_nature_neow_offer_status",
+            "reference_nature_neow_offer_resolve_next",
+            "reference_nature_neow_offer_fork",
+            "reference_nature_neow_offer_save",
+            "reference_nature_neow_offer_load",
+            "reference_nature_neow_offer_release_many",
             "reference_nature_merchant_begin",
             "reference_nature_merchant_status",
             "reference_nature_merchant_resolve_next",
@@ -109,6 +118,8 @@ public static class StochasticCapabilitiesV111
             ReferenceNatureControlledEventChoiceSessionV111.CurrentSchemaId,
         ReferenceNatureAncientOfferSessionSchemaId =
             ReferenceNatureAncientOfferSessionV111.CurrentSchemaId,
+        ReferenceNatureNeowOfferSessionSchemaId =
+            ReferenceNatureNeowOfferSessionV111.CurrentSchemaId,
         ReferenceNatureMerchantSessionSchemaId =
             ReferenceNatureMerchantSessionV111.CurrentSchemaId,
         ReferenceNatureTreasureSessionSchemaId =
@@ -201,7 +212,7 @@ public sealed record ChanceLawV111(
 /// only declared semantic support and provider constraints; Native RNG state
 /// and selected current outcomes are not inputs.
 /// </summary>
-public static class ChanceLawEngineV111
+public static partial class ChanceLawEngineV111
 {
     public const string IntentConditioningPolicyId =
         "source-filtered-intent-weights-v1";

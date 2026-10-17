@@ -65,6 +65,12 @@ internal static class PrototypeAiJsonlServer
         var referenceNatureAncientOfferRunStateHandles =
             new Dictionary<string, string>(StringComparer.Ordinal);
         long nextReferenceNatureAncientOfferHandle = 1;
+        var referenceNatureNeowOfferStates =
+            new Dictionary<string, ReferenceNatureNeowOfferSessionV111>(
+                StringComparer.Ordinal);
+        var referenceNatureNeowOfferRunStateHandles =
+            new Dictionary<string, string>(StringComparer.Ordinal);
+        long nextReferenceNatureNeowOfferHandle = 1;
         var referenceNatureMerchantStates =
             new Dictionary<string, ReferenceNatureMerchantSessionV111>(
                 StringComparer.Ordinal);
@@ -178,6 +184,30 @@ internal static class PrototypeAiJsonlServer
                 ? session
                 : throw new InvalidOperationException(
                     "Unknown ReferenceNature Ancient-offer session handle: " +
+                    handle);
+        }
+
+        string StoreReferenceNatureNeowOffer(
+            ReferenceNatureNeowOfferSessionV111 session)
+        {
+            var handle = "x" + nextReferenceNatureNeowOfferHandle++;
+            referenceNatureNeowOfferStates.Add(handle, session.Fork());
+            if (session.Complete)
+                referenceNatureNeowOfferRunStateHandles.Add(handle,
+                    Store(session.Run.Fork()));
+            return handle;
+        }
+
+        ReferenceNatureNeowOfferSessionV111
+            RequireReferenceNatureNeowOffer(JsonElement request)
+        {
+            var handle = RequiredString(request,
+                "reference_nature_neow_offer_handle");
+            return referenceNatureNeowOfferStates.TryGetValue(handle,
+                    out var session)
+                ? session
+                : throw new InvalidOperationException(
+                    "Unknown ReferenceNature Neow-offer session handle: " +
                     handle);
         }
 
@@ -453,6 +483,44 @@ internal static class PrototypeAiJsonlServer
                 nextOrdinal = session.NextOrdinal,
                 pending,
                 shop = session.Complete ? session.Run.World?.Shop : null,
+                decisionTranscript = session.DecisionTranscript,
+                natureProvider = ReferenceNatureV111.ProviderId,
+                natureSampleCount = session.NatureState.SampleCount,
+                probabilityStatus = ChanceLawV111.UnverifiedStatus
+            };
+        }
+
+        object ReferenceNatureNeowOfferResult(
+            ReferenceNatureNeowOfferSessionV111 session,
+            string handle, string? parent = null)
+        {
+            var eventState = session.Run.World?.Event;
+            var law = session.PendingLaw;
+            return new
+            {
+                ok = true,
+                schemaId = ReferenceNatureNeowOfferSessionV111.CurrentSchemaId,
+                referenceNatureNeowOfferHandle = handle,
+                stateHandle = referenceNatureNeowOfferRunStateHandles
+                    .GetValueOrDefault(handle),
+                parent,
+                fingerprint = session.Fingerprint,
+                runFingerprint = CanonicalJson.Sha256(session.Run),
+                siteId = law?.SiteId,
+                eventId = ChanceLawEngineV111.NeowOfferEventId,
+                runPhase = session.Run.Phase.ToString(),
+                boundary = session.Complete ? "committed" : "nature",
+                nextOrdinal = session.NextOrdinal,
+                pending = law is null ? null : new
+                {
+                    kind = "neow_initial_offer_random_choice",
+                    boundaryFingerprint = law.EventId,
+                    chanceLaw = law,
+                    probabilityStatus = law.ProbabilityStatus
+                },
+                offeredChoiceIds = eventState?.OfferedChoiceIds,
+                eventRandomProvider = eventState?.NativeEventRngProviderMode ??
+                    (eventState is null ? null : "native-v111"),
                 decisionTranscript = session.DecisionTranscript,
                 natureProvider = ReferenceNatureV111.ProviderId,
                 natureSampleCount = session.NatureState.SampleCount,
@@ -999,6 +1067,9 @@ internal static class PrototypeAiJsonlServer
                 "ancient_offer" when referenceNatureAncientOfferStates.TryGetValue(
                     handle, out var ancientOfferSession) =>
                     ReferenceNatureAncientOfferResult(ancientOfferSession, handle),
+                "neow_offer" when referenceNatureNeowOfferStates.TryGetValue(
+                    handle, out var neowOfferSession) =>
+                    ReferenceNatureNeowOfferResult(neowOfferSession, handle),
                 "merchant" when referenceNatureMerchantStates.TryGetValue(
                     handle, out var merchantSession) =>
                     ReferenceNatureMerchantResult(merchantSession, handle),
@@ -1013,7 +1084,7 @@ internal static class PrototypeAiJsonlServer
                     ControlledRunActionResult(actionRun, handle, null),
                 "semantic_combat" or "reference_combat" or "run_action" or
                     "event_choice" or "ancient_offer" or "merchant" or
-                    "treasure" or "controlled_event_choice" or
+                    "neow_offer" or "treasure" or "controlled_event_choice" or
                     "controlled_run_action" => throw new InvalidOperationException(
                         "Unknown Nature session handle for kind " + sessionKind +
                         ": " + handle),
@@ -1739,10 +1810,47 @@ internal static class PrototypeAiJsonlServer
                             }
                             priorIndices = parsedPriorIndices.ToArray();
                         }
-                        var run = RequireState(request);
                         var ordinal = OptionalInt(request, "ordinal") ??
                             throw new ArgumentException(
                                 "Request field 'ordinal' is required.");
+                        ChanceLawV111 law;
+                        if (StochasticSiteRegistryV111
+                            .NeowOfferSessionSiteIds.Contains(
+                                siteId, StringComparer.Ordinal))
+                        {
+                            if (OptionalString(request, "card_type") is not null ||
+                                OptionalString(request, "rarity") is not null ||
+                                OptionalString(request, "card_id") is not null ||
+                                OptionalString(request, "potion_id") is not null ||
+                                OptionalString(request, "relic_id") is not null ||
+                                OptionalBool(request, "colorless_offer") ||
+                                OptionalBool(request, "sale_reprice") ||
+                                OptionalString(request, "owner_id") is not null ||
+                                OptionalStringArray(request,
+                                    "excluded_potion_ids") is not null ||
+                                OptionalInt(request, "offer_ordinal") is not null ||
+                                OptionalStringArray(request,
+                                    "relic_candidate_ids") is not null ||
+                                OptionalStringArray(request,
+                                    "excluded_relic_ids") is not null)
+                                throw new ArgumentException(
+                                    "Neow offer queries accept only state_handle, ordinal and prior_indices.");
+                            law = ChanceLawEngineV111.QueryNeowOffer(
+                                RequireState(request), ordinal, priorIndices);
+                            if (law.SiteId != siteId)
+                                throw new ArgumentException(
+                                    $"Neow offer ordinal {ordinal} expects site '{law.SiteId}', not '{siteId}'.");
+                            Write(new
+                            {
+                                requestId,
+                                ok = true,
+                                chanceLawSchemaId =
+                                    ChanceLawV111.CurrentSchemaId,
+                                law
+                            });
+                            break;
+                        }
+                        var run = RequireState(request);
                         var cardType = OptionalString(request, "card_type");
                         var rarity = OptionalString(request, "rarity");
                         var cardId = OptionalString(request, "card_id");
@@ -1762,7 +1870,6 @@ internal static class PrototypeAiJsonlServer
                             request, "relic_candidate_ids");
                         var excludedRelicIds = OptionalStringArray(
                             request, "excluded_relic_ids");
-                        ChanceLawV111 law;
                         if (StochasticSiteRegistryV111
                             .AncientOfferSessionSiteIds.Contains(
                                 siteId, StringComparer.Ordinal))
@@ -2959,6 +3066,104 @@ internal static class PrototypeAiJsonlServer
                                     element.GetString()!))
                                 released++;
                             referenceNatureAncientOfferRunStateHandles.Remove(
+                                element.GetString()!);
+                        }
+                        Write(new { requestId, ok = true, released });
+                        break;
+                    }
+
+                    case "reference_nature_neow_offer_begin":
+                    {
+                        var session = ReferenceNatureNeowOfferSessionV111.Begin(
+                            RequireState(request),
+                            OptionalULong(request, "nature_seed") ??
+                                throw new ArgumentException(
+                                    "A first Neow-offer session requires nature_seed."));
+                        var handle = StoreReferenceNatureNeowOffer(session);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureNeowOfferResult(session, handle) });
+                        break;
+                    }
+
+                    case "reference_nature_neow_offer_status":
+                    {
+                        var handle = RequiredString(request,
+                            "reference_nature_neow_offer_handle");
+                        var session = RequireReferenceNatureNeowOffer(request);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureNeowOfferResult(session, handle) });
+                        break;
+                    }
+
+                    case "reference_nature_neow_offer_resolve_next":
+                    {
+                        var parentHandle = RequiredString(request,
+                            "reference_nature_neow_offer_handle");
+                        var session = RequireReferenceNatureNeowOffer(request);
+                        if (session.Fingerprint != RequiredString(request,
+                                "fingerprint"))
+                            throw new InvalidOperationException(
+                                "Stale ReferenceNature Neow-offer fingerprint.");
+                        var next = session.ResolveNext();
+                        var handle = StoreReferenceNatureNeowOffer(next);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureNeowOfferResult(
+                                next, handle, parentHandle) });
+                        break;
+                    }
+
+                    case "reference_nature_neow_offer_fork":
+                    {
+                        var parentHandle = RequiredString(request,
+                            "reference_nature_neow_offer_handle");
+                        var next = RequireReferenceNatureNeowOffer(request).Fork();
+                        var handle = StoreReferenceNatureNeowOffer(next);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureNeowOfferResult(
+                                next, handle, parentHandle) });
+                        break;
+                    }
+
+                    case "reference_nature_neow_offer_save":
+                    {
+                        var session = RequireReferenceNatureNeowOffer(request);
+                        Write(new { requestId, ok = true,
+                            schemaId =
+                                ReferenceNatureNeowOfferSessionV111.CurrentSchemaId,
+                            snapshot =
+                                ReferenceNatureNeowOfferSessionV111.Save(session) });
+                        break;
+                    }
+
+                    case "reference_nature_neow_offer_load":
+                    {
+                        var session = ReferenceNatureNeowOfferSessionV111.Restore(
+                            RequiredString(request, "snapshot"));
+                        var handle = StoreReferenceNatureNeowOffer(session);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureNeowOfferResult(session, handle) });
+                        break;
+                    }
+
+                    case "reference_nature_neow_offer_release_many":
+                    {
+                        if (!request.TryGetProperty(
+                                "reference_nature_neow_offer_handles",
+                                out var handles) ||
+                            handles.ValueKind != JsonValueKind.Array)
+                            throw new ArgumentException(
+                                "reference_nature_neow_offer_handles must be an array.");
+                        var released = 0;
+                        foreach (var element in handles.EnumerateArray())
+                        {
+                            if (element.ValueKind != JsonValueKind.String ||
+                                string.IsNullOrWhiteSpace(element.GetString()))
+                                throw new ArgumentException(
+                                    "Invalid ReferenceNature Neow-offer handle.");
+                            if (referenceNatureNeowOfferStates.Remove(
+                                    element.GetString()!))
+                                released++;
+                            referenceNatureNeowOfferRunStateHandles.Remove(
                                 element.GetString()!);
                         }
                         Write(new { requestId, ok = true, released });

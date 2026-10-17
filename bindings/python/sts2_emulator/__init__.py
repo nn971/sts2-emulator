@@ -251,6 +251,27 @@ class State:
         return ReferenceNatureAncientOfferSession.from_wire(
             self.session, result["result"])
 
+    def begin_reference_nature_neow_offer(self,
+                                           nature_seed: int):
+        """Begin the atomic Neow offer session from a pristine run-start state."""
+        if self.session.capabilities.get(
+                "referenceNatureNeowOfferSessionSchemaId") != (
+                "sts2-v111-reference-nature-neow-offer-session-v1"):
+            raise EmulatorError(
+                "Emulator does not expose ReferenceNature Neow-offer sessions")
+        if not self.session.supports_reference_nature_site(
+                "event.neow.cursed_relic.index_draw", session="neow_offer"):
+            raise EmulatorError(
+                "No ReferenceNature Neow-offer session is advertised")
+        if (not isinstance(nature_seed, int) or isinstance(nature_seed, bool) or
+                nature_seed < 0 or nature_seed > 0xFFFFFFFFFFFFFFFF):
+            raise ValueError("nature_seed must be an unsigned 64-bit integer")
+        result = self.session.call(
+            "reference_nature_neow_offer_begin",
+            state_handle=self.handle, nature_seed=nature_seed)
+        return ReferenceNatureNeowOfferSession.from_wire(
+            self.session, result["result"])
+
     def begin_reference_nature_merchant(self, action_id: str,
                                         nature_seed: int | None = None):
         """Begin atomic ReferenceNature generation for a configured Shop node."""
@@ -623,6 +644,79 @@ class ReferenceNatureAncientOfferSession:
 
     def release(self):
         return self.session.release_reference_nature_ancient_offer_many([self])
+
+
+@dataclass(frozen=True)
+class ReferenceNatureNeowOfferSession:
+    """Atomic Act 1 Neow offer generation and sampler cursor."""
+    session: "Session"
+    handle: str
+    fingerprint: str
+    state_handle: str | None
+    event_id: str
+    run_phase: str
+    boundary: str
+    next_ordinal: int
+    pending: dict | None
+    offered_choice_ids: list | None
+    event_random_provider: str | None
+    decision_transcript: list
+    nature_sample_count: int
+
+    @classmethod
+    def from_wire(cls, session, payload):
+        if payload.get("schemaId") != (
+                "sts2-v111-reference-nature-neow-offer-session-v1"):
+            raise EmulatorError(
+                "Unsupported ReferenceNature Neow-offer session schema")
+        return cls(
+            session, payload["referenceNatureNeowOfferHandle"],
+            payload["fingerprint"], payload["stateHandle"],
+            payload["eventId"], payload["runPhase"], payload["boundary"],
+            payload["nextOrdinal"], payload["pending"],
+            payload["offeredChoiceIds"], payload["eventRandomProvider"],
+            payload["decisionTranscript"], payload["natureSampleCount"])
+
+    @property
+    def complete(self):
+        return self.boundary == "committed"
+
+    @property
+    def state(self):
+        if self.state_handle is None:
+            raise EmulatorError("ReferenceNature Neow offers have not committed")
+        return State(self.session, self.state_handle)
+
+    def status(self):
+        result = self.session.call(
+            "reference_nature_neow_offer_status",
+            reference_nature_neow_offer_handle=self.handle)
+        return ReferenceNatureNeowOfferSession.from_wire(
+            self.session, result["result"])
+
+    def resolve_next(self):
+        """Sample one Neow offer draw; publish the run after the shuffle."""
+        result = self.session.call(
+            "reference_nature_neow_offer_resolve_next",
+            reference_nature_neow_offer_handle=self.handle,
+            fingerprint=self.fingerprint)
+        return ReferenceNatureNeowOfferSession.from_wire(
+            self.session, result["result"])
+
+    def fork(self):
+        result = self.session.call(
+            "reference_nature_neow_offer_fork",
+            reference_nature_neow_offer_handle=self.handle)
+        return ReferenceNatureNeowOfferSession.from_wire(
+            self.session, result["result"])
+
+    def save_snapshot(self):
+        return self.session.call(
+            "reference_nature_neow_offer_save",
+            reference_nature_neow_offer_handle=self.handle)["snapshot"]
+
+    def release(self):
+        return self.session.release_reference_nature_neow_offer_many([self])
 
 
 @dataclass(frozen=True)
@@ -1328,12 +1422,13 @@ class Session:
             "run_action": "referenceNatureRunActionSiteIds",
             "event_choice": "referenceNatureEventChoiceSiteIds",
             "ancient_offer": "referenceNatureAncientOfferSiteIds",
+            "neow_offer": "referenceNatureNeowOfferSiteIds",
             "merchant": "referenceNatureMerchantSiteIds",
             "treasure": "referenceNatureTreasureSiteIds",
         }
         if session != "any" and session not in fields:
             raise ValueError(
-                "session must be semantic, run_action, event_choice, ancient_offer, merchant, treasure, or any")
+                "session must be semantic, run_action, event_choice, ancient_offer, neow_offer, merchant, treasure, or any")
         coverage = self.stochastic_session_coverage
         if not isinstance(coverage, dict) or coverage.get("schemaId") != (
                 "sts2-v111-stochastic-session-coverage-v1"):
@@ -1671,6 +1766,27 @@ class Session:
         return self.call(
             "reference_nature_ancient_offer_release_many",
             reference_nature_ancient_offer_handles=[
+                item.handle for item in sessions])["released"]
+
+    def load_reference_nature_neow_offer_snapshot(self, snapshot: str):
+        if self.capabilities.get(
+                "referenceNatureNeowOfferSessionSchemaId") != (
+                "sts2-v111-reference-nature-neow-offer-session-v1"):
+            raise EmulatorError(
+                "Emulator does not expose ReferenceNature Neow-offer sessions")
+        result = self.call("reference_nature_neow_offer_load",
+                           snapshot=snapshot)
+        return ReferenceNatureNeowOfferSession.from_wire(
+            self, result["result"])
+
+    def release_reference_nature_neow_offer_many(self, sessions):
+        sessions = list(sessions)
+        if any(item.session is not self for item in sessions):
+            raise ValueError(
+                "ReferenceNature Neow-offer handle belongs to another session")
+        return self.call(
+            "reference_nature_neow_offer_release_many",
+            reference_nature_neow_offer_handles=[
                 item.handle for item in sessions])["released"]
 
     def load_reference_nature_merchant_snapshot(self, snapshot: str):

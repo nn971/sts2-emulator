@@ -1,0 +1,487 @@
+using System.Globalization;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+
+namespace Sts2Emulator.Core;
+
+internal sealed record NeowOfferDecisionStepV111(
+    RandomIndexRequestV111 Request,
+    string[] OutcomeIds,
+    string ConditioningFingerprint,
+    int? SelectedIndex);
+
+internal sealed record NeowOfferDecisionPlanV111(
+    NeowOfferDecisionStepV111[] Steps,
+    NeowOfferDecisionStepV111? PendingStep)
+{
+    public bool Complete => PendingStep is null;
+}
+
+/// <summary>Builds the existing Neow option-generator request sequence from
+/// an index prefix, without consulting any generated or selected offer.</summary>
+internal static class NeowOfferDecisionPlanBuilderV111
+{
+    public static NeowOfferDecisionPlanV111 Build(
+        string seed, int ascension, int[] priorIndices)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(seed);
+        ArgumentNullException.ThrowIfNull(priorIndices);
+        if (ascension < 0)
+            throw new ArgumentOutOfRangeException(nameof(ascension));
+
+        var streamId = NativeRngV111Contexts.ForEvent(
+            seed, PrototypeNativeOvergrowthEvents.NeowRngEventEntry).StreamId;
+        var completed = new List<NeowOfferDecisionStepV111>();
+        NeowOfferDecisionStepV111? pending = null;
+
+        int? Consume(
+            string siteId,
+            string ownerId,
+            string[] outcomeIds,
+            string conditioningContext,
+            int? boundedCount = null,
+            int requestOrdinal = 0)
+        {
+            RandomIndexRequestV111 request = boundedCount is { } count
+                ? new RandomIndexRequestV111(
+                    siteId, streamId, ownerId, requestOrdinal, [],
+                    OperationKind: "bounded_integer", BoundedCount: count)
+                : new RandomIndexRequestV111(
+                    siteId, streamId, ownerId, requestOrdinal,
+                    Enumerable.Range(0, outcomeIds.Length).ToArray());
+            var conditioningFingerprint = CanonicalJson.Sha256(new
+            {
+                boundary = "act1.neow.initial_options",
+                ascension,
+                priorIndices = priorIndices.Take(completed.Count).ToArray(),
+                requestFingerprint = CanonicalJson.Sha256(request),
+                conditioningContext,
+                policy = "neow-sequential-offer-generator-v1"
+            });
+            if (completed.Count == priorIndices.Length)
+            {
+                pending = new NeowOfferDecisionStepV111(
+                    request, outcomeIds, conditioningFingerprint, null);
+                return null;
+            }
+
+            int selected = priorIndices[completed.Count];
+            if (selected < 0 || selected >= request.SupportCount)
+                throw new ArgumentOutOfRangeException(nameof(priorIndices),
+                    $"Neow outcome {completed.Count} is outside its saved support.");
+            completed.Add(new NeowOfferDecisionStepV111(
+                request, outcomeIds, conditioningFingerprint, selected));
+            return selected;
+        }
+
+        string ChoiceId(string name) => "take_" +
+            PrototypeNativeOvergrowthEvents.NeowRelicId(name);
+
+        var cursedOutcomes = PrototypeNativeOvergrowthEvents
+            .NeowCursedRelicNames.Select(ChoiceId).ToArray();
+        int? cursedIndex = Consume(
+            PrototypeNativeOvergrowthEvents.NeowCursedRelicSiteId,
+            "run:act:1:neow:cursed_relic", cursedOutcomes,
+            "ordered_cursed_relic_names");
+        if (pending is not null)
+            return new(completed.ToArray(), pending);
+        string cursed = PrototypeNativeOvergrowthEvents
+            .NeowCursedRelicNames[cursedIndex!.Value];
+
+        var positives = PrototypeNativeOvergrowthEvents
+            .NeowPositiveRelicNames.ToList();
+        switch (cursed)
+        {
+            case "CursedPearl": positives.Remove("GoldenPearl"); break;
+            case "HeftyTablet": positives.Remove("ArcaneScroll"); break;
+            case "LeafyPoultice": positives.Remove("NewLeaf"); break;
+            case "PrecariousShears": positives.Remove("PreciseScissors"); break;
+            case "NeowsSacrifice":
+                positives.Remove("PhialHolster");
+                positives.Remove("LostCoffer");
+                break;
+        }
+
+        if (cursed != "LargeCapsule")
+        {
+            int? lavaIndex = Consume(
+                PrototypeNativeOvergrowthEvents.NeowLavaRockPairSiteId,
+                "run:act:1:neow:lava_rock_pair",
+                [ChoiceId("LavaRock"), ChoiceId("SmallCapsule")],
+                "cursed_relic:" + cursed);
+            if (pending is not null)
+                return new(completed.ToArray(), pending);
+            positives.Add(lavaIndex == 0 ? "LavaRock" : "SmallCapsule");
+        }
+
+        int? oysterIndex = Consume(
+            PrototypeNativeOvergrowthEvents.NeowOysterPairSiteId,
+            "run:act:1:neow:oyster_pair",
+            [ChoiceId("NutritiousOyster"), ChoiceId("StoneHumidifier")],
+            "cursed_relic:" + cursed);
+        if (pending is not null)
+            return new(completed.ToArray(), pending);
+        positives.Add(oysterIndex == 0
+            ? "NutritiousOyster" : "StoneHumidifier");
+
+        int? talismanIndex = Consume(
+            PrototypeNativeOvergrowthEvents.NeowTalismanPairSiteId,
+            "run:act:1:neow:talisman_pair",
+            [ChoiceId("NeowsTalisman"), ChoiceId("Pomander")],
+            "cursed_relic:" + cursed);
+        if (pending is not null)
+            return new(completed.ToArray(), pending);
+        positives.Add(talismanIndex == 0 ? "NeowsTalisman" : "Pomander");
+
+        // Keep the existing generator's profile-specific filtering and order.
+        positives.Remove("MassiveScroll");
+        positives.Remove("Kaleidoscope");
+        for (int end = positives.Count - 1, ordinal = 0;
+             end > 0; --end, ++ordinal)
+        {
+            var poolBeforeSwap = positives.ToArray();
+            int? selectedIndex = Consume(
+                PrototypeNativeOvergrowthEvents
+                    .NeowPositiveRelicShuffleSiteId,
+                "run:act:1:neow:positive_relics",
+                Enumerable.Range(0, end + 1).Select(index =>
+                    "swap_index:" + index.ToString(
+                        CultureInfo.InvariantCulture)).ToArray(),
+                "positive_pool:" + CanonicalJson.Sha256(poolBeforeSwap),
+                boundedCount: end + 1,
+                requestOrdinal: ordinal);
+            if (pending is not null)
+                return new(completed.ToArray(), pending);
+            (positives[end], positives[selectedIndex!.Value]) =
+                (positives[selectedIndex.Value], positives[end]);
+        }
+
+        if (completed.Count != priorIndices.Length)
+            throw new ArgumentException(
+                "Neow offer prefix contains more outcomes than the source generator requests.",
+                nameof(priorIndices));
+        return new(completed.ToArray(), null);
+    }
+}
+
+public sealed record ReferenceNatureNeowOfferSessionSnapshotV111(
+    string SchemaId,
+    string OriginSnapshotJson,
+    string RunSnapshotJson,
+    ReferenceNatureStateV111 InitialNatureState,
+    ReferenceNatureStateV111 NatureState,
+    ReferenceNatureDecisionV111[] DecisionTranscript);
+
+/// <summary>Atomic ReferenceNature continuation for the existing Act 1 Neow
+/// offer generator. The ordinary run and sampler cursor publish together only
+/// after the ordered choices and conditional positive-pool shuffle finish.</summary>
+public sealed record ReferenceNatureNeowOfferSessionV111(
+    string SchemaId,
+    RunState Origin,
+    RunState Run,
+    ReferenceNatureStateV111 InitialNatureState,
+    ReferenceNatureStateV111 NatureState,
+    ReferenceNatureDecisionV111[] DecisionTranscript)
+{
+    public const string CurrentSchemaId =
+        "sts2-v111-reference-nature-neow-offer-session-v1";
+
+    [JsonIgnore]
+    public string Fingerprint => CanonicalJson.Sha256(this);
+
+    [JsonIgnore]
+    public int NextOrdinal => DecisionTranscript.Length;
+
+    [JsonIgnore]
+    public ChanceLawV111? PendingLaw => Complete ? null :
+        ChanceLawEngineV111.QueryNeowOffer(
+            Origin.RunSeed, Origin.Ascension, NextOrdinal,
+            DecisionTranscript.Select(decision => decision.OutcomeIndex)
+                .ToArray());
+
+    [JsonIgnore]
+    public bool Complete => NeowOfferDecisionPlanBuilderV111.Build(
+        Origin.RunSeed, Origin.Ascension,
+        DecisionTranscript.Select(decision => decision.OutcomeIndex)
+            .ToArray()).Complete;
+
+    public static ReferenceNatureNeowOfferSessionV111 Begin(
+        RunState origin, ulong natureSeed)
+    {
+        ArgumentNullException.ThrowIfNull(origin);
+        ValidateOpeningBoundary(origin);
+        var initial = ReferenceNatureRunCursorV111.Begin(
+            origin, natureSeed, "Neow-offer");
+        return Begin(origin, initial);
+    }
+
+    private static ReferenceNatureNeowOfferSessionV111 Begin(
+        RunState origin, ReferenceNatureStateV111 initial)
+    {
+        ValidateOpeningBoundary(origin);
+        var session = new ReferenceNatureNeowOfferSessionV111(
+            CurrentSchemaId, origin.Fork(), origin.Fork(),
+            initial.Fork(), initial.Fork(), []);
+        session.Validate();
+        return session;
+    }
+
+    public ReferenceNatureNeowOfferSessionV111 Fork()
+    {
+        Validate();
+        return this with
+        {
+            Origin = Origin.Fork(),
+            Run = Run.Fork(),
+            InitialNatureState = InitialNatureState.Fork(),
+            NatureState = NatureState.Fork(),
+            DecisionTranscript = (ReferenceNatureDecisionV111[])
+                DecisionTranscript.Clone()
+        };
+    }
+
+    public ReferenceNatureNeowOfferSessionV111 ResolveNext()
+    {
+        Validate();
+        if (Complete)
+            throw new InvalidOperationException(
+                "ReferenceNature Neow-offer session is already complete.");
+
+        var priorIndices = DecisionTranscript.Select(
+            decision => decision.OutcomeIndex).ToArray();
+        var law = ChanceLawEngineV111.QueryNeowOffer(
+            Origin.RunSeed, Origin.Ascension, NextOrdinal, priorIndices);
+        var selection = ReferenceNatureV111.SampleValidated(law, NatureState);
+        var transcript = DecisionTranscript.Append(
+            new ReferenceNatureDecisionV111(
+                law.LawId, law.EventId, selection.OutcomeId,
+                selection.OutcomeIndex)).ToArray();
+        var nextNatureState = selection.NextState;
+        var nextRun = Origin.Fork();
+        var plan = NeowOfferDecisionPlanBuilderV111.Build(
+            Origin.RunSeed, Origin.Ascension,
+            transcript.Select(decision => decision.OutcomeIndex).ToArray());
+        if (plan.Complete)
+        {
+            var scriptedDecisions = plan.Steps.Select(step =>
+                new RandomIndexDecisionV111(
+                    step.Request, step.SelectedIndex!.Value,
+                    "scripted-v111")).ToArray();
+            var scripted = new ScriptedRandomIndexProviderV111(
+                scriptedDecisions);
+            var generated = PrototypeNativeOvergrowthRunFactory
+                .CreateWithAudit(Origin.RunSeed, Origin.Ascension, scripted);
+            scripted.AssertComplete();
+            if (CanonicalJson.Sha256(generated.NeowOffers.Choices.Select(
+                    decision => new RandomIndexDecisionV111(
+                        decision.Request, decision.SelectedIndex,
+                        "scripted-v111")).ToArray()) !=
+                CanonicalJson.Sha256(scriptedDecisions))
+                throw new InvalidDataException(
+                    "Native Neow generation diverged from the saved offer prefix.");
+            nextRun = ReferenceNatureRunCursorV111.Commit(
+                generated.State, nextNatureState);
+        }
+
+        var next = this with
+        {
+            Run = nextRun,
+            NatureState = nextNatureState,
+            DecisionTranscript = transcript
+        };
+        next.Validate();
+        return next;
+    }
+
+    public void Validate()
+    {
+        if (SchemaId != CurrentSchemaId || Origin is null || Run is null ||
+            InitialNatureState is null || NatureState is null ||
+            DecisionTranscript is null || string.IsNullOrWhiteSpace(Origin.RunSeed) ||
+            Origin.Ascension < 0)
+            throw new InvalidDataException(
+                "Invalid ReferenceNature Neow-offer session envelope.");
+        PrototypeStateInvariants.Validate(Origin);
+        PrototypeStateInvariants.Validate(Run);
+        InitialNatureState.Validate();
+        NatureState.Validate();
+        ValidateOpeningBoundary(Origin);
+        var plan = NeowOfferDecisionPlanBuilderV111.Build(
+            Origin.RunSeed, Origin.Ascension,
+            DecisionTranscript.Select(decision => decision.OutcomeIndex)
+                .ToArray());
+        if (!ReferenceNatureRunCursorV111.MatchesRunSession(
+                Origin, Run, InitialNatureState, NatureState,
+                DecisionTranscript.Length, plan.Complete))
+            throw new InvalidDataException(
+                "ReferenceNature Neow-offer cursor differs from its session envelope.");
+
+        var expectedNatureState = InitialNatureState.Fork();
+        var priorIndices = new List<int>();
+        for (int ordinal = 0; ordinal < DecisionTranscript.Length; ordinal++)
+        {
+            var law = ChanceLawEngineV111.QueryNeowOffer(
+                Origin.RunSeed, Origin.Ascension, ordinal,
+                priorIndices.ToArray());
+            var selection = ReferenceNatureV111.SampleValidated(
+                law, expectedNatureState);
+            var decision = DecisionTranscript[ordinal];
+            decision.Validate();
+            if (CanonicalJson.Sha256(new ReferenceNatureDecisionV111(
+                    law.LawId, law.EventId, selection.OutcomeId,
+                    selection.OutcomeIndex)) != CanonicalJson.Sha256(decision))
+                throw new InvalidDataException(
+                    "ReferenceNature Neow-offer transcript does not replay.");
+            priorIndices.Add(selection.OutcomeIndex);
+            expectedNatureState = selection.NextState;
+        }
+
+        RunState expectedRun;
+        if (plan.Complete)
+        {
+            var scriptedDecisions = plan.Steps.Select(step =>
+                new RandomIndexDecisionV111(
+                    step.Request, step.SelectedIndex!.Value,
+                    "scripted-v111")).ToArray();
+            var scripted = new ScriptedRandomIndexProviderV111(
+                scriptedDecisions);
+            expectedRun = PrototypeNativeOvergrowthRunFactory
+                .CreateWithAudit(Origin.RunSeed, Origin.Ascension, scripted).State;
+            scripted.AssertComplete();
+            expectedRun = ReferenceNatureRunCursorV111.Commit(
+                expectedRun, expectedNatureState);
+        }
+        else
+        {
+            expectedRun = Origin.Fork();
+        }
+
+        if (CanonicalJson.Sha256(expectedNatureState) !=
+                CanonicalJson.Sha256(NatureState) ||
+            CanonicalJson.Sha256(expectedRun) != CanonicalJson.Sha256(Run))
+            throw new InvalidDataException(
+                "ReferenceNature Neow-offer replay differs from its session envelope.");
+    }
+
+    public static string Save(ReferenceNatureNeowOfferSessionV111 session)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        session.Validate();
+        var snapshot = new ReferenceNatureNeowOfferSessionSnapshotV111(
+            CurrentSchemaId, RunSnapshot.Save(session.Origin),
+            RunSnapshot.Save(session.Run), session.InitialNatureState,
+            session.NatureState,
+            (ReferenceNatureDecisionV111[])
+                session.DecisionTranscript.Clone());
+        return JsonSerializer.Serialize(snapshot);
+    }
+
+    public static ReferenceNatureNeowOfferSessionV111 Restore(string json)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(json);
+        var snapshot = JsonSerializer.Deserialize<
+                ReferenceNatureNeowOfferSessionSnapshotV111>(json)
+            ?? throw new InvalidDataException(
+                "Null ReferenceNature Neow-offer snapshot.");
+        if (snapshot.SchemaId != CurrentSchemaId ||
+            string.IsNullOrWhiteSpace(snapshot.OriginSnapshotJson) ||
+            string.IsNullOrWhiteSpace(snapshot.RunSnapshotJson) ||
+            snapshot.InitialNatureState is null ||
+            snapshot.NatureState is null ||
+            snapshot.DecisionTranscript is null)
+            throw new InvalidDataException(
+                "Invalid ReferenceNature Neow-offer snapshot.");
+        var origin = RunSnapshot.Load(snapshot.OriginSnapshotJson);
+        var savedRun = RunSnapshot.Load(snapshot.RunSnapshotJson);
+        var replay = Begin(origin, snapshot.InitialNatureState.Fork());
+        for (int index = 0; index < snapshot.DecisionTranscript.Length; index++)
+            replay = replay.ResolveNext();
+        replay.Validate();
+        if (CanonicalJson.Sha256(replay.Run) != CanonicalJson.Sha256(savedRun) ||
+            CanonicalJson.Sha256(replay.NatureState) !=
+                CanonicalJson.Sha256(snapshot.NatureState) ||
+            !replay.DecisionTranscript.SequenceEqual(snapshot.DecisionTranscript))
+            throw new InvalidDataException(
+                "ReferenceNature Neow-offer snapshot does not replay from its origin.");
+        return replay;
+    }
+
+    private static void ValidateOpeningBoundary(RunState origin)
+    {
+        ArgumentNullException.ThrowIfNull(origin);
+        if (string.IsNullOrWhiteSpace(origin.RunSeed) ||
+            CanonicalJson.Sha256(PrototypeGameFactory.Create(
+                origin.RunSeed, origin.Ascension)) !=
+            CanonicalJson.Sha256(origin))
+            throw new InvalidOperationException(
+                "ReferenceNature Neow offers require a pristine prototype run-start state.");
+    }
+}
+
+public static partial class ChanceLawEngineV111
+{
+    public const string NeowOfferEventId = "act1.neow.initial_options";
+    public const string NeowOfferConditioningPolicyId =
+        "neow-sequential-offer-generator-v1";
+
+    public static string[] NeowOfferSessionSiteIds =>
+    [
+        PrototypeNativeOvergrowthEvents.NeowCursedRelicSiteId,
+        PrototypeNativeOvergrowthEvents.NeowLavaRockPairSiteId,
+        PrototypeNativeOvergrowthEvents.NeowOysterPairSiteId,
+        PrototypeNativeOvergrowthEvents.NeowTalismanPairSiteId,
+        PrototypeNativeOvergrowthEvents.NeowPositiveRelicShuffleSiteId
+    ];
+
+    public static ChanceLawV111 QueryNeowOffer(
+        string seed, int ascension, int ordinal, int[]? priorIndices = null)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(seed);
+        if (ascension < 0 || ordinal < 0)
+            throw new ArgumentOutOfRangeException(
+                ascension < 0 ? nameof(ascension) : nameof(ordinal));
+        priorIndices ??= [];
+        if (priorIndices.Length != ordinal)
+            throw new ArgumentException(
+                "Neow offer queries require one prior index per earlier decision.",
+                nameof(priorIndices));
+        var plan = NeowOfferDecisionPlanBuilderV111.Build(
+            seed, ascension, priorIndices);
+        var step = plan.PendingStep ?? throw new ArgumentOutOfRangeException(
+            nameof(ordinal), "Neow offer generation is already complete.");
+        if (!NeowOfferSessionSiteIds.Contains(
+                step.Request.SiteId, StringComparer.Ordinal))
+            throw new NotSupportedException(
+                $"Neow offer query does not support site '{step.Request.SiteId}'.");
+
+        var outcomes = step.OutcomeIds.Select(id =>
+            new ChanceLawOutcomeV111(id, 1L)).ToArray();
+        var eventId = CanonicalJson.Sha256(new
+        {
+            boundary = NeowOfferEventId,
+            seed,
+            ascension,
+            ordinal,
+            step.ConditioningFingerprint
+        });
+        return Create(eventId, step.Request.SiteId,
+            step.Request.OperationKind, step.Request.OwnerId,
+            step.Request.Ordinal, NeowOfferConditioningPolicyId,
+            step.ConditioningFingerprint,
+            "uniform-neow-generator-index-support-unverified", outcomes);
+    }
+
+    public static ChanceLawV111 QueryNeowOffer(
+        RunState origin, int ordinal, int[]? priorIndices = null)
+    {
+        ArgumentNullException.ThrowIfNull(origin);
+        if (string.IsNullOrWhiteSpace(origin.RunSeed) ||
+            CanonicalJson.Sha256(PrototypeGameFactory.Create(
+                origin.RunSeed, origin.Ascension)) !=
+            CanonicalJson.Sha256(origin))
+            throw new InvalidOperationException(
+                "Neow offer queries require a pristine run-start state before offer generation.");
+        return QueryNeowOffer(origin.RunSeed, origin.Ascension,
+            ordinal, priorIndices);
+    }
+}
