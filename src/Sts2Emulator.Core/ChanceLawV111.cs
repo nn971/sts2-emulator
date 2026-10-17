@@ -346,6 +346,11 @@ public static partial class ChanceLawEngineV111
         "to binary32 before the source outcome mapping. Exact grid " +
         "preimages include subsequent source float and integer rounding; " +
         "seed frequencies and stream derivation are outside this claim.";
+    public const string NativeUnitFloatWeightedTicketSourceVerifiedProvenance =
+        "v0.111.0 Rng.NextFloat() rounds the uniform 53-bit NextDouble grid " +
+        "to binary32 before the weighted ticket mapping. Exact grid " +
+        "preimages include the source float multiplication and sequential " +
+        "ticket subtraction; seed frequencies are outside this claim.";
 
     /// <summary>Exact integer masses for each result of the pinned Native
     /// bounded-index transform, scaled by the 2^53 input-grid size. This
@@ -418,6 +423,44 @@ public static partial class ChanceLawEngineV111
 
     private static float NativeUnitFloatGridValue(long gridIndex) =>
         (float)(gridIndex * (1.0 / NativeNextDoubleGridSize));
+
+    internal static long[] NativeNextFloatWeightedTicketGridWeights(
+        IReadOnlyList<int> candidateWeights)
+    {
+        ArgumentNullException.ThrowIfNull(candidateWeights);
+        if (candidateWeights.Count == 0 ||
+            candidateWeights.Any(weight => weight <= 0))
+            throw new ArgumentOutOfRangeException(nameof(candidateWeights));
+        var totalWeight = checked(candidateWeights.Sum());
+
+        int MapTicket(float roll)
+        {
+            var ticket = roll * totalWeight;
+            for (var index = 0; index < candidateWeights.Count; index++)
+            {
+                if (ticket < candidateWeights[index])
+                    return index;
+                ticket -= candidateWeights[index];
+            }
+            return candidateWeights.Count - 1;
+        }
+
+        var mappedWeights = NativeNextFloatMappedIntegerWeights(MapTicket);
+        var weights = new long[candidateWeights.Count];
+        long total = 0;
+        foreach (var (index, weight) in mappedWeights)
+        {
+            if (index < 0 || index >= weights.Length)
+                throw new InvalidDataException(
+                    "Native weighted-ticket mapping returned an invalid index.");
+            weights[index] = weight;
+            total = checked(total + weight);
+        }
+        if (total != NativeNextDoubleGridSize)
+            throw new InvalidDataException(
+                "Native weighted-ticket masses do not cover the input grid.");
+        return weights;
+    }
 
     private static (long Rare, long Uncommon, long Common)
         NativeCardRarityGridWeights(int rareThreshold, int uncommonEnd)
@@ -1182,7 +1225,10 @@ public static partial class ChanceLawEngineV111
                 $"Native merchant price mapping does not support '{siteId}'.");
         }
 
-        var outcomes = NativeNextFloatMappedIntegerOutcomes(MapPrice);
+        var outcomes = NativeNextFloatMappedIntegerWeights(MapPrice)
+            .Select(pair => new ChanceLawOutcomeV111(
+                "price:" + pair.Key.ToString(CultureInfo.InvariantCulture),
+                pair.Value)).ToArray();
         var conditioning = new
         {
             siteId, ownerId, ordinal, itemId, baseCost,
@@ -1535,8 +1581,8 @@ public static partial class ChanceLawEngineV111
     /// mapping of the source-rounded unit NextFloat. Binary search locates
     /// each integer outcome's contiguous grid interval.
     /// </summary>
-    private static ChanceLawOutcomeV111[]
-        NativeNextFloatMappedIntegerOutcomes(Func<float, int> mapOutcome)
+    private static SortedDictionary<int, long>
+        NativeNextFloatMappedIntegerWeights(Func<float, int> mapOutcome)
     {
         ArgumentNullException.ThrowIfNull(mapOutcome);
         var weights = new SortedDictionary<int, long>();
@@ -1574,9 +1620,7 @@ public static partial class ChanceLawEngineV111
             totalWeight != NativeNextDoubleGridSize)
             throw new InvalidOperationException(
                 "Native unit-float outcome masses do not cover the input grid.");
-        return weights.Select(pair => new ChanceLawOutcomeV111(
-            "price:" + pair.Key.ToString(CultureInfo.InvariantCulture),
-            pair.Value)).ToArray();
+        return weights;
     }
 
     private static ChanceLawV111 CreateNativeBoundaryLaw(

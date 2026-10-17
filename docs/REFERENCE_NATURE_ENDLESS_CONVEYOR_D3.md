@@ -35,8 +35,13 @@ Golden Fysh is absent on the first roll and can enter later supports. The
 forced fifth Seapunk Salad is draw-free. The previous dish, dish count, HP,
 max HP, empty potion slots, action, pre-roll Native cursor, ordered weighted
 support, and typed request bind the conditioning fingerprint. Outcome IDs are
-`dish:<id>`; weights reproduce the emulator's source-shaped float-ticket
-categories.
+`dish:<id>`; the listed integers are the source ticket-category weights. The
+law maps each rounded Native unit float through the source's float multiply
+and sequential ticket subtraction, then counts each dish's exact preimages
+on the 53-bit `NextDouble` grid. Those mapping weights sum to `2^53` and are
+`SOURCE_VERIFIED` for the declared ordered support. Candidate eligibility and
+completeness, stream attribution, seed frequencies, and Native cursor parity
+remain separate.
 
 ## Card index laws
 
@@ -102,8 +107,9 @@ support. Empty support and later-page Observe actions are outside this Nature
 boundary. Fried Eel currently uses the restricted implemented solo-safe
 Colorless catalog. Native seeded-result parity and exact source pool fidelity
 remain open. The upgrade and Colorless card-index transforms are
-`SOURCE_VERIFIED` on their declared supports; dish-ticket calibration remains
-`UNVERIFIED`.
+`SOURCE_VERIFIED` on their declared supports. Dish-ticket mapping weights are
+also `SOURCE_VERIFIED` for the declared weighted support; candidate-pool
+fidelity, stream attribution, seed frequencies, and cursor parity remain open.
 
 Actions that do not produce one of the covered draws, or that trigger the
 forced fifth dish, are unsupported as Nature choices. Ordinary event

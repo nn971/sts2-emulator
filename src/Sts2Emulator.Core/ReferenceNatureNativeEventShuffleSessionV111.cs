@@ -1150,6 +1150,9 @@ public static partial class ChanceLawEngineV111
             throw new InvalidDataException(
                 "Endless Conveyor dish request owner differs from its weighted support.");
 
+        var gridWeights = ChanceLawEngineV111
+            .NativeNextFloatWeightedTicketGridWeights(candidates
+                .Select(candidate => candidate.Weight).ToArray());
         var request = capture.Request;
         var conditioningFingerprint = CanonicalJson.Sha256(new
         {
@@ -1165,6 +1168,7 @@ public static partial class ChanceLawEngineV111
                 .Where(entry => entry.potion is null)
                 .Select(entry => entry.slot).ToArray(),
             candidates,
+            gridWeights,
             request = new
             {
                 request.SiteId, request.StreamId, request.OwnerId,
@@ -1172,9 +1176,10 @@ public static partial class ChanceLawEngineV111
             },
             policy = NativeEndlessConveyorDishConditioningPolicyId
         });
-        var outcomes = candidates.Select(candidate =>
-            new ChanceLawOutcomeV111(
-                "dish:" + candidate.Id, candidate.Weight)).ToArray();
+        var outcomes = candidates.Select((candidate, index) =>
+                new ChanceLawOutcomeV111(
+                    "dish:" + candidate.Id, gridWeights[index]))
+            .Where(outcome => outcome.Weight > 0).ToArray();
         var eventId = CanonicalJson.Sha256(new
         {
             boundary = "native_event.endless_conveyor.dish_weighted_ticket",
@@ -1185,8 +1190,9 @@ public static partial class ChanceLawEngineV111
             "unit_float_weighted_ticket", request.OwnerId, request.Ordinal,
             NativeEndlessConveyorDishConditioningPolicyId,
             conditioningFingerprint,
-            "native-endless-conveyor-weighted-dish-ticket-unverified",
-            outcomes);
+            ChanceLawEngineV111
+                .NativeUnitFloatWeightedTicketSourceVerifiedProvenance,
+            outcomes, ChanceLawV111.SourceVerifiedStatus);
     }
 
     public static ChanceLawV111 QueryNativeEndlessConveyorUpgrade(
@@ -1449,6 +1455,9 @@ public static partial class ChanceLawEngineV111
             throw new InvalidDataException(
                 "Endless Conveyor dish request owner differs from its weighted support.");
 
+        var gridWeights = ChanceLawEngineV111
+            .NativeNextFloatWeightedTicketGridWeights(candidates
+                .Select(candidate => candidate.Weight).ToArray());
         var request = capture.Request;
         var conditioningFingerprint = CanonicalJson.Sha256(new
         {
@@ -1465,6 +1474,7 @@ public static partial class ChanceLawEngineV111
                 .Where(entry => entry.potion is null)
                 .Select(entry => entry.slot).ToArray(),
             candidates,
+            gridWeights,
             request = new
             {
                 request.SiteId, request.StreamId, request.OwnerId,
@@ -1472,9 +1482,10 @@ public static partial class ChanceLawEngineV111
             },
             policy = NativeEndlessConveyorDishConditioningPolicyId
         });
-        var outcomes = candidates.Select(candidate =>
-            new ChanceLawOutcomeV111(
-                "dish:" + candidate.Id, candidate.Weight)).ToArray();
+        var outcomes = candidates.Select((candidate, index) =>
+                new ChanceLawOutcomeV111(
+                    "dish:" + candidate.Id, gridWeights[index]))
+            .Where(outcome => outcome.Weight > 0).ToArray();
         var eventId = CanonicalJson.Sha256(new
         {
             boundary = "native_event.endless_conveyor.dish_weighted_ticket",
@@ -1485,7 +1496,8 @@ public static partial class ChanceLawEngineV111
             "unit_float_weighted_ticket", request.OwnerId, request.Ordinal,
             NativeEndlessConveyorDishConditioningPolicyId,
             conditioningFingerprint,
-            "native-endless-conveyor-weighted-dish-ticket-unverified",
-            outcomes);
+            ChanceLawEngineV111
+                .NativeUnitFloatWeightedTicketSourceVerifiedProvenance,
+            outcomes, ChanceLawV111.SourceVerifiedStatus);
     }
 }

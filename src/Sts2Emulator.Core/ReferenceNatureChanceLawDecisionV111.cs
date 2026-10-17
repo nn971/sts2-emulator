@@ -189,42 +189,38 @@ public static class ReferenceNatureChanceLawDecisionV111
                 .GetWeightedDishCandidates(conditioningRun, eventState);
             var totalWeight = candidates.Sum(candidate => candidate.Weight);
             var rollNumber = eventState.NativeDishCount + 1;
+            var gridWeights = ChanceLawEngineV111
+                .NativeNextFloatWeightedTicketGridWeights(candidates
+                    .Select(candidate => candidate.Weight).ToArray());
+            var expectedOutcomes = candidates.Select((candidate, index) =>
+                    new ChanceLawOutcomeV111(
+                        "dish:" + candidate.Id, gridWeights[index]))
+                .Where(candidate => candidate.Weight > 0).ToArray();
             if (totalWeight <= 0 || law.OwnerId != $"dish:{rollNumber}:pool:" +
                     CanonicalJson.Sha256(candidates) ||
-                !law.Outcomes.SequenceEqual(candidates.Select(candidate =>
-                    new ChanceLawOutcomeV111(
-                        "dish:" + candidate.Id, candidate.Weight))))
+                !law.Outcomes.SequenceEqual(expectedOutcomes))
                 throw new InvalidDataException(
                     "Endless Conveyor dish law differs from its pre-entry run.");
             var selectedDish = outcomeId[5..];
-            var precedingWeight = 0;
-            foreach (var candidate in candidates)
-            {
-                if (candidate.Id != selectedDish)
-                {
-                    precedingWeight = checked(
-                        precedingWeight + candidate.Weight);
-                    continue;
-                }
+            var selectedIndex = Array.FindIndex(candidates,
+                candidate => candidate.Id == selectedDish);
+            if (selectedIndex < 0 || gridWeights[selectedIndex] <= 0)
+                throw new InvalidDataException(
+                    "Endless Conveyor dish outcome has no positive Native grid mass.");
 
-                var representative = (float)(
-                    (precedingWeight + candidate.Weight / 2.0) /
-                    totalWeight);
-                var ticket = representative * totalWeight;
-                foreach (var mapped in candidates)
+            int MapDish(float roll)
+            {
+                var ticket = roll * totalWeight;
+                for (var index = 0; index < candidates.Length; index++)
                 {
-                    if (ticket < mapped.Weight)
-                    {
-                        if (mapped.Id != selectedDish)
-                            break;
-                        return representative;
-                    }
-                    ticket -= mapped.Weight;
+                    if (ticket < candidates[index].Weight)
+                        return index;
+                    ticket -= candidates[index].Weight;
                 }
-                break;
+                return candidates.Length - 1;
             }
-            throw new InvalidDataException(
-                "Endless Conveyor dish outcome has no source-float representative.");
+
+            return FindUnitFloatRepresentative(MapDish, selectedIndex);
         }
 
         if (law.OperationKind == "unit_float_mapped_price")
@@ -330,6 +326,46 @@ public static class ReferenceNatureChanceLawDecisionV111
         if (Map(representative) != expectedPrice)
             throw new InvalidOperationException(
                 "Selected source-float representative changed the mapped price.");
+        return representative;
+    }
+
+    private static float FindUnitFloatRepresentative(
+        Func<float, int> map, int expectedOutcome)
+    {
+        uint low = 0;
+        uint high = OneFloatBits + 1;
+        while (low < high)
+        {
+            var middle = low + ((high - low) >> 1);
+            if (middle <= OneFloatBits &&
+                map(FloatFromBits(middle)) >= expectedOutcome)
+                high = middle;
+            else
+                low = middle + 1;
+        }
+        if (low > OneFloatBits ||
+            map(FloatFromBits(low)) != expectedOutcome)
+            throw new InvalidDataException(
+                "Weighted-ticket outcome has no source-float representative.");
+        var first = low;
+
+        low = first;
+        high = OneFloatBits + 1;
+        while (low < high)
+        {
+            var middle = low + ((high - low) >> 1);
+            if (middle <= OneFloatBits &&
+                map(FloatFromBits(middle)) <= expectedOutcome)
+                low = middle + 1;
+            else
+                high = middle;
+        }
+        var last = low - 1;
+        var representative = FloatFromBits(
+            first + ((last - first) >> 1));
+        if (map(representative) != expectedOutcome)
+            throw new InvalidDataException(
+                "Weighted-ticket representative changed its source outcome.");
         return representative;
     }
 
