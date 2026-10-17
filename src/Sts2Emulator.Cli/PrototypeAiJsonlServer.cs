@@ -512,6 +512,8 @@ internal static class PrototypeAiJsonlServer
             }
             if (state.DrawInsertionPending is { } insertion)
             {
+                var chanceLaw = ChanceLawEngineV111
+                    .QueryDrawInsertion(insertion);
                 return new
                 {
                     kind = "generated_draw_pile_insertion",
@@ -523,6 +525,7 @@ internal static class PrototypeAiJsonlServer
                     ordinal = insertion.Ordinal,
                     operationKind = insertion.OperationKind,
                     supportFingerprint = insertion.SupportFingerprint,
+                    chanceLaw,
                     generatedCardModelId = insertion.GeneratedCardModelId,
                     eligibleDrawPileInstanceIds =
                         insertion.EligibleDrawPileInstanceIds,

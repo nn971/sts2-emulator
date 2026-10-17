@@ -47,7 +47,9 @@ public static class StochasticCapabilitiesV111
             "combat.potion_generation.random_model",
             "combat.random_hand_card.select",
             "combat.generation.full_pool_shuffle.swap_index",
-            "combat.draw_pile.random_rare_to_hand.shuffle_swap_index"
+            "combat.draw_pile.random_rare_to_hand.shuffle_swap_index",
+            "combat.draw_pile.random_insert_index",
+            "combat.relic.after_shuffle.generated_card.random_insert_index"
         ],
         PrototypeAiEnvironment.SchemaId,
         [
@@ -173,6 +175,8 @@ public static class ChanceLawEngineV111
         "uniform-hand-cost-target-support-v1";
     public const string PoolShuffleConditioningPolicyId =
         "uniform-fisher-yates-bounded-swap-v1";
+    public const string DrawInsertionConditioningPolicyId =
+        "uniform-bounded-draw-pile-insertion-position-v1";
 
     public static ChanceLawV111 QueryIntent(SemanticIntentEventV111 intent)
     {
@@ -421,6 +425,36 @@ public static class ChanceLawEngineV111
             shuffle.OperationKind, shuffle.OwnerId, shuffle.Ordinal,
             PoolShuffleConditioningPolicyId, conditioningFingerprint,
             "uniform-fisher-yates-swap-unverified", outcomes);
+    }
+
+    /// <summary>
+    /// Query the uniform bounded insertion position for a generated card.
+    /// The eligible physical pile and generated model are in the saved
+    /// support fingerprint.
+    /// </summary>
+    public static ChanceLawV111 QueryDrawInsertion(
+        SemanticDrawInsertionEventV111 insertion)
+    {
+        ArgumentNullException.ThrowIfNull(insertion);
+        insertion.Validate();
+        var outcomes = Enumerable.Range(0, insertion.Request.SupportCount)
+            .Select(position => new ChanceLawOutcomeV111(
+                "draw_position:" + position.ToString(
+                    CultureInfo.InvariantCulture), 1L))
+            .ToArray();
+        var conditioningFingerprint = CanonicalJson.Sha256(new
+        {
+            insertion.SupportFingerprint,
+            insertion.SiteId,
+            insertion.OwnerId,
+            insertion.Ordinal,
+            insertion.GeneratedCardModelId,
+            policy = DrawInsertionConditioningPolicyId
+        });
+        return Create(insertion.EventId, insertion.SiteId,
+            insertion.OperationKind, insertion.OwnerId, insertion.Ordinal,
+            DrawInsertionConditioningPolicyId, conditioningFingerprint,
+            "uniform-bounded-insertion-position-unverified", outcomes);
     }
 
     public static ChanceLawV111 QueryDraw(SemanticDeckStateV111 deck)
@@ -783,6 +817,21 @@ public static class ReferenceNatureV111
                     "ReferenceNature law no longer matches the pending pool-shuffle event.");
             var child = SemanticPilotCombatEngineV111.ResolvePoolShuffle(
                 combat, combat.Fingerprint, poolShuffleEvent.EventId,
+                selection.OutcomeIndex);
+            return new ReferenceNatureResolutionV111(child, law, selection);
+        }
+
+        if (combat.DrawInsertionPending is { } insertionEvent)
+        {
+            var law = ChanceLawEngineV111.QueryDrawInsertion(insertionEvent);
+            var selection = Sample(law, state);
+            if (selection.EventId != insertionEvent.EventId ||
+                selection.OutcomeIndex < 0 ||
+                selection.OutcomeIndex >= insertionEvent.Request.SupportCount)
+                throw new InvalidDataException(
+                    "ReferenceNature law no longer matches the pending draw-insertion event.");
+            var child = SemanticPilotCombatEngineV111.ResolveDrawInsertion(
+                combat, combat.Fingerprint, insertionEvent.EventId,
                 selection.OutcomeIndex);
             return new ReferenceNatureResolutionV111(child, law, selection);
         }
