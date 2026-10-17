@@ -45,9 +45,9 @@ public static class PrototypeNativeCardRarityOdds
     }
 
     /// <summary>
-    /// Nominal basis-point partition of the native merchant rarity roll.
-    /// The source still samples a float, so Chance Law consumers must retain
-    /// the UNVERIFIED provenance attached by the query boundary.
+    /// Nominal basis-point partition retained for source-audit reporting.
+    /// Chance Law weights for the Native float path count the exact rounded
+    /// 53-bit grid preimages at the source's float thresholds.
     /// </summary>
     public static (long Rare, long Uncommon, long Common)
         MerchantRarityWeights(int offsetBasisPoints, int ascension)
@@ -69,6 +69,18 @@ public static class PrototypeNativeCardRarityOdds
             throw new InvalidOperationException(
                 "Native merchant rarity thresholds do not partition the unit interval.");
         return (rare, uncommon, common);
+    }
+
+    internal static (int Rare, int UncommonEnd)
+        MerchantFloatThresholds(int offsetBasisPoints, int ascension)
+    {
+        if (offsetBasisPoints is < InitialOffsetBasisPoints or
+            > MaximumOffsetBasisPoints)
+            throw new ArgumentOutOfRangeException(nameof(offsetBasisPoints));
+        var (rareBase, uncommonBase) = Thresholds(
+            ascension, PrototypeNativeCardOddsSource.Shop);
+        var rare = checked(rareBase + offsetBasisPoints);
+        return (rare, checked(rare + uncommonBase));
     }
 
     private static int RareThreshold(

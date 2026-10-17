@@ -336,6 +336,11 @@ public static partial class ChanceLawEngineV111
         "NextDouble grid and truncates. Exact source bin masses include " +
         "binary64 rounding boundaries; run-seed frequencies and stream " +
         "derivation are outside this claim.";
+    public const string NativeUnitFloatThresholdSourceVerifiedProvenance =
+        "v0.111.0 Rng.NextFloat() rounds the uniform 53-bit NextDouble grid " +
+        "to binary32 before the source threshold comparisons. Exact grid " +
+        "preimages include float rounding and comparison inclusivity; seed " +
+        "frequencies and stream derivation are outside this claim.";
 
     /// <summary>Exact integer masses for each result of the pinned Native
     /// bounded-index transform, scaled by the 2^53 input-grid size. This
@@ -366,6 +371,81 @@ public static partial class ChanceLawEngineV111
             throw new InvalidDataException(
                 "Native bounded-index grid masses do not cover the full input grid.");
         return weights;
+    }
+
+    /// <summary>Counts grid inputs whose source-rounded unit float is strictly
+    /// below a threshold. The mapping is monotone, so a binary search over the
+    /// 2^53 inputs gives the exact preimage count without enumerating the grid.
+    /// </summary>
+    internal static long NativeNextFloatGridCountBelow(float threshold)
+    {
+        if (!float.IsFinite(threshold))
+            throw new ArgumentOutOfRangeException(nameof(threshold));
+        return NativeNextFloatGridCount(value => value < threshold);
+    }
+
+    /// <summary>Counts grid inputs whose source-rounded unit float is at most
+    /// a threshold, preserving source branches that use an inclusive check.
+    /// </summary>
+    internal static long NativeNextFloatGridCountAtOrBelow(float threshold)
+    {
+        if (!float.IsFinite(threshold))
+            throw new ArgumentOutOfRangeException(nameof(threshold));
+        return NativeNextFloatGridCount(value => value <= threshold);
+    }
+
+    private static long NativeNextFloatGridCount(Func<float, bool> includes)
+    {
+        ArgumentNullException.ThrowIfNull(includes);
+        var low = 0L;
+        var high = NativeNextDoubleGridSize;
+        while (low < high)
+        {
+            var middle = low + ((high - low) >> 1);
+            var unitDouble = middle * (1.0 / NativeNextDoubleGridSize);
+            var sourceFloat = (float)unitDouble;
+            if (includes(sourceFloat))
+                low = middle + 1;
+            else
+                high = middle;
+        }
+        return low;
+    }
+
+    private static (long Rare, long Uncommon, long Common)
+        NativeCardRarityGridWeights(int rareThreshold, int uncommonEnd)
+    {
+        var rare = NativeNextFloatGridCountBelow(
+            rareThreshold / 10000f);
+        var uncommonEndCount = NativeNextFloatGridCountBelow(
+            uncommonEnd / 10000f);
+        if (uncommonEndCount < rare)
+            throw new InvalidDataException(
+                "Native card-rarity float thresholds are out of order.");
+        var uncommon = checked(uncommonEndCount - rare);
+        var common = checked(NativeNextDoubleGridSize - uncommonEndCount);
+        return (rare, uncommon, common);
+    }
+
+    private static (long Common, long Uncommon, long Rare)
+        NativeRelicRarityGridWeights()
+    {
+        var commonThreshold = PrototypeNativeRelicGrabBag
+            .CommonRarityWeight /
+            (float)PrototypeNativeRelicGrabBag.RarityWeightScale;
+        var uncommonThreshold = (PrototypeNativeRelicGrabBag
+            .CommonRarityWeight +
+            PrototypeNativeRelicGrabBag.UncommonRarityWeight) /
+            (float)PrototypeNativeRelicGrabBag.RarityWeightScale;
+        var common = NativeNextFloatGridCountBelow(commonThreshold);
+        var uncommonEnd =
+            NativeNextFloatGridCountBelow(uncommonThreshold);
+        if (uncommonEnd < common)
+            throw new InvalidDataException(
+                "Native relic-rarity float thresholds are out of order.");
+        var uncommon = checked(uncommonEnd - common);
+        var rare = checked(NativeNextDoubleGridSize - uncommonEnd);
+        return (common, uncommon, rare);
     }
 
     private static long NativeNextIntBoundaryGridIndex(
@@ -696,17 +776,22 @@ public static partial class ChanceLawEngineV111
             var count = MerchantCardCount(type);
             if (ordinal >= count)
                 throw new ArgumentOutOfRangeException(nameof(ordinal));
-            var weights = PrototypeNativeCardRarityOdds.MerchantRarityWeights(
-                world.CardRarityOffsetBasisPoints, run.Ascension);
+            var (rareThreshold, uncommonEnd) =
+                PrototypeNativeCardRarityOdds.MerchantFloatThresholds(
+                    world.CardRarityOffsetBasisPoints, run.Ascension);
+            var weights = rareThreshold >= 10000
+                ? (Rare: NativeNextDoubleGridSize, Uncommon: 0L, Common: 0L)
+                : NativeCardRarityGridWeights(
+                    rareThreshold, uncommonEnd);
             ownerId = $"type:{type}:offer:{ordinal}:offset:{world.CardRarityOffsetBasisPoints}";
             operationKind = "unit_float_threshold";
             policy = NativeMerchantThresholdConditioningPolicyId;
-            provenance = "native-card-rarity-threshold-basis-points-unverified";
+            provenance = NativeUnitFloatThresholdSourceVerifiedProvenance;
             conditioning = new
             {
                 siteId, ownerId, cardType = type.ToString(),
                 world.CardRarityOffsetBasisPoints, run.Ascension,
-                weights
+                rareThreshold, uncommonEnd, weights
             };
             outcomes = new[]
                 {
@@ -715,6 +800,7 @@ public static partial class ChanceLawEngineV111
                     new ChanceLawOutcomeV111("rarity:common", weights.Common)
                 }
                 .Where(outcome => outcome.Weight > 0).ToArray();
+            probabilityStatus = ChanceLawV111.SourceVerifiedStatus;
         }
         else if (siteId == "shop.merchant.card_model.index_draw")
         {
@@ -795,14 +881,30 @@ public static partial class ChanceLawEngineV111
             ownerId = $"merchant:act:{world.Act}:floor:{world.Floor}:potions";
             operationKind = "unit_float_threshold";
             policy = NativeMerchantThresholdConditioningPolicyId;
-            provenance = "native-potion-rarity-threshold-basis-points-unverified";
-            conditioning = new { siteId, ownerId, ordinal, common = 6500, uncommon = 2500, rare = 1000 };
+            provenance = NativeUnitFloatThresholdSourceVerifiedProvenance;
+            var rareWeight = NativeNextFloatGridCountAtOrBelow(0.1f);
+            var uncommonEndWeight =
+                NativeNextFloatGridCountAtOrBelow(0.35f);
+            var commonWeight = checked(
+                NativeNextDoubleGridSize - uncommonEndWeight);
+            var uncommonWeight = checked(
+                uncommonEndWeight - rareWeight);
+            conditioning = new
+            {
+                siteId, ownerId, ordinal,
+                rareInclusiveThreshold = 0.1f,
+                uncommonInclusiveThreshold = 0.35f,
+                common = commonWeight,
+                uncommon = uncommonWeight,
+                rare = rareWeight
+            };
             outcomes =
             [
-                new ChanceLawOutcomeV111("rarity:common", 6500),
-                new ChanceLawOutcomeV111("rarity:uncommon", 2500),
-                new ChanceLawOutcomeV111("rarity:rare", 1000)
+                new ChanceLawOutcomeV111("rarity:common", commonWeight),
+                new ChanceLawOutcomeV111("rarity:uncommon", uncommonWeight),
+                new ChanceLawOutcomeV111("rarity:rare", rareWeight)
             ];
+            probabilityStatus = ChanceLawV111.SourceVerifiedStatus;
         }
         else if (siteId == "potion_factory.model_within_rarity.index_draw")
         {
@@ -850,14 +952,27 @@ public static partial class ChanceLawEngineV111
             ownerId = $"{actFloor}:merchant_relic:{ordinal}:merchant";
             operationKind = "unit_float_threshold";
             policy = NativeMerchantThresholdConditioningPolicyId;
-            provenance = "native-relic-rarity-threshold-basis-points-unverified";
-            conditioning = new { siteId, ownerId, ordinal, common = 5000, uncommon = 3300, rare = 1700 };
+            provenance = NativeUnitFloatThresholdSourceVerifiedProvenance;
+            var weights = NativeRelicRarityGridWeights();
+            conditioning = new
+            {
+                siteId, ownerId, ordinal,
+                commonThreshold = PrototypeNativeRelicGrabBag
+                    .CommonRarityWeight /
+                    (float)PrototypeNativeRelicGrabBag.RarityWeightScale,
+                uncommonThreshold = (PrototypeNativeRelicGrabBag
+                    .CommonRarityWeight +
+                    PrototypeNativeRelicGrabBag.UncommonRarityWeight) /
+                    (float)PrototypeNativeRelicGrabBag.RarityWeightScale,
+                weights
+            };
             outcomes =
             [
-                new ChanceLawOutcomeV111("rarity:common", 5000),
-                new ChanceLawOutcomeV111("rarity:uncommon", 3300),
-                new ChanceLawOutcomeV111("rarity:rare", 1700)
+                new ChanceLawOutcomeV111("rarity:common", weights.Common),
+                new ChanceLawOutcomeV111("rarity:uncommon", weights.Uncommon),
+                new ChanceLawOutcomeV111("rarity:rare", weights.Rare)
             ];
+            probabilityStatus = ChanceLawV111.SourceVerifiedStatus;
         }
         else
         {
@@ -1061,8 +1176,8 @@ public static partial class ChanceLawEngineV111
     /// <summary>
     /// Merchant card creation consumes this float even though the pinned
     /// negative upgrade chance makes every value mechanically equivalent.
-    /// This law records that no visible outcome is selected; it does not model
-    /// the source float distribution or Native cursor advancement.
+    /// The only semantic result is source-verified as no_effect; the raw float
+    /// sample and Native cursor advancement remain outside this law.
     /// </summary>
     public static ChanceLawV111 QueryNativeMerchantNoEffectUnitFloat(
         RunState run, RandomUnitFloatRequestV111 request)
@@ -1083,8 +1198,9 @@ public static partial class ChanceLawEngineV111
             request.SiteId, "unit_float_no_effect", request.OwnerId,
             request.Ordinal, "native-merchant-no-visible-upgrade-effect-v1",
             CanonicalJson.Sha256(request),
-            "native-merchant-upgrade-roll-has-no-mechanical-effect-unverified",
-            [new ChanceLawOutcomeV111("no_effect", 1L)]);
+            "native-merchant-upgrade-roll-always-has-no-mechanical-effect",
+            [new ChanceLawOutcomeV111("no_effect", 1L)],
+            ChanceLawV111.SourceVerifiedStatus);
     }
 
     /// <summary>
@@ -1228,6 +1344,7 @@ public static partial class ChanceLawEngineV111
             throw new ArgumentException(
                 "Native treasure rarity request differs from its entry boundary.");
 
+        var rarityWeights = NativeRelicRarityGridWeights();
         var bag = world.RelicBag ??
             PrototypeNativeRelicGrabBag.CreateNatureUnordered(run.Player);
         var conditioning = new
@@ -1250,6 +1367,13 @@ public static partial class ChanceLawEngineV111
                 .Select(branch => new
                 {
                     rarity = branch.Rarity.ToString(), branch.BasisPoints,
+                    gridWeight = branch.Rarity switch
+                    {
+                        PrototypeRelicRarity.Common => rarityWeights.Common,
+                        PrototypeRelicRarity.Uncommon => rarityWeights.Uncommon,
+                        PrototypeRelicRarity.Rare => rarityWeights.Rare,
+                        _ => throw new ArgumentOutOfRangeException()
+                    },
                     fallbackTiers = PrototypeNativeRelicGrabBag
                         .PullFallbackTiers(branch.Rarity)
                         .Select(tier => tier.ToString()).ToArray()
@@ -1269,9 +1393,16 @@ public static partial class ChanceLawEngineV111
             var outcomeId = plan.CandidateIds.Length == 0
                 ? "no_relic"
                 : "rarity:" + branch.Rarity.ToString().ToLowerInvariant();
+            var weight = branch.Rarity switch
+            {
+                PrototypeRelicRarity.Common => rarityWeights.Common,
+                PrototypeRelicRarity.Uncommon => rarityWeights.Uncommon,
+                PrototypeRelicRarity.Rare => rarityWeights.Rare,
+                _ => throw new ArgumentOutOfRangeException()
+            };
             outcomeWeights[outcomeId] = checked(
                 outcomeWeights.GetValueOrDefault(outcomeId) +
-                branch.BasisPoints);
+                weight);
         }
         var outcomes = outcomeWeights.Select(pair =>
             new ChanceLawOutcomeV111(pair.Key, pair.Value)).ToArray();
@@ -1279,8 +1410,8 @@ public static partial class ChanceLawEngineV111
             request.SiteId, "unit_float_threshold", request.OwnerId,
             request.Ordinal, "native-treasure-rarity-threshold-v1",
             CanonicalJson.Sha256(conditioning),
-            "native-treasure-rarity-threshold-basis-points-unverified",
-            outcomes);
+            NativeUnitFloatThresholdSourceVerifiedProvenance,
+            outcomes, ChanceLawV111.SourceVerifiedStatus);
     }
 
     /// <summary>

@@ -57,8 +57,12 @@ The queries and session condition on currently remaining identities, not their
 private queue order. This models a uniform hidden permutation after prior
 relic outcomes have removed known identities. Queries do not read or mutate
 the Native RNG cursor or queue order. The session does not advance that Native
-cursor. The laws remain `UNVERIFIED` against original-game probabilities,
-float-edge masses, and shuffle/cursor behavior.
+cursor. The granular rarity law uses exact preimage counts for the rounded
+Native `NextFloat()` and source thresholds and is `SOURCE_VERIFIED` under the
+uniform 53-bit `NextDouble` model. The compact relic-draw law remains
+`UNVERIFIED` because it combines nominal rarity partitions with equal identity
+support over the hidden shuffled queue. Native queue-shuffle distribution,
+float seed frequencies, and cursor behavior remain open.
 
 Constructing the sorted Nature pools does not replay Native's run-start queue
 shuffles. Sequential conditional identity sampling represents each supported

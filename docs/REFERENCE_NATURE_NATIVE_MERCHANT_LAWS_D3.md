@@ -38,34 +38,37 @@ queue order.
 | Site | Conditioned support |
 | --- | --- |
 | `shop.merchant.sale_slot.index_draw` | Five character-card slots, with exact Native bounded-index grid masses |
-| `card_rarity.roll.unit_float` | Rare, Uncommon, Common, using the current act-independent rarity offset and Ascension shop thresholds |
+| `card_rarity.roll.unit_float` | Rare, Uncommon, Common, using the current rarity offset and Ascension shop thresholds; merchant branch counts exact rounded Native `NextFloat` grid masses |
 | `shop.merchant.card_model.index_draw` | Ordered native Silent card models matching card type and supplied rarity, with exact Native bounded-index grid masses |
 | `shop.colorless_card_model.index_draw` | Ordered implemented single-player Colorless models; ordinal 0 is Uncommon and ordinal 1 is Rare, with exact Native bounded-index grid masses |
-| `potion_factory.rarity_roll.unit_float` | Common, Uncommon, Rare at the PotionFactory's 65/25/10 nominal partition |
+| `potion_factory.rarity_roll.unit_float` | Common, Uncommon, Rare using the PotionFactory's inclusive float thresholds and exact rounded Native `NextFloat` grid masses |
 | `potion_factory.model_within_rarity.index_draw` | Ordered potion models in the requested tier after supplied exclusions, with exact Native bounded-index grid masses on the merchant branch |
-| `relic_grab_bag.rarity.unit_float` | Common, Uncommon, Rare at the grab bag's 50/33/17 nominal partition; the third merchant relic offer is forced Shop rarity and has no draw |
+| `relic_grab_bag.rarity.unit_float` | Common, Uncommon, Rare using the grab bag's float thresholds and exact rounded Native `NextFloat` grid masses; the third merchant relic offer is forced Shop rarity and has no draw |
 | `shop.merchant.relic_model.index_draw` | Eligible relic identities from the first nonempty fallback tier after the selected rarity, with earlier same-shop selections removed and queue order hidden |
 | `shop.merchant.card_price_modifier.unit_float` | Rounded card price under the 0.95–1.05 modifier; `card_id`, `colorless_offer`, and optional `sale_reprice` identify the source branch |
 | `shop.merchant.potion_price_modifier.unit_float` | Rounded potion price under the 0.95–1.05 modifier for the supplied `potion_id` |
 | `shop.merchant.relic_price_modifier.unit_float` | Rounded relic price under the 0.85–1.15 modifier for the supplied `relic_id` |
-| `shop.merchant.card_upgrade_roll.unit_float` | One `no_effect` outcome: every source float is mechanically equivalent because the merchant upgrade chance is negative |
+| `shop.merchant.card_upgrade_roll.unit_float` | One `no_effect` outcome, `SOURCE_VERIFIED`: every source float is mechanically equivalent because the merchant upgrade chance is negative |
 
 The sale-slot, merchant card-model, Colorless card-model, and merchant
 potion-model index laws count the exact preimages of each result under the
 pinned Native `NextInt(maxExclusive)` transform: a uniform 53-bit `NextDouble`
 grid, binary64 multiplication, then truncation. These laws report
-`SOURCE_VERIFIED` for that transform on the declared support. This does not
+`SOURCE_VERIFIED` for that transform on the declared support. The merchant
+card, potion, and relic rarity laws also count exact preimages of Native
+`NextFloat()` after binary32 rounding and the source's strict or inclusive
+threshold comparisons. The mechanically degenerate merchant upgrade law is
+`SOURCE_VERIFIED` because every input produces `no_effect`. These claims do not
 certify that a restricted candidate pool is complete, establish Native
 stream assignment or seed frequencies, or prove seeded cursor parity. The
 hidden relic queue identity law remains `UNVERIFIED` because its queue order
-is private. Threshold laws use the source-shaped nominal basis-point
-partitions. Price laws map intervals of the nominal modifier range through
-the source rounding rule; they do not model the exact finite distribution of
-native float values. The no-effect upgrade law is degenerate because the
-float cannot change the generated card; its representative is only a
-mechanics-preserving replay value. These remaining laws stay `UNVERIFIED`;
-float-edge calibration and native cursor parity remain open. Read-only
-queries do not mutate the run or provider state.
+is private. Card and relic rarity laws derive the source float thresholds from
+their integer basis-point values; potion rarity uses the source float
+constants directly. Each reports exact rounded-grid preimage weights. Price
+laws map intervals of the nominal modifier range through the source rounding
+rule; they do not model the exact finite distribution of native float values.
+Native stream assignment, seed frequencies, and cursor parity remain open.
+Read-only queries do not mutate the run or provider state.
 
 ## Unsupported scope
 
@@ -82,8 +85,8 @@ Nature-owned set unless a controlled Chance Law replay selects an identity.
 The boundary
 requires that bag to exist, so Native bag construction is outside this
 session. Stochastic consequences of merchant purchases, later Treasure draws,
-exact native float-edge probabilities, and Native cursor parity remain
-unsupported. Legacy Shop-node generation continues to use its existing
+exact finite float probabilities for rounded merchant prices, and Native
+cursor parity remain unsupported. Legacy Shop-node generation continues to use its existing
 run-action contract. The four legacy `shop.merchant.*` rows linked from the
 migration matrix remain separate: three price rows use discrete integer
 percentage bins that approximate the Native unit-float price sites, and the
