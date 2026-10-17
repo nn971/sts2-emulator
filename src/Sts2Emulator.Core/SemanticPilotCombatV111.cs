@@ -108,7 +108,13 @@ public sealed record SemanticPilotCombatV111(
     public SemanticSeededEntryV111? SeededEntry { get; init; }
     /// <summary>Private state for explicitly opted-in non-Nature RNG.</summary>
     [JsonIgnore]
-    public SemanticPilotStochasticStateV111 Stochastic { get; init; } = new();
+    public SemanticPilotStochasticStateV111 Stochastic { get; init; } =
+        new(PendingEndTurn: PendingEndTurn);
+    public SemanticEndTurnV111? PendingEndTurn
+    {
+        get => Stochastic.PendingEndTurn;
+        init => Stochastic = Stochastic with { PendingEndTurn = value };
+    }
     public SemanticOtherChanceStateV111? OtherChance
     {
         get => Stochastic.OtherChance;
@@ -135,7 +141,12 @@ public sealed record SemanticPilotCombatV111(
             SemanticPilotStochasticStateV111.WithSourceRouteAudit(
                 Stochastic, value);
     }
-    public ControlledTurnIntentsV111? PendingInitialIntents { get; init; }
+    public ControlledTurnIntentsV111? PendingInitialIntents
+    {
+        get => Stochastic.PendingInitialIntents;
+        init => Stochastic = Stochastic with
+        { PendingInitialIntents = value };
+    }
     [JsonIgnore] public SemanticTargetEventV111? TargetPending =>
         PendingEndTurn is { } endTurn
             ? endTurn.TargetPending
@@ -243,8 +254,6 @@ public sealed record SemanticPilotCombatV111(
     {
         OpeningSource = OpeningSource.Fork(),
         Run = Run.Fork(),
-        PendingEndTurn = PendingEndTurn?.Fork(),
-        PendingInitialIntents = PendingInitialIntents?.Fork(),
         History = History.Select(transition => transition switch
         {
             { IntentDecision: { } decision } => transition with
@@ -4029,7 +4038,6 @@ public static class SemanticPilotCombatEngineV111
             throw new InvalidDataException("Invalid semantic playable session.");
         if (state.PendingEndTurn is { } endTurn)
         {
-            SemanticEndTurnEngineV111.Validate(endTurn);
             if (endTurn.Complete ||
                 (endTurn.EnemyActionPending is not null &&
                  (state.PendingInitialIntents is not null ||
@@ -4048,7 +4056,6 @@ public static class SemanticPilotCombatEngineV111
         }
         if (state.PendingInitialIntents is { } initialIntents)
         {
-            ControlledTurnIntentEngineV111.Validate(initialIntents);
             if (initialIntents.Complete || state.PendingEndTurn is not null ||
                 state.SeededEntry?.SourceRouteEntry != true ||
                 state.Run.World?.Combat is not { } entryCombat ||

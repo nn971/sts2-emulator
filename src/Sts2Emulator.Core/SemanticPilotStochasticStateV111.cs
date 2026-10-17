@@ -9,11 +9,15 @@ public sealed record SemanticPilotStochasticStateV111(
     SemanticOtherChanceStateV111? OtherChance = null,
     SemanticRewardAuditV111? RewardAudit = null,
     SemanticNativePolicyAuditV111? NativePolicyAudit = null,
-    SemanticSourceRouteAuditV111? SourceRouteAudit = null)
+    SemanticSourceRouteAuditV111? SourceRouteAudit = null,
+    SemanticEndTurnV111? PendingEndTurn = null,
+    ControlledTurnIntentsV111? PendingInitialIntents = null)
 {
     public SemanticPilotStochasticStateV111 Fork() => this with
     {
         OtherChance = OtherChance?.Fork(),
+        PendingEndTurn = PendingEndTurn?.Fork(),
+        PendingInitialIntents = PendingInitialIntents?.Fork(),
         NativePolicyAudit = NativePolicyAudit is { } audit
             ? audit with
             {
@@ -48,6 +52,10 @@ public sealed record SemanticPilotStochasticStateV111(
     {
         if (OtherChance is not null)
             SemanticOtherChanceEngineV111.Validate(OtherChance);
+        if (PendingEndTurn is not null)
+            SemanticEndTurnEngineV111.Validate(PendingEndTurn);
+        if (PendingInitialIntents is not null)
+            ControlledTurnIntentEngineV111.Validate(PendingInitialIntents);
     }
 
     internal static SemanticPilotStochasticStateV111 WithOtherChance(

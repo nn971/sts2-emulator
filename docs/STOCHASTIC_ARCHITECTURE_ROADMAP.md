@@ -32,6 +32,8 @@
 
 **S4 persisted chance-payload increment (2026-10-17):** controlled event, run-action, and automatic enemy-action continuations now share `ControlledChanceContinuationStateV111` for their saved decision prefix, pending typed request, and optional candidate-label transcript. Each boundary keeps its own mechanics checkpoint and validation rules; existing flattened continuation fields still project the shared payload. The ordinary-engine migration and full cross-provider mechanical-equivalence gate remain open.
 
+**S3 pilot continuation ownership increment (2026-10-17):** `SemanticPilotStochasticStateV111` now owns the pending `SemanticEndTurnV111` and `ControlledTurnIntentsV111` frames along with their provider provenance. `SemanticPilotCombatV111` preserves its existing serialized fields as projections, and its single stochastic-owner fork now deep-forks both frames. This groups the playable pilot's pending provider continuation atomically but does not yet merge all adapters into one engine continuation.
+
 ## S1 precise design
 
 Implement a **read-only, outcome-blind** Chance Law query in `Sts2Emulator.Core` with:
