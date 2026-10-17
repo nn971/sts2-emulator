@@ -15053,6 +15053,43 @@ public sealed partial class PrototypeGameEngine
         PrototypeCardZone zone,
         long[] cards)
     {
+        if (zone == PrototypeCardZone.DrawPile)
+        {
+            if (combat.DrawPile.SequenceEqual(cards))
+                return combat;
+
+            if (cards.Length <= combat.DrawPile.Length ||
+                !cards.Take(combat.DrawPile.Length)
+                    .SequenceEqual(combat.DrawPile))
+                throw new InvalidOperationException(
+                    "Draw-pile writes through SetZone must be known top insertions.");
+
+            var inserted = cards.Skip(combat.DrawPile.Length).ToArray();
+            var insertedSet = inserted.ToHashSet();
+            var zoneChanges = new Dictionary<PrototypeCardZone, long[]>
+            {
+                [PrototypeCardZone.DrawPile] = (long[])cards.Clone()
+            };
+            foreach (var sourceZone in Enum.GetValues<PrototypeCardZone>()
+                .Where(sourceZone => sourceZone !=
+                    PrototypeCardZone.DrawPile))
+            {
+                var sourceCards = combat.Mechanics.CardZones
+                    .CardsIn(sourceZone);
+                if (sourceCards.Any(insertedSet.Contains))
+                    zoneChanges[sourceZone] = sourceCards
+                        .Where(id => !insertedSet.Contains(id)).ToArray();
+            }
+
+            return SemanticDrawPileAdapterV111
+                .ApplyDrawPileInsertionSequence(
+                    combat,
+                    combat.DrawPile.Length,
+                    inserted,
+                    combat.Mechanics.CardZones.WithZoneChanges(zoneChanges),
+                    publiclyKnown: true);
+        }
+
         return SemanticDrawPileAdapterV111.ApplyZoneTransition(
             combat,
             combat.Mechanics.CardZones.WithCardsIn(zone, cards));
