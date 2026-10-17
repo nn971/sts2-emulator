@@ -22,14 +22,16 @@ ticket; resume replays the lift action once and commits the terminal page.
 Push applies its HP loss and presents the existing deck-card choice first. The
 session records that player action, suspends at the ticket, and later resumes
 only the ticket tail before committing the page. If the HP loss ends the run,
-the source never reaches the ticket. Both ticket requests use Native event
-stream ordinal 1 because the entry potion-slot draw owns ordinal 0. Controlled
-outcomes do not advance the Native cursor.
+the source never reaches the ticket. Native ticket requests use event-stream
+ordinal 1 because the entry potion-slot draw owns ordinal 0. Legacy fallback
+requests retain their `event` stream call ordinal. Controlled outcomes do not
+advance either provider cursor.
 
 The serialized request includes site, stream, owner, ordinal, operation kind
 and ordered integer support. Generic D3 event requests use the legacy stream;
-Stone push and lift retain their Native event stream and bounded count.
-Candidate labels identify event card instances, card models, potion models, eligible relics,
+Stone push and lift use their Native event stream on configured Native runs
+and the legacy `event` stream on the retained prototype route. Candidate
+labels identify event card instances, card models, potion models, eligible relics,
 and Sand Castle's physical deck-card instances where those identities describe
 the request support; other swap positions and rarity tickets retain numeric
 labels.
@@ -66,8 +68,9 @@ The supported event-choice sites are:
   post-reward modifier-curse offer is completed
 - `event.stone_of_all_time.push_ticket` after its player deck-card choice and
   `event.stone_of_all_time.lift_ticket` at the lift action; on the configured
-  Native route, all 100 ticket indices map to one `no_effect` outcome and the
-  Chance Law is `SOURCE_VERIFIED`
+  Native and retained legacy routes, all 100 ticket indices map to one
+  `no_effect` outcome and the pending Chance Law is `SOURCE_VERIFIED`; direct
+  pre-choice ticket-law queries remain Native-only
 - `relic_grab_bag.queue_shuffle.swap_index` and
   `relic_grab_bag.rarity.ticket` while acquiring Toy Box through a supported
   controlled event choice
@@ -105,9 +108,10 @@ multi-draw event effects, the frame re-enters only the current effect from its
 saved start and injects that effect's saved decision prefix; all completed
 earlier effects remain in the partial run.
 
-Stone of All Time push and lift sessions require the configured Native event
-stream. Legacy ticket fallbacks and Native cursor parity remain outside their
-laws.
+Stone of All Time push and lift sessions accept the configured Native event
+route and the retained legacy event route. Their pending Chance Law collapses
+the discarded ticket to `no_effect`; direct pre-choice ticket-law queries are
+Native-only. Seeded stream parity remains open.
 
 Legacy run-start and Shovel action draws use the separate
 [`CONTROLLED_RUN_ACTION_D3.md`](CONTROLLED_RUN_ACTION_D3.md) boundary.

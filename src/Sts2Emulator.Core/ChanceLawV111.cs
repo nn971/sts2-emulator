@@ -2104,8 +2104,6 @@ public static partial class ChanceLawEngineV111
             throw new InvalidOperationException(
                 "Stone of All Time ticket law requires a pending controlled event choice.");
         continuation.Validate();
-        var expectedStreamId = NativeRngV111Contexts.EventStreamId(
-            PrototypeNativeStoneOfAllTime.NativeRngEventId);
         var choiceId = continuation.ChoiceId;
         var expectedSiteId = choiceId switch
         {
@@ -2114,37 +2112,53 @@ public static partial class ChanceLawEngineV111
             _ => throw new InvalidOperationException(
                 "Stone of All Time controlled choice has no ticket law.")
         };
+        var partialState = continuation.PartialState;
+        var partialWorld = partialState.World;
+        var partialEvent = partialWorld?.Event ??
+            throw new InvalidOperationException(
+                "Pending Stone of All Time ticket has no event state.");
+        var nativeRoute = partialState.NativeRunRng is not null;
+        var expectedStreamId = nativeRoute
+            ? NativeRngV111Contexts.EventStreamId(
+                PrototypeNativeStoneOfAllTime.NativeRngEventId)
+            : "event";
         if (continuation.EventId != PrototypeNativeStoneOfAllTime.EventId ||
             request.SiteId != expectedSiteId ||
             request.StreamId != expectedStreamId ||
             request.OwnerId != $"event:stone_of_all_time:{choiceId}" ||
-            request.Ordinal != 1 ||
+            (nativeRoute && request.Ordinal != 1) ||
             request.OperationKind != "bounded_integer" ||
             request.BoundedCount != 100)
             throw new InvalidOperationException(
                 "Pending Stone of All Time ticket request disagrees with its source boundary.");
-        var partialWorld = continuation.PartialState.World;
-        var partialEvent = partialWorld?.Event;
-        if (continuation.PartialState.Phase != RunPhase.Event ||
+        var nativeRouteMismatch = nativeRoute &&
+            (partialWorld is not { Act: 2 } ||
+             !PrototypeGameEngine.UsesNativeRegionalSystems(partialWorld!));
+        var legacyRouteMismatch = !nativeRoute &&
+            (partialWorld is not { Act: 2 } ||
+             PrototypeGameEngine.UsesNativeRegionalSystems(partialWorld!));
+        var eventRngMismatch = nativeRoute
+            ? partialEvent.NativeEventRng?.StreamId != expectedStreamId ||
+                partialEvent.NativeEventRngProviderMode is not null
+            : partialEvent.NativeEventRng is not null ||
+                partialEvent.NativeEventRngProviderMode is not null;
+        if (partialState.Phase != RunPhase.Event ||
             partialWorld is not { Act: 2 } ||
-            !PrototypeGameEngine.UsesNativeRegionalSystems(partialWorld) ||
-            continuation.PartialState.NativeRunRng is null ||
-            partialEvent is null ||
             partialEvent.EventId != PrototypeNativeStoneOfAllTime.EventId ||
             partialEvent.NativePageIndex != 0 ||
-            partialEvent.NativeEventRng?.StreamId != expectedStreamId ||
-            partialEvent.NativeEventRngProviderMode is not null ||
+            eventRngMismatch ||
+            nativeRouteMismatch || legacyRouteMismatch ||
             (choiceId == "lift" && partialEvent.ChosenChoiceId is not null) ||
             (choiceId == "push" && partialEvent.ChosenChoiceId != "push"))
             throw new InvalidOperationException(
-                "Pending Stone of All Time ticket is outside its Native event-action boundary.");
+                "Pending Stone of All Time ticket is outside its Native or legacy event-action boundary.");
         var conditioningFingerprint = CanonicalJson.Sha256(new
         {
             boundary = "reference_nature.controlled_event.stone_of_all_time.ticket",
             boundaryFingerprint,
             eventId = partialEvent.EventId,
             actionId = choiceId,
-            nativeEventStreamId = expectedStreamId,
+            providerRoute = nativeRoute ? "native" : "legacy",
             request
         });
         return CreateNativeBoundaryLaw(
