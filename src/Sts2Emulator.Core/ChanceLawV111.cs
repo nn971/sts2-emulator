@@ -2969,11 +2969,17 @@ public sealed record ReferenceNatureRunActionSessionV111(
 
     public void Validate()
     {
+        var deterministicShopAction = Origin is not null
+            && Action is not null
+            && ControlledRunActionEngineV111.IsDeterministicShopAction(
+                Origin, Action)
+            && DecisionTranscript is { Length: 0 };
         if (SchemaId != CurrentSchemaId || Origin is null || Action is null ||
             Run is null || InitialNatureState is null || NatureState is null ||
             DecisionTranscript is null || string.IsNullOrWhiteSpace(Action.Kind) ||
             (Run.ControlledRunActionChoice is null &&
-             Run.ControlledRunActionHistory is not { Length: > 0 }))
+             Run.ControlledRunActionHistory is not { Length: > 0 } &&
+             !deterministicShopAction))
             throw new InvalidDataException(
                 "Invalid ReferenceNature run-action session envelope.");
         PrototypeStateInvariants.Validate(Origin);
@@ -3005,6 +3011,19 @@ public sealed record ReferenceNatureRunActionSessionV111(
         }
         else
         {
+            if (deterministicShopAction)
+            {
+                var replayedRun = ControlledRunActionEngineV111.Begin(
+                    Origin.Fork(), CloneAction(Action));
+                replayedRun = ReferenceNatureRunCursorV111.Commit(
+                    replayedRun, InitialNatureState);
+                if (CanonicalJson.Sha256(replayedRun) !=
+                    CanonicalJson.Sha256(Run))
+                    throw new InvalidDataException(
+                        "Deterministic ReferenceNature shop action differs from its replay.");
+                return;
+            }
+
             var trace = Run.ControlledRunActionHistory![^1];
             trace.Validate();
             if (trace.ActionId != Action.Kind ||

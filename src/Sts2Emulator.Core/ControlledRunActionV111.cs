@@ -519,10 +519,13 @@ public static class ControlledRunActionEngineV111
                                 !source.Player.Relics.Any(relic =>
                                     StringComparer.Ordinal.Equals(
                                         relic.RelicId, id)))));
+        var deterministicShopAction = IsDeterministicShopAction(
+            source, action);
         if (source.ControlledRunActionChoice is not null
-            || action.Kind is not ("start_run"
+            || (action.Kind is not ("start_run"
                 or PrototypeNativeRestSiteActionsV111.Dig
                 or "choose_map_node")
+                && !deterministicShopAction)
             || action.Kind == "choose_map_node" && !supportedMapNodeAction)
             throw new InvalidOperationException(
                 "Controlled run action requires an unsuspended supported action.");
@@ -582,11 +585,24 @@ public static class ControlledRunActionEngineV111
                 "Controlled run-action begin returned neither a run nor a pending chance request.");
         }
         if (result.ControlledRunActionChoice is null)
+        {
+            if (deterministicShopAction)
+            {
+                PrototypeStateInvariants.Validate(result);
+                return result;
+            }
             throw new NotSupportedException(
                 "The selected action did not reach a supported legacy controlled chance site.");
+        }
         PrototypeStateInvariants.Validate(result);
         return result;
     }
+
+    internal static bool IsDeterministicShopAction(
+        RunState source, GameAction action) =>
+        source.Phase == RunPhase.Shop
+        && (action.Kind is "buy_card" or "buy_potion"
+            or "replace_shop_potion" or "remove_card");
 
     public static RunState Resolve(RunState source, int selectedIndex)
     {

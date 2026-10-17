@@ -68,14 +68,18 @@ seed. Snapshots with a Nature-owned relic identity set use
 cursor use `sts2-exact-snapshot-v2-reference-nature-state`, and snapshots
 without a cursor retain `sts2-exact-snapshot-v1`.
 
-The session supports only the `start_run` boss encounter draw, legacy map
+The session supports the `start_run` boss encounter draw, legacy map
 Event-node entry draws, seven `shop.*` sites in legacy Shop-node generation,
 the `treasure.relic_model.index_draw` legacy Treasure-node site, and Shovel's
-unowned-relic draw. It keeps the Chance Law sample and run-state resolution
-atomic across fork/save/restore; it does not enable native regional merchant
-or treasure providers, purchases, or other run/reward/map operations. The
-sample uses the independent ReferenceNature stream and does not advance the
-game's RNG.
+unowned-relic draw. The same ReferenceNature run-action session also accepts
+legal `buy_card`, `buy_potion`, `replace_shop_potion`, and `remove_card` Shop
+actions when they complete without a random request. These deterministic
+actions commit immediately with no Nature sample; a stochastic hook during
+one of them still fails closed. Relic purchases and other stochastic purchase
+effects remain unsupported. The session keeps supported Chance Law samples
+and run-state resolution atomic across fork/save/restore; it does not enable
+native regional merchant or treasure providers or other run/reward/map
+operations. Nature samples do not advance the game's RNG.
 Once committed, the session result also provides a regular `stateHandle` for
 continuing play through the ordinary run API; no state handle is published
 while a Nature choice remains pending.
