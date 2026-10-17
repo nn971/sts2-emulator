@@ -5,35 +5,8 @@ public static class PrototypeStateInvariants
     public static void Validate(RunState state)
     {
         RunConfiguration.ValidateState(state);
-        if (state.ControlledEventChoiceHistory is { } controlledEventHistory)
-        {
-            if (controlledEventHistory.Any(trace => trace is null))
-                throw new InvalidOperationException(
-                    "Controlled event-choice history contains a null entry.");
-            foreach (var trace in controlledEventHistory)
-                trace.Validate();
-        }
-        if (state.ControlledRunActionHistory is { } controlledRunActionHistory)
-        {
-            if (controlledRunActionHistory.Any(trace => trace is null))
-                throw new InvalidOperationException(
-                    "Controlled run-action history contains a null entry.");
-            foreach (var trace in controlledRunActionHistory)
-                trace.Validate();
-        }
         state.Stochastic.Validate(state);
-        if (state.ControlledRunActionChoice is { } controlledRunActionChoice)
-        {
-            controlledRunActionChoice.Validate();
-            if (state.DecisionIndex <
-                    controlledRunActionChoice.PartialState.DecisionIndex
-                || CanonicalJson.Sha256(state with
-                    { ControlledRunActionChoice = null }) !=
-                    CanonicalJson.Sha256(
-                        controlledRunActionChoice.PartialState))
-                throw new InvalidOperationException(
-                    "Suspended controlled run action conflicts with committed state.");
-        }
+        state.Stochastic.ValidateControlledRunActionChoice(state);
         NativeAncientRewardsV111.ValidateEventContext(state);
         NativeEventContextRngV111.Validate(
             state,
@@ -151,27 +124,7 @@ public static class PrototypeStateInvariants
             activeEvent.Stochastic.ValidateControlledChoice(
                 activeEvent, state);
 
-        if (state.ControlledEventRewardChoice is { } controlledEventRewardChoice)
-        {
-            controlledEventRewardChoice.Validate();
-            var rewardEvent = world.Event;
-            var reward = world.Reward;
-            if (world.Event?.ControlledChoice is not null
-                || state.Phase != RunPhase.Reward
-                || rewardEvent is null
-                || rewardEvent.EventId != controlledEventRewardChoice.EventId
-                || rewardEvent.ChosenChoiceId !=
-                    controlledEventRewardChoice.ChoiceId
-                || reward?.SourceRoom !=
-                    "Event:" + controlledEventRewardChoice.EventId
-                || reward?.AddRandomCurseAfterReward != true
-                || CanonicalJson.Sha256(state with
-                    { ControlledEventRewardChoice = null }) !=
-                    CanonicalJson.Sha256(
-                        controlledEventRewardChoice.PartialState))
-                throw new InvalidOperationException(
-                    "Suspended controlled event reward conflicts with committed reward state.");
-        }
+        state.Stochastic.ValidateControlledEventRewardChoice(state);
 
         if (!StringComparer.Ordinal.Equals(world.RulesetId, state.Configuration?.RulesetId ?? PrototypeContent.RulesetId))
         {

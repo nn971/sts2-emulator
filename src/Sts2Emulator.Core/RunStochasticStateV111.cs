@@ -33,10 +33,68 @@ public sealed record RunStochasticStateV111(
     public void Validate(RunState owner)
     {
         ArgumentNullException.ThrowIfNull(owner);
+        if (ControlledEventChoiceHistory is { } controlledEventHistory)
+        {
+            if (controlledEventHistory.Any(trace => trace is null))
+                throw new InvalidOperationException(
+                    "Controlled event-choice history contains a null entry.");
+            foreach (var trace in controlledEventHistory)
+                trace.Validate();
+        }
+        if (ControlledRunActionHistory is { } controlledRunActionHistory)
+        {
+            if (controlledRunActionHistory.Any(trace => trace is null))
+                throw new InvalidOperationException(
+                    "Controlled run-action history contains a null entry.");
+            foreach (var trace in controlledRunActionHistory)
+                trace.Validate();
+        }
         NativeRunRngV111.Validate(owner);
         ReferenceNature?.Validate();
         if (owner.World is { } world)
             world.Stochastic.Validate(world, owner);
+    }
+
+    internal void ValidateControlledRunActionChoice(RunState owner)
+    {
+        ArgumentNullException.ThrowIfNull(owner);
+        if (ControlledRunActionChoice is not { } controlledRunActionChoice)
+            return;
+        controlledRunActionChoice.Validate();
+        if (owner.DecisionIndex <
+                controlledRunActionChoice.PartialState.DecisionIndex
+            || CanonicalJson.Sha256(owner with
+                { ControlledRunActionChoice = null }) !=
+            CanonicalJson.Sha256(
+                controlledRunActionChoice.PartialState))
+            throw new InvalidOperationException(
+                "Suspended controlled run action conflicts with committed state.");
+    }
+
+    internal void ValidateControlledEventRewardChoice(RunState owner)
+    {
+        ArgumentNullException.ThrowIfNull(owner);
+        if (ControlledEventRewardChoice is not { } controlledEventRewardChoice)
+            return;
+        controlledEventRewardChoice.Validate();
+        var world = owner.World;
+        var rewardEvent = world?.Event;
+        var reward = world?.Reward;
+        if (world?.Event?.ControlledChoice is not null
+            || owner.Phase != RunPhase.Reward
+            || rewardEvent is null
+            || rewardEvent.EventId != controlledEventRewardChoice.EventId
+            || rewardEvent.ChosenChoiceId !=
+                controlledEventRewardChoice.ChoiceId
+            || reward?.SourceRoom !=
+                "Event:" + controlledEventRewardChoice.EventId
+            || reward?.AddRandomCurseAfterReward != true
+            || CanonicalJson.Sha256(owner with
+                { ControlledEventRewardChoice = null }) !=
+            CanonicalJson.Sha256(
+                controlledEventRewardChoice.PartialState))
+            throw new InvalidOperationException(
+                "Suspended controlled event reward conflicts with committed reward state.");
     }
 
     internal static RunStochasticStateV111 WithNativeRunRng(
