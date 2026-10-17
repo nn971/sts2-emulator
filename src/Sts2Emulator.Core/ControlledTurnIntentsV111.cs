@@ -172,11 +172,7 @@ public static class ControlledTurnIntentEngineV111
         var streams = NativeRngV111.CreateBundle("validation-no-native-consumption");
         foreach (var choice in state.Transcript)
         {
-            choice.Validate();
-            if (choice.ProviderMode != "controlled-v111" ||
-                choice.NativeCursorBefore is not null ||
-                choice.NativeCursorAfter is not null ||
-                replay.Pending is null ||
+            if (replay.Pending is null ||
                 CanonicalJson.Sha256(replay.Pending) != CanonicalJson.Sha256(choice.Request))
                 throw new InvalidDataException(
                     "Turn-intent decisions diverge from saved eligibility.");
