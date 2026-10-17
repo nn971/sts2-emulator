@@ -95,7 +95,16 @@ public static class SemanticPlayerActionEngineV111
             "proto.silent.blade_of_ink",
             "proto.silent.fan_of_knives",
             "proto.silent.up_my_sleeve",
-            "proto.silent.predator"
+            "proto.silent.predator",
+            "proto.silent.shiv",
+            "proto.silent.mirage",
+            "proto.silent.tactician",
+            "proto.silent.tools_of_the_trade",
+            "proto.silent.shadowmeld",
+            "proto.silent.the_hunt",
+            "proto.silent.well_laid_plans",
+            "proto.silent.wraith_form",
+            "proto.silent.storm_of_steel"
         };
 
     internal static bool SupportsCard(string cardId) =>
