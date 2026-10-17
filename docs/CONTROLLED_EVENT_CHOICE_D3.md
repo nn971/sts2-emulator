@@ -24,6 +24,16 @@ completed transcripts identify `controlled-v111` outcomes and retain
 `UNVERIFIED` probability status. Controlled outcomes do not advance the legacy
 RNG stream.
 
+Pending event-effect and post-reward modifier-curse responses also include a
+read-only `chanceLaw` and `boundaryFingerprint`. The law assigns equal weight
+to each legal request index (`choice_index:n`); candidate labels describe the
+mechanical result associated with an index but do not change these index
+weights. The response is useful for a caller-managed sampler, while source
+weights, stream parity and original-game probabilities remain `UNVERIFIED`.
+The pending boundary fingerprint binds the event/choice/request context and
+excludes private RNG state. The response's top-level `fingerprint` remains the
+exact-state stale-request guard.
+
 The supported event-choice sites are:
 
 - `event.random_upgrade.card_instance`
@@ -91,6 +101,13 @@ The optional one-boundary enumerator is
 advertised as `sts2-v111-controlled-event-enumeration-v1`; its cap is 256
 outcomes. Each branch resolves only the current request, leaving any next
 request pending in that child.
+
+The JSONL response adds the Chance Law payload without changing the existing
+controlled-event schema or resolution operations. This continuation does not
+own a ReferenceNature sampler cursor; callers that need atomic sampling state
+can use the ReferenceNature run-action session only for the separately
+supported run-action boundaries documented in
+[`CONTROLLED_RUN_ACTION_D3.md`](CONTROLLED_RUN_ACTION_D3.md).
 
 ## Evidence and limits
 

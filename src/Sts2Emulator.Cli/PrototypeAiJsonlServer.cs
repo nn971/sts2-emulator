@@ -47,6 +47,10 @@ internal static class PrototypeAiJsonlServer
         var referenceNatureStates = new Dictionary<string, ReferenceNatureSessionV111>(
             StringComparer.Ordinal);
         long nextReferenceNatureHandle = 1;
+        var referenceNatureRunActionStates =
+            new Dictionary<string, ReferenceNatureRunActionSessionV111>(
+                StringComparer.Ordinal);
+        long nextReferenceNatureRunActionHandle = 1;
 
         string StoreSemantic(SemanticPilotCombatV111 state)
         {
@@ -80,6 +84,26 @@ internal static class PrototypeAiJsonlServer
                     "Unknown ReferenceNature session handle: " + handle);
         }
 
+        string StoreReferenceNatureRunAction(
+            ReferenceNatureRunActionSessionV111 session)
+        {
+            var handle = "u" + nextReferenceNatureRunActionHandle++;
+            referenceNatureRunActionStates.Add(handle, session.Fork());
+            return handle;
+        }
+
+        ReferenceNatureRunActionSessionV111 RequireReferenceNatureRunAction(
+            JsonElement request)
+        {
+            var handle = RequiredString(request,
+                "reference_nature_run_action_handle");
+            return referenceNatureRunActionStates.TryGetValue(handle,
+                    out var session)
+                ? session
+                : throw new InvalidOperationException(
+                    "Unknown ReferenceNature run-action session handle: " + handle);
+        }
+
         object ReferenceNatureResult(
             ReferenceNatureSessionV111 session, string handle,
             string? parent = null)
@@ -109,6 +133,47 @@ internal static class PrototypeAiJsonlServer
                 otherChanceDecisionCount = combat.OtherChance?.Decisions.Length ?? 0,
                 rewardProvider = combat.RewardAudit?.ProviderId,
                 rewardDrawCount = combat.RewardAudit?.Calls
+            };
+        }
+
+        object ReferenceNatureRunActionResult(
+            ReferenceNatureRunActionSessionV111 session, string handle,
+            string? parent = null)
+        {
+            var continuation = session.Run.ControlledRunActionChoice;
+            var chanceLaw = continuation is null ? null :
+                ChanceLawEngineV111.QueryControlledRunAction(session.Run);
+            var runFingerprint = CanonicalJson.Sha256(session.Run);
+            var boundaryFingerprint = continuation is null ? null :
+                ChanceLawEngineV111.ControlledRunActionBoundaryFingerprint(
+                    session.Run);
+            object? pending = continuation is null ? null : new
+            {
+                kind = "run_action_random_choice",
+                eventId = chanceLaw!.EventId,
+                boundaryFingerprint,
+                actionId = continuation.ActionId,
+                request = continuation.PendingRequest,
+                candidateLabels = continuation.PendingCandidateLabels,
+                chanceLaw,
+                probabilityStatus = chanceLaw.ProbabilityStatus
+            };
+            return new
+            {
+                ok = true,
+                schemaId = ReferenceNatureRunActionSessionV111.CurrentSchemaId,
+                referenceNatureRunActionHandle = handle,
+                parent,
+                fingerprint = session.Fingerprint,
+                runFingerprint,
+                actionId = session.Action.Kind,
+                runPhase = session.Run.Phase,
+                boundary = session.Complete ? "committed" : "nature",
+                pending,
+                decisionTranscript = session.DecisionTranscript,
+                natureProvider = ReferenceNatureV111.ProviderId,
+                natureSampleCount = session.NatureState.SampleCount,
+                probabilityStatus = ChanceLawV111.UnverifiedStatus
             };
         }
 
@@ -727,6 +792,7 @@ internal static class PrototypeAiJsonlServer
         {
             var continuation = state.World?.Event?.ControlledChoice;
             var rewardContinuation = state.ControlledEventRewardChoice;
+            var stateFingerprint = CanonicalJson.Sha256(state);
             if (continuation is not null && rewardContinuation is not null)
                 throw new InvalidDataException(
                     "A state cannot suspend both an event effect and its reward.");
@@ -789,8 +855,19 @@ internal static class PrototypeAiJsonlServer
                     kind = "event_random_choice",
                     eventId = continuation.EventId,
                     choiceId = continuation.ChoiceId,
+                    boundaryFingerprint = CanonicalJson.Sha256(new
+                    {
+                        schemaId = ControlledEventChoiceEngineV111.SchemaId,
+                        continuation.EventId,
+                        continuation.ChoiceId,
+                        continuation.NextEffectIndex,
+                        request = continuation.PendingRequest,
+                        candidateLabels = continuation.PendingCandidateLabels
+                    }),
                     request = continuation.PendingRequest,
                     candidateLabels = continuation.PendingCandidateLabels,
+                    chanceLaw = ChanceLawEngineV111.QueryRandomIndex(
+                        continuation.EventId, continuation.PendingRequest),
                     probabilityStatus = "UNVERIFIED"
                 }
                 : rewardContinuation is not null
@@ -799,8 +876,20 @@ internal static class PrototypeAiJsonlServer
                         kind = "event_reward_random_choice",
                         eventId = rewardContinuation.EventId,
                         choiceId = rewardContinuation.ChoiceId,
+                        boundaryFingerprint = CanonicalJson.Sha256(new
+                        {
+                            schemaId = ControlledEventChoiceEngineV111.SchemaId,
+                            rewardContinuation.EventId,
+                            rewardContinuation.ChoiceId,
+                            rewardContinuation.DecisionPrefixLength,
+                            request = rewardContinuation.PendingRequest,
+                            candidateLabels = rewardContinuation.PendingCandidateLabels
+                        }),
                         request = rewardContinuation.PendingRequest,
                         candidateLabels = rewardContinuation.PendingCandidateLabels,
+                        chanceLaw = ChanceLawEngineV111.QueryRandomIndex(
+                            rewardContinuation.EventId,
+                            rewardContinuation.PendingRequest),
                         probabilityStatus = "UNVERIFIED"
                     }
                     : null;
@@ -810,7 +899,7 @@ internal static class PrototypeAiJsonlServer
                 schemaId = ControlledEventChoiceEngineV111.SchemaId,
                 stateHandle = handle,
                 parent,
-                fingerprint = CanonicalJson.Sha256(state),
+                fingerprint = stateFingerprint,
                 boundary = isPending ? "nature" : "committed",
                 pending,
                 transcript,
@@ -822,6 +911,11 @@ internal static class PrototypeAiJsonlServer
             string? parent)
         {
             var continuation = state.ControlledRunActionChoice;
+            var stateFingerprint = CanonicalJson.Sha256(state);
+            var boundaryFingerprint = continuation is null ? null :
+                ChanceLawEngineV111.ControlledRunActionBoundaryFingerprint(state);
+            var chanceLaw = continuation is null
+                ? null : ChanceLawEngineV111.QueryControlledRunAction(state);
             var actions = continuation is null
                 ? environment.Observe(state).LegalActions
                 : new PrototypeGameEngine().GetLegalActions(state)
@@ -846,9 +940,12 @@ internal static class PrototypeAiJsonlServer
                 : new
                 {
                     kind = "run_action_random_choice",
+                    eventId = chanceLaw!.EventId,
+                    boundaryFingerprint,
                     actionId = continuation.ActionId,
                     request = continuation.PendingRequest,
                     candidateLabels = continuation.PendingCandidateLabels,
+                    chanceLaw,
                     probabilityStatus = "UNVERIFIED"
                 };
             return new
@@ -857,7 +954,7 @@ internal static class PrototypeAiJsonlServer
                 schemaId = ControlledRunActionEngineV111.SchemaId,
                 stateHandle = handle,
                 parent,
-                fingerprint = CanonicalJson.Sha256(state),
+                fingerprint = stateFingerprint,
                 boundary = continuation is null ? "committed" : "nature",
                 pending,
                 transcript,
@@ -983,6 +1080,8 @@ internal static class PrototypeAiJsonlServer
                                 StochasticCapabilitiesV111.Create(),
                             referenceNatureSessionSchemaId =
                                 ReferenceNatureSessionV111.CurrentSchemaId,
+                            referenceNatureRunActionSessionSchemaId =
+                                ReferenceNatureRunActionSessionV111.CurrentSchemaId,
                             referenceNatureProviderId =
                                 ReferenceNatureV111.ProviderId,
                             controlledEventChoiceSchemaId =
@@ -1800,6 +1899,98 @@ internal static class PrototypeAiJsonlServer
                         var handle = StoreSemantic(state);
                         Write(new { requestId, ok = true,
                             result = SemanticResult(state, handle) });
+                        break;
+                    }
+
+                    case "reference_nature_run_action_begin":
+                    {
+                        var source = RequireState(request);
+                        var actionId = OptionalString(request, "action_id");
+                        GameAction action;
+                        if (actionId is not null)
+                        {
+                            var actionView = environment.Observe(source)
+                                .LegalActions.SingleOrDefault(candidate =>
+                                    StringComparer.Ordinal.Equals(
+                                        candidate.ActionId, actionId))
+                                ?? throw new InvalidOperationException(
+                                    "ReferenceNature run-action begin requires a current legal action.");
+                            action = GameAction.Create(actionView.Kind,
+                                actionView.Payload);
+                        }
+                        else
+                        {
+                            action = new PrototypeGameEngine().GetLegalActions(source)
+                                .SingleOrDefault(candidate => candidate.Kind ==
+                                    PrototypeNativeRestSiteActionsV111.Dig)
+                                ?? throw new InvalidOperationException(
+                                    "Missing action_id; only Shovel dig has a default.");
+                        }
+                        var session = ReferenceNatureRunActionSessionV111.Begin(
+                            source, action,
+                            RequiredULong(request, "nature_seed"));
+                        var handle = StoreReferenceNatureRunAction(session);
+                        Write(new { requestId, result =
+                            ReferenceNatureRunActionResult(session, handle) });
+                        break;
+                    }
+
+                    case "reference_nature_run_action_status":
+                    {
+                        var handle = RequiredString(request,
+                            "reference_nature_run_action_handle");
+                        var session = RequireReferenceNatureRunAction(request);
+                        Write(new { requestId, result =
+                            ReferenceNatureRunActionResult(session, handle) });
+                        break;
+                    }
+
+                    case "reference_nature_run_action_resolve_next":
+                    {
+                        var parentHandle = RequiredString(request,
+                            "reference_nature_run_action_handle");
+                        var session = RequireReferenceNatureRunAction(request);
+                        if (session.Fingerprint != RequiredString(request,
+                                "fingerprint"))
+                            throw new InvalidOperationException(
+                                "Stale ReferenceNature run-action session fingerprint.");
+                        var next = session.ResolveNext();
+                        var handle = StoreReferenceNatureRunAction(next);
+                        Write(new { requestId, result =
+                            ReferenceNatureRunActionResult(
+                                next, handle, parentHandle) });
+                        break;
+                    }
+
+                    case "reference_nature_run_action_fork":
+                    {
+                        var parentHandle = RequiredString(request,
+                            "reference_nature_run_action_handle");
+                        var next = RequireReferenceNatureRunAction(request).Fork();
+                        var handle = StoreReferenceNatureRunAction(next);
+                        Write(new { requestId, result =
+                            ReferenceNatureRunActionResult(
+                                next, handle, parentHandle) });
+                        break;
+                    }
+
+                    case "reference_nature_run_action_save":
+                    {
+                        var session = RequireReferenceNatureRunAction(request);
+                        Write(new { requestId, ok = true,
+                            schemaId =
+                                ReferenceNatureRunActionSessionV111.CurrentSchemaId,
+                            snapshot = ReferenceNatureRunActionSessionV111.Save(session) });
+                        break;
+                    }
+
+                    case "reference_nature_run_action_load":
+                    {
+                        var session = ReferenceNatureRunActionSessionV111.Restore(
+                            RequiredString(request, "snapshot"));
+                        var handle = StoreReferenceNatureRunAction(session);
+                        Write(new { requestId, result =
+                            ReferenceNatureRunActionResult(session, handle) });
                         break;
                     }
 

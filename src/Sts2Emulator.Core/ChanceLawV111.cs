@@ -16,7 +16,11 @@ public sealed record StochasticCapabilityManifestV111(
     string[] NatureChoiceSiteIds,
     string PlayerObservationSchemaId,
     string[] ProviderModes,
-    string[] ReferenceNatureOperations);
+    string[] ReferenceNatureOperations)
+{
+    public string ReferenceNatureRunActionSessionSchemaId { get; init; } =
+        ReferenceNatureRunActionSessionV111.CurrentSchemaId;
+}
 
 public static class StochasticCapabilitiesV111
 {
@@ -58,7 +62,42 @@ public static class StochasticCapabilitiesV111
             "combat.relic.after_shuffle.generated_card.random_insert_index",
             "combat.card_selection.random_shortlist",
             "combat.autoplay.random_card.select",
-            "combat.draw_pile.random_replay_card.select"
+            "combat.draw_pile.random_replay_card.select",
+            "run.encounter.overgrowth_boss.index_draw",
+            "map.legacy.floor_width.index_draw",
+            "map.legacy.edge_source.index_draw",
+            "map.legacy.orphan_target.index_draw",
+            "map.legacy.edge_extra_chance.ticket",
+            "map.legacy.second_edge_source.index_draw",
+            "map.legacy.convergence.order_key",
+            "map.legacy.convergence.source.index_draw",
+            "map.legacy.second_edge_target.index_draw",
+            "map.legacy.required_room.node.index_draw",
+            "map.legacy.room_assignment.index_draw",
+            "event.selection.weighted_ticket",
+            "event.generated_gold.index_draw",
+            "event.stone_of_all_time.potion_slot.index_draw",
+            "event.fake_merchant.relic_offer.shuffle_swap_index",
+            "event.endless_conveyor.dish_weighted_ticket",
+            "event.future_of_potions.card_type.index_draw",
+            "event.random_upgrade.card_instance",
+            "event.reward.random_rare_card.model",
+            "event.reward.random_potion.model",
+            "event.reward.offer_potion.model.index_draw",
+            "event.reward.card_bundle.shuffle_swap_index",
+            "relic_grab_bag.queue_shuffle.swap_index",
+            "relic_grab_bag.rarity.ticket",
+            "event.potion.fill_empty_slots.model",
+            "reward.card_rarity.ticket",
+            "reward.card_model.index_draw",
+            "run.random_pool_distinct.shuffle_swap_index",
+            "event.reward.random_modifier_curse.index_draw",
+            "potion.uncommon_model.index_draw",
+            "relic.acquisition.random_rare_card.model",
+            "relic.acquisition.random_potion.model",
+            "run.potion.fill_empty_slots.model",
+            "reward.card_transform.replacement.index_draw",
+            "relic.unowned_random_selection.index_draw"
         ],
         PrototypeAiEnvironment.SchemaId,
         [
@@ -71,8 +110,18 @@ public static class StochasticCapabilitiesV111
             "semantic_reference_step", "semantic_reference_resolve_next",
             "semantic_reference_status", "semantic_reference_fork",
             "semantic_reference_save", "semantic_reference_load",
-            "semantic_reference_release_many"
-        ]);
+            "semantic_reference_release_many",
+            "reference_nature_run_action_begin",
+            "reference_nature_run_action_status",
+            "reference_nature_run_action_resolve_next",
+            "reference_nature_run_action_fork",
+            "reference_nature_run_action_save",
+            "reference_nature_run_action_load"
+        ])
+    {
+        ReferenceNatureRunActionSessionSchemaId =
+            ReferenceNatureRunActionSessionV111.CurrentSchemaId
+    };
 }
 
 /// <summary>
@@ -166,6 +215,8 @@ public static class ChanceLawEngineV111
         "source-filtered-intent-weights-v1";
     public const string EndTurnIndexConditioningPolicyId =
         "uniform-saved-automatic-index-support-v1";
+    public const string RandomIndexConditioningPolicyId =
+        "uniform-saved-random-index-support-v1";
     public const string DrawConditioningPolicyId =
         "uniform-unresolved-pool-permutation-v1";
     public const string RevealConditioningPolicyId =
@@ -243,6 +294,70 @@ public static class ChanceLawEngineV111
             indexEvent.Request.Ordinal,
             EndTurnIndexConditioningPolicyId, conditioningFingerprint,
             "uniform-saved-enemy-action-index-support-unverified", outcomes);
+    }
+
+    /// <summary>Query a uniform law over the legal indices in a saved typed
+    /// random request. Only the typed request enters the law fingerprint; the
+    /// selected index, enclosing run state and private RNG state do not.</summary>
+    public static ChanceLawV111 QueryRandomIndex(
+        string eventId, RandomIndexRequestV111 request)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
+        ArgumentNullException.ThrowIfNull(request);
+        request.Validate();
+        var outcomes = Enumerable.Range(0,
+                request.SupportCount)
+            .Select(index => new ChanceLawOutcomeV111(
+                "choice_index:" + index.ToString(CultureInfo.InvariantCulture),
+                1L))
+            .ToArray();
+        var conditioningFingerprint = CanonicalJson.Sha256(new
+        {
+            RequestFingerprint = CanonicalJson.Sha256(request),
+            policy = RandomIndexConditioningPolicyId
+        });
+        return Create(eventId, request.SiteId,
+            request.OperationKind, request.OwnerId, request.Ordinal,
+            RandomIndexConditioningPolicyId, conditioningFingerprint,
+            "uniform-saved-index-support-unverified", outcomes);
+    }
+
+    /// <summary>Query a controlled legacy run-action request without exposing
+    /// the selected result. The event identity includes the exact saved run
+    /// boundary, action, support and candidate labels.</summary>
+    public static ChanceLawV111 QueryControlledRunAction(RunState run)
+    {
+        ArgumentNullException.ThrowIfNull(run);
+        var continuation = run.ControlledRunActionChoice ??
+            throw new InvalidOperationException(
+                "No controlled run-action chance is pending.");
+        continuation.Validate();
+        var boundaryFingerprint = ControlledRunActionBoundaryFingerprint(run);
+        var eventId = CanonicalJson.Sha256(new
+        {
+            schemaId = ControlledRunActionEngineV111.SchemaId,
+            boundaryFingerprint
+        });
+        return QueryRandomIndex(eventId, continuation.PendingRequest);
+    }
+
+    /// <summary>Fingerprint the pending controlled action and request without
+    /// hashing the enclosing RunState (which contains private provider state).</summary>
+    public static string ControlledRunActionBoundaryFingerprint(RunState run)
+    {
+        ArgumentNullException.ThrowIfNull(run);
+        var continuation = run.ControlledRunActionChoice ??
+            throw new InvalidOperationException(
+                "No controlled run-action chance is pending.");
+        continuation.Validate();
+        return CanonicalJson.Sha256(new
+        {
+            schemaId = ControlledRunActionEngineV111.SchemaId,
+            continuation.ActionId,
+            continuation.MapNodeId,
+            request = continuation.PendingRequest,
+            candidateLabels = continuation.PendingCandidateLabels
+        });
     }
 
     /// <summary>
@@ -721,6 +836,219 @@ public sealed record ReferenceNatureSessionV111(
         restored.Validate();
         return restored;
     }
+}
+
+public sealed record ReferenceNatureRunActionDecisionV111(
+    string LawId, string EventId, string OutcomeId, int OutcomeIndex)
+{
+    public void Validate()
+    {
+        if (string.IsNullOrWhiteSpace(LawId) ||
+            string.IsNullOrWhiteSpace(EventId) ||
+            string.IsNullOrWhiteSpace(OutcomeId) || OutcomeIndex < 0 ||
+            OutcomeId != "choice_index:" +
+                OutcomeIndex.ToString(CultureInfo.InvariantCulture))
+            throw new InvalidDataException(
+                "Invalid ReferenceNature run-action decision.");
+    }
+}
+
+public sealed record ReferenceNatureRunActionSessionSnapshotV111(
+    string SchemaId, string OriginSnapshotJson, GameAction Action,
+    string RunSnapshotJson, ReferenceNatureStateV111 InitialNatureState,
+    ReferenceNatureStateV111 NatureState,
+    ReferenceNatureRunActionDecisionV111[] DecisionTranscript);
+
+/// <summary>
+/// Atomic ReferenceNature envelope for existing controlled run-action
+/// continuations. It reuses the run mechanics resolver and the same sampler
+/// state as semantic combat sessions.
+/// </summary>
+public sealed record ReferenceNatureRunActionSessionV111(
+    string SchemaId, RunState Origin, GameAction Action, RunState Run,
+    ReferenceNatureStateV111 InitialNatureState,
+    ReferenceNatureStateV111 NatureState,
+    ReferenceNatureRunActionDecisionV111[] DecisionTranscript)
+{
+    public const string CurrentSchemaId =
+        "sts2-v111-reference-nature-run-action-session-v1";
+
+    [JsonIgnore]
+    public string Fingerprint => CanonicalJson.Sha256(this);
+
+    [JsonIgnore]
+    public bool Complete => Run.ControlledRunActionChoice is null;
+
+    public static ReferenceNatureRunActionSessionV111 Begin(
+        RunState source, GameAction action, ulong seed) =>
+        Begin(source, action, ReferenceNatureStateV111.Create(seed));
+
+    private static ReferenceNatureRunActionSessionV111 Begin(
+        RunState source, GameAction action,
+        ReferenceNatureStateV111 initialNatureState)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(action);
+        ArgumentNullException.ThrowIfNull(initialNatureState);
+        var detachedAction = CloneAction(action);
+        var run = ControlledRunActionEngineV111.Begin(
+            source.Fork(), detachedAction);
+        var session = new ReferenceNatureRunActionSessionV111(
+            CurrentSchemaId, source.Fork(), detachedAction, run,
+            initialNatureState.Fork(), initialNatureState.Fork(), []);
+        session.Validate();
+        return session;
+    }
+
+    public ReferenceNatureRunActionSessionV111 Fork()
+    {
+        Validate();
+        return this with
+        {
+            Origin = Origin.Fork(),
+            Action = CloneAction(Action),
+            Run = Run.Fork(),
+            InitialNatureState = InitialNatureState.Fork(),
+            NatureState = NatureState.Fork(),
+            DecisionTranscript = (ReferenceNatureRunActionDecisionV111[])
+                DecisionTranscript.Clone()
+        };
+    }
+
+    public ReferenceNatureRunActionSessionV111 ResolveNext()
+    {
+        Validate();
+        var law = ChanceLawEngineV111.QueryControlledRunAction(Run);
+        var selection = ReferenceNatureV111.Sample(law, NatureState);
+        if (selection.EventId != law.EventId || selection.OutcomeIndex < 0 ||
+            selection.OutcomeIndex >= law.Outcomes.Length ||
+            selection.OutcomeId != law.Outcomes[selection.OutcomeIndex].OutcomeId)
+            throw new InvalidDataException(
+                "ReferenceNature run-action law no longer matches its saved support.");
+        var resolvedRun = ControlledRunActionEngineV111.Resolve(
+            Run.Fork(), selection.OutcomeIndex);
+        var next = this with
+        {
+            Run = resolvedRun,
+            NatureState = selection.NextState,
+            DecisionTranscript = DecisionTranscript.Append(
+                new ReferenceNatureRunActionDecisionV111(
+                    law.LawId, law.EventId, selection.OutcomeId,
+                    selection.OutcomeIndex)).ToArray()
+        };
+        next.Validate();
+        return next;
+    }
+
+    public void Validate()
+    {
+        if (SchemaId != CurrentSchemaId || Origin is null || Action is null ||
+            Run is null || InitialNatureState is null || NatureState is null ||
+            DecisionTranscript is null || string.IsNullOrWhiteSpace(Action.Kind) ||
+            (Run.ControlledRunActionChoice is null &&
+             Run.ControlledRunActionHistory is not { Length: > 0 }))
+            throw new InvalidDataException(
+                "Invalid ReferenceNature run-action session envelope.");
+        PrototypeStateInvariants.Validate(Origin);
+        PrototypeStateInvariants.Validate(Run);
+        InitialNatureState.Validate();
+        NatureState.Validate();
+        if (NatureState.SampleCount != checked(
+                InitialNatureState.SampleCount + DecisionTranscript.Length))
+            throw new InvalidDataException(
+                "ReferenceNature run-action sampler cursor differs from its transcript.");
+        for (int index = 0; index < DecisionTranscript.Length; index++)
+            DecisionTranscript[index].Validate();
+
+        if (Run.ControlledRunActionChoice is { } continuation)
+        {
+            continuation.Validate();
+            if (continuation.ActionId != Action.Kind ||
+                continuation.Decisions.Length != DecisionTranscript.Length)
+                throw new InvalidDataException(
+                    "Pending run-action continuation differs from ReferenceNature history.");
+            for (int index = 0; index < continuation.Decisions.Length; index++)
+                if (continuation.Decisions[index].ProviderMode !=
+                        "controlled-v111" ||
+                    continuation.Decisions[index].SelectedIndex !=
+                        DecisionTranscript[index].OutcomeIndex)
+                    throw new InvalidDataException(
+                        "Pending run-action decisions differ from ReferenceNature history.");
+        }
+        else
+        {
+            var trace = Run.ControlledRunActionHistory![^1];
+            trace.Validate();
+            if (trace.ActionId != Action.Kind ||
+                trace.Decisions.Length != DecisionTranscript.Length)
+                throw new InvalidDataException(
+                    "Completed run-action trace differs from ReferenceNature history.");
+            for (int index = 0; index < trace.Decisions.Length; index++)
+                if (trace.Decisions[index].ProviderMode != "controlled-v111" ||
+                    trace.Decisions[index].SelectedIndex !=
+                        DecisionTranscript[index].OutcomeIndex)
+                    throw new InvalidDataException(
+                        "Completed run-action outcomes differ from ReferenceNature history.");
+        }
+    }
+
+    public static string Save(ReferenceNatureRunActionSessionV111 session)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        session.Validate();
+        var snapshot = new ReferenceNatureRunActionSessionSnapshotV111(
+            CurrentSchemaId, RunSnapshot.Save(session.Origin),
+            CloneAction(session.Action), RunSnapshot.Save(session.Run),
+            session.InitialNatureState, session.NatureState,
+            (ReferenceNatureRunActionDecisionV111[])
+                session.DecisionTranscript.Clone());
+        return JsonSerializer.Serialize(snapshot);
+    }
+
+    public static ReferenceNatureRunActionSessionV111 Restore(string json)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(json);
+        var snapshot = JsonSerializer.Deserialize<
+                ReferenceNatureRunActionSessionSnapshotV111>(json)
+            ?? throw new InvalidDataException(
+                "Null ReferenceNature run-action snapshot.");
+        if (snapshot.SchemaId != CurrentSchemaId ||
+            string.IsNullOrWhiteSpace(snapshot.OriginSnapshotJson) ||
+            snapshot.Action is null ||
+            string.IsNullOrWhiteSpace(snapshot.RunSnapshotJson) ||
+            snapshot.InitialNatureState is null ||
+            snapshot.NatureState is null || snapshot.DecisionTranscript is null)
+            throw new InvalidDataException(
+                "Invalid ReferenceNature run-action snapshot.");
+        var origin = RunSnapshot.Load(snapshot.OriginSnapshotJson);
+        var savedRun = RunSnapshot.Load(snapshot.RunSnapshotJson);
+        var replay = Begin(origin, snapshot.Action,
+            snapshot.InitialNatureState);
+        for (int index = 0; index < snapshot.DecisionTranscript.Length; index++)
+        {
+            if (replay.Complete)
+                throw new InvalidDataException(
+                    "ReferenceNature run-action replay ended before its transcript.");
+            replay = replay.ResolveNext();
+            if (CanonicalJson.Sha256(replay.DecisionTranscript[^1]) !=
+                CanonicalJson.Sha256(snapshot.DecisionTranscript[index]))
+                throw new InvalidDataException(
+                    "ReferenceNature run-action replay selected a different outcome.");
+        }
+        if (CanonicalJson.Sha256(replay.Run) != CanonicalJson.Sha256(savedRun) ||
+            CanonicalJson.Sha256(replay.NatureState) !=
+                CanonicalJson.Sha256(snapshot.NatureState) ||
+            replay.DecisionTranscript.Length != snapshot.DecisionTranscript.Length)
+            throw new InvalidDataException(
+                "ReferenceNature run-action replay differs from its snapshot.");
+        replay.Validate();
+        return replay;
+    }
+
+    private static GameAction CloneAction(GameAction action) => action with
+    {
+        Payload = action.Payload.Clone()
+    };
 }
 
 /// <summary>
