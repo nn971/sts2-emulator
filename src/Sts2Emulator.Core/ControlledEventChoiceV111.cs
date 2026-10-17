@@ -425,18 +425,86 @@ public sealed record PrototypeControlledEventRewardChoiceContinuationV111(
     RandomIndexRequestV111 PendingRequest,
     string[] PendingCandidateLabels)
 {
+    /// <summary>
+    /// Atomic mechanics/provider envelope for a suspended post-reward event
+    /// chance. Existing continuation fields remain flattened projections.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public SimulationStateV111<
+        PrototypeControlledEventRewardChoiceMechanicsStateV111,
+        ControlledChanceContinuationStateV111> Simulation { get; init; } = new(
+            new PrototypeControlledEventRewardChoiceMechanicsStateV111(
+                PartialState, EventId, ChoiceId, DecisionPrefixLength),
+            new ControlledChanceContinuationStateV111(
+                Decisions, PendingRequest, PendingCandidateLabels,
+                DecisionCandidateLabels));
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public PrototypeControlledEventRewardChoiceMechanicsStateV111 Mechanics
+    {
+        get => Simulation.Mechanics;
+        init => Simulation = Simulation with { Mechanics = value };
+    }
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public ControlledChanceContinuationStateV111 Chance
+    {
+        get => Simulation.Stochastic;
+        init => Simulation = Simulation with { Stochastic = value };
+    }
+
+    public RunState PartialState
+    {
+        get => Mechanics.PartialState;
+        init => Mechanics = Mechanics with { PartialState = value };
+    }
+
+    public string EventId
+    {
+        get => Mechanics.EventId;
+        init => Mechanics = Mechanics with { EventId = value };
+    }
+
+    public string ChoiceId
+    {
+        get => Mechanics.ChoiceId;
+        init => Mechanics = Mechanics with { ChoiceId = value };
+    }
+
+    public int DecisionPrefixLength
+    {
+        get => Mechanics.DecisionPrefixLength;
+        init => Mechanics = Mechanics with { DecisionPrefixLength = value };
+    }
+
+    public RandomIndexDecisionV111[] Decisions
+    {
+        get => Chance.Decisions;
+        init => Chance = Chance with { Decisions = value };
+    }
+
+    public string[][] DecisionCandidateLabels
+    {
+        get => Chance.DecisionCandidateLabels!;
+        init => Chance = Chance with { DecisionCandidateLabels = value };
+    }
+
+    public RandomIndexRequestV111 PendingRequest
+    {
+        get => Chance.PendingRequest;
+        init => Chance = Chance with { PendingRequest = value };
+    }
+
+    public string[] PendingCandidateLabels
+    {
+        get => Chance.PendingCandidateLabels!;
+        init => Chance = Chance with { PendingCandidateLabels = value };
+    }
+
     public PrototypeControlledEventRewardChoiceContinuationV111 Fork() => this with
     {
         PartialState = PartialState.Fork(),
-        Decisions = Decisions.Select(
-            PrototypeControlledEventChoiceContinuationV111.CloneDecision)
-            .ToArray(),
-        DecisionCandidateLabels = DecisionCandidateLabels.Select(labels =>
-            (string[])labels.Clone()).ToArray(),
-        PendingRequest =
-            PrototypeControlledEventChoiceContinuationV111.CloneRequest(
-                PendingRequest),
-        PendingCandidateLabels = (string[])PendingCandidateLabels.Clone()
+        Chance = Chance.Fork()
     };
 
     public void Validate()
