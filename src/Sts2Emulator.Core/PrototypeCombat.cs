@@ -14565,22 +14565,12 @@ public sealed partial class PrototypeGameEngine
         if (boundary ==
             PrototypeDrawCardsBoundaryKind.NestedCardDrawnChoice)
         {
-            var resumeDraw = CreateDrawResumeOperation(
-                drawn.RemainingCount,
-                draw.FromHandDraw,
-                draw.EventDepth,
-                draw.DrawnCardKeyword,
-                (draw.DeferredKeywordCardInstanceIds ?? [])
-                    .Concat(drawn.DrawnCardInstanceIds)
-                    .Distinct().ToArray(),
-                draw.StandaloneSemanticDrawSegment);
-            var nestedCombat = AttachDrawResumeContinuation(
-                drawn.Combat, resumeDraw, continuation);
-            return state with
-            {
-                Player = drawn.Player,
-                World = state.World! with { Combat = nestedCombat }
-            };
+            return SuspendDrawCardsAtCardDrawnChoice(
+                state, drawn.Player, drawn.Combat,
+                drawn.RemainingCount, draw, continuation,
+                drawn.DrawnCardInstanceIds,
+                accumulateDrawnCardIds: true,
+                markStandaloneHookChoice: false);
         }
         if (boundary == PrototypeDrawCardsBoundaryKind.AfterShuffleInsertions)
         {

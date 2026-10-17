@@ -74,6 +74,8 @@ Semantic hand draws and nested effect draws also suspend after-shuffle insertion
 
 Semantic draws and nested effect draws now route Stratagem's post-shuffle selection through `SuspendDrawCardsForStratagemSelection`. The shared owner validates the tagged boundary and eligibility, carries the remaining count, clears the pending-selection marker, and resumes the controlled choice. Nested effects retain their outer choice continuation and accumulate drawn identities; standalone and automatic semantic draws retain their own frame policy, with the automatic hand-draw caller alone updating pipeline progress.
 
+Standalone semantic draws and nested effect draws now also route a suspended `CardDrawn` choice through `SuspendDrawCardsAtCardDrawnChoice`. It builds and attaches one draw-resume operation, carrying the effect's deferred keyword identities when present; standalone choices keep their marker and empty outer continuation policy. Automatic hand draws still resume through their pipeline cursor without adding a card-effect operation.
+
 When the resumed ordinary pipeline ends in Reward or Terminal after hand draw, `SemanticEndTurnV111` now completes with that engine result and keeps the completed draw projection for transcript replay. It still rejects an unfinished draw and checks the next-player boundary for combat-phase completion.
 
 `PrototypeGameEngine.ResumeAutomaticPipelineContinuation` now owns the shared handoff after both controlled choices and semantic end-turn hand draw. It clears the saved cursor, runs the remaining ordinary pipeline, and settles terminal combat rewards; the established choice method remains a compatibility facade.

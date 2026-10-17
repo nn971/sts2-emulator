@@ -387,25 +387,48 @@ public sealed partial class PrototypeGameEngine
                     Pending: null })
             throw new InvalidDataException(
                 "Standalone CardDrawn choice lost its source continuation.");
-        var resumeDraw = CreateDrawResumeOperation(
+        var draw = new PrototypeControlledSemanticDrawV111(
             remaining, fromHandDraw, eventDepth,
-            drawnCardKeyword: null,
-            deferredDrawnCardInstanceIds: [],
-            standaloneSemanticDrawSegment: true);
-        var continuation = new PrototypeChoiceResolutionContinuationState(
-            SourceCardInstanceId: null,
-            SourceCardDestination: PrototypeCardZone.DrawPile,
-            Operations: [resumeDraw], PendingDiscardEvents: [],
-            PendingSlyCardInstanceIds: [], CompletionEvents: []);
+            DrawnCardKeyword: null,
+            DeferredKeywordCardInstanceIds: [],
+            StratagemSelectionPending: false,
+            StandaloneSemanticDrawSegment: true);
+        return SuspendDrawCardsAtCardDrawnChoice(
+            run, player, combat, remaining, draw,
+            EmptyDrawChoiceContinuation(), [],
+            accumulateDrawnCardIds: false,
+            markStandaloneHookChoice: true);
+    }
+
+    private static RunState SuspendDrawCardsAtCardDrawnChoice(
+        RunState run,
+        PlayerState player,
+        CombatState combat,
+        int remaining,
+        PrototypeControlledSemanticDrawV111 draw,
+        PrototypeChoiceResolutionContinuationState continuation,
+        long[] drawnCardInstanceIds,
+        bool accumulateDrawnCardIds,
+        bool markStandaloneHookChoice)
+    {
+        var deferredKeywordIds = accumulateDrawnCardIds
+            ? (draw.DeferredKeywordCardInstanceIds ?? [])
+                .Concat(drawnCardInstanceIds).Distinct().ToArray()
+            : draw.DeferredKeywordCardInstanceIds;
+        var resumeDraw = CreateDrawResumeOperation(
+            remaining, draw.FromHandDraw, draw.EventDepth,
+            draw.DrawnCardKeyword, deferredKeywordIds,
+            draw.StandaloneSemanticDrawSegment);
         combat = AttachDrawResumeContinuation(
             combat, resumeDraw, continuation);
-        combat = combat with
-        {
-            PendingChoice = combat.PendingChoice! with
+        if (markStandaloneHookChoice)
+            combat = combat with
             {
-                StandaloneSemanticDrawHookChoice = true
-            }
-        };
+                PendingChoice = combat.PendingChoice! with
+                {
+                    StandaloneSemanticDrawHookChoice = true
+                }
+            };
         return run with
         {
             Player = player,
