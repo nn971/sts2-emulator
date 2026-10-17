@@ -16,7 +16,8 @@ public sealed record RunStochasticStateV111(
     ControlledRunActionTraceV111[]? ControlledRunActionHistory = null,
     PrototypeControlledRunActionContinuationV111?
         ControlledRunActionChoice = null,
-    SemanticOtherChanceStateV111? SemanticOtherChance = null)
+    SemanticOtherChanceStateV111? SemanticOtherChance = null,
+    SemanticRewardAuditV111? SemanticRewardAudit = null)
 {
     public RunStochasticStateV111 Fork() => this with
     {
@@ -55,6 +56,15 @@ public sealed record RunStochasticStateV111(
         ReferenceNature?.Validate();
         if (SemanticOtherChance is not null)
             SemanticOtherChanceEngineV111.Validate(SemanticOtherChance);
+        if (SemanticRewardAudit is { } reward &&
+            (owner.Phase != RunPhase.Reward ||
+             reward.ProviderId != SemanticRewardAuditV111.PrototypeProviderId ||
+             reward.ProbabilityStatus != "UNVERIFIED" ||
+             reward.AfterCalls < reward.BeforeCalls ||
+             owner.Rng.Streams.Single(x =>
+                 x.StreamId == "reward").CallCount != reward.AfterCalls))
+            throw new InvalidDataException(
+                "Invalid source-timed reward RNG audit.");
         if (owner.World is { } world)
             world.Stochastic.Validate(world, owner);
     }
@@ -239,4 +249,9 @@ public sealed record RunStochasticStateV111(
         RunStochasticStateV111 current,
         SemanticOtherChanceStateV111? semanticOtherChance) =>
         current with { SemanticOtherChance = semanticOtherChance };
+
+    internal static RunStochasticStateV111 WithSemanticRewardAudit(
+        RunStochasticStateV111 current,
+        SemanticRewardAuditV111? semanticRewardAudit) =>
+        current with { SemanticRewardAudit = semanticRewardAudit };
 }

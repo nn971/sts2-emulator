@@ -6,7 +6,6 @@ namespace Sts2Emulator.Core;
 /// serialized representation.
 /// </summary>
 public sealed record SemanticPilotStochasticStateV111(
-    SemanticRewardAuditV111? RewardAudit = null,
     SemanticNativePolicyAuditV111? NativePolicyAudit = null,
     SemanticSourceRouteAuditV111? SourceRouteAudit = null,
     SemanticEndTurnStochasticStateV111? PendingEndTurn = null,
@@ -50,14 +49,6 @@ public sealed record SemanticPilotStochasticStateV111(
         if (PendingEndTurn is not null)
             PendingEndTurn.Validate();
     }
-
-    internal static SemanticPilotStochasticStateV111 WithRewardAudit(
-        SemanticPilotStochasticStateV111? current,
-        SemanticRewardAuditV111? rewardAudit) =>
-        (current ?? new SemanticPilotStochasticStateV111()) with
-        {
-            RewardAudit = rewardAudit
-        };
 
     internal static SemanticPilotStochasticStateV111 WithNativePolicyAudit(
         SemanticPilotStochasticStateV111? current,

@@ -216,9 +216,12 @@ public sealed record SemanticPilotCombatV111(
     }
     public SemanticRewardAuditV111? RewardAudit
     {
-        get => Stochastic.RewardAudit;
-        init => Stochastic = SemanticPilotStochasticStateV111.WithRewardAudit(
-            Stochastic, value);
+        get => Run.Stochastic.SemanticRewardAudit;
+        init => Run = Run with
+        {
+            Stochastic = RunStochasticStateV111.WithSemanticRewardAudit(
+                Run.Stochastic, value)
+        };
     }
     public SemanticNativePolicyAuditV111? NativePolicyAudit
     {
@@ -699,15 +702,6 @@ public sealed record SemanticPilotCombatV111(
             throw new InvalidDataException(
                 "Source random hand-cost continuation has no semantic event.");
         this.Stochastic.Validate();
-        if (this.RewardAudit is { } reward &&
-            (this.Run.Phase != RunPhase.Reward ||
-             reward.ProviderId != SemanticRewardAuditV111.PrototypeProviderId ||
-             reward.ProbabilityStatus != "UNVERIFIED" ||
-             reward.AfterCalls < reward.BeforeCalls ||
-             this.Run.Rng.Streams.Single(x =>
-                 x.StreamId == "reward").CallCount != reward.AfterCalls))
-            throw new InvalidDataException(
-                "Invalid source-timed reward RNG audit.");
         if (this.SeededEntry is { } entry)
         {
             var routeCostProviderExpected = entry.SourceRouteEntry &&
