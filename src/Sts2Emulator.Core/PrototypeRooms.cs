@@ -5918,11 +5918,9 @@ public sealed partial class PrototypeGameEngine
         return selected.ToArray();
     }
 
-    private static int NativeMerchantCardPrice(
-        string cardId, RngBundle rng,
-        RngBundle? nativeRunRng = null,
-        string ownerId = "")
+    internal static int NativeMerchantCardBaseCost(string cardId)
     {
+        ArgumentException.ThrowIfNullOrWhiteSpace(cardId);
         var baseCost = PrototypeContent.Card(cardId).Rarity switch
         {
             PrototypeCardRarity.Common => 50,
@@ -5932,12 +5930,19 @@ public sealed partial class PrototypeGameEngine
                 "Native shop character cards must have a purchasable rarity.")
         };
         // MerchantCardEntry applies a 15% premium to cards from
-        // ColorlessCardPool, before rolling its price modifier.
-        if (PrototypeColorlessCards.ImplementedShopPool.Contains(
-                cardId, StringComparer.Ordinal))
-        {
-            baseCost = (int)Math.Round(baseCost * 1.15);
-        }
+        // ColorlessCardPool before the price modifier.
+        return PrototypeColorlessCards.ImplementedShopPool.Contains(
+                cardId, StringComparer.Ordinal)
+            ? (int)Math.Round(baseCost * 1.15)
+            : baseCost;
+    }
+
+    private static int NativeMerchantCardPrice(
+        string cardId, RngBundle rng,
+        RngBundle? nativeRunRng = null,
+        string ownerId = "")
+    {
+        var baseCost = NativeMerchantCardBaseCost(cardId);
         if (nativeRunRng is not null)
         {
             var roll = NativePlayerRngV111.NextUnitFloat(

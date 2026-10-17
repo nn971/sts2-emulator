@@ -34,7 +34,9 @@ class State:
 
     def query_chance_law(self, site_id: str, *, ordinal: int = 0,
                          prior_indices=None, card_type=None, rarity=None,
-                         excluded_potion_ids=None):
+                         excluded_potion_ids=None, card_id=None,
+                         potion_id=None, relic_id=None,
+                         colorless_offer=False, sale_reprice=False):
         """Read an advertised pre-outcome Chance Law without changing state."""
         if not self.session.supports_chance_law_query(site_id):
             raise EmulatorError(
@@ -51,6 +53,19 @@ class State:
             if not isinstance(rarity, str) or not rarity:
                 raise ValueError("rarity must be a nonempty string")
             payload["rarity"] = rarity
+        for field, value in (("card_id", card_id),
+                             ("potion_id", potion_id),
+                             ("relic_id", relic_id)):
+            if value is not None:
+                if not isinstance(value, str) or not value:
+                    raise ValueError(f"{field} must be a nonempty string")
+                payload[field] = value
+        if type(colorless_offer) is not bool or type(sale_reprice) is not bool:
+            raise ValueError("colorless_offer and sale_reprice must be booleans")
+        if colorless_offer:
+            payload["colorless_offer"] = True
+        if sale_reprice:
+            payload["sale_reprice"] = True
         if excluded_potion_ids is not None:
             if not isinstance(excluded_potion_ids, (list, tuple)) or any(
                     not isinstance(potion_id, str) or not potion_id

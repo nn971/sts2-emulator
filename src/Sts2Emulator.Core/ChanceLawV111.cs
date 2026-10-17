@@ -209,6 +209,8 @@ public static class ChanceLawEngineV111
         "uniform-native-merchant-index-support-v1";
     public const string NativeMerchantThresholdConditioningPolicyId =
         "source-threshold-native-merchant-category-v1";
+    public const string NativeMerchantPriceConditioningPolicyId =
+        "native-merchant-rounded-price-modifier-v1";
 
     public static ChanceLawV111 QueryIntent(SemanticIntentEventV111 intent)
     {
@@ -609,6 +611,145 @@ public static class ChanceLawEngineV111
         return CreateNativeMerchantLaw(
             siteId, operationKind, ownerId, ordinal, policy,
             CanonicalJson.Sha256(conditioning), provenance, outcomes);
+    }
+
+    /// <summary>
+    /// Query the mapped integer price produced by one native merchant
+    /// NextFloat modifier. The interval masses model the rounded output and
+    /// remain UNVERIFIED against the exact native float distribution.
+    /// </summary>
+    public static ChanceLawV111 QueryNativeMerchantPrice(
+        RunState run, string siteId, int ordinal,
+        string? cardId = null, string? potionId = null,
+        string? relicId = null, bool colorlessOffer = false,
+        bool saleReprice = false)
+    {
+        ArgumentNullException.ThrowIfNull(run);
+        ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
+        PrototypeStateInvariants.Validate(run);
+        ValidateNativeMerchantQueryBoundary(run);
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+
+        var world = run.World!;
+        var actFloor = $"act:{world.Act}:floor:{world.Floor}";
+        int baseCost;
+        double minimumModifier;
+        double maximumModifier;
+        string ownerId;
+        string itemId;
+        if (siteId == "shop.merchant.card_price_modifier.unit_float")
+        {
+            if (cardId is null || potionId is not null || relicId is not null ||
+                (colorlessOffer
+                    ? ordinal >= 2 || !PrototypeColorlessCards.ImplementedShopPool
+                        .Contains(cardId, StringComparer.Ordinal)
+                    : ordinal >= 5 || !PrototypeContent.NativeSilentRewardCardPool
+                        .Contains(cardId, StringComparer.Ordinal)) ||
+                saleReprice && colorlessOffer)
+                throw new ArgumentException(
+                    "Card-price queries require a supported character or Colorless card and offer ordinal.");
+            itemId = cardId;
+            baseCost = PrototypeGameEngine.NativeMerchantCardBaseCost(cardId);
+            minimumModifier = 0.95;
+            maximumModifier = 1.05;
+            ownerId = colorlessOffer
+                ? $"{actFloor}:colorless_offer:{ordinal}:card:{cardId}"
+                : saleReprice
+                    ? $"{actFloor}:offer:{ordinal}:sale_reprice:{cardId}"
+                    : $"{actFloor}:offer:{ordinal}:card:{cardId}";
+        }
+        else if (siteId == "shop.merchant.potion_price_modifier.unit_float")
+        {
+            if (potionId is null || cardId is not null || relicId is not null ||
+                colorlessOffer || saleReprice || ordinal >= 3 ||
+                !PrototypeNativePotionShop.NativePotionPoolOrder.Contains(
+                    potionId, StringComparer.Ordinal))
+                throw new ArgumentException(
+                    "Potion-price queries require a native potion ID and offer ordinal 0-2.");
+            itemId = potionId;
+            baseCost = PrototypeNativePotionShop.MerchantBaseCost(potionId);
+            minimumModifier = 0.95;
+            maximumModifier = 1.05;
+            ownerId = $"{actFloor}:offer:{ordinal}:potion:{potionId}:{potionId}";
+        }
+        else if (siteId == "shop.merchant.relic_price_modifier.unit_float")
+        {
+            if (relicId is null || cardId is not null || potionId is not null ||
+                colorlessOffer || saleReprice || ordinal >= 3 ||
+                !PrototypeNativeRelicGrabBag.TryGetRarity(relicId, out _))
+                throw new ArgumentException(
+                    "Relic-price queries require a native relic ID and offer ordinal 0-2.");
+            itemId = relicId;
+            baseCost = PrototypeNativeRelicGrabBag.MerchantBaseCost(relicId);
+            minimumModifier = 0.85;
+            maximumModifier = 1.15;
+            ownerId = $"{actFloor}:offer:{ordinal}:relic:{relicId}:{relicId}";
+        }
+        else
+        {
+            throw new NotSupportedException(
+                $"Native merchant price query does not support site '{siteId}'.");
+        }
+
+        var outcomes = RoundedPriceOutcomes(
+            baseCost, minimumModifier, maximumModifier, saleReprice);
+        var conditioning = new
+        {
+            siteId, ownerId, ordinal, itemId, baseCost,
+            minimumModifier, maximumModifier, colorlessOffer, saleReprice,
+            outcomes
+        };
+        return CreateNativeMerchantLaw(
+            siteId, "unit_float_mapped_price", ownerId, ordinal,
+            NativeMerchantPriceConditioningPolicyId,
+            CanonicalJson.Sha256(conditioning),
+            "native-unit-float-rounded-price-intervals-unverified",
+            outcomes);
+    }
+
+    private static ChanceLawOutcomeV111[] RoundedPriceOutcomes(
+        int baseCost, double minimumModifier, double maximumModifier,
+        bool halvePrice)
+    {
+        if (baseCost <= 0 || minimumModifier < 0 ||
+            maximumModifier <= minimumModifier)
+            throw new ArgumentOutOfRangeException(nameof(baseCost));
+
+        var minimumRounded = Math.Max(1, (int)MathF.Round(
+            baseCost * (float)minimumModifier,
+            MidpointRounding.ToEven));
+        var maximumRounded = Math.Max(1, (int)MathF.Round(
+            baseCost * (float)maximumModifier,
+            MidpointRounding.ToEven));
+        var range = maximumModifier - minimumModifier;
+        var probabilities = new SortedDictionary<int, double>();
+        for (var rounded = Math.Max(1, minimumRounded - 1);
+             rounded <= maximumRounded + 1; rounded++)
+        {
+            var lower = Math.Max(0,
+                (((rounded - 0.5) / baseCost) - minimumModifier) / range);
+            var upper = Math.Min(1,
+                (((rounded + 0.5) / baseCost) - minimumModifier) / range);
+            var mass = Math.Max(0, upper - lower);
+            if (mass <= 0)
+                continue;
+            var mappedPrice = halvePrice ? rounded / 2 : rounded;
+            probabilities[mappedPrice] = probabilities.GetValueOrDefault(
+                mappedPrice) + mass;
+        }
+
+        const double WeightScale = 1_000_000_000;
+        var outcomes = probabilities.Select(pair =>
+            new ChanceLawOutcomeV111(
+                "price:" + pair.Key.ToString(CultureInfo.InvariantCulture),
+                Math.Max(1L, (long)Math.Round(
+                    pair.Value * WeightScale,
+                    MidpointRounding.AwayFromZero)))).ToArray();
+        if (outcomes.Length == 0)
+            throw new InvalidOperationException(
+                "Native merchant price modifier has no rounded outcomes.");
+        return outcomes;
     }
 
     private static ChanceLawV111 CreateNativeMerchantLaw(

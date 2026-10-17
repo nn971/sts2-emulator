@@ -1539,6 +1539,13 @@ internal static class PrototypeAiJsonlServer
                                 "Request field 'ordinal' is required.");
                         var cardType = OptionalString(request, "card_type");
                         var rarity = OptionalString(request, "rarity");
+                        var cardId = OptionalString(request, "card_id");
+                        var potionId = OptionalString(request, "potion_id");
+                        var relicId = OptionalString(request, "relic_id");
+                        var colorlessOffer = OptionalBool(
+                            request, "colorless_offer");
+                        var saleReprice = OptionalBool(
+                            request, "sale_reprice");
                         var excludedPotionIds = OptionalStringArray(
                             request, "excluded_potion_ids");
                         ChanceLawV111 law;
@@ -1547,9 +1554,11 @@ internal static class PrototypeAiJsonlServer
                                 siteId, StringComparer.Ordinal))
                         {
                             if (cardType is not null || rarity is not null ||
-                                excludedPotionIds is not null)
+                                cardId is not null || potionId is not null ||
+                                relicId is not null || colorlessOffer ||
+                                saleReprice || excludedPotionIds is not null)
                                 throw new ArgumentException(
-                                    "Ancient offer queries do not accept merchant pool parameters.");
+                                    "Ancient offer queries do not accept merchant parameters.");
                             law = ChanceLawEngineV111.QueryAncientOffer(
                                 run, siteId, ordinal, priorIndices);
                         }
@@ -1558,9 +1567,31 @@ internal static class PrototypeAiJsonlServer
                             if (priorIndices is not null)
                                 throw new ArgumentException(
                                     "prior_indices apply only to Ancient offer shuffle queries.");
-                            law = ChanceLawEngineV111.QueryNativeMerchantOffer(
-                                run, siteId, ordinal, cardType, rarity,
-                                excludedPotionIds);
+                            if (StochasticSiteRegistryV111
+                                .IsNativeMerchantPriceSite(siteId))
+                            {
+                                if (cardType is not null || rarity is not null ||
+                                    excludedPotionIds is not null)
+                                    throw new ArgumentException(
+                                        "Native merchant price queries do not accept model-pool parameters.");
+                                law = ChanceLawEngineV111
+                                    .QueryNativeMerchantPrice(
+                                        run, siteId, ordinal, cardId,
+                                        potionId, relicId, colorlessOffer,
+                                        saleReprice);
+                            }
+                            else
+                            {
+                                if (cardId is not null || potionId is not null ||
+                                    relicId is not null || colorlessOffer ||
+                                    saleReprice)
+                                    throw new ArgumentException(
+                                        "Native merchant offer queries do not accept item-price parameters.");
+                                law = ChanceLawEngineV111
+                                    .QueryNativeMerchantOffer(
+                                        run, siteId, ordinal, cardType, rarity,
+                                        excludedPotionIds);
+                            }
                         }
                         Write(new
                         {

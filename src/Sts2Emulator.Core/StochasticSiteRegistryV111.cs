@@ -196,7 +196,17 @@ public static class StochasticSiteRegistryV111
         "shop.colorless_card_model.index_draw",
         "potion_factory.rarity_roll.unit_float",
         "potion_factory.model_within_rarity.index_draw",
-        "relic_grab_bag.rarity.unit_float"
+        "relic_grab_bag.rarity.unit_float",
+        "shop.merchant.card_price_modifier.unit_float",
+        "shop.merchant.potion_price_modifier.unit_float",
+        "shop.merchant.relic_price_modifier.unit_float"
+    ];
+
+    private static readonly string[] NativeMerchantPriceSites =
+    [
+        "shop.merchant.card_price_modifier.unit_float",
+        "shop.merchant.potion_price_modifier.unit_float",
+        "shop.merchant.relic_price_modifier.unit_float"
     ];
 
     private static readonly string[] AncientOfferSessionSites =
@@ -257,6 +267,8 @@ public static class StochasticSiteRegistryV111
         (string[])ControlledEventChoiceSites.Clone();
     public static string[] ChanceLawQuerySiteIds =>
         (string[])ChanceLawQuerySites.Clone();
+    public static string[] NativeMerchantPriceSiteIds =>
+        (string[])NativeMerchantPriceSites.Clone();
     public static string[] AncientOfferSessionSiteIds =>
         (string[])AncientOfferSessionSites.Clone();
     public static string[] NatureChoiceSiteIds =>
@@ -285,6 +297,9 @@ public static class StochasticSiteRegistryV111
 
     public static bool IsChanceLawQuerySite(string siteId) =>
         ChanceLawQuerySites.Contains(siteId, StringComparer.Ordinal);
+
+    public static bool IsNativeMerchantPriceSite(string siteId) =>
+        NativeMerchantPriceSites.Contains(siteId, StringComparer.Ordinal);
 
     public static StochasticChanceLawQueryCoverageV111
         CreateChanceLawQueryCoverage()
