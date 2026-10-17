@@ -36,7 +36,7 @@ public sealed record RunStochasticStateV111(
         NativeRunRngV111.Validate(owner);
         ReferenceNature?.Validate();
         if (owner.World is { } world)
-            world.Stochastic.Validate(world, owner.Player);
+            world.Stochastic.Validate(world, owner);
     }
 
     internal static RunStochasticStateV111 WithNativeRunRng(

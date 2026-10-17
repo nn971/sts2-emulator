@@ -20,13 +20,125 @@ public sealed record RunWorldStochasticStateV111(
             .Select(bag => bag.Fork()).ToArray()
     };
 
-    public void Validate(RunWorldState owner, PlayerState player)
+    public void Validate(RunWorldState owner, RunState run)
     {
         ArgumentNullException.ThrowIfNull(owner);
-        ArgumentNullException.ThrowIfNull(player);
+        ArgumentNullException.ThrowIfNull(run);
         ValidateActOneEncounterPool(owner);
         if (RelicBag is { } relicBag)
-            PrototypeNativeRelicGrabBag.Validate(relicBag, player);
+            PrototypeNativeRelicGrabBag.Validate(relicBag, run.Player);
+
+        if (run.Configuration is { UsesExperimentalSilentThreeActRoute: true }
+            configuration)
+        {
+            var darvRevealed = configuration.Profile.RevealedEpochs.Contains(
+                NativeDarvEventV111.EpochId, StringComparer.Ordinal);
+            ValidatePreparedLaterActEncounterBags(
+                owner, run.Ascension, darvRevealed);
+            if (owner.Act > 1)
+                ValidateLaterActEncounterBag(
+                    owner, run.Ascension, darvRevealed);
+            var darvAssignments = (LaterActEncounterBag is { } activeBag
+                    ? new[] { activeBag.AssignedAncientId }
+                    : Array.Empty<string?>())
+                .Concat((PreparedLaterActEncounterBags ?? [])
+                    .Select(bag => bag.AssignedAncientId))
+                .Count(id => id == NativeDarvEventV111.EventId);
+            if (darvAssignments > 1)
+                throw new InvalidOperationException(
+                    "The shared Darv Ancient cannot be assigned to multiple acts.");
+        }
+    }
+
+    private void ValidatePreparedLaterActEncounterBags(
+        RunWorldState world, int ascension, bool darvRevealed)
+    {
+        var prepared = PreparedLaterActEncounterBags
+            ?? throw new InvalidOperationException(
+                "Experimental routes require run-start prepared encounter histories.");
+        var expectedActs = Enumerable.Range(world.Act + 1, 3 - world.Act).ToArray();
+        if (prepared.Any(bag => bag is null)
+            || !prepared.Select(bag => bag.Act).SequenceEqual(expectedActs))
+            throw new InvalidOperationException(
+                "Prepared encounter histories must belong to each future act in route order.");
+        foreach (var bag in prepared)
+        {
+            if (bag.OrdinaryCombatsStarted != 0 || bag.RemainingElite?.Length != 15)
+                throw new InvalidOperationException(
+                    "An unvisited act's prepared encounter history has already been consumed.");
+            ValidateLaterActEncounterBag(
+                world with { Act = bag.Act, LaterActEncounterBag = bag },
+                ascension, darvRevealed);
+        }
+    }
+
+    private static void ValidateLaterActEncounterBag(
+        RunWorldState world, int ascension, bool darvRevealed)
+    {
+        var bag = world.LaterActEncounterBag
+            ?? throw new InvalidOperationException(
+                "Configured Hive/Glory requires pre-generated encounter queues.");
+        var ordinaryRooms = ExperimentalSilentThreeActRouteV111.OrdinaryRoomCount(
+            world.Act);
+        if (bag.Act != world.Act
+            || bag.OrdinaryCombatsStarted < 0
+            || bag.OrdinaryCombatsStarted > ordinaryRooms)
+            throw new InvalidOperationException(
+                "Regional encounter queues have an invalid act/count.");
+
+        // In v111 ActModel.GenerateRooms the act creates two weak encounters,
+        // ordinaryRooms - 2 normal encounters, and fifteen elite encounters
+        // before rooms are visited. Refill may duplicate IDs across bag cycles.
+        // Validate the queue cursor via its remaining lengths, not uniqueness.
+        var expectedWeak = Math.Max(0, 2 - bag.OrdinaryCombatsStarted);
+        var expectedNormal = ordinaryRooms - 2
+            - Math.Max(0, bag.OrdinaryCombatsStarted - 2);
+        if (bag.RemainingWeak is null
+            || bag.RemainingNormal is null
+            || bag.RemainingElite is null
+            || bag.RemainingWeak.Length != expectedWeak
+            || bag.RemainingNormal.Length != expectedNormal
+            || bag.RemainingElite.Length > 15)
+            throw new InvalidOperationException(
+                "Regional encounter queue lengths disagree with their cursors.");
+
+        foreach (var (values, pool) in new[]
+        {
+            (bag.RemainingWeak,
+                ExperimentalSilentThreeActRouteV111.Pool(
+                    world.Act, PrototypeRoomType.Combat, true)),
+            (bag.RemainingNormal,
+                ExperimentalSilentThreeActRouteV111.Pool(
+                    world.Act, PrototypeRoomType.Combat, false)),
+            (bag.RemainingElite,
+                ExperimentalSilentThreeActRouteV111.Pool(
+                    world.Act, PrototypeRoomType.Elite, false))
+        })
+        {
+            if (values.Any(id => !pool.Contains(id, StringComparer.Ordinal)))
+                throw new InvalidOperationException(
+                    "Regional encounter queue contains foreign entries.");
+        }
+        if (!ExperimentalSilentThreeActRouteV111.Pool(
+            world.Act, PrototypeRoomType.Boss, false)
+            .Contains(bag.BossEncounterId, StringComparer.Ordinal))
+            throw new InvalidOperationException(
+                "Regional preselected boss is not eligible for this act.");
+        if (bag.AssignedAncientId is { } ancientId
+            && !ExperimentalSilentThreeActRouteV111.AncientPool(world.Act,
+                includeDarv: darvRevealed)
+                .Contains(ancientId, StringComparer.Ordinal))
+            throw new InvalidOperationException(
+                "Prepared Ancient assignment is unsupported or belongs to another act.");
+        var requiresSecondBoss = world.Act == 3 && ascension >= 10;
+        if (requiresSecondBoss != (bag.SecondBossEncounterId is not null)
+            || bag.SecondBossEncounterId is { } secondBoss
+                && (!ExperimentalSilentThreeActRouteV111.Pool(
+                        world.Act, PrototypeRoomType.Boss, false)
+                    .Contains(secondBoss, StringComparer.Ordinal)
+                    || secondBoss == bag.BossEncounterId))
+            throw new InvalidOperationException(
+                "Regional second-boss assignment disagrees with act and Ascension rules.");
     }
 
     private void ValidateActOneEncounterPool(RunWorldState world)
