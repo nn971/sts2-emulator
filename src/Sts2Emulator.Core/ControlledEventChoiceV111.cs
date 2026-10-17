@@ -756,6 +756,15 @@ internal sealed class ControlledEventChoiceReplayV111 :
 internal sealed class ControlledEventChoiceRandomIndexProviderV111
     : IRandomIndexProviderV111
 {
+    private readonly bool _requestOrdinalIncludesCurrentOperationPrefix;
+
+    public ControlledEventChoiceRandomIndexProviderV111(
+        bool requestOrdinalIncludesCurrentOperationPrefix = true)
+    {
+        _requestOrdinalIncludesCurrentOperationPrefix =
+            requestOrdinalIncludesCurrentOperationPrefix;
+    }
+
     public string Mode => "controlled-v111";
 
     public RandomIndexDecisionV111 Resolve(
@@ -770,7 +779,7 @@ internal sealed class ControlledEventChoiceRandomIndexProviderV111
         var decision = new RandomIndexDecisionV111(
             PrototypeControlledEventChoiceContinuationV111.CloneRequest(request),
             ControlledEventChoiceReplayV111.Resolve(
-                request, requestOrdinalIncludesCurrentOperationPrefix: true),
+                request, _requestOrdinalIncludesCurrentOperationPrefix),
             Mode);
         decision.Validate();
         return decision;

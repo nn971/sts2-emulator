@@ -186,3 +186,28 @@ internal sealed class ControlledEnemyActionReplayV111 :
         _disposed = true;
     }
 }
+
+internal sealed class ControlledEnemyActionRandomIndexProviderV111
+    : IRandomIndexProviderV111
+{
+    public string Mode => "controlled-v111";
+
+    public RandomIndexDecisionV111 Resolve(
+        RandomIndexRequestV111 request, RngBundle streams)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(streams);
+        if (!ControlledChanceGuardV111.Active
+            || !ControlledEnemyActionReplayV111.IsActive)
+            throw new InvalidOperationException(
+                "Controlled enemy-action provider requires an active replay frame.");
+        var decision = new RandomIndexDecisionV111(
+            request with
+            {
+                OrderedCandidates = (int[])request.OrderedCandidates.Clone()
+            },
+            ControlledEnemyActionReplayV111.Resolve(request), Mode);
+        decision.Validate();
+        return decision;
+    }
+}

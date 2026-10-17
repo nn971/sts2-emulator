@@ -258,6 +258,10 @@ public static class LegacyRandomChoiceV111
             if (ControlledEventChoiceReplayV111.IsActive &&
                 ControlledEventChoiceReplayV111.IsControlledReplaySite(siteId))
             {
+                if (StochasticProviderScopeV111.HasProviderOverride)
+                    return StochasticProviderScopeV111.ResolveIndex(
+                        new LegacyPrototypeRandomIndexProviderV111(),
+                        request, streams);
                 var controlledDecision = new RandomIndexDecisionV111(
                     request,
                     ControlledEventChoiceReplayV111.Resolve(request),
@@ -269,6 +273,10 @@ public static class LegacyRandomChoiceV111
                 PrototypeControlledEnemyActionContinuationV111
                     .IsEnemyActionSite(siteId))
             {
+                if (StochasticProviderScopeV111.HasProviderOverride)
+                    return StochasticProviderScopeV111.ResolveIndex(
+                        new LegacyPrototypeRandomIndexProviderV111(),
+                        request, streams);
                 var controlledDecision = new RandomIndexDecisionV111(
                     request,
                     ControlledEnemyActionReplayV111.Resolve(request),

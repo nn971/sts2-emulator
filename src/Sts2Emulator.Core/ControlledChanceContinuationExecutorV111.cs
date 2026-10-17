@@ -72,7 +72,9 @@ internal static class ControlledChanceContinuationExecutorV111
             decisions,
             mechanics,
             () => ControlledEventChoiceReplayV111.Begin(
-                decisions, priorOrdinalCounts));
+                decisions, priorOrdinalCounts),
+            new ControlledEventChoiceRandomIndexProviderV111(
+                requestOrdinalIncludesCurrentOperationPrefix: false));
 
     public static ControlledChanceReplayResultV111 ResumeEnemyAction(
         RunState checkpoint,
@@ -82,20 +84,25 @@ internal static class ControlledChanceContinuationExecutorV111
             checkpoint,
             decisions,
             mechanics,
-            () => ControlledEnemyActionReplayV111.Begin(decisions));
+            () => ControlledEnemyActionReplayV111.Begin(decisions),
+            new ControlledEnemyActionRandomIndexProviderV111());
 
     private static ControlledChanceReplayResultV111 ResumeCore(
         RunState checkpoint,
         RandomIndexDecisionV111[] decisions,
         Func<RunState, RunState> mechanics,
-        Func<IControlledChanceReplayScopeV111> beginReplay)
+        Func<IControlledChanceReplayScopeV111> beginReplay,
+        IRandomIndexProviderV111 replayProvider)
     {
         ArgumentNullException.ThrowIfNull(checkpoint);
         ArgumentNullException.ThrowIfNull(decisions);
         ArgumentNullException.ThrowIfNull(mechanics);
         ArgumentNullException.ThrowIfNull(beginReplay);
+        ArgumentNullException.ThrowIfNull(replayProvider);
 
         using var replay = beginReplay();
+        using var providers = StochasticProviderScopeV111.Enter(
+            replayProvider, new FailClosedControlledUnitFloatProviderV111());
         try
         {
             var run = mechanics(checkpoint) ?? throw new InvalidDataException(
@@ -106,6 +113,22 @@ internal static class ControlledChanceContinuationExecutorV111
         catch (ControlledChanceRequiredExceptionV111 pending)
         {
             return new ControlledChanceReplayResultV111(null, pending);
+        }
+    }
+
+    private sealed class FailClosedControlledUnitFloatProviderV111
+        : IRandomUnitFloatProviderV111
+    {
+        public string Mode => "controlled-v111";
+
+        public RandomUnitFloatDecisionV111 Resolve(
+            RandomUnitFloatRequestV111 request, RngBundle streams)
+        {
+            ArgumentNullException.ThrowIfNull(request);
+            ArgumentNullException.ThrowIfNull(streams);
+            throw new NotSupportedException(
+                "UNSUPPORTED_CONTROLLED_CHANCE site=" + request.SiteId +
+                " operation=unit_float requires a mixed typed continuation.");
         }
     }
 }

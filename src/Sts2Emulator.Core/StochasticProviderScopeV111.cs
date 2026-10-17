@@ -45,6 +45,9 @@ internal static class StochasticProviderScopeV111
 
     private static readonly AsyncLocal<Frame?> Current = new();
 
+    public static bool HasProviderOverride =>
+        HasOverridingProvider(Current.Value);
+
     public static IDisposable Enter(
         IRandomIndexProviderV111? indexProvider = null,
         IRandomUnitFloatProviderV111? unitFloatProvider = null,
