@@ -50,6 +50,8 @@
 
 **S4 semantic hand-draw entry increment (2026-10-18):** initial automatic semantic hand draw and pre-draw action-choice resumption now share the same ordinary-engine outcome interpreter. It handles random-pile/draw-hook suspension and source-ordered deterministic completion alongside semantic continuation, so the facade no longer owns a second completion path or advances the DrawPlayerHand cursor separately. Typed choice transcripts and cross-provider equivalence remain open.
 
+**S4 semantic draw-result continuation increment (2026-10-18):** initial and post-cost semantic draws now share one engine-owned `DrawCards` result handler for shuffle insertions, nested draw hooks, Stratagem selection, and pending automatic draw progress. The adapters keep their typed decision history and boundary validation; nested semantic resumes and cross-provider mechanical equivalence remain open.
+
 **S4 terminal end-turn handoff increment (2026-10-17):** after semantic hand draw, end-turn continuation now accepts the ordinary pipeline's actual Reward or Terminal result as well as a next-player boundary. A completed terminal/reward frame retains its at-boundary draw projection and transcript for source replay; pending draw state is still rejected.
 
 **S4 shared automatic-pipeline handoff increment (2026-10-17):** ordinary controlled-choice continuations and semantic end-turn post-draw completion now resume through `PrototypeGameEngine.ResumeAutomaticPipelineContinuation`. It owns clearing the saved cursor, reopening the remaining ordinary stages, and settling the terminal combat reward boundary; specialized facades continue to validate their own final outcomes.

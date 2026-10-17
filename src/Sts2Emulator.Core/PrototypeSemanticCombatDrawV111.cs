@@ -34,97 +34,14 @@ public sealed partial class PrototypeGameEngine
             controlledSemanticDrawSuspension: true,
             controlledAfterShuffleInsertionSuspension: true,
             controlledCardDrawnChoiceSuspension: true);
-        if (result.ControlledAfterShuffleInsertions is
-            { Length: > 0 } afterShuffleInsertions)
-        {
-            var advancedAfterInsertion = run with
-            {
-                Player = result.Player,
-                World = world with { Combat = result.Combat }
-            };
-            return SuspendSemanticDrawAfterShuffleInsertions(
-                advancedAfterInsertion, result, afterShuffleInsertions,
-                fromHandDraw, eventDepth: 0,
-                automaticHandDrawRequested: automatic
-                    ? combat.AutomaticPipelineContinuation!
-                        .ControlledSemanticDrawRequested
-                    : null);
-        }
-        if (result.NestedCardDrawnChoicePending)
-        {
-            if (automatic)
-            {
-                var automaticHookRun = run with
-                {
-                    Player = result.Player,
-                    World = world with { Combat = result.Combat }
-                };
-                return (SuspendSemanticAutomaticDrawAtHookChoice(
-                    automaticHookRun, result.Player, result.Combat,
-                    result.RemainingCount,
-                    combat.AutomaticPipelineContinuation!
-                        .ControlledSemanticDrawRequested!.Value),
-                    result.RemainingCount);
-            }
-            var advancedNestedChoice = run with
-            {
-                Player = result.Player,
-                World = world with { Combat = result.Combat }
-            };
-            return (SuspendStandaloneSemanticDrawForHookChoice(
-                advancedNestedChoice, result, fromHandDraw),
-                result.RemainingCount);
-        }
-        if (result.ControlledRecyclePending)
-            throw new NotSupportedException(
-                "UNSUPPORTED_SEMANTIC_DECK site=combat.draw " +
-                "operation=unsupported_nested_stage");
-        if (result.ShuffleSelectionPending)
-        {
-            if (automatic)
-            {
-                var automaticSelectionRun = run with
-                {
-                    Player = result.Player,
-                    World = world with { Combat = result.Combat }
-                };
-                return (SuspendSemanticAutomaticDrawForStratagemSelection(
-                    automaticSelectionRun, result,
-                    combat.AutomaticPipelineContinuation!
-                        .ControlledSemanticDrawRequested!.Value),
-                    result.RemainingCount);
-            }
-            var semanticDraw = new PrototypeControlledSemanticDrawV111(
-                result.RemainingCount, fromHandDraw, 0,
-                DrawnCardKeyword: null,
-                DeferredKeywordCardInstanceIds: [],
-                StratagemSelectionPending: false,
-                StandaloneSemanticDrawSegment: true);
-            var continuation = new PrototypeChoiceResolutionContinuationState(
-                SourceCardInstanceId: null,
-                SourceCardDestination: PrototypeCardZone.DrawPile,
-                Operations: [], PendingDiscardEvents: [],
-                PendingSlyCardInstanceIds: [], CompletionEvents: []);
-            var advancedSelection = run with
-            {
-                Player = result.Player,
-                World = world with { Combat = result.Combat }
-            };
-            var selectionRun = ResumeControlledStratagemSelection(
-                advancedSelection, result.Combat, semanticDraw, continuation);
-            return (selectionRun, result.RemainingCount);
-        }
-        var advanced = run with
-        {
-            Player = result.Player,
-            World = world with { Combat = result.Combat }
-        };
-        bool pending = result.ControlledSemanticDrawPending ||
-            result.ControlledDrawCostPending;
-        return automatic
-            ? CommitSemanticAutomaticHandDrawProgress(
-                advanced, result.RemainingCount, pending)
-            : (advanced, pending ? result.RemainingCount : 0);
+        return ResumeSemanticCombatDrawResult(
+            run, result, fromHandDraw, eventDepth: 0,
+            automaticHandDrawRequested: automatic
+                ? combat.AutomaticPipelineContinuation!
+                    .ControlledSemanticDrawRequested
+                : null,
+            recycleSite: "combat.draw",
+            recycleOperation: "unsupported_nested_stage");
     }
 
     /// <summary>
@@ -222,69 +139,64 @@ public sealed partial class PrototypeGameEngine
             controlledSemanticDrawSuspension: true,
             controlledAfterShuffleInsertionSuspension: true,
             controlledCardDrawnChoiceSuspension: true);
-        if (continued.ControlledAfterShuffleInsertions is
+        return ResumeSemanticCombatDrawResult(
+            run, continued, cost.FromHandDraw, cost.EventDepth,
+            automaticHandDrawRequested: automatic
+                ? combat.AutomaticPipelineContinuation!
+                    .ControlledSemanticDrawRequested
+                : null,
+            recycleSite: "combat.draw.cost",
+            recycleOperation: "unsupported_post_cost_stage");
+    }
+
+    private static (RunState Run, int RemainingCount)
+        ResumeSemanticCombatDrawResult(
+            RunState run,
+            PrototypeDrawCardsResult drawn,
+            bool fromHandDraw,
+            int eventDepth,
+            int? automaticHandDrawRequested,
+            string recycleSite,
+            string recycleOperation)
+    {
+        var world = RequireWorld(run);
+        var advanced = run with
+        {
+            Player = drawn.Player,
+            World = world with { Combat = drawn.Combat }
+        };
+        bool automatic = automaticHandDrawRequested is not null;
+        if (drawn.ControlledAfterShuffleInsertions is
             { Length: > 0 } afterShuffleInsertions)
-        {
-            var advancedAfterInsertion = run with
-            {
-                Player = continued.Player,
-                World = world with { Combat = continued.Combat }
-            };
             return SuspendSemanticDrawAfterShuffleInsertions(
-                advancedAfterInsertion, continued, afterShuffleInsertions,
-                cost.FromHandDraw, cost.EventDepth,
-                automaticHandDrawRequested: automatic
-                    ? combat.AutomaticPipelineContinuation!
-                        .ControlledSemanticDrawRequested
-                    : null);
-        }
-        if (continued.NestedCardDrawnChoicePending)
+                advanced, drawn, afterShuffleInsertions, fromHandDraw,
+                eventDepth, automaticHandDrawRequested);
+
+        if (drawn.NestedCardDrawnChoicePending)
         {
             if (automatic)
-            {
-                var automaticHookRun = run with
-                {
-                    Player = continued.Player,
-                    World = world with { Combat = continued.Combat }
-                };
                 return (SuspendSemanticAutomaticDrawAtHookChoice(
-                    automaticHookRun, continued.Player, continued.Combat,
-                    continued.RemainingCount,
-                    combat.AutomaticPipelineContinuation!
-                        .ControlledSemanticDrawRequested!.Value),
-                    continued.RemainingCount);
-            }
-            var advancedNestedChoice = run with
-            {
-                Player = continued.Player,
-                World = world with { Combat = continued.Combat }
-            };
+                    advanced, drawn.Player, drawn.Combat,
+                    drawn.RemainingCount, automaticHandDrawRequested!.Value),
+                    drawn.RemainingCount);
             return (SuspendStandaloneSemanticDrawForHookChoice(
-                advancedNestedChoice, continued, cost.FromHandDraw),
-                continued.RemainingCount);
+                advanced, drawn, fromHandDraw), drawn.RemainingCount);
         }
-        if (continued.ControlledRecyclePending)
+
+        if (drawn.ControlledRecyclePending)
             throw new NotSupportedException(
-                "UNSUPPORTED_SEMANTIC_DECK site=combat.draw.cost " +
-                "operation=unsupported_post_cost_stage");
-        if (continued.ShuffleSelectionPending)
+                "UNSUPPORTED_SEMANTIC_DECK site=" + recycleSite +
+                " operation=" + recycleOperation);
+
+        if (drawn.ShuffleSelectionPending)
         {
             if (automatic)
-            {
-                var automaticSelectionRun = run with
-                {
-                    Player = continued.Player,
-                    World = world with { Combat = continued.Combat }
-                };
                 return (SuspendSemanticAutomaticDrawForStratagemSelection(
-                    automaticSelectionRun, continued,
-                    combat.AutomaticPipelineContinuation!
-                        .ControlledSemanticDrawRequested!.Value),
-                    continued.RemainingCount);
-            }
+                    advanced, drawn, automaticHandDrawRequested!.Value),
+                    drawn.RemainingCount);
             var semanticDraw = new PrototypeControlledSemanticDrawV111(
-                continued.RemainingCount, cost.FromHandDraw,
-                cost.EventDepth, DrawnCardKeyword: null,
+                drawn.RemainingCount, fromHandDraw, eventDepth,
+                DrawnCardKeyword: null,
                 DeferredKeywordCardInstanceIds: [],
                 StratagemSelectionPending: false,
                 StandaloneSemanticDrawSegment: true);
@@ -293,27 +205,17 @@ public sealed partial class PrototypeGameEngine
                 SourceCardDestination: PrototypeCardZone.DrawPile,
                 Operations: [], PendingDiscardEvents: [],
                 PendingSlyCardInstanceIds: [], CompletionEvents: []);
-            var advancedSelection = run with
-            {
-                Player = continued.Player,
-                World = world with { Combat = continued.Combat }
-            };
-            var selectionRun = ResumeControlledStratagemSelection(
-                advancedSelection, continued.Combat, semanticDraw,
-                continuation);
-            return (selectionRun, continued.RemainingCount);
+            return (ResumeControlledStratagemSelection(
+                advanced, drawn.Combat, semanticDraw, continuation),
+                drawn.RemainingCount);
         }
-        var advanced = run with
-        {
-            Player = continued.Player,
-            World = world with { Combat = continued.Combat }
-        };
-        bool hasPending = continued.ControlledSemanticDrawPending ||
-            continued.ControlledDrawCostPending;
+
+        bool pending = drawn.ControlledSemanticDrawPending ||
+            drawn.ControlledDrawCostPending;
         return automatic
             ? CommitSemanticAutomaticHandDrawProgress(
-                advanced, continued.RemainingCount, hasPending)
-            : (advanced, hasPending ? continued.RemainingCount : 0);
+                advanced, drawn.RemainingCount, pending)
+            : (advanced, pending ? drawn.RemainingCount : 0);
     }
 
     private static (RunState Run, int RemainingCount)
