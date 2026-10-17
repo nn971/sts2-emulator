@@ -255,9 +255,28 @@ public static partial class ChanceLawEngineV111
         "event.generated_gold.index_draw";
     public const string NativeEventGoldUnitFloatSiteId =
         "event.generated_gold.unit_float";
+    public const string NativeStoneOfAllTimePushTicketSiteId =
+        "event.stone_of_all_time.push_ticket";
+    public const string NativeStoneOfAllTimeLiftTicketSiteId =
+        "event.stone_of_all_time.lift_ticket";
+
+    private const string NativeStoneOfAllTimeNoEffectProvenance =
+        "v0.111.0 Stone of All Time consumes the bounded ticket after the " +
+        "push or lift effect and discards the selected index; every source " +
+        "index therefore has the same no_effect mechanic. Native event " +
+        "cursor advancement is outside this Chance Law.";
+
+    private const string NativeStoneOfAllTimeNoEffectPolicyId =
+        "native-stone-of-all-time-ticket-no-effect-v1";
 
     public static string[] NativeEventGoldQuerySiteIds =>
         [NativeEventGoldIndexSiteId, NativeEventGoldUnitFloatSiteId];
+
+    public static string[] NativeEventNoEffectIndexQuerySiteIds =>
+    [
+        NativeStoneOfAllTimePushTicketSiteId,
+        NativeStoneOfAllTimeLiftTicketSiteId
+    ];
 
     public static string[] NativeEventCardPickQuerySiteIds =>
     [
@@ -265,6 +284,86 @@ public static partial class ChanceLawEngineV111
         PrototypeNativeGloryEvents.ReflectionsUpgradeSiteId,
         PrototypeNativeHiveEvents.InfestedAutomatonCardOfferSiteId
     ];
+
+    /// <summary>
+    /// Query the event-local bounded ticket which Stone of All Time discards
+    /// after either choice. The event action is a declared conditioning
+    /// branch; the query does not inspect or advance the Native stream.
+    /// </summary>
+    public static ChanceLawV111 QueryNativeStoneOfAllTimeNoEffectIndex(
+        RunState origin, string siteId, int ordinal, string actionId)
+    {
+        ArgumentNullException.ThrowIfNull(origin);
+        ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(actionId);
+        if (!NativeEventNoEffectIndexQuerySiteIds.Contains(
+                siteId, StringComparer.Ordinal) || ordinal != 0 ||
+            origin.Phase != RunPhase.Event ||
+            origin.World is not { Act: 2, Event: { } evt } world ||
+            origin.NativeRunRng is null ||
+            !PrototypeGameEngine.UsesNativeRegionalSystems(world) ||
+            evt.EventId != PrototypeNativeStoneOfAllTime.EventId ||
+            evt.NativePageIndex != 0 || evt.ChosenChoiceId is not null ||
+            evt.ControlledChoice is not null ||
+            evt.NativeEventRngProviderMode is not null ||
+            evt.NativeEventRng?.StreamId !=
+                NativeRngV111Contexts.EventStreamId(
+                    PrototypeNativeStoneOfAllTime.NativeRngEventId))
+            throw new InvalidOperationException(
+                "Stone of All Time ticket laws require its configured Native event choice boundary.");
+        PrototypeStateInvariants.Validate(origin);
+
+        var expectedChoice = siteId switch
+        {
+            NativeStoneOfAllTimePushTicketSiteId => "push",
+            NativeStoneOfAllTimeLiftTicketSiteId => "lift",
+            _ => throw new NotSupportedException(
+                $"Stone of All Time does not support ticket site '{siteId}'.")
+        };
+        if (actionId != expectedChoice)
+            throw new ArgumentException(
+                $"Stone of All Time ticket site '{siteId}' requires action '{expectedChoice}'.",
+                nameof(actionId));
+        if (siteId == NativeStoneOfAllTimeLiftTicketSiteId &&
+            (evt.NativeEventPotionSlot is not { } potionSlot ||
+             potionSlot < 0 || potionSlot >= origin.Player.PotionSlots.Length ||
+             origin.Player.PotionSlots[potionSlot] is null))
+            throw new InvalidOperationException(
+                "Stone of All Time lift requires its saved occupied potion slot.");
+
+        var action = GameAction.Create(
+            "event_choice", new EventChoicePayload(expectedChoice));
+        if (!new PrototypeGameEngine().GetLegalActions(origin).Any(candidate =>
+                PrototypeAiEnvironment.StableActionId(candidate) ==
+                PrototypeAiEnvironment.StableActionId(action)))
+            throw new InvalidOperationException(
+                $"Stone of All Time choice '{expectedChoice}' is not legal in the current state.");
+
+        var ownerId = $"event:stone_of_all_time:{expectedChoice}:ticket";
+        var streamId = NativeRngV111Contexts.EventStreamId(
+            PrototypeNativeStoneOfAllTime.NativeRngEventId);
+        var conditioningFingerprint = CanonicalJson.Sha256(new
+        {
+            boundary = "native_event.stone_of_all_time.no_effect_ticket",
+            eventId = evt.EventId,
+            actionId,
+            sourceOperation = new
+            {
+                siteId,
+                streamId,
+                ownerId,
+                operationKind = "bounded_integer",
+                boundedCount = 100
+            }
+        });
+        return CreateNativeBoundaryLaw(
+            siteId, "bounded_integer_no_effect", ownerId, ordinal,
+            NativeStoneOfAllTimeNoEffectPolicyId,
+            conditioningFingerprint,
+            NativeStoneOfAllTimeNoEffectProvenance,
+            [new ChanceLawOutcomeV111("no_effect", 1L)],
+            ChanceLawV111.SourceVerifiedStatus);
+    }
 
     public static ChanceLawV111 QueryNativeEventGoldUnitFloat(
         RunState origin, string siteId, int ordinal, string actionId,

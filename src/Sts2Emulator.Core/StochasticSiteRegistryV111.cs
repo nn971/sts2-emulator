@@ -274,6 +274,7 @@ public static class StochasticSiteRegistryV111
         .. ChanceLawEngineV111.TrialSessionSiteIds,
         .. ChanceLawEngineV111.NativeEventShuffleSessionSiteIds,
         .. ChanceLawEngineV111.NativeEventGoldQuerySiteIds,
+        .. ChanceLawEngineV111.NativeEventNoEffectIndexQuerySiteIds,
         .. ChanceLawEngineV111.NativeEventCardPickQuerySiteIds,
         .. ChanceLawEngineV111.NativePunchOffRewardQuerySiteIds,
         .. ChanceLawEngineV111.NativePunchOffFightQuerySiteIds,

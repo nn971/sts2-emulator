@@ -87,6 +87,16 @@ frequencies, stream attribution, and cursor parity remain open. Legacy
 integer fallbacks and adjacent unsupported source alternatives remain
 `UNVERIFIED`.
 
+Stone of All Time's `push_ticket` and `lift_ticket` each have a read-only
+one-outcome law at the legal active-event choice boundary. The query conditions
+on the requested `push` or `lift` action and confirms that it is currently
+legal; all 100 bounded indices map to `no_effect`. This mapping is
+`SOURCE_VERIFIED` from the pinned resolver, which discards the selected index.
+The law does not inspect the saved Native cursor and does not create a
+ReferenceNature event session: the ordinary event action continues to own the
+source cursor draw. Legacy fallback cursor and result behavior remain outside
+this claim.
+
 The resolver is the event-specific page-generation or choice-effect method.
 It applies the selected primitive result synchronously, commits the resulting
 page/effect into
