@@ -265,10 +265,46 @@ public sealed partial class PrototypeGameEngine
         bool pending = boundary is
             PrototypeDrawCardsBoundaryKind.SemanticDraw or
                 PrototypeDrawCardsBoundaryKind.ControlledDrawCost;
+        if (automatic && pending &&
+            !IsSemanticAutomaticHandDraw(drawn.Combat))
+            return (SaveAutomaticSemanticHandDrawBoundary(
+                advanced, drawn, automaticHandDrawRequested!.Value),
+                drawn.RemainingCount);
         return automatic
             ? CommitSemanticAutomaticHandDrawProgress(
                 advanced, drawn.RemainingCount, pending)
             : (advanced, pending ? drawn.RemainingCount : 0);
+    }
+
+    private static RunState SaveAutomaticSemanticHandDrawBoundary(
+        RunState run, PrototypeDrawCardsResult drawn, int requested)
+    {
+        var world = RequireWorld(run);
+        var combat = drawn.Combat;
+        var boundary = drawn.BoundaryKind;
+        int stageIndex = SemanticHandDrawStepIndex;
+        if (stageIndex < 0 || drawn.RemainingCount < 0 || requested < 0 ||
+            (boundary == PrototypeDrawCardsBoundaryKind.SemanticDraw &&
+             combat.SemanticDeck?.Pending is null) ||
+            (boundary == PrototypeDrawCardsBoundaryKind.ControlledDrawCost &&
+             combat.PendingChoice?.ControlledDrawCost is null))
+            throw new InvalidDataException(
+                "Semantic hand-draw stage lost its suspended request.");
+        return run with
+        {
+            Player = drawn.Player,
+            World = world with
+            {
+                Combat = combat with
+                {
+                    AutomaticPipelineContinuation = new(
+                        stageIndex,
+                        ControlledSemanticDrawRemaining:
+                            drawn.RemainingCount,
+                        ControlledSemanticDrawRequested: requested)
+                }
+            }
+        };
     }
 
     private static (RunState Run, int RemainingCount)

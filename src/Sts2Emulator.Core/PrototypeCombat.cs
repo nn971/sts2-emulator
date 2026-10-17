@@ -2821,13 +2821,20 @@ public sealed partial class PrototypeGameEngine
                 player = drawn.Player;
                 combat = drawn.Combat;
                 var drawBoundary = drawn.BoundaryKind;
-                if (ControlledChanceGuardV111.Active &&
+                bool semanticChoiceBoundary =
+                    ControlledChanceGuardV111.Active &&
                     combat.SemanticDeck is
                         { Mode: SemanticDeckStateV111.NatureMode } &&
                     drawBoundary is
-                        PrototypeDrawCardsBoundaryKind.NestedCardDrawnChoice or
-                        PrototypeDrawCardsBoundaryKind.AfterShuffleInsertions or
-                        PrototypeDrawCardsBoundaryKind.ShuffleSelection)
+                        (PrototypeDrawCardsBoundaryKind.NestedCardDrawnChoice or
+                         PrototypeDrawCardsBoundaryKind.AfterShuffleInsertions or
+                         PrototypeDrawCardsBoundaryKind.ShuffleSelection);
+                bool semanticDrawBoundary =
+                    combat.SemanticDeck is not null &&
+                    drawBoundary is
+                        (PrototypeDrawCardsBoundaryKind.SemanticDraw or
+                         PrototypeDrawCardsBoundaryKind.ControlledDrawCost);
+                if (semanticChoiceBoundary || semanticDrawBoundary)
                 {
                     var advanced = state with
                     {
@@ -2843,41 +2850,6 @@ public sealed partial class PrototypeGameEngine
                         automaticHandDrawRequested: requestedHandDraw,
                         recycleSite: "combat.DrawPlayerHand",
                         recycleOperation: "unsupported_nested_stage").Run;
-                }
-                if (combat.SemanticDeck is not null &&
-                    drawBoundary is
-                        PrototypeDrawCardsBoundaryKind.SemanticDraw or
-                        PrototypeDrawCardsBoundaryKind.ControlledDrawCost)
-                {
-                    int stageIndex = Array.FindIndex(
-                        PrototypeContent.Rules.EndTurnPipeline,
-                        step => step.Kind ==
-                            PrototypeAutomaticStepKind.DrawPlayerHand);
-                    if (stageIndex < 0 ||
-                        (drawBoundary ==
-                            PrototypeDrawCardsBoundaryKind.SemanticDraw &&
-                         combat.SemanticDeck.Pending is null) ||
-                        (drawBoundary ==
-                            PrototypeDrawCardsBoundaryKind.ControlledDrawCost &&
-                         combat.PendingChoice?.ControlledDrawCost is null))
-                        throw new InvalidDataException(
-                            "Semantic hand-draw stage lost its suspended request.");
-                    return state with
-                    {
-                        Player = player,
-                        World = world with
-                        {
-                            Combat = combat with
-                            {
-                                AutomaticPipelineContinuation = new(
-                                    stageIndex,
-                                    ControlledSemanticDrawRemaining:
-                                        drawn.RemainingCount,
-                                    ControlledSemanticDrawRequested:
-                                        requestedHandDraw)
-                            }
-                        }
-                    };
                 }
                 if (drawBoundary ==
                     PrototypeDrawCardsBoundaryKind.ControlledDrawCost)
