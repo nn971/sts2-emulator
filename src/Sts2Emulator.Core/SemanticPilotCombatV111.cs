@@ -1300,17 +1300,20 @@ public static class SemanticPilotCombatEngineV111
         if (full.Length != full.Distinct().Count())
             throw new InvalidDataException(
                 "Reconstituted opening pile duplicated physical card identity.");
+        var initialDeck = SemanticDeckEngineV111.FromCommittedOpening(
+            full.Reverse().ToArray());
+        var openingCombat = combat with
+        {
+            Hand = []
+        };
+        openingCombat = SemanticDrawPileAdapterV111
+            .ApplyCommittedPhysicalMutation(
+                openingCombat, full, initialDeck);
         var prepared = run with
         {
             World = world with
             {
-                Combat = combat with
-                {
-                    Hand = [],
-                    DrawPile = full,
-                    SemanticDeck = SemanticDeckEngineV111.FromCommittedOpening(
-                        full.Reverse().ToArray())
-                }
+                Combat = openingCombat
             }
         };
         RunState drawn;

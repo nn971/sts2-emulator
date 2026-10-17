@@ -127,10 +127,8 @@ public static class PrototypeHypotheticalDrawOrder
         // Never mutate the input, and do not consume/change any RNG streams.
         var branch = hypothetical.Fork();
         var world = branch.World!;
-        var nextCombat = world.Combat! with
-        {
-            DrawPile = firstDrawnFirst.Reverse().ToArray()
-        };
+        var nextCombat = SemanticDrawPileAdapterV111.ApplyPhysicalMutation(
+            world.Combat!, firstDrawnFirst.Reverse().ToArray());
         return branch with { World = world with { Combat = nextCombat } };
     }
 }

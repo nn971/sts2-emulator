@@ -326,16 +326,18 @@ public sealed partial class PrototypeGameEngine
             new PrototypeTemporaryCardCost(
                 0, PrototypeTemporaryCardCostExpiry.EndOfTurn |
                     PrototypeTemporaryCardCostExpiry.WhenPlayed));
-        combat = combat with
+        combat = SemanticDrawPileAdapterV111
+            .ApplyCommittedPhysicalMutation(
+                combat,
+                combat.DrawPile.Where(id => id != selectedId).ToArray(),
+                deck) with
         {
-            DrawPile = combat.DrawPile.Where(id => id != selectedId).ToArray(),
             Hand = handHasSpace
                 ? combat.Hand.Append(selectedId).ToArray()
                 : combat.Hand,
             DiscardPile = handHasSpace
                 ? combat.DiscardPile
                 : combat.DiscardPile.Append(selectedId).ToArray(),
-            SemanticDeck = deck,
             PendingChoice = null
         };
         var resumedEvent = ResumeChoiceResolutionContinuation(

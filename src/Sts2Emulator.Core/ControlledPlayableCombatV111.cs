@@ -339,7 +339,6 @@ public static class ControlledPlayableCombatEngineV111
             Cards = cards,
             NextCardInstanceId = cards.Length + 1L,
             Hand = [],
-            DrawPile = cards.Select(c => c.InstanceId).ToArray(),
             DiscardPile = [],
             ExhaustPile = [],
             Relics = relics,
@@ -347,6 +346,8 @@ public static class ControlledPlayableCombatEngineV111
             CurrentMapNodeId = run.World!.Map.CurrentNodeId,
             IsPlayerTurn = true
         };
+        combat = SemanticDrawPileAdapterV111.ApplyPhysicalMutation(
+            combat, cards.Select(c => c.InstanceId).ToArray());
         run = run with
         {
             Phase = RunPhase.Combat,
@@ -405,7 +406,8 @@ public static class ControlledPlayableCombatEngineV111
         (drawPile[fresh.NextShuffleIndex], drawPile[selectedIndex]) =
             (drawPile[selectedIndex], drawPile[fresh.NextShuffleIndex]);
         var nextIndex = fresh.NextShuffleIndex - 1;
-        combat = combat with { DrawPile = drawPile };
+        combat = SemanticDrawPileAdapterV111.ApplyPhysicalMutation(
+            combat, drawPile);
         var next = fresh with
         {
             Run = fresh.Run with
@@ -1094,10 +1096,10 @@ public static class ControlledPlayableCombatEngineV111
             hand.Add(pile[index]);
             pile.RemoveAt(index);
         }
-        combat = combat with
+        combat = SemanticDrawPileAdapterV111.ApplyPhysicalMutation(
+            combat, pile.ToArray()) with
         {
-            Hand = hand.ToArray(),
-            DrawPile = pile.ToArray()
+            Hand = hand.ToArray()
         };
         return state with
         {

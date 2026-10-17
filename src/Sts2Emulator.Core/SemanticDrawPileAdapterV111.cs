@@ -16,6 +16,9 @@ public static class SemanticDrawPileAdapterV111
     public static void ValidateSynchronized(CombatState combat, bool requireIdle = false)
     {
         ArgumentNullException.ThrowIfNull(combat);
+        if (combat.DrawPile.Distinct().Count() != combat.DrawPile.Length)
+            throw new InvalidDataException(
+                "Physical draw pile contains duplicate card instances.");
         if (combat.SemanticDeck is not { } semantic) return;
         SemanticDeckEngineV111.Validate(semantic);
         if (!SemanticDeckEngineV111.AllCardInstanceIds(semantic)
@@ -30,6 +33,49 @@ public static class SemanticDrawPileAdapterV111
         if (requireIdle && semantic.Pending is not null)
             throw new InvalidDataException(
                 "Cannot mutate a draw pile with a pending semantic reveal.");
+    }
+
+    /// <summary>
+    /// Applies a physical draw-pile mutation and commits its corresponding
+    /// provider transition before returning the new immutable combat state.
+    /// </summary>
+    public static CombatState ApplyPhysicalMutation(
+        CombatState combat, long[] nextPhysicalDrawPile)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(nextPhysicalDrawPile);
+        return ApplyCommittedPhysicalMutation(
+            combat, nextPhysicalDrawPile,
+            SynchronizeSemanticDrawPileAfterMutation(
+                combat, nextPhysicalDrawPile));
+    }
+
+    /// <summary>
+    /// Publishes a physical mutation whose provider-side transition was
+    /// already committed by a typed semantic operation. Correspondence is
+    /// validated before the combined state is returned.
+    /// </summary>
+    public static CombatState ApplyCommittedPhysicalMutation(
+        CombatState combat, long[] nextPhysicalDrawPile,
+        SemanticDeckStateV111? committedSemanticDeck)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(nextPhysicalDrawPile);
+        if (combat.SemanticDeck is not null &&
+            committedSemanticDeck is null)
+            throw new InvalidDataException(
+                "A physical draw-pile mutation cannot drop its provider state.");
+        if (nextPhysicalDrawPile.Distinct().Count() !=
+            nextPhysicalDrawPile.Length)
+            throw new InvalidDataException(
+                "Physical draw-pile mutation contains duplicate card instances.");
+        var next = combat with
+        {
+            DrawPile = (long[])nextPhysicalDrawPile.Clone(),
+            SemanticDeck = committedSemanticDeck
+        };
+        ValidateSynchronized(next);
+        return next;
     }
 
     internal static SemanticDeckStateV111? SynchronizeSemanticDrawPileAfterMutation(

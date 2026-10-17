@@ -393,11 +393,11 @@ public sealed partial class PrototypeGameEngine
                     combat, chosen, instanceId)
             : SemanticDrawPileAdapterV111.SynchronizeSemanticDrawPileAfterInsertion(
                 combat, chosen, instanceId);
-        combat = combat with
+        combat = SemanticDrawPileAdapterV111
+            .ApplyCommittedPhysicalMutation(
+                combat, draw.ToArray(), semanticDeck) with
         {
             PendingChoice = null,
-            DrawPile = draw.ToArray(),
-            SemanticDeck = semanticDeck,
             DiscardPile = choice.AfterShuffleRelic is null
                 ? combat.DiscardPile
                 : combat.DiscardPile.Where(id => id != instanceId).ToArray()

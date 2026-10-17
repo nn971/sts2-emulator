@@ -33,6 +33,8 @@ The engine owns the **complete simulation lifecycle** (fork, snapshot, restore, 
 
 The present `RunState.Rng`, `NativeRunRng`, optional `OtherChance`, concrete `CombatState.DrawPile`, and `SemanticDeckStateV111` have overlapping representation/lifecycle responsibilities. Introduce a conceptual `SimulationState { Mechanics, Stochastic }` envelope without immediately rewriting or breaking these versioned types. Make one authoritative write path and assert zone/constraint correspondence during migration.
 
+The current S3 migration centralizes runtime draw-pile writes in `SemanticDrawPileAdapterV111`. It applies the mechanics membership change together with the already-committed provider transition, clones the physical identity array, and validates membership/order correspondence before returning a new combat state. State construction and immutable forks remain unchanged; the wider run-level provider envelope is still open.
+
 ## Semantic lifecycle and provider interchangeability
 
 The **same game mechanics** issues semantic stochastic operations and applies their resolved outcomes regardless of provider:

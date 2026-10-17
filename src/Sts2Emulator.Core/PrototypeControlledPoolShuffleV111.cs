@@ -306,12 +306,14 @@ public sealed partial class PrototypeGameEngine
             var semanticDeck =
                 SemanticDrawPileAdapterV111.SynchronizeSemanticDrawPileAfterRemoval(
                 combat, selected);
-            combat = combat with
+            combat = SemanticDrawPileAdapterV111
+                .ApplyCommittedPhysicalMutation(
+                    combat,
+                    combat.DrawPile
+                        .Where(id => !selectedSet.Contains(id)).ToArray(),
+                    semanticDeck) with
             {
-                DrawPile = combat.DrawPile
-                    .Where(id => !selectedSet.Contains(id)).ToArray(),
                 Hand = combat.Hand.Concat(selected).ToArray(),
-                SemanticDeck = semanticDeck
             };
         }
         else if (op.Kind ==
@@ -325,20 +327,14 @@ public sealed partial class PrototypeGameEngine
                     combat.DrawPile.Concat(returnedHandIds).Order()))
                 throw new InvalidDataException(
                     "Hand-return shuffle changed or duplicated card identities.");
-            combat = combat with
-            {
-                PendingChoice = null,
-                Hand = []
-            };
+            combat = combat with { PendingChoice = null, Hand = [] };
             var shuffledDrawPile = ApplyPerfectFitShuffleOrder(
                 combat, shuffled);
             var semanticDeck = CommitSemanticHandReturnShuffle(
                 combat, shuffledDrawPile, returnedHandIds);
-            combat = combat with
-            {
-                DrawPile = shuffledDrawPile,
-                SemanticDeck = semanticDeck
-            };
+            combat = SemanticDrawPileAdapterV111
+                .ApplyCommittedPhysicalMutation(
+                    combat, shuffledDrawPile, semanticDeck);
             var afterShuffleInsertions =
                 ControlledAfterShuffleRelicInsertions(combat);
             if (afterShuffleInsertions.Length > 0 &&
