@@ -153,10 +153,10 @@ public sealed record SemanticCombatDrawV111(
             return null;
         if (cursor.ControlledSemanticBeforeHandDrawPending)
             return (0, 0);
-        if (!PrototypeGameEngine.IsSemanticAutomaticHandDraw(combat))
+        if (!cursor.Stochastic.TryGetSemanticHandDrawProgress(
+                cursor.Mechanics, out var requested, out var remaining))
             return null;
-        return (cursor.ControlledSemanticDrawRequested!.Value,
-            cursor.ControlledSemanticDrawRemaining!.Value);
+        return (requested, remaining);
     }
 
     [JsonIgnore] public string Fingerprint => CanonicalJson.Sha256(this);

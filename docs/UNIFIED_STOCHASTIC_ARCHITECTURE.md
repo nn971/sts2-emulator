@@ -51,6 +51,8 @@ When the resumed ordinary pipeline ends in Reward or Terminal after hand draw, `
 
 For a live automatic hand draw, `PrototypeAutomaticPipelineStochasticStateV111` is now the sole owner of requested/remaining counts. `SemanticCombatDrawV111` and the end-turn/pilot facades project those counts from the pipeline; their flattened snapshot fields remain populated, while local fallback metadata is retained only for standalone or completed draw segments.
 
+The pipeline stochastic owner also provides `TryGetSemanticHandDrawProgress`, used by the engine guard, continuation validator, and draw facade. This keeps active-stage interpretation with the owner of the saved cursor.
+
 `ReferenceNatureChanceLawDecisionV111` maps sampled one-to-one index laws to typed index outcomes and maps configured merchant and Treasure rarity laws to representative source floats, plus merchant rounded-price laws to floats that produce the selected integer price. The price mapper searches the source conversion functions used by ordinary Native shop generation. `ReferenceNatureMerchantSessionV111` replays the actual Shop-node map action; `ReferenceNatureTreasureSessionV111` replays the actual Treasure-node map action. Both use the mixed typed provider, query conditional laws from the pre-entry origin and sampled prefix, and commit the completed room result with the sampler cursor atomically. These representatives preserve the selected mechanic result, while Chance Law weights and float-edge fidelity remain `UNVERIFIED`.
 
 The configured native merchant now runs `StartShop` inside

@@ -15,6 +15,29 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
     PrototypeControlledEnemyActionContinuationV111? ControlledEnemyAction = null,
     ControlledTurnIntentsV111? ControlledTurnIntents = null)
 {
+    public bool TryGetSemanticHandDrawProgress(
+        PrototypeAutomaticPipelineMechanicsStateV111 mechanics,
+        out int requested, out int remaining)
+    {
+        ArgumentNullException.ThrowIfNull(mechanics);
+        requested = 0;
+        remaining = 0;
+        if (ControlledSemanticBeforeHandDrawPending ||
+            ControlledSemanticDrawRequested is not > 0 ||
+            ControlledSemanticDrawRemaining is not { } savedRemaining ||
+            savedRemaining < 0 ||
+            !mechanics.IsAtStep(
+                PrototypeAutomaticStepKind.DrawPlayerHand) ||
+            ControlledDrawRemaining is not null ||
+            ControlledDrawCostRemaining is not null ||
+            mechanics.OpeningStage is not null ||
+            mechanics.PendingPostDispatchEventKind is not null)
+            return false;
+        requested = ControlledSemanticDrawRequested.Value;
+        remaining = savedRemaining;
+        return true;
+    }
+
     public PrototypeAutomaticPipelineStochasticStateV111 Fork() => this with
     {
         ControlledEnemyAction = ControlledEnemyAction?.Fork(),
@@ -133,9 +156,8 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
             return;
         }
 
-        if (ControlledSemanticDrawRemaining is not { } remaining ||
-            remaining < 0 || ControlledSemanticDrawRequested is not > 0 ||
-            !PrototypeGameEngine.IsSemanticAutomaticHandDraw(combat))
+        if (!TryGetSemanticHandDrawProgress(
+                continuation.Mechanics, out _, out _))
             throw new InvalidOperationException(
                 "Semantic automatic hand-draw counters are malformed.");
     }

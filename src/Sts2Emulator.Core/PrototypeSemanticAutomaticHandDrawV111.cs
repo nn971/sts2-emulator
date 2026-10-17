@@ -14,15 +14,9 @@ public sealed partial class PrototypeGameEngine
     internal static bool IsSemanticAutomaticHandDraw(CombatState combat)
     {
         var cursor = combat.AutomaticPipelineContinuation;
-        return cursor?.ControlledSemanticDrawRemaining is not null &&
-            cursor.ControlledSemanticDrawRequested is > 0 &&
-            cursor.Mechanics.IsAtStep(
-                PrototypeAutomaticStepKind.DrawPlayerHand) &&
-            !cursor.ControlledSemanticBeforeHandDrawPending &&
-            cursor.ControlledDrawRemaining is null &&
-            cursor.ControlledDrawCostRemaining is null &&
-            cursor.OpeningStage is null &&
-            cursor.PendingPostDispatchEventKind is null;
+        return cursor is not null &&
+            cursor.Stochastic.TryGetSemanticHandDrawProgress(
+                cursor.Mechanics, out _, out _);
     }
 
     internal static (RunState Run, int Requested, int Remaining)
