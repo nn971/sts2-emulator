@@ -18,10 +18,11 @@ transcript.
 swap, applies Perfect Fit ordering and after-shuffle effects, then continues
 the requested draw count. Other `DrawCards` callers that need a recycle do not
 have this continuation and fail closed. `NatureBoundaryMetadataV111` now
-attaches the generic request law's ID and status to each pending swap and
-transcript entry. Canonical Native `run.shuffle` requests have exact `NextInt`
-53-bit grid masses and a `SOURCE_VERIFIED` bounded transform law. Legacy
-requests and full seeded recycle parity remain `UNVERIFIED`.
+attaches the generic request law's ID and status to each pending swap, and
+the law status to each replay transcript entry. Canonical Native `run.shuffle`
+requests have exact `NextInt` 53-bit grid masses and a `SOURCE_VERIFIED`
+bounded transform law. Legacy requests and full seeded recycle parity remain
+`UNVERIFIED`.
 
 The actual combat `DrawPlayerHand` stage now executes pre-draw hooks and prior card draws until the draw pile becomes empty while discarded cards are still eligible. It persists the current `RunState`, remaining hand-draw count, and automatic-pipeline cursor. The controller then exposes a series of ordered finite `combat.draw_pile_recycle.swap_index` tickets on `run.shuffle`.
 
