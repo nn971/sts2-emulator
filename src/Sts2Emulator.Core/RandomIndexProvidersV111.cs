@@ -221,15 +221,32 @@ public static class LegacyRandomChoiceV111
         if (matchingStreams.Length != 1)
             throw new InvalidOperationException(
                 "Legacy random-choice stream ownership is ambiguous.");
-        var streamOrdinal = matchingStreams[0].CallCount ?? 0;
-        if (streamOrdinal < 0 || streamOrdinal > int.MaxValue)
+        int streamOrdinal;
+        if (ordinal is { } explicitOrdinal)
+        {
+            streamOrdinal = explicitOrdinal;
+        }
+        else if (StochasticProviderScopeV111.GetNextOrdinal(
+                     streams, streamId) is { } scopedOrdinal)
+        {
+            streamOrdinal = scopedOrdinal;
+        }
+        else
+        {
+            var providerOrdinal = matchingStreams[0].CallCount ?? 0;
+            if (providerOrdinal > int.MaxValue)
+                throw new NotSupportedException(
+                    "Legacy random-choice provider ordinal exceeds the request range.");
+            streamOrdinal = (int)providerOrdinal;
+        }
+        if (streamOrdinal < 0)
             throw new NotSupportedException(
                 "Legacy random-choice provider ordinal exceeds the request range.");
         var request = new RandomIndexRequestV111(
             siteId,
             streamId,
             ownerId,
-            ordinal ?? (int)streamOrdinal,
+            streamOrdinal,
             (int[])orderedCandidates.Clone(),
             OperationKind: operationKind,
             BoundedCount: boundedCount);
@@ -263,8 +280,8 @@ public static class LegacyRandomChoiceV111
                 $"UNSUPPORTED_CONTROLLED_CHANCE site={siteId} " +
                 $"operation={operationKind} requires a saved continuation.");
         }
-        var decision = new LegacyPrototypeRandomIndexProviderV111().Resolve(
-            request, streams);
+        var decision = StochasticProviderScopeV111.ResolveIndex(
+            new LegacyPrototypeRandomIndexProviderV111(), request, streams);
         return decision;
     }
 }

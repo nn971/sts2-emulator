@@ -55,10 +55,11 @@ public static class NativeEventContextRngV111
             siteId,
             nativeStream.StreamId,
             ownerId,
-            ordinal ?? 0,
+            ordinal ?? StochasticProviderScopeV111.GetNextOrdinal(
+                bundle, nativeStream.StreamId) ?? 0,
             Enumerable.Range(0, candidateCount).ToArray());
-        var decision = new NativeRandomIndexProviderV111().Resolve(
-            request, bundle);
+        var decision = StochasticProviderScopeV111.ResolveIndex(
+            new NativeRandomIndexProviderV111(), request, bundle);
         var world = state.World
             ?? throw new InvalidOperationException(
                 "A native event RNG requires an active run world.");
@@ -112,12 +113,13 @@ public static class NativeEventContextRngV111
             siteId,
             nativeStream.StreamId,
             ownerId,
-            ordinal ?? 0,
+            ordinal ?? StochasticProviderScopeV111.GetNextOrdinal(
+                bundle, nativeStream.StreamId) ?? 0,
             Array.Empty<int>(),
             OperationKind: "bounded_integer",
             BoundedCount: boundedCount);
-        var decision = new NativeRandomIndexProviderV111().Resolve(
-            request, bundle);
+        var decision = StochasticProviderScopeV111.ResolveIndex(
+            new NativeRandomIndexProviderV111(), request, bundle);
         var world = state.World
             ?? throw new InvalidOperationException(
                 "A native event RNG requires an active run world.");
@@ -161,10 +163,14 @@ public static class NativeEventContextRngV111
                 "A native event unit-float draw requires its event RNG context.");
 
         var bundle = new RngBundle([nativeStream.Fork()]);
-        var decision = new NativeRandomUnitFloatProviderV111().Resolve(
-            new RandomUnitFloatRequestV111(
-                siteId, nativeStream.StreamId, ownerId, ordinal),
-            bundle);
+        var request = new RandomUnitFloatRequestV111(
+            siteId,
+            nativeStream.StreamId,
+            ownerId,
+            StochasticProviderScopeV111.GetNextOrdinal(
+                bundle, nativeStream.StreamId) ?? ordinal);
+        var decision = StochasticProviderScopeV111.ResolveUnitFloat(
+            new NativeRandomUnitFloatProviderV111(), request, bundle);
         var world = state.World
             ?? throw new InvalidOperationException(
                 "A native event RNG requires an active run world.");
