@@ -13,6 +13,8 @@ public static class PrototypeNativeGloryEvents
         "proto.native.glory.hungry_for_mushrooms";
     public const string HungryForMushroomsNativeRngEventId =
         "HUNGRY_FOR_MUSHROOMS";
+    public const string HungryForMushroomsShuffleSiteId =
+        "event.glory.random_upgrade.shuffle_swap_index";
     public const string BigMushroomId =
         "proto.native.glory.big_mushroom";
     public const string FragrantMushroomId =
@@ -327,7 +329,8 @@ public sealed partial class PrototypeGameEngine
                 PrototypeNativeGloryEvents
                     .HungryForMushroomsNativeRngEventId,
                 ids,
-                "event.glory.random_upgrade.shuffle_swap_index",
+                PrototypeNativeGloryEvents
+                    .HungryForMushroomsShuffleSiteId,
                 $"event:{world.Event?.EventId}:eligible_cards");
             world = RequireWorld(state);
             var upgrades = ids.Take(2).ToHashSet();

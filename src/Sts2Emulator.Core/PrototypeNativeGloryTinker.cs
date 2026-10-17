@@ -17,8 +17,15 @@ public sealed partial class PrototypeGameEngine
     internal static string[] TinkerRiderOfferCandidates(string type) =>
         TinkerRiders(type);
 
-    internal static bool IsValidScriptedShuffleState(EventState evt)
+    internal static bool IsValidScriptedEventShuffleState(EventState evt)
     {
+        if (evt.EventId ==
+            PrototypeNativeGloryEvents.HungryForMushroomsId)
+            return evt.NativePageIndex ==
+                    PrototypeNativeEventCompletionPages
+                        .TerminalChoicePageIndex(evt.EventId) &&
+                evt.ChosenChoiceId == "fragrant_mushroom" &&
+                evt.OfferedChoiceIds is null;
         if (evt.EventId != PrototypeNativeGloryEvents.TinkerTimeId ||
             evt.OfferedChoiceIds is not { Length: 2 } offers ||
             offers.Distinct(StringComparer.Ordinal).Count() != offers.Length)

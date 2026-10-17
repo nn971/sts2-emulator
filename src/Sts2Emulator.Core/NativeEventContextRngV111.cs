@@ -327,10 +327,22 @@ public static class NativeEventContextRngV111
         if (prototypeEventId == PrototypeNativeGloryEvents.TrialId &&
             providerMode == "scripted-v111" && trialChoiceIsExpected)
             return;
+        var scriptedFragrantMushroomShuffleIsExpected =
+            NativeRngV111.ToSnapshot(stream) ==
+                NativeRngV111.ToSnapshot(initial) &&
+            PrototypeGameEngine.IsValidScriptedEventShuffleState(
+                eventState) &&
+            state.Player.Relics.Any(relic => relic.RelicId ==
+                PrototypeNativeGloryEvents.FragrantMushroomId);
+        if (prototypeEventId ==
+                PrototypeNativeGloryEvents.HungryForMushroomsId &&
+            providerMode == "scripted-v111" &&
+            scriptedFragrantMushroomShuffleIsExpected)
+            return;
         var scriptedTinkerShuffleIsExpected =
             NativeRngV111.ToSnapshot(stream) ==
                 NativeRngV111.ToSnapshot(initial) &&
-            PrototypeGameEngine.IsValidScriptedShuffleState(
+            PrototypeGameEngine.IsValidScriptedEventShuffleState(
                 eventState);
         if (prototypeEventId == PrototypeNativeGloryEvents.TinkerTimeId &&
             providerMode == "scripted-v111" &&

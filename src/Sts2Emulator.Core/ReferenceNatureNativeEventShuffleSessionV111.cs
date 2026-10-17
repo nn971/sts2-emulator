@@ -45,6 +45,10 @@ internal static class NativeEventShufflePlanBuilderV111
         {
             PrototypeNativeUnderdocksDoors.EventId =>
                 PrototypeNativeUnderdocksDoors.ShuffleSiteId,
+            PrototypeNativeGloryEvents.HungryForMushroomsId when
+                evt.NativePageIndex == 0 =>
+                    PrototypeNativeGloryEvents
+                        .HungryForMushroomsShuffleSiteId,
             PrototypeNativeGloryEvents.TinkerTimeId when
                 evt.NativePageIndex == 0 =>
                     PrototypeNativeGloryEvents.TinkerTypeOfferShuffleSiteId,
@@ -83,6 +87,30 @@ internal static class NativeEventShufflePlanBuilderV111
                 CanonicalJson.Sha256(candidateCardInstanceIds);
             nativeRngEventId =
                 PrototypeNativeUnderdocksDoors.NativeRngEventId;
+        }
+        else if (evt.EventId ==
+            PrototypeNativeGloryEvents.HungryForMushroomsId &&
+            siteId == PrototypeNativeGloryEvents
+                .HungryForMushroomsShuffleSiteId)
+        {
+            resolvedActionId = actionId ?? "fragrant_mushroom";
+            if (origin.World?.Act != 3 || evt.NativePageIndex != 0 ||
+                resolvedActionId != "fragrant_mushroom" ||
+                evt.NativeEventRngProviderMode is not null ||
+                origin.Player.Hp <= 15)
+                throw new InvalidOperationException(
+                    "Fragrant Mushroom shuffle requires its survivable initial action.");
+            orderedCandidateIds = origin.Player.Deck
+                .Where(card => PrototypeGameEngine.CanSelectEventDeckCard(
+                    card, PrototypePersistentDeckChoiceKind.Upgrade,
+                    null, null, false))
+                .Select(card => card.InstanceId.ToString(
+                    System.Globalization.CultureInfo.InvariantCulture))
+                .ToArray();
+            candidateCount = orderedCandidateIds.Length;
+            ownerId = $"event:{evt.EventId}:eligible_cards";
+            nativeRngEventId = PrototypeNativeGloryEvents
+                .HungryForMushroomsNativeRngEventId;
         }
         else if (evt.EventId == PrototypeNativeGloryEvents.TinkerTimeId &&
             siteId is PrototypeNativeGloryEvents.TinkerTypeOfferShuffleSiteId
@@ -445,6 +473,7 @@ public static partial class ChanceLawEngineV111
     public static string[] NativeEventShuffleSessionSiteIds =>
     [
         PrototypeNativeUnderdocksDoors.ShuffleSiteId,
+        PrototypeNativeGloryEvents.HungryForMushroomsShuffleSiteId,
         PrototypeNativeGloryEvents.TinkerTypeOfferShuffleSiteId,
         PrototypeNativeGloryEvents.TinkerRiderOfferShuffleSiteId
     ];

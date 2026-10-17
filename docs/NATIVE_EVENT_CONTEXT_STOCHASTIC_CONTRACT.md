@@ -4,9 +4,9 @@ This contract describes the event-local RNG lifecycle shared by migration
 rows whose owner names `context.event.*` and that link this document. The
 migration matrix remains the site index and retains each row's exact owner,
 ordered support, occurrence, and source-audit status. A small number of rows,
-including Tinker Time, the Doors Light shuffle, Tablet of Truth, Trial, and
-Trash Heap rewards, have narrower source and/or ReferenceNature contracts
-linked from their own rows.
+including Hungry for Mushrooms, Tinker Time, the Doors Light shuffle, Tablet
+of Truth, Trial, and Trash Heap rewards, have narrower source and/or
+ReferenceNature contracts linked from their own rows.
 
 ## Provider and private state
 
@@ -36,9 +36,10 @@ and committed effect or reward. It omits candidate-pool order, seed, and RNG
 cursor. The event's persisted stream snapshot and committed stochastic
 values belong to the privileged state; they are not Nature observations.
 There is no family-wide Nature-view Chance Law or atomic ReferenceNature
-session for the rows linked here. Site-specific sessions such as Tinker Time,
-the Doors Light shuffle, Tablet of Truth, Trial, and Trash Heap rewards remain
-limited to the exact event boundaries documented in their contracts. Existing
+session for the rows linked here. Site-specific sessions for Hungry for
+Mushrooms, Tinker Time, the Doors Light shuffle, Tablet of Truth, Trial, and
+Trash Heap rewards remain limited to the exact event boundaries documented in
+their contracts. Existing
 controlled event-choice and Ancient-offer sessions do not implicitly cover an
 event merely because it uses this RNG helper.
 

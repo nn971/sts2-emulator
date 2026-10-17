@@ -44,10 +44,12 @@ session exposes `.state` for ordinary play. See the
 
 The event-local shuffle session is available through
 `State.begin_reference_nature_native_event_shuffle(nature_seed=None, action_id=None)`. It
-covers the Light shuffle in Doors of Light and Dark and Tinker Time's type and
-rider offer shuffles. Pass `action_id="choose_card_type"` for the initial
-Tinker stage and the offered type (`"attack"`, `"skill"`, or `"power"`) for
-its rider stage. It resolves one conditional swap per `resolve_next()` and
+covers the Light shuffle in Doors of Light and Dark, Fragrant Mushroom's
+eligible-card shuffle, and Tinker Time's type and rider offer shuffles. Pass
+`action_id="fragrant_mushroom"` for the eligible-card shuffle;
+`action_id="choose_card_type"` for the initial Tinker stage; and the offered
+type (`"attack"`, `"skill"`, or `"power"`) for its rider stage. It resolves
+one conditional swap per `resolve_next()` and
 publishes `.state` after the full shuffle replays. It supports `fork()`, `save_snapshot()`,
 `Session.load_reference_nature_native_event_shuffle_snapshot()`, and
 `release()`. See the

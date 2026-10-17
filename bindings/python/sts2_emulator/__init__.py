@@ -371,6 +371,8 @@ class State:
         site_id = {
             None: "event.doors_light.shuffle_swap_index",
             "light": "event.doors_light.shuffle_swap_index",
+            "fragrant_mushroom":
+                "event.glory.random_upgrade.shuffle_swap_index",
             "choose_card_type":
                 "event.glory_tinker.type_offer.shuffle_swap_index",
             "attack": "event.glory_tinker.rider_offer.shuffle_swap_index",
@@ -379,7 +381,7 @@ class State:
         }.get(action_id)
         if site_id is None:
             raise ValueError(
-                "action_id must be light, choose_card_type, attack, skill, or power")
+                "action_id must be light, fragrant_mushroom, choose_card_type, attack, skill, or power")
         if not self.session.supports_reference_nature_site(
                 site_id, session="event_shuffle"):
             raise EmulatorError(
