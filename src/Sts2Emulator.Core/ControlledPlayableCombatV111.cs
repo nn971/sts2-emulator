@@ -19,17 +19,69 @@ public sealed record ControlledPlayableCombatV111(
     string Mode = "controlled-v111-playable-fixture-v1")
 {
     /// <summary>
+    /// Atomic mechanics/provider envelope for the playable combat fixture.
+    /// Existing snapshot properties remain flattened projections.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public SimulationStateV111<ControlledPlayableCombatMechanicsStateV111,
+        ControlledPlayableCombatStochasticStateV111> Simulation { get; init; } =
+        new(
+            new ControlledPlayableCombatMechanicsStateV111(
+                Seed, Origin, Run, PlayerActions, Mode),
+            new ControlledPlayableCombatStochasticStateV111
+            {
+                NextShuffleIndex = NextShuffleIndex,
+                ShuffleTranscript = ShuffleTranscript,
+                Pending = Pending
+            });
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public ControlledPlayableCombatMechanicsStateV111 Mechanics
+    {
+        get => Simulation.Mechanics;
+        init => Simulation = Simulation with { Mechanics = value };
+    }
+
+    /// <summary>
     /// Provider-owned pending requests, cursors and decision history. The
     /// existing public fields below remain flattened snapshot projections.
     /// </summary>
     [System.Text.Json.Serialization.JsonIgnore]
     public ControlledPlayableCombatStochasticStateV111 Stochastic
-        { get; init; } = new()
-        {
-            NextShuffleIndex = NextShuffleIndex,
-            ShuffleTranscript = ShuffleTranscript,
-            Pending = Pending
-        };
+    {
+        get => Simulation.Stochastic;
+        init => Simulation = Simulation with { Stochastic = value };
+    }
+
+    public string Seed
+    {
+        get => Mechanics.Seed;
+        init => Mechanics = Mechanics with { Seed = value };
+    }
+
+    public ControlledIntentStateV111 Origin
+    {
+        get => Mechanics.Origin;
+        init => Mechanics = Mechanics with { Origin = value };
+    }
+
+    public RunState Run
+    {
+        get => Mechanics.Run;
+        init => Mechanics = Mechanics with { Run = value };
+    }
+
+    public string[] PlayerActions
+    {
+        get => Mechanics.PlayerActions;
+        init => Mechanics = Mechanics with { PlayerActions = value };
+    }
+
+    public string Mode
+    {
+        get => Mechanics.Mode;
+        init => Mechanics = Mechanics with { Mode = value };
+    }
 
     public int NextShuffleIndex
     {
