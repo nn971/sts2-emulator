@@ -254,6 +254,15 @@ public static class PrototypeNativeRelicGrabBag
             "shop.merchant.relic_price_modifier.unit_float",
             NativePlayerRngV111.ShopsStreamId,
             ownerId + ":" + relicId);
+        return ResolveMerchantPriceNative(relicId, roll);
+    }
+
+    internal static int ResolveMerchantPriceNative(
+        string relicId, float roll)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(relicId);
+        if (!float.IsFinite(roll) || roll < 0 || roll > 1)
+            throw new ArgumentOutOfRangeException(nameof(roll));
         var modifier = 0.85f + (1.15f - 0.85f) * roll;
         return (int)MathF.Round(MerchantBaseCost(relicId) * modifier,
             MidpointRounding.ToEven);
@@ -295,15 +304,22 @@ public static class PrototypeNativeRelicGrabBag
         RngBundle nativeRunRng, bool merchant = false,
         string ownerId = "relic_grab_bag:reward")
     {
-        var commonThreshold = CommonRarityWeight /
-            (float)RarityWeightScale;
-        var uncommonThreshold = (CommonRarityWeight +
-            UncommonRarityWeight) / (float)RarityWeightScale;
         var roll = NativePlayerRngV111.NextUnitFloat(
             nativeRunRng,
             "relic_grab_bag.rarity.unit_float",
             NativePlayerRngV111.RewardsStreamId,
             ownerId + (merchant ? ":merchant" : ":reward"));
+        return ResolveRarityNative(roll);
+    }
+
+    internal static PrototypeRelicRarity ResolveRarityNative(float roll)
+    {
+        if (!float.IsFinite(roll) || roll < 0 || roll > 1)
+            throw new ArgumentOutOfRangeException(nameof(roll));
+        var commonThreshold = CommonRarityWeight /
+            (float)RarityWeightScale;
+        var uncommonThreshold = (CommonRarityWeight +
+            UncommonRarityWeight) / (float)RarityWeightScale;
         return roll < commonThreshold
             ? PrototypeRelicRarity.Common
             : roll < uncommonThreshold

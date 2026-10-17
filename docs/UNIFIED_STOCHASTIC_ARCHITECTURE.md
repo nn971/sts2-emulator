@@ -43,6 +43,8 @@ Controlled event/run-action, automatic enemy-action, and next-turn intent resume
 
 The versioned `ControlledStochasticChanceReplayV111` primitive now replays one chronological prefix across both random-index and unit-float provider interfaces, preserving the request type and exact site/stream/owner/ordinal identity when it suspends. `ResumeStochastic` provides the shared replay/provider-scope lifetime for a future mixed-boundary owner; it does not supply a law, site allowlist, or serialized mechanics continuation. Existing continuations retain their established index-only schema.
 
+`ReferenceNatureChanceLawDecisionV111` maps sampled one-to-one index laws to typed index outcomes and maps the configured merchant's rarity and rounded-price laws to representative source floats. The price mapper searches the source conversion functions for a float that produces the selected integer price; those conversion functions are shared with ordinary Native shop generation. These representative values preserve the selected mechanic result, while Chance Law weights and float-edge fidelity remain `UNVERIFIED`; no merchant session consumes this bridge yet.
+
 The configured native merchant now runs `StartShop` inside
 `StochasticProviderScopeV111`. The scope routes default `NativePlayerRngV111`
 calls and explicitly passed Native index/unit-float providers through one

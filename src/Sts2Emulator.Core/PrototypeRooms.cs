@@ -5957,10 +5957,7 @@ public sealed partial class PrototypeGameEngine
                 NativePlayerRngV111.ShopsStreamId,
                 string.IsNullOrWhiteSpace(ownerId)
                     ? "card:" + cardId : ownerId);
-            var modifier = 0.95f + (1.05f - 0.95f) * roll;
-            return Math.Max(1,
-                (int)MathF.Round(baseCost * modifier,
-                    MidpointRounding.ToEven));
+            return ResolveNativeMerchantCardPrice(cardId, roll);
         }
 
         // Retained legacy mode approximates source NextFloat with integer
@@ -5971,6 +5968,19 @@ public sealed partial class PrototypeGameEngine
             streamId: "shop");
         return Math.Max(1, (int)Math.Round(
             baseCost * percent / 100.0));
+    }
+
+    internal static int ResolveNativeMerchantCardPrice(
+        string cardId, float roll)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(cardId);
+        if (!float.IsFinite(roll) || roll < 0 || roll > 1)
+            throw new ArgumentOutOfRangeException(nameof(roll));
+        var baseCost = NativeMerchantCardBaseCost(cardId);
+        var modifier = 0.95f + (1.05f - 0.95f) * roll;
+        return Math.Max(1,
+            (int)MathF.Round(baseCost * modifier,
+                MidpointRounding.ToEven));
     }
 
     private static int ShopCardPrice(string cardId, RngBundle rng)

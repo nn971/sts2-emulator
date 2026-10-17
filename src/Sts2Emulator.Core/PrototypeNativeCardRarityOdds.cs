@@ -94,6 +94,33 @@ public static class PrototypeNativeCardRarityOdds
             : PrototypeCardRarity.Common;
     }
 
+    internal static float MerchantRarityRepresentative(
+        string outcomeId, int offsetBasisPoints, int ascension)
+    {
+        var (rareBase, uncommonBase) = Thresholds(
+            ascension, PrototypeNativeCardOddsSource.Shop);
+        var rareThreshold = checked(rareBase + offsetBasisPoints);
+        var rareEnd = rareThreshold / 10000f;
+        var uncommonEnd =
+            (rareThreshold + uncommonBase) / 10000f;
+        var roll = outcomeId switch
+        {
+            "rarity:rare" when rareThreshold > 0 => 0f,
+            "rarity:uncommon" => (rareEnd + uncommonEnd) / 2f,
+            "rarity:common" => (uncommonEnd + 1f) / 2f,
+            _ => throw new ArgumentException(
+                "Outcome is not a positive native merchant card rarity.",
+                nameof(outcomeId))
+        };
+        if (!float.IsFinite(roll) || roll < 0 || roll > 1 ||
+            ResolveRarity(roll, offsetBasisPoints,
+                PrototypeNativeCardOddsSource.Shop, ascension).ToString()
+                .ToLowerInvariant() != outcomeId[7..])
+            throw new InvalidOperationException(
+                "No representative source float maps to the selected card rarity.");
+        return roll;
+    }
+
     public static (PrototypeCardRarity Rarity, int NextOffsetBasisPoints)
         Roll(int currentOffsetBasisPoints, int ascension,
             PrototypeNativeCardOddsSource source, RngBundle rng)

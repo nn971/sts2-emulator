@@ -281,11 +281,7 @@ public static class PrototypeNativePotionShop
             rarityDecision.Validate();
             rarityRolls.Add(rarityDecision);
             var roll = rarityDecision.SelectedValue;
-            var rarity = roll <= 0.1f
-                ? PrototypeNativePotionRarity.Rare
-                : roll <= 0.35f
-                    ? PrototypeNativePotionRarity.Uncommon
-                    : PrototypeNativePotionRarity.Common;
+            var rarity = ResolveRarityNative(roll);
             var candidates = remaining.Where(id => Rarities[id] == rarity)
                 .ToArray();
             if (candidates.Length == 0)
@@ -374,6 +370,27 @@ public static class PrototypeNativePotionShop
             "shop.merchant.potion_price_modifier.unit_float",
             NativePlayerRngV111.ShopsStreamId,
             ownerId + ":" + potionId);
+        return ResolveMerchantPriceNative(potionId, roll);
+    }
+
+    internal static PrototypeNativePotionRarity ResolveRarityNative(
+        float roll)
+    {
+        if (!float.IsFinite(roll) || roll < 0 || roll > 1)
+            throw new ArgumentOutOfRangeException(nameof(roll));
+        return roll <= 0.1f
+            ? PrototypeNativePotionRarity.Rare
+            : roll <= 0.35f
+                ? PrototypeNativePotionRarity.Uncommon
+                : PrototypeNativePotionRarity.Common;
+    }
+
+    internal static int ResolveMerchantPriceNative(
+        string potionId, float roll)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(potionId);
+        if (!float.IsFinite(roll) || roll < 0 || roll > 1)
+            throw new ArgumentOutOfRangeException(nameof(roll));
         var modifier = 0.95f + (1.05f - 0.95f) * roll;
         return Math.Max(1,
             (int)MathF.Round(MerchantBaseCost(potionId) * modifier,
