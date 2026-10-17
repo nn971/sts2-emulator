@@ -851,10 +851,12 @@ internal static class PrototypeAiJsonlServer
                 nextOrdinal = session.NextOrdinal,
                 pending = law is null ? null : new
                 {
-                    kind = session.SiteId switch
+                    kind = law.SiteId switch
                     {
                         "relic.war_hammer.elite_upgrade.shuffle_swap_index" =>
                             "war_hammer_elite_shuffle_swap_random_choice",
+                        "event.war_historian.repy.potion_offer.index_draw" =>
+                            "repy_potion_offer_index_random_choice",
                         PrototypeNativeHiveEvents
                             .WarHistorianRepyRelicShuffleSiteId =>
                             "repy_relic_shuffle_swap_random_choice",
@@ -2536,10 +2538,19 @@ internal static class PrototypeAiJsonlServer
                                 throw new ArgumentException(
                                     "Native event shuffle queries accept only state_handle, site_id, ordinal, prior_indices and action_id.");
                             var actionId = OptionalString(request, "action_id");
-                            law = ChanceLawEngineV111.QueryNativeEventShuffle(
-                                RequireState(request), siteId, ordinal,
-                                priorIndices, actionId);
-                            if (law.SiteId != siteId || law.Ordinal != ordinal)
+                            law = siteId ==
+                                "event.war_historian.repy.potion_offer.index_draw"
+                                ? ChanceLawEngineV111
+                                    .QueryNativeRepyPotionOffer(
+                                        RequireState(request), ordinal,
+                                        priorIndices, actionId)
+                                : ChanceLawEngineV111.QueryNativeEventShuffle(
+                                    RequireState(request), siteId, ordinal,
+                                    priorIndices, actionId);
+                            if (law.SiteId != siteId ||
+                                siteId !=
+                                    "event.war_historian.repy.potion_offer.index_draw" &&
+                                    law.Ordinal != ordinal)
                                 throw new ArgumentException(
                                     $"Native event shuffle expects site '{law.SiteId}' and ordinal {law.Ordinal}.");
                             Write(new
@@ -4215,21 +4226,26 @@ internal static class PrototypeAiJsonlServer
                         var seed = OptionalULong(request, "nature_seed");
                         var actionId = OptionalString(request, "action_id");
                         var siteId = OptionalString(request, "site_id");
+                        var resolvedActionId = actionId ??
+                            (siteId is PrototypeNativeHiveEvents
+                                .WarHistorianRepyRelicShuffleSiteId or
+                                "event.war_historian.repy.potion_offer.index_draw"
+                                    ? "unlock_chest" : null);
                         var session = siteId is null
                             ? seed is { } natureSeed
                                 ? ReferenceNatureNativeEventShuffleSessionV111.Begin(
-                                    source, actionId, natureSeed)
+                                    source, resolvedActionId, natureSeed)
                                 : ReferenceNatureNativeEventShuffleSessionV111.Begin(
-                                    source, actionId)
+                                    source, resolvedActionId)
                             : seed is { } siteNatureSeed
                                 ? ReferenceNatureNativeEventShuffleSessionV111.Begin(
                                     source, siteId,
-                                    actionId ?? throw new ArgumentException(
+                                    resolvedActionId ?? throw new ArgumentException(
                                         "A native event shuffle site requires action_id."),
                                     siteNatureSeed)
                                 : ReferenceNatureNativeEventShuffleSessionV111.Begin(
                                     source, siteId,
-                                    actionId ?? throw new ArgumentException(
+                                    resolvedActionId ?? throw new ArgumentException(
                                         "A native event shuffle site requires action_id."));
                         var handle = StoreReferenceNatureNativeEventShuffle(session);
                         Write(new { requestId, ok = true, result =

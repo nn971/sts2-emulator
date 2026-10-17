@@ -64,7 +64,16 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
         var scripted = new ScriptedRandomIndexProviderV111(decisions);
         IRandomIndexProviderV111 replayProvider = scriptedSiteId is null
             ? scripted
-            : new SelectiveReplayProvider(scriptedSiteId, scripted);
+            : new SelectiveReplayProvider(
+                scriptedSiteId == PrototypeNativeHiveEvents
+                    .WarHistorianRepyRelicShuffleSiteId
+                    ?
+                    [
+                        scriptedSiteId,
+                        "event.war_historian.repy.potion_offer.index_draw"
+                    ]
+                    : [scriptedSiteId],
+                scripted);
         RunState run;
         RandomBoundaryEventV111[] replayIndexEvents = [];
         if (scriptedSiteId is null)
@@ -124,20 +133,36 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
                     "Scripted player-stream replay is missing its stream identity.");
             var finalStream = run.NativeRunRng?.Streams.SingleOrDefault(item =>
                 item.StreamId == streamId);
+            var finalCursor = finalStream is null ? null :
+                NativeRngV111.ToSnapshot(finalStream);
             var streamEvents = replayIndexEvents.Where(entry =>
                 entry.Request.StreamId == streamId).ToArray();
             var nativeEvents = streamEvents.Where(entry =>
                 entry.ProviderMode == "native-v111").ToArray();
             var scriptedSwapCount = Math.Max(0,
                 (expectedOrderedCandidateIds?.Length ?? 0) - 1);
+            var expectedScriptedDrawCount = scriptedSwapCount + 2;
             if (finalStream is null ||
-                unchecked((uint)(NativeRngV111.ToSnapshot(finalStream).Counter -
+                unchecked((uint)(finalCursor!.Counter -
                     expectedRewardsCursor.Counter)) !=
                     unchecked((uint)expectedUnscriptedDrawCount) ||
+                expectedUnscriptedDrawCount == 0 &&
+                    finalCursor != expectedRewardsCursor ||
                 streamEvents.Length !=
-                    scriptedSwapCount + expectedUnscriptedDrawCount ||
+                    expectedScriptedDrawCount + expectedUnscriptedDrawCount ||
                 nativeEvents.Length != expectedUnscriptedDrawCount ||
-                nativeEvents.Where((entry, index) =>
+                streamEvents.Take(scriptedSwapCount).Where((entry, index) =>
+                    entry.ProviderMode != "scripted-v111" ||
+                    entry.Request.SiteId != scriptedSiteId ||
+                    entry.Request.OwnerId !=
+                        "event:war_historian_repy:relic_offer" ||
+                    entry.Request.Ordinal != index ||
+                    entry.Request.OperationKind != "bounded_integer" ||
+                    entry.Request.BoundedCount !=
+                        expectedOrderedCandidateIds!.Length - index).Any() ||
+                streamEvents.Skip(scriptedSwapCount)
+                    .Take(2).Where((entry, index) =>
+                    entry.ProviderMode != "scripted-v111" ||
                     entry.Request.SiteId !=
                         "event.war_historian_repy.potion_offer.index_draw" ||
                     entry.Request.OwnerId !=
@@ -145,11 +170,21 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
                     entry.Request.OperationKind != "choose_index" ||
                     entry.Request.SupportCount !=
                         PrototypeContent.PotionPool.Length).Any() ||
-                nativeEvents.Length == 2 &&
-                    nativeEvents[1].Request.Ordinal !=
-                        nativeEvents[0].Request.Ordinal + 1)
+                streamEvents.Skip(scriptedSwapCount + 2)
+                    .Where((entry, index) =>
+                        entry.ProviderMode != "native-v111" ||
+                        entry.Request.SiteId !=
+                            "event.war_historian_repy.potion_offer.index_draw" ||
+                        entry.Request.OwnerId !=
+                            $"event:war_historian_repy:potion_offer:{index + 2}" ||
+                        entry.Request.OperationKind != "choose_index" ||
+                        entry.Request.SupportCount !=
+                            PrototypeContent.PotionPool.Length).Any() ||
+                nativeEvents.Where((entry, index) => index > 0 &&
+                    entry.Request.Ordinal !=
+                        nativeEvents[index - 1].Request.Ordinal + 1).Any())
                 throw new InvalidDataException(
-                    "Scripted player-stream replay did not retain the two ordered Native Repy potion draws and their exact cursor advance.");
+                    "Scripted player-stream replay did not retain the complete ordered Repy shuffle and potion request sequence.");
             return run;
         }
         if (CanonicalJson.Sha256(run.World?.Event?.NativeEventRng) !=
@@ -197,7 +232,7 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
             [decision with { ProviderMode = "scripted-v111" }]);
         using var probe = NativeEventRandomProbeV111.Begin();
         using var providerScope = StochasticProviderScopeV111.Enter(
-            new SelectiveReplayProvider(scriptedSiteId, indexScript),
+            new SelectiveReplayProvider([scriptedSiteId], indexScript),
             new SelectiveUnitFloatReplayProvider(
                 scriptedSiteId, unitFloatScript),
             overrideExplicitProviders: true);
@@ -307,7 +342,7 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
         RunState run;
         using (var probe = NativeEventRandomProbeV111.Begin())
         using (var providerScope = StochasticProviderScopeV111.Enter(
-            new SelectiveReplayProvider(scriptedIndexSiteId, indexScript),
+            new SelectiveReplayProvider([scriptedIndexSiteId], indexScript),
             new SelectiveUnitFloatReplayProvider(
                 scriptedUnitFloatSiteId, unitFloatScript),
             overrideExplicitProviders: true))
@@ -350,7 +385,7 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
     }
 
     private sealed class SelectiveReplayProvider(
-        string scriptedSiteId,
+        string[] scriptedSiteIds,
         ScriptedRandomIndexProviderV111 scripted)
         : IRandomIndexProviderV111
     {
@@ -359,7 +394,8 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
         public RandomIndexDecisionV111 Resolve(
             RandomIndexRequestV111 request, RngBundle streams)
         {
-            if (request.SiteId == scriptedSiteId)
+            if (scriptedSiteIds.Contains(
+                    request.SiteId, StringComparer.Ordinal))
                 return scripted.Resolve(request, streams);
 
             var stream = streams.Streams.SingleOrDefault(item =>

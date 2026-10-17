@@ -46,6 +46,8 @@ class State:
         complete prior index prefix.
         Darv relic-shuffle laws accept prior_variant_index to bind the earlier
         offer-variant decision to the query fingerprint.
+        Repy potion laws use ordinal 0 or 1 and prior_indices containing the
+        complete relic-shuffle prefix plus any earlier potion index.
         """
         if not self.session.supports_chance_law_query(site_id):
             raise EmulatorError(

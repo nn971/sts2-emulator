@@ -52,8 +52,10 @@ Repy accepts only the page-zero `unlock_chest` action, before any chest reward
 is generated. It reuses the source-shaped ordered unowned relic pool and
 captures the `player.rewards` cursor before the shuffle. Admission probes the
 ordinary action and requires exactly one matching relic shuffle followed by
-two potion draws. The player-stream assignment remains a source hypothesis,
-and the event has no Native event RNG context at this boundary.
+two potion draws. The session conditions both potion index laws on the full
+relic-swap prefix and any earlier potion index. The player-stream assignment
+remains a source hypothesis, and the event has no Native event RNG context at
+this boundary.
 
 ## Laws and replay
 
@@ -62,11 +64,14 @@ effects. The Nature-only choice view exposes the pending conditional shuffle
 law; seeds, Native cursor state, and the unrevealed pool order remain in the
 privileged state.
 
-Each pending law represents one descending Fisher–Yates swap. Its bounded
-integer support is `0..(candidate count - ordinal - 1)`, and its conditioning
-fingerprint includes the ordered eligible card identities and every preceding
-swap index. Outcomes use stable `swap_index:<index>` identifiers and equal
-integer weights. The probability status stays `UNVERIFIED`.
+Each pending shuffle law represents one descending Fisher–Yates swap. Its
+bounded integer support is `0..(candidate count - ordinal - 1)`, and its
+conditioning fingerprint includes the ordered eligible identities and every
+preceding swap index. Outcomes use stable `swap_index:<index>` identifiers
+and equal integer weights. Repy's two potion laws expose indices into the
+configured potion pool, use stable potion-and-index identities, and include
+the full preceding shuffle and potion prefix. Every law remains
+`UNVERIFIED`.
 
 The Fragrant Mushroom, Tinker type, Tinker rider, and Fake Merchant stock
 shuffle sites have separate laws. A rider law is conditioned on the prior
@@ -77,7 +82,9 @@ result being Fake Merchant, then on the ordered nine-relic stock pool and
 preceding swap indices.
 Repy's law is conditioned on its initial chest action, ordered unowned relic
 pool, captured `player.rewards` cursor, and preceding swap indices. The source
-stream attribution and equal-index weights remain `UNVERIFIED`.
+stream attribution and equal-index weights remain `UNVERIFIED`. Its two
+potion-index laws use the full relic-swap prefix and preceding potion indices;
+the potion picks remain independent with replacement in the modeled support.
 
 `ReferenceNatureNativeEventShuffleSessionV111` stores the original run and
 sampler cursor while outcomes are pending. Once every swap has been sampled,
@@ -96,13 +103,13 @@ retain their Native providers. War Hammer uses the emulator's current
 CardId-plus-instance-ID ordering proxy; the source ModelId ordering is not
 established by this law or session.
 
-For Repy, replay scripts only the relic Fisher–Yates requests. The following
-two potion choices fall through to the Native `player.rewards` provider, and
-the session verifies that they advance its cursor by exactly two calls from
-the captured entry cursor. The event RNG field remains absent and no
-`scripted-v111` event-context marker is added. This models the emulator's
-current stream hypothesis; it does not establish Native source ownership or
-seeded parity.
+For Repy, replay scripts the relic Fisher–Yates requests and both potion
+index requests as one typed prefix. The `player.rewards` cursor remains at its
+captured entry state, while request ordinals preserve the source call order
+across the scripted shuffle and potion picks. The event RNG field remains
+absent and no `scripted-v111` event-context marker is added. This models the
+emulator's current stream hypothesis; it does not establish Native source
+ownership or seeded parity.
 
 ## Limits
 

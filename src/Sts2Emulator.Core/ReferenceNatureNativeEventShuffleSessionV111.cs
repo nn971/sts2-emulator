@@ -20,6 +20,9 @@ internal sealed record NativeEventShufflePlanV111(
     int ExpectedUnscriptedDrawCount = 0)
 {
     public int SwapCount => CandidateCount - 1;
+    public bool IsRepyChestOffer => SiteId == PrototypeNativeHiveEvents
+        .WarHistorianRepyRelicShuffleSiteId;
+    public int TotalChoiceCount => SwapCount + (IsRepyChestOffer ? 2 : 0);
 
     public RandomIndexRequestV111 Request(int ordinal)
     {
@@ -29,6 +32,23 @@ internal sealed record NativeEventShufflePlanV111(
             SiteId, StreamId, OwnerId, ordinal, [],
             OperationKind: "bounded_integer",
             BoundedCount: CandidateCount - ordinal);
+    }
+
+    public RandomIndexRequestV111 RequestForChoice(int ordinal)
+    {
+        if (ordinal < SwapCount)
+            return Request(ordinal);
+        if (!IsRepyChestOffer || ordinal >= TotalChoiceCount ||
+            NativeCursorBefore is null)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+        var potionOrdinal = ordinal - SwapCount;
+        return new RandomIndexRequestV111(
+            "event.war_historian.repy.potion_offer.index_draw",
+            NativePlayerRngV111.RewardsStreamId,
+            $"event:war_historian_repy:potion_offer:{potionOrdinal}",
+            checked(NativeCursorBefore.Counter + SwapCount + potionOrdinal),
+            Enumerable.Range(0, PrototypeContent.PotionPool.Length).ToArray(),
+            OperationKind: "choose_index");
     }
 }
 
@@ -92,6 +112,10 @@ internal static class NativeEventShufflePlanBuilderV111
                 "No native event shuffle is pending at this event page.")
         };
         ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
+        if (evt.EventId == PrototypeNativeHiveEvents.WarHistorianRepyId &&
+            siteId == "event.war_historian.repy.potion_offer.index_draw")
+            siteId = PrototypeNativeHiveEvents
+                .WarHistorianRepyRelicShuffleSiteId;
 
         var battlewornVictoryAction =
             origin.Phase == RunPhase.Combat &&
@@ -547,7 +571,7 @@ internal static class NativeEventShufflePlanBuilderV111
             PreserveEventRng: !isRepyShuffle,
             ExpectedUnscriptedStreamId: isRepyShuffle
                 ? NativePlayerRngV111.RewardsStreamId : null,
-            ExpectedUnscriptedDrawCount: isRepyShuffle ? 2 : 0);
+            ExpectedUnscriptedDrawCount: 0);
     }
 }
 
@@ -591,14 +615,23 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
     [JsonIgnore]
     public bool Complete => DecisionTranscript.Length ==
         NativeEventShufflePlanBuilderV111.Build(
-            Origin, SiteId, ActionId, PlannedCandidateIds).SwapCount;
+            Origin, SiteId, ActionId, PlannedCandidateIds).TotalChoiceCount;
 
     [JsonIgnore]
-    public ChanceLawV111? PendingLaw => Complete ? null :
-        ChanceLawEngineV111.QueryNativeEventShuffle(
-            Origin, SiteId, NextOrdinal,
-            DecisionTranscript.Select(decision => decision.OutcomeIndex)
-                .ToArray(), ActionId, PlannedCandidateIds);
+    public ChanceLawV111? PendingLaw
+    {
+        get
+        {
+            if (Complete)
+                return null;
+            var plan = NativeEventShufflePlanBuilderV111.Build(
+                Origin, SiteId, ActionId, PlannedCandidateIds);
+            return QueryBoundaryLaw(
+                plan, Origin, NextOrdinal,
+                DecisionTranscript.Select(decision => decision.OutcomeIndex)
+                    .ToArray(), ActionId, PlannedCandidateIds);
+        }
+    }
 
     public static ReferenceNatureNativeEventShuffleSessionV111 Begin(
         RunState origin, ulong natureSeed) => Begin(origin, null, null,
@@ -680,9 +713,9 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
             Origin, SiteId, ActionId, PlannedCandidateIds);
         var priorIndices = DecisionTranscript.Select(
             decision => decision.OutcomeIndex).ToArray();
-        var law = ChanceLawEngineV111.QueryNativeEventShuffle(
-                Origin, SiteId, NextOrdinal, priorIndices, ActionId,
-                PlannedCandidateIds);
+        var law = QueryBoundaryLaw(
+            plan, Origin, NextOrdinal, priorIndices, ActionId,
+            PlannedCandidateIds);
         var selection = ReferenceNatureV111.SampleValidated(law, NatureState);
         var transcript = DecisionTranscript.Append(
             new ReferenceNatureDecisionV111(
@@ -690,11 +723,11 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
                 selection.OutcomeIndex)).ToArray();
         var nextNature = selection.NextState;
         var nextRun = Run;
-        if (transcript.Length == plan.SwapCount)
+        if (transcript.Length == plan.TotalChoiceCount)
         {
             var decisions = transcript.Select((decision, ordinal) =>
                 new RandomIndexDecisionV111(
-                    plan.Request(ordinal), decision.OutcomeIndex,
+                    plan.RequestForChoice(ordinal), decision.OutcomeIndex,
                     "scripted-v111")).ToArray();
             var replay = ReferenceNatureNativeEventIndexReplayV111.Replay(
                 Origin, decisions, plan.ReplayAction,
@@ -735,7 +768,7 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
         NatureState.Validate();
         var plan = NativeEventShufflePlanBuilderV111.Build(
             Origin, SiteId, ActionId, PlannedCandidateIds);
-        if (DecisionTranscript.Length > plan.SwapCount ||
+        if (DecisionTranscript.Length > plan.TotalChoiceCount ||
             !ReferenceNatureRunCursorV111.MatchesRunSession(
                 Origin, Run, InitialNatureState, NatureState,
                 DecisionTranscript.Length, Complete))
@@ -746,8 +779,8 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
         var priorIndices = new List<int>();
         for (var ordinal = 0; ordinal < DecisionTranscript.Length; ordinal++)
         {
-            var law = ChanceLawEngineV111.QueryNativeEventShuffle(
-                Origin, SiteId, ordinal, priorIndices.ToArray(), ActionId,
+            var law = QueryBoundaryLaw(
+                plan, Origin, ordinal, priorIndices.ToArray(), ActionId,
                 PlannedCandidateIds);
             var selection = ReferenceNatureV111.SampleValidated(
                 law, expectedNatureState);
@@ -767,7 +800,7 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
         {
             var decisions = DecisionTranscript.Select((decision, ordinal) =>
                 new RandomIndexDecisionV111(
-                    plan.Request(ordinal), decision.OutcomeIndex,
+                    plan.RequestForChoice(ordinal), decision.OutcomeIndex,
                     "scripted-v111")).ToArray();
             expectedRun = ReferenceNatureNativeEventIndexReplayV111.Replay(
                 Origin, decisions, plan.ReplayAction,
@@ -791,6 +824,17 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
             throw new InvalidDataException(
                 "ReferenceNature native event shuffle replay differs from its session envelope.");
     }
+
+    private static ChanceLawV111 QueryBoundaryLaw(
+        NativeEventShufflePlanV111 plan, RunState origin, int ordinal,
+        int[] priorIndices, string actionId, string[] plannedCandidateIds) =>
+        ordinal < plan.SwapCount
+            ? ChanceLawEngineV111.QueryNativeEventShuffle(
+                origin, plan.SiteId, ordinal, priorIndices, actionId,
+                plannedCandidateIds)
+            : ChanceLawEngineV111.QueryNativeRepyPotionOffer(
+                origin, ordinal - plan.SwapCount, priorIndices, actionId,
+                plannedCandidateIds);
 
     private static string? SelectiveReplaySite(
         NativeEventShufflePlanV111 plan) =>
@@ -840,6 +884,25 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
         var siteId = snapshot.SiteId ??
             PrototypeNativeUnderdocksDoors.ShuffleSiteId;
         var actionId = snapshot.ActionId ?? "light";
+        if (siteId == PrototypeNativeHiveEvents
+                .WarHistorianRepyRelicShuffleSiteId &&
+            snapshot.DecisionTranscript.Length ==
+                NativeEventShufflePlanBuilderV111.Build(
+                    origin, siteId, actionId).SwapCount &&
+            savedRun.Phase == RunPhase.Reward &&
+            savedRun.World?.Event is
+                {
+                    EventId: PrototypeNativeHiveEvents.WarHistorianRepyId,
+                    RepyChestPotionIds.Length: 2,
+                    RepyChestRelicIds.Length: 2,
+                    RepyChestGroupsResolved: 1
+                })
+        {
+            // Earlier v1 Repy sessions committed after the relic swaps and
+            // left potion offers Native. Rewind their derived run so the new
+            // session can sample both potion indices from the saved prefix.
+            savedRun = origin.Fork();
+        }
         var replay = Begin(origin, siteId, actionId,
             snapshot.InitialNatureState.Fork());
         for (var index = 0;
@@ -862,6 +925,8 @@ public static partial class ChanceLawEngineV111
 {
     public const string NativeEventShuffleConditioningPolicyId =
         "native-event-fisher-yates-prefix-v1";
+    public const string NativeRepyChestOfferConditioningPolicyId =
+        "native-event-repy-chest-offer-prefix-v1";
     public const string NativeEndlessConveyorDishConditioningPolicyId =
         "native-event-weighted-dish-ticket-v1";
     public const string NativeEndlessConveyorUpgradeConditioningPolicyId =
@@ -878,7 +943,8 @@ public static partial class ChanceLawEngineV111
         PrototypeNativeGloryEvents.TinkerRiderOfferShuffleSiteId,
         PrototypeNativeGloryEvents.BattlewornUpgradeShuffleSiteId,
         PrototypeNativeFakeMerchant.RelicOfferShuffleSiteId,
-        PrototypeNativeHiveEvents.WarHistorianRepyRelicShuffleSiteId
+        PrototypeNativeHiveEvents.WarHistorianRepyRelicShuffleSiteId,
+        "event.war_historian.repy.potion_offer.index_draw"
     ];
 
     public static ChanceLawV111 QueryNativeEventShuffle(
@@ -922,6 +988,57 @@ public static partial class ChanceLawEngineV111
             NativeEventShuffleConditioningPolicyId,
             conditioningFingerprint,
             "uniform-bounded-event-shuffle-index-unverified", outcomes);
+    }
+
+    public static ChanceLawV111 QueryNativeRepyPotionOffer(
+        RunState origin, int offerOrdinal, int[]? priorIndices = null,
+        string? actionId = null, string[]? plannedCandidateIds = null)
+    {
+        ArgumentNullException.ThrowIfNull(origin);
+        priorIndices ??= [];
+        var plan = NativeEventShufflePlanBuilderV111.Build(
+            origin,
+            PrototypeNativeHiveEvents.WarHistorianRepyRelicShuffleSiteId,
+            actionId ?? "unlock_chest", plannedCandidateIds);
+        var potionPool = PrototypeContent.PotionPool;
+        if (!plan.IsRepyChestOffer || offerOrdinal is < 0 or >= 2 ||
+            priorIndices.Length != plan.SwapCount + offerOrdinal ||
+            potionPool.Length == 0)
+            throw new InvalidOperationException(
+                "Repy potion laws require the complete relic-shuffle and prior-potion prefix.");
+        for (var index = 0; index < plan.SwapCount; index++)
+            if (priorIndices[index] < 0 ||
+                priorIndices[index] >= plan.CandidateCount - index)
+                throw new InvalidOperationException(
+                    "Repy potion law prefix contains an unsupported relic swap index.");
+        for (var index = plan.SwapCount; index < priorIndices.Length; index++)
+            if (priorIndices[index] < 0 ||
+                priorIndices[index] >= potionPool.Length)
+                throw new InvalidOperationException(
+                    "Repy potion law prefix contains an unsupported potion index.");
+
+        var request = plan.RequestForChoice(
+            plan.SwapCount + offerOrdinal);
+        var conditioning = CanonicalJson.Sha256(new
+        {
+            plan.ConditioningFingerprint,
+            priorIndices,
+            potionPool,
+            request
+        });
+        var eventId = CanonicalJson.Sha256(new
+        {
+            boundary = "native_event.repy_potion_offer_index",
+            conditioning
+        });
+        var outcomes = potionPool.Select((potionId, index) =>
+            new ChanceLawOutcomeV111(
+                $"potion:{potionId}:index:{index}", 1L)).ToArray();
+        return Create(
+            eventId, request.SiteId, request.OperationKind,
+            request.OwnerId, request.Ordinal,
+            NativeRepyChestOfferConditioningPolicyId, conditioning,
+            "uniform-native-player-potion-index-unverified", outcomes);
     }
 
     public static ChanceLawV111 QueryNativeEndlessConveyorDishEntry(
