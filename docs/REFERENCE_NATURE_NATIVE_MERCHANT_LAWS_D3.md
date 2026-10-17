@@ -67,7 +67,11 @@ The session replays the full Shop-entry mechanics under its provider scope,
 but it does not reproduce Native source cursor advancement. To keep the
 committed Native queue order private, it stores a canonicalized Nature-owned
 projection of the existing persistent relic bag in its origin and resulting
-run; the original queue order never enters the session snapshot. The boundary
+run; the original queue order never enters the session snapshot. This
+projection carries an optional `NatureUnordered` snapshot tag; Native bags
+omit it and retain their existing shape. Ordinary queue-order pulls reject a
+Nature-owned set unless a controlled Chance Law replay selects an identity.
+The boundary
 requires that bag to exist, so Native bag construction is outside this
 session. Stochastic consequences of merchant purchases, later Treasure draws,
 exact native float-edge probabilities, and Native cursor parity remain

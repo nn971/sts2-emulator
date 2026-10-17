@@ -34,6 +34,10 @@ atomically. The session supports fork, save/restore, status, resolve and
 release through JSONL and Python. Its Nature origin sorts stored queues, or
 constructs sorted eligible rarity sets when the source run has no bag, so
 Native's committed hidden order is never included in the session snapshot.
+Residual identity sets carry an optional `NatureUnordered` snapshot tag;
+Native bag snapshots retain their current shape. Ordinary queue-order pulls
+reject Nature-owned sets until a matching controlled Chance Law continuation
+selects an identity.
 
 The law combines the relic-rarity draw's nominal 50/33/17 Common/Uncommon/Rare
 partition with the conditional equal support of each still-hidden queue
@@ -56,8 +60,8 @@ cursor. The laws remain `UNVERIFIED` against original-game probabilities,
 float-edge masses, and shuffle/cursor behavior.
 
 Constructing the sorted Nature pools does not replay Native's run-start queue
-shuffles. For the first Treasure pull, sequential conditional identity sampling
-represents the hidden uniformly shuffled queue without exposing or committing
+shuffles. Sequential conditional identity sampling represents each supported
+pull from the hidden uniformly shuffled queue without exposing or committing
 its order. Continued relic-bag pulls require a provider-owned residual-set
 continuation; ordinary Native execution must retain its source-created order.
 

@@ -400,7 +400,10 @@ public sealed record ReferenceNatureMerchantSessionV111(
             .OrderBy(id => id, StringComparer.Ordinal).ToArray();
         var projectedBag = new PrototypeRelicBagState(
             Canonical(bag.Common), Canonical(bag.Uncommon),
-            Canonical(bag.Rare), Canonical(bag.Shop));
+            Canonical(bag.Rare), Canonical(bag.Shop))
+        {
+            OrderMode = PrototypeRelicBagOrderMode.NatureUnordered
+        };
         return source with
         {
             World = world with { RelicBag = projectedBag }

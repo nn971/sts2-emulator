@@ -339,6 +339,9 @@ public sealed record ReferenceNatureTreasureSessionV111(
                 RelicBag = new PrototypeRelicBagState(
                     Canonical(bag.Common), Canonical(bag.Uncommon),
                     Canonical(bag.Rare), Canonical(bag.Shop))
+                {
+                    OrderMode = PrototypeRelicBagOrderMode.NatureUnordered
+                }
             }
         };
     }

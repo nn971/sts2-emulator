@@ -1,12 +1,21 @@
 namespace Sts2Emulator.Core;
 
 /// <summary>
-/// Persistent rarity-partitioned relic queues for the restricted
-/// configured single-player Silent profile. The native game shuffles
-/// queues at run creation and draws front for rewards, back for shops.
-/// This class preserves the mechanics, not byte-identical RNG.
+/// Persistent rarity-partitioned relic state for the restricted configured
+/// single-player Silent profile. Native state stores shuffled queues; Nature
+/// state stores canonical remaining identities until a law selects one.
 /// </summary>
 public enum PrototypeRelicRarity { Common, Uncommon, Rare, Shop }
+
+/// <summary>
+/// Describes whether rarity arrays carry a committed Native queue order or
+/// only the remaining identities available to a Nature selection.
+/// </summary>
+public enum PrototypeRelicBagOrderMode
+{
+    NativeCommitted,
+    NatureUnordered
+}
 
 public sealed record PrototypeRelicBagState(
     string[] Common,
@@ -14,6 +23,13 @@ public sealed record PrototypeRelicBagState(
     string[] Rare,
     string[] Shop)
 {
+    // Native snapshots retain their existing shape. Nature snapshots carry
+    // this optional discriminator so sorted identity sets cannot be mistaken
+    // for committed queue order after a restore.
+    [System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public PrototypeRelicBagOrderMode OrderMode { get; init; }
+
     public PrototypeRelicBagState Fork() => this with
     {
         Common = (string[])Common.Clone(),
@@ -144,6 +160,9 @@ public static class PrototypeNativeRelicGrabBag
             bag.Shop is null)
             throw new InvalidOperationException(
                 "Native relic bag is missing a rarity queue.");
+        if (!Enum.IsDefined(bag.OrderMode))
+            throw new InvalidOperationException(
+                "Native relic bag has an unknown queue order mode.");
 
         var remaining = bag.Remaining;
         if (remaining.Length != remaining.Distinct(StringComparer.Ordinal).Count()
@@ -167,6 +186,13 @@ public static class PrototypeNativeRelicGrabBag
                 throw new InvalidOperationException(
                     "Native relic bag has incorrectly partitioned relics.");
         }
+
+        if (bag.OrderMode == PrototypeRelicBagOrderMode.NatureUnordered &&
+            new[] { bag.Common, bag.Uncommon, bag.Rare, bag.Shop }.Any(ids =>
+                !ids.SequenceEqual(ids.OrderBy(
+                    id => id, StringComparer.Ordinal), StringComparer.Ordinal)))
+            throw new InvalidOperationException(
+                "Nature relic identity sets must use canonical sorted order.");
     }
 
     public static PrototypeRelicBagState Create(
@@ -206,7 +232,10 @@ public static class PrototypeNativeRelicGrabBag
             Canonical(EligibleIds(player, PrototypeRelicRarity.Common)),
             Canonical(EligibleIds(player, PrototypeRelicRarity.Uncommon)),
             Canonical(EligibleIds(player, PrototypeRelicRarity.Rare)),
-            Canonical(EligibleIds(player, PrototypeRelicRarity.Shop)));
+            Canonical(EligibleIds(player, PrototypeRelicRarity.Shop)))
+        {
+            OrderMode = PrototypeRelicBagOrderMode.NatureUnordered
+        };
         Validate(bag, player);
         return bag;
     }
@@ -381,6 +410,10 @@ public sealed record PrototypeRelicBagPullPlanV111(
         PrototypeRelicBagState bag, PrototypeRelicRarity rarity,
         bool merchant, PlayerState player)
     {
+        ArgumentNullException.ThrowIfNull(bag);
+        if (bag.OrderMode == PrototypeRelicBagOrderMode.NatureUnordered)
+            throw new NotSupportedException(
+                "Nature relic identity sets require a controlled Chance Law selection; queue-order pull is unsupported.");
         var plan = PlanPull(bag, rarity, merchant, player);
         return plan.CandidateIds.Length == 0
             ? (bag, null)
@@ -471,9 +504,10 @@ public sealed record PrototypeRelicBagPullPlanV111(
     };
 
     /// <summary>
-    /// Returns the source-ordered, currently eligible identities in one
-    /// rarity queue. Merchant draws inspect the back of each queue and apply
-    /// the source merchant exclusion set; reward draws inspect the front.
+    /// Returns currently eligible identities in one rarity partition. Native
+    /// state retains queue order; Nature state retains only canonical support.
+    /// Merchant draws inspect the Native queue back and apply the source
+    /// merchant exclusion set; reward draws inspect its front.
     /// </summary>
     internal static string[] EligiblePullIds(
         PrototypeRelicBagState bag, PrototypeRelicRarity tier,
@@ -534,6 +568,14 @@ public sealed record PrototypeRelicBagPullPlanV111(
         var bag = world.RelicBag ?? (nativeRunRng is null
             ? Create(player, rng)
             : CreateNative(player, nativeRunRng));
+        if (!Enum.IsDefined(bag.OrderMode))
+            throw new InvalidOperationException(
+                "Relic bag has an unknown queue order mode.");
+        if (bag.OrderMode == PrototypeRelicBagOrderMode.NatureUnordered &&
+            (nativeRunRng is null ||
+             !ControlledStochasticChanceReplayV111.IsActive))
+            throw new NotSupportedException(
+                "Nature relic identity sets require a controlled Native Treasure or merchant Chance Law replay.");
         var rarityOwnerId = merchant
             ? $"act:{world.Act}:floor:{world.Floor}:merchant_relic:{merchantOfferOrdinal}"
             : "relic_grab_bag";
