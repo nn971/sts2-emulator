@@ -816,8 +816,10 @@ Each resolution applies at most one potion to the first open slot and resumes
 the saved operation suffix. When all potion slots are occupied, the selected
 model is consumed without delivery, matching the source operation's slot
 check. The loadout is explicit fixture provenance, not a claim about how
-Alchemize entered a native deck. Candidate source law, native stream
-assignment, and cursor parity remain `UNVERIFIED`.
+Alchemize entered a native deck. Its Chance Law reports exact Native
+`NextInt` grid masses and `SOURCE_VERIFIED` for the bounded-index transform
+on the declared ordered pool. Native pool completeness, stream assignment,
+seed frequencies, cursor parity, and fixture provenance remain `UNVERIFIED`.
 
 ## Random combat-card transform continuation
 
@@ -830,7 +832,9 @@ keeps only supported Common, Uncommon, and Rare combat cards. Resolving each
 `card_transform` event records a replacement model; after the final outcome,
 the existing card-zone and semantic draw-pile transform logic resumes once.
 Python clients call `SemanticCombat.resolve_card_transform(card_model_id)`.
-Native pool assignment, cursor parity, and mechanics coverage remain
+Its Chance Law reports exact Native `NextInt` grid masses and
+`SOURCE_VERIFIED` for the bounded-index transform on the declared ordered
+pool. Native pool assignment, cursor parity, and mechanics coverage remain
 `UNVERIFIED`.
 
 For `combat.potion_generation.random_model` and
@@ -840,6 +844,7 @@ observations continue to expose the legal player action or resulting card,
 not the hidden candidate pool or provider state. The selected model resumes
 the original potion operation or transform continuation once, preserving its
 source card, zone changes, queued effects, and automatic-pipeline cursor.
-Unsupported nested operations fail closed. These operation-specific laws
-remain **UNVERIFIED**, and the existing semantic transcript is separate from
-any privileged Inspector record.
+Unsupported nested operations fail closed. Their source pools, stream
+attribution, cursor parity, and mechanics coverage remain open, and the
+existing semantic transcript is separate from any privileged Inspector
+record.

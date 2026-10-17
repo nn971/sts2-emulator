@@ -2479,17 +2479,20 @@ public static partial class ChanceLawEngineV111
     }
 
     /// <summary>
-    /// Query the uniform law over replacement models for one saved physical
-    /// card transform. The source card identity and model are conditioned on.
+    /// Query the Native bounded-index law over replacement models for one
+    /// saved physical card transform. The source card identity and model are
+    /// conditioned on.
     /// </summary>
     public static ChanceLawV111 QueryCardTransform(
         SemanticCardTransformEventV111 transform)
     {
         ArgumentNullException.ThrowIfNull(transform);
         transform.Validate();
+        var indexWeights = NativeNextIntGridWeights(
+            transform.CandidateCardIds.Length);
         var outcomes = transform.CandidateCardIds
-            .Select(cardId => new ChanceLawOutcomeV111(
-                "card_model:" + cardId, 1L))
+            .Select((cardId, index) => new ChanceLawOutcomeV111(
+                "card_model:" + cardId, indexWeights[index]))
             .ToArray();
         var conditioningFingerprint = CanonicalJson.Sha256(new
         {
@@ -2504,21 +2507,24 @@ public static partial class ChanceLawEngineV111
         return Create(transform.EventId, transform.SiteId,
             transform.OperationKind, transform.OwnerId, transform.Ordinal,
             CardTransformConditioningPolicyId, conditioningFingerprint,
-            "uniform-transform-pool-unverified", outcomes);
+            NativeBoundedIndexSourceVerifiedProvenance, outcomes,
+            ChanceLawV111.SourceVerifiedStatus);
     }
 
     /// <summary>
-    /// Query the uniform law over the ordered source potion-model pool for
-    /// one pending generated-potion choice.
+    /// Query the Native bounded-index law over the ordered source potion-model
+    /// pool for one pending generated-potion choice.
     /// </summary>
     public static ChanceLawV111 QueryPotionGeneration(
         SemanticPotionGenerationEventV111 potion)
     {
         ArgumentNullException.ThrowIfNull(potion);
         potion.Validate();
+        var indexWeights = NativeNextIntGridWeights(
+            potion.CandidatePotionIds.Length);
         var outcomes = potion.CandidatePotionIds
-            .Select(potionId => new ChanceLawOutcomeV111(
-                "potion_model:" + potionId, 1L))
+            .Select((potionId, index) => new ChanceLawOutcomeV111(
+                "potion_model:" + potionId, indexWeights[index]))
             .ToArray();
         var conditioningFingerprint = CanonicalJson.Sha256(new
         {
@@ -2531,7 +2537,8 @@ public static partial class ChanceLawEngineV111
         return Create(potion.EventId, potion.SiteId,
             potion.OperationKind, potion.OwnerId, potion.Ordinal,
             PotionGenerationConditioningPolicyId, conditioningFingerprint,
-            "uniform-potion-model-pool-unverified", outcomes);
+            NativeBoundedIndexSourceVerifiedProvenance, outcomes,
+            ChanceLawV111.SourceVerifiedStatus);
     }
 
     /// <summary>
