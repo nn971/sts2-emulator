@@ -1913,11 +1913,14 @@ public sealed partial class PrototypeGameEngine
             var perfectFit = eligible.Where(id =>
                 RequireCombatCard(combat, id).Enchantment?.Kind
                     == PrototypeCardEnchantmentKind.PerfectFit).ToArray();
-            semanticDeck = SemanticDeckEngineV111.RecycleNature(
-                semanticDeck, eligible, perfectFit);
+            combat = SemanticDrawPileAdapterV111.CommitNatureRecycle(
+                combat, semanticDeck, combat.DrawPile, eligible,
+                eligible, postHook, perfectFit);
         }
-        combat = SemanticDrawPileAdapterV111
-            .ApplyCommittedPhysicalMutation(combat, postHook, semanticDeck) with
+        else
+            combat = SemanticDrawPileAdapterV111
+                .ApplyCommittedPhysicalMutation(combat, postHook, null);
+        combat = combat with
         {
             DiscardPile = []
         };
@@ -8067,26 +8070,25 @@ public sealed partial class PrototypeGameEngine
                         if (draw.Count == 0
                             && discard.Count > 0)
                         {
-                            if (semanticDeck is
-                                { Mode: SemanticDeckStateV111.NatureMode }
-                                natureRecycleDeck)
+                            if (semanticDeck?.Mode ==
+                                SemanticDeckStateV111.NatureMode)
                             {
                                 var perfectFit = discard.Where(id =>
                                     RequireCombatCard(combat, id)
                                         .Enchantment?.Kind ==
                                         PrototypeCardEnchantmentKind.PerfectFit)
                                     .ToArray();
-                                semanticDeck =
-                                    SemanticDeckEngineV111.RecycleNature(
-                                        natureRecycleDeck, discard, perfectFit);
-                                draw.AddRange(discard);
-                                discard.Clear();
+                                var recycled = discard.ToArray();
+                                var nextPhysicalDrawPile =
+                                    draw.Concat(recycled).ToArray();
                                 combat = SemanticDrawPileAdapterV111
-                                    .ApplyCommittedPhysicalMutation(
-                                        combat, draw.ToArray(), semanticDeck) with
-                                {
-                                    DiscardPile = []
-                                };
+                                    .CommitNatureRecycle(
+                                        combat, semanticDeck, draw, discard,
+                                        recycled,
+                                        nextPhysicalDrawPile, perfectFit);
+                                semanticDeck = combat.SemanticDeck!;
+                                draw = combat.DrawPile.ToList();
+                                discard = combat.DiscardPile.ToList();
                                 var afterShuffleInsertions =
                                     ControlledAfterShuffleRelicInsertions(
                                         combat);
@@ -8138,34 +8140,12 @@ public sealed partial class PrototypeGameEngine
                             else if (semanticDeck is
                                 { Mode: SemanticDeckStateV111.NativeMode })
                             {
-                                var native = combat.NativeRng ??
-                                    throw new NotSupportedException(
-                                        "UNSUPPORTED_SEMANTIC_NATIVE " +
-                                        "site=combat.autoplay.top_draw " +
-                                        "operation=missing_native_stream_owner");
-                                var nativeStreams = native.RunStreams.Fork();
-                                var shuffle = NativeFisherYatesV111.Execute(
-                                    discard.ToArray(), nativeStreams,
-                                    new NativeRandomIndexProviderV111(),
-                                    ownerId: "player:0",
-                                    siteId: "combat.draw_pile_recycle.swap_index");
-                                var postHook =
-                                    NativeShuffleStepReplayV111.CheckPostHook(
-                                        ApplyPerfectFitShuffleOrder(
-                                            combat, shuffle.PreHookOutput));
-                                semanticDeck =
-                                    SemanticDeckEngineV111.RecycleNative(
-                                        semanticDeck, discard, postHook.Reverse()
-                                            .ToArray());
-                                combat = combat with
-                                {
-                                    NativeRng = native with
-                                    {
-                                        RunStreams = nativeStreams
-                                    },
-                                    SemanticDeck = semanticDeck
-                                };
-                                draw.AddRange(postHook);
+                                combat = CommitNativeSemanticRecycle(
+                                    combat, semanticDeck, draw, discard,
+                                    "combat.autoplay.top_draw");
+                                semanticDeck = combat.SemanticDeck!;
+                                draw = combat.DrawPile.ToList();
+                                discard = combat.DiscardPile.ToList();
                             }
                             else
                             {
@@ -16151,10 +16131,6 @@ public sealed partial class PrototypeGameEngine
                             throw new NotSupportedException(
                                 "UNSUPPORTED_SEMANTIC_DECK site=combat.draw.recycle " +
                                 "operation=missing_semantic_continuation");
-                        // Nature preserves constraints now and chooses each
-                        // unknown physical identity only when DrawCards asks.
-                        deferred = SemanticDeckEngineV111.RecycleNature(
-                            deferred, discard, perfectFit);
                     }
                     else if (deferred.Mode == SemanticDeckStateV111.NativeMode)
                     {
@@ -16162,37 +16138,15 @@ public sealed partial class PrototypeGameEngine
                         // Fisher-Yates permutation per recycle epoch. Later
                         // card draws reveal this order without a second
                         // per-card random choice.
-                        var native = combat.NativeRng ??
-                            throw new NotSupportedException(
-                                "UNSUPPORTED_SEMANTIC_NATIVE site=combat.draw.recycle " +
-                                "operation=missing_native_stream_owner");
-                        var nativeStreams = native.RunStreams.Fork();
-                        var shuffle = NativeFisherYatesV111.Execute(
-                            discard, nativeStreams,
-                            new NativeRandomIndexProviderV111(),
-                            ownerId: "player:0",
-                            siteId: "combat.draw_pile_recycle.swap_index");
-                        var postHook = ApplyPerfectFitShuffleOrder(
-                            combat, shuffle.PreHookOutput);
-                        deferred = SemanticDeckEngineV111.RecycleNative(
-                            deferred, discard, postHook.Reverse().ToArray());
-                        combat = combat with
-                        {
-                            NativeRng = native with
-                            {
-                                RunStreams = nativeStreams
-                            }
-                        };
-                        draw.AddRange(postHook);
-                        discard.Clear();
-                        combat = SemanticDrawPileAdapterV111
-                            .ApplyCommittedPhysicalMutation(
-                                combat, draw.ToArray(), deferred) with
-                        {
-                            DiscardPile = []
-                        };
+                        combat = CommitNativeSemanticRecycle(
+                            combat, deferred, draw, discard,
+                            "combat.draw.recycle");
+                        deferred = combat.SemanticDeck!;
+                        draw = combat.DrawPile.ToList();
+                        discard = combat.DiscardPile.ToList();
                         combat = ApplyRelicAfterShuffleCards(combat, rng);
                         draw = combat.DrawPile.ToList();
+                        discard = combat.DiscardPile.ToList();
                     }
                     else
                         throw new InvalidDataException(
@@ -16200,14 +16154,18 @@ public sealed partial class PrototypeGameEngine
 
                     if (deferred.Mode == SemanticDeckStateV111.NatureMode)
                     {
-                        draw.AddRange(discard);
-                        discard.Clear();
-                        combat = SemanticDrawPileAdapterV111
-                            .ApplyCommittedPhysicalMutation(
-                                combat, draw.ToArray(), deferred) with
-                        {
-                            DiscardPile = []
-                        };
+                        // Nature preserves the shuffled-set constraints now
+                        // and chooses each unknown physical identity only when
+                        // DrawCards asks. Commit the zone transfer and epoch
+                        // through the shared adapter boundary.
+                        var recycled = discard.ToArray();
+                        var nextPhysicalDrawPile = draw.Concat(recycled).ToArray();
+                        combat = SemanticDrawPileAdapterV111.CommitNatureRecycle(
+                            combat, deferred, draw, discard, recycled,
+                            nextPhysicalDrawPile, perfectFit);
+                        deferred = combat.SemanticDeck!;
+                        draw = combat.DrawPile.ToList();
+                        discard = combat.DiscardPile.ToList();
                         var afterShuffleInsertions =
                             ControlledAfterShuffleRelicInsertions(combat);
                         if (afterShuffleInsertions.Length > 0)

@@ -57,6 +57,61 @@ public static class SemanticDrawPileAdapterV111
         return new SemanticDrawPileTopCardV111(consumed, cardInstanceId);
     }
 
+    /// <summary>
+    /// Atomically transfers an exhausted draw pile's discard identities into
+    /// a new unresolved Nature shuffle epoch. Callers retain ownership of
+    /// shuffle hooks and any selected physical ordering used by their frame.
+    /// </summary>
+    internal static CombatState CommitNatureRecycle(
+        CombatState combat,
+        SemanticDeckStateV111 semantic,
+        IReadOnlyList<long> currentPhysicalDrawPile,
+        IReadOnlyList<long> currentDiscardPile,
+        IReadOnlyCollection<long> recycledCardInstanceIds,
+        IReadOnlyList<long> nextPhysicalDrawPile,
+        IReadOnlyCollection<long> perfectFitTopCardInstanceIds)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(semantic);
+        ArgumentNullException.ThrowIfNull(currentPhysicalDrawPile);
+        ArgumentNullException.ThrowIfNull(currentDiscardPile);
+        ArgumentNullException.ThrowIfNull(recycledCardInstanceIds);
+        ArgumentNullException.ThrowIfNull(nextPhysicalDrawPile);
+        ArgumentNullException.ThrowIfNull(perfectFitTopCardInstanceIds);
+        var checkpoint = combat with
+        {
+            DrawPile = currentPhysicalDrawPile.ToArray(),
+            DiscardPile = currentDiscardPile.ToArray(),
+            SemanticDeck = semantic
+        };
+        ValidateSynchronized(checkpoint, requireIdle: true);
+        if (semantic.Mode != SemanticDeckStateV111.NatureMode ||
+            semantic.Count != 0 || currentPhysicalDrawPile.Count != 0)
+            throw new InvalidDataException(
+                "Nature recycle requires an exhausted synchronized draw pile.");
+
+        var recycled = recycledCardInstanceIds.ToArray();
+        var nextPhysical = nextPhysicalDrawPile.ToArray();
+        var perfectFit = perfectFitTopCardInstanceIds.ToArray();
+        var recycledSet = recycled.ToHashSet();
+        if (recycled.Length == 0 ||
+            recycled.Distinct().Count() != recycled.Length ||
+            nextPhysical.Distinct().Count() != nextPhysical.Length ||
+            perfectFit.Distinct().Count() != perfectFit.Length ||
+            !combat.DiscardPile.Order().SequenceEqual(
+                currentDiscardPile.Order()) ||
+            !currentDiscardPile.Order().SequenceEqual(recycled.Order()) ||
+            !recycled.Order().SequenceEqual(nextPhysical.Order()) ||
+            perfectFit.Any(id => !recycledSet.Contains(id)))
+            throw new InvalidDataException(
+                "Nature recycle physical zones do not preserve card identities.");
+
+        var nextDeck = SemanticDeckEngineV111.RecycleNature(
+            semantic, recycled, perfectFit);
+        return ApplyCommittedPhysicalMutation(
+            checkpoint, nextPhysical, nextDeck) with { DiscardPile = [] };
+    }
+
     private static void ValidateProviderCorrespondence(
         SemanticDeckStateV111? semantic,
         IReadOnlyList<long> physicalDrawPile)
