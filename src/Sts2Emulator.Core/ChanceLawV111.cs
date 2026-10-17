@@ -36,7 +36,9 @@ public static class StochasticCapabilitiesV111
             "combat.draw_pile.draw_card",
             "combat.effect.random_enemy",
             "combat.sly_autoplay.random_enemy",
-            "combat.autoplay.random_enemy"
+            "combat.autoplay.random_enemy",
+            "combat.generated_card.select",
+            "combat.random_draw_attack.card_model"
         ],
         PrototypeAiEnvironment.SchemaId,
         [
@@ -148,6 +150,8 @@ public static class ChanceLawEngineV111
         "uniform-unresolved-pool-reveal-v1";
     public const string TargetConditioningPolicyId =
         "uniform-live-enemy-instance-support-v1";
+    public const string GeneratedCardConditioningPolicyId =
+        "uniform-ordered-generated-card-model-pool-v1";
 
     public static ChanceLawV111 QueryIntent(SemanticIntentEventV111 intent)
     {
@@ -198,6 +202,34 @@ public static class ChanceLawEngineV111
             target.OwnerId, target.Ordinal, TargetConditioningPolicyId,
             conditioningFingerprint,
             "uniform-live-source-support-unverified", outcomes);
+    }
+
+    /// <summary>
+    /// Query the uniform law over the ordered, duplicate-free generated-card
+    /// model pool saved at a source effect boundary.
+    /// </summary>
+    public static ChanceLawV111 QueryGeneratedCard(
+        SemanticGeneratedCardEventV111 generatedCard)
+    {
+        ArgumentNullException.ThrowIfNull(generatedCard);
+        generatedCard.Validate();
+        var outcomes = generatedCard.CandidateCardIds
+            .Select(cardId => new ChanceLawOutcomeV111(
+                "card_model:" + cardId, 1L))
+            .ToArray();
+        var conditioningFingerprint = CanonicalJson.Sha256(new
+        {
+            generatedCard.SupportFingerprint,
+            generatedCard.SiteId,
+            generatedCard.OwnerId,
+            generatedCard.Ordinal,
+            policy = GeneratedCardConditioningPolicyId
+        });
+        return Create(generatedCard.EventId, generatedCard.SiteId,
+            generatedCard.OperationKind, generatedCard.OwnerId,
+            generatedCard.Ordinal, GeneratedCardConditioningPolicyId,
+            conditioningFingerprint,
+            "uniform-ordered-model-pool-unverified", outcomes);
     }
 
     public static ChanceLawV111 QueryDraw(SemanticDeckStateV111 deck)
@@ -438,6 +470,25 @@ public static class ReferenceNatureV111
             var child = SemanticPilotCombatEngineV111.ResolveRandomTarget(
                 combat, combat.Fingerprint, targetEvent.EventId,
                 enemyInstanceId);
+            return new ReferenceNatureResolutionV111(child, law, selection);
+        }
+
+        if (combat.GeneratedCardPending is { } generatedCardEvent)
+        {
+            var law = ChanceLawEngineV111.QueryGeneratedCard(
+                generatedCardEvent);
+            var selection = Sample(law, state);
+            if (selection.EventId != generatedCardEvent.EventId ||
+                selection.OutcomeIndex < 0 ||
+                selection.OutcomeIndex >=
+                    generatedCardEvent.CandidateCardIds.Length)
+                throw new InvalidDataException(
+                    "ReferenceNature law no longer matches the pending generated-card event.");
+            var cardId = generatedCardEvent.CandidateCardIds[
+                selection.OutcomeIndex];
+            var child = SemanticPilotCombatEngineV111.ResolveGeneratedCard(
+                combat, combat.Fingerprint, generatedCardEvent.EventId,
+                cardId);
             return new ReferenceNatureResolutionV111(child, law, selection);
         }
 
