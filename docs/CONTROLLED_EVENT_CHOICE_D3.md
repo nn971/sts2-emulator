@@ -42,6 +42,10 @@ The supported event-choice sites are:
   controlled event choice
 - `event.potion.fill_empty_slots.model`
 - `potion.uncommon_model.index_draw` for the Potion Courier event choice
+- `relic.acquisition.random_rare_card.model`,
+  `relic.acquisition.random_potion.model` and
+  `run.potion.fill_empty_slots.model` for random effects triggered by an
+  event-gained relic
 - `reward.card_transform.replacement.index_draw` for a direct persistent-card
   transform effect or an event-gained relic that transforms persistent cards
   on acquisition

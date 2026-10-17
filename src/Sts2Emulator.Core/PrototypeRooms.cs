@@ -1378,11 +1378,11 @@ public sealed partial class PrototypeGameEngine
                 or PrototypeRunEffectKind.TransformFirstCardOfId
             || effect.Kind == PrototypeRunEffectKind.GainRelic
                 && (effect.RelicId == NativeAncientRewardsV111.ToyBoxId
-                    || HasPersistentDeckTransformOnAcquisition(
+                    || HasControlledRelicAcquisitionRandomEffect(
                         effect.RelicId))) == true;
     }
 
-    private static bool HasPersistentDeckTransformOnAcquisition(
+    private static bool HasControlledRelicAcquisitionRandomEffect(
         string? relicId) =>
         relicId is not null
         && PrototypeContent.Relics.TryGetValue(relicId, out var relic)
@@ -1391,8 +1391,11 @@ public sealed partial class PrototypeGameEngine
             .Where(trigger => trigger.EventKind ==
                 PrototypeRunEventKind.RelicAcquired)
             .SelectMany(trigger => trigger.Effects)
-            .Any(effect => effect.Kind ==
-                PrototypeRunEffectKind.TransformFirstCardOfId);
+            .Any(effect => effect.Kind is
+                PrototypeRunEffectKind.TransformFirstCardOfId or
+                PrototypeRunEffectKind.GainRandomRareCard or
+                PrototypeRunEffectKind.GainRandomPotion or
+                PrototypeRunEffectKind.FillPotionSlots);
 
     private static RunState StepEvent(
         RunState state,

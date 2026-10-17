@@ -247,7 +247,9 @@ See [`CONTROLLED_RUN_ACTION_D3.md`](CONTROLLED_RUN_ACTION_D3.md).
 The saved event-effect frame also supports the legacy persistent-deck
 replacement draw for direct event transform effects and fixed event relics
 whose acquisition triggers transform cards. Other persistent-deck transform
-callers remain outside this frame.
+callers remain outside this frame. It also resumes Rare-card, potion and
+empty-potion-slot draws from eligible event-gained relic acquisition effects;
+those sites remain uncontrolled for relics acquired elsewhere.
 
 The emulator Release CLI build passes with zero warnings. This follow-on has
 build and static-check evidence only; no tests were run. It does not certify

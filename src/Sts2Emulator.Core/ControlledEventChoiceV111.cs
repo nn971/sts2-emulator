@@ -564,6 +564,9 @@ internal sealed class ControlledEventChoiceReplayV111 : IDisposable
         "run.random_pool_distinct.shuffle_swap_index" or
         "event.reward.random_modifier_curse.index_draw" or
         "potion.uncommon_model.index_draw" or
+        "relic.acquisition.random_rare_card.model" or
+        "relic.acquisition.random_potion.model" or
+        "run.potion.fill_empty_slots.model" or
         "reward.card_transform.replacement.index_draw" or
         "relic.unowned_random_selection.index_draw";
 

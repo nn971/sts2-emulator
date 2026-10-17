@@ -381,7 +381,9 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                                 "run.potion.fill_empty_slots.model",
                                 ownerId,
                                 Enumerable.Range(0, potionPool.Length),
-                                streamId: "reward");
+                                streamId: "reward",
+                                controlledCandidateLabels:
+                                    (string[])potionPool.Clone());
                         var potionId = potionPool[potionIndex];
                         slots[index] =
                             new PotionInstance(
@@ -683,7 +685,9 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                             "relic.acquisition.random_rare_card.model",
                             ownerId,
                             Enumerable.Range(0, rarePool.Length),
-                            streamId: "reward");
+                            streamId: "reward",
+                            controlledCandidateLabels:
+                                (string[])rarePool.Clone());
                     var cardId = rarePool[cardIndex];
                     player = AppendCard(
                         player, cardAllocator(), cardId, rewardRng,
@@ -741,7 +745,9 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                                 "relic.acquisition.random_potion.model",
                                 potionOwner,
                                 Enumerable.Range(0, potionPool.Length),
-                                streamId: "event");
+                                streamId: "event",
+                                controlledCandidateLabels:
+                                    (string[])potionPool.Clone());
                         potionId = potionPool[potionIndex];
                     }
                     else
