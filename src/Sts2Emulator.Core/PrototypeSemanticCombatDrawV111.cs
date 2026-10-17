@@ -165,14 +165,16 @@ public sealed partial class PrototypeGameEngine
             Player = drawn.Player,
             World = world with { Combat = drawn.Combat }
         };
+        var boundary = drawn.BoundaryKind;
         bool automatic = automaticHandDrawRequested is not null;
-        if (drawn.ControlledAfterShuffleInsertions is
-            { Length: > 0 } afterShuffleInsertions)
+        if (boundary == PrototypeDrawCardsBoundaryKind.AfterShuffleInsertions)
             return SuspendSemanticDrawAfterShuffleInsertions(
-                advanced, drawn, afterShuffleInsertions, fromHandDraw,
+                advanced, drawn,
+                drawn.ControlledAfterShuffleInsertions!, fromHandDraw,
                 eventDepth, automaticHandDrawRequested);
 
-        if (drawn.NestedCardDrawnChoicePending)
+        if (boundary ==
+            PrototypeDrawCardsBoundaryKind.NestedCardDrawnChoice)
         {
             if (automatic)
                 return (SuspendSemanticAutomaticDrawAtHookChoice(
@@ -183,12 +185,12 @@ public sealed partial class PrototypeGameEngine
                 advanced, drawn, fromHandDraw), drawn.RemainingCount);
         }
 
-        if (drawn.ControlledRecyclePending)
+        if (boundary == PrototypeDrawCardsBoundaryKind.ControlledRecycle)
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=" + recycleSite +
                 " operation=" + recycleOperation);
 
-        if (drawn.ShuffleSelectionPending)
+        if (boundary == PrototypeDrawCardsBoundaryKind.ShuffleSelection)
         {
             if (automatic)
                 return (SuspendSemanticAutomaticDrawForStratagemSelection(
@@ -210,8 +212,9 @@ public sealed partial class PrototypeGameEngine
                 drawn.RemainingCount);
         }
 
-        bool pending = drawn.ControlledSemanticDrawPending ||
-            drawn.ControlledDrawCostPending;
+        bool pending = boundary is
+            PrototypeDrawCardsBoundaryKind.SemanticDraw or
+                PrototypeDrawCardsBoundaryKind.ControlledDrawCost;
         return automatic
             ? CommitSemanticAutomaticHandDrawProgress(
                 advanced, drawn.RemainingCount, pending)
@@ -323,7 +326,8 @@ public sealed partial class PrototypeGameEngine
     private static RunState SuspendStandaloneSemanticDrawForHookChoice(
         RunState run, PrototypeDrawCardsResult drawn, bool fromHandDraw)
     {
-        if (!drawn.NestedCardDrawnChoicePending)
+        if (drawn.BoundaryKind !=
+            PrototypeDrawCardsBoundaryKind.NestedCardDrawnChoice)
             throw new InvalidDataException(
                 "Expected a nested CardDrawn choice result.");
         return SuspendStandaloneSemanticDrawAtHookChoice(

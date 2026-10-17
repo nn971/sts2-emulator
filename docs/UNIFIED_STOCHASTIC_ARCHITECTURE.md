@@ -66,6 +66,8 @@ The ordinary engine resumes `DrawPlayerHand` through one helper for a saved `Bef
 
 Initial and post-cost semantic draws now pass their `DrawCards` result through the same engine handler. It owns after-shuffle insertion, nested CardDrawn choice, Nature's deferred recycle transition, Stratagem selection, pending draw/cost, and automatic-pipeline progress interpretation. Nested legacy effect draws without a semantic deck now suspend at a conditioned discard-pile shuffle and resume the saved draw/effect suffix; standalone semantic draw entry without a semantic provider remains fail-closed. The facade retains the selected outcome and transcript boundary.
 
+Every engine `DrawCards` consumer now reads the same validated `BoundaryKind` from its result. The classification admits exactly one of completion, recycle, Stratagem selection, draw cost, semantic draw, after-shuffle insertion, or nested `CardDrawn` choice; a result carrying multiple suspension boundaries is rejected before any adapter-specific continuation runs. Boundary owners still apply their own saved mechanics frame and source hook policy.
+
 When the resumed ordinary pipeline ends in Reward or Terminal after hand draw, `SemanticEndTurnV111` now completes with that engine result and keeps the completed draw projection for transcript replay. It still rejects an unfinished draw and checks the next-player boundary for combat-phase completion.
 
 `PrototypeGameEngine.ResumeAutomaticPipelineContinuation` now owns the shared handoff after both controlled choices and semantic end-turn hand draw. It clears the saved cursor, runs the remaining ordinary pipeline, and settles terminal combat rewards; the established choice method remains a compatibility facade.

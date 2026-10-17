@@ -120,7 +120,8 @@ public sealed partial class PrototypeGameEngine
             state.Rng, fromHandDraw: true);
         player = drawn.Player;
         combat = drawn.Combat;
-        if (drawn.ShuffleSelectionPending)
+        if (drawn.BoundaryKind ==
+            PrototypeDrawCardsBoundaryKind.ShuffleSelection)
         {
             var operations = new Queue<PrototypeQueuedOperation>(
             [

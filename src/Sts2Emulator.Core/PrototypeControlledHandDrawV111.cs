@@ -100,8 +100,10 @@ public sealed partial class PrototypeGameEngine
             drawn.RemainingCount < 0)
             throw new InvalidDataException(
                 "Controlled hand draw has an invalid stage or remaining count.");
+        var drawBoundary = drawn.BoundaryKind;
 
-        if (drawn.ShuffleSelectionPending)
+        if (drawBoundary ==
+            PrototypeDrawCardsBoundaryKind.ShuffleSelection)
         {
             if (drawn.RemainingCount <= 0 ||
                 combat.PendingChoice is not null ||
@@ -114,7 +116,8 @@ public sealed partial class PrototypeGameEngine
                 state, drawn.Player, combat, drawn.RemainingCount);
         }
 
-        if (drawn.ControlledDrawCostPending)
+        if (drawBoundary ==
+            PrototypeDrawCardsBoundaryKind.ControlledDrawCost)
         {
             if (combat.PendingChoice?.ControlledDrawCost is null)
                 throw new InvalidDataException(
@@ -137,7 +140,8 @@ public sealed partial class PrototypeGameEngine
             };
         }
 
-        if (drawn.ControlledRecyclePending)
+        if (drawBoundary ==
+            PrototypeDrawCardsBoundaryKind.ControlledRecycle)
         {
             if (drawn.RemainingCount <= 0 ||
                 combat.DrawPile.Length != 0 || combat.DiscardPile.Length == 0)
@@ -163,8 +167,8 @@ public sealed partial class PrototypeGameEngine
 
         if (combat.PendingChoice is not null ||
             combat.PendingKnowledgeDemonChoice is not null ||
-            drawn.ControlledSemanticDrawPending ||
-            drawn.ControlledAfterShuffleInsertions is { Length: > 0 })
+            drawBoundary is PrototypeDrawCardsBoundaryKind.SemanticDraw or
+                PrototypeDrawCardsBoundaryKind.AfterShuffleInsertions)
             throw new NotSupportedException(
                 "UNSUPPORTED_CONTROLLED_CHANCE site=combat.draw.recycle " +
                 "operation=nested_draw_continuation");
