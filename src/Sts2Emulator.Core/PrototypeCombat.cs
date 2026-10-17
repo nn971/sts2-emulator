@@ -1699,8 +1699,11 @@ public sealed partial class PrototypeGameEngine
     {
         if (state.World?.Combat is
             { PendingChoice: null,
+              PendingKnowledgeDemonChoice: null,
               AutomaticPipelineContinuation: { } continuation } combat)
         {
+            if (combat.SemanticDeck?.Pending is not null)
+                return state;
             var world = RequireWorld(state);
             state = state with
             {
@@ -1718,7 +1721,12 @@ public sealed partial class PrototypeGameEngine
                     continuation.PendingPostDispatchEventKind);
         }
         return state.Phase == RunPhase.Combat &&
-            state.World?.Combat is { } live && AllEnemiesDefeated(live)
+            state.World?.Combat is
+                { PendingChoice: null,
+                  PendingKnowledgeDemonChoice: null,
+                  AutomaticPipelineContinuation: null } live &&
+            live.SemanticDeck?.Pending is null &&
+            AllEnemiesDefeated(live)
                 ? EnterCombatReward(state)
                 : state;
     }
