@@ -103,11 +103,35 @@ outcomes. Each branch resolves only the current request, leaving any next
 request pending in that child.
 
 The JSONL response adds the Chance Law payload without changing the existing
-controlled-event schema or resolution operations. This continuation does not
-own a ReferenceNature sampler cursor; callers that need atomic sampling state
-can use the ReferenceNature run-action session only for the separately
-supported run-action boundaries documented in
-[`CONTROLLED_RUN_ACTION_D3.md`](CONTROLLED_RUN_ACTION_D3.md).
+controlled-event schema or resolution operations. The legacy
+`controlled_event_*` routes remain externally resolved and do not own a
+ReferenceNature sampler cursor. The new atomic event-choice session is
+documented below.
+
+An additional JSONL session wraps the same saved event resolver with a seeded
+ReferenceNature cursor. Its transcript orders Nature samples and legal reward
+actions together, so a post-reward modifier-curse request continues from the
+same sampler state:
+
+| Operation | Inputs | Result |
+| --- | --- | --- |
+| `reference_nature_event_choice_begin` | current `state_handle`, `choice_id`, `nature_seed` | Session at a Nature or player reward boundary |
+| `reference_nature_event_choice_status` | event-choice session handle | Current boundary, pending Chance Law and legal reward actions |
+| `reference_nature_event_choice_resolve_next` | handle and current session `fingerprint` | Child after one sampled index is resolved by the saved event continuation |
+| `reference_nature_event_choice_advance` | handle, fingerprint and legal reward `action_id` | Child after one player reward action; Chance Law resolution remains in the session |
+| `reference_nature_event_choice_fork` | event-choice session handle | Independent child session |
+| `reference_nature_event_choice_save` / `reference_nature_event_choice_load` | handle / snapshot | Replay-validated session snapshot and restored handle |
+| `reference_nature_event_choice_release_many` | `reference_nature_event_choice_handles` | Number of released sessions |
+
+The session covers only the allowlisted controlled event-choice and
+post-reward modifier-curse continuations. When the event action and any
+controlled reward chance finish, the result provides a normal `stateHandle`
+for continuing play. Unsupported event chance still fails closed; other
+event-page choices, shops and general run actions are not silently absorbed
+into this session. The Python binding exposes
+`State.begin_reference_nature_event_choice(choice_id, nature_seed)`, session
+`resolve_next()`, `advance(action_id)`, `fork()`, `save_snapshot()`,
+`Session.load_reference_nature_event_choice_snapshot()` and `release()`.
 
 ## Evidence and limits
 

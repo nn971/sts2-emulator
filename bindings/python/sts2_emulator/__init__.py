@@ -121,6 +121,24 @@ class State:
         return ReferenceNatureRunActionSession.from_wire(
             self.session, result["result"])
 
+    def begin_reference_nature_event_choice(self, choice_id: str,
+                                            nature_seed: int):
+        """Begin atomic sampling for a supported controlled event choice."""
+        if self.session.capabilities.get(
+                "referenceNatureEventChoiceSessionSchemaId") != (
+                "sts2-v111-reference-nature-event-choice-session-v1"):
+            raise EmulatorError(
+                "Emulator does not expose ReferenceNature event-choice sessions")
+        if (not isinstance(nature_seed, int) or isinstance(nature_seed, bool)
+                or nature_seed < 0 or nature_seed > 0xFFFFFFFFFFFFFFFF):
+            raise ValueError("nature_seed must be an unsigned 64-bit integer")
+        result = self.session.call(
+            "reference_nature_event_choice_begin",
+            state_handle=self.handle, choice_id=choice_id,
+            nature_seed=nature_seed)
+        return ReferenceNatureEventChoiceSession.from_wire(
+            self.session, result["result"])
+
 
 @dataclass(frozen=True)
 class ControlledEventChoice:
@@ -282,6 +300,89 @@ class ReferenceNatureRunActionSession:
 
     def release(self):
         return self.session.release_reference_nature_run_action_many([self])
+
+
+@dataclass(frozen=True)
+class ReferenceNatureEventChoiceSession:
+    """Atomic event-choice mechanics, player reward actions and sampler state."""
+    session: "Session"
+    handle: str
+    fingerprint: str
+    state_handle: str | None
+    event_id: str
+    choice_id: str
+    run_phase: str
+    boundary: str
+    pending: dict | None
+    actions: list
+    decision_transcript: list
+    player_action_transcript: list
+    nature_sample_count: int
+
+    @classmethod
+    def from_wire(cls, session, payload):
+        if payload.get("schemaId") != (
+                "sts2-v111-reference-nature-event-choice-session-v1"):
+            raise EmulatorError(
+                "Unsupported ReferenceNature event-choice session schema")
+        return cls(
+            session, payload["referenceNatureEventChoiceHandle"],
+            payload["fingerprint"], payload["stateHandle"],
+            payload["eventId"], payload["choiceId"], payload["runPhase"],
+            payload["boundary"], payload["pending"], payload["actions"],
+            payload["decisionTranscript"], payload["playerActionTranscript"],
+            payload["natureSampleCount"])
+
+    @property
+    def complete(self):
+        return self.boundary == "committed"
+
+    @property
+    def state(self):
+        if self.state_handle is None:
+            raise EmulatorError(
+                "ReferenceNature event choice has not committed")
+        return State(self.session, self.state_handle)
+
+    def status(self):
+        result = self.session.call(
+            "reference_nature_event_choice_status",
+            reference_nature_event_choice_handle=self.handle)
+        return ReferenceNatureEventChoiceSession.from_wire(
+            self.session, result["result"])
+
+    def resolve_next(self):
+        """Sample one pending event outcome through the saved event resolver."""
+        result = self.session.call(
+            "reference_nature_event_choice_resolve_next",
+            reference_nature_event_choice_handle=self.handle,
+            fingerprint=self.fingerprint)
+        return ReferenceNatureEventChoiceSession.from_wire(
+            self.session, result["result"])
+
+    def advance(self, action_id: str):
+        """Apply one legal reward action while retaining the sampler cursor."""
+        result = self.session.call(
+            "reference_nature_event_choice_advance",
+            reference_nature_event_choice_handle=self.handle,
+            fingerprint=self.fingerprint, action_id=action_id)
+        return ReferenceNatureEventChoiceSession.from_wire(
+            self.session, result["result"])
+
+    def fork(self):
+        result = self.session.call(
+            "reference_nature_event_choice_fork",
+            reference_nature_event_choice_handle=self.handle)
+        return ReferenceNatureEventChoiceSession.from_wire(
+            self.session, result["result"])
+
+    def save_snapshot(self):
+        return self.session.call(
+            "reference_nature_event_choice_save",
+            reference_nature_event_choice_handle=self.handle)["snapshot"]
+
+    def release(self):
+        return self.session.release_reference_nature_event_choice_many([self])
 
 
 @dataclass(frozen=True)
@@ -1039,6 +1140,27 @@ class Session:
         return self.call(
             "reference_nature_run_action_release_many",
             reference_nature_run_action_handles=[
+                item.handle for item in sessions])["released"]
+
+    def load_reference_nature_event_choice_snapshot(self, snapshot: str):
+        if self.capabilities.get(
+                "referenceNatureEventChoiceSessionSchemaId") != (
+                "sts2-v111-reference-nature-event-choice-session-v1"):
+            raise EmulatorError(
+                "Emulator does not expose ReferenceNature event-choice sessions")
+        result = self.call("reference_nature_event_choice_load",
+                           snapshot=snapshot)
+        return ReferenceNatureEventChoiceSession.from_wire(
+            self, result["result"])
+
+    def release_reference_nature_event_choice_many(self, sessions):
+        sessions = list(sessions)
+        if any(item.session is not self for item in sessions):
+            raise ValueError(
+                "ReferenceNature event-choice handle belongs to another session")
+        return self.call(
+            "reference_nature_event_choice_release_many",
+            reference_nature_event_choice_handles=[
                 item.handle for item in sessions])["released"]
 
     def load_controlled_snapshot(self, snapshot: str):

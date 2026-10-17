@@ -20,6 +20,8 @@ public sealed record StochasticCapabilityManifestV111(
 {
     public string ReferenceNatureRunActionSessionSchemaId { get; init; } =
         ReferenceNatureRunActionSessionV111.CurrentSchemaId;
+    public string ReferenceNatureEventChoiceSessionSchemaId { get; init; } =
+        ReferenceNatureControlledEventChoiceSessionV111.CurrentSchemaId;
 }
 
 public static class StochasticCapabilitiesV111
@@ -117,11 +119,21 @@ public static class StochasticCapabilitiesV111
             "reference_nature_run_action_fork",
             "reference_nature_run_action_save",
             "reference_nature_run_action_load",
-            "reference_nature_run_action_release_many"
+            "reference_nature_run_action_release_many",
+            "reference_nature_event_choice_begin",
+            "reference_nature_event_choice_status",
+            "reference_nature_event_choice_resolve_next",
+            "reference_nature_event_choice_advance",
+            "reference_nature_event_choice_fork",
+            "reference_nature_event_choice_save",
+            "reference_nature_event_choice_load",
+            "reference_nature_event_choice_release_many"
         ])
     {
         ReferenceNatureRunActionSessionSchemaId =
-            ReferenceNatureRunActionSessionV111.CurrentSchemaId
+            ReferenceNatureRunActionSessionV111.CurrentSchemaId,
+        ReferenceNatureEventChoiceSessionSchemaId =
+            ReferenceNatureControlledEventChoiceSessionV111.CurrentSchemaId
     };
 }
 
@@ -359,6 +371,56 @@ public static class ChanceLawEngineV111
             request = continuation.PendingRequest,
             candidateLabels = continuation.PendingCandidateLabels
         });
+    }
+
+    public static ChanceLawV111 QueryControlledEventChoice(RunState run)
+    {
+        ArgumentNullException.ThrowIfNull(run);
+        var description = DescribeControlledEventChoice(run);
+        return QueryRandomIndex(description.EventId, description.Request);
+    }
+
+    public static string ControlledEventChoiceBoundaryFingerprint(RunState run)
+    {
+        ArgumentNullException.ThrowIfNull(run);
+        return DescribeControlledEventChoice(run).BoundaryFingerprint;
+    }
+
+    private static (string EventId, string ChoiceId,
+        RandomIndexRequestV111 Request, string[] CandidateLabels,
+        string BoundaryFingerprint) DescribeControlledEventChoice(RunState run)
+    {
+        var effect = run.World?.Event?.ControlledChoice;
+        var reward = run.ControlledEventRewardChoice;
+        if ((effect is null) == (reward is null))
+            throw new InvalidOperationException(
+                "A controlled event-choice law requires exactly one pending request.");
+        effect?.Validate();
+        reward?.Validate();
+        var eventId = effect?.EventId ?? reward!.EventId;
+        var choiceId = effect?.ChoiceId ?? reward!.ChoiceId;
+        var request = effect?.PendingRequest ?? reward!.PendingRequest;
+        var candidateLabels = effect?.PendingCandidateLabels ??
+            reward!.PendingCandidateLabels;
+        var boundaryFingerprint = CanonicalJson.Sha256(new
+        {
+            schemaId = ControlledEventChoiceEngineV111.SchemaId,
+            kind = effect is null ? "event_reward_random_choice" :
+                "event_random_choice",
+            eventId,
+            choiceId,
+            nextEffectIndex = effect?.NextEffectIndex,
+            decisionPrefixLength = reward?.DecisionPrefixLength,
+            request,
+            candidateLabels
+        });
+        var chanceEventId = CanonicalJson.Sha256(new
+        {
+            schemaId = ControlledEventChoiceEngineV111.SchemaId,
+            boundaryFingerprint
+        });
+        return (chanceEventId, choiceId, request, candidateLabels,
+            boundaryFingerprint);
     }
 
     /// <summary>
@@ -839,7 +901,7 @@ public sealed record ReferenceNatureSessionV111(
     }
 }
 
-public sealed record ReferenceNatureRunActionDecisionV111(
+public sealed record ReferenceNatureDecisionV111(
     string LawId, string EventId, string OutcomeId, int OutcomeIndex)
 {
     public void Validate()
@@ -850,7 +912,7 @@ public sealed record ReferenceNatureRunActionDecisionV111(
             OutcomeId != "choice_index:" +
                 OutcomeIndex.ToString(CultureInfo.InvariantCulture))
             throw new InvalidDataException(
-                "Invalid ReferenceNature run-action decision.");
+                "Invalid ReferenceNature decision.");
     }
 }
 
@@ -858,7 +920,7 @@ public sealed record ReferenceNatureRunActionSessionSnapshotV111(
     string SchemaId, string OriginSnapshotJson, GameAction Action,
     string RunSnapshotJson, ReferenceNatureStateV111 InitialNatureState,
     ReferenceNatureStateV111 NatureState,
-    ReferenceNatureRunActionDecisionV111[] DecisionTranscript);
+    ReferenceNatureDecisionV111[] DecisionTranscript);
 
 /// <summary>
 /// Atomic ReferenceNature envelope for existing controlled run-action
@@ -869,7 +931,7 @@ public sealed record ReferenceNatureRunActionSessionV111(
     string SchemaId, RunState Origin, GameAction Action, RunState Run,
     ReferenceNatureStateV111 InitialNatureState,
     ReferenceNatureStateV111 NatureState,
-    ReferenceNatureRunActionDecisionV111[] DecisionTranscript)
+    ReferenceNatureDecisionV111[] DecisionTranscript)
 {
     public const string CurrentSchemaId =
         "sts2-v111-reference-nature-run-action-session-v1";
@@ -911,7 +973,7 @@ public sealed record ReferenceNatureRunActionSessionV111(
             Run = Run.Fork(),
             InitialNatureState = InitialNatureState.Fork(),
             NatureState = NatureState.Fork(),
-            DecisionTranscript = (ReferenceNatureRunActionDecisionV111[])
+            DecisionTranscript = (ReferenceNatureDecisionV111[])
                 DecisionTranscript.Clone()
         };
     }
@@ -933,7 +995,7 @@ public sealed record ReferenceNatureRunActionSessionV111(
             Run = resolvedRun,
             NatureState = selection.NextState,
             DecisionTranscript = DecisionTranscript.Append(
-                new ReferenceNatureRunActionDecisionV111(
+                new ReferenceNatureDecisionV111(
                     law.LawId, law.EventId, selection.OutcomeId,
                     selection.OutcomeIndex)).ToArray()
         };
@@ -1001,7 +1063,7 @@ public sealed record ReferenceNatureRunActionSessionV111(
             CurrentSchemaId, RunSnapshot.Save(session.Origin),
             CloneAction(session.Action), RunSnapshot.Save(session.Run),
             session.InitialNatureState, session.NatureState,
-            (ReferenceNatureRunActionDecisionV111[])
+            (ReferenceNatureDecisionV111[])
                 session.DecisionTranscript.Clone());
         return JsonSerializer.Serialize(snapshot);
     }
@@ -1042,6 +1104,304 @@ public sealed record ReferenceNatureRunActionSessionV111(
             replay.DecisionTranscript.Length != snapshot.DecisionTranscript.Length)
             throw new InvalidDataException(
                 "ReferenceNature run-action replay differs from its snapshot.");
+        replay.Validate();
+        return replay;
+    }
+
+    private static GameAction CloneAction(GameAction action) => action with
+    {
+        Payload = action.Payload.Clone()
+    };
+}
+
+public sealed record ReferenceNatureControlledEventChoiceStepV111(
+    string Kind, ReferenceNatureDecisionV111? NatureDecision = null,
+    GameAction? PlayerAction = null)
+{
+    public void Validate()
+    {
+        if (Kind == "nature")
+        {
+            if (NatureDecision is null || PlayerAction is not null)
+                throw new InvalidDataException(
+                    "Malformed ReferenceNature event-choice sample step.");
+            NatureDecision.Validate();
+            return;
+        }
+        if (Kind == "player_action")
+        {
+            if (PlayerAction is null || NatureDecision is not null ||
+                string.IsNullOrWhiteSpace(PlayerAction.Kind))
+                throw new InvalidDataException(
+                    "Malformed ReferenceNature event-choice player step.");
+            return;
+        }
+        throw new InvalidDataException(
+            "Unknown ReferenceNature event-choice session step.");
+    }
+
+    public ReferenceNatureControlledEventChoiceStepV111 Fork() => this with
+    {
+        PlayerAction = PlayerAction is null
+            ? null : CloneAction(PlayerAction)
+    };
+
+    private static GameAction CloneAction(GameAction action) => action with
+    {
+        Payload = action.Payload.Clone()
+    };
+}
+
+public sealed record ReferenceNatureControlledEventChoiceSnapshotV111(
+    string SchemaId, string OriginSnapshotJson, string ChoiceId,
+    string RunSnapshotJson, ReferenceNatureStateV111 InitialNatureState,
+    ReferenceNatureStateV111 NatureState,
+    ReferenceNatureControlledEventChoiceStepV111[] Steps);
+
+/// <summary>
+/// Atomic ReferenceNature envelope for controlled event-effect and
+/// post-reward event-choice continuations. Player reward actions and Nature
+/// samples share one ordered replay transcript and sampler state.
+/// </summary>
+public sealed record ReferenceNatureControlledEventChoiceSessionV111(
+    string SchemaId, RunState Origin, string ChoiceId, RunState Run,
+    ReferenceNatureStateV111 InitialNatureState,
+    ReferenceNatureStateV111 NatureState,
+    ReferenceNatureControlledEventChoiceStepV111[] Steps)
+{
+    public const string CurrentSchemaId =
+        "sts2-v111-reference-nature-event-choice-session-v1";
+
+    [JsonIgnore]
+    public string Fingerprint => CanonicalJson.Sha256(this);
+
+    [JsonIgnore]
+    public bool NaturePending => Run.World?.Event?.ControlledChoice is not null ||
+        Run.ControlledEventRewardChoice is not null;
+
+    [JsonIgnore]
+    public bool CanAdvancePlayer => !NaturePending &&
+        Run.Phase == RunPhase.Reward && Run.World?.Event is { } eventState &&
+        eventState.ChosenChoiceId == ChoiceId &&
+        Run.World.Reward is
+        {
+            AddRandomCurseAfterReward: true,
+            SourceRoom: var sourceRoom
+        } && sourceRoom == "Event:" + eventState.EventId &&
+        Run.ControlledEventChoiceHistory is { Length: > 0 } history &&
+        history[^1].EventId == eventState.EventId &&
+        history[^1].ChoiceId == ChoiceId;
+
+    [JsonIgnore]
+    public bool Complete => !NaturePending && !CanAdvancePlayer;
+
+    [JsonIgnore]
+    public ReferenceNatureDecisionV111[] DecisionTranscript => Steps
+        .Where(step => step.Kind == "nature")
+        .Select(step => step.NatureDecision!)
+        .ToArray();
+
+    public static ReferenceNatureControlledEventChoiceSessionV111 Begin(
+        RunState source, string choiceId, ulong seed) =>
+        Begin(source, choiceId, ReferenceNatureStateV111.Create(seed));
+
+    private static ReferenceNatureControlledEventChoiceSessionV111 Begin(
+        RunState source, string choiceId,
+        ReferenceNatureStateV111 initialNatureState)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentException.ThrowIfNullOrWhiteSpace(choiceId);
+        ArgumentNullException.ThrowIfNull(initialNatureState);
+        var run = ControlledEventChoiceEngineV111.Begin(
+            source.Fork(), choiceId);
+        var session = new ReferenceNatureControlledEventChoiceSessionV111(
+            CurrentSchemaId, source.Fork(), choiceId, run,
+            initialNatureState.Fork(), initialNatureState.Fork(), []);
+        session.Validate();
+        return session;
+    }
+
+    public ReferenceNatureControlledEventChoiceSessionV111 Fork()
+    {
+        Validate();
+        return this with
+        {
+            Origin = Origin.Fork(),
+            Run = Run.Fork(),
+            InitialNatureState = InitialNatureState.Fork(),
+            NatureState = NatureState.Fork(),
+            Steps = Steps.Select(step => step.Fork()).ToArray()
+        };
+    }
+
+    public ReferenceNatureControlledEventChoiceSessionV111 ResolveNext()
+    {
+        Validate();
+        if (!NaturePending)
+            throw new InvalidOperationException(
+                "No controlled event Nature outcome is pending.");
+        var law = ChanceLawEngineV111.QueryControlledEventChoice(Run);
+        var selection = ReferenceNatureV111.Sample(law, NatureState);
+        if (selection.EventId != law.EventId || selection.OutcomeIndex < 0 ||
+            selection.OutcomeIndex >= law.Outcomes.Length ||
+            selection.OutcomeId != law.Outcomes[selection.OutcomeIndex].OutcomeId)
+            throw new InvalidDataException(
+                "ReferenceNature event law no longer matches its saved support.");
+        var resolvedRun = ControlledEventChoiceEngineV111.Resolve(
+            Run.Fork(), selection.OutcomeIndex);
+        var next = this with
+        {
+            Run = resolvedRun,
+            NatureState = selection.NextState,
+            Steps = Steps.Append(new ReferenceNatureControlledEventChoiceStepV111(
+                "nature", new ReferenceNatureDecisionV111(
+                    law.LawId, law.EventId, selection.OutcomeId,
+                    selection.OutcomeIndex))).ToArray()
+        };
+        next.Validate();
+        return next;
+    }
+
+    public ReferenceNatureControlledEventChoiceSessionV111 AdvancePlayerAction(
+        GameAction action)
+    {
+        Validate();
+        ArgumentNullException.ThrowIfNull(action);
+        if (!CanAdvancePlayer)
+            throw new InvalidOperationException(
+                "No supported event reward player action is pending.");
+        var engine = new PrototypeGameEngine();
+        var actionId = PrototypeAiEnvironment.StableActionId(action);
+        if (!engine.GetLegalActions(Run).Any(candidate =>
+                StringComparer.Ordinal.Equals(
+                    PrototypeAiEnvironment.StableActionId(candidate), actionId)))
+            throw new InvalidOperationException(
+                "ReferenceNature event advance requires a current legal reward action.");
+        var nextRun = ControlledEventChoiceEngineV111.Advance(
+            Run.Fork(), CloneAction(action));
+        var next = this with
+        {
+            Run = nextRun,
+            Steps = Steps.Append(new ReferenceNatureControlledEventChoiceStepV111(
+                "player_action", PlayerAction: CloneAction(action))).ToArray()
+        };
+        next.Validate();
+        return next;
+    }
+
+    public void Validate()
+    {
+        if (SchemaId != CurrentSchemaId || Origin is null || Run is null ||
+            string.IsNullOrWhiteSpace(ChoiceId) || InitialNatureState is null ||
+            NatureState is null || Steps is null ||
+            Origin.Phase != RunPhase.Event || Origin.World?.Event is not { } originEvent ||
+            !PrototypeGameEngine.IsControlledEventChoice(
+                originEvent.EventId, ChoiceId))
+            throw new InvalidDataException(
+                "Invalid ReferenceNature controlled event-choice envelope.");
+        PrototypeStateInvariants.Validate(Origin);
+        PrototypeStateInvariants.Validate(Run);
+        InitialNatureState.Validate();
+        NatureState.Validate();
+        var decisions = DecisionTranscript;
+        if (NatureState.SampleCount != checked(
+                InitialNatureState.SampleCount + decisions.Length))
+            throw new InvalidDataException(
+                "ReferenceNature event-choice sampler cursor differs from its transcript.");
+        foreach (var step in Steps)
+            step.Validate();
+
+        var effect = Run.World?.Event?.ControlledChoice;
+        var reward = Run.ControlledEventRewardChoice;
+        if (effect is not null && reward is not null)
+            throw new InvalidDataException(
+                "Run state contains two simultaneous controlled event requests.");
+        if (effect is null && reward is null)
+        {
+            if (Run.ControlledEventChoiceHistory is not { Length: > 0 } history ||
+                history[^1].EventId != originEvent.EventId ||
+                history[^1].ChoiceId != ChoiceId ||
+                history[^1].Decisions.Length != decisions.Length)
+                throw new InvalidDataException(
+                    "Completed ReferenceNature event choice differs from its mechanics trace.");
+            history[^1].Validate();
+            for (int index = 0; index < decisions.Length; index++)
+                if (history[^1].Decisions[index].SelectedIndex !=
+                    decisions[index].OutcomeIndex)
+                    throw new InvalidDataException(
+                        "Completed event-choice outcomes differ from ReferenceNature history.");
+            return;
+        }
+
+        var continuationDecisions = effect?.Decisions ?? reward!.Decisions;
+        if (continuationDecisions.Length != decisions.Length ||
+            (effect?.EventId ?? reward!.EventId) != originEvent.EventId ||
+            (effect?.ChoiceId ?? reward!.ChoiceId) != ChoiceId)
+            throw new InvalidDataException(
+                "Pending event continuation differs from ReferenceNature history.");
+        for (int index = 0; index < decisions.Length; index++)
+            if (continuationDecisions[index].ProviderMode != "controlled-v111" ||
+                continuationDecisions[index].SelectedIndex != decisions[index].OutcomeIndex)
+                throw new InvalidDataException(
+                    "Pending event outcomes differ from ReferenceNature history.");
+    }
+
+    public static string Save(
+        ReferenceNatureControlledEventChoiceSessionV111 session)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        session.Validate();
+        var snapshot = new ReferenceNatureControlledEventChoiceSnapshotV111(
+            CurrentSchemaId, RunSnapshot.Save(session.Origin), session.ChoiceId,
+            RunSnapshot.Save(session.Run), session.InitialNatureState,
+            session.NatureState,
+            session.Steps.Select(step => step.Fork()).ToArray());
+        return JsonSerializer.Serialize(snapshot);
+    }
+
+    public static ReferenceNatureControlledEventChoiceSessionV111 Restore(
+        string json)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(json);
+        var snapshot = JsonSerializer.Deserialize<
+                ReferenceNatureControlledEventChoiceSnapshotV111>(json)
+            ?? throw new InvalidDataException(
+                "Null ReferenceNature event-choice snapshot.");
+        if (snapshot.SchemaId != CurrentSchemaId ||
+            string.IsNullOrWhiteSpace(snapshot.OriginSnapshotJson) ||
+            string.IsNullOrWhiteSpace(snapshot.ChoiceId) ||
+            string.IsNullOrWhiteSpace(snapshot.RunSnapshotJson) ||
+            snapshot.InitialNatureState is null ||
+            snapshot.NatureState is null || snapshot.Steps is null)
+            throw new InvalidDataException(
+                "Invalid ReferenceNature event-choice snapshot.");
+        var origin = RunSnapshot.Load(snapshot.OriginSnapshotJson);
+        var savedRun = RunSnapshot.Load(snapshot.RunSnapshotJson);
+        var replay = Begin(origin, snapshot.ChoiceId,
+            snapshot.InitialNatureState);
+        foreach (var savedStep in snapshot.Steps)
+        {
+            savedStep.Validate();
+            replay = savedStep.Kind switch
+            {
+                "nature" when replay.NaturePending => replay.ResolveNext(),
+                "player_action" when replay.CanAdvancePlayer =>
+                    replay.AdvancePlayerAction(savedStep.PlayerAction!),
+                _ => throw new InvalidDataException(
+                    "ReferenceNature event-choice replay step is out of order.")
+            };
+            if (CanonicalJson.Sha256(replay.Steps[^1]) !=
+                CanonicalJson.Sha256(savedStep))
+                throw new InvalidDataException(
+                    "ReferenceNature event-choice replay diverged from its transcript.");
+        }
+        if (CanonicalJson.Sha256(replay.Run) != CanonicalJson.Sha256(savedRun) ||
+            CanonicalJson.Sha256(replay.NatureState) !=
+                CanonicalJson.Sha256(snapshot.NatureState) ||
+            CanonicalJson.Sha256(replay.Steps) !=
+                CanonicalJson.Sha256(snapshot.Steps))
+            throw new InvalidDataException(
+                "ReferenceNature event-choice replay differs from its snapshot.");
         replay.Validate();
         return replay;
     }

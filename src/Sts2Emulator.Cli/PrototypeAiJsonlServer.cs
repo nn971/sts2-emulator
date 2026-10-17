@@ -53,6 +53,12 @@ internal static class PrototypeAiJsonlServer
         var referenceNatureRunActionRunStateHandles =
             new Dictionary<string, string>(StringComparer.Ordinal);
         long nextReferenceNatureRunActionHandle = 1;
+        var referenceNatureEventChoiceStates =
+            new Dictionary<string, ReferenceNatureControlledEventChoiceSessionV111>(
+                StringComparer.Ordinal);
+        var referenceNatureEventChoiceRunStateHandles =
+            new Dictionary<string, string>(StringComparer.Ordinal);
+        long nextReferenceNatureEventChoiceHandle = 1;
 
         string StoreSemantic(SemanticPilotCombatV111 state)
         {
@@ -107,6 +113,30 @@ internal static class PrototypeAiJsonlServer
                 ? session
                 : throw new InvalidOperationException(
                     "Unknown ReferenceNature run-action session handle: " + handle);
+        }
+
+        string StoreReferenceNatureEventChoice(
+            ReferenceNatureControlledEventChoiceSessionV111 session)
+        {
+            var handle = "v" + nextReferenceNatureEventChoiceHandle++;
+            referenceNatureEventChoiceStates.Add(handle, session.Fork());
+            if (session.Complete)
+                referenceNatureEventChoiceRunStateHandles.Add(handle,
+                    Store(session.Run.Fork()));
+            return handle;
+        }
+
+        ReferenceNatureControlledEventChoiceSessionV111
+            RequireReferenceNatureEventChoice(JsonElement request)
+        {
+            var handle = RequiredString(request,
+                "reference_nature_event_choice_handle");
+            return referenceNatureEventChoiceStates.TryGetValue(handle,
+                    out var session)
+                ? session
+                : throw new InvalidOperationException(
+                    "Unknown ReferenceNature event-choice session handle: " +
+                    handle);
         }
 
         object ReferenceNatureResult(
@@ -178,6 +208,65 @@ internal static class PrototypeAiJsonlServer
                 boundary = session.Complete ? "committed" : "nature",
                 pending,
                 decisionTranscript = session.DecisionTranscript,
+                natureProvider = ReferenceNatureV111.ProviderId,
+                natureSampleCount = session.NatureState.SampleCount,
+                probabilityStatus = ChanceLawV111.UnverifiedStatus
+            };
+        }
+
+        object ReferenceNatureEventChoiceResult(
+            ReferenceNatureControlledEventChoiceSessionV111 session,
+            string handle, string? parent = null)
+        {
+            var effect = session.Run.World?.Event?.ControlledChoice;
+            var reward = session.Run.ControlledEventRewardChoice;
+            var chanceLaw = session.NaturePending
+                ? ChanceLawEngineV111.QueryControlledEventChoice(session.Run)
+                : null;
+            var boundaryFingerprint = session.NaturePending
+                ? ChanceLawEngineV111.ControlledEventChoiceBoundaryFingerprint(
+                    session.Run)
+                : null;
+            var request = effect?.PendingRequest ?? reward?.PendingRequest;
+            var candidateLabels = effect?.PendingCandidateLabels ??
+                reward?.PendingCandidateLabels;
+            object? pending = session.NaturePending ? new
+            {
+                kind = effect is null
+                    ? "event_reward_random_choice" : "event_random_choice",
+                eventId = chanceLaw!.EventId,
+                choiceId = session.ChoiceId,
+                boundaryFingerprint,
+                request,
+                candidateLabels,
+                chanceLaw,
+                probabilityStatus = ChanceLawV111.UnverifiedStatus
+            } : null;
+            var actions = session.CanAdvancePlayer
+                ? environment.Observe(session.Run).LegalActions
+                : Array.Empty<PrototypeAiAction>();
+            return new
+            {
+                ok = true,
+                schemaId =
+                    ReferenceNatureControlledEventChoiceSessionV111.CurrentSchemaId,
+                referenceNatureEventChoiceHandle = handle,
+                stateHandle = referenceNatureEventChoiceRunStateHandles
+                    .GetValueOrDefault(handle),
+                parent,
+                fingerprint = session.Fingerprint,
+                runFingerprint = CanonicalJson.Sha256(session.Run),
+                eventId = session.Origin.World?.Event?.EventId,
+                choiceId = session.ChoiceId,
+                runPhase = session.Run.Phase.ToString(),
+                boundary = session.NaturePending ? "nature" :
+                    session.CanAdvancePlayer ? "player" : "committed",
+                pending,
+                actions = actions.Select(ActionWire).ToArray(),
+                decisionTranscript = session.DecisionTranscript,
+                playerActionTranscript = session.Steps
+                    .Where(step => step.Kind == "player_action")
+                    .Select(step => step.PlayerAction).ToArray(),
                 natureProvider = ReferenceNatureV111.ProviderId,
                 natureSampleCount = session.NatureState.SampleCount,
                 probabilityStatus = ChanceLawV111.UnverifiedStatus
@@ -1089,6 +1178,9 @@ internal static class PrototypeAiJsonlServer
                                 ReferenceNatureSessionV111.CurrentSchemaId,
                             referenceNatureRunActionSessionSchemaId =
                                 ReferenceNatureRunActionSessionV111.CurrentSchemaId,
+                            referenceNatureEventChoiceSessionSchemaId =
+                                ReferenceNatureControlledEventChoiceSessionV111
+                                    .CurrentSchemaId,
                             referenceNatureProviderId =
                                 ReferenceNatureV111.ProviderId,
                             controlledEventChoiceSchemaId =
@@ -2020,6 +2112,132 @@ internal static class PrototypeAiJsonlServer
                                     element.GetString()!))
                                 released++;
                             referenceNatureRunActionRunStateHandles.Remove(
+                                element.GetString()!);
+                        }
+                        Write(new { requestId, ok = true, released });
+                        break;
+                    }
+
+                    case "reference_nature_event_choice_begin":
+                    {
+                        var session =
+                            ReferenceNatureControlledEventChoiceSessionV111.Begin(
+                                RequireState(request),
+                                RequiredString(request, "choice_id"),
+                                RequiredULong(request, "nature_seed"));
+                        var handle = StoreReferenceNatureEventChoice(session);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureEventChoiceResult(session, handle) });
+                        break;
+                    }
+
+                    case "reference_nature_event_choice_status":
+                    {
+                        var handle = RequiredString(request,
+                            "reference_nature_event_choice_handle");
+                        var session = RequireReferenceNatureEventChoice(request);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureEventChoiceResult(session, handle) });
+                        break;
+                    }
+
+                    case "reference_nature_event_choice_resolve_next":
+                    {
+                        var parentHandle = RequiredString(request,
+                            "reference_nature_event_choice_handle");
+                        var session = RequireReferenceNatureEventChoice(request);
+                        if (session.Fingerprint != RequiredString(request,
+                                "fingerprint"))
+                            throw new InvalidOperationException(
+                                "Stale ReferenceNature event-choice fingerprint.");
+                        var next = session.ResolveNext();
+                        var handle = StoreReferenceNatureEventChoice(next);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureEventChoiceResult(
+                                next, handle, parentHandle) });
+                        break;
+                    }
+
+                    case "reference_nature_event_choice_advance":
+                    {
+                        var parentHandle = RequiredString(request,
+                            "reference_nature_event_choice_handle");
+                        var session = RequireReferenceNatureEventChoice(request);
+                        if (session.Fingerprint != RequiredString(request,
+                                "fingerprint"))
+                            throw new InvalidOperationException(
+                                "Stale ReferenceNature event-choice fingerprint.");
+                        var actionId = RequiredString(request, "action_id");
+                        var action = environment.Observe(session.Run)
+                            .LegalActions.SingleOrDefault(candidate =>
+                                StringComparer.Ordinal.Equals(
+                                    candidate.ActionId, actionId))
+                            ?? throw new InvalidOperationException(
+                                "ReferenceNature event advance requires a current legal reward action.");
+                        var next = session.AdvancePlayerAction(
+                            GameAction.Create(action.Kind, action.Payload));
+                        var handle = StoreReferenceNatureEventChoice(next);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureEventChoiceResult(
+                                next, handle, parentHandle) });
+                        break;
+                    }
+
+                    case "reference_nature_event_choice_fork":
+                    {
+                        var parentHandle = RequiredString(request,
+                            "reference_nature_event_choice_handle");
+                        var next = RequireReferenceNatureEventChoice(request).Fork();
+                        var handle = StoreReferenceNatureEventChoice(next);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureEventChoiceResult(
+                                next, handle, parentHandle) });
+                        break;
+                    }
+
+                    case "reference_nature_event_choice_save":
+                    {
+                        var session = RequireReferenceNatureEventChoice(request);
+                        Write(new { requestId, ok = true,
+                            schemaId =
+                                ReferenceNatureControlledEventChoiceSessionV111
+                                    .CurrentSchemaId,
+                            snapshot =
+                                ReferenceNatureControlledEventChoiceSessionV111
+                                    .Save(session) });
+                        break;
+                    }
+
+                    case "reference_nature_event_choice_load":
+                    {
+                        var session =
+                            ReferenceNatureControlledEventChoiceSessionV111.Restore(
+                                RequiredString(request, "snapshot"));
+                        var handle = StoreReferenceNatureEventChoice(session);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureEventChoiceResult(session, handle) });
+                        break;
+                    }
+
+                    case "reference_nature_event_choice_release_many":
+                    {
+                        if (!request.TryGetProperty(
+                                "reference_nature_event_choice_handles",
+                                out var handles) ||
+                            handles.ValueKind != JsonValueKind.Array)
+                            throw new ArgumentException(
+                                "reference_nature_event_choice_handles must be an array.");
+                        var released = 0;
+                        foreach (var element in handles.EnumerateArray())
+                        {
+                            if (element.ValueKind != JsonValueKind.String ||
+                                string.IsNullOrWhiteSpace(element.GetString()))
+                                throw new ArgumentException(
+                                    "Invalid ReferenceNature event-choice handle.");
+                            if (referenceNatureEventChoiceStates.Remove(
+                                    element.GetString()!))
+                                released++;
+                            referenceNatureEventChoiceRunStateHandles.Remove(
                                 element.GetString()!);
                         }
                         Write(new { requestId, ok = true, released });

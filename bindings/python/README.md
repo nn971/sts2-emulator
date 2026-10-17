@@ -34,5 +34,11 @@ playable `.state` after its Nature choice commits. It is
 limited to the run-start, legacy Event-node entry and Shovel continuations
 listed in the [run-action contract](../../docs/CONTROLLED_RUN_ACTION_D3.md).
 
+Supported event choices also have an atomic ReferenceNature session through
+`State.begin_reference_nature_event_choice(choice_id, nature_seed)`. It keeps
+reward actions and event Nature choices in one replay order; the committed
+session exposes `.state` for ordinary play. See the
+[event-choice contract](../../docs/CONTROLLED_EVENT_CHOICE_D3.md).
+
 All mechanics remain in C#. Search, learning and strategy belong in the parent
 AI repository. See [the versioned contract](../../docs/V111_INTERFACE.md).
