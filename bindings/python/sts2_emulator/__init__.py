@@ -478,6 +478,34 @@ class State:
         return ReferenceNatureGloryReflectionsSession.from_wire(
             self.session, result["result"])
 
+    def begin_reference_nature_infested_automaton(
+            self, action_id: str, nature_seed: int | None = None):
+        """Begin Nature sampling for Infested Automaton's selected card offer."""
+        if self.session.capabilities.get(
+                "referenceNatureInfestedAutomatonSessionSchemaId") != (
+                "sts2-v111-reference-nature-infested-automaton-session-v1"):
+            raise EmulatorError(
+                "Emulator does not expose ReferenceNature Infested Automaton sessions")
+        site_id = "event.hive.card_offer.index_draw"
+        if not self.session.supports_reference_nature_site(
+                site_id, session="infested_automaton"):
+            raise EmulatorError(
+                "No ReferenceNature Infested Automaton session is advertised")
+        if action_id not in ("study", "touch_core"):
+            raise ValueError("action_id must be 'study' or 'touch_core'")
+        if (nature_seed is not None and
+                (not isinstance(nature_seed, int) or
+                 isinstance(nature_seed, bool) or nature_seed < 0 or
+                 nature_seed > 0xFFFFFFFFFFFFFFFF)):
+            raise ValueError("nature_seed must be an unsigned 64-bit integer")
+        payload = {"state_handle": self.handle, "action_id": action_id}
+        if nature_seed is not None:
+            payload["nature_seed"] = nature_seed
+        result = self.session.call(
+            "reference_nature_infested_automaton_begin", **payload)
+        return ReferenceNatureInfestedAutomatonSession.from_wire(
+            self.session, result["result"])
+
     def begin_reference_nature_merchant(self, action_id: str,
                                         nature_seed: int | None = None):
         """Begin atomic ReferenceNature generation for a configured Shop node."""
@@ -1396,6 +1424,88 @@ class ReferenceNatureGloryReflectionsSession:
 
 
 @dataclass(frozen=True)
+class ReferenceNatureInfestedAutomatonSession:
+    """One Infested Automaton card offer and ReferenceNature cursor."""
+    session: "Session"
+    handle: str
+    fingerprint: str
+    state_handle: str | None
+    event_id: str | None
+    site_id: str | None
+    choice_id: str
+    page: int | None
+    run_phase: str
+    boundary: str
+    next_ordinal: int
+    pending: dict | None
+    selected_choice_id: str | None
+    selected_card_id: str | None
+    next_page: int | None
+    event_random_provider: str | None
+    decision_transcript: list
+    nature_sample_count: int
+
+    @classmethod
+    def from_wire(cls, session, payload):
+        if payload.get("schemaId") != (
+                "sts2-v111-reference-nature-infested-automaton-session-v1"):
+            raise EmulatorError(
+                "Unsupported ReferenceNature Infested Automaton session schema")
+        return cls(
+            session, payload["referenceNatureInfestedAutomatonHandle"],
+            payload["fingerprint"], payload.get("stateHandle"),
+            payload.get("eventId"), payload.get("siteId"),
+            payload["choiceId"], payload.get("page"), payload["runPhase"],
+            payload["boundary"], payload["nextOrdinal"],
+            payload.get("pending"), payload.get("selectedChoiceId"),
+            payload.get("selectedCardId"), payload.get("nextPage"),
+            payload.get("eventRandomProvider"),
+            payload["decisionTranscript"], payload["natureSampleCount"])
+
+    @property
+    def complete(self):
+        return self.boundary == "committed"
+
+    @property
+    def state(self):
+        if self.state_handle is None:
+            raise EmulatorError("Infested Automaton offer has not committed")
+        return State(self.session, self.state_handle)
+
+    def status(self):
+        result = self.session.call(
+            "reference_nature_infested_automaton_status",
+            reference_nature_infested_automaton_handle=self.handle)
+        return ReferenceNatureInfestedAutomatonSession.from_wire(
+            self.session, result["result"])
+
+    def resolve_next(self):
+        """Sample a card identity and commit the selected event action."""
+        result = self.session.call(
+            "reference_nature_infested_automaton_resolve_next",
+            reference_nature_infested_automaton_handle=self.handle,
+            fingerprint=self.fingerprint)
+        return ReferenceNatureInfestedAutomatonSession.from_wire(
+            self.session, result["result"])
+
+    def fork(self):
+        result = self.session.call(
+            "reference_nature_infested_automaton_fork",
+            reference_nature_infested_automaton_handle=self.handle)
+        return ReferenceNatureInfestedAutomatonSession.from_wire(
+            self.session, result["result"])
+
+    def save_snapshot(self):
+        return self.session.call(
+            "reference_nature_infested_automaton_save",
+            reference_nature_infested_automaton_handle=self.handle)["snapshot"]
+
+    def release(self):
+        return self.session.release_reference_nature_infested_automaton_many(
+            [self])
+
+
+@dataclass(frozen=True)
 class ReferenceNatureMerchantSession:
     """Atomic native Shop entry, mixed Chance Law replay and Nature cursor."""
     session: "Session"
@@ -2106,12 +2216,13 @@ class Session:
             "native_shuffle": "referenceNatureNativeEventShuffleSiteIds",
             "endless_conveyor": "referenceNatureEndlessConveyorSiteIds",
             "glory_reflections": "referenceNatureGloryReflectionsSiteIds",
+            "infested_automaton": "referenceNatureInfestedAutomatonSiteIds",
             "merchant": "referenceNatureMerchantSiteIds",
             "treasure": "referenceNatureTreasureSiteIds",
         }
         if session != "any" and session not in fields:
             raise ValueError(
-                "session must be semantic, run_action, event_choice, ancient_offer, neow_offer, trash_heap, tablet_of_truth, trial, event_shuffle, native_shuffle, endless_conveyor, glory_reflections, merchant, treasure, or any")
+                "session must be semantic, run_action, event_choice, ancient_offer, neow_offer, trash_heap, tablet_of_truth, trial, event_shuffle, native_shuffle, endless_conveyor, glory_reflections, infested_automaton, merchant, treasure, or any")
         coverage = self.stochastic_session_coverage
         if not isinstance(coverage, dict) or coverage.get("schemaId") != (
                 "sts2-v111-stochastic-session-coverage-v1"):
@@ -2597,6 +2708,28 @@ class Session:
         return self.call(
             "reference_nature_glory_reflections_release_many",
             reference_nature_glory_reflections_handles=[
+                item.handle for item in sessions])["released"]
+
+    def load_reference_nature_infested_automaton_snapshot(
+            self, snapshot: str):
+        if self.capabilities.get(
+                "referenceNatureInfestedAutomatonSessionSchemaId") != (
+                "sts2-v111-reference-nature-infested-automaton-session-v1"):
+            raise EmulatorError(
+                "Emulator does not expose ReferenceNature Infested Automaton sessions")
+        result = self.call(
+            "reference_nature_infested_automaton_load", snapshot=snapshot)
+        return ReferenceNatureInfestedAutomatonSession.from_wire(
+            self, result["result"])
+
+    def release_reference_nature_infested_automaton_many(self, sessions):
+        sessions = list(sessions)
+        if any(item.session is not self for item in sessions):
+            raise ValueError(
+                "ReferenceNature Infested Automaton handle belongs to another session")
+        return self.call(
+            "reference_nature_infested_automaton_release_many",
+            reference_nature_infested_automaton_handles=[
                 item.handle for item in sessions])["released"]
 
     def load_reference_nature_merchant_snapshot(self, snapshot: str):

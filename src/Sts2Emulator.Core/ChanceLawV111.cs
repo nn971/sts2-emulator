@@ -38,6 +38,8 @@ public sealed record StochasticCapabilityManifestV111(
         ReferenceNatureEndlessConveyorSessionV111.CurrentSchemaId;
     public string ReferenceNatureGloryReflectionsSessionSchemaId { get; init; } =
         ReferenceNatureGloryReflectionsSessionV111.CurrentSchemaId;
+    public string ReferenceNatureInfestedAutomatonSessionSchemaId { get; init; } =
+        ReferenceNatureInfestedAutomatonSessionV111.CurrentSchemaId;
     public string ReferenceNatureMerchantSessionSchemaId { get; init; } =
         ReferenceNatureMerchantSessionV111.CurrentSchemaId;
     public string ReferenceNatureTreasureSessionSchemaId { get; init; } =
@@ -53,6 +55,7 @@ public sealed record StochasticCapabilityManifestV111(
         "tablet_of_truth", "trial", "event_shuffle",
         "endless_conveyor",
         "merchant", "treasure", "glory_reflections",
+        "infested_automaton",
         "controlled_event_choice", "controlled_run_action"
     ];
 }
@@ -153,6 +156,13 @@ public static class StochasticCapabilitiesV111
             "reference_nature_glory_reflections_save",
             "reference_nature_glory_reflections_load",
             "reference_nature_glory_reflections_release_many",
+            "reference_nature_infested_automaton_begin",
+            "reference_nature_infested_automaton_status",
+            "reference_nature_infested_automaton_resolve_next",
+            "reference_nature_infested_automaton_fork",
+            "reference_nature_infested_automaton_save",
+            "reference_nature_infested_automaton_load",
+            "reference_nature_infested_automaton_release_many",
             "reference_nature_merchant_begin",
             "reference_nature_merchant_status",
             "reference_nature_merchant_resolve_next",
@@ -189,6 +199,8 @@ public static class StochasticCapabilitiesV111
             ReferenceNatureEndlessConveyorSessionV111.CurrentSchemaId,
         ReferenceNatureGloryReflectionsSessionSchemaId =
             ReferenceNatureGloryReflectionsSessionV111.CurrentSchemaId,
+        ReferenceNatureInfestedAutomatonSessionSchemaId =
+            ReferenceNatureInfestedAutomatonSessionV111.CurrentSchemaId,
         ReferenceNatureMerchantSessionSchemaId =
             ReferenceNatureMerchantSessionV111.CurrentSchemaId,
         ReferenceNatureTreasureSessionSchemaId =

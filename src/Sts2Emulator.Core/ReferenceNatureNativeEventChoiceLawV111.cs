@@ -7,6 +7,79 @@ internal sealed record NativeEventReflectionsChoicePlanV111(
     RandomIndexRequestV111 Request,
     string ConditioningFingerprint);
 
+internal sealed record NativeEventInfestedAutomatonCardPickPlanV111(
+    string[] CandidateCardIds,
+    RandomIndexRequestV111 Request,
+    string ConditioningFingerprint,
+    string ChoiceId);
+
+internal static class NativeEventInfestedAutomatonCardPickPlanBuilderV111
+{
+    public static NativeEventInfestedAutomatonCardPickPlanV111 Build(
+        RunState origin, string siteId, int ordinal, string? actionId)
+    {
+        ArgumentNullException.ThrowIfNull(origin);
+        ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
+        if (ordinal != 0 || string.IsNullOrWhiteSpace(origin.RunSeed) ||
+            origin.NativeRunRng is null || origin.Phase != RunPhase.Event ||
+            origin.World is not { Act: 2, Event: { } evt } ||
+            evt.EventId != PrototypeNativeHiveEvents.InfestedAutomatonId ||
+            evt.NativePageIndex != 0 || evt.ChosenChoiceId is not null ||
+            evt.ControlledChoice is not null ||
+            evt.NativeEventPotionSlot is not null ||
+            evt.NativeEventRngProviderMode is not null ||
+            origin.ControlledEventRewardChoice is not null ||
+            actionId is not ("study" or "touch_core"))
+            throw new InvalidOperationException(
+                "Infested Automaton card-pick laws require a pending study or touch_core choice at ordinal 0.");
+        if (siteId != PrototypeNativeHiveEvents
+                .InfestedAutomatonCardOfferSiteId)
+            throw new InvalidOperationException(
+                $"Infested Automaton expects site '{PrototypeNativeHiveEvents.InfestedAutomatonCardOfferSiteId}'.");
+
+        var action = GameAction.Create("event_choice",
+            new EventChoicePayload(actionId));
+        if (!new PrototypeGameEngine().GetLegalActions(origin).Any(candidate =>
+                PrototypeAiEnvironment.StableActionId(candidate) ==
+                PrototypeAiEnvironment.StableActionId(action)))
+            throw new InvalidOperationException(
+                $"Infested Automaton choice '{actionId}' is not legal in the current state.");
+
+        var candidates = PrototypeNativeHiveEvents
+            .InfestedAutomatonCardCandidates(actionId);
+        if (candidates.Length == 0)
+            throw new InvalidOperationException(
+                "Infested Automaton has no card draw for this choice because its eligible pool is empty.");
+
+        var expectedStream = NativeRngV111Contexts.ForEvent(
+            origin.RunSeed,
+            PrototypeNativeHiveEvents.InfestedAutomatonNativeRngEventId);
+        var stream = evt.NativeEventRng ?? expectedStream;
+        if (NativeRngV111.ToSnapshot(stream) !=
+                NativeRngV111.ToSnapshot(expectedStream) ||
+            (stream.CallCount ?? 0) != 0)
+            throw new InvalidOperationException(
+                "Infested Automaton has an advanced or incorrect Native event stream.");
+        var ownerId = $"event:{evt.EventId}:choice:{actionId}:pool:" +
+            CanonicalJson.Sha256(candidates);
+        var request = new RandomIndexRequestV111(
+            PrototypeNativeHiveEvents.InfestedAutomatonCardOfferSiteId,
+            stream.StreamId, ownerId, ordinal,
+            Enumerable.Range(0, candidates.Length).ToArray());
+        var conditioningFingerprint = CanonicalJson.Sha256(new
+        {
+            boundary = "hive.infested_automaton.card_offer",
+            eventId = evt.EventId,
+            actionId,
+            candidateCardIds = candidates,
+            request,
+            policy = ChanceLawEngineV111
+                .NativeEventCardPickConditioningPolicyId
+        });
+        return new(candidates, request, conditioningFingerprint, actionId);
+    }
+}
+
 internal static class NativeEventReflectionsChoicePlanBuilderV111
 {
     public static NativeEventReflectionsChoicePlanV111 BuildNext(
@@ -182,7 +255,8 @@ public static partial class ChanceLawEngineV111
     public static string[] NativeEventCardPickQuerySiteIds =>
     [
         PrototypeNativeGloryEvents.ReflectionsDowngradeSiteId,
-        PrototypeNativeGloryEvents.ReflectionsUpgradeSiteId
+        PrototypeNativeGloryEvents.ReflectionsUpgradeSiteId,
+        PrototypeNativeHiveEvents.InfestedAutomatonCardOfferSiteId
     ];
 
     public static ChanceLawV111 QueryNativeEventCardPick(
@@ -191,6 +265,32 @@ public static partial class ChanceLawEngineV111
     {
         ArgumentNullException.ThrowIfNull(origin);
         priorIndices ??= [];
+        if (siteId == PrototypeNativeHiveEvents
+                .InfestedAutomatonCardOfferSiteId)
+        {
+            if (priorIndices.Length != 0)
+                throw new InvalidOperationException(
+                    "Infested Automaton card-pick queries accept no prior indices.");
+            var infestedPlan =
+                NativeEventInfestedAutomatonCardPickPlanBuilderV111.Build(
+                    origin, siteId, ordinal, actionId);
+            var infestedOutcomes = infestedPlan.CandidateCardIds.Select(
+                cardId => new ChanceLawOutcomeV111(
+                    "card:" + cardId, 1L)).ToArray();
+            var infestedEventId = CanonicalJson.Sha256(new
+            {
+                boundary = "native_event.card_pick",
+                infestedPlan.ConditioningFingerprint
+            });
+            return Create(infestedEventId, infestedPlan.Request.SiteId,
+                infestedPlan.Request.OperationKind,
+                infestedPlan.Request.OwnerId,
+                infestedPlan.Request.Ordinal,
+                NativeEventCardPickConditioningPolicyId,
+                infestedPlan.ConditioningFingerprint,
+                "uniform-single-event-card-unverified",
+                infestedOutcomes);
+        }
         var plan = NativeEventReflectionsChoicePlanBuilderV111.BuildNext(
             origin, siteId, ordinal, priorIndices, actionId);
         var outcomes = plan.CandidateCardInstanceIds.Select(instanceId =>

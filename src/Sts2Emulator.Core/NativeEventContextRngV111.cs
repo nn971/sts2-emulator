@@ -373,6 +373,16 @@ public static class NativeEventContextRngV111
             PrototypeNativeEndlessConveyor.IsValidScriptedDishState(
                 state, eventState))
             return;
+        var scriptedInfestedAutomatonOfferIsExpected =
+            NativeRngV111.ToSnapshot(stream) ==
+                NativeRngV111.ToSnapshot(initial) &&
+            PrototypeNativeHiveEvents.IsValidScriptedInfestedAutomatonState(
+                state, eventState);
+        if (prototypeEventId ==
+                PrototypeNativeHiveEvents.InfestedAutomatonId &&
+            providerMode == "scripted-v111" &&
+            scriptedInfestedAutomatonOfferIsExpected)
+            return;
         var scriptedBattlewornShuffleIsExpected =
             NativeRngV111.ToSnapshot(stream) ==
                 NativeRngV111.ToSnapshot(initial) &&

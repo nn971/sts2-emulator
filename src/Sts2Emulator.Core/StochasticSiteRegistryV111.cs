@@ -57,6 +57,9 @@ public sealed record StochasticSessionCoverageV111(
     public string ReferenceNatureGloryReflectionsSessionSchemaId { get; init; } =
         ReferenceNatureGloryReflectionsSessionV111.CurrentSchemaId;
     public string[] ReferenceNatureGloryReflectionsSiteIds { get; init; } = [];
+    public string ReferenceNatureInfestedAutomatonSessionSchemaId { get; init; } =
+        ReferenceNatureInfestedAutomatonSessionV111.CurrentSchemaId;
+    public string[] ReferenceNatureInfestedAutomatonSiteIds { get; init; } = [];
     public string[] ReferenceNatureAncientOfferSiteIds { get; init; } = [];
     public string ReferenceNatureMerchantSessionSchemaId { get; init; } =
         ReferenceNatureMerchantSessionV111.CurrentSchemaId;
@@ -93,6 +96,8 @@ public sealed record StochasticSessionCoverageV111(
                 ReferenceNatureEndlessConveyorSessionV111.CurrentSchemaId ||
             ReferenceNatureGloryReflectionsSessionSchemaId !=
                 ReferenceNatureGloryReflectionsSessionV111.CurrentSchemaId ||
+            ReferenceNatureInfestedAutomatonSessionSchemaId !=
+                ReferenceNatureInfestedAutomatonSessionV111.CurrentSchemaId ||
             ReferenceNatureMerchantSessionSchemaId !=
                 ReferenceNatureMerchantSessionV111.CurrentSchemaId ||
             ReferenceNatureTreasureSessionSchemaId !=
@@ -111,6 +116,7 @@ public sealed record StochasticSessionCoverageV111(
         ValidateSiteIds(ReferenceNatureNativeEventShuffleSiteIds);
         ValidateSiteIds(ReferenceNatureEndlessConveyorSiteIds);
         ValidateSiteIds(ReferenceNatureGloryReflectionsSiteIds);
+        ValidateSiteIds(ReferenceNatureInfestedAutomatonSiteIds);
         ValidateSiteIds(ReferenceNatureMerchantSiteIds);
         ValidateSiteIds(ReferenceNatureTreasureSiteIds);
     }
@@ -329,6 +335,8 @@ public static class StochasticSiteRegistryV111
         ReferenceNatureEndlessConveyorSessionV111.SessionSiteIds;
     private static readonly string[] GloryReflectionsSessionSites =
         ReferenceNatureGloryReflectionsSessionV111.SessionSiteIds;
+    private static readonly string[] InfestedAutomatonSessionSites =
+        ReferenceNatureInfestedAutomatonSessionV111.SessionSiteIds;
 
     private static readonly HashSet<string> SemanticReferenceNatureSiteSet =
         new(SemanticReferenceNatureSites, StringComparer.Ordinal);
@@ -367,6 +375,7 @@ public static class StochasticSiteRegistryV111
             .Concat(NativeEventShuffleSessionSites)
             .Concat(EndlessConveyorSessionSites)
             .Concat(GloryReflectionsSessionSites)
+            .Concat(InfestedAutomatonSessionSites)
             .Concat(ChanceLawEngineV111.NativeEventCardPickQuerySiteIds)
             .Distinct(StringComparer.Ordinal)
             .ToArray();
@@ -491,7 +500,11 @@ public static class StochasticSiteRegistryV111
             ReferenceNatureGloryReflectionsSessionSchemaId =
                 ReferenceNatureGloryReflectionsSessionV111.CurrentSchemaId,
             ReferenceNatureGloryReflectionsSiteIds =
-                GloryReflectionsSessionSites
+                GloryReflectionsSessionSites,
+            ReferenceNatureInfestedAutomatonSessionSchemaId =
+                ReferenceNatureInfestedAutomatonSessionV111.CurrentSchemaId,
+            ReferenceNatureInfestedAutomatonSiteIds =
+                InfestedAutomatonSessionSites
         };
         coverage.Validate();
         return coverage;

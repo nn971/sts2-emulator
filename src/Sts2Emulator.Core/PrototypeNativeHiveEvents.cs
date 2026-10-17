@@ -13,6 +13,8 @@ public static class PrototypeNativeHiveEvents
         "proto.native.hive.infested_automaton";
     public const string InfestedAutomatonNativeRngEventId =
         "INFESTED_AUTOMATON";
+    public const string InfestedAutomatonCardOfferSiteId =
+        "event.hive.card_offer.index_draw";
     public const string StoneOfAllTimeId =
         PrototypeNativeStoneOfAllTime.EventId;
 
@@ -83,6 +85,44 @@ public static class PrototypeNativeHiveEvents
 
     public static bool AllowsEmptyDeckChoice(string eventId) =>
         eventId is SpiritGrafterId or FieldOfManSizedHolesId;
+
+    internal static string[] InfestedAutomatonCardCandidates(string choiceId)
+    {
+        if (choiceId is not ("study" or "touch_core"))
+            throw new ArgumentException(
+                "Infested Automaton card candidates require study or touch_core.",
+                nameof(choiceId));
+        return PrototypeContent.NativeSilentRewardCardPool
+            .Where(id =>
+            {
+                var card = PrototypeContent.Card(id);
+                return choiceId == "study"
+                    ? card.Type == PrototypeCardType.Power
+                    : card.Cost.Kind == PrototypeCardCostKind.Fixed
+                        && card.Cost.AmountAt(0) == 0;
+            })
+            .ToArray();
+    }
+
+    internal static bool IsValidScriptedInfestedAutomatonState(
+        RunState state, EventState evt)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(evt);
+        if (evt.EventId != InfestedAutomatonId ||
+            evt.NativePageIndex !=
+                PrototypeNativeEventCompletionPages.TerminalChoicePageIndex(
+                    InfestedAutomatonId) ||
+            evt.ChosenChoiceId is not ("study" or "touch_core") ||
+            state.World is not { } world ||
+            world.NextCardInstanceId <= 0)
+            return false;
+        var lastCard = state.Player.Deck.SingleOrDefault(card =>
+            card.InstanceId == world.NextCardInstanceId - 1);
+        return lastCard is not null &&
+            InfestedAutomatonCardCandidates(evt.ChosenChoiceId)
+                .Contains(lastCard.CardId, StringComparer.Ordinal);
+    }
 
     public static bool IsEligible(PrototypeEventDefinition evt,
         PlayerState player) =>
@@ -341,16 +381,8 @@ public sealed partial class PrototypeGameEngine
         // restrict this routed event to the implemented, solo-safe Silent
         // reward pool. This is a deliberate approximation of the
         // selection distribution, not of either eligibility predicate.
-        var eligible = PrototypeContent.NativeSilentRewardCardPool
-            .Where(id =>
-            {
-                var card = PrototypeContent.Card(id);
-                return choice == "study"
-                    ? card.Type == PrototypeCardType.Power
-                    : card.Cost.Kind == PrototypeCardCostKind.Fixed
-                        && card.Cost.AmountAt(0) == 0;
-            })
-            .ToArray();
+        var eligible = PrototypeNativeHiveEvents
+            .InfestedAutomatonCardCandidates(choice);
 
         if (eligible.Length == 0)
         {
@@ -362,7 +394,7 @@ public sealed partial class PrototypeGameEngine
             world.Event!,
             PrototypeNativeHiveEvents
                 .InfestedAutomatonNativeRngEventId,
-            "event.hive.card_offer.index_draw",
+            PrototypeNativeHiveEvents.InfestedAutomatonCardOfferSiteId,
             $"event:{world.Event!.EventId}:choice:{choice}:pool:"
                 + CanonicalJson.Sha256(eligible),
             eligible.Length);

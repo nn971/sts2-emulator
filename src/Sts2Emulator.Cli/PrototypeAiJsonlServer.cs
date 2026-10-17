@@ -107,6 +107,12 @@ internal static class PrototypeAiJsonlServer
         var referenceNatureGloryReflectionsRunStateHandles =
             new Dictionary<string, string>(StringComparer.Ordinal);
         long nextReferenceNatureGloryReflectionsHandle = 1;
+        var referenceNatureInfestedAutomatonStates =
+            new Dictionary<string, ReferenceNatureInfestedAutomatonSessionV111>(
+                StringComparer.Ordinal);
+        var referenceNatureInfestedAutomatonRunStateHandles =
+            new Dictionary<string, string>(StringComparer.Ordinal);
+        long nextReferenceNatureInfestedAutomatonHandle = 1;
         var referenceNatureMerchantStates =
             new Dictionary<string, ReferenceNatureMerchantSessionV111>(
                 StringComparer.Ordinal);
@@ -387,6 +393,30 @@ internal static class PrototypeAiJsonlServer
                 ? session
                 : throw new InvalidOperationException(
                     "Unknown ReferenceNature Glory Reflections session handle: " +
+                    handle);
+        }
+
+        string StoreReferenceNatureInfestedAutomaton(
+            ReferenceNatureInfestedAutomatonSessionV111 session)
+        {
+            var handle = "ia" + nextReferenceNatureInfestedAutomatonHandle++;
+            referenceNatureInfestedAutomatonStates.Add(handle, session.Fork());
+            if (session.Complete)
+                referenceNatureInfestedAutomatonRunStateHandles.Add(handle,
+                    Store(session.Run.Fork()));
+            return handle;
+        }
+
+        ReferenceNatureInfestedAutomatonSessionV111
+            RequireReferenceNatureInfestedAutomaton(JsonElement request)
+        {
+            var handle = RequiredString(request,
+                "reference_nature_infested_automaton_handle");
+            return referenceNatureInfestedAutomatonStates.TryGetValue(handle,
+                    out var session)
+                ? session
+                : throw new InvalidOperationException(
+                    "Unknown ReferenceNature Infested Automaton session handle: " +
                     handle);
         }
 
@@ -980,6 +1010,56 @@ internal static class PrototypeAiJsonlServer
             };
         }
 
+        object ReferenceNatureInfestedAutomatonResult(
+            ReferenceNatureInfestedAutomatonSessionV111 session,
+            string handle, string? parent = null)
+        {
+            var law = session.PendingLaw;
+            var eventState = session.Run.World?.Event;
+            return new
+            {
+                ok = true,
+                schemaId =
+                    ReferenceNatureInfestedAutomatonSessionV111.CurrentSchemaId,
+                referenceNatureInfestedAutomatonHandle = handle,
+                stateHandle = referenceNatureInfestedAutomatonRunStateHandles
+                    .GetValueOrDefault(handle),
+                parent,
+                fingerprint = session.Fingerprint,
+                runFingerprint = CanonicalJson.Sha256(session.Run),
+                siteId = law?.SiteId ?? session.LastSiteId,
+                eventId = law?.EventId ??
+                    session.DecisionTranscript.LastOrDefault()?.EventId,
+                choiceId = session.ChoiceId,
+                page = session.Origin.World?.Event?.NativePageIndex,
+                runPhase = session.Run.Phase.ToString(),
+                boundary = session.Complete ? "committed" : "nature",
+                nextOrdinal = session.DecisionTranscript.Length,
+                pending = law is null ? null : new
+                {
+                    kind = "native_event_card_pick_random_choice",
+                    eventId = law.EventId,
+                    siteId = law.SiteId,
+                    operationKind = law.OperationKind,
+                    supportFingerprint = law.SupportFingerprint,
+                    boundaryFingerprint = law.EventId,
+                    chanceLaw = law,
+                    probabilityStatus = law.ProbabilityStatus
+                },
+                selectedChoiceId = eventState?.ChosenChoiceId,
+                selectedCardId = eventState?.ChosenChoiceId is not null
+                    ? session.Run.Player.Deck.LastOrDefault()?.CardId
+                    : null,
+                nextPage = eventState?.NativePageIndex,
+                eventRandomProvider = eventState?.NativeEventRngProviderMode ??
+                    (eventState is null ? null : "native-v111"),
+                decisionTranscript = session.DecisionTranscript,
+                natureProvider = ReferenceNatureV111.ProviderId,
+                natureSampleCount = session.NatureState.SampleCount,
+                probabilityStatus = ChanceLawV111.UnverifiedStatus
+            };
+        }
+
         object ReferenceNatureTreasureResult(
             ReferenceNatureTreasureSessionV111 session, string handle,
             string? parent = null)
@@ -1544,6 +1624,10 @@ internal static class PrototypeAiJsonlServer
                     .TryGetValue(handle, out var gloryReflectionsSession) =>
                     ReferenceNatureGloryReflectionsResult(
                         gloryReflectionsSession, handle),
+                "infested_automaton" when referenceNatureInfestedAutomatonStates
+                    .TryGetValue(handle, out var infestedAutomatonSession) =>
+                    ReferenceNatureInfestedAutomatonResult(
+                        infestedAutomatonSession, handle),
                 "merchant" when referenceNatureMerchantStates.TryGetValue(
                     handle, out var merchantSession) =>
                     ReferenceNatureMerchantResult(merchantSession, handle),
@@ -1560,7 +1644,7 @@ internal static class PrototypeAiJsonlServer
                     "event_choice" or "ancient_offer" or "merchant" or
                     "neow_offer" or "trash_heap" or "tablet_of_truth" or
                     "trial" or "event_shuffle" or "glory_reflections" or
-                    "endless_conveyor" or
+                    "infested_automaton" or "endless_conveyor" or
                     "treasure" or "controlled_event_choice" or
                     "controlled_run_action" => throw new InvalidOperationException(
                         "Unknown Nature session handle for kind " + sessionKind +
@@ -4554,6 +4638,116 @@ internal static class PrototypeAiJsonlServer
                                     element.GetString()!))
                                 released++;
                             referenceNatureGloryReflectionsRunStateHandles.Remove(
+                                element.GetString()!);
+                        }
+                        Write(new { requestId, ok = true, released });
+                        break;
+                    }
+
+                    case "reference_nature_infested_automaton_begin":
+                    {
+                        var source = RequireState(request);
+                        var choiceId = RequiredString(request, "action_id");
+                        var seed = OptionalULong(request, "nature_seed");
+                        var session = seed is { } natureSeed
+                            ? ReferenceNatureInfestedAutomatonSessionV111.Begin(
+                                source, choiceId, natureSeed)
+                            : ReferenceNatureInfestedAutomatonSessionV111.Begin(
+                                source, choiceId);
+                        var handle = StoreReferenceNatureInfestedAutomaton(session);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureInfestedAutomatonResult(
+                                session, handle) });
+                        break;
+                    }
+
+                    case "reference_nature_infested_automaton_status":
+                    {
+                        var handle = RequiredString(request,
+                            "reference_nature_infested_automaton_handle");
+                        var session =
+                            RequireReferenceNatureInfestedAutomaton(request);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureInfestedAutomatonResult(
+                                session, handle) });
+                        break;
+                    }
+
+                    case "reference_nature_infested_automaton_resolve_next":
+                    {
+                        var parentHandle = RequiredString(request,
+                            "reference_nature_infested_automaton_handle");
+                        var session =
+                            RequireReferenceNatureInfestedAutomaton(request);
+                        if (session.Fingerprint != RequiredString(request,
+                                "fingerprint"))
+                            throw new InvalidOperationException(
+                                "Stale ReferenceNature Infested Automaton fingerprint.");
+                        var next = session.ResolveNext();
+                        var handle = StoreReferenceNatureInfestedAutomaton(next);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureInfestedAutomatonResult(
+                                next, handle, parentHandle) });
+                        break;
+                    }
+
+                    case "reference_nature_infested_automaton_fork":
+                    {
+                        var parentHandle = RequiredString(request,
+                            "reference_nature_infested_automaton_handle");
+                        var next = RequireReferenceNatureInfestedAutomaton(request)
+                            .Fork();
+                        var handle = StoreReferenceNatureInfestedAutomaton(next);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureInfestedAutomatonResult(
+                                next, handle, parentHandle) });
+                        break;
+                    }
+
+                    case "reference_nature_infested_automaton_save":
+                    {
+                        var session =
+                            RequireReferenceNatureInfestedAutomaton(request);
+                        Write(new { requestId, ok = true,
+                            schemaId =
+                                ReferenceNatureInfestedAutomatonSessionV111.CurrentSchemaId,
+                            snapshot =
+                                ReferenceNatureInfestedAutomatonSessionV111.Save(
+                                    session) });
+                        break;
+                    }
+
+                    case "reference_nature_infested_automaton_load":
+                    {
+                        var session =
+                            ReferenceNatureInfestedAutomatonSessionV111.Restore(
+                                RequiredString(request, "snapshot"));
+                        var handle = StoreReferenceNatureInfestedAutomaton(session);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureInfestedAutomatonResult(
+                                session, handle) });
+                        break;
+                    }
+
+                    case "reference_nature_infested_automaton_release_many":
+                    {
+                        if (!request.TryGetProperty(
+                                "reference_nature_infested_automaton_handles",
+                                out var handles) ||
+                            handles.ValueKind != JsonValueKind.Array)
+                            throw new ArgumentException(
+                                "reference_nature_infested_automaton_handles must be an array.");
+                        var released = 0;
+                        foreach (var element in handles.EnumerateArray())
+                        {
+                            if (element.ValueKind != JsonValueKind.String ||
+                                string.IsNullOrWhiteSpace(element.GetString()))
+                                throw new ArgumentException(
+                                    "Invalid ReferenceNature Infested Automaton handle.");
+                            if (referenceNatureInfestedAutomatonStates.Remove(
+                                    element.GetString()!))
+                                released++;
+                            referenceNatureInfestedAutomatonRunStateHandles.Remove(
                                 element.GetString()!);
                         }
                         Write(new { requestId, ok = true, released });

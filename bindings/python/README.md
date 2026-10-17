@@ -98,6 +98,17 @@ action completes. The session supports `status()`, `resolve_next()`, `fork()`,
 site IDs are advertised under the `glory_reflections` session kind. Laws remain
 `UNVERIFIED`; see the [Native event-context contract](../../docs/NATIVE_EVENT_CONTEXT_STOCHASTIC_CONTRACT.md).
 
+Infested Automaton's `study` and `touch_core` offers each have a one-draw
+continuation through `State.begin_reference_nature_infested_automaton(
+action_id, nature_seed=None)`. Resolve the pending card with `resolve_next()`;
+the committed session exposes `.state` and `.selected_card_id`, and supports
+`status()`, `fork()`, `save_snapshot()`, `release()`, and
+`Session.load_reference_nature_infested_automaton_snapshot()`. The law uses the
+implemented Silent reward pool, so pool fidelity and Native parity remain open.
+The site is advertised under the `infested_automaton` session kind, and direct
+Chance Law queries require `action_id="study"` or `action_id="touch_core"`.
+The law remains `UNVERIFIED`.
+
 `Session.stochastic_session_coverage` reports the site IDs admitted by the
 advertised ReferenceNature session schemas.
 `Session.supports_reference_nature_site(site_id, session="any")` checks that
