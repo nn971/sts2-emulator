@@ -52,6 +52,8 @@
 
 **S3 native event-context validation increment (2026-10-17):** The run stochastic owner now dispatches validation of each supported native event-context stream binding at the existing run invariant boundary. `NativeEventContextRngV111` remains the stream validator; this removes its event registry calls from the general invariant body without changing the native stream rules.
 
+**S3 event simulation envelope increment (2026-10-17):** `EventState.Simulation` now composes its existing mechanics and stochastic owners in one generic `SimulationStateV111` envelope. The prior `Mechanics` and `Stochastic` properties are projections onto that single composite value, and snapshot fields remain flattened.
+
 ## S1 precise design
 
 Implement a **read-only, outcome-blind** Chance Law query in `Sts2Emulator.Core` with:

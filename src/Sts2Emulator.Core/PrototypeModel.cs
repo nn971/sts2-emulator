@@ -2834,30 +2834,49 @@ public sealed record EventState(
     PrototypeControlledEventChoiceContinuationV111? ControlledChoice = null)
 {
     /// <summary>
-    /// Authoritative in-memory mechanical state for the active event. Existing
-    /// members remain the flattened snapshot and source-call representation.
+    /// Atomic in-memory mechanics/provider envelope for the active event.
+    /// Existing members remain the flattened snapshot and source-call
+    /// representation.
     /// </summary>
     [System.Text.Json.Serialization.JsonIgnore]
-    public EventMechanicsStateV111 Mechanics { get; init; } = new(
-        EventId, ChosenChoiceId, PendingDeckChoice, PendingPotionReplacement,
-        QueuedPotionIds, QueuedDeckChoices, OfferedChoiceIds, PendingReward,
-        DeferredHpLoss, NativePageIndex, DeferredGoldLoss,
-        RepyFirstChoiceId, RepyChestGroupsResolved,
-        NativeTanxTriEligible, NativeNonupeipeBraceletEligible);
+    public SimulationStateV111<EventMechanicsStateV111,
+        EventStochasticStateV111> Simulation { get; init; } = new(
+            new EventMechanicsStateV111(
+                EventId, ChosenChoiceId, PendingDeckChoice,
+                PendingPotionReplacement, QueuedPotionIds, QueuedDeckChoices,
+                OfferedChoiceIds, PendingReward, DeferredHpLoss,
+                NativePageIndex, DeferredGoldLoss, RepyFirstChoiceId,
+                RepyChestGroupsResolved, NativeTanxTriEligible,
+                NativeNonupeipeBraceletEligible),
+            new EventStochasticStateV111(
+                NativeEventRng, NativeEventRngProviderMode, ControlledChoice,
+                new EventCommittedRandomStateV111(
+                    DeferredCardId, NativeEventGold,
+                    NativeEventSecondaryGold, NativeEventPotionSlot,
+                    NativeDishId, NativeLastDishId, NativeDishCount,
+                    NativeDishRollPending, RepyChestPotionIds,
+                    RepyChestRelicIds, NativeTinkerType,
+                    NativeFuturePotionOffers)));
 
     /// <summary>
-    /// Authoritative in-memory stochastic state for the event. The existing
-    /// members below remain the flattened snapshot representation.
+    /// Compatibility projection of the mechanics part of <see cref="Simulation"/>.
     /// </summary>
     [System.Text.Json.Serialization.JsonIgnore]
-    public EventStochasticStateV111 Stochastic { get; init; } =
-        new(NativeEventRng, NativeEventRngProviderMode, ControlledChoice,
-            new EventCommittedRandomStateV111(
-                DeferredCardId, NativeEventGold, NativeEventSecondaryGold,
-                NativeEventPotionSlot, NativeDishId, NativeLastDishId,
-                NativeDishCount, NativeDishRollPending, RepyChestPotionIds,
-                RepyChestRelicIds, NativeTinkerType,
-                NativeFuturePotionOffers));
+    public EventMechanicsStateV111 Mechanics
+    {
+        get => Simulation.Mechanics;
+        init => Simulation = Simulation with { Mechanics = value };
+    }
+
+    /// <summary>
+    /// Compatibility projection of the provider part of <see cref="Simulation"/>.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public EventStochasticStateV111 Stochastic
+    {
+        get => Simulation.Stochastic;
+        init => Simulation = Simulation with { Stochastic = value };
+    }
 
     public string EventId
     {
