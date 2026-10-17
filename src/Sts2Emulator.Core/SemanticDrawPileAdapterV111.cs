@@ -238,6 +238,47 @@ public static class SemanticDrawPileAdapterV111
     }
 
     /// <summary>
+    /// Commits replacement of one physical draw-pile identity at a known
+    /// bottom-first index together with the provider's corresponding identity
+    /// substitution and any other affected zones.
+    /// </summary>
+    public static CombatState ApplyDrawPileReplacement(
+        CombatState combat,
+        int physicalIndex,
+        long replacedCardInstanceId,
+        long replacementCardInstanceId,
+        CombatCardZonesV111 nextCardZones)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(nextCardZones);
+        if (physicalIndex < 0 || physicalIndex >= combat.DrawPile.Length ||
+            combat.DrawPile[physicalIndex] != replacedCardInstanceId)
+            throw new InvalidDataException(
+                "Draw-pile replacement source does not match its physical index.");
+        if (replacedCardInstanceId == replacementCardInstanceId)
+            throw new InvalidDataException(
+                "Draw-pile replacement must use a different identity.");
+
+        var expectedDrawPile = (long[])combat.DrawPile.Clone();
+        expectedDrawPile[physicalIndex] = replacementCardInstanceId;
+        if (!nextCardZones.DrawPile.SequenceEqual(expectedDrawPile))
+            throw new InvalidDataException(
+                "Draw-pile replacement does not preserve surrounding physical order.");
+        if (Enum.GetValues<PrototypeCardZone>()
+            .Where(zone => zone != PrototypeCardZone.DrawPile)
+            .Any(zone => nextCardZones.CardsIn(zone)
+                .Contains(replacementCardInstanceId)))
+            throw new InvalidDataException(
+                "Draw-pile replacement duplicates its new identity in another zone.");
+
+        var semantic = ReplaceSemanticDrawPileInstance(
+            combat, replacedCardInstanceId, replacementCardInstanceId,
+            physicalIndex);
+        return ApplyCommittedZoneTransition(
+            combat, nextCardZones, semantic);
+    }
+
+    /// <summary>
     /// Publishes a physical mutation whose provider-side transition was
     /// already committed by a typed semantic operation. Correspondence is
     /// validated before the combined state is returned.

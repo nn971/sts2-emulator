@@ -14766,11 +14766,8 @@ public sealed partial class PrototypeGameEngine
                     ?? Array.Empty<long>();
                 var transformedDrawPile = combat.DrawPile.Select(id =>
                     id == instanceId ? replacementId : id).ToArray();
-                var semanticDeck = combat.DrawPile.Contains(instanceId)
-                    ? SemanticDrawPileAdapterV111.ReplaceSemanticDrawPileInstance(
-                        combat, instanceId, replacementId,
-                        Array.IndexOf(combat.DrawPile, instanceId))
-                    : combat.SemanticDeck;
+                var drawPileIndex = Array.IndexOf(
+                    combat.DrawPile, instanceId);
 
                 var nextCardZones = combat.Mechanics.CardZones with
                 {
@@ -14790,9 +14787,12 @@ public sealed partial class PrototypeGameEngine
                 // Transform creates a new physical card; it does not
                 // mutate the original card's persistent deck identity.
                 // Track that absence explicitly for run invariants.
-                combat = SemanticDrawPileAdapterV111.ApplyZoneTransition(
-                    combat with { SemanticDeck = semanticDeck },
-                    nextCardZones) with
+                combat = (drawPileIndex >= 0
+                    ? SemanticDrawPileAdapterV111.ApplyDrawPileReplacement(
+                        combat, drawPileIndex, instanceId, replacementId,
+                        nextCardZones)
+                    : SemanticDrawPileAdapterV111.ApplyZoneTransition(
+                        combat, nextCardZones)) with
                 {
                     Cards = combat.Cards
                         .Where(card => card.InstanceId != instanceId)
