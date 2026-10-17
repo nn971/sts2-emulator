@@ -56,6 +56,8 @@
 
 **S3 active event validation boundary increment (2026-10-17):** Active event invariant checks now live on `EventState.Validate`, called from the existing Event and Repy reward boundaries. The event owner delegates provider-owned outcome validation to `EventStochasticStateV111`; map history, phase routing and other run-level checks remain on the run invariant path.
 
+**S3 automatic pipeline simulation envelope increment (2026-10-17):** `PrototypeAutomaticPipelineContinuationState.Simulation` composes its step/opening mechanics cursor and `PrototypeAutomaticPipelineStochasticStateV111` resume values. Existing flattened properties remain the snapshot wire representation.
+
 ## S1 precise design
 
 Implement a **read-only, outcome-blind** Chance Law query in `Sts2Emulator.Core` with:

@@ -380,7 +380,6 @@ public enum PrototypeOpeningCombatStage
 public sealed record PrototypeAutomaticPipelineContinuationState(
     int NextStepIndex,
     PrototypeCombatEventKind? PendingPostDispatchEventKind = null,
-    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     PrototypeOpeningCombatStage? OpeningStage = null,
     int? ControlledDrawRemaining = null,
     int? ControlledDrawCostRemaining = null,
@@ -397,15 +396,59 @@ public sealed record PrototypeAutomaticPipelineContinuationState(
     PrototypeControlledEnemyActionContinuationV111? ControlledEnemyAction = null)
 {
     /// <summary>
-    /// Provider-owned decisions and resume cursors for this mechanics
-    /// continuation. Its members below retain their flattened snapshot names.
+    /// Atomic mechanics/provider envelope for the automatic pipeline. Existing
+    /// continuation members remain flattened snapshot projections.
     /// </summary>
     [System.Text.Json.Serialization.JsonIgnore]
-    public PrototypeAutomaticPipelineStochasticStateV111 Stochastic { get; init; } =
-        new(ControlledDrawRemaining, ControlledDrawCostRemaining,
-            ControlledSemanticDrawRemaining, ControlledSemanticDrawRequested,
-            ControlledSemanticBeforeHandDrawPending,
-            ControlledRecycleStratagemPending, ControlledEnemyAction);
+    public SimulationStateV111<PrototypeAutomaticPipelineMechanicsStateV111,
+        PrototypeAutomaticPipelineStochasticStateV111> Simulation { get; init; } =
+        new(
+            new PrototypeAutomaticPipelineMechanicsStateV111(
+                NextStepIndex, PendingPostDispatchEventKind, OpeningStage),
+            new PrototypeAutomaticPipelineStochasticStateV111(
+                ControlledDrawRemaining, ControlledDrawCostRemaining,
+                ControlledSemanticDrawRemaining,
+                ControlledSemanticDrawRequested,
+                ControlledSemanticBeforeHandDrawPending,
+                ControlledRecycleStratagemPending,
+                ControlledEnemyAction));
+
+    /// <summary>Mechanics projection of <see cref="Simulation"/>.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public PrototypeAutomaticPipelineMechanicsStateV111 Mechanics
+    {
+        get => Simulation.Mechanics;
+        init => Simulation = Simulation with { Mechanics = value };
+    }
+
+    /// <summary>Provider projection of <see cref="Simulation"/>.</summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public PrototypeAutomaticPipelineStochasticStateV111 Stochastic
+    {
+        get => Simulation.Stochastic;
+        init => Simulation = Simulation with { Stochastic = value };
+    }
+
+    public int NextStepIndex
+    {
+        get => Mechanics.NextStepIndex;
+        init => Mechanics = Mechanics with { NextStepIndex = value };
+    }
+
+    public PrototypeCombatEventKind? PendingPostDispatchEventKind
+    {
+        get => Mechanics.PendingPostDispatchEventKind;
+        init => Mechanics = Mechanics with
+        { PendingPostDispatchEventKind = value };
+    }
+
+    [System.Text.Json.Serialization.JsonIgnore(Condition =
+        System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public PrototypeOpeningCombatStage? OpeningStage
+    {
+        get => Mechanics.OpeningStage;
+        init => Mechanics = Mechanics with { OpeningStage = value };
+    }
 
     [System.Text.Json.Serialization.JsonIgnore(Condition =
         System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
