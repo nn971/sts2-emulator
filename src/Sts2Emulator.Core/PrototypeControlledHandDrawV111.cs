@@ -246,10 +246,7 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidDataException(
                 "Automatic hand-draw completion is not at a clean boundary.");
 
-        combat = RemovePlayerPowers(
-            combat, definition => definition.RemoveAfterHandDraw);
-        combat = DecrementPlayerPowers(
-            combat, definition => definition.DecrementAfterHandDraw);
+        combat = ApplyAutomaticHandDrawPostStagePowerTiming(combat);
         combat = combat with
         {
             AutomaticPipelineContinuation = cursor with
@@ -264,5 +261,14 @@ public sealed partial class PrototypeGameEngine
             }
         };
         return state with { World = world with { Combat = combat } };
+    }
+
+    private static CombatState ApplyAutomaticHandDrawPostStagePowerTiming(
+        CombatState combat)
+    {
+        combat = RemovePlayerPowers(
+            combat, definition => definition.RemoveAfterHandDraw);
+        return DecrementPlayerPowers(
+            combat, definition => definition.DecrementAfterHandDraw);
     }
 }

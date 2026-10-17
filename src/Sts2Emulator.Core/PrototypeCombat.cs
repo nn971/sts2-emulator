@@ -2874,12 +2874,8 @@ public sealed partial class PrototypeGameEngine
                     combat = resumed.Combat;
                 }
 
-                combat = RemovePlayerPowers(
-                    combat,
-                    definition => definition.RemoveAfterHandDraw);
-                combat = DecrementPlayerPowers(
-                    combat,
-                    definition => definition.DecrementAfterHandDraw);
+                combat = ApplyAutomaticHandDrawPostStagePowerTiming(
+                    combat);
                 if (resumedAfterSemanticHook)
                 {
                     var cursor = combat.AutomaticPipelineContinuation ??
