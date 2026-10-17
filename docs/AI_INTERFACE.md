@@ -78,9 +78,13 @@ ideas—reset, observe, legal actions, step, fork/batch—behind a versioned cro
 ruleset ID, AI schema ID, character ID, supported content IDs, effect/event kinds, and run phases.
 It also contains `stochasticV111`, a separately versioned capability envelope for the semantic
 Nature interface. The JSONL `hello` response advertises the same envelope as
-`stochasticCapabilities`. It lists the supported Chance Law sites and provider modes, along with
-the `UNVERIFIED` probability status; consumers should negotiate this instead of inferring law
-support from a generic semantic session.
+`stochasticCapabilities`. It lists the supported Chance Law sites and provider modes. The legacy
+`ProbabilityStatus` field remains the conservative `UNVERIFIED` default, while
+`ProbabilityStatuses` enumerates statuses available on individual laws
+(`UNVERIFIED` and `SOURCE_VERIFIED`); consumers should negotiate these instead
+of inferring law support from a generic semantic session. `SOURCE_VERIFIED`
+identifies source-audited sampling math under the law's declared input model,
+not seeded parity or stream-derivation evidence.
 
 The developer CLI prints the same manifest with:
 

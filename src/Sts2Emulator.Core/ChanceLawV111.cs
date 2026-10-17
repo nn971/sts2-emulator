@@ -18,6 +18,10 @@ public sealed record StochasticCapabilityManifestV111(
     string[] ProviderModes,
     string[] ReferenceNatureOperations)
 {
+    /// <summary>Individual Chance Laws carry one of these statuses. The
+    /// legacy ProbabilityStatus field remains the conservative default.</summary>
+    public string[] ProbabilityStatuses { get; init; } =
+        [ChanceLawV111.UnverifiedStatus];
     public string ReferenceNatureRunActionSessionSchemaId { get; init; } =
         ReferenceNatureRunActionSessionV111.CurrentSchemaId;
     public string ReferenceNatureEventChoiceSessionSchemaId { get; init; } =
@@ -198,6 +202,11 @@ public static class StochasticCapabilitiesV111
             "reference_nature_treasure_release_many"
         ])
     {
+        ProbabilityStatuses =
+        [
+            ChanceLawV111.UnverifiedStatus,
+            ChanceLawV111.SourceVerifiedStatus
+        ],
         ReferenceNatureRunActionSessionSchemaId =
             ReferenceNatureRunActionSessionV111.CurrentSchemaId,
         ReferenceNatureEventChoiceSessionSchemaId =
@@ -256,6 +265,7 @@ public sealed record ChanceLawV111(
 {
     public const string CurrentSchemaId = "sts2-v111-chance-law-v1";
     public const string UnverifiedStatus = "UNVERIFIED";
+    public const string SourceVerifiedStatus = "SOURCE_VERIFIED";
 
     public ChanceLawV111 Fork() => this with
     {
@@ -273,7 +283,7 @@ public sealed record ChanceLawV111(
             string.IsNullOrWhiteSpace(SupportFingerprint) ||
             string.IsNullOrWhiteSpace(ConditioningPolicyId) ||
             string.IsNullOrWhiteSpace(ConditioningFingerprint) ||
-            ProbabilityStatus != UnverifiedStatus ||
+            ProbabilityStatus is not (UnverifiedStatus or SourceVerifiedStatus) ||
             string.IsNullOrWhiteSpace(ProbabilityProvenance) ||
             Outcomes is not { Length: > 0 } || TotalWeight <= 0)
             throw new InvalidDataException("Invalid Chance Law envelope.");
@@ -2165,7 +2175,8 @@ public static partial class ChanceLawEngineV111
         string eventId, string siteId, string operationKind, string ownerId,
         int ordinal, string conditioningPolicyId,
         string conditioningFingerprint, string probabilityProvenance,
-        ChanceLawOutcomeV111[] outcomes)
+        ChanceLawOutcomeV111[] outcomes,
+        string probabilityStatus = ChanceLawV111.UnverifiedStatus)
     {
         var totalWeight = outcomes.Aggregate(0L,
             (total, outcome) => checked(total + outcome.Weight));
@@ -2180,14 +2191,14 @@ public static partial class ChanceLawEngineV111
             SupportFingerprint = supportFingerprint,
             ConditioningPolicyId = conditioningPolicyId,
             ConditioningFingerprint = conditioningFingerprint,
-            ProbabilityStatus = ChanceLawV111.UnverifiedStatus,
+            ProbabilityStatus = probabilityStatus,
             ProbabilityProvenance = probabilityProvenance
         });
         var law = new ChanceLawV111(
             ChanceLawV111.CurrentSchemaId, lawId, eventId, siteId,
             operationKind, ownerId, ordinal, supportFingerprint,
             conditioningPolicyId, conditioningFingerprint,
-            ChanceLawV111.UnverifiedStatus, probabilityProvenance,
+            probabilityStatus, probabilityProvenance,
             outcomes, totalWeight);
         law.Validate();
         return law;

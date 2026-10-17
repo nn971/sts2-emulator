@@ -13,7 +13,11 @@ request must be a bounded integer with support 0 through 7, ordinal 0, and
 owner `event:punch_off:construct_combat_id:<CombatId>`. The request stream must
 be the persisted `context.monster.<CombatId>` stream for that creature. The
 chance law presents the corresponding 2–9 HP reductions as `hp_offset:`
-outcomes with equal weights; those weights remain **UNVERIFIED**.
+outcomes with equal weights. The mapping `NextInt(8) = (int)(NextDouble() * 8)`
+is source-audited, and the 53-bit `NextDouble` grid divides into eight bins of
+exactly `2^50` values each, so this bounded-index law is **SOURCE_VERIFIED**
+under the uniform-grid input model. This does not verify run-seed frequencies,
+monster-context seed derivation, or seeded result/cursor parity.
 
 Queries require the complete preceding offset-index prefix and replay the
 fight action on a fork to recheck current eligibility and request ownership.
@@ -35,6 +39,6 @@ cursors, the run-stream cursors observed by the Native probe, and the event
 cursor. The combat state and ReferenceNature cursor commit together. A later
 Punch Off reward session is a separate boundary after the player wins.
 
-The contract does not claim source probability calibration, exact Native
-monster context derivation, or seeded result/cursor parity. Those require the
-separate source and fidelity work tracked by the migration matrix.
+The contract does not claim exact Native monster context derivation or seeded
+result/cursor parity. Those require the separate fidelity work tracked by the
+migration matrix.

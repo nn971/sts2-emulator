@@ -156,6 +156,11 @@ internal static class NativePunchOffFightPlanBuilderV111
 
 public static partial class ChanceLawEngineV111
 {
+    public const string NativePunchOffFightProbabilityProvenance =
+        "v0.111.0 Rng.NextInt(8) multiplies the uniform 53-bit NextDouble " +
+        "grid by eight; each outcome owns exactly 2^50 of 2^53 values. " +
+        "Run-seed and monster-context parity are outside this claim.";
+
     public static string[] NativePunchOffFightQuerySiteIds =>
         ["event.punch_off.construct_hp_offset.index_draw"];
 
@@ -192,8 +197,9 @@ public static partial class ChanceLawEngineV111
         return Create(eventId, siteId, request.OperationKind,
             request.OwnerId, ordinal,
             "native-punch-off-construct-hp-prefix-v1", conditioning,
-            "uniform-bounded-index-under-unverified-monster-local-source-law",
-            outcomes);
+            NativePunchOffFightProbabilityProvenance,
+            outcomes,
+            ChanceLawV111.SourceVerifiedStatus);
     }
 }
 

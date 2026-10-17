@@ -149,6 +149,15 @@ A native Fisher–Yates shuffle and Nature's later `draw_card` events can expres
 
 A chance-law query takes a **pre-outcome** semantic operation, legal support/weights from mechanics, and a declared information/constraint state. It returns a versioned conditional distribution `p` with ordered stable outcome IDs, exact/compact weights or probabilities, support/constraint fingerprints, conditioning policy and probability **provenance** (e.g., `UNVERIFIED` or source-verified).
 
+Probability status belongs to each Chance Law. `UNVERIFIED` means its mapping or
+sampling law has not been independently established. `SOURCE_VERIFIED` means
+the pinned source's sampling transform has been audited mathematically under
+the provenance's declared input model. It does not by itself establish a
+seeded stream's frequency distribution, context-seed derivation, or result and
+cursor parity; those remain separate fidelity claims. Capability manifests
+advertise supported statuses, while a legacy single-status field may remain a
+conservative default for compatibility.
+
 - Its result must be independent of the outcome eventually selected by Native, ReferenceNature or learned Nature.
 - Native provider's already-committed hidden realization is **not** a Chance Law input for Nature's pre-revelation distribution. Conditioning on a complete private realization would instead produce a degenerate distribution; it answers a different question.
 - For uniform unknown permutations, sequential sampling over remaining eligible physical instances can produce the correct joint law, subject to known positions, shared pools, forced insertions, observations and other constraints. Compute the conditional law of the remaining random object, not merely an arbitrary uniform distribution over listed candidates.
