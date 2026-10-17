@@ -97,22 +97,27 @@ public static class NatureBoundaryMetadataV111
                 decision.NativeCursorAfter is not null)
                 throw new InvalidDataException("Nature transcript is not controlled.");
             var r = decision.Request;
+            var eventId = EventId(r, transcript);
+            var law = ChanceLawEngineV111.QueryRandomIndex(eventId, r);
             transcript.Add(new NatureReplayChoiceV111(
-                EventId(r, transcript), r.SiteId, r.StreamId, r.OwnerId,
+                eventId, r.SiteId, r.StreamId, r.OwnerId,
                 r.Ordinal, r.OperationKind, r.SourceVersion,
                 (int[])r.OrderedCandidates.Clone(), r.BoundedCount,
-                decision.SelectedIndex));
+                decision.SelectedIndex, law.ProbabilityStatus));
         }
         NatureBoundaryEventV111? eventView = null;
         if (pending is not null)
         {
             pending.Validate();
+            var eventId = EventId(pending, transcript);
+            var law = ChanceLawEngineV111.QueryRandomIndex(eventId, pending);
             eventView = new NatureBoundaryEventV111(
-                EventId(pending, transcript), pending.SiteId,
+                eventId, pending.SiteId,
                 pending.StreamId, pending.OwnerId, pending.Ordinal,
                 pending.OperationKind, pending.SourceVersion,
                 (int[])pending.OrderedCandidates.Clone(), pending.BoundedCount,
-                pending.SupportCount, CanonicalJson.Sha256(pending));
+                pending.SupportCount, CanonicalJson.Sha256(pending),
+                law.ProbabilityStatus, law.LawId);
         }
         return new NatureBoundaryViewV111(
             SchemaId, kind, mode, pending is null, fingerprint,

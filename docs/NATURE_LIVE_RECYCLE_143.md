@@ -17,9 +17,11 @@ transcript.
 `SemanticCombatDrawEngineV111` resumes the saved draw stage after the final
 swap, applies Perfect Fit ordering and after-shuffle effects, then continues
 the requested draw count. Other `DrawCards` callers that need a recycle do not
-have this continuation and fail closed. The conditional probability remains
-`UNVERIFIED`; neither source pool description nor current mechanics coverage
-calibrates it against the native game.
+have this continuation and fail closed. `NatureBoundaryMetadataV111` now
+attaches the generic request law's ID and status to each pending swap and
+transcript entry. Canonical Native `run.shuffle` requests have exact `NextInt`
+53-bit grid masses and a `SOURCE_VERIFIED` bounded transform law. Legacy
+requests and full seeded recycle parity remain `UNVERIFIED`.
 
 The actual combat `DrawPlayerHand` stage now executes pre-draw hooks and prior card draws until the draw pile becomes empty while discarded cards are still eligible. It persists the current `RunState`, remaining hand-draw count, and automatic-pipeline cursor. The controller then exposes a series of ordered finite `combat.draw_pile_recycle.swap_index` tickets on `run.shuffle`.
 
@@ -34,6 +36,6 @@ The controlled snapshot records chronological live events spanning intent and re
 - Supported: opt-in Hive/Glory starter combat fixture; controlled initial HP, initial intents, opening shuffle, next-turn intent tickets, and end-turn hand-draw recycling.
 - Other calls to `DrawCards` that need recycling fail explicitly until their own resumable operation records exist.
 - Stratagem and generated after-shuffle relic insertions after an end-turn recycle are supported. Random-cost draw effects outside the hand-draw stage, random targeting/autoplay, summons and nested hooks still require dedicated control/migration.
-- All source conditional probabilities remain `UNVERIFIED`; native parity remains untested here.
+- The Native bounded-index transform is `SOURCE_VERIFIED`; native seeded recycle parity remains untested here. Other source conditional probabilities remain `UNVERIFIED`.
 
 **Issue status:** #143 stays open. See [the implementation status](NATURE_ISSUE_143_IMPLEMENTATION_STATUS.md) for earlier milestones. The desired RNG and Inspector plans are unchanged.
