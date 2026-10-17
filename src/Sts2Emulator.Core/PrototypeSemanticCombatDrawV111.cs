@@ -133,6 +133,38 @@ public sealed partial class PrototypeGameEngine
             string recycleSite,
             string recycleOperation)
     {
+        var draw = CreateSemanticDrawResultFrame(
+            drawn.RemainingCount, fromHandDraw, eventDepth,
+            automaticHandDrawRequested is not null);
+        return ResolveControlledSemanticDrawResult(
+            run, drawn, draw, continuation: null,
+            automaticHandDrawRequested, recycleSite, recycleOperation);
+    }
+
+    private static PrototypeControlledSemanticDrawV111
+        CreateSemanticDrawResultFrame(
+            int remainingCount, bool fromHandDraw, int eventDepth,
+            bool automatic)
+    {
+        return new PrototypeControlledSemanticDrawV111(
+            remainingCount, fromHandDraw, eventDepth,
+            DrawnCardKeyword: null,
+            DeferredKeywordCardInstanceIds: [],
+            StratagemSelectionPending: false,
+            StandaloneSemanticDrawSegment: !automatic,
+            AutomaticSemanticHandDrawSegment: automatic);
+    }
+
+    private static (RunState Run, int RemainingCount)
+        ResolveControlledSemanticDrawResult(
+            RunState run,
+            PrototypeDrawCardsResult drawn,
+            PrototypeControlledSemanticDrawV111 draw,
+            PrototypeChoiceResolutionContinuationState? continuation,
+            int? automaticHandDrawRequested,
+            string recycleSite,
+            string recycleOperation)
+    {
         var world = RequireWorld(run);
         var advanced = run with
         {
@@ -141,10 +173,14 @@ public sealed partial class PrototypeGameEngine
         };
         var boundary = drawn.BoundaryKind;
         bool automatic = automaticHandDrawRequested is not null;
+        bool nestedEffect = continuation is not null;
+        var outerContinuation = continuation ??
+            EmptyDrawChoiceContinuation();
         if (boundary == PrototypeDrawCardsBoundaryKind.AfterShuffleInsertions)
-            return SuspendSemanticDrawAfterShuffleInsertions(
-                advanced, drawn, fromHandDraw,
-                eventDepth, automaticHandDrawRequested);
+            return SuspendDrawCardsAfterShuffleInsertion(
+                advanced, drawn, draw, outerContinuation,
+                automaticHandDrawRequested,
+                accumulateDrawnCardIds: nestedEffect);
 
         if (boundary ==
             PrototypeDrawCardsBoundaryKind.NestedCardDrawnChoice)
@@ -154,8 +190,16 @@ public sealed partial class PrototypeGameEngine
                     advanced, drawn.Player, drawn.Combat,
                     drawn.RemainingCount, automaticHandDrawRequested!.Value),
                     drawn.RemainingCount);
+            if (nestedEffect)
+                return (SuspendDrawCardsAtCardDrawnChoice(
+                    advanced, drawn.Player, drawn.Combat,
+                    drawn.RemainingCount, draw, outerContinuation,
+                    drawn.DrawnCardInstanceIds,
+                    accumulateDrawnCardIds: true,
+                    markStandaloneHookChoice: false),
+                    drawn.RemainingCount);
             return (SuspendStandaloneSemanticDrawForHookChoice(
-                advanced, drawn, fromHandDraw), drawn.RemainingCount);
+                advanced, drawn, draw.FromHandDraw), drawn.RemainingCount);
         }
 
         if (boundary == PrototypeDrawCardsBoundaryKind.ControlledRecycle)
@@ -165,21 +209,57 @@ public sealed partial class PrototypeGameEngine
 
         if (boundary == PrototypeDrawCardsBoundaryKind.ShuffleSelection)
         {
-            if (automatic)
-                return (SuspendSemanticAutomaticDrawForStratagemSelection(
-                    advanced, drawn, automaticHandDrawRequested!.Value),
-                    drawn.RemainingCount);
-            var semanticDraw = new PrototypeControlledSemanticDrawV111(
-                drawn.RemainingCount, fromHandDraw, eventDepth,
-                DrawnCardKeyword: null,
-                DeferredKeywordCardInstanceIds: [],
-                StratagemSelectionPending: false,
-                StandaloneSemanticDrawSegment: true);
             return (SuspendDrawCardsForStratagemSelection(
-                advanced, drawn, semanticDraw,
-                EmptyDrawChoiceContinuation(),
-                automaticHandDrawRequested: null,
-                accumulateDrawnCardIds: false), drawn.RemainingCount);
+                advanced, drawn, draw, outerContinuation,
+                automaticHandDrawRequested,
+                accumulateDrawnCardIds: nestedEffect),
+                drawn.RemainingCount);
+        }
+
+        if (nestedEffect)
+        {
+            var nextDraw = AdvanceControlledSemanticDrawFrame(
+                draw, drawn.RemainingCount, drawn.DrawnCardInstanceIds,
+                accumulateDrawnCardIds: true);
+            var deferredKeywordIds =
+                nextDraw.DeferredKeywordCardInstanceIds ?? [];
+            var combat = drawn.Combat;
+            if (boundary ==
+                PrototypeDrawCardsBoundaryKind.ControlledDrawCost)
+            {
+                combat = AttachControlledSemanticDrawCost(
+                    combat, nextDraw, outerContinuation);
+                return (advanced with
+                {
+                    World = world with { Combat = combat }
+                }, drawn.RemainingCount);
+            }
+            if (boundary == PrototypeDrawCardsBoundaryKind.SemanticDraw)
+            {
+                combat = MakeControlledSemanticDrawChoice(
+                    combat, nextDraw, outerContinuation);
+                return (advanced with
+                {
+                    World = world with { Combat = combat }
+                }, drawn.RemainingCount);
+            }
+            if (drawn.RemainingCount != 0)
+                throw new InvalidDataException(
+                    "Semantic card-effect draw stopped without a pending boundary.");
+
+            if (draw.DrawnCardKeyword is { } keyword)
+            {
+                foreach (var cardInstanceId in deferredKeywordIds)
+                    combat = ApplyCardKeywordOverride(
+                        combat, cardInstanceId, keyword);
+            }
+            var resumed = ResumeChoiceResolutionContinuation(
+                drawn.Player, combat, run.Rng, outerContinuation);
+            return (run with
+            {
+                Player = resumed.Player,
+                World = world with { Combat = resumed.Combat }
+            }, 0);
         }
 
         bool pending = boundary is
@@ -189,32 +269,6 @@ public sealed partial class PrototypeGameEngine
             ? CommitSemanticAutomaticHandDrawProgress(
                 advanced, drawn.RemainingCount, pending)
             : (advanced, pending ? drawn.RemainingCount : 0);
-    }
-
-    private static (RunState Run, int RemainingCount)
-        SuspendSemanticDrawAfterShuffleInsertions(
-            RunState run,
-            PrototypeDrawCardsResult drawn,
-            bool fromHandDraw,
-            int eventDepth,
-            int? automaticHandDrawRequested = null)
-    {
-        bool automatic = automaticHandDrawRequested is not null;
-        if (automatic && (!fromHandDraw || eventDepth != 0 ||
-                          automaticHandDrawRequested is not > 0))
-            throw new InvalidDataException(
-                "Automatic after-shuffle draw cursor is inconsistent.");
-        var semanticDraw = new PrototypeControlledSemanticDrawV111(
-            drawn.RemainingCount, fromHandDraw, eventDepth,
-            DrawnCardKeyword: null,
-            DeferredKeywordCardInstanceIds: [],
-            StratagemSelectionPending: false,
-            StandaloneSemanticDrawSegment: !automatic,
-            AutomaticSemanticHandDrawSegment: automatic);
-        return SuspendDrawCardsAfterShuffleInsertion(
-            run, drawn, semanticDraw, EmptyDrawChoiceContinuation(),
-            automaticHandDrawRequested,
-            accumulateDrawnCardIds: false);
     }
 
     private static (RunState Run, int RemainingCount)
@@ -275,21 +329,6 @@ public sealed partial class PrototypeGameEngine
             Player = drawn.Player,
             World = world with { Combat = combat }
         }, drawn.RemainingCount);
-    }
-
-    private static RunState SuspendSemanticAutomaticDrawForStratagemSelection(
-        RunState run, PrototypeDrawCardsResult drawn, int requested)
-    {
-        var draw = new PrototypeControlledSemanticDrawV111(
-            drawn.RemainingCount, FromHandDraw: true, EventDepth: 0,
-            DrawnCardKeyword: null,
-            DeferredKeywordCardInstanceIds: [],
-            StratagemSelectionPending: false,
-            AutomaticSemanticHandDrawSegment: true);
-        var continuation = EmptyDrawChoiceContinuation();
-        return SuspendDrawCardsForStratagemSelection(
-            run, drawn, draw, continuation, requested,
-            accumulateDrawnCardIds: false);
     }
 
     private static RunState SuspendDrawCardsForStratagemSelection(
