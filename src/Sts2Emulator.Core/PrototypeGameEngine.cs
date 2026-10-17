@@ -97,9 +97,21 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                 World = PrototypeNativeRelicGrabBag.PruneOwned(
                     next.World, next.Player)
             };
-        return new TransitionResult(
-            NativeRunRngV111.ReconcileAfterStep(state, next),
-            Array.Empty<string>());
+        next = NativeRunRngV111.ReconcileAfterStep(state, next);
+        if (next.ControlledEventRewardChoice is { } rewardChoice)
+        {
+            next = next with
+            {
+                ControlledEventRewardChoice = rewardChoice with
+                {
+                    PartialState = next with
+                    {
+                        ControlledEventRewardChoice = null
+                    }
+                }
+            };
+        }
+        return new TransitionResult(next, Array.Empty<string>());
     }
 
     private static IReadOnlyList<GameAction>
