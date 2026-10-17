@@ -311,6 +311,8 @@ public sealed record SemanticPilotCombatV111(
 
     public void Validate()
     {
+        this.Mechanics.Transition.Validate(
+            PrototypeMechanicsTransitionKindV111.SemanticPilot);
         if (this.Mode != SemanticPilotCombatV111.SchemaId ||
             this.History is null ||
             this.NativeEncounterEntry != this.OpeningSource.Origin

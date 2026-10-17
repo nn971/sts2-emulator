@@ -176,6 +176,8 @@ public sealed record SemanticCombatDrawV111(
 
     public void Validate()
     {
+        this.Mechanics.Transition.Validate(
+            PrototypeMechanicsTransitionKindV111.SemanticCombatDraw);
         this.Stochastic.Validate();
         var randomPileCardPending = this.RandomPileCardPending;
         var drawInsertionPending = this.DrawInsertionPending;

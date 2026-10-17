@@ -221,6 +221,8 @@ public sealed record SemanticEndTurnV111(
 
     public void Validate()
     {
+        this.Mechanics.Transition.Validate(
+            PrototypeMechanicsTransitionKindV111.SemanticEndTurn);
         this.Stochastic.Validate();
         if (this.EnemyActionPending is not null)
         {
