@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace Sts2Emulator.Core;
 
 /// <summary>
@@ -201,7 +203,10 @@ public static class PrototypeNativeOrobasRelics
             rng,
             "event",
             "relic.sand_castle.acquisition_upgrade.shuffle_swap_index",
-            "player:0:sand_castle:eligible_cards");
+            "player:0:sand_castle:eligible_cards",
+            controlledCandidateLabel: instanceId =>
+                "card-instance:" + instanceId.ToString(
+                    CultureInfo.InvariantCulture));
         var selected = candidates.Take(6).ToHashSet();
         if (selected.Count == 0)
             return player;

@@ -1,3 +1,6 @@
+using System;
+using System.Linq;
+
 namespace Sts2Emulator.Core;
 
 /// <summary>
@@ -47,7 +50,8 @@ public static class NativeFisherYatesV111
         string streamId,
         string ownerId,
         string siteId,
-        int ordinalOffset = 0)
+        int ordinalOffset = 0,
+        Func<T, string>? controlledCandidateLabel = null)
     {
         ArgumentNullException.ThrowIfNull(values);
         ArgumentNullException.ThrowIfNull(streams);
@@ -66,8 +70,27 @@ public static class NativeFisherYatesV111
                 siteId, streamId, ownerId, ordinalOffset + decisions.Count,
                 Array.Empty<int>(), OperationKind: "bounded_integer",
                 BoundedCount: end + 1);
-            var decision = StochasticProviderScopeV111.ResolveIndex(
-                provider, request, streams);
+            RandomIndexDecisionV111 decision;
+            if (controlledCandidateLabel is not null
+                && ControlledEventChoiceReplayV111.IsActive
+                && ControlledEventChoiceReplayV111.IsEventChoiceSite(siteId))
+            {
+                var candidateLabels = values.Take(end + 1)
+                    .Select(controlledCandidateLabel).ToArray();
+                if (candidateLabels.Any(string.IsNullOrWhiteSpace))
+                    throw new InvalidOperationException(
+                        "Controlled shuffle candidate labels must be nonempty.");
+                using var candidateScope =
+                    ControlledEventChoiceReplayV111.DescribeCandidates(
+                        candidateLabels);
+                decision = StochasticProviderScopeV111.ResolveIndex(
+                    provider, request, streams);
+            }
+            else
+            {
+                decision = StochasticProviderScopeV111.ResolveIndex(
+                    provider, request, streams);
+            }
             decision.Validate();
             (values[end], values[decision.SelectedIndex]) =
                 (values[decision.SelectedIndex], values[end]);

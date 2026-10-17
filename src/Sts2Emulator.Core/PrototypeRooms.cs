@@ -1386,7 +1386,8 @@ public sealed partial class PrototypeGameEngine
         string? relicId) =>
         relicId is not null
         && PrototypeContent.Relics.TryGetValue(relicId, out var relic)
-        && (relic.RunTriggers
+        && (relicId == PrototypeNativeOrobasRelics.SandCastleId
+            || (relic.RunTriggers
             ?? Array.Empty<PrototypeRelicRunTriggerSpec>())
             .Where(trigger => trigger.EventKind ==
                 PrototypeRunEventKind.RelicAcquired)
@@ -1395,7 +1396,7 @@ public sealed partial class PrototypeGameEngine
                 PrototypeRunEffectKind.TransformFirstCardOfId or
                 PrototypeRunEffectKind.GainRandomRareCard or
                 PrototypeRunEffectKind.GainRandomPotion or
-                PrototypeRunEffectKind.FillPotionSlots);
+                PrototypeRunEffectKind.FillPotionSlots));
 
     private static RunState StepEvent(
         RunState state,

@@ -16,9 +16,10 @@ effects finish; earlier effects are not replayed.
 
 The serialized request includes site, legacy stream, owner, ordinal, operation
 kind and ordered integer support. Candidate labels identify event card
-instances, card models, potion models or eligible relics where those identities
-are the request support; swap positions and rarity tickets retain numeric
-labels. Completed controlled decisions remain in
+instances, card models, potion models, eligible relics, and Sand Castle's
+physical deck-card instances where those identities describe the request
+support; other swap positions and rarity tickets retain numeric labels.
+Completed controlled decisions remain in
 `RunState.ControlledEventChoiceHistory`; pending and
 completed transcripts identify `controlled-v111` outcomes and retain
 `UNVERIFIED` probability status. Controlled outcomes do not advance the legacy
@@ -56,6 +57,9 @@ The supported event-choice sites are:
   `relic.acquisition.random_potion.model` and
   `run.potion.fill_empty_slots.model` for random effects triggered by an
   event-gained relic
+- `relic.sand_castle.acquisition_upgrade.shuffle_swap_index` for the
+  event-gained Sand Castle's conditional shuffle over eligible physical deck
+  cards; each swap carries the current ordered instance-ID labels
 - `reward.card_transform.replacement.index_draw` for a direct persistent-card
   transform effect or an event-gained relic that transforms persistent cards
   on acquisition

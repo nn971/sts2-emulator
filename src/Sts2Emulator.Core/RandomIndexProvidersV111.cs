@@ -306,7 +306,8 @@ public static class LegacyFisherYatesV111
         string streamId,
         string siteId,
         string ownerId,
-        int? ordinal = null)
+        int? ordinal = null,
+        Func<T, string>? controlledCandidateLabel = null)
     {
         ArgumentNullException.ThrowIfNull(values);
         ArgumentNullException.ThrowIfNull(streams);
@@ -347,7 +348,8 @@ public static class LegacyFisherYatesV111
             streamId,
             ownerId,
             siteId,
-            callOrdinal);
+            callOrdinal,
+            controlledCandidateLabel);
     }
 }
 
