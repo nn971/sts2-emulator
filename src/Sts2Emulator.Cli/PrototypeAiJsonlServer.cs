@@ -113,6 +113,12 @@ internal static class PrototypeAiJsonlServer
         var referenceNatureInfestedAutomatonRunStateHandles =
             new Dictionary<string, string>(StringComparer.Ordinal);
         long nextReferenceNatureInfestedAutomatonHandle = 1;
+        var referenceNaturePunchOffRewardStates =
+            new Dictionary<string, ReferenceNaturePunchOffRewardSessionV111>(
+                StringComparer.Ordinal);
+        var referenceNaturePunchOffRewardRunStateHandles =
+            new Dictionary<string, string>(StringComparer.Ordinal);
+        long nextReferenceNaturePunchOffRewardHandle = 1;
         var referenceNatureMerchantStates =
             new Dictionary<string, ReferenceNatureMerchantSessionV111>(
                 StringComparer.Ordinal);
@@ -417,6 +423,30 @@ internal static class PrototypeAiJsonlServer
                 ? session
                 : throw new InvalidOperationException(
                     "Unknown ReferenceNature Infested Automaton session handle: " +
+                    handle);
+        }
+
+        string StoreReferenceNaturePunchOffReward(
+            ReferenceNaturePunchOffRewardSessionV111 session)
+        {
+            var handle = "po" + nextReferenceNaturePunchOffRewardHandle++;
+            referenceNaturePunchOffRewardStates.Add(handle, session.Fork());
+            if (session.Complete)
+                referenceNaturePunchOffRewardRunStateHandles.Add(handle,
+                    Store(session.Run.Fork()));
+            return handle;
+        }
+
+        ReferenceNaturePunchOffRewardSessionV111
+            RequireReferenceNaturePunchOffReward(JsonElement request)
+        {
+            var handle = RequiredString(request,
+                "reference_nature_punch_off_reward_handle");
+            return referenceNaturePunchOffRewardStates.TryGetValue(handle,
+                    out var session)
+                ? session
+                : throw new InvalidOperationException(
+                    "Unknown ReferenceNature Punch Off reward session handle: " +
                     handle);
         }
 
@@ -1060,6 +1090,74 @@ internal static class PrototypeAiJsonlServer
             };
         }
 
+        object ReferenceNaturePunchOffRewardResult(
+            ReferenceNaturePunchOffRewardSessionV111 session,
+            string handle, string? parent = null)
+        {
+            var law = session.PendingLaw;
+            var reward = session.Run.World?.Reward;
+            var selectedRelic = session.DecisionTranscript.Length > 0
+                ? session.DecisionTranscript[0].OutcomeId["relic:".Length..]
+                : null;
+            var selectedPotion = session.DecisionTranscript.Length > 1
+                ? session.DecisionTranscript[1].OutcomeId["potion:".Length..]
+                : null;
+            var currentSiteId = law?.SiteId ??
+                (session.DecisionTranscript.Length == 0 ? null :
+                    session.DecisionTranscript.Length == 1
+                        ? "event.punch_off.relic_reward.index_draw"
+                        : "event.punch_off.potion_reward.index_draw");
+            var entryRewardsStream = session.Origin.NativeRunRng?.Streams
+                .SingleOrDefault(item => item.StreamId ==
+                    "player.rewards");
+            var finalRewardsStream = session.Run.NativeRunRng?.Streams
+                .SingleOrDefault(item => item.StreamId ==
+                    "player.rewards");
+            return new
+            {
+                ok = true,
+                schemaId =
+                    ReferenceNaturePunchOffRewardSessionV111.CurrentSchemaId,
+                referenceNaturePunchOffRewardHandle = handle,
+                stateHandle = referenceNaturePunchOffRewardRunStateHandles
+                    .GetValueOrDefault(handle),
+                parent,
+                fingerprint = session.Fingerprint,
+                runFingerprint = CanonicalJson.Sha256(session.Run),
+                actionId = session.ActionId,
+                eventId = law?.EventId ??
+                    session.DecisionTranscript.LastOrDefault()?.EventId,
+                sourceEventId = PrototypeNativePunchOff.EventId,
+                siteId = currentSiteId,
+                runPhase = session.Run.Phase.ToString(),
+                boundary = session.Complete ? "committed" : "nature",
+                nextOrdinal = session.DecisionTranscript.Length,
+                pending = law is { } pendingLaw ? new
+                {
+                    kind = "punch_off_combat_reward_random_choice",
+                    eventId = pendingLaw.EventId,
+                    siteId = pendingLaw.SiteId,
+                    operationKind = pendingLaw.OperationKind,
+                    supportFingerprint = pendingLaw.SupportFingerprint,
+                    boundaryFingerprint = pendingLaw.EventId,
+                    chanceLaw = pendingLaw,
+                    probabilityStatus = pendingLaw.ProbabilityStatus
+                } : null,
+                selectedRelic,
+                selectedPotion,
+                rewardRelic = reward?.RelicOption,
+                rewardPotion = reward?.PotionOption,
+                playerRewardsCursorAdvanced = session.Complete &&
+                    (entryRewardsStream is null || finalRewardsStream is null ||
+                     NativeRngV111.ToSnapshot(entryRewardsStream) !=
+                     NativeRngV111.ToSnapshot(finalRewardsStream)),
+                decisionTranscript = session.DecisionTranscript,
+                natureProvider = ReferenceNatureV111.ProviderId,
+                natureSampleCount = session.NatureState.SampleCount,
+                probabilityStatus = ChanceLawV111.UnverifiedStatus
+            };
+        }
+
         object ReferenceNatureTreasureResult(
             ReferenceNatureTreasureSessionV111 session, string handle,
             string? parent = null)
@@ -1628,6 +1726,10 @@ internal static class PrototypeAiJsonlServer
                     .TryGetValue(handle, out var infestedAutomatonSession) =>
                     ReferenceNatureInfestedAutomatonResult(
                         infestedAutomatonSession, handle),
+                "punch_off_reward" when referenceNaturePunchOffRewardStates
+                    .TryGetValue(handle, out var punchOffRewardSession) =>
+                    ReferenceNaturePunchOffRewardResult(
+                        punchOffRewardSession, handle),
                 "merchant" when referenceNatureMerchantStates.TryGetValue(
                     handle, out var merchantSession) =>
                     ReferenceNatureMerchantResult(merchantSession, handle),
@@ -1644,7 +1746,8 @@ internal static class PrototypeAiJsonlServer
                     "event_choice" or "ancient_offer" or "merchant" or
                     "neow_offer" or "trash_heap" or "tablet_of_truth" or
                     "trial" or "event_shuffle" or "glory_reflections" or
-                    "infested_automaton" or "endless_conveyor" or
+                    "infested_automaton" or "punch_off_reward" or
+                    "endless_conveyor" or
                     "treasure" or "controlled_event_choice" or
                     "controlled_run_action" => throw new InvalidOperationException(
                         "Unknown Nature session handle for kind " + sessionKind +
@@ -2590,6 +2693,49 @@ internal static class PrototypeAiJsonlServer
                                     law.Ordinal != requestedOrdinal)
                                 throw new ArgumentException(
                                     $"Endless Conveyor query expects site '{law.SiteId}' and ordinal {law.Ordinal}.");
+                            Write(new
+                            {
+                                requestId,
+                                ok = true,
+                                chanceLawSchemaId =
+                                    ChanceLawV111.CurrentSchemaId,
+                                law
+                            });
+                            break;
+                        }
+                        if (ChanceLawEngineV111
+                            .NativePunchOffRewardQuerySiteIds.Contains(
+                                siteId, StringComparer.Ordinal))
+                        {
+                            if (OptionalString(request, "card_type") is not null ||
+                                OptionalString(request, "rarity") is not null ||
+                                OptionalString(request, "card_id") is not null ||
+                                OptionalString(request, "potion_id") is not null ||
+                                OptionalString(request, "relic_id") is not null ||
+                                OptionalBool(request, "colorless_offer") ||
+                                OptionalBool(request, "sale_reprice") ||
+                                OptionalString(request, "owner_id") is not null ||
+                                OptionalStringArray(request,
+                                    "excluded_potion_ids") is not null ||
+                                OptionalInt(request, "offer_ordinal") is not null ||
+                                OptionalStringArray(request,
+                                    "relic_candidate_ids") is not null ||
+                                OptionalStringArray(request,
+                                    "excluded_relic_ids") is not null ||
+                                OptionalInt(request,
+                                    "prior_variant_index") is not null)
+                                throw new ArgumentException(
+                                    "Punch Off reward queries accept only state_handle, site_id, ordinal, prior_indices and action_id.");
+                            var actionId = OptionalString(request, "action_id")
+                                ?? throw new ArgumentException(
+                                    "Punch Off reward query requires action_id.");
+                            law = ChanceLawEngineV111.QueryNativePunchOffReward(
+                                RequireState(request), siteId, ordinal,
+                                priorIndices, actionId);
+                            if (law.SiteId != siteId ||
+                                law.Ordinal != ordinal)
+                                throw new ArgumentException(
+                                    $"Punch Off reward query expects site '{law.SiteId}' and ordinal {law.Ordinal}.");
                             Write(new
                             {
                                 requestId,
@@ -4748,6 +4894,112 @@ internal static class PrototypeAiJsonlServer
                                     element.GetString()!))
                                 released++;
                             referenceNatureInfestedAutomatonRunStateHandles.Remove(
+                                element.GetString()!);
+                        }
+                        Write(new { requestId, ok = true, released });
+                        break;
+                    }
+
+                    case "reference_nature_punch_off_reward_begin":
+                    {
+                        var source = RequireState(request);
+                        var actionId = RequiredString(request, "action_id");
+                        var seed = OptionalULong(request, "nature_seed");
+                        var session = seed is { } natureSeed
+                            ? ReferenceNaturePunchOffRewardSessionV111.Begin(
+                                source, actionId, natureSeed)
+                            : ReferenceNaturePunchOffRewardSessionV111.Begin(
+                                source, actionId);
+                        var handle = StoreReferenceNaturePunchOffReward(session);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNaturePunchOffRewardResult(session, handle) });
+                        break;
+                    }
+
+                    case "reference_nature_punch_off_reward_status":
+                    {
+                        var handle = RequiredString(request,
+                            "reference_nature_punch_off_reward_handle");
+                        var session =
+                            RequireReferenceNaturePunchOffReward(request);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNaturePunchOffRewardResult(session, handle) });
+                        break;
+                    }
+
+                    case "reference_nature_punch_off_reward_resolve_next":
+                    {
+                        var parentHandle = RequiredString(request,
+                            "reference_nature_punch_off_reward_handle");
+                        var session =
+                            RequireReferenceNaturePunchOffReward(request);
+                        if (session.Fingerprint != RequiredString(request,
+                                "fingerprint"))
+                            throw new InvalidOperationException(
+                                "Stale ReferenceNature Punch Off reward fingerprint.");
+                        var next = session.ResolveNext();
+                        var handle = StoreReferenceNaturePunchOffReward(next);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNaturePunchOffRewardResult(
+                                next, handle, parentHandle) });
+                        break;
+                    }
+
+                    case "reference_nature_punch_off_reward_fork":
+                    {
+                        var parentHandle = RequiredString(request,
+                            "reference_nature_punch_off_reward_handle");
+                        var next = RequireReferenceNaturePunchOffReward(request)
+                            .Fork();
+                        var handle = StoreReferenceNaturePunchOffReward(next);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNaturePunchOffRewardResult(
+                                next, handle, parentHandle) });
+                        break;
+                    }
+
+                    case "reference_nature_punch_off_reward_save":
+                    {
+                        var session =
+                            RequireReferenceNaturePunchOffReward(request);
+                        Write(new { requestId, ok = true,
+                            schemaId =
+                                ReferenceNaturePunchOffRewardSessionV111.CurrentSchemaId,
+                            snapshot = ReferenceNaturePunchOffRewardSessionV111.Save(
+                                session) });
+                        break;
+                    }
+
+                    case "reference_nature_punch_off_reward_load":
+                    {
+                        var session =
+                            ReferenceNaturePunchOffRewardSessionV111.Restore(
+                                RequiredString(request, "snapshot"));
+                        var handle = StoreReferenceNaturePunchOffReward(session);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNaturePunchOffRewardResult(session, handle) });
+                        break;
+                    }
+
+                    case "reference_nature_punch_off_reward_release_many":
+                    {
+                        if (!request.TryGetProperty(
+                                "reference_nature_punch_off_reward_handles",
+                                out var handles) ||
+                            handles.ValueKind != JsonValueKind.Array)
+                            throw new ArgumentException(
+                                "reference_nature_punch_off_reward_handles must be an array.");
+                        var released = 0;
+                        foreach (var element in handles.EnumerateArray())
+                        {
+                            if (element.ValueKind != JsonValueKind.String ||
+                                string.IsNullOrWhiteSpace(element.GetString()))
+                                throw new ArgumentException(
+                                    "Invalid ReferenceNature Punch Off reward handle.");
+                            if (referenceNaturePunchOffRewardStates.Remove(
+                                    element.GetString()!))
+                                released++;
+                            referenceNaturePunchOffRewardRunStateHandles.Remove(
                                 element.GetString()!);
                         }
                         Write(new { requestId, ok = true, released });

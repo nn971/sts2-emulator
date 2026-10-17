@@ -226,6 +226,10 @@ public static class PrototypeNativePunchOff
     public const string NativeEncounterEntry = "PunchOffEventEncounter";
     public const string ConstructHpOffsetSiteId =
         "event.punch_off.construct_hp_offset.index_draw";
+    public const string RelicRewardSiteId =
+        "event.punch_off.relic_reward.index_draw";
+    public const string PotionRewardSiteId =
+        "event.punch_off.potion_reward.index_draw";
 
     public static PrototypeEncounterDefinition Encounter { get; } = new(
         EncounterId,
@@ -673,13 +677,13 @@ public sealed partial class PrototypeGameEngine
         var relicIndex = nativeRunRng is { } nativeRewardRng
             ? NativePlayerRngV111.ChooseIndex(
                 nativeRewardRng,
-                "event.punch_off.relic_reward.index_draw",
+                PrototypeNativePunchOff.RelicRewardSiteId,
                 NativePlayerRngV111.RewardsStreamId,
                 relicOwner,
                 available.Length)
             : LegacyRandomChoiceV111.ChooseIndexRange(
                 state.Rng,
-                "event.punch_off.relic_reward.index_draw",
+                PrototypeNativePunchOff.RelicRewardSiteId,
                 "reward",
                 relicOwner,
                 available.Length).SelectedIndex;
@@ -690,13 +694,13 @@ public sealed partial class PrototypeGameEngine
         var potionIndex = nativeRunRng is { } nativePotionRng
             ? NativePlayerRngV111.ChooseIndex(
                 nativePotionRng,
-                "event.punch_off.potion_reward.index_draw",
+                PrototypeNativePunchOff.PotionRewardSiteId,
                 NativePlayerRngV111.RewardsStreamId,
                 potionOwner,
                 potionPool.Length)
             : LegacyRandomChoiceV111.ChooseIndexRange(
                 state.Rng,
-                "event.punch_off.potion_reward.index_draw",
+                PrototypeNativePunchOff.PotionRewardSiteId,
                 "reward",
                 potionOwner,
                 potionPool.Length).SelectedIndex;

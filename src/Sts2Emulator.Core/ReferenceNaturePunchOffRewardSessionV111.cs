@@ -1,0 +1,558 @@
+using System.Text.Json;
+
+namespace Sts2Emulator.Core;
+
+internal sealed record NativePunchOffRewardPlanV111(
+    string[] RelicCandidates,
+    string[] PotionCandidates,
+    RandomIndexRequestV111 RelicRequest,
+    RandomIndexRequestV111 PotionRequest,
+    NativeRngSnapshot RewardsCursorBefore,
+    NativeRngSnapshot? EventCursorBefore,
+    int RequestedOrdinal,
+    string SiteId,
+    string ConditioningFingerprint);
+
+internal static class NativePunchOffRewardPlanBuilderV111
+{
+    public static NativePunchOffRewardPlanV111 Build(
+        RunState origin, string siteId, int ordinal, int[] priorIndices,
+        string actionId)
+    {
+        ArgumentNullException.ThrowIfNull(origin);
+        ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(actionId);
+        ArgumentNullException.ThrowIfNull(priorIndices);
+        if (priorIndices.Any(index => index < 0))
+            throw new InvalidOperationException(
+                "Punch Off reward queries require nonnegative prior indices.");
+        if (string.IsNullOrWhiteSpace(origin.RunSeed) ||
+            origin.NativeRunRng is null || origin.Phase != RunPhase.Combat ||
+            origin.World is not { Act: 1, Event: { } evt, Combat: { } combat } world ||
+            evt.EventId != PrototypeNativePunchOff.EventId ||
+            evt.NativePageIndex != 2 || evt.ChosenChoiceId is not null ||
+            evt.NativeEventPotionSlot is not null ||
+            evt.NativeEventRngProviderMode is not null ||
+            world.ActiveRoom != PrototypeRoomType.Combat ||
+            world.Reward is not null || combat.Enemies.Any(enemy => enemy.Hp <= 0) ||
+            origin.ControlledEventRewardChoice is not null ||
+            !PrototypeGameEngine.UsesNativeRegionalSystems(world))
+            throw new InvalidOperationException(
+                "Punch Off reward laws require its live configured fight before an immediate victory.");
+
+        var action = new PrototypeGameEngine().GetLegalActions(origin)
+            .SingleOrDefault(candidate =>
+                PrototypeAiEnvironment.StableActionId(candidate) == actionId)
+            ?? throw new InvalidOperationException(
+                "Punch Off reward action is not legal in the current combat state.");
+        var relicCandidates = PrototypeContent.RelicPool
+            .Where(id => !origin.Player.Relics.Any(relic =>
+                StringComparer.Ordinal.Equals(relic.RelicId, id)))
+            .ToArray();
+        var potionCandidates = (string[])PrototypeContent.PotionPool.Clone();
+        if (relicCandidates.Length == 0 || potionCandidates.Length == 0)
+            throw new InvalidOperationException(
+                "Punch Off reward law requires nonempty relic and potion pools.");
+
+        var nativeStreams = origin.NativeRunRng;
+        var rewardStream = nativeStreams.Streams.SingleOrDefault(stream =>
+            stream.StreamId == NativePlayerRngV111.RewardsStreamId)
+            ?? throw new InvalidOperationException(
+                "Punch Off reward law requires the Native player.rewards stream.");
+        var cursorBefore = NativeRngV111.ToSnapshot(rewardStream);
+        var relicOwner = "event:punch_off:relic_pool:" +
+            CanonicalJson.Sha256(relicCandidates);
+        var potionOwner = "event:punch_off:potion_pool:" +
+            CanonicalJson.Sha256(potionCandidates);
+
+        using var journal = RandomBoundaryJournalV111.Begin();
+        using (StochasticProviderScopeV111.Enter(
+                   new NativeRandomIndexProviderV111(),
+                   overrideExplicitProviders: false))
+        {
+            var projected = new PrototypeGameEngine().Step(
+                origin.Fork(), action).State;
+            var matching = journal.Entries.Where(entry =>
+                entry.Request.SiteId is
+                    PrototypeNativePunchOff.RelicRewardSiteId or
+                    PrototypeNativePunchOff.PotionRewardSiteId).ToArray();
+            var rewardsEntries = journal.Entries.Where(entry =>
+                entry.Request.StreamId ==
+                    NativePlayerRngV111.RewardsStreamId).ToArray();
+            var projectedRewardsStream = projected.NativeRunRng?.Streams
+                .SingleOrDefault(stream => stream.StreamId ==
+                    NativePlayerRngV111.RewardsStreamId);
+            var projectedEventCursor = projected.World?.Event?.NativeEventRng
+                is { } projectedEventStream
+                    ? NativeRngV111.ToSnapshot(projectedEventStream) : null;
+            var originEventCursor = evt.NativeEventRng is { } originEventStream
+                ? NativeRngV111.ToSnapshot(originEventStream) : null;
+            if (projected.Phase != RunPhase.Reward ||
+                projected.World?.Combat is not null ||
+                projected.World?.Reward is not { RelicOption: not null,
+                    PotionOption: not null } ||
+                matching.Length != 2 ||
+                rewardsEntries.Length != 2 ||
+                !rewardsEntries.SequenceEqual(matching) ||
+                projectedRewardsStream is null ||
+                unchecked((uint)(NativeRngV111.ToSnapshot(
+                    projectedRewardsStream).Counter - cursorBefore.Counter)) != 2 ||
+                projectedEventCursor != originEventCursor ||
+                matching[0].Request.SiteId !=
+                    PrototypeNativePunchOff.RelicRewardSiteId ||
+                matching[1].Request.SiteId !=
+                    PrototypeNativePunchOff.PotionRewardSiteId ||
+                matching.Any(entry =>
+                    entry.ProviderMode != "native-v111" ||
+                    entry.Request.StreamId !=
+                        NativePlayerRngV111.RewardsStreamId ||
+                    entry.Request.OperationKind != "choose_index"))
+                throw new InvalidOperationException(
+                    "Punch Off requires an immediate win with exactly the ordered relic and potion reward draws.");
+            var expectedRelicRequest = new RandomIndexRequestV111(
+                PrototypeNativePunchOff.RelicRewardSiteId,
+                NativePlayerRngV111.RewardsStreamId, relicOwner,
+                cursorBefore.Counter,
+                Enumerable.Range(0, relicCandidates.Length).ToArray());
+            var expectedPotionRequest = new RandomIndexRequestV111(
+                PrototypeNativePunchOff.PotionRewardSiteId,
+                NativePlayerRngV111.RewardsStreamId, potionOwner,
+                unchecked(cursorBefore.Counter + 1),
+                Enumerable.Range(0, potionCandidates.Length).ToArray());
+            if (CanonicalJson.Sha256(matching[0].Request) !=
+                    CanonicalJson.Sha256(expectedRelicRequest) ||
+                CanonicalJson.Sha256(matching[1].Request) !=
+                    CanonicalJson.Sha256(expectedPotionRequest))
+                throw new InvalidOperationException(
+                    "Punch Off reward requests do not match the ordered candidate pools or player.rewards cursor.");
+        }
+
+        var request = siteId switch
+        {
+            PrototypeNativePunchOff.RelicRewardSiteId =>
+                new RandomIndexRequestV111(
+                    PrototypeNativePunchOff.RelicRewardSiteId,
+                    NativePlayerRngV111.RewardsStreamId, relicOwner,
+                    cursorBefore.Counter,
+                    Enumerable.Range(0, relicCandidates.Length).ToArray()),
+            PrototypeNativePunchOff.PotionRewardSiteId =>
+                new RandomIndexRequestV111(
+                    PrototypeNativePunchOff.PotionRewardSiteId,
+                    NativePlayerRngV111.RewardsStreamId, potionOwner,
+                    unchecked(cursorBefore.Counter + 1),
+                    Enumerable.Range(0, potionCandidates.Length).ToArray()),
+            _ => throw new InvalidOperationException(
+                $"Unsupported Punch Off reward site '{siteId}'.")
+        };
+        var expectedPriorCount = siteId ==
+            PrototypeNativePunchOff.RelicRewardSiteId ? 0 : 1;
+        if (priorIndices.Length != expectedPriorCount ||
+            ordinal != request.Ordinal ||
+            expectedPriorCount == 1 &&
+                (uint)priorIndices[0] >= (uint)relicCandidates.Length)
+            throw new InvalidOperationException(
+                "Punch Off reward law requires the complete earlier relic-index prefix and request ordinal.");
+
+        var eventCursorBefore = origin.World.Event?.NativeEventRng is { } eventStream
+            ? NativeRngV111.ToSnapshot(eventStream) : null;
+        var conditioningFingerprint = CanonicalJson.Sha256(new
+        {
+            boundary = "punch_off.combat_victory_rewards",
+            eventId = evt.EventId,
+            actionId,
+            siteId,
+            relicCandidateIds = relicCandidates,
+            potionCandidateIds = potionCandidates,
+            priorIndices,
+            rewardsCursorBefore = cursorBefore,
+            eventCursorBefore,
+            request,
+            probabilityModel = "equal-index-under-unverified-player-rewards-hypothesis"
+        });
+        return new(relicCandidates, potionCandidates,
+            new RandomIndexRequestV111(
+                PrototypeNativePunchOff.RelicRewardSiteId,
+                NativePlayerRngV111.RewardsStreamId, relicOwner,
+                cursorBefore.Counter,
+                Enumerable.Range(0, relicCandidates.Length).ToArray()),
+            new RandomIndexRequestV111(
+                PrototypeNativePunchOff.PotionRewardSiteId,
+                NativePlayerRngV111.RewardsStreamId, potionOwner,
+                unchecked(cursorBefore.Counter + 1),
+                Enumerable.Range(0, potionCandidates.Length).ToArray()),
+            cursorBefore, eventCursorBefore, ordinal, siteId,
+            conditioningFingerprint);
+    }
+
+    public static string[] Candidates(
+        NativePunchOffRewardPlanV111 plan) =>
+        plan.SiteId == PrototypeNativePunchOff.RelicRewardSiteId
+            ? plan.RelicCandidates : plan.PotionCandidates;
+
+    public static RandomIndexRequestV111 Request(
+        NativePunchOffRewardPlanV111 plan) =>
+        plan.SiteId == PrototypeNativePunchOff.RelicRewardSiteId
+            ? plan.RelicRequest : plan.PotionRequest;
+
+}
+
+public static partial class ChanceLawEngineV111
+{
+    public const string NativePunchOffRewardConditioningPolicyId =
+        "native-punch-off-reward-prefix-v1";
+
+    public static string[] NativePunchOffRewardQuerySiteIds =>
+    [
+        "event.punch_off.relic_reward.index_draw",
+        "event.punch_off.potion_reward.index_draw"
+    ];
+
+    public static ChanceLawV111 QueryNativePunchOffReward(
+        RunState origin, string siteId, int ordinal, int[]? priorIndices,
+        string actionId)
+    {
+        ArgumentNullException.ThrowIfNull(origin);
+        priorIndices ??= [];
+        var plan = NativePunchOffRewardPlanBuilderV111.Build(
+            origin, siteId, ordinal, priorIndices, actionId);
+        var candidates = NativePunchOffRewardPlanBuilderV111.Candidates(plan);
+        var outcomes = candidates.Select(candidateId =>
+            new ChanceLawOutcomeV111(
+                (siteId == PrototypeNativePunchOff.RelicRewardSiteId
+                    ? "relic:" : "potion:") + candidateId, 1L))
+            .ToArray();
+        var eventId = CanonicalJson.Sha256(new
+        {
+            boundary = "native_event.punch_off_reward",
+            plan.ConditioningFingerprint
+        });
+        return Create(eventId, plan.SiteId,
+            NativePunchOffRewardPlanBuilderV111.Request(plan).OperationKind,
+            NativePunchOffRewardPlanBuilderV111.Request(plan).OwnerId,
+            NativePunchOffRewardPlanBuilderV111.Request(plan).Ordinal,
+            NativePunchOffRewardConditioningPolicyId,
+            plan.ConditioningFingerprint,
+            "uniform-index-under-source-player-rewards-hypothesis-unverified",
+            outcomes);
+    }
+}
+
+public sealed record ReferenceNaturePunchOffRewardSessionSnapshotV111(
+    string SchemaId, string OriginSnapshotJson, string ActionId,
+    string RunSnapshotJson, ReferenceNatureStateV111 InitialNatureState,
+    ReferenceNatureStateV111 NatureState,
+    ReferenceNatureDecisionV111[] DecisionTranscript);
+
+/// <summary>Atomic Nature sampling for the two independent Punch Off fight
+/// rewards, resolved by one immediate winning combat action.</summary>
+public sealed record ReferenceNaturePunchOffRewardSessionV111(
+    string SchemaId, string ActionId, RunState Origin, RunState Run,
+    ReferenceNatureStateV111 InitialNatureState,
+    ReferenceNatureStateV111 NatureState,
+    ReferenceNatureDecisionV111[] DecisionTranscript)
+{
+    public const string CurrentSchemaId =
+        "sts2-v111-reference-nature-punch-off-reward-session-v1";
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public string Fingerprint => CanonicalJson.Sha256(this);
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public bool Complete => DecisionTranscript.Length == 2;
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public ChanceLawV111? PendingLaw
+    {
+        get
+        {
+            if (Complete)
+                return null;
+            var priorIndices = DecisionTranscript.Select(
+                decision => decision.OutcomeIndex).ToArray();
+            var plan = NativePunchOffRewardPlanBuilderV111.Build(
+                Origin,
+                DecisionTranscript.Length == 0
+                    ? PrototypeNativePunchOff.RelicRewardSiteId
+                    : PrototypeNativePunchOff.PotionRewardSiteId,
+                DecisionTranscript.Length == 0
+                    ? CurrentRewardCursor(Origin)
+                    : unchecked(CurrentRewardCursor(Origin) + 1),
+                priorIndices, ActionId);
+            return ChanceLawEngineV111.QueryNativePunchOffReward(
+                Origin, plan.SiteId, plan.RequestedOrdinal,
+                priorIndices, ActionId);
+        }
+    }
+
+    public static string[] SessionSiteIds =>
+        ChanceLawEngineV111.NativePunchOffRewardQuerySiteIds;
+
+    public static ReferenceNaturePunchOffRewardSessionV111 Begin(
+        RunState origin, string actionId, ulong natureSeed) => Begin(
+            origin, actionId, ReferenceNatureRunCursorV111.Begin(
+                origin, natureSeed, "Punch Off rewards"));
+
+    public static ReferenceNaturePunchOffRewardSessionV111 Begin(
+        RunState origin, string actionId) => Begin(
+            origin, actionId, ReferenceNatureRunCursorV111.Begin(
+                origin, null, "Punch Off rewards"));
+
+    private static ReferenceNaturePunchOffRewardSessionV111 Begin(
+        RunState origin, string actionId,
+        ReferenceNatureStateV111 initial)
+    {
+        ArgumentNullException.ThrowIfNull(origin);
+        ArgumentNullException.ThrowIfNull(initial);
+        _ = NativePunchOffRewardPlanBuilderV111.Build(
+            origin, PrototypeNativePunchOff.RelicRewardSiteId,
+            CurrentRewardCursor(origin), [], actionId);
+        ReferenceNatureRunCursorV111.ValidateInitial(
+            origin, initial, "Punch Off rewards");
+        var session = new ReferenceNaturePunchOffRewardSessionV111(
+            CurrentSchemaId, actionId, origin.Fork(), origin.Fork(),
+            initial.Fork(), initial.Fork(), []);
+        session.Validate();
+        return session;
+    }
+
+    public ReferenceNaturePunchOffRewardSessionV111 Fork()
+    {
+        Validate();
+        return this with
+        {
+            Origin = Origin.Fork(),
+            Run = Run.Fork(),
+            InitialNatureState = InitialNatureState.Fork(),
+            NatureState = NatureState.Fork(),
+            DecisionTranscript = (ReferenceNatureDecisionV111[])
+                DecisionTranscript.Clone()
+        };
+    }
+
+    public ReferenceNaturePunchOffRewardSessionV111 ResolveNext()
+    {
+        Validate();
+        var law = PendingLaw ?? throw new InvalidOperationException(
+            "Punch Off ReferenceNature session is already complete.");
+        var selection = ReferenceNatureV111.SampleValidated(
+            law, NatureState);
+        var transcript = DecisionTranscript.Append(
+            new ReferenceNatureDecisionV111(
+                law.LawId, law.EventId, selection.OutcomeId,
+                selection.OutcomeIndex)).ToArray();
+        var nextNature = selection.NextState;
+        var nextRun = Run;
+        if (transcript.Length == 2)
+            nextRun = Replay(Origin, ActionId, transcript);
+        var next = this with
+        {
+            Run = transcript.Length == 2
+                ? ReferenceNatureRunCursorV111.Commit(nextRun, nextNature)
+                : nextRun,
+            NatureState = nextNature,
+            DecisionTranscript = transcript
+        };
+        next.Validate();
+        return next;
+    }
+
+    public void Validate()
+    {
+        if (SchemaId != CurrentSchemaId ||
+            string.IsNullOrWhiteSpace(ActionId) || Origin is null ||
+            Run is null || InitialNatureState is null || NatureState is null ||
+            DecisionTranscript is null || DecisionTranscript.Length > 2)
+            throw new InvalidDataException(
+                "Invalid ReferenceNature Punch Off reward session envelope.");
+        PrototypeStateInvariants.Validate(Origin);
+        PrototypeStateInvariants.Validate(Run);
+        InitialNatureState.Validate();
+        NatureState.Validate();
+        var expectedNature = InitialNatureState.Fork();
+        var priorIndices = new List<int>();
+        for (var index = 0; index < DecisionTranscript.Length; index++)
+        {
+            var siteId = index == 0
+                ? PrototypeNativePunchOff.RelicRewardSiteId
+                : PrototypeNativePunchOff.PotionRewardSiteId;
+            var ordinal = index == 0
+                ? CurrentRewardCursor(Origin)
+                : unchecked(CurrentRewardCursor(Origin) + 1);
+            var law = ChanceLawEngineV111.QueryNativePunchOffReward(
+                Origin, siteId, ordinal, priorIndices.ToArray(), ActionId);
+            var selection = ReferenceNatureV111.SampleValidated(
+                law, expectedNature);
+            DecisionTranscript[index].Validate();
+            if (CanonicalJson.Sha256(new ReferenceNatureDecisionV111(
+                    law.LawId, law.EventId, selection.OutcomeId,
+                    selection.OutcomeIndex)) !=
+                CanonicalJson.Sha256(DecisionTranscript[index]))
+                throw new InvalidDataException(
+                    "Punch Off reward transcript does not replay from its conditioned prefix.");
+            expectedNature = selection.NextState;
+            priorIndices.Add(selection.OutcomeIndex);
+        }
+        var expectedRun = Complete
+            ? ReferenceNatureRunCursorV111.Commit(
+                Replay(Origin, ActionId, DecisionTranscript),
+                expectedNature)
+            : Origin.Fork();
+        if (!ReferenceNatureRunCursorV111.MatchesRunSession(
+                Origin, Run, InitialNatureState, NatureState,
+                DecisionTranscript.Length, Complete) ||
+            CanonicalJson.Sha256(expectedNature) !=
+                CanonicalJson.Sha256(NatureState) ||
+            CanonicalJson.Sha256(expectedRun) != CanonicalJson.Sha256(Run))
+            throw new InvalidDataException(
+                "Punch Off reward replay differs from its session envelope.");
+    }
+
+    public static string Save(
+        ReferenceNaturePunchOffRewardSessionV111 session)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        session.Validate();
+        return JsonSerializer.Serialize(
+            new ReferenceNaturePunchOffRewardSessionSnapshotV111(
+                CurrentSchemaId, RunSnapshot.Save(session.Origin),
+                session.ActionId, RunSnapshot.Save(session.Run),
+                session.InitialNatureState, session.NatureState,
+                (ReferenceNatureDecisionV111[])
+                    session.DecisionTranscript.Clone()));
+    }
+
+    public static ReferenceNaturePunchOffRewardSessionV111 Restore(
+        string json)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(json);
+        var snapshot = JsonSerializer.Deserialize<
+                ReferenceNaturePunchOffRewardSessionSnapshotV111>(json)
+            ?? throw new InvalidDataException(
+                "Null ReferenceNature Punch Off reward snapshot.");
+        if (snapshot.SchemaId != CurrentSchemaId ||
+            string.IsNullOrWhiteSpace(snapshot.OriginSnapshotJson) ||
+            string.IsNullOrWhiteSpace(snapshot.ActionId) ||
+            string.IsNullOrWhiteSpace(snapshot.RunSnapshotJson) ||
+            snapshot.InitialNatureState is null ||
+            snapshot.NatureState is null ||
+            snapshot.DecisionTranscript is null ||
+            snapshot.DecisionTranscript.Length > 2)
+            throw new InvalidDataException(
+                "Invalid ReferenceNature Punch Off reward snapshot.");
+        var origin = RunSnapshot.Load(snapshot.OriginSnapshotJson);
+        var savedRun = RunSnapshot.Load(snapshot.RunSnapshotJson);
+        var session = Begin(origin, snapshot.ActionId,
+            snapshot.InitialNatureState.Fork());
+        foreach (var _ in snapshot.DecisionTranscript)
+            session = session.ResolveNext();
+        session.Validate();
+        if (CanonicalJson.Sha256(session.Run) !=
+                CanonicalJson.Sha256(savedRun) ||
+            CanonicalJson.Sha256(session.NatureState) !=
+                CanonicalJson.Sha256(snapshot.NatureState) ||
+            !session.DecisionTranscript.SequenceEqual(
+                snapshot.DecisionTranscript))
+            throw new InvalidDataException(
+                "Punch Off reward snapshot does not replay from its origin.");
+        return session;
+    }
+
+    private static int CurrentRewardCursor(RunState origin)
+    {
+        var stream = origin.NativeRunRng?.Streams.SingleOrDefault(item =>
+            item.StreamId == NativePlayerRngV111.RewardsStreamId)
+            ?? throw new InvalidOperationException(
+                "Punch Off ReferenceNature session has no player.rewards stream.");
+        return NativeRngV111.ToSnapshot(stream).Counter;
+    }
+
+    private static RunState Replay(
+        RunState origin, string actionId,
+        ReferenceNatureDecisionV111[] transcript)
+    {
+        var relicPlan = NativePunchOffRewardPlanBuilderV111.Build(
+            origin, PrototypeNativePunchOff.RelicRewardSiteId,
+            CurrentRewardCursor(origin), [], actionId);
+        var potionPlan = NativePunchOffRewardPlanBuilderV111.Build(
+            origin, PrototypeNativePunchOff.PotionRewardSiteId,
+            unchecked(CurrentRewardCursor(origin) + 1),
+            [transcript[0].OutcomeIndex], actionId);
+        var script = new ScriptedRandomIndexProviderV111(
+        [
+            new RandomIndexDecisionV111(
+                relicPlan.RelicRequest, transcript[0].OutcomeIndex,
+                "scripted-v111"),
+            new RandomIndexDecisionV111(
+                potionPlan.PotionRequest, transcript[1].OutcomeIndex,
+                "scripted-v111")
+        ]);
+        using var journal = RandomBoundaryJournalV111.Begin();
+        using var providerScope = StochasticProviderScopeV111.Enter(
+            new PunchOffSelectiveReplayProvider(script),
+            overrideExplicitProviders: true);
+        var action = new PrototypeGameEngine().GetLegalActions(origin)
+            .SingleOrDefault(candidate =>
+                PrototypeAiEnvironment.StableActionId(candidate) == actionId)
+            ?? throw new InvalidDataException(
+                "Punch Off replay action is no longer legal at the session origin.");
+        var run = new PrototypeGameEngine().Step(origin.Fork(), action).State;
+        script.AssertComplete();
+        var entries = journal.Entries;
+        var rewardsStream = run.NativeRunRng?.Streams.SingleOrDefault(item =>
+            item.StreamId == NativePlayerRngV111.RewardsStreamId);
+        var originRewards = relicPlan.RewardsCursorBefore;
+        var eventStream = run.World?.Event?.NativeEventRng;
+        var relicId = relicPlan.RelicCandidates[transcript[0].OutcomeIndex];
+        var potionId = potionPlan.PotionCandidates[transcript[1].OutcomeIndex];
+        var expectedEventCursor = relicPlan.EventCursorBefore;
+        var actualEventCursor = eventStream is null ? null :
+            NativeRngV111.ToSnapshot(eventStream);
+        var rewardEntries = entries.Where(entry =>
+            entry.Request.StreamId == NativePlayerRngV111.RewardsStreamId)
+            .ToArray();
+        if (run.Phase != RunPhase.Reward ||
+            run.World?.Combat is not null ||
+            run.World?.Reward is not { } reward ||
+            reward.RelicOption != relicId || reward.PotionOption != potionId ||
+            rewardsStream is null ||
+            NativeRngV111.ToSnapshot(rewardsStream) != originRewards ||
+            expectedEventCursor != actualEventCursor ||
+            rewardEntries.Length != 2 ||
+            rewardEntries[0].ProviderMode != "scripted-v111" ||
+            rewardEntries[0].Request.SiteId != relicPlan.RelicRequest.SiteId ||
+            rewardEntries[1].ProviderMode != "scripted-v111" ||
+            rewardEntries[1].Request.SiteId != potionPlan.PotionRequest.SiteId ||
+            CanonicalJson.Sha256(rewardEntries[0].Request) !=
+                CanonicalJson.Sha256(relicPlan.RelicRequest) ||
+            CanonicalJson.Sha256(rewardEntries[1].Request) !=
+                CanonicalJson.Sha256(potionPlan.PotionRequest))
+            throw new InvalidDataException(
+                "Scripted Punch Off rewards changed their candidate order, player.rewards cursor, event cursor, or reward identity.");
+        return run;
+    }
+
+    private sealed class PunchOffSelectiveReplayProvider(
+        ScriptedRandomIndexProviderV111 script)
+        : IRandomIndexProviderV111
+    {
+        public string Mode => "selective-punch-off-replay-v1";
+
+        public RandomIndexDecisionV111 Resolve(
+            RandomIndexRequestV111 request, RngBundle streams)
+        {
+            if (request.SiteId is
+                PrototypeNativePunchOff.RelicRewardSiteId or
+                PrototypeNativePunchOff.PotionRewardSiteId)
+                return script.Resolve(request, streams);
+            var stream = streams.Streams.SingleOrDefault(item =>
+                item.StreamId == request.StreamId)
+                ?? throw new InvalidOperationException(
+                    "Punch Off replay request has no matching stream.");
+            IRandomIndexProviderV111 fallback =
+                stream.Codec == PrototypeRng.Codec
+                    ? new LegacyPrototypeRandomIndexProviderV111()
+                    : new NativeRandomIndexProviderV111();
+            return fallback.Resolve(request, streams);
+        }
+    }
+}

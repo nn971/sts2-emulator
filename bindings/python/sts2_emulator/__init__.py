@@ -506,6 +506,36 @@ class State:
         return ReferenceNatureInfestedAutomatonSession.from_wire(
             self.session, result["result"])
 
+    def begin_reference_nature_punch_off_rewards(
+            self, action_id: str, nature_seed: int | None = None):
+        """Begin reward sampling for a legal Punch Off action that wins now."""
+        if self.session.capabilities.get(
+                "referenceNaturePunchOffRewardSessionSchemaId") != (
+                "sts2-v111-reference-nature-punch-off-reward-session-v1"):
+            raise EmulatorError(
+                "Emulator does not expose ReferenceNature Punch Off reward sessions")
+        sites = (
+            "event.punch_off.relic_reward.index_draw",
+            "event.punch_off.potion_reward.index_draw")
+        if not all(self.session.supports_reference_nature_site(
+                site_id, session="punch_off_reward") for site_id in sites):
+            raise EmulatorError(
+                "No ReferenceNature Punch Off reward session is advertised")
+        if not isinstance(action_id, str) or not action_id:
+            raise ValueError("action_id must be a legal immediate winning action ID")
+        if (nature_seed is not None and
+                (not isinstance(nature_seed, int) or
+                 isinstance(nature_seed, bool) or nature_seed < 0 or
+                 nature_seed > 0xFFFFFFFFFFFFFFFF)):
+            raise ValueError("nature_seed must be an unsigned 64-bit integer")
+        payload = {"state_handle": self.handle, "action_id": action_id}
+        if nature_seed is not None:
+            payload["nature_seed"] = nature_seed
+        result = self.session.call(
+            "reference_nature_punch_off_reward_begin", **payload)
+        return ReferenceNaturePunchOffRewardSession.from_wire(
+            self.session, result["result"])
+
     def begin_reference_nature_merchant(self, action_id: str,
                                         nature_seed: int | None = None):
         """Begin atomic ReferenceNature generation for a configured Shop node."""
@@ -1506,6 +1536,88 @@ class ReferenceNatureInfestedAutomatonSession:
 
 
 @dataclass(frozen=True)
+class ReferenceNaturePunchOffRewardSession:
+    """Punch Off's relic and potion choices and ReferenceNature cursor."""
+    session: "Session"
+    handle: str
+    fingerprint: str
+    state_handle: str | None
+    action_id: str
+    event_id: str
+    site_id: str | None
+    run_phase: str
+    boundary: str
+    next_ordinal: int
+    pending: dict | None
+    selected_relic: str | None
+    selected_potion: str | None
+    reward_relic: str | None
+    reward_potion: str | None
+    player_rewards_cursor_advanced: bool
+    decision_transcript: list
+    nature_sample_count: int
+
+    @classmethod
+    def from_wire(cls, session, payload):
+        if payload.get("schemaId") != (
+                "sts2-v111-reference-nature-punch-off-reward-session-v1"):
+            raise EmulatorError(
+                "Unsupported ReferenceNature Punch Off reward session schema")
+        return cls(
+            session, payload["referenceNaturePunchOffRewardHandle"],
+            payload["fingerprint"], payload.get("stateHandle"),
+            payload["actionId"], payload["eventId"], payload.get("siteId"),
+            payload["runPhase"], payload["boundary"],
+            payload["nextOrdinal"], payload.get("pending"),
+            payload.get("selectedRelic"), payload.get("selectedPotion"),
+            payload.get("rewardRelic"), payload.get("rewardPotion"),
+            payload.get("playerRewardsCursorAdvanced", False),
+            payload["decisionTranscript"], payload["natureSampleCount"])
+
+    @property
+    def complete(self):
+        return self.boundary == "committed"
+
+    @property
+    def state(self):
+        if self.state_handle is None:
+            raise EmulatorError("Punch Off rewards have not committed")
+        return State(self.session, self.state_handle)
+
+    def status(self):
+        result = self.session.call(
+            "reference_nature_punch_off_reward_status",
+            reference_nature_punch_off_reward_handle=self.handle)
+        return ReferenceNaturePunchOffRewardSession.from_wire(
+            self.session, result["result"])
+
+    def resolve_next(self):
+        """Sample the next reward and replay the action after both picks."""
+        result = self.session.call(
+            "reference_nature_punch_off_reward_resolve_next",
+            reference_nature_punch_off_reward_handle=self.handle,
+            fingerprint=self.fingerprint)
+        return ReferenceNaturePunchOffRewardSession.from_wire(
+            self.session, result["result"])
+
+    def fork(self):
+        result = self.session.call(
+            "reference_nature_punch_off_reward_fork",
+            reference_nature_punch_off_reward_handle=self.handle)
+        return ReferenceNaturePunchOffRewardSession.from_wire(
+            self.session, result["result"])
+
+    def save_snapshot(self):
+        return self.session.call(
+            "reference_nature_punch_off_reward_save",
+            reference_nature_punch_off_reward_handle=self.handle)["snapshot"]
+
+    def release(self):
+        return self.session.release_reference_nature_punch_off_reward_many(
+            [self])
+
+
+@dataclass(frozen=True)
 class ReferenceNatureMerchantSession:
     """Atomic native Shop entry, mixed Chance Law replay and Nature cursor."""
     session: "Session"
@@ -2217,12 +2329,13 @@ class Session:
             "endless_conveyor": "referenceNatureEndlessConveyorSiteIds",
             "glory_reflections": "referenceNatureGloryReflectionsSiteIds",
             "infested_automaton": "referenceNatureInfestedAutomatonSiteIds",
+            "punch_off_reward": "referenceNaturePunchOffRewardSiteIds",
             "merchant": "referenceNatureMerchantSiteIds",
             "treasure": "referenceNatureTreasureSiteIds",
         }
         if session != "any" and session not in fields:
             raise ValueError(
-                "session must be semantic, run_action, event_choice, ancient_offer, neow_offer, trash_heap, tablet_of_truth, trial, event_shuffle, native_shuffle, endless_conveyor, glory_reflections, infested_automaton, merchant, treasure, or any")
+                "session must be semantic, run_action, event_choice, ancient_offer, neow_offer, trash_heap, tablet_of_truth, trial, event_shuffle, native_shuffle, endless_conveyor, glory_reflections, infested_automaton, punch_off_reward, merchant, treasure, or any")
         coverage = self.stochastic_session_coverage
         if not isinstance(coverage, dict) or coverage.get("schemaId") != (
                 "sts2-v111-stochastic-session-coverage-v1"):
@@ -2730,6 +2843,28 @@ class Session:
         return self.call(
             "reference_nature_infested_automaton_release_many",
             reference_nature_infested_automaton_handles=[
+                item.handle for item in sessions])["released"]
+
+    def load_reference_nature_punch_off_reward_snapshot(
+            self, snapshot: str):
+        if self.capabilities.get(
+                "referenceNaturePunchOffRewardSessionSchemaId") != (
+                "sts2-v111-reference-nature-punch-off-reward-session-v1"):
+            raise EmulatorError(
+                "Emulator does not expose ReferenceNature Punch Off reward sessions")
+        result = self.call(
+            "reference_nature_punch_off_reward_load", snapshot=snapshot)
+        return ReferenceNaturePunchOffRewardSession.from_wire(
+            self, result["result"])
+
+    def release_reference_nature_punch_off_reward_many(self, sessions):
+        sessions = list(sessions)
+        if any(item.session is not self for item in sessions):
+            raise ValueError(
+                "ReferenceNature Punch Off reward handle belongs to another session")
+        return self.call(
+            "reference_nature_punch_off_reward_release_many",
+            reference_nature_punch_off_reward_handles=[
                 item.handle for item in sessions])["released"]
 
     def load_reference_nature_merchant_snapshot(self, snapshot: str):

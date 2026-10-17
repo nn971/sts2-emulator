@@ -109,6 +109,17 @@ The site is advertised under the `infested_automaton` session kind, and direct
 Chance Law queries require `action_id="study"` or `action_id="touch_core"`.
 The law remains `UNVERIFIED`.
 
+Punch Off's relic and potion rewards can be sampled atomically with
+`State.begin_reference_nature_punch_off_rewards(action_id, nature_seed=None)`.
+Pass a stable legal combat action ID that wins the event fight immediately.
+The session samples relic then potion, scripts only those two reward requests
+during replay, and publishes `.state` after both choices. It supports
+`status()`, `resolve_next()`, `fork()`, `save_snapshot()`, `release()`, and
+`Session.load_reference_nature_punch_off_reward_snapshot()`. The reward stream
+owner remains a `player.rewards` hypothesis, so the laws and Native parity are
+unverified. Both sites are advertised under `punch_off_reward`; direct queries
+require the action ID, ordinal, and full prior index prefix.
+
 `Session.stochastic_session_coverage` reports the site IDs admitted by the
 advertised ReferenceNature session schemas.
 `Session.supports_reference_nature_site(site_id, session="any")` checks that

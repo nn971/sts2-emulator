@@ -60,6 +60,9 @@ public sealed record StochasticSessionCoverageV111(
     public string ReferenceNatureInfestedAutomatonSessionSchemaId { get; init; } =
         ReferenceNatureInfestedAutomatonSessionV111.CurrentSchemaId;
     public string[] ReferenceNatureInfestedAutomatonSiteIds { get; init; } = [];
+    public string ReferenceNaturePunchOffRewardSessionSchemaId { get; init; } =
+        ReferenceNaturePunchOffRewardSessionV111.CurrentSchemaId;
+    public string[] ReferenceNaturePunchOffRewardSiteIds { get; init; } = [];
     public string[] ReferenceNatureAncientOfferSiteIds { get; init; } = [];
     public string ReferenceNatureMerchantSessionSchemaId { get; init; } =
         ReferenceNatureMerchantSessionV111.CurrentSchemaId;
@@ -98,6 +101,8 @@ public sealed record StochasticSessionCoverageV111(
                 ReferenceNatureGloryReflectionsSessionV111.CurrentSchemaId ||
             ReferenceNatureInfestedAutomatonSessionSchemaId !=
                 ReferenceNatureInfestedAutomatonSessionV111.CurrentSchemaId ||
+            ReferenceNaturePunchOffRewardSessionSchemaId !=
+                ReferenceNaturePunchOffRewardSessionV111.CurrentSchemaId ||
             ReferenceNatureMerchantSessionSchemaId !=
                 ReferenceNatureMerchantSessionV111.CurrentSchemaId ||
             ReferenceNatureTreasureSessionSchemaId !=
@@ -117,6 +122,7 @@ public sealed record StochasticSessionCoverageV111(
         ValidateSiteIds(ReferenceNatureEndlessConveyorSiteIds);
         ValidateSiteIds(ReferenceNatureGloryReflectionsSiteIds);
         ValidateSiteIds(ReferenceNatureInfestedAutomatonSiteIds);
+        ValidateSiteIds(ReferenceNaturePunchOffRewardSiteIds);
         ValidateSiteIds(ReferenceNatureMerchantSiteIds);
         ValidateSiteIds(ReferenceNatureTreasureSiteIds);
     }
@@ -262,6 +268,7 @@ public static class StochasticSiteRegistryV111
         .. ChanceLawEngineV111.TrialSessionSiteIds,
         .. ChanceLawEngineV111.NativeEventShuffleSessionSiteIds,
         .. ChanceLawEngineV111.NativeEventCardPickQuerySiteIds,
+        .. ChanceLawEngineV111.NativePunchOffRewardQuerySiteIds,
         "event.endless_conveyor.dish_weighted_ticket",
         "event.endless_conveyor.random_upgrade.card_instance",
         "event.endless_conveyor.colorless_card.index_draw",
@@ -337,6 +344,8 @@ public static class StochasticSiteRegistryV111
         ReferenceNatureGloryReflectionsSessionV111.SessionSiteIds;
     private static readonly string[] InfestedAutomatonSessionSites =
         ReferenceNatureInfestedAutomatonSessionV111.SessionSiteIds;
+    private static readonly string[] PunchOffRewardSessionSites =
+        ReferenceNaturePunchOffRewardSessionV111.SessionSiteIds;
 
     private static readonly HashSet<string> SemanticReferenceNatureSiteSet =
         new(SemanticReferenceNatureSites, StringComparer.Ordinal);
@@ -376,7 +385,9 @@ public static class StochasticSiteRegistryV111
             .Concat(EndlessConveyorSessionSites)
             .Concat(GloryReflectionsSessionSites)
             .Concat(InfestedAutomatonSessionSites)
+            .Concat(PunchOffRewardSessionSites)
             .Concat(ChanceLawEngineV111.NativeEventCardPickQuerySiteIds)
+            .Concat(ChanceLawEngineV111.NativePunchOffRewardQuerySiteIds)
             .Distinct(StringComparer.Ordinal)
             .ToArray();
 
@@ -504,7 +515,11 @@ public static class StochasticSiteRegistryV111
             ReferenceNatureInfestedAutomatonSessionSchemaId =
                 ReferenceNatureInfestedAutomatonSessionV111.CurrentSchemaId,
             ReferenceNatureInfestedAutomatonSiteIds =
-                InfestedAutomatonSessionSites
+                InfestedAutomatonSessionSites,
+            ReferenceNaturePunchOffRewardSessionSchemaId =
+                ReferenceNaturePunchOffRewardSessionV111.CurrentSchemaId,
+            ReferenceNaturePunchOffRewardSiteIds =
+                PunchOffRewardSessionSites
         };
         coverage.Validate();
         return coverage;
