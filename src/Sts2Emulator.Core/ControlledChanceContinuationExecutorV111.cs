@@ -69,7 +69,8 @@ internal static class ControlledChanceContinuationExecutorV111
         RunState checkpoint,
         RandomIndexDecisionV111[] decisions,
         Func<RunState, RunState> mechanics,
-        IReadOnlyDictionary<string, int>? priorOrdinalCounts = null)
+        IReadOnlyDictionary<string, int>? priorOrdinalCounts = null,
+        Func<ControlledStochasticRequestV111, bool>? requestFilter = null)
         => ResumeCore(
             checkpoint,
             decisions,
@@ -77,7 +78,8 @@ internal static class ControlledChanceContinuationExecutorV111
             () => ControlledEventChoiceReplayV111.Begin(
                 decisions, priorOrdinalCounts),
             new ControlledEventChoiceRandomIndexProviderV111(
-                requestOrdinalIncludesCurrentOperationPrefix: false));
+                requestOrdinalIncludesCurrentOperationPrefix: false),
+            requestFilter);
 
     public static ControlledChanceReplayResultV111 ResumeEnemyAction(
         RunState checkpoint,
@@ -95,7 +97,8 @@ internal static class ControlledChanceContinuationExecutorV111
         RandomIndexDecisionV111[] decisions,
         Func<RunState, RunState> mechanics,
         Func<IControlledChanceReplayScopeV111> beginReplay,
-        IRandomIndexProviderV111 replayProvider)
+        IRandomIndexProviderV111 replayProvider,
+        Func<ControlledStochasticRequestV111, bool>? requestFilter = null)
     {
         ArgumentNullException.ThrowIfNull(checkpoint);
         ArgumentNullException.ThrowIfNull(decisions);
@@ -104,8 +107,12 @@ internal static class ControlledChanceContinuationExecutorV111
         ArgumentNullException.ThrowIfNull(replayProvider);
 
         using var replay = beginReplay();
-        using var providers = StochasticProviderScopeV111.Enter(
-            replayProvider, new FailClosedControlledUnitFloatProviderV111());
+        using var providers = requestFilter is null
+            ? StochasticProviderScopeV111.Enter(
+                replayProvider, new FailClosedControlledUnitFloatProviderV111())
+            : StochasticProviderScopeV111.EnterFiltered(
+                replayProvider, new FailClosedControlledUnitFloatProviderV111(),
+                requestFilter);
         try
         {
             var run = mechanics(checkpoint) ?? throw new InvalidDataException(

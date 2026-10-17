@@ -4245,6 +4245,17 @@ public sealed partial class PrototypeGameEngine
         {
             DecisionIndex = state.DecisionIndex
         };
+        var selectedMapAction = continuation.ActionId == "choose_map_node"
+            ? GameAction.Create(
+                "choose_map_node",
+                new ChooseMapNodePayload(
+                    continuation.MapNodeId ?? throw new InvalidDataException(
+                        "Controlled map-node frame is missing its node ID.")))
+            : null;
+        var overgrowthCombatEntry = selectedMapAction is not null
+            && ControlledRunActionEngineV111
+                .IsLegacyOvergrowthCombatEntryAction(
+                    partialState, selectedMapAction);
         var replay = ControlledChanceContinuationExecutorV111.Resume(
             partialState,
             decisions,
@@ -4260,12 +4271,8 @@ public sealed partial class PrototypeGameEngine
                     {
                         DecisionIndex = checked(state.DecisionIndex - 1)
                     },
-                    GameAction.Create(
-                        "choose_map_node",
-                        new ChooseMapNodePayload(
-                            continuation.MapNodeId
-                                ?? throw new InvalidDataException(
-                                    "Controlled event-entry frame is missing its map node."))))
+                    selectedMapAction ?? throw new InvalidDataException(
+                        "Controlled map-node frame is missing its action."))
                     .State,
                 "buy_card" or "buy_potion" or "replace_shop_potion"
                     or "remove_card" or "buy_relic" =>
@@ -4280,7 +4287,10 @@ public sealed partial class PrototypeGameEngine
                     .State,
                 _ => throw new NotSupportedException(
                     "Controlled run action has no resume implementation.")
-            });
+            },
+            requestFilter: overgrowthCombatEntry
+                ? request => request.StreamId == "combat"
+                : null);
         if (replay.PendingChance is { } pendingChance)
         {
             var supportedSite = continuation.ActionId switch
@@ -4292,7 +4302,11 @@ public sealed partial class PrototypeGameEngine
                     || ControlledEventChoiceReplayV111
                         .IsRunActionShopSite(pendingChance.Request.SiteId)
                     || ControlledEventChoiceReplayV111
-                        .IsRunActionTreasureSite(pendingChance.Request.SiteId),
+                        .IsRunActionTreasureSite(pendingChance.Request.SiteId)
+                    || overgrowthCombatEntry
+                        && ControlledEventChoiceReplayV111
+                            .IsRunActionCombatSite(
+                                pendingChance.Request.SiteId),
                 PrototypeNativeRestSiteActionsV111.Dig =>
                     ControlledEventChoiceReplayV111
                         .IsRunActionShovelSite(pendingChance.Request.SiteId),

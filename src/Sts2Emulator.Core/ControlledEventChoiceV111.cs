@@ -911,12 +911,16 @@ internal sealed class ControlledEventChoiceReplayV111 :
     public static bool IsRunActionShovelSite(string siteId) =>
         StochasticSiteRegistryV111.IsRunActionShovelSite(siteId);
 
+    public static bool IsRunActionCombatSite(string siteId) =>
+        StochasticSiteRegistryV111.IsRunActionCombatSite(siteId);
+
     public static bool IsControlledReplaySite(string siteId) =>
         IsEventChoiceSite(siteId) || IsRunActionSite(siteId)
         || IsRunActionEventEntrySite(siteId)
         || IsRunActionShopSite(siteId)
         || IsRunActionShopPurchaseSite(siteId)
         || IsRunActionTreasureSite(siteId)
+        || IsRunActionCombatSite(siteId)
         || IsRunActionShovelSite(siteId);
 }
 

@@ -249,6 +249,18 @@ public static class StochasticSiteRegistryV111
         UnownedRandomRelicSelectionSiteId
     ];
 
+    private static readonly string[] RunActionCombatSites =
+    [
+        "combat.encounter.overgrowth_elite.index_draw",
+        "combat.encounter.overgrowth_weak.index_draw",
+        "combat.encounter.overgrowth_normal.index_draw",
+        "combat.encounter.formation.index_draw",
+        "combat.encounter.weighted_selection.ticket",
+        NativeCombatRngEntryV111.InitialUniqueHpSiteId,
+        "combat.committed_intent.index_draw",
+        NativeFisherYatesV111.SiteId
+    ];
+
     private static readonly string[] ControlledEventChoiceSites =
     [
         "event.random_upgrade.card_instance",
@@ -401,6 +413,7 @@ public static class StochasticSiteRegistryV111
         .Concat(RunActionShopPurchaseSites)
         .Concat(RunActionTreasureSites)
         .Concat(RunActionShovelSites)
+        .Concat(RunActionCombatSites)
         .Distinct(StringComparer.Ordinal)
         .ToArray();
     private static readonly string[] NatureChoiceSites =
@@ -410,6 +423,7 @@ public static class StochasticSiteRegistryV111
             .Concat(RunActionShopSites)
             .Concat(RunActionShopPurchaseSites)
             .Concat(RunActionTreasureSites)
+            .Concat(RunActionCombatSites)
             .Concat(ControlledEventChoiceSites)
             .Concat(NativeMerchantSessionSites)
             .Concat(NativeTreasureSessionSites)
@@ -442,6 +456,8 @@ public static class StochasticSiteRegistryV111
         (string[])RunActionTreasureSites.Clone();
     public static string[] RunActionShovelSiteIds =>
         (string[])RunActionShovelSites.Clone();
+    public static string[] RunActionCombatSiteIds =>
+        (string[])RunActionCombatSites.Clone();
     public static string[] ControlledRunActionSiteIds =>
         (string[])RunActionSessionSites.Clone();
     public static string[] ControlledEventChoiceSiteIds =>
@@ -491,6 +507,9 @@ public static class StochasticSiteRegistryV111
 
     public static bool IsRunActionShovelSite(string siteId) =>
         RunActionShovelSiteSet.Contains(siteId);
+
+    public static bool IsRunActionCombatSite(string siteId) =>
+        RunActionCombatSites.Contains(siteId, StringComparer.Ordinal);
 
     public static bool IsControlledEventChoiceSite(string siteId) =>
         ControlledEventChoiceSiteSet.Contains(siteId);

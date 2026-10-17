@@ -3115,16 +3115,24 @@ public sealed record ReferenceNatureRunActionSessionV111(
             && ControlledRunActionEngineV111.IsShopPurchaseAction(
                 Origin, Action)
             && DecisionTranscript is { Length: 0 };
+        var immediateOvergrowthCombatAction = Origin is not null
+            && Action is not null
+            && ControlledRunActionEngineV111
+                .IsLegacyOvergrowthCombatEntryAction(Origin, Action)
+            && DecisionTranscript is { Length: 0 };
         if (SchemaId != CurrentSchemaId || Origin is null || Action is null ||
             Run is null || InitialNatureState is null || NatureState is null ||
             DecisionTranscript is null || string.IsNullOrWhiteSpace(Action.Kind) ||
             (Run.ControlledRunActionChoice is null &&
              Run.ControlledRunActionHistory is not { Length: > 0 } &&
-             !immediateShopAction))
+             !immediateShopAction && !immediateOvergrowthCombatAction))
             throw new InvalidDataException(
                 "Invalid ReferenceNature run-action session envelope.");
         PrototypeStateInvariants.Validate(Origin);
         PrototypeStateInvariants.Validate(Run);
+        var actionMapNodeId = Action.Kind == "choose_map_node"
+            ? Action.ReadPayload<ChooseMapNodePayload>().NodeId
+            : null;
         InitialNatureState.Validate();
         NatureState.Validate();
         if (!ReferenceNatureRunCursorV111.MatchesRunSession(
@@ -3139,6 +3147,7 @@ public sealed record ReferenceNatureRunActionSessionV111(
         {
             continuation.Validate();
             if (continuation.ActionId != Action.Kind ||
+                continuation.MapNodeId != actionMapNodeId ||
                 (ControlledRunActionEngineV111.IsShopPurchaseAction(
                      Origin, Action)
                     ? continuation.RunAction is null ||
@@ -3159,7 +3168,7 @@ public sealed record ReferenceNatureRunActionSessionV111(
         }
         else
         {
-            if (immediateShopAction)
+            if (immediateShopAction || immediateOvergrowthCombatAction)
             {
                 var replayedRun = ControlledRunActionEngineV111.Begin(
                     Origin.Fork(), CloneAction(Action));
@@ -3168,13 +3177,14 @@ public sealed record ReferenceNatureRunActionSessionV111(
                 if (CanonicalJson.Sha256(replayedRun) !=
                     CanonicalJson.Sha256(Run))
                     throw new InvalidDataException(
-                        "Deterministic ReferenceNature shop action differs from its replay.");
+                        "Deterministic ReferenceNature run action differs from its replay.");
                 return;
             }
 
             var trace = Run.ControlledRunActionHistory![^1];
             trace.Validate();
             if (trace.ActionId != Action.Kind ||
+                trace.MapNodeId != actionMapNodeId ||
                 (ControlledRunActionEngineV111.IsShopPurchaseAction(
                      Origin, Action)
                     ? trace.ActionFingerprint !=

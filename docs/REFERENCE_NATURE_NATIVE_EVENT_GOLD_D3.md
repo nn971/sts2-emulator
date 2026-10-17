@@ -66,6 +66,12 @@ decision transcript. Restore recomputes the transcript by replay. Forks
 retain independent snapshots. The JSONL and Python interfaces expose begin,
 status, resolve, fork, save, load, release, and the committed playable state.
 
+Player-facing observations contain only the ordinary committed Event state;
+the session's stream cursor and pending Chance Law remain private to the
+ReferenceNature boundary. A pending law is available through the separate
+Nature-choice view, while privileged RNG inspection remains a distinct
+interface.
+
 ## Scope limits
 
 The session controls only the listed gold, Stone of All Time, and Future of

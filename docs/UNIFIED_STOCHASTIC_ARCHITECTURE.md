@@ -130,9 +130,12 @@ handles the four mixed rarity-float and model-index picks from a legal Alchemica
 Coffer purchase. Other stochastic merchant purchase effects and
 continued relic-bag pulls remain outside those boundaries. The
 generic ReferenceNature run-action session wraps deterministic Shop actions
-and a registered subset of index-only relic-acquisition hooks; deterministic
-actions consume no Nature sample, while the controlled index laws remain
-`UNVERIFIED`. Ordinary queue-front/back pulls reject
+and a registered subset of index-only relic-acquisition hooks; it also
+continues legal legacy Overgrowth Combat/Elite map-node actions through room
+entry while controlling registered `combat`-stream indices. Other streams
+retain their existing providers, and unregistered combat requests fail
+closed. Deterministic actions consume no Nature sample, while the controlled
+index laws remain `UNVERIFIED`. Ordinary queue-front/back pulls reject
 Nature-owned sets unless a controlled Chance Law replay selects an identity.
 
 `PrototypeNativeRelicGrabBag.PlanPull` is now the shared source fallback

@@ -3,21 +3,24 @@
 This opt-in D3 boundary saves the legacy `start_run` action at its Act 1 boss
 encounter draw, map choices that enter an Event node at supported legacy event
 entry draws, legacy Shop-node offer generation, eligible legacy Treasure-node
-relic selection, and the Shovel dig action at its unowned-relic draw. Shop and
-Treasure generation require non-native regional systems and a legacy run RNG.
-Treasure selection is not offered when Silver Crucible suppresses the first
-treasure or the legacy relic pool is exhausted. The boundary uses ordinary
-run-state handles and does not change normal `step` behavior or source-owned
-regional merchant/treasure routes.
+relic selection, legal legacy Overgrowth Combat/Elite node entry, and the
+Shovel dig action at its unowned-relic draw. Overgrowth combat entry controls
+registered `combat`-stream requests through ordinary room initialization;
+requests on other streams retain their existing providers. Shop and Treasure
+generation require non-native regional systems and a legacy run RNG. Treasure
+selection is not offered when Silver Crucible suppresses the first treasure or
+the legacy relic pool is exhausted. The boundary uses ordinary run-state
+handles and does not change normal `step` behavior or source-owned regional
+merchant/treasure routes.
 
 The pending frame stores the exact pre-action run state, action kind, request,
-and ordered candidate labels. Event-entry frames also retain the selected
-map-node ID. Resolving one index replays the action from that checkpoint and
-records the controlled decision in
+and ordered candidate labels. Event-entry and Overgrowth-combat frames retain
+the selected map-node ID. Resolving one index replays the action from that
+checkpoint and records the controlled decision in
 `RunState.ControlledRunActionHistory`. Run start commits the selected boss
-encounter; map event entry commits the selected event and its initial state;
-Shop entry commits its generated offers; Treasure entry commits the selected
-relic as a normal reward; Shovel commits the relic as the normal reward.
+encounter; map entry commits the selected Event, Shop, Treasure, or Overgrowth
+Combat/Elite room through ordinary initialization; Shovel commits the relic
+as the normal reward.
 The pending continuation is part of ordinary run snapshots. Player-facing
 observations hide its Nature actions; the explicit controller exposes only
 `choose_controlled_run_action_outcome` actions while the frame is pending.
@@ -39,12 +42,13 @@ stale-request guard.
 The JSONL server advertises `controlledRunActionSchemaId`. Its `hello`
 response exposes `controlledRunActionSiteGroups`, with registry-owned arrays
 for run-start/map generation, Event-node entry, legacy Shop-node generation,
-legacy Treasure-node selection, and Shovel dig. The controller supports:
+legacy Treasure-node selection, Shovel dig, and legacy Overgrowth combat
+entry. The controller supports:
 
 | Operation | Inputs | Result |
 | --- | --- | --- |
 | `controlled_run_action_begin` | current `state_handle`, legal `action_id` | Pending request, labels and controlled outcome actions |
-| `controlled_run_action_resolve` | pending `state_handle`, `selected_index` | Child run handle with the selected run-start, event-entry, Shop, Treasure or Shovel result |
+| `controlled_run_action_resolve` | pending `state_handle`, `selected_index` | Child run handle with the selected run-start, event-entry, Shop, Treasure, Overgrowth combat-entry or Shovel result |
 | `controlled_run_action_inspect` | pending `state_handle` | Restore the pending request and legal outcomes after snapshot load |
 
 The JSONL server also exposes an atomic ReferenceNature envelope for these
@@ -70,8 +74,13 @@ without a cursor retain `sts2-exact-snapshot-v1`.
 
 The session supports the `start_run` boss encounter draw, legacy map
 Event-node entry draws, seven `shop.*` sites in legacy Shop-node generation,
-the `treasure.relic_model.index_draw` legacy Treasure-node site, and Shovel's
-unowned-relic draw. The same ReferenceNature run-action session also accepts
+the `treasure.relic_model.index_draw` legacy Treasure-node site, registered
+combat-stream requests during legal legacy Overgrowth Combat/Elite node entry,
+and Shovel's unowned-relic draw. Combat entry covers Overgrowth encounter-pool
+selection, formation, initial unique-enemy HP, initial committed intents, and
+opening draw-pile shuffle sites listed below. Filtered replay leaves other
+streams on their existing providers; an unregistered combat-stream request
+remains unsupported and fails closed. The same ReferenceNature run-action session also accepts
 `buy_card`, `buy_potion`, `replace_shop_potion`, `remove_card`, and `buy_relic`
 Shop actions. Actions with no random request commit immediately with an empty
 transcript and no Nature sample. The session can suspend at the registered
@@ -120,6 +129,22 @@ The supported legacy Shop-node generation sites are:
 - `shop.relic_offer.price.index_draw`
 
 The supported legacy Treasure-node site is `treasure.relic_model.index_draw`.
+
+The supported legacy Overgrowth combat-entry sites are:
+
+- `combat.encounter.overgrowth_elite.index_draw`
+- `combat.encounter.overgrowth_weak.index_draw`
+- `combat.encounter.overgrowth_normal.index_draw`
+- `combat.encounter.formation.index_draw`
+- `combat.encounter.weighted_selection.ticket`
+- `combat.initial_unique_hp`
+- `combat.committed_intent.index_draw`
+- `combat.draw_pile.shuffle.swap`
+
+This entry boundary requires Act 1 Overgrowth's legacy encounter pool and
+excludes configured Native runs, Underdocks and later-act encounters. The
+generic request-index laws remain `UNVERIFIED` for source probabilities and
+stream parity.
 
 The registered index-only Shop-purchase acquisition sites are:
 
