@@ -56,8 +56,12 @@ Resolving a position resumes the source operation and inserts the known card
 identity into the semantic deck as a private known anchor, leaving all
 unresolved positions in their existing shared pool. Python clients use
 `SemanticCombat.resolve_draw_insertion(position)` after resolving the model
-with `resolve_generated_card(card_model_id)`. Native law and fixture
-acquisition provenance remain `UNVERIFIED`.
+with `resolve_generated_card(card_model_id)`. The model-selection Chance Law
+reports exact Native `NextInt` grid masses and `SOURCE_VERIFIED` on the
+declared supported Attack pool; full Native pool eligibility, stream
+attribution, seed frequencies, and cursor parity remain open. The Native law
+for insertion position and fixture acquisition provenance remain
+`UNVERIFIED`.
 
 The automatic enemy-action frame is exposed as `enemy_action_chance` with its
 typed request and eligible indices. JSONL clients resolve it with

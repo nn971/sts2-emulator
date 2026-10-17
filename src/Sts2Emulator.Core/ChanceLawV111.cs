@@ -2354,7 +2354,7 @@ public static partial class ChanceLawEngineV111
     }
 
     /// <summary>
-    /// Query the uniform conditional law over the live physical enemy
+    /// Query the Native bounded-index law over the live physical enemy
     /// identities at a suspended random-target boundary. The selected index
     /// is not part of the event, so querying cannot depend on a prior result.
     /// </summary>
@@ -2362,10 +2362,12 @@ public static partial class ChanceLawEngineV111
     {
         ArgumentNullException.ThrowIfNull(target);
         target.Validate();
+        var indexWeights = NativeNextIntGridWeights(
+            target.CandidateEnemyInstanceIds.Length);
         var outcomes = target.CandidateEnemyInstanceIds
-            .Select(instanceId => new ChanceLawOutcomeV111(
+            .Select((instanceId, index) => new ChanceLawOutcomeV111(
                 "enemy_instance:" + instanceId.ToString(
-                    CultureInfo.InvariantCulture), 1L))
+                    CultureInfo.InvariantCulture), indexWeights[index]))
             .ToArray();
         var conditioningFingerprint = CanonicalJson.Sha256(new
         {
@@ -2379,21 +2381,24 @@ public static partial class ChanceLawEngineV111
         return Create(target.EventId, target.SiteId, target.OperationKind,
             target.OwnerId, target.Ordinal, TargetConditioningPolicyId,
             conditioningFingerprint,
-            "uniform-live-source-support-unverified", outcomes);
+            NativeBoundedIndexSourceVerifiedProvenance, outcomes,
+            ChanceLawV111.SourceVerifiedStatus);
     }
 
     /// <summary>
-    /// Query the uniform law over the ordered, duplicate-free generated-card
-    /// model pool saved at a source effect boundary.
+    /// Query the Native bounded-index law over the ordered, duplicate-free
+    /// generated-card model pool saved at a source effect boundary.
     /// </summary>
     public static ChanceLawV111 QueryGeneratedCard(
         SemanticGeneratedCardEventV111 generatedCard)
     {
         ArgumentNullException.ThrowIfNull(generatedCard);
         generatedCard.Validate();
+        var indexWeights = NativeNextIntGridWeights(
+            generatedCard.CandidateCardIds.Length);
         var outcomes = generatedCard.CandidateCardIds
-            .Select(cardId => new ChanceLawOutcomeV111(
-                "card_model:" + cardId, 1L))
+            .Select((cardId, index) => new ChanceLawOutcomeV111(
+                "card_model:" + cardId, indexWeights[index]))
             .ToArray();
         var conditioningFingerprint = CanonicalJson.Sha256(new
         {
@@ -2407,7 +2412,8 @@ public static partial class ChanceLawEngineV111
             generatedCard.OperationKind, generatedCard.OwnerId,
             generatedCard.Ordinal, GeneratedCardConditioningPolicyId,
             conditioningFingerprint,
-            "uniform-ordered-model-pool-unverified", outcomes);
+            NativeBoundedIndexSourceVerifiedProvenance, outcomes,
+            ChanceLawV111.SourceVerifiedStatus);
     }
 
     /// <summary>
