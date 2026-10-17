@@ -141,6 +141,8 @@ public static class ChanceLawEngineV111
         "source-filtered-intent-weights-v1";
     public const string DrawConditioningPolicyId =
         "uniform-unresolved-pool-permutation-v1";
+    public const string RevealConditioningPolicyId =
+        "uniform-unresolved-pool-reveal-v1";
 
     public static ChanceLawV111 QueryIntent(SemanticIntentEventV111 intent)
     {
@@ -167,25 +169,49 @@ public static class ChanceLawEngineV111
     public static ChanceLawV111 QueryDraw(SemanticDeckStateV111 deck)
     {
         ArgumentNullException.ThrowIfNull(deck);
-        SemanticDeckEngineV111.Validate(deck);
         if (deck.Mode != SemanticDeckStateV111.NatureMode ||
             deck.Pending is not
             {
                 SiteId: "combat.draw_pile.draw_card",
                 Purpose: "draw"
-            } pending)
+            })
             throw new InvalidOperationException(
                 "Chance Law draw query requires one unresolved Nature draw_card event.");
 
+        return QueryDeckReveal(deck);
+    }
+
+    /// <summary>
+    /// Query the conditional identity distribution for a pending draw, peek,
+    /// or scry reveal. A known position has no pending event and therefore
+    /// cannot be sampled again through this API.
+    /// </summary>
+    public static ChanceLawV111 QueryDeckReveal(
+        SemanticDeckStateV111 deck)
+    {
+        ArgumentNullException.ThrowIfNull(deck);
+        SemanticDeckEngineV111.Validate(deck);
+        var pending = deck.Pending;
+        if (deck.Mode != SemanticDeckStateV111.NatureMode ||
+            pending is null ||
+            (pending.Purpose, pending.SiteId) is not
+                ("draw", "combat.draw_pile.draw_card") and not
+                ("peek", "combat.draw_pile.reveal_card") and not
+                ("scry", "combat.draw_pile.reveal_card"))
+            throw new InvalidOperationException(
+                "Chance Law reveal query requires one unresolved Nature deck event.");
         var drawEvent = SemanticDeckEngineV111.Inspect(deck) ??
-            throw new InvalidDataException("Pending draw event disappeared.");
+            throw new InvalidDataException("Pending deck reveal disappeared.");
         var outcomes = pending.CandidateCardInstanceIds
             .Select(cardId => new ChanceLawOutcomeV111(
                 "card_instance:" + cardId.ToString(CultureInfo.InvariantCulture), 1L))
             .ToArray();
+        var policy = pending.Purpose == "draw"
+            ? DrawConditioningPolicyId
+            : RevealConditioningPolicyId;
         return Create(drawEvent.EventId, drawEvent.SiteId,
             drawEvent.OperationKind, drawEvent.OwnerId, drawEvent.Ordinal,
-            DrawConditioningPolicyId, deck.Fingerprint,
+            policy, deck.Fingerprint,
             "uniform-deferred-permutation-model-unverified", outcomes);
     }
 
