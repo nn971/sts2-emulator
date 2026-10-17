@@ -356,6 +356,17 @@ public static class NativeEventContextRngV111
             providerMode == "scripted-v111" &&
             scriptedTinkerShuffleIsExpected)
             return;
+        var scriptedFakeMerchantShuffleIsExpected =
+            NativeRngV111.ToSnapshot(stream) ==
+                NativeRngV111.ToSnapshot(initial) &&
+            PrototypeGameEngine.IsValidScriptedEventShuffleState(
+                eventState);
+        if (prototypeEventId == PrototypeNativeFakeMerchant.EventId &&
+            providerMode == "scripted-v111" &&
+            scriptedFakeMerchantShuffleIsExpected &&
+            state.Phase == RunPhase.Event &&
+            state.World?.Combat is null)
+            return;
         var scriptedBattlewornShuffleIsExpected =
             NativeRngV111.ToSnapshot(stream) ==
                 NativeRngV111.ToSnapshot(initial) &&

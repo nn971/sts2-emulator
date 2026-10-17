@@ -19,6 +19,19 @@ public sealed partial class PrototypeGameEngine
 
     internal static bool IsValidScriptedEventShuffleState(EventState evt)
     {
+        if (evt.EventId == PrototypeNativeFakeMerchant.EventId)
+        {
+            var validChoices = PrototypeNativeFakeMerchant.StockRelicIds
+                .Select(PrototypeNativeFakeMerchant.ChoiceId)
+                .ToHashSet(StringComparer.Ordinal);
+            return evt.NativePageIndex == 0 &&
+                evt.ChosenChoiceId is null &&
+                evt.OfferedChoiceIds is { Length: 7 } fakeOffers &&
+                fakeOffers[^1] ==
+                    PrototypeNativeFakeMerchant.LeaveChoiceId &&
+                fakeOffers.Take(6).All(validChoices.Contains) &&
+                fakeOffers.Take(6).Distinct(StringComparer.Ordinal).Count() == 6;
+        }
         if (evt.EventId == PrototypeNativeGloryEvents.BattlewornDummyId)
             return evt.NativePageIndex ==
                     PrototypeNativeEventCompletionPages

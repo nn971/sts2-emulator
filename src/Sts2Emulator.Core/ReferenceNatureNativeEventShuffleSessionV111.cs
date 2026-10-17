@@ -35,14 +35,24 @@ internal static class NativeEventShufflePlanBuilderV111
         string[]? plannedCandidateIds = null)
     {
         ArgumentNullException.ThrowIfNull(origin);
+        var fakeMerchantEntryAction =
+            origin.Phase == RunPhase.MapChoice &&
+            siteId == PrototypeNativeFakeMerchant
+                .RelicOfferShuffleSiteId &&
+            origin.World?.Event is null;
+        var world = origin.World;
+        var activeEvent = world?.Event;
         if (string.IsNullOrWhiteSpace(origin.RunSeed) ||
             origin.NativeRunRng is null ||
-            origin.World?.Event is not { } evt ||
-            evt.ControlledChoice is not null ||
-            evt.NativeEventPotionSlot is not null ||
+            world is null ||
+            activeEvent is null && !fakeMerchantEntryAction ||
+            activeEvent?.ControlledChoice is not null ||
+            activeEvent?.NativeEventPotionSlot is not null ||
             origin.ControlledEventRewardChoice is not null)
             throw new InvalidOperationException(
-                "Native event shuffle Nature choices require an active native event.");
+                "Native event shuffle Nature choices require an active native event or Fake Merchant entry.");
+        var evt = activeEvent ?? new EventState(
+            PrototypeNativeFakeMerchant.EventId);
         siteId ??= evt.EventId switch
         {
             PrototypeNativeUnderdocksDoors.EventId =>
@@ -67,9 +77,10 @@ internal static class NativeEventShufflePlanBuilderV111
             evt.EventId == PrototypeNativeGloryEvents.BattlewornDummyId &&
             evt.NativePageIndex == 2 &&
             evt.ChosenChoiceId == "setting_2";
-        if (origin.Phase != RunPhase.Event && !battlewornVictoryAction)
+        if (origin.Phase != RunPhase.Event && !battlewornVictoryAction &&
+            !fakeMerchantEntryAction)
             throw new InvalidOperationException(
-                "Native event shuffle Nature choices require a pending event action or the Battleworn victory action.");
+                "Native event shuffle Nature choices require a pending event action, a Battleworn victory action, or Fake Merchant entry.");
         if (origin.Phase == RunPhase.Event && evt.ChosenChoiceId is not null)
             throw new InvalidOperationException(
                 "Native event shuffle Nature choices require an uncommitted event action.");
@@ -80,7 +91,31 @@ internal static class NativeEventShufflePlanBuilderV111
         string[] orderedCandidateIds;
         int candidateCount;
         string ownerId;
-        if (evt.EventId == PrototypeNativeGloryEvents.BattlewornDummyId &&
+        if (fakeMerchantEntryAction)
+        {
+            resolvedActionId = actionId ?? throw new InvalidOperationException(
+                "Fake Merchant shuffle requires the stable ID of its legal Event-node action.");
+            replayAction = new PrototypeGameEngine().GetLegalActions(origin)
+                .SingleOrDefault(action =>
+                    PrototypeAiEnvironment.StableActionId(action) ==
+                    resolvedActionId);
+            var mapNodeId = replayAction?.Kind == "choose_map_node"
+                ? replayAction.ReadPayload<ChooseMapNodePayload>().NodeId
+                : null;
+            if (mapNodeId is null ||
+                !PrototypeNativeWingedBoots.AvailableNodes(world, origin.Player)
+                    .Any(node => node.NodeId == mapNodeId &&
+                        node.RoomType == PrototypeRoomType.Event))
+                throw new InvalidOperationException(
+                    "Fake Merchant shuffle requires a current legal Event-node action.");
+            orderedCandidateIds = plannedCandidateIds is null
+                ? [] : (string[])plannedCandidateIds.Clone();
+            ownerId = "event:" + PrototypeNativeFakeMerchant.EventId +
+                ":stock_relics";
+            candidateCount = orderedCandidateIds.Length;
+            nativeRngEventId = PrototypeNativeFakeMerchant.NativeRngEventId;
+        }
+        else if (evt.EventId == PrototypeNativeGloryEvents.BattlewornDummyId &&
             siteId == PrototypeNativeGloryEvents
                 .BattlewornUpgradeShuffleSiteId)
         {
@@ -225,7 +260,8 @@ internal static class NativeEventShufflePlanBuilderV111
             throw new InvalidOperationException(
                 "Native event shuffle is not at the event cursor owned by its Nature prefix.");
 
-        if (battlewornVictoryAction && plannedCandidateIds is null)
+        if ((battlewornVictoryAction || fakeMerchantEntryAction) &&
+            plannedCandidateIds is null)
         {
             RunState projected;
             NativeEventShuffleCaptureV111[] captures;
@@ -237,24 +273,45 @@ internal static class NativeEventShufflePlanBuilderV111
                     origin.Fork(), replayAction).State;
                 captures = shuffleProbe.Captures.ToArray();
             }
-            if (projected.Phase != RunPhase.Event ||
-                projected.World?.Combat is not null ||
-                projected.World?.Event is not { } projectedEvent ||
-                projectedEvent.NativePageIndex !=
+            var projectedEvent = projected.World?.Event;
+            if (battlewornVictoryAction &&
+                (projected.Phase != RunPhase.Event ||
+                 projected.World?.Combat is not null ||
+                 projectedEvent is null ||
+                 projectedEvent.NativePageIndex !=
                     PrototypeNativeEventCompletionPages
                         .TerminalChoicePageIndex(projectedEvent.EventId) ||
-                projectedEvent.ChosenChoiceId != "victory")
+                 projectedEvent.ChosenChoiceId != "victory"))
                 throw new InvalidOperationException(
                     "Battleworn shuffle action must complete setting 2 combat in victory.");
+            if (fakeMerchantEntryAction &&
+                (projected.Phase != RunPhase.Event ||
+                 projectedEvent?.EventId != PrototypeNativeFakeMerchant.EventId))
+                throw new InvalidOperationException(
+                    "Fake Merchant shuffle action must enter Fake Merchant.");
             var shuffleCaptures = captures.Where(capture =>
                 capture.SiteId == siteId && capture.OwnerId == ownerId)
                 .ToArray();
             if (shuffleCaptures.Length != 1)
                 throw new InvalidOperationException(
-                    "Battleworn victory must perform exactly one eligible-card shuffle.");
+                    fakeMerchantEntryAction
+                        ? "Fake Merchant entry must perform exactly one stock relic shuffle."
+                        : "Battleworn victory must perform exactly one eligible-card shuffle.");
             orderedCandidateIds = shuffleCaptures[0].OrderedCandidateIds;
             candidateCount = orderedCandidateIds.Length;
+            if (fakeMerchantEntryAction &&
+                !orderedCandidateIds.SequenceEqual(
+                    PrototypeNativeFakeMerchant.StockRelicIds,
+                    StringComparer.Ordinal))
+                throw new InvalidOperationException(
+                    "Fake Merchant shuffle candidate order differs from its stock definition.");
         }
+        if (fakeMerchantEntryAction && plannedCandidateIds is not null &&
+            !orderedCandidateIds.SequenceEqual(
+                PrototypeNativeFakeMerchant.StockRelicIds,
+                StringComparer.Ordinal))
+            throw new InvalidOperationException(
+                "Fake Merchant planned candidates differ from its stock definition.");
 
         if (candidateCount <= 1)
             throw new InvalidOperationException(
@@ -507,8 +564,9 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
 
     private static string? SelectiveReplaySite(
         NativeEventShufflePlanV111 plan) =>
-        plan.SiteId == PrototypeNativeGloryEvents
-            .BattlewornUpgradeShuffleSiteId
+        plan.SiteId is PrototypeNativeGloryEvents
+            .BattlewornUpgradeShuffleSiteId or
+            PrototypeNativeFakeMerchant.RelicOfferShuffleSiteId
             ? plan.SiteId : null;
 
     public static string Save(
@@ -579,7 +637,8 @@ public static partial class ChanceLawEngineV111
         PrototypeNativeGloryEvents.HungryForMushroomsShuffleSiteId,
         PrototypeNativeGloryEvents.TinkerTypeOfferShuffleSiteId,
         PrototypeNativeGloryEvents.TinkerRiderOfferShuffleSiteId,
-        PrototypeNativeGloryEvents.BattlewornUpgradeShuffleSiteId
+        PrototypeNativeGloryEvents.BattlewornUpgradeShuffleSiteId,
+        PrototypeNativeFakeMerchant.RelicOfferShuffleSiteId
     ];
 
     public static ChanceLawV111 QueryNativeEventShuffle(

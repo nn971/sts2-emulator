@@ -13,6 +13,8 @@ public static class PrototypeNativeFakeMerchant
 {
     public const string EventId = "proto.native.event.fake_merchant";
     public const string NativeRngEventId = "FAKE_MERCHANT";
+    public const string RelicOfferShuffleSiteId =
+        "event.fake_merchant.relic_offer.shuffle_swap_index";
     public const string EncounterId =
         "proto.native.encounter.fake_merchant_event";
     public const string MonsterId = "proto.native.event.fake_merchant_monster";
@@ -228,7 +230,7 @@ public static class PrototypeNativeFakeMerchant
             eventState,
             NativeRngEventId,
             ids,
-            "event.fake_merchant.relic_offer.shuffle_swap_index",
+            RelicOfferShuffleSiteId,
             "event:" + eventState.EventId + ":stock_relics");
         world = state.World!;
         eventState = world.Event!;
