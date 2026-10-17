@@ -413,7 +413,7 @@ class State:
 
     def begin_reference_nature_endless_conveyor_dish(
             self, action_id: str, nature_seed: int | None = None):
-        """Begin Nature control of the initial Endless Conveyor dish roll."""
+        """Begin Nature control of one weighted Conveyor roll-producing action."""
         if self.session.capabilities.get(
                 "referenceNatureEndlessConveyorSessionSchemaId") != (
                 "sts2-v111-reference-nature-endless-conveyor-session-v1"):

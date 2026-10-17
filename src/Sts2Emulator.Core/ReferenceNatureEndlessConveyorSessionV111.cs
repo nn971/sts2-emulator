@@ -12,8 +12,8 @@ public sealed record ReferenceNatureEndlessConveyorSessionSnapshotV111(
     ReferenceNatureStateV111 NatureState,
     ReferenceNatureDecisionV111[] DecisionTranscript);
 
-/// <summary>Atomic ReferenceNature continuation for Endless Conveyor's first
-/// weighted dish ticket during a configured Event-node entry.</summary>
+/// <summary>Atomic ReferenceNature continuation for one weighted Endless
+/// Conveyor dish ticket during event entry or a dish-action continuation.</summary>
 public sealed record ReferenceNatureEndlessConveyorSessionV111(
     string SchemaId,
     RunState Origin,
@@ -214,14 +214,30 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
         var action = new PrototypeGameEngine().GetLegalActions(origin)
             .SingleOrDefault(candidate =>
                 PrototypeAiEnvironment.StableActionId(candidate) == actionId);
-        if (action?.Kind != "choose_map_node" ||
-            action.ReadPayload<ChooseMapNodePayload>() is not { } payload ||
-            !PrototypeNativeWingedBoots.AvailableNodes(
-                origin.World!, origin.Player).Any(node =>
-                node.NodeId == payload.NodeId &&
-                node.RoomType == PrototypeRoomType.Event))
+        if (action is null)
             throw new InvalidOperationException(
-                "Endless Conveyor Nature choice requires its current legal Event-node action.");
+                "Endless Conveyor Nature choice requires its current legal action.");
+        if (origin.Phase == RunPhase.MapChoice)
+        {
+            var world = origin.World
+                ?? throw new InvalidOperationException(
+                    "Endless Conveyor map entry requires a world.");
+            var nodeId = action.Kind == "choose_map_node"
+                ? action.ReadPayload<ChooseMapNodePayload>().NodeId
+                : null;
+            if (nodeId is null || !PrototypeNativeWingedBoots
+                    .AvailableNodes(world, origin.Player).Any(node =>
+                        node.NodeId == nodeId &&
+                        node.RoomType == PrototypeRoomType.Event))
+                throw new InvalidOperationException(
+                    "Endless Conveyor Nature choice requires a legal Event-node action.");
+        }
+        else if (origin.Phase != RunPhase.Event ||
+            origin.World?.Event?.EventId != PrototypeNativeEndlessConveyor.EventId)
+        {
+            throw new InvalidOperationException(
+                "Endless Conveyor Nature choice requires its active event action.");
+        }
         return action;
     }
 
@@ -229,6 +245,8 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
         RunState origin, string actionId, ChanceLawV111 law,
         ReferenceNatureSelectionV111 selection)
     {
+        var conditioningRun = origin.Phase == RunPhase.MapChoice
+            ? origin : CaptureDishPreDrawState(origin, actionId);
         var request = new RandomUnitFloatRequestV111(
             law.SiteId,
             NativeRngV111Contexts.ForEvent(
@@ -238,7 +256,7 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
             law.Ordinal);
         var controlled = ReferenceNatureChanceLawDecisionV111.FromSelection(
             law, ControlledStochasticRequestV111.FromUnitFloat(request),
-            selection, origin);
+            selection, conditioningRun);
         var run = ReferenceNatureNativeEventIndexReplayV111.ReplayUnitFloat(
             origin,
             controlled.UnitFloatDecision! with
@@ -248,11 +266,46 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
             RequireAction(origin, actionId),
             PrototypeNativeEndlessConveyor.NativeRngEventId,
             PrototypeNativeEndlessConveyor.EventId,
-            PrototypeNativeEndlessConveyor.DishWeightedTicketSiteId);
+            PrototypeNativeEndlessConveyor.DishWeightedTicketSiteId,
+            GetPreDrawDishCount(law));
         if (!selection.OutcomeId.StartsWith("dish:", StringComparison.Ordinal) ||
             run.World?.Event?.NativeDishId != selection.OutcomeId[5..])
             throw new InvalidDataException(
                 "Scripted Endless Conveyor ticket resolved a different dish than its Nature outcome.");
         return run;
+    }
+
+    private static RunState CaptureDishPreDrawState(
+        RunState origin, string actionId)
+    {
+        var action = RequireAction(origin, actionId);
+        IReadOnlyList<NativeEventUnitFloatCaptureV111> captures;
+        using (var probe = NativeEventRandomProbeV111.Begin())
+        using (RandomBoundaryJournalV111.Begin())
+        using (NativeEngineEventJournalV111.Begin())
+        {
+            _ = new PrototypeGameEngine().Step(origin.Fork(), action).State;
+            captures = probe.UnitFloatCaptures;
+        }
+        var matching = captures.Where(capture =>
+            capture.Request.SiteId == PrototypeNativeEndlessConveyor
+                .DishWeightedTicketSiteId).ToArray();
+        if (matching.Length != 1)
+            throw new InvalidDataException(
+                "Endless Conveyor action no longer reaches exactly one weighted dish ticket.");
+        return matching[0].PreDrawState;
+    }
+
+    private static int GetPreDrawDishCount(ChanceLawV111 law)
+    {
+        var parts = law.OwnerId.Split(':');
+        if (parts.Length != 4 || parts[0] != "dish" ||
+            !int.TryParse(parts[1],
+                System.Globalization.NumberStyles.None,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out var nextRoll) || nextRoll <= 0)
+            throw new InvalidDataException(
+                "Endless Conveyor law has a malformed dish owner identity.");
+        return nextRoll - 1;
     }
 }

@@ -168,17 +168,28 @@ public static class ReferenceNatureChanceLawDecisionV111
             request.SiteId == PrototypeNativeEndlessConveyor
                 .DishWeightedTicketSiteId)
         {
-            if (conditioningRun?.World is not { Event: null } ||
-                conditioningRun.Phase != RunPhase.MapChoice ||
+            if (conditioningRun?.World is not { } world ||
                 outcomeId is null || !outcomeId.StartsWith(
                     "dish:", StringComparison.Ordinal))
                 throw new InvalidOperationException(
-                    "Endless Conveyor dish mapping requires its pre-entry run and a dish outcome.");
+                    "Endless Conveyor dish mapping requires its conditioned run and a dish outcome.");
+            EventState eventState;
+            if (conditioningRun.Phase == RunPhase.MapChoice &&
+                world.Event is null)
+                eventState = new EventState(
+                    PrototypeNativeEndlessConveyor.EventId);
+            else if (conditioningRun.Phase == RunPhase.Event &&
+                world.Event is { EventId:
+                    PrototypeNativeEndlessConveyor.EventId } activeEvent)
+                eventState = activeEvent;
+            else
+                throw new InvalidOperationException(
+                    "Endless Conveyor dish mapping requires its pre-entry or pre-roll state.");
             var candidates = PrototypeNativeEndlessConveyor
-                .GetWeightedDishCandidates(conditioningRun,
-                    new EventState(PrototypeNativeEndlessConveyor.EventId));
+                .GetWeightedDishCandidates(conditioningRun, eventState);
             var totalWeight = candidates.Sum(candidate => candidate.Weight);
-            if (totalWeight <= 0 || law.OwnerId != "dish:1:pool:" +
+            var rollNumber = eventState.NativeDishCount + 1;
+            if (totalWeight <= 0 || law.OwnerId != $"dish:{rollNumber}:pool:" +
                     CanonicalJson.Sha256(candidates) ||
                 !law.Outcomes.SequenceEqual(candidates.Select(candidate =>
                     new ChanceLawOutcomeV111(

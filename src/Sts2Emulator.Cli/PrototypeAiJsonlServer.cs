@@ -2270,9 +2270,13 @@ internal static class PrototypeAiJsonlServer
                             }
                             priorIndices = parsedPriorIndices.ToArray();
                         }
-                        var ordinal = OptionalInt(request, "ordinal") ??
+                        var suppliedOrdinal = OptionalInt(request, "ordinal");
+                        if (suppliedOrdinal is null && siteId !=
+                                PrototypeNativeEndlessConveyor
+                                    .DishWeightedTicketSiteId)
                             throw new ArgumentException(
                                 "Request field 'ordinal' is required.");
+                        var ordinal = suppliedOrdinal ?? 0;
                         ChanceLawV111 law;
                         if (StochasticSiteRegistryV111
                             .NeowOfferSessionSiteIds.Contains(
@@ -2447,8 +2451,11 @@ internal static class PrototypeAiJsonlServer
                                     "Endless Conveyor dish query requires action_id.");
                             law = ChanceLawEngineV111
                                 .QueryNativeEndlessConveyorDishEntry(
-                                    RequireState(request), actionId, ordinal);
-                            if (law.SiteId != siteId || law.Ordinal != ordinal)
+                                    RequireState(request), actionId,
+                                    suppliedOrdinal);
+                            if (law.SiteId != siteId ||
+                                suppliedOrdinal is { } requestedOrdinal &&
+                                    law.Ordinal != requestedOrdinal)
                                 throw new ArgumentException(
                                     $"Endless Conveyor dish query expects site '{law.SiteId}' and ordinal {law.Ordinal}.");
                             Write(new

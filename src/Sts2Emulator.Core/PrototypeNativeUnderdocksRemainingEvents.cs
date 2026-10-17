@@ -144,7 +144,7 @@ public static class PrototypeNativeEndlessConveyor
         return candidates.ToArray();
     }
 
-    internal static bool IsValidScriptedInitialDishState(
+    internal static bool IsValidScriptedDishState(
         RunState state, EventState current)
     {
         ArgumentNullException.ThrowIfNull(state);
@@ -159,11 +159,15 @@ public static class PrototypeNativeEndlessConveyor
              current.NativeDishId == "SUSPICIOUS_CONDIMENT" &&
                 (current.PendingPotionReplacement is not null ||
                  current.RemainingPotionIds.Length > 0));
+        var completedGrabBoundary = current.NativePageIndex == 1 &&
+            current.ChosenChoiceId == "grab" && !current.NativeDishRollPending &&
+            current.NativeDishCount >= 2;
         if (state.Phase != RunPhase.Event ||
             state.World?.Combat is not null ||
             current.EventId != EventId ||
-            !(initialEntryBoundary || deferredGrabBoundary) ||
-            current.NativeDishCount != 1 ||
+            !(initialEntryBoundary || deferredGrabBoundary ||
+                completedGrabBoundary) ||
+            current.NativeDishCount < 1 || current.NativeDishCount % 5 == 0 ||
             current.NativeDishId is null ||
             current.NativeDishId != current.NativeLastDishId ||
             current.NativeDishId == "SEAPUNK_SALAD" ||
@@ -171,13 +175,18 @@ public static class PrototypeNativeEndlessConveyor
             state.NativeRunRng is null || current.NativeEventRng is not { } stream)
             return false;
 
-        var initial = NativeRngV111Contexts.ForEvent(
+        var expected = NativeRngV111Contexts.ForEvent(
             state.RunSeed, NativeRngEventId);
-        if (NativeRngV111.ToSnapshot(stream) !=
-            NativeRngV111.ToSnapshot(initial))
+        if (stream.StreamId != expected.StreamId)
             return false;
+        var precedingRollCount = initialEntryBoundary
+            ? 0 : current.NativeDishCount - 1;
+        var precedingEvent = new EventState(EventId) with
+        {
+            NativeDishCount = precedingRollCount
+        };
         var candidates = GetWeightedDishCandidates(
-            state, new EventState(EventId));
+            state, precedingEvent);
         return candidates.Any(candidate =>
             candidate.Id == current.NativeDishId);
     }

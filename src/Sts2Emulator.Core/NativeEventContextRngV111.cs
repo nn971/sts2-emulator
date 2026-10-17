@@ -3,8 +3,8 @@ namespace Sts2Emulator.Core;
 /// <summary>
 /// Owns EventModel.Begin-compatible event streams for configured native runs.
 /// The stream is persisted on EventState and copied forward after each draw.
-/// Scripted Trash Heap, Tablet of Truth, Trial, Endless Conveyor's initial
-/// dish, and event-shuffle resolutions retain counterfactual provider markers,
+/// Scripted Trash Heap, Tablet of Truth, Trial, Endless Conveyor dish-ticket,
+/// and event-shuffle resolutions retain counterfactual provider markers,
 /// with event-specific cursor and result invariants checked at the boundary.
 /// </summary>
 public static class NativeEventContextRngV111
@@ -370,7 +370,7 @@ public static class NativeEventContextRngV111
             return;
         if (prototypeEventId == PrototypeNativeEndlessConveyor.EventId &&
             providerMode == "scripted-v111" &&
-            PrototypeNativeEndlessConveyor.IsValidScriptedInitialDishState(
+            PrototypeNativeEndlessConveyor.IsValidScriptedDishState(
                 state, eventState))
             return;
         var scriptedBattlewornShuffleIsExpected =

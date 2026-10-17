@@ -71,13 +71,15 @@ publishes `.state` after the full shuffle replays. It supports `fork()`, `save_s
 `release()`. See the
 [native event shuffle contract](../../docs/REFERENCE_NATURE_NATIVE_EVENT_SHUFFLE_D3.md).
 
-For Endless Conveyor's first weighted dish roll on configured Event-node
-entry, call `State.begin_reference_nature_endless_conveyor_dish(action_id,
-nature_seed=None)` with the stable legal map action ID. The session is admitted
-only when ordinary event selection enters Endless Conveyor. `resolve_next()`
-replays the selected dish ticket and commits it with the Nature cursor; later
-dish rolls are not part of this session. Fork, save/restore, and release are
-available on the session. See the
+For an Endless Conveyor weighted dish roll, call
+`State.begin_reference_nature_endless_conveyor_dish(action_id,
+nature_seed=None)` with the stable legal action ID. On map entry, the session is
+admitted only when ordinary event selection enters Endless Conveyor. During an
+active event, it is admitted only when the action reaches exactly one weighted
+ticket; preceding random effects keep their ordinary providers. Each session
+resolves one ticket and commits it with the Nature cursor. Forced fifth dishes
+and actions that do not roll a dish remain outside this session. Fork,
+save/restore, and release are available. See the
 [Endless Conveyor contract](../../docs/REFERENCE_NATURE_ENDLESS_CONVEYOR_D3.md).
 For Battleworn, pass `site_id="event.battleworn.upgrade.shuffle_swap_index"`
 and the stable `action_id` of a legal combat action that wins setting 2 in one

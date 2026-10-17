@@ -687,11 +687,20 @@ public static partial class ChanceLawEngineV111
     }
 
     public static ChanceLawV111 QueryNativeEndlessConveyorDishEntry(
-        RunState origin, string actionId, int ordinal = 0)
+        RunState origin, string actionId, int? ordinal = null)
     {
         ArgumentNullException.ThrowIfNull(origin);
         ArgumentException.ThrowIfNullOrWhiteSpace(actionId);
-        if (ordinal != 0 || string.IsNullOrWhiteSpace(origin.RunSeed) ||
+        if (origin.Phase == RunPhase.Event &&
+            origin.World?.Event?.EventId ==
+                PrototypeNativeEndlessConveyor.EventId)
+            return QueryNativeEndlessConveyorDishContinuation(
+                origin, actionId, ordinal);
+
+        if (ordinal is not (null or 0))
+            throw new InvalidOperationException(
+                "Endless Conveyor entry supports only dish ordinal zero.");
+        if (string.IsNullOrWhiteSpace(origin.RunSeed) ||
             origin.NativeRunRng is null || origin.Phase != RunPhase.MapChoice ||
             origin.World is not { Event: null } world)
             throw new InvalidOperationException(
@@ -751,7 +760,9 @@ public static partial class ChanceLawEngineV111
             NativeRngV111.ToSnapshot(stream) !=
                 NativeRngV111.ToSnapshot(expectedStream) ||
             capture.Request.StreamId != expectedStream.StreamId ||
-            capture.Request.Ordinal != 0)
+            capture.Request.Ordinal != 0 ||
+            ordinal is { } requestedOrdinal &&
+                capture.Request.Ordinal != requestedOrdinal)
             throw new InvalidOperationException(
                 "Endless Conveyor dish law requires the untouched event-entry stream.");
 
@@ -774,6 +785,117 @@ public static partial class ChanceLawEngineV111
             page = evt.NativePageIndex,
             dishCount = evt.NativeDishCount,
             lastDishId = evt.NativeLastDishId,
+            hp = preDraw.Player.Hp,
+            maxHp = preDraw.Player.MaxHp,
+            emptyPotionSlots = preDraw.Player.PotionSlots
+                .Select((potion, slot) => (potion, slot))
+                .Where(entry => entry.potion is null)
+                .Select(entry => entry.slot).ToArray(),
+            candidates,
+            request = new
+            {
+                request.SiteId, request.StreamId, request.OwnerId,
+                request.Ordinal, request.SourceVersion
+            },
+            policy = NativeEndlessConveyorDishConditioningPolicyId
+        });
+        var outcomes = candidates.Select(candidate =>
+            new ChanceLawOutcomeV111(
+                "dish:" + candidate.Id, candidate.Weight)).ToArray();
+        var eventId = CanonicalJson.Sha256(new
+        {
+            boundary = "native_event.endless_conveyor.dish_weighted_ticket",
+            actionId,
+            conditioningFingerprint
+        });
+        return Create(eventId, request.SiteId,
+            "unit_float_weighted_ticket", request.OwnerId, request.Ordinal,
+            NativeEndlessConveyorDishConditioningPolicyId,
+            conditioningFingerprint,
+            "native-endless-conveyor-weighted-dish-ticket-unverified",
+            outcomes);
+    }
+
+    private static ChanceLawV111 QueryNativeEndlessConveyorDishContinuation(
+        RunState origin, string actionId, int? ordinal)
+    {
+        if (string.IsNullOrWhiteSpace(origin.RunSeed) ||
+            origin.NativeRunRng is null || origin.Phase != RunPhase.Event ||
+            origin.World is not { Event: { } eventState, Combat: null } world ||
+            eventState.EventId != PrototypeNativeEndlessConveyor.EventId ||
+            eventState.NativeEventRngProviderMode is not (null or "scripted-v111") ||
+            eventState.NativeEventPotionSlot is not null ||
+            eventState.ControlledChoice is not null ||
+            origin.ControlledEventRewardChoice is not null)
+            throw new InvalidOperationException(
+                "Endless Conveyor continuation law requires a pending configured event action.");
+        PrototypeStateInvariants.Validate(origin);
+
+        var engine = new PrototypeGameEngine();
+        var action = engine.GetLegalActions(origin).SingleOrDefault(candidate =>
+            PrototypeAiEnvironment.StableActionId(candidate) == actionId)
+            ?? throw new InvalidOperationException(
+                "Endless Conveyor continuation law requires a current legal action.");
+        IReadOnlyList<NativeEventUnitFloatCaptureV111> captures;
+        using (var probe = NativeEventRandomProbeV111.Begin())
+        using (RandomBoundaryJournalV111.Begin())
+        using (NativeEngineEventJournalV111.Begin())
+        {
+            _ = engine.Step(origin.Fork(), action).State;
+            captures = probe.UnitFloatCaptures;
+        }
+        var matching = captures.Where(capture =>
+            capture.Request.SiteId == PrototypeNativeEndlessConveyor
+                .DishWeightedTicketSiteId).ToArray();
+        if (matching.Length != 1)
+            throw new InvalidOperationException(
+                "Endless Conveyor continuation action must perform exactly one weighted dish ticket.");
+
+        var capture = matching[0];
+        var preDraw = capture.PreDrawState;
+        var evt = preDraw.World?.Event;
+        if (preDraw.Phase != RunPhase.Event ||
+            preDraw.World?.Combat is not null ||
+            evt?.EventId != PrototypeNativeEndlessConveyor.EventId ||
+            evt.NativePageIndex != 1 || evt.ChosenChoiceId != "grab" ||
+            evt.NativeDishCount < 1 || evt.NativeDishId is null ||
+            evt.NativeDishId != evt.NativeLastDishId ||
+            evt.NativeDishRollPending || evt.NativeEventPotionSlot is not null ||
+            (evt.NativeDishCount + 1) % 5 == 0)
+            throw new InvalidOperationException(
+                "Endless Conveyor continuation law was not captured at a weighted post-grab dish boundary.");
+
+        var stream = evt.NativeEventRng
+            ?? throw new InvalidOperationException(
+                "Endless Conveyor continuation requires its Native event stream.");
+        if (stream.StreamId != capture.Request.StreamId ||
+            ordinal is { } requestedOrdinal &&
+                capture.Request.Ordinal != requestedOrdinal)
+            throw new InvalidOperationException(
+                "Endless Conveyor continuation ordinal differs from the requested event cursor.");
+
+        var candidates = PrototypeNativeEndlessConveyor
+            .GetWeightedDishCandidates(preDraw, evt);
+        if (candidates.Length == 0 || candidates.Any(candidate =>
+                candidate.Weight <= 0))
+            throw new InvalidOperationException(
+                "Endless Conveyor has no positive weighted dish support.");
+        var nextRoll = checked(evt.NativeDishCount + 1);
+        var ownerId = $"dish:{nextRoll}:pool:" +
+            CanonicalJson.Sha256(candidates);
+        if (capture.Request.OwnerId != ownerId)
+            throw new InvalidDataException(
+                "Endless Conveyor dish request owner differs from its weighted support.");
+
+        var request = capture.Request;
+        var conditioningFingerprint = CanonicalJson.Sha256(new
+        {
+            actionId,
+            eventId = evt.EventId,
+            page = evt.NativePageIndex,
+            dishCount = evt.NativeDishCount,
+            lastDishId = evt.NativeLastDishId,
+            nativeEventCursor = NativeRngV111.ToSnapshot(stream),
             hp = preDraw.Player.Hp,
             maxHp = preDraw.Player.MaxHp,
             emptyPotionSlots = preDraw.Player.PotionSlots
