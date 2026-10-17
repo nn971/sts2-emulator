@@ -1,4 +1,5 @@
 using System.Globalization;
+using System.Numerics;
 using System.Text.Json;
 using System.Text.Json.Serialization;
 
@@ -328,14 +329,72 @@ public sealed record ChanceLawV111(
 /// </summary>
 public static partial class ChanceLawEngineV111
 {
-    public const string NativeBoundedIndexSourceVerifiedProvenance =
-        "v0.111.0 Rng.NextInt(maxExclusive) maps a uniform 53-bit " +
-        "NextDouble grid to a bounded integer. Power-of-two bounds divide " +
-        "that grid evenly; run-seed frequencies and stream derivation are " +
-        "outside this claim.";
+    private const long NativeNextDoubleGridSize = 1L << 53;
 
-    internal static bool HasEqualNativeBoundedIndexGridBins(int bound) =>
-        bound > 0 && (bound & (bound - 1)) == 0;
+    public const string NativeBoundedIndexSourceVerifiedProvenance =
+        "v0.111.0 Rng.NextInt(maxExclusive) multiplies the uniform 53-bit " +
+        "NextDouble grid and truncates. Exact source bin masses include " +
+        "binary64 rounding boundaries; run-seed frequencies and stream " +
+        "derivation are outside this claim.";
+
+    /// <summary>Exact integer masses for each result of the pinned Native
+    /// bounded-index transform, scaled by the 2^53 input-grid size. This
+    /// counts the binary64 multiply's round-to-nearest bins before truncation.
+    /// </summary>
+    internal static long[] NativeNextIntGridWeights(int boundExclusive)
+    {
+        if (boundExclusive <= 0)
+            throw new ArgumentOutOfRangeException(nameof(boundExclusive));
+
+        var weights = new long[boundExclusive];
+        long total = 0;
+        for (var index = 0; index < boundExclusive; index++)
+        {
+            var first = index == 0 ? 0 : NativeNextIntBoundaryGridIndex(
+                index, boundExclusive);
+            var end = NativeNextIntBoundaryGridIndex(
+                index + 1, boundExclusive);
+            var weight = checked(end - first);
+            if (weight <= 0)
+                throw new InvalidDataException(
+                    "Native bounded-index grid produced an empty outcome bin.");
+            weights[index] = weight;
+            total = checked(total + weight);
+        }
+
+        if (total != NativeNextDoubleGridSize)
+            throw new InvalidDataException(
+                "Native bounded-index grid masses do not cover the full input grid.");
+        return weights;
+    }
+
+    private static long NativeNextIntBoundaryGridIndex(
+        int integerBoundary, int boundExclusive)
+    {
+        if (integerBoundary <= 0 || integerBoundary > boundExclusive)
+            throw new ArgumentOutOfRangeException(nameof(integerBoundary));
+
+        // The lower neighbor of a power-of-two integer has half the spacing
+        // of the values immediately above it. The integer is even in binary64
+        // at these magnitudes, so the midpoint rounds to the integer itself.
+        // Thus a product rounds to at least this boundary at
+        // integerBoundary - 2^-denominatorPower. Scaling that rational
+        // threshold by 2^53 / boundExclusive and taking its ceiling counts
+        // the grid inputs below the boundary.
+        var exponent = BitOperations.Log2((uint)integerBoundary);
+        var denominatorPower = 53 - exponent +
+            ((integerBoundary & (integerBoundary - 1)) == 0 ? 1 : 0);
+        var denominatorScale = BigInteger.One << denominatorPower;
+        var midpointNumerator =
+            (BigInteger)integerBoundary * denominatorScale - BigInteger.One;
+        var numerator = midpointNumerator * NativeNextDoubleGridSize;
+        var denominator = denominatorScale * boundExclusive;
+        var quotient = BigInteger.DivRem(numerator, denominator,
+            out var remainder);
+        if (!remainder.IsZero)
+            quotient += BigInteger.One;
+        return checked((long)quotient);
+    }
 
     public const string IntentConditioningPolicyId =
         "source-filtered-intent-weights-v1";
@@ -1606,23 +1665,18 @@ public static partial class ChanceLawEngineV111
             ordinal,
             conditioningFingerprint
         });
+        var weights = NativeNextIntGridWeights(
+            selectedRequest.SupportCount);
         var outcomes = Enumerable.Range(0, selectedRequest.SupportCount)
             .Select(index => new ChanceLawOutcomeV111(
                 "swap_index:" + index.ToString(CultureInfo.InvariantCulture),
-                1L)).ToArray();
-        var sourceVerified = HasEqualNativeBoundedIndexGridBins(
-            selectedRequest.SupportCount);
+                weights[index])).ToArray();
         return Create(eventId, siteId, selectedRequest.OperationKind,
             ownerId, ordinal, AncientOfferShuffleConditioningPolicyId,
             conditioningFingerprint,
-            sourceVerified
-                ? NativeBoundedIndexSourceVerifiedProvenance
-                : "equal-weight Ancient-offer swap indices; source bin " +
-                  "masses are not exact for this bound",
+            NativeBoundedIndexSourceVerifiedProvenance,
             outcomes,
-            sourceVerified
-                ? ChanceLawV111.SourceVerifiedStatus
-                : ChanceLawV111.UnverifiedStatus);
+            ChanceLawV111.SourceVerifiedStatus);
     }
 
     private static ChanceLawV111 QueryDarvOfferVariant(
@@ -1650,24 +1704,18 @@ public static partial class ChanceLawEngineV111
             ordinal,
             conditioningFingerprint
         });
+        var weights = NativeNextIntGridWeights(request.SupportCount);
         var outcomes = new[]
         {
-            new ChanceLawOutcomeV111("offer_variant:dusty_tome", 1L),
-            new ChanceLawOutcomeV111("offer_variant:three_relics", 1L)
+            new ChanceLawOutcomeV111("offer_variant:dusty_tome", weights[0]),
+            new ChanceLawOutcomeV111("offer_variant:three_relics", weights[1])
         };
-        var sourceVerified = HasEqualNativeBoundedIndexGridBins(
-            request.SupportCount);
         return Create(eventId, request.SiteId, request.OperationKind,
             ownerId, ordinal, DarvOfferVariantConditioningPolicyId,
             conditioningFingerprint,
-            sourceVerified
-                ? NativeBoundedIndexSourceVerifiedProvenance
-                : "equal-weight Darv offer variant; source bin masses " +
-                  "are not exact for this bound",
+            NativeBoundedIndexSourceVerifiedProvenance,
             outcomes,
-            sourceVerified
-                ? ChanceLawV111.SourceVerifiedStatus
-                : ChanceLawV111.UnverifiedStatus);
+            ChanceLawV111.SourceVerifiedStatus);
     }
 
     private static ChanceLawV111 QueryDarvRelicShuffle(
@@ -1720,24 +1768,19 @@ public static partial class ChanceLawEngineV111
             ordinal,
             conditioningFingerprint
         });
+        var weights = NativeNextIntGridWeights(
+            selectedRequest.SupportCount);
         var outcomes = Enumerable.Range(0, selectedRequest.SupportCount)
             .Select(index => new ChanceLawOutcomeV111(
                 "swap_index:" + index.ToString(CultureInfo.InvariantCulture),
-                1L)).ToArray();
-        var sourceVerified = HasEqualNativeBoundedIndexGridBins(
-            selectedRequest.SupportCount);
+                weights[index])).ToArray();
         return Create(eventId, selectedRequest.SiteId,
             selectedRequest.OperationKind, selectedRequest.OwnerId,
             ordinal, AncientOfferShuffleConditioningPolicyId,
             conditioningFingerprint,
-            sourceVerified
-                ? NativeBoundedIndexSourceVerifiedProvenance
-                : "equal-weight Darv shuffle indices; source bin masses " +
-                  "are not exact for this bound",
+            NativeBoundedIndexSourceVerifiedProvenance,
             outcomes,
-            sourceVerified
-                ? ChanceLawV111.SourceVerifiedStatus
-                : ChanceLawV111.UnverifiedStatus);
+            ChanceLawV111.SourceVerifiedStatus);
     }
 
     internal static RandomIndexRequestV111 DarvOfferVariantRequest(

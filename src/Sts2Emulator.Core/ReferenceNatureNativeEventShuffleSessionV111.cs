@@ -967,19 +967,19 @@ public static partial class ChanceLawEngineV111
                     "Native event shuffle prefix contains an unsupported bounded index.");
 
         var request = plan.Request(ordinal);
+        var weights = NativeNextIntGridWeights(request.BoundedCount!.Value);
         var conditioningFingerprint = CanonicalJson.Sha256(new
         {
             plan.ConditioningFingerprint,
             priorIndices,
             request
         });
-        var outcomes = Enumerable.Range(0, request.BoundedCount!.Value)
+        var outcomes = Enumerable.Range(0, request.BoundedCount.Value)
             .Select(index => new ChanceLawOutcomeV111(
                 "swap_index:" + index.ToString(
-                    System.Globalization.CultureInfo.InvariantCulture), 1L))
+                    System.Globalization.CultureInfo.InvariantCulture),
+                weights[index]))
             .ToArray();
-        var sourceVerified = HasEqualNativeBoundedIndexGridBins(
-            request.BoundedCount.Value);
         var eventId = CanonicalJson.Sha256(new
         {
             boundary = "native_event.fisher_yates_shuffle_swap",
@@ -989,14 +989,9 @@ public static partial class ChanceLawEngineV111
             request.OperationKind, request.OwnerId, request.Ordinal,
             NativeEventShuffleConditioningPolicyId,
             conditioningFingerprint,
-            sourceVerified
-                ? NativeBoundedIndexSourceVerifiedProvenance
-                : "equal-weight bounded event-shuffle indices; source " +
-                  "bin masses are not exact for this bound",
+            NativeBoundedIndexSourceVerifiedProvenance,
             outcomes,
-            sourceVerified
-                ? ChanceLawV111.SourceVerifiedStatus
-                : ChanceLawV111.UnverifiedStatus);
+            ChanceLawV111.SourceVerifiedStatus);
     }
 
     public static ChanceLawV111 QueryNativeRepyPotionOffer(

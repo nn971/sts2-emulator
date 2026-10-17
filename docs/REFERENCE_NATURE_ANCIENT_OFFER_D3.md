@@ -22,13 +22,12 @@ validation. Pael duplicate entries remain separate probability mass through
 integer outcome weights. The Ancient generators perform the actual offer
 generation through provider mode `scripted-v111`. This counterfactual provider
 does not advance the Native event RNG cursor, and the completed event retains
-its provider-mode marker. The variant and swap laws currently have uniform
-integer weights. Darv's binary variant law is `SOURCE_VERIFIED` under the
-uniform 53-bit input model. Its Fisher–Yates swaps, and the Nonupeipe, Tanx,
-and Vakuu swaps, are source-verified individually only when their bounded
-count is a power of two; other bounds retain the equal-weight law as
-`UNVERIFIED`. Orobas, Pael and Tezcatara direct offer laws remain
-`UNVERIFIED`.
+its provider-mode marker. Darv's binary variant law and all four Native
+Fisher–Yates shuffle families use exact source bin masses from the 53-bit
+`NextDouble` grid, including binary64 rounding, and are `SOURCE_VERIFIED`
+under the uniform-grid input model. Power-of-two bounds yield equal weights;
+other bounds can have unequal weights. Orobas, Pael and Tezcatara
+direct offer laws remain `UNVERIFIED`.
 
 ## JSONL operations
 

@@ -159,10 +159,12 @@ advertise supported statuses, while a legacy single-status field may remain a
 conservative default for compatibility.
 
 For the pinned Native `NextInt(maxExclusive)`, the source maps a 53-bit
-`NextDouble` grid by multiplication and truncation. Equal bounded-index weights
-are source-verified when the bound is a power of two, since it divides that
-grid evenly. Other bounds do not have equal grid-bin masses and an equal-weight
-Chance Law remains `UNVERIFIED` unless it reports the exact source masses.
+`NextDouble` grid by multiplication and truncation. Exact integer weights can
+be computed from each grid point's preimage, including the binary64 rounding
+boundary before truncation. Power-of-two bounds yield equal masses; other
+bounds may be slightly uneven. Laws that use these exact source masses are
+`SOURCE_VERIFIED` under the declared uniform-grid input model. Equal-weight
+approximations at other bounds remain `UNVERIFIED`.
 
 - Its result must be independent of the outcome eventually selected by Native, ReferenceNature or learned Nature.
 - Native provider's already-committed hidden realization is **not** a Chance Law input for Nature's pre-revelation distribution. Conditioning on a complete private realization would instead produce a degenerate distribution; it answers a different question.

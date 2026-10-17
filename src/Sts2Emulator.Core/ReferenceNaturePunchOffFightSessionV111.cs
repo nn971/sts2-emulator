@@ -172,10 +172,12 @@ public static partial class ChanceLawEngineV111
         var plan = NativePunchOffFightPlanBuilderV111.Build(
             origin, actionId, ordinal, priorIndices);
         var request = plan.Requests[ordinal];
+        var weights = NativeNextIntGridWeights(8);
         var outcomes = Enumerable.Range(0, 8).Select(index =>
             new ChanceLawOutcomeV111(
                 "hp_offset:" + (index + 2).ToString(
-                    System.Globalization.CultureInfo.InvariantCulture), 1L))
+                    System.Globalization.CultureInfo.InvariantCulture),
+                weights[index]))
             .ToArray();
         var conditioning = CanonicalJson.Sha256(new
         {

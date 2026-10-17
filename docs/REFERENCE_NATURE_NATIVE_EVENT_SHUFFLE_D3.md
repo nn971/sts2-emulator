@@ -68,13 +68,15 @@ Each pending shuffle law represents one descending Fisher–Yates swap. Its
 bounded integer support is `0..(candidate count - ordinal - 1)`, and its
 conditioning fingerprint includes the ordered eligible identities and every
 preceding swap index. Outcomes use stable `swap_index:<index>` identifiers
-and equal integer weights. For source-backed Native shuffle requests, an
-individual law is `SOURCE_VERIFIED` when its bounded count is a power of two:
-the pinned `NextDouble` grid divides evenly across those outcomes. Other bounds
-retain the equal-weight modeled law as `UNVERIFIED`, because the 53-bit grid
-does not divide evenly. Repy's two potion laws expose indices into the
-configured potion pool, use stable potion-and-index identities, and include
-the full preceding shuffle and potion prefix; they remain `UNVERIFIED`.
+and exact integer weights. Source-backed Native shuffle laws use each index's
+exact preimage count on the 53-bit `NextDouble` grid, including the
+binary64-multiplication rounding boundary, and are `SOURCE_VERIFIED` under the
+uniform-grid input model. Power-of-two bounds have equal weights; other bounds
+can have unequal weights. This status does not establish stream
+attribution, seed frequencies, or seeded parity. Repy's two potion laws expose
+indices into the configured potion pool, use stable potion-and-index
+identities, and include the full preceding shuffle and potion prefix; they
+remain `UNVERIFIED`.
 
 The Fragrant Mushroom, Tinker type, Tinker rider, and Fake Merchant stock
 shuffle sites have separate laws. A rider law is conditioned on the prior
@@ -85,11 +87,11 @@ result being Fake Merchant, then on the ordered nine-relic stock pool and
 preceding swap indices.
 Repy's law is conditioned on its initial chest action, ordered unowned relic
 pool, captured `player.rewards` cursor, and preceding swap indices. Its source
-stream attribution remains a hypothesis; the index law is `SOURCE_VERIFIED`
-only for power-of-two bounded counts, and remains `UNVERIFIED` otherwise. Its
-two potion-index laws use the full relic-swap prefix and preceding potion
-indices; the potion picks remain independent with replacement in the modeled
-support.
+stream attribution remains a hypothesis; its bounded-index transform law is
+`SOURCE_VERIFIED` under the uniform-grid model. Its two potion-index laws use
+the full relic-swap prefix and preceding potion indices; the potion picks
+remain independent with replacement in the modeled support, and their source
+probability provenance remains `UNVERIFIED`.
 
 `ReferenceNatureNativeEventShuffleSessionV111` stores the original run and
 sampler cursor while outcomes are pending. Once every swap has been sampled,
