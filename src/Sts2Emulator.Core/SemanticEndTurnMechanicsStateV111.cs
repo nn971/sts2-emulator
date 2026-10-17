@@ -58,9 +58,14 @@ public sealed record SemanticEndTurnMechanicsStateV111
                 return;
             }
 
+            bool pipelineOwnsDrawCursor =
+                SemanticCombatDrawV111.HasAutomaticPipelineDrawCursor(
+                    value.Run, value.AutomaticHandDraw);
             _handDraw = new SemanticEndTurnHandDrawProjectionV111(
-                value.Origin.Fork(), value.RequestedCount,
-                value.RemainingCount, value.FromHandDraw,
+                value.Origin.Fork(),
+                pipelineOwnsDrawCursor ? 0 : value.RequestedCount,
+                pipelineOwnsDrawCursor ? 0 : value.RemainingCount,
+                value.FromHandDraw,
                 value.AutomaticHandDraw,
                 Complete ? value.Run.Fork() : null);
             if (!Complete)

@@ -50,19 +50,69 @@ public sealed record SemanticCombatDrawV111(
     public RunState Run
     {
         get => Mechanics.Run;
-        init => Mechanics = Mechanics with { Run = value };
+        init
+        {
+            var current = Mechanics;
+            var priorProgress = ReadAutomaticPipelineDrawProgress(
+                current.Run, current.AutomaticHandDraw);
+            var nextProgress = ReadAutomaticPipelineDrawProgress(
+                value, current.AutomaticHandDraw);
+            int requested = current.RequestedCount;
+            int remaining = current.RemainingCount;
+            if (nextProgress is not null)
+            {
+                requested = 0;
+                remaining = 0;
+            }
+            else if (priorProgress is { } progress)
+            {
+                requested = value.World?.Combat?.AutomaticPipelineContinuation
+                    ?.ControlledSemanticDrawRequested ??
+                    (progress.Requested > 0
+                        ? progress.Requested : requested);
+                remaining = 0;
+            }
+            Mechanics = current with
+            {
+                Continuation = current.Continuation with { Current = value },
+                RequestedCount = requested,
+                RemainingCount = remaining
+            };
+        }
     }
 
     public int RequestedCount
     {
-        get => Mechanics.RequestedCount;
-        init => Mechanics = Mechanics with { RequestedCount = value };
+        get => ReadAutomaticPipelineDrawProgress(
+            Mechanics.Run, Mechanics.AutomaticHandDraw)?.Requested ??
+            Mechanics.RequestedCount;
+        init
+        {
+            var mechanics = Mechanics;
+            Mechanics = mechanics with
+            {
+                RequestedCount = ReadAutomaticPipelineDrawProgress(
+                    mechanics.Run, mechanics.AutomaticHandDraw) is null
+                    ? value : 0
+            };
+        }
     }
 
     public int RemainingCount
     {
-        get => Mechanics.RemainingCount;
-        init => Mechanics = Mechanics with { RemainingCount = value };
+        get => ReadAutomaticPipelineDrawProgress(
+            Mechanics.Run, Mechanics.AutomaticHandDraw)?.Remaining ??
+            Mechanics.RemainingCount;
+        init
+        {
+            var mechanics = Mechanics;
+            Mechanics = mechanics with
+            {
+                RemainingCount = ReadAutomaticPipelineDrawProgress(
+                    mechanics.Run, mechanics.AutomaticHandDraw) is null
+                    ? value : 0
+            };
+        }
     }
 
     public bool FromHandDraw
@@ -74,8 +124,41 @@ public sealed record SemanticCombatDrawV111(
     public bool AutomaticHandDraw
     {
         get => Mechanics.AutomaticHandDraw;
-        init => Mechanics = Mechanics with { AutomaticHandDraw = value };
+        init
+        {
+            var mechanics = Mechanics;
+            var pipelineProgress = ReadAutomaticPipelineDrawProgress(
+                mechanics.Run, value);
+            Mechanics = mechanics with
+            {
+                AutomaticHandDraw = value,
+                RequestedCount = pipelineProgress is null
+                    ? mechanics.RequestedCount : 0,
+                RemainingCount = pipelineProgress is null
+                    ? mechanics.RemainingCount : 0
+            };
+        }
     }
+
+    internal static bool HasAutomaticPipelineDrawCursor(
+        RunState run, bool automaticHandDraw) =>
+        ReadAutomaticPipelineDrawProgress(run, automaticHandDraw) is not null;
+
+    private static (int Requested, int Remaining)?
+        ReadAutomaticPipelineDrawProgress(
+            RunState run, bool automaticHandDraw)
+    {
+        if (!automaticHandDraw || run.World?.Combat is not { } combat ||
+            combat.AutomaticPipelineContinuation is not { } cursor)
+            return null;
+        if (cursor.ControlledSemanticBeforeHandDrawPending)
+            return (0, 0);
+        if (!PrototypeGameEngine.IsSemanticAutomaticHandDraw(combat))
+            return null;
+        return (cursor.ControlledSemanticDrawRequested!.Value,
+            cursor.ControlledSemanticDrawRemaining!.Value);
+    }
+
     [JsonIgnore] public string Fingerprint => CanonicalJson.Sha256(this);
     [JsonIgnore] public SemanticDeckEventV111? Pending =>
         Run.World?.Combat?.SemanticDeck is
@@ -191,6 +274,10 @@ public sealed record SemanticCombatDrawV111(
         if (this.RequestedCount < 0 ||
             this.RemainingCount < 0 ||
             this.RemainingCount > this.RequestedCount ||
+            (ReadAutomaticPipelineDrawProgress(
+                 this.Run, this.AutomaticHandDraw) is not null &&
+             (this.Mechanics.RequestedCount != 0 ||
+              this.Mechanics.RemainingCount != 0)) ||
             (this.RequestedCount == 0 && randomPileCardPending is null &&
              drawInsertionPending is null &&
              drawHookChoicePending?.BeforeHandDraw != true &&

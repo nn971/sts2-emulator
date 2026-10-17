@@ -20,6 +20,9 @@ public sealed record SemanticCombatDrawMechanicsStateV111
         init => Continuation = Continuation with { Current = value };
     }
 
+    // Fallback projection for standalone draws and completed automatic-draw
+    // facades. While DrawPlayerHand is suspended, the pipeline cursor owns
+    // these counts and SemanticCombatDrawV111 reads them there.
     public int RequestedCount { get; init; }
     public int RemainingCount { get; init; }
     public bool FromHandDraw { get; init; }
