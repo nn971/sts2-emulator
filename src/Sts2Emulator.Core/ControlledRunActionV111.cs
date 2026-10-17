@@ -374,6 +374,14 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                 var combatPotionSite = ControlledEventChoiceReplayV111
                     .IsRunActionCombatEntryPotionSite(
                         PendingRequest.SiteId);
+                var overgrowthCombatEntrySite =
+                    ControlledEventChoiceReplayV111
+                        .IsRunActionOvergrowthCombatEntrySite(
+                            PendingRequest.SiteId);
+                var underdocksCombatEntrySite =
+                    ControlledEventChoiceReplayV111
+                        .IsRunActionUnderdocksCombatEntrySite(
+                            PendingRequest.SiteId);
                 var legacyShopNode = node?.RoomType == PrototypeRoomType.Shop
                     && !PrototypeGameEngine.UsesNativeRegionalSystems(world);
                 var availableRelics = node?.RoomType == PrototypeRoomType.Treasure
@@ -390,17 +398,23 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                 var legacyOvergrowthCombatNode = node is not null
                     && ControlledRunActionEngineV111
                         .IsLegacyOvergrowthCombatRoom(state, node.RoomType);
+                var legacyUnderdocksCombatNode = node is not null
+                    && ControlledRunActionEngineV111
+                        .IsLegacyUnderdocksCombatRoom(state, node.RoomType);
                 if (node is null
                     || (node.RoomType != PrototypeRoomType.Event
                         && !legacyShopNode && !legacyTreasureNode
-                        && !legacyOvergrowthCombatNode))
+                        && !legacyOvergrowthCombatNode
+                        && !legacyUnderdocksCombatNode))
                     throw new InvalidDataException(
                         "Controlled map-node frame does not reference an available supported node.");
                 if (!(node.RoomType == PrototypeRoomType.Event && eventEntrySite)
                     && !(legacyShopNode && shopSite)
                     && !(legacyTreasureNode && treasureSite)
                     && !(legacyOvergrowthCombatNode
-                        && (combatSite || combatPotionSite)))
+                        && overgrowthCombatEntrySite)
+                    && !(legacyUnderdocksCombatNode
+                        && underdocksCombatEntrySite))
                     throw new InvalidDataException(
                         "Controlled map-node frame has an unsupported chance site.");
                 expectedSite = PendingRequest.SiteId;
@@ -512,6 +526,17 @@ public sealed record PrototypeControlledRunActionContinuationV111(
             var isCombatPotionDraw = ActionId == "choose_map_node"
                 && ControlledEventChoiceReplayV111
                     .IsRunActionCombatEntryPotionSite(request.SiteId);
+            var mapAction = ActionId == "choose_map_node"
+                ? GameAction.Create(
+                    "choose_map_node",
+                    new ChooseMapNodePayload(MapNodeId ??
+                        throw new InvalidDataException(
+                            "Controlled map-node prefix is missing its node ID.")))
+                : null;
+            var isCombatEntryDraw = mapAction is not null
+                && ControlledRunActionEngineV111
+                    .IsLegacyActOneCombatEntrySite(
+                        state, mapAction, request.SiteId);
             var prefixStream = ActionId ==
                     PrototypeNativeRestSiteActionsV111.Dig
                 || isEventEntryDraw
@@ -525,7 +550,7 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                     request.SiteId)
                 : ActionId == "choose_map_node"
                     ? isEventEntryDraw || isShopDraw || isTreasureDraw
-                        || isCombatDraw || isCombatPotionDraw
+                        || isCombatEntryDraw
                     : ControlledEventChoiceReplayV111
                         .IsRunActionShovelSite(request.SiteId);
             var prefixOwner = isBossDraw
@@ -678,9 +703,15 @@ public static class ControlledRunActionEngineV111
                                     StringComparer.Ordinal.Equals(
                                         relic.RelicId, id)))
                         || IsLegacyOvergrowthCombatRoom(
+                            source, node.RoomType)
+                        || IsLegacyUnderdocksCombatRoom(
                             source, node.RoomType)));
         var overgrowthCombatEntryAction =
             IsLegacyOvergrowthCombatEntryAction(source, action);
+        var underdocksCombatEntryAction =
+            IsLegacyUnderdocksCombatEntryAction(source, action);
+        var legacyActOneCombatEntryAction = overgrowthCombatEntryAction
+            || underdocksCombatEntryAction;
         var shopPurchaseAction = IsShopPurchaseAction(
             source, action);
         if (source.ControlledRunActionChoice is not null
@@ -703,8 +734,8 @@ public static class ControlledRunActionEngineV111
         {
             var replay = ControlledChanceContinuationExecutorV111.Resume(
                 source, [], checkpoint => engine.Step(checkpoint, action).State,
-                requestFilter: overgrowthCombatEntryAction
-                    ? IsLegacyOvergrowthCombatEntryRequest : null);
+                requestFilter: legacyActOneCombatEntryAction
+                    ? IsLegacyActOneCombatEntryRequest : null);
             if (replay.PendingChance is { } pendingChance)
             {
                 var supportedShopPurchaseSite = shopPurchaseAction
@@ -718,10 +749,8 @@ public static class ControlledRunActionEngineV111
                             .IsRunActionShopSite(pendingChance.Request.SiteId)
                         || ControlledEventChoiceReplayV111
                             .IsRunActionTreasureSite(pendingChance.Request.SiteId)
-                        || overgrowthCombatEntryAction
-                            && ControlledEventChoiceReplayV111
-                                .IsRunActionCombatEntrySite(
-                                    pendingChance.Request.SiteId));
+                        || IsLegacyActOneCombatEntrySite(
+                            source, action, pendingChance.Request.SiteId));
                 var labelsValid = pendingChance.CandidateLabels is { } labels
                     && (supportedShopPurchaseSite
                         ? labels.Length == pendingChance.Request.SupportCount
@@ -763,7 +792,7 @@ public static class ControlledRunActionEngineV111
         }
         if (result.ControlledRunActionChoice is null)
         {
-            if (shopPurchaseAction || overgrowthCombatEntryAction)
+            if (shopPurchaseAction || legacyActOneCombatEntryAction)
             {
                 PrototypeStateInvariants.Validate(result);
                 return result;
@@ -793,6 +822,21 @@ public static class ControlledRunActionEngineV111
         }
         && roomType is PrototypeRoomType.Combat or PrototypeRoomType.Elite;
 
+    internal static bool IsLegacyUnderdocksCombatRoom(
+        RunState state, PrototypeRoomType roomType) =>
+        state.Phase == RunPhase.MapChoice
+        && state.Configuration is null
+        && state.NativeRunRng is null
+        && state.World is
+        {
+            Act: 1,
+            ActOneRegion: PrototypeActOneRegion.Underdocks,
+            ActOneEncounterPool.Region: PrototypeActOneRegion.Underdocks,
+            Map.GenerationProfileId:
+                PrototypeNativeUnderdocks.GenerationProfileId
+        }
+        && roomType is PrototypeRoomType.Combat or PrototypeRoomType.Elite;
+
     internal static bool IsLegacyOvergrowthCombatEntryAction(
         RunState source, GameAction action)
     {
@@ -808,7 +852,36 @@ public static class ControlledRunActionEngineV111
                 && IsLegacyOvergrowthCombatRoom(source, node.RoomType));
     }
 
-    internal static bool IsLegacyOvergrowthCombatEntryRequest(
+    internal static bool IsLegacyUnderdocksCombatEntryAction(
+        RunState source, GameAction action)
+    {
+        if (action.Kind != "choose_map_node"
+            || source.Phase != RunPhase.MapChoice
+            || source.World is not { } world
+            || !IsLegacyUnderdocksCombatRoom(
+                source, PrototypeRoomType.Combat))
+            return false;
+        var nodeId = action.ReadPayload<ChooseMapNodePayload>().NodeId;
+        return PrototypeNativeWingedBoots.AvailableNodes(world, source.Player)
+            .Any(node => node.NodeId == nodeId
+                && IsLegacyUnderdocksCombatRoom(source, node.RoomType));
+    }
+
+    internal static bool IsLegacyActOneCombatEntryAction(
+        RunState source, GameAction action) =>
+        IsLegacyOvergrowthCombatEntryAction(source, action)
+        || IsLegacyUnderdocksCombatEntryAction(source, action);
+
+    internal static bool IsLegacyActOneCombatEntrySite(
+        RunState source, GameAction action, string siteId) =>
+        IsLegacyOvergrowthCombatEntryAction(source, action)
+            ? ControlledEventChoiceReplayV111
+                .IsRunActionOvergrowthCombatEntrySite(siteId)
+            : IsLegacyUnderdocksCombatEntryAction(source, action)
+                && ControlledEventChoiceReplayV111
+                    .IsRunActionUnderdocksCombatEntrySite(siteId);
+
+    internal static bool IsLegacyActOneCombatEntryRequest(
         ControlledStochasticRequestV111 request) =>
         request.StreamId == "combat"
         || request.StreamId == "event"

@@ -249,11 +249,22 @@ public static class StochasticSiteRegistryV111
         UnownedRandomRelicSelectionSiteId
     ];
 
-    private static readonly string[] RunActionCombatSites =
+    private static readonly string[] RunActionOvergrowthCombatEncounterSites =
     [
         "combat.encounter.overgrowth_elite.index_draw",
         "combat.encounter.overgrowth_weak.index_draw",
-        "combat.encounter.overgrowth_normal.index_draw",
+        "combat.encounter.overgrowth_normal.index_draw"
+    ];
+
+    private static readonly string[] RunActionUnderdocksCombatSites =
+    [
+        "combat.encounter.underdocks.elite.index_draw",
+        "combat.encounter.underdocks.weak.index_draw",
+        "combat.encounter.underdocks.normal.index_draw"
+    ];
+
+    private static readonly string[] RunActionCombatSites =
+    [
         "combat.encounter.formation.index_draw",
         "combat.encounter.weighted_selection.ticket",
         NativeCombatRngEntryV111.InitialUniqueHpSiteId,
@@ -419,7 +430,9 @@ public static class StochasticSiteRegistryV111
         .Concat(RunActionShopPurchaseSites)
         .Concat(RunActionTreasureSites)
         .Concat(RunActionShovelSites)
+        .Concat(RunActionOvergrowthCombatEncounterSites)
         .Concat(RunActionCombatSites)
+        .Concat(RunActionUnderdocksCombatSites)
         .Concat(RunActionCombatEntryPotionSites)
         .Distinct(StringComparer.Ordinal)
         .ToArray();
@@ -430,7 +443,9 @@ public static class StochasticSiteRegistryV111
             .Concat(RunActionShopSites)
             .Concat(RunActionShopPurchaseSites)
             .Concat(RunActionTreasureSites)
+            .Concat(RunActionOvergrowthCombatEncounterSites)
             .Concat(RunActionCombatSites)
+            .Concat(RunActionUnderdocksCombatSites)
             .Concat(RunActionCombatEntryPotionSites)
             .Concat(ControlledEventChoiceSites)
             .Concat(NativeMerchantSessionSites)
@@ -465,11 +480,26 @@ public static class StochasticSiteRegistryV111
     public static string[] RunActionShovelSiteIds =>
         (string[])RunActionShovelSites.Clone();
     public static string[] RunActionCombatSiteIds =>
-        (string[])RunActionCombatSites.Clone();
+        RunActionOvergrowthCombatEncounterSites
+            .Concat(RunActionCombatSites)
+            .Concat(RunActionUnderdocksCombatSites)
+            .Distinct(StringComparer.Ordinal).ToArray();
+    public static string[] RunActionUnderdocksCombatSiteIds =>
+        (string[])RunActionUnderdocksCombatSites.Clone();
+    public static string[] RunActionOvergrowthCombatEntrySiteIds =>
+        RunActionOvergrowthCombatEncounterSites
+            .Concat(RunActionCombatSites)
+            .Concat(RunActionCombatEntryPotionSites)
+            .Distinct(StringComparer.Ordinal).ToArray();
+    public static string[] RunActionUnderdocksCombatEntrySiteIds =>
+        RunActionUnderdocksCombatSites
+            .Concat(RunActionCombatSites)
+            .Concat(RunActionCombatEntryPotionSites)
+            .Distinct(StringComparer.Ordinal).ToArray();
     public static string[] RunActionCombatEntryPotionSiteIds =>
         (string[])RunActionCombatEntryPotionSites.Clone();
     public static string[] RunActionCombatEntrySiteIds =>
-        RunActionCombatSites.Concat(RunActionCombatEntryPotionSites)
+        RunActionCombatSiteIds.Concat(RunActionCombatEntryPotionSites)
             .Distinct(StringComparer.Ordinal).ToArray();
     public static string[] ControlledRunActionSiteIds =>
         (string[])RunActionSessionSites.Clone();
@@ -522,7 +552,23 @@ public static class StochasticSiteRegistryV111
         RunActionShovelSiteSet.Contains(siteId);
 
     public static bool IsRunActionCombatSite(string siteId) =>
-        RunActionCombatSites.Contains(siteId, StringComparer.Ordinal);
+        RunActionCombatSites.Contains(siteId, StringComparer.Ordinal)
+        || RunActionOvergrowthCombatEncounterSites.Contains(
+            siteId, StringComparer.Ordinal)
+        || RunActionUnderdocksCombatSites.Contains(
+            siteId, StringComparer.Ordinal);
+
+    public static bool IsRunActionOvergrowthCombatEntrySite(string siteId) =>
+        RunActionOvergrowthCombatEncounterSites.Contains(
+            siteId, StringComparer.Ordinal)
+        || RunActionCombatSites.Contains(siteId, StringComparer.Ordinal)
+        || IsRunActionCombatEntryPotionSite(siteId);
+
+    public static bool IsRunActionUnderdocksCombatEntrySite(string siteId) =>
+        RunActionUnderdocksCombatSites.Contains(
+            siteId, StringComparer.Ordinal)
+        || RunActionCombatSites.Contains(siteId, StringComparer.Ordinal)
+        || IsRunActionCombatEntryPotionSite(siteId);
 
     public static bool IsRunActionCombatEntryPotionSite(string siteId) =>
         RunActionCombatEntryPotionSites.Contains(

@@ -914,6 +914,14 @@ internal sealed class ControlledEventChoiceReplayV111 :
     public static bool IsRunActionCombatSite(string siteId) =>
         StochasticSiteRegistryV111.IsRunActionCombatSite(siteId);
 
+    public static bool IsRunActionOvergrowthCombatEntrySite(string siteId) =>
+        StochasticSiteRegistryV111
+            .IsRunActionOvergrowthCombatEntrySite(siteId);
+
+    public static bool IsRunActionUnderdocksCombatEntrySite(string siteId) =>
+        StochasticSiteRegistryV111
+            .IsRunActionUnderdocksCombatEntrySite(siteId);
+
     public static bool IsRunActionCombatEntryPotionSite(string siteId) =>
         StochasticSiteRegistryV111
             .IsRunActionCombatEntryPotionSite(siteId);

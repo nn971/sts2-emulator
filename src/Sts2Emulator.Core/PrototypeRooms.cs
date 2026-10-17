@@ -4252,9 +4252,9 @@ public sealed partial class PrototypeGameEngine
                     continuation.MapNodeId ?? throw new InvalidDataException(
                         "Controlled map-node frame is missing its node ID.")))
             : null;
-        var overgrowthCombatEntry = selectedMapAction is not null
+        var legacyActOneCombatEntry = selectedMapAction is not null
             && ControlledRunActionEngineV111
-                .IsLegacyOvergrowthCombatEntryAction(
+                .IsLegacyActOneCombatEntryAction(
                     partialState, selectedMapAction);
         var replay = ControlledChanceContinuationExecutorV111.Resume(
             partialState,
@@ -4288,9 +4288,9 @@ public sealed partial class PrototypeGameEngine
                 _ => throw new NotSupportedException(
                     "Controlled run action has no resume implementation.")
             },
-            requestFilter: overgrowthCombatEntry
+            requestFilter: legacyActOneCombatEntry
                 ? ControlledRunActionEngineV111
-                    .IsLegacyOvergrowthCombatEntryRequest
+                    .IsLegacyActOneCombatEntryRequest
                 : null);
         if (replay.PendingChance is { } pendingChance)
         {
@@ -4304,10 +4304,12 @@ public sealed partial class PrototypeGameEngine
                         .IsRunActionShopSite(pendingChance.Request.SiteId)
                     || ControlledEventChoiceReplayV111
                         .IsRunActionTreasureSite(pendingChance.Request.SiteId)
-                    || overgrowthCombatEntry
-                        && ControlledEventChoiceReplayV111
-                            .IsRunActionCombatEntrySite(
-                                pendingChance.Request.SiteId),
+                    || ControlledRunActionEngineV111
+                        .IsLegacyActOneCombatEntrySite(
+                            partialState,
+                            selectedMapAction ?? throw new InvalidDataException(
+                                "Controlled map-node frame is missing its action."),
+                            pendingChance.Request.SiteId),
                 PrototypeNativeRestSiteActionsV111.Dig =>
                     ControlledEventChoiceReplayV111
                         .IsRunActionShovelSite(pendingChance.Request.SiteId),

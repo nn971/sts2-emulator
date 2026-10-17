@@ -3,25 +3,26 @@
 This opt-in D3 boundary saves the legacy `start_run` action at its Act 1 boss
 encounter draw, map choices that enter an Event node at supported legacy event
 entry draws, legacy Shop-node offer generation, eligible legacy Treasure-node
-relic selection, legal legacy Overgrowth Combat/Elite node entry, and the
-Shovel dig action at its unowned-relic draw. Overgrowth combat entry controls
-registered `combat`-stream requests and the two legacy potion-factory index
-sites used by pre-combat relic hooks through ordinary room initialization;
-other requests and streams retain their existing providers. Shop and Treasure
+relic selection, legal legacy Act 1 Overgrowth and Underdocks Combat/Elite
+node entry, and the Shovel dig action at its unowned-relic draw. Combat entry
+controls registered `combat`-stream requests and the two legacy
+potion-factory index sites used by pre-combat relic hooks through ordinary
+room initialization; other requests and streams retain their existing
+providers. Shop and Treasure
 generation require non-native regional systems and a legacy run RNG. Treasure
 selection is not offered when Silver Crucible suppresses the first treasure or
 the legacy relic pool is exhausted. The boundary uses ordinary run-state
-handles and does not change normal `step` behavior or source-owned regional
-merchant/treasure routes.
+handles and does not change normal `step` behavior or configured Native
+regional merchant/treasure routes.
 
 The pending frame stores the exact pre-action run state, action kind, request,
-and ordered candidate labels. Event-entry and Overgrowth-combat frames retain
+and ordered candidate labels. Event-entry and Act 1 combat-entry frames retain
 the selected map-node ID. Resolving one index replays the action from that
 checkpoint and records the controlled decision in
 `RunState.ControlledRunActionHistory`. Run start commits the selected boss
-encounter; map entry commits the selected Event, Shop, Treasure, or Overgrowth
-Combat/Elite room through ordinary initialization; Shovel commits the relic
-as the normal reward.
+encounter; map entry commits the selected Event, Shop, Treasure, or supported
+Act 1 Combat/Elite room through ordinary initialization; Shovel commits the
+relic as the normal reward.
 The pending continuation is part of ordinary run snapshots. Player-facing
 observations hide its Nature actions; the explicit controller exposes only
 `choose_controlled_run_action_outcome` actions while the frame is pending.
@@ -43,13 +44,14 @@ stale-request guard.
 The JSONL server advertises `controlledRunActionSchemaId`. Its `hello`
 response exposes `controlledRunActionSiteGroups`, with registry-owned arrays
 for run-start/map generation, Event-node entry, legacy Shop-node generation,
-legacy Treasure-node selection, Shovel dig, and legacy Overgrowth combat
-entry. The controller supports:
+legacy Treasure-node selection, Shovel dig, and region-specific Overgrowth
+and Underdocks combat entry. Shared formation, HP, intent, shuffle and potion
+sites appear in both region groups. The controller supports:
 
 | Operation | Inputs | Result |
 | --- | --- | --- |
 | `controlled_run_action_begin` | current `state_handle`, legal `action_id` | Pending request, labels and controlled outcome actions |
-| `controlled_run_action_resolve` | pending `state_handle`, `selected_index` | Child run handle with the selected run-start, event-entry, Shop, Treasure, Overgrowth combat-entry or Shovel result |
+| `controlled_run_action_resolve` | pending `state_handle`, `selected_index` | Child run handle with the selected run-start, event-entry, Shop, Treasure, Act 1 combat-entry or Shovel result |
 | `controlled_run_action_inspect` | pending `state_handle` | Restore the pending request and legal outcomes after snapshot load |
 
 The JSONL server also exposes an atomic ReferenceNature envelope for these
@@ -77,9 +79,10 @@ The session supports the `start_run` boss encounter draw, legacy map
 Event-node entry draws, seven `shop.*` sites in legacy Shop-node generation,
 the `treasure.relic_model.index_draw` legacy Treasure-node site, registered
 combat-stream requests and the two legacy potion-factory index requests during
-legal legacy Overgrowth Combat/Elite node entry, and Shovel's unowned-relic
-draw. Combat entry covers Overgrowth encounter-pool selection, formation,
-initial unique-enemy HP, initial committed intents, opening draw-pile shuffle,
+legal legacy Overgrowth or Underdocks Combat/Elite node entry, and Shovel's
+unowned-relic draw. Combat entry covers each region's encounter-pool
+selection, shared formation, initial unique-enemy HP, initial committed
+intents, opening draw-pile shuffle,
 and pre-combat relic potion generation. Filtered replay leaves unrelated
 requests on their existing providers; an unregistered combat-stream request
 remains unsupported and fails closed. The same ReferenceNature run-action session also accepts
@@ -145,11 +148,19 @@ The supported legacy Overgrowth combat-entry sites are:
 - `potion.rarity_roll.ticket` (pre-combat relic potion generation only)
 - `potion.model_within_rarity.index_draw` (pre-combat relic potion generation only)
 
-This entry boundary requires Act 1 Overgrowth's legacy encounter pool and
-excludes configured Native runs, Underdocks and later-act encounters. The
-generic request-index laws remain `UNVERIFIED` for source probabilities and
-stream parity. The two `potion.*` requests use the legacy `event` stream and
-are intercepted only at this combat-entry boundary.
+Underdocks entry shares the common formation, HP, intent, shuffle and potion
+sites above, and adds these encounter-pool selections:
+
+- `combat.encounter.underdocks.elite.index_draw`
+- `combat.encounter.underdocks.weak.index_draw`
+- `combat.encounter.underdocks.normal.index_draw`
+
+This entry boundary requires the matching Act 1 region and encounter pool,
+with Underdocks additionally requiring its native-shaped map profile. It
+excludes configured Native runs and later-act encounters. The generic
+request-index laws remain `UNVERIFIED` for source probabilities and stream
+parity. The two `potion.*` requests use the legacy `event` stream and are
+intercepted only at this combat-entry boundary.
 
 The registered index-only Shop-purchase acquisition sites are:
 
