@@ -2089,52 +2089,71 @@ public static partial class ChanceLawEngineV111
         var description = DescribeControlledEventChoice(run);
         if (run.World?.Event?.EventId ==
                 PrototypeNativeStoneOfAllTime.EventId &&
-            run.World?.Event?.ControlledChoice?.ChoiceId == "lift")
-            return QueryControlledStoneOfAllTimeLiftTicket(
+            run.World?.Event?.ControlledChoice?.ChoiceId is "push" or "lift")
+            return QueryControlledStoneOfAllTimeTicket(
                 run, description.Request,
                 description.BoundaryFingerprint);
         return QueryRandomIndex(description.EventId, description.Request);
     }
 
-    private static ChanceLawV111 QueryControlledStoneOfAllTimeLiftTicket(
+    private static ChanceLawV111 QueryControlledStoneOfAllTimeTicket(
         RunState run, RandomIndexRequestV111 request,
         string boundaryFingerprint)
     {
         var continuation = run.World?.Event?.ControlledChoice ??
             throw new InvalidOperationException(
-                "Stone of All Time lift law requires a pending controlled event choice.");
+                "Stone of All Time ticket law requires a pending controlled event choice.");
         continuation.Validate();
         var expectedStreamId = NativeRngV111Contexts.EventStreamId(
             PrototypeNativeStoneOfAllTime.NativeRngEventId);
+        var choiceId = continuation.ChoiceId;
+        var expectedSiteId = choiceId switch
+        {
+            "push" => NativeStoneOfAllTimePushTicketSiteId,
+            "lift" => NativeStoneOfAllTimeLiftTicketSiteId,
+            _ => throw new InvalidOperationException(
+                "Stone of All Time controlled choice has no ticket law.")
+        };
         if (continuation.EventId != PrototypeNativeStoneOfAllTime.EventId ||
-            continuation.ChoiceId != "lift" ||
-            request.SiteId != NativeStoneOfAllTimeLiftTicketSiteId ||
+            request.SiteId != expectedSiteId ||
             request.StreamId != expectedStreamId ||
-            request.OwnerId != "event:stone_of_all_time:lift" ||
+            request.OwnerId != $"event:stone_of_all_time:{choiceId}" ||
             request.Ordinal != 1 ||
             request.OperationKind != "bounded_integer" ||
             request.BoundedCount != 100)
             throw new InvalidOperationException(
-                "Pending Stone of All Time lift request disagrees with its source ticket boundary.");
-
-        var law = QueryNativeStoneOfAllTimeNoEffectIndex(
-            continuation.PartialState,
-            NativeStoneOfAllTimeLiftTicketSiteId,
-            request.Ordinal,
-            "lift");
+                "Pending Stone of All Time ticket request disagrees with its source boundary.");
+        var partialWorld = continuation.PartialState.World;
+        var partialEvent = partialWorld?.Event;
+        if (continuation.PartialState.Phase != RunPhase.Event ||
+            partialWorld is not { Act: 2 } ||
+            !PrototypeGameEngine.UsesNativeRegionalSystems(partialWorld) ||
+            continuation.PartialState.NativeRunRng is null ||
+            partialEvent is null ||
+            partialEvent.EventId != PrototypeNativeStoneOfAllTime.EventId ||
+            partialEvent.NativePageIndex != 0 ||
+            partialEvent.NativeEventRng?.StreamId != expectedStreamId ||
+            partialEvent.NativeEventRngProviderMode is not null ||
+            (choiceId == "lift" && partialEvent.ChosenChoiceId is not null) ||
+            (choiceId == "push" && partialEvent.ChosenChoiceId != "push"))
+            throw new InvalidOperationException(
+                "Pending Stone of All Time ticket is outside its Native event-action boundary.");
         var conditioningFingerprint = CanonicalJson.Sha256(new
         {
-            boundary = "reference_nature.controlled_event.stone_of_all_time.lift_ticket",
+            boundary = "reference_nature.controlled_event.stone_of_all_time.ticket",
             boundaryFingerprint,
-            nativeConditioningFingerprint = law.ConditioningFingerprint,
+            eventId = partialEvent.EventId,
+            actionId = choiceId,
+            nativeEventStreamId = expectedStreamId,
             request
         });
         return CreateNativeBoundaryLaw(
-            request.SiteId, law.OperationKind, request.OwnerId,
-            request.Ordinal, law.ConditioningPolicyId,
+            request.SiteId, "bounded_integer_no_effect", request.OwnerId,
+            request.Ordinal, NativeStoneOfAllTimeNoEffectPolicyId,
             conditioningFingerprint,
-            law.ProbabilityProvenance, law.Outcomes,
-            law.ProbabilityStatus);
+            NativeStoneOfAllTimeNoEffectProvenance,
+            [new ChanceLawOutcomeV111("no_effect", 1L)],
+            ChanceLawV111.SourceVerifiedStatus);
     }
 
     public static string ControlledEventChoiceBoundaryFingerprint(RunState run)
@@ -3530,7 +3549,7 @@ public sealed record ReferenceNatureControlledEventChoiceSnapshotV111(
 
 /// <summary>
 /// Atomic ReferenceNature envelope for controlled event-effect and
-/// post-reward event-choice continuations. Player reward actions and Nature
+/// post-reward event-choice continuations. Event player actions and Nature
 /// samples share one ordered replay transcript and sampler state.
 /// </summary>
 public sealed record ReferenceNatureControlledEventChoiceSessionV111(
@@ -3551,16 +3570,21 @@ public sealed record ReferenceNatureControlledEventChoiceSessionV111(
 
     [JsonIgnore]
     public bool CanAdvancePlayer => !NaturePending &&
-        Run.Phase == RunPhase.Reward && Run.World?.Event is { } eventState &&
-        eventState.ChosenChoiceId == ChoiceId &&
-        Run.World.Reward is
-        {
-            AddRandomCurseAfterReward: true,
-            SourceRoom: var sourceRoom
-        } && sourceRoom == "Event:" + eventState.EventId &&
-        Run.ControlledEventChoiceHistory is { Length: > 0 } history &&
-        history[^1].EventId == eventState.EventId &&
-        history[^1].ChoiceId == ChoiceId;
+        (ControlledEventChoiceEngineV111
+            .IsStonePushDeckChoiceBoundary(Run)
+        || Run.Phase == RunPhase.Reward
+            && Run.World?.Event is { } eventState
+            && eventState.ChosenChoiceId == ChoiceId
+            && Run.World.Reward is
+            {
+                AddRandomCurseAfterReward: true,
+                SourceRoom: var sourceRoom
+            }
+            && sourceRoom == "Event:" + eventState.EventId
+            && Run.ControlledEventChoiceHistory is
+                { Length: > 0 } history
+            && history[^1].EventId == eventState.EventId
+            && history[^1].ChoiceId == ChoiceId);
 
     [JsonIgnore]
     public bool Complete => !NaturePending && !CanAdvancePlayer;
@@ -3658,14 +3682,14 @@ public sealed record ReferenceNatureControlledEventChoiceSessionV111(
         ArgumentNullException.ThrowIfNull(action);
         if (!CanAdvancePlayer)
             throw new InvalidOperationException(
-                "No supported event reward player action is pending.");
+                "No supported event player action is pending.");
         var engine = new PrototypeGameEngine();
         var actionId = PrototypeAiEnvironment.StableActionId(action);
         if (!engine.GetLegalActions(Run).Any(candidate =>
                 StringComparer.Ordinal.Equals(
                     PrototypeAiEnvironment.StableActionId(candidate), actionId)))
             throw new InvalidOperationException(
-                "ReferenceNature event advance requires a current legal reward action.");
+                "ReferenceNature event advance requires a current legal player action.");
         var nextRun = ControlledEventChoiceEngineV111.Advance(
             Run.Fork(), CloneAction(action));
         var next = this with
@@ -3714,6 +3738,22 @@ public sealed record ReferenceNatureControlledEventChoiceSessionV111(
                 "Run state contains two simultaneous controlled event requests.");
         if (effect is null && reward is null)
         {
+            if (ControlledEventChoiceEngineV111
+                    .IsStonePushDeckChoiceBoundary(Run))
+            {
+                if (decisions.Length != 0 || Steps.Length != 0)
+                    throw new InvalidDataException(
+                        "Stone of All Time push deck-choice boundary has an unexpected transcript prefix.");
+                return;
+            }
+            if (ControlledEventChoiceEngineV111
+                    .IsStonePushNoChanceTerminal(Run, Origin, ChoiceId))
+            {
+                if (decisions.Length != 0 || Steps.Length != 0)
+                    throw new InvalidDataException(
+                        "Lethal Stone of All Time push has an unexpected chance transcript.");
+                return;
+            }
             if (Run.ControlledEventChoiceHistory is not { Length: > 0 } history ||
                 history[^1].EventId != originEvent.EventId ||
                 history[^1].ChoiceId != ChoiceId ||

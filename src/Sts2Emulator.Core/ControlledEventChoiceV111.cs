@@ -23,20 +23,43 @@ public static class ControlledEventChoiceEngineV111
             throw new InvalidOperationException(
                 "Controlled event choice requires a supported option on the current event page.");
         if (eventState.EventId == PrototypeNativeStoneOfAllTime.EventId
-            && choiceId == "lift"
+            && (choiceId is "push" or "lift")
             && (source.NativeRunRng is null
                 || source.World is not { } world
                 || !PrototypeGameEngine.UsesNativeRegionalSystems(world)))
             throw new NotSupportedException(
-                "ReferenceNature Stone of All Time lift requires the configured Native event stream.");
+                "ReferenceNature Stone of All Time choices require the configured Native event stream.");
         var result = Step(source, GameAction.Create(
             "event_choice", new EventChoicePayload(choiceId)));
-        if (result.World?.Event?.ControlledChoice is null)
+        if (result.World?.Event?.ControlledChoice is null
+            && !IsStonePushDeckChoiceBoundary(result)
+            && !IsStonePushNoChanceTerminal(result, source, choiceId))
             throw new NotSupportedException(
                 "The selected event option did not reach a supported " +
                 "controlled chance site.");
         return result;
     }
+
+    internal static bool IsStonePushDeckChoiceBoundary(RunState run) =>
+        run.Phase == RunPhase.Event
+        && run.World?.Event is
+        {
+            EventId: var eventId,
+            ChosenChoiceId: "push",
+            ControlledChoice: null,
+            PendingDeckChoice: not null
+        }
+        && eventId == PrototypeNativeStoneOfAllTime.EventId
+        && run.ControlledEventRewardChoice is null;
+
+    internal static bool IsStonePushNoChanceTerminal(
+        RunState run, RunState origin, string choiceId) =>
+        choiceId == "push"
+        && origin.Phase == RunPhase.Event
+        && origin.World?.Event?.EventId ==
+            PrototypeNativeStoneOfAllTime.EventId
+        && run.Phase == RunPhase.Terminal
+        && run.World is { Event: null, TerminalOutcome: "defeat" };
 
     public static RunState Resolve(RunState source, int selectedIndex)
     {
@@ -57,6 +80,32 @@ public static class ControlledEventChoiceEngineV111
         PrototypeStateInvariants.Validate(source);
         var eventState = source.World?.Event;
         var reward = source.World?.Reward;
+        var engine = new PrototypeGameEngine();
+        if (IsStonePushDeckChoiceBoundary(source))
+        {
+            var pushActionId = PrototypeAiEnvironment.StableActionId(action);
+            if (!engine.GetLegalActions(source).Any(candidate =>
+                    StringComparer.Ordinal.Equals(
+                        PrototypeAiEnvironment.StableActionId(candidate),
+                        pushActionId)))
+                throw new InvalidOperationException(
+                    "Controlled Stone of All Time advance requires a current legal deck-choice action.");
+
+            using var pushGuard = ControlledChanceGuardV111.Enter();
+            var pushReplay = ControlledChanceContinuationExecutorV111.Resume(
+                source,
+                [],
+                checkpoint => engine.Step(checkpoint, action).State);
+            if (pushReplay.PendingChance is { } pushChance)
+                throw new NotSupportedException(
+                    "Controlled Stone of All Time deck choice reached unsupported chance site '"
+                    + pushChance.Request.SiteId + "'.");
+            var pushResult = pushReplay.Run ?? throw new InvalidDataException(
+                "Controlled Stone of All Time advance returned neither a run nor a pending chance request.");
+            PrototypeStateInvariants.Validate(pushResult);
+            return pushResult;
+        }
+
         var trace = source.ControlledEventChoiceHistory is { Length: > 0 } history
             ? history[^1]
             : null;
@@ -76,7 +125,6 @@ public static class ControlledEventChoiceEngineV111
             throw new InvalidOperationException(
                 "Controlled event-reward advance requires a completed supported event choice with a pending reward.");
 
-        var engine = new PrototypeGameEngine();
         var actionId = PrototypeAiEnvironment.StableActionId(action);
         if (!engine.GetLegalActions(source).Any(candidate =>
                 StringComparer.Ordinal.Equals(
@@ -343,10 +391,14 @@ public sealed record PrototypeControlledEventChoiceContinuationV111(
                 "Malformed controlled event-choice continuation.");
 
         var partialEvent = PartialState.World?.Event;
+        var chosenStonePush = EventId ==
+                PrototypeNativeStoneOfAllTime.EventId
+            && ChoiceId == "push"
+            && partialEvent?.ChosenChoiceId == "push";
         if (PartialState.Phase != RunPhase.Event
             || partialEvent is null
             || partialEvent.EventId != EventId
-            || partialEvent.ChosenChoiceId is not null
+            || (partialEvent.ChosenChoiceId is not null && !chosenStonePush)
             || partialEvent.ControlledChoice is not null
             || !PrototypeGameEngine.IsControlledEventChoice(EventId, ChoiceId))
             throw new InvalidDataException(
@@ -376,6 +428,11 @@ public sealed record PrototypeControlledEventChoiceContinuationV111(
             && PendingRequest.Ordinal == 1
             && PendingRequest.OperationKind == "bounded_integer"
             && PendingRequest.BoundedCount == 100
+            && partialEvent.NativePageIndex == 0
+            && partialEvent.NativeEventRng?.StreamId ==
+                NativeRngV111Contexts.EventStreamId(
+                    PrototypeNativeStoneOfAllTime.NativeRngEventId)
+            && partialEvent.NativeEventRngProviderMode is null
             && PartialState.NativeRunRng is not null
             && PartialState.World is { } partialWorld
             && PrototypeGameEngine.UsesNativeRegionalSystems(partialWorld)
@@ -383,7 +440,49 @@ public sealed record PrototypeControlledEventChoiceContinuationV111(
             && potionSlot >= 0
             && potionSlot < PartialState.Player.PotionSlots.Length
             && PartialState.Player.PotionSlots[potionSlot] is not null;
-        if (NextEffectIndex >= choice.Effects.Length && !isStoneLiftTicket)
+        var isStonePushTicket = EventId ==
+                PrototypeNativeStoneOfAllTime.EventId
+            && ChoiceId == "push"
+            && choice.Effects.Length == 1
+            && NextEffectIndex == choice.Effects.Length
+            && EffectDecisionStartIndex == 0
+            && Decisions.Length == 0
+            && QueuedPotionIds.Length == 0
+            && QueuedDeckChoices.Length == 0
+            && DeferredReward is null
+            && DeferredHpLoss == 0
+            && DeferredGoldLoss == 0
+            && DeferredCardId is null
+            && chosenStonePush
+            && partialEvent.NativePageIndex == 0
+            && partialEvent.PendingDeckChoice is null
+            && partialEvent.PendingPotionReplacement is null
+            && partialEvent.RemainingDeckChoices.Length == 0
+            && partialEvent.RemainingPotionIds.Length == 0
+            && partialEvent.PendingReward is null
+            && PendingRequest.SiteId ==
+                ChanceLawEngineV111.NativeStoneOfAllTimePushTicketSiteId
+            && PendingRequest.StreamId == NativeRngV111Contexts.EventStreamId(
+                PrototypeNativeStoneOfAllTime.NativeRngEventId)
+            && PendingRequest.OwnerId == "event:stone_of_all_time:push"
+            && PendingRequest.Ordinal == 1
+            && PendingRequest.OperationKind == "bounded_integer"
+            && PendingRequest.BoundedCount == 100
+            && PartialState.NativeRunRng is not null
+            && PartialState.World is { Act: 2 } partialPushWorld
+            && PrototypeGameEngine.UsesNativeRegionalSystems(
+                partialPushWorld)
+            && partialEvent.NativeEventRng?.StreamId ==
+                NativeRngV111Contexts.EventStreamId(
+                    PrototypeNativeStoneOfAllTime.NativeRngEventId)
+            && partialEvent.NativeEventRngProviderMode is null
+            && PartialState.Player.Hp > 0
+            && partialEvent.NativeEventPotionSlot is { } pushPotionSlot
+            && pushPotionSlot >= 0
+            && pushPotionSlot < PartialState.Player.PotionSlots.Length
+            && PartialState.Player.PotionSlots[pushPotionSlot] is not null;
+        if (NextEffectIndex >= choice.Effects.Length
+                && !isStoneLiftTicket && !isStonePushTicket)
             throw new InvalidDataException(
                 "Controlled event-choice frame has no unresolved effect.");
         foreach (var potionId in QueuedPotionIds)
@@ -405,13 +504,13 @@ public sealed record PrototypeControlledEventChoiceContinuationV111(
         if (PendingCandidateLabels is null)
             throw new InvalidDataException(
                 "Controlled event-choice continuation is missing candidate labels.");
-        if (isStoneLiftTicket &&
+        if ((isStoneLiftTicket || isStonePushTicket) &&
             !PendingCandidateLabels.SequenceEqual(
                 Enumerable.Range(0, 100).Select(index =>
                     index.ToString(CultureInfo.InvariantCulture)),
                 StringComparer.Ordinal))
             throw new InvalidDataException(
-                "Stone of All Time lift continuation has malformed ticket labels.");
+                "Stone of All Time ticket continuation has malformed labels.");
         for (var index = 0; index < Decisions.Length; index++)
         {
             var decision = Decisions[index];

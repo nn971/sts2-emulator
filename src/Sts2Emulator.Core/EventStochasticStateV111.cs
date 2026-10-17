@@ -327,7 +327,12 @@ public sealed record EventStochasticStateV111(
         if (run.Phase != RunPhase.Event
             || run.DecisionIndex < controlledChoice.PartialState.DecisionIndex
             || owner.EventId != controlledChoice.EventId
-            || owner.ChosenChoiceId is not null
+            || (owner.ChosenChoiceId is not null
+                && !(controlledChoice.EventId ==
+                         PrototypeNativeStoneOfAllTime.EventId
+                     && controlledChoice.ChoiceId == "push"
+                     && owner.ChosenChoiceId == "push"
+                     && owner.NativePageIndex == 0))
             || owner.PendingDeckChoice is not null
             || owner.PendingPotionReplacement is not null
             || owner.RemainingDeckChoices.Length != 0

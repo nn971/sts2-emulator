@@ -52,8 +52,9 @@ listed in the [run-action contract](../../docs/CONTROLLED_RUN_ACTION_D3.md).
 
 Supported event choices also have an atomic ReferenceNature session through
 `State.begin_reference_nature_event_choice(choice_id, nature_seed=None)`. It keeps
-reward actions and event Nature choices in one replay order; the committed
-session exposes `.state` for ordinary play. See the
+event player actions and Nature choices in one replay order, including Stone
+of All Time push's deck-card action before its ticket; the committed session
+exposes `.state` for ordinary play. See the
 [event-choice contract](../../docs/CONTROLLED_EVENT_CHOICE_D3.md).
 
 The event-local shuffle session is available through

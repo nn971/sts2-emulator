@@ -95,14 +95,15 @@ indices map to `no_effect`. This mapping is `SOURCE_VERIFIED` from the pinned
 resolver, which discards the selected index. The law does not inspect the
 saved Native cursor.
 
-The Native `lift_ticket` also uses the existing atomic controlled event-choice
-session. It suspends from the untouched pre-choice state, then replays the
-ordinary lift action after Nature selects `no_effect`; potion removal, Max HP,
-and the terminal page commit together. The controlled provider leaves the
-Native event cursor at its post-entry-slot value. `push_ticket` remains a
-read-only law because its draw follows a player deck-card choice. Neither
-the lift session nor the read-only push law claims seeded Native cursor parity
-or models the legacy fallback.
+Both Native tickets use the existing atomic controlled event-choice session.
+Lift suspends from the untouched pre-choice state, then replays the ordinary
+lift action after Nature selects `no_effect`; potion removal, Max HP, and the
+terminal page commit together. Push first applies its HP loss and offers the
+source deck-card choice. The session records that player choice, then samples
+the ticket and commits the terminal page without replaying the choice. A lethal
+HP loss ends the run before the source ticket. The controlled provider leaves
+the Native event cursor at its post-entry-slot value. Neither session claims
+seeded Native cursor parity or models the legacy fallback.
 
 The entry-time `potion_slot.index_draw` also has a pre-entry conditional law.
 The caller supplies the legal Event-node action and explicitly declares Stone

@@ -2,9 +2,9 @@
 
 This opt-in D3 boundary suspends selected ordinary event choices at supported
 legacy random-index sites. It also supports the Native Stone of All Time
-`lift_ticket` as a synthetic one-request boundary around its existing custom
-event action. Ordinary event steps and legacy six-stream behavior remain
-unchanged.
+`push_ticket` and `lift_ticket` as one-request boundaries around their existing
+custom event actions. Ordinary event steps and legacy six-stream behavior
+remain unchanged.
 
 ## Saved state and continuation
 
@@ -16,17 +16,20 @@ continues in source order. If the option reaches another supported random
 site, it suspends again with that next request. The option commits after all
 effects finish; earlier effects are not replayed.
 
-Stone of All Time lift is the custom-action exception: its saved partial run
-is the untouched pre-choice state, so consuming the potion and granting Max HP
-wait until the Nature outcome is selected. Resume replays the existing lift
-action once with that ticket and commits the terminal page. Its request is at
-Native event-stream ordinal 1 because the event-entry potion-slot draw owns
-ordinal 0. The Native cursor is not advanced by the controlled outcome.
+Stone of All Time uses the custom-action exception. Lift saves the untouched
+pre-choice run, so potion removal and Max HP wait until Nature resolves its
+ticket; resume replays the lift action once and commits the terminal page.
+Push applies its HP loss and presents the existing deck-card choice first. The
+session records that player action, suspends at the ticket, and later resumes
+only the ticket tail before committing the page. If the HP loss ends the run,
+the source never reaches the ticket. Both ticket requests use Native event
+stream ordinal 1 because the entry potion-slot draw owns ordinal 0. Controlled
+outcomes do not advance the Native cursor.
 
 The serialized request includes site, stream, owner, ordinal, operation kind
 and ordered integer support. Generic D3 event requests use the legacy stream;
-Stone lift retains its Native event stream and bounded count. Candidate labels
-identify event card instances, card models, potion models, eligible relics,
+Stone push and lift retain their Native event stream and bounded count.
+Candidate labels identify event card instances, card models, potion models, eligible relics,
 and Sand Castle's physical deck-card instances where those identities describe
 the request support; other swap positions and rarity tickets retain numeric
 labels.
@@ -40,8 +43,8 @@ Pending event-effect and post-reward modifier-curse responses also include a
 read-only `chanceLaw` and `boundaryFingerprint`. For generic requests, the law
 assigns equal weight to each legal request index (`choice_index:n`); candidate
 labels describe the mechanical result associated with an index but do not
-change these index weights. Stone lift instead collapses all 100 bounded
-indices to its single `no_effect` outcome under a `SOURCE_VERIFIED` law.
+change these index weights. Stone push and lift each collapse all 100 bounded
+indices to a single `no_effect` outcome under a `SOURCE_VERIFIED` law.
 Generic source weights, stream parity and original-game probabilities remain
 `UNVERIFIED`.
 The pending boundary fingerprint binds the event/choice/request context and
@@ -61,9 +64,10 @@ The supported event-choice sites are:
   event relic and card offers
 - `event.reward.random_modifier_curse.index_draw` after a supported event's
   post-reward modifier-curse offer is completed
-- `event.stone_of_all_time.lift_ticket` for the configured Native Stone of All
-  Time event; all 100 source ticket indices map to one `no_effect` outcome and
-  the read-only Chance Law is `SOURCE_VERIFIED`
+- `event.stone_of_all_time.push_ticket` after its player deck-card choice and
+  `event.stone_of_all_time.lift_ticket` at the lift action; on the configured
+  Native route, all 100 ticket indices map to one `no_effect` outcome and the
+  Chance Law is `SOURCE_VERIFIED`
 - `relic_grab_bag.queue_shuffle.swap_index` and
   `relic_grab_bag.rarity.ticket` while acquiring Toy Box through a supported
   controlled event choice
@@ -101,10 +105,9 @@ multi-draw event effects, the frame re-enters only the current effect from its
 saved start and injects that effect's saved decision prefix; all completed
 earlier effects remain in the partial run.
 
-Stone of All Time `push_ticket` remains a read-only law only. Its ticket runs
-after a player deck-card choice, so it is not part of this atomic event-choice
-session. The lift session requires the configured Native event stream;
-legacy lift fallback and cursor parity remain outside its law.
+Stone of All Time push and lift sessions require the configured Native event
+stream. Legacy ticket fallbacks and Native cursor parity remain outside their
+laws.
 
 Legacy run-start and Shovel action draws use the separate
 [`CONTROLLED_RUN_ACTION_D3.md`](CONTROLLED_RUN_ACTION_D3.md) boundary.
@@ -117,7 +120,7 @@ ordinary run `state_handle`:
 | Operation | Inputs | Result |
 | --- | --- | --- |
 | `controlled_event_begin` | `state_handle`, `choice_id` | Child run handle, pending request and labels, transcript, legal actions |
-| `controlled_event_advance` | completed controlled event-choice `state_handle`, legal `action_id` | Apply one reward action under the controlled guard; suspend if it reaches the post-reward modifier-curse draw |
+| `controlled_event_advance` | controlled event-choice `state_handle`, legal player `action_id` | Apply one supported player action under the controlled guard, including Stone's deck-card choice or a supported reward action |
 | `controlled_event_resolve` | pending `state_handle`, `selected_index` | Child run handle with the next request or committed option |
 | `controlled_event_inspect` | pending `state_handle` | Restore the Nature-facing request and legal outcome actions after loading a snapshot |
 | `controlled_event_enumerate` | pending `state_handle`, current `fingerprint`, optional `maximum_outcomes` | Independent child run handle for each outcome of this one request |
@@ -130,7 +133,9 @@ Nature actions, and the ordinary step endpoint cannot submit them. Other
 actions, including out-of-combat potions, are rejected until it resumes. The
 Python binding exposes `State.begin_controlled_event_choice()`,
 `State.resume_controlled_event_choice()` after snapshot restore,
-`State.advance_controlled_event_reward()` and `ControlledEventChoice.resolve()`.
+`State.advance_controlled_event_action()` (with
+`advance_controlled_event_reward()` retained as a compatibility alias) and
+`ControlledEventChoice.resolve()`.
 The optional one-boundary enumerator is
 advertised as `sts2-v111-controlled-event-enumeration-v1`; its cap is 256
 outcomes. Each branch resolves only the current request, leaving any next
@@ -149,10 +154,10 @@ same sampler state:
 
 | Operation | Inputs | Result |
 | --- | --- | --- |
-| `reference_nature_event_choice_begin` | current `state_handle`, `choice_id`, optional `nature_seed` | Session at a Nature or player reward boundary |
-| `reference_nature_event_choice_status` | event-choice session handle | Current boundary, pending Chance Law and legal reward actions |
+| `reference_nature_event_choice_begin` | current `state_handle`, `choice_id`, optional `nature_seed` | Session at a Nature or player-action boundary |
+| `reference_nature_event_choice_status` | event-choice session handle | Current boundary, pending Chance Law and legal player actions |
 | `reference_nature_event_choice_resolve_next` | handle and current session `fingerprint` | Child after one sampled index is resolved by the saved event continuation |
-| `reference_nature_event_choice_advance` | handle, fingerprint and legal reward `action_id` | Child after one player reward action; Chance Law resolution remains in the session |
+| `reference_nature_event_choice_advance` | handle, fingerprint and legal player `action_id` | Child after one player action; Chance Law resolution remains in the session |
 | `reference_nature_event_choice_fork` | event-choice session handle | Independent child session |
 | `reference_nature_event_choice_save` / `reference_nature_event_choice_load` | handle / snapshot | Replay-validated session snapshot and restored handle |
 | `reference_nature_event_choice_release_many` | `reference_nature_event_choice_handles` | Number of released sessions |
@@ -169,8 +174,9 @@ The session covers only the allowlisted controlled event-choice and
 post-reward modifier-curse continuations. When the event action and any
 controlled reward chance finish, the result provides a normal `stateHandle`
 for continuing play. Unsupported event chance still fails closed; other
-event-page choices, shops and general run actions are not silently absorbed
-into this session. The six supported Orobas, Pael, Tezcatara, Nonupeipe, Tanx
+event-page choices, shops and general run actions remain outside this session,
+apart from Stone push's documented deck-card boundary. The six supported
+Orobas, Pael, Tezcatara, Nonupeipe, Tanx
 and Vakuu opening offers use the separate [ReferenceNature Ancient-offer
 session](REFERENCE_NATURE_ANCIENT_OFFER_D3.md).
 The Python binding exposes

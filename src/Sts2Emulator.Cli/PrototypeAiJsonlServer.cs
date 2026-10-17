@@ -2053,6 +2053,14 @@ internal static class PrototypeAiJsonlServer
                     "A state cannot suspend both an event effect and its reward.");
             var isPending = continuation is not null
                 || rewardContinuation is not null;
+            var isPlayerBoundary = state.Phase == RunPhase.Event
+                && state.World?.Event is
+                {
+                    EventId: PrototypeNativeStoneOfAllTime.EventId,
+                    ChosenChoiceId: "push",
+                    ControlledChoice: null,
+                    PendingDeckChoice: not null
+                };
             var frame = environment.Observe(state);
             var actions = !isPending
                 ? frame.LegalActions
@@ -2159,7 +2167,8 @@ internal static class PrototypeAiJsonlServer
                 stateHandle = handle,
                 parent,
                 fingerprint = stateFingerprint,
-                boundary = isPending ? "nature" : "committed",
+                boundary = isPending ? "nature" : isPlayerBoundary
+                    ? "player" : "committed",
                 pending,
                 transcript,
                 actions = actions.Select(ActionWire).ToArray()
@@ -4161,7 +4170,7 @@ internal static class PrototypeAiJsonlServer
                                 StringComparer.Ordinal.Equals(
                                     candidate.ActionId, actionId))
                             ?? throw new InvalidOperationException(
-                                "ReferenceNature event advance requires a current legal reward action.");
+                                "ReferenceNature event advance requires a current legal player action.");
                         var next = session.AdvancePlayerAction(
                             GameAction.Create(action.Kind, action.Payload));
                         var handle = StoreReferenceNatureEventChoice(next);

@@ -217,26 +217,62 @@ public sealed partial class PrototypeGameEngine
                 && eventState.NativePageIndex == 0
                 && eventState.ChosenChoiceId == "push")
             {
-                if (state.NativeRunRng is not null)
+                try
                 {
-                    var draw = NativeEventContextRngV111
-                        .ResolveBoundedInteger(
-                            state,
-                            eventState,
-                            PrototypeNativeStoneOfAllTime.NativeRngEventId,
+                    if (state.NativeRunRng is not null)
+                    {
+                        var draw = NativeEventContextRngV111
+                            .ResolveBoundedInteger(
+                                state,
+                                eventState,
+                                PrototypeNativeStoneOfAllTime.NativeRngEventId,
+                                "event.stone_of_all_time.push_ticket",
+                                "event:stone_of_all_time:push",
+                                100);
+                        state = draw.State;
+                    }
+                    else
+                    {
+                        _ = LegacyRandomChoiceV111.ChooseBoundedInteger(
+                            state.Rng,
                             "event.stone_of_all_time.push_ticket",
+                            "event",
                             "event:stone_of_all_time:push",
                             100);
-                    state = draw.State;
+                    }
                 }
-                else
+                catch (ControlledEventChoiceChanceRequiredException exception)
                 {
-                    _ = LegacyRandomChoiceV111.ChooseBoundedInteger(
-                        state.Rng,
-                        "event.stone_of_all_time.push_ticket",
-                        "event",
-                        "event:stone_of_all_time:push",
-                        100);
+                    var choice = PrototypeContent.Event(eventState.EventId)
+                        .Choices.Single(item => item.Id == "push");
+                    var continuation =
+                        new PrototypeControlledEventChoiceContinuationV111(
+                            state,
+                            eventState.EventId,
+                            "push",
+                            choice.Effects.Length,
+                            0,
+                            [],
+                            [],
+                            null,
+                            0,
+                            0,
+                            null,
+                            [],
+                            exception.Request,
+                            exception.CandidateLabels,
+                            []);
+                    continuation.Validate();
+                    return state with
+                    {
+                        World = world with
+                        {
+                            Event = eventState with
+                            {
+                                ControlledChoice = continuation
+                            }
+                        }
+                    };
                 }
                 return PreserveNativeEventCompletionPage(state, "push");
             }

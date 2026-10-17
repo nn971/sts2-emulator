@@ -147,7 +147,7 @@ class State:
         return ControlledEventChoice.from_wire(self.session, result)
 
     def resume_controlled_event_choice(self):
-        """Inspect a pending event or event-reward boundary from a snapshot."""
+        """Inspect a pending event or event-action boundary from a snapshot."""
         if self.session.capabilities.get("controlledEventChoiceSchemaId") != (
                 "sts2-v111-controlled-event-choice-v1"):
             raise EmulatorError("Emulator does not expose controlled event choices")
@@ -155,8 +155,8 @@ class State:
             "controlled_event_inspect", state_handle=self.handle)
         return ControlledEventChoice.from_wire(self.session, result)
 
-    def advance_controlled_event_reward(self, action_id: str):
-        """Apply one legal event-reward action under controlled chance."""
+    def advance_controlled_event_action(self, action_id: str):
+        """Apply one legal event player action under controlled chance."""
         if self.session.capabilities.get("controlledEventChoiceSchemaId") != (
                 "sts2-v111-controlled-event-choice-v1"):
             raise EmulatorError("Emulator does not expose controlled event choices")
@@ -164,6 +164,10 @@ class State:
             "controlled_event_advance", state_handle=self.handle,
             action_id=action_id)
         return ControlledEventChoice.from_wire(self.session, result)
+
+    def advance_controlled_event_reward(self, action_id: str):
+        """Backward-compatible alias for advance_controlled_event_action()."""
+        return self.advance_controlled_event_action(action_id)
 
     def begin_controlled_shovel_dig(self):
         """Start a saved Nature boundary for legacy Shovel relic selection."""
@@ -788,7 +792,7 @@ class ReferenceNatureRunActionSession:
 
 @dataclass(frozen=True)
 class ReferenceNatureEventChoiceSession:
-    """Atomic event-choice mechanics, player reward actions and sampler state."""
+    """Atomic event-choice mechanics, player actions and sampler state."""
     session: "Session"
     handle: str
     fingerprint: str
@@ -845,7 +849,7 @@ class ReferenceNatureEventChoiceSession:
             self.session, result["result"])
 
     def advance(self, action_id: str):
-        """Apply one legal reward action while retaining the sampler cursor."""
+        """Apply one legal event player action and retain the sampler cursor."""
         result = self.session.call(
             "reference_nature_event_choice_advance",
             reference_nature_event_choice_handle=self.handle,

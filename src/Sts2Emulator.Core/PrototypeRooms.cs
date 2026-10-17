@@ -1359,7 +1359,7 @@ public sealed partial class PrototypeGameEngine
         var choice = definition.Choices.FirstOrDefault(item =>
             StringComparer.Ordinal.Equals(item.Id, choiceId));
         if (eventId == PrototypeNativeStoneOfAllTime.EventId
-            && choiceId == "lift")
+            && (choiceId is "push" or "lift"))
             return choice is not null;
         return choice?.Effects.Any(effect =>
             effect.Kind is
@@ -1544,6 +1544,21 @@ public sealed partial class PrototypeGameEngine
             && resume.ChoiceId == "lift")
         {
             var result = StepNativeStoneOfAllTimeLift(state);
+            var resultWorld = RequireWorld(result);
+            return result with
+            {
+                World = resultWorld with
+                {
+                    Event = resultWorld.Event! with { ControlledChoice = null }
+                }
+            };
+        }
+
+        if (resume is not null
+            && eventState.EventId == PrototypeNativeStoneOfAllTime.EventId
+            && resume.ChoiceId == "push")
+        {
+            var result = AdvanceEventContinuations(state);
             var resultWorld = RequireWorld(result);
             return result with
             {
