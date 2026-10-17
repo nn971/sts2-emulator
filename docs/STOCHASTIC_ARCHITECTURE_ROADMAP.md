@@ -46,7 +46,7 @@
 
 **S3 later-act bag ownership validation increment (2026-10-17):** Active and run-start prepared later-act encounter queues, their act-specific pool membership and Ascension-sensitive second boss selection now validate through `RunWorldStochasticStateV111`. The owner also checks that the revealed-Darv pool choice is eligible and that the shared Darv Ancient is assigned at most once across the active and prepared acts. The existing flattened snapshot fields and route gate are unchanged.
 
-**S3 event realization validation increment (2026-10-17):** `EventStochasticStateV111` now validates the event-local cached Future of Potions offer set and committed native gold rolls. The broad event invariant retains its prior validation points, including the terminal-page early return, while mechanics and provider realization checks stay attached to their existing owners.
+**S3 event realization validation increment (2026-10-17):** `EventStochasticStateV111` now validates its suspended controlled-choice consistency, the event-local cached Future of Potions offer set and committed native gold rolls. The broad event invariant retains its prior validation points, including the terminal-page early return, while mechanics and provider realization checks stay attached to their existing owners.
 
 ## S1 precise design
 

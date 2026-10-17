@@ -160,6 +160,28 @@ public sealed record EventStochasticStateV111(
         }
     }
 
+    public void ValidateControlledChoice(
+        EventState owner, RunState run)
+    {
+        ArgumentNullException.ThrowIfNull(owner);
+        ArgumentNullException.ThrowIfNull(run);
+        if (ControlledChoice is not { } controlledChoice)
+            return;
+
+        controlledChoice.Validate();
+        if (run.Phase != RunPhase.Event
+            || run.DecisionIndex < controlledChoice.PartialState.DecisionIndex
+            || owner.EventId != controlledChoice.EventId
+            || owner.ChosenChoiceId is not null
+            || owner.PendingDeckChoice is not null
+            || owner.PendingPotionReplacement is not null
+            || owner.RemainingDeckChoices.Length != 0
+            || owner.RemainingPotionIds.Length != 0
+            || owner.PendingReward is not null)
+            throw new InvalidOperationException(
+                "Suspended controlled event choice conflicts with committed event state.");
+    }
+
     public EventStochasticStateV111 Fork() => this with
     {
         NativeRng = NativeRng?.Fork(),

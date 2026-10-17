@@ -147,21 +147,9 @@ public static class PrototypeStateInvariants
         var world = state.World
             ?? throw new InvalidOperationException("Initialized prototype run is missing world state.");
 
-        if (world.Event?.ControlledChoice is { } controlledEventChoice)
-        {
-            controlledEventChoice.Validate();
-            if (state.Phase != RunPhase.Event
-                || state.DecisionIndex < controlledEventChoice.PartialState.DecisionIndex
-                || world.Event.EventId != controlledEventChoice.EventId
-                || world.Event.ChosenChoiceId is not null
-                || world.Event.PendingDeckChoice is not null
-                || world.Event.PendingPotionReplacement is not null
-                || world.Event.RemainingDeckChoices.Length != 0
-                || world.Event.RemainingPotionIds.Length != 0
-                || world.Event.PendingReward is not null)
-                throw new InvalidOperationException(
-                    "Suspended controlled event choice conflicts with committed event state.");
-        }
+        if (world.Event is { } activeEvent)
+            activeEvent.Stochastic.ValidateControlledChoice(
+                activeEvent, state);
 
         if (state.ControlledEventRewardChoice is { } controlledEventRewardChoice)
         {
