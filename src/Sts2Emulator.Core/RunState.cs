@@ -90,8 +90,6 @@ public sealed record RunState(
     int Ascension = 0,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     RunConfiguration? Configuration = null,
-    [property: System.Text.Json.Serialization.JsonIgnore(
-        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     RngBundle? NativeRunRng = null,
     [property: System.Text.Json.Serialization.JsonIgnore(
         Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
@@ -106,16 +104,39 @@ public sealed record RunState(
     [property: System.Text.Json.Serialization.JsonIgnore(
         Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     PrototypeControlledRunActionContinuationV111? ControlledRunActionChoice = null,
-    [property: System.Text.Json.Serialization.JsonIgnore(
-        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     ReferenceNatureStateV111? ReferenceNatureState = null)
 {
+    /// <summary>
+    /// Authoritative in-memory run-level provider state. The legacy-named
+    /// properties below remain the snapshot wire projection for compatibility.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public RunStochasticStateV111 Stochastic { get; init; } =
+        new(NativeRunRng, ReferenceNatureState);
+
+    [System.Text.Json.Serialization.JsonIgnore(Condition =
+        System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public RngBundle? NativeRunRng
+    {
+        get => Stochastic.NativeRunRng;
+        init => Stochastic = RunStochasticStateV111.WithNativeRunRng(
+            Stochastic, value);
+    }
+
+    [System.Text.Json.Serialization.JsonIgnore(Condition =
+        System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public ReferenceNatureStateV111? ReferenceNatureState
+    {
+        get => Stochastic.ReferenceNature;
+        init => Stochastic = RunStochasticStateV111.WithReferenceNature(
+            Stochastic, value);
+    }
+
     public RunState Fork() => this with
     {
         Player = Player.Fork(),
         Rng = Rng.Fork(),
-        NativeRunRng = NativeRunRng?.Fork(),
-        ReferenceNatureState = ReferenceNatureState?.Fork(),
+        Stochastic = Stochastic.Fork(),
         ControlledEventChoiceHistory = ControlledEventChoiceHistory?.Select(
             trace => trace.Fork()).ToArray(),
         ControlledEventRewardChoice = ControlledEventRewardChoice?.Fork(),

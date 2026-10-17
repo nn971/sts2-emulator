@@ -21,8 +21,7 @@ public static class PrototypeStateInvariants
             foreach (var trace in controlledRunActionHistory)
                 trace.Validate();
         }
-        NativeRunRngV111.Validate(state);
-        state.ReferenceNatureState?.Validate();
+        state.Stochastic.Validate(state);
         if (state.ControlledRunActionChoice is { } controlledRunActionChoice)
         {
             controlledRunActionChoice.Validate();
