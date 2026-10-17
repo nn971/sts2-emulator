@@ -42,7 +42,8 @@ public static class StochasticCapabilitiesV111
             "combat.random_hand_card.energy_cost",
             "combat.card_draw.relic_energy_cost",
             "combat.card_draw.slither_energy_cost",
-            "combat.relic.jeweled_mask.random_power_draw_card"
+            "combat.relic.jeweled_mask.random_power_draw_card",
+            "combat.card_transform.replacement.index_draw"
         ],
         PrototypeAiEnvironment.SchemaId,
         [
@@ -160,6 +161,8 @@ public static class ChanceLawEngineV111
         "uniform-bounded-cost-support-v1";
     public const string RandomPileCardConditioningPolicyId =
         "uniform-ordered-physical-pile-card-support-v1";
+    public const string CardTransformConditioningPolicyId =
+        "uniform-card-transform-replacement-pool-v1";
 
     public static ChanceLawV111 QueryIntent(SemanticIntentEventV111 intent)
     {
@@ -293,6 +296,35 @@ public static class ChanceLawEngineV111
             pileCard.OperationKind, pileCard.OwnerId, pileCard.Ordinal,
             RandomPileCardConditioningPolicyId, conditioningFingerprint,
             "uniform-physical-pile-card-support-unverified", outcomes);
+    }
+
+    /// <summary>
+    /// Query the uniform law over replacement models for one saved physical
+    /// card transform. The source card identity and model are conditioned on.
+    /// </summary>
+    public static ChanceLawV111 QueryCardTransform(
+        SemanticCardTransformEventV111 transform)
+    {
+        ArgumentNullException.ThrowIfNull(transform);
+        transform.Validate();
+        var outcomes = transform.CandidateCardIds
+            .Select(cardId => new ChanceLawOutcomeV111(
+                "card_model:" + cardId, 1L))
+            .ToArray();
+        var conditioningFingerprint = CanonicalJson.Sha256(new
+        {
+            transform.SupportFingerprint,
+            transform.SiteId,
+            transform.OwnerId,
+            transform.Ordinal,
+            transform.SourceCardInstanceId,
+            transform.OriginalCardId,
+            policy = CardTransformConditioningPolicyId
+        });
+        return Create(transform.EventId, transform.SiteId,
+            transform.OperationKind, transform.OwnerId, transform.Ordinal,
+            CardTransformConditioningPolicyId, conditioningFingerprint,
+            "uniform-transform-pool-unverified", outcomes);
     }
 
     public static ChanceLawV111 QueryDraw(SemanticDeckStateV111 deck)
@@ -588,6 +620,23 @@ public static class ReferenceNatureV111
             var child = SemanticPilotCombatEngineV111.ResolveRandomPileCard(
                 combat, combat.Fingerprint, randomPileCardEvent.EventId,
                 cardInstanceId);
+            return new ReferenceNatureResolutionV111(child, law, selection);
+        }
+
+        if (combat.CardTransformPending is { } transformEvent)
+        {
+            var law = ChanceLawEngineV111.QueryCardTransform(transformEvent);
+            var selection = Sample(law, state);
+            if (selection.EventId != transformEvent.EventId ||
+                selection.OutcomeIndex < 0 ||
+                selection.OutcomeIndex >=
+                    transformEvent.CandidateCardIds.Length)
+                throw new InvalidDataException(
+                    "ReferenceNature law no longer matches the pending transform event.");
+            var cardId = transformEvent.CandidateCardIds[
+                selection.OutcomeIndex];
+            var child = SemanticPilotCombatEngineV111.ResolveCardTransform(
+                combat, combat.Fingerprint, transformEvent.EventId, cardId);
             return new ReferenceNatureResolutionV111(child, law, selection);
         }
 
