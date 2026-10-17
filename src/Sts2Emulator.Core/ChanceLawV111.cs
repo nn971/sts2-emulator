@@ -41,7 +41,8 @@ public static class StochasticCapabilitiesV111
             "combat.random_draw_attack.card_model",
             "combat.random_hand_card.energy_cost",
             "combat.card_draw.relic_energy_cost",
-            "combat.card_draw.slither_energy_cost"
+            "combat.card_draw.slither_energy_cost",
+            "combat.relic.jeweled_mask.random_power_draw_card"
         ],
         PrototypeAiEnvironment.SchemaId,
         [
@@ -157,6 +158,8 @@ public static class ChanceLawEngineV111
         "uniform-ordered-generated-card-model-pool-v1";
     public const string CostConditioningPolicyId =
         "uniform-bounded-cost-support-v1";
+    public const string RandomPileCardConditioningPolicyId =
+        "uniform-ordered-physical-pile-card-support-v1";
 
     public static ChanceLawV111 QueryIntent(SemanticIntentEventV111 intent)
     {
@@ -262,6 +265,34 @@ public static class ChanceLawEngineV111
             cost.OwnerId, cost.Ordinal, CostConditioningPolicyId,
             conditioningFingerprint,
             "uniform-bounded-cost-unverified", outcomes);
+    }
+
+    /// <summary>
+    /// Query the uniform law over physical card instances in the ordered
+    /// source support for a random pile-card effect.
+    /// </summary>
+    public static ChanceLawV111 QueryRandomPileCard(
+        SemanticRandomPileCardEventV111 pileCard)
+    {
+        ArgumentNullException.ThrowIfNull(pileCard);
+        pileCard.Validate();
+        var outcomes = pileCard.CandidateCardInstanceIds
+            .Select(instanceId => new ChanceLawOutcomeV111(
+                "card_instance:" + instanceId.ToString(
+                    CultureInfo.InvariantCulture), 1L))
+            .ToArray();
+        var conditioningFingerprint = CanonicalJson.Sha256(new
+        {
+            pileCard.SupportFingerprint,
+            pileCard.SiteId,
+            pileCard.OwnerId,
+            pileCard.Ordinal,
+            policy = RandomPileCardConditioningPolicyId
+        });
+        return Create(pileCard.EventId, pileCard.SiteId,
+            pileCard.OperationKind, pileCard.OwnerId, pileCard.Ordinal,
+            RandomPileCardConditioningPolicyId, conditioningFingerprint,
+            "uniform-physical-pile-card-support-unverified", outcomes);
     }
 
     public static ChanceLawV111 QueryDraw(SemanticDeckStateV111 deck)
@@ -538,6 +569,25 @@ public static class ReferenceNatureV111
             var child = SemanticPilotCombatEngineV111.ResolveCost(
                 combat, combat.Fingerprint, costEvent.EventId,
                 selectedCost);
+            return new ReferenceNatureResolutionV111(child, law, selection);
+        }
+
+        if (combat.RandomPileCardPending is { } randomPileCardEvent)
+        {
+            var law = ChanceLawEngineV111.QueryRandomPileCard(
+                randomPileCardEvent);
+            var selection = Sample(law, state);
+            if (selection.EventId != randomPileCardEvent.EventId ||
+                selection.OutcomeIndex < 0 ||
+                selection.OutcomeIndex >=
+                    randomPileCardEvent.CandidateCardInstanceIds.Length)
+                throw new InvalidDataException(
+                    "ReferenceNature law no longer matches the pending pile-card event.");
+            var cardInstanceId = randomPileCardEvent
+                .CandidateCardInstanceIds[selection.OutcomeIndex];
+            var child = SemanticPilotCombatEngineV111.ResolveRandomPileCard(
+                combat, combat.Fingerprint, randomPileCardEvent.EventId,
+                cardInstanceId);
             return new ReferenceNatureResolutionV111(child, law, selection);
         }
 
