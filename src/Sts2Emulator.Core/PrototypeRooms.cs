@@ -2921,7 +2921,8 @@ public sealed partial class PrototypeGameEngine
         using var nativeProviderScope = nativeMerchant && nativeRunRng is not null
             ? StochasticProviderScopeV111.Enter(
                 new NativeRandomIndexProviderV111(),
-                new NativeRandomUnitFloatProviderV111())
+                new NativeRandomUnitFloatProviderV111(),
+                overrideExplicitProviders: false)
             : null;
         // MerchantInventory chooses one of the five character-card
         // slots before populating the inventory.

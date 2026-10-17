@@ -63,11 +63,18 @@ internal static class StochasticProviderScopeV111
     public static IRandomIndexProviderV111 SelectIndexProvider(
         IRandomIndexProviderV111? explicitProvider)
     {
-        var frame = Current.Value;
-        if (frame?.IndexProvider is { } scopedProvider &&
-            (frame.OverrideExplicitProviders || explicitProvider is null))
-            return scopedProvider;
-        return explicitProvider ?? new NativeRandomIndexProviderV111();
+        IRandomIndexProviderV111? fallback = null;
+        for (var frame = Current.Value; frame is not null;
+             frame = frame.Parent)
+        {
+            if (frame.IndexProvider is not { } scopedProvider)
+                continue;
+            fallback ??= scopedProvider;
+            if (frame.OverrideExplicitProviders)
+                return scopedProvider;
+        }
+        return explicitProvider ?? fallback ??
+            new NativeRandomIndexProviderV111();
     }
 
     public static RandomIndexDecisionV111 ResolveIndex(
@@ -94,11 +101,18 @@ internal static class StochasticProviderScopeV111
     public static IRandomUnitFloatProviderV111 SelectUnitFloatProvider(
         IRandomUnitFloatProviderV111? explicitProvider)
     {
-        var frame = Current.Value;
-        if (frame?.UnitFloatProvider is { } scopedProvider &&
-            (frame.OverrideExplicitProviders || explicitProvider is null))
-            return scopedProvider;
-        return explicitProvider ?? new NativeRandomUnitFloatProviderV111();
+        IRandomUnitFloatProviderV111? fallback = null;
+        for (var frame = Current.Value; frame is not null;
+             frame = frame.Parent)
+        {
+            if (frame.UnitFloatProvider is not { } scopedProvider)
+                continue;
+            fallback ??= scopedProvider;
+            if (frame.OverrideExplicitProviders)
+                return scopedProvider;
+        }
+        return explicitProvider ?? fallback ??
+            new NativeRandomUnitFloatProviderV111();
     }
 
     public static RandomUnitFloatDecisionV111 ResolveUnitFloat(

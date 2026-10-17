@@ -41,13 +41,16 @@ Controlled event/run-action, automatic enemy-action, and next-turn intent resume
 
 `ControlledChanceContinuationExecutorV111` now owns the replay-scope lifetime, exact saved-prefix consumption, and capture of the next unresolved typed request for run-action, event-effect, event-reward, event-choice entry, event-reward advance, and automatic enemy-action mechanics. Boundary owners still select checkpoints, enforce site allowlists, preserve event candidate labels, and persist their established continuation frames. `ReferenceNatureRunCursorV111` owns run-scoped cursor initialization, validation against the session transcript, and commit publication across semantic-combat, run-action, and event-choice sessions. Boundary sessions retain their typed mechanics resolvers, while the sampler support check is shared by every ReferenceNature path.
 
+The versioned `ControlledStochasticChanceReplayV111` primitive now replays one chronological prefix across both random-index and unit-float provider interfaces, preserving the request type and exact site/stream/owner/ordinal identity when it suspends. `ResumeStochastic` provides the shared replay/provider-scope lifetime for a future mixed-boundary owner; it does not supply a law, site allowlist, or serialized mechanics continuation. Existing continuations retain their established index-only schema.
+
 The configured native merchant now runs `StartShop` inside
 `StochasticProviderScopeV111`. The scope routes default `NativePlayerRngV111`
 calls and explicitly passed Native index/unit-float providers through one
 replaceable provider pair. It tracks logical per-stream request ordinals when
-a replacement provider leaves the native cursor untouched. The current scope
-binds Native providers and has no serialized merchant continuation yet; it is
-the shared adapter seam for the next continuation increment.
+a replacement provider leaves the native cursor untouched. Its local Native
+providers remain the default, while an enclosing controller scope can replace
+them. A serialized merchant continuation and law-to-float outcome mapping are
+still open; the mixed replay primitive is not yet wired to a merchant session.
 
 ## Semantic lifecycle and provider interchangeability
 
