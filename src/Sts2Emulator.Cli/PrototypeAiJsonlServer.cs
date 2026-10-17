@@ -479,6 +479,7 @@ internal static class PrototypeAiJsonlServer
             }
             if (state.PoolShufflePending is { } pool)
             {
+                var chanceLaw = ChanceLawEngineV111.QueryPoolShuffle(pool);
                 return new
                 {
                     kind = pool.SiteId ==
@@ -497,6 +498,7 @@ internal static class PrototypeAiJsonlServer
                     operationKind = pool.OperationKind,
                     sourceOperationKind = pool.SourceOperationKind,
                     supportFingerprint = pool.SupportFingerprint,
+                    chanceLaw,
                     nextSwapIndex = pool.NextSwapIndex,
                     selectedCount = pool.SelectedCount,
                     sourceCardInstanceId = pool.SourceCardInstanceId,

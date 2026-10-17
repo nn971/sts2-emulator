@@ -45,7 +45,9 @@ public static class StochasticCapabilitiesV111
             "combat.relic.jeweled_mask.random_power_draw_card",
             "combat.card_transform.replacement.index_draw",
             "combat.potion_generation.random_model",
-            "combat.random_hand_card.select"
+            "combat.random_hand_card.select",
+            "combat.generation.full_pool_shuffle.swap_index",
+            "combat.draw_pile.random_rare_to_hand.shuffle_swap_index"
         ],
         PrototypeAiEnvironment.SchemaId,
         [
@@ -169,6 +171,8 @@ public static class ChanceLawEngineV111
         "uniform-potion-generation-model-pool-v1";
     public const string HandCostSelectionConditioningPolicyId =
         "uniform-hand-cost-target-support-v1";
+    public const string PoolShuffleConditioningPolicyId =
+        "uniform-fisher-yates-bounded-swap-v1";
 
     public static ChanceLawV111 QueryIntent(SemanticIntentEventV111 intent)
     {
@@ -387,6 +391,36 @@ public static class ChanceLawEngineV111
             selection.OperationKind, selection.OwnerId, selection.Ordinal,
             HandCostSelectionConditioningPolicyId, conditioningFingerprint,
             "uniform-hand-card-support-unverified", outcomes);
+    }
+
+    /// <summary>
+    /// Query one uniform Fisher–Yates swap in a saved without-replacement
+    /// pool shuffle. Prior swaps remain part of the conditioned state.
+    /// </summary>
+    public static ChanceLawV111 QueryPoolShuffle(
+        SemanticPoolShuffleEventV111 shuffle)
+    {
+        ArgumentNullException.ThrowIfNull(shuffle);
+        shuffle.Validate();
+        var outcomes = Enumerable.Range(0, shuffle.Request.SupportCount)
+            .Select(index => new ChanceLawOutcomeV111(
+                "swap_index:" + index.ToString(CultureInfo.InvariantCulture),
+                1L))
+            .ToArray();
+        var conditioningFingerprint = CanonicalJson.Sha256(new
+        {
+            shuffle.SupportFingerprint,
+            shuffle.SiteId,
+            shuffle.OwnerId,
+            shuffle.Ordinal,
+            shuffle.NextSwapIndex,
+            shuffle.SelectedCount,
+            policy = PoolShuffleConditioningPolicyId
+        });
+        return Create(shuffle.EventId, shuffle.SiteId,
+            shuffle.OperationKind, shuffle.OwnerId, shuffle.Ordinal,
+            PoolShuffleConditioningPolicyId, conditioningFingerprint,
+            "uniform-fisher-yates-swap-unverified", outcomes);
     }
 
     public static ChanceLawV111 QueryDraw(SemanticDeckStateV111 deck)
@@ -735,6 +769,21 @@ public static class ReferenceNatureV111
                 .ResolveHandCostSelection(
                     combat, combat.Fingerprint, handCostEvent.EventId,
                     cardInstanceId);
+            return new ReferenceNatureResolutionV111(child, law, selection);
+        }
+
+        if (combat.PoolShufflePending is { } poolShuffleEvent)
+        {
+            var law = ChanceLawEngineV111.QueryPoolShuffle(poolShuffleEvent);
+            var selection = Sample(law, state);
+            if (selection.EventId != poolShuffleEvent.EventId ||
+                selection.OutcomeIndex < 0 ||
+                selection.OutcomeIndex >= poolShuffleEvent.Request.SupportCount)
+                throw new InvalidDataException(
+                    "ReferenceNature law no longer matches the pending pool-shuffle event.");
+            var child = SemanticPilotCombatEngineV111.ResolvePoolShuffle(
+                combat, combat.Fingerprint, poolShuffleEvent.EventId,
+                selection.OutcomeIndex);
             return new ReferenceNatureResolutionV111(child, law, selection);
         }
 
