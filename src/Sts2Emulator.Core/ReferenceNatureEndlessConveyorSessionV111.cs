@@ -12,8 +12,8 @@ public sealed record ReferenceNatureEndlessConveyorSessionSnapshotV111(
     ReferenceNatureStateV111 NatureState,
     ReferenceNatureDecisionV111[] DecisionTranscript);
 
-/// <summary>Atomic ReferenceNature continuation for one Endless Conveyor
-/// dish ticket or first-dish observe upgrade.</summary>
+/// <summary>Atomic ReferenceNature continuation for Endless Conveyor dish,
+/// card-upgrade, and Fried Eel Colorless-card boundaries.</summary>
 public sealed record ReferenceNatureEndlessConveyorSessionV111(
     string SchemaId,
     RunState Origin,
@@ -28,7 +28,8 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
 
     public static string[] SessionSiteIds =>
         [PrototypeNativeEndlessConveyor.DishWeightedTicketSiteId,
-         PrototypeNativeEndlessConveyor.UpgradeCardSiteId];
+         PrototypeNativeEndlessConveyor.UpgradeCardSiteId,
+         PrototypeNativeEndlessConveyor.ColorlessCardSiteId];
 
     [JsonIgnore]
     public string Fingerprint => CanonicalJson.Sha256(this);
@@ -37,12 +38,12 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
     public int NextOrdinal => DecisionTranscript.Length;
 
     [JsonIgnore]
-    public bool Complete => DecisionTranscript.Length == 1;
+    public bool Complete => DecisionTranscript.Length > 0 &&
+        DecisionTranscript.Length == PlannedSiteIds.Length;
 
     [JsonIgnore]
-    public ChanceLawV111? PendingLaw => Complete ? null :
-        ChanceLawEngineV111.QueryNativeEndlessConveyorDishEntry(
-            Origin, ActionId);
+    public ChanceLawV111? PendingLaw => Complete ? null : QuerySite(
+        Origin, ActionId, PlannedSiteIds[NextOrdinal]);
 
     public static ReferenceNatureEndlessConveyorSessionV111 Begin(
         RunState origin, string actionId, ulong natureSeed) => Begin(origin,
@@ -61,8 +62,8 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
         ArgumentNullException.ThrowIfNull(origin);
         ArgumentException.ThrowIfNullOrWhiteSpace(actionId);
         ArgumentNullException.ThrowIfNull(initial);
-        _ = ChanceLawEngineV111.QueryNativeEndlessConveyorDishEntry(
-            origin, actionId);
+        var firstSiteId = GetPlannedSiteIds(origin, actionId)[0];
+        _ = QuerySite(origin, actionId, firstSiteId);
         ReferenceNatureRunCursorV111.ValidateInitial(
             origin, initial, "Endless Conveyor");
         var session = new ReferenceNatureEndlessConveyorSessionV111(
@@ -92,20 +93,30 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
         if (Complete)
             throw new InvalidOperationException(
                 "ReferenceNature Endless Conveyor session is already complete.");
-        var law = ChanceLawEngineV111.QueryNativeEndlessConveyorDishEntry(
-            Origin, ActionId);
+        var plannedSiteIds = PlannedSiteIds;
+        var law = QuerySite(
+            Origin, ActionId, plannedSiteIds[NextOrdinal]);
         var selection = ReferenceNatureV111.SampleValidated(
             law, NatureState);
         var transcript = DecisionTranscript.Append(
             new ReferenceNatureDecisionV111(
                 law.LawId, law.EventId, selection.OutcomeId,
                 selection.OutcomeIndex)).ToArray();
-        var replay = ReplaySelection(Origin, ActionId, law, selection);
+        var nextNatureState = selection.NextState;
+        var nextRun = Origin.Fork();
+        if (transcript.Length == plannedSiteIds.Length)
+        {
+            var selections = SampleTranscript(
+                Origin, ActionId, InitialNatureState, transcript,
+                plannedSiteIds);
+            nextRun = ReferenceNatureRunCursorV111.Commit(
+                ReplaySelections(Origin, ActionId, selections),
+                nextNatureState);
+        }
         var next = this with
         {
-            Run = ReferenceNatureRunCursorV111.Commit(
-                replay, selection.NextState),
-            NatureState = selection.NextState,
+            Run = nextRun,
+            NatureState = nextNatureState,
             DecisionTranscript = transcript
         };
         next.Validate();
@@ -125,9 +136,8 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
         InitialNatureState.Validate();
         NatureState.Validate();
         _ = RequireAction(Origin, ActionId);
-        var law = ChanceLawEngineV111.QueryNativeEndlessConveyorDishEntry(
-            Origin, ActionId);
-        if (DecisionTranscript.Length > 1 ||
+        var plannedSiteIds = PlannedSiteIds;
+        if (DecisionTranscript.Length > plannedSiteIds.Length ||
             !ReferenceNatureRunCursorV111.MatchesRunSession(
                 Origin, Run, InitialNatureState, NatureState,
                 DecisionTranscript.Length, Complete))
@@ -135,28 +145,14 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
                 "ReferenceNature Endless Conveyor cursor differs from its session envelope.");
 
         var expectedNatureState = InitialNatureState.Fork();
-        RunState expectedRun;
-        if (Complete)
-        {
-            var selection = ReferenceNatureV111.SampleValidated(
-                law, expectedNatureState);
-            DecisionTranscript[0].Validate();
-            if (CanonicalJson.Sha256(new ReferenceNatureDecisionV111(
-                    law.LawId, law.EventId, selection.OutcomeId,
-                    selection.OutcomeIndex)) !=
-                CanonicalJson.Sha256(DecisionTranscript[0]))
-                throw new InvalidDataException(
-                    "ReferenceNature Endless Conveyor transcript does not replay.");
-            expectedNatureState = selection.NextState;
-            expectedRun = ReplaySelection(
-                Origin, ActionId, law, selection);
-            expectedRun = ReferenceNatureRunCursorV111.Commit(
-                expectedRun, expectedNatureState);
-        }
-        else
-        {
-            expectedRun = Origin.Fork();
-        }
+        var selections = SampleTranscript(
+            Origin, ActionId, InitialNatureState, DecisionTranscript,
+            plannedSiteIds, out expectedNatureState);
+        var expectedRun = Complete
+            ? ReferenceNatureRunCursorV111.Commit(
+                ReplaySelections(Origin, ActionId, selections),
+                expectedNatureState)
+            : Origin.Fork();
 
         if (CanonicalJson.Sha256(expectedNatureState) !=
                 CanonicalJson.Sha256(NatureState) ||
@@ -242,22 +238,146 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
         return action;
     }
 
-    private static RunState ReplaySelection(
+    private string[] PlannedSiteIds => GetPlannedSiteIds(Origin, ActionId);
+
+    private static string[] GetPlannedSiteIds(
+        RunState origin, string actionId)
+    {
+        var action = RequireAction(origin, actionId);
+        var evt = origin.World?.Event;
+        if (origin.Phase == RunPhase.Event && evt is not null &&
+            action.Kind == "event_choice")
+        {
+            var choice = action.ReadPayload<EventChoicePayload>().ChoiceId;
+            if (choice == "observe")
+                return [PrototypeNativeEndlessConveyor.UpgradeCardSiteId];
+            if (choice == "grab" && evt.NativeDishId == "FRIED_EEL" &&
+                origin.Player.Gold >= 40)
+                return [PrototypeNativeEndlessConveyor.ColorlessCardSiteId,
+                    PrototypeNativeEndlessConveyor.DishWeightedTicketSiteId];
+            if (choice == "grab" && evt.NativeDishId == "SPICY_SNAPPY" &&
+                origin.Player.Gold >= 40 &&
+                PrototypeNativeEndlessConveyor
+                    .GetUpgradeCardCandidates(origin).Length > 0)
+                return [PrototypeNativeEndlessConveyor.UpgradeCardSiteId,
+                    PrototypeNativeEndlessConveyor.DishWeightedTicketSiteId];
+        }
+        return [PrototypeNativeEndlessConveyor.DishWeightedTicketSiteId];
+    }
+
+    private static ChanceLawV111 QuerySite(
+        RunState origin, string actionId, string siteId) => siteId switch
+    {
+        PrototypeNativeEndlessConveyor.DishWeightedTicketSiteId =>
+            ChanceLawEngineV111.QueryNativeEndlessConveyorDishEntry(
+                origin, actionId),
+        PrototypeNativeEndlessConveyor.UpgradeCardSiteId =>
+            ChanceLawEngineV111.QueryNativeEndlessConveyorUpgrade(
+                origin, actionId),
+        PrototypeNativeEndlessConveyor.ColorlessCardSiteId =>
+            ChanceLawEngineV111.QueryNativeEndlessConveyorColorlessCard(
+                origin, actionId),
+        _ => throw new NotSupportedException(
+            "Endless Conveyor session has no query for site '" + siteId + "'.")
+    };
+
+    private static (ChanceLawV111 Law,
+        ReferenceNatureSelectionV111 Selection)[] SampleTranscript(
+        RunState origin, string actionId,
+        ReferenceNatureStateV111 initialNatureState,
+        ReferenceNatureDecisionV111[] transcript,
+        string[] plannedSiteIds) => SampleTranscript(
+            origin, actionId, initialNatureState, transcript,
+            plannedSiteIds, out _);
+
+    private static (ChanceLawV111 Law,
+        ReferenceNatureSelectionV111 Selection)[] SampleTranscript(
+        RunState origin, string actionId,
+        ReferenceNatureStateV111 initialNatureState,
+        ReferenceNatureDecisionV111[] transcript,
+        string[] plannedSiteIds,
+        out ReferenceNatureStateV111 finalNatureState)
+    {
+        if (transcript.Length > plannedSiteIds.Length)
+            throw new InvalidDataException(
+                "Endless Conveyor transcript exceeds its planned event boundaries.");
+        var cursor = initialNatureState.Fork();
+        var selections = new List<(ChanceLawV111,
+            ReferenceNatureSelectionV111)>(transcript.Length);
+        for (var index = 0; index < transcript.Length; index++)
+        {
+            var law = QuerySite(origin, actionId, plannedSiteIds[index]);
+            var selection = ReferenceNatureV111.SampleValidated(law, cursor);
+            transcript[index].Validate();
+            if (CanonicalJson.Sha256(new ReferenceNatureDecisionV111(
+                    law.LawId, law.EventId, selection.OutcomeId,
+                    selection.OutcomeIndex)) !=
+                CanonicalJson.Sha256(transcript[index]))
+                throw new InvalidDataException(
+                    "ReferenceNature Endless Conveyor transcript does not replay.");
+            selections.Add((law, selection));
+            cursor = selection.NextState;
+        }
+        finalNatureState = cursor;
+        return selections.ToArray();
+    }
+
+    private static RunState ReplaySelections(
+        RunState origin, string actionId,
+        (ChanceLawV111 Law,
+            ReferenceNatureSelectionV111 Selection)[] selections)
+    {
+        if (selections.Length == 1)
+        {
+            var (law, selection) = selections[0];
+            if (law.SiteId == PrototypeNativeEndlessConveyor.DishWeightedTicketSiteId)
+                return ReplayDishSelection(origin, actionId, law, selection);
+            if (law.SiteId == PrototypeNativeEndlessConveyor.UpgradeCardSiteId)
+                return ReplayIndexSelection(origin, actionId, law, selection);
+            throw new InvalidDataException(
+                "Unsupported single-boundary Endless Conveyor Nature transcript.");
+        }
+        if (selections.Length != 2 ||
+            selections[0].Law.OperationKind != "choose_index" ||
+            selections[1].Law.SiteId != PrototypeNativeEndlessConveyor
+                .DishWeightedTicketSiteId)
+            throw new InvalidDataException(
+                "Endless Conveyor mixed transcript must be one index followed by one dish ticket.");
+
+        var indexChoice = selections[0];
+        var dishChoice = selections[1];
+        var indexRequest = BuildIndexRequest(origin, indexChoice.Law);
+        var typedIndex = ReferenceNatureChanceLawDecisionV111.FromSelection(
+            indexChoice.Law,
+            ControlledStochasticRequestV111.FromIndex(indexRequest),
+            indexChoice.Selection).IndexDecision!;
+        var preDraw = CaptureDishPreDrawState(origin, actionId);
+        var floatRequest = BuildUnitFloatRequest(origin, dishChoice.Law);
+        var typedFloat = ReferenceNatureChanceLawDecisionV111.FromSelection(
+            dishChoice.Law,
+            ControlledStochasticRequestV111.FromUnitFloat(floatRequest),
+            dishChoice.Selection, preDraw).UnitFloatDecision!;
+        var run = ReferenceNatureNativeEventIndexReplayV111
+            .ReplayMixedIndexAndUnitFloat(
+                origin, typedIndex, typedFloat,
+                RequireAction(origin, actionId),
+                PrototypeNativeEndlessConveyor.NativeRngEventId,
+                PrototypeNativeEndlessConveyor.EventId,
+                indexChoice.Law.SiteId,
+                dishChoice.Law.SiteId);
+        ValidateSelectedEffect(origin, run, indexChoice.Law,
+            indexChoice.Selection);
+        ValidateSelectedDish(run, dishChoice.Selection);
+        return run;
+    }
+
+    private static RunState ReplayDishSelection(
         RunState origin, string actionId, ChanceLawV111 law,
         ReferenceNatureSelectionV111 selection)
     {
-        if (law.SiteId == PrototypeNativeEndlessConveyor.UpgradeCardSiteId)
-            return ReplayUpgradeSelection(origin, actionId, law, selection);
-
         var conditioningRun = origin.Phase == RunPhase.MapChoice
             ? origin : CaptureDishPreDrawState(origin, actionId);
-        var request = new RandomUnitFloatRequestV111(
-            law.SiteId,
-            NativeRngV111Contexts.ForEvent(
-                origin.RunSeed,
-                PrototypeNativeEndlessConveyor.NativeRngEventId).StreamId,
-            law.OwnerId,
-            law.Ordinal);
+        var request = BuildUnitFloatRequest(origin, law);
         var controlled = ReferenceNatureChanceLawDecisionV111.FromSelection(
             law, ControlledStochasticRequestV111.FromUnitFloat(request),
             selection, conditioningRun);
@@ -272,55 +392,101 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
             PrototypeNativeEndlessConveyor.EventId,
             PrototypeNativeEndlessConveyor.DishWeightedTicketSiteId,
             GetPreDrawDishCount(law));
+        ValidateSelectedDish(run, selection);
+        return run;
+    }
+
+    private static RunState ReplayIndexSelection(
+        RunState origin, string actionId, ChanceLawV111 law,
+        ReferenceNatureSelectionV111 selection)
+    {
+        var request = BuildIndexRequest(origin, law);
+        var run = ReferenceNatureNativeEventIndexReplayV111.Replay(
+            origin, request, selection.OutcomeIndex,
+            RequireAction(origin, actionId),
+            PrototypeNativeEndlessConveyor.NativeRngEventId,
+            PrototypeNativeEndlessConveyor.EventId);
+        ValidateSelectedEffect(origin, run, law, selection);
+        return run;
+    }
+
+    private static RandomIndexRequestV111 BuildIndexRequest(
+        RunState origin, ChanceLawV111 law)
+    {
+        var stream = origin.World?.Event?.NativeEventRng
+            ?? throw new InvalidDataException(
+                "Endless Conveyor index replay lost its Native event cursor.");
+        return new RandomIndexRequestV111(
+            law.SiteId, stream.StreamId, law.OwnerId, law.Ordinal,
+            Enumerable.Range(0, law.Outcomes.Length).ToArray());
+    }
+
+    private static RandomUnitFloatRequestV111 BuildUnitFloatRequest(
+        RunState origin, ChanceLawV111 law) => new(
+            law.SiteId,
+            origin.World?.Event?.NativeEventRng?.StreamId ??
+                NativeRngV111Contexts.ForEvent(
+                    origin.RunSeed,
+                    PrototypeNativeEndlessConveyor.NativeRngEventId).StreamId,
+            law.OwnerId,
+            law.Ordinal);
+
+    private static void ValidateSelectedEffect(
+        RunState origin, RunState run, ChanceLawV111 law,
+        ReferenceNatureSelectionV111 selection)
+    {
+        if (law.SiteId == PrototypeNativeEndlessConveyor.UpgradeCardSiteId)
+        {
+            var candidates = PrototypeNativeEndlessConveyor
+                .GetUpgradeCardCandidates(origin);
+            if ((uint)selection.OutcomeIndex >= (uint)candidates.Length ||
+                law.Outcomes[selection.OutcomeIndex].OutcomeId !=
+                    $"card-instance:{candidates[selection.OutcomeIndex]}:index:{selection.OutcomeIndex}")
+                throw new InvalidDataException(
+                    "Endless Conveyor upgrade law differs from its ordered card support.");
+            var selectedInstanceId = candidates[selection.OutcomeIndex];
+            var expectedDeck = origin.Player.Deck.Select(card =>
+                card.InstanceId == selectedInstanceId
+                    ? card with { UpgradeLevel = card.UpgradeLevel + 1 }
+                    : card).ToArray();
+            if (!run.Player.Deck.SequenceEqual(expectedDeck))
+                throw new InvalidDataException(
+                    "Scripted Endless Conveyor action upgraded a different card than its Nature outcome.");
+            return;
+        }
+
+        if (law.SiteId == PrototypeNativeEndlessConveyor.ColorlessCardSiteId)
+        {
+            var candidates = PrototypeNativeEndlessConveyor
+                .GetColorlessCardCandidates();
+            if ((uint)selection.OutcomeIndex >= (uint)candidates.Length ||
+                law.Outcomes[selection.OutcomeIndex].OutcomeId !=
+                    $"card-model:{candidates[selection.OutcomeIndex]}:index:{selection.OutcomeIndex}")
+                throw new InvalidDataException(
+                    "Endless Conveyor Colorless law differs from its ordered card support.");
+            var cardId = candidates[selection.OutcomeIndex];
+            var world = origin.World
+                ?? throw new InvalidDataException(
+                    "Endless Conveyor Colorless replay lost its world.");
+            if (run.Player.Deck.Length != origin.Player.Deck.Length + 1 ||
+                run.Player.Deck[^1].InstanceId != world.NextCardInstanceId ||
+                run.Player.Deck[^1].CardId != cardId)
+                throw new InvalidDataException(
+                    "Scripted Fried Eel added a different Colorless card than its Nature outcome.");
+            return;
+        }
+
+        throw new InvalidDataException(
+            "Unknown Endless Conveyor selected event effect site '" + law.SiteId + "'.");
+    }
+
+    private static void ValidateSelectedDish(
+        RunState run, ReferenceNatureSelectionV111 selection)
+    {
         if (!selection.OutcomeId.StartsWith("dish:", StringComparison.Ordinal) ||
             run.World?.Event?.NativeDishId != selection.OutcomeId[5..])
             throw new InvalidDataException(
                 "Scripted Endless Conveyor ticket resolved a different dish than its Nature outcome.");
-        return run;
-    }
-
-    private static RunState ReplayUpgradeSelection(
-        RunState origin, string actionId, ChanceLawV111 law,
-        ReferenceNatureSelectionV111 selection)
-    {
-        var evt = origin.World?.Event
-            ?? throw new InvalidDataException(
-                "Endless Conveyor upgrade replay lost its event state.");
-        var candidates = ChanceLawEngineV111
-            .GetEndlessConveyorUpgradeCandidates(origin);
-        if (candidates.Length != law.Outcomes.Length ||
-            selection.OutcomeIndex < 0 ||
-            selection.OutcomeIndex >= candidates.Length ||
-            law.Outcomes[selection.OutcomeIndex].OutcomeId !=
-                $"card-instance:{candidates[selection.OutcomeIndex]}:index:{selection.OutcomeIndex}")
-            throw new InvalidDataException(
-                "Endless Conveyor upgrade law differs from its ordered card support.");
-        var stream = evt.NativeEventRng
-            ?? throw new InvalidDataException(
-                "Endless Conveyor upgrade replay lost its Native event cursor.");
-        var request = new RandomIndexRequestV111(
-            law.SiteId,
-            stream.StreamId,
-            law.OwnerId,
-            law.Ordinal,
-            Enumerable.Range(0, candidates.Length).ToArray());
-        request.Validate();
-        var run = ReferenceNatureNativeEventIndexReplayV111.Replay(
-            origin,
-            request,
-            selection.OutcomeIndex,
-            RequireAction(origin, actionId),
-            PrototypeNativeEndlessConveyor.NativeRngEventId,
-            PrototypeNativeEndlessConveyor.EventId);
-        var selectedInstanceId = candidates[selection.OutcomeIndex];
-        var expectedDeck = origin.Player.Deck.Select(card =>
-            card.InstanceId == selectedInstanceId
-                ? card with { UpgradeLevel = card.UpgradeLevel + 1 }
-                : card).ToArray();
-        if (!run.Player.Deck.SequenceEqual(expectedDeck))
-            throw new InvalidDataException(
-                "Scripted Endless Conveyor observe upgraded a different card than its Nature outcome.");
-        return run;
     }
 
     private static RunState CaptureDishPreDrawState(

@@ -13,6 +13,8 @@ public static class PrototypeNativeEndlessConveyor
         "event.endless_conveyor.dish_weighted_ticket";
     public const string UpgradeCardSiteId =
         "event.endless_conveyor.random_upgrade.card_instance";
+    public const string ColorlessCardSiteId =
+        "event.endless_conveyor.colorless_card.index_draw";
     public const string FeedingFrenzyId = "proto.native.underdocks.feeding_frenzy";
 
     public static PrototypeCardDefinition[] EventCards { get; } =
@@ -145,6 +147,18 @@ public static class PrototypeNativeEndlessConveyor
         candidates.RemoveAll(dish => dish.Id == current.NativeLastDishId);
         return candidates.ToArray();
     }
+
+    internal static long[] GetUpgradeCardCandidates(RunState state) =>
+        state.Player.Deck.Where(card =>
+            PrototypeGameEngine.CanSelectEventDeckCard(card,
+                PrototypePersistentDeckChoiceKind.Upgrade,
+                null, null, false))
+            .Select(card => card.InstanceId).ToArray();
+
+    internal static string[] GetColorlessCardCandidates() =>
+        PrototypeColorlessCards.Implemented
+            .Where(card => card.MechanicsImplemented && !card.MultiplayerOnly)
+            .Select(card => card.Id).ToArray();
 
     internal static bool IsValidScriptedDishState(
         RunState state, EventState current)
@@ -361,10 +375,8 @@ public sealed partial class PrototypeGameEngine
                 // Only implemented, solo-safe Colorless cards are
                 // currently catalogued. This restricted generation
                 // pool is intentionally disclosed in the docs.
-                var pool = PrototypeColorlessCards.Implemented
-                    .Where(card => card.MechanicsImplemented
-                        && !card.MultiplayerOnly)
-                    .Select(card => card.Id).ToArray();
+                var pool = PrototypeNativeEndlessConveyor
+                    .GetColorlessCardCandidates();
                 if (pool.Length == 0)
                 {
                     throw new NotSupportedException(
@@ -378,7 +390,7 @@ public sealed partial class PrototypeGameEngine
                 {
                     selectedIndex = LegacyRandomChoiceV111.ChooseIndexRange(
                         state.Rng,
-                        "event.endless_conveyor.colorless_card.index_draw",
+                        PrototypeNativeEndlessConveyor.ColorlessCardSiteId,
                         "event",
                         ownerId,
                         pool.Length).SelectedIndex;
@@ -389,7 +401,7 @@ public sealed partial class PrototypeGameEngine
                         state,
                         evt,
                         PrototypeNativeEndlessConveyor.NativeRngEventId,
-                        "event.endless_conveyor.colorless_card.index_draw",
+                        PrototypeNativeEndlessConveyor.ColorlessCardSiteId,
                         ownerId,
                         pool.Length);
                     state = draw.State;
@@ -472,11 +484,8 @@ public sealed partial class PrototypeGameEngine
         var evt = world.Event
             ?? throw new InvalidOperationException(
                 "Endless Conveyor has no active event.");
-        var candidates = state.Player.Deck.Where(card =>
-                CanSelectEventDeckCard(card,
-                    PrototypePersistentDeckChoiceKind.Upgrade,
-                    null, null, false))
-            .Select(card => card.InstanceId).ToArray();
+        var candidates = PrototypeNativeEndlessConveyor
+            .GetUpgradeCardCandidates(state);
         if (candidates.Length == 0)
         {
             return state;

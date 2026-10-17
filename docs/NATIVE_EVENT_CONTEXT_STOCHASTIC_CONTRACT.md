@@ -49,13 +49,14 @@ documented in their contracts. Existing controlled event-choice and
 Ancient-offer sessions do not implicitly cover an event merely because it
 uses this RNG helper.
 
-Endless Conveyor exposes a read-only first-dish Chance Law at a configured
-Event-node entry and a first-dish Observe upgrade law over ordered eligible
-card instances. The dish query conditions on the ordinary event-selection
-result and pre-draw weights without inspecting the sampled float outcome; the
-Observe query binds its `choose_index` support to the persisted event cursor.
-The existing event-specific session covers both the dish tickets and this
-first-dish upgrade ([Endless Conveyor contract](REFERENCE_NATURE_ENDLESS_CONVEYOR_D3.md)).
+Endless Conveyor exposes read-only weighted dish laws, a first-dish Observe
+upgrade law, a Spicy Snappy upgrade law, and a Fried Eel Colorless-card law.
+Dish queries condition on the ordinary event-selection result and pre-draw
+weights without inspecting the sampled float outcome; card queries bind their
+ordered `choose_index` supports to the persisted event cursor. The existing
+event-specific session can sample a Spicy upgrade or Fried Eel card index
+before the next dish ticket, then replay both typed requests in one atomic
+continuation ([Endless Conveyor contract](REFERENCE_NATURE_ENDLESS_CONVEYOR_D3.md)).
 
 Reflections exposes read-only conditional laws for its downgrade and upgrade
 card-pick sites. The query rebuilds the projected deck and remaining ordered

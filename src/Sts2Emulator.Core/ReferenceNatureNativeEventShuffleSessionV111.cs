@@ -725,6 +725,8 @@ public static partial class ChanceLawEngineV111
         "native-event-weighted-dish-ticket-v1";
     public const string NativeEndlessConveyorUpgradeConditioningPolicyId =
         "native-event-endless-conveyor-card-upgrade-v1";
+    public const string NativeEndlessConveyorColorlessConditioningPolicyId =
+        "native-event-endless-conveyor-colorless-card-v1";
 
     public static string[] NativeEventShuffleSessionSiteIds =>
     [
@@ -932,40 +934,45 @@ public static partial class ChanceLawEngineV111
             origin.World is not { Event: { } evt, Combat: null } ||
             evt.EventId != PrototypeNativeEndlessConveyor.EventId ||
             evt.NativePageIndex != 0 || evt.ChosenChoiceId is not null ||
-            evt.NativeDishCount != 1 || evt.NativeDishId is null ||
+            evt.NativeDishCount < 1 || evt.NativeDishId is null ||
             evt.NativeDishId != evt.NativeLastDishId ||
             evt.NativeDishRollPending || evt.NativeEventPotionSlot is not null ||
             evt.NativeEventRngProviderMode is not (null or "scripted-v111") ||
             evt.ControlledChoice is not null ||
             origin.ControlledEventRewardChoice is not null)
             throw new InvalidOperationException(
-                "Endless Conveyor upgrade law requires its configured first-dish observe boundary.");
+                "Endless Conveyor upgrade law requires a configured page-zero action boundary.");
         PrototypeStateInvariants.Validate(origin);
 
         var engine = new PrototypeGameEngine();
         var action = engine.GetLegalActions(origin).SingleOrDefault(candidate =>
             PrototypeAiEnvironment.StableActionId(candidate) == actionId)
             ?? throw new InvalidOperationException(
-                "Endless Conveyor upgrade law requires a current legal observe action.");
-        if (action.Kind != "event_choice" ||
-            action.ReadPayload<EventChoicePayload>().ChoiceId != "observe")
+                "Endless Conveyor upgrade law requires a current legal action.");
+        var choice = action.Kind == "event_choice"
+            ? action.ReadPayload<EventChoicePayload>().ChoiceId : null;
+        var observeBoundary = choice == "observe" && evt.NativeDishCount == 1;
+        var spicyGrabBoundary = choice == "grab" &&
+            evt.NativeDishId == "SPICY_SNAPPY" && origin.Player.Gold >= 40;
+        if (!observeBoundary && !spicyGrabBoundary)
             throw new InvalidOperationException(
-                "Endless Conveyor upgrade law requires the observe action.");
+                "Endless Conveyor upgrade law requires first-dish Observe or a Spicy Snappy Grab.");
 
-        var candidates = GetEndlessConveyorUpgradeCandidates(origin);
+        var candidates = PrototypeNativeEndlessConveyor
+            .GetUpgradeCardCandidates(origin);
         if (candidates.Length == 0)
             throw new InvalidOperationException(
-                "Endless Conveyor observe has no eligible card and performs no index draw.");
+                "Endless Conveyor upgrade has no eligible card and performs no index draw.");
         var stream = evt.NativeEventRng
             ?? throw new InvalidOperationException(
-                "Endless Conveyor observe requires its persisted Native event cursor.");
+                "Endless Conveyor upgrade requires its persisted Native event cursor.");
         var expectedStreamId = NativeRngV111Contexts.ForEvent(
             origin.RunSeed, PrototypeNativeEndlessConveyor.NativeRngEventId)
             .StreamId;
         if (stream.StreamId != expectedStreamId ||
             stream.CallCount is null or > int.MaxValue)
             throw new InvalidOperationException(
-                "Endless Conveyor observe requires a valid Native event cursor ordinal.");
+                "Endless Conveyor upgrade requires a valid Native event cursor ordinal.");
         var requestOrdinal = (int)stream.CallCount.Value;
         if (ordinal is { } requestedOrdinal &&
             requestOrdinal != requestedOrdinal)
@@ -1011,12 +1018,96 @@ public static partial class ChanceLawEngineV111
             outcomes);
     }
 
-    internal static long[] GetEndlessConveyorUpgradeCandidates(
-        RunState state) => state.Player.Deck.Where(card =>
-            PrototypeGameEngine.CanSelectEventDeckCard(card,
-                PrototypePersistentDeckChoiceKind.Upgrade,
-                null, null, false))
-            .Select(card => card.InstanceId).ToArray();
+    public static ChanceLawV111 QueryNativeEndlessConveyorColorlessCard(
+        RunState origin, string actionId, int? ordinal = null)
+    {
+        ArgumentNullException.ThrowIfNull(origin);
+        ArgumentException.ThrowIfNullOrWhiteSpace(actionId);
+        if (string.IsNullOrWhiteSpace(origin.RunSeed) ||
+            origin.NativeRunRng is null || origin.Phase != RunPhase.Event ||
+            origin.World is not { Event: { } evt, Combat: null } ||
+            evt.EventId != PrototypeNativeEndlessConveyor.EventId ||
+            evt.NativePageIndex != 0 || evt.ChosenChoiceId is not null ||
+            evt.NativeDishCount < 1 || evt.NativeDishId != "FRIED_EEL" ||
+            evt.NativeDishId != evt.NativeLastDishId ||
+            evt.NativeDishRollPending || evt.NativeEventPotionSlot is not null ||
+            evt.NativeEventRngProviderMode is not (null or "scripted-v111") ||
+            evt.ControlledChoice is not null ||
+            origin.ControlledEventRewardChoice is not null ||
+            origin.Player.Gold < 40)
+            throw new InvalidOperationException(
+                "Endless Conveyor Colorless law requires the configured Fried Eel Grab boundary.");
+        PrototypeStateInvariants.Validate(origin);
+
+        var action = new PrototypeGameEngine().GetLegalActions(origin)
+            .SingleOrDefault(candidate =>
+                PrototypeAiEnvironment.StableActionId(candidate) == actionId)
+            ?? throw new InvalidOperationException(
+                "Endless Conveyor Colorless law requires a current legal Grab action.");
+        if (action.Kind != "event_choice" ||
+            action.ReadPayload<EventChoicePayload>().ChoiceId != "grab")
+            throw new InvalidOperationException(
+                "Endless Conveyor Colorless law requires the Grab action.");
+
+        var candidates = PrototypeNativeEndlessConveyor
+            .GetColorlessCardCandidates();
+        if (candidates.Length == 0)
+            throw new InvalidOperationException(
+                "Fried Eel has no supported Colorless card and performs no index draw.");
+        var stream = evt.NativeEventRng
+            ?? throw new InvalidOperationException(
+                "Endless Conveyor Colorless draw requires its persisted Native event cursor.");
+        var expectedStreamId = NativeRngV111Contexts.ForEvent(
+            origin.RunSeed, PrototypeNativeEndlessConveyor.NativeRngEventId)
+            .StreamId;
+        if (stream.StreamId != expectedStreamId ||
+            stream.CallCount is null or > int.MaxValue)
+            throw new InvalidOperationException(
+                "Endless Conveyor Colorless draw requires a valid Native event cursor ordinal.");
+        var requestOrdinal = (int)stream.CallCount.Value;
+        if (ordinal is { } requestedOrdinal &&
+            requestOrdinal != requestedOrdinal)
+            throw new InvalidOperationException(
+                "Endless Conveyor Colorless ordinal differs from its Native event cursor.");
+
+        var ownerId = $"dish:{evt.NativeDishCount}:pool:" +
+            CanonicalJson.Sha256(candidates);
+        var request = new RandomIndexRequestV111(
+            PrototypeNativeEndlessConveyor.ColorlessCardSiteId,
+            stream.StreamId,
+            ownerId,
+            requestOrdinal,
+            Enumerable.Range(0, candidates.Length).ToArray());
+        request.Validate();
+        var conditioningFingerprint = CanonicalJson.Sha256(new
+        {
+            actionId,
+            eventId = evt.EventId,
+            page = evt.NativePageIndex,
+            dishCount = evt.NativeDishCount,
+            dishId = evt.NativeDishId,
+            nativeEventCursor = NativeRngV111.ToSnapshot(stream),
+            providerMode = evt.NativeEventRngProviderMode,
+            candidates,
+            request,
+            policy = NativeEndlessConveyorColorlessConditioningPolicyId
+        });
+        var outcomes = candidates.Select((candidate, index) =>
+            new ChanceLawOutcomeV111(
+                $"card-model:{candidate}:index:{index}", 1L)).ToArray();
+        var eventId = CanonicalJson.Sha256(new
+        {
+            boundary = "native_event.endless_conveyor.colorless_card",
+            actionId,
+            conditioningFingerprint
+        });
+        return Create(eventId, request.SiteId, request.OperationKind,
+            request.OwnerId, request.Ordinal,
+            NativeEndlessConveyorColorlessConditioningPolicyId,
+            conditioningFingerprint,
+            "native-endless-conveyor-restricted-colorless-pool-unverified",
+            outcomes);
+    }
 
     private static ChanceLawV111 QueryNativeEndlessConveyorDishContinuation(
         RunState origin, string actionId, int? ordinal)

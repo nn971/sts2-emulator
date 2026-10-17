@@ -903,10 +903,14 @@ internal static class PrototypeAiJsonlServer
                 nextOrdinal = session.NextOrdinal,
                 pending = law is null ? null : new
                 {
-                    kind = law.SiteId == PrototypeNativeEndlessConveyor
-                        .UpgradeCardSiteId
-                            ? "native_endless_conveyor_card_upgrade_random_choice"
-                            : "native_endless_conveyor_dish_random_choice",
+                    kind = law.SiteId switch
+                    {
+                        PrototypeNativeEndlessConveyor.UpgradeCardSiteId =>
+                            "native_endless_conveyor_card_upgrade_random_choice",
+                        PrototypeNativeEndlessConveyor.ColorlessCardSiteId =>
+                            "native_endless_conveyor_colorless_card_random_choice",
+                        _ => "native_endless_conveyor_dish_random_choice"
+                    },
                     boundaryFingerprint = law.EventId,
                     chanceLaw = law,
                     probabilityStatus = law.ProbabilityStatus
@@ -2283,7 +2287,9 @@ internal static class PrototypeAiJsonlServer
                                 (PrototypeNativeEndlessConveyor
                                     .DishWeightedTicketSiteId or
                                  PrototypeNativeEndlessConveyor
-                                    .UpgradeCardSiteId))
+                                    .UpgradeCardSiteId or
+                                 PrototypeNativeEndlessConveyor
+                                    .ColorlessCardSiteId))
                             throw new ArgumentException(
                                 "Request field 'ordinal' is required.");
                         var ordinal = suppliedOrdinal ?? 0;
@@ -2438,7 +2444,9 @@ internal static class PrototypeAiJsonlServer
                         if (siteId == PrototypeNativeEndlessConveyor
                                 .DishWeightedTicketSiteId ||
                             siteId == PrototypeNativeEndlessConveyor
-                                .UpgradeCardSiteId)
+                                .UpgradeCardSiteId ||
+                            siteId == PrototypeNativeEndlessConveyor
+                                .ColorlessCardSiteId)
                         {
                             if (priorIndices is not null ||
                                 OptionalString(request, "card_type") is not null ||
@@ -2461,10 +2469,27 @@ internal static class PrototypeAiJsonlServer
                             var actionId = OptionalString(request, "action_id")
                                 ?? throw new ArgumentException(
                                     "Endless Conveyor query requires action_id.");
-                            law = ChanceLawEngineV111
-                                .QueryNativeEndlessConveyorDishEntry(
-                                    RequireState(request), actionId,
-                                    suppliedOrdinal);
+                            var source = RequireState(request);
+                            law = siteId switch
+                            {
+                                PrototypeNativeEndlessConveyor
+                                    .DishWeightedTicketSiteId =>
+                                    ChanceLawEngineV111
+                                        .QueryNativeEndlessConveyorDishEntry(
+                                            source, actionId, suppliedOrdinal),
+                                PrototypeNativeEndlessConveyor
+                                    .UpgradeCardSiteId =>
+                                    ChanceLawEngineV111
+                                        .QueryNativeEndlessConveyorUpgrade(
+                                            source, actionId, suppliedOrdinal),
+                                PrototypeNativeEndlessConveyor
+                                    .ColorlessCardSiteId =>
+                                    ChanceLawEngineV111
+                                        .QueryNativeEndlessConveyorColorlessCard(
+                                            source, actionId, suppliedOrdinal),
+                                _ => throw new InvalidOperationException(
+                                    "Unknown Endless Conveyor Chance Law site.")
+                            };
                             if (law.SiteId != siteId ||
                                 suppliedOrdinal is { } requestedOrdinal &&
                                     law.Ordinal != requestedOrdinal)

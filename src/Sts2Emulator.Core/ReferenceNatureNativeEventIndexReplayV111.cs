@@ -194,6 +194,89 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
         };
     }
 
+    public static RunState ReplayMixedIndexAndUnitFloat(
+        RunState origin, RandomIndexDecisionV111 indexDecision,
+        RandomUnitFloatDecisionV111 unitFloatDecision, GameAction action,
+        string nativeEventRngEventId, string expectedEventId,
+        string scriptedIndexSiteId, string scriptedUnitFloatSiteId)
+    {
+        ArgumentNullException.ThrowIfNull(origin);
+        ArgumentNullException.ThrowIfNull(indexDecision);
+        ArgumentNullException.ThrowIfNull(unitFloatDecision);
+        ArgumentNullException.ThrowIfNull(action);
+        ArgumentException.ThrowIfNullOrWhiteSpace(nativeEventRngEventId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(expectedEventId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(scriptedIndexSiteId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(scriptedUnitFloatSiteId);
+        indexDecision.Validate();
+        unitFloatDecision.Validate();
+        if (origin.Phase != RunPhase.Event ||
+            origin.World?.Event is not { } originEvent ||
+            originEvent.EventId != expectedEventId ||
+            originEvent.NativeEventRng is not { } originStream ||
+            string.IsNullOrWhiteSpace(origin.RunSeed) ||
+            origin.NativeRunRng is null ||
+            indexDecision.Request.SiteId != scriptedIndexSiteId ||
+            unitFloatDecision.Request.SiteId != scriptedUnitFloatSiteId ||
+            indexDecision.Request.StreamId != originStream.StreamId ||
+            unitFloatDecision.Request.StreamId != originStream.StreamId ||
+            unitFloatDecision.Request.Ordinal !=
+                indexDecision.Request.Ordinal + 1 ||
+            originStream.StreamId != NativeRngV111Contexts.ForEvent(
+                origin.RunSeed, nativeEventRngEventId).StreamId)
+            throw new InvalidOperationException(
+                "Mixed Endless Conveyor replay requires consecutive index and unit-float requests on its current event stream.");
+
+        var indexScript = new ScriptedRandomIndexProviderV111(
+            [indexDecision with { ProviderMode = "scripted-v111" }]);
+        var unitFloatScript = new ScriptedRandomUnitFloatProviderV111(
+            [unitFloatDecision with { ProviderMode = "scripted-v111" }]);
+        IReadOnlyList<NativeEventUnitFloatCaptureV111> captures;
+        RunState run;
+        using (var probe = NativeEventRandomProbeV111.Begin())
+        using (var providerScope = StochasticProviderScopeV111.Enter(
+            new SelectiveReplayProvider(scriptedIndexSiteId, indexScript),
+            new SelectiveUnitFloatReplayProvider(
+                scriptedUnitFloatSiteId, unitFloatScript),
+            overrideExplicitProviders: true))
+        {
+            run = new PrototypeGameEngine().Step(
+                origin.Fork(), action).State;
+            captures = probe.UnitFloatCaptures;
+        }
+        var matching = captures.Where(capture =>
+            capture.Request.SiteId == scriptedUnitFloatSiteId).ToArray();
+        if (matching.Length != 1 ||
+            CanonicalJson.Sha256(matching[0].Request) !=
+                CanonicalJson.Sha256(unitFloatDecision.Request) ||
+            matching[0].PreDrawState.World?.Event?.NativeEventRng is not
+                { } preDrawStream ||
+            preDrawStream.StreamId != originStream.StreamId ||
+            NativeRngV111.ToSnapshot(preDrawStream) !=
+                NativeRngV111.ToSnapshot(originStream))
+            throw new InvalidDataException(
+                "Mixed Endless Conveyor replay did not reach the scripted ticket after its counterfactual index.");
+        indexScript.AssertComplete();
+        unitFloatScript.AssertComplete();
+        if (run.World?.Event is not { } eventState ||
+            eventState.EventId != expectedEventId ||
+            eventState.NativeEventRng is not { } replayStream ||
+            NativeRngV111.ToSnapshot(replayStream) !=
+                NativeRngV111.ToSnapshot(originStream))
+            throw new InvalidDataException(
+                $"Scripted {expectedEventId} mixed resolution advanced its Native event cursor.");
+        return run with
+        {
+            World = run.World! with
+            {
+                Event = eventState with
+                {
+                    NativeEventRngProviderMode = "scripted-v111"
+                }
+            }
+        };
+    }
+
     private sealed class SelectiveReplayProvider(
         string scriptedSiteId,
         ScriptedRandomIndexProviderV111 scripted)
