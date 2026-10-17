@@ -99,7 +99,13 @@ public sealed record RunState(
     [property: System.Text.Json.Serialization.JsonIgnore(
         Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     PrototypeControlledEventRewardChoiceContinuationV111?
-        ControlledEventRewardChoice = null)
+        ControlledEventRewardChoice = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    ControlledRunActionTraceV111[]? ControlledRunActionHistory = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    PrototypeControlledRunActionContinuationV111? ControlledRunActionChoice = null)
 {
     public RunState Fork() => this with
     {
@@ -109,6 +115,9 @@ public sealed record RunState(
         ControlledEventChoiceHistory = ControlledEventChoiceHistory?.Select(
             trace => trace.Fork()).ToArray(),
         ControlledEventRewardChoice = ControlledEventRewardChoice?.Fork(),
+        ControlledRunActionHistory = ControlledRunActionHistory?.Select(
+            trace => trace.Fork()).ToArray(),
+        ControlledRunActionChoice = ControlledRunActionChoice?.Fork(),
         ExtensionState = ExtensionState.Clone(),
         World = World?.Fork(),
         Configuration = Configuration?.Fork()

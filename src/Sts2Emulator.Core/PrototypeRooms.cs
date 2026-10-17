@@ -3931,11 +3931,48 @@ public sealed partial class PrototypeGameEngine
 
     private static RunState StepRest(RunState state, GameAction action)
     {
+        if (state.ControlledRunActionChoice is { } continuation)
+            return ResumeControlledRunAction(state, action, continuation);
         if (action.Kind == PrototypeNativeRestSiteActionsV111.Clone)
             return ClonePaelRestCards(state);
         if (StringComparer.Ordinal.Equals(action.Kind,
                 PrototypeNativeRestSiteActionsV111.Dig))
+        {
+            if (ControlledChanceGuardV111.Active
+                && ControlledEventChoiceReplayV111.IsActive
+                && !UsesNativeRegionalSystems(RequireWorld(state)))
+            {
+                try
+                {
+                    return BeginRestDigReward(state);
+                }
+                catch (ControlledEventChoiceChanceRequiredException exception)
+                {
+                    if (exception.Request.SiteId !=
+                        "relic.unowned_random_selection.index_draw"
+                        || exception.CandidateLabels is not { Length: > 0 }
+                        || exception.CandidateLabels.Length !=
+                            exception.Request.SupportCount)
+                        throw new NotSupportedException(
+                            "Controlled Shovel dig reached an unsupported chance request.");
+                    var pendingAction = new
+                        PrototypeControlledRunActionContinuationV111(
+                            state,
+                            PrototypeNativeRestSiteActionsV111.Dig,
+                            [],
+                            [],
+                            exception.Request,
+                            exception.CandidateLabels);
+                    pendingAction.Validate();
+                    return state with
+                    {
+                        ControlledRunActionChoice = pendingAction
+                    };
+                }
+            }
+
             return BeginRestDigReward(state);
+        }
         if (StringComparer.Ordinal.Equals(action.Kind,
                 PrototypeNativeRestSiteActionsV111.Lift))
         {
@@ -4092,6 +4129,56 @@ public sealed partial class PrototypeGameEngine
 
         state = state with { Player = state.Player with { Deck = deck } };
         return CompleteRoomToMap(state);
+    }
+
+    private static RunState ResumeControlledRunAction(
+        RunState state,
+        GameAction action,
+        PrototypeControlledRunActionContinuationV111 continuation)
+    {
+        if (action.Kind != "choose_controlled_run_action_outcome")
+            throw new InvalidOperationException(
+                "A suspended run action requires its explicit outcome adapter.");
+        continuation.Validate();
+        var selectedIndex = action
+            .ReadPayload<ChooseControlledEventOutcomePayload>().SelectedIndex;
+        if (selectedIndex < 0
+            || selectedIndex >= continuation.PendingRequest.SupportCount)
+            throw new InvalidOperationException(
+                "Selected run-action outcome is outside the pending ordered support.");
+
+        var decision = new RandomIndexDecisionV111(
+            continuation.PendingRequest, selectedIndex, "controlled-v111");
+        decision.Validate();
+        var decisions = continuation.Decisions.Append(decision).ToArray();
+        RunState result;
+        using (var replay = ControlledEventChoiceReplayV111.Begin(decisions))
+        {
+            var partialState = continuation.PartialState.Fork() with
+            {
+                DecisionIndex = state.DecisionIndex
+            };
+            result = BeginRestDigReward(partialState);
+            replay.EnsureConsumed();
+        }
+
+        if (result.ControlledRunActionChoice is not null)
+            throw new NotSupportedException(
+                "Controlled Shovel dig reached more than one random outcome.");
+        var trace = new ControlledRunActionTraceV111(
+            continuation.ActionId,
+            decisions,
+            continuation.DecisionCandidateLabels.Append(
+                (string[])continuation.PendingCandidateLabels.Clone()).ToArray());
+        trace.Validate();
+        return result with
+        {
+            ControlledRunActionHistory =
+                (result.ControlledRunActionHistory
+                    ?? Array.Empty<ControlledRunActionTraceV111>())
+                .Append(trace).ToArray(),
+            ControlledRunActionChoice = null
+        };
     }
 
     private static RunState BeginRestDigReward(RunState state)

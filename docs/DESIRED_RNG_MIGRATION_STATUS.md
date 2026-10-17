@@ -97,7 +97,7 @@ reference distribution is claimed.
 | `event.reward.offer_potion.model.index_draw` | custom event reward + ordered potion pool / legacy `reward` | Partial: configured prototype potion pool and potion-capacity filter | No: legacy typed index provider only | No | Partial: saved event-effect frame for the potion offer in selected event card rewards | No | No |
 | `event.reward.card_bundle.shuffle_swap_index` | custom event reward + ordered Common/Uncommon pools / legacy `reward` | Yes: separate full descending shuffles before bundle slicing | No: shared Fisher–Yates loop with legacy typed provider | No | Yes: saved event-effect frame for supported event bundle offers | No | No |
 | `event.potion.fill_empty_slots.model` | player potion slot + potion pool / legacy `event` | Yes: source-ordered empty-slot filling | No: legacy typed index provider only | No | Yes: saved effect-frame continuation repeats one labeled slot draw at a time | No | No |
-| `relic.unowned_random_selection.index_draw` | event or Shovel + eligible unowned relic pool / hypothesized `player.rewards`; legacy `event`/`reward` fallback | Partial: single-copy relic filter and pool order | Yes: native player index provider under the `player.rewards` hypothesis; legacy typed providers retained | No: native stream/cursor assignment pending source validation | Partial: saved effect-frame continuation for eligible event options; Shovel acquisition remains source-owned | No | No |
+| `relic.unowned_random_selection.index_draw` | event or Shovel + eligible unowned relic pool / hypothesized `player.rewards`; legacy `event`/`reward` fallback | Partial: single-copy relic filter and pool order | Yes: native player index provider under the `player.rewards` hypothesis; legacy typed providers retained | No: native stream/cursor assignment pending source validation | Partial: saved effect-frame continuation for eligible event options and separate saved run-action continuation for legacy Shovel; native bag acquisition remains source-owned | No | No |
 | `event.reward.random_modifier_curse.index_draw` | event reward + ordered modifier-curse pool / legacy `reward` | Partial: implemented modifier-curse pool order; source event reward audit remains incomplete | No: legacy typed index provider only | No | Yes: saved event-reward frame resumes after player choices; native site ownership remains unaudited | No | No |
 | `event.neow.cursed_relic.index_draw` | Neow event + ordered cursed-relic names / `context.event.NEOW.player_0`; legacy `event` helper retained | Partial: default curse pool and exclusion pairing; unlock filters and full source call order remain unaudited | Yes: native context index provider; legacy typed helper retained | No: seeded source result/cursor regression pending | Yes: scripted or controlled offer generation through the run-factory audit entry point; provider mode and event cursor validated | No | No |
 | `event.neow.lava_rock_pair.index_draw` | Neow event + conditional positive relic pair / `context.event.NEOW.player_0`; legacy `event` helper retained | Yes: one bounded choice unless Large Capsule is selected | Yes: native context index provider; legacy typed helper retained | No: seeded source result/cursor regression pending | Yes: scripted or controlled offer generation through the run-factory audit entry point; provider mode and event cursor validated | No | No |
@@ -356,12 +356,13 @@ one small pending chance event. A separate playable semantic schema exposes
 seeded entry, player actions, weighted
 intent IDs, typed draw/target/generated-card resolution, and exact snapshot
 replay through the same JSONL/Python bridge.
-An opt-in event adapter also exposes whole-run begin, reward advance, resolve,
-inspect and one-request enumeration operations on ordinary run-state handles.
-Existing `step` and native RNG paths retain semantics. Next D3/D4
-work must wire controlled choices into general game action continuation beyond
-the selected event and reward frames, broaden supported event-effect sites and
-add trained agent-facing observations. Full native-oracle fidelity
+Opt-in event and run-action adapters expose whole-run begin, resolve and inspect
+operations on ordinary run-state handles; event rewards also support advance
+and one-request enumeration. The legacy Shovel dig uses a saved run-action
+continuation. Existing `step` and native RNG paths retain semantics. Next D3/D4
+work must wire controlled choices into more general game action continuation,
+broaden supported event-effect sites and add trained agent-facing observations.
+Full native-oracle fidelity
 remains separate from seeded emulator RNG equality. See
 [the isolated Nature bridge](DESIRED_RNG_D3_INTENT_BRIDGE.md).
 

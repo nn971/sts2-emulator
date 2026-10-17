@@ -159,6 +159,8 @@ merchant draws. Treasure RNG state is saved on both successful and exhausted
 bag paths; source result/cursor parity remains unverified.
 The configured Shovel rest-site reward uses that same player reward stream and
 retains its advanced bundle while the relic reward is pending.
+Its legacy unowned-relic index draw also has a separate opt-in saved run-action
+continuation; the configured native relic-bag route remains source-owned.
 Neow's nested random relic pickup also advances the same bundle while
 preserving its existing reward continuation.
 Random relic gains from configured ordinary event choices use the same bag

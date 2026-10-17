@@ -68,6 +68,24 @@ class State:
             action_id=action_id)
         return ControlledEventChoice.from_wire(self.session, result)
 
+    def begin_controlled_shovel_dig(self):
+        """Start a saved Nature boundary for legacy Shovel relic selection."""
+        if self.session.capabilities.get("controlledRunActionSchemaId") != (
+                "sts2-v111-controlled-run-action-v1"):
+            raise EmulatorError("Emulator does not expose controlled run actions")
+        result = self.session.call(
+            "controlled_run_action_begin", state_handle=self.handle)
+        return ControlledRunActionChoice.from_wire(self.session, result)
+
+    def resume_controlled_run_action(self):
+        """Inspect a pending controlled run action restored from a snapshot."""
+        if self.session.capabilities.get("controlledRunActionSchemaId") != (
+                "sts2-v111-controlled-run-action-v1"):
+            raise EmulatorError("Emulator does not expose controlled run actions")
+        result = self.session.call(
+            "controlled_run_action_inspect", state_handle=self.handle)
+        return ControlledRunActionChoice.from_wire(self.session, result)
+
 
 @dataclass(frozen=True)
 class ControlledEventChoice:
@@ -118,6 +136,42 @@ class ControlledEventChoice:
 
     def save_snapshot(self):
         """Return a hidden exact snapshot, including its pending event frame."""
+        return self.session.call("save_snapshot", state_handle=self.handle)["snapshot"]
+
+    def release(self):
+        return self.state.release()
+
+
+@dataclass(frozen=True)
+class ControlledRunActionChoice:
+    """A whole-run action suspended at an explicit controlled outcome."""
+    session: "Session"
+    handle: str
+    fingerprint: str
+    boundary: str
+    pending: dict | None
+    transcript: dict | list | None
+    actions: list
+
+    @classmethod
+    def from_wire(cls, session, payload):
+        return cls(
+            session, payload["stateHandle"], payload["fingerprint"],
+            payload["boundary"], payload["pending"],
+            payload["transcript"], payload["actions"])
+
+    @property
+    def state(self):
+        return State(self.session, self.handle)
+
+    def resolve(self, selected_index: int):
+        result = self.session.call(
+            "controlled_run_action_resolve", state_handle=self.handle,
+            selected_index=selected_index)
+        return ControlledRunActionChoice.from_wire(self.session, result)
+
+    def save_snapshot(self):
+        """Return a hidden exact snapshot, including the pending run-action frame."""
         return self.session.call("save_snapshot", state_handle=self.handle)["snapshot"]
 
     def release(self):

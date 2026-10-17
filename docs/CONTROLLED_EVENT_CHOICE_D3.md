@@ -45,8 +45,8 @@ The supported event-choice sites are:
 - `relic.unowned_random_selection.index_draw` for eligible event options
 
 Any other random site reached by the event option continues to fail closed.
-Native regional potion routes, Shovel's relic acquisition, post-reward random
-generation outside the modifier-curse site, other custom event reward effects,
+Native regional potion routes, post-reward random generation outside the
+modifier-curse site, other custom event reward effects,
 source-pool differences, native stream ownership and reference probabilities
 remain outside this boundary. The post-reward modifier-curse draw has a
 separate saved reward frame. It preserves completed player reward choices and

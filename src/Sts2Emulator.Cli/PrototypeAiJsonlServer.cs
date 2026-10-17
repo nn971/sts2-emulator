@@ -716,6 +716,53 @@ internal static class PrototypeAiJsonlServer
             };
         }
 
+        object ControlledRunActionResult(RunState state, string handle,
+            string? parent)
+        {
+            var continuation = state.ControlledRunActionChoice;
+            var actions = continuation is null
+                ? environment.Observe(state).LegalActions
+                : new PrototypeGameEngine().GetLegalActions(state)
+                    .Select(action => new PrototypeAiAction(
+                        PrototypeAiEnvironment.StableActionId(action),
+                        action.Kind,
+                        action.Payload.Clone()))
+                    .ToArray();
+            object? transcript = continuation is not null
+                ? new
+                {
+                    actionId = continuation.ActionId,
+                    decisions = continuation.Decisions,
+                    candidateLabels = continuation.DecisionCandidateLabels,
+                    probabilityStatus = "UNVERIFIED"
+                }
+                : state.ControlledRunActionHistory is { Length: > 0 } history
+                    ? history[^1]
+                    : null;
+            object? pending = continuation is null
+                ? null
+                : new
+                {
+                    kind = "run_action_random_choice",
+                    actionId = continuation.ActionId,
+                    request = continuation.PendingRequest,
+                    candidateLabels = continuation.PendingCandidateLabels,
+                    probabilityStatus = "UNVERIFIED"
+                };
+            return new
+            {
+                ok = true,
+                schemaId = ControlledRunActionEngineV111.SchemaId,
+                stateHandle = handle,
+                parent,
+                fingerprint = CanonicalJson.Sha256(state),
+                boundary = continuation is null ? "committed" : "nature",
+                pending,
+                transcript,
+                actions = actions.Select(ActionWire).ToArray()
+            };
+        }
+
         string StoreControlled(ControlledPlayableCombatV111 state)
         {
             string handle = "c" + nextControlledHandle++;
@@ -834,6 +881,10 @@ internal static class PrototypeAiJsonlServer
                                 ControlledEventChoiceEngineV111.SchemaId,
                             controlledEventChoiceScope =
                                 "saved-event-effect-and-event-reward-frame",
+                            controlledRunActionSchemaId =
+                                ControlledRunActionEngineV111.SchemaId,
+                            controlledRunActionScope =
+                                "legacy-shovel-unowned-relic-selection",
                             controlledEventChoiceEnumerationSchemaId =
                                 ControlledEventChoiceEnumeratorV111.SchemaId,
                             controlledEventChoiceEnumerationMaximumOutcomes =
@@ -1902,6 +1953,40 @@ internal static class PrototypeAiJsonlServer
                             enumeration.ChoiceId,
                             outcomes
                         });
+                        break;
+                    }
+
+                    case "controlled_run_action_begin":
+                    {
+                        var parentHandle = RequiredString(request, "state_handle");
+                        var source = RequireState(request);
+                        var next = ControlledRunActionEngineV111.BeginShovelDig(source);
+                        var handle = Store(next, parentHandle);
+                        Write(ControlledRunActionResult(next, handle, parentHandle));
+                        break;
+                    }
+
+                    case "controlled_run_action_inspect":
+                    {
+                        var handle = RequiredString(request, "state_handle");
+                        var state = RequireState(request);
+                        if (state.ControlledRunActionChoice is null)
+                            throw new InvalidOperationException(
+                                "State has no pending controlled run action.");
+                        Write(ControlledRunActionResult(state, handle, null));
+                        break;
+                    }
+
+                    case "controlled_run_action_resolve":
+                    {
+                        var parentHandle = RequiredString(request, "state_handle");
+                        var source = RequireState(request);
+                        var selectedIndex = OptionalInt(request, "selected_index")
+                            ?? throw new ArgumentException("Missing selected_index.");
+                        var next = ControlledRunActionEngineV111.Resolve(
+                            source, selectedIndex);
+                        var handle = Store(next, parentHandle);
+                        Write(ControlledRunActionResult(next, handle, parentHandle));
                         break;
                     }
 

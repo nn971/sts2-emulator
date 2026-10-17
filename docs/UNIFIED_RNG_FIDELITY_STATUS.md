@@ -238,6 +238,11 @@ hide Nature outcome actions. See
 [`CONTROLLED_EVENT_CHOICE_D3.md`](CONTROLLED_EVENT_CHOICE_D3.md) for the
 supported sites and JSONL contract.
 
+The same opt-in bridge now has a saved run-action frame for the legacy Shovel
+unowned-relic index draw, with JSONL/Python begin, resolve and inspect support.
+The source-owned native relic-bag route remains outside that controlled frame.
+See [`CONTROLLED_RUN_ACTION_D3.md`](CONTROLLED_RUN_ACTION_D3.md).
+
 The emulator Release CLI build passes with zero warnings. This follow-on has
 build and static-check evidence only; no tests were run. It does not certify
 native stream ownership, event-pool parity, source cursor parity or reference

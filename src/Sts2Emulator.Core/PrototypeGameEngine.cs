@@ -14,6 +14,15 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                     new ChooseControlledEventOutcomePayload(index)))
                 .ToArray();
         }
+        if (state.ControlledRunActionChoice is { } runActionChoice)
+        {
+            var request = runActionChoice.PendingRequest;
+            return Enumerable.Range(0, request.SupportCount)
+                .Select(index => GameAction.Create(
+                    "choose_controlled_run_action_outcome",
+                    new ChooseControlledEventOutcomePayload(index)))
+                .ToArray();
+        }
         var phaseActions = state.Phase switch
         {
             RunPhase.RunStart => [GameAction.Empty("start_run")],
@@ -33,7 +42,8 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             or RunPhase.Terminal
             || state.Phase == RunPhase.Event
                 && state.World?.Event?.ControlledChoice is not null
-            || state.ControlledEventRewardChoice is not null)
+            || state.ControlledEventRewardChoice is not null
+            || state.ControlledRunActionChoice is not null)
         {
             return phaseActions;
         }
@@ -48,9 +58,12 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         RunConfiguration.ValidateState(state);
         if ((state.Phase == RunPhase.Event
                 && state.World?.Event?.ControlledChoice is not null
-            || state.ControlledEventRewardChoice is not null)
+            || state.ControlledEventRewardChoice is not null
+            || state.ControlledRunActionChoice is not null)
             && (!ControlledChanceGuardV111.Active
-                || action.Kind != "choose_controlled_event_outcome"))
+                || action.Kind != (state.ControlledRunActionChoice is not null
+                    ? "choose_controlled_run_action_outcome"
+                    : "choose_controlled_event_outcome")))
         {
             throw new InvalidOperationException(
                 "A suspended controlled event choice requires its explicit outcome adapter.");
@@ -107,6 +120,19 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                     PartialState = next with
                     {
                         ControlledEventRewardChoice = null
+                    }
+                }
+            };
+        }
+        if (next.ControlledRunActionChoice is { } runActionChoice)
+        {
+            next = next with
+            {
+                ControlledRunActionChoice = runActionChoice with
+                {
+                    PartialState = next with
+                    {
+                        ControlledRunActionChoice = null
                     }
                 }
             };
