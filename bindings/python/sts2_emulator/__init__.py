@@ -40,7 +40,7 @@ class State:
         return self.session.call("release_many", state_handles=[self.handle])["released"]
 
     def begin_controlled_event_choice(self, choice_id: str):
-        """Start a saved controlled replay for one supported event option."""
+        """Start a saved controlled frame for one supported event option."""
         if self.session.capabilities.get("controlledEventChoiceSchemaId") != (
                 "sts2-v111-controlled-event-choice-v1"):
             raise EmulatorError("Emulator does not expose controlled event choices")
@@ -87,12 +87,54 @@ class ControlledEventChoice:
             selected_index=selected_index)
         return ControlledEventChoice.from_wire(self.session, result)
 
+    def enumerate_chance(self, max_outcomes: int = 32):
+        """Resolve each outcome of one small pending event chance boundary."""
+        if self.session.capabilities.get(
+                "controlledEventChoiceEnumerationSchemaId") != (
+                "sts2-v111-controlled-event-enumeration-v1"):
+            raise EmulatorError(
+                "Emulator lacks controlled event-choice enumeration")
+        capability_limit = self.session.capabilities.get(
+            "controlledEventChoiceEnumerationMaximumOutcomes", 256)
+        if (not isinstance(max_outcomes, int) or isinstance(max_outcomes, bool)
+                or max_outcomes < 1 or max_outcomes > capability_limit):
+            raise ValueError(
+                f"max_outcomes must be between 1 and {capability_limit}")
+        result = self.session.call(
+            "controlled_event_enumerate", state_handle=self.handle,
+            fingerprint=self.fingerprint, maximum_outcomes=max_outcomes)
+        return ControlledEventChoiceEnumeration.from_wire(
+            self.session, result)
+
     def save_snapshot(self):
-        """Return a hidden exact run snapshot, including the replay checkpoint."""
+        """Return a hidden exact run snapshot, including its saved effect frame."""
         return self.session.call("save_snapshot", state_handle=self.handle)["snapshot"]
 
     def release(self):
         return self.state.release()
+
+
+@dataclass(frozen=True)
+class ControlledEventChoiceOutcome:
+    selected_index: int
+    candidate_label: str
+    child: ControlledEventChoice
+
+
+@dataclass(frozen=True)
+class ControlledEventChoiceEnumeration:
+    event_id: str
+    choice_id: str
+    outcomes: tuple[ControlledEventChoiceOutcome, ...]
+
+    @classmethod
+    def from_wire(cls, session, payload):
+        outcomes = tuple(
+            ControlledEventChoiceOutcome(
+                item["outcomeId"], item["candidateLabel"],
+                ControlledEventChoice.from_wire(session, item["result"]))
+            for item in payload["outcomes"])
+        return cls(payload["eventId"], payload["choiceId"], outcomes)
 
 
 @dataclass(frozen=True)

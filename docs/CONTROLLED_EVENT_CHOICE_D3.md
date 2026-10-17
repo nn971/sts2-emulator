@@ -46,6 +46,7 @@ ordinary run `state_handle`:
 | `controlled_event_begin` | `state_handle`, `choice_id` | Child run handle, pending request and labels, transcript, legal actions |
 | `controlled_event_resolve` | pending `state_handle`, `selected_index` | Child run handle with the next request or committed option |
 | `controlled_event_inspect` | pending `state_handle` | Restore the Nature-facing request and legal outcome actions after loading a snapshot |
+| `controlled_event_enumerate` | pending `state_handle`, current `fingerprint`, optional `maximum_outcomes` | Independent child run handle for each outcome of this one request |
 
 The exact continuation frame is part of the ordinary run snapshot. A pending
 continuation exposes only `choose_controlled_event_outcome` actions through
@@ -54,7 +55,10 @@ Nature actions, and the ordinary step endpoint cannot submit them. Other
 actions, including out-of-combat potions, are rejected until it resumes. The
 Python binding exposes `State.begin_controlled_event_choice()`,
 `State.resume_controlled_event_choice()` after snapshot restore, and
-`ControlledEventChoice.resolve()`.
+`ControlledEventChoice.resolve()`. The optional one-boundary enumerator is
+advertised as `sts2-v111-controlled-event-enumeration-v1`; its cap is 256
+outcomes. Each branch resolves only the current request, leaving any next
+request pending in that child.
 
 ## Evidence and limits
 

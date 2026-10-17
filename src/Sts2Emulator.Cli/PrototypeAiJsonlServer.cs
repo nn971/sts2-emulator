@@ -791,7 +791,12 @@ internal static class PrototypeAiJsonlServer
                             controlledEventChoiceSchemaId =
                                 ControlledEventChoiceEngineV111.SchemaId,
                             controlledEventChoiceScope =
-                                "saved-pre-option-event-choice-replay",
+                                "saved-event-effect-frame",
+                            controlledEventChoiceEnumerationSchemaId =
+                                ControlledEventChoiceEnumeratorV111.SchemaId,
+                            controlledEventChoiceEnumerationMaximumOutcomes =
+                                ControlledEventChoiceEnumeratorV111
+                                    .MaximumSupportedOutcomes,
                             controlledEventChoiceSites = new[]
                             {
                                 "event.random_upgrade.card_instance",
@@ -1792,6 +1797,38 @@ internal static class PrototypeAiJsonlServer
                         var handle = Store(next, parentHandle);
                         Write(ControlledEventChoiceResult(
                             next, handle, parentHandle));
+                        break;
+                    }
+
+                    case "controlled_event_enumerate":
+                    {
+                        var parentHandle = RequiredString(request, "state_handle");
+                        var current = RequireState(request);
+                        var enumeration =
+                            ControlledEventChoiceEnumeratorV111.Enumerate(
+                                current,
+                                RequiredString(request, "fingerprint"),
+                                OptionalInt(request, "maximum_outcomes") ?? 32);
+                        var outcomes = enumeration.Outcomes.Select(outcome =>
+                        {
+                            var handle = Store(outcome.Child, parentHandle);
+                            return new
+                            {
+                                outcomeId = outcome.SelectedIndex,
+                                outcome.CandidateLabel,
+                                result = ControlledEventChoiceResult(
+                                    outcome.Child, handle, parentHandle)
+                            };
+                        }).ToArray();
+                        Write(new
+                        {
+                            requestId,
+                            ok = true,
+                            schemaId = enumeration.SchemaId,
+                            enumeration.EventId,
+                            enumeration.ChoiceId,
+                            outcomes
+                        });
                         break;
                     }
 

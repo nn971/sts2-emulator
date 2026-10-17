@@ -34,6 +34,11 @@ non-Nature RNG parity remain **UNVERIFIED**.
   transcripts in exact snapshots. See the [D3 event continuation
   contract](CONTROLLED_EVENT_CHOICE_D3.md); this does not expand the combat
   `semanticChanceSchemaId` scope.
+- `controlledEventChoiceEnumerationSchemaId =
+  sts2-v111-controlled-event-enumeration-v1`, with an explicit maximum
+  support of 256. `controlled_event_enumerate` resolves one pending event
+  request into independent ordinary run-state child handles; any following
+  request remains pending in each child.
 - `semanticPersistentDeckActionSchemaId =
   sts2-v111-semantic-player-action-v1`, with scope
   `draw-pile-neutral-single-player` and a sorted
