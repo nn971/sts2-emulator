@@ -1,4 +1,4 @@
-# RNG direct-call source inventory (emulator-rng-callsite-source-inventory-v7)
+# RNG direct-call source inventory (emulator-rng-callsite-source-inventory-v8)
 
 Direct qualified calls to PrototypeRng, NativeRngV111, and NativeFisherYatesV111 in Sts2Emulator.Core. This does not include indirect delegates, random provider interfaces, third-party/native source callsites, or prove that every source operation is mapped. The site-matrix checks verify registry coverage, unique ledger IDs and explicit reference-law status. The S0 locator reports text or linked-document matches for private constraints, audience projections, resolvers/continuations, probability provenance, and unsupported handling; these matches require manual review and do not prove source completeness.
 
@@ -12,7 +12,7 @@ Counts by direct API family:
 
 Shuffle site IDs mapped to migration-matrix rows: **18**; dynamic expressions: **6**; unmapped: **0**; missing: **0**.
 Registered stochastic site IDs mapped to migration-matrix rows: **140/140**; IDs without rows: **0**; duplicate matrix IDs: **0**; unresolved registry references: **0**.
-Reference-law column status: **119 UNVERIFIED**; **64 calibrated**; **0 unspecified**.
+Reference-law column status: **104 UNVERIFIED**; **15 conditional**; **64 calibrated**; **0 unspecified**.
 S0 contract-evidence locator: **183/183 rows** have a text or linked-document match for every facet. Matches are review pointers, not evidence that a contract is complete.
 Rows without a text or linked-document match by S0 facet:
 

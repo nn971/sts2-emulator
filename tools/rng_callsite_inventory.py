@@ -21,7 +21,7 @@ from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = ROOT / "src" / "Sts2Emulator.Core"
-SCHEMA_ID = "emulator-rng-callsite-source-inventory-v7"
+SCHEMA_ID = "emulator-rng-callsite-source-inventory-v8"
 SITE_REGISTRY_PATH = SOURCE_ROOT / "StochasticSiteRegistryV111.cs"
 
 CALL_PATTERN = re.compile(
@@ -367,6 +367,8 @@ def _site_matrix_contract_evidence(
 
 
 def _law_status_kind(status: str) -> str:
+    if re.match(r"^Conditional(?:\b|:)", status, re.IGNORECASE):
+        return "conditional"
     if "UNVERIFIED" in status:
         return "unverified"
     if re.match(r"^Yes(?:\b|:)", status):
@@ -637,6 +639,7 @@ def collect() -> dict[str, Any]:
                 unresolved_registry_references,
             "reference_law_status": {
                 "unverified_rows": law_status_counts["unverified"],
+                "conditional_rows": law_status_counts["conditional"],
                 "calibrated_rows": law_status_counts["calibrated"],
                 "unspecified_rows": law_status_counts["unspecified"],
                 "rows_without_explicit_status":
@@ -686,6 +689,7 @@ def render_markdown(report: dict[str, Any]) -> str:
         f"unresolved registry references: **{len(report['registry_matrix_coverage']['unresolved_registry_references'])}**.",
         "Reference-law column status: "
         f"**{report['registry_matrix_coverage']['reference_law_status']['unverified_rows']} UNVERIFIED**; "
+        f"**{report['registry_matrix_coverage']['reference_law_status']['conditional_rows']} conditional**; "
         f"**{report['registry_matrix_coverage']['reference_law_status']['calibrated_rows']} calibrated**; "
         f"**{report['registry_matrix_coverage']['reference_law_status']['unspecified_rows']} unspecified**.",
         "S0 contract-evidence locator: "
