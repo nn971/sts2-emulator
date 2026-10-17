@@ -1580,6 +1580,18 @@ internal static class PrototypeAiJsonlServer
                                         potionId, relicId, colorlessOffer,
                                         saleReprice);
                             }
+                            else if (siteId == "treasure.relic_grab_bag.draw")
+                            {
+                                if (cardType is not null || rarity is not null ||
+                                    cardId is not null || potionId is not null ||
+                                    relicId is not null || colorlessOffer ||
+                                    saleReprice || excludedPotionIds is not null)
+                                    throw new ArgumentException(
+                                        "Native treasure relic queries do not accept merchant parameters.");
+                                law = ChanceLawEngineV111
+                                    .QueryNativeTreasureRelicDraw(
+                                        run, siteId, ordinal);
+                            }
                             else
                             {
                                 if (cardId is not null || potionId is not null ||

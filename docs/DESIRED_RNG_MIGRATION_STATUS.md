@@ -18,7 +18,9 @@ whole-run controlled continuation or a trained Nature-policy API.
 Narrow saved event-effect and run-action frames now cover selected stochastic
 event choices, the legacy run-start boss draw, Shovel action, seven random
 indices in legacy Shop-node generation, and legacy Treasure-node relic selection
-through opt-in D3/D4 boundaries. No `p/q`
+through opt-in D3/D4 boundaries. Read-only Chance Law queries also cover the
+configured native treasure relic-bag draw; native treasure continuation remains
+open. No `p/q`
 probability or original conditional law is claimed. No consumer-wide profile
 switch has occurred; the legacy prototype profile and default v111 protocols
 remain available. Distinguished Cape's curse-acquisition site now uses an
@@ -213,6 +215,7 @@ status is explicit and separate from native cursor parity.
 | `map.later_act.unknown_count.gaussian_int` | Hive/Glory map / `context.act_map.*` or legacy `map` | Yes: native truncated rounded Gaussian 10–14 then minus one; legacy Box–Muller approximation | Yes: native typed Gaussian-int and legacy typed component requests | No: provider-specific result/cursor regression pending | No | No | No: law remains `UNVERIFIED` |
 | `event.unknown_room.odds.ticket` | act/floor + Unknown room / legacy `event` | Partial: bounded integer approximation of source `NextFloat` odds; forced-event rooms still consume one draw | No: legacy typed bounded-integer provider only | No | No: room resolution remains source-owned | No | No: law remains `UNVERIFIED` |
 | `treasure.relic_model.index_draw` | act/floor + ordered unowned relic pool / legacy `reward` fallback | Partial: configured runs use the persisted rarity-partitioned relic grab bag; legacy path uses the restricted pool | Yes: retained legacy provider; configured runs use native relic bag rarity and queue owners | No: seeded treasure result/cursor regression pending | Yes: legacy Treasure-node run-action continuation ([run-action contract](CONTROLLED_RUN_ACTION_D3.md)) | No: run-action mechanics regression pending | No: law remains `UNVERIFIED` |
+| `treasure.relic_grab_bag.draw` | configured native Treasure node + remaining relic-bag identities by rarity / `player.rewards` rarity roll and prior `run.treasure_room_relics` queue shuffles | Partial: combines the 50/33/17 rarity partition, current ownership and Common→Uncommon→Rare / Uncommon→Rare fallback without exposing queue order ([native treasure law contract](REFERENCE_NATURE_NATIVE_TREASURE_LAWS_D3.md)) | Yes: native rarity draw and persistent rarity queues remain source-owned | No: seeded treasure result/cursor regression pending | Partial: read-only composite Chance Law query; no native treasure-entry continuation ([native treasure law contract](REFERENCE_NATURE_NATIVE_TREASURE_LAWS_D3.md)) | No | No: law remains `UNVERIFIED` |
 
 This is the migrated typed-site inventory, not a complete v0.111 RNG
 inventory. Other encounter resolvers, summon/death lifecycle effects,

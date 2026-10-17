@@ -211,6 +211,8 @@ public static class ChanceLawEngineV111
         "source-threshold-native-merchant-category-v1";
     public const string NativeMerchantPriceConditioningPolicyId =
         "native-merchant-rounded-price-modifier-v1";
+    public const string NativeTreasureRelicConditioningPolicyId =
+        "native-treasure-relic-bag-draw-v1";
 
     public static ChanceLawV111 QueryIntent(SemanticIntentEventV111 intent)
     {
@@ -608,7 +610,7 @@ public static class ChanceLawEngineV111
                 $"Native merchant Chance Law query does not support site '{siteId}'.");
         }
 
-        return CreateNativeMerchantLaw(
+        return CreateNativeBoundaryLaw(
             siteId, operationKind, ownerId, ordinal, policy,
             CanonicalJson.Sha256(conditioning), provenance, outcomes);
     }
@@ -700,12 +702,142 @@ public static class ChanceLawEngineV111
             minimumModifier, maximumModifier, colorlessOffer, saleReprice,
             outcomes
         };
-        return CreateNativeMerchantLaw(
+        return CreateNativeBoundaryLaw(
             siteId, "unit_float_mapped_price", ownerId, ordinal,
             NativeMerchantPriceConditioningPolicyId,
             CanonicalJson.Sha256(conditioning),
             "native-unit-float-rounded-price-intervals-unverified",
             outcomes);
+    }
+
+    /// <summary>
+    /// Query the configured native treasure-room relic draw without exposing
+    /// the private order of the persistent rarity queues. The law combines
+    /// the nominal rarity thresholds with equal conditional support over the
+    /// still-hidden queue permutations.
+    /// </summary>
+    public static ChanceLawV111 QueryNativeTreasureRelicDraw(
+        RunState run, string siteId, int ordinal)
+    {
+        ArgumentNullException.ThrowIfNull(run);
+        ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
+        PrototypeStateInvariants.Validate(run);
+        if (siteId != "treasure.relic_grab_bag.draw")
+            throw new NotSupportedException(
+                $"Native treasure Chance Law query does not support site '{siteId}'.");
+        if (ordinal != 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+        if (run.Phase != RunPhase.MapChoice || run.World is not { } world ||
+            run.NativeRunRng is null || run.ControlledRunActionChoice is not null ||
+            !PrototypeGameEngine.UsesNativeRegionalSystems(world) ||
+            !PrototypeNativeWingedBoots.AvailableNodes(world, run.Player)
+                .Any(node => node.RoomType == PrototypeRoomType.Treasure) ||
+            PrototypeGameEngine.WillSkipNextTreasure(run.Player) ||
+            world.RelicBag is not { } bag)
+            throw new InvalidOperationException(
+                "Native treasure Chance Laws require a non-skipped configured Treasure node before entry.");
+
+        var ownedIds = run.Player.Relics.Select(relic => relic.RelicId)
+            .ToHashSet(StringComparer.Ordinal);
+        var candidatesByTier = new Dictionary<PrototypeRelicRarity, string[]>
+        {
+            [PrototypeRelicRarity.Common] = bag.Common
+                .Where(id => !ownedIds.Contains(id))
+                .OrderBy(id => id, StringComparer.Ordinal).ToArray(),
+            [PrototypeRelicRarity.Uncommon] = bag.Uncommon
+                .Where(id => !ownedIds.Contains(id))
+                .OrderBy(id => id, StringComparer.Ordinal).ToArray(),
+            [PrototypeRelicRarity.Rare] = bag.Rare
+                .Where(id => !ownedIds.Contains(id))
+                .OrderBy(id => id, StringComparer.Ordinal).ToArray()
+        };
+        var rarityBranches = new (string Rarity, int BasisPoints,
+            PrototypeRelicRarity[] Fallbacks)[]
+        {
+            ("common", 5000, [PrototypeRelicRarity.Common,
+                PrototypeRelicRarity.Uncommon, PrototypeRelicRarity.Rare]),
+            ("uncommon", 3300, [PrototypeRelicRarity.Uncommon,
+                PrototypeRelicRarity.Rare]),
+            ("rare", 1700, [PrototypeRelicRarity.Rare])
+        };
+        var resolvedBranches = rarityBranches.Select(branch =>
+        {
+            PrototypeRelicRarity? selectedTier = branch.Fallbacks
+                .Where(tier => candidatesByTier[tier].Length > 0)
+                .Select(tier => (PrototypeRelicRarity?)tier)
+                .FirstOrDefault();
+            var candidates = selectedTier is { } tier
+                ? candidatesByTier[tier] : [];
+            return (Rarity: branch.Rarity,
+                BasisPoints: branch.BasisPoints,
+                SelectedTier: selectedTier, Candidates: candidates);
+        }).ToArray();
+
+        var denominator = resolvedBranches
+            .Where(branch => branch.Candidates.Length > 0)
+            .Select(branch => branch.Candidates.Length)
+            .Aggregate(1L, (current, count) => LeastCommonMultiple(
+                current, count));
+        var outcomeWeights = new SortedDictionary<string, long>(
+            StringComparer.Ordinal);
+        foreach (var branch in resolvedBranches)
+        {
+            if (branch.Candidates.Length == 0)
+            {
+                outcomeWeights["no_relic"] = checked(
+                    outcomeWeights.GetValueOrDefault("no_relic") +
+                    branch.BasisPoints * denominator);
+                continue;
+            }
+
+            var candidateWeight = checked(branch.BasisPoints *
+                (denominator / branch.Candidates.Length));
+            foreach (var candidate in branch.Candidates)
+                outcomeWeights["relic:" + candidate] = checked(
+                    outcomeWeights.GetValueOrDefault("relic:" + candidate) +
+                    candidateWeight);
+        }
+
+        var outcomes = outcomeWeights.Select(pair =>
+            new ChanceLawOutcomeV111(pair.Key, pair.Value)).ToArray();
+        var ownerId =
+            $"act:{world.Act}:floor:{world.Floor}:treasure:relic_grab_bag";
+        var conditioning = new
+        {
+            siteId, ownerId, ordinal, rarityBranches,
+            candidatesByTier = candidatesByTier.OrderBy(
+                pair => pair.Key.ToString(), StringComparer.Ordinal)
+                .Select(pair => new
+                {
+                    rarity = pair.Key.ToString(), candidates = pair.Value
+                }).ToArray(),
+            resolvedBranches = resolvedBranches.Select(branch => new
+            {
+                branch.Rarity, branch.BasisPoints,
+                selectedTier = branch.Candidates.Length == 0
+                    ? (string?)null : branch.SelectedTier!.Value.ToString(),
+                branch.Candidates
+            }).ToArray(),
+            denominator
+        };
+        return CreateNativeBoundaryLaw(
+            siteId, "conditional_relic_bag_draw", ownerId, ordinal,
+            NativeTreasureRelicConditioningPolicyId,
+            CanonicalJson.Sha256(conditioning),
+            "native-relic-rarity-and-hidden-queue-permutation-unverified",
+            outcomes);
+    }
+
+    private static long LeastCommonMultiple(long left, long right)
+    {
+        static long GreatestCommonDivisor(long a, long b)
+        {
+            while (b != 0)
+                (a, b) = (b, a % b);
+            return a;
+        }
+
+        return checked(left / GreatestCommonDivisor(left, right) * right);
     }
 
     private static ChanceLawOutcomeV111[] RoundedPriceOutcomes(
@@ -752,7 +884,7 @@ public static class ChanceLawEngineV111
         return outcomes;
     }
 
-    private static ChanceLawV111 CreateNativeMerchantLaw(
+    private static ChanceLawV111 CreateNativeBoundaryLaw(
         string siteId, string operationKind, string ownerId, int ordinal,
         string policy, string conditioningFingerprint,
         string provenance, ChanceLawOutcomeV111[] outcomes)

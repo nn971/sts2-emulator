@@ -11,9 +11,9 @@ Counts by direct API family:
 - `native_shuffle_mechanics`: 25
 
 Shuffle site IDs mapped to migration-matrix rows: **19**; dynamic expressions: **6**; unmapped: **0**; missing: **0**.
-Registered stochastic site IDs mapped to migration-matrix rows: **88/88**; IDs without rows: **0**; duplicate matrix IDs: **0**; unresolved registry references: **0**.
-Reference-law column status: **179 UNVERIFIED**; **0 calibrated**; **0 unspecified**.
-S0 contract-evidence locator: **94/179 rows** have a text or linked-document match for every facet. Matches are review pointers, not evidence that a contract is complete.
+Registered stochastic site IDs mapped to migration-matrix rows: **89/89**; IDs without rows: **0**; duplicate matrix IDs: **0**; unresolved registry references: **0**.
+Reference-law column status: **180 UNVERIFIED**; **0 calibrated**; **0 unspecified**.
+S0 contract-evidence locator: **95/180 rows** have a text or linked-document match for every facet. Matches are review pointers, not evidence that a contract is complete.
 Rows without a text or linked-document match by S0 facet:
 
 - `audience_projection`: 85
