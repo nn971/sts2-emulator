@@ -51,6 +51,9 @@ public sealed record StochasticSessionCoverageV111(
     public string ReferenceNatureNativeEventShuffleSessionSchemaId { get; init; } =
         ReferenceNatureNativeEventShuffleSessionV111.CurrentSchemaId;
     public string[] ReferenceNatureNativeEventShuffleSiteIds { get; init; } = [];
+    public string ReferenceNatureEndlessConveyorSessionSchemaId { get; init; } =
+        ReferenceNatureEndlessConveyorSessionV111.CurrentSchemaId;
+    public string[] ReferenceNatureEndlessConveyorSiteIds { get; init; } = [];
     public string ReferenceNatureGloryReflectionsSessionSchemaId { get; init; } =
         ReferenceNatureGloryReflectionsSessionV111.CurrentSchemaId;
     public string[] ReferenceNatureGloryReflectionsSiteIds { get; init; } = [];
@@ -86,6 +89,8 @@ public sealed record StochasticSessionCoverageV111(
                 ReferenceNatureTrialSessionV111.CurrentSchemaId ||
             ReferenceNatureNativeEventShuffleSessionSchemaId !=
                 ReferenceNatureNativeEventShuffleSessionV111.CurrentSchemaId ||
+            ReferenceNatureEndlessConveyorSessionSchemaId !=
+                ReferenceNatureEndlessConveyorSessionV111.CurrentSchemaId ||
             ReferenceNatureGloryReflectionsSessionSchemaId !=
                 ReferenceNatureGloryReflectionsSessionV111.CurrentSchemaId ||
             ReferenceNatureMerchantSessionSchemaId !=
@@ -104,6 +109,7 @@ public sealed record StochasticSessionCoverageV111(
         ValidateSiteIds(ReferenceNatureTabletOfTruthSiteIds);
         ValidateSiteIds(ReferenceNatureTrialSiteIds);
         ValidateSiteIds(ReferenceNatureNativeEventShuffleSiteIds);
+        ValidateSiteIds(ReferenceNatureEndlessConveyorSiteIds);
         ValidateSiteIds(ReferenceNatureGloryReflectionsSiteIds);
         ValidateSiteIds(ReferenceNatureMerchantSiteIds);
         ValidateSiteIds(ReferenceNatureTreasureSiteIds);
@@ -310,6 +316,8 @@ public static class StochasticSiteRegistryV111
         ChanceLawEngineV111.TrialSessionSiteIds;
     private static readonly string[] NativeEventShuffleSessionSites =
         ChanceLawEngineV111.NativeEventShuffleSessionSiteIds;
+    private static readonly string[] EndlessConveyorSessionSites =
+        ReferenceNatureEndlessConveyorSessionV111.SessionSiteIds;
     private static readonly string[] GloryReflectionsSessionSites =
         ReferenceNatureGloryReflectionsSessionV111.SessionSiteIds;
 
@@ -348,6 +356,7 @@ public static class StochasticSiteRegistryV111
             .Concat(TabletOfTruthSessionSites)
             .Concat(TrialSessionSites)
             .Concat(NativeEventShuffleSessionSites)
+            .Concat(EndlessConveyorSessionSites)
             .Concat(GloryReflectionsSessionSites)
             .Concat(ChanceLawEngineV111.NativeEventCardPickQuerySiteIds)
             .Distinct(StringComparer.Ordinal)
@@ -388,6 +397,8 @@ public static class StochasticSiteRegistryV111
         (string[])TrialSessionSites.Clone();
     public static string[] NativeEventShuffleSessionSiteIds =>
         (string[])NativeEventShuffleSessionSites.Clone();
+    public static string[] EndlessConveyorSessionSiteIds =>
+        (string[])EndlessConveyorSessionSites.Clone();
     public static string[] NatureChoiceSiteIds =>
         (string[])NatureChoiceSites.Clone();
 
@@ -464,6 +475,10 @@ public static class StochasticSiteRegistryV111
                 ReferenceNatureNativeEventShuffleSessionV111.CurrentSchemaId,
             ReferenceNatureNativeEventShuffleSiteIds =
                 NativeEventShuffleSessionSites,
+            ReferenceNatureEndlessConveyorSessionSchemaId =
+                ReferenceNatureEndlessConveyorSessionV111.CurrentSchemaId,
+            ReferenceNatureEndlessConveyorSiteIds =
+                EndlessConveyorSessionSites,
             ReferenceNatureGloryReflectionsSessionSchemaId =
                 ReferenceNatureGloryReflectionsSessionV111.CurrentSchemaId,
             ReferenceNatureGloryReflectionsSiteIds =

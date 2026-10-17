@@ -95,6 +95,12 @@ internal static class PrototypeAiJsonlServer
         var referenceNatureNativeEventShuffleRunStateHandles =
             new Dictionary<string, string>(StringComparer.Ordinal);
         long nextReferenceNatureNativeEventShuffleHandle = 1;
+        var referenceNatureEndlessConveyorStates =
+            new Dictionary<string, ReferenceNatureEndlessConveyorSessionV111>(
+                StringComparer.Ordinal);
+        var referenceNatureEndlessConveyorRunStateHandles =
+            new Dictionary<string, string>(StringComparer.Ordinal);
+        long nextReferenceNatureEndlessConveyorHandle = 1;
         var referenceNatureGloryReflectionsStates =
             new Dictionary<string, ReferenceNatureGloryReflectionsSessionV111>(
                 StringComparer.Ordinal);
@@ -333,6 +339,30 @@ internal static class PrototypeAiJsonlServer
                 ? session
                 : throw new InvalidOperationException(
                     "Unknown ReferenceNature native event shuffle session handle: " +
+                    handle);
+        }
+
+        string StoreReferenceNatureEndlessConveyor(
+            ReferenceNatureEndlessConveyorSessionV111 session)
+        {
+            var handle = "ec" + nextReferenceNatureEndlessConveyorHandle++;
+            referenceNatureEndlessConveyorStates.Add(handle, session.Fork());
+            if (session.Complete)
+                referenceNatureEndlessConveyorRunStateHandles.Add(handle,
+                    Store(session.Run.Fork()));
+            return handle;
+        }
+
+        ReferenceNatureEndlessConveyorSessionV111
+            RequireReferenceNatureEndlessConveyor(JsonElement request)
+        {
+            var handle = RequiredString(request,
+                "reference_nature_endless_conveyor_handle");
+            return referenceNatureEndlessConveyorStates.TryGetValue(handle,
+                    out var session)
+                ? session
+                : throw new InvalidOperationException(
+                    "Unknown ReferenceNature Endless Conveyor session handle: " +
                     handle);
         }
 
@@ -832,6 +862,50 @@ internal static class PrototypeAiJsonlServer
                     probabilityStatus = law.ProbabilityStatus
                 },
                 selectedChoiceId = eventState?.ChosenChoiceId,
+                nextPage = eventState?.NativePageIndex,
+                eventRandomProvider = eventState?.NativeEventRngProviderMode ??
+                    (eventState is null ? null : "native-v111"),
+                decisionTranscript = session.DecisionTranscript,
+                natureProvider = ReferenceNatureV111.ProviderId,
+                natureSampleCount = session.NatureState.SampleCount,
+                probabilityStatus = ChanceLawV111.UnverifiedStatus
+            };
+        }
+
+        object ReferenceNatureEndlessConveyorResult(
+            ReferenceNatureEndlessConveyorSessionV111 session,
+            string handle, string? parent = null)
+        {
+            var law = session.PendingLaw;
+            var eventState = session.Run.World?.Event;
+            return new
+            {
+                ok = true,
+                schemaId =
+                    ReferenceNatureEndlessConveyorSessionV111.CurrentSchemaId,
+                referenceNatureEndlessConveyorHandle = handle,
+                stateHandle = referenceNatureEndlessConveyorRunStateHandles
+                    .GetValueOrDefault(handle),
+                parent,
+                fingerprint = session.Fingerprint,
+                runFingerprint = CanonicalJson.Sha256(session.Run),
+                siteId = law?.SiteId ??
+                    PrototypeNativeEndlessConveyor.DishWeightedTicketSiteId,
+                eventId = law?.EventId ??
+                    session.DecisionTranscript.LastOrDefault()?.EventId,
+                actionId = session.ActionId,
+                page = eventState?.NativePageIndex,
+                runPhase = session.Run.Phase.ToString(),
+                boundary = session.Complete ? "committed" : "nature",
+                nextOrdinal = session.NextOrdinal,
+                pending = law is null ? null : new
+                {
+                    kind = "native_endless_conveyor_dish_random_choice",
+                    boundaryFingerprint = law.EventId,
+                    chanceLaw = law,
+                    probabilityStatus = law.ProbabilityStatus
+                },
+                selectedDishId = eventState?.NativeDishId,
                 nextPage = eventState?.NativePageIndex,
                 eventRandomProvider = eventState?.NativeEventRngProviderMode ??
                     (eventState is null ? null : "native-v111"),
@@ -1445,6 +1519,10 @@ internal static class PrototypeAiJsonlServer
                     .TryGetValue(handle, out var nativeEventShuffleSession) =>
                     ReferenceNatureNativeEventShuffleResult(
                         nativeEventShuffleSession, handle),
+                "endless_conveyor" when referenceNatureEndlessConveyorStates
+                    .TryGetValue(handle, out var endlessConveyorSession) =>
+                    ReferenceNatureEndlessConveyorResult(
+                        endlessConveyorSession, handle),
                 "glory_reflections" when referenceNatureGloryReflectionsStates
                     .TryGetValue(handle, out var gloryReflectionsSession) =>
                     ReferenceNatureGloryReflectionsResult(
@@ -1465,6 +1543,7 @@ internal static class PrototypeAiJsonlServer
                     "event_choice" or "ancient_offer" or "merchant" or
                     "neow_offer" or "trash_heap" or "tablet_of_truth" or
                     "trial" or "event_shuffle" or "glory_reflections" or
+                    "endless_conveyor" or
                     "treasure" or "controlled_event_choice" or
                     "controlled_run_action" => throw new InvalidOperationException(
                         "Unknown Nature session handle for kind " + sessionKind +
@@ -4190,6 +4269,113 @@ internal static class PrototypeAiJsonlServer
                                     element.GetString()!))
                                 released++;
                             referenceNatureNativeEventShuffleRunStateHandles.Remove(
+                                element.GetString()!);
+                        }
+                        Write(new { requestId, ok = true, released });
+                        break;
+                    }
+
+                    case "reference_nature_endless_conveyor_begin":
+                    {
+                        var source = RequireState(request);
+                        var actionId = RequiredString(request, "action_id");
+                        var seed = OptionalULong(request, "nature_seed");
+                        var session = seed is { } natureSeed
+                            ? ReferenceNatureEndlessConveyorSessionV111.Begin(
+                                source, actionId, natureSeed)
+                            : ReferenceNatureEndlessConveyorSessionV111.Begin(
+                                source, actionId);
+                        var handle = StoreReferenceNatureEndlessConveyor(session);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureEndlessConveyorResult(
+                                session, handle) });
+                        break;
+                    }
+
+                    case "reference_nature_endless_conveyor_status":
+                    {
+                        var handle = RequiredString(request,
+                            "reference_nature_endless_conveyor_handle");
+                        var session = RequireReferenceNatureEndlessConveyor(request);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureEndlessConveyorResult(
+                                session, handle) });
+                        break;
+                    }
+
+                    case "reference_nature_endless_conveyor_resolve_next":
+                    {
+                        var parentHandle = RequiredString(request,
+                            "reference_nature_endless_conveyor_handle");
+                        var session = RequireReferenceNatureEndlessConveyor(request);
+                        if (session.Fingerprint != RequiredString(request,
+                                "fingerprint"))
+                            throw new InvalidOperationException(
+                                "Stale ReferenceNature Endless Conveyor fingerprint.");
+                        var next = session.ResolveNext();
+                        var handle = StoreReferenceNatureEndlessConveyor(next);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureEndlessConveyorResult(
+                                next, handle, parentHandle) });
+                        break;
+                    }
+
+                    case "reference_nature_endless_conveyor_fork":
+                    {
+                        var parentHandle = RequiredString(request,
+                            "reference_nature_endless_conveyor_handle");
+                        var next = RequireReferenceNatureEndlessConveyor(request)
+                            .Fork();
+                        var handle = StoreReferenceNatureEndlessConveyor(next);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureEndlessConveyorResult(
+                                next, handle, parentHandle) });
+                        break;
+                    }
+
+                    case "reference_nature_endless_conveyor_save":
+                    {
+                        var session = RequireReferenceNatureEndlessConveyor(request);
+                        Write(new { requestId, ok = true,
+                            schemaId =
+                                ReferenceNatureEndlessConveyorSessionV111.CurrentSchemaId,
+                            snapshot =
+                                ReferenceNatureEndlessConveyorSessionV111.Save(
+                                    session) });
+                        break;
+                    }
+
+                    case "reference_nature_endless_conveyor_load":
+                    {
+                        var session =
+                            ReferenceNatureEndlessConveyorSessionV111.Restore(
+                                RequiredString(request, "snapshot"));
+                        var handle = StoreReferenceNatureEndlessConveyor(session);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureEndlessConveyorResult(
+                                session, handle) });
+                        break;
+                    }
+
+                    case "reference_nature_endless_conveyor_release_many":
+                    {
+                        if (!request.TryGetProperty(
+                                "reference_nature_endless_conveyor_handles",
+                                out var handles) ||
+                            handles.ValueKind != JsonValueKind.Array)
+                            throw new ArgumentException(
+                                "reference_nature_endless_conveyor_handles must be an array.");
+                        var released = 0;
+                        foreach (var element in handles.EnumerateArray())
+                        {
+                            if (element.ValueKind != JsonValueKind.String ||
+                                string.IsNullOrWhiteSpace(element.GetString()))
+                                throw new ArgumentException(
+                                    "Invalid ReferenceNature Endless Conveyor handle.");
+                            if (referenceNatureEndlessConveyorStates.Remove(
+                                    element.GetString()!))
+                                released++;
+                            referenceNatureEndlessConveyorRunStateHandles.Remove(
                                 element.GetString()!);
                         }
                         Write(new { requestId, ok = true, released });

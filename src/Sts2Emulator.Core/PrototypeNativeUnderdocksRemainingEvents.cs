@@ -141,6 +141,34 @@ public static class PrototypeNativeEndlessConveyor
         candidates.RemoveAll(dish => dish.Id == current.NativeLastDishId);
         return candidates.ToArray();
     }
+
+    internal static bool IsValidScriptedInitialDishState(
+        RunState state, EventState current)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(current);
+        if (state.Phase != RunPhase.Event ||
+            state.World?.Combat is not null ||
+            current.EventId != EventId || current.NativePageIndex != 0 ||
+            current.ChosenChoiceId is not null ||
+            current.NativeDishCount != 1 ||
+            current.NativeDishId is null ||
+            current.NativeDishId != current.NativeLastDishId ||
+            current.NativeDishId == "SEAPUNK_SALAD" ||
+            string.IsNullOrWhiteSpace(state.RunSeed) ||
+            state.NativeRunRng is null || current.NativeEventRng is not { } stream)
+            return false;
+
+        var initial = NativeRngV111Contexts.ForEvent(
+            state.RunSeed, NativeRngEventId);
+        if (NativeRngV111.ToSnapshot(stream) !=
+            NativeRngV111.ToSnapshot(initial))
+            return false;
+        var candidates = GetWeightedDishCandidates(
+            state, new EventState(EventId));
+        return candidates.Any(candidate =>
+            candidate.Id == current.NativeDishId);
+    }
 }
 
 /// <summary>

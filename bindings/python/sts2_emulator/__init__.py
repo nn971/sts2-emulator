@@ -411,6 +411,34 @@ class State:
         return ReferenceNatureNativeEventShuffleSession.from_wire(
             self.session, result["result"])
 
+    def begin_reference_nature_endless_conveyor_dish(
+            self, action_id: str, nature_seed: int | None = None):
+        """Begin Nature control of the initial Endless Conveyor dish roll."""
+        if self.session.capabilities.get(
+                "referenceNatureEndlessConveyorSessionSchemaId") != (
+                "sts2-v111-reference-nature-endless-conveyor-session-v1"):
+            raise EmulatorError(
+                "Emulator does not expose ReferenceNature Endless Conveyor sessions")
+        if not isinstance(action_id, str) or not action_id:
+            raise ValueError("action_id must be a nonempty string")
+        site_id = "event.endless_conveyor.dish_weighted_ticket"
+        if not self.session.supports_reference_nature_site(
+                site_id, session="endless_conveyor"):
+            raise EmulatorError(
+                "No ReferenceNature Endless Conveyor session is advertised")
+        if (nature_seed is not None and
+                (not isinstance(nature_seed, int) or
+                 isinstance(nature_seed, bool) or nature_seed < 0 or
+                 nature_seed > 0xFFFFFFFFFFFFFFFF)):
+            raise ValueError("nature_seed must be an unsigned 64-bit integer")
+        payload = {"state_handle": self.handle, "action_id": action_id}
+        if nature_seed is not None:
+            payload["nature_seed"] = nature_seed
+        result = self.session.call(
+            "reference_nature_endless_conveyor_begin", **payload)
+        return ReferenceNatureEndlessConveyorSession.from_wire(
+            self.session, result["result"])
+
     def begin_reference_nature_glory_reflections(
             self, nature_seed: int | None = None):
         """Begin atomic Nature replay of Reflections' touch_mirror picks."""
@@ -1192,6 +1220,87 @@ class ReferenceNatureNativeEventShuffleSession:
 
     def release(self):
         return self.session.release_reference_nature_native_event_shuffle_many(
+            [self])
+
+
+@dataclass(frozen=True)
+class ReferenceNatureEndlessConveyorSession:
+    """Atomic initial dish roll and ReferenceNature sampler cursor."""
+    session: "Session"
+    handle: str
+    fingerprint: str
+    state_handle: str | None
+    event_id: str | None
+    site_id: str
+    action_id: str
+    page: int | None
+    run_phase: str
+    boundary: str
+    next_ordinal: int
+    pending: dict | None
+    selected_dish_id: str | None
+    next_page: int | None
+    event_random_provider: str | None
+    decision_transcript: list
+    nature_sample_count: int
+
+    @classmethod
+    def from_wire(cls, session, payload):
+        if payload.get("schemaId") != (
+                "sts2-v111-reference-nature-endless-conveyor-session-v1"):
+            raise EmulatorError(
+                "Unsupported ReferenceNature Endless Conveyor session schema")
+        return cls(
+            session, payload["referenceNatureEndlessConveyorHandle"],
+            payload["fingerprint"], payload.get("stateHandle"),
+            payload.get("eventId"), payload["siteId"],
+            payload["actionId"], payload.get("page"),
+            payload["runPhase"], payload["boundary"],
+            payload["nextOrdinal"], payload["pending"],
+            payload.get("selectedDishId"), payload.get("nextPage"),
+            payload.get("eventRandomProvider"),
+            payload["decisionTranscript"], payload["natureSampleCount"])
+
+    @property
+    def complete(self):
+        return self.boundary == "committed"
+
+    @property
+    def state(self):
+        if self.state_handle is None:
+            raise EmulatorError("Endless Conveyor session has not committed")
+        return State(self.session, self.state_handle)
+
+    def status(self):
+        result = self.session.call(
+            "reference_nature_endless_conveyor_status",
+            reference_nature_endless_conveyor_handle=self.handle)
+        return ReferenceNatureEndlessConveyorSession.from_wire(
+            self.session, result["result"])
+
+    def resolve_next(self):
+        """Sample the initial weighted dish and commit it atomically."""
+        result = self.session.call(
+            "reference_nature_endless_conveyor_resolve_next",
+            reference_nature_endless_conveyor_handle=self.handle,
+            fingerprint=self.fingerprint)
+        return ReferenceNatureEndlessConveyorSession.from_wire(
+            self.session, result["result"])
+
+    def fork(self):
+        result = self.session.call(
+            "reference_nature_endless_conveyor_fork",
+            reference_nature_endless_conveyor_handle=self.handle)
+        return ReferenceNatureEndlessConveyorSession.from_wire(
+            self.session, result["result"])
+
+    def save_snapshot(self):
+        return self.session.call(
+            "reference_nature_endless_conveyor_save",
+            reference_nature_endless_conveyor_handle=self.handle)["snapshot"]
+
+    def release(self):
+        return self.session.release_reference_nature_endless_conveyor_many(
             [self])
 
 
@@ -1983,13 +2092,14 @@ class Session:
             "tablet_of_truth": "referenceNatureTabletOfTruthSiteIds",
             "trial": "referenceNatureTrialSiteIds",
             "event_shuffle": "referenceNatureNativeEventShuffleSiteIds",
+            "endless_conveyor": "referenceNatureEndlessConveyorSiteIds",
             "glory_reflections": "referenceNatureGloryReflectionsSiteIds",
             "merchant": "referenceNatureMerchantSiteIds",
             "treasure": "referenceNatureTreasureSiteIds",
         }
         if session != "any" and session not in fields:
             raise ValueError(
-                "session must be semantic, run_action, event_choice, ancient_offer, neow_offer, trash_heap, tablet_of_truth, trial, event_shuffle, glory_reflections, merchant, treasure, or any")
+                "session must be semantic, run_action, event_choice, ancient_offer, neow_offer, trash_heap, tablet_of_truth, trial, event_shuffle, endless_conveyor, glory_reflections, merchant, treasure, or any")
         coverage = self.stochastic_session_coverage
         if not isinstance(coverage, dict) or coverage.get("schemaId") != (
                 "sts2-v111-stochastic-session-coverage-v1"):
@@ -2432,6 +2542,27 @@ class Session:
         return self.call(
             "reference_nature_native_event_shuffle_release_many",
             reference_nature_native_event_shuffle_handles=[
+                item.handle for item in sessions])["released"]
+
+    def load_reference_nature_endless_conveyor_snapshot(self, snapshot: str):
+        if self.capabilities.get(
+                "referenceNatureEndlessConveyorSessionSchemaId") != (
+                "sts2-v111-reference-nature-endless-conveyor-session-v1"):
+            raise EmulatorError(
+                "Emulator does not expose ReferenceNature Endless Conveyor sessions")
+        result = self.call(
+            "reference_nature_endless_conveyor_load", snapshot=snapshot)
+        return ReferenceNatureEndlessConveyorSession.from_wire(
+            self, result["result"])
+
+    def release_reference_nature_endless_conveyor_many(self, sessions):
+        sessions = list(sessions)
+        if any(item.session is not self for item in sessions):
+            raise ValueError(
+                "ReferenceNature Endless Conveyor handle belongs to another session")
+        return self.call(
+            "reference_nature_endless_conveyor_release_many",
+            reference_nature_endless_conveyor_handles=[
                 item.handle for item in sessions])["released"]
 
     def load_reference_nature_glory_reflections_snapshot(
