@@ -70,6 +70,8 @@ Initial and post-cost semantic draws now pass their `DrawCards` result through t
 
 Semantic hand-draw cost and nested effect-draw cost now share `ResolveDrawCostAndDispatchCardDrawn` for applying the selected cost, advancing Relic to Slither when required, and dispatching the `CardDrawn` event exactly once. Their facades retain their distinct saved continuation and automatic-pipeline resume rules.
 
+Semantic hand draws and nested effect draws also suspend after-shuffle insertion through `SuspendDrawCardsAfterShuffleInsertion`. That owner carries forward the remaining count, deferred keyword identities, Stratagem condition, and insertion suffix; automatic hand-draw cursor ownership remains opt-in at its calling boundary.
+
 When the resumed ordinary pipeline ends in Reward or Terminal after hand draw, `SemanticEndTurnV111` now completes with that engine result and keeps the completed draw projection for transcript replay. It still rejects an unfinished draw and checks the next-player boundary for combat-phase completion.
 
 `PrototypeGameEngine.ResumeAutomaticPipelineContinuation` now owns the shared handoff after both controlled choices and semantic end-turn hand draw. It clears the saved cursor, runs the remaining ordinary pipeline, and settles terminal combat rewards; the established choice method remains a compatibility facade.

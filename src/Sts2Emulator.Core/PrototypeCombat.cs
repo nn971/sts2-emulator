@@ -2848,7 +2848,6 @@ public sealed partial class PrototypeGameEngine
                     };
                     return SuspendSemanticDrawAfterShuffleInsertions(
                         advanced, drawn,
-                        drawn.ControlledAfterShuffleInsertions!,
                         fromHandDraw: true, eventDepth: 0,
                         automaticHandDrawRequested: requestedHandDraw).Run;
                 }
@@ -14585,29 +14584,8 @@ public sealed partial class PrototypeGameEngine
         }
         if (boundary == PrototypeDrawCardsBoundaryKind.AfterShuffleInsertions)
         {
-            var insertionKeywordIds =
-                (draw.DeferredKeywordCardInstanceIds ?? [])
-                .Concat(drawn.DrawnCardInstanceIds).Distinct().ToArray();
-            var drawAfterInsertion = draw with
-            {
-                RemainingCount = drawn.RemainingCount,
-                DeferredKeywordCardInstanceIds = insertionKeywordIds,
-                StratagemSelectionPending =
-                    draw.StratagemSelectionPending ||
-                    (drawn.Combat.PlayerPowers.Any(power =>
-                        power.PowerId == "proto.power.stratagem" &&
-                        power.Stacks > 0) && drawn.Combat.Hand.Length < 10)
-            };
-            var nextCombat = MakeControlledAfterShuffleInsertionChoice(
-                drawn.Combat,
-                drawn.ControlledAfterShuffleInsertions![0],
-                drawn.ControlledAfterShuffleInsertions.Skip(1).ToArray(), [],
-                drawAfterInsertion, continuation, 0);
-            return state with
-            {
-                Player = drawn.Player,
-                World = state.World! with { Combat = nextCombat }
-            };
+            return SuspendDrawCardsAfterShuffleInsertion(
+                state, drawn, draw, continuation).Run;
         }
         if (boundary == PrototypeDrawCardsBoundaryKind.ShuffleSelection)
         {

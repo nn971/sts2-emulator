@@ -143,8 +143,7 @@ public sealed partial class PrototypeGameEngine
         bool automatic = automaticHandDrawRequested is not null;
         if (boundary == PrototypeDrawCardsBoundaryKind.AfterShuffleInsertions)
             return SuspendSemanticDrawAfterShuffleInsertions(
-                advanced, drawn,
-                drawn.ControlledAfterShuffleInsertions!, fromHandDraw,
+                advanced, drawn, fromHandDraw,
                 eventDepth, automaticHandDrawRequested);
 
         if (boundary ==
@@ -199,17 +198,10 @@ public sealed partial class PrototypeGameEngine
         SuspendSemanticDrawAfterShuffleInsertions(
             RunState run,
             PrototypeDrawCardsResult drawn,
-            PrototypeAfterShuffleRelicInsertionV111[] insertions,
             bool fromHandDraw,
             int eventDepth,
             int? automaticHandDrawRequested = null)
     {
-        if (insertions.Length == 0 || drawn.RemainingCount <= 0)
-            throw new InvalidDataException(
-                "After-shuffle insertion lost its remaining draw cursor.");
-        bool stratagemSelectionPending = drawn.Combat.PlayerPowers.Any(power =>
-            power.PowerId == "proto.power.stratagem" &&
-            power.Stacks > 0) && drawn.Combat.Hand.Length < 10;
         bool automatic = automaticHandDrawRequested is not null;
         if (automatic && (!fromHandDraw || eventDepth != 0 ||
                           automaticHandDrawRequested is not > 0))
@@ -219,7 +211,7 @@ public sealed partial class PrototypeGameEngine
             drawn.RemainingCount, fromHandDraw, eventDepth,
             DrawnCardKeyword: null,
             DeferredKeywordCardInstanceIds: [],
-            StratagemSelectionPending: stratagemSelectionPending,
+            StratagemSelectionPending: false,
             StandaloneSemanticDrawSegment: !automatic,
             AutomaticSemanticHandDrawSegment: automatic);
         var continuation = new PrototypeChoiceResolutionContinuationState(
@@ -229,32 +221,74 @@ public sealed partial class PrototypeGameEngine
             PendingDiscardEvents: [],
             PendingSlyCardInstanceIds: [],
             CompletionEvents: []);
+        return SuspendDrawCardsAfterShuffleInsertion(
+            run, drawn, semanticDraw, continuation,
+            automaticHandDrawRequested,
+            accumulateDrawnCardIds: false);
+    }
+
+    private static (RunState Run, int RemainingCount)
+        SuspendDrawCardsAfterShuffleInsertion(
+            RunState run,
+            PrototypeDrawCardsResult drawn,
+            PrototypeControlledSemanticDrawV111 semanticDraw,
+            PrototypeChoiceResolutionContinuationState continuation,
+            int? automaticHandDrawRequested = null,
+            bool accumulateDrawnCardIds = true)
+    {
+        if (drawn.BoundaryKind !=
+                PrototypeDrawCardsBoundaryKind.AfterShuffleInsertions ||
+            drawn.RemainingCount <= 0 ||
+            drawn.ControlledAfterShuffleInsertions is not
+                { Length: > 0 } insertions)
+            throw new InvalidDataException(
+                "After-shuffle insertion lost its remaining draw boundary.");
+
+        var deferredKeywordIds = accumulateDrawnCardIds
+            ? (semanticDraw.DeferredKeywordCardInstanceIds ?? [])
+                .Concat(drawn.DrawnCardInstanceIds).Distinct().ToArray()
+            : semanticDraw.DeferredKeywordCardInstanceIds;
+        semanticDraw = semanticDraw with
+        {
+            RemainingCount = drawn.RemainingCount,
+            DeferredKeywordCardInstanceIds = deferredKeywordIds,
+            StratagemSelectionPending =
+                semanticDraw.StratagemSelectionPending ||
+                (drawn.Combat.PlayerPowers.Any(power =>
+                    power.PowerId == "proto.power.stratagem" &&
+                    power.Stacks > 0) && drawn.Combat.Hand.Length < 10)
+        };
+
         var insertionCombat = drawn.Combat;
-        if (automatic)
+        if (automaticHandDrawRequested is { } requested)
         {
             int stepIndex = SemanticHandDrawStepIndex;
-            if (stepIndex < 0 ||
+            if (!semanticDraw.AutomaticSemanticHandDrawSegment ||
+                !semanticDraw.FromHandDraw || semanticDraw.EventDepth != 0 ||
+                requested <= 0 || stepIndex < 0 ||
                 (insertionCombat.AutomaticPipelineContinuation is { } cursor &&
                  cursor.NextStepIndex != stepIndex))
                 throw new InvalidDataException(
-                    "Automatic after-shuffle insertion left DrawPlayerHand.");
+                    "Automatic after-shuffle draw cursor is inconsistent.");
             insertionCombat = insertionCombat with
             {
                 AutomaticPipelineContinuation =
                     new PrototypeAutomaticPipelineContinuationState(
                         stepIndex,
-                        ControlledSemanticDrawRemaining: drawn.RemainingCount,
-                        ControlledSemanticDrawRequested:
-                            automaticHandDrawRequested)
+                        ControlledSemanticDrawRemaining:
+                            drawn.RemainingCount,
+                        ControlledSemanticDrawRequested: requested)
             };
         }
+
         var combat = MakeControlledAfterShuffleInsertionChoice(
             insertionCombat, insertions[0], insertions.Skip(1).ToArray(),
             [], semanticDraw, continuation, 0);
+        var world = RequireWorld(run);
         return (run with
         {
             Player = drawn.Player,
-            World = run.World! with { Combat = combat }
+            World = world with { Combat = combat }
         }, drawn.RemainingCount);
     }
 
