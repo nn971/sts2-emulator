@@ -39,6 +39,61 @@ class State:
     def release(self):
         return self.session.call("release_many", state_handles=[self.handle])["released"]
 
+    def begin_controlled_event_choice(self, choice_id: str):
+        """Start a saved controlled replay for one supported event option."""
+        if self.session.capabilities.get("controlledEventChoiceSchemaId") != (
+                "sts2-v111-controlled-event-choice-v1"):
+            raise EmulatorError("Emulator does not expose controlled event choices")
+        result = self.session.call(
+            "controlled_event_begin", state_handle=self.handle,
+            choice_id=choice_id)
+        return ControlledEventChoice.from_wire(self.session, result)
+
+    def resume_controlled_event_choice(self):
+        """Inspect a pending boundary restored from an exact run snapshot."""
+        if self.session.capabilities.get("controlledEventChoiceSchemaId") != (
+                "sts2-v111-controlled-event-choice-v1"):
+            raise EmulatorError("Emulator does not expose controlled event choices")
+        result = self.session.call(
+            "controlled_event_inspect", state_handle=self.handle)
+        return ControlledEventChoice.from_wire(self.session, result)
+
+
+@dataclass(frozen=True)
+class ControlledEventChoice:
+    """A whole-run event choice suspended at an explicit controlled outcome."""
+    session: "Session"
+    handle: str
+    fingerprint: str
+    boundary: str
+    pending: dict | None
+    transcript: list | None
+    actions: list
+
+    @classmethod
+    def from_wire(cls, session, payload):
+        return cls(
+            session, payload["stateHandle"], payload["fingerprint"],
+            payload["boundary"], payload["pending"],
+            payload["transcript"], payload["actions"])
+
+    @property
+    def state(self):
+        return State(self.session, self.handle)
+
+    def resolve(self, selected_index: int):
+        result = self.session.call(
+            "controlled_event_resolve", state_handle=self.handle,
+            selected_index=selected_index)
+        return ControlledEventChoice.from_wire(self.session, result)
+
+    def save_snapshot(self):
+        """Return a hidden exact run snapshot, including the replay checkpoint."""
+        return self.session.call("save_snapshot", state_handle=self.handle)["snapshot"]
+
+    def release(self):
+        return self.state.release()
+
 
 @dataclass(frozen=True)
 class NatureBoundary:

@@ -92,13 +92,18 @@ public sealed record RunState(
     RunConfiguration? Configuration = null,
     [property: System.Text.Json.Serialization.JsonIgnore(
         Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
-    RngBundle? NativeRunRng = null)
+    RngBundle? NativeRunRng = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(
+        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    ControlledEventChoiceTraceV111[]? ControlledEventChoiceHistory = null)
 {
     public RunState Fork() => this with
     {
         Player = Player.Fork(),
         Rng = Rng.Fork(),
         NativeRunRng = NativeRunRng?.Fork(),
+        ControlledEventChoiceHistory = ControlledEventChoiceHistory?.Select(
+            trace => trace.Fork()).ToArray(),
         ExtensionState = ExtensionState.Clone(),
         World = World?.Fork(),
         Configuration = Configuration?.Fork()

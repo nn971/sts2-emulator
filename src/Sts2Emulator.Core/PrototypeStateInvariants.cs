@@ -5,6 +5,14 @@ public static class PrototypeStateInvariants
     public static void Validate(RunState state)
     {
         RunConfiguration.ValidateState(state);
+        if (state.ControlledEventChoiceHistory is { } controlledEventHistory)
+        {
+            if (controlledEventHistory.Any(trace => trace is null))
+                throw new InvalidOperationException(
+                    "Controlled event-choice history contains a null entry.");
+            foreach (var trace in controlledEventHistory)
+                trace.Validate();
+        }
         NativeRunRngV111.Validate(state);
         NativeAncientRewardsV111.ValidateEventContext(state);
         NativeEventContextRngV111.Validate(
@@ -118,6 +126,23 @@ public static class PrototypeStateInvariants
 
         var world = state.World
             ?? throw new InvalidOperationException("Initialized prototype run is missing world state.");
+
+        if (world.Event?.ControlledChoice is { } controlledEventChoice)
+        {
+            controlledEventChoice.Validate();
+            if (state.Phase != RunPhase.Event
+                || state.DecisionIndex < controlledEventChoice.Checkpoint.DecisionIndex
+                || world.Event.EventId != controlledEventChoice.EventId
+                || world.Event.ChosenChoiceId is not null
+                || world.Event.PendingDeckChoice is not null
+                || world.Event.PendingPotionReplacement is not null
+                || world.Event.RemainingDeckChoices.Length != 0
+                || world.Event.RemainingPotionIds.Length != 0
+                || world.Event.PendingReward is not null)
+                throw new InvalidOperationException(
+                    "Suspended controlled event choice conflicts with committed event state.");
+            Validate(controlledEventChoice.Checkpoint);
+        }
 
         if (!StringComparer.Ordinal.Equals(world.RulesetId, state.Configuration?.RulesetId ?? PrototypeContent.RulesetId))
         {

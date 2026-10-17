@@ -2751,7 +2751,9 @@ public sealed record EventState(
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     PrototypeFuturePotionOffer[]? NativeFuturePotionOffers = null,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
-    string? NativeEventRngProviderMode = null)
+    string? NativeEventRngProviderMode = null,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    PrototypeControlledEventChoiceContinuationV111? ControlledChoice = null)
 {
     public string[] RemainingPotionIds =>
         QueuedPotionIds ?? Array.Empty<string>();
@@ -2762,6 +2764,7 @@ public sealed record EventState(
     public EventState Fork() => this with
     {
         NativeEventRng = NativeEventRng?.Fork(),
+        ControlledChoice = ControlledChoice?.Fork(),
         PendingDeckChoice =
             PendingDeckChoice?.Fork(),
         PendingPotionReplacement =
@@ -2911,6 +2914,7 @@ public sealed record ChooseExtraPotionRewardPayload(int GroupIndex, int Slot = -
 public sealed record ReplaceShopPotionPayload(int OfferId, int Slot);
 public sealed record BuyOfferPayload(int OfferId);
 public sealed record EventChoicePayload(string ChoiceId);
+public sealed record ChooseControlledEventOutcomePayload(int SelectedIndex);
 public sealed record TradeFuturePotionPayload(int Slot);
 public sealed record ChooseEventDeckCardPayload(long CardInstanceId);
 public sealed record ReplaceEventPotionPayload(int Slot);

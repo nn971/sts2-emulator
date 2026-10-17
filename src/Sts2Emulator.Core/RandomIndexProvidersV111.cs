@@ -236,6 +236,16 @@ public static class LegacyRandomChoiceV111
         if (ControlledChanceGuardV111.Active
             && !ControlledChanceGuardV111.EngineOwnedNativeProviderActive)
         {
+            if (ControlledEventChoiceReplayV111.IsActive &&
+                ControlledEventChoiceReplayV111.IsEventChoiceSite(siteId))
+            {
+                var controlledDecision = new RandomIndexDecisionV111(
+                    request,
+                    ControlledEventChoiceReplayV111.Resolve(request),
+                    "controlled-v111");
+                controlledDecision.Validate();
+                return controlledDecision;
+            }
             if (ControlledEnemyActionReplayV111.IsActive &&
                 PrototypeControlledEnemyActionContinuationV111
                     .IsEnemyActionSite(siteId))

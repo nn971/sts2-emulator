@@ -3,7 +3,7 @@
 **Status:** target architecture with incremental implementation in progress.
 **Scope:** `sts2-emulator`, pinned STS2 v0.111.0, single-player first.
 **Primary goal:** faithful mechanics and ordered triggers with an interchangeable source of random decisions.
-**Related plans:** [RNG model](RNG.md), [v111 native RNG fidelity matrix](reference-builds/v0.111.0-native-rng-fidelity-matrix.md), [complete implementation roadmap](FULL_IMPLEMENTATION_ROADMAP.md), [configured v111 interface](V111_INTERFACE.md).
+**Related plans:** [RNG model](RNG.md), [v111 native RNG fidelity matrix](reference-builds/v0.111.0-native-rng-fidelity-matrix.md), [complete implementation roadmap](FULL_IMPLEMENTATION_ROADMAP.md), [configured v111 interface](V111_INTERFACE.md), [controlled event-choice continuation](CONTROLLED_EVENT_CHOICE_D3.md).
 
 This document records the **desired RNG implementation** for the emulator. It
 specifies the target architecture; it does not claim that the full interface,
@@ -60,6 +60,16 @@ semantic playable pilot also admits Survivor, Hand Trick, Nightmare and Wish
 through its persisted source card-selection continuation. JSONL `hello` now
 advertises the retained-deck action schema, its scope and sorted supported card
 IDs as an explicit capability.
+Ordinary event choices also have an opt-in D3 replay boundary: the engine
+stores a pre-option run checkpoint, asks for each supported legacy chance
+outcome in turn, and replays the option from that checkpoint so partially
+applied effects never escape. The D4 JSONL/Python adapter exposes this through
+`controlled_event_begin` and `controlled_event_resolve`; candidate labels and
+the completed controlled transcript are serialized with the run. This slice
+covers random upgrades, supported random card/potion/relic event rewards and
+empty-slot potion filling. It does not establish native v0.111.0 stream
+ownership, source pool parity or reference probabilities, and other event,
+reward and relic continuations remain separate gaps.
 Physical draw-pile moves now keep provider state synchronized across exact
 insertions, removals, transformations, and zone transfers. Native hand-return
 shuffles commit the resulting top-first order; controlled Nature also resumes

@@ -270,7 +270,7 @@ public sealed class PrototypeAiEnvironment
     public PrototypeAiFrame Observe(RunState state)
     {
         var observation = CreateObservation(state);
-        var legalActions = _engine.GetLegalActions(state)
+        var legalActions = PlayerLegalActions(state)
             .Select(CreateAction)
             .ToArray();
 
@@ -290,7 +290,7 @@ public sealed class PrototypeAiEnvironment
 
     public PrototypeAiExpansion[] Expand(RunState state)
     {
-        return _engine.GetLegalActions(state)
+        return PlayerLegalActions(state)
             .Select(action =>
             {
                 var view = CreateAction(action);
@@ -324,7 +324,7 @@ public sealed class PrototypeAiEnvironment
         var resolved = ResolveAction(state, actionId);
         var next = _engine.Step(state, resolved.Action).State;
         var observation = CreateObservation(next);
-        var legalActions = _engine.GetLegalActions(next)
+        var legalActions = PlayerLegalActions(next)
             .Select(CreateAction)
             .ToArray();
 
@@ -351,7 +351,7 @@ public sealed class PrototypeAiEnvironment
         RunState state,
         string actionId)
     {
-        var candidates = _engine.GetLegalActions(state)
+        var candidates = PlayerLegalActions(state)
             .Select(action => (Action: action, View: CreateAction(action)))
             .Where(item => StringComparer.Ordinal.Equals(item.View.ActionId, actionId))
             .ToArray();
@@ -364,6 +364,14 @@ public sealed class PrototypeAiEnvironment
             _ => throw new InvalidOperationException(
                 $"Action ID '{actionId}' is ambiguous in the current state.")
         };
+    }
+
+    private IReadOnlyList<GameAction> PlayerLegalActions(RunState state)
+    {
+        var actions = _engine.GetLegalActions(state);
+        return state.World?.Event?.ControlledChoice is null
+            ? actions
+            : Array.Empty<GameAction>();
     }
 
     private static PrototypeAiAction CreateAction(GameAction action) =>
@@ -638,7 +646,8 @@ public sealed class PrototypeAiEnvironment
     {
         // While a selected action is suspended inside a deck/potion prompt,
         // the event's main-page options are not actionable.
-        if (evt.PendingDeckChoice is not null
+        if (evt.ControlledChoice is not null
+            || evt.PendingDeckChoice is not null
             || evt.PendingPotionReplacement is not null
             || evt.RemainingDeckChoices.Length > 0
             || evt.RemainingPotionIds.Length > 0)

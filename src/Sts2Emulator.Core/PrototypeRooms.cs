@@ -1178,6 +1178,16 @@ public sealed partial class PrototypeGameEngine
             ?? throw new InvalidOperationException(
                 "Event phase has no event state.");
 
+        if (eventState.ControlledChoice is { } controlledChoice)
+        {
+            var request = controlledChoice.PendingRequest;
+            return Enumerable.Range(0, request.SupportCount)
+                .Select(index => GameAction.Create(
+                    "choose_controlled_event_outcome",
+                    new ChooseControlledEventOutcomePayload(index)))
+                .ToArray();
+        }
+
         if (eventState.PendingPotionReplacement is { } potionReplacement)
         {
             var actions = potionReplacement.CandidateSlots
@@ -1341,7 +1351,145 @@ public sealed partial class PrototypeGameEngine
             .ToArray();
     }
 
+    internal static bool IsControlledEventChoice(
+        string eventId, string choiceId)
+    {
+        if (!PrototypeContent.Events.TryGetValue(eventId, out var definition))
+            return false;
+        var choice = definition.Choices.FirstOrDefault(item =>
+            StringComparer.Ordinal.Equals(item.Id, choiceId));
+        return choice?.Effects.Any(effect => effect.Kind is
+            PrototypeRunEffectKind.GainRandomRareCard or
+            PrototypeRunEffectKind.GainRandomRelic or
+            PrototypeRunEffectKind.GainRandomPotion or
+            PrototypeRunEffectKind.GainRandomUncommonPotion or
+            PrototypeRunEffectKind.FillPotionSlots or
+            PrototypeRunEffectKind.UpgradeRandomCard) == true;
+    }
+
     private static RunState StepEvent(
+        RunState state,
+        GameAction action)
+    {
+        var eventState = RequireWorld(state).Event
+            ?? throw new InvalidOperationException(
+                "Event phase has no event state.");
+
+        if (eventState.ControlledChoice is { } continuation)
+            return ResumeControlledEventChoice(state, action, continuation);
+
+        if (ControlledChanceGuardV111.Active
+            && action.Kind == "event_choice"
+            && IsControlledEventChoice(
+                eventState.EventId,
+                action.ReadPayload<EventChoicePayload>().ChoiceId))
+        {
+            using var replay = ControlledEventChoiceReplayV111.Begin([]);
+            try
+            {
+                return StepEventCore(state, action);
+            }
+            catch (ControlledEventChoiceChanceRequiredException exception)
+            {
+                var choiceId = action.ReadPayload<EventChoicePayload>().ChoiceId;
+                var pending = new PrototypeControlledEventChoiceContinuationV111(
+                    state.Fork(), eventState.EventId, choiceId, [],
+                    exception.Request, exception.CandidateLabels, []);
+                pending.Validate();
+                return state with
+                {
+                    World = RequireWorld(state) with
+                    {
+                        Event = eventState with { ControlledChoice = pending }
+                    }
+                };
+            }
+        }
+
+        return StepEventCore(state, action);
+    }
+
+    private static RunState ResumeControlledEventChoice(
+        RunState state,
+        GameAction action,
+        PrototypeControlledEventChoiceContinuationV111 continuation)
+    {
+        if (action.Kind != "choose_controlled_event_outcome")
+            throw new InvalidOperationException(
+                "A suspended controlled event choice requires a Nature outcome.");
+        continuation.Validate();
+        var payload = action.ReadPayload<ChooseControlledEventOutcomePayload>();
+        var request = continuation.PendingRequest;
+        if (payload.SelectedIndex < 0
+            || payload.SelectedIndex >= request.SupportCount)
+            throw new InvalidOperationException(
+                "Selected event outcome is outside the pending ordered support.");
+
+        var decisions = continuation.Decisions.Append(
+            new RandomIndexDecisionV111(
+                request,
+                payload.SelectedIndex,
+                "controlled-v111")).ToArray();
+        var candidateLabels = continuation.PendingCandidateLabels
+            ?? throw new InvalidDataException(
+                "Controlled event-choice candidate labels are missing.");
+        var decisionCandidateLabels = continuation.DecisionCandidateLabels!
+            .Append((string[])candidateLabels.Clone()).ToArray();
+        var replayState = continuation.Checkpoint.Fork() with
+        {
+            // Keep the externally visible decision count from the current
+            // continuation action while rebuilding effects from the original
+            // pre-option checkpoint.
+            DecisionIndex = state.DecisionIndex
+        };
+
+        using var replay = ControlledEventChoiceReplayV111.Begin(decisions);
+        try
+        {
+            var result = StepEventCore(
+                replayState,
+                GameAction.Create(
+                    "event_choice",
+                    new EventChoicePayload(continuation.ChoiceId)));
+            replay.EnsureConsumed();
+            var trace = new ControlledEventChoiceTraceV111(
+                continuation.EventId,
+                continuation.ChoiceId,
+                decisions,
+                decisionCandidateLabels);
+            trace.Validate();
+            return result with
+            {
+                ControlledEventChoiceHistory =
+                    (result.ControlledEventChoiceHistory
+                        ?? Array.Empty<ControlledEventChoiceTraceV111>())
+                    .Append(trace).ToArray()
+            };
+        }
+        catch (ControlledEventChoiceChanceRequiredException exception)
+        {
+            var nextContinuation = continuation with
+            {
+                Decisions = decisions,
+                PendingRequest = exception.Request,
+                PendingCandidateLabels = exception.CandidateLabels,
+                DecisionCandidateLabels = decisionCandidateLabels
+            };
+            nextContinuation.Validate();
+            return state with
+            {
+                World = RequireWorld(state) with
+                {
+                    Event = RequireWorld(state).Event! with
+                    {
+                        ControlledChoice = nextContinuation
+                    }
+                }
+            };
+        }
+    }
+
+    private static RunState StepEventCore(
         RunState state,
         GameAction action)
     {
@@ -1804,7 +1952,12 @@ public sealed partial class PrototypeGameEngine
                                     + choice.Id + ":pool:"
                                     + CanonicalJson.Sha256(candidates),
                                 Enumerable.Range(0, candidates.Length),
-                                streamId: "event")];
+                                streamId: "event",
+                                controlledCandidateLabels: candidates.Select(id =>
+                                    player.Deck.Single(card =>
+                                        card.InstanceId == id).CardId + "#" +
+                                    id.ToString(System.Globalization.CultureInfo.InvariantCulture))
+                                    .ToArray())];
                         player = player with
                         {
                             Deck = player.Deck.Select(card =>
@@ -1933,7 +2086,8 @@ public sealed partial class PrototypeGameEngine
                         "event:" + eventState.EventId + ":choice:"
                             + choice.Id + ":pool:" + CanonicalJson.Sha256(rares),
                         Enumerable.Range(0, rares.Length),
-                        streamId: "reward")];
+                        streamId: "reward",
+                        controlledCandidateLabels: (string[])rares.Clone())];
                     player = AppendCard(
                         player, nextId++, cardId, state.Rng);
                     break;
@@ -2114,7 +2268,9 @@ public sealed partial class PrototypeGameEngine
                                                 PrototypeContent.PotionPool),
                                         Enumerable.Range(
                                             0, PrototypeContent.PotionPool.Length),
-                                        streamId: "event")]
+                                        streamId: "event",
+                                        controlledCandidateLabels:
+                                            (string[])PrototypeContent.PotionPool.Clone())]
                         : effect.PotionId
                             ?? throw new InvalidOperationException(
                                 "Gain-potion event effect is missing a potion ID.");
@@ -2227,7 +2383,8 @@ public sealed partial class PrototypeGameEngine
             "relic.unowned_random_selection.index_draw",
             ownerId + ":pool:" + CanonicalJson.Sha256(available),
             Enumerable.Range(0, available.Length),
-            streamId: "event")];
+            streamId: "event",
+            controlledCandidateLabels: (string[])available.Clone())];
     }
 
     // Persisted event rolls determine both choice legality and settlement.
@@ -2646,7 +2803,9 @@ public sealed partial class PrototypeGameEngine
                                 PrototypeContent.PotionPool),
                         Enumerable.Range(
                             0, PrototypeContent.PotionPool.Length),
-                        streamId: "event")];
+                        streamId: "event",
+                        controlledCandidateLabels:
+                            (string[])PrototypeContent.PotionPool.Clone())];
             slots[index] =
                 new PotionInstance(
                     potionId,

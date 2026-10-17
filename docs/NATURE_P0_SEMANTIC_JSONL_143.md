@@ -26,6 +26,14 @@ non-Nature RNG parity remain **UNVERIFIED**.
 `hello` advertises:
 
 - `semanticChanceSchemaId = sts2-v111-semantic-playable-p0-v1`.
+- `controlledEventChoiceSchemaId =
+  sts2-v111-controlled-event-choice-v1`, a separate whole-run event-choice
+  continuation with its own `controlled_event_begin` and
+  `controlled_event_resolve` operations. It uses regular run-state handles,
+  exposes the current ordered support labels, and retains controlled outcome
+  transcripts in exact snapshots. See the [D3 event continuation
+  contract](CONTROLLED_EVENT_CHOICE_D3.md); this does not expand the combat
+  `semanticChanceSchemaId` scope.
 - `semanticPersistentDeckActionSchemaId =
   sts2-v111-semantic-player-action-v1`, with scope
   `draw-pile-neutral-single-player` and a sorted

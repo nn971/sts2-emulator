@@ -21,7 +21,9 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
 
         if (state.Phase is RunPhase.RunStart
             or RunPhase.Combat
-            or RunPhase.Terminal)
+            or RunPhase.Terminal
+            || state.Phase == RunPhase.Event
+                && state.World?.Event?.ControlledChoice is not null)
         {
             return phaseActions;
         }
@@ -34,6 +36,14 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
     public TransitionResult Step(RunState state, GameAction action)
     {
         RunConfiguration.ValidateState(state);
+        if (state.Phase == RunPhase.Event
+            && state.World?.Event?.ControlledChoice is not null
+            && (!ControlledChanceGuardV111.Active
+                || action.Kind != "choose_controlled_event_outcome"))
+        {
+            throw new InvalidOperationException(
+                "A suspended controlled event choice requires its explicit outcome adapter.");
+        }
         var fork = state.Fork();
         fork = fork with { DecisionIndex = fork.DecisionIndex + 1 };
 

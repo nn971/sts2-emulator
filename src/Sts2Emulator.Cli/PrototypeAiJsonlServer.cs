@@ -620,6 +620,60 @@ internal static class PrototypeAiJsonlServer
             };
         }
 
+        object ControlledEventChoiceResult(
+            RunState state, string handle, string? parent)
+        {
+            var continuation = state.World?.Event?.ControlledChoice;
+            var frame = environment.Observe(state);
+            var actions = continuation is null
+                ? frame.LegalActions
+                : new PrototypeGameEngine().GetLegalActions(state)
+                    .Select(action => new PrototypeAiAction(
+                        PrototypeAiEnvironment.StableActionId(action),
+                        action.Kind,
+                        action.Payload.Clone()))
+                    .ToArray();
+            var history = state.ControlledEventChoiceHistory;
+            var parentHistoryCount = parent is not null
+                && states.TryGetValue(parent, out var parentState)
+                ? parentState.ControlledEventChoiceHistory?.Length ?? 0
+                : 0;
+            var completedTrace = history is not null
+                && history.Length > parentHistoryCount
+                ? history[^1]
+                : null;
+            object? transcript = continuation is null
+                ? completedTrace
+                : new
+                {
+                    eventId = continuation.EventId,
+                    choiceId = continuation.ChoiceId,
+                    decisions = continuation.Decisions,
+                    candidateLabels = continuation.DecisionCandidateLabels,
+                    probabilityStatus = "UNVERIFIED"
+                };
+            return new
+            {
+                ok = true,
+                schemaId = ControlledEventChoiceEngineV111.SchemaId,
+                stateHandle = handle,
+                parent,
+                fingerprint = CanonicalJson.Sha256(state),
+                boundary = continuation is null ? "committed" : "nature",
+                pending = continuation is null ? null : new
+                {
+                    kind = "event_random_choice",
+                    eventId = continuation.EventId,
+                    choiceId = continuation.ChoiceId,
+                    request = continuation.PendingRequest,
+                    candidateLabels = continuation.PendingCandidateLabels,
+                    probabilityStatus = "UNVERIFIED"
+                },
+                transcript,
+                actions = actions.Select(ActionWire).ToArray()
+            };
+        }
+
         string StoreControlled(ControlledPlayableCombatV111 state)
         {
             string handle = "c" + nextControlledHandle++;
@@ -734,6 +788,19 @@ internal static class PrototypeAiJsonlServer
                             naturePlayable = false,
                             controlledChanceSchemaId = ControlledChanceSchemaId,
                             semanticChanceSchemaId = SemanticChanceSchemaId,
+                            controlledEventChoiceSchemaId =
+                                ControlledEventChoiceEngineV111.SchemaId,
+                            controlledEventChoiceScope =
+                                "saved-pre-option-event-choice-replay",
+                            controlledEventChoiceSites = new[]
+                            {
+                                "event.random_upgrade.card_instance",
+                                "event.reward.random_rare_card.model",
+                                "event.reward.random_potion.model",
+                                "event.potion.fill_empty_slots.model",
+                                "potion.uncommon_model.index_draw",
+                                "relic.unowned_random_selection.index_draw"
+                            },
                             semanticPersistentDeckActionSchemaId =
                                 SemanticPlayerActionV111.SchemaId,
                             semanticPersistentDeckActionScope =
@@ -1688,6 +1755,43 @@ internal static class PrototypeAiJsonlServer
                         Write(new { requestId, ok = true, stateHandle = handle,
                             stateSchemaId = V111Build.StateSchema, configuration.FidelityId,
                             exactHash = CanonicalJson.Sha256(state) });
+                        break;
+                    }
+
+                    case "controlled_event_begin":
+                    {
+                        var parentHandle = RequiredString(request, "state_handle");
+                        var source = RequireState(request);
+                        var next = ControlledEventChoiceEngineV111.Begin(
+                            source, RequiredString(request, "choice_id"));
+                        var handle = Store(next, parentHandle);
+                        Write(ControlledEventChoiceResult(
+                            next, handle, parentHandle));
+                        break;
+                    }
+
+                    case "controlled_event_inspect":
+                    {
+                        var handle = RequiredString(request, "state_handle");
+                        var state = RequireState(request);
+                        if (state.World?.Event?.ControlledChoice is null)
+                            throw new InvalidOperationException(
+                                "State has no pending controlled event choice.");
+                        Write(ControlledEventChoiceResult(state, handle, null));
+                        break;
+                    }
+
+                    case "controlled_event_resolve":
+                    {
+                        var parentHandle = RequiredString(request, "state_handle");
+                        var source = RequireState(request);
+                        var selectedIndex = OptionalInt(request, "selected_index")
+                            ?? throw new ArgumentException("Missing selected_index.");
+                        var next = ControlledEventChoiceEngineV111.Resolve(
+                            source, selectedIndex);
+                        var handle = Store(next, parentHandle);
+                        Write(ControlledEventChoiceResult(
+                            next, handle, parentHandle));
                         break;
                     }
 

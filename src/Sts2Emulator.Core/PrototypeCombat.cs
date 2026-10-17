@@ -13540,7 +13540,8 @@ public sealed partial class PrototypeGameEngine
         string siteId,
         string ownerId,
         IEnumerable<int> orderedCandidates,
-        string streamId = "combat")
+        string streamId = "combat",
+        string[]? controlledCandidateLabels = null)
     {
         ArgumentNullException.ThrowIfNull(orderedCandidates);
         var candidates = orderedCandidates.ToArray();
@@ -13548,6 +13549,9 @@ public sealed partial class PrototypeGameEngine
             throw new ArgumentException(
                 "Legacy random selection requires a nonempty ordered support.",
                 nameof(orderedCandidates));
+        using var candidateLabels =
+            ControlledEventChoiceReplayV111.DescribeCandidates(
+                controlledCandidateLabels);
         return ResolveLegacyRandomOutcome(
             legacyRng, siteId, ownerId, candidates, null, streamId);
     }

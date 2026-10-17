@@ -62,6 +62,9 @@ public static class PrototypeNativePotionCourier
                 "No implemented Uncommon potions are available.");
 
         var candidates = ImplementedUncommonPotionPool;
+        using var candidateLabels =
+            ControlledEventChoiceReplayV111.DescribeCandidates(
+                (string[])candidates.Clone());
         return candidates[LegacyRandomChoiceV111.ChooseIndexRange(
             rng,
             "potion.uncommon_model.index_draw",
