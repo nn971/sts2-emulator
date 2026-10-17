@@ -407,7 +407,7 @@ public sealed record SemanticCombatDrawV111(
                             .ControlledSemanticDrawRequested == this.RequestedCount)
                 : !this.AutomaticHandDraw &&
                   combat.PendingChoice?.StandaloneSemanticDrawHookChoice == true &&
-                  SemanticCombatDrawEngineV111.TryGetStandaloneSemanticDrawOperation(
+                  PrototypeGameEngine.TryGetStandaloneSemanticDrawOperation(
                       combat.PendingChoice, out var hookDraw) &&
                   hookDraw.Amount == this.RemainingCount;
             if (!cursorMatches)
@@ -422,7 +422,7 @@ public sealed record SemanticCombatDrawV111(
                       .ControlledSemanticDrawRemaining == this.RemainingCount &&
                   combat.AutomaticPipelineContinuation
                       .ControlledSemanticDrawRequested == this.RequestedCount
-                : SemanticCombatDrawEngineV111.TryGetStandaloneSemanticDrawOperation(
+                : PrototypeGameEngine.TryGetStandaloneSemanticDrawOperation(
                       combat.PendingChoice!, out var draw) &&
                   draw.Amount == this.RemainingCount;
             if (!cursorMatches || this.RemainingCount <= 0 ||
@@ -577,47 +577,8 @@ public static class SemanticCombatDrawEngineV111
     private static bool HasStandaloneSemanticDrawOperation(
         PendingCombatChoiceState choice)
     {
-        return TryGetStandaloneSemanticDrawOperation(choice, out _);
-    }
-
-    internal static bool TryGetStandaloneSemanticDrawOperation(
-        PendingCombatChoiceState choice,
-        out PrototypeQueuedOperation operation)
-    {
-        if (choice.Continuation.FirstOrDefault(item =>
-                item.Kind == PrototypeCombatEffectKind.DrawCards &&
-                item.StandaloneSemanticDrawSegment) is { } drawOperation)
-        {
-            operation = drawOperation;
-            return true;
-        }
-        for (PrototypeChoiceResolutionContinuationState? current =
-                choice.OuterChoiceContinuation;
-             current is not null;
-             current = current.Parent)
-            if (TryGetStandaloneSemanticDrawOperation(current,
-                    out operation))
-                return true;
-        operation = null!;
-        return false;
-    }
-
-    internal static bool TryGetStandaloneSemanticDrawOperation(
-        PrototypeChoiceResolutionContinuationState continuation,
-        out PrototypeQueuedOperation operation)
-    {
-        for (PrototypeChoiceResolutionContinuationState? current = continuation;
-             current is not null;
-             current = current.Parent)
-            if (current.Operations.FirstOrDefault(item =>
-                    item.Kind == PrototypeCombatEffectKind.DrawCards &&
-                    item.StandaloneSemanticDrawSegment) is { } drawOperation)
-            {
-                operation = drawOperation;
-                return true;
-            }
-        operation = null!;
-        return false;
+        return PrototypeGameEngine.TryGetStandaloneSemanticDrawOperation(
+            choice, out _);
     }
 
     private static int StratagemPickCount(CombatState combat) =>
@@ -779,8 +740,9 @@ public static class SemanticCombatDrawEngineV111
             using (ControlledChanceGuardV111.Enter())
                 resumed = PrototypeGameEngine.ResumeControlledDrawInsertion(
                     run, decision.SelectedPosition);
-            var insertionRemaining = RemainingSemanticDrawCount(
-                resumed, state.RemainingCount, drawnBefore);
+            var insertionRemaining =
+                PrototypeGameEngine.GetSemanticDrawRemainingCount(
+                    resumed, state.RemainingCount, drawnBefore);
             var nextInsertion = state with
             {
                 Run = resumed,
@@ -812,9 +774,10 @@ public static class SemanticCombatDrawEngineV111
                         PrototypeGameEngine
                             .ResumeControlledSemanticEffectDrawCost(
                                 run, selectedIndex);
-                costRemaining = RemainingSemanticDrawCount(
-                    advancedCost, state.RemainingCount,
-                    combat.CounterState.CardsDrawnThisCombat);
+                costRemaining =
+                    PrototypeGameEngine.GetSemanticDrawRemainingCount(
+                        advancedCost, state.RemainingCount,
+                        combat.CounterState.CardsDrawnThisCombat);
             }
             else
             {
@@ -843,9 +806,10 @@ public static class SemanticCombatDrawEngineV111
             var drawNext = state with
             {
                 Run = resumedDraw,
-                RemainingCount = RemainingSemanticDrawCount(
-                    resumedDraw, state.RemainingCount,
-                    combat.CounterState.CardsDrawnThisCombat)
+                RemainingCount =
+                    PrototypeGameEngine.GetSemanticDrawRemainingCount(
+                        resumedDraw, state.RemainingCount,
+                        combat.CounterState.CardsDrawnThisCombat)
             };
             Validate(drawNext);
             return drawNext;
@@ -912,7 +876,7 @@ public static class SemanticCombatDrawEngineV111
                         fromHandDraw: true);
         }
         else
-            remaining = RemainingSemanticDrawCount(
+            remaining = PrototypeGameEngine.GetSemanticDrawRemainingCount(
                 selection.Run, state.RemainingCount, drawnBefore);
         var next = state with
         {
@@ -974,7 +938,7 @@ public static class SemanticCombatDrawEngineV111
             }
         }
         else
-            remaining = RemainingSemanticDrawCount(
+            remaining = PrototypeGameEngine.GetSemanticDrawRemainingCount(
                 run, state.RemainingCount, drawnBefore);
         var next = state with
         {
@@ -986,31 +950,6 @@ public static class SemanticCombatDrawEngineV111
         };
         Validate(next);
         return next;
-    }
-
-    private static int RemainingSemanticDrawCount(
-        RunState run, int previousRemaining, int drawnBefore)
-    {
-        var combat = run.World?.Combat ?? throw new InvalidDataException(
-            "Semantic draw continuation removed combat.");
-        var pending = combat.PendingChoice;
-        if (pending is not null &&
-            TryGetStandaloneSemanticDrawOperation(pending,
-                out var drawOperation))
-            return drawOperation.Amount;
-        int? savedCount = pending?.ControlledSemanticDraw?.RemainingCount ??
-            pending?.ControlledDrawInsertion?.SemanticDrawContinuation?
-                .RemainingCount ??
-            pending?.ControlledDrawCost?.RemainingCount;
-        if (savedCount is { } remaining)
-            return remaining;
-        if (PrototypeGameEngine.IsSemanticAutomaticHandDraw(combat))
-            return combat.AutomaticPipelineContinuation!
-                .ControlledSemanticDrawRemaining!.Value;
-        if (combat.SemanticDeck?.Pending is not null)
-            return Math.Max(0, previousRemaining -
-                (combat.CounterState.CardsDrawnThisCombat - drawnBefore));
-        return 0;
     }
 
     public static string Save(SemanticCombatDrawV111 state)

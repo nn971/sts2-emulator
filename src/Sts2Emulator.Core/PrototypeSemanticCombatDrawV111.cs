@@ -507,4 +507,74 @@ public sealed partial class PrototypeGameEngine
         PrototypeStateInvariants.Validate(suspended);
         return suspended;
     }
+
+    /// <summary>
+    /// Resolve the draw cursor from the ordinary mechanics continuation.
+    /// Standalone draw segments, suspended nested draws, and the automatic
+    /// hand-draw pipeline all use the same saved mechanics state.
+    /// </summary>
+    internal static int GetSemanticDrawRemainingCount(
+        RunState run, int previousRemaining, int drawnBefore)
+    {
+        var combat = run.World?.Combat ?? throw new InvalidDataException(
+            "Semantic draw continuation removed combat.");
+        var pending = combat.PendingChoice;
+        if (pending is not null &&
+            TryGetStandaloneSemanticDrawOperation(pending,
+                out var drawOperation))
+            return drawOperation.Amount;
+        int? savedCount = pending?.ControlledSemanticDraw?.RemainingCount ??
+            pending?.ControlledDrawInsertion?.SemanticDrawContinuation?
+                .RemainingCount ??
+            pending?.ControlledDrawCost?.RemainingCount;
+        if (savedCount is { } remaining)
+            return remaining;
+        if (IsSemanticAutomaticHandDraw(combat))
+            return combat.AutomaticPipelineContinuation!
+                .ControlledSemanticDrawRemaining!.Value;
+        if (combat.SemanticDeck?.Pending is not null)
+            return Math.Max(0, previousRemaining -
+                (combat.CounterState.CardsDrawnThisCombat - drawnBefore));
+        return 0;
+    }
+
+    internal static bool TryGetStandaloneSemanticDrawOperation(
+        PendingCombatChoiceState choice,
+        out PrototypeQueuedOperation operation)
+    {
+        if (choice.Continuation.FirstOrDefault(item =>
+                item.Kind == PrototypeCombatEffectKind.DrawCards &&
+                item.StandaloneSemanticDrawSegment) is { } drawOperation)
+        {
+            operation = drawOperation;
+            return true;
+        }
+        for (PrototypeChoiceResolutionContinuationState? current =
+                choice.OuterChoiceContinuation;
+             current is not null;
+             current = current.Parent)
+            if (TryGetStandaloneSemanticDrawOperation(current,
+                    out operation))
+                return true;
+        operation = null!;
+        return false;
+    }
+
+    internal static bool TryGetStandaloneSemanticDrawOperation(
+        PrototypeChoiceResolutionContinuationState continuation,
+        out PrototypeQueuedOperation operation)
+    {
+        for (PrototypeChoiceResolutionContinuationState? current = continuation;
+             current is not null;
+             current = current.Parent)
+            if (current.Operations.FirstOrDefault(item =>
+                    item.Kind == PrototypeCombatEffectKind.DrawCards &&
+                    item.StandaloneSemanticDrawSegment) is { } drawOperation)
+            {
+                operation = drawOperation;
+                return true;
+            }
+        operation = null!;
+        return false;
+    }
 }
