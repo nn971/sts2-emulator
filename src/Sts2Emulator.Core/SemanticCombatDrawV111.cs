@@ -14,9 +14,68 @@ public sealed record SemanticCombatDrawV111(
     bool FromHandDraw, bool AutomaticHandDraw = false)
 {
     public const string SchemaId = "sts2-v111-semantic-real-combat-draw-v1";
+
+    /// <summary>
+    /// Atomic mechanics/provider envelope for one semantic draw segment.
+    /// Existing continuation properties remain flattened snapshot fields.
+    /// </summary>
     [JsonIgnore]
-    public SemanticCombatDrawStochasticStateV111 Stochastic { get; init; }
-        = new();
+    public SimulationStateV111<SemanticCombatDrawMechanicsStateV111,
+        SemanticCombatDrawStochasticStateV111> Simulation { get; init; } = new(
+            new SemanticCombatDrawMechanicsStateV111(
+                Origin, Run, RequestedCount, RemainingCount, FromHandDraw,
+                AutomaticHandDraw),
+            new SemanticCombatDrawStochasticStateV111());
+
+    [JsonIgnore]
+    public SemanticCombatDrawMechanicsStateV111 Mechanics
+    {
+        get => Simulation.Mechanics;
+        init => Simulation = Simulation with { Mechanics = value };
+    }
+
+    [JsonIgnore]
+    public SemanticCombatDrawStochasticStateV111 Stochastic
+    {
+        get => Simulation.Stochastic;
+        init => Simulation = Simulation with { Stochastic = value };
+    }
+
+    public RunState Origin
+    {
+        get => Mechanics.Origin;
+        init => Mechanics = Mechanics with { Origin = value };
+    }
+
+    public RunState Run
+    {
+        get => Mechanics.Run;
+        init => Mechanics = Mechanics with { Run = value };
+    }
+
+    public int RequestedCount
+    {
+        get => Mechanics.RequestedCount;
+        init => Mechanics = Mechanics with { RequestedCount = value };
+    }
+
+    public int RemainingCount
+    {
+        get => Mechanics.RemainingCount;
+        init => Mechanics = Mechanics with { RemainingCount = value };
+    }
+
+    public bool FromHandDraw
+    {
+        get => Mechanics.FromHandDraw;
+        init => Mechanics = Mechanics with { FromHandDraw = value };
+    }
+
+    public bool AutomaticHandDraw
+    {
+        get => Mechanics.AutomaticHandDraw;
+        init => Mechanics = Mechanics with { AutomaticHandDraw = value };
+    }
     [JsonIgnore] public string Fingerprint => CanonicalJson.Sha256(this);
     [JsonIgnore] public SemanticDeckEventV111? Pending =>
         Run.World?.Combat?.SemanticDeck is
