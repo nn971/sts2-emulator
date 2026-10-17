@@ -88,7 +88,6 @@ public sealed record RunState(
     JsonElement ExtensionState,
     RunWorldState? World = null,
     int Ascension = 0,
-    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     RunConfiguration? Configuration = null,
     RngBundle? NativeRunRng = null,
     ControlledEventChoiceTraceV111[]? ControlledEventChoiceHistory = null,
@@ -99,14 +98,105 @@ public sealed record RunState(
     ReferenceNatureStateV111? ReferenceNatureState = null)
 {
     /// <summary>
-    /// Authoritative in-memory run-level provider state. The legacy-named
-    /// properties below remain the snapshot wire projection for compatibility.
+    /// Atomic mechanics/provider envelope for the complete run. Existing
+    /// snapshot fields remain flattened projections.
     /// </summary>
     [System.Text.Json.Serialization.JsonIgnore]
-    public RunStochasticStateV111 Stochastic { get; init; } =
-        new(Rng, NativeRunRng, ReferenceNatureState,
-            ControlledEventChoiceHistory, ControlledEventRewardChoice,
-            ControlledRunActionHistory, ControlledRunActionChoice);
+    public SimulationStateV111<RunMechanicsStateV111,
+        RunStochasticStateV111> Simulation { get; init; } = new(
+            new RunMechanicsStateV111(
+                GameBuild, EmulatorSchema, RunId, RunSeed, DecisionIndex,
+                Phase, Player, ExtensionState, World, Ascension, Configuration),
+            new RunStochasticStateV111(
+                Rng, NativeRunRng, ReferenceNatureState,
+                ControlledEventChoiceHistory, ControlledEventRewardChoice,
+                ControlledRunActionHistory, ControlledRunActionChoice));
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public RunMechanicsStateV111 Mechanics
+    {
+        get => Simulation.Mechanics;
+        init => Simulation = Simulation with { Mechanics = value };
+    }
+
+    /// <summary>
+    /// Run-level provider state. The legacy-named properties below remain
+    /// the snapshot wire projection for compatibility.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public RunStochasticStateV111 Stochastic
+    {
+        get => Simulation.Stochastic;
+        init => Simulation = Simulation with { Stochastic = value };
+    }
+
+    public string GameBuild
+    {
+        get => Mechanics.GameBuild;
+        init => Mechanics = Mechanics with { GameBuild = value };
+    }
+
+    public string EmulatorSchema
+    {
+        get => Mechanics.EmulatorSchema;
+        init => Mechanics = Mechanics with { EmulatorSchema = value };
+    }
+
+    public string RunId
+    {
+        get => Mechanics.RunId;
+        init => Mechanics = Mechanics with { RunId = value };
+    }
+
+    public string RunSeed
+    {
+        get => Mechanics.RunSeed;
+        init => Mechanics = Mechanics with { RunSeed = value };
+    }
+
+    public long DecisionIndex
+    {
+        get => Mechanics.DecisionIndex;
+        init => Mechanics = Mechanics with { DecisionIndex = value };
+    }
+
+    public RunPhase Phase
+    {
+        get => Mechanics.Phase;
+        init => Mechanics = Mechanics with { Phase = value };
+    }
+
+    public PlayerState Player
+    {
+        get => Mechanics.Player;
+        init => Mechanics = Mechanics with { Player = value };
+    }
+
+    public JsonElement ExtensionState
+    {
+        get => Mechanics.ExtensionState;
+        init => Mechanics = Mechanics with { ExtensionState = value };
+    }
+
+    public RunWorldState? World
+    {
+        get => Mechanics.World;
+        init => Mechanics = Mechanics with { World = value };
+    }
+
+    public int Ascension
+    {
+        get => Mechanics.Ascension;
+        init => Mechanics = Mechanics with { Ascension = value };
+    }
+
+    [System.Text.Json.Serialization.JsonIgnore(Condition =
+        System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public RunConfiguration? Configuration
+    {
+        get => Mechanics.Configuration;
+        init => Mechanics = Mechanics with { Configuration = value };
+    }
 
     public RngBundle Rng
     {
