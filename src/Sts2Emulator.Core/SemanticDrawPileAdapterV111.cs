@@ -220,8 +220,93 @@ public static class SemanticDrawPileAdapterV111
         if (!combat.DrawPile.SequenceEqual(nextCardZones.DrawPile))
             throw new InvalidOperationException(
                 "DrawPile changes require a typed draw-pile adapter operation.");
+        return ApplyZoneIdentityDelta(
+            combat, nextCardZones, addedCardInstanceIds: [],
+            removedCardInstanceIds: []);
+    }
+
+    /// <summary>
+    /// Commits a non-draw-pile transition with explicitly declared physical
+    /// card additions and removals. All other identities must remain present
+    /// exactly once across the six combat card zones.
+    /// </summary>
+    public static CombatState ApplyZoneIdentityDelta(
+        CombatState combat,
+        CombatCardZonesV111 nextCardZones,
+        IReadOnlyCollection<long> addedCardInstanceIds,
+        IReadOnlyCollection<long> removedCardInstanceIds)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(nextCardZones);
+        ArgumentNullException.ThrowIfNull(addedCardInstanceIds);
+        ArgumentNullException.ThrowIfNull(removedCardInstanceIds);
+        if (!combat.DrawPile.SequenceEqual(nextCardZones.DrawPile))
+            throw new InvalidOperationException(
+                "DrawPile changes require a typed draw-pile adapter operation.");
+
+        var currentIds = CardZoneIdentitySet(combat.Mechanics.CardZones);
+        var nextIds = CardZoneIdentitySet(nextCardZones);
+        var added = addedCardInstanceIds.ToArray();
+        var removed = removedCardInstanceIds.ToArray();
+        if (added.Distinct().Count() != added.Length ||
+            removed.Distinct().Count() != removed.Length ||
+            added.Intersect(removed).Any() ||
+            added.Any(currentIds.Contains) ||
+            removed.Any(id => !currentIds.Contains(id)))
+            throw new InvalidDataException(
+                "Card-zone identity delta has duplicate or unavailable identities.");
+
+        var expectedIds = currentIds.Except(removed).Concat(added).ToHashSet();
+        if (!expectedIds.SetEquals(nextIds))
+            throw new InvalidDataException(
+                "Card-zone transition does not match its declared identity delta.");
         return CommitZoneTransition(
             combat, nextCardZones, combat.SemanticDeck);
+    }
+
+    /// <summary>
+    /// Replaces one non-draw-pile identity in its existing physical zone.
+    /// Every other zone and identity must remain unchanged.
+    /// </summary>
+    public static CombatState ApplyZoneIdentityReplacement(
+        CombatState combat,
+        CombatCardZonesV111 nextCardZones,
+        long replacedCardInstanceId,
+        long replacementCardInstanceId)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(nextCardZones);
+        var currentIds = CardZoneIdentitySet(combat.Mechanics.CardZones);
+        if (replacedCardInstanceId == replacementCardInstanceId ||
+            !currentIds.Contains(replacedCardInstanceId) ||
+            currentIds.Contains(replacementCardInstanceId))
+            throw new InvalidDataException(
+                "Card-zone replacement has an invalid source or destination identity.");
+
+        foreach (var zone in Enum.GetValues<PrototypeCardZone>())
+        {
+            var expected = combat.Mechanics.CardZones.CardsIn(zone)
+                .Select(id => id == replacedCardInstanceId
+                    ? replacementCardInstanceId : id).ToArray();
+            if (!expected.SequenceEqual(nextCardZones.CardsIn(zone)))
+                throw new InvalidDataException(
+                    "Card-zone replacement changed an unrelated zone identity or order.");
+        }
+        return ApplyZoneIdentityDelta(
+            combat, nextCardZones, [replacementCardInstanceId],
+            [replacedCardInstanceId]);
+    }
+
+    private static HashSet<long> CardZoneIdentitySet(
+        CombatCardZonesV111 zones)
+    {
+        ArgumentNullException.ThrowIfNull(zones);
+        var ids = Enum.GetValues<PrototypeCardZone>()
+            .SelectMany(zone => zones.CardsIn(zone)).ToArray();
+        if (ids.Distinct().Count() != ids.Length)
+            throw new InvalidDataException(
+                "Card-zone owner contains duplicate physical identities.");
+        return ids.ToHashSet();
     }
 
     /// <summary>
@@ -249,10 +334,12 @@ public static class SemanticDrawPileAdapterV111
         int physicalIndex,
         IReadOnlyList<long> insertedCardInstanceIds,
         CombatCardZonesV111? nextCardZones = null,
-        bool publiclyKnown = false)
+        bool publiclyKnown = false,
+        IReadOnlyCollection<long>? removedCardInstanceIds = null)
     {
         ArgumentNullException.ThrowIfNull(combat);
         ArgumentNullException.ThrowIfNull(insertedCardInstanceIds);
+        removedCardInstanceIds ??= Array.Empty<long>();
         if (physicalIndex < 0 || physicalIndex > combat.DrawPile.Length)
             throw new ArgumentOutOfRangeException(nameof(physicalIndex));
 
@@ -273,6 +360,22 @@ public static class SemanticDrawPileAdapterV111
             .Any(zone => inserted.Any(zones.CardsIn(zone).Contains)))
             throw new InvalidDataException(
                 "Draw-pile insertion sequence duplicates an identity in its resulting zones.");
+
+        var currentIds = CardZoneIdentitySet(combat.Mechanics.CardZones);
+        var nextIds = CardZoneIdentitySet(zones);
+        var removed = removedCardInstanceIds.ToArray();
+        if (removed.Distinct().Count() != removed.Length ||
+            removed.Any(id => !currentIds.Contains(id)) ||
+            removed.Intersect(inserted).Any())
+            throw new InvalidDataException(
+                "Draw-pile insertion has an invalid declared identity removal.");
+        var expectedIds = currentIds
+            .Except(removed)
+            .Concat(inserted.Where(id => !currentIds.Contains(id)))
+            .ToHashSet();
+        if (!expectedIds.SetEquals(nextIds))
+            throw new InvalidDataException(
+                "Draw-pile insertion transition changed undeclared card identities.");
 
         ValidateSynchronized(combat, requireIdle: true);
         var semantic = combat.SemanticDeck;

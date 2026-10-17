@@ -4255,7 +4255,9 @@ public sealed partial class PrototypeGameEngine
                                     .ApplyDrawPileRemoval(
                                         combat, [chosen.InstanceId], nextZones)
                                 : SemanticDrawPileAdapterV111
-                                    .ApplyZoneTransition(combat, nextZones)) with
+                                    .ApplyZoneIdentityDelta(
+                                        combat, nextZones, [],
+                                        [chosen.InstanceId])) with
                             {
                                 Cards = combat.Cards.Where(card =>
                                     card.InstanceId != chosen.InstanceId)
@@ -14735,8 +14737,9 @@ public sealed partial class PrototypeGameEngine
                     ? SemanticDrawPileAdapterV111.ApplyDrawPileReplacement(
                         combat, drawPileIndex, instanceId, replacementId,
                         nextCardZones)
-                    : SemanticDrawPileAdapterV111.ApplyZoneTransition(
-                        combat, nextCardZones)) with
+                    : SemanticDrawPileAdapterV111
+                        .ApplyZoneIdentityReplacement(
+                            combat, nextCardZones, instanceId, replacementId)) with
                 {
                     Cards = combat.Cards
                         .Where(card => card.InstanceId != instanceId)
@@ -14852,7 +14855,15 @@ public sealed partial class PrototypeGameEngine
             combat = SemanticDrawPileAdapterV111
                 .ApplyDrawPileInsertionSequence(
                     combat, combat.DrawPile.Length, selected,
-                    selectionZones, publiclyKnown: true);
+                    selectionZones, publiclyKnown: true,
+                    removedCardInstanceIds:
+                        selection.RemoveUnselectedFromSource
+                            ? unselected : []);
+        }
+        else if (selection.RemoveUnselectedFromSource)
+        {
+            combat = SemanticDrawPileAdapterV111.ApplyZoneIdentityDelta(
+                combat, selectionZones, [], unselected);
         }
         else
         {
@@ -14945,9 +14956,16 @@ public sealed partial class PrototypeGameEngine
                     publiclyKnown: true);
         }
 
-        return SemanticDrawPileAdapterV111.ApplyZoneTransition(
-            combat,
-            combat.Mechanics.CardZones.WithCardsIn(zone, cards));
+        var nextZones = combat.Mechanics.CardZones.WithCardsIn(zone, cards);
+        var currentIds = Enum.GetValues<PrototypeCardZone>()
+            .SelectMany(currentZone =>
+                combat.Mechanics.CardZones.CardsIn(currentZone)).ToHashSet();
+        var nextIds = Enum.GetValues<PrototypeCardZone>()
+            .SelectMany(nextZone => nextZones.CardsIn(nextZone)).ToHashSet();
+        return SemanticDrawPileAdapterV111.ApplyZoneIdentityDelta(
+            combat, nextZones,
+            nextIds.Except(currentIds).ToArray(),
+            currentIds.Except(nextIds).ToArray());
     }
 
     private static IEnumerable<long[]> ChooseCombinations(long[] source, int count)
