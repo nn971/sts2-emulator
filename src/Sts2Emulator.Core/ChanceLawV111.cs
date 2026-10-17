@@ -38,7 +38,10 @@ public static class StochasticCapabilitiesV111
             "combat.sly_autoplay.random_enemy",
             "combat.autoplay.random_enemy",
             "combat.generated_card.select",
-            "combat.random_draw_attack.card_model"
+            "combat.random_draw_attack.card_model",
+            "combat.random_hand_card.energy_cost",
+            "combat.card_draw.relic_energy_cost",
+            "combat.card_draw.slither_energy_cost"
         ],
         PrototypeAiEnvironment.SchemaId,
         [
@@ -152,6 +155,8 @@ public static class ChanceLawEngineV111
         "uniform-live-enemy-instance-support-v1";
     public const string GeneratedCardConditioningPolicyId =
         "uniform-ordered-generated-card-model-pool-v1";
+    public const string CostConditioningPolicyId =
+        "uniform-bounded-cost-support-v1";
 
     public static ChanceLawV111 QueryIntent(SemanticIntentEventV111 intent)
     {
@@ -230,6 +235,33 @@ public static class ChanceLawEngineV111
             generatedCard.Ordinal, GeneratedCardConditioningPolicyId,
             conditioningFingerprint,
             "uniform-ordered-model-pool-unverified", outcomes);
+    }
+
+    /// <summary>
+    /// Query the uniform bounded-integer law declared by a pending semantic
+    /// cost event. Card identity and source stage remain in its conditioning
+    /// fingerprint through the event's support fingerprint.
+    /// </summary>
+    public static ChanceLawV111 QueryCost(SemanticCostEventV111 cost)
+    {
+        ArgumentNullException.ThrowIfNull(cost);
+        cost.Validate();
+        var outcomes = cost.CandidateCosts
+            .Select(value => new ChanceLawOutcomeV111(
+                "cost:" + value.ToString(CultureInfo.InvariantCulture), 1L))
+            .ToArray();
+        var conditioningFingerprint = CanonicalJson.Sha256(new
+        {
+            cost.SupportFingerprint,
+            cost.SiteId,
+            cost.OwnerId,
+            cost.Ordinal,
+            policy = CostConditioningPolicyId
+        });
+        return Create(cost.EventId, cost.SiteId, cost.OperationKind,
+            cost.OwnerId, cost.Ordinal, CostConditioningPolicyId,
+            conditioningFingerprint,
+            "uniform-bounded-cost-unverified", outcomes);
     }
 
     public static ChanceLawV111 QueryDraw(SemanticDeckStateV111 deck)
@@ -489,6 +521,23 @@ public static class ReferenceNatureV111
             var child = SemanticPilotCombatEngineV111.ResolveGeneratedCard(
                 combat, combat.Fingerprint, generatedCardEvent.EventId,
                 cardId);
+            return new ReferenceNatureResolutionV111(child, law, selection);
+        }
+
+        if (combat.CostPending is { } costEvent)
+        {
+            var law = ChanceLawEngineV111.QueryCost(costEvent);
+            var selection = Sample(law, state);
+            if (selection.EventId != costEvent.EventId ||
+                selection.OutcomeIndex < 0 ||
+                selection.OutcomeIndex >= costEvent.CandidateCosts.Length)
+                throw new InvalidDataException(
+                    "ReferenceNature law no longer matches the pending cost event.");
+            var selectedCost = costEvent.CandidateCosts[
+                selection.OutcomeIndex];
+            var child = SemanticPilotCombatEngineV111.ResolveCost(
+                combat, combat.Fingerprint, costEvent.EventId,
+                selectedCost);
             return new ReferenceNatureResolutionV111(child, law, selection);
         }
 
