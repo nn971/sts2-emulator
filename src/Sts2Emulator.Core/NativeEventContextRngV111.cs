@@ -3,6 +3,8 @@ namespace Sts2Emulator.Core;
 /// <summary>
 /// Owns EventModel.Begin-compatible event streams for configured native runs.
 /// The stream is persisted on EventState and copied forward after each draw.
+/// A completed scripted Trash Heap choice may retain its unchanged entry
+/// cursor, with the selected fixed-pool result checked at the event boundary.
 /// </summary>
 public static class NativeEventContextRngV111
 {
@@ -251,7 +253,8 @@ public static class NativeEventContextRngV111
 
         if (state.NativeRunRng is null)
         {
-            if (eventState.NativeEventRng is not null)
+            if (eventState.NativeEventRng is not null ||
+                eventState.NativeEventRngProviderMode is not null)
                 throw new InvalidOperationException(
                     "Legacy event state cannot own a native event RNG.");
             return;
@@ -260,15 +263,44 @@ public static class NativeEventContextRngV111
         // Null is accepted for a pre-migration save. ResolveIndex can rebuild
         // the unadvanced entry stream only while the event is still on page 0.
         if (eventState.NativeEventRng is not { } stream)
+        {
+            if (eventState.NativeEventRngProviderMode is not null)
+                throw new InvalidOperationException(
+                    "Native event provider mode is present without its context stream.");
             return;
-        if (eventState.NativeEventRngProviderMode is not null)
-            throw new InvalidOperationException(
-                "Native event state cannot use a counterfactual RNG provider.");
-
+        }
         var initial = NativeRngV111Contexts.ForEvent(
             state.RunSeed, nativeEventEntry);
         if (stream.StreamId != initial.StreamId)
             throw new InvalidOperationException(
                 "Event RNG has the wrong native context.");
+        if (eventState.NativeEventRngProviderMode is not { } providerMode)
+            return;
+        var scriptedTrashHeapRewardPresent =
+            eventState.ChosenChoiceId switch
+            {
+                "grab" => state.World!.NextCardInstanceId > 0 &&
+                    state.Player.Deck.Any(card =>
+                        card.InstanceId == state.World!.NextCardInstanceId - 1 &&
+                        PrototypeNativeUnderdocksTrashHeap.CardIds.Contains(
+                            card.CardId, StringComparer.Ordinal)),
+                "dive" => state.Player.Relics.Any(relic =>
+                    PrototypeNativeUnderdocksTrashHeap.RelicIds.Contains(
+                        relic.RelicId, StringComparer.Ordinal)),
+                _ => false
+            };
+        if (prototypeEventId == PrototypeNativeUnderdocksTrashHeap.EventId &&
+            providerMode == "scripted-v111" &&
+            NativeRngV111.ToSnapshot(stream) ==
+                NativeRngV111.ToSnapshot(initial) &&
+            eventState.NativePageIndex ==
+                PrototypeNativeEventCompletionPages.TerminalChoicePageIndex(
+                    prototypeEventId) &&
+            PrototypeNativeEventCompletionPages.HasTerminalChoice(
+                prototypeEventId, eventState.ChosenChoiceId) &&
+            scriptedTrashHeapRewardPresent)
+            return;
+        throw new InvalidOperationException(
+            "Native event state cannot use this counterfactual RNG provider.");
     }
 }

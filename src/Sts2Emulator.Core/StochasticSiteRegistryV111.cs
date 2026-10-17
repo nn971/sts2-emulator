@@ -39,6 +39,9 @@ public sealed record StochasticSessionCoverageV111(
     public string ReferenceNatureNeowOfferSessionSchemaId { get; init; } =
         ReferenceNatureNeowOfferSessionV111.CurrentSchemaId;
     public string[] ReferenceNatureNeowOfferSiteIds { get; init; } = [];
+    public string ReferenceNatureTrashHeapSessionSchemaId { get; init; } =
+        ReferenceNatureTrashHeapSessionV111.CurrentSchemaId;
+    public string[] ReferenceNatureTrashHeapSiteIds { get; init; } = [];
     public string[] ReferenceNatureAncientOfferSiteIds { get; init; } = [];
     public string ReferenceNatureMerchantSessionSchemaId { get; init; } =
         ReferenceNatureMerchantSessionV111.CurrentSchemaId;
@@ -63,6 +66,8 @@ public sealed record StochasticSessionCoverageV111(
                 ReferenceNatureAncientOfferSessionV111.CurrentSchemaId ||
             ReferenceNatureNeowOfferSessionSchemaId !=
                 ReferenceNatureNeowOfferSessionV111.CurrentSchemaId ||
+            ReferenceNatureTrashHeapSessionSchemaId !=
+                ReferenceNatureTrashHeapSessionV111.CurrentSchemaId ||
             ReferenceNatureMerchantSessionSchemaId !=
                 ReferenceNatureMerchantSessionV111.CurrentSchemaId ||
             ReferenceNatureTreasureSessionSchemaId !=
@@ -75,6 +80,7 @@ public sealed record StochasticSessionCoverageV111(
         ValidateSiteIds(ReferenceNatureEventChoiceSiteIds);
         ValidateSiteIds(ReferenceNatureAncientOfferSiteIds);
         ValidateSiteIds(ReferenceNatureNeowOfferSiteIds);
+        ValidateSiteIds(ReferenceNatureTrashHeapSiteIds);
         ValidateSiteIds(ReferenceNatureMerchantSiteIds);
         ValidateSiteIds(ReferenceNatureTreasureSiteIds);
     }
@@ -209,6 +215,7 @@ public static class StochasticSiteRegistryV111
         NativeTanxEventV111.ShuffleSiteId,
         NativeVakuuEventV111.ShuffleSiteId,
         .. ChanceLawEngineV111.NeowOfferSessionSiteIds,
+        .. ChanceLawEngineV111.TrashHeapSessionSiteIds,
         "shop.merchant.sale_slot.index_draw",
         "card_rarity.roll.unit_float",
         "shop.merchant.card_model.index_draw",
@@ -266,6 +273,8 @@ public static class StochasticSiteRegistryV111
 
     private static readonly string[] NeowOfferSessionSites =
         ChanceLawEngineV111.NeowOfferSessionSiteIds;
+    private static readonly string[] TrashHeapSessionSites =
+        ChanceLawEngineV111.TrashHeapSessionSiteIds;
 
     private static readonly HashSet<string> SemanticReferenceNatureSiteSet =
         new(SemanticReferenceNatureSites, StringComparer.Ordinal);
@@ -298,6 +307,7 @@ public static class StochasticSiteRegistryV111
             .Concat(NativeMerchantSessionSites)
             .Concat(NativeTreasureSessionSites)
             .Concat(NeowOfferSessionSites)
+            .Concat(TrashHeapSessionSites)
             .Distinct(StringComparer.Ordinal)
             .ToArray();
 
@@ -328,6 +338,8 @@ public static class StochasticSiteRegistryV111
         (string[])NativeTreasureSessionSites.Clone();
     public static string[] NeowOfferSessionSiteIds =>
         (string[])NeowOfferSessionSites.Clone();
+    public static string[] TrashHeapSessionSiteIds =>
+        (string[])TrashHeapSessionSites.Clone();
     public static string[] NatureChoiceSiteIds =>
         (string[])NatureChoiceSites.Clone();
 
@@ -390,7 +402,10 @@ public static class StochasticSiteRegistryV111
             ReferenceNatureTreasureSiteIds = NativeTreasureSessionSites,
             ReferenceNatureNeowOfferSessionSchemaId =
                 ReferenceNatureNeowOfferSessionV111.CurrentSchemaId,
-            ReferenceNatureNeowOfferSiteIds = NeowOfferSessionSites
+            ReferenceNatureNeowOfferSiteIds = NeowOfferSessionSites,
+            ReferenceNatureTrashHeapSessionSchemaId =
+                ReferenceNatureTrashHeapSessionV111.CurrentSchemaId,
+            ReferenceNatureTrashHeapSiteIds = TrashHeapSessionSites
         };
         coverage.Validate();
         return coverage;

@@ -26,6 +26,8 @@ public sealed record StochasticCapabilityManifestV111(
         ReferenceNatureAncientOfferSessionV111.CurrentSchemaId;
     public string ReferenceNatureNeowOfferSessionSchemaId { get; init; } =
         ReferenceNatureNeowOfferSessionV111.CurrentSchemaId;
+    public string ReferenceNatureTrashHeapSessionSchemaId { get; init; } =
+        ReferenceNatureTrashHeapSessionV111.CurrentSchemaId;
     public string ReferenceNatureMerchantSessionSchemaId { get; init; } =
         ReferenceNatureMerchantSessionV111.CurrentSchemaId;
     public string ReferenceNatureTreasureSessionSchemaId { get; init; } =
@@ -37,7 +39,8 @@ public sealed record StochasticCapabilityManifestV111(
     public string[] SemanticNatureChoiceViewSessionKinds { get; init; } =
     [
         "semantic_combat", "reference_combat", "run_action",
-        "event_choice", "ancient_offer", "neow_offer", "merchant", "treasure",
+        "event_choice", "ancient_offer", "neow_offer", "trash_heap",
+        "merchant", "treasure",
         "controlled_event_choice", "controlled_run_action"
     ];
 }
@@ -96,6 +99,13 @@ public static class StochasticCapabilitiesV111
             "reference_nature_neow_offer_save",
             "reference_nature_neow_offer_load",
             "reference_nature_neow_offer_release_many",
+            "reference_nature_trash_heap_begin",
+            "reference_nature_trash_heap_status",
+            "reference_nature_trash_heap_resolve_next",
+            "reference_nature_trash_heap_fork",
+            "reference_nature_trash_heap_save",
+            "reference_nature_trash_heap_load",
+            "reference_nature_trash_heap_release_many",
             "reference_nature_merchant_begin",
             "reference_nature_merchant_status",
             "reference_nature_merchant_resolve_next",
@@ -120,6 +130,8 @@ public static class StochasticCapabilitiesV111
             ReferenceNatureAncientOfferSessionV111.CurrentSchemaId,
         ReferenceNatureNeowOfferSessionSchemaId =
             ReferenceNatureNeowOfferSessionV111.CurrentSchemaId,
+        ReferenceNatureTrashHeapSessionSchemaId =
+            ReferenceNatureTrashHeapSessionV111.CurrentSchemaId,
         ReferenceNatureMerchantSessionSchemaId =
             ReferenceNatureMerchantSessionV111.CurrentSchemaId,
         ReferenceNatureTreasureSessionSchemaId =

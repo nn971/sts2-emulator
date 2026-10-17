@@ -272,6 +272,34 @@ class State:
         return ReferenceNatureNeowOfferSession.from_wire(
             self.session, result["result"])
 
+    def begin_reference_nature_trash_heap(self, choice_id: str,
+                                          nature_seed: int):
+        """Begin an atomic Trash Heap random reward session."""
+        if self.session.capabilities.get(
+                "referenceNatureTrashHeapSessionSchemaId") != (
+                "sts2-v111-reference-nature-trash-heap-session-v1"):
+            raise EmulatorError(
+                "Emulator does not expose ReferenceNature Trash Heap sessions")
+        sites = {
+            "grab": "event.trash_heap.card_reward.index_draw",
+            "dive": "event.trash_heap.relic_reward.index_draw",
+        }
+        if choice_id not in sites:
+            raise ValueError("choice_id must be 'grab' or 'dive'")
+        if not self.session.supports_reference_nature_site(
+                sites[choice_id], session="trash_heap"):
+            raise EmulatorError(
+                "No ReferenceNature Trash Heap session is advertised")
+        if (not isinstance(nature_seed, int) or isinstance(nature_seed, bool) or
+                nature_seed < 0 or nature_seed > 0xFFFFFFFFFFFFFFFF):
+            raise ValueError("nature_seed must be an unsigned 64-bit integer")
+        result = self.session.call(
+            "reference_nature_trash_heap_begin",
+            state_handle=self.handle, choice_id=choice_id,
+            nature_seed=nature_seed)
+        return ReferenceNatureTrashHeapSession.from_wire(
+            self.session, result["result"])
+
     def begin_reference_nature_merchant(self, action_id: str,
                                         nature_seed: int | None = None):
         """Begin atomic ReferenceNature generation for a configured Shop node."""
@@ -717,6 +745,80 @@ class ReferenceNatureNeowOfferSession:
 
     def release(self):
         return self.session.release_reference_nature_neow_offer_many([self])
+
+
+@dataclass(frozen=True)
+class ReferenceNatureTrashHeapSession:
+    """Atomic Trash Heap fixed-pool reward and sampler cursor."""
+    session: "Session"
+    handle: str
+    fingerprint: str
+    state_handle: str | None
+    event_id: str | None
+    choice_id: str
+    run_phase: str
+    boundary: str
+    next_ordinal: int
+    pending: dict | None
+    selected_choice_id: str | None
+    decision_transcript: list
+    nature_sample_count: int
+
+    @classmethod
+    def from_wire(cls, session, payload):
+        if payload.get("schemaId") != (
+                "sts2-v111-reference-nature-trash-heap-session-v1"):
+            raise EmulatorError(
+                "Unsupported ReferenceNature Trash Heap session schema")
+        return cls(
+            session, payload["referenceNatureTrashHeapHandle"],
+            payload["fingerprint"], payload["stateHandle"],
+            payload["eventId"], payload["choiceId"],
+            payload["runPhase"], payload["boundary"],
+            payload["nextOrdinal"], payload["pending"],
+            payload["selectedChoiceId"], payload["decisionTranscript"],
+            payload["natureSampleCount"])
+
+    @property
+    def complete(self):
+        return self.boundary == "committed"
+
+    @property
+    def state(self):
+        if self.state_handle is None:
+            raise EmulatorError("Trash Heap reward has not committed")
+        return State(self.session, self.state_handle)
+
+    def status(self):
+        result = self.session.call(
+            "reference_nature_trash_heap_status",
+            reference_nature_trash_heap_handle=self.handle)
+        return ReferenceNatureTrashHeapSession.from_wire(
+            self.session, result["result"])
+
+    def resolve_next(self):
+        """Sample and commit the selected Trash Heap reward."""
+        result = self.session.call(
+            "reference_nature_trash_heap_resolve_next",
+            reference_nature_trash_heap_handle=self.handle,
+            fingerprint=self.fingerprint)
+        return ReferenceNatureTrashHeapSession.from_wire(
+            self.session, result["result"])
+
+    def fork(self):
+        result = self.session.call(
+            "reference_nature_trash_heap_fork",
+            reference_nature_trash_heap_handle=self.handle)
+        return ReferenceNatureTrashHeapSession.from_wire(
+            self.session, result["result"])
+
+    def save_snapshot(self):
+        return self.session.call(
+            "reference_nature_trash_heap_save",
+            reference_nature_trash_heap_handle=self.handle)["snapshot"]
+
+    def release(self):
+        return self.session.release_reference_nature_trash_heap_many([self])
 
 
 @dataclass(frozen=True)
@@ -1423,12 +1525,13 @@ class Session:
             "event_choice": "referenceNatureEventChoiceSiteIds",
             "ancient_offer": "referenceNatureAncientOfferSiteIds",
             "neow_offer": "referenceNatureNeowOfferSiteIds",
+            "trash_heap": "referenceNatureTrashHeapSiteIds",
             "merchant": "referenceNatureMerchantSiteIds",
             "treasure": "referenceNatureTreasureSiteIds",
         }
         if session != "any" and session not in fields:
             raise ValueError(
-                "session must be semantic, run_action, event_choice, ancient_offer, neow_offer, merchant, treasure, or any")
+                "session must be semantic, run_action, event_choice, ancient_offer, neow_offer, trash_heap, merchant, treasure, or any")
         coverage = self.stochastic_session_coverage
         if not isinstance(coverage, dict) or coverage.get("schemaId") != (
                 "sts2-v111-stochastic-session-coverage-v1"):
@@ -1787,6 +1890,27 @@ class Session:
         return self.call(
             "reference_nature_neow_offer_release_many",
             reference_nature_neow_offer_handles=[
+                item.handle for item in sessions])["released"]
+
+    def load_reference_nature_trash_heap_snapshot(self, snapshot: str):
+        if self.capabilities.get(
+                "referenceNatureTrashHeapSessionSchemaId") != (
+                "sts2-v111-reference-nature-trash-heap-session-v1"):
+            raise EmulatorError(
+                "Emulator does not expose ReferenceNature Trash Heap sessions")
+        result = self.call("reference_nature_trash_heap_load",
+                           snapshot=snapshot)
+        return ReferenceNatureTrashHeapSession.from_wire(
+            self, result["result"])
+
+    def release_reference_nature_trash_heap_many(self, sessions):
+        sessions = list(sessions)
+        if any(item.session is not self for item in sessions):
+            raise ValueError(
+                "ReferenceNature Trash Heap handle belongs to another session")
+        return self.call(
+            "reference_nature_trash_heap_release_many",
+            reference_nature_trash_heap_handles=[
                 item.handle for item in sessions])["released"]
 
     def load_reference_nature_merchant_snapshot(self, snapshot: str):

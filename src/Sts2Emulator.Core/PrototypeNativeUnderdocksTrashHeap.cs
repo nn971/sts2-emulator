@@ -9,6 +9,10 @@ public static class PrototypeNativeUnderdocksTrashHeap
 {
     public const string EventId = "proto.native.underdocks.trash_heap";
     public const string NativeRngEventId = "TRASH_HEAP";
+    public const string CardRewardSiteId =
+        "event.trash_heap.card_reward.index_draw";
+    public const string RelicRewardSiteId =
+        "event.trash_heap.relic_reward.index_draw";
 
     public static string[] RelicIds { get; } =
     [
@@ -157,7 +161,7 @@ public sealed partial class PrototypeGameEngine
                 var draw = NativeEventContextRngV111.ResolveIndex(
                     state, evt,
                     PrototypeNativeUnderdocksTrashHeap.NativeRngEventId,
-                    "event.trash_heap.card_reward.index_draw",
+                    PrototypeNativeUnderdocksTrashHeap.CardRewardSiteId,
                     "event:trash_heap:cards",
                     PrototypeNativeUnderdocksTrashHeap.CardIds.Length);
                 state = draw.State;
@@ -196,7 +200,7 @@ public sealed partial class PrototypeGameEngine
                 var draw = NativeEventContextRngV111.ResolveIndex(
                     state, evt,
                     PrototypeNativeUnderdocksTrashHeap.NativeRngEventId,
-                    "event.trash_heap.relic_reward.index_draw",
+                    PrototypeNativeUnderdocksTrashHeap.RelicRewardSiteId,
                     "event:trash_heap:relics",
                     PrototypeNativeUnderdocksTrashHeap.RelicIds.Length);
                 state = draw.State;

@@ -21,7 +21,7 @@ from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = ROOT / "src" / "Sts2Emulator.Core"
-SCHEMA_ID = "emulator-rng-callsite-source-inventory-v5"
+SCHEMA_ID = "emulator-rng-callsite-source-inventory-v6"
 SITE_REGISTRY_PATH = SOURCE_ROOT / "StochasticSiteRegistryV111.cs"
 
 CALL_PATTERN = re.compile(
@@ -38,6 +38,12 @@ STRING_CONSTANT_PATTERN = re.compile(
 
 SITE_ARRAY_PATTERN = re.compile(
     r"\bstring\[\]\s+[A-Za-z_][A-Za-z0-9_]*\s*=\s*\[(?P<body>.*?)\];",
+    re.DOTALL,
+)
+
+SITE_ARRAY_PROPERTY_PATTERN = re.compile(
+    r"\bstring\[\]\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*=>\s*"
+    r"\[(?P<body>.*?)\];",
     re.DOTALL,
 )
 
@@ -155,6 +161,68 @@ def _resolve_site_value(
         if not candidates:
             candidates = global_constants.get(name, set())
     return next(iter(candidates)) if len(candidates) == 1 else None
+
+
+def _resolve_site_array_property(
+    expression: str,
+    global_constants: dict[str, set[str]],
+    active: frozenset[str] = frozenset(),
+) -> tuple[list[str], list[str]]:
+    """Resolve a spread of a source-owned string-array property.
+
+    The registry can compose its existing site lists without copying their
+    stable IDs. Follow those property references for the census as well.
+    """
+    reference = expression.strip()
+    if reference.startswith(".."):
+        reference = reference[2:].strip()
+    match = re.fullmatch(
+        r"(?P<class>[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*)\."
+        r"(?P<name>[A-Za-z_][A-Za-z0-9_]*)",
+        reference,
+    )
+    if match is None:
+        return [], [expression.strip()]
+    class_name = match.group("class").rsplit(".", 1)[-1]
+    property_name = match.group("name")
+    identity = f"{class_name}.{property_name}"
+    if identity in active:
+        return [], [expression.strip()]
+    class_file = SOURCE_ROOT / f"{class_name}.cs"
+    candidate_files = (
+        [class_file] if class_file.is_file()
+        else sorted(SOURCE_ROOT.rglob("*.cs"))
+    )
+    property_body = None
+    for candidate in candidate_files:
+        source = candidate.read_text(encoding="utf-8")
+        if not re.search(rf"\bclass\s+{re.escape(class_name)}\b", source):
+            continue
+        property_body = next((item.group("body")
+            for item in SITE_ARRAY_PROPERTY_PATTERN.finditer(source)
+            if item.group("name") == property_name), None)
+        if property_body is not None:
+            break
+    if property_body is None:
+        return [], [expression.strip()]
+
+    values: list[str] = []
+    unresolved: list[str] = []
+    next_active = active | {identity}
+    for item in _split_call_arguments(property_body):
+        if item.startswith(".."):
+            nested, missing = _resolve_site_array_property(
+                item, global_constants, next_active
+            )
+            values.extend(nested)
+            unresolved.extend(missing)
+            continue
+        site_id = _resolve_site_value(item, {}, global_constants)
+        if site_id is None:
+            unresolved.append(item)
+        else:
+            values.append(site_id)
+    return values, unresolved
 
 
 def _migration_matrix_site_rows() -> list[dict[str, Any]]:
@@ -315,6 +383,13 @@ def _registry_site_ids(
     unresolved: list[str] = []
     for array in SITE_ARRAY_PATTERN.finditer(registry_source):
         for expression in _split_call_arguments(array.group("body")):
+            if expression.startswith(".."):
+                values, missing = _resolve_site_array_property(
+                    expression, global_constants
+                )
+                site_ids.update(values)
+                unresolved.extend(missing)
+                continue
             site_id = _resolve_site_value(
                 expression, local_constants, global_constants
             )
