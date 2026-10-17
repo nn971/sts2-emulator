@@ -12,13 +12,16 @@ from __future__ import annotations
 import argparse
 import json
 import re
+import sys
+from collections import Counter
 from pathlib import Path
 from typing import Any
 
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = ROOT / "src" / "Sts2Emulator.Core"
-SCHEMA_ID = "emulator-rng-callsite-source-inventory-v2"
+SCHEMA_ID = "emulator-rng-callsite-source-inventory-v3"
+SITE_REGISTRY_PATH = SOURCE_ROOT / "StochasticSiteRegistryV111.cs"
 
 CALL_PATTERN = re.compile(
     r"\b(?P<api>PrototypeRng|NativeRngV111|NativeFisherYatesV111)"
@@ -30,6 +33,11 @@ CALL_PATTERN = re.compile(
 STRING_CONSTANT_PATTERN = re.compile(
     r"\bconst\s+string\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*=\s*"
     r'"(?P<value>[^"\\]*(?:\\.[^"\\]*)*)"\s*;'
+)
+
+SITE_ARRAY_PATTERN = re.compile(
+    r"\bstring\[\]\s+[A-Za-z_][A-Za-z0-9_]*\s*=\s*\[(?P<body>.*?)\];",
+    re.DOTALL,
 )
 
 
@@ -148,19 +156,40 @@ def _resolve_site_value(
     return next(iter(candidates)) if len(candidates) == 1 else None
 
 
-def _migration_matrix_site_ids() -> set[str]:
+def _migration_matrix_site_id_counts() -> dict[str, int]:
     matrix_path = ROOT / "docs" / "DESIRED_RNG_MIGRATION_STATUS.md"
-    site_ids: set[str] = set()
+    site_id_counts: Counter[str] = Counter()
     for line in matrix_path.read_text(encoding="utf-8").splitlines():
         match = re.match(r"\|\s*`([^`]+)`\s*\|", line)
         if match:
-            site_ids.add(match.group(1))
-    return site_ids
+            site_id_counts[match.group(1)] += 1
+    return dict(site_id_counts)
+
+
+def _registry_site_ids(
+    registry_source: str,
+    global_constants: dict[str, set[str]],
+) -> tuple[set[str], list[str]]:
+    """Resolve the site arrays already declared by the authoritative registry."""
+    local_constants = _string_constants(registry_source)
+    site_ids: set[str] = set()
+    unresolved: list[str] = []
+    for array in SITE_ARRAY_PATTERN.finditer(registry_source):
+        for expression in _split_call_arguments(array.group("body")):
+            site_id = _resolve_site_value(
+                expression, local_constants, global_constants
+            )
+            if site_id is None:
+                unresolved.append(expression)
+            else:
+                site_ids.add(site_id)
+    return site_ids, sorted(set(unresolved))
 
 
 def collect() -> dict[str, Any]:
     entries: list[dict[str, Any]] = []
-    matrix_site_ids = _migration_matrix_site_ids()
+    matrix_site_id_counts = _migration_matrix_site_id_counts()
+    matrix_site_ids = set(matrix_site_id_counts)
     sources = {
         path: path.read_text(encoding="utf-8")
         for path in sorted(SOURCE_ROOT.rglob("*.cs"))
@@ -169,6 +198,19 @@ def collect() -> dict[str, Any]:
     for source in sources.values():
         for name, values in _string_constants(source).items():
             string_constants.setdefault(name, set()).update(values)
+    registry_source = sources.get(SITE_REGISTRY_PATH)
+    if registry_source is None:
+        raise FileNotFoundError(SITE_REGISTRY_PATH)
+    registry_site_ids, unresolved_registry_references = _registry_site_ids(
+        registry_source, string_constants
+    )
+    registry_site_ids_without_matrix_rows = sorted(
+        registry_site_ids - matrix_site_ids
+    )
+    duplicate_matrix_site_ids = sorted(
+        site_id for site_id, count in matrix_site_id_counts.items()
+        if count > 1
+    )
     for path, source in sources.items():
         relative = path.relative_to(ROOT).as_posix()
         local_constants = _string_constants(source)
@@ -255,7 +297,9 @@ def collect() -> dict[str, Any]:
             "Direct qualified calls to PrototypeRng, NativeRngV111, and "
             "NativeFisherYatesV111 in Sts2Emulator.Core. This does not include "
             "indirect delegates, random provider interfaces, third-party/native "
-            "source callsites, or prove that every source operation is mapped."
+            "source callsites, or prove that every source operation is mapped. "
+            "The registry-to-matrix check only verifies that already-registered "
+            "site IDs have ledger rows."
         ),
         "total_direct_calls": len(entries),
         "counts_by_category": counts,
@@ -268,6 +312,15 @@ def collect() -> dict[str, Any]:
             for status in (
                 "mapped", "dynamic_expression", "unmapped", "missing"
             )
+        },
+        "registry_matrix_coverage": {
+            "registered_site_count": len(registry_site_ids),
+            "mapped_site_count": len(registry_site_ids & matrix_site_ids),
+            "site_ids_without_matrix_rows":
+                registry_site_ids_without_matrix_rows,
+            "duplicate_matrix_site_ids": duplicate_matrix_site_ids,
+            "unresolved_registry_references":
+                unresolved_registry_references,
         },
         "entries": entries,
     }
@@ -295,6 +348,15 @@ def render_markdown(report: dict[str, Any]) -> str:
         f"expressions: **{report['shuffle_matrix_mapping_counts']['dynamic_expression']}**; "
         f"unmapped: **{report['shuffle_matrix_mapping_counts']['unmapped']}**; "
         f"missing: **{report['shuffle_matrix_mapping_counts']['missing']}**.",
+        "ReferenceNature registry IDs mapped to migration-matrix rows: "
+        f"**{report['registry_matrix_coverage']['mapped_site_count']}/"
+        f"{report['registry_matrix_coverage']['registered_site_count']}**; "
+        f"IDs without rows: **{len(report['registry_matrix_coverage']['site_ids_without_matrix_rows'])}**; "
+        f"duplicate matrix IDs: **{len(report['registry_matrix_coverage']['duplicate_matrix_site_ids'])}**; "
+        f"unresolved registry references: **{len(report['registry_matrix_coverage']['unresolved_registry_references'])}**.",
+        "Regenerate this report with `python3 tools/rng_callsite_inventory.py "
+        "--check-registry-matrix --format markdown > "
+        "docs/RNG_DIRECT_CALLSITE_CENSUS.md`.",
         "Rows distinguish legacy prototype calls, native primitive calls, "
         "generic shuffle-helper calls, and recognized provider/fixture support. "
         "Shuffle rows include their `siteId` argument, resolved constant where "
@@ -334,8 +396,21 @@ def main() -> int:
         "--format", choices=("json", "markdown"), default="json",
         help="report format (default: json)",
     )
+    parser.add_argument(
+        "--check-registry-matrix", action="store_true",
+        help="fail on unresolved registry IDs, missing rows, or duplicate matrix IDs",
+    )
     args = parser.parse_args()
     report = collect()
+    if args.check_registry_matrix:
+        coverage = report["registry_matrix_coverage"]
+        if (coverage["registered_site_count"] == 0 or
+                coverage["site_ids_without_matrix_rows"] or
+                coverage["duplicate_matrix_site_ids"] or
+                coverage["unresolved_registry_references"]):
+            print(json.dumps(coverage, indent=2, sort_keys=True),
+                  file=sys.stderr)
+            return 1
     if args.format == "markdown":
         print(render_markdown(report), end="")
     else:
