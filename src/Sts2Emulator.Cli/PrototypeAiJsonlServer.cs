@@ -1421,8 +1421,8 @@ internal static class PrototypeAiJsonlServer
                                 .IsChanceLawQuerySite(siteId))
                             throw new NotSupportedException(
                                 $"Chance Law query does not support site '{siteId}'.");
-                        var law = ChanceLawEngineV111.QueryOrobasOffer(
-                            RequireState(request),
+                        var law = ChanceLawEngineV111.QueryAncientOffer(
+                            RequireState(request), siteId,
                             OptionalInt(request, "ordinal") ??
                                 throw new ArgumentException(
                                     "Request field 'ordinal' is required."));

@@ -104,13 +104,27 @@ public static class NativeAncientRewardsV111
         [GoldenCompassId, PumpkinCandleId, ToyBoxId, SealOfGoldId]
     ];
 
-    private static string[][] TezcataraPools(PlayerState player)
+    internal static string[][] TezcataraPools(PlayerState player)
     {
         var pools = CompleteTezcataraPools();
         if (!player.Deck.Any(card => PrototypeContent.Card(card.CardId).Rarity == PrototypeCardRarity.Basic
                 && PrototypeContent.Card(card.CardId).Tags?.Contains("Strike", StringComparer.Ordinal) == true))
             pools[0] = pools[0][..2];
         return pools;
+    }
+
+    internal static void ValidateTezcataraOpeningBoundary(RunState state)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        if (state.World is not { Act: 2, Floor: 0, Combat: null,
+                Reward: null, Event: null } world
+            || world.Map.CurrentNodeId is not null
+            || state.Phase != RunPhase.MapChoice
+            || world.EventIds.Contains(TezcataraId, StringComparer.Ordinal)
+            || world.EventIds.Contains(NativePaelRewardsV111.PaelId,
+                StringComparer.Ordinal))
+            throw new InvalidOperationException(
+                "Tezcatara requires an unvisited Hive Ancient boundary.");
     }
 
     internal static void ValidateEventContext(RunState state)
@@ -243,11 +257,8 @@ public static class NativeAncientRewardsV111
             throw new ArgumentException(
                 "Tezcatara offer generation requires a supported random provider mode.",
                 nameof(provider));
-        if (state.World is not { Act: 2, Floor: 0, Combat: null, Reward: null, Event: null } world
-            || world.Map.CurrentNodeId is not null || state.Phase != RunPhase.MapChoice
-            || world.EventIds.Contains(TezcataraId, StringComparer.Ordinal)
-            || world.EventIds.Contains(NativePaelRewardsV111.PaelId, StringComparer.Ordinal))
-            throw new InvalidOperationException("Tezcatara requires an unvisited Hive Ancient boundary.");
+        ValidateTezcataraOpeningBoundary(state);
+        var world = state.World!;
         var fork = state.Fork();
         var pools = TezcataraPools(fork.Player);
         var stream = NativeRngV111Contexts.ForEvent(fork.RunSeed, "TEZCATARA");

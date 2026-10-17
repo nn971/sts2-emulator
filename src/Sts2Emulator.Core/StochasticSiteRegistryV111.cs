@@ -177,7 +177,9 @@ public static class StochasticSiteRegistryV111
 
     private static readonly string[] ChanceLawQuerySites =
     [
-        NativeOrobasEventV111.OfferSiteId
+        NativeOrobasEventV111.OfferSiteId,
+        NativePaelRewardsV111.OfferSiteId,
+        NativeAncientRewardsV111.TezcataraOfferSiteId
     ];
 
     private static readonly HashSet<string> SemanticReferenceNatureSiteSet =

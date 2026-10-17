@@ -191,7 +191,7 @@ public static class ChanceLawEngineV111
     public const string CardShortlistConditioningPolicyId =
         "uniform-sequential-without-replacement-v1";
     public const string EventOfferConditioningPolicyId =
-        "uniform-ordered-event-offer-support-v1";
+        "uniform-ordered-event-offer-entry-v1";
 
     public static ChanceLawV111 QueryIntent(SemanticIntentEventV111 intent)
     {
@@ -274,28 +274,73 @@ public static class ChanceLawEngineV111
     }
 
     /// <summary>
-    /// Query Orobas's pre-event offer law over stable choice identities. The
-    /// same eligible support builder is used by the opening resolver; neither
-    /// a selected index nor private RNG state enters this query.
+    /// Query a pre-event ancient offer law over stable choice identities.
+    /// The same ordered pool builders and opening boundaries are used by the
+    /// event resolvers. Repeated entries remain probability mass on the same
+    /// choice; a selected index and private RNG state never enter the query.
     /// </summary>
-    public static ChanceLawV111 QueryOrobasOffer(
-        RunState run, int ordinal)
+    public static ChanceLawV111 QueryAncientOffer(
+        RunState run, string siteId, int ordinal)
     {
         ArgumentNullException.ThrowIfNull(run);
-        NativeOrobasEventV111.ValidateOpeningBoundary(run);
-        var siteId = NativeOrobasEventV111.OfferSiteId;
-        var ownerId = "event:OROBAS:act:2:floor:0";
-        var candidates = NativeOrobasEventV111.OfferCandidateIds(
-            run.Player, ordinal);
-        var outcomes = candidates.Select(choiceId =>
-            new ChanceLawOutcomeV111("event_choice:" + choiceId, 1L))
-            .ToArray();
+        ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
+        string ownerId;
+        string[] candidates;
+        if (siteId == NativeOrobasEventV111.OfferSiteId)
+        {
+            NativeOrobasEventV111.ValidateOpeningBoundary(run);
+            ownerId = "event:OROBAS:act:2:floor:0";
+            candidates = NativeOrobasEventV111.OfferCandidateIds(
+                run.Player, ordinal);
+        }
+        else if (siteId == NativePaelRewardsV111.OfferSiteId)
+        {
+            NativePaelRewardsV111.ValidateOpeningBoundary(run);
+            ownerId = "event:PAEL:act:2:floor:0";
+            var pools = NativePaelRewardsV111.OfferPools(run.Player);
+            if (ordinal < 0 || ordinal >= pools.Length)
+                throw new ArgumentOutOfRangeException(nameof(ordinal));
+            candidates = pools[ordinal].Select(id => "take_" + id).ToArray();
+        }
+        else if (siteId == NativeAncientRewardsV111.TezcataraOfferSiteId)
+        {
+            NativeAncientRewardsV111.ValidateTezcataraOpeningBoundary(run);
+            ownerId = "event:TEZCATARA:act:2:floor:0";
+            var pools = NativeAncientRewardsV111.TezcataraPools(run.Player);
+            if (ordinal < 0 || ordinal >= pools.Length)
+                throw new ArgumentOutOfRangeException(nameof(ordinal));
+            candidates = pools[ordinal].Select(id => "take_" + id).ToArray();
+        }
+        else
+        {
+            throw new NotSupportedException(
+                $"Ancient offer query does not support site '{siteId}'.");
+        }
+
+        var orderedChoiceIds = candidates;
+        var weights = new Dictionary<string, long>(StringComparer.Ordinal);
+        var outcomeOrder = new List<string>();
+        foreach (var choiceId in orderedChoiceIds)
+        {
+            var outcomeId = "event_choice:" + choiceId;
+            if (!weights.TryGetValue(outcomeId, out var weight))
+            {
+                weights.Add(outcomeId, 1L);
+                outcomeOrder.Add(outcomeId);
+            }
+            else
+            {
+                weights[outcomeId] = checked(weight + 1L);
+            }
+        }
+        var outcomes = outcomeOrder.Select(outcomeId =>
+            new ChanceLawOutcomeV111(outcomeId, weights[outcomeId])).ToArray();
         var conditioningFingerprint = CanonicalJson.Sha256(new
         {
             siteId,
             ownerId,
             ordinal,
-            CandidateChoiceIds = candidates,
+            CandidateChoiceIds = orderedChoiceIds,
             policy = EventOfferConditioningPolicyId
         });
         var eventId = CanonicalJson.Sha256(new
@@ -309,8 +354,13 @@ public static class ChanceLawEngineV111
         return Create(eventId, siteId, "event_offer_index", ownerId,
             ordinal, EventOfferConditioningPolicyId,
             conditioningFingerprint,
-            "uniform-eligible-event-offer-pool-unverified", outcomes);
+            "uniform-ordered-event-offer-entries-unverified", outcomes);
     }
+
+    /// <summary>Compatibility entry point for the original query-only site.</summary>
+    public static ChanceLawV111 QueryOrobasOffer(
+        RunState run, int ordinal) => QueryAncientOffer(
+            run, NativeOrobasEventV111.OfferSiteId, ordinal);
 
     /// <summary>Query a controlled legacy run-action request without exposing
     /// the selected result. The event identity binds the action and request

@@ -228,6 +228,20 @@ public static class NativePaelRewardsV111
         return [first, doubled, third.ToArray()];
     }
 
+    internal static void ValidateOpeningBoundary(RunState state)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        if (state.World is not { Act: 2, Floor: 0, Combat: null,
+                Reward: null, Event: null } world
+            || world.Map.CurrentNodeId is not null
+            || state.Phase != RunPhase.MapChoice
+            || world.EventIds.Contains(PaelId, StringComparer.Ordinal)
+            || world.EventIds.Contains(NativeAncientRewardsV111.TezcataraId,
+                StringComparer.Ordinal))
+            throw new InvalidOperationException(
+                "Pael requires an unvisited Hive Ancient boundary.");
+    }
+
     public static bool HasEventPet(PlayerState player) =>
         PrototypeNativeEventPetRules.HasEventPet(player);
 
@@ -250,11 +264,8 @@ public static class NativePaelRewardsV111
             throw new ArgumentException(
                 "Pael offer generation requires a supported random provider mode.",
                 nameof(provider));
-        if (state.World is not { Act: 2, Floor: 0, Combat: null, Reward: null, Event: null } world
-            || world.Map.CurrentNodeId is not null || state.Phase != RunPhase.MapChoice
-            || world.EventIds.Contains(PaelId, StringComparer.Ordinal)
-            || world.EventIds.Contains(NativeAncientRewardsV111.TezcataraId, StringComparer.Ordinal))
-            throw new InvalidOperationException("Pael requires an unvisited Hive Ancient boundary.");
+        ValidateOpeningBoundary(state);
+        var world = state.World!;
 
         var fork = state.Fork();
         var stream = NativeRngV111Contexts.ForEvent(fork.RunSeed, "PAEL");
