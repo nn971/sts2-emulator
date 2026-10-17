@@ -12,6 +12,7 @@ public sealed partial class PrototypeGameEngine
         PrototypeOpeningCombatStage.PlayerTurnStarted,
         PrototypeOpeningCombatStage.BoneTeaAfterTurnStart,
         PrototypeOpeningCombatStage.AutoPrePlay,
+        PrototypeOpeningCombatStage.AfterAutoPrePlayPolicy,
         PrototypeOpeningCombatStage.ImbuedAutoPlay,
         PrototypeOpeningCombatStage.LateRelicAutoPlay,
         PrototypeOpeningCombatStage.Complete
@@ -51,9 +52,10 @@ public sealed partial class PrototypeGameEngine
                 var dispatched = DispatchCombatEvent(state.Player, combat,
                     new PrototypeCombatEvent(kind), state.Rng, allowSuspension: true);
                 state = state with { Player = dispatched.Player, World = world with { Combat = dispatched.Combat } };
-                if (kind == PrototypeCombatEventKind.AutoPrePlayPhaseEntered)
-                    state = ResolveHistoryCourseAutoPlay(state);
             }
+            else if (stage ==
+                PrototypeOpeningCombatStage.AfterAutoPrePlayPolicy)
+                state = ResolveHistoryCourseAutoPlay(state);
             else if (stage ==
                 PrototypeOpeningCombatStage.BoneTeaAfterTurnStart)
             {

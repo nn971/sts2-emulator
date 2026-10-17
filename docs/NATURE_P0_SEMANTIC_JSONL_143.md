@@ -456,9 +456,12 @@ Distilled Chaos to the seeded combat. Using it stages the requested top cards
 and pauses at an unresolved Nature draw identity when needed; resolving the
 ordinary `draw_card` Nature event resumes the staged `AutoPlayCombatCard`
 operations in order. These autoplayed cards do not dispatch `CardDrawn`
-hooks. The current boundary rejects a required draw-pile recycle and Mayhem's
-automatic-pipeline route, which need composed continuations. The draw law
-remains `UNVERIFIED`.
+hooks. Mayhem's `AutoPrePlay` route also resumes through its saved automatic
+pipeline cursor and preserves the History Course post-dispatch policy. A
+required draw-pile recycle creates a deferred Nature shuffle and continues
+through the same top-card event. The path still rejects after-shuffle relics
+that insert generated cards until their insertion continuation is composed.
+The draw law remains `UNVERIFIED`.
 
 Set `fixture_selection_card_id="proto.colorless.anointed"` to reach Anointed's
 `random_rare_to_hand_shuffle` event. Its `originalCardIds` and

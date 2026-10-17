@@ -8022,7 +8022,9 @@ public sealed partial class PrototypeGameEngine
                             "site=combat.autoplay.top_draw " +
                             "operation=requires_controlled_draw_continuation");
                     if (natureAutoplay &&
-                        combat.AutomaticPipelineContinuation is not null)
+                        combat.AutomaticPipelineContinuation is not null &&
+                        !IsMayhemTopAutoplayPipelineOperation(
+                            combat, operation))
                         throw new NotSupportedException(
                             "UNSUPPORTED_SEMANTIC_DECK " +
                             "site=combat.autoplay.top_draw " +
@@ -8049,12 +8051,6 @@ public sealed partial class PrototypeGameEngine
                              .Order().SequenceEqual(draw.Order())))
                         throw new InvalidDataException(
                             "Nature semantic deck is stale before top-draw autoplay.");
-                    if (natureAutoplay && count > draw.Count &&
-                        discard.Count > 0)
-                        throw new NotSupportedException(
-                            "UNSUPPORTED_SEMANTIC_DECK " +
-                            "site=combat.autoplay.top_draw " +
-                            "operation=recycle_requires_composed_continuation");
                     var staged = natureAutoplay
                         ? (operation.DeferredDrawnCardInstanceIds ?? []).ToList()
                         : new List<long>();
@@ -8072,6 +8068,33 @@ public sealed partial class PrototypeGameEngine
                             && discard.Count > 0)
                         {
                             if (semanticDeck is
+                                { Mode: SemanticDeckStateV111.NatureMode }
+                                natureRecycleDeck)
+                            {
+                                var perfectFit = discard.Where(id =>
+                                    RequireCombatCard(combat, id)
+                                        .Enchantment?.Kind ==
+                                        PrototypeCardEnchantmentKind.PerfectFit)
+                                    .ToArray();
+                                semanticDeck =
+                                    SemanticDeckEngineV111.RecycleNature(
+                                        natureRecycleDeck, discard, perfectFit);
+                                draw.AddRange(discard);
+                                discard.Clear();
+                                combat = SemanticDrawPileAdapterV111
+                                    .ApplyCommittedPhysicalMutation(
+                                        combat, draw.ToArray(), semanticDeck) with
+                                {
+                                    DiscardPile = []
+                                };
+                                if (ControlledAfterShuffleRelicInsertions(
+                                        combat).Length > 0)
+                                    throw new NotSupportedException(
+                                        "UNSUPPORTED_SEMANTIC_DECK " +
+                                        "site=combat.autoplay.top_draw " +
+                                        "operation=after_shuffle_insertion_requires_composed_continuation");
+                            }
+                            else if (semanticDeck is
                                 { Mode: SemanticDeckStateV111.NativeMode })
                             {
                                 var native = combat.NativeRng ??
@@ -8114,16 +8137,20 @@ public sealed partial class PrototypeGameEngine
                                             combat, shuffled)));
                             }
                             discard.Clear();
-                            combat = SemanticDrawPileAdapterV111
-                                .ApplyCommittedPhysicalMutation(
-                                    combat, draw.ToArray(), semanticDeck) with
+                            if (semanticDeck is not
+                                { Mode: SemanticDeckStateV111.NatureMode })
                             {
-                                DiscardPile = discard.ToArray()
-                            };
-                            combat = ApplyRelicAfterShuffleCards(combat, rng);
-                            semanticDeck = combat.SemanticDeck;
-                            draw = combat.DrawPile.ToList();
-                            discard = combat.DiscardPile.ToList();
+                                combat = SemanticDrawPileAdapterV111
+                                    .ApplyCommittedPhysicalMutation(
+                                        combat, draw.ToArray(), semanticDeck) with
+                                {
+                                    DiscardPile = discard.ToArray()
+                                };
+                                combat = ApplyRelicAfterShuffleCards(combat, rng);
+                                semanticDeck = combat.SemanticDeck;
+                                draw = combat.DrawPile.ToList();
+                                discard = combat.DiscardPile.ToList();
+                            }
                         }
 
                         if (draw.Count == 0)
@@ -8131,8 +8158,7 @@ public sealed partial class PrototypeGameEngine
                             break;
                         }
 
-                        var cardId =
-                            draw[^1];
+                        var cardId = draw[^1];
                         if (semanticDeck is not null)
                         {
                             if (semanticDeck.Mode ==
@@ -8200,12 +8226,28 @@ public sealed partial class PrototypeGameEngine
                                     "Native semantic order diverged before top-draw autoplay.");
                             (semanticDeck, var semanticCardId) =
                                 SemanticDeckEngineV111.DrawKnown(semanticDeck);
-                            if (semanticCardId != cardId)
+                            if (semanticDeck.Mode ==
+                                    SemanticDeckStateV111.NativeMode &&
+                                semanticCardId != cardId)
                                 throw new InvalidDataException(
                                     "Native semantic draw disagrees with the physical top card.");
+                            if (semanticDeck.Mode ==
+                                SemanticDeckStateV111.NatureMode)
+                            {
+                                cardId = semanticCardId;
+                                if (!draw.Remove(cardId))
+                                    throw new InvalidDataException(
+                                        "Revealed Nature card instance is absent from the autoplay draw pile.");
+                            }
+                            else
+                            {
+                                draw.RemoveAt(draw.Count - 1);
+                            }
                         }
-                        draw.RemoveAt(
-                            draw.Count - 1);
+                        else
+                        {
+                            draw.RemoveAt(draw.Count - 1);
+                        }
                         staged.Add(cardId);
                     }
 
@@ -14393,10 +14435,13 @@ public sealed partial class PrototypeGameEngine
         var draw = pending?.ControlledSemanticDraw;
         var continuation = pending?.OuterChoiceContinuation;
         var deck = combat.SemanticDeck;
+        bool mayhemPipelineDraw = pending is not null &&
+            IsMayhemTopAutoplayDrawContinuation(combat, pending);
         if (state.Phase != RunPhase.Combat ||
             combat is not { IsPlayerTurn: true,
-                AutomaticPipelineContinuation: null,
                 PendingKnowledgeDemonChoice: null } ||
+            (combat.AutomaticPipelineContinuation is not null &&
+             !mayhemPipelineDraw) ||
             pending is not { ChoiceId: "controlled_semantic_draw" } ||
             draw is null || continuation is null ||
             deck is not { Mode: SemanticDeckStateV111.NatureMode,
@@ -14428,6 +14473,8 @@ public sealed partial class PrototypeGameEngine
                 Player = resumed.Player,
                 World = world with { Combat = resumed.Combat }
             };
+            resumedState = ResumeAutomaticPipelineAfterChoiceResolution(
+                resumedState);
             if (resumedState.Phase == RunPhase.Combat &&
                 resumedState.World?.Combat is { } live &&
                 AllEnemiesDefeated(live))

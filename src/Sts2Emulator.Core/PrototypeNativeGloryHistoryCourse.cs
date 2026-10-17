@@ -33,7 +33,8 @@ public sealed partial class PrototypeGameEngine
             ?? throw new InvalidOperationException(
                 "History Course requires an active combat.");
 
-        if (combat.Turn <= 1
+        if (combat.PendingChoice is not null ||
+            combat.Turn <= 1
             || !combat.RelicStates.Any(relic =>
                 relic.RelicId == PrototypeNativeHiveEvents.HistoryCourseId)
             || combat.CounterState.LastOriginalAttackLastTurn is not

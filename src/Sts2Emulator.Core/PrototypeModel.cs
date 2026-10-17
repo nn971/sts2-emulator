@@ -375,7 +375,10 @@ public enum PrototypeOpeningCombatStage
     LateRelicAutoPlay,
     Complete,
     BoneTeaAfterTurnStart,
-    InitialEnemyIntents
+    InitialEnemyIntents,
+    // Appended to preserve serialized enum values. This is the native
+    // post-dispatch History Course policy boundary after AutoPrePlay.
+    AfterAutoPrePlayPolicy
 }
 
 public sealed record PrototypeAutomaticPipelineContinuationState(

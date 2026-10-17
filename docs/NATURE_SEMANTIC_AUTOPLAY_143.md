@@ -47,11 +47,13 @@ draw: it does not dispatch `CardDrawn` hooks. ReferenceNature and controlled
 resolvers use the existing conditional draw law; its equal remaining-pool
 weights remain `UNVERIFIED`.
 
-This boundary currently supports the manual potion action when the draw pile
-has enough cards to fulfill it; an empty pile with an empty discard produces
-no autoplay. It rejects a required discard recycle and the automatic-pipeline
-route used by Mayhem, since those need a composed recycle or pipeline
-continuation. A seeded semantic fixture can include Distilled Chaos with
+This boundary supports manual Distilled Chaos and Mayhem's automatic
+`AutoPrePlay` trigger. Mayhem resumes its saved pipeline after the event and
+preserves History Course's post-dispatch action. An empty draw pile with an
+empty discard produces no autoplay. A required recycle creates a deferred
+Nature shuffle and continues through the same top-card event. It still rejects
+relics that insert generated cards after shuffling until their insertion
+continuation is composed. A seeded semantic fixture can include Distilled Chaos with
 `fixture_top_autoplay_potion_id`.
 
 ## Limits and verification
