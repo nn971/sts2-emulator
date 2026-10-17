@@ -2446,7 +2446,7 @@ internal static class PrototypeAiJsonlServer
                             controlledRunActionSchemaId =
                                 ControlledRunActionEngineV111.SchemaId,
                             controlledRunActionScope =
-                                "legacy-run-start-map-event-shop-treasure-entry-shovel-overgrowth-combat-entry-and-supported-shop-purchase-effects",
+                                "legacy-run-start-map-event-shop-treasure-entry-shovel-overgrowth-combat-entry-potion-and-supported-shop-purchase-effects",
                             controlledRunActionSiteGroups = new
                             {
                                 runStartAndMapGeneration =
@@ -2468,7 +2468,7 @@ internal static class PrototypeAiJsonlServer
                                         .RunActionShovelSiteIds,
                                 legacyOvergrowthCombatEntry =
                                     StochasticSiteRegistryV111
-                                        .RunActionCombatSiteIds
+                                        .RunActionCombatEntrySiteIds
                             },
                             controlledRunActionMaximumInlineOutcomeActions =
                                 ControlledRunActionEngineV111

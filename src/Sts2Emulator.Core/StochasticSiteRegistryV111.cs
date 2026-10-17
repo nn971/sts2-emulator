@@ -261,6 +261,12 @@ public static class StochasticSiteRegistryV111
         NativeFisherYatesV111.SiteId
     ];
 
+    private static readonly string[] RunActionCombatEntryPotionSites =
+    [
+        "potion.rarity_roll.ticket",
+        "potion.model_within_rarity.index_draw"
+    ];
+
     private static readonly string[] ControlledEventChoiceSites =
     [
         "event.random_upgrade.card_instance",
@@ -414,6 +420,7 @@ public static class StochasticSiteRegistryV111
         .Concat(RunActionTreasureSites)
         .Concat(RunActionShovelSites)
         .Concat(RunActionCombatSites)
+        .Concat(RunActionCombatEntryPotionSites)
         .Distinct(StringComparer.Ordinal)
         .ToArray();
     private static readonly string[] NatureChoiceSites =
@@ -424,6 +431,7 @@ public static class StochasticSiteRegistryV111
             .Concat(RunActionShopPurchaseSites)
             .Concat(RunActionTreasureSites)
             .Concat(RunActionCombatSites)
+            .Concat(RunActionCombatEntryPotionSites)
             .Concat(ControlledEventChoiceSites)
             .Concat(NativeMerchantSessionSites)
             .Concat(NativeTreasureSessionSites)
@@ -458,6 +466,11 @@ public static class StochasticSiteRegistryV111
         (string[])RunActionShovelSites.Clone();
     public static string[] RunActionCombatSiteIds =>
         (string[])RunActionCombatSites.Clone();
+    public static string[] RunActionCombatEntryPotionSiteIds =>
+        (string[])RunActionCombatEntryPotionSites.Clone();
+    public static string[] RunActionCombatEntrySiteIds =>
+        RunActionCombatSites.Concat(RunActionCombatEntryPotionSites)
+            .Distinct(StringComparer.Ordinal).ToArray();
     public static string[] ControlledRunActionSiteIds =>
         (string[])RunActionSessionSites.Clone();
     public static string[] ControlledEventChoiceSiteIds =>
@@ -510,6 +523,14 @@ public static class StochasticSiteRegistryV111
 
     public static bool IsRunActionCombatSite(string siteId) =>
         RunActionCombatSites.Contains(siteId, StringComparer.Ordinal);
+
+    public static bool IsRunActionCombatEntryPotionSite(string siteId) =>
+        RunActionCombatEntryPotionSites.Contains(
+            siteId, StringComparer.Ordinal);
+
+    public static bool IsRunActionCombatEntrySite(string siteId) =>
+        IsRunActionCombatSite(siteId)
+        || IsRunActionCombatEntryPotionSite(siteId);
 
     public static bool IsControlledEventChoiceSite(string siteId) =>
         ControlledEventChoiceSiteSet.Contains(siteId);

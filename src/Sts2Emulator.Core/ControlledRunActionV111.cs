@@ -68,6 +68,9 @@ public sealed record ControlledRunActionTraceV111(
             var isCombatDraw = mapNodeAction
                 && ControlledEventChoiceReplayV111
                     .IsRunActionCombatSite(request.SiteId);
+            var isCombatPotionDraw = mapNodeAction
+                && ControlledEventChoiceReplayV111
+                    .IsRunActionCombatEntryPotionSite(request.SiteId);
             var isShopPurchaseDraw = shopPurchaseAction
                 && StochasticSiteRegistryV111
                     .IsRunActionShopPurchaseSite(request.SiteId);
@@ -76,6 +79,7 @@ public sealed record ControlledRunActionTraceV111(
                 || isEventEntryDraw
                 ? "event" : isShopDraw ? "shop"
                 : isTreasureDraw ? "reward"
+                : isCombatPotionDraw ? "event"
                 : isCombatDraw ? "combat"
                 : isBossDraw ? "combat" : "map";
             var validStream = isShopPurchaseDraw
@@ -86,7 +90,7 @@ public sealed record ControlledRunActionTraceV111(
                     request.SiteId)
                 : mapNodeAction
                     ? isEventEntryDraw || isShopDraw || isTreasureDraw
-                        || isCombatDraw
+                        || isCombatDraw || isCombatPotionDraw
                     : shopPurchaseAction
                         ? isShopPurchaseDraw
                     : ControlledEventChoiceReplayV111
@@ -103,12 +107,13 @@ public sealed record ControlledRunActionTraceV111(
                     ? Enumerable.Range(0, labels.Length).ToArray()
                     : (int[])request.OrderedCandidates.Clone();
             var omittedLabels = (isMapDraw || isEventEntryDraw || isShopDraw
-                || isTreasureDraw || isCombatDraw)
+                || isTreasureDraw || isCombatDraw || isCombatPotionDraw)
                 && request.SupportCount >
                     ControlledRunActionEngineV111.MaximumInlineOutcomeActions
                 && labels.Length == 0;
             var numericLabels = !(isMapDraw || isEventEntryDraw || isShopDraw
-                || isTreasureDraw || isCombatDraw || isShopPurchaseDraw)
+                || isTreasureDraw || isCombatDraw || isCombatPotionDraw
+                || isShopPurchaseDraw)
                 || omittedLabels || labels.SequenceEqual(
                 Enumerable.Range(0, labels.Length).Select(index =>
                     index.ToString(CultureInfo.InvariantCulture)),
@@ -366,6 +371,9 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                     .IsRunActionTreasureSite(PendingRequest.SiteId);
                 var combatSite = ControlledEventChoiceReplayV111
                     .IsRunActionCombatSite(PendingRequest.SiteId);
+                var combatPotionSite = ControlledEventChoiceReplayV111
+                    .IsRunActionCombatEntryPotionSite(
+                        PendingRequest.SiteId);
                 var legacyShopNode = node?.RoomType == PrototypeRoomType.Shop
                     && !PrototypeGameEngine.UsesNativeRegionalSystems(world);
                 var availableRelics = node?.RoomType == PrototypeRoomType.Treasure
@@ -391,11 +399,13 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                 if (!(node.RoomType == PrototypeRoomType.Event && eventEntrySite)
                     && !(legacyShopNode && shopSite)
                     && !(legacyTreasureNode && treasureSite)
-                    && !(legacyOvergrowthCombatNode && combatSite))
+                    && !(legacyOvergrowthCombatNode
+                        && (combatSite || combatPotionSite)))
                     throw new InvalidDataException(
                         "Controlled map-node frame has an unsupported chance site.");
                 expectedSite = PendingRequest.SiteId;
                 expectedStream = combatSite ? "combat"
+                    : combatPotionSite ? "event"
                     : shopSite ? "shop"
                     : treasureSite ? "reward" : "event";
                 expectedOwner = PendingRequest.OwnerId;
@@ -499,11 +509,15 @@ public sealed record PrototypeControlledRunActionContinuationV111(
             var isCombatDraw = ActionId == "choose_map_node"
                 && ControlledEventChoiceReplayV111
                     .IsRunActionCombatSite(request.SiteId);
+            var isCombatPotionDraw = ActionId == "choose_map_node"
+                && ControlledEventChoiceReplayV111
+                    .IsRunActionCombatEntryPotionSite(request.SiteId);
             var prefixStream = ActionId ==
                     PrototypeNativeRestSiteActionsV111.Dig
                 || isEventEntryDraw
                 ? "event" : isShopDraw ? "shop"
                 : isTreasureDraw ? "reward"
+                : isCombatPotionDraw ? "event"
                 : isCombatDraw ? "combat"
                 : isBossDraw ? "combat" : "map";
             var validSite = ActionId == "start_run"
@@ -511,7 +525,7 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                     request.SiteId)
                 : ActionId == "choose_map_node"
                     ? isEventEntryDraw || isShopDraw || isTreasureDraw
-                        || isCombatDraw
+                        || isCombatDraw || isCombatPotionDraw
                     : ControlledEventChoiceReplayV111
                         .IsRunActionShovelSite(request.SiteId);
             var prefixOwner = isBossDraw
@@ -526,12 +540,12 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                     ? Enumerable.Range(0, labels.Length).ToArray()
                     : (int[])request.OrderedCandidates.Clone();
             var omittedLabels = (isMapDraw || isEventEntryDraw || isShopDraw
-                || isTreasureDraw || isCombatDraw)
+                || isTreasureDraw || isCombatDraw || isCombatPotionDraw)
                 && request.SupportCount >
                     ControlledRunActionEngineV111.MaximumInlineOutcomeActions
                 && labels.Length == 0;
             var numericLabels = !(isMapDraw || isEventEntryDraw || isShopDraw
-                || isTreasureDraw || isCombatDraw)
+                || isTreasureDraw || isCombatDraw || isCombatPotionDraw)
                 || omittedLabels || labels.SequenceEqual(
                 Enumerable.Range(0, labels.Length).Select(index =>
                     index.ToString(CultureInfo.InvariantCulture)),
@@ -690,7 +704,7 @@ public static class ControlledRunActionEngineV111
             var replay = ControlledChanceContinuationExecutorV111.Resume(
                 source, [], checkpoint => engine.Step(checkpoint, action).State,
                 requestFilter: overgrowthCombatEntryAction
-                    ? IsLegacyOvergrowthCombatStreamRequest : null);
+                    ? IsLegacyOvergrowthCombatEntryRequest : null);
             if (replay.PendingChance is { } pendingChance)
             {
                 var supportedShopPurchaseSite = shopPurchaseAction
@@ -706,7 +720,7 @@ public static class ControlledRunActionEngineV111
                             .IsRunActionTreasureSite(pendingChance.Request.SiteId)
                         || overgrowthCombatEntryAction
                             && ControlledEventChoiceReplayV111
-                                .IsRunActionCombatSite(
+                                .IsRunActionCombatEntrySite(
                                     pendingChance.Request.SiteId));
                 var labelsValid = pendingChance.CandidateLabels is { } labels
                     && (supportedShopPurchaseSite
@@ -794,9 +808,12 @@ public static class ControlledRunActionEngineV111
                 && IsLegacyOvergrowthCombatRoom(source, node.RoomType));
     }
 
-    private static bool IsLegacyOvergrowthCombatStreamRequest(
+    internal static bool IsLegacyOvergrowthCombatEntryRequest(
         ControlledStochasticRequestV111 request) =>
-        request.StreamId == "combat";
+        request.StreamId == "combat"
+        || request.StreamId == "event"
+            && ControlledEventChoiceReplayV111
+                .IsRunActionCombatEntryPotionSite(request.SiteId);
 
     public static RunState Resolve(RunState source, int selectedIndex)
     {

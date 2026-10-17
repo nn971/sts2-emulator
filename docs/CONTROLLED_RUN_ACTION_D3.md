@@ -5,8 +5,9 @@ encounter draw, map choices that enter an Event node at supported legacy event
 entry draws, legacy Shop-node offer generation, eligible legacy Treasure-node
 relic selection, legal legacy Overgrowth Combat/Elite node entry, and the
 Shovel dig action at its unowned-relic draw. Overgrowth combat entry controls
-registered `combat`-stream requests through ordinary room initialization;
-requests on other streams retain their existing providers. Shop and Treasure
+registered `combat`-stream requests and the two legacy potion-factory index
+sites used by pre-combat relic hooks through ordinary room initialization;
+other requests and streams retain their existing providers. Shop and Treasure
 generation require non-native regional systems and a legacy run RNG. Treasure
 selection is not offered when Silver Crucible suppresses the first treasure or
 the legacy relic pool is exhausted. The boundary uses ordinary run-state
@@ -75,11 +76,12 @@ without a cursor retain `sts2-exact-snapshot-v1`.
 The session supports the `start_run` boss encounter draw, legacy map
 Event-node entry draws, seven `shop.*` sites in legacy Shop-node generation,
 the `treasure.relic_model.index_draw` legacy Treasure-node site, registered
-combat-stream requests during legal legacy Overgrowth Combat/Elite node entry,
-and Shovel's unowned-relic draw. Combat entry covers Overgrowth encounter-pool
-selection, formation, initial unique-enemy HP, initial committed intents, and
-opening draw-pile shuffle sites listed below. Filtered replay leaves other
-streams on their existing providers; an unregistered combat-stream request
+combat-stream requests and the two legacy potion-factory index requests during
+legal legacy Overgrowth Combat/Elite node entry, and Shovel's unowned-relic
+draw. Combat entry covers Overgrowth encounter-pool selection, formation,
+initial unique-enemy HP, initial committed intents, opening draw-pile shuffle,
+and pre-combat relic potion generation. Filtered replay leaves unrelated
+requests on their existing providers; an unregistered combat-stream request
 remains unsupported and fails closed. The same ReferenceNature run-action session also accepts
 `buy_card`, `buy_potion`, `replace_shop_potion`, `remove_card`, and `buy_relic`
 Shop actions. Actions with no random request commit immediately with an empty
@@ -140,11 +142,14 @@ The supported legacy Overgrowth combat-entry sites are:
 - `combat.initial_unique_hp`
 - `combat.committed_intent.index_draw`
 - `combat.draw_pile.shuffle.swap`
+- `potion.rarity_roll.ticket` (pre-combat relic potion generation only)
+- `potion.model_within_rarity.index_draw` (pre-combat relic potion generation only)
 
 This entry boundary requires Act 1 Overgrowth's legacy encounter pool and
 excludes configured Native runs, Underdocks and later-act encounters. The
 generic request-index laws remain `UNVERIFIED` for source probabilities and
-stream parity.
+stream parity. The two `potion.*` requests use the legacy `event` stream and
+are intercepted only at this combat-entry boundary.
 
 The registered index-only Shop-purchase acquisition sites are:
 

@@ -4289,7 +4289,8 @@ public sealed partial class PrototypeGameEngine
                     "Controlled run action has no resume implementation.")
             },
             requestFilter: overgrowthCombatEntry
-                ? request => request.StreamId == "combat"
+                ? ControlledRunActionEngineV111
+                    .IsLegacyOvergrowthCombatEntryRequest
                 : null);
         if (replay.PendingChance is { } pendingChance)
         {
@@ -4305,7 +4306,7 @@ public sealed partial class PrototypeGameEngine
                         .IsRunActionTreasureSite(pendingChance.Request.SiteId)
                     || overgrowthCombatEntry
                         && ControlledEventChoiceReplayV111
-                            .IsRunActionCombatSite(
+                            .IsRunActionCombatEntrySite(
                                 pendingChance.Request.SiteId),
                 PrototypeNativeRestSiteActionsV111.Dig =>
                     ControlledEventChoiceReplayV111

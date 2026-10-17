@@ -914,12 +914,20 @@ internal sealed class ControlledEventChoiceReplayV111 :
     public static bool IsRunActionCombatSite(string siteId) =>
         StochasticSiteRegistryV111.IsRunActionCombatSite(siteId);
 
+    public static bool IsRunActionCombatEntryPotionSite(string siteId) =>
+        StochasticSiteRegistryV111
+            .IsRunActionCombatEntryPotionSite(siteId);
+
+    public static bool IsRunActionCombatEntrySite(string siteId) =>
+        StochasticSiteRegistryV111.IsRunActionCombatEntrySite(siteId);
+
     public static bool IsControlledReplaySite(string siteId) =>
         IsEventChoiceSite(siteId) || IsRunActionSite(siteId)
         || IsRunActionEventEntrySite(siteId)
         || IsRunActionShopSite(siteId)
         || IsRunActionShopPurchaseSite(siteId)
         || IsRunActionTreasureSite(siteId)
+        || IsRunActionCombatEntrySite(siteId)
         || IsRunActionCombatSite(siteId)
         || IsRunActionShovelSite(siteId);
 }
