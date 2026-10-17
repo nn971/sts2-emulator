@@ -39,6 +39,8 @@ The specialized `SemanticCombatDrawV111.Simulation` pairs `SemanticCombatDrawMec
 
 Controlled event/run-action, automatic enemy-action, and next-turn intent resumes share `ControlledRandomIndexReplayPrefixV111` for cursoring and exact typed-request replay. `PrototypeControlledRunActionContinuationV111.Simulation` now composes its partial run/action mechanics with `ControlledChanceContinuationStateV111`; event/run/enemy persisted provider payload otherwise remains grouped by that shared chance state, while the intent frame uses its own nullable pending-request envelope because completed intent frames retain a transcript without a pending request. Their boundary types preserve established flattened snapshot fields and boundary-specific rules: event replay normalizes prototype stream ordinals and attaches candidate labels, while combat replays check source requests against saved eligibility and the automatic pipeline.
 
+`ReferenceNatureRunCursorV111` owns run-scoped cursor initialization, validation against the session transcript, and commit publication across semantic-combat, run-action, and event-choice sessions. Boundary sessions retain their typed mechanics resolvers, while the sampler support check is shared by every ReferenceNature path.
+
 ## Semantic lifecycle and provider interchangeability
 
 The **same game mechanics** issues semantic stochastic operations and applies their resolved outcomes regardless of provider:

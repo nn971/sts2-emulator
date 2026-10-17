@@ -38,6 +38,8 @@ The census and matrix have different units. Census rows are source expressions; 
 | Scripted replay | Ordered typed request/outcome transcript | Replay provider | Privileged replay input; validates site, support and order | Does not claim native stream parity unless the transcript itself is native and audited |
 | Public observations | `PrototypeAiEnvironment` / versioned AI projections | Observation layer | Player-visible fields only; excludes hidden order, seed, RNG cursors and private candidate constraints | `prototype-ai-v0` remains unchanged; Nature and inspector projections are separate contracts |
 
+`ReferenceNatureRunCursorV111` centralizes run-scoped cursor initialization, transcript-count validation and committed-cursor publication for semantic-combat, run-action and event-choice sessions. `ReferenceNatureV111.SampleValidated` is the shared law-identity and ordered-support guard. This closes a provider-lifecycle duplication; it does not close the row-level S0 inventory audit or source-law calibration.
+
 ## Site-family crosswalk
 
 Use the stable row IDs in the migration matrix as the site-level index. These families describe their current responsibility boundary; a family label does not imply every row is implemented or supported.

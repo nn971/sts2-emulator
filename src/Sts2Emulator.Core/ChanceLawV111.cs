@@ -769,6 +769,70 @@ public sealed record ReferenceNatureStateV111(
     }
 }
 
+/// <summary>
+/// Shared lifecycle rules for ReferenceNature sessions attached to a run.
+/// Boundary sessions keep their mechanics and transcript types, but cursor
+/// initialization, publication, and run-cursor validation have one owner.
+/// </summary>
+internal static class ReferenceNatureRunCursorV111
+{
+    public static ReferenceNatureStateV111 Begin(
+        RunState source, ulong? seed, string boundary)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        var cursor = ReferenceNatureStateV111.ForRunSession(source, seed);
+        ValidateInitial(source, cursor, boundary);
+        return cursor;
+    }
+
+    public static void ValidateInitial(
+        RunState source,
+        ReferenceNatureStateV111 initial,
+        string boundary)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(initial);
+        if (source.ReferenceNatureState is { } saved &&
+            !initial.SameCursor(saved))
+            throw new InvalidOperationException(
+                $"{boundary} session cannot replace the run's ReferenceNature cursor.");
+    }
+
+    public static bool MatchesRunSession(
+        RunState origin,
+        RunState current,
+        ReferenceNatureStateV111 initial,
+        ReferenceNatureStateV111 cursor,
+        int decisionCount,
+        bool complete)
+    {
+        ArgumentNullException.ThrowIfNull(origin);
+        ArgumentNullException.ThrowIfNull(current);
+        ArgumentNullException.ThrowIfNull(initial);
+        ArgumentNullException.ThrowIfNull(cursor);
+
+        var initialMatchesOrigin = origin.ReferenceNatureState is not { } saved ||
+            initial.SameCursor(saved);
+        var pendingRunMatchesOrigin = origin.ReferenceNatureState is { } originCursor
+            ? originCursor.SameCursor(current.ReferenceNatureState)
+            : current.ReferenceNatureState is null;
+        var runMatchesCursor = complete
+            ? cursor.SameCursor(current.ReferenceNatureState)
+            : pendingRunMatchesOrigin;
+        return initialMatchesOrigin && runMatchesCursor &&
+            cursor.SampleCount == checked(initial.SampleCount + decisionCount);
+    }
+
+    public static RunState Commit(
+        RunState run, ReferenceNatureStateV111 cursor)
+    {
+        ArgumentNullException.ThrowIfNull(run);
+        ArgumentNullException.ThrowIfNull(cursor);
+        cursor.Validate();
+        return run with { ReferenceNatureState = cursor.Fork() };
+    }
+}
+
 public sealed record ReferenceNatureSelectionV111(
     string LawId, string EventId, string OutcomeId, int OutcomeIndex,
     ReferenceNatureStateV111 NextState);
@@ -804,15 +868,13 @@ public sealed record ReferenceNatureSessionV111(
         SemanticPilotCombatV111 combat, ulong? seed)
     {
         ArgumentNullException.ThrowIfNull(combat);
-        var natureState = ReferenceNatureStateV111.ForRunSession(
-            combat.Run, seed);
+        var natureState = ReferenceNatureRunCursorV111.Begin(
+            combat.Run, seed, "Semantic combat");
         if (combat.CombatTerminal &&
             !natureState.SameCursor(combat.Run.ReferenceNatureState))
         {
-            var committedRun = combat.Run with
-            {
-                ReferenceNatureState = natureState.Fork()
-            };
+            var committedRun = ReferenceNatureRunCursorV111.Commit(
+                combat.Run, natureState);
             combat = combat with
             {
                 Run = committedRun,
@@ -840,10 +902,8 @@ public sealed record ReferenceNatureSessionV111(
         var resolvedCombat = resolution.Combat;
         if (resolvedCombat.CombatTerminal)
         {
-            var committedRun = resolvedCombat.Run with
-            {
-                ReferenceNatureState = resolution.Selection.NextState
-            };
+            var committedRun = ReferenceNatureRunCursorV111.Commit(
+                resolvedCombat.Run, resolution.Selection.NextState);
             resolvedCombat = resolvedCombat with
             {
                 Run = committedRun,
@@ -960,12 +1020,14 @@ public sealed record ReferenceNatureRunActionSessionV111(
     public static ReferenceNatureRunActionSessionV111 Begin(
         RunState source, GameAction action, ulong seed) =>
         Begin(source, action,
-            ReferenceNatureStateV111.ForRunSession(source, seed));
+            ReferenceNatureRunCursorV111.Begin(
+                source, seed, "Run-action"));
 
     public static ReferenceNatureRunActionSessionV111 Begin(
         RunState source, GameAction action) =>
         Begin(source, action,
-            ReferenceNatureStateV111.ForRunSession(source, null));
+            ReferenceNatureRunCursorV111.Begin(
+                source, null, "Run-action"));
 
     private static ReferenceNatureRunActionSessionV111 Begin(
         RunState source, GameAction action,
@@ -974,10 +1036,8 @@ public sealed record ReferenceNatureRunActionSessionV111(
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(action);
         ArgumentNullException.ThrowIfNull(initialNatureState);
-        if (source.ReferenceNatureState is { } sourceNatureState &&
-            !initialNatureState.SameCursor(sourceNatureState))
-            throw new InvalidOperationException(
-                "Run-action session cannot replace the run's ReferenceNature cursor.");
+        ReferenceNatureRunCursorV111.ValidateInitial(
+            source, initialNatureState, "Run-action");
         var detachedAction = CloneAction(action);
         var run = ControlledRunActionEngineV111.Begin(
             source.Fork(), detachedAction);
@@ -987,10 +1047,8 @@ public sealed record ReferenceNatureRunActionSessionV111(
         if (session.Complete)
             session = session with
             {
-                Run = session.Run with
-                {
-                    ReferenceNatureState = initialNatureState.Fork()
-                }
+                Run = ReferenceNatureRunCursorV111.Commit(
+                    session.Run, initialNatureState)
             };
         session.Validate();
         return session;
@@ -1015,19 +1073,12 @@ public sealed record ReferenceNatureRunActionSessionV111(
     {
         Validate();
         var law = ChanceLawEngineV111.QueryControlledRunAction(Run);
-        var selection = ReferenceNatureV111.Sample(law, NatureState);
-        if (selection.EventId != law.EventId || selection.OutcomeIndex < 0 ||
-            selection.OutcomeIndex >= law.Outcomes.Length ||
-            selection.OutcomeId != law.Outcomes[selection.OutcomeIndex].OutcomeId)
-            throw new InvalidDataException(
-                "ReferenceNature run-action law no longer matches its saved support.");
+        var selection = ReferenceNatureV111.SampleValidated(law, NatureState);
         var resolvedRun = ControlledRunActionEngineV111.Resolve(
             Run.Fork(), selection.OutcomeIndex);
         if (resolvedRun.ControlledRunActionChoice is null)
-            resolvedRun = resolvedRun with
-            {
-                ReferenceNatureState = selection.NextState
-            };
+            resolvedRun = ReferenceNatureRunCursorV111.Commit(
+                resolvedRun, selection.NextState);
         var next = this with
         {
             Run = resolvedRun,
@@ -1054,20 +1105,11 @@ public sealed record ReferenceNatureRunActionSessionV111(
         PrototypeStateInvariants.Validate(Run);
         InitialNatureState.Validate();
         NatureState.Validate();
-        var runCursorMatchesOrigin = Origin.ReferenceNatureState is { } originCursor
-            ? originCursor.SameCursor(Run.ReferenceNatureState)
-            : Run.ReferenceNatureState is null;
-        if ((Origin.ReferenceNatureState is { } originNatureState &&
-             !InitialNatureState.SameCursor(originNatureState)) ||
-            (Complete
-                ? !NatureState.SameCursor(Run.ReferenceNatureState)
-                : !runCursorMatchesOrigin))
+        if (!ReferenceNatureRunCursorV111.MatchesRunSession(
+                Origin, Run, InitialNatureState, NatureState,
+                DecisionTranscript.Length, Complete))
             throw new InvalidDataException(
                 "ReferenceNature run-action cursor differs from the run envelope.");
-        if (NatureState.SampleCount != checked(
-                InitialNatureState.SampleCount + DecisionTranscript.Length))
-            throw new InvalidDataException(
-                "ReferenceNature run-action sampler cursor differs from its transcript.");
         for (int index = 0; index < DecisionTranscript.Length; index++)
             DecisionTranscript[index].Validate();
 
@@ -1257,12 +1299,14 @@ public sealed record ReferenceNatureControlledEventChoiceSessionV111(
     public static ReferenceNatureControlledEventChoiceSessionV111 Begin(
         RunState source, string choiceId, ulong seed) =>
         Begin(source, choiceId,
-            ReferenceNatureStateV111.ForRunSession(source, seed));
+            ReferenceNatureRunCursorV111.Begin(
+                source, seed, "Event-choice"));
 
     public static ReferenceNatureControlledEventChoiceSessionV111 Begin(
         RunState source, string choiceId) =>
         Begin(source, choiceId,
-            ReferenceNatureStateV111.ForRunSession(source, null));
+            ReferenceNatureRunCursorV111.Begin(
+                source, null, "Event-choice"));
 
     private static ReferenceNatureControlledEventChoiceSessionV111 Begin(
         RunState source, string choiceId,
@@ -1271,10 +1315,8 @@ public sealed record ReferenceNatureControlledEventChoiceSessionV111(
         ArgumentNullException.ThrowIfNull(source);
         ArgumentException.ThrowIfNullOrWhiteSpace(choiceId);
         ArgumentNullException.ThrowIfNull(initialNatureState);
-        if (source.ReferenceNatureState is { } sourceNatureState &&
-            !initialNatureState.SameCursor(sourceNatureState))
-            throw new InvalidOperationException(
-                "Event-choice session cannot replace the run's ReferenceNature cursor.");
+        ReferenceNatureRunCursorV111.ValidateInitial(
+            source, initialNatureState, "Event-choice");
         var run = ControlledEventChoiceEngineV111.Begin(
             source.Fork(), choiceId);
         var session = new ReferenceNatureControlledEventChoiceSessionV111(
@@ -1283,10 +1325,8 @@ public sealed record ReferenceNatureControlledEventChoiceSessionV111(
         if (session.Complete)
             session = session with
             {
-                Run = session.Run with
-                {
-                    ReferenceNatureState = initialNatureState.Fork()
-                }
+                Run = ReferenceNatureRunCursorV111.Commit(
+                    session.Run, initialNatureState)
             };
         session.Validate();
         return session;
@@ -1312,12 +1352,7 @@ public sealed record ReferenceNatureControlledEventChoiceSessionV111(
             throw new InvalidOperationException(
                 "No controlled event Nature outcome is pending.");
         var law = ChanceLawEngineV111.QueryControlledEventChoice(Run);
-        var selection = ReferenceNatureV111.Sample(law, NatureState);
-        if (selection.EventId != law.EventId || selection.OutcomeIndex < 0 ||
-            selection.OutcomeIndex >= law.Outcomes.Length ||
-            selection.OutcomeId != law.Outcomes[selection.OutcomeIndex].OutcomeId)
-            throw new InvalidDataException(
-                "ReferenceNature event law no longer matches its saved support.");
+        var selection = ReferenceNatureV111.SampleValidated(law, NatureState);
         var resolvedRun = ControlledEventChoiceEngineV111.Resolve(
             Run.Fork(), selection.OutcomeIndex);
         var next = this with
@@ -1367,10 +1402,8 @@ public sealed record ReferenceNatureControlledEventChoiceSessionV111(
         if (next.Complete)
             next = next with
             {
-                Run = next.Run with
-                {
-                    ReferenceNatureState = NatureState.Fork()
-                }
+                Run = ReferenceNatureRunCursorV111.Commit(
+                    next.Run, NatureState)
             };
         next.Validate();
         return next;
@@ -1390,21 +1423,12 @@ public sealed record ReferenceNatureControlledEventChoiceSessionV111(
         PrototypeStateInvariants.Validate(Run);
         InitialNatureState.Validate();
         NatureState.Validate();
-        var runCursorMatchesOrigin = Origin.ReferenceNatureState is { } originCursor
-            ? originCursor.SameCursor(Run.ReferenceNatureState)
-            : Run.ReferenceNatureState is null;
-        if ((Origin.ReferenceNatureState is { } originNatureState &&
-             !InitialNatureState.SameCursor(originNatureState)) ||
-            (Complete
-                ? !NatureState.SameCursor(Run.ReferenceNatureState)
-                : !runCursorMatchesOrigin))
+        var decisions = DecisionTranscript;
+        if (!ReferenceNatureRunCursorV111.MatchesRunSession(
+                Origin, Run, InitialNatureState, NatureState,
+                decisions.Length, Complete))
             throw new InvalidDataException(
                 "ReferenceNature event-choice cursor differs from the run envelope.");
-        var decisions = DecisionTranscript;
-        if (NatureState.SampleCount != checked(
-                InitialNatureState.SampleCount + decisions.Length))
-            throw new InvalidDataException(
-                "ReferenceNature event-choice sampler cursor differs from its transcript.");
         foreach (var step in Steps)
             step.Validate();
 
@@ -1541,7 +1565,7 @@ public static class ReferenceNatureV111
             var intentEvent = SemanticPilotCombatEngineV111
                 .DescribePendingIntentEvent(combat);
             var law = ChanceLawEngineV111.QueryIntent(intentEvent);
-            var selection = Sample(law, state);
+            var selection = SampleValidated(law, state);
             var child = SemanticPilotCombatEngineV111.ResolveIntent(
                 combat, combat.Fingerprint, selection.OutcomeId);
             return new ReferenceNatureResolutionV111(child, law, selection);
@@ -1551,7 +1575,7 @@ public static class ReferenceNatureV111
         {
             var law = ChanceLawEngineV111.QueryEndTurnIndex(
                 enemyActionEvent);
-            var selection = Sample(law, state);
+            var selection = SampleValidated(law, state);
             if (selection.EventId != enemyActionEvent.EventId ||
                 selection.OutcomeIndex < 0 ||
                 selection.OutcomeIndex >=
@@ -1569,7 +1593,7 @@ public static class ReferenceNatureV111
         if (combat.TargetPending is { } targetEvent)
         {
             var law = ChanceLawEngineV111.QueryTarget(targetEvent);
-            var selection = Sample(law, state);
+            var selection = SampleValidated(law, state);
             if (selection.EventId != targetEvent.EventId ||
                 selection.OutcomeIndex < 0 ||
                 selection.OutcomeIndex >=
@@ -1588,7 +1612,7 @@ public static class ReferenceNatureV111
         {
             var law = ChanceLawEngineV111.QueryGeneratedCard(
                 generatedCardEvent);
-            var selection = Sample(law, state);
+            var selection = SampleValidated(law, state);
             if (selection.EventId != generatedCardEvent.EventId ||
                 selection.OutcomeIndex < 0 ||
                 selection.OutcomeIndex >=
@@ -1606,7 +1630,7 @@ public static class ReferenceNatureV111
         if (combat.CostPending is { } costEvent)
         {
             var law = ChanceLawEngineV111.QueryCost(costEvent);
-            var selection = Sample(law, state);
+            var selection = SampleValidated(law, state);
             if (selection.EventId != costEvent.EventId ||
                 selection.OutcomeIndex < 0 ||
                 selection.OutcomeIndex >= costEvent.CandidateCosts.Length)
@@ -1624,7 +1648,7 @@ public static class ReferenceNatureV111
         {
             var law = ChanceLawEngineV111.QueryRandomPileCard(
                 randomPileCardEvent);
-            var selection = Sample(law, state);
+            var selection = SampleValidated(law, state);
             if (selection.EventId != randomPileCardEvent.EventId ||
                 selection.OutcomeIndex < 0 ||
                 selection.OutcomeIndex >=
@@ -1642,7 +1666,7 @@ public static class ReferenceNatureV111
         if (combat.CardTransformPending is { } transformEvent)
         {
             var law = ChanceLawEngineV111.QueryCardTransform(transformEvent);
-            var selection = Sample(law, state);
+            var selection = SampleValidated(law, state);
             if (selection.EventId != transformEvent.EventId ||
                 selection.OutcomeIndex < 0 ||
                 selection.OutcomeIndex >=
@@ -1659,7 +1683,7 @@ public static class ReferenceNatureV111
         if (combat.PotionGenerationPending is { } potionEvent)
         {
             var law = ChanceLawEngineV111.QueryPotionGeneration(potionEvent);
-            var selection = Sample(law, state);
+            var selection = SampleValidated(law, state);
             if (selection.EventId != potionEvent.EventId ||
                 selection.OutcomeIndex < 0 ||
                 selection.OutcomeIndex >= potionEvent.CandidatePotionIds.Length)
@@ -1676,7 +1700,7 @@ public static class ReferenceNatureV111
         {
             var law = ChanceLawEngineV111.QueryHandCostSelection(
                 handCostEvent);
-            var selection = Sample(law, state);
+            var selection = SampleValidated(law, state);
             if (selection.EventId != handCostEvent.EventId ||
                 selection.OutcomeIndex < 0 ||
                 selection.OutcomeIndex >=
@@ -1695,7 +1719,7 @@ public static class ReferenceNatureV111
         if (combat.PoolShufflePending is { } poolShuffleEvent)
         {
             var law = ChanceLawEngineV111.QueryPoolShuffle(poolShuffleEvent);
-            var selection = Sample(law, state);
+            var selection = SampleValidated(law, state);
             if (selection.EventId != poolShuffleEvent.EventId ||
                 selection.OutcomeIndex < 0 ||
                 selection.OutcomeIndex >= poolShuffleEvent.Request.SupportCount)
@@ -1710,7 +1734,7 @@ public static class ReferenceNatureV111
         if (combat.DrawInsertionPending is { } insertionEvent)
         {
             var law = ChanceLawEngineV111.QueryDrawInsertion(insertionEvent);
-            var selection = Sample(law, state);
+            var selection = SampleValidated(law, state);
             if (selection.EventId != insertionEvent.EventId ||
                 selection.OutcomeIndex < 0 ||
                 selection.OutcomeIndex >= insertionEvent.Request.SupportCount)
@@ -1725,7 +1749,7 @@ public static class ReferenceNatureV111
         if (combat.CardShortlistPending is { } shortlistEvent)
         {
             var law = ChanceLawEngineV111.QueryCardShortlist(shortlistEvent);
-            var selection = Sample(law, state);
+            var selection = SampleValidated(law, state);
             if (selection.EventId != shortlistEvent.EventId ||
                 selection.OutcomeIndex < 0 ||
                 selection.OutcomeIndex >=
@@ -1746,7 +1770,7 @@ public static class ReferenceNatureV111
                 throw new InvalidDataException(
                     "Pending semantic draw lost its provider-owned deck.");
             var law = ChanceLawEngineV111.QueryDraw(deck);
-            var selection = Sample(law, state);
+            var selection = SampleValidated(law, state);
             if (selection.EventId != drawEvent.EventId ||
                 selection.OutcomeIndex < 0 ||
                 selection.OutcomeIndex >= drawEvent.CandidateCardInstanceIds.Length)
@@ -1766,7 +1790,7 @@ public static class ReferenceNatureV111
                 throw new InvalidDataException(
                     "Pending semantic reveal lost its provider-owned deck.");
             var law = ChanceLawEngineV111.QueryDeckReveal(deck);
-            var selection = Sample(law, state);
+            var selection = SampleValidated(law, state);
             if (selection.EventId != revealEvent.EventId ||
                 selection.OutcomeIndex < 0 ||
                 selection.OutcomeIndex >=
@@ -1786,6 +1810,21 @@ public static class ReferenceNatureV111
 
         throw new NotSupportedException(
             "UNSUPPORTED_REFERENCE_NATURE site=no_supported_pending_event");
+    }
+
+    public static ReferenceNatureSelectionV111 SampleValidated(
+        ChanceLawV111 law, ReferenceNatureStateV111 state)
+    {
+        var selection = Sample(law, state);
+        if (selection.LawId != law.LawId ||
+            selection.EventId != law.EventId ||
+            selection.OutcomeIndex < 0 ||
+            selection.OutcomeIndex >= law.Outcomes.Length ||
+            selection.OutcomeId !=
+                law.Outcomes[selection.OutcomeIndex].OutcomeId)
+            throw new InvalidDataException(
+                "ReferenceNature sample does not match the queried Chance Law support.");
+        return selection;
     }
 
     public static ReferenceNatureSelectionV111 Sample(
