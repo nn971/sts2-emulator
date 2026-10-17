@@ -131,9 +131,23 @@ The Reflections downgrade and upgrade, Infested Automaton card-pick, Endless
 Conveyor card-index, and pinned Native generated-gold index laws mark their
 bounded-index transform `SOURCE_VERIFIED` on the declared support. Lost Wisp
 and Jungle Maze Adventure gold laws mark their unit-float-to-integer mappings
-`SOURCE_VERIFIED` on the three declared formulas. Infested Automaton's pool remains restricted to
-supported cards, and Endless Conveyor's Colorless pool remains restricted to
-implemented solo-safe models. A pinned event RNG seed
+`SOURCE_VERIFIED` on the three declared formulas. The Trial's three-case
+bounded-index transform is `SOURCE_VERIFIED`; its Chance Law query does not
+inspect the event cursor, while atomic-session admission separately requires
+the untouched entry cursor for replay. Stone of All Time's two ignored ticket
+results map to a single `no_effect` outcome, and its potion-slot index is
+source-verified on the occupied-slot support. Future of Potions card-type
+indices are source-verified for each declared rarity-derived support. Infested
+Automaton's pool remains restricted to supported cards, and Endless
+Conveyor's Colorless pool remains restricted to implemented solo-safe models.
+A source-ordered Trash Heap card or relic pool has exact bounded-index
+preimages; those queries do not read the event cursor, while the atomic
+session checks that replay begins at the untouched event-entry cursor.
+Tablet of Truth also counts exact bounded-index preimages for each ordered
+eligible physical-card support without using the run seed or saved cursor in
+the law; its page-by-page scripted session preserves the cursor captured at
+that page's boundary.
+A pinned event RNG seed
 derivation and a persisted cursor establish provider ownership, not seed
 frequencies, source-pool completeness, or call-order parity. Other remaining
 linked rows stay **UNVERIFIED**; no event helper match or source-shaped

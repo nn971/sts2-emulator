@@ -13,8 +13,13 @@ The session requires a configured Native event context and the initial
 Trash Heap event stream. The scripted replay leaves that Native event cursor
 unchanged. The completed EventState records `scripted-v111`; its invariant
 checks the unchanged entry cursor, terminal choice, and selected pool result.
-The laws are uniform over the modeled pool indices and remain `UNVERIFIED`
-against the installed game.
+The laws count exact Native `NextInt` preimages on the uniform 53-bit
+`NextDouble` grid for each declared source-ordered pool. The bounded-index
+transform is `SOURCE_VERIFIED` under that input model; event-pool completeness,
+stream attribution, seed frequencies, and Native cursor parity remain separate
+claims. The read-only Chance Law query does not inspect the saved Native event
+cursor; only session admission checks the untouched entry cursor required by
+scripted replay.
 
 ## JSONL operations
 

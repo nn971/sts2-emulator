@@ -15,8 +15,8 @@ internal static class TabletOfTruthChoicePlanBuilderV111
     public static TabletOfTruthChoicePlanV111 Build(RunState origin)
     {
         ArgumentNullException.ThrowIfNull(origin);
-        if (string.IsNullOrWhiteSpace(origin.RunSeed) ||
-            origin.NativeRunRng is null || origin.Phase != RunPhase.Event ||
+        if (origin.NativeRunRng is null ||
+            origin.Phase != RunPhase.Event ||
             origin.World?.Event is not { } evt ||
             evt.EventId != PrototypeNativeTabletOfTruth.EventId ||
             evt.NativePageIndex is < 0 or > 3 ||
@@ -49,21 +49,20 @@ internal static class TabletOfTruthChoicePlanBuilderV111
             throw new InvalidOperationException(
                 "Tablet of Truth decipher is not legal on the current page.");
 
-        var expectedStream = NativeRngV111Contexts.ForEvent(
-            origin.RunSeed, PrototypeNativeTabletOfTruth.NativeRngEventId);
+        var streamId = NativeRngV111Contexts.EventStreamId(
+            PrototypeNativeTabletOfTruth.NativeRngEventId);
         if (evt.NativeEventRng is { } savedStream &&
-            savedStream.StreamId != expectedStream.StreamId)
+            savedStream.StreamId != streamId)
             throw new InvalidOperationException(
                 "Tablet of Truth has the wrong Native event stream context.");
         if (evt.NativeEventRng is null && page != 0)
             throw new InvalidOperationException(
                 "Tablet of Truth cannot reconstruct a missing event stream after page progress.");
-        var stream = evt.NativeEventRng ?? expectedStream;
         var ownerId = "event:tablet_of_truth:eligible_cards:" +
             CanonicalJson.Sha256(candidates);
         var request = new RandomIndexRequestV111(
             PrototypeNativeTabletOfTruth.CardDrawSiteId,
-            stream.StreamId, ownerId, page,
+            streamId, ownerId, page,
             Enumerable.Range(0, candidates.Length).ToArray());
         var conditioningFingerprint = CanonicalJson.Sha256(new
         {
@@ -307,10 +306,13 @@ public static partial class ChanceLawEngineV111
     {
         ArgumentNullException.ThrowIfNull(origin);
         var plan = TabletOfTruthChoicePlanBuilderV111.Build(origin);
-        var outcomes = plan.CandidateCardInstanceIds.Select(instanceId =>
+        var indexWeights = NativeNextIntGridWeights(
+            plan.Request.SupportCount);
+        var outcomes = plan.CandidateCardInstanceIds.Select((instanceId, index) =>
             new ChanceLawOutcomeV111(
                 "card_instance:" + instanceId.ToString(
-                    System.Globalization.CultureInfo.InvariantCulture), 1L))
+                    System.Globalization.CultureInfo.InvariantCulture),
+                indexWeights[index]))
             .ToArray();
         var eventId = CanonicalJson.Sha256(new
         {
@@ -321,6 +323,7 @@ public static partial class ChanceLawEngineV111
             plan.Request.OperationKind, plan.Request.OwnerId,
             plan.Request.Ordinal, TabletOfTruthConditioningPolicyId,
             plan.ConditioningFingerprint,
-            "uniform-eligible-tablet-card-instance-unverified", outcomes);
+            NativeBoundedIndexSourceVerifiedProvenance, outcomes,
+            ChanceLawV111.SourceVerifiedStatus);
     }
 }

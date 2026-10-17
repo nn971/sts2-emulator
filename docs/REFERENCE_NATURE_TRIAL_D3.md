@@ -3,8 +3,10 @@
 `ReferenceNatureTrialSessionV111` handles the Glory Trial `accept` draw on
 either the opening page or its post-rejection page. The bounded integer call
 selects one of the Merchant, Noble, or Nondescript cases. Its Chance Law
-assigns equal integer weight to the three modeled case outcomes and remains
-`UNVERIFIED` against the installed game.
+counts the exact `NextInt(3)` preimages on the uniform 53-bit `NextDouble`
+grid, including the binary64 multiply boundary. The bounded-index mapping is
+`SOURCE_VERIFIED` under that input model; stream attribution, seed
+frequencies, and seeded Native cursor parity remain separate claims.
 
 The session replays `accept` through the ordinary Trial event action with the
 scripted index provider. It commits the resulting case page and
@@ -31,8 +33,10 @@ cursor parity, and probability calibration remain open.
 | `reference_nature_trial_release_many` | `reference_nature_trial_handles` | Number of released sessions |
 
 The site is `event.glory_trial.damage_amount.index_draw`. Session and Chance
-Law query coverage are advertised separately. The session does not change the
-player-facing event observation.
+Law query coverage are advertised separately. The read-only query does not
+inspect the saved Native event cursor; only session admission checks that the
+source event action can be replayed from its untouched event-entry cursor.
+The session does not change the player-facing event observation.
 
 ## Python binding
 

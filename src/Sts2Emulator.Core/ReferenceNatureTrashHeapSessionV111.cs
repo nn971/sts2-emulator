@@ -14,8 +14,7 @@ internal static class TrashHeapChoicePlanBuilderV111
         RunState origin, string siteId)
     {
         ArgumentNullException.ThrowIfNull(origin);
-        if (string.IsNullOrWhiteSpace(origin.RunSeed) ||
-            origin.NativeRunRng is null ||
+        if (origin.NativeRunRng is null ||
             origin.Phase != RunPhase.Event ||
             origin.World?.Map.GenerationProfileId !=
                 PrototypeNativeUnderdocks.GenerationProfileId ||
@@ -60,21 +59,11 @@ internal static class TrashHeapChoicePlanBuilderV111
             throw new InvalidOperationException(
                 $"Trash Heap choice '{choiceId}' is not legal in the current state.");
 
-        var nativeStream = evt.NativeEventRng ??
-            NativeEventContextRngV111.CreateAtEntry(
-                origin, PrototypeNativeUnderdocksTrashHeap.NativeRngEventId)
-            ?? throw new InvalidOperationException(
-                "Trash Heap Nature choices require a Native event RNG context.");
-        var expectedInitial = NativeRngV111Contexts.ForEvent(
-            origin.RunSeed,
-            PrototypeNativeUnderdocksTrashHeap.NativeRngEventId);
-        if (NativeRngV111.ToSnapshot(nativeStream) !=
-            NativeRngV111.ToSnapshot(expectedInitial))
-            throw new InvalidOperationException(
-                "Trash Heap Nature choices require the event stream before its first draw.");
-
         var request = new RandomIndexRequestV111(
-            siteId, nativeStream.StreamId, ownerId, 0,
+            siteId,
+            NativeRngV111Contexts.EventStreamId(
+                PrototypeNativeUnderdocksTrashHeap.NativeRngEventId),
+            ownerId, 0,
             Enumerable.Range(0, outcomeIds.Length).ToArray());
         var conditioningFingerprint = CanonicalJson.Sha256(new
         {
@@ -90,6 +79,31 @@ internal static class TrashHeapChoicePlanBuilderV111
         });
         return new(request, (string[])outcomeIds.Clone(),
             conditioningFingerprint);
+    }
+
+    public static void ValidateNativeEventEntryCursor(RunState origin)
+    {
+        ArgumentNullException.ThrowIfNull(origin);
+        var evt = origin.World?.Event;
+        if (string.IsNullOrWhiteSpace(origin.RunSeed) ||
+            origin.NativeRunRng is null || evt is null ||
+            evt.EventId != PrototypeNativeUnderdocksTrashHeap.EventId)
+            throw new InvalidOperationException(
+                "Trash Heap session replay requires its configured Native event context.");
+        var expected = NativeRngV111Contexts.ForEvent(
+            origin.RunSeed,
+            PrototypeNativeUnderdocksTrashHeap.NativeRngEventId);
+        if (evt.NativeEventRng is { } saved &&
+            saved.StreamId != expected.StreamId)
+            throw new InvalidOperationException(
+                "Trash Heap has the wrong Native event stream context.");
+        if (evt.NativeEventRng is null && evt.NativePageIndex != 0)
+            throw new InvalidOperationException(
+                "Trash Heap cannot reconstruct a missing event stream after page progress.");
+        if (NativeRngV111.ToSnapshot(evt.NativeEventRng ?? expected) !=
+            NativeRngV111.ToSnapshot(expected))
+            throw new InvalidOperationException(
+                "Trash Heap session must start at the event-entry Native cursor.");
     }
 }
 
@@ -149,6 +163,7 @@ public sealed record ReferenceNatureTrashHeapSessionV111(
         ArgumentNullException.ThrowIfNull(initial);
         _ = TrashHeapChoicePlanBuilderV111.Build(
             origin, SiteIdForChoice(choiceId));
+        TrashHeapChoicePlanBuilderV111.ValidateNativeEventEntryCursor(origin);
         ReferenceNatureRunCursorV111.ValidateInitial(
             origin, initial, "Trash Heap");
         var session = new ReferenceNatureTrashHeapSessionV111(
@@ -216,6 +231,8 @@ public sealed record ReferenceNatureTrashHeapSessionV111(
                 "Invalid ReferenceNature Trash Heap session envelope.");
         PrototypeStateInvariants.Validate(Origin);
         PrototypeStateInvariants.Validate(Run);
+        TrashHeapChoicePlanBuilderV111
+            .ValidateNativeEventEntryCursor(Origin);
         InitialNatureState.Validate();
         NatureState.Validate();
         var plan = TrashHeapChoicePlanBuilderV111.Build(
@@ -364,9 +381,12 @@ public static partial class ChanceLawEngineV111
     {
         ArgumentNullException.ThrowIfNull(origin);
         var plan = TrashHeapChoicePlanBuilderV111.Build(origin, siteId);
+        var indexWeights = NativeNextIntGridWeights(
+            plan.Request.SupportCount);
         var outcomes = plan.OutcomeIds.Select((id, index) =>
             new ChanceLawOutcomeV111(
-                $"trash_heap_reward:{id}:index:{index}", 1L)).ToArray();
+                $"trash_heap_reward:{id}:index:{index}",
+                indexWeights[index])).ToArray();
         var eventId = CanonicalJson.Sha256(new
         {
             boundary = "underdocks.trash_heap.choice",
@@ -377,6 +397,7 @@ public static partial class ChanceLawEngineV111
             plan.Request.OperationKind, plan.Request.OwnerId,
             plan.Request.Ordinal, TrashHeapConditioningPolicyId,
             plan.ConditioningFingerprint,
-            "uniform-source-ordered-trash-heap-pool-unverified", outcomes);
+            NativeBoundedIndexSourceVerifiedProvenance, outcomes,
+            ChanceLawV111.SourceVerifiedStatus);
     }
 }

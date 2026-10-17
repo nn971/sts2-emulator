@@ -14,8 +14,10 @@ The session covers one page at a time. Continue from its committed `State` to
 take another player action and, if the next page offers another eligible
 `decipher`, begin a new session. Page 4 upgrades every eligible card without
 an index draw. A lethal page and an empty eligible-card pool also have no draw
-and do not produce a Chance Law. The card law remains `UNVERIFIED` against the
-installed game.
+and do not produce a Chance Law. The query counts exact Native `NextInt`
+preimages on the uniform 53-bit `NextDouble` grid and is
+`SOURCE_VERIFIED` under that input model. Source filtering, seed frequencies,
+and Native cursor parity remain separate claims.
 
 The scripted action preserves the Native event stream cursor. The completed
 EventState records `scripted-v111`; the event-state invariant allows this
@@ -37,7 +39,9 @@ seeded cursor parity, and probability calibration remain open.
 
 The stable site is `event.tablet_of_truth.card.index_draw`. Query and session
 coverage are advertised separately by the capability manifest. The session
-does not change the player-facing observation contract.
+does not change the player-facing observation contract. The read-only law
+derives the event stream label without reading the run seed or saved cursor;
+the replay uses the event's saved cursor only to preserve its starting state.
 
 ## Python binding
 

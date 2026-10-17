@@ -43,6 +43,36 @@ internal static class TrialCaseChoicePlanBuilderV111
             throw new InvalidOperationException(
                 "Trial acceptance is not legal on the current page.");
 
+        const string ownerId = "event:glory_trial:trial_case";
+        var request = new RandomIndexRequestV111(
+            "event.glory_trial.damage_amount.index_draw",
+            NativeRngV111Contexts.EventStreamId(
+                PrototypeNativeGloryEvents.TrialNativeRngEventId),
+            ownerId, 0, [],
+            OperationKind: "bounded_integer", BoundedCount: 3);
+        var conditioningFingerprint = CanonicalJson.Sha256(new
+        {
+            boundary = "glory.trial.case_choice",
+            eventId = evt.EventId,
+            page = evt.NativePageIndex,
+            outcomeIds = OutcomeIds,
+            request,
+            policy = ChanceLawEngineV111.TrialConditioningPolicyId
+        });
+        return new(evt.NativePageIndex, request,
+            (string[])OutcomeIds.Clone(), conditioningFingerprint);
+    }
+
+    public static void ValidateNativeEventEntryCursor(RunState origin)
+    {
+        ArgumentNullException.ThrowIfNull(origin);
+        var evt = origin.World?.Event;
+        if (string.IsNullOrWhiteSpace(origin.RunSeed) ||
+            origin.NativeRunRng is null || evt is null ||
+            evt.EventId != PrototypeNativeGloryEvents.TrialId)
+            throw new InvalidOperationException(
+                "Trial session replay requires its configured Native event context.");
+
         var expectedStream = NativeRngV111Contexts.ForEvent(
             origin.RunSeed, PrototypeNativeGloryEvents.TrialNativeRngEventId);
         if (evt.NativeEventRng is { } savedStream &&
@@ -56,24 +86,7 @@ internal static class TrialCaseChoicePlanBuilderV111
         if (NativeRngV111.ToSnapshot(stream) !=
             NativeRngV111.ToSnapshot(expectedStream))
             throw new InvalidOperationException(
-                "Trial case draw is not at the initial event cursor.");
-
-        const string ownerId = "event:glory_trial:trial_case";
-        var request = new RandomIndexRequestV111(
-            "event.glory_trial.damage_amount.index_draw",
-            stream.StreamId, ownerId, 0, [],
-            OperationKind: "bounded_integer", BoundedCount: 3);
-        var conditioningFingerprint = CanonicalJson.Sha256(new
-        {
-            boundary = "glory.trial.case_choice",
-            eventId = evt.EventId,
-            page = evt.NativePageIndex,
-            outcomeIds = OutcomeIds,
-            request,
-            policy = ChanceLawEngineV111.TrialConditioningPolicyId
-        });
-        return new(evt.NativePageIndex, request,
-            (string[])OutcomeIds.Clone(), conditioningFingerprint);
+                "Trial session must start at the event-entry Native cursor.");
     }
 }
 
@@ -125,6 +138,8 @@ public sealed record ReferenceNatureTrialSessionV111(
         ArgumentNullException.ThrowIfNull(origin);
         ArgumentNullException.ThrowIfNull(initial);
         _ = TrialCaseChoicePlanBuilderV111.Build(origin);
+        TrialCaseChoicePlanBuilderV111
+            .ValidateNativeEventEntryCursor(origin);
         ReferenceNatureRunCursorV111.ValidateInitial(
             origin, initial, "Trial");
         var session = new ReferenceNatureTrialSessionV111(
@@ -182,6 +197,8 @@ public sealed record ReferenceNatureTrialSessionV111(
                 "Invalid ReferenceNature Trial session envelope.");
         PrototypeStateInvariants.Validate(Origin);
         PrototypeStateInvariants.Validate(Run);
+        TrialCaseChoicePlanBuilderV111
+            .ValidateNativeEventEntryCursor(Origin);
         InitialNatureState.Validate();
         NatureState.Validate();
         var plan = TrialCaseChoicePlanBuilderV111.Build(Origin);
@@ -291,8 +308,10 @@ public static partial class ChanceLawEngineV111
     {
         ArgumentNullException.ThrowIfNull(origin);
         var plan = TrialCaseChoicePlanBuilderV111.Build(origin);
-        var outcomes = plan.OutcomeIds.Select(outcomeId =>
-            new ChanceLawOutcomeV111(outcomeId, 1L)).ToArray();
+        var indexWeights = NativeNextIntGridWeights(
+            plan.Request.BoundedCount!.Value);
+        var outcomes = plan.OutcomeIds.Select((outcomeId, index) =>
+            new ChanceLawOutcomeV111(outcomeId, indexWeights[index])).ToArray();
         var eventId = CanonicalJson.Sha256(new
         {
             boundary = "glory.trial.case_choice",
@@ -302,6 +321,7 @@ public static partial class ChanceLawEngineV111
             plan.Request.OperationKind, plan.Request.OwnerId,
             plan.Request.Ordinal, TrialConditioningPolicyId,
             plan.ConditioningFingerprint,
-            "uniform-three-case-trial-choice-unverified", outcomes);
+            NativeBoundedIndexSourceVerifiedProvenance, outcomes,
+            ChanceLawV111.SourceVerifiedStatus);
     }
 }
