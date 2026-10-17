@@ -21,7 +21,7 @@ from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = ROOT / "src" / "Sts2Emulator.Core"
-SCHEMA_ID = "emulator-rng-callsite-source-inventory-v6"
+SCHEMA_ID = "emulator-rng-callsite-source-inventory-v7"
 SITE_REGISTRY_PATH = SOURCE_ROOT / "StochasticSiteRegistryV111.cs"
 
 CALL_PATTERN = re.compile(
@@ -138,6 +138,7 @@ def _resolve_site_value(
     local_constants: dict[str, set[str]],
     global_constants: dict[str, set[str]],
 ) -> str | None:
+    expression = re.sub(r"\s+", "", expression)
     if expression.startswith('"') and expression.endswith('"'):
         return expression[1:-1]
     constant = re.fullmatch(
@@ -400,6 +401,81 @@ def _registry_site_ids(
     return site_ids, sorted(set(unresolved))
 
 
+def _site_id_forwarder_calls(
+    sources: dict[Path, str],
+    global_constants: dict[str, set[str]],
+    registry_site_ids: set[str],
+    matrix_site_ids: set[str],
+) -> list[dict[str, Any]]:
+    """Trace site arguments at known RNG-helper call boundaries.
+
+    NativeFisherYates call expressions inside these helpers receive their
+    semantic site from the owning mechanics call. Keep this supplemental to
+    the direct RNG-call census: the helper callsites are where the stable
+    site is chosen, while provider and transcript wrappers are not sites.
+    """
+    specifications = (
+        {
+            "callee": "NativeEventContextRngV111.ShuffleInPlace",
+            "pattern": re.compile(
+                r"\bNativeEventContextRngV111\.ShuffleInPlace\s*\("
+            ),
+            "site_argument": 4,
+            "paths": None,
+        },
+        {
+            "callee": "PrototypeGameEngine.ShuffleCombatCardPool",
+            "pattern": re.compile(r"\bShuffleCombatCardPool\s*\("),
+            "site_argument": 3,
+            "paths": {"PrototypeCombat.cs"},
+        },
+        {
+            "callee": "NativeMapRandom.Shuffle",
+            "pattern": re.compile(r"\brandom\.Shuffle\s*\("),
+            "site_argument": 1,
+            "paths": {
+                "PrototypeNativeLaterActMap.cs",
+                "PrototypeNativeOvergrowthMap.cs",
+            },
+        },
+    )
+    calls: list[dict[str, Any]] = []
+    for path, source in sources.items():
+        for specification in specifications:
+            allowed_paths = specification["paths"]
+            if allowed_paths is not None and path.name not in allowed_paths:
+                continue
+            for match in specification["pattern"].finditer(source):
+                arguments = _call_arguments(source, match.start())
+                position = specification["site_argument"]
+                if len(arguments) <= position:
+                    expression = None
+                    value = None
+                else:
+                    expression = arguments[position]
+                    value = _resolve_site_value(
+                        expression, _string_constants(source),
+                        global_constants,
+                    )
+                line = source.count("\n", 0, match.start()) + 1
+                calls.append({
+                    "path": path.relative_to(ROOT).as_posix(),
+                    "line": line,
+                    "helper": specification["callee"],
+                    "site_id_expression": expression,
+                    "site_id_value": value,
+                    "registry_status": (
+                        "mapped" if value in registry_site_ids else
+                        "unresolved" if value is None else "not_registered"
+                    ),
+                    "matrix_status": (
+                        "mapped" if value in matrix_site_ids else
+                        "unresolved" if value is None else "missing"
+                    ),
+                })
+    return sorted(calls, key=lambda call: (call["path"], call["line"]))
+
+
 def collect() -> dict[str, Any]:
     entries: list[dict[str, Any]] = []
     matrix_site_rows = _migration_matrix_site_rows()
@@ -435,6 +511,13 @@ def collect() -> dict[str, Any]:
     registry_site_ids_without_matrix_rows = sorted(
         registry_site_ids - matrix_site_ids
     )
+    site_id_forwarder_calls = _site_id_forwarder_calls(
+        sources, string_constants, registry_site_ids, matrix_site_ids
+    )
+    site_id_forwarder_failures = [
+        call for call in site_id_forwarder_calls
+        if call["matrix_status"] != "mapped"
+    ]
     duplicate_matrix_site_ids = sorted(
         site_id for site_id, count in matrix_site_id_counts.items()
         if count > 1
@@ -560,6 +643,14 @@ def collect() -> dict[str, Any]:
                     rows_without_explicit_law_status,
             },
         },
+        "site_id_forwarder_coverage": {
+            "call_count": len(site_id_forwarder_calls),
+            "mapped_call_count": len(site_id_forwarder_calls)
+                - len(site_id_forwarder_failures),
+            "calls_without_matrix_rows":
+                site_id_forwarder_failures,
+            "calls": site_id_forwarder_calls,
+        },
         "site_matrix_contract_evidence": site_matrix_contract_evidence,
         "entries": entries,
     }
@@ -616,12 +707,34 @@ def render_markdown(report: dict[str, Any]) -> str:
         "Rows distinguish legacy prototype calls, native primitive calls, "
         "generic shuffle-helper calls, and recognized provider/fixture support. "
         "Shuffle rows include their `siteId` argument, resolved constant where "
-        "available, and exact migration-matrix match for static IDs. Dynamic "
-        "expressions still need caller-level tracing.",
+        "available, and exact migration-matrix match for static IDs. The "
+        "supplemental table traces site IDs passed through the known event, "
+        "combat-pool, and map shuffle helpers. Generic provider adapters and "
+        "transcript replay are infrastructure rather than stochastic sites.",
+        "",
+        "Known RNG helper callsites with forwarded stable site IDs:",
+        "",
+        f"**{report['site_id_forwarder_coverage']['mapped_call_count']}/"
+        f"{report['site_id_forwarder_coverage']['call_count']}** mapped.",
+        "",
+        "| Helper callsite | Stable site ID expression | Resolved site | Registry | Matrix |",
+        "| --- | --- | --- | --- | --- |",
+    ]
+    for call in report["site_id_forwarder_coverage"]["calls"]:
+        callsite = f"{call['path']}:{call['line']}"
+        source_link = "../" + call["path"] + "#L" + str(call["line"])
+        expression = call["site_id_expression"] or "—"
+        resolved = call["site_id_value"] or "—"
+        lines.append(
+            f"| [`{callsite}`]({source_link}) `{call['helper']}` | "
+            f"`{expression}` | `{resolved}` | "
+            f"`{call['registry_status']}` | `{call['matrix_status']}` |"
+        )
+    lines.extend([
         "",
         "| File:line | API | Operation | Stable site ID argument | Matrix row | Source expression | Review status |",
         "| --- | --- | --- | --- | --- | --- | --- |",
-    ]
+    ])
     for entry in report["entries"]:
         path = entry["path"]
         operation = entry["operation"]
@@ -669,7 +782,9 @@ def main() -> int:
                 coverage["site_ids_without_matrix_rows"] or
                 coverage["duplicate_matrix_site_ids"] or
                 coverage["unresolved_registry_references"] or
-                coverage["reference_law_status"]["rows_without_explicit_status"]):
+                coverage["reference_law_status"]["rows_without_explicit_status"] or
+                report["site_id_forwarder_coverage"][
+                    "calls_without_matrix_rows"]):
             print(json.dumps(coverage, indent=2, sort_keys=True),
                   file=sys.stderr)
             return 1
