@@ -371,7 +371,7 @@ class State:
             self, nature_seed: int | None = None,
             action_id: str | None = None,
             site_id: str | None = None):
-        """Begin a conditional Native event or run-stream shuffle replay."""
+        """Begin a conditional event, relic, or run-stream shuffle replay."""
         if self.session.capabilities.get(
                 "referenceNatureNativeEventShuffleSessionSchemaId") != (
                 "sts2-v111-reference-nature-native-event-shuffle-session-v1"):
@@ -393,6 +393,8 @@ class State:
             "attack": "event.glory_tinker.rider_offer.shuffle_swap_index",
             "skill": "event.glory_tinker.rider_offer.shuffle_swap_index",
             "power": "event.glory_tinker.rider_offer.shuffle_swap_index",
+            "unlock_chest":
+                "event.war_historian.repy.relic_offer.shuffle_swap_index",
         }.get(action_id)
         if resolved_site_id is None:
             raise ValueError(

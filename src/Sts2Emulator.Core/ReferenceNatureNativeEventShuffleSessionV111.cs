@@ -14,7 +14,10 @@ internal sealed record NativeEventShufflePlanV111(
     string StreamId,
     string OwnerId,
     string ConditioningFingerprint,
-    NativeRngSnapshot? NativeCursorBefore = null)
+    NativeRngSnapshot? NativeCursorBefore = null,
+    bool PreserveEventRng = true,
+    string? ExpectedUnscriptedStreamId = null,
+    int ExpectedUnscriptedDrawCount = 0)
 {
     public int SwapCount => CandidateCount - 1;
 
@@ -79,6 +82,10 @@ internal static class NativeEventShufflePlanBuilderV111
             PrototypeNativeGloryEvents.TinkerTimeId when
                 evt.NativePageIndex == 1 =>
                     PrototypeNativeGloryEvents.TinkerRiderOfferShuffleSiteId,
+            PrototypeNativeHiveEvents.WarHistorianRepyId when
+                evt.NativePageIndex == 0 =>
+                    PrototypeNativeHiveEvents
+                        .WarHistorianRepyRelicShuffleSiteId,
             _ when warHammerEliteVictoryAction =>
                 "relic.war_hammer.elite_upgrade.shuffle_swap_index",
             _ => throw new InvalidOperationException(
@@ -182,6 +189,110 @@ internal static class NativeEventShufflePlanBuilderV111
                     unchecked((uint)Math.Max(0, candidateCount - 1)))
                 throw new InvalidOperationException(
                     "War Hammer victory has additional run.niche draws after its shuffle and is outside this atomic boundary.");
+            nativeRngEventId = string.Empty;
+        }
+        else if (evt.EventId ==
+            PrototypeNativeHiveEvents.WarHistorianRepyId &&
+            siteId == PrototypeNativeHiveEvents
+                .WarHistorianRepyRelicShuffleSiteId)
+        {
+            resolvedActionId = actionId ?? "unlock_chest";
+            if (!PrototypeGameEngine.UsesNativeRegionalSystems(world) ||
+                evt.NativePageIndex != 0 ||
+                evt.ChosenChoiceId is not null ||
+                evt.RepyFirstChoiceId is not null ||
+                evt.RepyChestPotionIds is not null ||
+                evt.RepyChestRelicIds is not null ||
+                evt.RepyChestGroupsResolved != 0 ||
+                evt.NativeEventRng is not null ||
+                evt.NativeEventRngProviderMode is not null ||
+                resolvedActionId != "unlock_chest")
+                throw new InvalidOperationException(
+                    "War Historian Repy shuffle requires its initial native chest action before reward generation.");
+            replayAction = new PrototypeGameEngine().GetLegalActions(origin)
+                .SingleOrDefault(action => action.Kind == "event_choice" &&
+                    action.ReadPayload<EventChoicePayload>().ChoiceId ==
+                    resolvedActionId);
+            if (replayAction is null)
+                throw new InvalidOperationException(
+                    "War Historian Repy chest action is not legal in the current event state.");
+
+            using var shuffleProbe = NativeEventRandomProbeV111.Begin();
+            using var journal = RandomBoundaryJournalV111.Begin();
+            using var eventJournal = NativeEngineEventJournalV111.Begin();
+            var projected = new PrototypeGameEngine().Step(
+                origin.Fork(), replayAction).State;
+            var captures = shuffleProbe.ShuffleCaptures.Where(capture =>
+                capture.SiteId == siteId).ToArray();
+            var candidates =
+                PrototypeNativeHiveEvents.WarHistorianRepyRelicOfferCandidates(
+                    origin.Player);
+            var rewardStreamBefore = origin.NativeRunRng?.Streams
+                .SingleOrDefault(stream => stream.StreamId ==
+                    NativePlayerRngV111.RewardsStreamId);
+            var rewardStreamAfter = projected.NativeRunRng?.Streams
+                .SingleOrDefault(stream => stream.StreamId ==
+                    NativePlayerRngV111.RewardsStreamId);
+            var rewardRequests = journal.Entries.Where(entry =>
+                entry.Request.StreamId ==
+                    NativePlayerRngV111.RewardsStreamId).ToArray();
+            var expectedSwapCount = Math.Max(0, candidates.Length - 1);
+            if (captures.Length != 1 || rewardStreamBefore is null ||
+                rewardStreamAfter is null ||
+                captures[0].NativeStreamId !=
+                    NativePlayerRngV111.RewardsStreamId ||
+                captures[0].NativeCursorBefore is null ||
+                captures[0].OwnerId !=
+                    "event:war_historian_repy:relic_offer" ||
+                !captures[0].OrderedCandidateIds.SequenceEqual(
+                    candidates, StringComparer.Ordinal) ||
+                NativeRngV111.ToSnapshot(rewardStreamBefore) !=
+                    captures[0].NativeCursorBefore ||
+                projected.Phase != RunPhase.Reward ||
+                projected.World?.Event is not
+                    {
+                        EventId: PrototypeNativeHiveEvents.WarHistorianRepyId,
+                        NativePageIndex: 2,
+                        ChosenChoiceId: "unlock_chest",
+                        NativeEventRng: null,
+                        NativeEventRngProviderMode: null,
+                        RepyChestPotionIds.Length: 2,
+                        RepyChestRelicIds.Length: 2,
+                        RepyChestGroupsResolved: 1
+                    } ||
+                rewardRequests.Length != expectedSwapCount + 2 ||
+                rewardRequests.Take(expectedSwapCount).Where((entry, index) =>
+                    entry.Request.SiteId != siteId ||
+                    entry.Request.OwnerId !=
+                        "event:war_historian_repy:relic_offer" ||
+                    entry.Request.Ordinal != index ||
+                    entry.Request.OperationKind != "bounded_integer" ||
+                    entry.Request.BoundedCount != candidates.Length - index ||
+                    entry.ProviderMode != "native-v111").Any() ||
+                rewardRequests.Skip(expectedSwapCount).Where((entry, index) =>
+                    entry.Request.SiteId !=
+                        "event.war_historian_repy.potion_offer.index_draw" ||
+                    entry.Request.OwnerId !=
+                        $"event:war_historian_repy:potion_offer:{index}" ||
+                    entry.Request.OperationKind != "choose_index" ||
+                    entry.Request.SupportCount !=
+                        PrototypeContent.PotionPool.Length ||
+                    entry.ProviderMode != "native-v111").Any() ||
+                unchecked((uint)(NativeRngV111.ToSnapshot(
+                    rewardStreamAfter).Counter -
+                    NativeRngV111.ToSnapshot(rewardStreamBefore).Counter)) !=
+                    unchecked((uint)(expectedSwapCount + 2)))
+                throw new InvalidOperationException(
+                    "War Historian Repy chest action must perform exactly one relic shuffle and two player.rewards potion draws.");
+            orderedCandidateIds = captures[0].OrderedCandidateIds;
+            candidateCount = orderedCandidateIds.Length;
+            ownerId = captures[0].OwnerId;
+            nativeCursorBefore = captures[0].NativeCursorBefore;
+            if (plannedCandidateIds is not null &&
+                !orderedCandidateIds.SequenceEqual(
+                    plannedCandidateIds, StringComparer.Ordinal))
+                throw new InvalidOperationException(
+                    "War Historian Repy Nature candidate order changed since session entry.");
             nativeRngEventId = string.Empty;
         }
         else if (evt.EventId == PrototypeNativeGloryEvents.BattlewornDummyId &&
@@ -316,6 +427,8 @@ internal static class NativeEventShufflePlanBuilderV111
 
         var isWarHammerShuffle = siteId ==
             "relic.war_hammer.elite_upgrade.shuffle_swap_index";
+        var isRepyShuffle = siteId == PrototypeNativeHiveEvents
+            .WarHistorianRepyRelicShuffleSiteId;
         NativeRngSnapshot streamSnapshot;
         string streamId;
         if (isWarHammerShuffle)
@@ -325,6 +438,14 @@ internal static class NativeEventShufflePlanBuilderV111
                     "War Hammer shuffle plan is missing its pre-draw Native cursor.");
             streamSnapshot = nativeCursorBefore;
             streamId = "run.niche";
+        }
+        else if (isRepyShuffle)
+        {
+            if (nativeCursorBefore is null)
+                throw new InvalidOperationException(
+                    "War Historian Repy shuffle plan is missing its player.rewards pre-draw cursor.");
+            streamSnapshot = nativeCursorBefore;
+            streamId = NativePlayerRngV111.RewardsStreamId;
         }
         else
         {
@@ -421,7 +542,12 @@ internal static class NativeEventShufflePlanBuilderV111
             nativeRngEventId, siteId,
             resolvedActionId, replayAction, orderedCandidateIds, candidateCount,
             streamId, ownerId, fingerprint,
-            isWarHammerShuffle ? nativeCursorBefore : null);
+            isWarHammerShuffle || isRepyShuffle
+                ? nativeCursorBefore : null,
+            PreserveEventRng: !isRepyShuffle,
+            ExpectedUnscriptedStreamId: isRepyShuffle
+                ? NativePlayerRngV111.RewardsStreamId : null,
+            ExpectedUnscriptedDrawCount: isRepyShuffle ? 2 : 0);
     }
 }
 
@@ -574,7 +700,14 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
                 Origin, decisions, plan.ReplayAction,
                 plan.NativeRngEventId, plan.EventId,
                 SelectiveReplaySite(plan), plan.OrderedCandidateIds,
-                plan.NativeCursorBefore);
+                plan.SiteId ==
+                    "relic.war_hammer.elite_upgrade.shuffle_swap_index"
+                    ? plan.NativeCursorBefore : null,
+                plan.PreserveEventRng,
+                plan.ExpectedUnscriptedStreamId,
+                plan.ExpectedUnscriptedStreamId is null
+                    ? null : plan.NativeCursorBefore,
+                plan.ExpectedUnscriptedDrawCount);
             nextRun = ReferenceNatureRunCursorV111.Commit(
                 replay, nextNature);
         }
@@ -640,7 +773,14 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
                 Origin, decisions, plan.ReplayAction,
                 plan.NativeRngEventId, plan.EventId,
                 SelectiveReplaySite(plan), plan.OrderedCandidateIds,
-                plan.NativeCursorBefore);
+                plan.SiteId ==
+                    "relic.war_hammer.elite_upgrade.shuffle_swap_index"
+                    ? plan.NativeCursorBefore : null,
+                plan.PreserveEventRng,
+                plan.ExpectedUnscriptedStreamId,
+                plan.ExpectedUnscriptedStreamId is null
+                    ? null : plan.NativeCursorBefore,
+                plan.ExpectedUnscriptedDrawCount);
             expectedRun = ReferenceNatureRunCursorV111.Commit(
                 expectedRun, expectedNatureState);
         }
@@ -657,7 +797,8 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
         plan.SiteId is "relic.war_hammer.elite_upgrade.shuffle_swap_index" or
             PrototypeNativeGloryEvents
             .BattlewornUpgradeShuffleSiteId or
-            PrototypeNativeFakeMerchant.RelicOfferShuffleSiteId
+            PrototypeNativeFakeMerchant.RelicOfferShuffleSiteId or
+            PrototypeNativeHiveEvents.WarHistorianRepyRelicShuffleSiteId
             ? plan.SiteId : null;
 
     public static string Save(
@@ -736,7 +877,8 @@ public static partial class ChanceLawEngineV111
         PrototypeNativeGloryEvents.TinkerTypeOfferShuffleSiteId,
         PrototypeNativeGloryEvents.TinkerRiderOfferShuffleSiteId,
         PrototypeNativeGloryEvents.BattlewornUpgradeShuffleSiteId,
-        PrototypeNativeFakeMerchant.RelicOfferShuffleSiteId
+        PrototypeNativeFakeMerchant.RelicOfferShuffleSiteId,
+        PrototypeNativeHiveEvents.WarHistorianRepyRelicShuffleSiteId
     ];
 
     public static ChanceLawV111 QueryNativeEventShuffle(

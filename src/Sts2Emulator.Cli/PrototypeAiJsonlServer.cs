@@ -851,18 +851,26 @@ internal static class PrototypeAiJsonlServer
                 nextOrdinal = session.NextOrdinal,
                 pending = law is null ? null : new
                 {
-                    kind = session.SiteId ==
-                        "relic.war_hammer.elite_upgrade.shuffle_swap_index"
-                            ? "war_hammer_elite_shuffle_swap_random_choice"
-                            : "native_event_shuffle_swap_random_choice",
+                    kind = session.SiteId switch
+                    {
+                        "relic.war_hammer.elite_upgrade.shuffle_swap_index" =>
+                            "war_hammer_elite_shuffle_swap_random_choice",
+                        PrototypeNativeHiveEvents
+                            .WarHistorianRepyRelicShuffleSiteId =>
+                            "repy_relic_shuffle_swap_random_choice",
+                        _ => "native_event_shuffle_swap_random_choice"
+                    },
                     boundaryFingerprint = law.EventId,
                     chanceLaw = law,
                     probabilityStatus = law.ProbabilityStatus
                 },
                 selectedChoiceId = eventState?.ChosenChoiceId,
                 nextPage = eventState?.NativePageIndex,
-                eventRandomProvider = eventState?.NativeEventRngProviderMode ??
-                    (eventState is null ? null : "native-v111"),
+                eventRandomProvider = session.SiteId ==
+                    PrototypeNativeHiveEvents.WarHistorianRepyRelicShuffleSiteId
+                        ? "not_applicable"
+                        : eventState?.NativeEventRngProviderMode ??
+                            (eventState is null ? null : "native-v111"),
                 decisionTranscript = session.DecisionTranscript,
                 natureProvider = ReferenceNatureV111.ProviderId,
                 natureSampleCount = session.NatureState.SampleCount,

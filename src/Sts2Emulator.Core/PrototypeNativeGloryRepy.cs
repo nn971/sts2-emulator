@@ -131,10 +131,9 @@ public sealed partial class PrototypeGameEngine
             // objects together. Persist all four choices before showing
             // their single shared reward screen.
             var potions = PrototypeContent.PotionPool;
-            var available = PrototypeContent.RelicPool
-                .Where(id => !player.Relics.Any(relic =>
-                    StringComparer.Ordinal.Equals(relic.RelicId, id)))
-                .ToArray();
+            var available =
+                PrototypeNativeHiveEvents.WarHistorianRepyRelicOfferCandidates(
+                    player);
             if (potions.Length == 0 || available.Length < 2)
                 throw new NotSupportedException(
                     "War Historian chest requires two implemented relic offers and a potion pool.");
@@ -146,6 +145,12 @@ public sealed partial class PrototypeGameEngine
             if (nativeRunRng is { } nativeRelicRng)
             {
                 var shuffled = available.ToArray();
+                NativeEventRandomProbeV111.CaptureShuffle(
+                    PrototypeNativeHiveEvents
+                        .WarHistorianRepyRelicShuffleSiteId,
+                    "event:war_historian_repy:relic_offer",
+                    shuffled, nativeRelicRng,
+                    NativePlayerRngV111.RewardsStreamId);
                 _ = NativeFisherYatesV111.ShuffleInPlace(
                     shuffled,
                     nativeRelicRng,

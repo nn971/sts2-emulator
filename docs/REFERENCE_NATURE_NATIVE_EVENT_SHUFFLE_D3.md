@@ -6,8 +6,10 @@ are the Light option in Doors of Light and Dark, Fragrant Mushroom's eligible
 card shuffle, Tinker Time's type and rider offer stages, and Battleworn
 Dummy's setting 2 upgrade shuffle. It also covers Fake Merchant's six-of-nine
 relic stock shuffle when a configured Event-node action's ordinary event
-selection resolves to Fake Merchant. The run-stream resolver covers one War
-Hammer after an action immediately wins an ordinary Elite fight.
+selection resolves to Fake Merchant, and War Historian Repy's relic offer
+when its initial chest action is selected in configured native regional mode.
+The run-stream resolver covers one War Hammer after an action immediately
+wins an ordinary Elite fight.
 
 ## Boundary
 
@@ -46,6 +48,13 @@ immediately before the relic shuffle. It rejects actions that perform another
 captured pre-shuffle cursor. Multiple hammers, a delayed victory, and pools of
 zero or one eligible card remain outside this continuation.
 
+Repy accepts only the page-zero `unlock_chest` action, before any chest reward
+is generated. It reuses the source-shaped ordered unowned relic pool and
+captures the `player.rewards` cursor before the shuffle. Admission probes the
+ordinary action and requires exactly one matching relic shuffle followed by
+two potion draws. The player-stream assignment remains a source hypothesis,
+and the event has no Native event RNG context at this boundary.
+
 ## Laws and replay
 
 The player-visible event projection exposes the resulting page, offers, and
@@ -66,22 +75,34 @@ Tinker offer cannot be treated as the missing Nature prefix. Fake Merchant's
 law is conditioned on the legal map action and the ordinary event-selection
 result being Fake Merchant, then on the ordered nine-relic stock pool and
 preceding swap indices.
+Repy's law is conditioned on its initial chest action, ordered unowned relic
+pool, captured `player.rewards` cursor, and preceding swap indices. The source
+stream attribution and equal-index weights remain `UNVERIFIED`.
 
 `ReferenceNatureNativeEventShuffleSessionV111` stores the original run and
 sampler cursor while outcomes are pending. Once every swap has been sampled,
 it replays the ordinary event action through the existing scripted Native
 event-index resolver. The run result and ReferenceNature cursor commit
-together. The event's Native stream remains at its entry cursor and the saved
-`scripted-v111` marker is validated against the terminal Light result page,
-Tinker offer page, Battleworn victory page, or Fake Merchant stock page. The
-stream stays at entry across the two scripted Tinker stages. Fork, status,
-save, and restore preserve and revalidate the transcript.
+together. For event-context shuffles, the Native event stream remains at its
+entry cursor and the saved `scripted-v111` marker is validated against the
+terminal Light result page, Tinker offer page, Battleworn victory page, or
+Fake Merchant stock page. The stream stays at entry across the two scripted
+Tinker stages. Fork, status, save, and restore preserve and revalidate the
+transcript.
 
 For War Hammer, replay scripts only its `run.niche` Fisher–Yates requests and
 leaves that stream at the captured pre-shuffle cursor. Other combat requests
 retain their Native providers. War Hammer uses the emulator's current
 CardId-plus-instance-ID ordering proxy; the source ModelId ordering is not
 established by this law or session.
+
+For Repy, replay scripts only the relic Fisher–Yates requests. The following
+two potion choices fall through to the Native `player.rewards` provider, and
+the session verifies that they advance its cursor by exactly two calls from
+the captured entry cursor. The event RNG field remains absent and no
+`scripted-v111` event-context marker is added. This models the emulator's
+current stream hypothesis; it does not establish Native source ownership or
+seeded parity.
 
 ## Limits
 

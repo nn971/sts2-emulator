@@ -18,7 +18,11 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
         GameAction action, string nativeEventRngEventId,
         string eventName, string? scriptedSiteId = null,
         string[]? expectedOrderedCandidateIds = null,
-        NativeRngSnapshot? expectedRunNicheCursor = null)
+        NativeRngSnapshot? expectedRunNicheCursor = null,
+        bool preserveEventRng = true,
+        string? expectedUnscriptedStreamId = null,
+        NativeRngSnapshot? expectedUnscriptedCursorBefore = null,
+        int expectedUnscriptedDrawCount = 0)
     {
         ArgumentNullException.ThrowIfNull(origin);
         ArgumentNullException.ThrowIfNull(decisions);
@@ -28,19 +32,41 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
             scriptedSiteId != "relic.war_hammer.elite_upgrade.shuffle_swap_index")
             throw new ArgumentException(
                 "A run.niche cursor expectation is supported only for War Hammer replay.");
+        if ((expectedUnscriptedStreamId is null) !=
+                (expectedUnscriptedCursorBefore is null) ||
+            expectedUnscriptedDrawCount < 0 ||
+            expectedUnscriptedStreamId is not null &&
+                expectedRunNicheCursor is not null)
+            throw new ArgumentException(
+                "An unscripted run-stream expectation requires one stream and its pre-draw cursor.");
+        if (expectedUnscriptedStreamId is { } unscriptedStreamId)
+        {
+            var stream = origin.NativeRunRng?.Streams.SingleOrDefault(item =>
+                item.StreamId == unscriptedStreamId);
+            if (stream is null ||
+                NativeRngV111.ToSnapshot(stream) !=
+                    expectedUnscriptedCursorBefore)
+                throw new InvalidOperationException(
+                    "The unscripted run-stream cursor differs from its replay boundary.");
+        }
         RngStreamState? expectedStream = null;
-        if (expectedRunNicheCursor is null)
+        if (expectedRunNicheCursor is null && preserveEventRng)
         {
             ArgumentException.ThrowIfNullOrWhiteSpace(nativeEventRngEventId);
             expectedStream = origin.World?.Event?.NativeEventRng ??
                 NativeRngV111Contexts.ForEvent(
                     origin.RunSeed, nativeEventRngEventId);
         }
+        else if (!preserveEventRng &&
+            origin.World?.Event?.NativeEventRng is not null)
+            throw new InvalidOperationException(
+                "This replay boundary requires the event RNG context to remain absent.");
         var scripted = new ScriptedRandomIndexProviderV111(decisions);
         IRandomIndexProviderV111 replayProvider = scriptedSiteId is null
             ? scripted
             : new SelectiveReplayProvider(scriptedSiteId, scripted);
         RunState run;
+        RandomBoundaryEventV111[] replayIndexEvents = [];
         if (scriptedSiteId is null)
         {
             using var providerScope = StochasticProviderScopeV111.Enter(
@@ -51,6 +77,7 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
         else
         {
             using var shuffleProbe = NativeEventRandomProbeV111.Begin();
+            using var boundaryJournal = RandomBoundaryJournalV111.Begin();
             using var providerScope = StochasticProviderScopeV111.Enter(
                 replayProvider, overrideExplicitProviders: true);
             run = new PrototypeGameEngine().Step(
@@ -63,6 +90,7 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
                     expectedOrderedCandidateIds, StringComparer.Ordinal))
                 throw new InvalidDataException(
                     "Scripted event shuffle candidate identities differ from the replay plan.");
+            replayIndexEvents = boundaryJournal.Entries.ToArray();
         }
         scripted.AssertComplete();
         if (expectedRunNicheCursor is not null)
@@ -78,6 +106,50 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
             if (run.World is null)
                 throw new InvalidDataException(
                     "Scripted War Hammer victory lost its run world.");
+            return run;
+        }
+        if (!preserveEventRng)
+        {
+            var replayEventState = run.World?.Event;
+            if (replayEventState is null ||
+                replayEventState.NativeEventRng is not null ||
+                replayEventState.NativeEventRngProviderMode is not null)
+                throw new InvalidDataException(
+                    "Scripted player-stream replay changed the absent Native event RNG context.");
+            var expectedRewardsCursor = expectedUnscriptedCursorBefore
+                ?? throw new InvalidDataException(
+                    "Scripted player-stream replay is missing its pre-draw cursor.");
+            var streamId = expectedUnscriptedStreamId
+                ?? throw new InvalidDataException(
+                    "Scripted player-stream replay is missing its stream identity.");
+            var finalStream = run.NativeRunRng?.Streams.SingleOrDefault(item =>
+                item.StreamId == streamId);
+            var streamEvents = replayIndexEvents.Where(entry =>
+                entry.Request.StreamId == streamId).ToArray();
+            var nativeEvents = streamEvents.Where(entry =>
+                entry.ProviderMode == "native-v111").ToArray();
+            var scriptedSwapCount = Math.Max(0,
+                (expectedOrderedCandidateIds?.Length ?? 0) - 1);
+            if (finalStream is null ||
+                unchecked((uint)(NativeRngV111.ToSnapshot(finalStream).Counter -
+                    expectedRewardsCursor.Counter)) !=
+                    unchecked((uint)expectedUnscriptedDrawCount) ||
+                streamEvents.Length !=
+                    scriptedSwapCount + expectedUnscriptedDrawCount ||
+                nativeEvents.Length != expectedUnscriptedDrawCount ||
+                nativeEvents.Where((entry, index) =>
+                    entry.Request.SiteId !=
+                        "event.war_historian_repy.potion_offer.index_draw" ||
+                    entry.Request.OwnerId !=
+                        $"event:war_historian_repy:potion_offer:{index}" ||
+                    entry.Request.OperationKind != "choose_index" ||
+                    entry.Request.SupportCount !=
+                        PrototypeContent.PotionPool.Length).Any() ||
+                nativeEvents.Length == 2 &&
+                    nativeEvents[1].Request.Ordinal !=
+                        nativeEvents[0].Request.Ordinal + 1)
+                throw new InvalidDataException(
+                    "Scripted player-stream replay did not retain the two ordered Native Repy potion draws and their exact cursor advance.");
             return run;
         }
         if (CanonicalJson.Sha256(run.World?.Event?.NativeEventRng) !=

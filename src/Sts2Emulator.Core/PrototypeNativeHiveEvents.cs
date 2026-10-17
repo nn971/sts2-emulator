@@ -33,8 +33,20 @@ public static class PrototypeNativeHiveEvents
 
     public const string WarHistorianRepyId =
         "proto.native.glory.war_historian_repy";
+    public const string WarHistorianRepyRelicShuffleSiteId =
+        "event.war_historian.repy.relic_offer.shuffle_swap_index";
     public const string HistoryCourseId =
         "proto.native.glory.history_course";
+
+    internal static string[] WarHistorianRepyRelicOfferCandidates(
+        PlayerState player)
+    {
+        ArgumentNullException.ThrowIfNull(player);
+        return PrototypeContent.RelicPool
+            .Where(id => !player.Relics.Any(relic =>
+                StringComparer.Ordinal.Equals(relic.RelicId, id)))
+            .ToArray();
+    }
 
     public const string LanternKeyEventId = "proto.native.hive.the_lantern_key";
     public const string LanternKeyCardId = "proto.native.hive.lantern_key";
