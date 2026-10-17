@@ -198,11 +198,13 @@ A chance-law query takes a **pre-outcome** semantic operation, legal support/wei
 Probability status belongs to each Chance Law. `UNVERIFIED` means its mapping or
 sampling law has not been independently established. `SOURCE_VERIFIED` means
 the pinned source's sampling transform has been audited mathematically under
-the provenance's declared input model. It does not by itself establish a
-seeded stream's frequency distribution, context-seed derivation, or result and
-cursor parity; those remain separate fidelity claims. Capability manifests
-advertise supported statuses, while a legacy single-status field may remain a
-conservative default for compatibility.
+the provenance's declared input model. Each `SOURCE_VERIFIED` law must either
+account for the complete 2^53 Native input grid or encode one deterministic
+outcome; the envelope validator enforces this normalization. It does not by
+itself establish a seeded stream's frequency distribution, context-seed
+derivation, or result and cursor parity; those remain separate fidelity
+claims. Capability manifests advertise supported statuses, while a legacy
+single-status field may remain a conservative default for compatibility.
 
 For the pinned Native `NextInt(maxExclusive)`, the source maps a 53-bit
 `NextDouble` grid by multiplication and truncation. Exact integer weights can

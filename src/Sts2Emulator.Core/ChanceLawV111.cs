@@ -278,6 +278,7 @@ public sealed record ChanceLawV111(
     public const string CurrentSchemaId = "sts2-v111-chance-law-v1";
     public const string UnverifiedStatus = "UNVERIFIED";
     public const string SourceVerifiedStatus = "SOURCE_VERIFIED";
+    public const long NativeSourceGridSize = 1L << 53;
 
     public ChanceLawV111 Fork() => this with
     {
@@ -314,6 +315,13 @@ public sealed record ChanceLawV111(
             SupportFingerprint != CanonicalJson.Sha256(Outcomes))
             throw new InvalidDataException(
                 "Chance Law support fingerprint or total weight is inconsistent.");
+        var canonicalDeterministicOutcome = Outcomes.Length == 1 &&
+            Outcomes[0].Weight == 1L;
+        if (ProbabilityStatus == SourceVerifiedStatus &&
+            TotalWeight != NativeSourceGridSize &&
+            !canonicalDeterministicOutcome)
+            throw new InvalidDataException(
+                "A source-verified Chance Law must cover the complete Native 53-bit input grid or encode one deterministic outcome.");
 
         var expectedLawId = CanonicalJson.Sha256(new
         {
@@ -340,7 +348,8 @@ public sealed record ChanceLawV111(
 /// </summary>
 public static partial class ChanceLawEngineV111
 {
-    private const long NativeNextDoubleGridSize = 1L << 53;
+    private const long NativeNextDoubleGridSize =
+        ChanceLawV111.NativeSourceGridSize;
 
     public const string NativeBoundedIndexSourceVerifiedProvenance =
         "v0.111.0 Rng.NextInt(maxExclusive) multiplies the uniform 53-bit " +
