@@ -17,6 +17,9 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         if (state.ControlledRunActionChoice is { } runActionChoice)
         {
             var request = runActionChoice.PendingRequest;
+            if (request.SupportCount >
+                ControlledRunActionEngineV111.MaximumInlineOutcomeActions)
+                return Array.Empty<GameAction>();
             return Enumerable.Range(0, request.SupportCount)
                 .Select(index => GameAction.Create(
                     "choose_controlled_run_action_outcome",
@@ -66,13 +69,15 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                     : "choose_controlled_event_outcome")))
         {
             throw new InvalidOperationException(
-                "A suspended controlled event choice requires its explicit outcome adapter.");
+                "A suspended controlled choice requires its explicit outcome adapter.");
         }
         var fork = state.Fork();
         fork = fork with { DecisionIndex = fork.DecisionIndex + 1 };
 
-        var next =
-            StringComparer.Ordinal.Equals(
+        var next = fork.ControlledRunActionChoice is { } runActionContinuation
+            ? ResumeControlledRunAction(
+                fork, action, runActionContinuation)
+            : StringComparer.Ordinal.Equals(
                 action.Kind,
                 "use_potion")
             && state.Phase != RunPhase.Combat
@@ -81,7 +86,7 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                     action.ReadPayload<UsePotionPayload>())
                 : state.Phase switch
         {
-            RunPhase.RunStart => StartRun(fork, action),
+            RunPhase.RunStart => StepRunStart(fork, action),
             RunPhase.MapChoice => StepMap(fork, action),
             RunPhase.Combat => StepCombat(fork, action),
             RunPhase.Reward => StepReward(fork, action),
@@ -781,6 +786,43 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         return player;
     }
 
+    private static RunState StepRunStart(RunState state, GameAction action)
+    {
+        if (!ControlledChanceGuardV111.Active
+            || !ControlledEventChoiceReplayV111.IsActive
+            || action.Kind != "start_run"
+            || state.Configuration is not null)
+            return StartRun(state, action);
+
+        try
+        {
+            return StartRun(state, action);
+        }
+        catch (ControlledEventChoiceChanceRequiredException exception)
+        {
+            var bossPool = PrototypeContent.OvergrowthBossEncounterPool;
+            if (exception.Request.SiteId !=
+                    "run.encounter.overgrowth_boss.index_draw"
+                || exception.Request.StreamId != "combat"
+                || exception.CandidateLabels is null
+                || !exception.CandidateLabels.SequenceEqual(
+                    bossPool, StringComparer.Ordinal))
+                throw new NotSupportedException(
+                    "Controlled run start reached an unsupported chance request.");
+
+            var continuation = new
+                PrototypeControlledRunActionContinuationV111(
+                    state,
+                    "start_run",
+                    [],
+                    [],
+                    exception.Request,
+                    exception.CandidateLabels);
+            continuation.Validate();
+            return state with { ControlledRunActionChoice = continuation };
+        }
+    }
+
     private static RunState StartRun(RunState state, GameAction action)
     {
         RequireKind(action, "start_run");
@@ -802,7 +844,9 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                 "run.encounter.overgrowth_boss.index_draw",
                 "run:act:1:boss_pool:" + CanonicalJson.Sha256(bossPool),
                 Enumerable.Range(0, bossPool.Length),
-                streamId: "combat")];
+                streamId: "combat",
+                controlledCandidateLabels:
+                    (string[])bossPool.Clone())];
         var nextId = 1L;
         var deck = PrototypeContent.StartingDeck
             .Select(cardId => new CardInstance(

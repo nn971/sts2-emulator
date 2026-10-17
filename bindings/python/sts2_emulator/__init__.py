@@ -70,11 +70,28 @@ class State:
 
     def begin_controlled_shovel_dig(self):
         """Start a saved Nature boundary for legacy Shovel relic selection."""
+        actions = [action for action in self.actions()
+                   if action["kind"] == "rest_dig"]
+        if len(actions) != 1:
+            raise EmulatorError("State does not expose one legal Shovel dig action")
+        return self.begin_controlled_run_action(actions[0]["actionId"])
+
+    def begin_controlled_run_start(self):
+        """Start a controlled boundary for the legacy run-start encounter pick."""
+        actions = [action for action in self.actions()
+                   if action["kind"] == "start_run"]
+        if len(actions) != 1:
+            raise EmulatorError("State is not at an unsuspended run start")
+        return self.begin_controlled_run_action(actions[0]["actionId"])
+
+    def begin_controlled_run_action(self, action_id: str):
+        """Start a saved Nature boundary for a supported whole-run action."""
         if self.session.capabilities.get("controlledRunActionSchemaId") != (
                 "sts2-v111-controlled-run-action-v1"):
             raise EmulatorError("Emulator does not expose controlled run actions")
         result = self.session.call(
-            "controlled_run_action_begin", state_handle=self.handle)
+            "controlled_run_action_begin", state_handle=self.handle,
+            action_id=action_id)
         return ControlledRunActionChoice.from_wire(self.session, result)
 
     def resume_controlled_run_action(self):

@@ -3931,8 +3931,6 @@ public sealed partial class PrototypeGameEngine
 
     private static RunState StepRest(RunState state, GameAction action)
     {
-        if (state.ControlledRunActionChoice is { } continuation)
-            return ResumeControlledRunAction(state, action, continuation);
         if (action.Kind == PrototypeNativeRestSiteActionsV111.Clone)
             return ClonePaelRestCards(state);
         if (StringComparer.Ordinal.Equals(action.Kind,
@@ -4151,6 +4149,9 @@ public sealed partial class PrototypeGameEngine
             continuation.PendingRequest, selectedIndex, "controlled-v111");
         decision.Validate();
         var decisions = continuation.Decisions.Append(decision).ToArray();
+        var decisionCandidateLabels =
+            continuation.DecisionCandidateLabels.Append(
+                (string[])continuation.PendingCandidateLabels.Clone()).ToArray();
         RunState result;
         using (var replay = ControlledEventChoiceReplayV111.Begin(decisions))
         {
@@ -4158,18 +4159,58 @@ public sealed partial class PrototypeGameEngine
             {
                 DecisionIndex = state.DecisionIndex
             };
-            result = BeginRestDigReward(partialState);
-            replay.EnsureConsumed();
+            try
+            {
+                result = continuation.ActionId switch
+                {
+                    "start_run" => StartRun(
+                        partialState,
+                        GameAction.Empty("start_run")),
+                    PrototypeNativeRestSiteActionsV111.Dig =>
+                        BeginRestDigReward(partialState),
+                    _ => throw new NotSupportedException(
+                        "Controlled run action has no resume implementation.")
+                };
+                replay.EnsureConsumed();
+            }
+            catch (ControlledEventChoiceChanceRequiredException exception)
+            {
+                if (continuation.ActionId != "start_run"
+                    || !ControlledEventChoiceReplayV111.IsRunActionSite(
+                        exception.Request.SiteId)
+                    || exception.CandidateLabels is null
+                    || (exception.CandidateLabels.Length !=
+                            exception.Request.SupportCount
+                        && !(exception.CandidateLabels.Length == 0
+                            && exception.Request.SupportCount >
+                                ControlledRunActionEngineV111
+                                    .MaximumInlineOutcomeActions)))
+                    throw new NotSupportedException(
+                        "Controlled run action reached an unsupported chance request.");
+
+                var nextContinuation =
+                    new PrototypeControlledRunActionContinuationV111(
+                        state with { ControlledRunActionChoice = null },
+                        continuation.ActionId,
+                        decisions,
+                        decisionCandidateLabels,
+                        exception.Request,
+                        exception.CandidateLabels);
+                nextContinuation.Validate();
+                return state with
+                {
+                    ControlledRunActionChoice = nextContinuation
+                };
+            }
         }
 
         if (result.ControlledRunActionChoice is not null)
             throw new NotSupportedException(
-                "Controlled Shovel dig reached more than one random outcome.");
+                "Controlled run action replay stopped without resolving its continuation.");
         var trace = new ControlledRunActionTraceV111(
             continuation.ActionId,
             decisions,
-            continuation.DecisionCandidateLabels.Append(
-                (string[])continuation.PendingCandidateLabels.Clone()).ToArray());
+            decisionCandidateLabels);
         trace.Validate();
         return result with
         {

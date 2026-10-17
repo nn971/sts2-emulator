@@ -12,9 +12,10 @@ site, also without consuming native RNG. Scripted and controlled providers
 started as D1 components. Isolated **serializable D3 HP → intent continuations**
 and an opt-in D4 JSONL/Python adapter now exist. Restricted semantic rollouts
 can reach supported combat terminals, but there is **not yet** a general
-whole-run controlled continuation or a trained Nature-policy API. A narrower
-saved event-effect frame now covers selected stochastic event choices through
-an opt-in D3/D4 boundary. No `p/q`
+whole-run controlled continuation or a trained Nature-policy API.
+Narrow saved event-effect and run-action frames now cover selected stochastic
+event choices, the legacy run-start boss draw and Shovel action through opt-in
+D3/D4 boundaries. No `p/q`
 probability or original conditional law is claimed. No consumer-wide profile
 switch has occurred; the legacy prototype profile and default v111 protocols
 remain available. Distinguished Cape's curse-acquisition site now uses an
@@ -29,7 +30,7 @@ reference distribution is claimed.
 
 | Stable call-site ID | Owner / stream | Source audit | Native v111 implemented | Native parity tested | Controlled implemented | Controlled mechanics tested | Reference law calibrated |
 | --- | --- | --- | --- | --- | --- | --- | --- |
-| `run.encounter.overgrowth_boss.index_draw` | run + ordered Act 1 boss pool / legacy `combat` | Yes: fixed ordered pool and one bounded choice | No: legacy typed index provider only | No | No | No | No |
+| `run.encounter.overgrowth_boss.index_draw` | run + ordered Act 1 boss pool / legacy `combat` | Yes: fixed ordered pool and one bounded choice | No: legacy typed index provider only | No | Yes: saved legacy run-start action continuation | No | No |
 | `combat.initial_unique_hp` | creature CombatId / native `run.niche`, legacy `combat` | Yes: native initial and attached summons; legacy initial, death, and ordinary summons | Yes: native unique-pool draw and shared legacy typed index provider | Yes: seeded result/hash/cursor for native entry | Yes: initial entry and nested HP choices during the controlled legacy enemy-action continuation | Yes: original entry tests only; nested enemy continuation is build-only | No |
 | `combat.tough_egg.hatchling_hp` | Tough Egg CombatId / native `run.niche`, legacy `combat` | Yes, direct hatch range and call timing | Yes: typed native hatch and legacy transform index providers | Yes: existing seeded hatch oracle | Yes: controlled legacy enemy-action replay for variable hatchling HP | No: nested enemy continuation is build-only | No |
 | `combat.committed_intent.index_draw` | creature CombatId / native `run.monster_ai`, legacy `combat` | Yes, supported moves | Yes: native subset and legacy typed bounded-integer provider | Yes: seeded result/hash/cursor | Yes: isolated entry, source route and automatic turn continuation | Yes | No |
@@ -185,16 +186,16 @@ reference distribution is claimed.
 | `run.relic.beautiful_bracelet.deck_shuffle.swap_index` | Beautiful Bracelet acquisition / `run.niche`; legacy fallback `event` | Yes: ordered eligible deck cards; first four selected after full shuffle | Yes: native and legacy typed providers at each descending swap | No: provider-specific result/cursor regression pending | No | No | No |
 | `run.relic.distinguished_cape.modifier_curse.index_draw` | Distinguished Cape acquisition / `run.niche` | Yes: two ordered draws without replacement from source modifier-eligible curse pool | Yes: native-v111 and legacy typed providers | Yes: existing exact curse IDs and cursor regression | No | No | No |
 | `run.relic.fur_coat.map_node_shuffle.swap_index` | Fur Coat acquisition + act / `context.player.*`; legacy fallback `event` | Yes: current-act Combat and Elite nodes; first eight marked after full shuffle | Yes: native and legacy typed providers at each descending swap | No: provider-specific result/cursor regression pending | No | No | No |
-| `map.legacy.floor_width.index_draw` | act + floor width / legacy `map` | Partial: prototype floor-rule width range; native source map is a separate generator | No: legacy typed index provider only | No | No: map generation remains source-owned | No | No |
-| `map.legacy.edge_source.index_draw` | act + source/target floors + target node / legacy `map` | Partial: balanced eligible source nodes and ordered support | No: legacy typed index provider only | No | No: map generation remains source-owned | No | No |
-| `map.legacy.orphan_target.index_draw` | act + source node + target floor / legacy `map` | Partial: least-incoming target filter and ordered support | No: legacy typed index provider only | No | No: map generation remains source-owned | No | No |
-| `map.legacy.edge_extra_chance.ticket` | act + source node / legacy `map` | Partial: prototype 35% edge-extension ticket uses `NextInt(100)` | No: legacy typed bounded-integer provider only | No | No: map generation remains source-owned | No | No |
-| `map.legacy.second_edge_source.index_draw` | act + layer pair / legacy `map` | Partial: eligible sources with fewer than two outgoing edges | No: legacy typed index provider only | No | No: map generation remains source-owned | No | No |
-| `map.legacy.convergence.order_key` | act + target node / legacy `map` | Partial: per-target bounded random keys and stable ordering | No: legacy typed bounded-integer provider only | No | No: map generation remains source-owned | No | No |
-| `map.legacy.convergence.source.index_draw` | act + target node + source support / legacy `map` | Partial: source nodes that can add a nonduplicate edge | No: legacy typed index provider only | No | No: map generation remains source-owned | No | No |
-| `map.legacy.second_edge_target.index_draw` | act + source node + target support / legacy `map` | Partial: least-incoming available targets | No: legacy typed index provider only | No | No: map generation remains source-owned | No | No |
-| `map.legacy.required_room.node.index_draw` | act + floor + required room / legacy `map` | Partial: legal nodes for each required room | No: legacy typed index provider only | No | No: map generation remains source-owned | No | No |
-| `map.legacy.room_assignment.index_draw` | act + floor + node / legacy `map` | Partial: legal room pool after duplicate-special filtering | No: legacy typed index provider only | No | No: map generation remains source-owned | No | No |
+| `map.legacy.floor_width.index_draw` | act + floor width / legacy `map` | Partial: prototype floor-rule width range; native source map is a separate generator | No: legacy typed index provider only | No | Partial: saved `start_run` continuation; later map regeneration remains source-owned | No | No |
+| `map.legacy.edge_source.index_draw` | act + source/target floors + target node / legacy `map` | Partial: balanced eligible source nodes and ordered support | No: legacy typed index provider only | No | Partial: saved `start_run` continuation; later map regeneration remains source-owned | No | No |
+| `map.legacy.orphan_target.index_draw` | act + source node + target floor / legacy `map` | Partial: least-incoming target filter and ordered support | No: legacy typed index provider only | No | Partial: saved `start_run` continuation; later map regeneration remains source-owned | No | No |
+| `map.legacy.edge_extra_chance.ticket` | act + source node / legacy `map` | Partial: prototype 35% edge-extension ticket uses `NextInt(100)` | No: legacy typed bounded-integer provider only | No | Partial: saved `start_run` continuation; later map regeneration remains source-owned | No | No |
+| `map.legacy.second_edge_source.index_draw` | act + layer pair / legacy `map` | Partial: eligible sources with fewer than two outgoing edges | No: legacy typed index provider only | No | Partial: saved `start_run` continuation; later map regeneration remains source-owned | No | No |
+| `map.legacy.convergence.order_key` | act + target node / legacy `map` | Partial: per-target bounded random keys and stable ordering | No: legacy typed bounded-integer provider only | No | Partial: saved `start_run` continuation; later map regeneration remains source-owned | No | No |
+| `map.legacy.convergence.source.index_draw` | act + target node + source support / legacy `map` | Partial: source nodes that can add a nonduplicate edge | No: legacy typed index provider only | No | Partial: saved `start_run` continuation; later map regeneration remains source-owned | No | No |
+| `map.legacy.second_edge_target.index_draw` | act + source node + target support / legacy `map` | Partial: least-incoming available targets | No: legacy typed index provider only | No | Partial: saved `start_run` continuation; later map regeneration remains source-owned | No | No |
+| `map.legacy.required_room.node.index_draw` | act + floor + required room / legacy `map` | Partial: legal nodes for each required room | No: legacy typed index provider only | No | Partial: saved `start_run` continuation; later map regeneration remains source-owned | No | No |
+| `map.legacy.room_assignment.index_draw` | act + floor + node / legacy `map` | Partial: legal room pool after duplicate-special filtering | No: legacy typed index provider only | No | Partial: saved `start_run` continuation; later map regeneration remains source-owned | No | No |
 | `map.overgrowth.path_start_column.index_draw` | Act 1 path ordinal + retry / `context.act_1_map`; legacy `map` | Partial: seven path starts and second-path collision retries | Yes: native context bounded provider and legacy typed provider | No: map call-order and resulting-map parity pending | No: native Act map stays source-owned | No | No |
 | `map.overgrowth.path_delta.shuffle_swap_index` | Act 1 path + floor / `context.act_1_map`; legacy `map` | Partial: ordered `[-1, 0, 1]` path deltas | Yes: native and legacy typed Fisher–Yates providers | No: map call-order and resulting-map parity pending | No: native Act map stays source-owned | No | No |
 | `map.overgrowth.rest_count.gaussian_component` | Act 1 rest quota / `context.act_1_map`; legacy `map` | Partial: native truncated rounded Gaussian [6,7]; legacy Box–Muller bounded-integer approximation | Yes: native typed Gaussian-int and legacy typed component requests | No: map call-order and resulting-map parity pending | No: native Act map stays source-owned | No | No |
@@ -358,10 +359,11 @@ intent IDs, typed draw/target/generated-card resolution, and exact snapshot
 replay through the same JSONL/Python bridge.
 Opt-in event and run-action adapters expose whole-run begin, resolve and inspect
 operations on ordinary run-state handles; event rewards also support advance
-and one-request enumeration. The legacy Shovel dig uses a saved run-action
-continuation. Existing `step` and native RNG paths retain semantics. Next D3/D4
-work must wire controlled choices into more general game action continuation,
-broaden supported event-effect sites and add trained agent-facing observations.
+and one-request enumeration. Legacy run start and Shovel dig use saved
+run-action continuations. Existing `step` and native RNG paths retain semantics.
+Next D3/D4 work must wire controlled choices into more general game action
+continuation, broaden supported event-effect sites and add trained
+agent-facing observations.
 Full native-oracle fidelity
 remains separate from seeded emulator RNG equality. See
 [the isolated Nature bridge](DESIRED_RNG_D3_INTENT_BRIDGE.md).

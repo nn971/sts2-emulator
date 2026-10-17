@@ -158,8 +158,9 @@ Configured Overgrowth treasure relics now use the same persistent
 merchant draws. Treasure RNG state is saved on both successful and exhausted
 bag paths; source result/cursor parity remains unverified.
 The configured Shovel rest-site reward uses that same player reward stream and
-retains its advanced bundle while the relic reward is pending.
-Its legacy unowned-relic index draw also has a separate opt-in saved run-action
+retains its advanced bundle while the relic reward is pending. The legacy
+`start_run` boss encounter draw has an opt-in saved run-action continuation.
+Separately, the legacy Shovel unowned-relic index draw has a saved run-action
 continuation; the configured native relic-bag route remains source-owned.
 Neow's nested random relic pickup also advances the same bundle while
 preserving its existing reward continuation.

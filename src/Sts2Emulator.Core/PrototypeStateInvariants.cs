@@ -22,6 +22,18 @@ public static class PrototypeStateInvariants
                 trace.Validate();
         }
         NativeRunRngV111.Validate(state);
+        if (state.ControlledRunActionChoice is { } controlledRunActionChoice)
+        {
+            controlledRunActionChoice.Validate();
+            if (state.DecisionIndex <
+                    controlledRunActionChoice.PartialState.DecisionIndex
+                || CanonicalJson.Sha256(state with
+                    { ControlledRunActionChoice = null }) !=
+                    CanonicalJson.Sha256(
+                        controlledRunActionChoice.PartialState))
+                throw new InvalidOperationException(
+                    "Suspended controlled run action conflicts with committed state.");
+        }
         NativeAncientRewardsV111.ValidateEventContext(state);
         NativeEventContextRngV111.Validate(
             state,
@@ -171,20 +183,6 @@ public static class PrototypeStateInvariants
                         controlledEventRewardChoice.PartialState))
                 throw new InvalidOperationException(
                     "Suspended controlled event reward conflicts with committed reward state.");
-        }
-
-        if (state.ControlledRunActionChoice is { } controlledRunActionChoice)
-        {
-            controlledRunActionChoice.Validate();
-            if (state.Phase != RunPhase.Rest
-                || state.DecisionIndex <
-                    controlledRunActionChoice.PartialState.DecisionIndex
-                || CanonicalJson.Sha256(state with
-                    { ControlledRunActionChoice = null }) !=
-                    CanonicalJson.Sha256(
-                        controlledRunActionChoice.PartialState))
-                throw new InvalidOperationException(
-                    "Suspended controlled run action conflicts with committed state.");
         }
 
         if (!StringComparer.Ordinal.Equals(world.RulesetId, state.Configuration?.RulesetId ?? PrototypeContent.RulesetId))

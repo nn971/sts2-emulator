@@ -55,6 +55,9 @@ multi-draw event effects, the frame re-enters only the current effect from its
 saved start and injects that effect's saved decision prefix; all completed
 earlier effects remain in the partial run.
 
+Legacy run-start and Shovel action draws use the separate
+[`CONTROLLED_RUN_ACTION_D3.md`](CONTROLLED_RUN_ACTION_D3.md) boundary.
+
 ## JSONL and Python
 
 `hello` advertises `controlledEventChoiceSchemaId` and the site list. Use an

@@ -1,3 +1,5 @@
+using System.Globalization;
+
 namespace Sts2Emulator.Core;
 
 /// <summary>
@@ -21,7 +23,8 @@ public sealed record ControlledRunActionTraceV111(
 
     public void Validate()
     {
-        if (ActionId != PrototypeNativeRestSiteActionsV111.Dig
+        if (ActionId is not ("start_run"
+                or PrototypeNativeRestSiteActionsV111.Dig)
             || Decisions is null || CandidateLabels is null
             || Decisions.Length == 0
             || Decisions.Length != CandidateLabels.Length
@@ -31,16 +34,53 @@ public sealed record ControlledRunActionTraceV111(
         for (var index = 0; index < Decisions.Length; index++)
         {
             var decision = Decisions[index];
+            var labels = CandidateLabels[index];
+            if (labels is null)
+                throw new InvalidDataException(
+                    "Controlled run-action transcript is missing candidate labels.");
             decision.Validate();
+            var request = decision.Request;
+            var isBossDraw = request.SiteId ==
+                "run.encounter.overgrowth_boss.index_draw";
+            var isMapDraw = request.SiteId.StartsWith(
+                "map.legacy.", StringComparison.Ordinal);
+            var prefixStream = ActionId ==
+                    PrototypeNativeRestSiteActionsV111.Dig
+                ? "event" : isBossDraw ? "combat" : "map";
+            var validSite = ActionId == "start_run"
+                ? ControlledEventChoiceReplayV111.IsRunActionSite(
+                    request.SiteId)
+                : request.SiteId ==
+                    "relic.unowned_random_selection.index_draw";
+            var prefixOwner = isBossDraw
+                ? "run:act:1:boss_pool:" + CanonicalJson.Sha256(labels)
+                : ActionId == PrototypeNativeRestSiteActionsV111.Dig
+                    ? "rest:shovel:pool:" + CanonicalJson.Sha256(labels)
+                    : request.OwnerId;
+            var prefixCandidates = request.OperationKind == "bounded_integer"
+                ? Array.Empty<int>()
+                : isBossDraw || ActionId ==
+                    PrototypeNativeRestSiteActionsV111.Dig
+                    ? Enumerable.Range(0, labels.Length).ToArray()
+                    : (int[])request.OrderedCandidates.Clone();
+            var omittedLabels = isMapDraw
+                && request.SupportCount >
+                    ControlledRunActionEngineV111.MaximumInlineOutcomeActions
+                && labels.Length == 0;
+            var numericLabels = !isMapDraw || omittedLabels || labels.SequenceEqual(
+                Enumerable.Range(0, labels.Length).Select(index =>
+                    index.ToString(CultureInfo.InvariantCulture)),
+                StringComparer.Ordinal);
             if (decision.ProviderMode != "controlled-v111"
                 || decision.NativeCursorBefore is not null
                 || decision.NativeCursorAfter is not null
-                || decision.Request.SiteId !=
-                    "relic.unowned_random_selection.index_draw"
-                || CandidateLabels[index] is null
-                || CandidateLabels[index].Length !=
-                    decision.Request.SupportCount
-                || CandidateLabels[index].Any(string.IsNullOrWhiteSpace))
+                || !validSite
+                || request.StreamId != prefixStream
+                || request.OwnerId != prefixOwner
+                || !request.OrderedCandidates.SequenceEqual(prefixCandidates)
+                || (labels.Length != request.SupportCount && !omittedLabels)
+                || !numericLabels
+                || labels.Any(string.IsNullOrWhiteSpace))
                 throw new InvalidDataException(
                     "Controlled run-action transcript contains an invalid outcome.");
         }
@@ -48,8 +88,8 @@ public sealed record ControlledRunActionTraceV111(
 }
 
 /// <summary>
-/// Serializable boundary for a simple run action whose first controlled
-/// outcome is reached before any action effects are committed.
+/// Serializable checkpoint for a supported run action replayed from its
+/// pre-action state until the next unresolved controlled outcome.
 /// </summary>
 public sealed record PrototypeControlledRunActionContinuationV111(
     RunState PartialState,
@@ -83,47 +123,150 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                 "Malformed controlled run-action continuation.");
 
         var state = PartialState;
-        if (ActionId != PrototypeNativeRestSiteActionsV111.Dig
-            || state.Phase != RunPhase.Rest
-            || state.ControlledRunActionChoice is not null
+        if (state.ControlledRunActionChoice is not null
             || state.ControlledEventRewardChoice is not null
-            || state.World?.Event?.ControlledChoice is not null
-            || !PrototypeNativeRestSiteRelics.CanDig(state.Player))
+            || state.World?.Event?.ControlledChoice is not null)
             throw new InvalidDataException(
-                "Controlled run-action frame is outside the legacy Shovel boundary.");
+                "Controlled run-action frame contains another pending controller.");
 
-        var available = PrototypeContent.RelicPool
-            .Where(id => !state.Player.Relics.Any(relic =>
-                StringComparer.Ordinal.Equals(relic.RelicId, id)))
-            .ToArray();
         PendingRequest.Validate();
-        if (PendingRequest.SiteId !=
-                "relic.unowned_random_selection.index_draw"
-            || PendingRequest.StreamId != "event"
-            || PendingRequest.OwnerId != "rest:shovel:pool:"
-                + CanonicalJson.Sha256(available)
-            || !PendingRequest.OrderedCandidates.SequenceEqual(
-                Enumerable.Range(0, available.Length))
-            || PendingCandidateLabels.Length != available.Length
-            || !PendingCandidateLabels.SequenceEqual(available,
+        string expectedSite;
+        string expectedStream;
+        string expectedOwner;
+        int[] expectedCandidates;
+        string[] expectedLabels;
+        switch (ActionId)
+        {
+            case "start_run":
+            {
+                if (state.Phase != RunPhase.RunStart
+                    || state.World is not null
+                    || state.Configuration is not null)
+                    throw new InvalidDataException(
+                        "Controlled run-start frame is outside the legacy run-start boundary.");
+                if (PendingRequest.SiteId ==
+                    "run.encounter.overgrowth_boss.index_draw")
+                {
+                    expectedSite = "run.encounter.overgrowth_boss.index_draw";
+                    expectedStream = "combat";
+                    var bossPool = PrototypeContent.OvergrowthBossEncounterPool;
+                    expectedOwner = "run:act:1:boss_pool:"
+                        + CanonicalJson.Sha256(bossPool);
+                    expectedCandidates = Enumerable.Range(
+                        0, bossPool.Length).ToArray();
+                    expectedLabels = (string[])bossPool.Clone();
+                }
+                else if (ControlledEventChoiceReplayV111.IsRunActionSite(
+                    PendingRequest.SiteId)
+                    && PendingRequest.SiteId.StartsWith(
+                        "map.legacy.", StringComparison.Ordinal))
+                {
+                    expectedSite = PendingRequest.SiteId;
+                    var mapStream = "map";
+                    var mapOwner = PendingRequest.OwnerId;
+                    expectedLabels = PendingRequest.SupportCount >
+                        ControlledRunActionEngineV111.MaximumInlineOutcomeActions
+                        ? []
+                        : Enumerable.Range(
+                            0, PendingRequest.SupportCount).Select(index =>
+                                index.ToString(CultureInfo.InvariantCulture)).ToArray();
+                    var mapCandidates = PendingRequest.OperationKind
+                        == "bounded_integer"
+                        ? []
+                        : (int[])PendingRequest.OrderedCandidates.Clone();
+                    expectedStream = mapStream;
+                    expectedOwner = mapOwner;
+                    expectedCandidates = mapCandidates;
+                }
+                else
+                {
+                    throw new InvalidDataException(
+                        "Controlled run-start frame has an unsupported chance site.");
+                }
+                break;
+            }
+            case PrototypeNativeRestSiteActionsV111.Dig:
+            {
+                if (state.Phase != RunPhase.Rest
+                    || !PrototypeNativeRestSiteRelics.CanDig(state.Player))
+                    throw new InvalidDataException(
+                        "Controlled Shovel frame is outside the legacy rest-site boundary.");
+                expectedSite = "relic.unowned_random_selection.index_draw";
+                expectedStream = "event";
+                expectedLabels = PrototypeContent.RelicPool
+                    .Where(id => !state.Player.Relics.Any(relic =>
+                        StringComparer.Ordinal.Equals(relic.RelicId, id)))
+                    .ToArray();
+                expectedOwner = "rest:shovel:pool:"
+                    + CanonicalJson.Sha256(expectedLabels);
+                expectedCandidates = Enumerable.Range(
+                    0, expectedLabels.Length).ToArray();
+                break;
+            }
+            default:
+                throw new InvalidDataException(
+                    "Controlled run-action frame uses an unsupported action.");
+        }
+        if (PendingRequest.SiteId != expectedSite
+            || PendingRequest.StreamId != expectedStream
+            || PendingRequest.OwnerId != expectedOwner
+            || !PendingRequest.OrderedCandidates.SequenceEqual(expectedCandidates)
+            || PendingCandidateLabels.Length != expectedLabels.Length
+            || !PendingCandidateLabels.SequenceEqual(expectedLabels,
                 StringComparer.Ordinal))
             throw new InvalidDataException(
-                "Controlled Shovel candidates do not match the current eligible relic pool.");
+                "Controlled run-action candidates do not match their source pool.");
 
         for (var index = 0; index < Decisions.Length; index++)
         {
             var decision = Decisions[index];
+            var labels = DecisionCandidateLabels[index];
+            if (labels is null)
+                throw new InvalidDataException(
+                    "Controlled run-action decision prefix is missing candidate labels.");
             decision.Validate();
+            var request = decision.Request;
+            var isBossDraw = request.SiteId ==
+                "run.encounter.overgrowth_boss.index_draw";
+            var isMapDraw = request.SiteId.StartsWith(
+                "map.legacy.", StringComparison.Ordinal);
+            var prefixStream = ActionId ==
+                    PrototypeNativeRestSiteActionsV111.Dig
+                ? "event" : isBossDraw ? "combat" : "map";
+            var validSite = ActionId == "start_run"
+                ? ControlledEventChoiceReplayV111.IsRunActionSite(
+                    request.SiteId)
+                : request.SiteId ==
+                    "relic.unowned_random_selection.index_draw";
+            var prefixOwner = isBossDraw
+                ? "run:act:1:boss_pool:" + CanonicalJson.Sha256(labels)
+                : ActionId == PrototypeNativeRestSiteActionsV111.Dig
+                    ? "rest:shovel:pool:" + CanonicalJson.Sha256(labels)
+                    : request.OwnerId;
+            var prefixCandidates = request.OperationKind == "bounded_integer"
+                ? Array.Empty<int>()
+                : isBossDraw || ActionId ==
+                    PrototypeNativeRestSiteActionsV111.Dig
+                    ? Enumerable.Range(0, labels.Length).ToArray()
+                    : (int[])request.OrderedCandidates.Clone();
+            var omittedLabels = isMapDraw
+                && request.SupportCount >
+                    ControlledRunActionEngineV111.MaximumInlineOutcomeActions
+                && labels.Length == 0;
+            var numericLabels = !isMapDraw || omittedLabels || labels.SequenceEqual(
+                Enumerable.Range(0, labels.Length).Select(index =>
+                    index.ToString(CultureInfo.InvariantCulture)),
+                StringComparer.Ordinal);
             if (decision.ProviderMode != "controlled-v111"
                 || decision.NativeCursorBefore is not null
                 || decision.NativeCursorAfter is not null
-                || decision.Request.SiteId !=
-                    "relic.unowned_random_selection.index_draw"
-                || decision.Request.StreamId != "event"
-                || decision.Request.SupportCount !=
-                    DecisionCandidateLabels[index].Length
-                || DecisionCandidateLabels[index].Any(
-                    string.IsNullOrWhiteSpace))
+                || !validSite
+                || request.StreamId != prefixStream
+                || request.OwnerId != prefixOwner
+                || !request.OrderedCandidates.SequenceEqual(prefixCandidates)
+                || (request.SupportCount != labels.Length && !omittedLabels)
+                || !numericLabels
+                || labels.Any(string.IsNullOrWhiteSpace))
                 throw new InvalidDataException(
                     "Controlled Shovel decision prefix is malformed.");
         }
@@ -139,11 +282,21 @@ public sealed record PrototypeControlledRunActionContinuationV111(
 public static class ControlledRunActionEngineV111
 {
     public const string SchemaId = "sts2-v111-controlled-run-action-v1";
+    public const int MaximumInlineOutcomeActions = 4096;
+
+    public static RunState BeginLegacyRunStart(RunState source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        if (source.Phase != RunPhase.RunStart
+            || source.Configuration is not null)
+            throw new InvalidOperationException(
+                "Controlled run start requires an unsuspended legacy run-start state.");
+        return Begin(source, GameAction.Empty("start_run"));
+    }
 
     public static RunState BeginShovelDig(RunState source)
     {
         ArgumentNullException.ThrowIfNull(source);
-        PrototypeStateInvariants.Validate(source);
         if (source.Phase != RunPhase.Rest
             || source.ControlledRunActionChoice is not null
             || !PrototypeNativeRestSiteRelics.CanDig(source.Player))
@@ -155,13 +308,33 @@ public static class ControlledRunActionEngineV111
                 candidate.Kind == PrototypeNativeRestSiteActionsV111.Dig)
             ?? throw new InvalidOperationException(
                 "Shovel dig is not legal in the current state.");
+        return Begin(source, action);
+    }
+
+    public static RunState Begin(RunState source, GameAction action)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(action);
+        PrototypeStateInvariants.Validate(source);
+        if (source.ControlledRunActionChoice is not null
+            || action.Kind is not ("start_run"
+                or PrototypeNativeRestSiteActionsV111.Dig))
+            throw new InvalidOperationException(
+                "Controlled run action requires an unsuspended supported action.");
+        var engine = new PrototypeGameEngine();
+        var actionId = PrototypeAiEnvironment.StableActionId(action);
+        if (!engine.GetLegalActions(source).Any(candidate =>
+                StringComparer.Ordinal.Equals(
+                    PrototypeAiEnvironment.StableActionId(candidate), actionId)))
+            throw new InvalidOperationException(
+                "Controlled run action requires a current legal action.");
         using var guard = ControlledChanceGuardV111.Enter();
         using var replay = ControlledEventChoiceReplayV111.Begin([]);
-        var result = new PrototypeGameEngine().Step(source, action).State;
+        var result = engine.Step(source, action).State;
         replay.EnsureConsumed();
         if (result.ControlledRunActionChoice is null)
             throw new NotSupportedException(
-                "Shovel dig did not reach a supported legacy controlled chance site.");
+                "The selected action did not reach a supported legacy controlled chance site.");
         PrototypeStateInvariants.Validate(result);
         return result;
     }

@@ -237,7 +237,7 @@ public static class LegacyRandomChoiceV111
             && !ControlledChanceGuardV111.EngineOwnedNativeProviderActive)
         {
             if (ControlledEventChoiceReplayV111.IsActive &&
-                ControlledEventChoiceReplayV111.IsEventChoiceSite(siteId))
+                ControlledEventChoiceReplayV111.IsControlledReplaySite(siteId))
             {
                 var controlledDecision = new RandomIndexDecisionV111(
                     request,

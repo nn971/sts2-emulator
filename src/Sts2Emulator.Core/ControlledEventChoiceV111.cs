@@ -420,6 +420,8 @@ internal sealed class ControlledEventChoiceChanceRequiredException(
 /// </summary>
 internal sealed class ControlledEventChoiceReplayV111 : IDisposable
 {
+    public const int MaximumMaterializedCandidateLabels = 4096;
+
     private static readonly AsyncLocal<ControlledEventChoiceReplayV111?> Active =
         new();
     private readonly ControlledEventChoiceReplayV111? _previous;
@@ -462,7 +464,7 @@ internal sealed class ControlledEventChoiceReplayV111 : IDisposable
         var active = Active.Value ?? throw new InvalidOperationException(
             "Controlled event-choice replay is not active.");
         request.Validate();
-        if (!IsEventChoiceSite(request.SiteId))
+        if (!IsControlledReplaySite(request.SiteId))
             throw new NotSupportedException(
                 "UNSUPPORTED_CONTROLLED_CHANCE site=" + request.SiteId +
                 " operation=" + request.OperationKind);
@@ -476,10 +478,15 @@ internal sealed class ControlledEventChoiceReplayV111 : IDisposable
                     || decision.Request.SiteId != request.SiteId
                     || decision.Request.OwnerId != request.OwnerId)));
         var normalizedRequest = request with { Ordinal = ordinal };
-        var candidateLabels = active._candidateLabels ?? Enumerable.Range(
-            0, normalizedRequest.SupportCount).Select(index =>
-                index.ToString(CultureInfo.InvariantCulture)).ToArray();
-        if (candidateLabels.Length != normalizedRequest.SupportCount)
+        var candidateLabels = active._candidateLabels;
+        if (candidateLabels is null)
+            candidateLabels = normalizedRequest.SupportCount
+                <= MaximumMaterializedCandidateLabels
+                ? Enumerable.Range(0, normalizedRequest.SupportCount).Select(index =>
+                    index.ToString(CultureInfo.InvariantCulture)).ToArray()
+                : Array.Empty<string>();
+        if (candidateLabels.Length != 0
+            && candidateLabels.Length != normalizedRequest.SupportCount)
             throw new InvalidDataException(
                 "Event-choice candidate labels do not match the random support.");
         if (active._nextDecision >= active._decisions.Length)
@@ -558,6 +565,22 @@ internal sealed class ControlledEventChoiceReplayV111 : IDisposable
         "event.reward.random_modifier_curse.index_draw" or
         "potion.uncommon_model.index_draw" or
         "relic.unowned_random_selection.index_draw";
+
+    public static bool IsRunActionSite(string siteId) => siteId is
+        "run.encounter.overgrowth_boss.index_draw" or
+        "map.legacy.floor_width.index_draw" or
+        "map.legacy.edge_source.index_draw" or
+        "map.legacy.orphan_target.index_draw" or
+        "map.legacy.edge_extra_chance.ticket" or
+        "map.legacy.second_edge_source.index_draw" or
+        "map.legacy.convergence.order_key" or
+        "map.legacy.convergence.source.index_draw" or
+        "map.legacy.second_edge_target.index_draw" or
+        "map.legacy.required_room.node.index_draw" or
+        "map.legacy.room_assignment.index_draw";
+
+    public static bool IsControlledReplaySite(string siteId) =>
+        IsEventChoiceSite(siteId) || IsRunActionSite(siteId);
 }
 
 internal sealed class ControlledEventChoiceRandomIndexProviderV111

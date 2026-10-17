@@ -884,7 +884,25 @@ internal static class PrototypeAiJsonlServer
                             controlledRunActionSchemaId =
                                 ControlledRunActionEngineV111.SchemaId,
                             controlledRunActionScope =
-                                "legacy-shovel-unowned-relic-selection",
+                                "legacy-run-start-map-and-shovel-selection",
+                            controlledRunActionMaximumInlineOutcomeActions =
+                                ControlledRunActionEngineV111
+                                    .MaximumInlineOutcomeActions,
+                            controlledRunActionSites = new[]
+                            {
+                                "run.encounter.overgrowth_boss.index_draw",
+                                "map.legacy.floor_width.index_draw",
+                                "map.legacy.edge_source.index_draw",
+                                "map.legacy.orphan_target.index_draw",
+                                "map.legacy.edge_extra_chance.ticket",
+                                "map.legacy.second_edge_source.index_draw",
+                                "map.legacy.convergence.order_key",
+                                "map.legacy.convergence.source.index_draw",
+                                "map.legacy.second_edge_target.index_draw",
+                                "map.legacy.required_room.node.index_draw",
+                                "map.legacy.room_assignment.index_draw",
+                                "relic.unowned_random_selection.index_draw"
+                            },
                             controlledEventChoiceEnumerationSchemaId =
                                 ControlledEventChoiceEnumeratorV111.SchemaId,
                             controlledEventChoiceEnumerationMaximumOutcomes =
@@ -1960,7 +1978,30 @@ internal static class PrototypeAiJsonlServer
                     {
                         var parentHandle = RequiredString(request, "state_handle");
                         var source = RequireState(request);
-                        var next = ControlledRunActionEngineV111.BeginShovelDig(source);
+                        var engine = new PrototypeGameEngine();
+                        GameAction action;
+                        if (OptionalString(request, "action_id") is { } actionId)
+                        {
+                            var frame = environment.Observe(source);
+                            var actionView = frame.LegalActions.SingleOrDefault(candidate =>
+                                StringComparer.Ordinal.Equals(
+                                    candidate.ActionId, actionId))
+                                ?? throw new InvalidOperationException(
+                                    "Controlled run-action begin requires a current player-legal action.");
+                            action = GameAction.Create(
+                                actionView.Kind, actionView.Payload);
+                        }
+                        else
+                        {
+                            action = engine.GetLegalActions(source)
+                                .SingleOrDefault(candidate =>
+                                    candidate.Kind ==
+                                        PrototypeNativeRestSiteActionsV111.Dig)
+                                ?? throw new InvalidOperationException(
+                                    "Missing action_id; only Shovel dig can use the legacy default.");
+                        }
+                        var next = ControlledRunActionEngineV111.Begin(
+                            source, action);
                         var handle = Store(next, parentHandle);
                         Write(ControlledRunActionResult(next, handle, parentHandle));
                         break;
