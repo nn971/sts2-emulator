@@ -510,30 +510,7 @@ public static class PrototypeStateInvariants
                 "Neow must offer exactly three distinct choices.");
         }
 
-        if (eventState.EventId == PrototypeNativeStoneOfAllTime.EventId)
-        {
-            if (eventState.NativeEventPotionSlot is { } potionSlot
-                && (potionSlot < 0
-                    || potionSlot >= player.PotionSlots.Length
-                    || player.PotionSlots[potionSlot] is null))
-            {
-                throw new InvalidOperationException(
-                    "Stone of All Time's saved potion slot is invalid.");
-            }
-
-            if (eventState.ChosenChoiceId == "lift"
-                ? eventState.NativeEventPotionSlot is not null
-                : eventState.NativeEventPotionSlot is null)
-            {
-                throw new InvalidOperationException(
-                    "Stone of All Time's potion choice state is inconsistent.");
-            }
-        }
-        else if (eventState.NativeEventPotionSlot is not null)
-        {
-            throw new InvalidOperationException(
-                "A non-Stone event cannot retain a selected potion slot.");
-        }
+        eventState.Stochastic.ValidateNativePotionSlot(eventState, player);
 
         if (eventState.DeferredHpLoss < 0)
         {
@@ -702,28 +679,8 @@ public static class PrototypeStateInvariants
             return;
         }
 
-        if (eventState.EventId == PrototypeNativeGloryEvents.TinkerTimeId)
-        {
-            var expected = eventState.NativePageIndex switch
-            {
-                0 => 0,
-                1 or 2 => 2,
-                _ => throw new InvalidOperationException(
-                    "Tinker event page is out of range.")
-            };
-            if (eventState.ChosenChoiceId is not null
-                || (eventState.OfferedChoiceIds?.Length ?? 0) != expected
-                || (eventState.NativePageIndex == 2
-                    ? eventState.NativeTinkerType is not
-                        ("attack" or "skill" or "power")
-                    : eventState.NativeTinkerType is not null))
-                throw new InvalidOperationException(
-                    "Tinker selected type and choice offers are inconsistent.");
+        if (eventState.Stochastic.ValidateNativeTinkerType(eventState))
             return;
-        }
-        if (eventState.NativeTinkerType is not null)
-            throw new InvalidOperationException(
-                "Tinker-only state leaked into another event.");
 
         if (eventState.EventId ==
                 PrototypeNativeGloryEvents.BattlewornDummyId

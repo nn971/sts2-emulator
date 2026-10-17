@@ -160,6 +160,65 @@ public sealed record EventStochasticStateV111(
         }
     }
 
+    public void ValidateNativePotionSlot(
+        EventState owner, PlayerState player)
+    {
+        ArgumentNullException.ThrowIfNull(owner);
+        ArgumentNullException.ThrowIfNull(player);
+        if (owner.EventId == PrototypeNativeStoneOfAllTime.EventId)
+        {
+            if (RandomOutcomes.NativeEventPotionSlot is { } potionSlot
+                && (potionSlot < 0
+                    || potionSlot >= player.PotionSlots.Length
+                    || player.PotionSlots[potionSlot] is null))
+            {
+                throw new InvalidOperationException(
+                    "Stone of All Time's saved potion slot is invalid.");
+            }
+
+            if (owner.ChosenChoiceId == "lift"
+                ? RandomOutcomes.NativeEventPotionSlot is not null
+                : RandomOutcomes.NativeEventPotionSlot is null)
+            {
+                throw new InvalidOperationException(
+                    "Stone of All Time's potion choice state is inconsistent.");
+            }
+        }
+        else if (RandomOutcomes.NativeEventPotionSlot is not null)
+        {
+            throw new InvalidOperationException(
+                "A non-Stone event cannot retain a selected potion slot.");
+        }
+    }
+
+    public bool ValidateNativeTinkerType(EventState owner)
+    {
+        ArgumentNullException.ThrowIfNull(owner);
+        if (owner.EventId == PrototypeNativeGloryEvents.TinkerTimeId)
+        {
+            var expected = owner.NativePageIndex switch
+            {
+                0 => 0,
+                1 or 2 => 2,
+                _ => throw new InvalidOperationException(
+                    "Tinker event page is out of range.")
+            };
+            if (owner.ChosenChoiceId is not null
+                || (owner.OfferedChoiceIds?.Length ?? 0) != expected
+                || (owner.NativePageIndex == 2
+                    ? RandomOutcomes.NativeTinkerType is not
+                        ("attack" or "skill" or "power")
+                    : RandomOutcomes.NativeTinkerType is not null))
+                throw new InvalidOperationException(
+                    "Tinker selected type and choice offers are inconsistent.");
+            return true;
+        }
+        if (RandomOutcomes.NativeTinkerType is not null)
+            throw new InvalidOperationException(
+                "Tinker-only state leaked into another event.");
+        return false;
+    }
+
     public void ValidateControlledChoice(
         EventState owner, RunState run)
     {
