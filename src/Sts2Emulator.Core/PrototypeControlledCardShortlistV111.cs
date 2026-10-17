@@ -363,25 +363,7 @@ public sealed partial class PrototypeGameEngine
             Player = resumed.Player,
             World = world with { Combat = resumed.Combat }
         };
-        if (resumed.Combat.PendingChoice is null &&
-            resumed.Combat.AutomaticPipelineContinuation is { } automatic)
-        {
-            updated = updated with
-            {
-                World = updated.World! with
-                {
-                    Combat = resumed.Combat with
-                    {
-                        AutomaticPipelineContinuation = null
-                    }
-                }
-            };
-            updated = automatic.OpeningStage is { } openingStage
-                ? ResumeOpeningCombat(updated, openingStage)
-                : ResumeAutomaticPipeline(updated,
-                    automatic.NextStepIndex,
-                    automatic.PendingPostDispatchEventKind);
-        }
+        updated = ResumeAutomaticPipelineAfterChoiceResolution(updated);
         if (updated.Phase == RunPhase.Combat &&
             updated.World?.Combat is { } live && AllEnemiesDefeated(live))
             return EnterCombatReward(updated);

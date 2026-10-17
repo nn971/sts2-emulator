@@ -1690,6 +1690,36 @@ public sealed partial class PrototypeGameEngine
     }
 
     /// <summary>
+    /// Resume a saved automatic pipeline once a controlled choice has
+    /// completed. Choice adapters share this handoff so clearing the cursor
+    /// and selecting its opening or ordinary resume path stay consistent.
+    /// </summary>
+    internal static RunState ResumeAutomaticPipelineAfterChoiceResolution(
+        RunState state)
+    {
+        if (state.World?.Combat is not
+                { PendingChoice: null,
+                  AutomaticPipelineContinuation: { } continuation } combat)
+            return state;
+
+        var world = RequireWorld(state);
+        state = state with
+        {
+            World = world with
+            {
+                Combat = combat with
+                {
+                    AutomaticPipelineContinuation = null
+                }
+            }
+        };
+        return continuation.OpeningStage is { } openingStage
+            ? ResumeOpeningCombat(state, openingStage)
+            : ResumeAutomaticPipeline(state, continuation.NextStepIndex,
+                continuation.PendingPostDispatchEventKind);
+    }
+
+    /// <summary>
     /// Attach the semantic intent provider frame to the ordinary automatic
     /// pipeline cursor. The end-turn facade projects this value into its
     /// established serialized Intents field.
@@ -14274,25 +14304,7 @@ public sealed partial class PrototypeGameEngine
             Player = resolved.Player,
             World = world with { Combat = resolved.Combat }
         };
-        if (resolved.Combat.PendingChoice is null &&
-            resolved.Combat.AutomaticPipelineContinuation is { } automatic)
-        {
-            result = result with
-            {
-                World = result.World! with
-                {
-                    Combat = resolved.Combat with
-                    {
-                        AutomaticPipelineContinuation = null
-                    }
-                }
-            };
-            result = automatic.OpeningStage is { } openingStage
-                ? ResumeOpeningCombat(result, openingStage)
-                : ResumeAutomaticPipeline(result,
-                    automatic.NextStepIndex,
-                    automatic.PendingPostDispatchEventKind);
-        }
+        result = ResumeAutomaticPipelineAfterChoiceResolution(result);
         if (result.Phase == RunPhase.Combat &&
             result.World?.Combat is { } live &&
             AllEnemiesDefeated(live))
