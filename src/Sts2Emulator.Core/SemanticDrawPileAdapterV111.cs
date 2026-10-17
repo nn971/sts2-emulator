@@ -114,8 +114,8 @@ public static class SemanticDrawPileAdapterV111
                 [PrototypeCardZone.DrawPile] = nextPhysical,
                 [PrototypeCardZone.DiscardPile] = []
             });
-        return ApplyCommittedZoneTransition(
-            checkpoint, nextZones, nextDeck);
+        return ApplyDrawPileShuffle(
+            checkpoint, nextPhysical, recycled, nextZones, nextDeck);
     }
 
     private static void ValidateProviderCorrespondence(
@@ -276,6 +276,47 @@ public static class SemanticDrawPileAdapterV111
             physicalIndex);
         return ApplyCommittedZoneTransition(
             combat, nextCardZones, semantic);
+    }
+
+    /// <summary>
+    /// Commits a complete draw-pile shuffle together with the identities
+    /// moved into the pile, provider order, and every affected card zone.
+    /// The shuffled result must be a permutation of the existing draw pile
+    /// and incoming identities; callers own the random draw and source hooks.
+    /// </summary>
+    internal static CombatState ApplyDrawPileShuffle(
+        CombatState combat,
+        IReadOnlyCollection<long> shuffledPhysicalDrawPile,
+        IReadOnlyCollection<long> movedIntoDrawPile,
+        CombatCardZonesV111 nextCardZones,
+        SemanticDeckStateV111? committedSemanticDeck)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(shuffledPhysicalDrawPile);
+        ArgumentNullException.ThrowIfNull(movedIntoDrawPile);
+        ArgumentNullException.ThrowIfNull(nextCardZones);
+        ValidateSynchronized(combat, requireIdle: true);
+
+        var shuffled = shuffledPhysicalDrawPile.ToArray();
+        var moved = movedIntoDrawPile.ToArray();
+        if (moved.Distinct().Count() != moved.Length ||
+            shuffled.Distinct().Count() != shuffled.Length ||
+            moved.Any(id => combat.DrawPile.Contains(id)) ||
+            moved.Any(id => !Enum.GetValues<PrototypeCardZone>()
+                .Where(zone => zone != PrototypeCardZone.DrawPile)
+                .Any(zone => combat.Mechanics.CardZones.CardsIn(zone)
+                    .Contains(id))))
+            throw new InvalidDataException(
+                "Draw-pile shuffle has duplicate or unavailable incoming identities.");
+
+        var expectedIdentities = combat.DrawPile.Concat(moved).Order().ToArray();
+        if (!shuffled.Order().SequenceEqual(expectedIdentities) ||
+            !nextCardZones.DrawPile.SequenceEqual(shuffled))
+            throw new InvalidDataException(
+                "Draw-pile shuffle does not preserve its complete identity set and order.");
+
+        return ApplyCommittedZoneTransition(
+            combat, nextCardZones, committedSemanticDeck);
     }
 
     /// <summary>

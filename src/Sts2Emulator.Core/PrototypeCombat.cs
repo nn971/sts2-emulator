@@ -1917,14 +1917,14 @@ public sealed partial class PrototypeGameEngine
                 eligible, postHook, perfectFit);
         }
         else
-            combat = SemanticDrawPileAdapterV111.ApplyZoneTransition(
-                combat,
+            combat = SemanticDrawPileAdapterV111.ApplyDrawPileShuffle(
+                combat, postHook, eligible,
                 combat.Mechanics.CardZones.WithZoneChanges(
                     new Dictionary<PrototypeCardZone, long[]>
                     {
                         [PrototypeCardZone.DrawPile] = postHook,
                         [PrototypeCardZone.DiscardPile] = []
-                    }));
+                    }), committedSemanticDeck: null);
         var remainingHandDraw = continuation.ControlledDrawRemaining.Value;
         var afterShuffleInsertions = ControlledAfterShuffleRelicInsertions(
             combat);
@@ -6465,16 +6465,14 @@ public sealed partial class PrototypeGameEngine
                     var semanticDeck =
                         CommitSemanticHandReturnShuffle(
                             combat, shuffledDrawPile, returnedHandIds);
-                    combat = SemanticDrawPileAdapterV111
-                        .ApplyCommittedZoneTransition(
-                            combat,
-                            combat.Mechanics.CardZones.WithZoneChanges(
-                                new Dictionary<PrototypeCardZone, long[]>
-                                {
-                                    [PrototypeCardZone.DrawPile] = shuffledDrawPile,
-                                    [PrototypeCardZone.Hand] = []
-                                }),
-                            semanticDeck);
+                    combat = SemanticDrawPileAdapterV111.ApplyDrawPileShuffle(
+                        combat, shuffledDrawPile, returnedHandIds,
+                        combat.Mechanics.CardZones.WithZoneChanges(
+                            new Dictionary<PrototypeCardZone, long[]>
+                            {
+                                [PrototypeCardZone.DrawPile] = shuffledDrawPile,
+                                [PrototypeCardZone.Hand] = []
+                            }), semanticDeck);
                     var afterShuffleInsertions =
                         ControlledAfterShuffleRelicInsertions(combat);
                     if (ControlledChanceGuardV111.Active &&

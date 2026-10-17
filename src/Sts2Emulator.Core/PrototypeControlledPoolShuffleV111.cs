@@ -337,8 +337,9 @@ public sealed partial class PrototypeGameEngine
                     [PrototypeCardZone.DrawPile] = shuffledDrawPile,
                     [PrototypeCardZone.Hand] = []
                 });
-            combat = SemanticDrawPileAdapterV111.ApplyCommittedZoneTransition(
-                combat, nextZones, semanticDeck);
+            combat = SemanticDrawPileAdapterV111.ApplyDrawPileShuffle(
+                combat, shuffledDrawPile, returnedHandIds,
+                nextZones, semanticDeck);
             var afterShuffleInsertions =
                 ControlledAfterShuffleRelicInsertions(combat);
             if (afterShuffleInsertions.Length > 0 &&

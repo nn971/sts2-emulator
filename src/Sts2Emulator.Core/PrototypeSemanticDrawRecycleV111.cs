@@ -41,8 +41,9 @@ public sealed partial class PrototypeGameEngine
                 [PrototypeCardZone.DrawPile] = postHook,
                 [PrototypeCardZone.DiscardPile] = []
             });
-        return SemanticDrawPileAdapterV111.ApplyZoneTransition(
-            checkpoint, nextZones);
+        return SemanticDrawPileAdapterV111.ApplyDrawPileShuffle(
+            checkpoint, postHook, currentDiscardPile, nextZones,
+            committedSemanticDeck: null);
     }
 
     /// <summary>
@@ -103,7 +104,7 @@ public sealed partial class PrototypeGameEngine
                 [PrototypeCardZone.DrawPile] = postHook,
                 [PrototypeCardZone.DiscardPile] = []
             });
-        return SemanticDrawPileAdapterV111.ApplyCommittedZoneTransition(
-            advanced, nextZones, nextDeck);
+        return SemanticDrawPileAdapterV111.ApplyDrawPileShuffle(
+            advanced, postHook, currentDiscardPile, nextZones, nextDeck);
     }
 }
