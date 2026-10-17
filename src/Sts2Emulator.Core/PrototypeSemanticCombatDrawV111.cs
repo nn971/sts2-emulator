@@ -234,20 +234,15 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidDataException(
                 "After-shuffle insertion lost its remaining draw boundary.");
 
-        var deferredKeywordIds = accumulateDrawnCardIds
-            ? (semanticDraw.DeferredKeywordCardInstanceIds ?? [])
-                .Concat(drawn.DrawnCardInstanceIds).Distinct().ToArray()
-            : semanticDraw.DeferredKeywordCardInstanceIds;
-        semanticDraw = semanticDraw with
-        {
-            RemainingCount = drawn.RemainingCount,
-            DeferredKeywordCardInstanceIds = deferredKeywordIds,
-            StratagemSelectionPending =
-                semanticDraw.StratagemSelectionPending ||
-                (drawn.Combat.PlayerPowers.Any(power =>
-                    power.PowerId == "proto.power.stratagem" &&
-                    power.Stacks > 0) && drawn.Combat.Hand.Length < 10)
-        };
+        bool stratagemSelectionPending =
+            semanticDraw.StratagemSelectionPending ||
+            (drawn.Combat.PlayerPowers.Any(power =>
+                power.PowerId == "proto.power.stratagem" &&
+                power.Stacks > 0) && drawn.Combat.Hand.Length < 10);
+        semanticDraw = AdvanceControlledSemanticDrawFrame(
+            semanticDraw, drawn.RemainingCount,
+            drawn.DrawnCardInstanceIds, accumulateDrawnCardIds,
+            stratagemSelectionPending);
 
         var insertionCombat = drawn.Combat;
         if (automaticHandDrawRequested is { } requested)
@@ -314,16 +309,10 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidDataException(
                 "Stratagem draw checkpoint is inconsistent.");
 
-        var deferredKeywordIds = accumulateDrawnCardIds
-            ? (semanticDraw.DeferredKeywordCardInstanceIds ?? [])
-                .Concat(drawn.DrawnCardInstanceIds).Distinct().ToArray()
-            : semanticDraw.DeferredKeywordCardInstanceIds;
-        semanticDraw = semanticDraw with
-        {
-            RemainingCount = drawn.RemainingCount,
-            DeferredKeywordCardInstanceIds = deferredKeywordIds,
-            StratagemSelectionPending = false
-        };
+        semanticDraw = AdvanceControlledSemanticDrawFrame(
+            semanticDraw, drawn.RemainingCount,
+            drawn.DrawnCardInstanceIds, accumulateDrawnCardIds,
+            stratagemSelectionPending: false);
 
         var combat = drawn.Combat;
         if (automaticHandDrawRequested is { } requested)
@@ -363,6 +352,27 @@ public sealed partial class PrototypeGameEngine
                 SourceCardDestination: PrototypeCardZone.DrawPile,
                 Operations: [], PendingDiscardEvents: [],
                 PendingSlyCardInstanceIds: [], CompletionEvents: []);
+
+    private static PrototypeControlledSemanticDrawV111
+        AdvanceControlledSemanticDrawFrame(
+            PrototypeControlledSemanticDrawV111 draw,
+            int remainingCount,
+            long[] drawnCardInstanceIds,
+            bool accumulateDrawnCardIds,
+            bool? stratagemSelectionPending = null)
+    {
+        var deferredKeywordIds = accumulateDrawnCardIds
+            ? (draw.DeferredKeywordCardInstanceIds ?? [])
+                .Concat(drawnCardInstanceIds).Distinct().ToArray()
+            : draw.DeferredKeywordCardInstanceIds;
+        return draw with
+        {
+            RemainingCount = remainingCount,
+            DeferredKeywordCardInstanceIds = deferredKeywordIds,
+            StratagemSelectionPending =
+                stratagemSelectionPending ?? draw.StratagemSelectionPending
+        };
+    }
 
     private static RunState SuspendStandaloneSemanticDrawForHookChoice(
         RunState run, PrototypeDrawCardsResult drawn, bool fromHandDraw)
@@ -411,14 +421,14 @@ public sealed partial class PrototypeGameEngine
         bool accumulateDrawnCardIds,
         bool markStandaloneHookChoice)
     {
-        var deferredKeywordIds = accumulateDrawnCardIds
-            ? (draw.DeferredKeywordCardInstanceIds ?? [])
-                .Concat(drawnCardInstanceIds).Distinct().ToArray()
-            : draw.DeferredKeywordCardInstanceIds;
+        var resumedDraw = AdvanceControlledSemanticDrawFrame(
+            draw, remaining, drawnCardInstanceIds,
+            accumulateDrawnCardIds);
         var resumeDraw = CreateDrawResumeOperation(
-            remaining, draw.FromHandDraw, draw.EventDepth,
-            draw.DrawnCardKeyword, deferredKeywordIds,
-            draw.StandaloneSemanticDrawSegment);
+            resumedDraw.RemainingCount, resumedDraw.FromHandDraw,
+            resumedDraw.EventDepth, resumedDraw.DrawnCardKeyword,
+            resumedDraw.DeferredKeywordCardInstanceIds,
+            resumedDraw.StandaloneSemanticDrawSegment);
         combat = AttachDrawResumeContinuation(
             combat, resumeDraw, continuation);
         if (markStandaloneHookChoice)

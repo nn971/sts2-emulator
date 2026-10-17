@@ -14588,13 +14588,11 @@ public sealed partial class PrototypeGameEngine
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.card_effect.draw " +
                 "operation=recycle_requires_composed_continuation");
-        var deferredKeywordIds = (draw.DeferredKeywordCardInstanceIds ?? [])
-            .Concat(drawn.DrawnCardInstanceIds).Distinct().ToArray();
-        var nextDraw = draw with
-        {
-            RemainingCount = drawn.RemainingCount,
-            DeferredKeywordCardInstanceIds = deferredKeywordIds
-        };
+        var nextDraw = AdvanceControlledSemanticDrawFrame(
+            draw, drawn.RemainingCount, drawn.DrawnCardInstanceIds,
+            accumulateDrawnCardIds: true);
+        var deferredKeywordIds =
+            nextDraw.DeferredKeywordCardInstanceIds ?? [];
         var combat = drawn.Combat;
         if (boundary == PrototypeDrawCardsBoundaryKind.ControlledDrawCost)
         {
