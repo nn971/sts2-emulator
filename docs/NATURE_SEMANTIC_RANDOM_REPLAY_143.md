@@ -29,8 +29,10 @@ Singleton support is applied directly without an external Nature choice.
 The saved automatic-pipeline cursor remains attached while the shortlist and
 any nested shortlist choices resolve, then resumes after the operation
 finishes. Any later nested chance operation must have its own continuation
-support. Native stream assignment, seeded cursor parity, and the conditional
-source law remain unverified.
+support. The read-only Chance Law now reports exact Native `NextInt` 53-bit
+grid masses and `SOURCE_VERIFIED` for the bounded-index transform on the
+declared ordered support. Native pool completeness, stream assignment, seed
+frequencies, and cursor parity remain open.
 
 The Release solution build succeeded with zero warnings and errors for this
 change. Tests and mechanics regressions were not run, so controlled mechanics

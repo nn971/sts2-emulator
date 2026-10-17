@@ -2647,10 +2647,18 @@ public static partial class ChanceLawEngineV111
     {
         ArgumentNullException.ThrowIfNull(shortlist);
         shortlist.Validate();
+        var hasNativeIndexLaw = shortlist.SiteId is
+            "combat.autoplay.random_card.select" or
+            "combat.draw_pile.random_replay_card.select";
+        var indexWeights = hasNativeIndexLaw
+            ? NativeNextIntGridWeights(
+                shortlist.CandidateCardInstanceIds.Length)
+            : Enumerable.Repeat(1L,
+                shortlist.CandidateCardInstanceIds.Length).ToArray();
         var outcomes = shortlist.CandidateCardInstanceIds
-            .Select(instanceId => new ChanceLawOutcomeV111(
+            .Select((instanceId, index) => new ChanceLawOutcomeV111(
                 "card_instance:" + instanceId.ToString(
-                    CultureInfo.InvariantCulture), 1L))
+                    CultureInfo.InvariantCulture), indexWeights[index]))
             .ToArray();
         var conditioningFingerprint = CanonicalJson.Sha256(new
         {
@@ -2665,7 +2673,12 @@ public static partial class ChanceLawEngineV111
         return Create(shortlist.EventId, shortlist.SiteId,
             shortlist.OperationKind, shortlist.OwnerId, shortlist.Ordinal,
             CardShortlistConditioningPolicyId, conditioningFingerprint,
-            "uniform-sequential-card-shortlist-unverified", outcomes);
+            hasNativeIndexLaw
+                ? NativeBoundedIndexSourceVerifiedProvenance
+                : "full-pool-shuffle-shortlist-law-unverified",
+            outcomes, hasNativeIndexLaw
+                ? ChanceLawV111.SourceVerifiedStatus
+                : ChanceLawV111.UnverifiedStatus);
     }
 
     public static ChanceLawV111 QueryDraw(SemanticDeckStateV111 deck)

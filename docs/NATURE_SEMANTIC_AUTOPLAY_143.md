@@ -64,8 +64,11 @@ choices reached inside a Mayhem-autoplayed card preserve its card-play frame
 and pipeline cursor through the draw hooks. Nested Nature draws reuse the
 semantic recycle and after-shuffle insertion path in `DrawCards`; the legacy
 recycle ticket without a semantic deck remains unsupported. Other unrelated
-controlled chance sites remain separate. Native stream assignment, seeded
-native cursor parity, and the conditional source law remain unverified.
+controlled chance sites remain separate. The read-only Chance Law reports
+exact Native `NextInt` 53-bit grid masses and `SOURCE_VERIFIED` for the
+bounded-index transform on the declared ordered shortlist support. Native
+pool completeness, stream assignment, seed frequencies, and cursor parity
+remain open.
 
 The Release solution build succeeded with zero warnings and errors for this
 change. Tests and mechanics regressions were not run, so controlled mechanics
