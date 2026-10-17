@@ -4,12 +4,14 @@ using System.Threading;
 namespace Sts2Emulator.Core;
 
 internal sealed record NativeEventShuffleCaptureV111(
-    string SiteId, string OwnerId, string[] OrderedCandidateIds);
+    string SiteId, string OwnerId, string[] OrderedCandidateIds,
+    string? NativeStreamId = null,
+    NativeRngSnapshot? NativeCursorBefore = null);
 
 internal sealed record NativeEventUnitFloatCaptureV111(
     RandomUnitFloatRequestV111 Request, RunState PreDrawState);
 
-/// <summary>Opt-in observation of pre-draw event constraints: source-ordered
+/// <summary>Opt-in observation of Native pre-draw constraints: ordered
 /// shuffle support or a typed unit-float request and its input state.</summary>
 internal sealed class NativeEventRandomProbeV111 : IDisposable
 {
@@ -46,6 +48,11 @@ internal sealed class NativeEventRandomProbeV111 : IDisposable
 
     public static void CaptureShuffle<T>(
         string siteId, string ownerId, IList<T> orderedValues)
+        => CaptureShuffle(siteId, ownerId, orderedValues, null, null);
+
+    public static void CaptureShuffle<T>(
+        string siteId, string ownerId, IList<T> orderedValues,
+        RngBundle? streams, string? nativeStreamId)
     {
         var probe = Active.Value;
         if (probe is null)
@@ -53,10 +60,23 @@ internal sealed class NativeEventRandomProbeV111 : IDisposable
         if (probe._disposed)
             throw new InvalidOperationException(
                 "Native event random probes cannot capture after disposal.");
+        NativeRngSnapshot? cursor = null;
+        if (nativeStreamId is not null)
+        {
+            if (streams is null)
+                throw new ArgumentNullException(nameof(streams));
+            var matching = streams.Streams.Where(stream =>
+                stream.StreamId == nativeStreamId).ToArray();
+            if (matching.Length != 1)
+                throw new InvalidOperationException(
+                    "Native shuffle capture requires exactly one matching stream.");
+            cursor = NativeRngV111.ToSnapshot(matching[0]);
+        }
         probe._captures.Add(new NativeEventShuffleCaptureV111(
             siteId, ownerId,
             orderedValues.Select(value => Convert.ToString(
-                value, CultureInfo.InvariantCulture) ?? "").ToArray()));
+                value, CultureInfo.InvariantCulture) ?? "").ToArray(),
+            nativeStreamId, cursor));
     }
 
     public static void CaptureUnitFloat(

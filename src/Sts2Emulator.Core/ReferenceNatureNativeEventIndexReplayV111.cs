@@ -1,7 +1,7 @@
 namespace Sts2Emulator.Core;
 
-/// <summary>Replays a typed Native event index transcript through its
-/// ordinary player action while preserving the event stream cursor.</summary>
+/// <summary>Replays a typed Native index transcript through its ordinary
+/// player action while preserving the relevant Native stream cursor.</summary>
 internal static class ReferenceNatureNativeEventIndexReplayV111
 {
     public static RunState Replay(
@@ -17,16 +17,25 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
         RunState origin, IEnumerable<RandomIndexDecisionV111> decisions,
         GameAction action, string nativeEventRngEventId,
         string eventName, string? scriptedSiteId = null,
-        string[]? expectedOrderedCandidateIds = null)
+        string[]? expectedOrderedCandidateIds = null,
+        NativeRngSnapshot? expectedRunNicheCursor = null)
     {
         ArgumentNullException.ThrowIfNull(origin);
         ArgumentNullException.ThrowIfNull(decisions);
         ArgumentNullException.ThrowIfNull(action);
-        ArgumentException.ThrowIfNullOrWhiteSpace(nativeEventRngEventId);
         ArgumentException.ThrowIfNullOrWhiteSpace(eventName);
-        var expectedStream = origin.World?.Event?.NativeEventRng ??
-            NativeRngV111Contexts.ForEvent(
-                origin.RunSeed, nativeEventRngEventId);
+        if (expectedRunNicheCursor is not null &&
+            scriptedSiteId != "relic.war_hammer.elite_upgrade.shuffle_swap_index")
+            throw new ArgumentException(
+                "A run.niche cursor expectation is supported only for War Hammer replay.");
+        RngStreamState? expectedStream = null;
+        if (expectedRunNicheCursor is null)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(nativeEventRngEventId);
+            expectedStream = origin.World?.Event?.NativeEventRng ??
+                NativeRngV111Contexts.ForEvent(
+                    origin.RunSeed, nativeEventRngEventId);
+        }
         var scripted = new ScriptedRandomIndexProviderV111(decisions);
         IRandomIndexProviderV111 replayProvider = scriptedSiteId is null
             ? scripted
@@ -56,6 +65,21 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
                     "Scripted event shuffle candidate identities differ from the replay plan.");
         }
         scripted.AssertComplete();
+        if (expectedRunNicheCursor is not null)
+        {
+            var runNiche = run.NativeRunRng?.Streams.SingleOrDefault(stream =>
+                stream.StreamId == "run.niche");
+            if (run.Phase != RunPhase.Reward ||
+                run.World?.Combat is not null || runNiche is null ||
+                NativeRngV111.ToSnapshot(runNiche) !=
+                    expectedRunNicheCursor)
+                throw new InvalidDataException(
+                    "Scripted War Hammer victory changed run.niche after its captured pre-shuffle cursor.");
+            if (run.World is null)
+                throw new InvalidDataException(
+                    "Scripted War Hammer victory lost its run world.");
+            return run;
+        }
         if (CanonicalJson.Sha256(run.World?.Event?.NativeEventRng) !=
             CanonicalJson.Sha256(expectedStream))
             throw new InvalidDataException(

@@ -13,7 +13,8 @@ internal sealed record NativeEventShufflePlanV111(
     int CandidateCount,
     string StreamId,
     string OwnerId,
-    string ConditioningFingerprint)
+    string ConditioningFingerprint,
+    NativeRngSnapshot? NativeCursorBefore = null)
 {
     public int SwapCount => CandidateCount - 1;
 
@@ -40,19 +41,30 @@ internal static class NativeEventShufflePlanBuilderV111
             siteId == PrototypeNativeFakeMerchant
                 .RelicOfferShuffleSiteId &&
             origin.World?.Event is null;
+        var warHammerEliteVictoryAction =
+            origin.Phase == RunPhase.Combat &&
+            (siteId is null || siteId ==
+                "relic.war_hammer.elite_upgrade.shuffle_swap_index") &&
+            origin.World is { ActiveRoom: PrototypeRoomType.Elite,
+                Event: null, Combat: not null } &&
+            origin.Player.ActiveRelics.Any(relic =>
+                relic.RelicId == NativeGloryAncientsV111.WarHammerId);
         var world = origin.World;
         var activeEvent = world?.Event;
         if (string.IsNullOrWhiteSpace(origin.RunSeed) ||
             origin.NativeRunRng is null ||
             world is null ||
-            activeEvent is null && !fakeMerchantEntryAction ||
+            activeEvent is null && !fakeMerchantEntryAction &&
+                !warHammerEliteVictoryAction ||
             activeEvent?.ControlledChoice is not null ||
             activeEvent?.NativeEventPotionSlot is not null ||
             origin.ControlledEventRewardChoice is not null)
             throw new InvalidOperationException(
-                "Native event shuffle Nature choices require an active native event or Fake Merchant entry.");
+                "Native shuffle Nature choices require an active event, a War Hammer elite victory, or Fake Merchant entry.");
         var evt = activeEvent ?? new EventState(
-            PrototypeNativeFakeMerchant.EventId);
+            fakeMerchantEntryAction
+                ? PrototypeNativeFakeMerchant.EventId
+                : "run.combat.elite_war_hammer");
         siteId ??= evt.EventId switch
         {
             PrototypeNativeUnderdocksDoors.EventId =>
@@ -67,6 +79,8 @@ internal static class NativeEventShufflePlanBuilderV111
             PrototypeNativeGloryEvents.TinkerTimeId when
                 evt.NativePageIndex == 1 =>
                     PrototypeNativeGloryEvents.TinkerRiderOfferShuffleSiteId,
+            _ when warHammerEliteVictoryAction =>
+                "relic.war_hammer.elite_upgrade.shuffle_swap_index",
             _ => throw new InvalidOperationException(
                 "No native event shuffle is pending at this event page.")
         };
@@ -78,9 +92,10 @@ internal static class NativeEventShufflePlanBuilderV111
             evt.NativePageIndex == 2 &&
             evt.ChosenChoiceId == "setting_2";
         if (origin.Phase != RunPhase.Event && !battlewornVictoryAction &&
+            !warHammerEliteVictoryAction &&
             !fakeMerchantEntryAction)
             throw new InvalidOperationException(
-                "Native event shuffle Nature choices require a pending event action, a Battleworn victory action, or Fake Merchant entry.");
+                "Native shuffle Nature choices require a pending event action, a War Hammer elite victory action, or Fake Merchant entry.");
         if (origin.Phase == RunPhase.Event && evt.ChosenChoiceId is not null)
             throw new InvalidOperationException(
                 "Native event shuffle Nature choices require an uncommitted event action.");
@@ -91,6 +106,7 @@ internal static class NativeEventShufflePlanBuilderV111
         string[] orderedCandidateIds;
         int candidateCount;
         string ownerId;
+        NativeRngSnapshot? nativeCursorBefore = null;
         if (fakeMerchantEntryAction)
         {
             resolvedActionId = actionId ?? throw new InvalidOperationException(
@@ -114,6 +130,59 @@ internal static class NativeEventShufflePlanBuilderV111
                 ":stock_relics";
             candidateCount = orderedCandidateIds.Length;
             nativeRngEventId = PrototypeNativeFakeMerchant.NativeRngEventId;
+        }
+        else if (warHammerEliteVictoryAction && siteId ==
+            "relic.war_hammer.elite_upgrade.shuffle_swap_index")
+        {
+            if (world.ActiveRoom != PrototypeRoomType.Elite ||
+                world.Combat is null ||
+                origin.Player.ActiveRelics.Count(relic =>
+                    relic.RelicId == NativeGloryAncientsV111.WarHammerId) != 1)
+                throw new InvalidOperationException(
+                    "War Hammer shuffle requires one active War Hammer during an Elite combat.");
+            resolvedActionId = actionId ?? throw new InvalidOperationException(
+                "War Hammer shuffle requires the stable ID of its victory action.");
+            replayAction = new PrototypeGameEngine().GetLegalActions(origin)
+                .SingleOrDefault(action =>
+                    PrototypeAiEnvironment.StableActionId(action) ==
+                    resolvedActionId);
+            if (replayAction is null)
+                throw new InvalidOperationException(
+                    "War Hammer shuffle action is not legal in the current combat state.");
+            using var shuffleProbe = NativeEventRandomProbeV111.Begin();
+            using var providerScope = StochasticProviderScopeV111.Enter(
+                new NativeRandomIndexProviderV111(),
+                overrideExplicitProviders: false);
+            var projected = new PrototypeGameEngine().Step(
+                origin.Fork(), replayAction).State;
+            var captures = shuffleProbe.ShuffleCaptures.Where(capture =>
+                capture.SiteId == siteId).ToArray();
+            if (projected.Phase != RunPhase.Reward ||
+                projected.World?.Combat is not null || captures.Length != 1 ||
+                captures[0].NativeStreamId != "run.niche" ||
+                captures[0].NativeCursorBefore is null)
+                throw new InvalidOperationException(
+                    "War Hammer shuffle requires an immediate Elite victory with exactly one run.niche shuffle.");
+            orderedCandidateIds = captures[0].OrderedCandidateIds;
+            candidateCount = orderedCandidateIds.Length;
+            ownerId = captures[0].OwnerId;
+            nativeCursorBefore = captures[0].NativeCursorBefore;
+            var capturedCursor = nativeCursorBefore ?? throw new InvalidOperationException(
+                "War Hammer shuffle capture is missing its Native cursor.");
+            var finalNicheCursor = projected.NativeRunRng?.Streams
+                .SingleOrDefault(stream => stream.StreamId == "run.niche");
+            if (plannedCandidateIds is not null &&
+                !orderedCandidateIds.SequenceEqual(
+                    plannedCandidateIds, StringComparer.Ordinal))
+                throw new InvalidOperationException(
+                    "War Hammer Nature candidate order changed since session entry.");
+            if (finalNicheCursor is null ||
+                unchecked((uint)(NativeRngV111.ToSnapshot(finalNicheCursor).Counter -
+                    capturedCursor.Counter)) !=
+                    unchecked((uint)Math.Max(0, candidateCount - 1)))
+                throw new InvalidOperationException(
+                    "War Hammer victory has additional run.niche draws after its shuffle and is outside this atomic boundary.");
+            nativeRngEventId = string.Empty;
         }
         else if (evt.EventId == PrototypeNativeGloryEvents.BattlewornDummyId &&
             siteId == PrototypeNativeGloryEvents
@@ -245,20 +314,37 @@ internal static class NativeEventShufflePlanBuilderV111
             throw new InvalidOperationException(
                 "Native event shuffle action is not legal in the current state.");
 
-        var expectedStream = NativeRngV111Contexts.ForEvent(
-            origin.RunSeed, nativeRngEventId);
-        if (evt.NativeEventRng is { } savedStream &&
-            savedStream.StreamId != expectedStream.StreamId)
-            throw new InvalidOperationException(
-                "Native event shuffle has the wrong Native event stream context.");
-        if (evt.NativeEventRng is null && evt.NativePageIndex != 0)
-            throw new InvalidOperationException(
-                "Native event shuffle cannot reconstruct a missing event stream after page progress.");
-        var stream = evt.NativeEventRng ?? expectedStream;
-        if (NativeRngV111.ToSnapshot(stream) !=
-            NativeRngV111.ToSnapshot(expectedStream))
-            throw new InvalidOperationException(
-                "Native event shuffle is not at the event cursor owned by its Nature prefix.");
+        var isWarHammerShuffle = siteId ==
+            "relic.war_hammer.elite_upgrade.shuffle_swap_index";
+        NativeRngSnapshot streamSnapshot;
+        string streamId;
+        if (isWarHammerShuffle)
+        {
+            if (nativeCursorBefore is null)
+                throw new InvalidOperationException(
+                    "War Hammer shuffle plan is missing its pre-draw Native cursor.");
+            streamSnapshot = nativeCursorBefore;
+            streamId = "run.niche";
+        }
+        else
+        {
+            var expectedStream = NativeRngV111Contexts.ForEvent(
+                origin.RunSeed, nativeRngEventId);
+            if (evt.NativeEventRng is { } savedStream &&
+                savedStream.StreamId != expectedStream.StreamId)
+                throw new InvalidOperationException(
+                    "Native event shuffle has the wrong Native event stream context.");
+            if (evt.NativeEventRng is null && evt.NativePageIndex != 0)
+                throw new InvalidOperationException(
+                    "Native event shuffle cannot reconstruct a missing event stream after page progress.");
+            var stream = evt.NativeEventRng ?? expectedStream;
+            if (NativeRngV111.ToSnapshot(stream) !=
+                NativeRngV111.ToSnapshot(expectedStream))
+                throw new InvalidOperationException(
+                    "Native event shuffle is not at the event cursor owned by its Nature prefix.");
+            streamSnapshot = NativeRngV111.ToSnapshot(stream);
+            streamId = stream.StreamId;
+        }
 
         if ((battlewornVictoryAction || fakeMerchantEntryAction) &&
             plannedCandidateIds is null)
@@ -326,14 +412,16 @@ internal static class NativeEventShufflePlanBuilderV111
             offeredChoiceIds = evt.OfferedChoiceIds,
             selectedTinkerType = evt.NativeTinkerType,
             orderedCandidateIds,
-            stream = NativeRngV111.ToSnapshot(stream),
+            stream = streamSnapshot,
             siteId,
             ownerId,
             policy = ChanceLawEngineV111.NativeEventShuffleConditioningPolicyId
         });
-        return new(evt.EventId, nativeRngEventId, siteId,
+        return new(isWarHammerShuffle ? "run.combat.elite_war_hammer" : evt.EventId,
+            nativeRngEventId, siteId,
             resolvedActionId, replayAction, orderedCandidateIds, candidateCount,
-            stream.StreamId, ownerId, fingerprint);
+            streamId, ownerId, fingerprint,
+            isWarHammerShuffle ? nativeCursorBefore : null);
     }
 }
 
@@ -347,8 +435,8 @@ public sealed record ReferenceNatureNativeEventShuffleSessionSnapshotV111(
     ReferenceNatureStateV111 NatureState,
     ReferenceNatureDecisionV111[] DecisionTranscript);
 
-/// <summary>Atomic ReferenceNature replay of a complete native event-local
-/// Fisher-Yates shuffle through an admitted event action.</summary>
+/// <summary>Atomic ReferenceNature replay of an admitted Native
+/// Fisher–Yates shuffle and its ordinary mechanics action.</summary>
 public sealed record ReferenceNatureNativeEventShuffleSessionV111(
     string SchemaId,
     string SiteId,
@@ -485,7 +573,8 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
             var replay = ReferenceNatureNativeEventIndexReplayV111.Replay(
                 Origin, decisions, plan.ReplayAction,
                 plan.NativeRngEventId, plan.EventId,
-                SelectiveReplaySite(plan), plan.OrderedCandidateIds);
+                SelectiveReplaySite(plan), plan.OrderedCandidateIds,
+                plan.NativeCursorBefore);
             nextRun = ReferenceNatureRunCursorV111.Commit(
                 replay, nextNature);
         }
@@ -550,7 +639,8 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
             expectedRun = ReferenceNatureNativeEventIndexReplayV111.Replay(
                 Origin, decisions, plan.ReplayAction,
                 plan.NativeRngEventId, plan.EventId,
-                SelectiveReplaySite(plan), plan.OrderedCandidateIds);
+                SelectiveReplaySite(plan), plan.OrderedCandidateIds,
+                plan.NativeCursorBefore);
             expectedRun = ReferenceNatureRunCursorV111.Commit(
                 expectedRun, expectedNatureState);
         }
@@ -564,7 +654,8 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
 
     private static string? SelectiveReplaySite(
         NativeEventShufflePlanV111 plan) =>
-        plan.SiteId is PrototypeNativeGloryEvents
+        plan.SiteId is "relic.war_hammer.elite_upgrade.shuffle_swap_index" or
+            PrototypeNativeGloryEvents
             .BattlewornUpgradeShuffleSiteId or
             PrototypeNativeFakeMerchant.RelicOfferShuffleSiteId
             ? plan.SiteId : null;
@@ -635,6 +726,7 @@ public static partial class ChanceLawEngineV111
 
     public static string[] NativeEventShuffleSessionSiteIds =>
     [
+        "relic.war_hammer.elite_upgrade.shuffle_swap_index",
         PrototypeNativeUnderdocksDoors.ShuffleSiteId,
         PrototypeNativeGloryEvents.HungryForMushroomsShuffleSiteId,
         PrototypeNativeGloryEvents.TinkerTypeOfferShuffleSiteId,

@@ -39,6 +39,10 @@ public sealed partial class PrototypeGameEngine
                 // run and active-combat cursor copies synchronized.
                 var nativeStreams = (state.World?.Combat?.NativeRng?.RunStreams
                     ?? state.NativeRunRng).Fork();
+                NativeEventRandomProbeV111.CaptureShuffle(
+                    "relic.war_hammer.elite_upgrade.shuffle_swap_index",
+                    $"player:0:war_hammer:{hammer}:eligible_cards",
+                    candidates, nativeStreams, "run.niche");
                 _ = NativeFisherYatesV111.ShuffleInPlace(
                     candidates,
                     nativeStreams,

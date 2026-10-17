@@ -856,7 +856,10 @@ internal static class PrototypeAiJsonlServer
                 nextOrdinal = session.NextOrdinal,
                 pending = law is null ? null : new
                 {
-                    kind = "native_event_shuffle_swap_random_choice",
+                    kind = session.SiteId ==
+                        "relic.war_hammer.elite_upgrade.shuffle_swap_index"
+                            ? "war_hammer_elite_shuffle_swap_random_choice"
+                            : "native_event_shuffle_swap_random_choice",
                     boundaryFingerprint = law.EventId,
                     chanceLaw = law,
                     probabilityStatus = law.ProbabilityStatus

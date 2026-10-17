@@ -1,12 +1,13 @@
-# ReferenceNature native event shuffle contract
+# ReferenceNature Native shuffle contract
 
-This contract records the first source-independent ReferenceNature session
-for a full Native event-local Fisher–Yates shuffle. The supported resolvers
+This contract records source-independent ReferenceNature sessions for a full
+Native Fisher–Yates shuffle. The event resolvers
 are the Light option in Doors of Light and Dark, Fragrant Mushroom's eligible
 card shuffle, Tinker Time's type and rider offer stages, and Battleworn
 Dummy's setting 2 upgrade shuffle. It also covers Fake Merchant's six-of-nine
 relic stock shuffle when a configured Event-node action's ordinary event
-selection resolves to Fake Merchant.
+selection resolves to Fake Merchant. The run-stream resolver covers one War
+Hammer after an action immediately wins an ordinary Elite fight.
 
 ## Boundary
 
@@ -36,6 +37,14 @@ samples only the six-of-nine stock-relic shuffle. During replay, other index
 requests use the existing provider associated with their stream codec, while
 the Fake Merchant stock shuffle uses the scripted Nature prefix. A map action
 that selects another event is outside this session boundary.
+
+War Hammer accepts an action only when one active War Hammer is present in an
+ordinary Elite combat and the action wins immediately. The session captures
+the emulator's ordered eligible-card identities and the `run.niche` cursor
+immediately before the relic shuffle. It rejects actions that perform another
+`run.niche` draw after that shuffle, so replay can leave the run stream at its
+captured pre-shuffle cursor. Multiple hammers, a delayed victory, and pools of
+zero or one eligible card remain outside this continuation.
 
 ## Laws and replay
 
@@ -68,14 +77,20 @@ Tinker offer page, Battleworn victory page, or Fake Merchant stock page. The
 stream stays at entry across the two scripted Tinker stages. Fork, status,
 save, and restore preserve and revalidate the transcript.
 
+For War Hammer, replay scripts only its `run.niche` Fisher–Yates requests and
+leaves that stream at the captured pre-shuffle cursor. Other combat requests
+retain their Native providers. War Hammer uses the emulator's current
+CardId-plus-instance-ID ordering proxy; the source ModelId ordering is not
+established by this law or session.
+
 ## Limits
 
 This does not establish source probability calibration, live-game parity, or
-Native seeded result parity. It does not add event-specific shuffle mechanics:
-future event shuffles can use the same session only when their existing
+Native seeded result parity. It does not add shuffle mechanics: future sites
+can use the same session only when their existing
 resolver's conditioning plan and action replay are explicitly admitted. The
-Doors, Tinker, Battleworn, and Fake Merchant source audits remain authoritative
-for their modeled eligibility and event flow. Battleworn's session covers a
+Doors, Tinker, Battleworn, Fake Merchant, and War Hammer source audits remain
+authoritative for their modeled eligibility and flow. Battleworn's session covers a
 winning combat action boundary; it does not create a multi-action combat
 continuation. Fake Merchant's session does not control or reinterpret the
 ordinary weighted event-selection law; its availability depends on that

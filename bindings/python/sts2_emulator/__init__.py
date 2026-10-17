@@ -364,7 +364,7 @@ class State:
             self, nature_seed: int | None = None,
             action_id: str | None = None,
             site_id: str | None = None):
-        """Begin a conditional event-local Fisher-Yates Nature replay."""
+        """Begin a conditional Native event or run-stream shuffle replay."""
         if self.session.capabilities.get(
                 "referenceNatureNativeEventShuffleSessionSchemaId") != (
                 "sts2-v111-reference-nature-native-event-shuffle-session-v1"):
@@ -391,9 +391,9 @@ class State:
             raise ValueError(
                 "Provide a registered site_id or use a supported event action_id")
         if not self.session.supports_reference_nature_site(
-                resolved_site_id, session="event_shuffle"):
+                resolved_site_id, session="native_shuffle"):
             raise EmulatorError(
-                "No ReferenceNature native event shuffle session is advertised")
+                "No ReferenceNature Native shuffle session is advertised")
         if (nature_seed is not None and
                 (not isinstance(nature_seed, int) or
                  isinstance(nature_seed, bool) or nature_seed < 0 or
@@ -1143,7 +1143,7 @@ class ReferenceNatureTrialSession:
 
 @dataclass(frozen=True)
 class ReferenceNatureNativeEventShuffleSession:
-    """Atomic Native event shuffle and ReferenceNature sampler cursor."""
+    """Atomic Native shuffle and ReferenceNature sampler cursor."""
     session: "Session"
     handle: str
     fingerprint: str
@@ -2092,6 +2092,7 @@ class Session:
             "tablet_of_truth": "referenceNatureTabletOfTruthSiteIds",
             "trial": "referenceNatureTrialSiteIds",
             "event_shuffle": "referenceNatureNativeEventShuffleSiteIds",
+            "native_shuffle": "referenceNatureNativeEventShuffleSiteIds",
             "endless_conveyor": "referenceNatureEndlessConveyorSiteIds",
             "glory_reflections": "referenceNatureGloryReflectionsSiteIds",
             "merchant": "referenceNatureMerchantSiteIds",
@@ -2099,7 +2100,7 @@ class Session:
         }
         if session != "any" and session not in fields:
             raise ValueError(
-                "session must be semantic, run_action, event_choice, ancient_offer, neow_offer, trash_heap, tablet_of_truth, trial, event_shuffle, endless_conveyor, glory_reflections, merchant, treasure, or any")
+                "session must be semantic, run_action, event_choice, ancient_offer, neow_offer, trash_heap, tablet_of_truth, trial, event_shuffle, native_shuffle, endless_conveyor, glory_reflections, merchant, treasure, or any")
         coverage = self.stochastic_session_coverage
         if not isinstance(coverage, dict) or coverage.get("schemaId") != (
                 "sts2-v111-stochastic-session-coverage-v1"):
