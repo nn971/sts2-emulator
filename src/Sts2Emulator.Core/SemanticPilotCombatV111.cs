@@ -107,10 +107,34 @@ public sealed record SemanticPilotCombatV111(
     /// </summary>
     public SemanticSeededEntryV111? SeededEntry { get; init; }
     /// <summary>Private state for explicitly opted-in non-Nature RNG.</summary>
-    public SemanticOtherChanceStateV111? OtherChance { get; init; }
-    public SemanticRewardAuditV111? RewardAudit { get; init; }
-    public SemanticNativePolicyAuditV111? NativePolicyAudit { get; init; }
-    public SemanticSourceRouteAuditV111? SourceRouteAudit { get; init; }
+    [JsonIgnore]
+    public SemanticPilotStochasticStateV111 Stochastic { get; init; } = new();
+    public SemanticOtherChanceStateV111? OtherChance
+    {
+        get => Stochastic.OtherChance;
+        init => Stochastic = SemanticPilotStochasticStateV111.WithOtherChance(
+            Stochastic, value);
+    }
+    public SemanticRewardAuditV111? RewardAudit
+    {
+        get => Stochastic.RewardAudit;
+        init => Stochastic = SemanticPilotStochasticStateV111.WithRewardAudit(
+            Stochastic, value);
+    }
+    public SemanticNativePolicyAuditV111? NativePolicyAudit
+    {
+        get => Stochastic.NativePolicyAudit;
+        init => Stochastic =
+            SemanticPilotStochasticStateV111.WithNativePolicyAudit(
+                Stochastic, value);
+    }
+    public SemanticSourceRouteAuditV111? SourceRouteAudit
+    {
+        get => Stochastic.SourceRouteAudit;
+        init => Stochastic =
+            SemanticPilotStochasticStateV111.WithSourceRouteAudit(
+                Stochastic, value);
+    }
     public ControlledTurnIntentsV111? PendingInitialIntents { get; init; }
     [JsonIgnore] public SemanticTargetEventV111? TargetPending =>
         PendingEndTurn is { } endTurn
@@ -295,35 +319,7 @@ public sealed record SemanticPilotCombatV111(
             },
             _ => transition
         }).ToArray(),
-        OtherChance = OtherChance?.Fork(),
-        NativePolicyAudit = NativePolicyAudit is { } audit
-            ? audit with
-            {
-                Decisions = audit.Decisions.Select(decision => decision with
-                {
-                    Request = decision.Request with
-                    {
-                        OrderedCandidates = (int[])decision.Request
-                            .OrderedCandidates.Clone()
-                    }
-                }).ToArray()
-            }
-            : null,
-        SourceRouteAudit = SourceRouteAudit is { } route
-            ? route with
-            {
-                ActionIds = (string[])route.ActionIds.Clone(),
-                NativeEntryDecisions = route.NativeEntryDecisions.Select(
-                    decision => decision with
-                    {
-                        Request = decision.Request with
-                        {
-                            OrderedCandidates = (int[])decision.Request
-                                .OrderedCandidates.Clone()
-                        }
-                    }).ToArray()
-            }
-            : null
+        Stochastic = Stochastic.Fork()
     };
 }
 
@@ -4364,8 +4360,7 @@ public static class SemanticPilotCombatEngineV111
             state.HandCostSelectionPending is null)
             throw new InvalidDataException(
                 "Source random hand-cost continuation has no semantic event.");
-        if (state.OtherChance is not null)
-            SemanticOtherChanceEngineV111.Validate(state.OtherChance);
+        state.Stochastic.Validate();
         if (state.RewardAudit is { } reward &&
             (state.Run.Phase != RunPhase.Reward ||
              reward.ProviderId != SemanticRewardAuditV111.PrototypeProviderId ||
