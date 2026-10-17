@@ -30,17 +30,21 @@ public sealed record SemanticPoolShuffleEventV111(
     public void Validate()
     {
         Request.Validate();
-        var expectedSite = SourceOperationKind ==
-                PrototypeCombatEffectKind.MoveRandomRareDrawCardsToHand.ToString()
-            ? "combat.draw_pile.random_rare_to_hand.shuffle_swap_index"
-            : SourceOperationKind ==
-                PrototypeCombatEffectKind.RecycleDrawPileForEffectDraw.ToString()
-                ? "combat.draw.recycle.shuffle_swap_index"
-            : "combat.generation.full_pool_shuffle.swap_index";
+        var expectedSite = SourceOperationKind switch
+        {
+            nameof(PrototypeCombatEffectKind.ReturnHandToDrawAndShuffle) =>
+                "combat.hand_return.draw_pile.shuffle_swap_index",
+            nameof(PrototypeCombatEffectKind.MoveRandomRareDrawCardsToHand) =>
+                "combat.draw_pile.random_rare_to_hand.shuffle_swap_index",
+            nameof(PrototypeCombatEffectKind.RecycleDrawPileForEffectDraw) =>
+                "combat.draw.recycle.shuffle_swap_index",
+            _ => "combat.generation.full_pool_shuffle.swap_index"
+        };
         if (SchemaId != EventSchemaId || string.IsNullOrWhiteSpace(EventId) ||
             string.IsNullOrWhiteSpace(BoundaryFingerprint) ||
             string.IsNullOrWhiteSpace(SupportFingerprint) ||
             Request.SiteId is not (
+                "combat.hand_return.draw_pile.shuffle_swap_index" or
                 "combat.generation.full_pool_shuffle.swap_index" or
                 "combat.draw_pile.random_rare_to_hand.shuffle_swap_index" or
                 "combat.draw.recycle.shuffle_swap_index") ||

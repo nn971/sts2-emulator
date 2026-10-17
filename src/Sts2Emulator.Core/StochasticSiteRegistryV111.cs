@@ -182,6 +182,7 @@ public static class StochasticSiteRegistryV111
         "combat.card_transform.replacement.index_draw",
         "combat.potion_generation.random_model",
         "combat.random_hand_card.select",
+        "combat.hand_return.draw_pile.shuffle_swap_index",
         "combat.generation.full_pool_shuffle.swap_index",
         "combat.draw_pile.random_rare_to_hand.shuffle_swap_index",
         "combat.draw.recycle.shuffle_swap_index",

@@ -11,7 +11,7 @@ Counts by direct API family:
 - `native_shuffle_mechanics`: 24
 
 Shuffle site IDs mapped to migration-matrix rows: **18**; dynamic expressions: **6**; unmapped: **0**; missing: **0**.
-Registered stochastic site IDs mapped to migration-matrix rows: **139/139**; IDs without rows: **0**; duplicate matrix IDs: **0**; unresolved registry references: **0**.
+Registered stochastic site IDs mapped to migration-matrix rows: **140/140**; IDs without rows: **0**; duplicate matrix IDs: **0**; unresolved registry references: **0**.
 Reference-law column status: **141 UNVERIFIED**; **42 calibrated**; **0 unspecified**.
 S0 contract-evidence locator: **183/183 rows** have a text or linked-document match for every facet. Matches are review pointers, not evidence that a contract is complete.
 Rows without a text or linked-document match by S0 facet:
@@ -31,7 +31,7 @@ Known RNG helper callsites with forwarded stable site IDs:
 
 | Helper callsite | Stable site ID expression | Resolved site | Registry | Matrix |
 | --- | --- | --- | --- | --- |
-| [`src/Sts2Emulator.Core/PrototypeCombat.cs:6560`](../src/Sts2Emulator.Core/PrototypeCombat.cs#L6560) `PrototypeGameEngine.ShuffleCombatCardPool` | `"combat.hand_return.draw_pile.shuffle_swap_index"` | `combat.hand_return.draw_pile.shuffle_swap_index` | `not_registered` | `mapped` |
+| [`src/Sts2Emulator.Core/PrototypeCombat.cs:6560`](../src/Sts2Emulator.Core/PrototypeCombat.cs#L6560) `PrototypeGameEngine.ShuffleCombatCardPool` | `"combat.hand_return.draw_pile.shuffle_swap_index"` | `combat.hand_return.draw_pile.shuffle_swap_index` | `mapped` | `mapped` |
 | [`src/Sts2Emulator.Core/PrototypeCombat.cs:6981`](../src/Sts2Emulator.Core/PrototypeCombat.cs#L6981) `PrototypeGameEngine.ShuffleCombatCardPool` | `"combat.draw_pile.random_rare_to_hand.shuffle_swap_index"` | `combat.draw_pile.random_rare_to_hand.shuffle_swap_index` | `mapped` | `mapped` |
 | [`src/Sts2Emulator.Core/PrototypeCombat.cs:7131`](../src/Sts2Emulator.Core/PrototypeCombat.cs#L7131) `PrototypeGameEngine.ShuffleCombatCardPool` | `"combat.card_selection.random_shortlist"` | `combat.card_selection.random_shortlist` | `mapped` | `mapped` |
 | [`src/Sts2Emulator.Core/PrototypeCombat.cs:7764`](../src/Sts2Emulator.Core/PrototypeCombat.cs#L7764) `PrototypeGameEngine.ShuffleCombatCardPool` | `"combat.generation.full_pool_shuffle.swap_index"` | `combat.generation.full_pool_shuffle.swap_index` | `mapped` | `mapped` |
