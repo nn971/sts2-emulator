@@ -1,6 +1,6 @@
 namespace Sts2Emulator.Core;
 
-/// <summary>Replays one atomic Native event index decision through its
+/// <summary>Replays a typed Native event index transcript through its
 /// ordinary player action while preserving the event stream cursor.</summary>
 internal static class ReferenceNatureNativeEventIndexReplayV111
 {

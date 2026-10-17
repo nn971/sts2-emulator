@@ -784,10 +784,10 @@ internal static class PrototypeAiJsonlServer
                 fingerprint = session.Fingerprint,
                 runFingerprint = CanonicalJson.Sha256(session.Run),
                 siteId = law?.SiteId ??
-                    PrototypeNativeUnderdocksDoors.ShuffleSiteId,
+                    session.SiteId,
                 eventId = law?.EventId ??
                     session.DecisionTranscript.LastOrDefault()?.EventId,
-                choiceId = "light",
+                choiceId = session.ActionId,
                 page = session.Origin.World?.Event?.NativePageIndex,
                 runPhase = session.Run.Phase.ToString(),
                 boundary = session.Complete ? "committed" : "nature",
@@ -2278,9 +2278,11 @@ internal static class PrototypeAiJsonlServer
                                 OptionalStringArray(request,
                                     "excluded_relic_ids") is not null)
                                 throw new ArgumentException(
-                                    "Native event shuffle queries accept only state_handle, site_id, ordinal and prior_indices.");
+                                    "Native event shuffle queries accept only state_handle, site_id, ordinal, prior_indices and action_id.");
+                            var actionId = OptionalString(request, "action_id");
                             law = ChanceLawEngineV111.QueryNativeEventShuffle(
-                                RequireState(request), ordinal, priorIndices);
+                                RequireState(request), siteId, ordinal,
+                                priorIndices, actionId);
                             if (law.SiteId != siteId || law.Ordinal != ordinal)
                                 throw new ArgumentException(
                                     $"Native event shuffle expects site '{law.SiteId}' and ordinal {law.Ordinal}.");
@@ -3915,11 +3917,12 @@ internal static class PrototypeAiJsonlServer
                     {
                         var source = RequireState(request);
                         var seed = OptionalULong(request, "nature_seed");
+                        var actionId = OptionalString(request, "action_id");
                         var session = seed is { } natureSeed
                             ? ReferenceNatureNativeEventShuffleSessionV111.Begin(
-                                source, natureSeed)
+                                source, actionId, natureSeed)
                             : ReferenceNatureNativeEventShuffleSessionV111.Begin(
-                                source);
+                                source, actionId);
                         var handle = StoreReferenceNatureNativeEventShuffle(session);
                         Write(new { requestId, ok = true, result =
                             ReferenceNatureNativeEventShuffleResult(

@@ -327,6 +327,15 @@ public static class NativeEventContextRngV111
         if (prototypeEventId == PrototypeNativeGloryEvents.TrialId &&
             providerMode == "scripted-v111" && trialChoiceIsExpected)
             return;
+        var scriptedTinkerShuffleIsExpected =
+            NativeRngV111.ToSnapshot(stream) ==
+                NativeRngV111.ToSnapshot(initial) &&
+            PrototypeGameEngine.IsValidScriptedShuffleState(
+                eventState);
+        if (prototypeEventId == PrototypeNativeGloryEvents.TinkerTimeId &&
+            providerMode == "scripted-v111" &&
+            scriptedTinkerShuffleIsExpected)
+            return;
         var doorsLightChoiceIsExpected =
             NativeRngV111.ToSnapshot(stream) ==
                 NativeRngV111.ToSnapshot(initial) &&

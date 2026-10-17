@@ -47,6 +47,10 @@ public static class PrototypeNativeGloryEvents
     public const string DoubtId = "proto.native.glory.doubt";
     public const string TinkerTimeId = "proto.native.glory.tinker_time";
     public const string TinkerTimeNativeRngEventId = "TINKER_TIME";
+    public const string TinkerTypeOfferShuffleSiteId =
+        "event.glory_tinker.type_offer.shuffle_swap_index";
+    public const string TinkerRiderOfferShuffleSiteId =
+        "event.glory_tinker.rider_offer.shuffle_swap_index";
     public const string MadScienceId = "proto.native.glory.mad_science";
     public const string CuriousId = "proto.native.glory.curious";
     public const string ImprovementId = "proto.native.glory.improvement";

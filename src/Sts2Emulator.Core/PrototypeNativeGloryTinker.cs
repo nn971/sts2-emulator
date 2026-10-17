@@ -11,6 +11,31 @@ public sealed partial class PrototypeGameEngine
 {
     private static readonly string[] TinkerTypes = ["attack", "skill", "power"];
 
+    internal static string[] TinkerTypeOfferCandidates() =>
+        (string[])TinkerTypes.Clone();
+
+    internal static string[] TinkerRiderOfferCandidates(string type) =>
+        TinkerRiders(type);
+
+    internal static bool IsValidScriptedShuffleState(EventState evt)
+    {
+        if (evt.EventId != PrototypeNativeGloryEvents.TinkerTimeId ||
+            evt.OfferedChoiceIds is not { Length: 2 } offers ||
+            offers.Distinct(StringComparer.Ordinal).Count() != offers.Length)
+            return false;
+        return evt.NativePageIndex switch
+        {
+            1 => evt.NativeTinkerType is null &&
+                offers.All(type => TinkerTypes.Contains(
+                    type, StringComparer.Ordinal)),
+            2 => evt.NativeTinkerType is { } type &&
+                TinkerTypes.Contains(type, StringComparer.Ordinal) &&
+                offers.All(rider => TinkerRiders(type).Contains(
+                    rider, StringComparer.Ordinal)),
+            _ => false
+        };
+    }
+
     private static string[] TinkerRiders(string type) => type switch
     {
         "attack" => ["sapping", "violence", "choking"],
@@ -59,7 +84,7 @@ public sealed partial class PrototypeGameEngine
                 evt,
                 PrototypeNativeGloryEvents.TinkerTimeNativeRngEventId,
                 choices,
-                "event.glory_tinker.type_offer.shuffle_swap_index",
+                PrototypeNativeGloryEvents.TinkerTypeOfferShuffleSiteId,
                 "event:glory_tinker:types");
             world = RequireWorld(state);
             evt = world.Event!;
@@ -84,7 +109,7 @@ public sealed partial class PrototypeGameEngine
                 evt,
                 PrototypeNativeGloryEvents.TinkerTimeNativeRngEventId,
                 riders,
-                "event.glory_tinker.rider_offer.shuffle_swap_index",
+                PrototypeNativeGloryEvents.TinkerRiderOfferShuffleSiteId,
                 "event:glory_tinker:type:" + choice);
             world = RequireWorld(state);
             evt = world.Event!;

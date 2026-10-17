@@ -38,7 +38,8 @@ class State:
                          potion_id=None, relic_id=None,
                          colorless_offer=False, sale_reprice=False,
                          owner_id=None, offer_ordinal=None,
-                         relic_candidate_ids=None, excluded_relic_ids=None):
+                         relic_candidate_ids=None, excluded_relic_ids=None,
+                         action_id=None):
         """Read an advertised pre-outcome Chance Law without changing state."""
         if not self.session.supports_chance_law_query(site_id):
             raise EmulatorError(
@@ -47,6 +48,10 @@ class State:
             raise ValueError("ordinal must be a nonnegative integer")
         payload = {"state_handle": self.handle,
                    "site_id": site_id, "ordinal": ordinal}
+        if action_id is not None:
+            if not isinstance(action_id, str) or not action_id:
+                raise ValueError("action_id must be a nonempty string")
+            payload["action_id"] = action_id
         if card_type is not None:
             if not isinstance(card_type, str) or not card_type:
                 raise ValueError("card_type must be a nonempty string")
@@ -352,14 +357,29 @@ class State:
             self.session, result["result"])
 
     def begin_reference_nature_native_event_shuffle(
-            self, nature_seed: int | None = None):
+            self, nature_seed: int | None = None,
+            action_id: str | None = None):
         """Begin a conditional event-local Fisher-Yates Nature replay."""
         if self.session.capabilities.get(
                 "referenceNatureNativeEventShuffleSessionSchemaId") != (
                 "sts2-v111-reference-nature-native-event-shuffle-session-v1"):
             raise EmulatorError(
                 "Emulator does not expose ReferenceNature native event shuffle sessions")
-        site_id = "event.doors_light.shuffle_swap_index"
+        if action_id is not None and (
+                not isinstance(action_id, str) or not action_id):
+            raise ValueError("action_id must be a nonempty string")
+        site_id = {
+            None: "event.doors_light.shuffle_swap_index",
+            "light": "event.doors_light.shuffle_swap_index",
+            "choose_card_type":
+                "event.glory_tinker.type_offer.shuffle_swap_index",
+            "attack": "event.glory_tinker.rider_offer.shuffle_swap_index",
+            "skill": "event.glory_tinker.rider_offer.shuffle_swap_index",
+            "power": "event.glory_tinker.rider_offer.shuffle_swap_index",
+        }.get(action_id)
+        if site_id is None:
+            raise ValueError(
+                "action_id must be light, choose_card_type, attack, skill, or power")
         if not self.session.supports_reference_nature_site(
                 site_id, session="event_shuffle"):
             raise EmulatorError(
@@ -370,6 +390,8 @@ class State:
                  nature_seed > 0xFFFFFFFFFFFFFFFF)):
             raise ValueError("nature_seed must be an unsigned 64-bit integer")
         payload = {"state_handle": self.handle}
+        if action_id is not None:
+            payload["action_id"] = action_id
         if nature_seed is not None:
             payload["nature_seed"] = nature_seed
         result = self.session.call(
