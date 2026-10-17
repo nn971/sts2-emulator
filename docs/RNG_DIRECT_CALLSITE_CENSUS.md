@@ -13,14 +13,14 @@ Counts by direct API family:
 Shuffle site IDs mapped to migration-matrix rows: **19**; dynamic expressions: **6**; unmapped: **0**; missing: **0**.
 ReferenceNature registry IDs mapped to migration-matrix rows: **72/72**; IDs without rows: **0**; duplicate matrix IDs: **0**; unresolved registry references: **0**.
 Reference-law column status: **179 UNVERIFIED**; **0 calibrated**; **0 unspecified**.
-S0 contract-evidence locator: **57/179 rows** have a text or linked-document match for every facet. Matches are review pointers, not evidence that a contract is complete.
+S0 contract-evidence locator: **60/179 rows** have a text or linked-document match for every facet. Matches are review pointers, not evidence that a contract is complete.
 Rows without a text or linked-document match by S0 facet:
 
-- `audience_projection`: 122
-- `private_constraint`: 79
+- `audience_projection`: 119
+- `private_constraint`: 78
 - `probability_provenance`: 0
-- `resolver_continuation`: 65
-- `unsupported_handling`: 60
+- `resolver_continuation`: 62
+- `unsupported_handling`: 57
 
 Regenerate this report with `python3 tools/rng_callsite_inventory.py --check-site-matrix --check-s0-contract-links --format markdown > docs/RNG_DIRECT_CALLSITE_CENSUS.md`.
 Rows distinguish legacy prototype calls, native primitive calls, generic shuffle-helper calls, and recognized provider/fixture support. Shuffle rows include their `siteId` argument, resolved constant where available, and exact migration-matrix match for static IDs. Dynamic expressions still need caller-level tracing.
