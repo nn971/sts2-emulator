@@ -58,6 +58,8 @@
 
 **S3 automatic pipeline simulation envelope increment (2026-10-17):** `PrototypeAutomaticPipelineContinuationState.Simulation` composes its step/opening mechanics cursor and `PrototypeAutomaticPipelineStochasticStateV111` resume values. Existing flattened properties remain the snapshot wire representation.
 
+**S3 turn-intent simulation envelope increment (2026-10-17):** `ControlledTurnIntentsV111.Simulation` now composes its baseline/current combat checkpoints, encounter cursor and request site with the existing intent transcript/pending request owner. Legacy fields remain flattened in snapshots.
+
 ## S1 precise design
 
 Implement a **read-only, outcome-blind** Chance Law query in `Sts2Emulator.Core` with:

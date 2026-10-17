@@ -18,12 +18,62 @@ public sealed record ControlledTurnIntentsV111(
     public bool Complete => Pending is null;
 
     /// <summary>
-    /// Provider request and decision history. Transcript and Pending remain
-    /// flattened compatibility projections for existing snapshots.
+    /// Atomic mechanics/provider envelope for a suspended intent pass.
+    /// Existing continuation properties remain flattened snapshot fields.
     /// </summary>
     [System.Text.Json.Serialization.JsonIgnore]
-    public ControlledTurnIntentStochasticStateV111 Stochastic { get; init; } =
-        new(Transcript, Pending);
+    public SimulationStateV111<ControlledTurnIntentMechanicsStateV111,
+        ControlledTurnIntentStochasticStateV111> Simulation { get; init; } =
+        new(
+            new ControlledTurnIntentMechanicsStateV111(
+                BaselineCombat, Combat, NativeEncounterEntry,
+                NextEnemyIndex, SiteId),
+            new ControlledTurnIntentStochasticStateV111(
+                Transcript, Pending));
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public ControlledTurnIntentMechanicsStateV111 Mechanics
+    {
+        get => Simulation.Mechanics;
+        init => Simulation = Simulation with { Mechanics = value };
+    }
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public ControlledTurnIntentStochasticStateV111 Stochastic
+    {
+        get => Simulation.Stochastic;
+        init => Simulation = Simulation with { Stochastic = value };
+    }
+
+    public CombatState BaselineCombat
+    {
+        get => Mechanics.BaselineCombat;
+        init => Mechanics = Mechanics with { BaselineCombat = value };
+    }
+
+    public CombatState Combat
+    {
+        get => Mechanics.Combat;
+        init => Mechanics = Mechanics with { Combat = value };
+    }
+
+    public string NativeEncounterEntry
+    {
+        get => Mechanics.NativeEncounterEntry;
+        init => Mechanics = Mechanics with { NativeEncounterEntry = value };
+    }
+
+    public int NextEnemyIndex
+    {
+        get => Mechanics.NextEnemyIndex;
+        init => Mechanics = Mechanics with { NextEnemyIndex = value };
+    }
+
+    public string SiteId
+    {
+        get => Mechanics.SiteId;
+        init => Mechanics = Mechanics with { SiteId = value };
+    }
 
     public RandomIndexDecisionV111[] Transcript
     {
