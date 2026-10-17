@@ -550,47 +550,14 @@ internal sealed class ControlledEventChoiceReplayV111 : IDisposable
         public void Dispose() { }
     }
 
-    public static bool IsEventChoiceSite(string siteId) => siteId is
-        "event.random_upgrade.card_instance" or
-        "event.reward.random_rare_card.model" or
-        "event.reward.random_potion.model" or
-        "event.reward.offer_potion.model.index_draw" or
-        "event.reward.card_bundle.shuffle_swap_index" or
-        "relic_grab_bag.queue_shuffle.swap_index" or
-        "relic_grab_bag.rarity.ticket" or
-        "event.potion.fill_empty_slots.model" or
-        "reward.card_rarity.ticket" or
-        "reward.card_model.index_draw" or
-        "run.random_pool_distinct.shuffle_swap_index" or
-        "event.reward.random_modifier_curse.index_draw" or
-        "event.fake_merchant.relic_offer.shuffle_swap_index" or
-        "potion.uncommon_model.index_draw" or
-        "relic.acquisition.random_rare_card.model" or
-        "relic.acquisition.random_potion.model" or
-        "run.potion.fill_empty_slots.model" or
-        "reward.card_transform.replacement.index_draw" or
-        "relic.unowned_random_selection.index_draw";
+    public static bool IsEventChoiceSite(string siteId) =>
+        StochasticSiteRegistryV111.IsControlledEventChoiceSite(siteId);
 
-    public static bool IsRunActionSite(string siteId) => siteId is
-        "run.encounter.overgrowth_boss.index_draw" or
-        "map.legacy.floor_width.index_draw" or
-        "map.legacy.edge_source.index_draw" or
-        "map.legacy.orphan_target.index_draw" or
-        "map.legacy.edge_extra_chance.ticket" or
-        "map.legacy.second_edge_source.index_draw" or
-        "map.legacy.convergence.order_key" or
-        "map.legacy.convergence.source.index_draw" or
-        "map.legacy.second_edge_target.index_draw" or
-        "map.legacy.required_room.node.index_draw" or
-        "map.legacy.room_assignment.index_draw";
+    public static bool IsRunActionSite(string siteId) =>
+        StochasticSiteRegistryV111.IsRunActionSite(siteId);
 
-    public static bool IsRunActionEventEntrySite(string siteId) => siteId is
-        "event.selection.weighted_ticket" or
-        "event.generated_gold.index_draw" or
-        "event.stone_of_all_time.potion_slot.index_draw" or
-        "event.fake_merchant.relic_offer.shuffle_swap_index" or
-        "event.endless_conveyor.dish_weighted_ticket" or
-        "event.future_of_potions.card_type.index_draw";
+    public static bool IsRunActionEventEntrySite(string siteId) =>
+        StochasticSiteRegistryV111.IsRunActionEventEntrySite(siteId);
 
     public static bool IsControlledReplaySite(string siteId) =>
         IsEventChoiceSite(siteId) || IsRunActionSite(siteId)

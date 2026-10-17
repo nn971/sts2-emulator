@@ -892,6 +892,8 @@ class Session:
         self._closed = False
         try:
             self.capabilities = self.call("hello")
+            self.stochastic_session_coverage = self.capabilities.get(
+                "stochasticSessionCoverage")
             if self.capabilities.get("wireSchemaId") != "prototype-ai-jsonl-v0":
                 raise EmulatorError("Unsupported emulator wire schema")
             if self.capabilities.get("snapshotSchemaId") != "sts2-exact-snapshot-v1":
@@ -903,6 +905,26 @@ class Session:
             self._process.wait(timeout=5)
             self._close_pipes()
             raise
+
+    def supports_reference_nature_site(self, site_id: str, *,
+                                       session: str = "any") -> bool:
+        """Check site coverage for a ReferenceNature continuation schema."""
+        fields = {
+            "semantic": "semanticReferenceNatureSiteIds",
+            "run_action": "referenceNatureRunActionSiteIds",
+            "event_choice": "referenceNatureEventChoiceSiteIds",
+        }
+        if session != "any" and session not in fields:
+            raise ValueError(
+                "session must be semantic, run_action, event_choice, or any")
+        coverage = self.stochastic_session_coverage
+        if not isinstance(coverage, dict) or coverage.get("schemaId") != (
+                "sts2-v111-stochastic-session-coverage-v1"):
+            return False
+        if session == "any":
+            return any(site_id in coverage.get(field, [])
+                       for field in fields.values())
+        return site_id in coverage.get(fields[session], [])
 
     def call(self, operation, **payload):
         with self._lock:

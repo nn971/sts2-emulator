@@ -40,5 +40,10 @@ reward actions and event Nature choices in one replay order; the committed
 session exposes `.state` for ordinary play. See the
 [event-choice contract](../../docs/CONTROLLED_EVENT_CHOICE_D3.md).
 
+`Session.stochastic_session_coverage` reports the site IDs accepted by the
+semantic, run-action, and event-choice ReferenceNature session schemas.
+`Session.supports_reference_nature_site(site_id, session="any")` checks that
+versioned capability report before a client starts a continuation.
+
 All mechanics remain in C#. Search, learning and strategy belong in the parent
 AI repository. See [the versioned contract](../../docs/V111_INTERFACE.md).

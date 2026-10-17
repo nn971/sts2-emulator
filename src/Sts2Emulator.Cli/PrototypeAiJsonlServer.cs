@@ -1174,6 +1174,8 @@ internal static class PrototypeAiJsonlServer
                             semanticChanceSchemaId = SemanticChanceSchemaId,
                             stochasticCapabilities =
                                 StochasticCapabilitiesV111.Create(),
+                            stochasticSessionCoverage =
+                                StochasticSiteRegistryV111.CreateSessionCoverage(),
                             referenceNatureSessionSchemaId =
                                 ReferenceNatureSessionV111.CurrentSchemaId,
                             referenceNatureRunActionSessionSchemaId =
@@ -1194,53 +1196,17 @@ internal static class PrototypeAiJsonlServer
                             controlledRunActionMaximumInlineOutcomeActions =
                                 ControlledRunActionEngineV111
                                     .MaximumInlineOutcomeActions,
-                            controlledRunActionSites = new[]
-                            {
-                                "run.encounter.overgrowth_boss.index_draw",
-                                "map.legacy.floor_width.index_draw",
-                                "map.legacy.edge_source.index_draw",
-                                "map.legacy.orphan_target.index_draw",
-                                "map.legacy.edge_extra_chance.ticket",
-                                "map.legacy.second_edge_source.index_draw",
-                                "map.legacy.convergence.order_key",
-                                "map.legacy.convergence.source.index_draw",
-                                "map.legacy.second_edge_target.index_draw",
-                                "map.legacy.required_room.node.index_draw",
-                                "map.legacy.room_assignment.index_draw",
-                                "event.selection.weighted_ticket",
-                                "event.generated_gold.index_draw",
-                                "event.stone_of_all_time.potion_slot.index_draw",
-                                "event.fake_merchant.relic_offer.shuffle_swap_index",
-                                "event.endless_conveyor.dish_weighted_ticket",
-                                "event.future_of_potions.card_type.index_draw",
-                                "relic.unowned_random_selection.index_draw"
-                            },
+                            controlledRunActionSites =
+                                StochasticSiteRegistryV111
+                                    .ControlledRunActionSiteIds,
                             controlledEventChoiceEnumerationSchemaId =
                                 ControlledEventChoiceEnumeratorV111.SchemaId,
                             controlledEventChoiceEnumerationMaximumOutcomes =
                                 ControlledEventChoiceEnumeratorV111
                                     .MaximumSupportedOutcomes,
-                            controlledEventChoiceSites = new[]
-                            {
-                                "event.random_upgrade.card_instance",
-                                "event.reward.random_rare_card.model",
-                                "event.reward.random_potion.model",
-                                "event.reward.offer_potion.model.index_draw",
-                                "event.reward.card_bundle.shuffle_swap_index",
-                                "event.potion.fill_empty_slots.model",
-                                "reward.card_rarity.ticket",
-                                "reward.card_model.index_draw",
-                                "run.random_pool_distinct.shuffle_swap_index",
-                                "event.reward.random_modifier_curse.index_draw",
-                                "relic.acquisition.random_rare_card.model",
-                                "relic.acquisition.random_potion.model",
-                                "run.potion.fill_empty_slots.model",
-                                "relic_grab_bag.queue_shuffle.swap_index",
-                                "relic_grab_bag.rarity.ticket",
-                                "potion.uncommon_model.index_draw",
-                                "reward.card_transform.replacement.index_draw",
-                                "relic.unowned_random_selection.index_draw"
-                            },
+                            controlledEventChoiceSites =
+                                StochasticSiteRegistryV111
+                                    .ControlledEventChoiceSiteIds,
                             semanticPersistentDeckActionSchemaId =
                                 SemanticPlayerActionV111.SchemaId,
                             semanticPersistentDeckActionScope =
