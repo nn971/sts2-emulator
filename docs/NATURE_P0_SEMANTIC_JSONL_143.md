@@ -155,9 +155,12 @@ selector site/stream, stable enemy owner, bounded support, ordinal,
 source-filtered semantic intent IDs and move IDs, raw branch weights,
 ticket intervals and total raw weight. The implementation checks that
 weights are positive, intervals are contiguous, and their sum matches the
-source ticket bound. These are source-shaped weights, not independently
-calibrated native conditional probabilities: `weightsVerified=false` and
-`probabilityStatus=UNVERIFIED` remain explicit. A pending `draw_card`
+source ticket bound. The Chance Law maps exact Native `NextInt` grid masses
+through those intervals and reports `SOURCE_VERIFIED` for the bounded
+transform on the declared support. The stored event keeps
+`weightsVerified=false` and `probabilityStatus=UNVERIFIED` for compatibility;
+source eligibility completeness and player-information conditional
+probabilities remain separate. A pending `draw_card`
 contains ordered legal physical card-instance IDs and corresponding
 card-model IDs, source shuffle epoch, pool/constraint fingerprint, stable
 event ID and `UNVERIFIED` law.
@@ -513,12 +516,14 @@ use `SemanticCombat.resolve_draw_insertion(position)` after
 `resolve_generated_card(card_model_id)` for the random-Attack path. Probability
 laws and fixture acquisition provenance are `UNVERIFIED`.
 
-**Probability status:** these are raw weights produced by the emulator's
-source-shaped selector, **not** independently audited original-game
-conditional probabilities. `weightsVerified=false` and
+**Probability status:** the read-only Chance Law now computes exact Native
+`NextInt` 53-bit grid masses through the source ticket intervals and reports
+`SOURCE_VERIFIED` for that transform. The event's raw-weight compatibility
+fields remain `weightsVerified=false` and
 `probabilityStatus="UNVERIFIED"` with provenance
-`source-shaped-unverified` remain explicit until N5 source-law calibration.
-Pure deterministic intent commitments require no random ticket; they are
+`source-shaped-unverified`; this does not establish player-information
+conditional probabilities or source-eligibility completeness. Pure
+deterministic intent commitments require no random ticket; they are
 already committed in visible player observations.
 
 Regression evidence: the focused C# gate exercises ID-to-ticket equivalence,
@@ -795,8 +800,8 @@ with two candidates; Sludge Spinner exercised two events with four
 candidates. The other three runs had no randomized Nature intent event
 under the chosen route seeds.
 
-**Remaining P0 acceptance:** `UNVERIFIED` route/Neow and filtered-intent
-probability laws; native reward and other non-Nature RNG parity; broader
+**Remaining P0 acceptance:** `UNVERIFIED` route/Neow and player-information
+intent likelihoods; native reward and other non-Nature RNG parity; broader
 source-routed encounter coverage, including normal encounters; and
 `sts2-ai` consumer verification. The paired smoke is mechanics and replay
 evidence, not calibration or training evidence. Issue #143 remains open.

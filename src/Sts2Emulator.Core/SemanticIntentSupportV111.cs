@@ -3,8 +3,10 @@ namespace Sts2Emulator.Core;
 /// <summary>
 /// Source-shaped candidate at one actual enemy-intent random ticket.
 /// TicketStart maps a semantic move selection to the first legal bounded
-/// primitive ticket in its raw-weight interval. Do not interpret these
-/// weights as independently audited native probabilities.
+/// primitive ticket in its source raw-weight interval. Chance Law queries
+/// map exact Native NextInt grid preimages through these intervals; that does
+/// not establish source eligibility completeness or player-visible
+/// conditional probabilities.
 /// </summary>
 public sealed record SemanticIntentCandidateV111(
     string IntentId, string MoveId, int MoveIndex,

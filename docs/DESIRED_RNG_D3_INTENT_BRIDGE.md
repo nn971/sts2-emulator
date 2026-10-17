@@ -84,9 +84,12 @@ The response supplies the new `natureHandle`, `fingerprint`,
 `pending` uses `operationKind=choose_index` with ordered
 `orderedCandidates` for HP, or `operationKind=bounded_integer`
 with `boundedCount` for AI weighted tickets. Only indices
-within support are legal. `ProbabilityStatus` is
-`UNVERIFIED`; **do not treat the primitive ticket law as a
-calibrated conditional probability given player information**.
+within support are legal. The stored event retains its compatibility
+`UNVERIFIED` status. Its Chance Law now counts exact Native `NextInt` 53-bit
+grid masses through the validated weighted ticket intervals and reports
+`SOURCE_VERIFIED` for that transform on the declared support. This does not
+establish player-information conditional probabilities, source-pool
+completeness, or Native stream/cursor parity.
 
 Further operations:
 

@@ -590,10 +590,31 @@ public static partial class ChanceLawEngineV111
     {
         ArgumentNullException.ThrowIfNull(intent);
         intent.Validate();
+        var totalRawWeight = intent.Support.TotalRawWeight;
+        long totalGridWeight = 0;
         var outcomes = intent.Support.Candidates
-            .Select(candidate => new ChanceLawOutcomeV111(
-                candidate.IntentId, candidate.RawWeight))
+            .Select(candidate =>
+            {
+                var first = candidate.TicketStart == 0
+                    ? 0
+                    : NativeNextIntBoundaryGridIndex(
+                        candidate.TicketStart, totalRawWeight);
+                var endTicket = checked(candidate.TicketStart +
+                    candidate.RawWeight);
+                var end = NativeNextIntBoundaryGridIndex(
+                    endTicket, totalRawWeight);
+                var weight = checked(end - first);
+                if (weight <= 0)
+                    throw new InvalidDataException(
+                        "Native intent-ticket grid produced an empty outcome bin.");
+                totalGridWeight = checked(totalGridWeight + weight);
+                return new ChanceLawOutcomeV111(
+                    candidate.IntentId, weight);
+            })
             .ToArray();
+        if (totalGridWeight != NativeNextDoubleGridSize)
+            throw new InvalidDataException(
+                "Native intent-ticket grid masses do not cover the input grid.");
         var conditioningFingerprint = CanonicalJson.Sha256(new
         {
             intent.SupportFingerprint,
@@ -605,7 +626,9 @@ public static partial class ChanceLawEngineV111
 
         return Create(intent.EventId, intent.SiteId, intent.OperationKind,
             intent.OwnerId, intent.Ordinal, IntentConditioningPolicyId,
-            conditioningFingerprint, "source-shaped-unverified", outcomes);
+            conditioningFingerprint,
+            NativeBoundedIndexSourceVerifiedProvenance, outcomes,
+            ChanceLawV111.SourceVerifiedStatus);
     }
 
     /// <summary>
