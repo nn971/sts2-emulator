@@ -236,10 +236,8 @@ public sealed partial class PrototypeGameEngine
                         deck, selected)
                 };
             }
-            combat = SetZone(combat, sourceZone,
-                GetZone(combat, sourceZone).Where(id => id != selected).ToArray());
-            combat = SetZone(combat, PrototypeCardZone.PlayPile,
-                combat.PlayCardIds.Append(selected).ToArray());
+            combat = MoveCards(
+                combat, sourceZone, PrototypeCardZone.PlayPile, [selected]);
             var resumedOperations = new List<PrototypeQueuedOperation>
             {
                 new(PrototypeCombatEffectKind.AutoPlayCombatCard, 0,

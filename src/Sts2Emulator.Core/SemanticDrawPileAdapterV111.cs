@@ -108,8 +108,14 @@ public static class SemanticDrawPileAdapterV111
 
         var nextDeck = SemanticDeckEngineV111.RecycleNature(
             semantic, recycled, perfectFit);
-        return ApplyCommittedPhysicalMutation(
-            checkpoint, nextPhysical, nextDeck) with { DiscardPile = [] };
+        var nextZones = checkpoint.Mechanics.CardZones.WithZoneChanges(
+            new Dictionary<PrototypeCardZone, long[]>
+            {
+                [PrototypeCardZone.DrawPile] = nextPhysical,
+                [PrototypeCardZone.DiscardPile] = []
+            });
+        return ApplyCommittedZoneTransition(
+            checkpoint, nextZones, nextDeck);
     }
 
     private static void ValidateProviderCorrespondence(
@@ -141,10 +147,28 @@ public static class SemanticDrawPileAdapterV111
     {
         ArgumentNullException.ThrowIfNull(combat);
         ArgumentNullException.ThrowIfNull(nextPhysicalDrawPile);
-        return ApplyCommittedPhysicalMutation(
-            combat, nextPhysicalDrawPile,
-            SynchronizeSemanticDrawPileAfterMutation(
-                combat, nextPhysicalDrawPile));
+        return ApplyZoneTransition(
+            combat,
+            combat.Mechanics.CardZones.WithCardsIn(
+                PrototypeCardZone.DrawPile,
+                (long[])nextPhysicalDrawPile.Clone()));
+    }
+
+    /// <summary>
+    /// Commits a mechanics transition that changes one or more card zones.
+    /// When DrawPile changes, its provider constraint is updated before the
+    /// complete zone owner is published.
+    /// </summary>
+    public static CombatState ApplyZoneTransition(
+        CombatState combat, CombatCardZonesV111 nextCardZones)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(nextCardZones);
+        var semantic = combat.DrawPile.SequenceEqual(nextCardZones.DrawPile)
+            ? combat.SemanticDeck
+            : SynchronizeSemanticDrawPileAfterMutation(
+                combat, nextCardZones.DrawPile);
+        return CommitZoneTransition(combat, nextCardZones, semantic);
     }
 
     /// <summary>
@@ -166,9 +190,50 @@ public static class SemanticDrawPileAdapterV111
             nextPhysicalDrawPile.Length)
             throw new InvalidDataException(
                 "Physical draw-pile mutation contains duplicate card instances.");
+        var nextZones = combat.Mechanics.CardZones.WithCardsIn(
+            PrototypeCardZone.DrawPile,
+            (long[])nextPhysicalDrawPile.Clone());
+        return ApplyCommittedZoneTransition(
+            combat, nextZones, committedSemanticDeck);
+    }
+
+    /// <summary>
+    /// Publishes a complete zone transition whose provider-side draw-pile
+    /// operation has already been committed by a typed operation.
+    /// </summary>
+    public static CombatState ApplyCommittedZoneTransition(
+        CombatState combat,
+        CombatCardZonesV111 nextCardZones,
+        SemanticDeckStateV111? committedSemanticDeck)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(nextCardZones);
+        if (combat.SemanticDeck is not null &&
+            committedSemanticDeck is null)
+            throw new InvalidDataException(
+                "A card-zone mutation cannot drop its provider state.");
+        return CommitZoneTransition(
+            combat, nextCardZones, committedSemanticDeck);
+    }
+
+    private static CombatState CommitZoneTransition(
+        CombatState combat,
+        CombatCardZonesV111 nextCardZones,
+        SemanticDeckStateV111? committedSemanticDeck)
+    {
+        var zoneLocations = Enum.GetValues<PrototypeCardZone>()
+            .SelectMany(zone => nextCardZones.CardsIn(zone))
+            .ToArray();
+        if (zoneLocations.Distinct().Count() != zoneLocations.Length)
+            throw new InvalidDataException(
+                "Card-zone transition duplicates a physical card instance.");
+
         var next = combat with
         {
-            DrawPile = (long[])nextPhysicalDrawPile.Clone(),
+            Mechanics = combat.Mechanics with
+            {
+                CardZones = nextCardZones
+            },
             SemanticDeck = committedSemanticDeck
         };
         ValidateSynchronized(next);

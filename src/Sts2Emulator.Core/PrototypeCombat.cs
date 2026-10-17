@@ -2074,12 +2074,11 @@ public sealed partial class PrototypeGameEngine
             if (zone is null)
                 continue;
 
-            combat = SetZone(combat, zone.Value,
-                GetZone(combat, zone.Value)
-                    .Where(id => id != card.InstanceId).ToArray());
+            combat = MoveCards(
+                combat, zone.Value, PrototypeCardZone.PlayPile,
+                [card.InstanceId]);
             combat = combat with
             {
-                PlayPile = combat.PlayCardIds.Append(card.InstanceId).ToArray(),
                 Cards = combat.Cards.Select(item =>
                     item.InstanceId == card.InstanceId
                         ? item with { EnchantmentTriggeredThisCombat = true }
@@ -7886,21 +7885,9 @@ public sealed partial class PrototypeGameEngine
                         break;
                     }
 
-                    var autoPlaySet =
-                        autoPlayIds.ToHashSet();
-                    combat = SetZone(
-                        combat,
-                        sourceZone,
-                        GetZone(combat, sourceZone)
-                            .Where(id =>
-                                !autoPlaySet.Contains(id))
-                            .ToArray());
-                    combat = SetZone(
-                        combat,
-                        PrototypeCardZone.PlayPile,
-                        combat.PlayCardIds
-                            .Concat(autoPlayIds)
-                            .ToArray());
+                    combat = MoveCards(
+                        combat, sourceZone, PrototypeCardZone.PlayPile,
+                        autoPlayIds);
 
                     operations = new Queue<
                         PrototypeQueuedOperation>(
@@ -7932,7 +7919,6 @@ public sealed partial class PrototypeGameEngine
                     var zone = operation.AutoPlaySourceZone
                         ?? throw new InvalidOperationException(
                             "Random autoplay requires a source pile.");
-                    var ids = GetZone(combat, zone);
                     var eligible = ControlledCardShortlistCandidates(
                         combat, operation) ?? throw new InvalidDataException(
                             "Random auto-play lost its eligible card pool.");
@@ -7995,10 +7981,9 @@ public sealed partial class PrototypeGameEngine
                                 .RemoveCardInstance(deck, selected)
                         };
                     }
-                    combat = SetZone(combat, zone,
-                        ids.Where(id => id != selected).ToArray());
-                    combat = SetZone(combat, PrototypeCardZone.PlayPile,
-                        combat.PlayCardIds.Append(selected).ToArray());
+                    combat = MoveCards(
+                        combat, zone, PrototypeCardZone.PlayPile,
+                        [selected]);
 
                     // Re-evaluate the source pile after each autoplay,
                     // because the played card can draw or mutate cards.
@@ -8336,12 +8321,10 @@ public sealed partial class PrototypeGameEngine
                     {
                         Energy = Math.Max(0, combat.Energy - energyCost)
                     };
-                    combat = SetZone(combat, PrototypeCardZone.Hand,
-                        combat.Hand.Where(id =>
-                            id != playableCard.InstanceId).ToArray());
-                    combat = SetZone(combat, PrototypeCardZone.PlayPile,
-                        combat.PlayCardIds.Append(
-                            playableCard.InstanceId).ToArray());
+                    combat = MoveCards(
+                        combat, PrototypeCardZone.Hand,
+                        PrototypeCardZone.PlayPile,
+                        [playableCard.InstanceId]);
 
                     var remaining = operation with
                     {
@@ -8425,21 +8408,9 @@ public sealed partial class PrototypeGameEngine
                     if (autoPlayDefinition.Unplayable
                         || NormalityPreventsCardPlay(combat))
                     {
-                        combat = SetZone(
-                            combat,
-                            PrototypeCardZone.PlayPile,
-                            combat.PlayCardIds
-                                .Where(id =>
-                                    id != autoPlayId)
-                                .ToArray());
-                        combat = SetZone(
-                            combat,
-                            autoPlayDestination,
-                            GetZone(
-                                    combat,
-                                    autoPlayDestination)
-                                .Append(autoPlayId)
-                                .ToArray());
+                        combat = MoveCards(
+                            combat, PrototypeCardZone.PlayPile,
+                            autoPlayDestination, [autoPlayId]);
                         break;
                     }
 
@@ -8465,21 +8436,9 @@ public sealed partial class PrototypeGameEngine
                                 .ToArray();
                         if (liveTargets.Length == 0)
                         {
-                            combat = SetZone(
-                                combat,
-                                PrototypeCardZone.PlayPile,
-                                combat.PlayCardIds
-                                    .Where(id =>
-                                        id != autoPlayId)
-                                    .ToArray());
-                            combat = SetZone(
-                                combat,
-                                autoPlayDestination,
-                                GetZone(
-                                        combat,
-                                        autoPlayDestination)
-                                    .Append(autoPlayId)
-                                    .ToArray());
+                            combat = MoveCards(
+                                combat, PrototypeCardZone.PlayPile,
+                                autoPlayDestination, [autoPlayId]);
                             break;
                         }
 
@@ -14830,12 +14789,27 @@ public sealed partial class PrototypeGameEngine
                         Array.IndexOf(combat.DrawPile, instanceId))
                     : combat.SemanticDeck;
 
+                var nextCardZones = combat.Mechanics.CardZones with
+                {
+                    DrawPile = transformedDrawPile,
+                    Hand = combat.Hand.Select(id =>
+                        id == instanceId ? replacementId : id).ToArray(),
+                    DiscardPile = combat.DiscardPile.Select(id =>
+                        id == instanceId ? replacementId : id).ToArray(),
+                    ExhaustPile = combat.ExhaustPile.Select(id =>
+                        id == instanceId ? replacementId : id).ToArray(),
+                    PlayPile = combat.PlayCardIds.Select(id =>
+                        id == instanceId ? replacementId : id).ToArray(),
+                    ChoicePool = combat.ChoiceCardIds.Select(id =>
+                        id == instanceId ? replacementId : id).ToArray()
+                };
+
                 // Transform creates a new physical card; it does not
                 // mutate the original card's persistent deck identity.
                 // Track that absence explicitly for run invariants.
-                combat = SemanticDrawPileAdapterV111
-                    .ApplyCommittedPhysicalMutation(
-                        combat, transformedDrawPile, semanticDeck) with
+                combat = SemanticDrawPileAdapterV111.ApplyZoneTransition(
+                    combat with { SemanticDeck = semanticDeck },
+                    nextCardZones) with
                 {
                     Cards = combat.Cards
                         .Where(card => card.InstanceId != instanceId)
@@ -14847,12 +14821,6 @@ public sealed partial class PrototypeGameEngine
                             IsTemporary: true,
                             State: PrototypeJson.EmptyObject()))
                         .ToArray(),
-                    Hand = combat.Hand.Select(id =>
-                        id == instanceId ? replacementId : id).ToArray(),
-                    DiscardPile = combat.DiscardPile.Select(id =>
-                        id == instanceId ? replacementId : id).ToArray(),
-                    ExhaustPile = combat.ExhaustPile.Select(id =>
-                        id == instanceId ? replacementId : id).ToArray(),
                     NextCardInstanceId = replacementId + 1,
                     TransformedPersistentCardIds =
                         oldPersistentId is { } persistentId
@@ -14932,13 +14900,6 @@ public sealed partial class PrototypeGameEngine
         var unselected = source
             .Where(cardId => !selectedSet.Contains(cardId))
             .ToArray();
-        combat = SetZone(
-            combat,
-            selection.SourceZone,
-            selection.RemoveUnselectedFromSource
-                ? Array.Empty<long>()
-                : unselected);
-
         if (selection.RemoveUnselectedFromSource)
         {
             var unselectedSet = unselected.ToHashSet();
@@ -14950,6 +14911,29 @@ public sealed partial class PrototypeGameEngine
                     "Only temporary choice cards may be removed when a selection resolves.");
             }
 
+        }
+
+        var zoneChanges = new Dictionary<PrototypeCardZone, long[]>
+        {
+            [selection.SourceZone] = selection.RemoveUnselectedFromSource
+                ? Array.Empty<long>()
+                : unselected
+        };
+
+        if (destinationZone is { } destination)
+        {
+            var destinationCards = combat.Mechanics.CardZones
+                .CardsIn(destination);
+            zoneChanges[destination] =
+                destinationCards.Concat(selected).ToArray();
+        }
+
+        combat = SemanticDrawPileAdapterV111.ApplyZoneTransition(
+            combat,
+            combat.Mechanics.CardZones.WithZoneChanges(zoneChanges));
+        if (selection.RemoveUnselectedFromSource)
+        {
+            var unselectedSet = unselected.ToHashSet();
             combat = combat with
             {
                 Cards = combat.Cards
@@ -14959,20 +14943,21 @@ public sealed partial class PrototypeGameEngine
             };
         }
 
-        if (destinationZone is { } destination)
-        {
-            var destinationCards = GetZone(combat, destination);
-            combat = SetZone(
-                combat,
-                destination,
-                destinationCards.Concat(selected).ToArray());
-        }
-
         return combat;
     }
 
     private static long[] GetZone(CombatState combat, PrototypeCardZone zone) =>
         combat.Mechanics.CardZones.CardsIn(zone);
+
+    private static CombatState MoveCards(
+        CombatState combat,
+        PrototypeCardZone sourceZone,
+        PrototypeCardZone destinationZone,
+        IReadOnlyCollection<long> cardInstanceIds) =>
+        SemanticDrawPileAdapterV111.ApplyZoneTransition(
+            combat,
+            combat.Mechanics.CardZones.MoveCards(
+                sourceZone, destinationZone, cardInstanceIds));
 
     private static void RequireSemanticNativeStreamOwner(
         CombatState combat, string siteId)
@@ -14990,17 +14975,9 @@ public sealed partial class PrototypeGameEngine
         PrototypeCardZone zone,
         long[] cards)
     {
-        if (zone == PrototypeCardZone.DrawPile)
-            return SemanticDrawPileAdapterV111.ApplyPhysicalMutation(
-                combat, cards);
-        return combat with
-        {
-            Mechanics = combat.Mechanics with
-            {
-                CardZones = combat.Mechanics.CardZones.WithCardsIn(
-                    zone, cards)
-            }
-        };
+        return SemanticDrawPileAdapterV111.ApplyZoneTransition(
+            combat,
+            combat.Mechanics.CardZones.WithCardsIn(zone, cards));
     }
 
     private static IEnumerable<long[]> ChooseCombinations(long[] source, int count)

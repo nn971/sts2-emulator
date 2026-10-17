@@ -42,6 +42,48 @@ public sealed record CombatCardZonesV111(
         };
     }
 
+    public CombatCardZonesV111 WithZoneChanges(
+        IReadOnlyDictionary<PrototypeCardZone, long[]> changes)
+    {
+        ArgumentNullException.ThrowIfNull(changes);
+        var next = this;
+        foreach (var (zone, cardInstanceIds) in changes)
+            next = next.WithCardsIn(zone, cardInstanceIds);
+        return next;
+    }
+
+    public CombatCardZonesV111 MoveCards(
+        PrototypeCardZone sourceZone,
+        PrototypeCardZone destinationZone,
+        IReadOnlyCollection<long> cardInstanceIds)
+    {
+        ArgumentNullException.ThrowIfNull(cardInstanceIds);
+        if (sourceZone == destinationZone)
+            throw new ArgumentException(
+                "Card movement requires distinct source and destination zones.");
+
+        var moved = cardInstanceIds.ToArray();
+        if (moved.Distinct().Count() != moved.Length)
+            throw new InvalidDataException(
+                "Card movement contains duplicate instance identities.");
+
+        var source = CardsIn(sourceZone);
+        var sourceSet = source.ToHashSet();
+        if (moved.Any(id => !sourceSet.Contains(id)))
+            throw new InvalidOperationException(
+                "Card movement source no longer contains every requested identity.");
+
+        var destination = CardsIn(destinationZone);
+        var destinationSet = destination.ToHashSet();
+        if (moved.Any(destinationSet.Contains))
+            throw new InvalidDataException(
+                "Card movement would duplicate an identity in its destination zone.");
+
+        return WithCardsIn(sourceZone,
+                source.Where(id => !moved.Contains(id)).ToArray())
+            .WithCardsIn(destinationZone, destination.Concat(moved).ToArray());
+    }
+
     public CombatCardZonesV111 Fork() => this with
     {
         Hand = (long[])Hand.Clone(),

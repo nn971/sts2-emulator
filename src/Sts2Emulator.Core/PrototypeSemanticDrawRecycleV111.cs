@@ -35,8 +35,14 @@ public sealed partial class PrototypeGameEngine
             currentDiscardPile.ToArray(), rng);
         var postHook = NativeShuffleStepReplayV111.CheckPostHook(
             ApplyPerfectFitShuffleOrder(checkpoint, shuffled));
-        return SemanticDrawPileAdapterV111.ApplyPhysicalMutation(
-            checkpoint, postHook) with { DiscardPile = [] };
+        var nextZones = checkpoint.Mechanics.CardZones.WithZoneChanges(
+            new Dictionary<PrototypeCardZone, long[]>
+            {
+                [PrototypeCardZone.DrawPile] = postHook,
+                [PrototypeCardZone.DiscardPile] = []
+            });
+        return SemanticDrawPileAdapterV111.ApplyZoneTransition(
+            checkpoint, nextZones);
     }
 
     /// <summary>
@@ -91,7 +97,13 @@ public sealed partial class PrototypeGameEngine
         {
             NativeRng = native with { RunStreams = nativeStreams }
         };
-        return SemanticDrawPileAdapterV111.ApplyCommittedPhysicalMutation(
-            advanced, postHook, nextDeck) with { DiscardPile = [] };
+        var nextZones = advanced.Mechanics.CardZones.WithZoneChanges(
+            new Dictionary<PrototypeCardZone, long[]>
+            {
+                [PrototypeCardZone.DrawPile] = postHook,
+                [PrototypeCardZone.DiscardPile] = []
+            });
+        return SemanticDrawPileAdapterV111.ApplyCommittedZoneTransition(
+            advanced, nextZones, nextDeck);
     }
 }
