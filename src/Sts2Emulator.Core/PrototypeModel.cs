@@ -505,6 +505,27 @@ public sealed record PrototypeAutomaticPipelineContinuationState(
         { ControlledEnemyAction = value };
     }
 
+    public void Validate(CombatState combat)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        if (OpeningStage is { } opening &&
+            (!Enum.IsDefined(opening)
+                || opening <= PrototypeOpeningCombatStage.PlayerSideStart
+                || combat.Turn != 1 || !combat.IsPlayerTurn
+                || combat.PendingChoice is null
+                || NextStepIndex != PrototypeContent.Rules.EndTurnPipeline.Length
+                || PendingPostDispatchEventKind is not null))
+            throw new InvalidOperationException(
+                "Invalid suspended opening-combat stage.");
+        if (OpeningStage is null &&
+            (NextStepIndex < 0 ||
+             NextStepIndex > PrototypeContent.Rules.EndTurnPipeline.Length ||
+             PendingPostDispatchEventKind is { } eventKind &&
+                !Enum.IsDefined(eventKind)))
+            throw new InvalidOperationException(
+                "Invalid suspended automatic-combat pipeline.");
+    }
+
     public PrototypeAutomaticPipelineContinuationState Fork() => this with
     {
         Stochastic = Stochastic.Fork()

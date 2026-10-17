@@ -92,6 +92,8 @@
 
 **S3 semantic pilot validation ownership increment (2026-10-17):** `SemanticPilotCombatV111.Validate` now owns playable session boundary, nested continuation, and provider provenance checks. Engine validation and save/replay paths delegate to the pilot frame.
 
+**S3 automatic-pipeline mechanics validation increment (2026-10-17):** `PrototypeAutomaticPipelineContinuationState.Validate(CombatState)` now owns its opening and step cursor rules. Combat validation delegates that check, while the stochastic owner retains resume-prefix validation.
+
 ## S1 precise design
 
 Implement a **read-only, outcome-blind** Chance Law query in `Sts2Emulator.Core` with:

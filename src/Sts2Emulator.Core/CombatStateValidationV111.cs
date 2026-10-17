@@ -163,23 +163,7 @@ public sealed partial record CombatState
     {
         var combat = this;
         combat.Stochastic.Validate(combat);
-        if (combat.AutomaticPipelineContinuation is { OpeningStage: { } opening } openingContinuation
-            && (!Enum.IsDefined(opening)
-                || opening <= PrototypeOpeningCombatStage.PlayerSideStart
-                || combat.Turn != 1 || !combat.IsPlayerTurn
-                || combat.PendingChoice is null
-                || openingContinuation.NextStepIndex != PrototypeContent.Rules.EndTurnPipeline.Length
-                || openingContinuation.PendingPostDispatchEventKind is not null))
-            throw new InvalidOperationException("Invalid suspended opening-combat stage.");
-        if (combat.AutomaticPipelineContinuation is
-                { OpeningStage: null } pipelineContinuation &&
-            (pipelineContinuation.NextStepIndex < 0 ||
-             pipelineContinuation.NextStepIndex >
-                PrototypeContent.Rules.EndTurnPipeline.Length ||
-             pipelineContinuation.PendingPostDispatchEventKind is
-                { } eventKind && !Enum.IsDefined(eventKind)))
-            throw new InvalidOperationException(
-                "Invalid suspended automatic-combat pipeline.");
+        combat.AutomaticPipelineContinuation?.Validate(combat);
         if (combat.ToricShields is { } shields
             && shields.Any(shield =>
                 shield.BlockAmount <= 0
