@@ -40,7 +40,7 @@ The census and matrix have different units. Census rows are source expressions; 
 
 `ReferenceNatureRunCursorV111` centralizes run-scoped cursor initialization, transcript-count validation and committed-cursor publication for semantic-combat, run-action and event-choice sessions. `ReferenceNatureV111.SampleValidated` is the shared law-identity and ordered-support guard. This closes a provider-lifecycle duplication; it does not close the row-level S0 inventory audit or source-law calibration.
 
-`ControlledChanceContinuationExecutorV111` centralizes replay-scope lifetime, saved-prefix consumption and typed suspension capture for run-action and controlled event/reward mechanics. The enclosing continuation still owns its mechanics checkpoint, allowlist, and serialized frame.
+`ControlledChanceContinuationExecutorV111` centralizes replay-scope lifetime, saved-prefix consumption and typed suspension capture for run-action, controlled event/reward, and automatic enemy-action mechanics. `ControlledChanceRequiredExceptionV111` is the shared suspension contract; boundary-specific exceptions preserve their event candidate-label data or combat checkpoint policy. The enclosing continuation still owns its mechanics checkpoint, allowlist, and serialized frame.
 
 ## Site-family crosswalk
 

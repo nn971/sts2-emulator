@@ -593,14 +593,9 @@ public sealed record PrototypeControlledEventRewardChoiceContinuationV111(
 
 internal sealed class ControlledEventChoiceChanceRequiredException(
     RandomIndexRequestV111 request,
-    string[]? candidateLabels) : Exception(
-        "A controlled event choice needs a random-choice outcome.")
-{
-    public RandomIndexRequestV111 Request { get; } =
-        PrototypeControlledEventChoiceContinuationV111.CloneRequest(request);
-    public string[]? CandidateLabels { get; } = candidateLabels is null
-        ? null : (string[])candidateLabels.Clone();
-}
+    string[]? candidateLabels) : ControlledChanceRequiredExceptionV111(
+        request, candidateLabels,
+        "A controlled event choice needs a random-choice outcome.");
 
 /// <summary>
 /// Supplies the current controlled outcome while the event-effect interpreter

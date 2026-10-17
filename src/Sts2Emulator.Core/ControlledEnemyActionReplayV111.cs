@@ -80,11 +80,9 @@ public sealed record PrototypeControlledEnemyActionContinuationV111(
 }
 
 internal sealed class ControlledEnemyActionChanceRequiredException(
-    RandomIndexRequestV111 request) : Exception(
-        "A controlled enemy action needs a random-choice outcome.")
-{
-    public RandomIndexRequestV111 Request { get; } = request;
-}
+    RandomIndexRequestV111 request) : ControlledChanceRequiredExceptionV111(
+        request, null,
+        "A controlled enemy action needs a random-choice outcome.");
 
 /// <summary>
 /// Injects previously selected enemy-action outcomes while replaying the

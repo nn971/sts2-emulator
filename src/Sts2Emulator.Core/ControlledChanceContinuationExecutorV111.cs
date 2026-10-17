@@ -6,14 +6,23 @@ namespace Sts2Emulator.Core;
 /// </summary>
 internal sealed record ControlledChanceReplayResultV111(
     RunState? Run,
-    ControlledChanceReplaySuspensionV111? PendingChance)
+    ControlledChanceRequiredExceptionV111? PendingChance)
 {
     public bool Suspended => PendingChance is not null;
 }
 
-internal sealed record ControlledChanceReplaySuspensionV111(
-    RandomIndexRequestV111 Request,
-    string[]? CandidateLabels);
+internal abstract class ControlledChanceRequiredExceptionV111(
+    RandomIndexRequestV111 request,
+    string[]? candidateLabels,
+    string message) : Exception(message)
+{
+    public RandomIndexRequestV111 Request { get; } = request with
+    {
+        OrderedCandidates = (int[])request.OrderedCandidates.Clone()
+    };
+    public string[]? CandidateLabels { get; } = candidateLabels is null
+        ? null : (string[])candidateLabels.Clone();
+}
 
 internal interface IControlledChanceReplayScopeV111 : IDisposable
 {
@@ -38,12 +47,7 @@ internal static class ControlledChanceContinuationExecutorV111
             decisions,
             mechanics,
             () => ControlledEventChoiceReplayV111.Begin(
-                decisions, priorOrdinalCounts),
-            exception => exception is
-                ControlledEventChoiceChanceRequiredException pending
-                    ? new ControlledChanceReplaySuspensionV111(
-                        pending.Request, pending.CandidateLabels)
-                    : null);
+                decisions, priorOrdinalCounts));
 
     public static ControlledChanceReplayResultV111 ResumeEnemyAction(
         RunState checkpoint,
@@ -53,25 +57,18 @@ internal static class ControlledChanceContinuationExecutorV111
             checkpoint,
             decisions,
             mechanics,
-            () => ControlledEnemyActionReplayV111.Begin(decisions),
-            exception => exception is
-                ControlledEnemyActionChanceRequiredException pending
-                    ? new ControlledChanceReplaySuspensionV111(
-                        pending.Request, null)
-                    : null);
+            () => ControlledEnemyActionReplayV111.Begin(decisions));
 
     private static ControlledChanceReplayResultV111 ResumeCore(
         RunState checkpoint,
         RandomIndexDecisionV111[] decisions,
         Func<RunState, RunState> mechanics,
-        Func<IControlledChanceReplayScopeV111> beginReplay,
-        Func<Exception, ControlledChanceReplaySuspensionV111?> captureSuspension)
+        Func<IControlledChanceReplayScopeV111> beginReplay)
     {
         ArgumentNullException.ThrowIfNull(checkpoint);
         ArgumentNullException.ThrowIfNull(decisions);
         ArgumentNullException.ThrowIfNull(mechanics);
         ArgumentNullException.ThrowIfNull(beginReplay);
-        ArgumentNullException.ThrowIfNull(captureSuspension);
 
         using var replay = beginReplay();
         try
@@ -81,11 +78,9 @@ internal static class ControlledChanceContinuationExecutorV111
             replay.EnsureConsumed();
             return new ControlledChanceReplayResultV111(run, null);
         }
-        catch (Exception exception)
+        catch (ControlledChanceRequiredExceptionV111 pending)
         {
-            var suspension = captureSuspension(exception);
-            if (suspension is null) throw;
-            return new ControlledChanceReplayResultV111(null, suspension);
+            return new ControlledChanceReplayResultV111(null, pending);
         }
     }
 }
