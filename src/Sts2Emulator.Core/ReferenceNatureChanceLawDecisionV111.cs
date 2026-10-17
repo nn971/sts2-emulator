@@ -60,7 +60,8 @@ public static class ReferenceNatureChanceLawDecisionV111
         if (candidateLabels is not null ||
             law.OperationKind is not ("unit_float_threshold" or
                 "unit_float_weighted_ticket" or
-                "unit_float_mapped_price" or "unit_float_no_effect"))
+                "unit_float_mapped_price" or "unit_float_mapped_gold" or
+                "unit_float_no_effect"))
             throw new NotSupportedException(
                 "Chance Law is not a supported unit-float outcome mapping.");
 
@@ -233,8 +234,41 @@ public static class ReferenceNatureChanceLawDecisionV111
             return FindPriceRepresentative(request, price);
         }
 
+        if (law.OperationKind == "unit_float_mapped_gold")
+        {
+            if (!outcomeId.StartsWith("gold:", StringComparison.Ordinal) ||
+                !int.TryParse(outcomeId[5..], NumberStyles.Integer,
+                    CultureInfo.InvariantCulture, out var gold))
+                throw new InvalidDataException(
+                    "Mapped-gold Chance Law has a malformed outcome.");
+            var (eventId, stage) = ParseNativeEventGoldOwner(request.OwnerId);
+            return FindUnitFloatRepresentative(roll =>
+                ChanceLawEngineV111.NativeEventGoldUnitFloatOutcome(
+                    eventId, stage, roll), gold);
+        }
+
         throw new NotSupportedException(
             "Unsupported unit-float Chance Law operation.");
+    }
+
+    private static (string EventId, string Stage) ParseNativeEventGoldOwner(
+        string ownerId)
+    {
+        foreach (var eventId in new[]
+        {
+            PrototypeNativeHiveEvents.LostWispId,
+            "proto.native.event.jungle_maze_adventure"
+        })
+        {
+            var prefix = $"event:{eventId}:gold:";
+            if (!ownerId.StartsWith(prefix, StringComparison.Ordinal))
+                continue;
+            var stage = ownerId[prefix.Length..];
+            if (stage is "primary" or "secondary")
+                return (eventId, stage);
+        }
+        throw new InvalidDataException(
+            "Mapped-gold Chance Law has an unsupported event owner.");
     }
 
     private static float FindNativeTreasureNoRelicRepresentative(

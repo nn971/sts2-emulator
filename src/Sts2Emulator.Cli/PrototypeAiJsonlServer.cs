@@ -2924,6 +2924,45 @@ internal static class PrototypeAiJsonlServer
                             });
                             break;
                         }
+                        if (ChanceLawEngineV111.NativeEventGoldQuerySiteIds
+                            .Contains(siteId, StringComparer.Ordinal))
+                        {
+                            if (priorIndices is { Length: > 0 } ||
+                                OptionalString(request, "card_type") is not null ||
+                                OptionalString(request, "rarity") is not null ||
+                                OptionalString(request, "card_id") is not null ||
+                                OptionalString(request, "potion_id") is not null ||
+                                OptionalString(request, "relic_id") is not null ||
+                                OptionalBool(request, "colorless_offer") ||
+                                OptionalBool(request, "sale_reprice") ||
+                                OptionalString(request, "owner_id") is not null ||
+                                OptionalStringArray(request,
+                                    "excluded_potion_ids") is not null ||
+                                OptionalInt(request, "offer_ordinal") is not null ||
+                                OptionalStringArray(request,
+                                    "relic_candidate_ids") is not null ||
+                                OptionalStringArray(request,
+                                    "excluded_relic_ids") is not null)
+                                throw new ArgumentException(
+                                    "Native event gold queries accept only state_handle, site_id, ordinal and action_id.");
+                            var actionId = OptionalString(request, "action_id")
+                                ?? throw new ArgumentException(
+                                    "Native event gold query requires action_id.");
+                            law = ChanceLawEngineV111.QueryNativeEventGoldUnitFloat(
+                                RequireState(request), siteId, ordinal, actionId);
+                            if (law.SiteId != siteId || law.Ordinal != ordinal)
+                                throw new ArgumentException(
+                                    $"Native event gold query expects site '{law.SiteId}' and ordinal {law.Ordinal}.");
+                            Write(new
+                            {
+                                requestId,
+                                ok = true,
+                                chanceLawSchemaId =
+                                    ChanceLawV111.CurrentSchemaId,
+                                law
+                            });
+                            break;
+                        }
                         if (StochasticSiteRegistryV111
                             .ChanceLawQuerySiteIds.Contains(
                                 siteId, StringComparer.Ordinal) &&

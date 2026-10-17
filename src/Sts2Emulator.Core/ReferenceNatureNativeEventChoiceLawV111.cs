@@ -251,6 +251,11 @@ public static partial class ChanceLawEngineV111
 {
     public const string NativeEventCardPickConditioningPolicyId =
         "native-event-card-pick-prefix-v1";
+    public const string NativeEventGoldUnitFloatSiteId =
+        "event.generated_gold.unit_float";
+
+    public static string[] NativeEventGoldQuerySiteIds =>
+        [NativeEventGoldUnitFloatSiteId];
 
     public static string[] NativeEventCardPickQuerySiteIds =>
     [
@@ -258,6 +263,135 @@ public static partial class ChanceLawEngineV111
         PrototypeNativeGloryEvents.ReflectionsUpgradeSiteId,
         PrototypeNativeHiveEvents.InfestedAutomatonCardOfferSiteId
     ];
+
+    public static ChanceLawV111 QueryNativeEventGoldUnitFloat(
+        RunState origin, string siteId, int ordinal, string actionId)
+    {
+        ArgumentNullException.ThrowIfNull(origin);
+        ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(actionId);
+        if (siteId != NativeEventGoldUnitFloatSiteId || ordinal < 0 ||
+            string.IsNullOrWhiteSpace(origin.RunSeed) ||
+            origin.NativeRunRng is null || origin.Phase != RunPhase.MapChoice ||
+            origin.World is not { Event: null } world ||
+            !PrototypeGameEngine.UsesNativeRegionalSystems(world))
+            throw new InvalidOperationException(
+                "Native event gold laws require a configured pre-entry Event-node boundary.");
+        PrototypeStateInvariants.Validate(origin);
+
+        var engine = new PrototypeGameEngine();
+        var action = engine.GetLegalActions(origin).SingleOrDefault(candidate =>
+            PrototypeAiEnvironment.StableActionId(candidate) == actionId)
+            ?? throw new InvalidOperationException(
+                "Native event gold law requires a current legal Event-node action.");
+        var nodeId = action.Kind == "choose_map_node"
+            ? action.ReadPayload<ChooseMapNodePayload>().NodeId : null;
+        if (nodeId is null ||
+            !PrototypeNativeWingedBoots.AvailableNodes(world, origin.Player)
+                .Any(node => node.NodeId == nodeId &&
+                    node.RoomType == PrototypeRoomType.Event))
+            throw new InvalidOperationException(
+                "Native event gold law requires a current legal Event-node action.");
+
+        IReadOnlyList<NativeEventUnitFloatCaptureV111> captures;
+        string? selectedEventId;
+        using (var probe = NativeEventRandomProbeV111.Begin())
+        using (RandomBoundaryJournalV111.Begin())
+        using (NativeEngineEventJournalV111.Begin())
+        {
+            var projected = engine.Step(origin.Fork(), action).State;
+            selectedEventId = projected.World?.Event?.EventId;
+            captures = probe.UnitFloatCaptures;
+        }
+
+        var (eventId, nativeEventEntry, stages) = selectedEventId switch
+        {
+            PrototypeNativeHiveEvents.LostWispId =>
+                (PrototypeNativeHiveEvents.LostWispId,
+                    PrototypeNativeHiveEvents.LostWispNativeRngEventId,
+                    new[] { "primary" }),
+            "proto.native.event.jungle_maze_adventure" =>
+                ("proto.native.event.jungle_maze_adventure",
+                    "JUNGLE_MAZE_ADVENTURE",
+                    new[] { "primary", "secondary" }),
+            _ => throw new InvalidOperationException(
+                "The Event-node action did not enter Lost Wisp or Jungle Maze Adventure.")
+        };
+        if (ordinal >= stages.Length)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+
+        var matching = captures.Where(capture =>
+            capture.Request.SiteId == siteId &&
+            capture.Request.OwnerId.StartsWith(
+                $"event:{eventId}:gold:", StringComparison.Ordinal))
+            .ToArray();
+        if (matching.Length != stages.Length)
+            throw new InvalidOperationException(
+                "Event entry did not produce the expected ordered gold unit-float requests.");
+
+        var stage = stages[ordinal];
+        var ownerId = $"event:{eventId}:gold:{stage}";
+        var captureAtOrdinal = matching[ordinal];
+        var request = captureAtOrdinal.Request;
+        var preDrawEvent = captureAtOrdinal.PreDrawState.World?.Event;
+        var expectedStream = NativeRngV111Contexts.ForEvent(
+            origin.RunSeed, nativeEventEntry);
+        if (request.OwnerId != ownerId || request.Ordinal != ordinal ||
+            request.StreamId != expectedStream.StreamId ||
+            preDrawEvent?.EventId != eventId ||
+            preDrawEvent.NativeEventRng is not { } stream ||
+            stream.StreamId != expectedStream.StreamId)
+            throw new InvalidDataException(
+                "Native event gold request differs from its declared entry stage.");
+
+        int MapGold(float roll) => NativeEventGoldUnitFloatOutcome(
+            eventId, stage, roll);
+        var weights = NativeNextFloatMappedIntegerWeights(MapGold);
+        var conditioning = new
+        {
+            boundary = "native_event.generated_gold.unit_float",
+            actionId,
+            eventId,
+            stage,
+            sourceMapping = eventId == PrototypeNativeHiveEvents.LostWispId
+                ? "lost-wisp-60-plus-unit-float-times-30-minus-15-truncate-v1"
+                : stage == "primary"
+                    ? "jungle-maze-solo-150-plus-unit-float-times-30-minus-15-truncate-v1"
+                    : "jungle-maze-join-50-plus-unit-float-times-30-minus-15-truncate-v1",
+            request
+        };
+        var conditioningFingerprint = CanonicalJson.Sha256(conditioning);
+        var eventLawId = CanonicalJson.Sha256(new
+        {
+            siteId, ownerId, ordinal, conditioningFingerprint
+        });
+        var outcomes = weights.Select(pair => new ChanceLawOutcomeV111(
+            "gold:" + pair.Key.ToString(CultureInfo.InvariantCulture),
+            pair.Value)).ToArray();
+        return Create(eventLawId, siteId, "unit_float_mapped_gold",
+            ownerId, ordinal, "native-event-gold-unit-float-v1",
+            conditioningFingerprint,
+            NativeUnitFloatMappedOutcomeSourceVerifiedProvenance,
+            outcomes, ChanceLawV111.SourceVerifiedStatus);
+    }
+
+    internal static int NativeEventGoldUnitFloatOutcome(
+        string eventId, string stage, float roll)
+    {
+        if (!float.IsFinite(roll) || roll < 0 || roll > 1)
+            throw new ArgumentOutOfRangeException(nameof(roll));
+        return (eventId, stage) switch
+        {
+            (PrototypeNativeHiveEvents.LostWispId, "primary") =>
+                (int)(60f + (roll * 30f - 15f)),
+            ("proto.native.event.jungle_maze_adventure", "primary") =>
+                (int)(150f + (roll * 30f - 15f)),
+            ("proto.native.event.jungle_maze_adventure", "secondary") =>
+                (int)(50f + (roll * 30f - 15f)),
+            _ => throw new NotSupportedException(
+                $"Native unit-float gold mapping does not support '{eventId}' stage '{stage}'.")
+        };
+    }
 
     public static ChanceLawV111 QueryNativeEventCardPick(
         RunState origin, string siteId, int ordinal,

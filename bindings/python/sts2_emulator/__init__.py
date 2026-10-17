@@ -44,6 +44,8 @@ class State:
 
         Reflections card-pick laws use action_id="touch_mirror" and the
         complete prior index prefix.
+        Native Lost Wisp and Jungle Maze Adventure gold laws use the pending
+        Event-node action_id and ordinal 0 or 1 for the gold stage.
         Darv relic-shuffle laws accept prior_variant_index to bind the earlier
         offer-variant decision to the query fingerprint.
         Repy potion laws use ordinal 0 or 1 and prior_indices containing the
