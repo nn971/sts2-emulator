@@ -16,6 +16,12 @@ sts2-v111-coverage-v1`, `v111StateSchemaId: sts2-run-v111-v1` and
 consumer requires. The build pin identifies the mechanics target; fidelity
 explicitly identifies prototype RNG.
 
+`hello` also advertises `referenceNatureStateSnapshotSchemaId` for snapshots
+with a committed sampler cursor and `natureRelicBagSnapshotSchemaId` for the
+opt-in v3 snapshot carrying an unordered Nature relic identity set. The v3
+schema takes precedence when both capabilities apply; ordinary v1 and cursor
+only v2 snapshots retain their established envelopes.
+
 Existing `reset`, `reset_native_overgrowth` and hypothetical adapters preserve
 their legacy identities. `reset_v111` is opt-in and accepts `seed`, `character`
 (default `silent`), `ascension` (0–10), and `first_act` (`Overgrowth` or

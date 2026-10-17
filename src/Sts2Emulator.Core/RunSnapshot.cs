@@ -13,6 +13,8 @@ public static class RunSnapshot
     public const string SchemaId = "sts2-exact-snapshot-v1";
     public const string ReferenceNatureSchemaId =
         "sts2-exact-snapshot-v2-reference-nature-state";
+    public const string NatureRelicBagOrderSchemaId =
+        "sts2-exact-snapshot-v3-nature-relic-bag-order";
     private static readonly JsonSerializerOptions Options = new()
     {
         PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower,
@@ -23,9 +25,14 @@ public static class RunSnapshot
     {
         ValidateSupportedState(state);
         var owned = state.Fork();
+        var hasNatureRelicBag = owned.World?.RelicBag?.OrderMode ==
+            PrototypeRelicBagOrderMode.NatureUnordered;
+        var schema = hasNatureRelicBag
+            ? NatureRelicBagOrderSchemaId
+            : owned.ReferenceNatureState is null
+                ? SchemaId : ReferenceNatureSchemaId;
         return CanonicalJson.Serialize(new RunSnapshotEnvelope(
-            owned.ReferenceNatureState is null
-                ? SchemaId : ReferenceNatureSchemaId,
+            schema,
             owned.GameBuild, owned.EmulatorSchema,
             CanonicalJson.Sha256(owned), owned));
     }
@@ -34,15 +41,20 @@ public static class RunSnapshot
     {
         var envelope = JsonSerializer.Deserialize<RunSnapshotEnvelope>(json, Options)
             ?? throw new InvalidDataException("Snapshot is empty.");
-        if (envelope.Schema is not (SchemaId or ReferenceNatureSchemaId) ||
+        if (envelope.Schema is not (SchemaId or ReferenceNatureSchemaId or
+                NatureRelicBagOrderSchemaId) ||
             envelope.State is null
             || envelope.GameBuild != envelope.State.GameBuild
             || envelope.StateSchema != envelope.State.EmulatorSchema)
             throw new InvalidDataException("Snapshot schema/build does not match its state.");
+        var hasNatureRelicBag = envelope.State.World?.RelicBag?.OrderMode ==
+            PrototypeRelicBagOrderMode.NatureUnordered;
         if ((envelope.Schema == SchemaId &&
              envelope.State.ReferenceNatureState is not null) ||
             (envelope.Schema == ReferenceNatureSchemaId &&
-             envelope.State.ReferenceNatureState is null))
+             envelope.State.ReferenceNatureState is null) ||
+            (envelope.Schema == NatureRelicBagOrderSchemaId &&
+             !hasNatureRelicBag))
             throw new InvalidDataException(
                 "Snapshot schema does not match its stochastic provider state.");
         ValidateSupportedState(envelope.State);

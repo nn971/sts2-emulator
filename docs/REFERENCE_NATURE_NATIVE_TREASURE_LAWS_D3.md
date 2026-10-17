@@ -35,7 +35,8 @@ release through JSONL and Python. Its Nature origin sorts stored queues, or
 constructs sorted eligible rarity sets when the source run has no bag, so
 Native's committed hidden order is never included in the session snapshot.
 Residual identity sets carry an optional `NatureUnordered` snapshot tag;
-Native bag snapshots retain their current shape. Ordinary queue-order pulls
+Native bag snapshots retain their current shape. A snapshot carrying this tag
+uses `sts2-exact-snapshot-v3-nature-relic-bag-order`. Ordinary queue-order pulls
 reject Nature-owned sets until a matching controlled Chance Law continuation
 selects an identity.
 

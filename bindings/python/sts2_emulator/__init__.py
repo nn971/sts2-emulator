@@ -1306,6 +1306,8 @@ class Session:
                 "stochasticSessionCoverage")
             self.reference_nature_state_snapshot_schema_id = (
                 self.capabilities.get("referenceNatureStateSnapshotSchemaId"))
+            self.nature_relic_bag_snapshot_schema_id = (
+                self.capabilities.get("natureRelicBagSnapshotSchemaId"))
             if self.capabilities.get("wireSchemaId") != "prototype-ai-jsonl-v0":
                 raise EmulatorError("Unsupported emulator wire schema")
             if self.capabilities.get("snapshotSchemaId") != "sts2-exact-snapshot-v1":

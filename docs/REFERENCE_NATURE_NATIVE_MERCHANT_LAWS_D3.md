@@ -69,7 +69,9 @@ committed Native queue order private, it stores a canonicalized Nature-owned
 projection of the existing persistent relic bag in its origin and resulting
 run; the original queue order never enters the session snapshot. This
 projection carries an optional `NatureUnordered` snapshot tag; Native bags
-omit it and retain their existing shape. Ordinary queue-order pulls reject a
+omit it and retain their existing shape. A snapshot carrying the tag uses
+`sts2-exact-snapshot-v3-nature-relic-bag-order`, advertised separately in
+`hello`. Ordinary queue-order pulls reject a
 Nature-owned set unless a controlled Chance Law replay selects an identity.
 The boundary
 requires that bag to exist, so Native bag construction is outside this

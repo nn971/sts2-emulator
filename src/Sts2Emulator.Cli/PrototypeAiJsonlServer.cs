@@ -1514,6 +1514,8 @@ internal static class PrototypeAiJsonlServer
                                     .CreateChanceLawQueryCoverage(),
                             referenceNatureStateSnapshotSchemaId =
                                 RunSnapshot.ReferenceNatureSchemaId,
+                            natureRelicBagSnapshotSchemaId =
+                                RunSnapshot.NatureRelicBagOrderSchemaId,
                             referenceNatureSessionSchemaId =
                                 ReferenceNatureSessionV111.CurrentSchemaId,
                             referenceNatureRunActionSessionSchemaId =

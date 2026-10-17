@@ -63,9 +63,10 @@ supported run-action continuations:
 Supply `nature_seed` the first time a run uses ReferenceNature. Once a session
 commits, its cursor is stored in the run snapshot and later sessions continue
 it when `nature_seed` is omitted. Runs without a committed cursor require a
-seed. Snapshots that carry the cursor advertise
-`sts2-exact-snapshot-v2-reference-nature-state`; snapshots without it retain
-`sts2-exact-snapshot-v1`.
+seed. Snapshots with a Nature-owned relic identity set use
+`sts2-exact-snapshot-v3-nature-relic-bag-order`; otherwise snapshots with a
+cursor use `sts2-exact-snapshot-v2-reference-nature-state`, and snapshots
+without a cursor retain `sts2-exact-snapshot-v1`.
 
 The session supports only the `start_run` boss encounter draw, legacy map
 Event-node entry draws, seven `shop.*` sites in legacy Shop-node generation,

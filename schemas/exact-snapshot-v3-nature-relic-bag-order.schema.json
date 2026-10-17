@@ -1,0 +1,61 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "urn:sts2-emulator:exact-snapshot-v3-nature-relic-bag-order",
+  "title": "Exact snapshot containing a Nature-owned relic identity set",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "schema",
+    "game_build",
+    "state_schema",
+    "state_hash",
+    "state"
+  ],
+  "properties": {
+    "schema": {
+      "const": "sts2-exact-snapshot-v3-nature-relic-bag-order"
+    },
+    "game_build": {
+      "type": "string"
+    },
+    "state_schema": {
+      "enum": [
+        "prototype-0.1",
+        "sts2-run-v111-v1"
+      ]
+    },
+    "state_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    },
+    "state": {
+      "type": "object",
+      "required": [
+        "world"
+      ],
+      "properties": {
+        "world": {
+          "type": "object",
+          "required": [
+            "relic_bag"
+          ],
+          "properties": {
+            "relic_bag": {
+              "type": "object",
+              "required": [
+                "order_mode"
+              ],
+              "properties": {
+                "order_mode": {
+                  "const": 1,
+                  "description": "PrototypeRelicBagOrderMode.NatureUnordered"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  },
+  "$comment": "Restore also checks exact build/state consistency, canonical hash and engine invariants. This envelope schema does not enumerate the entire content-dependent continuation state."
+}
