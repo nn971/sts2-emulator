@@ -59,7 +59,7 @@ public static class ReferenceNatureChanceLawDecisionV111
 
         if (candidateLabels is not null ||
             law.OperationKind is not ("unit_float_threshold" or
-                "unit_float_mapped_price"))
+                "unit_float_mapped_price" or "unit_float_no_effect"))
             throw new NotSupportedException(
                 "Chance Law is not a supported unit-float outcome mapping.");
 
@@ -79,6 +79,11 @@ public static class ReferenceNatureChanceLawDecisionV111
         ChanceLawV111 law, RandomUnitFloatRequestV111 request,
         string outcomeId, RunState? conditioningRun)
     {
+        if (law.OperationKind == "unit_float_no_effect" &&
+            request.SiteId == "shop.merchant.card_upgrade_roll.unit_float" &&
+            outcomeId == "no_effect")
+            return 0.5f;
+
         if (law.OperationKind == "unit_float_threshold")
         {
             if (request.SiteId == "card_rarity.roll.unit_float")

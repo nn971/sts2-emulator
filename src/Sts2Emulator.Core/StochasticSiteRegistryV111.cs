@@ -37,6 +37,9 @@ public sealed record StochasticSessionCoverageV111(
     public string ReferenceNatureAncientOfferSessionSchemaId { get; init; } =
         ReferenceNatureAncientOfferSessionV111.CurrentSchemaId;
     public string[] ReferenceNatureAncientOfferSiteIds { get; init; } = [];
+    public string ReferenceNatureMerchantSessionSchemaId { get; init; } =
+        ReferenceNatureMerchantSessionV111.CurrentSchemaId;
+    public string[] ReferenceNatureMerchantSiteIds { get; init; } = [];
 
     public const string CurrentSchemaId =
         "sts2-v111-stochastic-session-coverage-v1";
@@ -51,7 +54,9 @@ public sealed record StochasticSessionCoverageV111(
             ReferenceNatureEventChoiceSessionSchemaId !=
                 ReferenceNatureControlledEventChoiceSessionV111.CurrentSchemaId ||
             ReferenceNatureAncientOfferSessionSchemaId !=
-                ReferenceNatureAncientOfferSessionV111.CurrentSchemaId)
+                ReferenceNatureAncientOfferSessionV111.CurrentSchemaId ||
+            ReferenceNatureMerchantSessionSchemaId !=
+                ReferenceNatureMerchantSessionV111.CurrentSchemaId)
             throw new InvalidDataException(
                 "Invalid stochastic session coverage schema.");
 
@@ -59,6 +64,7 @@ public sealed record StochasticSessionCoverageV111(
         ValidateSiteIds(ReferenceNatureRunActionSiteIds);
         ValidateSiteIds(ReferenceNatureEventChoiceSiteIds);
         ValidateSiteIds(ReferenceNatureAncientOfferSiteIds);
+        ValidateSiteIds(ReferenceNatureMerchantSiteIds);
     }
 
     private static void ValidateSiteIds(string[] siteIds)
@@ -198,6 +204,7 @@ public static class StochasticSiteRegistryV111
         "potion_factory.model_within_rarity.index_draw",
         "relic_grab_bag.rarity.unit_float",
         PrototypeNativeRelicGrabBag.NativeMerchantModelSiteId,
+        "shop.merchant.card_upgrade_roll.unit_float",
         "treasure.relic_grab_bag.draw",
         "shop.merchant.card_price_modifier.unit_float",
         "shop.merchant.potion_price_modifier.unit_float",
@@ -206,6 +213,22 @@ public static class StochasticSiteRegistryV111
 
     private static readonly string[] NativeMerchantPriceSites =
     [
+        "shop.merchant.card_price_modifier.unit_float",
+        "shop.merchant.potion_price_modifier.unit_float",
+        "shop.merchant.relic_price_modifier.unit_float"
+    ];
+
+    private static readonly string[] NativeMerchantSessionSites =
+    [
+        "shop.merchant.sale_slot.index_draw",
+        "card_rarity.roll.unit_float",
+        "shop.merchant.card_model.index_draw",
+        "shop.merchant.card_upgrade_roll.unit_float",
+        "shop.colorless_card_model.index_draw",
+        "potion_factory.rarity_roll.unit_float",
+        "potion_factory.model_within_rarity.index_draw",
+        "relic_grab_bag.rarity.unit_float",
+        PrototypeNativeRelicGrabBag.NativeMerchantModelSiteId,
         "shop.merchant.card_price_modifier.unit_float",
         "shop.merchant.potion_price_modifier.unit_float",
         "shop.merchant.relic_price_modifier.unit_float"
@@ -249,6 +272,7 @@ public static class StochasticSiteRegistryV111
             .Concat(RunActionShopSites)
             .Concat(RunActionTreasureSites)
             .Concat(ControlledEventChoiceSites)
+            .Concat(NativeMerchantSessionSites)
             .Distinct(StringComparer.Ordinal)
             .ToArray();
 
@@ -273,6 +297,8 @@ public static class StochasticSiteRegistryV111
         (string[])NativeMerchantPriceSites.Clone();
     public static string[] AncientOfferSessionSiteIds =>
         (string[])AncientOfferSessionSites.Clone();
+    public static string[] NativeMerchantSessionSiteIds =>
+        (string[])NativeMerchantSessionSites.Clone();
     public static string[] NatureChoiceSiteIds =>
         (string[])NatureChoiceSites.Clone();
 
@@ -326,7 +352,10 @@ public static class StochasticSiteRegistryV111
         {
             ReferenceNatureAncientOfferSessionSchemaId =
                 ReferenceNatureAncientOfferSessionV111.CurrentSchemaId,
-            ReferenceNatureAncientOfferSiteIds = AncientOfferSessionSites
+            ReferenceNatureAncientOfferSiteIds = AncientOfferSessionSites,
+            ReferenceNatureMerchantSessionSchemaId =
+                ReferenceNatureMerchantSessionV111.CurrentSchemaId,
+            ReferenceNatureMerchantSiteIds = NativeMerchantSessionSites
         };
         coverage.Validate();
         return coverage;

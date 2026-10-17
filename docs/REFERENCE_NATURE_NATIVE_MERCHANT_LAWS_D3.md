@@ -1,9 +1,9 @@
-# Native merchant Chance Laws (D3 query contract)
+# Native merchant Chance Laws and session (D3 contract)
 
-This contract adds read-only Chance Law queries for offer and price outcomes
-in the configured native merchant generator. It extends the existing versioned
-`chance_law_query` coverage list; it does not add a resumable merchant session
-or change the player observation schema.
+This contract defines read-only Chance Law queries and an atomic
+ReferenceNature session for offer and price outcomes in the configured native
+merchant generator. It uses the versioned `chance_law_query` coverage and
+`ReferenceNatureMerchantSessionV111`; player observation fields stay unchanged.
 
 ## Boundary and inputs
 
@@ -18,6 +18,14 @@ potion-model query requires the preceding rarity and exactly one unique
 `excluded_potion_ids` entry for each preceding potion offer. These values are
 explicit conditional inputs and are fingerprinted; the query never infers a
 selected result from Native RNG state.
+
+The session begins from a current legal `choose_map_node` action for a
+configured Shop. It reruns the normal map-entry and `StartShop` mechanics from
+the pre-entry checkpoint under the mixed typed provider replay. Each suspension
+is conditioned on the exact source request and the already sampled prefix. It
+commits the generated shop and run-scoped Nature cursor together after the
+source mechanics finish. Its operations are `reference_nature_merchant_begin`,
+`status`, `resolve_next`, `fork`, `save`, `load`, and `release_many`.
 
 The Nature-only `shop.merchant.relic_model.index_draw` boundary uses the
 source stream `ordinal`, `offer_ordinal` (0–2), selected `rarity`, sorted
@@ -40,29 +48,31 @@ queue order.
 | `shop.merchant.card_price_modifier.unit_float` | Rounded card price under the 0.95–1.05 modifier; `card_id`, `colorless_offer`, and optional `sale_reprice` identify the source branch |
 | `shop.merchant.potion_price_modifier.unit_float` | Rounded potion price under the 0.95–1.05 modifier for the supplied `potion_id` |
 | `shop.merchant.relic_price_modifier.unit_float` | Rounded relic price under the 0.85–1.15 modifier for the supplied `relic_id` |
+| `shop.merchant.card_upgrade_roll.unit_float` | One `no_effect` outcome: every source float is mechanically equivalent because the merchant upgrade chance is negative |
 
 The index laws use equal integer weights over the same ordered candidate pools
 used by the generator. Threshold laws use the source-shaped nominal
 basis-point partitions. Price laws map intervals of the nominal modifier
 range through the source rounding rule; they do not model the exact finite
-distribution of native float values. Every response remains `UNVERIFIED`:
-these queries do not establish original conditional probabilities,
-float-edge calibration, or native cursor parity. Querying does not mutate the
-run or its provider state.
+distribution of native float values. The no-effect upgrade law is degenerate
+because the float cannot change the generated card; its representative is
+only a mechanics-preserving replay value. Every law remains `UNVERIFIED`:
+these structures do not establish original conditional probabilities,
+float-edge calibration, or native cursor parity. Read-only queries do not
+mutate the run or provider state.
 
 ## Unsupported scope
 
-Source call/cursor replay, the full native shop-entry continuation, and
-stochastic consequences of merchant purchases remain unsupported by this
-contract. Configured `StartShop` now resolves default and explicitly passed
-native index/unit-float providers through `StochasticProviderScopeV111`, whose
-logical stream ordinals advance independently when a replacement provider
-does not advance Native RNG. A mixed replay can now suspend at the
-Nature-only merchant relic identity boundary and `PullSelected` applies its
-chosen identity through the shared bag mechanics, but no serialized merchant
-session consumes this path. Native shop generation remains unsupported in
-the existing controlled run-action session. Legacy Shop-node generation
-continues to use its existing run-action contract.
+The session replays the full Shop-entry mechanics under its provider scope,
+but it does not reproduce Native source cursor advancement. To keep the
+committed Native queue order private, it stores a canonicalized Nature-owned
+projection of the existing persistent relic bag in its origin and resulting
+run; the original queue order never enters the session snapshot. The boundary
+requires that bag to exist, so Native bag construction is outside this
+session. Stochastic consequences of merchant purchases, later Treasure draws,
+exact native float-edge probabilities, and Native cursor parity remain
+unsupported. Legacy Shop-node generation continues to use its existing
+run-action contract.
 
 ## Python binding
 
@@ -70,5 +80,8 @@ continues to use its existing run-action contract.
 `excluded_potion_ids` for merchant model queries; the Nature-only relic model
 law also accepts `offer_ordinal`, `relic_candidate_ids`, and
 `excluded_relic_ids`. Price laws accept `card_id`, `potion_id`, `relic_id`,
-`colorless_offer`, and `sale_reprice`. These arguments affect only the
-returned law and are not submitted as player actions.
+`colorless_offer`, and `sale_reprice`. The no-effect float law accepts its
+typed `owner_id`. These arguments affect only the returned law and are not
+submitted as player actions. `State.begin_reference_nature_merchant(action_id,
+nature_seed=...)` starts the session; its Python object exposes status, fork,
+save/load, release, and the committed playable state.

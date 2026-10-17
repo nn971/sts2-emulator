@@ -24,6 +24,8 @@ public sealed record StochasticCapabilityManifestV111(
         ReferenceNatureControlledEventChoiceSessionV111.CurrentSchemaId;
     public string ReferenceNatureAncientOfferSessionSchemaId { get; init; } =
         ReferenceNatureAncientOfferSessionV111.CurrentSchemaId;
+    public string ReferenceNatureMerchantSessionSchemaId { get; init; } =
+        ReferenceNatureMerchantSessionV111.CurrentSchemaId;
 }
 
 public static class StochasticCapabilitiesV111
@@ -72,7 +74,14 @@ public static class StochasticCapabilitiesV111
             "reference_nature_ancient_offer_fork",
             "reference_nature_ancient_offer_save",
             "reference_nature_ancient_offer_load",
-            "reference_nature_ancient_offer_release_many"
+            "reference_nature_ancient_offer_release_many",
+            "reference_nature_merchant_begin",
+            "reference_nature_merchant_status",
+            "reference_nature_merchant_resolve_next",
+            "reference_nature_merchant_fork",
+            "reference_nature_merchant_save",
+            "reference_nature_merchant_load",
+            "reference_nature_merchant_release_many"
         ])
     {
         ReferenceNatureRunActionSessionSchemaId =
@@ -80,7 +89,9 @@ public static class StochasticCapabilitiesV111
         ReferenceNatureEventChoiceSessionSchemaId =
             ReferenceNatureControlledEventChoiceSessionV111.CurrentSchemaId,
         ReferenceNatureAncientOfferSessionSchemaId =
-            ReferenceNatureAncientOfferSessionV111.CurrentSchemaId
+            ReferenceNatureAncientOfferSessionV111.CurrentSchemaId,
+        ReferenceNatureMerchantSessionSchemaId =
+            ReferenceNatureMerchantSessionV111.CurrentSchemaId
     };
 }
 
@@ -800,6 +811,35 @@ public static class ChanceLawEngineV111
             CanonicalJson.Sha256(conditioning),
             "native-unit-float-rounded-price-intervals-unverified",
             outcomes);
+    }
+
+    /// <summary>
+    /// Merchant card creation consumes this float even though the pinned
+    /// negative upgrade chance makes every value mechanically equivalent.
+    /// This law records that no visible outcome is selected; it does not model
+    /// the source float distribution or Native cursor advancement.
+    /// </summary>
+    public static ChanceLawV111 QueryNativeMerchantNoEffectUnitFloat(
+        RunState run, RandomUnitFloatRequestV111 request)
+    {
+        ArgumentNullException.ThrowIfNull(run);
+        ArgumentNullException.ThrowIfNull(request);
+        PrototypeStateInvariants.Validate(run);
+        ValidateNativeMerchantQueryBoundary(run);
+        request.Validate();
+        if (request.SiteId != "shop.merchant.card_upgrade_roll.unit_float" ||
+            request.StreamId != NativePlayerRngV111.ShopsStreamId ||
+            !request.OwnerId.StartsWith("type:", StringComparison.Ordinal) ||
+            !request.OwnerId.Contains(":offer:", StringComparison.Ordinal) ||
+            !request.OwnerId.Contains(":card:", StringComparison.Ordinal))
+            throw new ArgumentException(
+                "Merchant upgrade-roll request is malformed.");
+        return CreateNativeBoundaryLaw(
+            request.SiteId, "unit_float_no_effect", request.OwnerId,
+            request.Ordinal, "native-merchant-no-visible-upgrade-effect-v1",
+            CanonicalJson.Sha256(request),
+            "native-merchant-upgrade-roll-has-no-mechanical-effect-unverified",
+            [new ChanceLawOutcomeV111("no_effect", 1L)]);
     }
 
     /// <summary>

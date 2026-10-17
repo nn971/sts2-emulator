@@ -1,0 +1,611 @@
+using System.Globalization;
+using System.Text.Json;
+using System.Text.Json.Serialization;
+
+namespace Sts2Emulator.Core;
+
+public sealed record ReferenceNatureMerchantLawDecisionV111(
+    string LawId, string EventId, string OutcomeId, int OutcomeIndex)
+{
+    public void Validate()
+    {
+        if (string.IsNullOrWhiteSpace(LawId) ||
+            string.IsNullOrWhiteSpace(EventId) ||
+            string.IsNullOrWhiteSpace(OutcomeId) || OutcomeIndex < 0)
+            throw new InvalidDataException(
+                "Invalid ReferenceNature merchant law decision.");
+    }
+}
+
+public sealed record ReferenceNatureMerchantSessionSnapshotV111(
+    string SchemaId, string OriginSnapshotJson, GameAction Action,
+    string RunSnapshotJson, ReferenceNatureStateV111 InitialNatureState,
+    ReferenceNatureStateV111 NatureState,
+    ControlledStochasticDecisionV111[] ProviderDecisions,
+    ReferenceNatureMerchantLawDecisionV111[] DecisionTranscript,
+    ControlledStochasticRequestV111? PendingRequest,
+    string[]? PendingCandidateLabels);
+
+/// <summary>
+/// Atomic configured native Shop entry driven by conditional Chance Laws.
+/// The source mechanics are rerun from the pre-entry checkpoint for each
+/// prefix; only the completed shop and ReferenceNature cursor are published.
+/// </summary>
+public sealed record ReferenceNatureMerchantSessionV111(
+    string SchemaId, RunState Origin, GameAction Action, RunState Run,
+    ReferenceNatureStateV111 InitialNatureState,
+    ReferenceNatureStateV111 NatureState,
+    ControlledStochasticDecisionV111[] ProviderDecisions,
+    ReferenceNatureMerchantLawDecisionV111[] DecisionTranscript,
+    ControlledStochasticRequestV111? PendingRequest,
+    string[]? PendingCandidateLabels)
+{
+    public const string CurrentSchemaId =
+        "sts2-v111-reference-nature-merchant-session-v1";
+
+    [JsonIgnore]
+    public string Fingerprint => CanonicalJson.Sha256(this);
+
+    [JsonIgnore]
+    public bool Complete => PendingRequest is null;
+
+    [JsonIgnore]
+    public int NextOrdinal => ProviderDecisions.Length;
+
+    [JsonIgnore]
+    public ChanceLawV111? PendingLaw => PendingRequest is null ? null :
+        QueryLaw(Origin, PendingRequest, PendingCandidateLabels,
+            ProviderDecisions);
+
+    public static ReferenceNatureMerchantSessionV111 Begin(
+        RunState source, GameAction action, ulong seed) =>
+        Begin(source, action, ReferenceNatureRunCursorV111.Begin(
+            source, seed, "Native merchant"));
+
+    public static ReferenceNatureMerchantSessionV111 Begin(
+        RunState source, GameAction action) =>
+        Begin(source, action, ReferenceNatureRunCursorV111.Begin(
+            source, null, "Native merchant"));
+
+    private static ReferenceNatureMerchantSessionV111 Begin(
+        RunState source, GameAction action,
+        ReferenceNatureStateV111 initialNatureState)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(action);
+        ArgumentNullException.ThrowIfNull(initialNatureState);
+        ValidateOpeningBoundary(source, action);
+        ReferenceNatureRunCursorV111.ValidateInitial(
+            source, initialNatureState, "Native merchant");
+
+        var natureOrigin = CreateNatureReplayOrigin(source);
+        var replay = Replay(natureOrigin, action, []);
+        var run = replay.Run is { } completed
+            ? ReferenceNatureRunCursorV111.Commit(
+                completed, initialNatureState)
+            : natureOrigin.Fork();
+        var session = new ReferenceNatureMerchantSessionV111(
+            CurrentSchemaId, natureOrigin.Fork(), CloneAction(action), run,
+            initialNatureState.Fork(), initialNatureState.Fork(), [], [],
+            replay.Pending?.Request.Fork(),
+            replay.Pending?.CandidateLabels is { } labels
+                ? (string[])labels.Clone() : null);
+        session.Validate();
+        return session;
+    }
+
+    public ReferenceNatureMerchantSessionV111 Fork()
+    {
+        Validate();
+        return this with
+        {
+            Origin = Origin.Fork(),
+            Action = CloneAction(Action),
+            Run = Run.Fork(),
+            InitialNatureState = InitialNatureState.Fork(),
+            NatureState = NatureState.Fork(),
+            ProviderDecisions = ProviderDecisions
+                .Select(decision => decision.Fork()).ToArray(),
+            DecisionTranscript = (ReferenceNatureMerchantLawDecisionV111[])
+                DecisionTranscript.Clone(),
+            PendingRequest = PendingRequest?.Fork(),
+            PendingCandidateLabels = PendingCandidateLabels is null ? null :
+                (string[])PendingCandidateLabels.Clone()
+        };
+    }
+
+    public ReferenceNatureMerchantSessionV111 ResolveNext()
+    {
+        Validate();
+        if (Complete)
+            throw new InvalidOperationException(
+                "ReferenceNature merchant session is already complete.");
+
+        var law = QueryLaw(Origin, PendingRequest!, PendingCandidateLabels,
+            ProviderDecisions);
+        var selection = ReferenceNatureV111.SampleValidated(law, NatureState);
+        var providerDecision = ReferenceNatureChanceLawDecisionV111.FromSelection(
+            law, PendingRequest!, selection, Origin,
+            PendingCandidateLabels);
+        var providerDecisions = ProviderDecisions
+            .Append(providerDecision).ToArray();
+        var transcript = DecisionTranscript.Append(
+            new ReferenceNatureMerchantLawDecisionV111(
+                law.LawId, law.EventId, selection.OutcomeId,
+                selection.OutcomeIndex)).ToArray();
+        var replay = Replay(Origin, Action, providerDecisions);
+        var run = replay.Run is { } completed
+            ? ReferenceNatureRunCursorV111.Commit(
+                completed, selection.NextState)
+            : Origin.Fork();
+        var next = this with
+        {
+            Run = run,
+            NatureState = selection.NextState,
+            ProviderDecisions = providerDecisions,
+            DecisionTranscript = transcript,
+            PendingRequest = replay.Pending?.Request.Fork(),
+            PendingCandidateLabels = replay.Pending?.CandidateLabels is { } labels
+                ? (string[])labels.Clone() : null
+        };
+        next.Validate();
+        return next;
+    }
+
+    public void Validate()
+    {
+        if (SchemaId != CurrentSchemaId || Origin is null || Action is null ||
+            Run is null || InitialNatureState is null || NatureState is null ||
+            ProviderDecisions is null || DecisionTranscript is null ||
+            ProviderDecisions.Length != DecisionTranscript.Length ||
+            string.IsNullOrWhiteSpace(Action.Kind))
+            throw new InvalidDataException(
+                "Invalid ReferenceNature merchant session envelope.");
+        if (PendingRequest is { } pendingRequest)
+        {
+            pendingRequest.Validate();
+            if (PendingCandidateLabels is { } pendingLabels &&
+                (pendingRequest.IndexRequest is null ||
+                 pendingLabels.Length !=
+                    pendingRequest.IndexRequest.SupportCount ||
+                 pendingLabels.Any(string.IsNullOrWhiteSpace)))
+                throw new InvalidDataException(
+                    "Invalid ReferenceNature merchant pending candidate labels.");
+        }
+        else if (PendingCandidateLabels is not null)
+        {
+            throw new InvalidDataException(
+                "Completed ReferenceNature merchant session has pending candidate labels.");
+        }
+        ValidateOpeningBoundary(Origin, Action);
+        PrototypeStateInvariants.Validate(Origin);
+        PrototypeStateInvariants.Validate(Run);
+        InitialNatureState.Validate();
+        NatureState.Validate();
+        ReferenceNatureRunCursorV111.ValidateInitial(
+            Origin, InitialNatureState, "Native merchant");
+
+        var expectedNatureState = InitialNatureState.Fork();
+        for (var index = 0; index < ProviderDecisions.Length; index++)
+        {
+            var prefix = ProviderDecisions.Take(index).ToArray();
+            var replayAtBoundary = Replay(Origin, Action, prefix);
+            var request = replayAtBoundary.Pending?.Request
+                ?? throw new InvalidDataException(
+                    "Merchant replay completed before its saved decision transcript.");
+            var labels = replayAtBoundary.Pending.CandidateLabels;
+            var savedDecision = ProviderDecisions[index];
+            savedDecision.Validate();
+            if (!SameRequest(request, AsRequest(savedDecision)) ||
+                !SameLabels(labels, savedDecision.CandidateLabels))
+                throw new InvalidDataException(
+                    "ReferenceNature merchant provider transcript changed its request.");
+
+            var law = QueryLaw(Origin, request, labels, prefix);
+            var selection = ReferenceNatureV111.SampleValidated(
+                law, expectedNatureState);
+            var expectedTranscript = new ReferenceNatureMerchantLawDecisionV111(
+                law.LawId, law.EventId, selection.OutcomeId,
+                selection.OutcomeIndex);
+            if (CanonicalJson.Sha256(expectedTranscript) !=
+                    CanonicalJson.Sha256(DecisionTranscript[index]) ||
+                CanonicalJson.Sha256(ReferenceNatureChanceLawDecisionV111
+                    .FromSelection(law, request, selection, Origin, labels)) !=
+                CanonicalJson.Sha256(savedDecision))
+                throw new InvalidDataException(
+                    "ReferenceNature merchant law decisions do not replay.");
+            expectedNatureState = selection.NextState;
+        }
+
+        var replay = Replay(Origin, Action, ProviderDecisions);
+        if ((replay.Pending is null) != Complete ||
+            !SameRequest(replay.Pending?.Request, PendingRequest) ||
+            !SameLabels(replay.Pending?.CandidateLabels,
+                PendingCandidateLabels) ||
+            CanonicalJson.Sha256(expectedNatureState) !=
+                CanonicalJson.Sha256(NatureState))
+            throw new InvalidDataException(
+                "ReferenceNature merchant continuation differs from its replay.");
+
+        var expectedRun = replay.Run is { } completed
+            ? ReferenceNatureRunCursorV111.Commit(completed, expectedNatureState)
+            : Origin.Fork();
+        if (CanonicalJson.Sha256(expectedRun) != CanonicalJson.Sha256(Run) ||
+            !ReferenceNatureRunCursorV111.MatchesRunSession(
+                Origin, Run, InitialNatureState, NatureState,
+                DecisionTranscript.Length, Complete))
+            throw new InvalidDataException(
+                "ReferenceNature merchant run differs from its atomic cursor.");
+
+        foreach (var decision in DecisionTranscript)
+            decision.Validate();
+    }
+
+    public static string Save(ReferenceNatureMerchantSessionV111 session)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        session.Validate();
+        var snapshot = new ReferenceNatureMerchantSessionSnapshotV111(
+            CurrentSchemaId, RunSnapshot.Save(session.Origin),
+            CloneAction(session.Action), RunSnapshot.Save(session.Run),
+            session.InitialNatureState, session.NatureState,
+            session.ProviderDecisions.Select(decision => decision.Fork()).ToArray(),
+            (ReferenceNatureMerchantLawDecisionV111[])
+                session.DecisionTranscript.Clone(),
+            session.PendingRequest?.Fork(),
+            session.PendingCandidateLabels is null ? null :
+                (string[])session.PendingCandidateLabels.Clone());
+        return JsonSerializer.Serialize(snapshot);
+    }
+
+    public static ReferenceNatureMerchantSessionV111 Restore(string json)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(json);
+        var snapshot = JsonSerializer.Deserialize<
+                ReferenceNatureMerchantSessionSnapshotV111>(json)
+            ?? throw new InvalidDataException(
+                "Null ReferenceNature merchant snapshot.");
+        if (snapshot.SchemaId != CurrentSchemaId ||
+            string.IsNullOrWhiteSpace(snapshot.OriginSnapshotJson) ||
+            snapshot.Action is null ||
+            string.IsNullOrWhiteSpace(snapshot.RunSnapshotJson) ||
+            snapshot.InitialNatureState is null ||
+            snapshot.NatureState is null || snapshot.ProviderDecisions is null ||
+            snapshot.DecisionTranscript is null)
+            throw new InvalidDataException(
+                "Invalid ReferenceNature merchant snapshot.");
+        var session = new ReferenceNatureMerchantSessionV111(
+            CurrentSchemaId, RunSnapshot.Load(snapshot.OriginSnapshotJson),
+            CloneAction(snapshot.Action),
+            RunSnapshot.Load(snapshot.RunSnapshotJson),
+            snapshot.InitialNatureState.Fork(), snapshot.NatureState.Fork(),
+            snapshot.ProviderDecisions.Select(decision => decision.Fork()).ToArray(),
+            (ReferenceNatureMerchantLawDecisionV111[])
+                snapshot.DecisionTranscript.Clone(),
+            snapshot.PendingRequest?.Fork(),
+            snapshot.PendingCandidateLabels is null ? null :
+                (string[])snapshot.PendingCandidateLabels.Clone());
+        session.Validate();
+        return session;
+    }
+
+    private static ChanceLawV111 QueryLaw(
+        RunState source, ControlledStochasticRequestV111 request,
+        string[]? candidateLabels, ControlledStochasticDecisionV111[] prefix)
+    {
+        request.Validate();
+        var siteId = request.SiteId;
+        if (siteId == "shop.merchant.sale_slot.index_draw")
+            return ChanceLawEngineV111.QueryNativeMerchantOffer(
+                source, siteId, 0);
+
+        if (siteId == "card_rarity.roll.unit_float")
+        {
+            var owner = ParseMerchantCardOwner(request.OwnerId);
+            return ChanceLawEngineV111.QueryNativeMerchantOffer(
+                source, siteId, owner.Ordinal,
+                cardType: owner.CardType.ToString());
+        }
+        if (siteId == "shop.merchant.card_model.index_draw")
+        {
+            var owner = ParseMerchantCardModelOwner(request.OwnerId);
+            return ChanceLawEngineV111.QueryNativeMerchantOffer(
+                source, siteId, owner.Ordinal,
+                cardType: owner.CardType.ToString(),
+                rarity: owner.Rarity);
+        }
+        if (siteId == "shop.colorless_card_model.index_draw")
+        {
+            var ordinal = prefix.Count(decision =>
+                decision.IndexDecision?.Request.SiteId == siteId);
+            var rarity = SegmentAfter(request.OwnerId, "rarity:", ":pool:");
+            return ChanceLawEngineV111.QueryNativeMerchantOffer(
+                source, siteId, ordinal, rarity: rarity);
+        }
+        if (siteId == "potion_factory.rarity_roll.unit_float")
+        {
+            var ordinal = prefix.Count(decision =>
+                decision.UnitFloatDecision?.Request.SiteId == siteId);
+            return ChanceLawEngineV111.QueryNativeMerchantOffer(
+                source, siteId, ordinal);
+        }
+        if (siteId == "potion_factory.model_within_rarity.index_draw")
+        {
+            var ordinal = prefix.Count(decision =>
+                decision.IndexDecision?.Request.SiteId == siteId);
+            var (rarity, excluded) = ResolvePotionPrefix(prefix);
+            return ChanceLawEngineV111.QueryNativeMerchantOffer(
+                source, siteId, ordinal, rarity: rarity,
+                excludedPotionIds: excluded);
+        }
+        if (siteId == "relic_grab_bag.rarity.unit_float")
+        {
+            var ordinal = ParseOrdinal(request.OwnerId,
+                ":merchant_relic:", ":merchant");
+            return ChanceLawEngineV111.QueryNativeMerchantOffer(
+                source, siteId, ordinal);
+        }
+        if (siteId == PrototypeNativeRelicGrabBag.NativeMerchantModelSiteId)
+        {
+            var ordinal = ParseOrdinal(request.OwnerId,
+                ":merchant_relic:", ":rarity:");
+            var rarityText = SegmentAfter(request.OwnerId,
+                ":rarity:", ":pool:");
+            if (!Enum.TryParse<PrototypeRelicRarity>(rarityText,
+                    ignoreCase: false, out var rarity))
+                throw new InvalidDataException(
+                    "Merchant relic model owner has an invalid rarity.");
+            if (candidateLabels is null)
+                throw new InvalidDataException(
+                    "Merchant relic model support labels are missing.");
+            var excluded = ResolveSelectedRelics(prefix);
+            return ChanceLawEngineV111.QueryNativeMerchantRelicSelection(
+                source, request.IndexRequest!, ordinal, rarity,
+                candidateLabels, excluded);
+        }
+        if (StochasticSiteRegistryV111.NativeMerchantPriceSiteIds
+            .Contains(siteId, StringComparer.Ordinal))
+        {
+            var item = ParseMerchantPriceOwner(siteId, request.OwnerId);
+            return ChanceLawEngineV111.QueryNativeMerchantPrice(
+                source, siteId, item.Ordinal, item.CardId, item.PotionId,
+                item.RelicId, item.ColorlessOffer, item.SaleReprice);
+        }
+        if (siteId == "shop.merchant.card_upgrade_roll.unit_float")
+            return ChanceLawEngineV111.QueryNativeMerchantNoEffectUnitFloat(
+                source, request.UnitFloatRequest!);
+
+        throw new NotSupportedException(
+            $"ReferenceNature merchant replay does not support stochastic site '{siteId}'.");
+    }
+
+    private static MerchantReplayResultV111 Replay(
+        RunState source, GameAction action,
+        ControlledStochasticDecisionV111[] decisions)
+    {
+        var replay = ControlledChanceContinuationExecutorV111.ResumeStochastic(
+            CreateNatureReplayOrigin(source), decisions,
+            checkpoint => new PrototypeGameEngine().Step(
+                checkpoint, CloneAction(action)).State);
+        return new MerchantReplayResultV111(
+            replay.Run, replay.PendingChance);
+    }
+
+    private static RunState CreateNatureReplayOrigin(RunState source)
+    {
+        var world = source.World!;
+        var bag = world.RelicBag ?? throw new NotSupportedException(
+            "Native merchant Nature replay requires a committed relic bag; bag construction remains a separate Nature boundary.");
+        static string[] Canonical(string[] ids) => ids
+            .OrderBy(id => id, StringComparer.Ordinal).ToArray();
+        var projectedBag = new PrototypeRelicBagState(
+            Canonical(bag.Common), Canonical(bag.Uncommon),
+            Canonical(bag.Rare), Canonical(bag.Shop));
+        return source with
+        {
+            World = world with { RelicBag = projectedBag }
+        };
+    }
+
+    private static void ValidateOpeningBoundary(
+        RunState source, GameAction action)
+    {
+        if (source.Phase != RunPhase.MapChoice || source.World is not { } world ||
+            source.NativeRunRng is null || source.ControlledRunActionChoice is not null ||
+            !PrototypeGameEngine.UsesNativeRegionalSystems(world) ||
+            action.Kind != "choose_map_node" || world.RelicBag is null)
+            throw new InvalidOperationException(
+                "ReferenceNature merchant session requires a configured pre-entry Shop choice and committed relic bag.");
+        var payload = action.ReadPayload<ChooseMapNodePayload>();
+        if (!PrototypeNativeWingedBoots.AvailableNodes(world, source.Player)
+                .Any(node => node.NodeId == payload.NodeId &&
+                    node.RoomType == PrototypeRoomType.Shop) ||
+            !new PrototypeGameEngine().GetLegalActions(source).Any(candidate =>
+                PrototypeAiEnvironment.StableActionId(candidate) ==
+                PrototypeAiEnvironment.StableActionId(action)))
+            throw new InvalidOperationException(
+                "ReferenceNature merchant session requires a current legal Shop-node action.");
+        PrototypeStateInvariants.Validate(source);
+    }
+
+    private static (PrototypeCardType CardType, int Ordinal)
+        ParseMerchantCardOwner(string owner)
+    {
+        var parts = owner.Split(':');
+        if (parts.Length != 6 || parts[0] != "type" ||
+            !Enum.TryParse<PrototypeCardType>(parts[1], false,
+                out var cardType) || parts[2] != "offer" ||
+            !int.TryParse(parts[3], NumberStyles.None,
+                CultureInfo.InvariantCulture, out var ordinal) ||
+            parts[4] != "offset" || !int.TryParse(parts[5],
+                NumberStyles.Integer, CultureInfo.InvariantCulture, out _))
+            throw new InvalidDataException(
+                "Merchant card-rarity request owner is malformed.");
+        return (cardType, ordinal);
+    }
+
+    private static (PrototypeCardType CardType, int Ordinal, string Rarity)
+        ParseMerchantCardModelOwner(string owner)
+    {
+        var parts = owner.Split(':');
+        if (parts.Length < 8 || parts[0] != "type" ||
+            !Enum.TryParse<PrototypeCardType>(parts[1], false,
+                out var cardType) || parts[2] != "offer" ||
+            !int.TryParse(parts[3], NumberStyles.None,
+                CultureInfo.InvariantCulture, out var ordinal) ||
+            parts[4] != "rarity" || parts[6] != "pool")
+            throw new InvalidDataException(
+                "Merchant card-model request owner is malformed.");
+        return (cardType, ordinal, parts[5]);
+    }
+
+    private static (string Rarity, string[] Excluded) ResolvePotionPrefix(
+        ControlledStochasticDecisionV111[] prefix)
+    {
+        PrototypeNativePotionRarity? rarity = null;
+        var excluded = new List<string>();
+        foreach (var decision in prefix)
+        {
+            if (decision.UnitFloatDecision is { } floatDecision &&
+                floatDecision.Request.SiteId ==
+                    "potion_factory.rarity_roll.unit_float")
+                rarity = PrototypeNativePotionShop.ResolveRarityNative(
+                    floatDecision.SelectedValue);
+            else if (decision.IndexDecision is { } indexDecision &&
+                     indexDecision.Request.SiteId ==
+                        "potion_factory.model_within_rarity.index_draw")
+            {
+                if (rarity is null)
+                    throw new InvalidDataException(
+                        "Potion model transcript has no preceding rarity outcome.");
+                var candidates = PrototypeNativePotionShop.CandidatesForRarity(
+                    rarity.Value, excluded);
+                if (indexDecision.SelectedIndex >= candidates.Length)
+                    throw new InvalidDataException(
+                        "Potion model transcript index exceeds its current pool.");
+                excluded.Add(candidates[indexDecision.SelectedIndex]);
+                rarity = null;
+            }
+        }
+        if (rarity is null)
+            throw new InvalidDataException(
+                "Merchant potion model request has no unresolved rarity outcome.");
+        return (rarity.Value.ToString(), excluded.ToArray());
+    }
+
+    private static string[] ResolveSelectedRelics(
+        ControlledStochasticDecisionV111[] prefix)
+    {
+        var result = new List<string>();
+        foreach (var decision in prefix)
+        {
+            if (decision.IndexDecision is not { } index ||
+                index.Request.SiteId !=
+                    PrototypeNativeRelicGrabBag.NativeMerchantModelSiteId)
+                continue;
+            var labels = decision.CandidateLabels ?? throw new InvalidDataException(
+                "Merchant relic model transcript lost its candidate identities.");
+            result.Add(labels[index.SelectedIndex]);
+        }
+        return result.ToArray();
+    }
+
+    private static (int Ordinal, string? CardId, string? PotionId,
+        string? RelicId, bool ColorlessOffer, bool SaleReprice)
+        ParseMerchantPriceOwner(string siteId, string owner)
+    {
+        if (siteId == "shop.merchant.card_price_modifier.unit_float")
+        {
+            if (owner.Contains(":colorless_offer:", StringComparison.Ordinal))
+            {
+                var ordinal = ParseOrdinal(owner, ":colorless_offer:", ":card:");
+                return (ordinal, Suffix(owner, ":card:"), null, null,
+                    true, false);
+            }
+            var offerOrdinal = ParseOrdinal(owner, ":offer:",
+                owner.Contains(":sale_reprice:", StringComparison.Ordinal)
+                    ? ":sale_reprice:" : ":card:");
+            var sale = owner.Contains(":sale_reprice:", StringComparison.Ordinal);
+            return (offerOrdinal, sale
+                    ? Suffix(owner, ":sale_reprice:")
+                    : Suffix(owner, ":card:"),
+                null, null, false, sale);
+        }
+        if (siteId == "shop.merchant.potion_price_modifier.unit_float")
+        {
+            var ordinal = ParseOrdinal(owner, ":offer:", ":potion:");
+            var potion = Suffix(owner, ":potion:").Split(':')[0];
+            return (ordinal, null, potion, null, false, false);
+        }
+        if (siteId == "shop.merchant.relic_price_modifier.unit_float")
+        {
+            var ordinal = ParseOrdinal(owner, ":offer:", ":relic:");
+            var relic = Suffix(owner, ":relic:").Split(':')[0];
+            return (ordinal, null, null, relic, false, false);
+        }
+        throw new NotSupportedException(
+            "Unsupported native merchant price site.");
+    }
+
+    private static int ParseOrdinal(string value, string start, string end)
+    {
+        var startIndex = value.LastIndexOf(start, StringComparison.Ordinal);
+        var endIndex = value.IndexOf(end,
+            startIndex < 0 ? 0 : startIndex + start.Length,
+            StringComparison.Ordinal);
+        if (startIndex < 0 || endIndex < 0 ||
+            !int.TryParse(value[(startIndex + start.Length)..endIndex],
+                NumberStyles.None, CultureInfo.InvariantCulture,
+                out var ordinal) || ordinal < 0)
+            throw new InvalidDataException(
+                "Merchant request owner has a malformed offer ordinal.");
+        return ordinal;
+    }
+
+    private static string SegmentAfter(string value, string start, string end)
+    {
+        var startIndex = value.LastIndexOf(start, StringComparison.Ordinal);
+        var endIndex = value.IndexOf(end,
+            startIndex < 0 ? 0 : startIndex + start.Length,
+            StringComparison.Ordinal);
+        if (startIndex < 0 || endIndex < 0 || endIndex <= startIndex + start.Length)
+            throw new InvalidDataException(
+                "Merchant request owner has a malformed segment.");
+        return value[(startIndex + start.Length)..endIndex];
+    }
+
+    private static string Suffix(string value, string marker)
+    {
+        var index = value.LastIndexOf(marker, StringComparison.Ordinal);
+        if (index < 0 || index + marker.Length >= value.Length)
+            throw new InvalidDataException(
+                "Merchant request owner has a malformed item identity.");
+        return value[(index + marker.Length)..];
+    }
+
+    private static bool SameLabels(string[]? left, string[]? right) =>
+        left is null ? right is null : right is not null &&
+            left.SequenceEqual(right, StringComparer.Ordinal);
+
+    private static bool SameRequest(
+        ControlledStochasticRequestV111? left,
+        ControlledStochasticRequestV111? right) =>
+        left is null ? right is null : right is not null &&
+            CanonicalJson.Sha256(left) == CanonicalJson.Sha256(right);
+
+    private static ControlledStochasticRequestV111 AsRequest(
+        ControlledStochasticDecisionV111 decision) =>
+        decision.IndexDecision is { } index
+            ? ControlledStochasticRequestV111.FromIndex(index.Request)
+            : ControlledStochasticRequestV111.FromUnitFloat(
+                decision.UnitFloatDecision!.Request);
+
+    private static GameAction CloneAction(GameAction action) => action with
+    {
+        Payload = action.Payload.Clone()
+    };
+
+    private sealed record MerchantReplayResultV111(
+        RunState? Run,
+        ControlledStochasticChanceRequiredExceptionV111? Pending);
+}

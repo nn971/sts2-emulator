@@ -65,6 +65,12 @@ internal static class PrototypeAiJsonlServer
         var referenceNatureAncientOfferRunStateHandles =
             new Dictionary<string, string>(StringComparer.Ordinal);
         long nextReferenceNatureAncientOfferHandle = 1;
+        var referenceNatureMerchantStates =
+            new Dictionary<string, ReferenceNatureMerchantSessionV111>(
+                StringComparer.Ordinal);
+        var referenceNatureMerchantRunStateHandles =
+            new Dictionary<string, string>(StringComparer.Ordinal);
+        long nextReferenceNatureMerchantHandle = 1;
 
         string StoreSemantic(SemanticPilotCombatV111 state)
         {
@@ -166,6 +172,30 @@ internal static class PrototypeAiJsonlServer
                 ? session
                 : throw new InvalidOperationException(
                     "Unknown ReferenceNature Ancient-offer session handle: " +
+                    handle);
+        }
+
+        string StoreReferenceNatureMerchant(
+            ReferenceNatureMerchantSessionV111 session)
+        {
+            var handle = "x" + nextReferenceNatureMerchantHandle++;
+            referenceNatureMerchantStates.Add(handle, session.Fork());
+            if (session.Complete)
+                referenceNatureMerchantRunStateHandles.Add(handle,
+                    Store(session.Run.Fork()));
+            return handle;
+        }
+
+        ReferenceNatureMerchantSessionV111 RequireReferenceNatureMerchant(
+            JsonElement request)
+        {
+            var handle = RequiredString(request,
+                "reference_nature_merchant_handle");
+            return referenceNatureMerchantStates.TryGetValue(handle,
+                    out var session)
+                ? session
+                : throw new InvalidOperationException(
+                    "Unknown ReferenceNature merchant session handle: " +
                     handle);
         }
 
@@ -357,6 +387,42 @@ internal static class PrototypeAiJsonlServer
                 offeredChoiceIds = eventState?.OfferedChoiceIds,
                 eventRandomProvider = eventState?.NativeEventRngProviderMode ??
                     (eventState is null ? null : "native-v111"),
+                decisionTranscript = session.DecisionTranscript,
+                natureProvider = ReferenceNatureV111.ProviderId,
+                natureSampleCount = session.NatureState.SampleCount,
+                probabilityStatus = ChanceLawV111.UnverifiedStatus
+            };
+        }
+
+        object ReferenceNatureMerchantResult(
+            ReferenceNatureMerchantSessionV111 session, string handle,
+            string? parent = null)
+        {
+            var law = session.PendingLaw;
+            object? pending = law is null ? null : new
+            {
+                kind = "native_merchant_random_choice",
+                request = session.PendingRequest,
+                candidateLabels = session.PendingCandidateLabels,
+                chanceLaw = law,
+                probabilityStatus = law.ProbabilityStatus
+            };
+            return new
+            {
+                ok = true,
+                schemaId = ReferenceNatureMerchantSessionV111.CurrentSchemaId,
+                referenceNatureMerchantHandle = handle,
+                stateHandle = referenceNatureMerchantRunStateHandles
+                    .GetValueOrDefault(handle),
+                parent,
+                fingerprint = session.Fingerprint,
+                runFingerprint = CanonicalJson.Sha256(session.Run),
+                actionId = PrototypeAiEnvironment.StableActionId(session.Action),
+                runPhase = session.Run.Phase.ToString(),
+                boundary = session.Complete ? "committed" : "nature",
+                nextOrdinal = session.NextOrdinal,
+                pending,
+                shop = session.Complete ? session.Run.World?.Shop : null,
                 decisionTranscript = session.DecisionTranscript,
                 natureProvider = ReferenceNatureV111.ProviderId,
                 natureSampleCount = session.NatureState.SampleCount,
@@ -1576,7 +1642,28 @@ internal static class PrototypeAiJsonlServer
                             if (priorIndices is not null)
                                 throw new ArgumentException(
                                     "prior_indices apply only to Ancient offer shuffle queries.");
-                            if (StochasticSiteRegistryV111
+                            if (siteId == "shop.merchant.card_upgrade_roll.unit_float")
+                            {
+                                if (cardType is not null || rarity is not null ||
+                                    cardId is not null || potionId is not null ||
+                                    relicId is not null || colorlessOffer ||
+                                    saleReprice || excludedPotionIds is not null ||
+                                    offerOrdinal is not null ||
+                                    relicCandidateIds is not null ||
+                                    excludedRelicIds is not null)
+                                    throw new ArgumentException(
+                                        "Merchant no-effect float query does not accept pool parameters.");
+                                var typedRequest = new RandomUnitFloatRequestV111(
+                                    siteId, "player.shops",
+                                    OptionalString(request, "owner_id") ??
+                                        throw new ArgumentException(
+                                            "Merchant no-effect float query requires owner_id."),
+                                    ordinal);
+                                law = ChanceLawEngineV111
+                                    .QueryNativeMerchantNoEffectUnitFloat(
+                                        run, typedRequest);
+                            }
+                            else if (StochasticSiteRegistryV111
                                 .IsNativeMerchantPriceSite(siteId))
                             {
                                 if (cardType is not null || rarity is not null ||
@@ -2640,6 +2727,114 @@ internal static class PrototypeAiJsonlServer
                                 released++;
                             referenceNatureAncientOfferRunStateHandles.Remove(
                                 element.GetString()!);
+                        }
+                        Write(new { requestId, ok = true, released });
+                        break;
+                    }
+
+                    case "reference_nature_merchant_begin":
+                    {
+                        var source = RequireState(request);
+                        var actionId = RequiredString(request, "action_id");
+                        var action = environment.Observe(source).LegalActions
+                            .SingleOrDefault(candidate =>
+                                StringComparer.Ordinal.Equals(
+                                    candidate.ActionId, actionId))
+                            ?? throw new InvalidOperationException(
+                                "ReferenceNature merchant begin requires a current legal Shop-node action.");
+                        var seed = OptionalULong(request, "nature_seed");
+                        var session = seed is { } natureSeed
+                            ? ReferenceNatureMerchantSessionV111.Begin(
+                                source, GameAction.Create(
+                                    action.Kind, action.Payload), natureSeed)
+                            : ReferenceNatureMerchantSessionV111.Begin(
+                                source, GameAction.Create(
+                                    action.Kind, action.Payload));
+                        var handle = StoreReferenceNatureMerchant(session);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureMerchantResult(session, handle) });
+                        break;
+                    }
+
+                    case "reference_nature_merchant_status":
+                    {
+                        var handle = RequiredString(request,
+                            "reference_nature_merchant_handle");
+                        var session = RequireReferenceNatureMerchant(request);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureMerchantResult(session, handle) });
+                        break;
+                    }
+
+                    case "reference_nature_merchant_resolve_next":
+                    {
+                        var parentHandle = RequiredString(request,
+                            "reference_nature_merchant_handle");
+                        var session = RequireReferenceNatureMerchant(request);
+                        if (session.Fingerprint != RequiredString(request,
+                                "fingerprint"))
+                            throw new InvalidOperationException(
+                                "Stale ReferenceNature merchant fingerprint.");
+                        var next = session.ResolveNext();
+                        var handle = StoreReferenceNatureMerchant(next);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureMerchantResult(
+                                next, handle, parentHandle) });
+                        break;
+                    }
+
+                    case "reference_nature_merchant_fork":
+                    {
+                        var parentHandle = RequiredString(request,
+                            "reference_nature_merchant_handle");
+                        var next = RequireReferenceNatureMerchant(request).Fork();
+                        var handle = StoreReferenceNatureMerchant(next);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureMerchantResult(
+                                next, handle, parentHandle) });
+                        break;
+                    }
+
+                    case "reference_nature_merchant_save":
+                    {
+                        var session = RequireReferenceNatureMerchant(request);
+                        Write(new { requestId, ok = true,
+                            schemaId =
+                                ReferenceNatureMerchantSessionV111.CurrentSchemaId,
+                            snapshot =
+                                ReferenceNatureMerchantSessionV111.Save(session) });
+                        break;
+                    }
+
+                    case "reference_nature_merchant_load":
+                    {
+                        var session = ReferenceNatureMerchantSessionV111.Restore(
+                            RequiredString(request, "snapshot"));
+                        var handle = StoreReferenceNatureMerchant(session);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureMerchantResult(session, handle) });
+                        break;
+                    }
+
+                    case "reference_nature_merchant_release_many":
+                    {
+                        if (!request.TryGetProperty(
+                                "reference_nature_merchant_handles",
+                                out var handles) ||
+                            handles.ValueKind != JsonValueKind.Array)
+                            throw new ArgumentException(
+                                "reference_nature_merchant_handles must be an array.");
+                        var released = 0;
+                        foreach (var element in handles.EnumerateArray())
+                        {
+                            if (element.ValueKind != JsonValueKind.String ||
+                                string.IsNullOrWhiteSpace(element.GetString()))
+                                throw new ArgumentException(
+                                    "Invalid ReferenceNature merchant handle.");
+                            var handle = element.GetString()!;
+                            if (referenceNatureMerchantStates.Remove(handle))
+                                released++;
+                            referenceNatureMerchantRunStateHandles.Remove(handle);
                         }
                         Write(new { requestId, ok = true, released });
                         break;
