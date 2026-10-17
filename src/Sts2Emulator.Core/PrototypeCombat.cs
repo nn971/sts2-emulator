@@ -16176,56 +16176,91 @@ public sealed partial class PrototypeGameEngine
         NestedCardDrawnChoice
     }
 
+    private sealed record PrototypeDrawCardsBoundaryV111
+    {
+        public PrototypeDrawCardsBoundaryKind Kind { get; }
+        public int RemainingCount { get; }
+        public PrototypeAfterShuffleRelicInsertionV111[]?
+            AfterShuffleInsertions { get; }
+
+        private PrototypeDrawCardsBoundaryV111(
+            PrototypeDrawCardsBoundaryKind kind,
+            int remainingCount,
+            PrototypeAfterShuffleRelicInsertionV111[]? insertions)
+        {
+            Kind = kind;
+            RemainingCount = remainingCount;
+            AfterShuffleInsertions = insertions;
+        }
+
+        public static PrototypeDrawCardsBoundaryV111 Complete() =>
+            new(PrototypeDrawCardsBoundaryKind.Complete, 0, null);
+
+        public static PrototypeDrawCardsBoundaryV111 ShuffleSelection(
+            int remainingCount) => Pending(
+                PrototypeDrawCardsBoundaryKind.ShuffleSelection,
+                remainingCount, requiresPositiveCount: true);
+
+        public static PrototypeDrawCardsBoundaryV111 ControlledRecycle(
+            int remainingCount) => Pending(
+                PrototypeDrawCardsBoundaryKind.ControlledRecycle,
+                remainingCount, requiresPositiveCount: true);
+
+        public static PrototypeDrawCardsBoundaryV111 ControlledDrawCost(
+            int remainingCount) => Pending(
+                PrototypeDrawCardsBoundaryKind.ControlledDrawCost,
+                remainingCount, requiresPositiveCount: false);
+
+        public static PrototypeDrawCardsBoundaryV111 SemanticDraw(
+            int remainingCount) => Pending(
+                PrototypeDrawCardsBoundaryKind.SemanticDraw,
+                remainingCount, requiresPositiveCount: true);
+
+        public static PrototypeDrawCardsBoundaryV111
+            AfterShuffleInsertionPending(
+            int remainingCount,
+            PrototypeAfterShuffleRelicInsertionV111[] insertions)
+        {
+            ArgumentNullException.ThrowIfNull(insertions);
+            if (insertions.Length == 0)
+                throw new ArgumentException(
+                    "After-shuffle boundary needs a pending insertion.",
+                    nameof(insertions));
+            return Pending(
+                PrototypeDrawCardsBoundaryKind.AfterShuffleInsertions,
+                remainingCount, requiresPositiveCount: true,
+                (PrototypeAfterShuffleRelicInsertionV111[])insertions.Clone());
+        }
+
+        public static PrototypeDrawCardsBoundaryV111 NestedCardDrawnChoice(
+            int remainingCount) => Pending(
+                PrototypeDrawCardsBoundaryKind.NestedCardDrawnChoice,
+                remainingCount, requiresPositiveCount: false);
+
+        private static PrototypeDrawCardsBoundaryV111 Pending(
+            PrototypeDrawCardsBoundaryKind kind,
+            int remainingCount,
+            bool requiresPositiveCount,
+            PrototypeAfterShuffleRelicInsertionV111[]? insertions = null)
+        {
+            if (remainingCount < (requiresPositiveCount ? 1 : 0))
+                throw new ArgumentOutOfRangeException(nameof(remainingCount));
+            return new PrototypeDrawCardsBoundaryV111(
+                kind, remainingCount, insertions);
+        }
+    }
+
     private sealed record PrototypeDrawCardsResult(
         PlayerState Player,
         CombatState Combat,
         long[] DrawnCardInstanceIds,
-        int RemainingCount = 0,
-        bool ShuffleSelectionPending = false,
-        bool ControlledRecyclePending = false,
-        bool ControlledDrawCostPending = false,
-        bool ControlledSemanticDrawPending = false,
-        PrototypeAfterShuffleRelicInsertionV111[]?
-            ControlledAfterShuffleInsertions = null,
-        bool NestedCardDrawnChoicePending = false)
+        PrototypeDrawCardsBoundaryV111 Boundary)
     {
-        /// <summary>
-        /// The draw kernel may stop at one persisted mechanics boundary.
-        /// Centralizing this classification prevents adapters from silently
-        /// applying different precedence when a malformed result carries
-        /// multiple continuation kinds.
-        /// </summary>
-        public PrototypeDrawCardsBoundaryKind BoundaryKind
-        {
-            get
-            {
-                var kind = PrototypeDrawCardsBoundaryKind.Complete;
-                var count = 0;
-                Add(ShuffleSelectionPending,
-                    PrototypeDrawCardsBoundaryKind.ShuffleSelection);
-                Add(ControlledRecyclePending,
-                    PrototypeDrawCardsBoundaryKind.ControlledRecycle);
-                Add(ControlledDrawCostPending,
-                    PrototypeDrawCardsBoundaryKind.ControlledDrawCost);
-                Add(ControlledSemanticDrawPending,
-                    PrototypeDrawCardsBoundaryKind.SemanticDraw);
-                Add(ControlledAfterShuffleInsertions is { Length: > 0 },
-                    PrototypeDrawCardsBoundaryKind.AfterShuffleInsertions);
-                Add(NestedCardDrawnChoicePending,
-                    PrototypeDrawCardsBoundaryKind.NestedCardDrawnChoice);
-                if (count > 1)
-                    throw new InvalidDataException(
-                        "DrawCards returned multiple continuation boundaries.");
-                return kind;
-
-                void Add(bool active, PrototypeDrawCardsBoundaryKind candidate)
-                {
-                    if (!active) return;
-                    kind = candidate;
-                    count++;
-                }
-            }
-        }
+        public PrototypeDrawCardsBoundaryKind BoundaryKind => Boundary.Kind;
+        public int RemainingCount => Boundary.RemainingCount;
+        public PrototypeAfterShuffleRelicInsertionV111[]?
+            ControlledAfterShuffleInsertions =>
+                Boundary.AfterShuffleInsertions;
     }
 
     private static PrototypeDrawCardsResult DrawCards(
@@ -16336,9 +16371,10 @@ public sealed partial class PrototypeGameEngine
                             return new PrototypeDrawCardsResult(
                                 player, combat,
                                 drawnCardInstanceIds.ToArray(),
-                                RemainingCount: count - drawNumber,
-                                ControlledAfterShuffleInsertions:
-                                    afterShuffleInsertions);
+                                PrototypeDrawCardsBoundaryV111
+                                    .AfterShuffleInsertionPending(
+                                        count - drawNumber,
+                                        afterShuffleInsertions));
                         }
                     }
                     var stratagemCount = combat.PlayerPowers.Sum(power =>
@@ -16357,8 +16393,8 @@ public sealed partial class PrototypeGameEngine
                         return new PrototypeDrawCardsResult(
                             player, combat,
                             drawnCardInstanceIds.ToArray(),
-                            RemainingCount: count - drawNumber,
-                            ShuffleSelectionPending: true);
+                            PrototypeDrawCardsBoundaryV111
+                                .ShuffleSelection(count - drawNumber));
                     }
                 }
                 else
@@ -16371,8 +16407,8 @@ public sealed partial class PrototypeGameEngine
                     if (ControlledChanceGuardV111.Active)
                         return new PrototypeDrawCardsResult(
                             player, combat, drawnCardInstanceIds.ToArray(),
-                            RemainingCount: count - drawNumber,
-                            ControlledRecyclePending: true);
+                            PrototypeDrawCardsBoundaryV111
+                                .ControlledRecycle(count - drawNumber));
 
                     combat = CommitLegacyDrawPileRecycle(
                         combat, draw, discard, rng);
@@ -16398,8 +16434,8 @@ public sealed partial class PrototypeGameEngine
                                 }));
                         return new PrototypeDrawCardsResult(
                             player, combat, drawnCardInstanceIds.ToArray(),
-                            RemainingCount: count - drawNumber,
-                            ShuffleSelectionPending: true);
+                            PrototypeDrawCardsBoundaryV111
+                                .ShuffleSelection(count - drawNumber));
                     }
                 }
             }
@@ -16425,8 +16461,8 @@ public sealed partial class PrototypeGameEngine
                     return new PrototypeDrawCardsResult(
                         player, combat with { SemanticDeck = semantic },
                         drawnCardInstanceIds.ToArray(),
-                        RemainingCount: count - drawNumber,
-                        ControlledSemanticDrawPending: true);
+                        PrototypeDrawCardsBoundaryV111
+                            .SemanticDraw(count - drawNumber));
                 cardInstanceId = resolvedTop.CardInstanceId!.Value;
                 draw = resolvedTop.RemainingPhysicalDrawPile.ToList();
                 combat = combat with { SemanticDeck = semantic };
@@ -16480,8 +16516,8 @@ public sealed partial class PrototypeGameEngine
                         ? randomizedCostUpperBound : 0, hasSlither);
                 return new PrototypeDrawCardsResult(
                     player, combat, drawnCardInstanceIds.ToArray(),
-                    RemainingCount: count - drawNumber - 1,
-                    ControlledDrawCostPending: true);
+                    PrototypeDrawCardsBoundaryV111
+                        .ControlledDrawCost(count - drawNumber - 1));
             }
             if (ControlledChanceGuardV111.Active &&
                 !ControlledChanceGuardV111.EngineOwnedNativeProviderActive &&
@@ -16497,8 +16533,8 @@ public sealed partial class PrototypeGameEngine
                         ? randomizedCostUpperBound : 0, hasSlither);
                 return new PrototypeDrawCardsResult(
                     player, combat, drawnCardInstanceIds.ToArray(),
-                    RemainingCount: count - drawNumber - 1,
-                    ControlledDrawCostPending: true);
+                    PrototypeDrawCardsBoundaryV111
+                        .ControlledDrawCost(count - drawNumber - 1));
             }
             if (needsRelicCost)
             {
@@ -16539,8 +16575,8 @@ public sealed partial class PrototypeGameEngine
                 combat.PendingChoice is not null)
                 return new PrototypeDrawCardsResult(
                     player, combat, drawnCardInstanceIds.ToArray(),
-                    RemainingCount: count - drawNumber - 1,
-                    NestedCardDrawnChoicePending: true);
+                    PrototypeDrawCardsBoundaryV111
+                        .NestedCardDrawnChoice(count - drawNumber - 1));
             if (combat.SemanticDeck is not null &&
                 (combat.PendingChoice is not null ||
                  combat.PendingKnowledgeDemonChoice is not null))
@@ -16552,7 +16588,8 @@ public sealed partial class PrototypeGameEngine
         return new PrototypeDrawCardsResult(
             player,
             combat,
-            drawnCardInstanceIds.ToArray());
+            drawnCardInstanceIds.ToArray(),
+            PrototypeDrawCardsBoundaryV111.Complete());
     }
 
     private static void ValidateTarget(
