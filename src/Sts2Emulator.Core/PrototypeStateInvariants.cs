@@ -662,13 +662,14 @@ public static class PrototypeStateInvariants
 
         if (eventState.ChosenChoiceId is null)
         {
+            eventState.Stochastic.ValidateDeferredCardOutcome(
+                eventState, choice: null);
             if (eventState.PendingDeckChoice is not null
                 || eventState.PendingPotionReplacement is not null
                 || eventState.RemainingPotionIds.Length > 0
                 || eventState.RemainingDeckChoices.Length > 0
                 || eventState.PendingReward is not null
-                || eventState.DeferredHpLoss != 0
-                || eventState.DeferredCardId is not null)
+                || eventState.DeferredHpLoss != 0)
             {
                 throw new InvalidOperationException(
                     "Pending event continuation has no chosen event option.");
@@ -684,20 +685,8 @@ public static class PrototypeStateInvariants
                     eventState.ChosenChoiceId))
             ?? throw new InvalidOperationException(
                 "Event state references an unknown chosen option.");
-
-        if (eventState.DeferredCardId is { } deferredCardId)
-        {
-            _ = PrototypeContent.Card(deferredCardId);
-            if (!choice.Effects.Any(effect =>
-                    effect.Kind
-                        == PrototypeRunEffectKind.AddCardAfterDeckChoices
-                    && StringComparer.Ordinal.Equals(
-                        effect.CardId, deferredCardId)))
-            {
-                throw new InvalidOperationException(
-                    "Deferred card addition disagrees with source event choice.");
-            }
-        }
+        eventState.Stochastic.ValidateDeferredCardOutcome(
+            eventState, choice);
 
         if (eventState.PendingReward is { } deferred)
         {

@@ -293,6 +293,28 @@ public sealed record EventStochasticStateV111(
         return false;
     }
 
+    public void ValidateDeferredCardOutcome(
+        EventState owner, PrototypeEventChoiceDefinition? choice)
+    {
+        ArgumentNullException.ThrowIfNull(owner);
+        if (RandomOutcomes.DeferredCardId is not { } deferredCardId)
+            return;
+        if (owner.ChosenChoiceId is null)
+            throw new InvalidOperationException(
+                "Pending event continuation has no chosen event option.");
+
+        _ = PrototypeContent.Card(deferredCardId);
+        if (choice is null
+            || !choice.Effects.Any(effect =>
+                effect.Kind == PrototypeRunEffectKind.AddCardAfterDeckChoices
+                && StringComparer.Ordinal.Equals(
+                    effect.CardId, deferredCardId)))
+        {
+            throw new InvalidOperationException(
+                "Deferred card addition disagrees with source event choice.");
+        }
+    }
+
     public void ValidateControlledChoice(
         EventState owner, RunState run)
     {
