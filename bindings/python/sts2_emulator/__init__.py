@@ -362,7 +362,8 @@ class State:
 
     def begin_reference_nature_native_event_shuffle(
             self, nature_seed: int | None = None,
-            action_id: str | None = None):
+            action_id: str | None = None,
+            site_id: str | None = None):
         """Begin a conditional event-local Fisher-Yates Nature replay."""
         if self.session.capabilities.get(
                 "referenceNatureNativeEventShuffleSessionSchemaId") != (
@@ -372,7 +373,10 @@ class State:
         if action_id is not None and (
                 not isinstance(action_id, str) or not action_id):
             raise ValueError("action_id must be a nonempty string")
-        site_id = {
+        if site_id is not None and (
+                not isinstance(site_id, str) or not site_id):
+            raise ValueError("site_id must be a nonempty string")
+        resolved_site_id = site_id or {
             None: "event.doors_light.shuffle_swap_index",
             "light": "event.doors_light.shuffle_swap_index",
             "fragrant_mushroom":
@@ -383,11 +387,11 @@ class State:
             "skill": "event.glory_tinker.rider_offer.shuffle_swap_index",
             "power": "event.glory_tinker.rider_offer.shuffle_swap_index",
         }.get(action_id)
-        if site_id is None:
+        if resolved_site_id is None:
             raise ValueError(
-                "action_id must be light, fragrant_mushroom, choose_card_type, attack, skill, or power")
+                "Provide a registered site_id or use a supported event action_id")
         if not self.session.supports_reference_nature_site(
-                site_id, session="event_shuffle"):
+                resolved_site_id, session="event_shuffle"):
             raise EmulatorError(
                 "No ReferenceNature native event shuffle session is advertised")
         if (nature_seed is not None and
@@ -398,6 +402,8 @@ class State:
         payload = {"state_handle": self.handle}
         if action_id is not None:
             payload["action_id"] = action_id
+        if site_id is not None:
+            payload["site_id"] = site_id
         if nature_seed is not None:
             payload["nature_seed"] = nature_seed
         result = self.session.call(
@@ -1116,7 +1122,8 @@ class ReferenceNatureNativeEventShuffleSession:
     state_handle: str | None
     event_id: str | None
     site_id: str
-    choice_id: str
+    choice_id: str | None
+    action_id: str
     page: int | None
     run_phase: str
     boundary: str
@@ -1137,7 +1144,9 @@ class ReferenceNatureNativeEventShuffleSession:
             session, payload["referenceNatureNativeEventShuffleHandle"],
             payload["fingerprint"], payload["stateHandle"],
             payload.get("eventId"), payload["siteId"],
-            payload["choiceId"], payload.get("page"),
+            payload.get("choiceId"),
+            payload.get("actionId", payload.get("choiceId")),
+            payload.get("page"),
             payload["runPhase"], payload["boundary"],
             payload["nextOrdinal"], payload["pending"],
             payload.get("nextPage"), payload.get("eventRandomProvider"),

@@ -43,9 +43,10 @@ session exposes `.state` for ordinary play. See the
 [event-choice contract](../../docs/CONTROLLED_EVENT_CHOICE_D3.md).
 
 The event-local shuffle session is available through
-`State.begin_reference_nature_native_event_shuffle(nature_seed=None, action_id=None)`. It
+`State.begin_reference_nature_native_event_shuffle(nature_seed=None, action_id=None, site_id=None)`. It
 covers the Light shuffle in Doors of Light and Dark, Fragrant Mushroom's
-eligible-card shuffle, and Tinker Time's type and rider offer shuffles. Pass
+eligible-card shuffle, Tinker Time's type and rider offer shuffles, and
+Battleworn Dummy setting 2's upgrade shuffle. Pass
 `action_id="fragrant_mushroom"` for the eligible-card shuffle;
 `action_id="choose_card_type"` for the initial Tinker stage; and the offered
 type (`"attack"`, `"skill"`, or `"power"`) for its rider stage. It resolves
@@ -54,6 +55,9 @@ publishes `.state` after the full shuffle replays. It supports `fork()`, `save_s
 `Session.load_reference_nature_native_event_shuffle_snapshot()`, and
 `release()`. See the
 [native event shuffle contract](../../docs/REFERENCE_NATURE_NATIVE_EVENT_SHUFFLE_D3.md).
+For Battleworn, pass `site_id="event.battleworn.upgrade.shuffle_swap_index"`
+and the stable `action_id` of a legal combat action that wins setting 2 in one
+step.
 
 Reflections' `touch_mirror` action has an atomic continuation through
 `State.begin_reference_nature_glory_reflections(nature_seed=None)`. It samples

@@ -19,6 +19,11 @@ public sealed partial class PrototypeGameEngine
 
     internal static bool IsValidScriptedEventShuffleState(EventState evt)
     {
+        if (evt.EventId == PrototypeNativeGloryEvents.BattlewornDummyId)
+            return evt.NativePageIndex ==
+                    PrototypeNativeEventCompletionPages
+                        .TerminalChoicePageIndex(evt.EventId) &&
+                evt.ChosenChoiceId == "victory";
         if (evt.EventId == PrototypeNativeGloryEvents.ReflectionsId)
             return evt.NativePageIndex ==
                     PrototypeNativeEventCompletionPages

@@ -817,7 +817,9 @@ internal static class PrototypeAiJsonlServer
                     session.SiteId,
                 eventId = law?.EventId ??
                     session.DecisionTranscript.LastOrDefault()?.EventId,
-                choiceId = session.ActionId,
+                choiceId = session.Origin.Phase == RunPhase.Event
+                    ? session.ActionId : null,
+                actionId = session.ActionId,
                 page = session.Origin.World?.Event?.NativePageIndex,
                 runPhase = session.Run.Phase.ToString(),
                 boundary = session.Complete ? "committed" : "nature",
@@ -4040,11 +4042,23 @@ internal static class PrototypeAiJsonlServer
                         var source = RequireState(request);
                         var seed = OptionalULong(request, "nature_seed");
                         var actionId = OptionalString(request, "action_id");
-                        var session = seed is { } natureSeed
-                            ? ReferenceNatureNativeEventShuffleSessionV111.Begin(
-                                source, actionId, natureSeed)
-                            : ReferenceNatureNativeEventShuffleSessionV111.Begin(
-                                source, actionId);
+                        var siteId = OptionalString(request, "site_id");
+                        var session = siteId is null
+                            ? seed is { } natureSeed
+                                ? ReferenceNatureNativeEventShuffleSessionV111.Begin(
+                                    source, actionId, natureSeed)
+                                : ReferenceNatureNativeEventShuffleSessionV111.Begin(
+                                    source, actionId)
+                            : seed is { } siteNatureSeed
+                                ? ReferenceNatureNativeEventShuffleSessionV111.Begin(
+                                    source, siteId,
+                                    actionId ?? throw new ArgumentException(
+                                        "A native event shuffle site requires action_id."),
+                                    siteNatureSeed)
+                                : ReferenceNatureNativeEventShuffleSessionV111.Begin(
+                                    source, siteId,
+                                    actionId ?? throw new ArgumentException(
+                                        "A native event shuffle site requires action_id."));
                         var handle = StoreReferenceNatureNativeEventShuffle(session);
                         Write(new { requestId, ok = true, result =
                             ReferenceNatureNativeEventShuffleResult(

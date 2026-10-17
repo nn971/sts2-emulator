@@ -200,6 +200,8 @@ public static class NativeEventContextRngV111
         if (ordinalOffset is < 0)
             throw new ArgumentOutOfRangeException(nameof(ordinalOffset));
 
+        NativeEventShuffleProbeV111.Capture(siteId, ownerId, values);
+
         var nativeStream = eventState.NativeEventRng;
         if (nativeStream is null && state.NativeRunRng is not null)
         {
@@ -353,6 +355,20 @@ public static class NativeEventContextRngV111
         if (prototypeEventId == PrototypeNativeGloryEvents.TinkerTimeId &&
             providerMode == "scripted-v111" &&
             scriptedTinkerShuffleIsExpected)
+            return;
+        var scriptedBattlewornShuffleIsExpected =
+            NativeRngV111.ToSnapshot(stream) ==
+                NativeRngV111.ToSnapshot(initial) &&
+            PrototypeGameEngine.IsValidScriptedEventShuffleState(
+                eventState);
+        if (prototypeEventId ==
+                PrototypeNativeGloryEvents.BattlewornDummyId &&
+            providerMode == "scripted-v111" &&
+            scriptedBattlewornShuffleIsExpected &&
+            state.Phase == RunPhase.Event &&
+            state.World?.Combat is null &&
+            state.World?.EncounterIds.LastOrDefault() ==
+                PrototypeNativeGloryEvents.BattlewornV2EncounterId)
             return;
         var doorsLightChoiceIsExpected =
             NativeRngV111.ToSnapshot(stream) ==

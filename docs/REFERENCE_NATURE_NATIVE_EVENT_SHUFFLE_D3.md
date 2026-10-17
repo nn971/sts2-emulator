@@ -3,7 +3,8 @@
 This contract records the first source-independent ReferenceNature session
 for a full Native event-local Fisher–Yates shuffle. The supported resolvers
 are the Light option in Doors of Light and Dark, Fragrant Mushroom's eligible
-card shuffle, and Tinker Time's type and rider offer stages.
+card shuffle, Tinker Time's type and rider offer stages, and Battleworn
+Dummy's setting 2 upgrade shuffle.
 
 ## Boundary
 
@@ -19,6 +20,12 @@ order, event stream, owner ID, and shuffle site. A pool of zero or one
 candidate performs no shuffle draw and has no Chance Law session. The
 deterministic Doors Dark option and later player choice of a Tinker rider are
 outside this boundary.
+
+Battleworn accepts a legal combat action only from a setting 2 fight where
+that action immediately defeats the remaining enemies and completes the event
+with victory. The session samples only the upgrade-card shuffle. During replay,
+other combat index requests keep the provider associated with their stream
+codec, while the Battleworn event shuffle uses the scripted Nature prefix.
 
 ## Laws and replay
 
@@ -38,9 +45,10 @@ sampler cursor while outcomes are pending. Once every swap has been sampled,
 it replays the ordinary event action through the existing scripted Native
 event-index resolver. The run result and ReferenceNature cursor commit
 together. The event's Native stream remains at its entry cursor and the saved
-`scripted-v111` marker is validated against the terminal Light result page or
-Tinker offer page. The stream stays at entry across the two scripted Tinker
-stages. Fork, status, save, and restore preserve and revalidate the transcript.
+`scripted-v111` marker is validated against the terminal Light result page,
+Tinker offer page, or Battleworn victory page. The stream stays at entry across
+the two scripted Tinker stages. Fork, status, save, and restore preserve and
+revalidate the transcript.
 
 ## Limits
 
@@ -48,5 +56,6 @@ This does not establish source probability calibration, live-game parity, or
 Native seeded result parity. It does not add event-specific shuffle mechanics:
 future event shuffles can use the same session only when their existing
 resolver's conditioning plan and action replay are explicitly admitted. The
-Doors and Tinker source audits remain authoritative for their modeled
-eligibility and event flow.
+Doors, Tinker, and Battleworn source audits remain authoritative for their
+modeled eligibility and event flow. Battleworn's session covers a winning
+combat action boundary; it does not create a multi-action combat continuation.

@@ -8,6 +8,7 @@ internal sealed record NativeEventShufflePlanV111(
     string NativeRngEventId,
     string SiteId,
     string ActionId,
+    GameAction ReplayAction,
     string[] OrderedCandidateIds,
     int CandidateCount,
     string StreamId,
@@ -30,17 +31,18 @@ internal sealed record NativeEventShufflePlanV111(
 internal static class NativeEventShufflePlanBuilderV111
 {
     public static NativeEventShufflePlanV111 Build(
-        RunState origin, string? siteId, string? actionId)
+        RunState origin, string? siteId, string? actionId,
+        string[]? plannedCandidateIds = null)
     {
         ArgumentNullException.ThrowIfNull(origin);
         if (string.IsNullOrWhiteSpace(origin.RunSeed) ||
-            origin.NativeRunRng is null || origin.Phase != RunPhase.Event ||
+            origin.NativeRunRng is null ||
             origin.World?.Event is not { } evt ||
-            evt.ChosenChoiceId is not null || evt.ControlledChoice is not null ||
+            evt.ControlledChoice is not null ||
             evt.NativeEventPotionSlot is not null ||
             origin.ControlledEventRewardChoice is not null)
             throw new InvalidOperationException(
-                "Native event shuffle Nature choices require a pending native event action.");
+                "Native event shuffle Nature choices require an active native event.");
         siteId ??= evt.EventId switch
         {
             PrototypeNativeUnderdocksDoors.EventId =>
@@ -60,12 +62,52 @@ internal static class NativeEventShufflePlanBuilderV111
         };
         ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
 
+        var battlewornVictoryAction =
+            origin.Phase == RunPhase.Combat &&
+            evt.EventId == PrototypeNativeGloryEvents.BattlewornDummyId &&
+            evt.NativePageIndex == 2 &&
+            evt.ChosenChoiceId == "setting_2";
+        if (origin.Phase != RunPhase.Event && !battlewornVictoryAction)
+            throw new InvalidOperationException(
+                "Native event shuffle Nature choices require a pending event action or the Battleworn victory action.");
+        if (origin.Phase == RunPhase.Event && evt.ChosenChoiceId is not null)
+            throw new InvalidOperationException(
+                "Native event shuffle Nature choices require an uncommitted event action.");
+
         string nativeRngEventId;
         string resolvedActionId;
+        GameAction? replayAction = null;
         string[] orderedCandidateIds;
         int candidateCount;
         string ownerId;
-        if (evt.EventId == PrototypeNativeUnderdocksDoors.EventId &&
+        if (evt.EventId == PrototypeNativeGloryEvents.BattlewornDummyId &&
+            siteId == PrototypeNativeGloryEvents
+                .BattlewornUpgradeShuffleSiteId)
+        {
+            resolvedActionId = actionId ?? throw new InvalidOperationException(
+                "Battleworn upgrade shuffle requires the stable ID of its victory action.");
+            if (!battlewornVictoryAction || origin.World?.Act != 3 ||
+                evt.NativeEventRngProviderMode is not null ||
+                origin.World.Combat is not { } combat ||
+                combat.Enemies.Any(enemy => enemy.Escaped))
+                throw new InvalidOperationException(
+                    "Battleworn upgrade shuffle requires a live setting 2 combat action before victory.");
+            var legalActions = new PrototypeGameEngine()
+                .GetLegalActions(origin);
+            replayAction = legalActions.SingleOrDefault(action =>
+                PrototypeAiEnvironment.StableActionId(action) ==
+                resolvedActionId);
+            if (replayAction is null)
+                throw new InvalidOperationException(
+                    "Battleworn upgrade shuffle action is not legal in the current combat state.");
+            orderedCandidateIds = plannedCandidateIds is null
+                ? [] : (string[])plannedCandidateIds.Clone();
+            candidateCount = orderedCandidateIds.Length;
+            ownerId = "event:battleworn:setting:2:eligible_cards";
+            nativeRngEventId = PrototypeNativeGloryEvents
+                .BattlewornDummyNativeRngEventId;
+        }
+        else if (evt.EventId == PrototypeNativeUnderdocksDoors.EventId &&
             siteId == PrototypeNativeUnderdocksDoors.ShuffleSiteId)
         {
             resolvedActionId = actionId ?? "light";
@@ -159,13 +201,10 @@ internal static class NativeEventShufflePlanBuilderV111
                 $"No native event shuffle resolver is registered for '{siteId}'.");
         }
 
-        if (candidateCount <= 1)
-            throw new InvalidOperationException(
-                "Native event shuffle has fewer than two candidates and performs no draw.");
-
+        replayAction ??= GameAction.Create("event_choice",
+            new EventChoicePayload(resolvedActionId));
         var stableActionId = PrototypeAiEnvironment.StableActionId(
-            GameAction.Create("event_choice",
-                new EventChoicePayload(resolvedActionId)));
+            replayAction);
         if (!new PrototypeGameEngine().GetLegalActions(origin).Any(action =>
                 PrototypeAiEnvironment.StableActionId(action) == stableActionId))
             throw new InvalidOperationException(
@@ -186,6 +225,41 @@ internal static class NativeEventShufflePlanBuilderV111
             throw new InvalidOperationException(
                 "Native event shuffle is not at the event cursor owned by its Nature prefix.");
 
+        if (battlewornVictoryAction && plannedCandidateIds is null)
+        {
+            RunState projected;
+            NativeEventShuffleCaptureV111[] captures;
+            using (var shuffleProbe = NativeEventShuffleProbeV111.Begin())
+            using (RandomBoundaryJournalV111.Begin())
+            using (NativeEngineEventJournalV111.Begin())
+            {
+                projected = new PrototypeGameEngine().Step(
+                    origin.Fork(), replayAction).State;
+                captures = shuffleProbe.Captures.ToArray();
+            }
+            if (projected.Phase != RunPhase.Event ||
+                projected.World?.Combat is not null ||
+                projected.World?.Event is not { } projectedEvent ||
+                projectedEvent.NativePageIndex !=
+                    PrototypeNativeEventCompletionPages
+                        .TerminalChoicePageIndex(projectedEvent.EventId) ||
+                projectedEvent.ChosenChoiceId != "victory")
+                throw new InvalidOperationException(
+                    "Battleworn shuffle action must complete setting 2 combat in victory.");
+            var shuffleCaptures = captures.Where(capture =>
+                capture.SiteId == siteId && capture.OwnerId == ownerId)
+                .ToArray();
+            if (shuffleCaptures.Length != 1)
+                throw new InvalidOperationException(
+                    "Battleworn victory must perform exactly one eligible-card shuffle.");
+            orderedCandidateIds = shuffleCaptures[0].OrderedCandidateIds;
+            candidateCount = orderedCandidateIds.Length;
+        }
+
+        if (candidateCount <= 1)
+            throw new InvalidOperationException(
+                "Native event shuffle has fewer than two candidates and performs no draw.");
+
         var fingerprint = CanonicalJson.Sha256(new
         {
             boundary = "native_event.fisher_yates_shuffle",
@@ -201,7 +275,7 @@ internal static class NativeEventShufflePlanBuilderV111
             policy = ChanceLawEngineV111.NativeEventShuffleConditioningPolicyId
         });
         return new(evt.EventId, nativeRngEventId, siteId,
-            resolvedActionId, orderedCandidateIds, candidateCount,
+            resolvedActionId, replayAction, orderedCandidateIds, candidateCount,
             stream.StreamId, ownerId, fingerprint);
     }
 }
@@ -231,8 +305,14 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
     public const string CurrentSchemaId =
         "sts2-v111-reference-nature-native-event-shuffle-session-v1";
 
+    internal string[] PlannedCandidateIds { get; init; } = [];
+
     [JsonIgnore]
-    public string Fingerprint => CanonicalJson.Sha256(this);
+    public string Fingerprint => CanonicalJson.Sha256(new
+    {
+        session = this,
+        plannedCandidateIds = PlannedCandidateIds
+    });
 
     [JsonIgnore]
     public int NextOrdinal => DecisionTranscript.Length;
@@ -240,14 +320,14 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
     [JsonIgnore]
     public bool Complete => DecisionTranscript.Length ==
         NativeEventShufflePlanBuilderV111.Build(
-            Origin, SiteId, ActionId).SwapCount;
+            Origin, SiteId, ActionId, PlannedCandidateIds).SwapCount;
 
     [JsonIgnore]
     public ChanceLawV111? PendingLaw => Complete ? null :
         ChanceLawEngineV111.QueryNativeEventShuffle(
             Origin, SiteId, NextOrdinal,
             DecisionTranscript.Select(decision => decision.OutcomeIndex)
-                .ToArray(), ActionId);
+                .ToArray(), ActionId, PlannedCandidateIds);
 
     public static ReferenceNatureNativeEventShuffleSessionV111 Begin(
         RunState origin, ulong natureSeed) => Begin(origin, null, null,
@@ -270,6 +350,18 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
             ReferenceNatureRunCursorV111.Begin(
                 origin, null, "Native event shuffle"));
 
+    public static ReferenceNatureNativeEventShuffleSessionV111 Begin(
+        RunState origin, string siteId, string actionId, ulong natureSeed) =>
+        Begin(origin, siteId, actionId,
+            ReferenceNatureRunCursorV111.Begin(
+                origin, natureSeed, "Native event shuffle"));
+
+    public static ReferenceNatureNativeEventShuffleSessionV111 Begin(
+        RunState origin, string siteId, string actionId) =>
+        Begin(origin, siteId, actionId,
+            ReferenceNatureRunCursorV111.Begin(
+                origin, null, "Native event shuffle"));
+
     private static ReferenceNatureNativeEventShuffleSessionV111 Begin(
         RunState origin, string? siteId, string? actionId,
         ReferenceNatureStateV111 initial)
@@ -283,7 +375,11 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
         var session = new ReferenceNatureNativeEventShuffleSessionV111(
             CurrentSchemaId, plan.SiteId, plan.ActionId,
             origin.Fork(), origin.Fork(),
-            initial.Fork(), initial.Fork(), []);
+            initial.Fork(), initial.Fork(), [])
+        {
+            PlannedCandidateIds =
+                (string[])plan.OrderedCandidateIds.Clone()
+        };
         session.Validate();
         return session;
     }
@@ -297,6 +393,7 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
             Run = Run.Fork(),
             InitialNatureState = InitialNatureState.Fork(),
             NatureState = NatureState.Fork(),
+            PlannedCandidateIds = (string[])PlannedCandidateIds.Clone(),
             DecisionTranscript = (ReferenceNatureDecisionV111[])
                 DecisionTranscript.Clone()
         };
@@ -309,11 +406,12 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
             throw new InvalidOperationException(
                 "ReferenceNature native event shuffle session is already complete.");
         var plan = NativeEventShufflePlanBuilderV111.Build(
-            Origin, SiteId, ActionId);
+            Origin, SiteId, ActionId, PlannedCandidateIds);
         var priorIndices = DecisionTranscript.Select(
             decision => decision.OutcomeIndex).ToArray();
         var law = ChanceLawEngineV111.QueryNativeEventShuffle(
-                Origin, SiteId, NextOrdinal, priorIndices, ActionId);
+                Origin, SiteId, NextOrdinal, priorIndices, ActionId,
+                PlannedCandidateIds);
         var selection = ReferenceNatureV111.SampleValidated(law, NatureState);
         var transcript = DecisionTranscript.Append(
             new ReferenceNatureDecisionV111(
@@ -328,10 +426,9 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
                     plan.Request(ordinal), decision.OutcomeIndex,
                     "scripted-v111")).ToArray();
             var replay = ReferenceNatureNativeEventIndexReplayV111.Replay(
-                Origin, decisions,
-                GameAction.Create("event_choice",
-                    new EventChoicePayload(plan.ActionId)),
-                plan.NativeRngEventId, plan.EventId);
+                Origin, decisions, plan.ReplayAction,
+                plan.NativeRngEventId, plan.EventId,
+                SelectiveReplaySite(plan), plan.OrderedCandidateIds);
             nextRun = ReferenceNatureRunCursorV111.Commit(
                 replay, nextNature);
         }
@@ -358,7 +455,7 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
         InitialNatureState.Validate();
         NatureState.Validate();
         var plan = NativeEventShufflePlanBuilderV111.Build(
-            Origin, SiteId, ActionId);
+            Origin, SiteId, ActionId, PlannedCandidateIds);
         if (DecisionTranscript.Length > plan.SwapCount ||
             !ReferenceNatureRunCursorV111.MatchesRunSession(
                 Origin, Run, InitialNatureState, NatureState,
@@ -371,7 +468,8 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
         for (var ordinal = 0; ordinal < DecisionTranscript.Length; ordinal++)
         {
             var law = ChanceLawEngineV111.QueryNativeEventShuffle(
-                Origin, SiteId, ordinal, priorIndices.ToArray(), ActionId);
+                Origin, SiteId, ordinal, priorIndices.ToArray(), ActionId,
+                PlannedCandidateIds);
             var selection = ReferenceNatureV111.SampleValidated(
                 law, expectedNatureState);
             DecisionTranscript[ordinal].Validate();
@@ -393,10 +491,9 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
                     plan.Request(ordinal), decision.OutcomeIndex,
                     "scripted-v111")).ToArray();
             expectedRun = ReferenceNatureNativeEventIndexReplayV111.Replay(
-                Origin, decisions,
-                GameAction.Create("event_choice",
-                    new EventChoicePayload(plan.ActionId)),
-                plan.NativeRngEventId, plan.EventId);
+                Origin, decisions, plan.ReplayAction,
+                plan.NativeRngEventId, plan.EventId,
+                SelectiveReplaySite(plan), plan.OrderedCandidateIds);
             expectedRun = ReferenceNatureRunCursorV111.Commit(
                 expectedRun, expectedNatureState);
         }
@@ -407,6 +504,12 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
             throw new InvalidDataException(
                 "ReferenceNature native event shuffle replay differs from its session envelope.");
     }
+
+    private static string? SelectiveReplaySite(
+        NativeEventShufflePlanV111 plan) =>
+        plan.SiteId == PrototypeNativeGloryEvents
+            .BattlewornUpgradeShuffleSiteId
+            ? plan.SiteId : null;
 
     public static string Save(
         ReferenceNatureNativeEventShuffleSessionV111 session)
@@ -475,16 +578,18 @@ public static partial class ChanceLawEngineV111
         PrototypeNativeUnderdocksDoors.ShuffleSiteId,
         PrototypeNativeGloryEvents.HungryForMushroomsShuffleSiteId,
         PrototypeNativeGloryEvents.TinkerTypeOfferShuffleSiteId,
-        PrototypeNativeGloryEvents.TinkerRiderOfferShuffleSiteId
+        PrototypeNativeGloryEvents.TinkerRiderOfferShuffleSiteId,
+        PrototypeNativeGloryEvents.BattlewornUpgradeShuffleSiteId
     ];
 
     public static ChanceLawV111 QueryNativeEventShuffle(
         RunState origin, string siteId, int ordinal,
-        int[]? priorIndices = null, string? actionId = null)
+        int[]? priorIndices = null, string? actionId = null,
+        string[]? plannedCandidateIds = null)
     {
         ArgumentNullException.ThrowIfNull(origin);
         var plan = NativeEventShufflePlanBuilderV111.Build(
-            origin, siteId, actionId);
+            origin, siteId, actionId, plannedCandidateIds);
         priorIndices ??= [];
         if (ordinal < 0 || ordinal >= plan.SwapCount ||
             priorIndices.Length != ordinal)

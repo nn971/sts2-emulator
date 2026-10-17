@@ -66,6 +66,8 @@ public static class PrototypeNativeGloryEvents
         "proto.native.glory.battleworn_dummy";
     public const string BattlewornDummyNativeRngEventId =
         "BATTLEWORN_DUMMY";
+    public const string BattlewornUpgradeShuffleSiteId =
+        "event.battleworn.upgrade.shuffle_swap_index";
     public const string BattlewornTimeLimitId =
         "proto.native.glory.battleworn_dummy_time_limit";
     public const string BattleFriendV1Id =
