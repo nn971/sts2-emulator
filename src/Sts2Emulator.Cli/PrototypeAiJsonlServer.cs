@@ -50,6 +50,8 @@ internal static class PrototypeAiJsonlServer
         var referenceNatureRunActionStates =
             new Dictionary<string, ReferenceNatureRunActionSessionV111>(
                 StringComparer.Ordinal);
+        var referenceNatureRunActionRunStateHandles =
+            new Dictionary<string, string>(StringComparer.Ordinal);
         long nextReferenceNatureRunActionHandle = 1;
 
         string StoreSemantic(SemanticPilotCombatV111 state)
@@ -89,6 +91,9 @@ internal static class PrototypeAiJsonlServer
         {
             var handle = "u" + nextReferenceNatureRunActionHandle++;
             referenceNatureRunActionStates.Add(handle, session.Fork());
+            if (session.Complete)
+                referenceNatureRunActionRunStateHandles.Add(handle,
+                    Store(session.Run.Fork()));
             return handle;
         }
 
@@ -163,11 +168,13 @@ internal static class PrototypeAiJsonlServer
                 ok = true,
                 schemaId = ReferenceNatureRunActionSessionV111.CurrentSchemaId,
                 referenceNatureRunActionHandle = handle,
+                stateHandle = referenceNatureRunActionRunStateHandles
+                    .GetValueOrDefault(handle),
                 parent,
                 fingerprint = session.Fingerprint,
                 runFingerprint,
                 actionId = session.Action.Kind,
-                runPhase = session.Run.Phase,
+                runPhase = session.Run.Phase.ToString(),
                 boundary = session.Complete ? "committed" : "nature",
                 pending,
                 decisionTranscript = session.DecisionTranscript,
@@ -1930,7 +1937,7 @@ internal static class PrototypeAiJsonlServer
                             source, action,
                             RequiredULong(request, "nature_seed"));
                         var handle = StoreReferenceNatureRunAction(session);
-                        Write(new { requestId, result =
+                        Write(new { requestId, ok = true, result =
                             ReferenceNatureRunActionResult(session, handle) });
                         break;
                     }
@@ -1940,7 +1947,7 @@ internal static class PrototypeAiJsonlServer
                         var handle = RequiredString(request,
                             "reference_nature_run_action_handle");
                         var session = RequireReferenceNatureRunAction(request);
-                        Write(new { requestId, result =
+                        Write(new { requestId, ok = true, result =
                             ReferenceNatureRunActionResult(session, handle) });
                         break;
                     }
@@ -1956,7 +1963,7 @@ internal static class PrototypeAiJsonlServer
                                 "Stale ReferenceNature run-action session fingerprint.");
                         var next = session.ResolveNext();
                         var handle = StoreReferenceNatureRunAction(next);
-                        Write(new { requestId, result =
+                        Write(new { requestId, ok = true, result =
                             ReferenceNatureRunActionResult(
                                 next, handle, parentHandle) });
                         break;
@@ -1968,7 +1975,7 @@ internal static class PrototypeAiJsonlServer
                             "reference_nature_run_action_handle");
                         var next = RequireReferenceNatureRunAction(request).Fork();
                         var handle = StoreReferenceNatureRunAction(next);
-                        Write(new { requestId, result =
+                        Write(new { requestId, ok = true, result =
                             ReferenceNatureRunActionResult(
                                 next, handle, parentHandle) });
                         break;
@@ -1989,8 +1996,33 @@ internal static class PrototypeAiJsonlServer
                         var session = ReferenceNatureRunActionSessionV111.Restore(
                             RequiredString(request, "snapshot"));
                         var handle = StoreReferenceNatureRunAction(session);
-                        Write(new { requestId, result =
+                        Write(new { requestId, ok = true, result =
                             ReferenceNatureRunActionResult(session, handle) });
+                        break;
+                    }
+
+                    case "reference_nature_run_action_release_many":
+                    {
+                        if (!request.TryGetProperty(
+                                "reference_nature_run_action_handles",
+                                out var handles) ||
+                            handles.ValueKind != JsonValueKind.Array)
+                            throw new ArgumentException(
+                                "reference_nature_run_action_handles must be an array.");
+                        var released = 0;
+                        foreach (var element in handles.EnumerateArray())
+                        {
+                            if (element.ValueKind != JsonValueKind.String ||
+                                string.IsNullOrWhiteSpace(element.GetString()))
+                                throw new ArgumentException(
+                                    "Invalid ReferenceNature run-action handle.");
+                            if (referenceNatureRunActionStates.Remove(
+                                    element.GetString()!))
+                                released++;
+                            referenceNatureRunActionRunStateHandles.Remove(
+                                element.GetString()!);
+                        }
+                        Write(new { requestId, ok = true, released });
                         break;
                     }
 

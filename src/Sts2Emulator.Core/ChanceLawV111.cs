@@ -116,7 +116,8 @@ public static class StochasticCapabilitiesV111
             "reference_nature_run_action_resolve_next",
             "reference_nature_run_action_fork",
             "reference_nature_run_action_save",
-            "reference_nature_run_action_load"
+            "reference_nature_run_action_load",
+            "reference_nature_run_action_release_many"
         ])
     {
         ReferenceNatureRunActionSessionSchemaId =

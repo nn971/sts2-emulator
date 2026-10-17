@@ -26,5 +26,13 @@ session; release invalidates them. Calls are serialized with a lock.
 Act 1 mechanics with explicit prototype RNG fidelity; unsupported characters
 fail on start. Exact snapshots contain hidden state; `observe()` is fair.
 
+The opt-in controlled run-action controller can be sampled atomically with
+`State.begin_reference_nature_run_action(seed, action_id=...)`. Its typed
+session supports `resolve_next()`, `fork()`, `save_snapshot()`,
+`Session.load_reference_nature_run_action_snapshot()`, `release()` and a
+playable `.state` after its Nature choice commits. It is
+limited to the run-start, legacy Event-node entry and Shovel continuations
+listed in the [run-action contract](../../docs/CONTROLLED_RUN_ACTION_D3.md).
+
 All mechanics remain in C#. Search, learning and strategy belong in the parent
 AI repository. See [the versioned contract](../../docs/V111_INTERFACE.md).

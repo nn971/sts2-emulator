@@ -103,6 +103,24 @@ class State:
             "controlled_run_action_inspect", state_handle=self.handle)
         return ControlledRunActionChoice.from_wire(self.session, result)
 
+    def begin_reference_nature_run_action(self, nature_seed: int, *,
+                                          action_id: str | None = None):
+        """Begin atomic ReferenceNature sampling for a supported run action."""
+        if self.session.capabilities.get(
+                "referenceNatureRunActionSessionSchemaId") != (
+                "sts2-v111-reference-nature-run-action-session-v1"):
+            raise EmulatorError(
+                "Emulator does not expose ReferenceNature run-action sessions")
+        if (not isinstance(nature_seed, int) or isinstance(nature_seed, bool)
+                or nature_seed < 0 or nature_seed > 0xFFFFFFFFFFFFFFFF):
+            raise ValueError("nature_seed must be an unsigned 64-bit integer")
+        payload = {"state_handle": self.handle, "nature_seed": nature_seed}
+        if action_id is not None:
+            payload["action_id"] = action_id
+        result = self.session.call("reference_nature_run_action_begin", **payload)
+        return ReferenceNatureRunActionSession.from_wire(
+            self.session, result["result"])
+
 
 @dataclass(frozen=True)
 class ControlledEventChoice:
@@ -193,6 +211,77 @@ class ControlledRunActionChoice:
 
     def release(self):
         return self.state.release()
+
+
+@dataclass(frozen=True)
+class ReferenceNatureRunActionSession:
+    """Atomic run-action mechanics and ReferenceNature sampler state."""
+    session: "Session"
+    handle: str
+    fingerprint: str
+    state_handle: str | None
+    action_id: str
+    run_phase: str
+    boundary: str
+    pending: dict | None
+    decision_transcript: list
+    nature_sample_count: int
+
+    @classmethod
+    def from_wire(cls, session, payload):
+        if payload.get("schemaId") != (
+                "sts2-v111-reference-nature-run-action-session-v1"):
+            raise EmulatorError(
+                "Unsupported ReferenceNature run-action session schema")
+        return cls(
+            session, payload["referenceNatureRunActionHandle"],
+            payload["fingerprint"], payload["stateHandle"],
+            payload["actionId"],
+            payload["runPhase"], payload["boundary"], payload["pending"],
+            payload["decisionTranscript"], payload["natureSampleCount"])
+
+    @property
+    def complete(self):
+        return self.boundary == "committed"
+
+    @property
+    def state(self):
+        """Ordinary playable state, available after this Nature action commits."""
+        if self.state_handle is None:
+            raise EmulatorError(
+                "ReferenceNature run-action has not committed its pending choice")
+        return State(self.session, self.state_handle)
+
+    def status(self):
+        result = self.session.call(
+            "reference_nature_run_action_status",
+            reference_nature_run_action_handle=self.handle)
+        return ReferenceNatureRunActionSession.from_wire(
+            self.session, result["result"])
+
+    def resolve_next(self):
+        """Sample and resolve one pending chance through run mechanics."""
+        result = self.session.call(
+            "reference_nature_run_action_resolve_next",
+            reference_nature_run_action_handle=self.handle,
+            fingerprint=self.fingerprint)
+        return ReferenceNatureRunActionSession.from_wire(
+            self.session, result["result"])
+
+    def fork(self):
+        result = self.session.call(
+            "reference_nature_run_action_fork",
+            reference_nature_run_action_handle=self.handle)
+        return ReferenceNatureRunActionSession.from_wire(
+            self.session, result["result"])
+
+    def save_snapshot(self):
+        return self.session.call(
+            "reference_nature_run_action_save",
+            reference_nature_run_action_handle=self.handle)["snapshot"]
+
+    def release(self):
+        return self.session.release_reference_nature_run_action_many([self])
 
 
 @dataclass(frozen=True)
@@ -931,6 +1020,26 @@ class Session:
             raise ValueError("Semantic handle belongs to another session")
         return self.call("semantic_release_many",
                          semantic_handles=[s.handle for s in states])["released"]
+
+    def load_reference_nature_run_action_snapshot(self, snapshot: str):
+        if self.capabilities.get(
+                "referenceNatureRunActionSessionSchemaId") != (
+                "sts2-v111-reference-nature-run-action-session-v1"):
+            raise EmulatorError(
+                "Emulator does not expose ReferenceNature run-action sessions")
+        result = self.call("reference_nature_run_action_load", snapshot=snapshot)
+        return ReferenceNatureRunActionSession.from_wire(
+            self, result["result"])
+
+    def release_reference_nature_run_action_many(self, sessions):
+        sessions = list(sessions)
+        if any(item.session is not self for item in sessions):
+            raise ValueError(
+                "ReferenceNature run-action handle belongs to another session")
+        return self.call(
+            "reference_nature_run_action_release_many",
+            reference_nature_run_action_handles=[
+                item.handle for item in sessions])["released"]
 
     def load_controlled_snapshot(self, snapshot: str):
         return ControlledCombat.from_wire(self,
