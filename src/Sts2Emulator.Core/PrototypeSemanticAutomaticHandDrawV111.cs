@@ -158,7 +158,8 @@ public sealed partial class PrototypeGameEngine
     {
         var result = ResolveAutomaticStep(
             checkpoint,
-            PrototypeContent.Rules.EndTurnPipeline[SemanticHandDrawStepIndex]);
+            PrototypeContent.Rules.EndTurnPipeline[SemanticHandDrawStepIndex],
+            deferAutomaticHandDrawCompletion: true);
         var after = RequireWorld(result).Combat;
         if (after is null)
         {

@@ -2232,7 +2232,8 @@ public sealed partial class PrototypeGameEngine
 
     private static RunState ResolveAutomaticStep(
         RunState state,
-        PrototypeAutomaticStep automaticStep)
+        PrototypeAutomaticStep automaticStep,
+        bool deferAutomaticHandDrawCompletion = false)
     {
         var world = RequireWorld(state);
         var combat = world.Combat
@@ -2872,6 +2873,36 @@ public sealed partial class PrototypeGameEngine
                         moveSourceCardOnCompletion: false);
                     player = resumed.Player;
                     combat = resumed.Combat;
+                }
+
+                if (deferAutomaticHandDrawCompletion &&
+                    combat.PendingChoice is null &&
+                    combat.PendingKnowledgeDemonChoice is null &&
+                    combat.SemanticDeck?.Pending is null)
+                {
+                    var cursor = combat.AutomaticPipelineContinuation ??
+                        throw new InvalidDataException(
+                            "Deferred hand-draw completion lost its cursor.");
+                    if (!cursor.Mechanics.IsAtStep(
+                            PrototypeAutomaticStepKind.DrawPlayerHand) ||
+                        cursor.OpeningStage is not null ||
+                        cursor.PendingPostDispatchEventKind is not null)
+                        throw new InvalidDataException(
+                            "Deferred hand-draw completion is at an invalid pipeline boundary.");
+                    combat = combat with
+                    {
+                        AutomaticPipelineContinuation = cursor with
+                        {
+                            ControlledSemanticBeforeHandDrawPending = false
+                        }
+                    };
+                    var completedInput = state with
+                    {
+                        Player = player,
+                        World = world with { Combat = combat }
+                    };
+                    return CompleteAutomaticHandDrawStage(
+                        completedInput, requestedHandDraw);
                 }
 
                 combat = ApplyAutomaticHandDrawPostStagePowerTiming(

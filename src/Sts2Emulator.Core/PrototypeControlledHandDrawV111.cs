@@ -224,7 +224,8 @@ public sealed partial class PrototypeGameEngine
     /// ordinary pipeline cursor. Controlled and semantic providers share
     /// this mechanics boundary before the common pipeline resumes.
     /// </summary>
-    internal static RunState CompleteAutomaticHandDrawStage(RunState state)
+    internal static RunState CompleteAutomaticHandDrawStage(
+        RunState state, int? completedSemanticDrawRequested = null)
     {
         if (!ControlledChanceGuardV111.Active)
             throw new InvalidOperationException(
@@ -235,7 +236,8 @@ public sealed partial class PrototypeGameEngine
         var cursor = combat.AutomaticPipelineContinuation ??
             throw new InvalidDataException(
                 "Automatic hand-draw completion lost its pipeline cursor.");
-        if (!cursor.Mechanics.IsAtStep(
+        if (completedSemanticDrawRequested is < 0 ||
+            !cursor.Mechanics.IsAtStep(
                 PrototypeAutomaticStepKind.DrawPlayerHand) ||
             cursor.OpeningStage is not null ||
             cursor.PendingPostDispatchEventKind is not null ||
@@ -255,7 +257,8 @@ public sealed partial class PrototypeGameEngine
                 ControlledDrawRemaining = null,
                 ControlledDrawCostRemaining = null,
                 ControlledSemanticDrawRemaining = null,
-                ControlledSemanticDrawRequested = null,
+                ControlledSemanticDrawRequested =
+                    completedSemanticDrawRequested,
                 ControlledSemanticBeforeHandDrawPending = false,
                 ControlledRecycleStratagemPending = false
             }
