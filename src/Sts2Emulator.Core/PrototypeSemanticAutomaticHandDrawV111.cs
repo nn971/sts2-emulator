@@ -41,66 +41,36 @@ public sealed partial class PrototypeGameEngine
             cursor.PendingPostDispatchEventKind is not null)
             throw new InvalidOperationException(
                 "Expected an existing DrawPlayerHand pipeline checkpoint.");
-        var result = ResolveAutomaticStep(
-            run, PrototypeContent.Rules.EndTurnPipeline[SemanticHandDrawStepIndex]);
-        var after = RequireWorld(result).Combat ??
-            throw new InvalidOperationException("Hand draw removed combat.");
-        if (after.PendingChoice?.ControlledRandomPileCard is not null &&
-            after.AutomaticPipelineContinuation?
-                .ControlledSemanticBeforeHandDrawPending == true)
-            return (result, 0, 0);
-        if (after.PendingChoice?.AutomaticSemanticDrawHookChoice == true &&
-            after.AutomaticPipelineContinuation?
-                .ControlledSemanticBeforeHandDrawPending == true)
-            return (result, 0, 0);
-        // A source-committed opening order may supply the complete
-        // requested hand without a Nature ticket. This is a valid,
-        // genuinely deterministic automatic stage, not an unsupported
-        // interruption. Preserve original hooks and advance the cursor
-        // exactly once, as the surrounding ResumeAutomaticPipeline would.
-        if (!IsSemanticAutomaticHandDraw(after) &&
-            after.AutomaticPipelineContinuation?.Mechanics.IsAtStep(
-                PrototypeAutomaticStepKind.DrawPlayerHand) == true &&
-            after.SemanticDeck is { Pending: null } &&
-            after.PendingChoice is null &&
-            after.PendingKnowledgeDemonChoice is null)
+        var (result, requested, remaining) =
+            ResumeSemanticAutomaticHandDrawStep(
+                run,
+                combat.CounterState.CardsDrawnThisCombat,
+                "unsupported_nested_stage",
+                "Hand draw removed combat.",
+                missingCombatIsInvalidData: false);
+        if (requested == 0 && remaining == 0)
         {
-            var drawn = after.CounterState.CardsDrawnThisCombat -
-                combat.CounterState.CardsDrawnThisCombat;
-            if (drawn <= 0)
+            var after = RequireWorld(result).Combat ??
+                throw new InvalidOperationException(
+                    "Hand draw removed combat.");
+            bool awaitingPreDrawChoice =
+                after.AutomaticPipelineContinuation?
+                    .ControlledSemanticBeforeHandDrawPending == true &&
+                (after.PendingChoice?.ControlledRandomPileCard is not null ||
+                 after.PendingChoice?.AutomaticSemanticDrawHookChoice == true);
+            // A source-committed opening order may supply the complete
+            // requested hand without a Nature ticket. This is valid only
+            // when the ordinary stage actually drew cards.
+            if (!awaitingPreDrawChoice)
                 throw new NotSupportedException(
                     "UNSUPPORTED_SEMANTIC_DECK site=combat.DrawPlayerHand " +
                     "operation=zero_card_uninterrupted_stage");
-            after = after with
-            {
-                AutomaticPipelineContinuation =
-                    after.AutomaticPipelineContinuation with
-                    {
-                        NextStepIndex = SemanticHandDrawStepIndex + 1
-                    }
-            };
-            return (result with
-            {
-                World = RequireWorld(result) with { Combat = after }
-            }, drawn, 0);
         }
-        bool awaitingInsertion = after.PendingChoice?.ControlledDrawInsertion?
-            .SemanticDrawContinuation?.AutomaticSemanticHandDrawSegment == true;
-        bool awaitingStratagem = after.PendingChoice?
-            .AutomaticSemanticStratagemDrawSelection == true;
-        bool awaitingHookChoice = after.PendingChoice?
-            .AutomaticSemanticDrawHookChoice == true;
-        if (!IsSemanticAutomaticHandDraw(after) ||
-            (after.SemanticDeck?.Pending is null &&
-             after.PendingChoice?.ControlledDrawCost is null &&
-             !awaitingInsertion && !awaitingStratagem &&
-             !awaitingHookChoice))
+        if (requested == 0 && remaining > 0)
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.DrawPlayerHand " +
                 "operation=unsupported_nested_stage");
-        var saved = after.AutomaticPipelineContinuation!;
-        return (result, saved.ControlledSemanticDrawRequested!.Value,
-            saved.ControlledSemanticDrawRemaining!.Value);
+        return (result, requested, remaining);
     }
 
     internal static (RunState Run, int Requested, int Remaining)
@@ -203,7 +173,42 @@ public sealed partial class PrototypeGameEngine
                 cursor.ControlledSemanticDrawRemaining!.Value);
         }
 
+        if (after.AutomaticPipelineContinuation?
+                .ControlledSemanticBeforeHandDrawPending == true &&
+            (after.PendingChoice?.ControlledRandomPileCard is not null ||
+             after.PendingChoice?.AutomaticSemanticDrawHookChoice == true))
+            return (result, 0, 0);
+
         var completed = after.AutomaticPipelineContinuation;
+        if (completed?.Mechanics.IsAtStep(
+                PrototypeAutomaticStepKind.DrawPlayerHand) == true &&
+            !completed.ControlledSemanticBeforeHandDrawPending &&
+            after.PendingChoice is null &&
+            after.PendingKnowledgeDemonChoice is null &&
+            after.SemanticDeck is { Pending: null })
+        {
+            // A source-committed opening order can complete this stage
+            // without a semantic card ticket. Interpret that result here
+            // alongside all other resumed automatic-draw outcomes.
+            int drawn = after.CounterState.CardsDrawnThisCombat -
+                cardsDrawnBefore;
+            if (drawn <= 0)
+                throw new NotSupportedException(
+                    "UNSUPPORTED_SEMANTIC_DECK site=combat.DrawPlayerHand " +
+                    "operation=" + unsupportedOperation);
+            after = after with
+            {
+                AutomaticPipelineContinuation = completed with
+                {
+                    NextStepIndex = SemanticHandDrawStepIndex + 1
+                }
+            };
+            result = result with
+            {
+                World = RequireWorld(result) with { Combat = after }
+            };
+            return (result, drawn, 0);
+        }
         if (after.PendingChoice is not null ||
             after.PendingKnowledgeDemonChoice is not null ||
             completed is null ||
