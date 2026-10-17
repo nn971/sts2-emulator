@@ -339,10 +339,13 @@ source continuations to `RunState`, including end turn, card draw, random
 targets and generated-card pools; broad player-card and trigger coverage
 remains outstanding. Separately, an opt-in event-effect frame now stores
 partially applied ordinary event choices and resumes at the unresolved effect
-for selected legacy event draws. Its support is limited to the event sites in
-[`CONTROLLED_EVENT_CHOICE_D3.md`](CONTROLLED_EVENT_CHOICE_D3.md); custom event
-handlers, post-reward modifiers, and other event reward generation remain
-outside that continuation.
+for selected legacy event draws, including the legacy event Toy Box wax offer.
+A separate event-reward frame resumes the post-reward modifier-curse draw
+after player choices without repeating them. Support remains limited to the
+event sites in
+[`CONTROLLED_EVENT_CHOICE_D3.md`](CONTROLLED_EVENT_CHOICE_D3.md); native
+regional chance routes, other custom event handlers and other reward
+generation remain outside these continuations.
 
 **D4 partial:** opt-in `nature_begin`, `nature_resolve`,
 `nature_advance`, `nature_fork`, `nature_save`, `nature_load`, and
@@ -353,12 +356,12 @@ one small pending chance event. A separate playable semantic schema exposes
 seeded entry, player actions, weighted
 intent IDs, typed draw/target/generated-card resolution, and exact snapshot
 replay through the same JSONL/Python bridge.
-An opt-in event adapter also exposes whole-run begin, resolve and inspect
-operations on ordinary run-state handles.
+An opt-in event adapter also exposes whole-run begin, reward advance, resolve,
+inspect and one-request enumeration operations on ordinary run-state handles.
 Existing `step` and native RNG paths retain semantics. Next D3/D4
-work must wire controlled choices into general game action continuation,
-broaden supported event-effect sites and add trained agent-facing
-observations. Full native-oracle fidelity
+work must wire controlled choices into general game action continuation beyond
+the selected event and reward frames, broaden supported event-effect sites and
+add trained agent-facing observations. Full native-oracle fidelity
 remains separate from seeded emulator RNG equality. See
 [the isolated Nature bridge](DESIRED_RNG_D3_INTENT_BRIDGE.md).
 
