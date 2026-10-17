@@ -2205,8 +2205,6 @@ public sealed record CombatState(
     PrototypeToricShield[]? ToricShields = null,
     long[]? TransformedPersistentCardIds = null,
     bool BoundCardPlayedThisTurn = false,
-    [property: System.Text.Json.Serialization.JsonIgnore(
-        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     NativeCombatRngV111? NativeRng = null,
     PrototypeKnowledgeDemonChoiceState? PendingKnowledgeDemonChoice = null,
     int KnowledgeDemonChoiceResolvedTurn = 0,
@@ -2217,10 +2215,34 @@ public sealed record CombatState(
     string? CurrentMapNodeId = null,
     int PotionExtraTurnsPending = 0,
     bool IsPlayerSideActive = true,
-    [property: System.Text.Json.Serialization.JsonIgnore(
-        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     SemanticDeckStateV111? SemanticDeck = null)
 {
+    /// <summary>
+    /// Authoritative in-memory provider state for this combat. The legacy
+    /// members below remain its serialized snapshot projection.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public CombatStochasticStateV111 Stochastic { get; init; } =
+        new(NativeRng, SemanticDeck);
+
+    [System.Text.Json.Serialization.JsonIgnore(Condition =
+        System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public NativeCombatRngV111? NativeRng
+    {
+        get => Stochastic.NativeRng;
+        init => Stochastic = CombatStochasticStateV111.WithNativeRng(
+            Stochastic, value);
+    }
+
+    [System.Text.Json.Serialization.JsonIgnore(Condition =
+        System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public SemanticDeckStateV111? SemanticDeck
+    {
+        get => Stochastic.SemanticDeck;
+        init => Stochastic = CombatStochasticStateV111.WithSemanticDeck(
+            Stochastic, value);
+    }
+
     public CombatState Fork() => this with
     {
         Hand = (long[])Hand.Clone(),
@@ -2228,8 +2250,7 @@ public sealed record CombatState(
         DiscardPile = (long[])DiscardPile.Clone(),
         ExhaustPile = (long[])ExhaustPile.Clone(),
         Enemies = Enemies.Select(enemy => enemy.Fork()).ToArray(),
-        NativeRng = NativeRng?.Fork(),
-        SemanticDeck = SemanticDeck?.Fork(),
+        Stochastic = Stochastic.Fork(),
         Cards = Cards.Select(card => card.Fork()).ToArray(),
         PlayerPowers = PlayerPowers.Select(power => power.Fork()).ToArray(),
         Relics = Relics is null

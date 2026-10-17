@@ -3215,15 +3215,7 @@ public static class PrototypeStateInvariants
 
     private static void ValidateCombat(PlayerState player, CombatState combat)
     {
-        NativeCombatRngEntryV111.Validate(combat);
-        if (combat.SemanticDeck is { } semanticDeck)
-        {
-            SemanticDrawPileAdapterV111.ValidateSynchronized(combat);
-            if (semanticDeck.Mode == SemanticDeckStateV111.NativeMode &&
-                combat.NativeRng is null)
-                throw new InvalidOperationException(
-                    "Native exact semantic deck has no native combat RNG owner.");
-        }
+        combat.Stochastic.Validate(combat);
         if (combat.AutomaticPipelineContinuation is { OpeningStage: { } opening } openingContinuation
             && (!Enum.IsDefined(opening)
                 || opening <= PrototypeOpeningCombatStage.PlayerSideStart
