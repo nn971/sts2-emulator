@@ -34,17 +34,21 @@ public sealed record SemanticEndTurnMechanicsStateV111
     }
 
     public string NativeEncounterEntry { get; init; }
-    public SemanticCombatDrawV111? HandDraw
+    internal SemanticEndTurnHandDrawProjectionV111? HandDrawProjection
+    {
+        get => _handDraw;
+        init
+        {
+            _handDraw = value;
+        }
+    }
+    internal SemanticCombatDrawV111? HandDraw
     {
         get => _handDraw is { } draw
             ? new SemanticCombatDrawV111(
                 draw.Origin, draw.ProjectedRun ?? Continuation.Current,
-                draw.RequestedCount,
-                draw.RemainingCount, draw.FromHandDraw,
-                draw.AutomaticHandDraw)
-            {
-                Stochastic = draw.Stochastic
-            }
+                draw.RequestedCount, draw.RemainingCount,
+                draw.FromHandDraw, draw.AutomaticHandDraw)
             : null;
         init
         {
@@ -57,7 +61,7 @@ public sealed record SemanticEndTurnMechanicsStateV111
             _handDraw = new SemanticEndTurnHandDrawProjectionV111(
                 value.Origin.Fork(), value.RequestedCount,
                 value.RemainingCount, value.FromHandDraw,
-                value.AutomaticHandDraw, value.Stochastic.Fork(),
+                value.AutomaticHandDraw,
                 Complete ? value.Run.Fork() : null);
             if (!Complete)
                 Continuation = Continuation with { Current = value.Run };
@@ -96,9 +100,10 @@ public sealed record SemanticEndTurnMechanicsStateV111
 }
 
 /// <summary>
-/// Semantic draw facade state that belongs to end-turn mechanics without a
-/// second current RunState checkpoint. The ordinary pipeline checkpoint is
-/// projected into SemanticCombatDrawV111 when an adapter reads HandDraw.
+/// Semantic draw mechanics metadata without a second current RunState
+/// checkpoint. The ordinary pipeline checkpoint is projected into
+/// SemanticCombatDrawV111 when an adapter reads HandDraw; typed draw
+/// decisions belong to SemanticEndTurnStochasticStateV111.
 /// </summary>
 internal sealed record SemanticEndTurnHandDrawProjectionV111(
     RunState Origin,
@@ -106,5 +111,4 @@ internal sealed record SemanticEndTurnHandDrawProjectionV111(
     int RemainingCount,
     bool FromHandDraw,
     bool AutomaticHandDraw,
-    SemanticCombatDrawStochasticStateV111 Stochastic,
     RunState? ProjectedRun = null);

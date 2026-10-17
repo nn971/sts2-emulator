@@ -10,7 +10,7 @@ public sealed record SemanticPilotStochasticStateV111(
     SemanticRewardAuditV111? RewardAudit = null,
     SemanticNativePolicyAuditV111? NativePolicyAudit = null,
     SemanticSourceRouteAuditV111? SourceRouteAudit = null,
-    SemanticEndTurnV111? PendingEndTurn = null,
+    SemanticEndTurnStochasticStateV111? PendingEndTurn = null,
     SemanticSeededEntryV111? SeededEntry = null)
 {
     public SemanticPilotStochasticStateV111 Fork() => this with

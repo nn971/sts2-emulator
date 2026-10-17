@@ -8,7 +8,8 @@ public sealed record SemanticEndTurnStochasticStateV111(
     RandomIndexDecisionV111[] IntentTranscript,
     RandomIndexDecisionV111[] EnemyActionTranscript,
     SemanticTargetDecisionV111[] TargetTranscript,
-    SemanticEndTurnBoundaryChoiceV111[] BoundaryTranscript)
+    SemanticEndTurnBoundaryChoiceV111[] BoundaryTranscript,
+    SemanticCombatDrawStochasticStateV111? HandDraw = null)
 {
     public SemanticEndTurnStochasticStateV111 Fork() => this with
     {
@@ -21,7 +22,8 @@ public sealed record SemanticEndTurnStochasticStateV111(
         TargetTranscript = TargetTranscript.Select(decision =>
             decision.Fork()).ToArray(),
         BoundaryTranscript =
-            (SemanticEndTurnBoundaryChoiceV111[])BoundaryTranscript.Clone()
+            (SemanticEndTurnBoundaryChoiceV111[])BoundaryTranscript.Clone(),
+        HandDraw = HandDraw?.Fork()
     };
 
     public void Validate()
@@ -30,6 +32,7 @@ public sealed record SemanticEndTurnStochasticStateV111(
             TargetTranscript is null || BoundaryTranscript is null)
             throw new InvalidDataException(
                 "Invalid semantic end-turn stages.");
+        HandDraw?.Validate();
 
         foreach (var decision in IntentTranscript)
         {

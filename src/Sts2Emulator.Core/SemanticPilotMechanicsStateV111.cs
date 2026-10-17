@@ -30,6 +30,8 @@ public sealed record SemanticPilotMechanicsStateV111
     public SemanticPilotContinuationV111[] History { get; init; }
     public string NativeEncounterEntry { get; init; }
     public string Mode { get; init; }
+    internal SemanticPilotEndTurnMechanicsProjectionV111?
+        PendingEndTurn { get; init; }
 
     public SemanticPilotMechanicsStateV111(
         ControlledPlayableCombatV111 OpeningSource,
@@ -45,5 +47,57 @@ public sealed record SemanticPilotMechanicsStateV111
         this.History = History;
         this.NativeEncounterEntry = NativeEncounterEntry;
         this.Mode = Mode;
+    }
+}
+
+/// <summary>
+/// Runless mechanics metadata for the pilot's pending end-turn facade. The
+/// pilot mechanics continuation is the sole current-run checkpoint.
+/// </summary>
+internal sealed record SemanticPilotEndTurnMechanicsProjectionV111(
+    RunState Origin,
+    string NativeEncounterEntry,
+    SemanticEndTurnHandDrawProjectionV111? HandDraw,
+    bool Complete,
+    RunState? PlayerActionSource,
+    string? PlayerActionId)
+{
+    public static SemanticPilotEndTurnMechanicsProjectionV111 Capture(
+        SemanticEndTurnV111 state) => new(
+        state.Origin.Fork(), state.NativeEncounterEntry,
+        state.Mechanics.HandDrawProjection is { } hand
+            ? hand with
+            {
+                Origin = hand.Origin.Fork(),
+                ProjectedRun = hand.ProjectedRun?.Fork()
+            }
+            : null,
+        state.Complete, state.PlayerActionSource?.Fork(),
+        state.PlayerActionId);
+
+    public SemanticEndTurnV111 Project(
+        RunState currentRun,
+        SemanticEndTurnStochasticStateV111 stochastic)
+    {
+        var handDraw = HandDraw is { } hand
+            ? new SemanticCombatDrawV111(
+                hand.Origin, hand.ProjectedRun ?? currentRun,
+                hand.RequestedCount, hand.RemainingCount,
+                hand.FromHandDraw, hand.AutomaticHandDraw)
+            {
+                Stochastic = stochastic.HandDraw ??
+                    new SemanticCombatDrawStochasticStateV111()
+            }
+            : null;
+        var intents = currentRun.World?.Combat?
+            .AutomaticPipelineContinuation?.ControlledTurnIntents;
+        return new SemanticEndTurnV111(
+            Origin, currentRun, NativeEncounterEntry, intents,
+            handDraw, [], Complete)
+        {
+            PlayerActionSource = PlayerActionSource,
+            PlayerActionId = PlayerActionId,
+            Stochastic = stochastic
+        };
     }
 }

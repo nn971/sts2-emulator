@@ -108,9 +108,15 @@ public sealed record SemanticPilotCombatV111(
     public SimulationStateV111<SemanticPilotMechanicsStateV111,
         SemanticPilotStochasticStateV111> Simulation { get; init; } = new(
             new SemanticPilotMechanicsStateV111(
-                OpeningSource, Run, History, NativeEncounterEntry, Mode),
+                OpeningSource, Run, History, NativeEncounterEntry, Mode)
+            {
+                PendingEndTurn = PendingEndTurn is { } endTurn
+                    ? SemanticPilotEndTurnMechanicsProjectionV111
+                        .Capture(endTurn)
+                    : null
+            },
             new SemanticPilotStochasticStateV111(
-                PendingEndTurn: PendingEndTurn));
+                PendingEndTurn: PendingEndTurn?.Stochastic.Fork()));
 
     [JsonIgnore]
     public SemanticPilotMechanicsStateV111 Mechanics
@@ -171,8 +177,31 @@ public sealed record SemanticPilotCombatV111(
 
     public SemanticEndTurnV111? PendingEndTurn
     {
-        get => Stochastic.PendingEndTurn;
-        init => Stochastic = Stochastic with { PendingEndTurn = value };
+        get
+        {
+            var mechanics = Mechanics.PendingEndTurn;
+            var stochastic = Stochastic.PendingEndTurn;
+            if (mechanics is null && stochastic is null)
+                return null;
+            if (mechanics is null || stochastic is null)
+                throw new InvalidDataException(
+                    "Semantic pilot end-turn owners disagree.");
+            return mechanics.Project(Run, stochastic);
+        }
+        init
+        {
+            Mechanics = Mechanics with
+            {
+                PendingEndTurn = value is null
+                    ? null
+                    : SemanticPilotEndTurnMechanicsProjectionV111
+                        .Capture(value)
+            };
+            Stochastic = Stochastic with
+            {
+                PendingEndTurn = value?.Stochastic.Fork()
+            };
+        }
     }
     public SemanticOtherChanceStateV111? OtherChance
     {
@@ -325,6 +354,7 @@ public sealed record SemanticPilotCombatV111(
             throw new InvalidDataException("Invalid semantic playable session.");
         if (this.PendingEndTurn is { } endTurn)
         {
+            endTurn.Validate();
             if (endTurn.Complete ||
                 (endTurn.EnemyActionPending is not null &&
                  (this.PendingInitialIntents is not null ||
@@ -336,8 +366,7 @@ public sealed record SemanticPilotCombatV111(
                  (this.CostPending is null ||
                   this.CostPending.TargetCardInstanceId is not null ||
                   CanonicalJson.Sha256(endTurn.CostPending) !=
-                      CanonicalJson.Sha256(this.CostPending.Request))) ||
-                CanonicalJson.Sha256(endTurn.Run) != CanonicalJson.Sha256(this.Run))
+                      CanonicalJson.Sha256(this.CostPending.Request))))
                 throw new InvalidDataException(
                     "Semantic playable and end-turn continuation diverged.");
         }
@@ -837,6 +866,7 @@ public sealed record SemanticPilotCombatV111(
             },
             _ => transition
         }).ToArray(),
+        PendingEndTurn = PendingEndTurn?.Fork(),
         Stochastic = Stochastic.Fork()
     };
 }

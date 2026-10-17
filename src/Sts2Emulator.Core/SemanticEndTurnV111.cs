@@ -97,7 +97,7 @@ public sealed record SemanticEndTurnV111(
             new SemanticEndTurnMechanicsStateV111(
                 Origin, Run, NativeEncounterEntry, Intents, HandDraw, Complete),
             new SemanticEndTurnStochasticStateV111(
-                IntentTranscript, [], [], []));
+                IntentTranscript, [], [], [], HandDraw?.Stochastic));
 
     [JsonIgnore]
     public SemanticEndTurnMechanicsStateV111 Mechanics
@@ -141,8 +141,21 @@ public sealed record SemanticEndTurnV111(
 
     public SemanticCombatDrawV111? HandDraw
     {
-        get => Mechanics.HandDraw;
-        init => Mechanics = Mechanics with { HandDraw = value };
+        get => Mechanics.HandDraw is { } draw
+            ? draw with
+            {
+                Stochastic = Stochastic.HandDraw ??
+                    new SemanticCombatDrawStochasticStateV111()
+            }
+            : null;
+        init
+        {
+            Mechanics = Mechanics with { HandDraw = value };
+            Stochastic = Stochastic with
+            {
+                HandDraw = value?.Stochastic.Fork()
+            };
+        }
     }
 
     public bool Complete
