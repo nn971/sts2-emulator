@@ -4267,6 +4267,17 @@ public sealed partial class PrototypeGameEngine
                                 ?? throw new InvalidDataException(
                                     "Controlled event-entry frame is missing its map node."))))
                     .State,
+                "buy_card" or "buy_potion" or "replace_shop_potion"
+                    or "remove_card" or "buy_relic" =>
+                    new PrototypeGameEngine().Step(
+                        checkpoint with
+                        {
+                            DecisionIndex = checked(
+                                state.DecisionIndex - 1)
+                        },
+                        continuation.RunAction ?? throw new InvalidDataException(
+                            "Controlled Shop-purchase frame is missing its action."))
+                    .State,
                 _ => throw new NotSupportedException(
                     "Controlled run action has no resume implementation.")
             });
@@ -4285,6 +4296,11 @@ public sealed partial class PrototypeGameEngine
                 PrototypeNativeRestSiteActionsV111.Dig =>
                     ControlledEventChoiceReplayV111
                         .IsRunActionShovelSite(pendingChance.Request.SiteId),
+                "buy_card" or "buy_potion" or "replace_shop_potion"
+                    or "remove_card" or "buy_relic" =>
+                    StochasticSiteRegistryV111
+                        .IsRunActionShopPurchaseSite(
+                            pendingChance.Request.SiteId),
                 _ => false
             };
             if (!supportedSite
@@ -4306,7 +4322,8 @@ public sealed partial class PrototypeGameEngine
                     decisionCandidateLabels,
                     pendingChance.Request,
                     pendingChance.CandidateLabels,
-                    continuation.MapNodeId);
+                    continuation.MapNodeId,
+                    continuation.RunAction);
             nextContinuation.Validate();
             return state with
             {
@@ -4324,7 +4341,11 @@ public sealed partial class PrototypeGameEngine
             continuation.ActionId,
             decisions,
             decisionCandidateLabels,
-            MapNodeId: continuation.MapNodeId);
+            MapNodeId: continuation.MapNodeId,
+            ActionFingerprint: continuation.RunAction is null
+                ? null
+                : PrototypeAiEnvironment.StableActionId(
+                    continuation.RunAction));
         trace.Validate();
         return result with
         {

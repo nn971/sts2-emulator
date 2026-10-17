@@ -900,6 +900,9 @@ internal sealed class ControlledEventChoiceReplayV111 :
     public static bool IsRunActionShopSite(string siteId) =>
         StochasticSiteRegistryV111.IsRunActionShopSite(siteId);
 
+    public static bool IsRunActionShopPurchaseSite(string siteId) =>
+        StochasticSiteRegistryV111.IsRunActionShopPurchaseSite(siteId);
+
     public static bool IsRunActionTreasureSite(string siteId) =>
         StochasticSiteRegistryV111.IsRunActionTreasureSite(siteId);
 
@@ -910,6 +913,7 @@ internal sealed class ControlledEventChoiceReplayV111 :
         IsEventChoiceSite(siteId) || IsRunActionSite(siteId)
         || IsRunActionEventEntrySite(siteId)
         || IsRunActionShopSite(siteId)
+        || IsRunActionShopPurchaseSite(siteId)
         || IsRunActionTreasureSite(siteId)
         || IsRunActionShovelSite(siteId);
 }

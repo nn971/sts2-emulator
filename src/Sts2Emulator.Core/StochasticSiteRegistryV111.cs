@@ -221,6 +221,18 @@ public static class StochasticSiteRegistryV111
         "shop.relic_offer.price.index_draw"
     ];
 
+    private static readonly string[] RunActionShopPurchaseSites =
+    [
+        NativeGloryAncientsV111.BeautifulBraceletShuffleSiteId,
+        NativeGloryAncientsV111.DistinguishedCapeCurseSiteId,
+        "relic.sand_castle.acquisition_upgrade.shuffle_swap_index",
+        "relic.acquisition.random_rare_card.model",
+        "relic.acquisition.random_potion.model",
+        "event.potion.fill_empty_slots.model",
+        "run.potion.fill_empty_slots.model",
+        "reward.card_transform.replacement.index_draw"
+    ];
+
     private static readonly string[] RunActionTreasureSites =
     [
         "treasure.relic_model.index_draw"
@@ -369,6 +381,8 @@ public static class StochasticSiteRegistryV111
         new(RunActionEventEntrySites, StringComparer.Ordinal);
     private static readonly HashSet<string> RunActionShopSiteSet =
         new(RunActionShopSites, StringComparer.Ordinal);
+    private static readonly HashSet<string> RunActionShopPurchaseSiteSet =
+        new(RunActionShopPurchaseSites, StringComparer.Ordinal);
     private static readonly HashSet<string> RunActionTreasureSiteSet =
         new(RunActionTreasureSites, StringComparer.Ordinal);
     private static readonly HashSet<string> RunActionShovelSiteSet =
@@ -378,6 +392,7 @@ public static class StochasticSiteRegistryV111
     private static readonly string[] RunActionSessionSites = RunActionSites
         .Concat(RunActionEventEntrySites)
         .Concat(RunActionShopSites)
+        .Concat(RunActionShopPurchaseSites)
         .Concat(RunActionTreasureSites)
         .Concat(RunActionShovelSites)
         .Distinct(StringComparer.Ordinal)
@@ -387,6 +402,7 @@ public static class StochasticSiteRegistryV111
             .Concat(RunActionSites)
             .Concat(RunActionEventEntrySites)
             .Concat(RunActionShopSites)
+            .Concat(RunActionShopPurchaseSites)
             .Concat(RunActionTreasureSites)
             .Concat(ControlledEventChoiceSites)
             .Concat(NativeMerchantSessionSites)
@@ -414,6 +430,8 @@ public static class StochasticSiteRegistryV111
         (string[])RunActionEventEntrySites.Clone();
     public static string[] RunActionShopSiteIds =>
         (string[])RunActionShopSites.Clone();
+    public static string[] RunActionShopPurchaseSiteIds =>
+        (string[])RunActionShopPurchaseSites.Clone();
     public static string[] RunActionTreasureSiteIds =>
         (string[])RunActionTreasureSites.Clone();
     public static string[] RunActionShovelSiteIds =>
@@ -458,6 +476,9 @@ public static class StochasticSiteRegistryV111
 
     public static bool IsRunActionShopSite(string siteId) =>
         RunActionShopSiteSet.Contains(siteId);
+
+    public static bool IsRunActionShopPurchaseSite(string siteId) =>
+        RunActionShopPurchaseSiteSet.Contains(siteId);
 
     public static bool IsRunActionTreasureSite(string siteId) =>
         RunActionTreasureSiteSet.Contains(siteId);

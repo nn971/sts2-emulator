@@ -16,16 +16,19 @@ public sealed record PrototypeControlledRunActionMechanicsStateV111
 
     public string ActionId { get; init; }
     public string? MapNodeId { get; init; }
+    public GameAction? RunAction { get; init; }
 
     public PrototypeControlledRunActionMechanicsStateV111(
         RunState PartialState,
         string ActionId,
-        string? MapNodeId = null)
+        string? MapNodeId = null,
+        GameAction? RunAction = null)
     {
         Continuation = new PrototypeMechanicsContinuationStateV111(
             PrototypeMechanicsContinuationKindV111.ControlledRunAction,
             null, PartialState);
         this.ActionId = ActionId;
         this.MapNodeId = MapNodeId;
+        this.RunAction = RunAction;
     }
 }

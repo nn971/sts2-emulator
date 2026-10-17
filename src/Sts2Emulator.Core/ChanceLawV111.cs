@@ -2073,14 +2073,22 @@ public static partial class ChanceLawEngineV111
             throw new InvalidOperationException(
                 "No controlled run-action chance is pending.");
         continuation.Validate();
-        return CanonicalJson.Sha256(new
+        var boundary = new
         {
             schemaId = ControlledRunActionEngineV111.SchemaId,
             continuation.ActionId,
             continuation.MapNodeId,
             request = continuation.PendingRequest,
             candidateLabels = continuation.PendingCandidateLabels
-        });
+        };
+        return continuation.RunAction is null
+            ? CanonicalJson.Sha256(boundary)
+            : CanonicalJson.Sha256(new
+            {
+                boundary,
+                actionFingerprint = PrototypeAiEnvironment.StableActionId(
+                    continuation.RunAction)
+            });
     }
 
     public static ChanceLawV111 QueryControlledEventChoice(RunState run)
@@ -2969,9 +2977,9 @@ public sealed record ReferenceNatureRunActionSessionV111(
 
     public void Validate()
     {
-        var deterministicShopAction = Origin is not null
+        var immediateShopAction = Origin is not null
             && Action is not null
-            && ControlledRunActionEngineV111.IsDeterministicShopAction(
+            && ControlledRunActionEngineV111.IsShopPurchaseAction(
                 Origin, Action)
             && DecisionTranscript is { Length: 0 };
         if (SchemaId != CurrentSchemaId || Origin is null || Action is null ||
@@ -2979,7 +2987,7 @@ public sealed record ReferenceNatureRunActionSessionV111(
             DecisionTranscript is null || string.IsNullOrWhiteSpace(Action.Kind) ||
             (Run.ControlledRunActionChoice is null &&
              Run.ControlledRunActionHistory is not { Length: > 0 } &&
-             !deterministicShopAction))
+             !immediateShopAction))
             throw new InvalidDataException(
                 "Invalid ReferenceNature run-action session envelope.");
         PrototypeStateInvariants.Validate(Origin);
@@ -2998,6 +3006,13 @@ public sealed record ReferenceNatureRunActionSessionV111(
         {
             continuation.Validate();
             if (continuation.ActionId != Action.Kind ||
+                (ControlledRunActionEngineV111.IsShopPurchaseAction(
+                     Origin, Action)
+                    ? continuation.RunAction is null ||
+                      PrototypeAiEnvironment.StableActionId(
+                          continuation.RunAction) !=
+                      PrototypeAiEnvironment.StableActionId(Action)
+                    : continuation.RunAction is not null) ||
                 continuation.Decisions.Length != DecisionTranscript.Length)
                 throw new InvalidDataException(
                     "Pending run-action continuation differs from ReferenceNature history.");
@@ -3011,7 +3026,7 @@ public sealed record ReferenceNatureRunActionSessionV111(
         }
         else
         {
-            if (deterministicShopAction)
+            if (immediateShopAction)
             {
                 var replayedRun = ControlledRunActionEngineV111.Begin(
                     Origin.Fork(), CloneAction(Action));
@@ -3027,6 +3042,11 @@ public sealed record ReferenceNatureRunActionSessionV111(
             var trace = Run.ControlledRunActionHistory![^1];
             trace.Validate();
             if (trace.ActionId != Action.Kind ||
+                (ControlledRunActionEngineV111.IsShopPurchaseAction(
+                     Origin, Action)
+                    ? trace.ActionFingerprint !=
+                      PrototypeAiEnvironment.StableActionId(Action)
+                    : trace.ActionFingerprint is not null) ||
                 trace.Decisions.Length != DecisionTranscript.Length)
                 throw new InvalidDataException(
                     "Completed run-action trace differs from ReferenceNature history.");

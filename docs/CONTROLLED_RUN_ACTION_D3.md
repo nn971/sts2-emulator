@@ -72,14 +72,20 @@ The session supports the `start_run` boss encounter draw, legacy map
 Event-node entry draws, seven `shop.*` sites in legacy Shop-node generation,
 the `treasure.relic_model.index_draw` legacy Treasure-node site, and Shovel's
 unowned-relic draw. The same ReferenceNature run-action session also accepts
-legal `buy_card`, `buy_potion`, `replace_shop_potion`, and `remove_card` Shop
-actions when they complete without a random request. These deterministic
-actions commit immediately with no Nature sample; a stochastic hook during
-one of them still fails closed. Relic purchases and other stochastic purchase
-effects remain unsupported. The session keeps supported Chance Law samples
-and run-state resolution atomic across fork/save/restore; it does not enable
-native regional merchant or treasure providers or other run/reward/map
-operations. Nature samples do not advance the game's RNG.
+`buy_card`, `buy_potion`, `replace_shop_potion`, `remove_card`, and `buy_relic`
+Shop actions. Actions with no random request commit immediately with an empty
+transcript and no Nature sample. The session can suspend at the registered
+index-only acquisition sites advertised as `shopPurchaseAcquisitionEffects`:
+Beautiful Bracelet and Distinguished Cape shuffles, Sand Castle upgrades,
+random rare-card and potion acquisitions, potion-slot fills, and
+persistent-card transform replacement. It replays the exact Shop action and
+validates the pending request and labels against the saved source state.
+Their generic request-index laws remain `UNVERIFIED`; these controlled choices
+do not advance game RNG. Unit-float acquisition effects and all other
+unregistered purchase hooks remain fail-closed. The session keeps supported
+Chance Law samples and run-state resolution atomic across fork/save/restore;
+it does not enable native regional merchant or treasure entry providers or
+other run/reward/map operations.
 Once committed, the session result also provides a regular `stateHandle` for
 continuing play through the ordinary run API; no state handle is published
 while a Nature choice remains pending.
@@ -115,12 +121,29 @@ The supported legacy Shop-node generation sites are:
 
 The supported legacy Treasure-node site is `treasure.relic_model.index_draw`.
 
+The registered index-only Shop-purchase acquisition sites are:
+
+- `run.relic.beautiful_bracelet.deck_shuffle.swap_index`
+- `relic.distinguished_cape.modifier_curse.index_draw`
+- `relic.sand_castle.acquisition_upgrade.shuffle_swap_index`
+- `relic.acquisition.random_rare_card.model`
+- `relic.acquisition.random_potion.model`
+- `event.potion.fill_empty_slots.model`
+- `run.potion.fill_empty_slots.model`
+- `reward.card_transform.replacement.index_draw`
+
+The ordered site IDs are exposed in `hello` under
+`controlledRunActionSiteGroups.shopPurchaseAcquisitionEffects`.
+
 The Python binding exposes `State.begin_controlled_run_start()`,
 `State.begin_controlled_run_action(action_id)`,
 `State.begin_controlled_shovel_dig()`,
 `State.resume_controlled_run_action()` and `ControlledRunActionChoice.resolve()`.
-Use a legacy random profile for these flows; configured native map, event
-streams and relic-bag routes remain outside this controller.
+Use a legacy random profile for run-start, map generation, Event/Treasure
+entry, and Shovel flows. Shop purchase actions can also start from a
+configured native Shop state, but only the registered index-only acquisition
+sites above are controlled; configured native Shop entry and relic-bag
+generation remain outside this controller.
 
 This boundary does not verify native player-stream ownership, source map or
 relic-pool parity, cursor parity or reference probabilities. Native bag draws
