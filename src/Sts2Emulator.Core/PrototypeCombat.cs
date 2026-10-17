@@ -13468,7 +13468,7 @@ public sealed partial class PrototypeGameEngine
 
         if (!pending.AutomaticSemanticStratagemDrawSelection &&
             !pending.AutomaticSemanticDrawHookChoice)
-            state = ResumeAutomaticPipelineAfterChoiceResolution(state);
+            state = ResumeAutomaticPipelineContinuation(state);
 
         if (state.Phase != RunPhase.Combat)
         {
@@ -14445,7 +14445,7 @@ public sealed partial class PrototypeGameEngine
             Player = resolved.Player,
             World = world with { Combat = resolved.Combat }
         };
-        result = ResumeAutomaticPipelineAfterChoiceResolution(result);
+        result = ResumeAutomaticPipelineContinuation(result);
         return result;
     }
 
@@ -14504,7 +14504,7 @@ public sealed partial class PrototypeGameEngine
                 Player = resumed.Player,
                 World = world with { Combat = resumed.Combat }
             };
-            resumedState = ResumeAutomaticPipelineAfterChoiceResolution(
+            resumedState = ResumeAutomaticPipelineContinuation(
                 resumedState);
             if (resumedState.Phase == RunPhase.Combat &&
                 resumedState.World?.Combat is { } live &&
@@ -14521,7 +14521,7 @@ public sealed partial class PrototypeGameEngine
             controlledCardDrawnChoiceSuspension: true);
         var continued = ContinueControlledSemanticEffectDraw(
             state, drawn, draw, continuation);
-        return ResumeAutomaticPipelineAfterChoiceResolution(continued);
+        return ResumeAutomaticPipelineContinuation(continued);
     }
 
     private static RunState ContinueControlledSemanticEffectDraw(

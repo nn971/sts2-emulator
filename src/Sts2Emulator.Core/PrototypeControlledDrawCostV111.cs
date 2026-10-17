@@ -166,7 +166,7 @@ public sealed partial class PrototypeGameEngine
             controlledCardDrawnChoiceSuspension: true);
         var continued = ContinueControlledSemanticEffectDraw(
             state, drawn, draw, continuation);
-        return ResumeAutomaticPipelineAfterChoiceResolution(continued);
+        return ResumeAutomaticPipelineContinuation(continued);
     }
 
     /// <summary>Advance one cost decision, then dispatch CardDrawn once and

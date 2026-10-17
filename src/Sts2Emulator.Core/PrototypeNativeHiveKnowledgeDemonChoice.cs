@@ -166,7 +166,7 @@ public sealed partial class PrototypeGameEngine
         if (combat.AutomaticPipelineContinuation is null)
             throw new InvalidOperationException(
                 "Knowledge Demon choice lost its automatic-step continuation.");
-        return ResumeAutomaticPipelineAfterChoiceResolution(
+        return ResumeAutomaticPipelineContinuation(
             state with { World = world with { Combat = combat } });
     }
 }

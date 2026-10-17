@@ -533,7 +533,7 @@ public sealed partial class PrototypeGameEngine
             Player = resolved.Player,
             World = world with { Combat = resolved.Combat }
         };
-        updated = ResumeAutomaticPipelineAfterChoiceResolution(updated);
+        updated = ResumeAutomaticPipelineContinuation(updated);
         return updated;
     }
 
@@ -598,7 +598,7 @@ public sealed partial class PrototypeGameEngine
     private static RunState ResumeControlledInsertionPipeline(RunState state)
     {
         if (state.Phase == RunPhase.Combat)
-            state = ResumeAutomaticPipelineAfterChoiceResolution(state);
+            state = ResumeAutomaticPipelineContinuation(state);
         return state;
     }
 

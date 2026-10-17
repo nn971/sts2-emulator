@@ -356,7 +356,7 @@ public sealed partial class PrototypeGameEngine
             Player = resumed.Player,
             World = world with { Combat = resumed.Combat }
         };
-        updated = ResumeAutomaticPipelineAfterChoiceResolution(updated);
+        updated = ResumeAutomaticPipelineContinuation(updated);
         return updated;
     }
 }
