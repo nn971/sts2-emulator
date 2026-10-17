@@ -139,19 +139,47 @@ public static class SemanticDrawPileAdapterV111
     }
 
     /// <summary>
-    /// Applies a physical draw-pile mutation and commits its corresponding
-    /// provider transition before returning the new immutable combat state.
+    /// Commits a complete physical draw-pile order supplied by a caller that
+    /// has already resolved that order, such as a saved Fisher-Yates step.
+    /// The identity set must remain unchanged; insertions, removals, and
+    /// shuffles with incoming cards have dedicated operations.
     /// </summary>
-    public static CombatState ApplyPhysicalMutation(
-        CombatState combat, long[] nextPhysicalDrawPile)
+    public static CombatState ApplyDrawPileOrderCommit(
+        CombatState combat, IReadOnlyList<long> nextPhysicalDrawPile)
     {
         ArgumentNullException.ThrowIfNull(combat);
         ArgumentNullException.ThrowIfNull(nextPhysicalDrawPile);
-        return ApplyZoneTransition(
-            combat,
-            combat.Mechanics.CardZones.WithCardsIn(
-                PrototypeCardZone.DrawPile,
-                (long[])nextPhysicalDrawPile.Clone()));
+        var next = nextPhysicalDrawPile.ToArray();
+        if (next.Distinct().Count() != next.Length ||
+            !next.Order().SequenceEqual(combat.DrawPile.Order()))
+            throw new InvalidDataException(
+                "Draw-pile order commit must preserve every physical identity.");
+        var semantic = SynchronizeSemanticDrawPileAfterMutation(combat, next);
+        var nextZones = combat.Mechanics.CardZones.WithCardsIn(
+            PrototypeCardZone.DrawPile, next);
+        return ApplyCommittedZoneTransition(combat, nextZones, semantic);
+    }
+
+    /// <summary>Compatibility alias for a full same-identity order commit.</summary>
+    public static CombatState ApplyPhysicalMutation(
+        CombatState combat, long[] nextPhysicalDrawPile) =>
+        ApplyDrawPileOrderCommit(combat, nextPhysicalDrawPile);
+
+    /// <summary>
+    /// Initializes a fixture's physical draw pile and synchronizes its
+    /// existing provider state before publishing all supplied card zones.
+    /// Runtime identity changes should use insertion, removal, replacement,
+    /// or shuffle operations instead.
+    /// </summary>
+    public static CombatState ApplyDrawPileInitialization(
+        CombatState combat, CombatCardZonesV111 initializedCardZones)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(initializedCardZones);
+        var semantic = SynchronizeSemanticDrawPileAfterMutation(
+            combat, initializedCardZones.DrawPile);
+        return ApplyCommittedZoneTransition(
+            combat, initializedCardZones, semantic);
     }
 
     /// <summary>
@@ -164,11 +192,11 @@ public static class SemanticDrawPileAdapterV111
     {
         ArgumentNullException.ThrowIfNull(combat);
         ArgumentNullException.ThrowIfNull(nextCardZones);
-        var semantic = combat.DrawPile.SequenceEqual(nextCardZones.DrawPile)
-            ? combat.SemanticDeck
-            : SynchronizeSemanticDrawPileAfterMutation(
-                combat, nextCardZones.DrawPile);
-        return CommitZoneTransition(combat, nextCardZones, semantic);
+        if (!combat.DrawPile.SequenceEqual(nextCardZones.DrawPile))
+            throw new InvalidOperationException(
+                "DrawPile changes require a typed draw-pile adapter operation.");
+        return CommitZoneTransition(
+            combat, nextCardZones, combat.SemanticDeck);
     }
 
     /// <summary>

@@ -722,7 +722,7 @@ public static class ControlledPlayableCombatEngineV111
             CurrentMapNodeId = run.World!.Map.CurrentNodeId,
             IsPlayerTurn = true
         };
-        combat = SemanticDrawPileAdapterV111.ApplyZoneTransition(
+        combat = SemanticDrawPileAdapterV111.ApplyDrawPileInitialization(
             combat,
             combat.Mechanics.CardZones.WithZoneChanges(
                 new Dictionary<PrototypeCardZone, long[]>
@@ -793,7 +793,7 @@ public static class ControlledPlayableCombatEngineV111
         (drawPile[fresh.NextShuffleIndex], drawPile[selectedIndex]) =
             (drawPile[selectedIndex], drawPile[fresh.NextShuffleIndex]);
         var nextIndex = fresh.NextShuffleIndex - 1;
-        combat = SemanticDrawPileAdapterV111.ApplyPhysicalMutation(
+        combat = SemanticDrawPileAdapterV111.ApplyDrawPileOrderCommit(
             combat, drawPile);
         var next = fresh with
         {
