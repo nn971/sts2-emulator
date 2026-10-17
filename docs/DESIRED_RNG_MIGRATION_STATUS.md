@@ -16,8 +16,9 @@ and an opt-in D4 JSONL/Python adapter now exist. Restricted semantic rollouts
 can reach supported combat terminals, but there is **not yet** a general
 whole-run controlled continuation or a trained Nature-policy API.
 Narrow saved event-effect and run-action frames now cover selected stochastic
-event choices, the legacy run-start boss draw, Shovel action, and seven random
-indices in legacy Shop-node generation through opt-in D3/D4 boundaries. No `p/q`
+event choices, the legacy run-start boss draw, Shovel action, seven random
+indices in legacy Shop-node generation, and legacy Treasure-node relic selection
+through opt-in D3/D4 boundaries. No `p/q`
 probability or original conditional law is claimed. No consumer-wide profile
 switch has occurred; the legacy prototype profile and default v111 protocols
 remain available. Distinguished Cape's curse-acquisition site now uses an
@@ -210,7 +211,7 @@ reference distribution is claimed.
 | `map.later_act.hive_rest_count.gaussian_int` | Hive map / `context.act_map.*` or legacy `map` | Yes: native truncated rounded Gaussian 6–7; legacy Box–Muller bounded-integer approximation | Yes: native typed Gaussian-int and legacy typed component requests | No: provider-specific result/cursor regression pending | No | No | No |
 | `map.later_act.unknown_count.gaussian_int` | Hive/Glory map / `context.act_map.*` or legacy `map` | Yes: native truncated rounded Gaussian 10–14 then minus one; legacy Box–Muller approximation | Yes: native typed Gaussian-int and legacy typed component requests | No: provider-specific result/cursor regression pending | No | No | No |
 | `event.unknown_room.odds.ticket` | act/floor + Unknown room / legacy `event` | Partial: bounded integer approximation of source `NextFloat` odds; forced-event rooms still consume one draw | No: legacy typed bounded-integer provider only | No | No: room resolution remains source-owned | No | No |
-| `treasure.relic_model.index_draw` | act/floor + ordered unowned relic pool / legacy `reward` fallback | Partial: configured runs use the persisted rarity-partitioned relic grab bag; legacy path uses the restricted pool | Yes: retained legacy provider; configured runs use native relic bag rarity and queue owners | No: seeded treasure result/cursor regression pending | No: no controlled treasure-generation boundary | No | No |
+| `treasure.relic_model.index_draw` | act/floor + ordered unowned relic pool / legacy `reward` fallback | Partial: configured runs use the persisted rarity-partitioned relic grab bag; legacy path uses the restricted pool | Yes: retained legacy provider; configured runs use native relic bag rarity and queue owners | No: seeded treasure result/cursor regression pending | Yes: legacy Treasure-node run-action continuation | No: equal-index law remains unverified | No |
 
 This is the migrated typed-site inventory, not a complete v0.111 RNG
 inventory. Other encounter resolvers, summon/death lifecycle effects,

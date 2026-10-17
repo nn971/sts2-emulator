@@ -21,6 +21,14 @@ public sealed partial class PrototypeGameEngine
             relic => relic.RelicId == id);
     }
 
+    internal static bool WillSkipNextTreasure(PlayerState player)
+    {
+        var index = FindSilverCrucibleIndex(player);
+        return index >= 0
+            && ReadSilverCrucibleProgress(
+                player.Relics[index].PersistentState).TreasureRoomsEntered == 0;
+    }
+
     private static SilverCrucibleProgress ReadSilverCrucibleProgress(
         JsonElement persistentState)
     {

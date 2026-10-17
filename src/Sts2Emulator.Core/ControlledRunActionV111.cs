@@ -56,16 +56,20 @@ public sealed record ControlledRunActionTraceV111(
             var isShopDraw = mapNodeAction
                 && ControlledEventChoiceReplayV111
                     .IsRunActionShopSite(request.SiteId);
+            var isTreasureDraw = mapNodeAction
+                && ControlledEventChoiceReplayV111
+                    .IsRunActionTreasureSite(request.SiteId);
             var prefixStream = ActionId ==
                     PrototypeNativeRestSiteActionsV111.Dig
                 || isEventEntryDraw
                 ? "event" : isShopDraw ? "shop"
+                : isTreasureDraw ? "reward"
                 : isBossDraw ? "combat" : "map";
             var validSite = ActionId == "start_run"
                 ? ControlledEventChoiceReplayV111.IsRunActionSite(
                     request.SiteId)
                 : mapNodeAction
-                    ? isEventEntryDraw || isShopDraw
+                    ? isEventEntryDraw || isShopDraw || isTreasureDraw
                     : request.SiteId ==
                     "relic.unowned_random_selection.index_draw";
             var prefixOwner = isBossDraw
@@ -79,11 +83,13 @@ public sealed record ControlledRunActionTraceV111(
                     PrototypeNativeRestSiteActionsV111.Dig
                     ? Enumerable.Range(0, labels.Length).ToArray()
                     : (int[])request.OrderedCandidates.Clone();
-            var omittedLabels = (isMapDraw || isEventEntryDraw || isShopDraw)
+            var omittedLabels = (isMapDraw || isEventEntryDraw || isShopDraw
+                || isTreasureDraw)
                 && request.SupportCount >
                     ControlledRunActionEngineV111.MaximumInlineOutcomeActions
                 && labels.Length == 0;
-            var numericLabels = !(isMapDraw || isEventEntryDraw || isShopDraw)
+            var numericLabels = !(isMapDraw || isEventEntryDraw || isShopDraw
+                || isTreasureDraw)
                 || omittedLabels || labels.SequenceEqual(
                 Enumerable.Range(0, labels.Length).Select(index =>
                     index.ToString(CultureInfo.InvariantCulture)),
@@ -302,19 +308,34 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                         PendingRequest.SiteId);
                 var shopSite = ControlledEventChoiceReplayV111
                     .IsRunActionShopSite(PendingRequest.SiteId);
+                var treasureSite = ControlledEventChoiceReplayV111
+                    .IsRunActionTreasureSite(PendingRequest.SiteId);
                 var legacyShopNode = node?.RoomType == PrototypeRoomType.Shop
                     && !PrototypeGameEngine.UsesNativeRegionalSystems(world);
+                var availableRelics = node?.RoomType == PrototypeRoomType.Treasure
+                    ? PrototypeContent.RelicPool
+                        .Where(id => !state.Player.Relics.Any(relic =>
+                            StringComparer.Ordinal.Equals(relic.RelicId, id)))
+                        .ToArray()
+                    : Array.Empty<string>();
+                var legacyTreasureNode =
+                    node?.RoomType == PrototypeRoomType.Treasure
+                    && !PrototypeGameEngine.UsesNativeRegionalSystems(world)
+                    && !PrototypeGameEngine.WillSkipNextTreasure(state.Player)
+                    && availableRelics.Length > 0;
                 if (node is null
                     || (node.RoomType != PrototypeRoomType.Event
-                        && !legacyShopNode))
+                        && !legacyShopNode && !legacyTreasureNode))
                     throw new InvalidDataException(
-                        "Controlled map-node frame does not reference an available event or legacy shop node.");
+                        "Controlled map-node frame does not reference an available supported node.");
                 if (!(node.RoomType == PrototypeRoomType.Event && eventEntrySite)
-                    && !(legacyShopNode && shopSite))
+                    && !(legacyShopNode && shopSite)
+                    && !(legacyTreasureNode && treasureSite))
                     throw new InvalidDataException(
                         "Controlled map-node frame has an unsupported chance site.");
                 expectedSite = PendingRequest.SiteId;
-                expectedStream = shopSite ? "shop" : "event";
+                expectedStream = shopSite ? "shop"
+                    : treasureSite ? "reward" : "event";
                 expectedOwner = PendingRequest.OwnerId;
                 expectedCandidates = PendingRequest.OperationKind ==
                         "bounded_integer"
@@ -326,6 +347,21 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                     : Enumerable.Range(0, PendingRequest.SupportCount)
                         .Select(index => index.ToString(
                             CultureInfo.InvariantCulture)).ToArray();
+                if (treasureSite)
+                {
+                    expectedSite = "treasure.relic_model.index_draw";
+                    expectedStream = "reward";
+                    expectedOwner = $"act:{world.Act}:floor:{world.Floor}:pool:"
+                        + CanonicalJson.Sha256(availableRelics);
+                    expectedCandidates = Enumerable.Range(
+                        0, availableRelics.Length).ToArray();
+                    expectedLabels = availableRelics.Length >
+                        ControlledRunActionEngineV111.MaximumInlineOutcomeActions
+                        ? []
+                        : Enumerable.Range(0, availableRelics.Length)
+                            .Select(index => index.ToString(
+                                CultureInfo.InvariantCulture)).ToArray();
+                }
                 mapNodeRequest = true;
                 break;
             }
@@ -363,16 +399,20 @@ public sealed record PrototypeControlledRunActionContinuationV111(
             var isShopDraw = ActionId == "choose_map_node"
                 && ControlledEventChoiceReplayV111
                     .IsRunActionShopSite(request.SiteId);
+            var isTreasureDraw = ActionId == "choose_map_node"
+                && ControlledEventChoiceReplayV111
+                    .IsRunActionTreasureSite(request.SiteId);
             var prefixStream = ActionId ==
                     PrototypeNativeRestSiteActionsV111.Dig
                 || isEventEntryDraw
                 ? "event" : isShopDraw ? "shop"
+                : isTreasureDraw ? "reward"
                 : isBossDraw ? "combat" : "map";
             var validSite = ActionId == "start_run"
                 ? ControlledEventChoiceReplayV111.IsRunActionSite(
                     request.SiteId)
                 : ActionId == "choose_map_node"
-                    ? isEventEntryDraw || isShopDraw
+                    ? isEventEntryDraw || isShopDraw || isTreasureDraw
                     : request.SiteId ==
                     "relic.unowned_random_selection.index_draw";
             var prefixOwner = isBossDraw
@@ -386,11 +426,13 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                     PrototypeNativeRestSiteActionsV111.Dig
                     ? Enumerable.Range(0, labels.Length).ToArray()
                     : (int[])request.OrderedCandidates.Clone();
-            var omittedLabels = (isMapDraw || isEventEntryDraw || isShopDraw)
+            var omittedLabels = (isMapDraw || isEventEntryDraw || isShopDraw
+                || isTreasureDraw)
                 && request.SupportCount >
                     ControlledRunActionEngineV111.MaximumInlineOutcomeActions
                 && labels.Length == 0;
-            var numericLabels = !(isMapDraw || isEventEntryDraw || isShopDraw)
+            var numericLabels = !(isMapDraw || isEventEntryDraw || isShopDraw
+                || isTreasureDraw)
                 || omittedLabels || labels.SequenceEqual(
                 Enumerable.Range(0, labels.Length).Select(index =>
                     index.ToString(CultureInfo.InvariantCulture)),
@@ -466,7 +508,16 @@ public static class ControlledRunActionEngineV111
                     && (node.RoomType == PrototypeRoomType.Event
                         || node.RoomType == PrototypeRoomType.Shop
                             && !PrototypeGameEngine
-                                .UsesNativeRegionalSystems(mapNodeWorld)));
+                                .UsesNativeRegionalSystems(mapNodeWorld)
+                        || node.RoomType == PrototypeRoomType.Treasure
+                            && !PrototypeGameEngine
+                                .UsesNativeRegionalSystems(mapNodeWorld)
+                            && !PrototypeGameEngine
+                                .WillSkipNextTreasure(source.Player)
+                            && PrototypeContent.RelicPool.Any(id =>
+                                !source.Player.Relics.Any(relic =>
+                                    StringComparer.Ordinal.Equals(
+                                        relic.RelicId, id)))));
         if (source.ControlledRunActionChoice is not null
             || action.Kind is not ("start_run"
                 or PrototypeNativeRestSiteActionsV111.Dig
@@ -496,7 +547,9 @@ public static class ControlledRunActionEngineV111
                     || !(ControlledEventChoiceReplayV111
                             .IsRunActionEventEntrySite(exception.Request.SiteId)
                         || ControlledEventChoiceReplayV111
-                            .IsRunActionShopSite(exception.Request.SiteId))
+                            .IsRunActionShopSite(exception.Request.SiteId)
+                        || ControlledEventChoiceReplayV111
+                            .IsRunActionTreasureSite(exception.Request.SiteId))
                     || exception.CandidateLabels is null
                     || (exception.CandidateLabels.Length !=
                             exception.Request.SupportCount

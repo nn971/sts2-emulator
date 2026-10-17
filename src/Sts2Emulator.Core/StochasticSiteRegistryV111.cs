@@ -119,6 +119,11 @@ public static class StochasticSiteRegistryV111
         "shop.relic_offer.price.index_draw"
     ];
 
+    private static readonly string[] RunActionTreasureSites =
+    [
+        "treasure.relic_model.index_draw"
+    ];
+
     private static readonly string[] ControlledEventChoiceSites =
     [
         "event.random_upgrade.card_instance",
@@ -150,11 +155,14 @@ public static class StochasticSiteRegistryV111
         new(RunActionEventEntrySites, StringComparer.Ordinal);
     private static readonly HashSet<string> RunActionShopSiteSet =
         new(RunActionShopSites, StringComparer.Ordinal);
+    private static readonly HashSet<string> RunActionTreasureSiteSet =
+        new(RunActionTreasureSites, StringComparer.Ordinal);
     private static readonly HashSet<string> ControlledEventChoiceSiteSet =
         new(ControlledEventChoiceSites, StringComparer.Ordinal);
     private static readonly string[] RunActionSessionSites = RunActionSites
         .Concat(RunActionEventEntrySites)
         .Concat(RunActionShopSites)
+        .Concat(RunActionTreasureSites)
         .Append("relic.unowned_random_selection.index_draw")
         .Distinct(StringComparer.Ordinal)
         .ToArray();
@@ -163,6 +171,7 @@ public static class StochasticSiteRegistryV111
             .Concat(RunActionSites)
             .Concat(RunActionEventEntrySites)
             .Concat(RunActionShopSites)
+            .Concat(RunActionTreasureSites)
             .Concat(ControlledEventChoiceSites)
             .Distinct(StringComparer.Ordinal)
             .ToArray();
@@ -174,6 +183,8 @@ public static class StochasticSiteRegistryV111
         (string[])RunActionEventEntrySites.Clone();
     public static string[] RunActionShopSiteIds =>
         (string[])RunActionShopSites.Clone();
+    public static string[] RunActionTreasureSiteIds =>
+        (string[])RunActionTreasureSites.Clone();
     public static string[] ControlledRunActionSiteIds =>
         (string[])RunActionSessionSites.Clone();
     public static string[] ControlledEventChoiceSiteIds =>
@@ -192,6 +203,9 @@ public static class StochasticSiteRegistryV111
 
     public static bool IsRunActionShopSite(string siteId) =>
         RunActionShopSiteSet.Contains(siteId);
+
+    public static bool IsRunActionTreasureSite(string siteId) =>
+        RunActionTreasureSiteSet.Contains(siteId);
 
     public static bool IsControlledEventChoiceSite(string siteId) =>
         ControlledEventChoiceSiteSet.Contains(siteId);

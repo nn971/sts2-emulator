@@ -4212,7 +4212,9 @@ public sealed partial class PrototypeGameEngine
                     "choose_map_node" => ControlledEventChoiceReplayV111
                         .IsRunActionEventEntrySite(exception.Request.SiteId)
                         || ControlledEventChoiceReplayV111
-                            .IsRunActionShopSite(exception.Request.SiteId),
+                            .IsRunActionShopSite(exception.Request.SiteId)
+                        || ControlledEventChoiceReplayV111
+                            .IsRunActionTreasureSite(exception.Request.SiteId),
                     PrototypeNativeRestSiteActionsV111.Dig =>
                         exception.Request.SiteId ==
                             "relic.unowned_random_selection.index_draw",
