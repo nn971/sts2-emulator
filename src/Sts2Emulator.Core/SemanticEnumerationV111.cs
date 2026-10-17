@@ -72,6 +72,17 @@ public static class SemanticNatureEnumeratorV111
                     current, currentFingerprint, draw.EventId,
                     long.Parse(outcomeId, CultureInfo.InvariantCulture));
         }
+        else if (current.DeckRevealPending is { } reveal)
+        {
+            eventKind = "deck_reveal";
+            eventId = reveal.EventId;
+            outcomeIds = reveal.CandidateCardInstanceIds.Select(id =>
+                id.ToString(CultureInfo.InvariantCulture)).ToArray();
+            resolve = outcomeId =>
+                SemanticPilotCombatEngineV111.ResolveDeckReveal(
+                    current, currentFingerprint, reveal.EventId,
+                    long.Parse(outcomeId, CultureInfo.InvariantCulture));
+        }
         else if (current.TargetPending is { } target)
         {
             eventKind = "random_target";

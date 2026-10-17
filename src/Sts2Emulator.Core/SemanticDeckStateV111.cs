@@ -95,6 +95,45 @@ public sealed record SemanticDrawDecisionV111(
     };
 }
 
+/// <summary>Typed result for one deferred peek or scry reveal.</summary>
+public sealed record SemanticDeckRevealDecisionV111(
+    SemanticDeckEventV111 Event, int SelectedIndex,
+    long SelectedCardInstanceId)
+{
+    public const string CurrentSchemaId =
+        "sts2-v111-semantic-deck-reveal-decision-v1";
+
+    public void Validate()
+    {
+        if (Event.SchemaId != SemanticDeckStateV111.SchemaId ||
+            string.IsNullOrWhiteSpace(Event.EventId) ||
+            Event.SiteId != "combat.draw_pile.reveal_card" ||
+            Event.Purpose is not ("peek" or "scry") ||
+            Event.OperationKind != "choose_card_instance" ||
+            Event.StreamId != "semantic.draw_pile" ||
+            Event.OwnerId != "player:draw_pile" ||
+            Event.CandidateCardInstanceIds is not { Length: > 0 } ||
+            Event.SupportFingerprint != CanonicalJson.Sha256(
+                Event.CandidateCardInstanceIds) ||
+            Event.ProbabilityStatus != "UNVERIFIED" ||
+            SelectedIndex < 0 ||
+            SelectedIndex >= Event.CandidateCardInstanceIds.Length ||
+            Event.CandidateCardInstanceIds[SelectedIndex] !=
+                SelectedCardInstanceId)
+            throw new InvalidDataException(
+                "Invalid semantic deck-reveal event or outcome.");
+    }
+
+    public SemanticDeckRevealDecisionV111 Fork() => this with
+    {
+        Event = Event with
+        {
+            CandidateCardInstanceIds =
+                (long[])Event.CandidateCardInstanceIds.Clone()
+        }
+    };
+}
+
 /// <summary>
 /// Provider-private stochastic deck state. Arrays are treated as immutable:
 /// every transition forks before changing a slot or a pool. Known and unknown

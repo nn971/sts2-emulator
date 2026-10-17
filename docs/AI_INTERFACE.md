@@ -92,9 +92,12 @@ Experiment metadata in the parent AI project should record at least the emulator
 `RulesetId`, and `AiSchemaId`.
 
 Semantic session results include a typed `chanceLaw` inside the Nature-only `pending` payload for
-supported enemy-intent and unresolved draw-card choices. It carries stable outcome IDs, exact
+supported enemy-intent, unresolved draw-card, and declared peek/scry reveal events. It carries stable outcome IDs, exact
 integer weights, support and conditioning fingerprints, and explicit provenance. The ordinary
 `semantic_observe` response remains the fair player projection and does not include this payload.
+Deck-reveal choices have their own `semanticDeckRevealChoiceSchemaId` and resolver. The semantic
+deck kernel and resolver support pending peek/scry state; source gameplay callsites that create
+those requests remain outside the current playable mechanics coverage.
 
 The opt-in `semantic_reference_*` JSONL operations wrap the semantic combat state and the
 ReferenceNature sampler cursor in one forkable/savable session. Begin with a `semantic_handle` and

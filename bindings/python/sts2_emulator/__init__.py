@@ -534,7 +534,8 @@ class SemanticCombat:
 
     This first P0 bridge is seeded from an already completed source
     controlled opening. Source-committed opening cards keep their hidden
-    exact order; only fresh intent/draw events reach Nature. The fair
+    exact order; unresolved intent, draw, and declared deck-reveal events
+    reach Nature. The fair
     policy observation is returned separately from Nature event support.
     """
     session: "Session"
@@ -631,6 +632,29 @@ class SemanticCombat:
             self.session, self.session.call(
                 "semantic_resolve_draw_card", semantic_handle=self.handle,
                 fingerprint=self.fingerprint, event_id=self.pending["eventId"],
+                card_instance_id=card_instance_id))
+
+    def resolve_deck_reveal(self, card_instance_id: int):
+        """Resolve one pending peek or scry by physical card identity."""
+        if not self.pending or self.pending.get("kind") != "deck_reveal":
+            raise EmulatorError("Expected a semantic deck_reveal event")
+        if self.session.capabilities.get(
+                "semanticDeckRevealChoiceSchemaId") != (
+                    "sts2-v111-semantic-deck-reveal-decision-v1"):
+            raise EmulatorError(
+                "Emulator does not expose semantic deck-reveal choices")
+        candidate_ids = [
+            candidate["cardInstanceId"]
+            for candidate in self.pending.get("candidates", [])]
+        if card_instance_id not in candidate_ids:
+            raise ValueError(
+                "Card instance is outside the pending deck-reveal support")
+        return SemanticCombat.from_wire(
+            self.session, self.session.call(
+                "semantic_resolve_deck_reveal",
+                semantic_handle=self.handle,
+                fingerprint=self.fingerprint,
+                event_id=self.pending["eventId"],
                 card_instance_id=card_instance_id))
 
     def resolve_random_pile_card(self, card_instance_id: int):

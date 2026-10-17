@@ -21,7 +21,8 @@ public sealed record SemanticPilotTransitionV111(
     SemanticRandomPileCardDecisionV111? RandomPileCardDecision = null,
     SemanticDrawHookChoiceDecisionV111? DrawHookChoiceDecision = null,
     SemanticPotionGenerationDecisionV111? PotionGenerationDecision = null,
-    SemanticCardTransformDecisionV111? CardTransformDecision = null);
+    SemanticCardTransformDecisionV111? CardTransformDecision = null,
+    SemanticDeckRevealDecisionV111? DeckRevealDecision = null);
 
 /// <summary>
 /// Independently replayable setup provenance. The default entry is a
@@ -147,6 +148,7 @@ public sealed record SemanticPilotCombatV111(
     [JsonIgnore] public bool AtPlayerBoundary =>
         PendingInitialIntents is null &&
         PendingEndTurn is null &&
+        DeckRevealPending is null &&
         Run.Phase == RunPhase.Combat &&
         Run.World?.Combat is { IsPlayerTurn: true,
             PendingChoice: null, AutomaticPipelineContinuation: null };
@@ -195,8 +197,19 @@ public sealed record SemanticPilotCombatV111(
             return combat?.PendingChoice is
                 { ChoiceId: "controlled_semantic_draw",
                     ControlledSemanticDraw: not null } &&
-                combat.SemanticDeck is { } deck
+                combat.SemanticDeck is
+                    { Pending: { Purpose: "draw" } } deck
                     ? SemanticDeckEngineV111.Inspect(deck) : null;
+        }
+    }
+    [JsonIgnore] public SemanticDeckEventV111? DeckRevealPending
+    {
+        get
+        {
+            var deck = Run.World?.Combat?.SemanticDeck;
+            return deck?.Pending?.Purpose is "peek" or "scry"
+                ? SemanticDeckEngineV111.Inspect(deck)
+                : null;
         }
     }
     [JsonIgnore] public SemanticRandomPileCardEventV111?
@@ -227,6 +240,10 @@ public sealed record SemanticPilotCombatV111(
             { DrawDecision: { } decision } => transition with
             {
                 DrawDecision = decision.Fork()
+            },
+            { DeckRevealDecision: { } decision } => transition with
+            {
+                DeckRevealDecision = decision.Fork()
             },
             { RandomPileCardDecision: { } decision } => transition with
             {
@@ -2755,6 +2772,61 @@ public static class SemanticPilotCombatEngineV111
     }
 
     /// <summary>
+    /// Resolve one deferred peek or scry by physical card identity. The
+    /// provider records the revealed position while draw-pile membership and
+    /// order remain unchanged.
+    /// </summary>
+    public static SemanticPilotCombatV111 ResolveDeckReveal(
+        SemanticPilotCombatV111 current, string fingerprint,
+        string eventId, long cardInstanceId)
+    {
+        Validate(current);
+        if (current.Fingerprint != fingerprint)
+            throw new InvalidOperationException(
+                "Stale semantic deck-reveal fingerprint.");
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
+        var pending = current.DeckRevealPending ??
+            throw new InvalidOperationException(
+                "No semantic peek or scry reveal is pending.");
+        if (pending.EventId != eventId)
+            throw new InvalidOperationException(
+                "Semantic deck-reveal event ID is stale or mismatched.");
+        var index = Array.IndexOf(pending.CandidateCardInstanceIds,
+            cardInstanceId);
+        if (index < 0)
+            throw new InvalidOperationException(
+                "Card instance is outside the pending reveal support.");
+        var decision = new SemanticDeckRevealDecisionV111(
+            pending, index, cardInstanceId);
+        decision.Validate();
+
+        var world = current.Run.World ?? throw new InvalidDataException(
+            "Semantic deck reveal lost its world state.");
+        var combat = world.Combat ?? throw new InvalidDataException(
+            "Semantic deck reveal lost its combat state.");
+        var deck = combat.SemanticDeck ?? throw new InvalidDataException(
+            "Semantic deck reveal lost its provider state.");
+        var nextDeck = SemanticDeckEngineV111.Resolve(
+            deck, deck.Fingerprint, index);
+        var nextCombat = SemanticDrawPileAdapterV111
+            .ApplyCommittedPhysicalMutation(combat, combat.DrawPile, nextDeck);
+        var nextRun = current.Run with
+        {
+            World = world with { Combat = nextCombat }
+        };
+        var next = current with
+        {
+            Run = nextRun,
+            History = current.History.Append(
+                new SemanticPilotTransitionV111(
+                    "semantic_deck_reveal",
+                    DeckRevealDecision: decision.Fork())).ToArray()
+        };
+        Validate(next);
+        return next;
+    }
+
+    /// <summary>
     /// Stable event identity for the current Nature-facing weighted intent
     /// support. It is bound to the exact pre-choice state and eligible pool.
     /// </summary>
@@ -4162,6 +4234,34 @@ public static class SemanticPilotCombatEngineV111
                 throw new InvalidDataException(
                     "Card-selection continuation conflicts with another boundary.");
         }
+        if (state.DeckRevealPending is { } deckRevealPending)
+        {
+            var deck = state.Run.World?.Combat?.SemanticDeck ??
+                throw new InvalidDataException(
+                    "Semantic deck reveal lost its provider state.");
+            if (CanonicalJson.Sha256(
+                    SemanticDeckEngineV111.Inspect(deck)) !=
+                CanonicalJson.Sha256(deckRevealPending) ||
+                state.DrawPending is not null ||
+                state.IntentPending is not null ||
+                state.TargetPending is not null ||
+                state.GeneratedCardPending is not null ||
+                state.PotionGenerationPending is not null ||
+                state.CardTransformPending is not null ||
+                state.CardSelectionPending is not null ||
+                state.CostPending is not null ||
+                state.HandCostSelectionPending is not null ||
+                state.CardShortlistPending is not null ||
+                state.PoolShufflePending is not null ||
+                state.DrawInsertionPending is not null ||
+                state.RandomPileCardPending is not null ||
+                state.DrawHookChoicePending is not null ||
+                state.PendingEndTurn is not null ||
+                state.PendingInitialIntents is not null ||
+                state.UsesNativePolicyBaseline || state.CombatTerminal)
+                throw new InvalidDataException(
+                    "Semantic deck reveal conflicts with another chance boundary.");
+        }
         if (state.PoolShufflePending is { } poolShufflePending)
         {
             poolShufflePending.Validate();
@@ -4392,6 +4492,11 @@ public static class SemanticPilotCombatEngineV111
                     ResolveDrawCard(replay, replay.Fingerprint,
                         transition.DrawDecision.Event.EventId,
                         transition.DrawDecision.SelectedCardInstanceId),
+                "semantic_deck_reveal" when
+                    transition.DeckRevealDecision is not null =>
+                    ResolveDeckReveal(replay, replay.Fingerprint,
+                        transition.DeckRevealDecision.Event.EventId,
+                        transition.DeckRevealDecision.SelectedCardInstanceId),
                 "semantic_random_pile_card" when
                     transition.RandomPileCardDecision is not null =>
                     ResolveRandomPileCard(replay, replay.Fingerprint,

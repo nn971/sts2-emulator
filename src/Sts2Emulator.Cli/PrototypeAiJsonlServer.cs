@@ -423,6 +423,41 @@ internal static class PrototypeAiJsonlServer
                         }).ToArray()
                 };
             }
+            if (state.DeckRevealPending is { } reveal)
+            {
+                var combat = state.Run.World?.Combat ??
+                    throw new InvalidDataException(
+                        "Deck-reveal event missing its combat.");
+                var deck = combat.SemanticDeck ??
+                    throw new InvalidDataException(
+                        "Deck-reveal event missing its provider-owned deck.");
+                var chanceLaw = ChanceLawEngineV111.QueryDeckReveal(deck);
+                return new
+                {
+                    kind = "deck_reveal",
+                    schemaId = SemanticDeckRevealDecisionV111.CurrentSchemaId,
+                    eventId = reveal.EventId,
+                    siteId = reveal.SiteId,
+                    purpose = reveal.Purpose,
+                    streamId = reveal.StreamId,
+                    ownerId = reveal.OwnerId,
+                    ordinal = reveal.Ordinal,
+                    topOffset = reveal.TopOffset,
+                    operationKind = reveal.OperationKind,
+                    supportFingerprint = reveal.SupportFingerprint,
+                    constraintFingerprint = deck.Fingerprint,
+                    chanceLaw,
+                    probabilityStatus = reveal.ProbabilityStatus,
+                    candidates = reveal.CandidateCardInstanceIds
+                        .Select((id, index) => new
+                        {
+                            index,
+                            cardInstanceId = id,
+                            cardModelId = combat.Cards.Single(c =>
+                                c.InstanceId == id).CardId
+                        }).ToArray()
+                };
+            }
             if (state.TargetPending is { } target)
             {
                 var chanceLaw = ChanceLawEngineV111.QueryTarget(target);
@@ -709,6 +744,8 @@ internal static class PrototypeAiJsonlServer
         {
             if (state.UsesNativePolicyBaseline) return [];
             var sites = new List<string> { "enemy_intent", "draw_card" };
+            if (state.DeckRevealPending is not null)
+                sites.Add("deck_reveal");
             if (state.RandomPileCardPending is not null ||
                 state.Run.Player.ActiveRelics.Any(relic =>
                     relic.RelicId == "proto.relic.jeweled_mask"))
@@ -816,6 +853,7 @@ internal static class PrototypeAiJsonlServer
                   state.SeededEntry?.FixturePoolGenerationPotionId is not null ||
                   state.SeededEntry?.FixtureGeneratedDrawInsertionCardId is not null ||
                   state.SeededEntry?.FixtureRandomFreeAttackDrawInsertion == true ||
+                  state.DeckRevealPending is not null ||
                   state.DrawInsertionPending?.SiteId ==
                     PrototypeControlledDrawInsertionV111
                         .PersonalHiveDazedSiteId ||
@@ -1250,6 +1288,8 @@ internal static class PrototypeAiJsonlServer
                                 SemanticEndTurnIndexEventV111.CurrentSchemaId,
                             semanticDrawChoiceSchemaId =
                                 SemanticDeckStateV111.SchemaId,
+                            semanticDeckRevealChoiceSchemaId =
+                                SemanticDeckRevealDecisionV111.CurrentSchemaId,
                             semanticDrawHookChoiceSchemaId =
                                 SemanticDrawHookChoiceEventV111.EventSchemaId,
                             semanticRandomPileCardChoiceSchemaId =
@@ -1732,6 +1772,21 @@ internal static class PrototypeAiJsonlServer
                         var parentHandle = RequiredString(request, "semantic_handle");
                         var current = RequireSemantic(request);
                         var next = SemanticPilotCombatEngineV111.ResolveDrawCard(
+                            current, RequiredString(request, "fingerprint"),
+                            RequiredString(request, "event_id"),
+                            RequiredLong(request, "card_instance_id"));
+                        var handle = StoreSemantic(next);
+                        Write(new { requestId, ok = true,
+                            result = SemanticResult(next, handle, parentHandle) });
+                        break;
+                    }
+
+                    case "semantic_resolve_deck_reveal":
+                    {
+                        var parentHandle = RequiredString(request,
+                            "semantic_handle");
+                        var current = RequireSemantic(request);
+                        var next = SemanticPilotCombatEngineV111.ResolveDeckReveal(
                             current, RequiredString(request, "fingerprint"),
                             RequiredString(request, "event_id"),
                             RequiredLong(request, "card_instance_id"));

@@ -45,7 +45,10 @@ session exposes `.state` for ordinary play. See the
 `Session.stochastic_session_coverage` reports the site IDs accepted by the
 semantic, run-action, and event-choice ReferenceNature session schemas.
 `Session.supports_reference_nature_site(site_id, session="any")` checks that
-versioned capability report before a client starts a continuation.
+versioned capability report before a client starts a continuation. A pending
+semantic peek or scry can be resolved by physical card identity with
+`SemanticCombat.resolve_deck_reveal()`; its source gameplay callsites are not
+integrated yet.
 
 All mechanics remain in C#. Search, learning and strategy belong in the parent
 AI repository. See [the versioned contract](../../docs/V111_INTERFACE.md).

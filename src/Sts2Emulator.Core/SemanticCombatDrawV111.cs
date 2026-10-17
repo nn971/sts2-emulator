@@ -16,7 +16,8 @@ public sealed record SemanticCombatDrawV111(
     public const string SchemaId = "sts2-v111-semantic-real-combat-draw-v1";
     [JsonIgnore] public string Fingerprint => CanonicalJson.Sha256(this);
     [JsonIgnore] public SemanticDeckEventV111? Pending =>
-        Run.World?.Combat?.SemanticDeck is { } deck
+        Run.World?.Combat?.SemanticDeck is
+            { Pending: { Purpose: "draw" } } deck
             ? SemanticDeckEngineV111.Inspect(deck) : null;
     [JsonIgnore] public SemanticRandomPileCardEventV111?
         RandomPileCardPending =>

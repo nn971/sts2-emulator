@@ -61,6 +61,7 @@ public static class StochasticSiteRegistryV111
         NativeCombatRngEntryV111.InitialUniqueHpSiteId,
         NativeCombatRngEntryV111.ToughEggHatchHpSiteId,
         "combat.draw_pile.draw_card",
+        "combat.draw_pile.reveal_card",
         "combat.effect.random_enemy",
         "combat.sly_autoplay.random_enemy",
         "combat.autoplay.random_enemy",

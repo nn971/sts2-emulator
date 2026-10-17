@@ -1760,6 +1760,30 @@ public static class ReferenceNatureV111
             return new ReferenceNatureResolutionV111(child, law, selection);
         }
 
+        if (combat.DeckRevealPending is { } revealEvent)
+        {
+            var deck = combat.Run.World?.Combat?.SemanticDeck ??
+                throw new InvalidDataException(
+                    "Pending semantic reveal lost its provider-owned deck.");
+            var law = ChanceLawEngineV111.QueryDeckReveal(deck);
+            var selection = Sample(law, state);
+            if (selection.EventId != revealEvent.EventId ||
+                selection.OutcomeIndex < 0 ||
+                selection.OutcomeIndex >=
+                    revealEvent.CandidateCardInstanceIds.Length ||
+                selection.OutcomeId != "card_instance:" +
+                    revealEvent.CandidateCardInstanceIds[
+                        selection.OutcomeIndex].ToString(
+                            CultureInfo.InvariantCulture))
+                throw new InvalidDataException(
+                    "ReferenceNature law no longer matches the pending deck reveal.");
+            var child = SemanticPilotCombatEngineV111.ResolveDeckReveal(
+                combat, combat.Fingerprint, revealEvent.EventId,
+                revealEvent.CandidateCardInstanceIds[
+                    selection.OutcomeIndex]);
+            return new ReferenceNatureResolutionV111(child, law, selection);
+        }
+
         throw new NotSupportedException(
             "UNSUPPORTED_REFERENCE_NATURE site=no_supported_pending_event");
     }
