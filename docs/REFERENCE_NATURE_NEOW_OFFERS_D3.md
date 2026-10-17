@@ -17,6 +17,13 @@ ReferenceNature sampler cursor are published together. The scripted provider
 does not advance Neow's Native event cursor; the completed EventState retains
 the existing provider-mode marker and compatibility shape.
 
+Each law uses exact preimage masses for its Native `NextInt` support under the
+uniform 53-bit `NextDouble` grid model, including binary64 multiplication
+rounding. The transform is `SOURCE_VERIFIED` on each declared support. The
+current source-shaped default pool, unlock filters, complete installed-game
+call order, Native stream attribution, seed frequencies, and cursor parity
+remain open.
+
 ## JSONL operations
 
 | Operation | Inputs | Result |
@@ -55,8 +62,9 @@ pristine run-start state.
 ## Limits
 
 The session uses the current emulator's source-shaped default Neow pools and
-decision graph. Native unlock filtering, the complete installed-game call
-order, seeded Native cursor parity, and all source probabilities remain
-unaudited; every law is labelled `UNVERIFIED`. The session does not add Neow
-relic effects or change the player-facing observation. It does not depend on
-the native reference mod or Fidelity Inspector.
+decision graph. The bounded-index transform is `SOURCE_VERIFIED` on those
+declared supports. Native unlock filtering, the complete installed-game call
+order, stream attribution, seed frequencies, and seeded Native cursor parity
+remain unaudited. The session does not add Neow relic effects or change the
+player-facing observation. It does not depend on the native reference mod or
+Fidelity Inspector.

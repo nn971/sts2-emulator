@@ -454,8 +454,12 @@ public static partial class ChanceLawEngineV111
             throw new NotSupportedException(
                 $"Neow offer query does not support site '{step.Request.SiteId}'.");
 
-        var outcomes = step.OutcomeIds.Select(id =>
-            new ChanceLawOutcomeV111(id, 1L)).ToArray();
+        if (step.OutcomeIds.Length != step.Request.SupportCount)
+            throw new InvalidDataException(
+                "Neow offer labels differ from the Native bounded-index support.");
+        var weights = NativeNextIntGridWeights(step.Request.SupportCount);
+        var outcomes = step.OutcomeIds.Select((id, index) =>
+            new ChanceLawOutcomeV111(id, weights[index])).ToArray();
         var eventId = CanonicalJson.Sha256(new
         {
             boundary = NeowOfferEventId,
@@ -468,7 +472,8 @@ public static partial class ChanceLawEngineV111
             step.Request.OperationKind, step.Request.OwnerId,
             step.Request.Ordinal, NeowOfferConditioningPolicyId,
             step.ConditioningFingerprint,
-            "uniform-neow-generator-index-support-unverified", outcomes);
+            NativeBoundedIndexSourceVerifiedProvenance, outcomes,
+            ChanceLawV111.SourceVerifiedStatus);
     }
 
     public static ChanceLawV111 QueryNeowOffer(
