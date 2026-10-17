@@ -39,11 +39,11 @@ The specialized `SemanticCombatDrawV111.Simulation` pairs `SemanticCombatDrawMec
 
 Controlled event/run-action, automatic enemy-action, and next-turn intent resumes share `ControlledRandomIndexReplayPrefixV111` for cursoring and exact typed-request replay. `PrototypeControlledRunActionContinuationV111.Simulation` now composes its partial run/action mechanics with `ControlledChanceContinuationStateV111`; event/run/enemy persisted provider payload otherwise remains grouped by that shared chance state, while the intent frame uses its own nullable pending-request envelope because completed intent frames retain a transcript without a pending request. Their boundary types preserve established flattened snapshot fields and boundary-specific rules: event replay normalizes prototype stream ordinals and attaches candidate labels, while combat replays check source requests against saved eligibility and the automatic pipeline.
 
-`ControlledChanceContinuationExecutorV111` now owns the replay-scope lifetime, exact saved-prefix consumption, and capture of the next unresolved typed request for run-action, event-effect, event-reward, event-choice entry, event-reward advance, and automatic enemy-action mechanics. Boundary owners still select checkpoints, enforce site allowlists, preserve event candidate labels, and persist their established continuation frames. `ReferenceNatureRunCursorV111` owns run-scoped cursor initialization, validation against the session transcript, and commit publication across semantic-combat, run-action, event-choice, Ancient-offer, and native merchant sessions. Boundary sessions retain their typed mechanics resolvers, while the sampler support check is shared by every ReferenceNature path.
+`ControlledChanceContinuationExecutorV111` now owns the replay-scope lifetime, exact saved-prefix consumption, and capture of the next unresolved typed request for run-action, event-effect, event-reward, event-choice entry, event-reward advance, and automatic enemy-action mechanics. Boundary owners still select checkpoints, enforce site allowlists, preserve event candidate labels, and persist their established continuation frames. `ReferenceNatureRunCursorV111` owns run-scoped cursor initialization, validation against the session transcript, and commit publication across semantic-combat, run-action, event-choice, Ancient-offer, native merchant, and native Treasure sessions. Boundary sessions retain their typed mechanics resolvers, while the sampler support check is shared by every ReferenceNature path.
 
-The versioned `ControlledStochasticChanceReplayV111` primitive now replays one chronological prefix across both random-index and unit-float provider interfaces, preserving request type, exact site/stream/owner/ordinal identity, and any scoped candidate labels when it suspends. `ResumeStochastic` provides the shared replay/provider-scope lifetime for a future mixed-boundary owner; it does not supply a law, site allowlist, or serialized mechanics continuation. Existing continuations retain their established index-only schema.
+The versioned `ControlledStochasticChanceReplayV111` primitive now replays one chronological prefix across both random-index and unit-float provider interfaces, preserving request type, exact site/stream/owner/ordinal identity, and any scoped candidate labels when it suspends. `ResumeStochastic` provides the shared replay/provider-scope lifetime used by merchant and Treasure entry sessions; it does not supply a law, site allowlist, or serialized mechanics continuation. Existing continuations retain their established index-only schema.
 
-`ReferenceNatureChanceLawDecisionV111` maps sampled one-to-one index laws to typed index outcomes and maps the configured merchant's rarity and rounded-price laws to representative source floats. The price mapper searches the source conversion functions for a float that produces the selected integer price; those conversion functions are shared with ordinary Native shop generation. `ReferenceNatureMerchantSessionV111` replays the actual Shop-node map action under the mixed typed provider, queries each conditional law from the pre-entry origin and sampled prefix, and commits the completed shop with the sampler cursor atomically. These representative values preserve the selected mechanic result, while Chance Law weights and float-edge fidelity remain `UNVERIFIED`.
+`ReferenceNatureChanceLawDecisionV111` maps sampled one-to-one index laws to typed index outcomes and maps configured merchant and Treasure rarity laws to representative source floats, plus merchant rounded-price laws to floats that produce the selected integer price. The price mapper searches the source conversion functions used by ordinary Native shop generation. `ReferenceNatureMerchantSessionV111` replays the actual Shop-node map action; `ReferenceNatureTreasureSessionV111` replays the actual Treasure-node map action. Both use the mixed typed provider, query conditional laws from the pre-entry origin and sampled prefix, and commit the completed room result with the sampler cursor atomically. These representatives preserve the selected mechanic result, while Chance Law weights and float-edge fidelity remain `UNVERIFIED`.
 
 The configured native merchant now runs `StartShop` inside
 `StochasticProviderScopeV111`. The scope routes default `NativePlayerRngV111`
@@ -51,29 +51,34 @@ calls and explicitly passed Native index/unit-float providers through one
 replaceable provider pair. It tracks logical per-stream request ordinals when
 a replacement provider leaves the native cursor untouched. Its local Native
 providers remain the default, while an enclosing controller scope can replace
-them. `ReferenceNatureMerchantSessionV111` owns the serialized continuation
-and uses the shared law-to-float outcome mapping. Its opening projection sorts
-the existing relic bag queues so Native's committed hidden queue order is not
-retained in Nature snapshots. The session requires an already constructed
-bag and does not model Native cursor advancement or purchase consequences.
+them. `ReferenceNatureMerchantSessionV111` and
+`ReferenceNatureTreasureSessionV111` own serialized continuations and use the
+shared law-to-source mapping. Their opening projections sort the existing
+relic bag queues so Native's committed hidden queue order is not retained in
+Nature snapshots. Both require an already constructed bag and do not model
+Native cursor advancement; merchant purchases and bag construction remain
+outside their boundaries.
 
 `PrototypeNativeRelicGrabBag.PlanPull` is now the shared source fallback
-resolver used by both ordinary relic pulls and the native Treasure Chance
-Law. It retains queue order for Native while exposing the selected fallback
+resolver used by ordinary relic pulls and native Treasure laws. It retains
+queue order for Native while exposing the selected fallback
 tier and eligible identities separately; `PullSelected` can remove a legal
 chosen identity while preserving all other queue entries. This is the shared
 mechanics apply path for controlled relic identity resolution. The merchant
-session owns its relic identity choices within Shop entry; queue construction,
-later Treasure draws, and subsequent purchase effects remain outside that
-boundary.
+and Treasure sessions own their relic identity choices during their respective
+room entries; queue construction, later Treasure draws after purchases, and
+subsequent purchase effects remain outside those boundaries.
 
 When a mixed controlled replay is active, merchant `Draw` now inserts the
 Nature-only typed site `shop.merchant.relic_model.index_draw` before removing
 the selected merchant relic. It labels the sorted support and applies the
 chosen identity through the shared pull plan; the matching Chance Law query
 conditions on previous same-shop relic selections without exposing Native
-queue order. The serialized merchant session consumes this site as one step in
-the atomic Shop-entry continuation.
+queue order. During Treasure replay, `Draw` exposes the Nature-only typed site
+`treasure.relic_grab_bag.model.index_draw` after the rarity float, labels the
+sorted fallback support, and applies the selected identity through the same
+pull plan. The merchant and Treasure sessions consume their respective sites
+as steps in their atomic room-entry continuations.
 
 ## Semantic lifecycle and provider interchangeability
 
@@ -96,7 +101,7 @@ A chance-law query takes a **pre-outcome** semantic operation, legal support/wei
 - For enemy intents, reuse exactly the engine's current post-filter eligible moves and relative weights. Those weights' **original-game fidelity remains UNVERIFIED** until separately audited.
 - For a saved controlled random-index continuation, the generic index law has one equally weighted outcome per legal request index, and its conditioning fingerprint binds the typed request and saved boundary. Candidate labels map indices to mechanics results; they do not independently define a probability distribution over those results. This generic law remains `UNVERIFIED` and must not be presented as source-calibrated when the underlying operation's mapping or sampling primitive has not been audited.
 - Native merchant laws are queryable at a pre-entry configured Shop boundary and are consumed by `ReferenceNatureMerchantSessionV111` during atomic Shop generation. Discrete sale-slot and model laws reuse merchant pools; rarity laws use the generator's nominal thresholds; price laws map modifier intervals through source rounding. Their provenance remains `UNVERIFIED`, and merchant purchases remain outside the session.
-- The query-only native treasure law is available before a reachable, non-skipped configured Treasure node. It integrates nominal relic-rarity thresholds with the hidden uniform permutation of the remaining rarity queues, applying the source fallback chain without exposing queue order. Its provenance remains `UNVERIFIED`; native treasure entry still owns resolution.
+- Native Treasure laws are available before a reachable, non-skipped configured Treasure node. The compact `treasure.relic_grab_bag.draw` query integrates nominal rarity thresholds with the hidden uniform permutation of remaining rarity queues. The atomic `ReferenceNatureTreasureSessionV111` samples the rarity float and then, when eligible, a conditional relic identity, applying the shared source fallback plan without exposing queue order. Its provenance remains `UNVERIFIED`; ordinary Native entry retains its source-owned rarity roll and queue-front draw.
 - Probability computation is **optional in normal Native execution**: Native invokes its own source sampling procedures, with no Chance Law round trip.
 - `ReferenceNature` samples from reported `p`; learned Nature supplies `q`. Their selected outcomes enter the same continuation. Unverified `p` can support structural tests and exploratory training; unbiased original-game `p/q` claims require independent N5 calibration.
 

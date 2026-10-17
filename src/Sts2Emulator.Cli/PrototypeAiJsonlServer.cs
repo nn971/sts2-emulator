@@ -71,6 +71,12 @@ internal static class PrototypeAiJsonlServer
         var referenceNatureMerchantRunStateHandles =
             new Dictionary<string, string>(StringComparer.Ordinal);
         long nextReferenceNatureMerchantHandle = 1;
+        var referenceNatureTreasureStates =
+            new Dictionary<string, ReferenceNatureTreasureSessionV111>(
+                StringComparer.Ordinal);
+        var referenceNatureTreasureRunStateHandles =
+            new Dictionary<string, string>(StringComparer.Ordinal);
+        long nextReferenceNatureTreasureHandle = 1;
 
         string StoreSemantic(SemanticPilotCombatV111 state)
         {
@@ -196,6 +202,30 @@ internal static class PrototypeAiJsonlServer
                 ? session
                 : throw new InvalidOperationException(
                     "Unknown ReferenceNature merchant session handle: " +
+                    handle);
+        }
+
+        string StoreReferenceNatureTreasure(
+            ReferenceNatureTreasureSessionV111 session)
+        {
+            var handle = "y" + nextReferenceNatureTreasureHandle++;
+            referenceNatureTreasureStates.Add(handle, session.Fork());
+            if (session.Complete)
+                referenceNatureTreasureRunStateHandles.Add(handle,
+                    Store(session.Run.Fork()));
+            return handle;
+        }
+
+        ReferenceNatureTreasureSessionV111 RequireReferenceNatureTreasure(
+            JsonElement request)
+        {
+            var handle = RequiredString(request,
+                "reference_nature_treasure_handle");
+            return referenceNatureTreasureStates.TryGetValue(handle,
+                    out var session)
+                ? session
+                : throw new InvalidOperationException(
+                    "Unknown ReferenceNature treasure session handle: " +
                     handle);
         }
 
@@ -423,6 +453,42 @@ internal static class PrototypeAiJsonlServer
                 nextOrdinal = session.NextOrdinal,
                 pending,
                 shop = session.Complete ? session.Run.World?.Shop : null,
+                decisionTranscript = session.DecisionTranscript,
+                natureProvider = ReferenceNatureV111.ProviderId,
+                natureSampleCount = session.NatureState.SampleCount,
+                probabilityStatus = ChanceLawV111.UnverifiedStatus
+            };
+        }
+
+        object ReferenceNatureTreasureResult(
+            ReferenceNatureTreasureSessionV111 session, string handle,
+            string? parent = null)
+        {
+            var law = session.PendingLaw;
+            object? pending = law is null ? null : new
+            {
+                kind = "native_treasure_random_choice",
+                request = session.PendingRequest,
+                candidateLabels = session.PendingCandidateLabels,
+                chanceLaw = law,
+                probabilityStatus = law.ProbabilityStatus
+            };
+            return new
+            {
+                ok = true,
+                schemaId = ReferenceNatureTreasureSessionV111.CurrentSchemaId,
+                referenceNatureTreasureHandle = handle,
+                stateHandle = referenceNatureTreasureRunStateHandles
+                    .GetValueOrDefault(handle),
+                parent,
+                fingerprint = session.Fingerprint,
+                runFingerprint = CanonicalJson.Sha256(session.Run),
+                actionId = PrototypeAiEnvironment.StableActionId(session.Action),
+                runPhase = session.Run.Phase.ToString(),
+                boundary = session.Complete ? "committed" : "nature",
+                nextOrdinal = session.NextOrdinal,
+                pending,
+                reward = session.Complete ? session.Run.World?.Reward : null,
                 decisionTranscript = session.DecisionTranscript,
                 natureProvider = ReferenceNatureV111.ProviderId,
                 natureSampleCount = session.NatureState.SampleCount,
@@ -1612,6 +1678,8 @@ internal static class PrototypeAiJsonlServer
                             request, "colorless_offer");
                         var saleReprice = OptionalBool(
                             request, "sale_reprice");
+                        var ownerIdParameter = OptionalString(
+                            request, "owner_id");
                         var excludedPotionIds = OptionalStringArray(
                             request, "excluded_potion_ids");
                         var offerOrdinal = OptionalInt(
@@ -1679,6 +1747,25 @@ internal static class PrototypeAiJsonlServer
                                         potionId, relicId, colorlessOffer,
                                         saleReprice);
                             }
+                            else if (siteId == "relic_grab_bag.rarity.unit_float" &&
+                                ownerIdParameter == PrototypeNativeRelicGrabBag
+                                    .NativeTreasureRarityOwnerId)
+                            {
+                                if (cardType is not null || rarity is not null ||
+                                    cardId is not null || potionId is not null ||
+                                    relicId is not null || colorlessOffer ||
+                                    saleReprice || excludedPotionIds is not null ||
+                                    offerOrdinal is not null ||
+                                    relicCandidateIds is not null ||
+                                    excludedRelicIds is not null)
+                                    throw new ArgumentException(
+                                        "Native treasure rarity queries accept only the source owner and ordinal.");
+                                var typedRequest = new RandomUnitFloatRequestV111(
+                                    siteId, "player.rewards", ownerIdParameter,
+                                    ordinal);
+                                law = ChanceLawEngineV111
+                                    .QueryNativeTreasureRarity(run, typedRequest);
+                            }
                             else if (siteId == "treasure.relic_grab_bag.draw")
                             {
                                 if (cardType is not null || rarity is not null ||
@@ -1693,6 +1780,38 @@ internal static class PrototypeAiJsonlServer
                                 law = ChanceLawEngineV111
                                     .QueryNativeTreasureRelicDraw(
                                         run, siteId, ordinal);
+                            }
+                            else if (siteId == PrototypeNativeRelicGrabBag
+                                .NativeTreasureModelSiteId)
+                            {
+                                if (cardType is not null || cardId is not null ||
+                                    potionId is not null || relicId is not null ||
+                                    colorlessOffer || saleReprice ||
+                                    excludedPotionIds is not null ||
+                                    offerOrdinal is not null ||
+                                    excludedRelicIds is not null ||
+                                    rarity is null || relicCandidateIds is null ||
+                                    run.World is null ||
+                                    !Enum.TryParse<PrototypeRelicRarity>(
+                                        rarity, ignoreCase: false,
+                                        out var treasureRarity) ||
+                                    !Enum.IsDefined(treasureRarity))
+                                    throw new ArgumentException(
+                                        "Native treasure relic selection requires rarity and relic_candidate_ids only.");
+                                var ownerId = PrototypeNativeRelicGrabBag
+                                    .TreasureModelOwnerId(
+                                        run.World, treasureRarity,
+                                        relicCandidateIds);
+                                var typedRequest = new RandomIndexRequestV111(
+                                    siteId,
+                                    "player.rewards",
+                                    ownerId, ordinal,
+                                    Enumerable.Range(0,
+                                        relicCandidateIds.Length).ToArray());
+                                law = ChanceLawEngineV111
+                                    .QueryNativeTreasureRelicSelection(
+                                        run, typedRequest, treasureRarity,
+                                        relicCandidateIds);
                             }
                             else if (siteId == PrototypeNativeRelicGrabBag
                                 .NativeMerchantModelSiteId)
@@ -2835,6 +2954,115 @@ internal static class PrototypeAiJsonlServer
                             if (referenceNatureMerchantStates.Remove(handle))
                                 released++;
                             referenceNatureMerchantRunStateHandles.Remove(handle);
+                        }
+                        Write(new { requestId, ok = true, released });
+                        break;
+                    }
+
+                    case "reference_nature_treasure_begin":
+                    {
+                        var source = RequireState(request);
+                        var actionId = RequiredString(request, "action_id");
+                        var action = environment.Observe(source).LegalActions
+                            .SingleOrDefault(candidate =>
+                                StringComparer.Ordinal.Equals(
+                                    candidate.ActionId, actionId))
+                            ?? throw new InvalidOperationException(
+                                "ReferenceNature treasure begin requires a current legal Treasure-node action.");
+                        var seed = OptionalULong(request, "nature_seed");
+                        var session = seed is { } natureSeed
+                            ? ReferenceNatureTreasureSessionV111.Begin(
+                                source, GameAction.Create(
+                                    action.Kind, action.Payload), natureSeed)
+                            : ReferenceNatureTreasureSessionV111.Begin(
+                                source, GameAction.Create(
+                                    action.Kind, action.Payload));
+                        var handle = StoreReferenceNatureTreasure(session);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureTreasureResult(session, handle) });
+                        break;
+                    }
+
+                    case "reference_nature_treasure_status":
+                    {
+                        var handle = RequiredString(request,
+                            "reference_nature_treasure_handle");
+                        var session = RequireReferenceNatureTreasure(request);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureTreasureResult(session, handle) });
+                        break;
+                    }
+
+                    case "reference_nature_treasure_resolve_next":
+                    {
+                        var parentHandle = RequiredString(request,
+                            "reference_nature_treasure_handle");
+                        var session = RequireReferenceNatureTreasure(request);
+                        if (session.Fingerprint != RequiredString(request,
+                                "fingerprint"))
+                            throw new InvalidOperationException(
+                                "Stale ReferenceNature treasure fingerprint.");
+                        var next = session.ResolveNext();
+                        var handle = StoreReferenceNatureTreasure(next);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureTreasureResult(
+                                next, handle, parentHandle) });
+                        break;
+                    }
+
+                    case "reference_nature_treasure_fork":
+                    {
+                        var parentHandle = RequiredString(request,
+                            "reference_nature_treasure_handle");
+                        var next = RequireReferenceNatureTreasure(request).Fork();
+                        var handle = StoreReferenceNatureTreasure(next);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureTreasureResult(
+                                next, handle, parentHandle) });
+                        break;
+                    }
+
+                    case "reference_nature_treasure_save":
+                    {
+                        var session = RequireReferenceNatureTreasure(request);
+                        Write(new { requestId, ok = true,
+                            schemaId =
+                                ReferenceNatureTreasureSessionV111.CurrentSchemaId,
+                            snapshot = ReferenceNatureTreasureSessionV111
+                                .Save(session) });
+                        break;
+                    }
+
+                    case "reference_nature_treasure_load":
+                    {
+                        var session = ReferenceNatureTreasureSessionV111.Restore(
+                            RequiredString(request, "snapshot"));
+                        var handle = StoreReferenceNatureTreasure(session);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureTreasureResult(session, handle) });
+                        break;
+                    }
+
+                    case "reference_nature_treasure_release_many":
+                    {
+                        if (!request.TryGetProperty(
+                                "reference_nature_treasure_handles",
+                                out var handles) ||
+                            handles.ValueKind != JsonValueKind.Array)
+                            throw new ArgumentException(
+                                "reference_nature_treasure_handles must be an array.");
+                        var released = 0;
+                        foreach (var element in handles.EnumerateArray())
+                        {
+                            if (element.ValueKind != JsonValueKind.String ||
+                                string.IsNullOrWhiteSpace(element.GetString()))
+                                throw new ArgumentException(
+                                    "Invalid ReferenceNature treasure handle.");
+                            var handle = element.GetString()!;
+                            if (referenceNatureTreasureStates.Remove(handle))
+                                released++;
+                            referenceNatureTreasureRunStateHandles
+                                .Remove(handle);
                         }
                         Write(new { requestId, ok = true, released });
                         break;

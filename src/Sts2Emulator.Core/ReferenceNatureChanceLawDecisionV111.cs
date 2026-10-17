@@ -133,6 +133,9 @@ public static class ReferenceNatureChanceLawDecisionV111
 
             if (request.SiteId == "relic_grab_bag.rarity.unit_float")
             {
+                if (outcomeId == "no_relic")
+                    return FindNativeTreasureNoRelicRepresentative(
+                        conditioningRun);
                 var rarity = outcomeId switch
                 {
                     "rarity:common" => PrototypeRelicRarity.Common,
@@ -172,6 +175,30 @@ public static class ReferenceNatureChanceLawDecisionV111
 
         throw new NotSupportedException(
             "Unsupported unit-float Chance Law operation.");
+    }
+
+    private static float FindNativeTreasureNoRelicRepresentative(
+        RunState? conditioningRun)
+    {
+        if (conditioningRun?.World is not { RelicBag: { } bag } ||
+            conditioningRun.Phase != RunPhase.MapChoice)
+            throw new InvalidOperationException(
+                "Treasure no-relic mapping requires its pre-entry run and relic bag.");
+        var candidates = new[]
+        {
+            (PrototypeRelicRarity.Common, 0.25f),
+            (PrototypeRelicRarity.Uncommon, 0.65f),
+            (PrototypeRelicRarity.Rare, 0.915f)
+        };
+        foreach (var (rarity, representative) in candidates)
+        {
+            if (PrototypeNativeRelicGrabBag.PlanPull(
+                    bag, rarity, merchant: false, conditioningRun.Player)
+                .CandidateIds.Length == 0)
+                return representative;
+        }
+        throw new InvalidDataException(
+            "Treasure no-relic outcome has no empty rarity branch.");
     }
 
     private static float FindPriceRepresentative(

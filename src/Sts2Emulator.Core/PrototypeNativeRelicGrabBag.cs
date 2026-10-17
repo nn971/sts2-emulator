@@ -30,6 +30,10 @@ public static class PrototypeNativeRelicGrabBag
 {
     public const string NativeMerchantModelSiteId =
         "shop.merchant.relic_model.index_draw";
+    public const string NativeTreasureModelSiteId =
+        "treasure.relic_grab_bag.model.index_draw";
+    public const string NativeTreasureRarityOwnerId =
+        "relic_grab_bag:reward";
     internal const int RarityWeightScale = 10_000;
     internal const int CommonRarityWeight = 5_000;
     internal const int UncommonRarityWeight = 3_300;
@@ -113,6 +117,24 @@ public static class PrototypeNativeRelicGrabBag
 
     public static bool TryGetRarity(string id, out PrototypeRelicRarity rarity) =>
         Rarities.TryGetValue(id, out rarity);
+
+    public static string TreasureModelOwnerId(
+        RunWorldState world, PrototypeRelicRarity rarity,
+        string[] candidateIds)
+    {
+        ArgumentNullException.ThrowIfNull(world);
+        ArgumentNullException.ThrowIfNull(candidateIds);
+        if (!Enum.IsDefined(rarity) || candidateIds.Length == 0 ||
+            candidateIds.Any(string.IsNullOrWhiteSpace) ||
+            !candidateIds.SequenceEqual(candidateIds.OrderBy(
+                id => id, StringComparer.Ordinal), StringComparer.Ordinal))
+            throw new ArgumentException(
+                "Treasure relic support must be a nonempty sorted identity list.",
+                nameof(candidateIds));
+        return $"act:{world.Act}:floor:{world.Floor}:treasure:relic_grab_bag" +
+            $":rarity:{rarity}:pool:" +
+            CanonicalJson.Sha256(candidateIds);
+    }
 
     public static void Validate(PrototypeRelicBagState bag, PlayerState player)
     {
@@ -493,11 +515,43 @@ public sealed record PrototypeRelicBagPullPlanV111(
         var bag = world.RelicBag ?? (nativeRunRng is null
             ? Create(player, rng)
             : CreateNative(player, nativeRunRng));
+        var rarityOwnerId = merchant
+            ? $"act:{world.Act}:floor:{world.Floor}:merchant_relic:{merchantOfferOrdinal}"
+            : "relic_grab_bag";
         var rarity = forcedRarity ?? (nativeRunRng is null
             ? RollRarity(rng, merchant)
-            : RollRarityNative(nativeRunRng, merchant));
+            : RollRarityNative(nativeRunRng, merchant, rarityOwnerId));
         (PrototypeRelicBagState Bag, string? Id) pull;
-        if (merchant && nativeRunRng is not null &&
+        if (!merchant && nativeRunRng is not null &&
+            ControlledStochasticChanceReplayV111.IsActive)
+        {
+            var plan = PlanPull(bag, rarity, merchant: false, player);
+            if (plan.CandidateIds.Length == 0)
+            {
+                pull = (bag, null);
+            }
+            else
+            {
+                var candidates = plan.CandidateIds
+                    .OrderBy(id => id, StringComparer.Ordinal).ToArray();
+                var ownerId = TreasureModelOwnerId(world, rarity, candidates);
+                var ordinal = NativePlayerRngV111.NextOrdinal(
+                    nativeRunRng, NativePlayerRngV111.RewardsStreamId);
+                int selectedIndex;
+                using (ControlledStochasticChanceReplayV111
+                    .DescribeCandidates(candidates))
+                {
+                    selectedIndex = NativeRandomChoiceV111.ChooseIndexRange(
+                        nativeRunRng, NativeTreasureModelSiteId,
+                        NativePlayerRngV111.RewardsStreamId, ownerId,
+                        candidates.Length, ordinal).SelectedIndex;
+                }
+                pull = PullSelected(
+                    bag, plan with { CandidateIds = candidates },
+                    merchant: false, player, candidates[selectedIndex]);
+            }
+        }
+        else if (merchant && nativeRunRng is not null &&
             ControlledStochasticChanceReplayV111.IsActive)
         {
             if (merchantOfferOrdinal < 0 || merchantOfferOrdinal >= 3)

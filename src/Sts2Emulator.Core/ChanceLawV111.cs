@@ -26,6 +26,8 @@ public sealed record StochasticCapabilityManifestV111(
         ReferenceNatureAncientOfferSessionV111.CurrentSchemaId;
     public string ReferenceNatureMerchantSessionSchemaId { get; init; } =
         ReferenceNatureMerchantSessionV111.CurrentSchemaId;
+    public string ReferenceNatureTreasureSessionSchemaId { get; init; } =
+        ReferenceNatureTreasureSessionV111.CurrentSchemaId;
 }
 
 public static class StochasticCapabilitiesV111
@@ -81,7 +83,14 @@ public static class StochasticCapabilitiesV111
             "reference_nature_merchant_fork",
             "reference_nature_merchant_save",
             "reference_nature_merchant_load",
-            "reference_nature_merchant_release_many"
+            "reference_nature_merchant_release_many",
+            "reference_nature_treasure_begin",
+            "reference_nature_treasure_status",
+            "reference_nature_treasure_resolve_next",
+            "reference_nature_treasure_fork",
+            "reference_nature_treasure_save",
+            "reference_nature_treasure_load",
+            "reference_nature_treasure_release_many"
         ])
     {
         ReferenceNatureRunActionSessionSchemaId =
@@ -91,7 +100,9 @@ public static class StochasticCapabilitiesV111
         ReferenceNatureAncientOfferSessionSchemaId =
             ReferenceNatureAncientOfferSessionV111.CurrentSchemaId,
         ReferenceNatureMerchantSessionSchemaId =
-            ReferenceNatureMerchantSessionV111.CurrentSchemaId
+            ReferenceNatureMerchantSessionV111.CurrentSchemaId,
+        ReferenceNatureTreasureSessionSchemaId =
+            ReferenceNatureTreasureSessionV111.CurrentSchemaId
     };
 }
 
@@ -960,6 +971,159 @@ public static class ChanceLawEngineV111
             CanonicalJson.Sha256(conditioning),
             "native-relic-rarity-and-hidden-queue-permutation-unverified",
             outcomes);
+    }
+
+    /// <summary>
+    /// Query the rarity float consumed by configured native Treasure entry.
+    /// The owner and stream are taken from the actual typed request so a
+    /// serialized replay checks the source occurrence exactly.
+    /// </summary>
+    public static ChanceLawV111 QueryNativeTreasureRarity(
+        RunState run, RandomUnitFloatRequestV111 request)
+    {
+        ArgumentNullException.ThrowIfNull(run);
+        ArgumentNullException.ThrowIfNull(request);
+        PrototypeStateInvariants.Validate(run);
+        var world = ValidateNativeTreasureQueryBoundary(run);
+        request.Validate();
+        if (request.SiteId != "relic_grab_bag.rarity.unit_float" ||
+            request.StreamId != NativePlayerRngV111.RewardsStreamId ||
+            request.OwnerId != PrototypeNativeRelicGrabBag
+                .NativeTreasureRarityOwnerId)
+            throw new ArgumentException(
+                "Native treasure rarity request differs from its entry boundary.");
+
+        var bag = world.RelicBag!;
+        var conditioning = new
+        {
+            request,
+            candidatesByTier = new Dictionary<string, string[]>(
+                StringComparer.Ordinal)
+            {
+                ["Common"] = PrototypeNativeRelicGrabBag.EligiblePullIds(
+                    bag, PrototypeRelicRarity.Common, merchant: false,
+                    run.Player).OrderBy(id => id, StringComparer.Ordinal).ToArray(),
+                ["Uncommon"] = PrototypeNativeRelicGrabBag.EligiblePullIds(
+                    bag, PrototypeRelicRarity.Uncommon, merchant: false,
+                    run.Player).OrderBy(id => id, StringComparer.Ordinal).ToArray(),
+                ["Rare"] = PrototypeNativeRelicGrabBag.EligiblePullIds(
+                    bag, PrototypeRelicRarity.Rare, merchant: false,
+                    run.Player).OrderBy(id => id, StringComparer.Ordinal).ToArray()
+            },
+            branches = PrototypeNativeRelicGrabBag.NativeRarityBranches()
+                .Select(branch => new
+                {
+                    rarity = branch.Rarity.ToString(), branch.BasisPoints,
+                    fallbackTiers = PrototypeNativeRelicGrabBag
+                        .PullFallbackTiers(branch.Rarity)
+                        .Select(tier => tier.ToString()).ToArray()
+                }).ToArray()
+        };
+        var resolvedBranches = PrototypeNativeRelicGrabBag
+            .NativeRarityBranches().Select(branch =>
+            {
+                var plan = PrototypeNativeRelicGrabBag.PlanPull(
+                    bag, branch.Rarity, merchant: false, run.Player);
+                return (Branch: branch, Plan: plan);
+            }).ToArray();
+        var outcomeWeights = new SortedDictionary<string, long>(
+            StringComparer.Ordinal);
+        foreach (var (branch, plan) in resolvedBranches)
+        {
+            var outcomeId = plan.CandidateIds.Length == 0
+                ? "no_relic"
+                : "rarity:" + branch.Rarity.ToString().ToLowerInvariant();
+            outcomeWeights[outcomeId] = checked(
+                outcomeWeights.GetValueOrDefault(outcomeId) +
+                branch.BasisPoints);
+        }
+        var outcomes = outcomeWeights.Select(pair =>
+            new ChanceLawOutcomeV111(pair.Key, pair.Value)).ToArray();
+        return CreateNativeBoundaryLaw(
+            request.SiteId, "unit_float_threshold", request.OwnerId,
+            request.Ordinal, "native-treasure-rarity-threshold-v1",
+            CanonicalJson.Sha256(conditioning),
+            "native-treasure-rarity-threshold-basis-points-unverified",
+            outcomes);
+    }
+
+    /// <summary>
+    /// Query a Treasure relic identity after its rarity float has been
+    /// selected. Candidate identities are canonicalized so private queue
+    /// order is absent from both the request and the Nature projection.
+    /// </summary>
+    public static ChanceLawV111 QueryNativeTreasureRelicSelection(
+        RunState run, RandomIndexRequestV111 request,
+        PrototypeRelicRarity rarity, string[] candidateIds)
+    {
+        ArgumentNullException.ThrowIfNull(run);
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(candidateIds);
+        PrototypeStateInvariants.Validate(run);
+        var world = ValidateNativeTreasureQueryBoundary(run);
+        request.Validate();
+        if (request.SiteId != PrototypeNativeRelicGrabBag
+                .NativeTreasureModelSiteId ||
+            request.StreamId != NativePlayerRngV111.RewardsStreamId ||
+            request.OperationKind != "choose_index" ||
+            !Enum.IsDefined(rarity) || candidateIds.Length == 0 ||
+            request.SupportCount != candidateIds.Length ||
+            !request.OrderedCandidates.SequenceEqual(
+                Enumerable.Range(0, candidateIds.Length)) ||
+            candidateIds.Any(string.IsNullOrWhiteSpace) ||
+            candidateIds.Distinct(StringComparer.Ordinal).Count() !=
+                candidateIds.Length ||
+            !candidateIds.SequenceEqual(candidateIds.OrderBy(
+                id => id, StringComparer.Ordinal), StringComparer.Ordinal))
+            throw new ArgumentException(
+                "Native treasure relic selection request is malformed.");
+
+        var plan = PrototypeNativeRelicGrabBag.PlanPull(
+            world.RelicBag!, rarity, merchant: false, run.Player);
+        var expectedCandidates = plan.CandidateIds.OrderBy(
+            id => id, StringComparer.Ordinal).ToArray();
+        var ownerId = PrototypeNativeRelicGrabBag.TreasureModelOwnerId(
+            world, rarity, candidateIds);
+        if (plan.SelectedTier is null || request.OwnerId != ownerId ||
+            !candidateIds.SequenceEqual(expectedCandidates,
+                StringComparer.Ordinal))
+            throw new InvalidDataException(
+                "Native treasure relic support differs from its conditioned hidden queue.");
+
+        var conditioning = new
+        {
+            request,
+            requestedRarity = rarity.ToString(),
+            selectedTier = plan.SelectedTier.Value.ToString(),
+            fallbackTiers = PrototypeNativeRelicGrabBag
+                .PullFallbackTiers(rarity).Select(tier => tier.ToString())
+                .ToArray(),
+            candidateIds
+        };
+        var outcomes = candidateIds.Select((id, index) =>
+            new ChanceLawOutcomeV111(
+                $"relic_model:{id}:index:{index}", 1L)).ToArray();
+        return CreateNativeBoundaryLaw(
+            request.SiteId, request.OperationKind, request.OwnerId,
+            request.Ordinal, "uniform-native-treasure-relic-identity-v1",
+            CanonicalJson.Sha256(conditioning),
+            "native-treasure-hidden-relic-queue-identity-unverified",
+            outcomes);
+    }
+
+    private static RunWorldState ValidateNativeTreasureQueryBoundary(
+        RunState run)
+    {
+        if (run.Phase != RunPhase.MapChoice || run.World is not { } world ||
+            run.NativeRunRng is null || run.ControlledRunActionChoice is not null ||
+            !PrototypeGameEngine.UsesNativeRegionalSystems(world) ||
+            !PrototypeNativeWingedBoots.AvailableNodes(world, run.Player)
+                .Any(node => node.RoomType == PrototypeRoomType.Treasure) ||
+            PrototypeGameEngine.WillSkipNextTreasure(run.Player) ||
+            world.RelicBag is null)
+            throw new InvalidOperationException(
+                "Native treasure Chance Laws require a non-skipped configured Treasure node before entry.");
+        return world;
     }
 
     private static long LeastCommonMultiple(long left, long right)

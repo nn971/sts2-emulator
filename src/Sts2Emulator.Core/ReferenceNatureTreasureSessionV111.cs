@@ -1,0 +1,407 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
+
+namespace Sts2Emulator.Core;
+
+public sealed record ReferenceNatureTreasureLawDecisionV111(
+    string LawId, string EventId, string OutcomeId, int OutcomeIndex)
+{
+    public void Validate()
+    {
+        if (string.IsNullOrWhiteSpace(LawId) ||
+            string.IsNullOrWhiteSpace(EventId) ||
+            string.IsNullOrWhiteSpace(OutcomeId) || OutcomeIndex < 0)
+            throw new InvalidDataException(
+                "Invalid ReferenceNature treasure law decision.");
+    }
+}
+
+public sealed record ReferenceNatureTreasureSessionSnapshotV111(
+    string SchemaId, string OriginSnapshotJson, GameAction Action,
+    string RunSnapshotJson, ReferenceNatureStateV111 InitialNatureState,
+    ReferenceNatureStateV111 NatureState,
+    ControlledStochasticDecisionV111[] ProviderDecisions,
+    ReferenceNatureTreasureLawDecisionV111[] DecisionTranscript,
+    ControlledStochasticRequestV111? PendingRequest,
+    string[]? PendingCandidateLabels);
+
+/// <summary>
+/// Atomic configured native Treasure entry driven by conditional Chance Laws.
+/// Each prefix replays the actual map action from its pre-entry checkpoint;
+/// only the completed room result and Nature cursor are published.
+/// </summary>
+public sealed record ReferenceNatureTreasureSessionV111(
+    string SchemaId, RunState Origin, GameAction Action, RunState Run,
+    ReferenceNatureStateV111 InitialNatureState,
+    ReferenceNatureStateV111 NatureState,
+    ControlledStochasticDecisionV111[] ProviderDecisions,
+    ReferenceNatureTreasureLawDecisionV111[] DecisionTranscript,
+    ControlledStochasticRequestV111? PendingRequest,
+    string[]? PendingCandidateLabels)
+{
+    public const string CurrentSchemaId =
+        "sts2-v111-reference-nature-treasure-session-v1";
+
+    [JsonIgnore]
+    public string Fingerprint => CanonicalJson.Sha256(this);
+
+    [JsonIgnore]
+    public bool Complete => PendingRequest is null;
+
+    [JsonIgnore]
+    public int NextOrdinal => ProviderDecisions.Length;
+
+    [JsonIgnore]
+    public ChanceLawV111? PendingLaw => PendingRequest is null ? null :
+        QueryLaw(Origin, PendingRequest, PendingCandidateLabels);
+
+    public static ReferenceNatureTreasureSessionV111 Begin(
+        RunState source, GameAction action, ulong seed) =>
+        Begin(source, action, ReferenceNatureRunCursorV111.Begin(
+            source, seed, "Native treasure"));
+
+    public static ReferenceNatureTreasureSessionV111 Begin(
+        RunState source, GameAction action) =>
+        Begin(source, action, ReferenceNatureRunCursorV111.Begin(
+            source, null, "Native treasure"));
+
+    private static ReferenceNatureTreasureSessionV111 Begin(
+        RunState source, GameAction action,
+        ReferenceNatureStateV111 initialNatureState)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(action);
+        ArgumentNullException.ThrowIfNull(initialNatureState);
+        ValidateOpeningBoundary(source, action);
+        ReferenceNatureRunCursorV111.ValidateInitial(
+            source, initialNatureState, "Native treasure");
+
+        var natureOrigin = CreateNatureReplayOrigin(source);
+        var replay = Replay(natureOrigin, action, []);
+        var run = replay.Run is { } completed
+            ? ReferenceNatureRunCursorV111.Commit(
+                completed, initialNatureState)
+            : natureOrigin.Fork();
+        var session = new ReferenceNatureTreasureSessionV111(
+            CurrentSchemaId, natureOrigin.Fork(), CloneAction(action), run,
+            initialNatureState.Fork(), initialNatureState.Fork(), [], [],
+            replay.Pending?.Request.Fork(),
+            replay.Pending?.CandidateLabels is { } labels
+                ? (string[])labels.Clone() : null);
+        session.Validate();
+        return session;
+    }
+
+    public ReferenceNatureTreasureSessionV111 Fork()
+    {
+        Validate();
+        return this with
+        {
+            Origin = Origin.Fork(),
+            Action = CloneAction(Action),
+            Run = Run.Fork(),
+            InitialNatureState = InitialNatureState.Fork(),
+            NatureState = NatureState.Fork(),
+            ProviderDecisions = ProviderDecisions
+                .Select(decision => decision.Fork()).ToArray(),
+            DecisionTranscript = (ReferenceNatureTreasureLawDecisionV111[])
+                DecisionTranscript.Clone(),
+            PendingRequest = PendingRequest?.Fork(),
+            PendingCandidateLabels = PendingCandidateLabels is null ? null :
+                (string[])PendingCandidateLabels.Clone()
+        };
+    }
+
+    public ReferenceNatureTreasureSessionV111 ResolveNext()
+    {
+        Validate();
+        if (Complete)
+            throw new InvalidOperationException(
+                "ReferenceNature treasure session is already complete.");
+
+        var law = QueryLaw(Origin, PendingRequest!, PendingCandidateLabels);
+        var selection = ReferenceNatureV111.SampleValidated(law, NatureState);
+        var providerDecision = ReferenceNatureChanceLawDecisionV111.FromSelection(
+            law, PendingRequest!, selection, Origin, PendingCandidateLabels);
+        var providerDecisions = ProviderDecisions
+            .Append(providerDecision).ToArray();
+        var transcript = DecisionTranscript.Append(
+            new ReferenceNatureTreasureLawDecisionV111(
+                law.LawId, law.EventId, selection.OutcomeId,
+                selection.OutcomeIndex)).ToArray();
+        var replay = Replay(Origin, Action, providerDecisions);
+        var run = replay.Run is { } completed
+            ? ReferenceNatureRunCursorV111.Commit(
+                completed, selection.NextState)
+            : Origin.Fork();
+        var next = this with
+        {
+            Run = run,
+            NatureState = selection.NextState,
+            ProviderDecisions = providerDecisions,
+            DecisionTranscript = transcript,
+            PendingRequest = replay.Pending?.Request.Fork(),
+            PendingCandidateLabels = replay.Pending?.CandidateLabels is { } labels
+                ? (string[])labels.Clone() : null
+        };
+        next.Validate();
+        return next;
+    }
+
+    public void Validate()
+    {
+        if (SchemaId != CurrentSchemaId || Origin is null || Action is null ||
+            Run is null || InitialNatureState is null || NatureState is null ||
+            ProviderDecisions is null || DecisionTranscript is null ||
+            ProviderDecisions.Length != DecisionTranscript.Length ||
+            string.IsNullOrWhiteSpace(Action.Kind))
+            throw new InvalidDataException(
+                "Invalid ReferenceNature treasure session envelope.");
+        if (PendingRequest is { } pendingRequest)
+        {
+            pendingRequest.Validate();
+            if (PendingCandidateLabels is { } pendingLabels &&
+                (pendingRequest.IndexRequest is null ||
+                 pendingLabels.Length !=
+                    pendingRequest.IndexRequest.SupportCount ||
+                 pendingLabels.Any(string.IsNullOrWhiteSpace)))
+                throw new InvalidDataException(
+                    "Invalid ReferenceNature treasure pending candidate labels.");
+        }
+        else if (PendingCandidateLabels is not null)
+        {
+            throw new InvalidDataException(
+                "Completed ReferenceNature treasure session has pending candidate labels.");
+        }
+        ValidateOpeningBoundary(Origin, Action);
+        PrototypeStateInvariants.Validate(Origin);
+        PrototypeStateInvariants.Validate(Run);
+        InitialNatureState.Validate();
+        NatureState.Validate();
+        ReferenceNatureRunCursorV111.ValidateInitial(
+            Origin, InitialNatureState, "Native treasure");
+
+        var expectedNatureState = InitialNatureState.Fork();
+        for (var index = 0; index < ProviderDecisions.Length; index++)
+        {
+            var prefix = ProviderDecisions.Take(index).ToArray();
+            var replayAtBoundary = Replay(Origin, Action, prefix);
+            var request = replayAtBoundary.Pending?.Request
+                ?? throw new InvalidDataException(
+                    "Treasure replay completed before its saved decision transcript.");
+            var labels = replayAtBoundary.Pending.CandidateLabels;
+            var savedDecision = ProviderDecisions[index];
+            savedDecision.Validate();
+            if (!SameRequest(request, AsRequest(savedDecision)) ||
+                !SameLabels(labels, savedDecision.CandidateLabels))
+                throw new InvalidDataException(
+                    "ReferenceNature treasure provider transcript changed its request.");
+
+            var law = QueryLaw(Origin, request, labels);
+            var selection = ReferenceNatureV111.SampleValidated(
+                law, expectedNatureState);
+            var expectedTranscript = new ReferenceNatureTreasureLawDecisionV111(
+                law.LawId, law.EventId, selection.OutcomeId,
+                selection.OutcomeIndex);
+            if (CanonicalJson.Sha256(expectedTranscript) !=
+                    CanonicalJson.Sha256(DecisionTranscript[index]) ||
+                CanonicalJson.Sha256(ReferenceNatureChanceLawDecisionV111
+                    .FromSelection(law, request, selection, Origin, labels)) !=
+                CanonicalJson.Sha256(savedDecision))
+                throw new InvalidDataException(
+                    "ReferenceNature treasure law decisions do not replay.");
+            expectedNatureState = selection.NextState;
+        }
+
+        var replay = Replay(Origin, Action, ProviderDecisions);
+        if ((replay.Pending is null) != Complete ||
+            !SameRequest(replay.Pending?.Request, PendingRequest) ||
+            !SameLabels(replay.Pending?.CandidateLabels,
+                PendingCandidateLabels) ||
+            CanonicalJson.Sha256(expectedNatureState) !=
+                CanonicalJson.Sha256(NatureState))
+            throw new InvalidDataException(
+                "ReferenceNature treasure continuation differs from its replay.");
+
+        var expectedRun = replay.Run is { } completed
+            ? ReferenceNatureRunCursorV111.Commit(completed, expectedNatureState)
+            : Origin.Fork();
+        if (CanonicalJson.Sha256(expectedRun) != CanonicalJson.Sha256(Run) ||
+            !ReferenceNatureRunCursorV111.MatchesRunSession(
+                Origin, Run, InitialNatureState, NatureState,
+                DecisionTranscript.Length, Complete))
+            throw new InvalidDataException(
+                "ReferenceNature treasure run differs from its atomic cursor.");
+
+        foreach (var decision in DecisionTranscript)
+            decision.Validate();
+    }
+
+    public static string Save(ReferenceNatureTreasureSessionV111 session)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        session.Validate();
+        var snapshot = new ReferenceNatureTreasureSessionSnapshotV111(
+            CurrentSchemaId, RunSnapshot.Save(session.Origin),
+            CloneAction(session.Action), RunSnapshot.Save(session.Run),
+            session.InitialNatureState, session.NatureState,
+            session.ProviderDecisions.Select(decision => decision.Fork()).ToArray(),
+            (ReferenceNatureTreasureLawDecisionV111[])
+                session.DecisionTranscript.Clone(),
+            session.PendingRequest?.Fork(),
+            session.PendingCandidateLabels is null ? null :
+                (string[])session.PendingCandidateLabels.Clone());
+        return JsonSerializer.Serialize(snapshot);
+    }
+
+    public static ReferenceNatureTreasureSessionV111 Restore(string json)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(json);
+        var snapshot = JsonSerializer.Deserialize<
+                ReferenceNatureTreasureSessionSnapshotV111>(json)
+            ?? throw new InvalidDataException(
+                "Null ReferenceNature treasure snapshot.");
+        if (snapshot.SchemaId != CurrentSchemaId ||
+            string.IsNullOrWhiteSpace(snapshot.OriginSnapshotJson) ||
+            snapshot.Action is null ||
+            string.IsNullOrWhiteSpace(snapshot.RunSnapshotJson) ||
+            snapshot.InitialNatureState is null ||
+            snapshot.NatureState is null || snapshot.ProviderDecisions is null ||
+            snapshot.DecisionTranscript is null)
+            throw new InvalidDataException(
+                "Invalid ReferenceNature treasure snapshot.");
+        var session = new ReferenceNatureTreasureSessionV111(
+            CurrentSchemaId, RunSnapshot.Load(snapshot.OriginSnapshotJson),
+            CloneAction(snapshot.Action), RunSnapshot.Load(snapshot.RunSnapshotJson),
+            snapshot.InitialNatureState.Fork(), snapshot.NatureState.Fork(),
+            snapshot.ProviderDecisions.Select(decision => decision.Fork()).ToArray(),
+            (ReferenceNatureTreasureLawDecisionV111[])
+                snapshot.DecisionTranscript.Clone(),
+            snapshot.PendingRequest?.Fork(),
+            snapshot.PendingCandidateLabels is null ? null :
+                (string[])snapshot.PendingCandidateLabels.Clone());
+        session.Validate();
+        return session;
+    }
+
+    private static ChanceLawV111 QueryLaw(
+        RunState source, ControlledStochasticRequestV111 request,
+        string[]? candidateLabels)
+    {
+        request.Validate();
+        if (request.UnitFloatRequest is { } floatRequest &&
+            floatRequest.SiteId == "relic_grab_bag.rarity.unit_float")
+            return ChanceLawEngineV111.QueryNativeTreasureRarity(
+                source, floatRequest);
+        if (request.IndexRequest is { } indexRequest &&
+            indexRequest.SiteId == PrototypeNativeRelicGrabBag
+                .NativeTreasureModelSiteId)
+        {
+            if (candidateLabels is null)
+                throw new InvalidDataException(
+                    "Treasure relic identity request lost its candidate labels.");
+            var rarityText = SegmentAfter(indexRequest.OwnerId,
+                ":rarity:", ":pool:");
+            if (!Enum.TryParse<PrototypeRelicRarity>(rarityText,
+                    ignoreCase: false, out var rarity) ||
+                !Enum.IsDefined(rarity))
+                throw new InvalidDataException(
+                    "Treasure relic identity request has an invalid rarity.");
+            return ChanceLawEngineV111.QueryNativeTreasureRelicSelection(
+                source, indexRequest, rarity, candidateLabels);
+        }
+        throw new NotSupportedException(
+            $"ReferenceNature treasure replay does not support stochastic site '{request.SiteId}'.");
+    }
+
+    private static TreasureReplayResultV111 Replay(
+        RunState source, GameAction action,
+        ControlledStochasticDecisionV111[] decisions)
+    {
+        var replay = ControlledChanceContinuationExecutorV111.ResumeStochastic(
+            CreateNatureReplayOrigin(source), decisions,
+            checkpoint => new PrototypeGameEngine().Step(
+                checkpoint, CloneAction(action)).State);
+        return new TreasureReplayResultV111(replay.Run, replay.PendingChance);
+    }
+
+    private static RunState CreateNatureReplayOrigin(RunState source)
+    {
+        var world = source.World!;
+        var bag = world.RelicBag ?? throw new NotSupportedException(
+            "Native treasure Nature replay requires a committed relic bag; bag construction remains a separate Nature boundary.");
+        static string[] Canonical(string[] ids) => ids
+            .OrderBy(id => id, StringComparer.Ordinal).ToArray();
+        return source with
+        {
+            World = world with
+            {
+                RelicBag = new PrototypeRelicBagState(
+                    Canonical(bag.Common), Canonical(bag.Uncommon),
+                    Canonical(bag.Rare), Canonical(bag.Shop))
+            }
+        };
+    }
+
+    private static void ValidateOpeningBoundary(
+        RunState source, GameAction action)
+    {
+        if (source.Phase != RunPhase.MapChoice || source.World is not { } world ||
+            source.NativeRunRng is null ||
+            source.ControlledRunActionChoice is not null ||
+            !PrototypeGameEngine.UsesNativeRegionalSystems(world) ||
+            world.RelicBag is null ||
+            PrototypeGameEngine.WillSkipNextTreasure(source.Player) ||
+            action.Kind != "choose_map_node")
+            throw new InvalidOperationException(
+                "ReferenceNature treasure session requires a non-skipped configured Treasure choice and committed relic bag.");
+        var payload = action.ReadPayload<ChooseMapNodePayload>();
+        if (!PrototypeNativeWingedBoots.AvailableNodes(world, source.Player)
+                .Any(node => node.NodeId == payload.NodeId &&
+                    node.RoomType == PrototypeRoomType.Treasure) ||
+            !new PrototypeGameEngine().GetLegalActions(source).Any(candidate =>
+                PrototypeAiEnvironment.StableActionId(candidate) ==
+                PrototypeAiEnvironment.StableActionId(action)))
+            throw new InvalidOperationException(
+                "ReferenceNature treasure session requires a current legal Treasure-node action.");
+        PrototypeStateInvariants.Validate(source);
+    }
+
+    private static string SegmentAfter(string value, string start, string end)
+    {
+        var startIndex = value.LastIndexOf(start, StringComparison.Ordinal);
+        var endIndex = value.IndexOf(end,
+            startIndex < 0 ? 0 : startIndex + start.Length,
+            StringComparison.Ordinal);
+        if (startIndex < 0 || endIndex <= startIndex + start.Length)
+            throw new InvalidDataException(
+                "Treasure relic request owner has a malformed rarity segment.");
+        return value[(startIndex + start.Length)..endIndex];
+    }
+
+    private static bool SameLabels(string[]? left, string[]? right) =>
+        left is null ? right is null : right is not null &&
+            left.SequenceEqual(right, StringComparer.Ordinal);
+
+    private static bool SameRequest(
+        ControlledStochasticRequestV111? left,
+        ControlledStochasticRequestV111? right) =>
+        left is null ? right is null : right is not null &&
+            CanonicalJson.Sha256(left) == CanonicalJson.Sha256(right);
+
+    private static ControlledStochasticRequestV111 AsRequest(
+        ControlledStochasticDecisionV111 decision) =>
+        decision.IndexDecision is { } index
+            ? ControlledStochasticRequestV111.FromIndex(index.Request)
+            : ControlledStochasticRequestV111.FromUnitFloat(
+                decision.UnitFloatDecision!.Request);
+
+    private static GameAction CloneAction(GameAction action) => action with
+    {
+        Payload = action.Payload.Clone()
+    };
+
+    private sealed record TreasureReplayResultV111(
+        RunState? Run,
+        ControlledStochasticChanceRequiredExceptionV111? Pending);
+}

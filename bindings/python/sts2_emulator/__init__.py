@@ -277,6 +277,32 @@ class State:
         return ReferenceNatureMerchantSession.from_wire(
             self.session, result["result"])
 
+    def begin_reference_nature_treasure(self, action_id: str,
+                                        nature_seed: int | None = None):
+        """Begin atomic ReferenceNature generation for a configured Treasure node."""
+        if self.session.capabilities.get(
+                "referenceNatureTreasureSessionSchemaId") != (
+                "sts2-v111-reference-nature-treasure-session-v1"):
+            raise EmulatorError(
+                "Emulator does not expose ReferenceNature treasure sessions")
+        if not isinstance(action_id, str) or not action_id:
+            raise ValueError("action_id must be a nonempty legal Treasure-node action ID")
+        if not self.session.supports_reference_nature_site(
+                "relic_grab_bag.rarity.unit_float", session="treasure"):
+            raise EmulatorError(
+                "No ReferenceNature treasure session is advertised")
+        if (nature_seed is not None and
+                (not isinstance(nature_seed, int) or
+                 isinstance(nature_seed, bool) or nature_seed < 0 or
+                 nature_seed > 0xFFFFFFFFFFFFFFFF)):
+            raise ValueError("nature_seed must be an unsigned 64-bit integer")
+        payload = {"state_handle": self.handle, "action_id": action_id}
+        if nature_seed is not None:
+            payload["nature_seed"] = nature_seed
+        result = self.session.call("reference_nature_treasure_begin", **payload)
+        return ReferenceNatureTreasureSession.from_wire(
+            self.session, result["result"])
+
 
 @dataclass(frozen=True)
 class ControlledEventChoice:
@@ -670,6 +696,79 @@ class ReferenceNatureMerchantSession:
 
     def release(self):
         return self.session.release_reference_nature_merchant_many([self])
+
+
+@dataclass(frozen=True)
+class ReferenceNatureTreasureSession:
+    """Atomic native Treasure entry, Chance Law replay and Nature cursor."""
+    session: "Session"
+    handle: str
+    fingerprint: str
+    state_handle: str | None
+    action_id: str
+    run_phase: str
+    boundary: str
+    next_ordinal: int
+    pending: dict | None
+    reward: dict | None
+    decision_transcript: list
+    nature_sample_count: int
+
+    @classmethod
+    def from_wire(cls, session, payload):
+        if payload.get("schemaId") != (
+                "sts2-v111-reference-nature-treasure-session-v1"):
+            raise EmulatorError(
+                "Unsupported ReferenceNature treasure session schema")
+        return cls(
+            session, payload["referenceNatureTreasureHandle"],
+            payload["fingerprint"], payload["stateHandle"],
+            payload["actionId"], payload["runPhase"],
+            payload["boundary"], payload["nextOrdinal"],
+            payload["pending"], payload["reward"],
+            payload["decisionTranscript"], payload["natureSampleCount"])
+
+    @property
+    def complete(self):
+        return self.boundary == "committed"
+
+    @property
+    def state(self):
+        if self.state_handle is None:
+            raise EmulatorError(
+                "ReferenceNature treasure generation has not committed")
+        return State(self.session, self.state_handle)
+
+    def status(self):
+        result = self.session.call(
+            "reference_nature_treasure_status",
+            reference_nature_treasure_handle=self.handle)
+        return ReferenceNatureTreasureSession.from_wire(
+            self.session, result["result"])
+
+    def resolve_next(self):
+        """Sample one pending Chance Law and replay Treasure entry."""
+        result = self.session.call(
+            "reference_nature_treasure_resolve_next",
+            reference_nature_treasure_handle=self.handle,
+            fingerprint=self.fingerprint)
+        return ReferenceNatureTreasureSession.from_wire(
+            self.session, result["result"])
+
+    def fork(self):
+        result = self.session.call(
+            "reference_nature_treasure_fork",
+            reference_nature_treasure_handle=self.handle)
+        return ReferenceNatureTreasureSession.from_wire(
+            self.session, result["result"])
+
+    def save_snapshot(self):
+        return self.session.call(
+            "reference_nature_treasure_save",
+            reference_nature_treasure_handle=self.handle)["snapshot"]
+
+    def release(self):
+        return self.session.release_reference_nature_treasure_many([self])
 
 
 @dataclass(frozen=True)
@@ -1228,10 +1327,11 @@ class Session:
             "event_choice": "referenceNatureEventChoiceSiteIds",
             "ancient_offer": "referenceNatureAncientOfferSiteIds",
             "merchant": "referenceNatureMerchantSiteIds",
+            "treasure": "referenceNatureTreasureSiteIds",
         }
         if session != "any" and session not in fields:
             raise ValueError(
-                "session must be semantic, run_action, event_choice, ancient_offer, merchant, or any")
+                "session must be semantic, run_action, event_choice, ancient_offer, merchant, treasure, or any")
         coverage = self.stochastic_session_coverage
         if not isinstance(coverage, dict) or coverage.get("schemaId") != (
                 "sts2-v111-stochastic-session-coverage-v1"):
@@ -1549,6 +1649,27 @@ class Session:
         return self.call(
             "reference_nature_merchant_release_many",
             reference_nature_merchant_handles=[
+                item.handle for item in sessions])["released"]
+
+    def load_reference_nature_treasure_snapshot(self, snapshot: str):
+        if self.capabilities.get(
+                "referenceNatureTreasureSessionSchemaId") != (
+                "sts2-v111-reference-nature-treasure-session-v1"):
+            raise EmulatorError(
+                "Emulator does not expose ReferenceNature treasure sessions")
+        result = self.call("reference_nature_treasure_load",
+                           snapshot=snapshot)
+        return ReferenceNatureTreasureSession.from_wire(
+            self, result["result"])
+
+    def release_reference_nature_treasure_many(self, sessions):
+        sessions = list(sessions)
+        if any(item.session is not self for item in sessions):
+            raise ValueError(
+                "ReferenceNature treasure handle belongs to another session")
+        return self.call(
+            "reference_nature_treasure_release_many",
+            reference_nature_treasure_handles=[
                 item.handle for item in sessions])["released"]
 
     def load_controlled_snapshot(self, snapshot: str):
