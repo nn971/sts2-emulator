@@ -2827,14 +2827,24 @@ public sealed record EventState(
     // the type is persisted independently of the random rider offer.
     string? NativeTinkerType = null,
     RngStreamState? NativeEventRng = null,
-    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     bool? NativeTanxTriEligible = null,
-    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     bool? NativeNonupeipeBraceletEligible = null,
     PrototypeFuturePotionOffer[]? NativeFuturePotionOffers = null,
     string? NativeEventRngProviderMode = null,
     PrototypeControlledEventChoiceContinuationV111? ControlledChoice = null)
 {
+    /// <summary>
+    /// Authoritative in-memory mechanical state for the active event. Existing
+    /// members remain the flattened snapshot and source-call representation.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public EventMechanicsStateV111 Mechanics { get; init; } = new(
+        EventId, ChosenChoiceId, PendingDeckChoice, PendingPotionReplacement,
+        QueuedPotionIds, QueuedDeckChoices, OfferedChoiceIds, PendingReward,
+        DeferredHpLoss, NativePageIndex, DeferredGoldLoss,
+        RepyFirstChoiceId, RepyChestGroupsResolved,
+        NativeTanxTriEligible, NativeNonupeipeBraceletEligible);
+
     /// <summary>
     /// Authoritative in-memory stochastic state for the event. The existing
     /// members below remain the flattened snapshot representation.
@@ -2848,6 +2858,101 @@ public sealed record EventState(
                 NativeDishCount, NativeDishRollPending, RepyChestPotionIds,
                 RepyChestRelicIds, NativeTinkerType,
                 NativeFuturePotionOffers));
+
+    public string EventId
+    {
+        get => Mechanics.EventId;
+        init => Mechanics = Mechanics with { EventId = value };
+    }
+
+    public string? ChosenChoiceId
+    {
+        get => Mechanics.ChosenChoiceId;
+        init => Mechanics = Mechanics with { ChosenChoiceId = value };
+    }
+
+    public PrototypePendingEventDeckChoiceState? PendingDeckChoice
+    {
+        get => Mechanics.PendingDeckChoice;
+        init => Mechanics = Mechanics with { PendingDeckChoice = value };
+    }
+
+    public PrototypePendingEventPotionReplacementState? PendingPotionReplacement
+    {
+        get => Mechanics.PendingPotionReplacement;
+        init => Mechanics = Mechanics with { PendingPotionReplacement = value };
+    }
+
+    public string[]? QueuedPotionIds
+    {
+        get => Mechanics.QueuedPotionIds;
+        init => Mechanics = Mechanics with { QueuedPotionIds = value };
+    }
+
+    public PrototypePendingEventDeckChoiceState[]? QueuedDeckChoices
+    {
+        get => Mechanics.QueuedDeckChoices;
+        init => Mechanics = Mechanics with { QueuedDeckChoices = value };
+    }
+
+    public string[]? OfferedChoiceIds
+    {
+        get => Mechanics.OfferedChoiceIds;
+        init => Mechanics = Mechanics with { OfferedChoiceIds = value };
+    }
+
+    public RewardState? PendingReward
+    {
+        get => Mechanics.PendingReward;
+        init => Mechanics = Mechanics with { PendingReward = value };
+    }
+
+    public int DeferredHpLoss
+    {
+        get => Mechanics.DeferredHpLoss;
+        init => Mechanics = Mechanics with { DeferredHpLoss = value };
+    }
+
+    public int NativePageIndex
+    {
+        get => Mechanics.NativePageIndex;
+        init => Mechanics = Mechanics with { NativePageIndex = value };
+    }
+
+    public int DeferredGoldLoss
+    {
+        get => Mechanics.DeferredGoldLoss;
+        init => Mechanics = Mechanics with { DeferredGoldLoss = value };
+    }
+
+    public string? RepyFirstChoiceId
+    {
+        get => Mechanics.RepyFirstChoiceId;
+        init => Mechanics = Mechanics with { RepyFirstChoiceId = value };
+    }
+
+    public int RepyChestGroupsResolved
+    {
+        get => Mechanics.RepyChestGroupsResolved;
+        init => Mechanics = Mechanics with { RepyChestGroupsResolved = value };
+    }
+
+    [System.Text.Json.Serialization.JsonIgnore(Condition =
+        System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public bool? NativeTanxTriEligible
+    {
+        get => Mechanics.NativeTanxTriEligible;
+        init => Mechanics = Mechanics with { NativeTanxTriEligible = value };
+    }
+
+    [System.Text.Json.Serialization.JsonIgnore(Condition =
+        System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public bool? NativeNonupeipeBraceletEligible
+    {
+        get => Mechanics.NativeNonupeipeBraceletEligible;
+        init => Mechanics = Mechanics with
+        { NativeNonupeipeBraceletEligible = value };
+    }
 
     public string? DeferredCardId
     {
@@ -2978,24 +3083,8 @@ public sealed record EventState(
 
     public EventState Fork() => this with
     {
+        Mechanics = Mechanics.Fork(),
         Stochastic = Stochastic.Fork(),
-        PendingDeckChoice =
-            PendingDeckChoice?.Fork(),
-        PendingPotionReplacement =
-            PendingPotionReplacement?.Fork(),
-        QueuedPotionIds =
-            QueuedPotionIds is null
-                ? null
-                : (string[])QueuedPotionIds.Clone(),
-        QueuedDeckChoices =
-            QueuedDeckChoices is null
-                ? null
-                : QueuedDeckChoices.Select(choice => choice.Fork()).ToArray(),
-        OfferedChoiceIds =
-            OfferedChoiceIds is null
-                ? null
-                : (string[])OfferedChoiceIds.Clone(),
-        PendingReward = PendingReward?.Fork()
     };
 }
 

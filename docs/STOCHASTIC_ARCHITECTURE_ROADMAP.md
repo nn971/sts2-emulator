@@ -28,6 +28,8 @@
 
 **S4 replay-prefix increment (2026-10-17):** controlled event/run-action replay and automatic enemy-action replay now use one `ControlledRandomIndexReplayPrefixV111` for saved-decision cloning, cursor advancement, typed request matching, and unused-prefix rejection. Event/run-action ordinal normalization and candidate labels remain owned by their boundary adapter; enemy-action requests retain exact source ordinals. This removes duplicated prefix mechanics while preserving the existing continuation frames and does not complete the common-mechanics-continuation acceptance gate.
 
+**S3 event-mechanics increment (2026-10-17):** `EventState.Mechanics` now owns event/choice identity, offered choices, pending deck/potion/reward choices, queued acquisitions, deferred losses, and event-page progress through `EventMechanicsStateV111`. The existing flattened fields project this owner and remain the snapshot representation. Forking an event now clones this mechanics envelope together with its stochastic provider envelope. Controlled event continuations still save their partial run and effect cursor separately, so the complete mechanics/stochastic envelope and common continuation remain open.
+
 ## S1 precise design
 
 Implement a **read-only, outcome-blind** Chance Law query in `Sts2Emulator.Core` with:
