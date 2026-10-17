@@ -1782,11 +1782,9 @@ public sealed partial class PrototypeGameEngine
         var continuation = original.AutomaticPipelineContinuation ??
             throw new InvalidOperationException("Missing saved turn pipeline cursor.");
         int index = continuation.NextStepIndex;
-        if (index < 0 || index >= PrototypeContent.Rules.EndTurnPipeline.Length ||
-            PrototypeContent.Rules.EndTurnPipeline[index].Kind !=
+        if (continuation.Mechanics.CurrentStepKind !=
                 PrototypeAutomaticStepKind.AdvanceTurn ||
-            continuation.OpeningStage is not null ||
-            continuation.PendingPostDispatchEventKind is not null)
+            continuation.OpeningStage is not null)
             throw new InvalidOperationException("Not an AdvanceTurn chance boundary.");
         var advanced = CompleteAdvanceTurnAfterCommittedIntents(
             committed with { AutomaticPipelineContinuation = null });
@@ -1852,13 +1850,9 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidOperationException("Missing combat for recycle.");
         var continuation = combat.AutomaticPipelineContinuation ??
             throw new InvalidOperationException("Missing draw continuation.");
-        var index = continuation.NextStepIndex;
-        if (index < 0 || index >= PrototypeContent.Rules.EndTurnPipeline.Length ||
-            PrototypeContent.Rules.EndTurnPipeline[index].Kind !=
+        if (continuation.Mechanics.CurrentStepKind !=
                 PrototypeAutomaticStepKind.DrawPlayerHand ||
             continuation.ControlledDrawRemaining is not > 0 ||
-            continuation.OpeningStage is not null ||
-            continuation.PendingPostDispatchEventKind is not null ||
             combat.DrawPile.Length != 0 ||
             combat.DiscardPile.Length == 0)
             throw new InvalidOperationException("Invalid suspended draw stage.");

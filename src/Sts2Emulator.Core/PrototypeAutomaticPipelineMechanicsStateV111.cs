@@ -7,4 +7,26 @@ namespace Sts2Emulator.Core;
 public sealed record PrototypeAutomaticPipelineMechanicsStateV111(
     int NextStepIndex,
     PrototypeCombatEventKind? PendingPostDispatchEventKind = null,
-    PrototypeOpeningCombatStage? OpeningStage = null);
+    PrototypeOpeningCombatStage? OpeningStage = null)
+{
+    /// <summary>
+    /// The ordinary pipeline step represented by this cursor. Opening and
+    /// post-dispatch continuations are boundary stages rather than pipeline
+    /// steps, so they return null.
+    /// </summary>
+    [System.Text.Json.Serialization.JsonIgnore]
+    public PrototypeAutomaticStepKind? CurrentStepKind
+    {
+        get
+        {
+            if (OpeningStage is not null ||
+                PendingPostDispatchEventKind is not null)
+                return null;
+            var pipeline = PrototypeContent.Rules.EndTurnPipeline;
+            if (NextStepIndex < 0 || NextStepIndex >= pipeline.Length)
+                throw new InvalidDataException(
+                    "Automatic pipeline cursor has no current step.");
+            return pipeline[NextStepIndex].Kind;
+        }
+    }
+}

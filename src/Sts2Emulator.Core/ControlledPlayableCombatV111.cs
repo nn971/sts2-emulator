@@ -1020,23 +1020,19 @@ public static class ControlledPlayableCombatEngineV111
             state.Run.World?.Combat is not { } combat ||
             combat.AutomaticPipelineContinuation is not { } continuation)
             return state;
-        int index = continuation.NextStepIndex;
-        if (index < 0 || index >= PrototypeContent.Rules.EndTurnPipeline.Length)
-            throw new InvalidOperationException("Saved combat pipeline cursor is invalid.");
+        var stepKind = continuation.Mechanics.CurrentStepKind;
         if (continuation.ControlledRecycleStratagemPending)
             return state;
         if (continuation.ControlledDrawCostRemaining is not null)
         {
-            if (PrototypeContent.Rules.EndTurnPipeline[index].Kind !=
-                    PrototypeAutomaticStepKind.DrawPlayerHand ||
+            if (stepKind != PrototypeAutomaticStepKind.DrawPlayerHand ||
                 combat.PendingChoice?.ControlledDrawCost is null)
                 throw new InvalidDataException("Malformed saved draw-cost boundary.");
             return state;
         }
         if (continuation.ControlledDrawRemaining is not null)
         {
-            if (PrototypeContent.Rules.EndTurnPipeline[index].Kind !=
-                    PrototypeAutomaticStepKind.DrawPlayerHand ||
+            if (stepKind != PrototypeAutomaticStepKind.DrawPlayerHand ||
                 state.Recycle is not null || state.TurnIntents is not null ||
                 combat.DrawPile.Length != 0 || combat.DiscardPile.Length == 0)
                 throw new InvalidDataException("Malformed saved controlled recycle boundary.");
@@ -1047,8 +1043,7 @@ public static class ControlledPlayableCombatEngineV111
         }
         if (continuation.ControlledEnemyAction is not null)
             return state;
-        if (PrototypeContent.Rules.EndTurnPipeline[index].Kind !=
-                PrototypeAutomaticStepKind.AdvanceTurn)
+        if (stepKind != PrototypeAutomaticStepKind.AdvanceTurn)
             return state;
         if (state.TurnIntents is not null)
             throw new InvalidOperationException("Nested intent stage already pending.");

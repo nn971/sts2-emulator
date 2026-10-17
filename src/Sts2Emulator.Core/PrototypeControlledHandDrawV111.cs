@@ -14,9 +14,7 @@ public sealed partial class PrototypeGameEngine
                 "operation=legacy_recycle_with_provider_deck");
         if (!ControlledChanceGuardV111.Active || remaining <= 0 ||
             combat.AutomaticPipelineContinuation is not { } cursor ||
-            cursor.NextStepIndex < 0 ||
-            cursor.NextStepIndex >= PrototypeContent.Rules.EndTurnPipeline.Length ||
-            PrototypeContent.Rules.EndTurnPipeline[cursor.NextStepIndex].Kind !=
+            cursor.Mechanics.CurrentStepKind !=
                 PrototypeAutomaticStepKind.DrawPlayerHand ||
             !combat.PlayerPowers.Any(power =>
                 power.PowerId == "proto.power.stratagem" && power.Stacks > 0) ||
@@ -66,9 +64,7 @@ public sealed partial class PrototypeGameEngine
         if (combat.PendingChoice is not null || cursor is not
             { ControlledRecycleStratagemPending: true,
               ControlledDrawRemaining: > 0 } ||
-            cursor.NextStepIndex < 0 ||
-            cursor.NextStepIndex >= PrototypeContent.Rules.EndTurnPipeline.Length ||
-            PrototypeContent.Rules.EndTurnPipeline[cursor.NextStepIndex].Kind !=
+            cursor.Mechanics.CurrentStepKind !=
                 PrototypeAutomaticStepKind.DrawPlayerHand ||
             combat.SemanticDeck is not null)
             throw new InvalidDataException(
@@ -99,9 +95,8 @@ public sealed partial class PrototypeGameEngine
         var cursor = combat.AutomaticPipelineContinuation ??
             throw new InvalidDataException(
                 "Controlled hand draw lost its automatic pipeline cursor.");
-        var index = cursor.NextStepIndex;
-        if (index < 0 || index >= PrototypeContent.Rules.EndTurnPipeline.Length ||
-            PrototypeContent.Rules.EndTurnPipeline[index].Kind !=
+        int index = cursor.NextStepIndex;
+        if (cursor.Mechanics.CurrentStepKind !=
                 PrototypeAutomaticStepKind.DrawPlayerHand ||
             drawn.RemainingCount < 0)
             throw new InvalidDataException(

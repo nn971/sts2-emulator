@@ -181,13 +181,11 @@ public sealed partial class PrototypeGameEngine
         var continuation = combat.AutomaticPipelineContinuation ??
             throw new InvalidOperationException(
                 "Missing original automatic hand-draw cursor.");
-        int index = continuation.NextStepIndex;
         var pending = combat.PendingChoice ??
             throw new InvalidOperationException("Missing drawn-card cost choice.");
         var cost = pending.ControlledDrawCost ??
             throw new InvalidOperationException("No controlled drawn-card cost.");
-        if (index < 0 || index >= PrototypeContent.Rules.EndTurnPipeline.Length ||
-            PrototypeContent.Rules.EndTurnPipeline[index].Kind !=
+        if (continuation.Mechanics.CurrentStepKind !=
                 PrototypeAutomaticStepKind.DrawPlayerHand ||
             continuation.ControlledDrawCostRemaining != cost.RemainingCount ||
             continuation.ControlledDrawRemaining is not null ||

@@ -486,11 +486,9 @@ public static class SemanticEndTurnEngineV111
                     BoundaryTranscript = boundaries
                 };
             }
-            else if (resumed.World?.Combat?.AutomaticPipelineContinuation is
-                         { } cursor &&
-                     PrototypeContent.Rules.EndTurnPipeline[
-                         cursor.NextStepIndex].Kind ==
-                         PrototypeAutomaticStepKind.AdvanceTurn)
+            else if (resumed.World?.Combat?.AutomaticPipelineContinuation?
+                         .Mechanics.CurrentStepKind ==
+                     PrototypeAutomaticStepKind.AdvanceTurn)
             {
                 state = BeginAtAdvanceTurn(
                     resumed, state.NativeEncounterEntry) with
@@ -627,14 +625,9 @@ public static class SemanticEndTurnEngineV111
             // The next suspended chance is represented by the same saved
             // automatic-pipeline run state and replay transcript.
         }
-        else if (resumed.World?.Combat?.AutomaticPipelineContinuation is
-                     { } cursor &&
-                 cursor.NextStepIndex >= 0 &&
-                 cursor.NextStepIndex <
-                    PrototypeContent.Rules.EndTurnPipeline.Length &&
-                 PrototypeContent.Rules.EndTurnPipeline[
-                    cursor.NextStepIndex].Kind ==
-                    PrototypeAutomaticStepKind.AdvanceTurn)
+        else if (resumed.World?.Combat?.AutomaticPipelineContinuation?
+                     .Mechanics.CurrentStepKind ==
+                 PrototypeAutomaticStepKind.AdvanceTurn)
         {
             next = BeginAtAdvanceTurn(
                 resumed, source.NativeEncounterEntry) with
@@ -1014,9 +1007,8 @@ public static class SemanticEndTurnEngineV111
             run.World?.Combat is not { } combat ||
             combat.AutomaticPipelineContinuation is not { } checkpoint ||
             checkpoint.NextStepIndex < 0 ||
-            checkpoint.NextStepIndex >= PrototypeContent.Rules.EndTurnPipeline.Length ||
-            PrototypeContent.Rules.EndTurnPipeline[checkpoint.NextStepIndex]
-                .Kind != PrototypeAutomaticStepKind.AdvanceTurn ||
+            checkpoint.Mechanics.CurrentStepKind !=
+                PrototypeAutomaticStepKind.AdvanceTurn ||
             checkpoint.ControlledDrawRemaining is not null ||
             checkpoint.ControlledDrawCostRemaining is not null ||
             checkpoint.ControlledSemanticDrawRemaining is not null ||
