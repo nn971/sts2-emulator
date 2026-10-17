@@ -207,9 +207,12 @@ public sealed record SemanticPilotCombatV111(
     }
     public SemanticOtherChanceStateV111? OtherChance
     {
-        get => Stochastic.OtherChance;
-        init => Stochastic = SemanticPilotStochasticStateV111.WithOtherChance(
-            Stochastic, value);
+        get => Run.Stochastic.SemanticOtherChance;
+        init => Run = Run with
+        {
+            Stochastic = RunStochasticStateV111.WithSemanticOtherChance(
+                Run.Stochastic, value)
+        };
     }
     public SemanticRewardAuditV111? RewardAudit
     {

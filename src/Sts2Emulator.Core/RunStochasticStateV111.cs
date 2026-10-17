@@ -15,7 +15,8 @@ public sealed record RunStochasticStateV111(
         ControlledEventRewardChoice = null,
     ControlledRunActionTraceV111[]? ControlledRunActionHistory = null,
     PrototypeControlledRunActionContinuationV111?
-        ControlledRunActionChoice = null)
+        ControlledRunActionChoice = null,
+    SemanticOtherChanceStateV111? SemanticOtherChance = null)
 {
     public RunStochasticStateV111 Fork() => this with
     {
@@ -27,7 +28,8 @@ public sealed record RunStochasticStateV111(
         ControlledEventRewardChoice = ControlledEventRewardChoice?.Fork(),
         ControlledRunActionHistory = ControlledRunActionHistory?
             .Select(trace => trace.Fork()).ToArray(),
-        ControlledRunActionChoice = ControlledRunActionChoice?.Fork()
+        ControlledRunActionChoice = ControlledRunActionChoice?.Fork(),
+        SemanticOtherChance = SemanticOtherChance?.Fork()
     };
 
     public void Validate(RunState owner)
@@ -51,6 +53,8 @@ public sealed record RunStochasticStateV111(
         }
         NativeRunRngV111.Validate(owner);
         ReferenceNature?.Validate();
+        if (SemanticOtherChance is not null)
+            SemanticOtherChanceEngineV111.Validate(SemanticOtherChance);
         if (owner.World is { } world)
             world.Stochastic.Validate(world, owner);
     }
@@ -230,4 +234,9 @@ public sealed record RunStochasticStateV111(
     internal static RunStochasticStateV111 WithPrototypeRng(
         RunStochasticStateV111 current, RngBundle prototypeRng) =>
         current with { PrototypeRng = prototypeRng };
+
+    internal static RunStochasticStateV111 WithSemanticOtherChance(
+        RunStochasticStateV111 current,
+        SemanticOtherChanceStateV111? semanticOtherChance) =>
+        current with { SemanticOtherChance = semanticOtherChance };
 }

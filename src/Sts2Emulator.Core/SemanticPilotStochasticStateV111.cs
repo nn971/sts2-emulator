@@ -6,7 +6,6 @@ namespace Sts2Emulator.Core;
 /// serialized representation.
 /// </summary>
 public sealed record SemanticPilotStochasticStateV111(
-    SemanticOtherChanceStateV111? OtherChance = null,
     SemanticRewardAuditV111? RewardAudit = null,
     SemanticNativePolicyAuditV111? NativePolicyAudit = null,
     SemanticSourceRouteAuditV111? SourceRouteAudit = null,
@@ -15,7 +14,6 @@ public sealed record SemanticPilotStochasticStateV111(
 {
     public SemanticPilotStochasticStateV111 Fork() => this with
     {
-        OtherChance = OtherChance?.Fork(),
         PendingEndTurn = PendingEndTurn?.Fork(),
         NativePolicyAudit = NativePolicyAudit is { } audit
             ? audit with
@@ -49,19 +47,9 @@ public sealed record SemanticPilotStochasticStateV111(
 
     public void Validate()
     {
-        if (OtherChance is not null)
-            SemanticOtherChanceEngineV111.Validate(OtherChance);
         if (PendingEndTurn is not null)
             PendingEndTurn.Validate();
     }
-
-    internal static SemanticPilotStochasticStateV111 WithOtherChance(
-        SemanticPilotStochasticStateV111? current,
-        SemanticOtherChanceStateV111? otherChance) =>
-        (current ?? new SemanticPilotStochasticStateV111()) with
-        {
-            OtherChance = otherChance
-        };
 
     internal static SemanticPilotStochasticStateV111 WithRewardAudit(
         SemanticPilotStochasticStateV111? current,
