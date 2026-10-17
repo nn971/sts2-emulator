@@ -20,7 +20,7 @@ from typing import Any
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = ROOT / "src" / "Sts2Emulator.Core"
-SCHEMA_ID = "emulator-rng-callsite-source-inventory-v3"
+SCHEMA_ID = "emulator-rng-callsite-source-inventory-v4"
 SITE_REGISTRY_PATH = SOURCE_ROOT / "StochasticSiteRegistryV111.cs"
 
 CALL_PATTERN = re.compile(
@@ -156,14 +156,23 @@ def _resolve_site_value(
     return next(iter(candidates)) if len(candidates) == 1 else None
 
 
-def _migration_matrix_site_id_counts() -> dict[str, int]:
+def _migration_matrix_site_rows() -> list[tuple[str, str]]:
     matrix_path = ROOT / "docs" / "DESIRED_RNG_MIGRATION_STATUS.md"
-    site_id_counts: Counter[str] = Counter()
+    site_rows: list[tuple[str, str]] = []
     for line in matrix_path.read_text(encoding="utf-8").splitlines():
         match = re.match(r"\|\s*`([^`]+)`\s*\|", line)
         if match:
-            site_id_counts[match.group(1)] += 1
-    return dict(site_id_counts)
+            reference_law_status = line.rsplit("|", 2)[-2].strip()
+            site_rows.append((match.group(1), reference_law_status))
+    return site_rows
+
+
+def _law_status_kind(status: str) -> str:
+    if "UNVERIFIED" in status:
+        return "unverified"
+    if re.match(r"^Yes(?:\b|:)", status):
+        return "calibrated"
+    return "unspecified"
 
 
 def _registry_site_ids(
@@ -188,8 +197,18 @@ def _registry_site_ids(
 
 def collect() -> dict[str, Any]:
     entries: list[dict[str, Any]] = []
-    matrix_site_id_counts = _migration_matrix_site_id_counts()
+    matrix_site_rows = _migration_matrix_site_rows()
+    matrix_site_id_counts: Counter[str] = Counter(
+        site_id for site_id, _ in matrix_site_rows
+    )
     matrix_site_ids = set(matrix_site_id_counts)
+    law_status_counts: Counter[str] = Counter(
+        _law_status_kind(status) for _, status in matrix_site_rows
+    )
+    rows_without_explicit_law_status = sorted(
+        site_id for site_id, status in matrix_site_rows
+        if _law_status_kind(status) == "unspecified"
+    )
     sources = {
         path: path.read_text(encoding="utf-8")
         for path in sorted(SOURCE_ROOT.rglob("*.cs"))
@@ -298,8 +317,8 @@ def collect() -> dict[str, Any]:
             "NativeFisherYatesV111 in Sts2Emulator.Core. This does not include "
             "indirect delegates, random provider interfaces, third-party/native "
             "source callsites, or prove that every source operation is mapped. "
-            "The registry-to-matrix check only verifies that already-registered "
-            "site IDs have ledger rows."
+            "The site-matrix checks verify registry coverage, unique ledger IDs "
+            "and explicit reference-law status; they do not prove source completeness."
         ),
         "total_direct_calls": len(entries),
         "counts_by_category": counts,
@@ -321,6 +340,13 @@ def collect() -> dict[str, Any]:
             "duplicate_matrix_site_ids": duplicate_matrix_site_ids,
             "unresolved_registry_references":
                 unresolved_registry_references,
+            "reference_law_status": {
+                "unverified_rows": law_status_counts["unverified"],
+                "calibrated_rows": law_status_counts["calibrated"],
+                "unspecified_rows": law_status_counts["unspecified"],
+                "rows_without_explicit_status":
+                    rows_without_explicit_law_status,
+            },
         },
         "entries": entries,
     }
@@ -354,8 +380,12 @@ def render_markdown(report: dict[str, Any]) -> str:
         f"IDs without rows: **{len(report['registry_matrix_coverage']['site_ids_without_matrix_rows'])}**; "
         f"duplicate matrix IDs: **{len(report['registry_matrix_coverage']['duplicate_matrix_site_ids'])}**; "
         f"unresolved registry references: **{len(report['registry_matrix_coverage']['unresolved_registry_references'])}**.",
+        "Reference-law column status: "
+        f"**{report['registry_matrix_coverage']['reference_law_status']['unverified_rows']} UNVERIFIED**; "
+        f"**{report['registry_matrix_coverage']['reference_law_status']['calibrated_rows']} calibrated**; "
+        f"**{report['registry_matrix_coverage']['reference_law_status']['unspecified_rows']} unspecified**.",
         "Regenerate this report with `python3 tools/rng_callsite_inventory.py "
-        "--check-registry-matrix --format markdown > "
+        "--check-site-matrix --format markdown > "
         "docs/RNG_DIRECT_CALLSITE_CENSUS.md`.",
         "Rows distinguish legacy prototype calls, native primitive calls, "
         "generic shuffle-helper calls, and recognized provider/fixture support. "
@@ -397,17 +427,19 @@ def main() -> int:
         help="report format (default: json)",
     )
     parser.add_argument(
-        "--check-registry-matrix", action="store_true",
-        help="fail on unresolved registry IDs, missing rows, or duplicate matrix IDs",
+        "--check-site-matrix", "--check-registry-matrix",
+        dest="check_site_matrix", action="store_true",
+        help="fail on registry gaps, duplicate rows, or unspecified reference-law status",
     )
     args = parser.parse_args()
     report = collect()
-    if args.check_registry_matrix:
+    if args.check_site_matrix:
         coverage = report["registry_matrix_coverage"]
         if (coverage["registered_site_count"] == 0 or
                 coverage["site_ids_without_matrix_rows"] or
                 coverage["duplicate_matrix_site_ids"] or
-                coverage["unresolved_registry_references"]):
+                coverage["unresolved_registry_references"] or
+                coverage["reference_law_status"]["rows_without_explicit_status"]):
             print(json.dumps(coverage, indent=2, sort_keys=True),
                   file=sys.stderr)
             return 1
