@@ -1384,25 +1384,14 @@ public sealed partial class PrototypeGameEngine
                 eventState.EventId,
                 action.ReadPayload<EventChoicePayload>().ChoiceId))
         {
-            using var replay = ControlledEventChoiceReplayV111.Begin([]);
             try
             {
+                using var replay = ControlledEventChoiceReplayV111.Begin([]);
                 return StepEventCore(state, action);
             }
             catch (ControlledEventChoiceChanceRequiredException exception)
             {
-                var choiceId = action.ReadPayload<EventChoicePayload>().ChoiceId;
-                var pending = new PrototypeControlledEventChoiceContinuationV111(
-                    state.Fork(), eventState.EventId, choiceId, [],
-                    exception.Request, exception.CandidateLabels, []);
-                pending.Validate();
-                return state with
-                {
-                    World = RequireWorld(state) with
-                    {
-                        Event = eventState with { ControlledChoice = pending }
-                    }
-                };
+                throw UnsupportedControlledEventContinuation(exception);
             }
         }
 
@@ -1425,265 +1414,294 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidOperationException(
                 "Selected event outcome is outside the pending ordered support.");
 
-        var decisions = continuation.Decisions.Append(
-            new RandomIndexDecisionV111(
-                request,
-                payload.SelectedIndex,
-                "controlled-v111")).ToArray();
+        var selectedDecision = new RandomIndexDecisionV111(
+            request, payload.SelectedIndex, "controlled-v111");
+        selectedDecision.Validate();
+        var decisions = continuation.Decisions.Append(selectedDecision).ToArray();
         var candidateLabels = continuation.PendingCandidateLabels
             ?? throw new InvalidDataException(
                 "Controlled event-choice candidate labels are missing.");
         var decisionCandidateLabels = continuation.DecisionCandidateLabels!
             .Append((string[])candidateLabels.Clone()).ToArray();
-        var replayState = continuation.Checkpoint.Fork() with
+        var priorOrdinals = continuation.Decisions
+            .GroupBy(decision => decision.Request.StreamId,
+                StringComparer.Ordinal)
+            .ToDictionary(group => group.Key, group => group.Count(),
+                StringComparer.Ordinal);
+        var resumeFrame = continuation with
         {
-            // Keep the externally visible decision count from the current
-            // continuation action while rebuilding effects from the original
-            // pre-option checkpoint.
-            DecisionIndex = state.DecisionIndex
+            Decisions = decisions,
+            DecisionCandidateLabels = decisionCandidateLabels
         };
 
-        using var replay = ControlledEventChoiceReplayV111.Begin(decisions);
+        RunState result;
         try
         {
-            var result = StepEventCore(
-                replayState,
+            using var replay = ControlledEventChoiceReplayV111.Begin(
+                [selectedDecision], priorOrdinals);
+            result = StepEventCore(
+                state,
                 GameAction.Create(
                     "event_choice",
-                    new EventChoicePayload(continuation.ChoiceId)));
+                    new EventChoicePayload(continuation.ChoiceId)),
+                resumeFrame);
             replay.EnsureConsumed();
-            var trace = new ControlledEventChoiceTraceV111(
-                continuation.EventId,
-                continuation.ChoiceId,
-                decisions,
-                decisionCandidateLabels);
-            trace.Validate();
-            return result with
-            {
-                ControlledEventChoiceHistory =
-                    (result.ControlledEventChoiceHistory
-                        ?? Array.Empty<ControlledEventChoiceTraceV111>())
-                    .Append(trace).ToArray()
-            };
         }
         catch (ControlledEventChoiceChanceRequiredException exception)
         {
-            var nextContinuation = continuation with
-            {
-                Decisions = decisions,
-                PendingRequest = exception.Request,
-                PendingCandidateLabels = exception.CandidateLabels,
-                DecisionCandidateLabels = decisionCandidateLabels
-            };
-            nextContinuation.Validate();
-            return state with
-            {
-                World = RequireWorld(state) with
-                {
-                    Event = RequireWorld(state).Event! with
-                    {
-                        ControlledChoice = nextContinuation
-                    }
-                }
-            };
+            throw UnsupportedControlledEventContinuation(exception);
         }
+        if (result.World?.Event?.ControlledChoice is not null)
+            return result;
+
+        var trace = new ControlledEventChoiceTraceV111(
+            continuation.EventId,
+            continuation.ChoiceId,
+            decisions,
+            decisionCandidateLabels);
+        trace.Validate();
+        return result with
+        {
+            ControlledEventChoiceHistory =
+                (result.ControlledEventChoiceHistory
+                    ?? Array.Empty<ControlledEventChoiceTraceV111>())
+                .Append(trace).ToArray()
+        };
     }
+
+    private static NotSupportedException UnsupportedControlledEventContinuation(
+        ControlledEventChoiceChanceRequiredException exception) =>
+        new($"Controlled event chance site '{exception.Request.SiteId}' " +
+            $"(operation '{exception.Request.OperationKind}') is outside " +
+            "the resumable generic event-effect frame.");
 
     private static RunState StepEventCore(
         RunState state,
-        GameAction action)
+        GameAction action,
+        PrototypeControlledEventChoiceContinuationV111? resume = null)
     {
-        var world = RequireWorld(state);
-        var eventState = world.Event
+        var rootState = state;
+        var rootWorld = RequireWorld(state);
+        var rootEvent = rootWorld.Event
             ?? throw new InvalidOperationException(
                 "Event phase has no event state.");
+        var world = resume is null
+            ? rootWorld
+            : resume.PartialState.World!.Fork() with
+            {
+                Event = rootEvent with { ControlledChoice = resume }
+            };
+        state = resume is null
+            ? state
+            : resume.PartialState.Fork() with
+            {
+                DecisionIndex = rootState.DecisionIndex,
+                World = world
+            };
+        var eventState = world.Event!;
         var player = state.Player;
         var nextId = world.NextCardInstanceId;
         var nativeRunRng = state.NativeRunRng?.Fork();
 
-        if (eventState.EventId == PrototypeNativeStoneOfAllTime.EventId
-            && action.Kind == "event_choice"
-            && action.ReadPayload<EventChoicePayload>().ChoiceId == "lift")
+        if (resume is null)
         {
-            return StepNativeStoneOfAllTimeLift(state);
-        }
-
-        if (eventState.EventId == PrototypeNativeFakeMerchant.EventId)
-            return StepNativeFakeMerchant(state, action);
-
-        if (PrototypeNativeEventCompletionPages.HasTerminalChoicePage(
-                eventState.EventId)
-            && eventState.NativePageIndex ==
-                PrototypeNativeEventCompletionPages.TerminalChoicePageIndex(
-                    eventState.EventId))
-        {
-            RequireKind(action, "continue_event");
-            if (NativeAncientRewardsV111.IsOpeningEvent(world)
-                || NativeTanxEventV111.IsOpeningEvent(world)
-                || NativeVakuuEventV111.IsOpeningEvent(world)
-                || NativeNonupeipeEventV111.IsOpeningEvent(world)
-                || StringComparer.Ordinal.Equals(
-                    eventState.EventId,
-                    PrototypeNativeOvergrowthEvents.NeowEventId)
-                    && world.Act == 1
-                    && world.Map.GenerationProfileId
-                        is PrototypeNativeOvergrowthMap.GenerationProfileId
-                            or PrototypeNativeOvergrowthMap.LegacyGenerationProfileId
-                        or PrototypeNativeUnderdocks.GenerationProfileId
-                    && world.Map.CurrentNodeId is null)
+            if (eventState.EventId == PrototypeNativeStoneOfAllTime.EventId
+                && action.Kind == "event_choice"
+                && action.ReadPayload<EventChoicePayload>().ChoiceId == "lift")
             {
-                // Ancient openings precede the map and do not complete a
-                // map room when their SetEventFinished page is dismissed.
-                return state with
-                {
-                    Phase = RunPhase.MapChoice,
-                    World = world with { Event = null }
-                };
+                return StepNativeStoneOfAllTimeLift(state);
             }
-            return CompleteRoomToMap(state);
-        }
 
-        if (eventState.EventId == PrototypeNativeFutureOfPotions.EventId)
-            return StepNativeFutureOfPotions(state, action);
+            if (eventState.EventId == PrototypeNativeFakeMerchant.EventId)
+                return StepNativeFakeMerchant(state, action);
 
-        if (eventState.PendingPotionReplacement is { } potionReplacement)
-        {
-            if (StringComparer.Ordinal.Equals(
-                    action.Kind,
-                    "skip_event_potion"))
+            if (PrototypeNativeEventCompletionPages.HasTerminalChoicePage(
+                    eventState.EventId)
+                && eventState.NativePageIndex ==
+                    PrototypeNativeEventCompletionPages.TerminalChoicePageIndex(
+                        eventState.EventId))
             {
-                state = state with
+                RequireKind(action, "continue_event");
+                if (NativeAncientRewardsV111.IsOpeningEvent(world)
+                    || NativeTanxEventV111.IsOpeningEvent(world)
+                    || NativeVakuuEventV111.IsOpeningEvent(world)
+                    || NativeNonupeipeEventV111.IsOpeningEvent(world)
+                    || StringComparer.Ordinal.Equals(
+                        eventState.EventId,
+                        PrototypeNativeOvergrowthEvents.NeowEventId)
+                        && world.Act == 1
+                        && world.Map.GenerationProfileId
+                            is PrototypeNativeOvergrowthMap.GenerationProfileId
+                                or PrototypeNativeOvergrowthMap.LegacyGenerationProfileId
+                            or PrototypeNativeUnderdocks.GenerationProfileId
+                        && world.Map.CurrentNodeId is null)
                 {
-                    World = world with
+                    // Ancient openings precede the map and do not complete a
+                    // map room when their SetEventFinished page is dismissed.
+                    return state with
                     {
-                        Event = eventState with
-                        {
-                            PendingPotionReplacement = null
-                        }
-                    }
-                };
-                return AdvanceEventContinuations(state);
-            }
-
-            if (action.Kind != "take_event_potion"
-                && action.Kind != "replace_event_potion")
-            {
-                throw new InvalidOperationException(
-                    "Unexpected event potion reward action.");
-            }
-            var payload =
-                action.ReadPayload<
-                    ReplaceEventPotionPayload>();
-            if (!potionReplacement.CandidateSlots
-                    .Contains(payload.Slot))
-            {
-                throw new InvalidOperationException(
-                    $"Potion slot {payload.Slot} is not eligible for the event reward.");
-            }
-
-            var isEmptySlot = player.PotionSlots[payload.Slot] is null;
-            if (isEmptySlot != (action.Kind == "take_event_potion"))
-            {
-                throw new InvalidOperationException(
-                    "Event potion action disagrees with the destination slot.");
-            }
-
-            player = player with
-            {
-                PotionSlots = isEmptySlot
-                    ? FillEventPotionSlot(
-                        player.PotionSlots,
-                        payload.Slot,
-                        potionReplacement.PotionId)
-                    : ReplacePotionSlot(
-                        player.PotionSlots,
-                        payload.Slot,
-                        potionReplacement.PotionId)
-            };
-            eventState = eventState with
-            {
-                PendingPotionReplacement = null
-            };
-            state = state with
-            {
-                Player = player,
-                NativeRunRng = nativeRunRng ?? state.NativeRunRng,
-                World = world with
-                {
-                    Event = eventState
+                        Phase = RunPhase.MapChoice,
+                        World = world with { Event = null }
+                    };
                 }
-            };
-            return AdvanceEventContinuations(state);
-        }
+                return CompleteRoomToMap(state);
+            }
 
-        if (eventState.PendingDeckChoice is { } pending)
-        {
-            if (StringComparer.Ordinal.Equals(action.Kind,
-                    "finish_relic_deck_choice"))
+            if (eventState.EventId == PrototypeNativeFutureOfPotions.EventId)
+                return StepNativeFutureOfPotions(state, action);
+
+            if (eventState.PendingPotionReplacement is { } potionReplacement)
             {
-                if ((pending.MinimumSelectionsRemaining
-                        ?? pending.RemainingSelections) != 0)
-                    throw new InvalidOperationException(
-                        "This event deck choice still requires a selection.");
-                eventState = eventState with { PendingDeckChoice = null };
-                state = state with
+                if (StringComparer.Ordinal.Equals(
+                        action.Kind,
+                        "skip_event_potion"))
                 {
-                    World = world with { Event = eventState }
+                    state = state with
+                    {
+                        World = world with
+                        {
+                            Event = eventState with
+                            {
+                                PendingPotionReplacement = null
+                            }
+                        }
+                    };
+                    return AdvanceEventContinuations(state);
+                }
+
+                if (action.Kind != "take_event_potion"
+                    && action.Kind != "replace_event_potion")
+                {
+                    throw new InvalidOperationException(
+                        "Unexpected event potion reward action.");
+                }
+                var payload =
+                    action.ReadPayload<
+                        ReplaceEventPotionPayload>();
+                if (!potionReplacement.CandidateSlots
+                        .Contains(payload.Slot))
+                {
+                    throw new InvalidOperationException(
+                        $"Potion slot {payload.Slot} is not eligible for the event reward.");
+                }
+
+                var isEmptySlot = player.PotionSlots[payload.Slot] is null;
+                if (isEmptySlot != (action.Kind == "take_event_potion"))
+                {
+                    throw new InvalidOperationException(
+                        "Event potion action disagrees with the destination slot.");
+                }
+
+                player = player with
+                {
+                    PotionSlots = isEmptySlot
+                        ? FillEventPotionSlot(
+                            player.PotionSlots,
+                            payload.Slot,
+                            potionReplacement.PotionId)
+                        : ReplacePotionSlot(
+                            player.PotionSlots,
+                            payload.Slot,
+                            potionReplacement.PotionId)
                 };
-                return AdvanceEventContinuations(state);
-            }
-
-            RequireKind(
-                action,
-                "choose_event_deck_card");
-            var payload =
-                action.ReadPayload<
-                    ChooseEventDeckCardPayload>();
-            if (!pending.CandidateCardInstanceIds
-                    .Contains(payload.CardInstanceId))
-            {
-                throw new InvalidOperationException(
-                    $"Card instance {payload.CardInstanceId} is not eligible for the event deck choice.");
-            }
-
-            player = ResolveEventDeckChoice(
-                player,
-                pending,
-                payload.CardInstanceId,
-                state.Rng);
-
-            var remainingCandidates =
-                pending.CandidateCardInstanceIds
-                    .Where(id =>
-                        id != payload.CardInstanceId)
-                    .Where(id =>
-                        player.Deck.Any(card =>
-                            card.InstanceId == id))
-                    .ToArray();
-            var remainingSelections =
-                pending.RemainingSelections - 1;
-            var minimumSelections = Math.Max(
-                0, (pending.MinimumSelectionsRemaining
-                    ?? pending.RemainingSelections) - 1);
-
-            if (remainingSelections > 0
-                && remainingCandidates.Length > 0)
-            {
                 eventState = eventState with
                 {
-                    PendingDeckChoice = pending with
+                    PendingPotionReplacement = null
+                };
+                state = state with
+                {
+                    Player = player,
+                    NativeRunRng = nativeRunRng ?? state.NativeRunRng,
+                    World = world with
                     {
-                        RemainingSelections =
-                            Math.Min(
-                                remainingSelections,
-                                remainingCandidates.Length),
-                        CandidateCardInstanceIds = remainingCandidates,
-                        MinimumSelectionsRemaining = Math.Min(
-                            minimumSelections, remainingCandidates.Length)
+                        Event = eventState
                     }
                 };
+                return AdvanceEventContinuations(state);
+            }
 
-                return state with
+            if (eventState.PendingDeckChoice is { } pending)
+            {
+                if (StringComparer.Ordinal.Equals(action.Kind,
+                        "finish_relic_deck_choice"))
+                {
+                    if ((pending.MinimumSelectionsRemaining
+                            ?? pending.RemainingSelections) != 0)
+                        throw new InvalidOperationException(
+                            "This event deck choice still requires a selection.");
+                    eventState = eventState with { PendingDeckChoice = null };
+                    state = state with
+                    {
+                        World = world with { Event = eventState }
+                    };
+                    return AdvanceEventContinuations(state);
+                }
+
+                RequireKind(
+                    action,
+                    "choose_event_deck_card");
+                var payload =
+                    action.ReadPayload<
+                        ChooseEventDeckCardPayload>();
+                if (!pending.CandidateCardInstanceIds
+                        .Contains(payload.CardInstanceId))
+                {
+                    throw new InvalidOperationException(
+                        $"Card instance {payload.CardInstanceId} is not eligible for the event deck choice.");
+                }
+
+                player = ResolveEventDeckChoice(
+                    player,
+                    pending,
+                    payload.CardInstanceId,
+                    state.Rng);
+
+                var remainingCandidates =
+                    pending.CandidateCardInstanceIds
+                        .Where(id =>
+                            id != payload.CardInstanceId)
+                        .Where(id =>
+                            player.Deck.Any(card =>
+                                card.InstanceId == id))
+                        .ToArray();
+                var remainingSelections =
+                    pending.RemainingSelections - 1;
+                var minimumSelections = Math.Max(
+                    0, (pending.MinimumSelectionsRemaining
+                        ?? pending.RemainingSelections) - 1);
+
+                if (remainingSelections > 0
+                    && remainingCandidates.Length > 0)
+                {
+                    eventState = eventState with
+                    {
+                        PendingDeckChoice = pending with
+                        {
+                            RemainingSelections =
+                                Math.Min(
+                                    remainingSelections,
+                                    remainingCandidates.Length),
+                            CandidateCardInstanceIds = remainingCandidates,
+                            MinimumSelectionsRemaining = Math.Min(
+                                minimumSelections, remainingCandidates.Length)
+                        }
+                    };
+
+                    return state with
+                    {
+                        Player = player,
+                        World = world with
+                        {
+                            Event = eventState
+                        }
+                    };
+                }
+
+                eventState = eventState with
+                {
+                    PendingDeckChoice = null
+                };
+                state = state with
                 {
                     Player = player,
                     World = world with
@@ -1691,101 +1709,91 @@ public sealed partial class PrototypeGameEngine
                         Event = eventState
                     }
                 };
+                return AdvanceEventContinuations(state);
             }
 
-            eventState = eventState with
+            if (eventState.EventId == PrototypeNativeHiveEvents.WarHistorianRepyId)
+                return StepNativeWarHistorianRepy(state, action);
+
+            if (eventState.EventId ==
+                PrototypeNativeGloryEvents.HungryForMushroomsId)
+                return StepNativeHungryForMushrooms(state, action);
+
+            if (eventState.EventId == PrototypeNativeGloryEvents.ReflectionsId)
+                return StepNativeGloryReflections(state, action);
+
+            if (eventState.EventId == PrototypeNativeGloryEvents.RoundTeaPartyId)
+                return StepNativeRoundTeaParty(state, action);
+            if (eventState.EventId == PrototypeNativeGloryEvents.TeaMasterId)
+                return StepNativeTeaMaster(state, action);
+            if (eventState.EventId == PrototypeNativeGloryEvents.TrialId)
+                return StepNativeTrial(state, action);
+            if (eventState.EventId == PrototypeNativeGloryEvents.TinkerTimeId)
+                return StepNativeTinker(state, action);
+            if (eventState.EventId ==
+                PrototypeNativeGloryEvents.BattlewornDummyId)
+                return StepNativeBattlewornDummy(state, action);
+
+            if (eventState.EventId == PrototypeNativeHiveEvents.LanternKeyEventId)
             {
-                PendingDeckChoice = null
-            };
-            state = state with
+                return StepNativeLanternKey(state, action);
+            }
+
+            if (eventState.EventId == PrototypeNativeHiveEvents.InfestedAutomatonId)
             {
-                Player = player,
-                World = world with
-                {
-                    Event = eventState
-                }
-            };
-            return AdvanceEventContinuations(state);
+                return StepNativeInfestedAutomaton(state, action);
+            }
+
+            if (eventState.EventId == PrototypeNativeHiveEvents.ColossalFlowerId)
+            {
+                return StepNativeColossalFlower(state, action);
+            }
+
+            if (eventState.EventId ==
+                "proto.native.underdocks.doors_of_light_and_dark"
+                && action.Kind == "event_choice"
+                && action.ReadPayload<EventChoicePayload>().ChoiceId == "light")
+            {
+                return StepNativeDoorsLight(state, action);
+            }
+
+            if (eventState.EventId == PrototypeNativeEndlessConveyor.EventId)
+            {
+                return StepEndlessConveyor(state, action);
+            }
+
+            if (eventState.EventId == PrototypeNativePunchOff.EventId)
+            {
+                return StepPunchOff(state, action);
+            }
+
+            if (eventState.EventId == AbyssalBathsEventId)
+            {
+                return StepAbyssalBaths(state, action);
+            }
+
+            if (eventState.EventId == PrototypeNativeUnderdocksTrashHeap.EventId)
+            {
+                return StepTrashHeap(state, action);
+            }
+
+            if (eventState.EventId == PrototypeNativeTabletOfTruth.EventId)
+            {
+                return StepNativeTabletOfTruth(state, action);
+            }
+
+            if (eventState.EventId == PrototypeNativeDenseVegetation.EventId)
+            {
+                return StepNativeDenseVegetation(state, action);
+            }
         }
 
-        if (eventState.EventId == PrototypeNativeHiveEvents.WarHistorianRepyId)
-            return StepNativeWarHistorianRepy(state, action);
-
-        if (eventState.EventId ==
-            PrototypeNativeGloryEvents.HungryForMushroomsId)
-            return StepNativeHungryForMushrooms(state, action);
-
-        if (eventState.EventId == PrototypeNativeGloryEvents.ReflectionsId)
-            return StepNativeGloryReflections(state, action);
-
-        if (eventState.EventId == PrototypeNativeGloryEvents.RoundTeaPartyId)
-            return StepNativeRoundTeaParty(state, action);
-        if (eventState.EventId == PrototypeNativeGloryEvents.TeaMasterId)
-            return StepNativeTeaMaster(state, action);
-        if (eventState.EventId == PrototypeNativeGloryEvents.TrialId)
-            return StepNativeTrial(state, action);
-        if (eventState.EventId == PrototypeNativeGloryEvents.TinkerTimeId)
-            return StepNativeTinker(state, action);
-        if (eventState.EventId ==
-            PrototypeNativeGloryEvents.BattlewornDummyId)
-            return StepNativeBattlewornDummy(state, action);
-
-        if (eventState.EventId == PrototypeNativeHiveEvents.LanternKeyEventId)
-        {
-            return StepNativeLanternKey(state, action);
-        }
-
-        if (eventState.EventId == PrototypeNativeHiveEvents.InfestedAutomatonId)
-        {
-            return StepNativeInfestedAutomaton(state, action);
-        }
-
-        if (eventState.EventId == PrototypeNativeHiveEvents.ColossalFlowerId)
-        {
-            return StepNativeColossalFlower(state, action);
-        }
-
-        if (eventState.EventId ==
-            "proto.native.underdocks.doors_of_light_and_dark"
-            && action.Kind == "event_choice"
-            && action.ReadPayload<EventChoicePayload>().ChoiceId == "light")
-        {
-            return StepNativeDoorsLight(state, action);
-        }
-
-        if (eventState.EventId == PrototypeNativeEndlessConveyor.EventId)
-        {
-            return StepEndlessConveyor(state, action);
-        }
-
-        if (eventState.EventId == PrototypeNativePunchOff.EventId)
-        {
-            return StepPunchOff(state, action);
-        }
-
-        if (eventState.EventId == AbyssalBathsEventId)
-        {
-            return StepAbyssalBaths(state, action);
-        }
-
-        if (eventState.EventId == PrototypeNativeUnderdocksTrashHeap.EventId)
-        {
-            return StepTrashHeap(state, action);
-        }
-
-        if (eventState.EventId == PrototypeNativeTabletOfTruth.EventId)
-        {
-            return StepNativeTabletOfTruth(state, action);
-        }
-
-        if (eventState.EventId == PrototypeNativeDenseVegetation.EventId)
-        {
-            return StepNativeDenseVegetation(state, action);
-        }
-
-        RequireKind(action, "event_choice");
+        if (resume is null)
+            RequireKind(action, "event_choice");
         var choicePayload =
-            action.ReadPayload<EventChoicePayload>();
+            resume is null
+                ? action.ReadPayload<EventChoicePayload>()
+                : new EventChoicePayload(resume.ChoiceId);
         var definition =
             PrototypeContent.Event(
                 eventState.EventId);
@@ -1796,531 +1804,576 @@ public sealed partial class PrototypeGameEngine
             ?? throw new InvalidOperationException(
                 $"Unknown event choice '{choicePayload.ChoiceId}'.");
 
-        if ((eventState.OfferedChoiceIds is not null
-                && !eventState.OfferedChoiceIds.Contains(
-                    choice.Id, StringComparer.Ordinal))
-            || !CanTakeEventChoice(
-                player,
-                choice,
-                world))
+        if (resume is null
+            && ((eventState.OfferedChoiceIds is not null
+                    && !eventState.OfferedChoiceIds.Contains(
+                        choice.Id, StringComparer.Ordinal))
+                || !CanTakeEventChoice(player, choice, world)))
         {
             throw new InvalidOperationException(
                 $"Event choice '{choice.Id}' cannot currently be taken.");
         }
 
-        var queuedPotionIds = new List<string>();
-        var queuedDeckChoices =
-            new List<PrototypePendingEventDeckChoiceState>();
-        RewardState? deferredReward = null;
-        var deferredHpLoss = 0;
-        var deferredGoldLoss = 0;
-        string? deferredCardId = null;
+        var queuedPotionIds = resume is null
+            ? new List<string>()
+            : resume.QueuedPotionIds.ToList();
+        var queuedDeckChoices = resume is null
+            ? new List<PrototypePendingEventDeckChoiceState>()
+            : resume.QueuedDeckChoices.Select(choice => choice.Fork()).ToList();
+        RewardState? deferredReward = resume?.DeferredReward?.Fork();
+        var deferredHpLoss = resume?.DeferredHpLoss ?? 0;
+        var deferredGoldLoss = resume?.DeferredGoldLoss ?? 0;
+        var deferredCardId = resume?.DeferredCardId;
 
-        foreach (var effect in choice.Effects)
+        for (var effectIndex = resume?.NextEffectIndex ?? 0;
+             effectIndex < choice.Effects.Length;
+             effectIndex++)
         {
-            switch (effect.Kind)
+            var effect = choice.Effects[effectIndex];
+            try
             {
-                case PrototypeRunEffectKind.Heal:
-                    player = player with
-                    {
-                        Hp = Math.Min(
-                            player.MaxHp,
-                            player.Hp + effect.Amount)
-                    };
-                    break;
-
-                case PrototypeRunEffectKind.HealToFull:
-                    player = player with
-                    {
-                        Hp = player.MaxHp
-                    };
-                    break;
-
-                case PrototypeRunEffectKind.HealPercentMaxHp:
+                switch (effect.Kind)
                 {
-                    var amount = Math.Max(
-                        0,
-                        player.MaxHp * effect.Amount / 100);
-                    player = player with
-                    {
-                        Hp = Math.Min(
-                            player.MaxHp,
-                            player.Hp + amount)
-                    };
-                    break;
-                }
+                    case PrototypeRunEffectKind.Heal:
+                        player = player with
+                        {
+                            Hp = Math.Min(
+                                player.MaxHp,
+                                player.Hp + effect.Amount)
+                        };
+                        break;
 
-                case PrototypeRunEffectKind.GainMaxHp:
-                {
-                    var amount = Math.Max(
-                        0,
-                        effect.Amount);
-                    player = player with
-                    {
-                        MaxHp = player.MaxHp + amount,
-                        Hp = player.Hp + amount
-                    };
-                    break;
-                }
+                    case PrototypeRunEffectKind.HealToFull:
+                        player = player with
+                        {
+                            Hp = player.MaxHp
+                        };
+                        break;
 
-                case PrototypeRunEffectKind.LoseMaxHp:
-                {
-                    var amount = Math.Max(
-                        0,
-                        effect.Amount);
-                    var maxHp = Math.Max(
-                        1,
-                        player.MaxHp - amount);
-                    player = player with
+                    case PrototypeRunEffectKind.HealPercentMaxHp:
                     {
-                        MaxHp = maxHp,
-                        Hp = Math.Min(
-                            player.Hp,
-                            maxHp)
-                    };
-                    break;
-                }
-
-                case PrototypeRunEffectKind.LoseHp:
-                    player = player with
-                    {
-                        Hp = Math.Max(
+                        var amount = Math.Max(
                             0,
-                            player.Hp - effect.Amount)
-                    };
-                    // Native CreatureCmd.Damage stops the event when
-                    // it kills the player. Do not execute subsequent
-                    // rewards (e.g. Jungle Maze's gold after damage).
-                    if (player.Hp == 0)
-                    {
-                        return EndRun(state with { Player = player },
-                            "defeat");
+                            player.MaxHp * effect.Amount / 100);
+                        player = player with
+                        {
+                            Hp = Math.Min(
+                                player.MaxHp,
+                                player.Hp + amount)
+                        };
+                        break;
                     }
-                    break;
 
-                case PrototypeRunEffectKind.LoseHpAfterDeckChoices:
-                    deferredHpLoss += Math.Max(0, effect.Amount);
-                    break;
-
-                case PrototypeRunEffectKind.GainGold:
-                    player = player with
+                    case PrototypeRunEffectKind.GainMaxHp:
                     {
-                        Gold = GoldAfterGain(player,
-                            ResolveEventGoldAmount(
-                                eventState, choice.Id, effect))
-                    };
-                    break;
+                        var amount = Math.Max(
+                            0,
+                            effect.Amount);
+                        player = player with
+                        {
+                            MaxHp = player.MaxHp + amount,
+                            Hp = player.Hp + amount
+                        };
+                        break;
+                    }
 
-                case PrototypeRunEffectKind.LoseGold:
-                {
-                    var price = ResolveEventGoldAmount(
-                        eventState, choice.Id, effect);
-                    player = player with
+                    case PrototypeRunEffectKind.LoseMaxHp:
                     {
-                        Gold = player.Gold - price
-                    };
-                    break;
-                }
+                        var amount = Math.Max(
+                            0,
+                            effect.Amount);
+                        var maxHp = Math.Max(
+                            1,
+                            player.MaxHp - amount);
+                        player = player with
+                        {
+                            MaxHp = maxHp,
+                            Hp = Math.Min(
+                                player.Hp,
+                                maxHp)
+                        };
+                        break;
+                    }
 
-                case PrototypeRunEffectKind.LoseGoldAfterDeckChoices:
-                    deferredGoldLoss += Math.Max(0,
-                        ResolveEventGoldAmount(eventState, choice.Id, effect));
-                    break;
+                    case PrototypeRunEffectKind.LoseHp:
+                        player = player with
+                        {
+                            Hp = Math.Max(
+                                0,
+                                player.Hp - effect.Amount)
+                        };
+                        // Native CreatureCmd.Damage stops the event when
+                        // it kills the player. Do not execute subsequent
+                        // rewards (e.g. Jungle Maze's gold after damage).
+                        if (player.Hp == 0)
+                        {
+                            return EndRun(state with { Player = player },
+                                "defeat");
+                        }
+                        break;
 
-                case PrototypeRunEffectKind.LoseAllGold:
-                    player = player with { Gold = 0 };
-                    break;
+                    case PrototypeRunEffectKind.LoseHpAfterDeckChoices:
+                        deferredHpLoss += Math.Max(0, effect.Amount);
+                        break;
 
-                case PrototypeRunEffectKind.UpgradeRandomCard:
-                {
-                    // Native selection filters CardModel.IsUpgradable;
-                    // upgraded, eternal and non-upgradable event/status
-                    // cards must not dilute random upgrade probabilities.
-                    var candidates = player.Deck
-                        .Where(card => CanSelectEventDeckCard(
-                            card, PrototypePersistentDeckChoiceKind.Upgrade,
-                            null, null, false))
-                        .Select(card => card.InstanceId)
-                        .ToArray();
-                    if (candidates.Length > 0)
+                    case PrototypeRunEffectKind.GainGold:
+                        player = player with
+                        {
+                            Gold = GoldAfterGain(player,
+                                ResolveEventGoldAmount(
+                                    eventState, choice.Id, effect))
+                        };
+                        break;
+
+                    case PrototypeRunEffectKind.LoseGold:
                     {
-                        var selectedId = candidates[
-                            ResolveLegacyRandomIndex(
-                                state.Rng,
-                                "event.random_upgrade.card_instance",
-                                "event:" + eventState.EventId + ":choice:"
-                                    + choice.Id + ":pool:"
-                                    + CanonicalJson.Sha256(candidates),
-                                Enumerable.Range(0, candidates.Length),
-                                streamId: "event",
-                                controlledCandidateLabels: candidates.Select(id =>
-                                    player.Deck.Single(card =>
-                                        card.InstanceId == id).CardId + "#" +
-                                    id.ToString(System.Globalization.CultureInfo.InvariantCulture))
-                                    .ToArray())];
+                        var price = ResolveEventGoldAmount(
+                            eventState, choice.Id, effect);
+                        player = player with
+                        {
+                            Gold = player.Gold - price
+                        };
+                        break;
+                    }
+
+                    case PrototypeRunEffectKind.LoseGoldAfterDeckChoices:
+                        deferredGoldLoss += Math.Max(0,
+                            ResolveEventGoldAmount(eventState, choice.Id, effect));
+                        break;
+
+                    case PrototypeRunEffectKind.LoseAllGold:
+                        player = player with { Gold = 0 };
+                        break;
+
+                    case PrototypeRunEffectKind.UpgradeRandomCard:
+                    {
+                        // Native selection filters CardModel.IsUpgradable;
+                        // upgraded, eternal and non-upgradable event/status
+                        // cards must not dilute random upgrade probabilities.
+                        var candidates = player.Deck
+                            .Where(card => CanSelectEventDeckCard(
+                                card, PrototypePersistentDeckChoiceKind.Upgrade,
+                                null, null, false))
+                            .Select(card => card.InstanceId)
+                            .ToArray();
+                        if (candidates.Length > 0)
+                        {
+                            var selectedId = candidates[
+                                ResolveLegacyRandomIndex(
+                                    state.Rng,
+                                    "event.random_upgrade.card_instance",
+                                    "event:" + eventState.EventId + ":choice:"
+                                        + choice.Id + ":pool:"
+                                        + CanonicalJson.Sha256(candidates),
+                                    Enumerable.Range(0, candidates.Length),
+                                    streamId: "event",
+                                    controlledCandidateLabels: candidates.Select(id =>
+                                        player.Deck.Single(card =>
+                                            card.InstanceId == id).CardId + "#" +
+                                        id.ToString(System.Globalization.CultureInfo.InvariantCulture))
+                                        .ToArray())];
+                            player = player with
+                            {
+                                Deck = player.Deck.Select(card =>
+                                    card.InstanceId == selectedId
+                                        ? card with
+                                        {
+                                            UpgradeLevel = card.UpgradeLevel + 1
+                                        }
+                                        : card).ToArray()
+                            };
+                        }
+                        break;
+                    }
+
+                    case PrototypeRunEffectKind.UpgradeAllCards:
                         player = player with
                         {
                             Deck = player.Deck.Select(card =>
-                                card.InstanceId == selectedId
+                                CanSelectEventDeckCard(
+                                    card, PrototypePersistentDeckChoiceKind.Upgrade,
+                                    null, null, false)
                                     ? card with
                                     {
                                         UpgradeLevel = card.UpgradeLevel + 1
                                     }
                                     : card).ToArray()
                         };
-                    }
-                    break;
-                }
+                        break;
 
-                case PrototypeRunEffectKind.UpgradeAllCards:
-                    player = player with
-                    {
-                        Deck = player.Deck.Select(card =>
-                            CanSelectEventDeckCard(
-                                card, PrototypePersistentDeckChoiceKind.Upgrade,
-                                null, null, false)
-                                ? card with
-                                {
-                                    UpgradeLevel = card.UpgradeLevel + 1
-                                }
-                                : card).ToArray()
-                    };
-                    break;
-
-                case PrototypeRunEffectKind.AddCardAfterDeckChoices:
-                    if (effect.CardId is null || deferredCardId is not null)
-                    {
-                        throw new InvalidOperationException(
-                            "Deferred event card addition must have one card ID.");
-                    }
-                    deferredCardId = effect.CardId;
-                    break;
-
-                case PrototypeRunEffectKind.AddCard:
-                    if (effect.CardId is null)
-                    {
-                        throw new InvalidOperationException(
-                            "Add-card event effect is missing a card ID.");
-                    }
-
-                    player = AppendCard(
-                        player,
-                        nextId++,
-                        effect.CardId,
-                        state.Rng);
-                    break;
-
-                case PrototypeRunEffectKind.TransformFirstCardOfId:
-                {
-                    var cardId = effect.CardId
-                        ?? throw new InvalidOperationException(
-                            "Transform-first-card effect requires a card ID.");
-                    var first = player.Deck.FirstOrDefault(card =>
-                        StringComparer.Ordinal.Equals(card.CardId, cardId));
-                    if (first is not null)
-                    {
-                        player = TransformPersistentDeckCard(
-                            player, first.InstanceId, false, state.Rng);
-                    }
-
-                    break;
-                }
-
-                case PrototypeRunEffectKind.OfferThreeRareCards:
-                case PrototypeRunEffectKind.OfferThreeCardsAndPotion:
-                case PrototypeRunEffectKind.OfferFiveClassCards:
-                case PrototypeRunEffectKind.OfferThreeColorlessCards:
-                case PrototypeRunEffectKind.OfferTwoColorlessCards:
-                case PrototypeRunEffectKind.OfferCardBundles:
-                case PrototypeRunEffectKind.OfferNeowsBonesRelics:
-                case PrototypeRunEffectKind.OfferRandomRelic:
-                case PrototypeRunEffectKind.OfferWaxRelics:
-                    if (deferredReward is not null)
-                    {
-                        throw new InvalidOperationException(
-                            "Only one custom reward offer per event option is supported.");
-                    }
-                    deferredReward = CreateDeferredEventReward(
-                        state,
-                        effect.Kind,
-                        ref player,
-                        eventState.EventId, ref world,
-                        UsesNativeRegionalSystems(world)
-                            ? nativeRunRng
-                            : null);
-                    break;
-
-                case PrototypeRunEffectKind.GainPotionSlots:
-                    if (effect.Amount <= 0)
-                    {
-                        throw new InvalidOperationException(
-                            "Potion slot increase must be positive.");
-                    }
-                    player = player with
-                    {
-                        PotionSlots = player.PotionSlots
-                            .Concat(new PotionInstance?[effect.Amount])
-                            .ToArray()
-                    };
-                    break;
-
-                case PrototypeRunEffectKind.GainRandomRareCard:
-                {
-                    // Source-shaped Arcane Scroll reward: one Rare from the
-                    // character card pool. The prototype reward pool and
-                    // stream still differ from native v0.111.0.
-                    var rares = PrototypeContent.RewardCardPool
-                        .Where(cardId =>
-                            PrototypeContent.Card(cardId).Rarity
-                                == PrototypeCardRarity.Rare)
-                        .ToArray();
-                    if (rares.Length == 0)
-                    {
-                        throw new InvalidOperationException(
-                            "Random Rare-card reward has an empty pool.");
-                    }
-
-                    var cardId = rares[ResolveLegacyRandomIndex(
-                        state.Rng,
-                        "event.reward.random_rare_card.model",
-                        "event:" + eventState.EventId + ":choice:"
-                            + choice.Id + ":pool:" + CanonicalJson.Sha256(rares),
-                        Enumerable.Range(0, rares.Length),
-                        streamId: "reward",
-                        controlledCandidateLabels: (string[])rares.Clone())];
-                    player = AppendCard(
-                        player, nextId++, cardId, state.Rng);
-                    break;
-                }
-
-                case PrototypeRunEffectKind.GainRelic:
-                case PrototypeRunEffectKind.GainRandomRelic:
-                {
-                    string relicId;
-                    if (effect.Kind == PrototypeRunEffectKind.GainRandomRelic
-                        && UsesNativeRegionalSystems(world))
-                    {
-                        var draw = PrototypeNativeRelicGrabBag.Draw(
-                            world, player, state.Rng, merchant: false,
-                            nativeRunRng: nativeRunRng);
-                        world = draw.World;
-                        relicId = draw.Id
-                            ?? throw new InvalidOperationException(
-                                "No source-eligible event relics remain in the bag.");
-                    }
-                    else
-                    {
-                        relicId = effect.Kind
-                            == PrototypeRunEffectKind.GainRandomRelic
-                            ? PickUnownedEventRelic(
-                                player,
-                                state.Rng,
-                                "event:" + eventState.EventId
-                                    + ":choice:" + choice.Id)
-                            : effect.RelicId
-                                ?? throw new InvalidOperationException(
-                                    "Gain-relic event effect is missing a relic ID.");
-                    }
-                    var relicDefinition =
-                        PrototypeContent.Relic(
-                            relicId);
-                    // Direct fixed relic event rewards use RelicCmd.Obtain:
-                    // a fresh mutable relic is appended even when another
-                    // instance of this model already belongs to the player.
-                    // Random pulls still use the single-copy grab bag.
-                    if (player.Relics.Any(relic =>
-                            StringComparer.Ordinal.Equals(
-                                relic.RelicId,
-                                relicId))
-                        && (effect.Kind != PrototypeRunEffectKind.GainRelic
-                            || !AllowsNativeEventDuplicateRelic(
-                                eventState.EventId, relicId)))
-                    {
-                        throw new InvalidOperationException(
-                            $"Player already owns relic '{relicId}'.");
-                    }
-
-                    player = player with
-                    {
-                        Relics = player.Relics
-                            .Append(
-                                new RelicInstance(
-                                    relicId,
-                                    PrototypeJson.EmptyObject()))
-                            .ToArray()
-                    };
-                    player = ApplyRelicRunEvent(
-                        player,
-                        PrototypeRunEventKind.RelicAcquired,
-                        acquiredRelicId: relicId,
-                        rng: state.Rng, allocateCardId: () => nextId++,
-                        nativeRunRng: nativeRunRng);
-
-                    if (eventState.EventId == NativeDarvEventV111.EventId
-                        && relicId == NativeDarvEventV111.DustyTomeId)
-                    {
-                        var cardInstanceId = nextId++;
-                        player = AppendCard(
-                            player, cardInstanceId,
-                            NativeDarvEventV111.DustyTomeCardId,
-                            state.Rng);
-                        var maxUpgradeLevel = PrototypeContent.Card(
-                            NativeDarvEventV111.DustyTomeCardId).MaxUpgradeLevel;
-                        player = player with
+                    case PrototypeRunEffectKind.AddCardAfterDeckChoices:
+                        if (effect.CardId is null || deferredCardId is not null)
                         {
-                            Deck = player.Deck.Select(card =>
-                                card.InstanceId == cardInstanceId
-                                    ? card with
-                                    {
-                                        UpgradeLevel = maxUpgradeLevel
-                                    }
-                                    : card).ToArray()
-                        };
-                    }
-                    else if (eventState.EventId == NativeDarvEventV111.EventId
-                        && relicId == NativeDarvEventV111.PandorasBoxId)
+                            throw new InvalidOperationException(
+                                "Deferred event card addition must have one card ID.");
+                        }
+                        deferredCardId = effect.CardId;
+                        break;
+
+                    case PrototypeRunEffectKind.AddCard:
+                        if (effect.CardId is null)
+                        {
+                            throw new InvalidOperationException(
+                                "Add-card event effect is missing a card ID.");
+                        }
+
+                        player = AppendCard(
+                            player,
+                            nextId++,
+                            effect.CardId,
+                            state.Rng);
+                        break;
+
+                    case PrototypeRunEffectKind.TransformFirstCardOfId:
                     {
-                        var transformedCardIds = player.Deck
-                            .Where(NativeDarvEventV111.IsPandorasBoxTarget)
-                            .Select(card => card.InstanceId)
-                            .ToArray();
-                        foreach (var cardInstanceId in transformedCardIds)
+                        var cardId = effect.CardId
+                            ?? throw new InvalidOperationException(
+                                "Transform-first-card effect requires a card ID.");
+                        var first = player.Deck.FirstOrDefault(card =>
+                            StringComparer.Ordinal.Equals(card.CardId, cardId));
+                        if (first is not null)
                         {
                             player = TransformPersistentDeckCard(
-                                player, cardInstanceId, false, state.Rng);
+                                player, first.InstanceId, false, state.Rng);
                         }
+
+                        break;
                     }
 
-                    if (relicDefinition.CardIdAfterAcquisitionDeckChoices
-                        is { } postChoiceCardId)
-                    {
-                        if (deferredCardId is not null)
-                            throw new InvalidOperationException(
-                                "An event cannot queue multiple deferred card grants.");
-                        deferredCardId = postChoiceCardId;
-                    }
-
-                    if (eventState.EventId == NativeNonupeipeEventV111.EventId
-                        && relicId == NativeGloryAncientsV111.FurCoatId)
-                    {
-                        player = NativeGloryAncientsV111.MarkFurCoatCombats(
-                            player, world.Map, world.Act, state.RunSeed,
-                            state.Rng, nativeRunRng is not null);
-                    }
-
-                    if (relicId == NativeAncientRewardsV111.ToyBoxId)
-                    {
+                    case PrototypeRunEffectKind.OfferThreeRareCards:
+                    case PrototypeRunEffectKind.OfferThreeCardsAndPotion:
+                    case PrototypeRunEffectKind.OfferFiveClassCards:
+                    case PrototypeRunEffectKind.OfferThreeColorlessCards:
+                    case PrototypeRunEffectKind.OfferTwoColorlessCards:
+                    case PrototypeRunEffectKind.OfferCardBundles:
+                    case PrototypeRunEffectKind.OfferNeowsBonesRelics:
+                    case PrototypeRunEffectKind.OfferRandomRelic:
+                    case PrototypeRunEffectKind.OfferWaxRelics:
                         if (deferredReward is not null)
-                            throw new InvalidOperationException("Toy Box acquisition already has a custom reward.");
-                        deferredReward = CreateDeferredEventReward(state,
-                            PrototypeRunEffectKind.OfferWaxRelics, ref player,
-                            eventState.EventId, ref world, nativeRunRng);
-                    }
-                    if (relicId == NativeDarvEventV111.CallingBellId)
-                    {
-                        if (deferredReward is not null)
+                        {
                             throw new InvalidOperationException(
-                                "Calling Bell acquisition already has a custom reward.");
-                        deferredReward = CreateCallingBellRelicReward(
-                            player, eventState.EventId, state.Rng, ref world,
+                                "Only one custom reward offer per event option is supported.");
+                        }
+                        deferredReward = CreateDeferredEventReward(
+                            state,
+                            effect.Kind,
+                            ref player,
+                            eventState.EventId, ref world,
                             UsesNativeRegionalSystems(world)
                                 ? nativeRunRng
                                 : null);
-                    }
+                        break;
 
-                    var relicChoice =
-                        CreateRelicEventDeckChoice(
-                            choice.Id,
-                            relicDefinition);
-                    if (relicChoice is not null)
-                    {
-                        queuedDeckChoices.Add(relicChoice);
-                    }
-
-                    break;
-                }
-
-                case PrototypeRunEffectKind.GainPotion:
-                case PrototypeRunEffectKind.GainRandomPotion:
-                case PrototypeRunEffectKind.GainRandomUncommonPotion:
-                {
-                    var nativeOvergrowth = UsesNativeRegionalSystems(world);
-                    var potionId = effect.Kind
-                        == PrototypeRunEffectKind.GainRandomUncommonPotion
-                        ? PrototypeNativePotionCourier.PickRandomUncommonPotion(
-                            state.Rng, "event")
-                        : effect.Kind == PrototypeRunEffectKind.GainRandomPotion
-                        ? nativeOvergrowth && eventState.EventId
-                            == "proto.native.event.wellspring"
-                            ? PrototypeNativePotionShop.PickUniform(
-                                state.Rng, "reward")
-                            : nativeOvergrowth && eventState.EventId
-                                == "proto.native.event.whispering_hollow"
-                                ? PrototypeNativePotionShop.PickWeighted(
-                                    state.Rng, "reward")
-                                : PrototypeContent.PotionPool[
-                                    ResolveLegacyRandomIndex(
-                                        state.Rng,
-                                        "event.reward.random_potion.model",
-                                        "event:" + eventState.EventId
-                                            + ":choice:" + choice.Id
-                                            + ":pool:" + CanonicalJson.Sha256(
-                                                PrototypeContent.PotionPool),
-                                        Enumerable.Range(
-                                            0, PrototypeContent.PotionPool.Length),
-                                        streamId: "event",
-                                        controlledCandidateLabels:
-                                            (string[])PrototypeContent.PotionPool.Clone())]
-                        : effect.PotionId
-                            ?? throw new InvalidOperationException(
-                                "Gain-potion event effect is missing a potion ID.");
-                    _ = PrototypeContent.Potion(
-                        potionId);
-                    if (!CanAcquirePotion(player))
-                    {
-                        throw new InvalidOperationException(
-                            "Player cannot acquire potions.");
-                    }
-
-                    // Native potion-offer events call RewardsCmd.OfferCustom:
-                    // receiving a reward is a player decision even when a
-                    // potion slot is empty. Other prototype direct-grant
-                    // events retain their historical acquisition behavior.
-                    if (PrototypeNativeOvergrowthEvents.UsesNativePotionOffer(eventState.EventId)
-                        || PrototypeNativeUnderdocksEvents.UsesNativePotionOffer(eventState.EventId))
-                    {
-                        queuedPotionIds.Add(potionId);
-                    }
-                    else
-                    {
-                        var emptySlot = Array.IndexOf(
-                            player.PotionSlots, null);
-                        if (emptySlot >= 0)
+                    case PrototypeRunEffectKind.GainPotionSlots:
+                        if (effect.Amount <= 0)
                         {
-                            var slots = (PotionInstance?[])
-                                player.PotionSlots.Clone();
-                            slots[emptySlot] = new PotionInstance(
-                                potionId, PrototypeJson.EmptyObject());
-                            player = player with { PotionSlots = slots };
+                            throw new InvalidOperationException(
+                                "Potion slot increase must be positive.");
+                        }
+                        player = player with
+                        {
+                            PotionSlots = player.PotionSlots
+                                .Concat(new PotionInstance?[effect.Amount])
+                                .ToArray()
+                        };
+                        break;
+
+                    case PrototypeRunEffectKind.GainRandomRareCard:
+                    {
+                        // Source-shaped Arcane Scroll reward: one Rare from the
+                        // character card pool. The prototype reward pool and
+                        // stream still differ from native v0.111.0.
+                        var rares = PrototypeContent.RewardCardPool
+                            .Where(cardId =>
+                                PrototypeContent.Card(cardId).Rarity
+                                    == PrototypeCardRarity.Rare)
+                            .ToArray();
+                        if (rares.Length == 0)
+                        {
+                            throw new InvalidOperationException(
+                                "Random Rare-card reward has an empty pool.");
+                        }
+
+                        var cardId = rares[ResolveLegacyRandomIndex(
+                            state.Rng,
+                            "event.reward.random_rare_card.model",
+                            "event:" + eventState.EventId + ":choice:"
+                                + choice.Id + ":pool:" + CanonicalJson.Sha256(rares),
+                            Enumerable.Range(0, rares.Length),
+                            streamId: "reward",
+                            controlledCandidateLabels: (string[])rares.Clone())];
+                        player = AppendCard(
+                            player, nextId++, cardId, state.Rng);
+                        break;
+                    }
+
+                    case PrototypeRunEffectKind.GainRelic:
+                    case PrototypeRunEffectKind.GainRandomRelic:
+                    {
+                        string relicId;
+                        if (effect.Kind == PrototypeRunEffectKind.GainRandomRelic
+                            && UsesNativeRegionalSystems(world))
+                        {
+                            var draw = PrototypeNativeRelicGrabBag.Draw(
+                                world, player, state.Rng, merchant: false,
+                                nativeRunRng: nativeRunRng);
+                            world = draw.World;
+                            relicId = draw.Id
+                                ?? throw new InvalidOperationException(
+                                    "No source-eligible event relics remain in the bag.");
                         }
                         else
                         {
-                            queuedPotionIds.Add(potionId);
+                            relicId = effect.Kind
+                                == PrototypeRunEffectKind.GainRandomRelic
+                                ? PickUnownedEventRelic(
+                                    player,
+                                    state.Rng,
+                                    "event:" + eventState.EventId
+                                        + ":choice:" + choice.Id)
+                                : effect.RelicId
+                                    ?? throw new InvalidOperationException(
+                                        "Gain-relic event effect is missing a relic ID.");
                         }
+                        var relicDefinition =
+                            PrototypeContent.Relic(
+                                relicId);
+                        // Direct fixed relic event rewards use RelicCmd.Obtain:
+                        // a fresh mutable relic is appended even when another
+                        // instance of this model already belongs to the player.
+                        // Random pulls still use the single-copy grab bag.
+                        if (player.Relics.Any(relic =>
+                                StringComparer.Ordinal.Equals(
+                                    relic.RelicId,
+                                    relicId))
+                            && (effect.Kind != PrototypeRunEffectKind.GainRelic
+                                || !AllowsNativeEventDuplicateRelic(
+                                    eventState.EventId, relicId)))
+                        {
+                            throw new InvalidOperationException(
+                                $"Player already owns relic '{relicId}'.");
+                        }
+
+                        player = player with
+                        {
+                            Relics = player.Relics
+                                .Append(
+                                    new RelicInstance(
+                                        relicId,
+                                        PrototypeJson.EmptyObject()))
+                                .ToArray()
+                        };
+                        player = ApplyRelicRunEvent(
+                            player,
+                            PrototypeRunEventKind.RelicAcquired,
+                            acquiredRelicId: relicId,
+                            rng: state.Rng, allocateCardId: () => nextId++,
+                            nativeRunRng: nativeRunRng);
+
+                        if (eventState.EventId == NativeDarvEventV111.EventId
+                            && relicId == NativeDarvEventV111.DustyTomeId)
+                        {
+                            var cardInstanceId = nextId++;
+                            player = AppendCard(
+                                player, cardInstanceId,
+                                NativeDarvEventV111.DustyTomeCardId,
+                                state.Rng);
+                            var maxUpgradeLevel = PrototypeContent.Card(
+                                NativeDarvEventV111.DustyTomeCardId).MaxUpgradeLevel;
+                            player = player with
+                            {
+                                Deck = player.Deck.Select(card =>
+                                    card.InstanceId == cardInstanceId
+                                        ? card with
+                                        {
+                                            UpgradeLevel = maxUpgradeLevel
+                                        }
+                                        : card).ToArray()
+                            };
+                        }
+                        else if (eventState.EventId == NativeDarvEventV111.EventId
+                            && relicId == NativeDarvEventV111.PandorasBoxId)
+                        {
+                            var transformedCardIds = player.Deck
+                                .Where(NativeDarvEventV111.IsPandorasBoxTarget)
+                                .Select(card => card.InstanceId)
+                                .ToArray();
+                            foreach (var cardInstanceId in transformedCardIds)
+                            {
+                                player = TransformPersistentDeckCard(
+                                    player, cardInstanceId, false, state.Rng);
+                            }
+                        }
+
+                        if (relicDefinition.CardIdAfterAcquisitionDeckChoices
+                            is { } postChoiceCardId)
+                        {
+                            if (deferredCardId is not null)
+                                throw new InvalidOperationException(
+                                    "An event cannot queue multiple deferred card grants.");
+                            deferredCardId = postChoiceCardId;
+                        }
+
+                        if (eventState.EventId == NativeNonupeipeEventV111.EventId
+                            && relicId == NativeGloryAncientsV111.FurCoatId)
+                        {
+                            player = NativeGloryAncientsV111.MarkFurCoatCombats(
+                                player, world.Map, world.Act, state.RunSeed,
+                                state.Rng, nativeRunRng is not null);
+                        }
+
+                        if (relicId == NativeAncientRewardsV111.ToyBoxId)
+                        {
+                            if (deferredReward is not null)
+                                throw new InvalidOperationException("Toy Box acquisition already has a custom reward.");
+                            deferredReward = CreateDeferredEventReward(state,
+                                PrototypeRunEffectKind.OfferWaxRelics, ref player,
+                                eventState.EventId, ref world, nativeRunRng);
+                        }
+                        if (relicId == NativeDarvEventV111.CallingBellId)
+                        {
+                            if (deferredReward is not null)
+                                throw new InvalidOperationException(
+                                    "Calling Bell acquisition already has a custom reward.");
+                            deferredReward = CreateCallingBellRelicReward(
+                                player, eventState.EventId, state.Rng, ref world,
+                                UsesNativeRegionalSystems(world)
+                                    ? nativeRunRng
+                                    : null);
+                        }
+
+                        var relicChoice =
+                            CreateRelicEventDeckChoice(
+                                choice.Id,
+                                relicDefinition);
+                        if (relicChoice is not null)
+                        {
+                            queuedDeckChoices.Add(relicChoice);
+                        }
+
+                        break;
                     }
 
-                    break;
+                    case PrototypeRunEffectKind.GainPotion:
+                    case PrototypeRunEffectKind.GainRandomPotion:
+                    case PrototypeRunEffectKind.GainRandomUncommonPotion:
+                    {
+                        var nativeOvergrowth = UsesNativeRegionalSystems(world);
+                        var potionId = effect.Kind
+                            == PrototypeRunEffectKind.GainRandomUncommonPotion
+                            ? PrototypeNativePotionCourier.PickRandomUncommonPotion(
+                                state.Rng, "event")
+                            : effect.Kind == PrototypeRunEffectKind.GainRandomPotion
+                            ? nativeOvergrowth && eventState.EventId
+                                == "proto.native.event.wellspring"
+                                ? PrototypeNativePotionShop.PickUniform(
+                                    state.Rng, "reward")
+                                : nativeOvergrowth && eventState.EventId
+                                    == "proto.native.event.whispering_hollow"
+                                    ? PrototypeNativePotionShop.PickWeighted(
+                                        state.Rng, "reward")
+                                    : PrototypeContent.PotionPool[
+                                        ResolveLegacyRandomIndex(
+                                            state.Rng,
+                                            "event.reward.random_potion.model",
+                                            "event:" + eventState.EventId
+                                                + ":choice:" + choice.Id
+                                                + ":pool:" + CanonicalJson.Sha256(
+                                                    PrototypeContent.PotionPool),
+                                            Enumerable.Range(
+                                                0, PrototypeContent.PotionPool.Length),
+                                            streamId: "event",
+                                            controlledCandidateLabels:
+                                                (string[])PrototypeContent.PotionPool.Clone())]
+                            : effect.PotionId
+                                ?? throw new InvalidOperationException(
+                                    "Gain-potion event effect is missing a potion ID.");
+                        _ = PrototypeContent.Potion(
+                            potionId);
+                        if (!CanAcquirePotion(player))
+                        {
+                            throw new InvalidOperationException(
+                                "Player cannot acquire potions.");
+                        }
+
+                        // Native potion-offer events call RewardsCmd.OfferCustom:
+                        // receiving a reward is a player decision even when a
+                        // potion slot is empty. Other prototype direct-grant
+                        // events retain their historical acquisition behavior.
+                        if (PrototypeNativeOvergrowthEvents.UsesNativePotionOffer(eventState.EventId)
+                            || PrototypeNativeUnderdocksEvents.UsesNativePotionOffer(eventState.EventId))
+                        {
+                            queuedPotionIds.Add(potionId);
+                        }
+                        else
+                        {
+                            var emptySlot = Array.IndexOf(
+                                player.PotionSlots, null);
+                            if (emptySlot >= 0)
+                            {
+                                var slots = (PotionInstance?[])
+                                    player.PotionSlots.Clone();
+                                slots[emptySlot] = new PotionInstance(
+                                    potionId, PrototypeJson.EmptyObject());
+                                player = player with { PotionSlots = slots };
+                            }
+                            else
+                            {
+                                queuedPotionIds.Add(potionId);
+                            }
+                        }
+
+                        break;
+                    }
+
+                    case PrototypeRunEffectKind.FillPotionSlots:
+                        player =
+                            FillEmptyPotionSlots(
+                                player,
+                                state.Rng);
+                        break;
+
+                    default:
+                        throw new ArgumentOutOfRangeException();
                 }
-
-                case PrototypeRunEffectKind.FillPotionSlots:
-                    player =
-                        FillEmptyPotionSlots(
-                            player,
-                            state.Rng);
-                    break;
-
-                default:
-                    throw new ArgumentOutOfRangeException();
+            }
+            catch (ControlledEventChoiceChanceRequiredException exception)
+            {
+                var partialPlayer = exception.PartialPlayerState ?? player;
+                var partialWorld = world with
+                {
+                    NextCardInstanceId = nextId,
+                    Event = eventState with { ControlledChoice = null }
+                };
+                var partialState = state with
+                {
+                    Player = partialPlayer,
+                    NativeRunRng = nativeRunRng,
+                    World = partialWorld
+                };
+                var continuation = new PrototypeControlledEventChoiceContinuationV111(
+                    partialState,
+                    eventState.EventId,
+                    choice.Id,
+                    effectIndex,
+                    queuedPotionIds.ToArray(),
+                    queuedDeckChoices.Select(item => item.Fork()).ToArray(),
+                    deferredReward?.Fork(),
+                    deferredHpLoss,
+                    deferredGoldLoss,
+                    deferredCardId,
+                    resume?.Decisions ?? [],
+                    exception.Request,
+                    exception.CandidateLabels,
+                    resume?.DecisionCandidateLabels ?? []);
+                continuation.Validate();
+                return rootState with
+                {
+                    World = rootWorld with
+                    {
+                        Event = rootEvent with { ControlledChoice = continuation }
+                    }
+                };
             }
         }
 
@@ -2349,7 +2402,8 @@ public sealed partial class PrototypeGameEngine
                     PendingReward = deferredReward,
                     DeferredHpLoss = deferredHpLoss,
                     DeferredGoldLoss = deferredGoldLoss,
-                    DeferredCardId = deferredCardId
+                    DeferredCardId = deferredCardId,
+                    ControlledChoice = null
                 }
             }
         };
@@ -2793,19 +2847,30 @@ public sealed partial class PrototypeGameEngine
                 continue;
             }
 
-            var potionId =
-                PrototypeContent.PotionPool[
-                    ResolveLegacyRandomIndex(
-                        rng,
-                        "event.potion.fill_empty_slots.model",
-                        "player:potion_slot:" + index + ":pool:"
-                            + CanonicalJson.Sha256(
-                                PrototypeContent.PotionPool),
-                        Enumerable.Range(
-                            0, PrototypeContent.PotionPool.Length),
-                        streamId: "event",
-                        controlledCandidateLabels:
-                            (string[])PrototypeContent.PotionPool.Clone())];
+            int selectedIndex;
+            try
+            {
+                selectedIndex = ResolveLegacyRandomIndex(
+                    rng,
+                    "event.potion.fill_empty_slots.model",
+                    "player:potion_slot:" + index + ":pool:"
+                        + CanonicalJson.Sha256(
+                            PrototypeContent.PotionPool),
+                    Enumerable.Range(
+                        0, PrototypeContent.PotionPool.Length),
+                    streamId: "event",
+                    controlledCandidateLabels:
+                        (string[])PrototypeContent.PotionPool.Clone());
+            }
+            catch (ControlledEventChoiceChanceRequiredException exception)
+            {
+                exception.PartialPlayerState = player with
+                {
+                    PotionSlots = (PotionInstance?[])slots.Clone()
+                };
+                throw;
+            }
+            var potionId = PrototypeContent.PotionPool[selectedIndex];
             slots[index] =
                 new PotionInstance(
                     potionId,

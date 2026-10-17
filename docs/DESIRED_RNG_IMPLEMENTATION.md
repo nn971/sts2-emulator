@@ -60,10 +60,10 @@ semantic playable pilot also admits Survivor, Hand Trick, Nightmare and Wish
 through its persisted source card-selection continuation. JSONL `hello` now
 advertises the retained-deck action schema, its scope and sorted supported card
 IDs as an explicit capability.
-Ordinary event choices also have an opt-in D3 replay boundary: the engine
-stores a pre-option run checkpoint, asks for each supported legacy chance
-outcome in turn, and replays the option from that checkpoint so partially
-applied effects never escape. The D4 JSONL/Python adapter exposes this through
+Ordinary event choices also have an opt-in D3 continuation: the engine stores
+the partially updated player/world state and current effect index at a
+supported legacy chance site, then resumes after an external outcome without
+replaying earlier effects. The D4 JSONL/Python adapter exposes this through
 `controlled_event_begin` and `controlled_event_resolve`; candidate labels and
 the completed controlled transcript are serialized with the run. This slice
 covers random upgrades, supported random card/potion/relic event rewards and

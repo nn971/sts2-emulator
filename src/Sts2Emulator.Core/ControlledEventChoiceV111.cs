@@ -5,7 +5,7 @@ namespace Sts2Emulator.Core;
 /// <summary>
 /// Opt-in adapter for controlled stochastic event options. Ordinary engine
 /// steps retain the legacy random profile; callers use this adapter to begin
-/// or resume a saved event-choice continuation.
+/// or resume a saved event-effect continuation.
 /// </summary>
 public static class ControlledEventChoiceEngineV111
 {
@@ -99,14 +99,21 @@ public sealed record ControlledEventChoiceTraceV111(
 }
 
 /// <summary>
-/// Saved replay point for a guarded event option that needs controlled
-/// random outcomes. The checkpoint is the run immediately before the option;
-/// replaying from it prevents partially applied effects from being committed.
+/// Suspended event-effect frame for a guarded option that needs a controlled
+/// random outcome. Partial run state contains completed effects, and
+/// NextEffectIndex identifies the effect that will resume.
 /// </summary>
 public sealed record PrototypeControlledEventChoiceContinuationV111(
-    RunState Checkpoint,
+    RunState PartialState,
     string EventId,
     string ChoiceId,
+    int NextEffectIndex,
+    string[] QueuedPotionIds,
+    PrototypePendingEventDeckChoiceState[] QueuedDeckChoices,
+    RewardState? DeferredReward,
+    int DeferredHpLoss,
+    int DeferredGoldLoss,
+    string? DeferredCardId,
     RandomIndexDecisionV111[] Decisions,
     RandomIndexRequestV111 PendingRequest,
     string[]? PendingCandidateLabels = null,
@@ -114,7 +121,11 @@ public sealed record PrototypeControlledEventChoiceContinuationV111(
 {
     public PrototypeControlledEventChoiceContinuationV111 Fork() => this with
     {
-        Checkpoint = Checkpoint.Fork(),
+        PartialState = PartialState.Fork(),
+        QueuedPotionIds = (string[])QueuedPotionIds.Clone(),
+        QueuedDeckChoices = QueuedDeckChoices
+            .Select(choice => choice.Fork()).ToArray(),
+        DeferredReward = DeferredReward?.Fork(),
         Decisions = Decisions.Select(CloneDecision).ToArray(),
         PendingRequest = CloneRequest(PendingRequest),
         PendingCandidateLabels = PendingCandidateLabels is null
@@ -125,25 +136,42 @@ public sealed record PrototypeControlledEventChoiceContinuationV111(
 
     public void Validate()
     {
-        if (Checkpoint is null || Decisions is null
+        if (PartialState is null || Decisions is null
             || DecisionCandidateLabels is null
             || DecisionCandidateLabels.Length != Decisions.Length
             || string.IsNullOrWhiteSpace(EventId)
             || string.IsNullOrWhiteSpace(ChoiceId)
+            || QueuedPotionIds is null || QueuedDeckChoices is null
+            || NextEffectIndex < 0
             || PendingRequest is null)
             throw new InvalidDataException(
                 "Malformed controlled event-choice continuation.");
 
-        var checkpointEvent = Checkpoint.World?.Event;
-        if (Checkpoint.Phase != RunPhase.Event
-            || Checkpoint.World is null
-            || checkpointEvent is null
-            || checkpointEvent.EventId != EventId
-            || checkpointEvent.ChosenChoiceId is not null
-            || checkpointEvent.ControlledChoice is not null
+        var partialEvent = PartialState.World?.Event;
+        if (PartialState.Phase != RunPhase.Event
+            || partialEvent is null
+            || partialEvent.EventId != EventId
+            || partialEvent.ChosenChoiceId is not null
+            || partialEvent.ControlledChoice is not null
             || !PrototypeGameEngine.IsControlledEventChoice(EventId, ChoiceId))
             throw new InvalidDataException(
-                "Controlled event-choice checkpoint is outside its event option boundary.");
+                "Controlled event-choice frame is outside its event option boundary.");
+        var choice = PrototypeContent.Event(EventId).Choices.SingleOrDefault(
+            item => item.Id == ChoiceId)
+            ?? throw new InvalidDataException(
+                "Controlled event-choice frame references an unknown option.");
+        if (NextEffectIndex >= choice.Effects.Length)
+            throw new InvalidDataException(
+                "Controlled event-choice frame has no unresolved effect.");
+        foreach (var potionId in QueuedPotionIds)
+            _ = PrototypeContent.Potion(potionId);
+        foreach (var queuedChoice in QueuedDeckChoices)
+        {
+            if (queuedChoice is null
+                || queuedChoice.CandidateCardInstanceIds is null)
+                throw new InvalidDataException(
+                    "Controlled event-choice frame has a malformed queued deck choice.");
+        }
 
         ValidateRequest(PendingRequest);
         if (PendingCandidateLabels is not null
@@ -172,6 +200,7 @@ public sealed record PrototypeControlledEventChoiceContinuationV111(
                 throw new InvalidDataException(
                     "Controlled event-choice transcript labels do not match their ordered support.");
         }
+        PrototypeStateInvariants.Validate(PartialState);
     }
 
     internal static RandomIndexRequestV111 CloneRequest(
@@ -197,19 +226,22 @@ public sealed record PrototypeControlledEventChoiceContinuationV111(
 
 internal sealed class ControlledEventChoiceChanceRequiredException(
     RandomIndexRequestV111 request,
-    string[]? candidateLabels) : Exception(
+    string[]? candidateLabels,
+    PlayerState? partialPlayerState = null) : Exception(
         "A controlled event choice needs a random-choice outcome.")
 {
     public RandomIndexRequestV111 Request { get; } =
         PrototypeControlledEventChoiceContinuationV111.CloneRequest(request);
     public string[]? CandidateLabels { get; } = candidateLabels is null
         ? null : (string[])candidateLabels.Clone();
+    public PlayerState? PartialPlayerState { get; set; } =
+        partialPlayerState?.Fork();
 }
 
 /// <summary>
-/// Replays an ordinary event option from its saved pre-option state, injecting
-/// only its recorded controlled outcomes. The first unknown request suspends
-/// that option with its exact ordered support.
+/// Supplies the current controlled outcome while the event-effect interpreter
+/// resumes from its saved frame. The first unknown request suspends that
+/// option with its exact ordered support.
 /// </summary>
 internal sealed class ControlledEventChoiceReplayV111 : IDisposable
 {
@@ -217,6 +249,7 @@ internal sealed class ControlledEventChoiceReplayV111 : IDisposable
         new();
     private readonly ControlledEventChoiceReplayV111? _previous;
     private readonly RandomIndexDecisionV111[] _decisions;
+    private readonly Dictionary<string, int> _priorOrdinalCounts;
     private string[]? _candidateLabels;
     private int _nextDecision;
     private bool _disposed;
@@ -224,20 +257,27 @@ internal sealed class ControlledEventChoiceReplayV111 : IDisposable
     public static bool IsActive => Active.Value is not null;
 
     private ControlledEventChoiceReplayV111(
-        RandomIndexDecisionV111[] decisions)
+        RandomIndexDecisionV111[] decisions,
+        IReadOnlyDictionary<string, int>? priorOrdinalCounts)
     {
         _previous = Active.Value;
         _decisions = decisions.Select(
             PrototypeControlledEventChoiceContinuationV111.CloneDecision)
             .ToArray();
+        _priorOrdinalCounts = priorOrdinalCounts is null
+            ? new Dictionary<string, int>(StringComparer.Ordinal)
+            : new Dictionary<string, int>(priorOrdinalCounts,
+                StringComparer.Ordinal);
         Active.Value = this;
     }
 
     public static ControlledEventChoiceReplayV111 Begin(
-        RandomIndexDecisionV111[] decisions)
+        RandomIndexDecisionV111[] decisions,
+        IReadOnlyDictionary<string, int>? priorOrdinalCounts = null)
     {
         ArgumentNullException.ThrowIfNull(decisions);
-        return new ControlledEventChoiceReplayV111(decisions);
+        return new ControlledEventChoiceReplayV111(
+            decisions, priorOrdinalCounts);
     }
 
     public static int Resolve(RandomIndexRequestV111 request)
@@ -250,7 +290,9 @@ internal sealed class ControlledEventChoiceReplayV111 : IDisposable
                 "UNSUPPORTED_CONTROLLED_CHANCE site=" + request.SiteId +
                 " operation=" + request.OperationKind);
 
-        var ordinal = checked(request.Ordinal + active._decisions
+        var ordinal = checked(request.Ordinal +
+            active._priorOrdinalCounts.GetValueOrDefault(request.StreamId) +
+            active._decisions
             .Take(active._nextDecision)
             .Count(decision => decision.Request.StreamId == request.StreamId));
         var normalizedRequest = request with { Ordinal = ordinal };

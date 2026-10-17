@@ -131,7 +131,7 @@ public static class PrototypeStateInvariants
         {
             controlledEventChoice.Validate();
             if (state.Phase != RunPhase.Event
-                || state.DecisionIndex < controlledEventChoice.Checkpoint.DecisionIndex
+                || state.DecisionIndex < controlledEventChoice.PartialState.DecisionIndex
                 || world.Event.EventId != controlledEventChoice.EventId
                 || world.Event.ChosenChoiceId is not null
                 || world.Event.PendingDeckChoice is not null
@@ -141,7 +141,6 @@ public static class PrototypeStateInvariants
                 || world.Event.PendingReward is not null)
                 throw new InvalidOperationException(
                     "Suspended controlled event choice conflicts with committed event state.");
-            Validate(controlledEventChoice.Checkpoint);
         }
 
         if (!StringComparer.Ordinal.Equals(world.RulesetId, state.Configuration?.RulesetId ?? PrototypeContent.RulesetId))

@@ -4,16 +4,15 @@ This opt-in D3 boundary suspends selected ordinary event choices at supported
 legacy random-index sites. The ordinary engine step and legacy six-stream
 behavior remain unchanged.
 
-## Saved state and replay
+## Saved state and continuation
 
-On `Begin`, the engine saves the run immediately before the event option and
-replays the option under a controlled chance guard. At a supported random
-site, it stores the typed request and candidate labels in `EventState` without
-committing the option's local effects. Each selected index replays the full
-option from the checkpoint with the recorded prefix. If the option reaches a
-second supported random site, it suspends again with that next request. Only
-after every random request has an outcome does the engine commit the option
-once.
+The engine stores the current event-effect frame at a supported random site,
+including partially updated player and world state, effect index, deferred
+effects, typed request and candidate labels. Earlier effects remain in the
+serialized frame. A selected index resumes at the unresolved effect and
+continues in source order. If the option reaches another supported random
+site, it suspends again with that next request. The option commits after all
+effects finish; earlier effects are not replayed.
 
 The serialized request includes site, legacy stream, owner, ordinal, operation
 kind and ordered integer support. Candidate labels identify event card
@@ -48,7 +47,7 @@ ordinary run `state_handle`:
 | `controlled_event_resolve` | pending `state_handle`, `selected_index` | Child run handle with the next request or committed option |
 | `controlled_event_inspect` | pending `state_handle` | Restore the Nature-facing request and legal outcome actions after loading a snapshot |
 
-The exact continuation is part of the ordinary run snapshot. A pending
+The exact continuation frame is part of the ordinary run snapshot. A pending
 continuation exposes only `choose_controlled_event_outcome` actions through
 the explicit controller response. Player-facing observations hide those
 Nature actions, and the ordinary step endpoint cannot submit them. Other
