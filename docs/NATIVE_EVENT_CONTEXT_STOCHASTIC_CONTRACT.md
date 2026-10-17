@@ -41,19 +41,21 @@ and committed effect or reward. It omits candidate-pool order, seed, and RNG
 cursor. The event's persisted stream snapshot and committed stochastic
 values belong to the privileged state; they are not Nature observations.
 There is no family-wide Nature-view Chance Law or atomic ReferenceNature
-session for the rows linked here. Site-specific sessions for Hungry for
-Mushrooms, Tinker Time, Battleworn Dummy, Fake Merchant, the Doors Light
-shuffle, Reflections, Tablet of Truth, Trial, and Trash Heap rewards remain
-limited to the exact event boundaries
+session for the rows linked here. Site-specific sessions for Endless
+Conveyor, Hungry for Mushrooms, Tinker Time, Battleworn Dummy, Fake Merchant,
+the Doors Light shuffle, Reflections, Tablet of Truth, Trial, and Trash Heap
+rewards remain limited to the exact event boundaries
 documented in their contracts. Existing controlled event-choice and
 Ancient-offer sessions do not implicitly cover an event merely because it
 uses this RNG helper.
 
 Endless Conveyor exposes a read-only first-dish Chance Law at a configured
-Event-node entry. It conditions on the ordinary event-selection result and the
-pre-draw dish weights, and does not inspect the sampled float outcome. Later
-dish rolls and an atomic ReferenceNature continuation remain outside that
-query boundary ([Endless Conveyor contract](REFERENCE_NATURE_ENDLESS_CONVEYOR_D3.md)).
+Event-node entry and a first-dish Observe upgrade law over ordered eligible
+card instances. The dish query conditions on the ordinary event-selection
+result and pre-draw weights without inspecting the sampled float outcome; the
+Observe query binds its `choose_index` support to the persisted event cursor.
+The existing event-specific session covers both the dish tickets and this
+first-dish upgrade ([Endless Conveyor contract](REFERENCE_NATURE_ENDLESS_CONVEYOR_D3.md)).
 
 Reflections exposes read-only conditional laws for its downgrade and upgrade
 card-pick sites. The query rebuilds the projected deck and remaining ordered

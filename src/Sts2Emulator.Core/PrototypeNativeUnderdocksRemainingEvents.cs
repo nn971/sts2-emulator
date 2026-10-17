@@ -11,6 +11,8 @@ public static class PrototypeNativeEndlessConveyor
     public const string NativeRngEventId = "ENDLESS_CONVEYOR";
     public const string DishWeightedTicketSiteId =
         "event.endless_conveyor.dish_weighted_ticket";
+    public const string UpgradeCardSiteId =
+        "event.endless_conveyor.random_upgrade.card_instance";
     public const string FeedingFrenzyId = "proto.native.underdocks.feeding_frenzy";
 
     public static PrototypeCardDefinition[] EventCards { get; } =
@@ -151,6 +153,12 @@ public static class PrototypeNativeEndlessConveyor
         ArgumentNullException.ThrowIfNull(current);
         var initialEntryBoundary = current.NativePageIndex == 0 &&
             current.ChosenChoiceId is null && !current.NativeDishRollPending;
+        var completedObserveBoundary =
+            current.NativePageIndex ==
+                PrototypeNativeEventCompletionPages.TerminalChoicePageIndex(
+                    EventId) &&
+            current.ChosenChoiceId == "observe" &&
+            !current.NativeDishRollPending;
         var deferredGrabBoundary = current.NativePageIndex == 1 &&
             current.ChosenChoiceId == "grab" && current.NativeDishRollPending &&
             (current.NativeDishId == "JELLY_LIVER" &&
@@ -165,7 +173,7 @@ public static class PrototypeNativeEndlessConveyor
         if (state.Phase != RunPhase.Event ||
             state.World?.Combat is not null ||
             current.EventId != EventId ||
-            !(initialEntryBoundary || deferredGrabBoundary ||
+            !(initialEntryBoundary || completedObserveBoundary || deferredGrabBoundary ||
                 completedGrabBoundary) ||
             current.NativeDishCount < 1 || current.NativeDishCount % 5 == 0 ||
             current.NativeDishId is null ||
@@ -480,7 +488,7 @@ public sealed partial class PrototypeGameEngine
         {
             selectedIndex = LegacyRandomChoiceV111.ChooseIndexRange(
                 state.Rng,
-                "event.endless_conveyor.random_upgrade.card_instance",
+                PrototypeNativeEndlessConveyor.UpgradeCardSiteId,
                 "event",
                 ownerId,
                 candidates.Length).SelectedIndex;
@@ -491,7 +499,7 @@ public sealed partial class PrototypeGameEngine
                 state,
                 evt,
                 PrototypeNativeEndlessConveyor.NativeRngEventId,
-                "event.endless_conveyor.random_upgrade.card_instance",
+                PrototypeNativeEndlessConveyor.UpgradeCardSiteId,
                 ownerId,
                 candidates.Length);
             state = draw.State;

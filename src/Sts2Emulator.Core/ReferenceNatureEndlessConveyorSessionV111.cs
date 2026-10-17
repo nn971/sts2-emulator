@@ -12,8 +12,8 @@ public sealed record ReferenceNatureEndlessConveyorSessionSnapshotV111(
     ReferenceNatureStateV111 NatureState,
     ReferenceNatureDecisionV111[] DecisionTranscript);
 
-/// <summary>Atomic ReferenceNature continuation for one weighted Endless
-/// Conveyor dish ticket during event entry or a dish-action continuation.</summary>
+/// <summary>Atomic ReferenceNature continuation for one Endless Conveyor
+/// dish ticket or first-dish observe upgrade.</summary>
 public sealed record ReferenceNatureEndlessConveyorSessionV111(
     string SchemaId,
     RunState Origin,
@@ -27,7 +27,8 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
         "sts2-v111-reference-nature-endless-conveyor-session-v1";
 
     public static string[] SessionSiteIds =>
-        [PrototypeNativeEndlessConveyor.DishWeightedTicketSiteId];
+        [PrototypeNativeEndlessConveyor.DishWeightedTicketSiteId,
+         PrototypeNativeEndlessConveyor.UpgradeCardSiteId];
 
     [JsonIgnore]
     public string Fingerprint => CanonicalJson.Sha256(this);
@@ -245,6 +246,9 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
         RunState origin, string actionId, ChanceLawV111 law,
         ReferenceNatureSelectionV111 selection)
     {
+        if (law.SiteId == PrototypeNativeEndlessConveyor.UpgradeCardSiteId)
+            return ReplayUpgradeSelection(origin, actionId, law, selection);
+
         var conditioningRun = origin.Phase == RunPhase.MapChoice
             ? origin : CaptureDishPreDrawState(origin, actionId);
         var request = new RandomUnitFloatRequestV111(
@@ -272,6 +276,50 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
             run.World?.Event?.NativeDishId != selection.OutcomeId[5..])
             throw new InvalidDataException(
                 "Scripted Endless Conveyor ticket resolved a different dish than its Nature outcome.");
+        return run;
+    }
+
+    private static RunState ReplayUpgradeSelection(
+        RunState origin, string actionId, ChanceLawV111 law,
+        ReferenceNatureSelectionV111 selection)
+    {
+        var evt = origin.World?.Event
+            ?? throw new InvalidDataException(
+                "Endless Conveyor upgrade replay lost its event state.");
+        var candidates = ChanceLawEngineV111
+            .GetEndlessConveyorUpgradeCandidates(origin);
+        if (candidates.Length != law.Outcomes.Length ||
+            selection.OutcomeIndex < 0 ||
+            selection.OutcomeIndex >= candidates.Length ||
+            law.Outcomes[selection.OutcomeIndex].OutcomeId !=
+                $"card-instance:{candidates[selection.OutcomeIndex]}:index:{selection.OutcomeIndex}")
+            throw new InvalidDataException(
+                "Endless Conveyor upgrade law differs from its ordered card support.");
+        var stream = evt.NativeEventRng
+            ?? throw new InvalidDataException(
+                "Endless Conveyor upgrade replay lost its Native event cursor.");
+        var request = new RandomIndexRequestV111(
+            law.SiteId,
+            stream.StreamId,
+            law.OwnerId,
+            law.Ordinal,
+            Enumerable.Range(0, candidates.Length).ToArray());
+        request.Validate();
+        var run = ReferenceNatureNativeEventIndexReplayV111.Replay(
+            origin,
+            request,
+            selection.OutcomeIndex,
+            RequireAction(origin, actionId),
+            PrototypeNativeEndlessConveyor.NativeRngEventId,
+            PrototypeNativeEndlessConveyor.EventId);
+        var selectedInstanceId = candidates[selection.OutcomeIndex];
+        var expectedDeck = origin.Player.Deck.Select(card =>
+            card.InstanceId == selectedInstanceId
+                ? card with { UpgradeLevel = card.UpgradeLevel + 1 }
+                : card).ToArray();
+        if (!run.Player.Deck.SequenceEqual(expectedDeck))
+            throw new InvalidDataException(
+                "Scripted Endless Conveyor observe upgraded a different card than its Nature outcome.");
         return run;
     }
 

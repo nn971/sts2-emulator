@@ -255,6 +255,7 @@ public static class StochasticSiteRegistryV111
         .. ChanceLawEngineV111.NativeEventShuffleSessionSiteIds,
         .. ChanceLawEngineV111.NativeEventCardPickQuerySiteIds,
         "event.endless_conveyor.dish_weighted_ticket",
+        "event.endless_conveyor.random_upgrade.card_instance",
         "shop.merchant.sale_slot.index_draw",
         "card_rarity.roll.unit_float",
         "shop.merchant.card_model.index_draw",
