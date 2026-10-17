@@ -288,7 +288,7 @@ public sealed record SemanticEndTurnV111(
         }
         if (this.HandDraw is { } hand)
         {
-            SemanticCombatDrawEngineV111.Validate(hand);
+            hand.Validate();
             if (!this.Complete &&
                 CanonicalJson.Sha256(this.Run) != CanonicalJson.Sha256(hand.Run))
                 throw new InvalidDataException(

@@ -86,6 +86,8 @@
 
 **S3 semantic end-turn validation ownership increment (2026-10-17):** `SemanticEndTurnV111.Validate` now checks the specialized continuation's staged mechanics and transcript relationship, then delegates typed history checks to `SemanticEndTurnStochasticStateV111`. The existing engine validator delegates to the frame owner.
 
+**S3 semantic draw validation ownership increment (2026-10-17):** `SemanticCombatDrawV111.Validate` now owns the draw-stage and physical/provider deck consistency checks, while `SemanticCombatDrawStochasticStateV111` validates typed draw history. The old engine validator delegates to the frame owner.
+
 ## S1 precise design
 
 Implement a **read-only, outcome-blind** Chance Law query in `Sts2Emulator.Core` with:
