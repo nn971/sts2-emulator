@@ -42,7 +42,7 @@
 
 **S3 automatic-pipeline provider validation increment (2026-10-17):** `PrototypeAutomaticPipelineStochasticStateV111` now validates the controlled recycle-Stratagem stage and nested enemy-action checkpoint against its automatic-pipeline mechanics boundary. `CombatStochasticStateV111.Validate` invokes this check, removing those provider-specific branches from the general combat invariant routine while preserving the mechanics-state checks there.
 
-**S3 relic-bag ownership validation increment (2026-10-17):** `RunWorldStochasticStateV111` now routes its persistent relic queue validation through `PrototypeNativeRelicGrabBag.Validate`, which checks queue membership, duplicate/owned relic exclusion and rarity partitions. Run-level stochastic validation invokes the world owner so the checks remain part of the full snapshot invariant path.
+**S3 run-world bag ownership validation increment (2026-10-17):** `RunWorldStochasticStateV111` now validates its Act 1 encounter queues and routes persistent relic queue validation through `PrototypeNativeRelicGrabBag.Validate`, which checks queue membership, duplicate/owned relic exclusion and rarity partitions. Run-level stochastic validation invokes the world owner so these checks remain part of the full snapshot invariant path.
 
 ## S1 precise design
 
