@@ -53,6 +53,13 @@ origin. Existing relic bag queues are sorted and tagged as Nature unordered
 sets in the replay origin; when the origin has no relic bag, the session
 preserves that absence.
 
+The Stone of All Time result composes with the existing push/lift event-choice
+continuation. Its later Native ticket keeps source ordinal 1 after the
+Nature-controlled ordinal-0 potion-slot draw. A controlled ticket remains on
+the scripted entry boundary; an ordinary Native event draw clears that marker
+after it advances the context stream. These paths preserve request chronology
+but do not claim Native cursor parity for the counterfactual run.
+
 The serialized session records the source action, event branch, origin and
 current run snapshots, initial and current Nature sampler states, and the
 decision transcript. Restore recomputes the transcript by replay. Forks

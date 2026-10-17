@@ -4,9 +4,9 @@ namespace Sts2Emulator.Core;
 /// Owns EventModel.Begin-compatible event streams for configured native runs.
 /// The stream is persisted on EventState and copied forward after each draw.
 /// Scripted Trash Heap, Tablet of Truth, Trial, Endless Conveyor dish-ticket,
-/// Native event-gold, and event-shuffle resolutions retain counterfactual
-/// provider markers, with event-specific cursor and result invariants checked
-/// at the boundary.
+/// Native event-entry, and event-shuffle resolutions retain counterfactual
+/// provider markers. A later native event draw clears the entry marker after
+/// advancing the context stream.
 /// </summary>
 public static class NativeEventContextRngV111
 {
@@ -72,7 +72,10 @@ public static class NativeEventContextRngV111
             {
                 Event = eventState with
                 {
-                    NativeEventRng = bundle.Streams[0]
+                    NativeEventRng = bundle.Streams[0],
+                    NativeEventRngProviderMode =
+                        ProviderModeAfterResolution(
+                            eventState, decision.ProviderMode)
                 }
             }
         }, decision.SelectedIndex);
@@ -131,7 +134,10 @@ public static class NativeEventContextRngV111
             {
                 Event = eventState with
                 {
-                    NativeEventRng = bundle.Streams[0]
+                    NativeEventRng = bundle.Streams[0],
+                    NativeEventRngProviderMode =
+                        ProviderModeAfterResolution(
+                            eventState, decision.ProviderMode)
                 }
             }
         }, decision.SelectedIndex);
@@ -182,7 +188,10 @@ public static class NativeEventContextRngV111
             {
                 Event = eventState with
                 {
-                    NativeEventRng = bundle.Streams[0]
+                    NativeEventRng = bundle.Streams[0],
+                    NativeEventRngProviderMode =
+                        ProviderModeAfterResolution(
+                            eventState, decision.ProviderMode)
                 }
             }
         }, decision.SelectedValue);
@@ -231,13 +240,17 @@ public static class NativeEventContextRngV111
         var world = state.World
             ?? throw new InvalidOperationException(
                 "A native event RNG requires an active run world.");
+        var shuffledStream = bundle.Streams[0];
         return state with
         {
             World = world with
             {
                 Event = eventState with
                 {
-                    NativeEventRng = bundle.Streams[0]
+                    NativeEventRng = shuffledStream,
+                    NativeEventRngProviderMode =
+                        ProviderModeAfterShuffle(
+                            eventState, nativeStream, shuffledStream)
                 }
             }
         };
@@ -302,19 +315,32 @@ public static class NativeEventContextRngV111
                 prototypeEventId, eventState.ChosenChoiceId) &&
             scriptedTrashHeapRewardPresent)
             return;
+        var stonePotionSlotAvailable =
+            eventState.NativeEventPotionSlot is { } stonePotionSlot &&
+            stonePotionSlot >= 0 &&
+            stonePotionSlot < state.Player.PotionSlots.Length &&
+            state.Player.PotionSlots[stonePotionSlot] is not null;
+        var stonePage = eventState.NativePageIndex == 0 &&
+                (eventState.ChosenChoiceId is null &&
+                    stonePotionSlotAvailable ||
+                 eventState.ChosenChoiceId == "push" &&
+                    stonePotionSlotAvailable) ||
+            eventState.NativePageIndex ==
+                PrototypeNativeEventCompletionPages.TerminalChoicePageIndex(
+                    PrototypeNativeStoneOfAllTime.EventId) &&
+            PrototypeNativeEventCompletionPages.HasTerminalChoice(
+                PrototypeNativeStoneOfAllTime.EventId,
+                eventState.ChosenChoiceId) &&
+            (eventState.ChosenChoiceId == "lift"
+                ? eventState.NativeEventPotionSlot is null
+                : stonePotionSlotAvailable);
         var scriptedStoneEntryIsExpected =
             prototypeEventId == PrototypeNativeStoneOfAllTime.EventId &&
             state.Phase == RunPhase.Event &&
             NativeRngV111.ToSnapshot(stream) ==
                 NativeRngV111.ToSnapshot(initial) &&
-            eventState.NativePageIndex == 0 &&
-            eventState.ChosenChoiceId is null &&
-            eventState.NativeEventGold == 0 &&
-            eventState.NativeEventSecondaryGold == 0 &&
-            eventState.NativeEventPotionSlot is { } stonePotionSlot &&
-            stonePotionSlot >= 0 &&
-            stonePotionSlot < state.Player.PotionSlots.Length &&
-            state.Player.PotionSlots[stonePotionSlot] is not null;
+            stonePage && eventState.NativeEventGold == 0 &&
+            eventState.NativeEventSecondaryGold == 0;
         if (providerMode == "scripted-v111" &&
             scriptedStoneEntryIsExpected)
             return;
@@ -323,13 +349,7 @@ public static class NativeEventContextRngV111
             .Where(item => item.Potion is not null)
             .Take(3).ToArray();
         var futurePotionOffers = eventState.NativeFuturePotionOffers;
-        var scriptedFutureOfPotionsEntryIsExpected =
-            prototypeEventId == PrototypeNativeFutureOfPotions.EventId &&
-            state.Phase == RunPhase.Event &&
-            NativeRngV111.ToSnapshot(stream) ==
-                NativeRngV111.ToSnapshot(initial) &&
-            eventState.NativePageIndex == 0 &&
-            eventState.ChosenChoiceId is null &&
+        var futurePotionOpeningIsExpected =
             futurePotionEntries.Length >= 2 &&
             futurePotionOffers is not null &&
             futurePotionOffers.Length == futurePotionEntries.Length &&
@@ -345,6 +365,19 @@ public static class NativeEventContextRngV111
                     PrototypeNativeFutureOfPotions.CardTypesForRarity(rarity)
                         .Contains(offer.CardType);
             }).All(valid => valid);
+        var futurePotionTradeIsExpected =
+            eventState.ChosenChoiceId ==
+                PrototypeNativeFutureOfPotions.TradeChoiceId &&
+            futurePotionOffers is null &&
+            eventState.NativePageIndex is 0 or 1;
+        var scriptedFutureOfPotionsEntryIsExpected =
+            prototypeEventId == PrototypeNativeFutureOfPotions.EventId &&
+            (state.Phase is RunPhase.Event or RunPhase.Reward) &&
+            NativeRngV111.ToSnapshot(stream) ==
+                NativeRngV111.ToSnapshot(initial) &&
+            (eventState.NativePageIndex == 0 &&
+                eventState.ChosenChoiceId is null &&
+                futurePotionOpeningIsExpected || futurePotionTradeIsExpected);
         if (providerMode == "scripted-v111" &&
             scriptedFutureOfPotionsEntryIsExpected)
             return;
@@ -454,11 +487,20 @@ public static class NativeEventContextRngV111
         if (prototypeEventId == PrototypeNativeUnderdocksDoors.EventId &&
             providerMode == "scripted-v111" && doorsLightChoiceIsExpected)
             return;
+        var goldEventEntryOrChoicePage =
+            eventState.NativePageIndex == 0 &&
+                (eventState.ChosenChoiceId is null ||
+                 PrototypeNativeEventCompletionPages.HasTerminalChoice(
+                    prototypeEventId, eventState.ChosenChoiceId)) ||
+            eventState.NativePageIndex ==
+                PrototypeNativeEventCompletionPages.TerminalChoicePageIndex(
+                    prototypeEventId) &&
+            PrototypeNativeEventCompletionPages.HasTerminalChoice(
+                prototypeEventId, eventState.ChosenChoiceId);
         var scriptedGoldEntryIsExpected =
             NativeRngV111.ToSnapshot(stream) ==
                 NativeRngV111.ToSnapshot(initial) &&
-            eventState.NativePageIndex == 0 &&
-            eventState.ChosenChoiceId is null &&
+            goldEventEntryOrChoicePage &&
             (prototypeEventId switch
             {
                 var id when id == PrototypeNativeDenseVegetation.EventId =>
@@ -510,4 +552,19 @@ public static class NativeEventContextRngV111
                 "Native event request ordinal exceeds the supported range.");
         return (int)nativeCallCount;
     }
+
+    private static string? ProviderModeAfterResolution(
+        EventState eventState, string decisionProviderMode) =>
+        eventState.NativeEventRngProviderMode == "scripted-v111" &&
+        decisionProviderMode == "native-v111"
+            ? null
+            : eventState.NativeEventRngProviderMode;
+
+    private static string? ProviderModeAfterShuffle(
+        EventState eventState, RngStreamState before,
+        RngStreamState after) =>
+        eventState.NativeEventRngProviderMode == "scripted-v111" &&
+        NativeRngV111.ToSnapshot(before) != NativeRngV111.ToSnapshot(after)
+            ? null
+            : eventState.NativeEventRngProviderMode;
 }

@@ -104,7 +104,7 @@ public sealed partial class PrototypeGameEngine
                 PrototypeNativeStoneOfAllTime.NativeRngEventId,
                 "event.stone_of_all_time.lift_ticket",
                 "event:stone_of_all_time:lift",
-                100);
+                100, ordinal: 1);
             result = draw.State;
         }
         else

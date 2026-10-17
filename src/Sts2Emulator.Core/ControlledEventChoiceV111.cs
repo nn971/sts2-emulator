@@ -32,7 +32,8 @@ public static class ControlledEventChoiceEngineV111
                 && world is not null
                 && PrototypeGameEngine.UsesNativeRegionalSystems(world)
                 && eventState.NativeEventRng?.StreamId == nativeStreamId
-                && eventState.NativeEventRngProviderMode is null;
+                && eventState.NativeEventRngProviderMode is
+                    null or "scripted-v111";
             var legacyRoute = source.NativeRunRng is null
                 && world is not null
                 && !PrototypeGameEngine.UsesNativeRegionalSystems(world)
@@ -438,7 +439,8 @@ public sealed record PrototypeControlledEventChoiceContinuationV111(
             && PrototypeGameEngine.UsesNativeRegionalSystems(nativeWorld)
             && stoneEvent.NativeEventRng?.StreamId ==
                 expectedStoneStreamId
-            && stoneEvent.NativeEventRngProviderMode is null;
+            && stoneEvent.NativeEventRngProviderMode is
+                null or "scripted-v111";
         var legacyStoneRoute = PartialState.NativeRunRng is null
             && partialWorld is { Act: 2 } legacyWorld
             && !PrototypeGameEngine.UsesNativeRegionalSystems(legacyWorld)

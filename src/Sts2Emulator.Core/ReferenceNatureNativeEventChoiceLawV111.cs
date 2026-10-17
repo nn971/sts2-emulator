@@ -580,7 +580,7 @@ public static partial class ChanceLawEngineV111
             evt.EventId != PrototypeNativeStoneOfAllTime.EventId ||
             evt.NativePageIndex != 0 || evt.ChosenChoiceId is not null ||
             evt.ControlledChoice is not null ||
-            evt.NativeEventRngProviderMode is not null ||
+            evt.NativeEventRngProviderMode is not (null or "scripted-v111") ||
             origin.ControlledEventRewardChoice is not null)
             throw new InvalidOperationException(
                 "Stone of All Time ticket laws require its active event-choice boundary.");

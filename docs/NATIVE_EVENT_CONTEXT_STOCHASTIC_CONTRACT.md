@@ -93,6 +93,12 @@ This does not establish complete event-pool support, Native event seed
 frequencies, stream attribution, or cursor parity. Legacy integer fallbacks
 and adjacent unsupported source alternatives remain `UNVERIFIED`.
 
+When the Native entry session chooses Stone of All Time's potion slot, the
+existing push/lift continuation remains usable. Its next event-stream request
+keeps source ordinal 1, and the existing event-choice Nature session can
+control that ticket. A later ordinary Native draw clears the scripted entry
+marker after advancing the context stream; Native cursor parity remains open.
+
 Stone of All Time's `push_ticket` and `lift_ticket` each have a read-only
 one-outcome law at the legal active-event choice boundary. On Native runs both
 tickets are at event-stream ordinal 1 because the entry potion-slot draw owns

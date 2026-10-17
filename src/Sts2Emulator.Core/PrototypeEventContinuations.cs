@@ -228,7 +228,7 @@ public sealed partial class PrototypeGameEngine
                                 PrototypeNativeStoneOfAllTime.NativeRngEventId,
                                 "event.stone_of_all_time.push_ticket",
                                 "event:stone_of_all_time:push",
-                                100);
+                                100, ordinal: 1);
                         state = draw.State;
                     }
                     else
