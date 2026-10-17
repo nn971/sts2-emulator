@@ -62,18 +62,25 @@ public static class NativeFisherYatesV111
         if (ordinalOffset < 0)
             throw new ArgumentOutOfRangeException(nameof(ordinalOffset));
         var decisions = new List<RandomIndexDecisionV111>();
+        var controlledEventReplay =
+            ControlledEventChoiceReplayV111.IsActive
+            && ControlledEventChoiceReplayV111.IsEventChoiceSite(siteId);
         for (int end = values.Count - 1; end > 0; --end)
         {
             // Native ListExtensions.UnstableShuffle calls NextInt(end+1)
             // exactly once, including the final bound of two.
             var request = new RandomIndexRequestV111(
-                siteId, streamId, ownerId, ordinalOffset + decisions.Count,
+                siteId, streamId, ownerId,
+                // Controlled event replay adds the consumed transcript
+                // prefix; using the local swap count here would count it twice.
+                controlledEventReplay
+                    ? ordinalOffset
+                    : ordinalOffset + decisions.Count,
                 Array.Empty<int>(), OperationKind: "bounded_integer",
                 BoundedCount: end + 1);
             RandomIndexDecisionV111 decision;
             if (controlledCandidateLabel is not null
-                && ControlledEventChoiceReplayV111.IsActive
-                && ControlledEventChoiceReplayV111.IsEventChoiceSite(siteId))
+                && controlledEventReplay)
             {
                 var candidateLabels = values.Take(end + 1)
                     .Select(controlledCandidateLabel).ToArray();

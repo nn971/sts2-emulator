@@ -1386,7 +1386,8 @@ public sealed partial class PrototypeGameEngine
         string? relicId) =>
         relicId is not null
         && PrototypeContent.Relics.TryGetValue(relicId, out var relic)
-        && (relicId == PrototypeNativeOrobasRelics.SandCastleId
+        && (relicId is PrototypeNativeOrobasRelics.SandCastleId
+                or NativeGloryAncientsV111.BeautifulBraceletId
             || (relic.RunTriggers
             ?? Array.Empty<PrototypeRelicRunTriggerSpec>())
             .Where(trigger => trigger.EventKind ==

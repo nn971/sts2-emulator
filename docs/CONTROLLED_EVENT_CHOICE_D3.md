@@ -57,6 +57,9 @@ The supported event-choice sites are:
   `relic.acquisition.random_potion.model` and
   `run.potion.fill_empty_slots.model` for random effects triggered by an
   event-gained relic
+- `run.relic.beautiful_bracelet.deck_shuffle.swap_index` for an
+  event-gained Beautiful Bracelet's conditional shuffle over eligible
+  physical deck cards; each swap carries the current ordered instance-ID labels
 - `relic.sand_castle.acquisition_upgrade.shuffle_swap_index` for the
   event-gained Sand Castle's conditional shuffle over eligible physical deck
   cards; each swap carries the current ordered instance-ID labels

@@ -1,3 +1,4 @@
+using System.Globalization;
 using System.Text.Json;
 
 namespace Sts2Emulator.Core;
@@ -247,13 +248,31 @@ public static class NativeGloryAncientsV111
                 rng,
                 "event",
                 BeautifulBraceletShuffleSiteId,
-                "relic:beautiful_bracelet:acquisition");
+                "relic:beautiful_bracelet:acquisition",
+                controlledCandidateLabel: card =>
+                    "card-instance:" + card.InstanceId.ToString(
+                        CultureInfo.InvariantCulture));
         else
+        {
+            var nicheStreams = nativeRunRng.Streams.Where(stream =>
+                stream.StreamId == "run.niche").ToArray();
+            if (nicheStreams.Length != 1)
+                throw new InvalidOperationException(
+                    "Beautiful Bracelet shuffle has ambiguous run.niche ownership.");
+            var ordinal = nicheStreams[0].CallCount ?? 0;
+            if (ordinal < 0 || ordinal > int.MaxValue)
+                throw new NotSupportedException(
+                    "Beautiful Bracelet run.niche ordinal exceeds the request range.");
             _ = NativeFisherYatesV111.ShuffleInPlace(
                 shuffled, nativeRunRng,
                 new NativeRandomIndexProviderV111(), "run.niche",
                 "relic:beautiful_bracelet:acquisition",
-                BeautifulBraceletShuffleSiteId);
+                BeautifulBraceletShuffleSiteId,
+                ordinalOffset: (int)ordinal,
+                controlledCandidateLabel: card =>
+                    "card-instance:" + card.InstanceId.ToString(
+                        CultureInfo.InvariantCulture));
+        }
 
         var selectedIds = shuffled.Take(Math.Min(4, shuffled.Length))
             .Select(card => card.InstanceId)
