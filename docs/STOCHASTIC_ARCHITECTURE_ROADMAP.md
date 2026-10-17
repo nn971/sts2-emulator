@@ -88,6 +88,8 @@
 
 **S3 semantic draw validation ownership increment (2026-10-17):** `SemanticCombatDrawV111.Validate` now owns the draw-stage and physical/provider deck consistency checks, while `SemanticCombatDrawStochasticStateV111` validates typed draw history. The old engine validator delegates to the frame owner.
 
+**S3 controlled playable validation ownership increment (2026-10-17):** `ControlledPlayableCombatV111.Validate` now owns its pending-stage consistency checks and delegates nested intent/recycle checks to their frame owners. Existing engine save/replay paths call the frame validator.
+
 ## S1 precise design
 
 Implement a **read-only, outcome-blind** Chance Law query in `Sts2Emulator.Core` with:

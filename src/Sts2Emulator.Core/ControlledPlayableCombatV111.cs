@@ -393,6 +393,228 @@ public sealed record ControlledPlayableCombatV111(
         TurnIntents is null && Recycle is null;
     [System.Text.Json.Serialization.JsonIgnore]
     public string Fingerprint => CanonicalJson.Sha256(this);
+    public void Validate()
+    {
+        if (this.Mode != "controlled-v111-playable-fixture-v1" ||
+            this.Run.Phase is not (RunPhase.Combat or RunPhase.Reward or RunPhase.Terminal) ||
+            this.Run.World?.Combat is null && this.Pending is not null ||
+            this.ShuffleTranscript is null || this.PlayerActions is null ||
+            this.TurnTranscript is null || this.RecycleTranscript is null ||
+            this.LiveTranscript is null || this.TargetTranscript is null ||
+            this.GeneratedCardTranscript is null ||
+            this.DrawInsertionTranscript is null ||
+            this.PoolShuffleTranscript is null ||
+            this.RandomCostTranscript is null ||
+            this.DrawCostTranscript is null ||
+            this.PotionGenerationTranscript is null ||
+            this.CardTransformTranscript is null || this.Origin is null ||
+            (this.TurnIntents is not null && this.Pending is not null) ||
+            (this.Recycle is not null &&
+                (this.Pending is not null || this.TurnIntents is not null)))
+            throw new InvalidDataException("Malformed controlled playable stage.");
+        var enemyAction = this.Run.World?.Combat?
+            .AutomaticPipelineContinuation?.ControlledEnemyAction;
+        if (enemyAction is not null)
+        {
+            enemyAction.Validate(PrototypeContent.Rules.EndTurnPipeline.Length);
+            if (this.Pending is not null || this.Recycle is not null ||
+                this.TurnIntents is not null ||
+                CanonicalJson.Sha256(this.EnemyActionPending) !=
+                    CanonicalJson.Sha256(enemyAction.PendingRequest))
+                throw new InvalidDataException(
+                    "Enemy-action chance conflicts with another controlled boundary.");
+        }
+        var drawnCostCombat = this.Run.World?.Combat;
+        var drawnCost = drawnCostCombat?.PendingChoice?.ControlledDrawCost;
+        if (drawnCost is not null)
+        {
+            var automatic = drawnCostCombat?.AutomaticPipelineContinuation;
+            if (this.Pending is not null || this.Recycle is not null ||
+                this.TurnIntents is not null ||
+                drawnCostCombat?.PendingChoice?.ControlledPotionGeneration is not null ||
+                !drawnCost.FromHandDraw ||
+                automatic is null ||
+                automatic.ControlledDrawCostRemaining != drawnCost.RemainingCount ||
+                automatic.ControlledDrawRemaining is not null ||
+                !PrototypeGameEngine.ValidateControlledDrawCost(
+                    this.Run.Player, drawnCostCombat!, drawnCost))
+                throw new InvalidDataException(
+                    "Saved drawn-card cost is not source-reachable.");
+        }
+        var costCombat = this.Run.World?.Combat;
+        var randomCost = costCombat?.PendingChoice?.ControlledRandomCost;
+        if (randomCost is not null &&
+            (this.Pending is not null || this.Recycle is not null ||
+             this.TurnIntents is not null ||
+             costCombat?.PendingChoice?.ControlledTarget is not null ||
+             costCombat?.PendingChoice?.ControlledGeneration is not null ||
+             costCombat?.PendingChoice?.ControlledPotionGeneration is not null ||
+             costCombat?.PendingChoice?.ControlledDrawInsertion is not null ||
+             costCombat?.PendingChoice?.ControlledPoolShuffle is not null ||
+             !PrototypeGameEngine.ValidateControlledRandomCost(
+                 costCombat!, randomCost)))
+            throw new InvalidDataException(
+                "Saved hand-cost ticket disagrees with source eligibility.");
+        var poolCombat = this.Run.World?.Combat;
+        var pool = poolCombat?.PendingChoice?.ControlledPoolShuffle;
+        if (pool is not null &&
+            (this.Pending is not null || this.Recycle is not null ||
+             this.TurnIntents is not null ||
+             poolCombat?.PendingChoice?.ControlledTarget is not null ||
+             poolCombat?.PendingChoice?.ControlledGeneration is not null ||
+             poolCombat?.PendingChoice?.ControlledPotionGeneration is not null ||
+             poolCombat?.PendingChoice?.ControlledDrawInsertion is not null ||
+             !PrototypeGameEngine.ValidateControlledPoolShuffle(
+                 poolCombat!, pool,
+                 poolCombat?.PendingChoice?.SourceCardInstanceId)))
+            throw new InvalidDataException(
+                "Saved full-pool shuffle disagrees with source eligibility.");
+        if (pool is not null)
+        {
+            // Replay only pure swap arithmetic to establish reachability.
+            // No card hooks or earlier operations are re-executed here.
+            int consumed = pool.OriginalCardIds.Length - 1 - pool.NextSwapIndex;
+            if (consumed < 0 || consumed > this.PoolShuffleTranscript.Length)
+                throw new InvalidDataException(
+                    "Pool shuffle cursor exceeds recorded Nature decisions.");
+            var current = (string[])pool.OriginalCardIds.Clone();
+            var active = this.PoolShufflePending!;
+            var offset = this.PoolShuffleTranscript.Length - consumed;
+            for (int step = 0; step < consumed; step++)
+            {
+                var recorded = this.PoolShuffleTranscript[offset + step];
+                recorded.Validate();
+                var expectedRequest = active with
+                {
+                    Ordinal = offset + step,
+                    BoundedCount = pool.OriginalCardIds.Length - step
+                };
+                if (recorded.ProviderMode != "controlled-v111" ||
+                    recorded.NativeCursorBefore is not null ||
+                    recorded.NativeCursorAfter is not null ||
+                    CanonicalJson.Sha256(recorded.Request) !=
+                        CanonicalJson.Sha256(expectedRequest))
+                    throw new InvalidDataException(
+                        "Pool shuffle swap transcript is not source-reachable.");
+                var i = pool.OriginalCardIds.Length - 1 - step;
+                (current[i], current[recorded.SelectedIndex]) =
+                    (current[recorded.SelectedIndex], current[i]);
+            }
+            if (!current.SequenceEqual(pool.CurrentCardIds))
+                throw new InvalidDataException(
+                    "Saved pool permutation disagrees with its Nature swap prefix.");
+        }
+        var insertionCombat = this.Run.World?.Combat;
+        var insertion = insertionCombat?.PendingChoice?.ControlledDrawInsertion;
+        if (insertion is not null &&
+            (this.Pending is not null || this.Recycle is not null ||
+             this.TurnIntents is not null ||
+             insertionCombat?.PendingChoice?.ControlledTarget is not null ||
+             insertionCombat?.PendingChoice?.ControlledGeneration is not null ||
+             insertionCombat?.PendingChoice?.ControlledPotionGeneration is not null ||
+             !PrototypeGameEngine.ValidateControlledDrawInsertion(
+                 insertionCombat!, insertion)))
+            throw new InvalidDataException(
+                "Draw insertion chance disagrees with source eligibility.");
+        var generated = this.Run.World?.Combat?.PendingChoice?.ControlledGeneration;
+        if (generated is not null &&
+            (this.Pending is not null || this.Recycle is not null ||
+             this.TurnIntents is not null ||
+             this.Run.World?.Combat?.PendingChoice?.ControlledTarget is not null ||
+             this.Run.World?.Combat?.PendingChoice?.ControlledPotionGeneration is not null ||
+             !PrototypeGameEngine.ValidateControlledGenerationSupport(generated)))
+            throw new InvalidDataException(
+                "Malformed or stale controlled generated-card candidate pool.");
+        var potionCombat = this.Run.World?.Combat;
+        var potionGeneration = potionCombat?.PendingChoice?.ControlledPotionGeneration;
+        if (potionGeneration is not null &&
+            (this.Pending is not null || this.Recycle is not null ||
+             this.TurnIntents is not null ||
+             potionCombat?.PendingChoice?.ControlledTarget is not null ||
+             potionCombat?.PendingChoice?.ControlledGeneration is not null ||
+             potionCombat?.PendingChoice?.ControlledPoolShuffle is not null ||
+             !PrototypeGameEngine.ValidateControlledPotionGeneration(
+                 potionCombat!, potionGeneration,
+                 potionCombat!.PendingChoice?.SourceCardInstanceId)))
+            throw new InvalidDataException(
+                "Malformed or stale controlled potion-generation candidate pool.");
+        var transformCombat = this.Run.World?.Combat;
+        var cardTransform = transformCombat?.PendingChoice?
+            .ControlledCardTransform;
+        if (cardTransform is not null &&
+            (this.Pending is not null || this.Recycle is not null ||
+             this.TurnIntents is not null ||
+             transformCombat?.PendingChoice?.ControlledTarget is not null ||
+             transformCombat?.PendingChoice?.ControlledGeneration is not null ||
+             transformCombat?.PendingChoice?.ControlledPotionGeneration is not null ||
+             transformCombat?.PendingChoice?.ControlledPoolShuffle is not null ||
+             !PrototypeGameEngine.ValidateControlledCardTransform(
+                 transformCombat!, cardTransform)))
+            throw new InvalidDataException(
+                "Malformed or stale controlled card-transform candidate pool.");
+        var controlledTarget = this.Run.World?.Combat?.PendingChoice?.ControlledTarget;
+        if (controlledTarget is not null)
+        {
+            var combat = this.Run.World?.Combat ??
+                throw new InvalidDataException("Target choice lacks combat this.");
+            var eligible = combat.Enemies
+                .Where(enemy => enemy.Hp > 0 &&
+                    (controlledTarget.Kind != "sly_auto_play" || !enemy.Escaped))
+                .Select(enemy => enemy.InstanceId).ToArray();
+            var autoPlayContinuation =
+                combat.PendingChoice?.OuterChoiceContinuation;
+            if (this.Recycle is not null || this.TurnIntents is not null ||
+                this.Pending is not null ||
+                combat.PendingChoice?.ControlledPotionGeneration is not null ||
+                controlledTarget.Kind is not ("effect_random_enemy" or
+                    "sly_auto_play" or "autoplay_random_enemy") ||
+                eligible.Length == 0 ||
+                !eligible.SequenceEqual(controlledTarget.EligibleEnemyInstanceIds) ||
+                (controlledTarget.Kind == "sly_auto_play" &&
+                    (controlledTarget.SlyCardInstanceId is not { } cardId ||
+                     !combat.DiscardPile.Contains(cardId) ||
+                     controlledTarget.AutoPlayCardInstanceId is not null)) ||
+                (controlledTarget.Kind == "autoplay_random_enemy" &&
+                    (controlledTarget.AutoPlayCardInstanceId is not { } autoPlayCardId ||
+                     !combat.PlayCardIds.Contains(autoPlayCardId) ||
+                     controlledTarget.SlyCardInstanceId is not null ||
+                     autoPlayContinuation is null ||
+                     autoPlayContinuation.Operations.Length == 0 ||
+                     autoPlayContinuation.Operations[0].Kind !=
+                        PrototypeCombatEffectKind.AutoPlayCombatCard ||
+                     autoPlayContinuation.Operations[0].CardInstanceId != autoPlayCardId ||
+                     autoPlayContinuation.Operations[0].TargetEnemyId is not null)) ||
+                (controlledTarget.Kind == "effect_random_enemy" &&
+                    (controlledTarget.SlyCardInstanceId is not null ||
+                     controlledTarget.AutoPlayCardInstanceId is not null)))
+                throw new InvalidDataException(
+                    "Malformed or stale controlled target-choice support.");
+        }
+        var expected = ControlledPlayableCombatEngineV111.MakePending(this.NextShuffleIndex, this.ShuffleTranscript.Length);
+        if (CanonicalJson.Sha256(expected) != CanonicalJson.Sha256(this.Pending))
+            throw new InvalidDataException("Controlled shuffle stage is stale.");
+        if (this.Recycle is { } recycle)
+        {
+            ControlledRecycleShuffleEngineV111.Validate(recycle);
+            var combat = this.Run.World?.Combat;
+            if (combat is null ||
+                !combat.DiscardPile.SequenceEqual(recycle.Baseline) ||
+                combat.DrawPile.Length != 0 ||
+                combat.AutomaticPipelineContinuation?.ControlledDrawRemaining is not > 0)
+                throw new InvalidDataException(
+                    "Recycle chance state disagrees with suspended draw.");
+        }
+        if (this.TurnIntents is { } intent)
+        {
+            intent.Validate();
+            if (this.Run.World?.Combat is not { } combat ||
+                CanonicalJson.Sha256(combat) !=
+                    CanonicalJson.Sha256(intent.BaselineCombat))
+                throw new InvalidDataException(
+                    "Controlled turn-intent checkpoint lost its precommit this.");
+        }
+    }
+
     public ControlledPlayableCombatV111 Fork() => this with
     {
         Origin = Origin.Fork(),
@@ -489,7 +711,7 @@ public static class ControlledPlayableCombatEngineV111
         if (!StringComparer.Ordinal.Equals(state.Fingerprint, fingerprint))
             throw new InvalidOperationException(
                 "Stale controlled chance fingerprint.");
-        VerifyStage(state);
+        state.Validate();
         if (state.DrawCostPending is not null)
             return ResolveDrawCost(state, selectedIndex);
         if (state.RandomCostPending is not null)
@@ -540,7 +762,7 @@ public static class ControlledPlayableCombatEngineV111
         ControlledPlayableCombatV111 state, string actionId)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(actionId);
-        VerifyStage(state);
+        state.Validate();
         if (!state.AtPlayerBoundary)
             throw new InvalidOperationException(
                 "Resolve the pending Nature shuffle choice first.");
@@ -878,7 +1100,7 @@ public static class ControlledPlayableCombatEngineV111
 
     public static string Save(ControlledPlayableCombatV111 state)
     {
-        VerifyStage(state);
+        state.Validate();
         return JsonSerializer.Serialize(state);
     }
 
@@ -972,229 +1194,10 @@ public static class ControlledPlayableCombatEngineV111
         return current;
     }
 
-    internal static void VerifyStage(ControlledPlayableCombatV111 state)
-    {
-        if (state.Mode != "controlled-v111-playable-fixture-v1" ||
-            state.Run.Phase is not (RunPhase.Combat or RunPhase.Reward or RunPhase.Terminal) ||
-            state.Run.World?.Combat is null && state.Pending is not null ||
-            state.ShuffleTranscript is null || state.PlayerActions is null ||
-            state.TurnTranscript is null || state.RecycleTranscript is null ||
-            state.LiveTranscript is null || state.TargetTranscript is null ||
-            state.GeneratedCardTranscript is null ||
-            state.DrawInsertionTranscript is null ||
-            state.PoolShuffleTranscript is null ||
-            state.RandomCostTranscript is null ||
-            state.DrawCostTranscript is null ||
-            state.PotionGenerationTranscript is null ||
-            state.CardTransformTranscript is null || state.Origin is null ||
-            (state.TurnIntents is not null && state.Pending is not null) ||
-            (state.Recycle is not null &&
-                (state.Pending is not null || state.TurnIntents is not null)))
-            throw new InvalidDataException("Malformed controlled playable stage.");
-        var enemyAction = state.Run.World?.Combat?
-            .AutomaticPipelineContinuation?.ControlledEnemyAction;
-        if (enemyAction is not null)
-        {
-            enemyAction.Validate(PrototypeContent.Rules.EndTurnPipeline.Length);
-            if (state.Pending is not null || state.Recycle is not null ||
-                state.TurnIntents is not null ||
-                CanonicalJson.Sha256(state.EnemyActionPending) !=
-                    CanonicalJson.Sha256(enemyAction.PendingRequest))
-                throw new InvalidDataException(
-                    "Enemy-action chance conflicts with another controlled boundary.");
-        }
-        var drawnCostCombat = state.Run.World?.Combat;
-        var drawnCost = drawnCostCombat?.PendingChoice?.ControlledDrawCost;
-        if (drawnCost is not null)
-        {
-            var automatic = drawnCostCombat?.AutomaticPipelineContinuation;
-            if (state.Pending is not null || state.Recycle is not null ||
-                state.TurnIntents is not null ||
-                drawnCostCombat?.PendingChoice?.ControlledPotionGeneration is not null ||
-                !drawnCost.FromHandDraw ||
-                automatic is null ||
-                automatic.ControlledDrawCostRemaining != drawnCost.RemainingCount ||
-                automatic.ControlledDrawRemaining is not null ||
-                !PrototypeGameEngine.ValidateControlledDrawCost(
-                    state.Run.Player, drawnCostCombat!, drawnCost))
-                throw new InvalidDataException(
-                    "Saved drawn-card cost is not source-reachable.");
-        }
-        var costCombat = state.Run.World?.Combat;
-        var randomCost = costCombat?.PendingChoice?.ControlledRandomCost;
-        if (randomCost is not null &&
-            (state.Pending is not null || state.Recycle is not null ||
-             state.TurnIntents is not null ||
-             costCombat?.PendingChoice?.ControlledTarget is not null ||
-             costCombat?.PendingChoice?.ControlledGeneration is not null ||
-             costCombat?.PendingChoice?.ControlledPotionGeneration is not null ||
-             costCombat?.PendingChoice?.ControlledDrawInsertion is not null ||
-             costCombat?.PendingChoice?.ControlledPoolShuffle is not null ||
-             !PrototypeGameEngine.ValidateControlledRandomCost(
-                 costCombat!, randomCost)))
-            throw new InvalidDataException(
-                "Saved hand-cost ticket disagrees with source eligibility.");
-        var poolCombat = state.Run.World?.Combat;
-        var pool = poolCombat?.PendingChoice?.ControlledPoolShuffle;
-        if (pool is not null &&
-            (state.Pending is not null || state.Recycle is not null ||
-             state.TurnIntents is not null ||
-             poolCombat?.PendingChoice?.ControlledTarget is not null ||
-             poolCombat?.PendingChoice?.ControlledGeneration is not null ||
-             poolCombat?.PendingChoice?.ControlledPotionGeneration is not null ||
-             poolCombat?.PendingChoice?.ControlledDrawInsertion is not null ||
-             !PrototypeGameEngine.ValidateControlledPoolShuffle(
-                 poolCombat!, pool,
-                 poolCombat?.PendingChoice?.SourceCardInstanceId)))
-            throw new InvalidDataException(
-                "Saved full-pool shuffle disagrees with source eligibility.");
-        if (pool is not null)
-        {
-            // Replay only pure swap arithmetic to establish reachability.
-            // No card hooks or earlier operations are re-executed here.
-            int consumed = pool.OriginalCardIds.Length - 1 - pool.NextSwapIndex;
-            if (consumed < 0 || consumed > state.PoolShuffleTranscript.Length)
-                throw new InvalidDataException(
-                    "Pool shuffle cursor exceeds recorded Nature decisions.");
-            var current = (string[])pool.OriginalCardIds.Clone();
-            var active = state.PoolShufflePending!;
-            var offset = state.PoolShuffleTranscript.Length - consumed;
-            for (int step = 0; step < consumed; step++)
-            {
-                var recorded = state.PoolShuffleTranscript[offset + step];
-                recorded.Validate();
-                var expectedRequest = active with
-                {
-                    Ordinal = offset + step,
-                    BoundedCount = pool.OriginalCardIds.Length - step
-                };
-                if (recorded.ProviderMode != "controlled-v111" ||
-                    recorded.NativeCursorBefore is not null ||
-                    recorded.NativeCursorAfter is not null ||
-                    CanonicalJson.Sha256(recorded.Request) !=
-                        CanonicalJson.Sha256(expectedRequest))
-                    throw new InvalidDataException(
-                        "Pool shuffle swap transcript is not source-reachable.");
-                var i = pool.OriginalCardIds.Length - 1 - step;
-                (current[i], current[recorded.SelectedIndex]) =
-                    (current[recorded.SelectedIndex], current[i]);
-            }
-            if (!current.SequenceEqual(pool.CurrentCardIds))
-                throw new InvalidDataException(
-                    "Saved pool permutation disagrees with its Nature swap prefix.");
-        }
-        var insertionCombat = state.Run.World?.Combat;
-        var insertion = insertionCombat?.PendingChoice?.ControlledDrawInsertion;
-        if (insertion is not null &&
-            (state.Pending is not null || state.Recycle is not null ||
-             state.TurnIntents is not null ||
-             insertionCombat?.PendingChoice?.ControlledTarget is not null ||
-             insertionCombat?.PendingChoice?.ControlledGeneration is not null ||
-             insertionCombat?.PendingChoice?.ControlledPotionGeneration is not null ||
-             !PrototypeGameEngine.ValidateControlledDrawInsertion(
-                 insertionCombat!, insertion)))
-            throw new InvalidDataException(
-                "Draw insertion chance disagrees with source eligibility.");
-        var generated = state.Run.World?.Combat?.PendingChoice?.ControlledGeneration;
-        if (generated is not null &&
-            (state.Pending is not null || state.Recycle is not null ||
-             state.TurnIntents is not null ||
-             state.Run.World?.Combat?.PendingChoice?.ControlledTarget is not null ||
-             state.Run.World?.Combat?.PendingChoice?.ControlledPotionGeneration is not null ||
-             !PrototypeGameEngine.ValidateControlledGenerationSupport(generated)))
-            throw new InvalidDataException(
-                "Malformed or stale controlled generated-card candidate pool.");
-        var potionCombat = state.Run.World?.Combat;
-        var potionGeneration = potionCombat?.PendingChoice?.ControlledPotionGeneration;
-        if (potionGeneration is not null &&
-            (state.Pending is not null || state.Recycle is not null ||
-             state.TurnIntents is not null ||
-             potionCombat?.PendingChoice?.ControlledTarget is not null ||
-             potionCombat?.PendingChoice?.ControlledGeneration is not null ||
-             potionCombat?.PendingChoice?.ControlledPoolShuffle is not null ||
-             !PrototypeGameEngine.ValidateControlledPotionGeneration(
-                 potionCombat!, potionGeneration,
-                 potionCombat!.PendingChoice?.SourceCardInstanceId)))
-            throw new InvalidDataException(
-                "Malformed or stale controlled potion-generation candidate pool.");
-        var transformCombat = state.Run.World?.Combat;
-        var cardTransform = transformCombat?.PendingChoice?
-            .ControlledCardTransform;
-        if (cardTransform is not null &&
-            (state.Pending is not null || state.Recycle is not null ||
-             state.TurnIntents is not null ||
-             transformCombat?.PendingChoice?.ControlledTarget is not null ||
-             transformCombat?.PendingChoice?.ControlledGeneration is not null ||
-             transformCombat?.PendingChoice?.ControlledPotionGeneration is not null ||
-             transformCombat?.PendingChoice?.ControlledPoolShuffle is not null ||
-             !PrototypeGameEngine.ValidateControlledCardTransform(
-                 transformCombat!, cardTransform)))
-            throw new InvalidDataException(
-                "Malformed or stale controlled card-transform candidate pool.");
-        var controlledTarget = state.Run.World?.Combat?.PendingChoice?.ControlledTarget;
-        if (controlledTarget is not null)
-        {
-            var combat = state.Run.World?.Combat ??
-                throw new InvalidDataException("Target choice lacks combat state.");
-            var eligible = combat.Enemies
-                .Where(enemy => enemy.Hp > 0 &&
-                    (controlledTarget.Kind != "sly_auto_play" || !enemy.Escaped))
-                .Select(enemy => enemy.InstanceId).ToArray();
-            var autoPlayContinuation =
-                combat.PendingChoice?.OuterChoiceContinuation;
-            if (state.Recycle is not null || state.TurnIntents is not null ||
-                state.Pending is not null ||
-                combat.PendingChoice?.ControlledPotionGeneration is not null ||
-                controlledTarget.Kind is not ("effect_random_enemy" or
-                    "sly_auto_play" or "autoplay_random_enemy") ||
-                eligible.Length == 0 ||
-                !eligible.SequenceEqual(controlledTarget.EligibleEnemyInstanceIds) ||
-                (controlledTarget.Kind == "sly_auto_play" &&
-                    (controlledTarget.SlyCardInstanceId is not { } cardId ||
-                     !combat.DiscardPile.Contains(cardId) ||
-                     controlledTarget.AutoPlayCardInstanceId is not null)) ||
-                (controlledTarget.Kind == "autoplay_random_enemy" &&
-                    (controlledTarget.AutoPlayCardInstanceId is not { } autoPlayCardId ||
-                     !combat.PlayCardIds.Contains(autoPlayCardId) ||
-                     controlledTarget.SlyCardInstanceId is not null ||
-                     autoPlayContinuation is null ||
-                     autoPlayContinuation.Operations.Length == 0 ||
-                     autoPlayContinuation.Operations[0].Kind !=
-                        PrototypeCombatEffectKind.AutoPlayCombatCard ||
-                     autoPlayContinuation.Operations[0].CardInstanceId != autoPlayCardId ||
-                     autoPlayContinuation.Operations[0].TargetEnemyId is not null)) ||
-                (controlledTarget.Kind == "effect_random_enemy" &&
-                    (controlledTarget.SlyCardInstanceId is not null ||
-                     controlledTarget.AutoPlayCardInstanceId is not null)))
-                throw new InvalidDataException(
-                    "Malformed or stale controlled target-choice support.");
-        }
-        var expected = MakePending(state.NextShuffleIndex, state.ShuffleTranscript.Length);
-        if (CanonicalJson.Sha256(expected) != CanonicalJson.Sha256(state.Pending))
-            throw new InvalidDataException("Controlled shuffle stage is stale.");
-        if (state.Recycle is { } recycle)
-        {
-            ControlledRecycleShuffleEngineV111.Validate(recycle);
-            var combat = state.Run.World?.Combat;
-            if (combat is null ||
-                !combat.DiscardPile.SequenceEqual(recycle.Baseline) ||
-                combat.DrawPile.Length != 0 ||
-                combat.AutomaticPipelineContinuation?.ControlledDrawRemaining is not > 0)
-                throw new InvalidDataException(
-                    "Recycle chance state disagrees with suspended draw.");
-        }
-        if (state.TurnIntents is { } intent)
-        {
-            intent.Validate();
-            if (state.Run.World?.Combat is not { } combat ||
-                CanonicalJson.Sha256(combat) !=
-                    CanonicalJson.Sha256(intent.BaselineCombat))
-                throw new InvalidDataException(
-                    "Controlled turn-intent checkpoint lost its precommit state.");
-        }
-    }
+    internal static void VerifyStage(ControlledPlayableCombatV111 state) =>
+        state.Validate();
 
-    private static RandomIndexRequestV111? MakePending(int index, int ordinal) =>
+    internal static RandomIndexRequestV111? MakePending(int index, int ordinal) =>
         index < 1 ? null : new RandomIndexRequestV111(
             ShuffleSite, "run.shuffle", "player:0", ordinal,
             [], OperationKind: "bounded_integer", BoundedCount: index + 1);
