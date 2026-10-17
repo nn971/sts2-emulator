@@ -36,4 +36,44 @@ public sealed record SemanticCombatDrawStochasticStateV111
             }
         }).ToArray()
     };
+
+    public void Validate()
+    {
+        if (CostTranscript is null || DrawInsertionTranscript is null ||
+            StratagemSelectionTranscript is null ||
+            DrawHookChoiceTranscript is null)
+            throw new InvalidDataException(
+                "Invalid semantic combat draw stage.");
+        if (RandomPileCardTranscript is null)
+            throw new InvalidDataException(
+                "Missing semantic random pile-card transcript.");
+
+        foreach (var decision in CostTranscript)
+        {
+            if (decision is null)
+                throw new InvalidDataException(
+                    "Semantic drawn-cost transcript contains a null decision.");
+            decision.Validate();
+            if (decision.ProviderMode != "semantic-controlled-v1" ||
+                decision.ProbabilityStatus != "UNVERIFIED")
+                throw new InvalidDataException(
+                    "Unexpected semantic drawn-cost transcript provenance.");
+        }
+        foreach (var decision in RandomPileCardTranscript)
+            (decision ?? throw new InvalidDataException(
+                "Semantic random pile-card transcript contains a null decision."))
+                .Validate();
+        foreach (var decision in DrawInsertionTranscript)
+            (decision ?? throw new InvalidDataException(
+                "Semantic draw-insertion transcript contains a null decision."))
+                .Validate();
+        foreach (var decision in StratagemSelectionTranscript)
+            (decision ?? throw new InvalidDataException(
+                "Semantic Stratagem transcript contains a null decision."))
+                .Validate();
+        foreach (var decision in DrawHookChoiceTranscript)
+            (decision ?? throw new InvalidDataException(
+                "Semantic draw-hook transcript contains a null decision."))
+                .Validate();
+    }
 }

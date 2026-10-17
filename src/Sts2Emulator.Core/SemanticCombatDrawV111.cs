@@ -841,6 +841,7 @@ public static class SemanticCombatDrawEngineV111
     public static void Validate(SemanticCombatDrawV111 state)
     {
         ArgumentNullException.ThrowIfNull(state);
+        state.Stochastic.Validate();
         var randomPileCardPending = state.RandomPileCardPending;
         var drawInsertionPending = state.DrawInsertionPending;
         var completedHookCursor =
@@ -881,11 +882,7 @@ public static class SemanticCombatDrawEngineV111
             combat.SemanticDeck is not { } deck ||
             (!state.AutomaticHandDraw &&
              combat.AutomaticPipelineContinuation is not null) ||
-            combat.PendingKnowledgeDemonChoice is not null ||
-            state.CostTranscript is null ||
-            state.DrawInsertionTranscript is null ||
-            state.StratagemSelectionTranscript is null ||
-            state.DrawHookChoiceTranscript is null)
+            combat.PendingKnowledgeDemonChoice is not null)
             throw new InvalidDataException("Invalid semantic combat draw stage.");
         SemanticDeckEngineV111.Validate(deck);
         var cost = combat.PendingChoice?.ControlledDrawCost;
@@ -963,25 +960,6 @@ public static class SemanticCombatDrawEngineV111
             (deck.Pending is not null && state.RemainingCount <= 0))
             throw new InvalidDataException(
                 "Semantic deck/drawn-cost checkpoint is inconsistent.");
-        foreach (var decision in state.CostTranscript)
-        {
-            decision.Validate();
-            if (decision.ProviderMode != "semantic-controlled-v1" ||
-                decision.ProbabilityStatus != "UNVERIFIED")
-                throw new InvalidDataException(
-                    "Unexpected semantic drawn-cost transcript provenance.");
-        }
-        if (state.RandomPileCardTranscript is null)
-            throw new InvalidDataException(
-                "Missing semantic random pile-card transcript.");
-        foreach (var decision in state.RandomPileCardTranscript)
-            decision.Validate();
-        foreach (var decision in state.DrawInsertionTranscript)
-            decision.Validate();
-        foreach (var decision in state.StratagemSelectionTranscript)
-            decision.Validate();
-        foreach (var decision in state.DrawHookChoiceTranscript)
-            decision.Validate();
         if (controlledSemanticDraw?.StandaloneSemanticDrawSegment == true &&
             controlledSemanticDraw.RemainingCount != state.RemainingCount)
             throw new InvalidDataException(
