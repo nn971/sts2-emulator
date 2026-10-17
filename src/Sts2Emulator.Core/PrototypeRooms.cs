@@ -1375,9 +1375,24 @@ public sealed partial class PrototypeGameEngine
                 PrototypeRunEffectKind.OfferNeowsBonesRelics or
                 PrototypeRunEffectKind.OfferRandomRelic or
                 PrototypeRunEffectKind.OfferWaxRelics
+                or PrototypeRunEffectKind.TransformFirstCardOfId
             || effect.Kind == PrototypeRunEffectKind.GainRelic
-                && effect.RelicId == NativeAncientRewardsV111.ToyBoxId) == true;
+                && (effect.RelicId == NativeAncientRewardsV111.ToyBoxId
+                    || HasPersistentDeckTransformOnAcquisition(
+                        effect.RelicId))) == true;
     }
+
+    private static bool HasPersistentDeckTransformOnAcquisition(
+        string? relicId) =>
+        relicId is not null
+        && PrototypeContent.Relics.TryGetValue(relicId, out var relic)
+        && (relic.RunTriggers
+            ?? Array.Empty<PrototypeRelicRunTriggerSpec>())
+            .Where(trigger => trigger.EventKind ==
+                PrototypeRunEventKind.RelicAcquired)
+            .SelectMany(trigger => trigger.Effects)
+            .Any(effect => effect.Kind ==
+                PrototypeRunEffectKind.TransformFirstCardOfId);
 
     private static RunState StepEvent(
         RunState state,
@@ -6119,7 +6134,8 @@ public sealed partial class PrototypeGameEngine
             "card_instance:" + cardInstanceId + ":original:" + original.CardId
                 + ":pool:" + CanonicalJson.Sha256(pool),
             Enumerable.Range(0, pool.Length),
-            streamId: "reward")];
+            streamId: "reward",
+            controlledCandidateLabels: (string[])pool.Clone())];
         return player with
         {
             Deck = player.Deck

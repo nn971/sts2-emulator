@@ -244,6 +244,11 @@ begin, resolve and inspect support. The source-owned native relic-bag route
 remains outside that controlled frame.
 See [`CONTROLLED_RUN_ACTION_D3.md`](CONTROLLED_RUN_ACTION_D3.md).
 
+The saved event-effect frame also supports the legacy persistent-deck
+replacement draw for direct event transform effects and fixed event relics
+whose acquisition triggers transform cards. Other persistent-deck transform
+callers remain outside this frame.
+
 The emulator Release CLI build passes with zero warnings. This follow-on has
 build and static-check evidence only; no tests were run. It does not certify
 native stream ownership, event-pool parity, source cursor parity or reference

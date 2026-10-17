@@ -564,6 +564,7 @@ internal sealed class ControlledEventChoiceReplayV111 : IDisposable
         "run.random_pool_distinct.shuffle_swap_index" or
         "event.reward.random_modifier_curse.index_draw" or
         "potion.uncommon_model.index_draw" or
+        "reward.card_transform.replacement.index_draw" or
         "relic.unowned_random_selection.index_draw";
 
     public static bool IsRunActionSite(string siteId) => siteId is

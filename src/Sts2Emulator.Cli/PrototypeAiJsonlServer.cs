@@ -923,6 +923,7 @@ internal static class PrototypeAiJsonlServer
                                 "relic_grab_bag.queue_shuffle.swap_index",
                                 "relic_grab_bag.rarity.ticket",
                                 "potion.uncommon_model.index_draw",
+                                "reward.card_transform.replacement.index_draw",
                                 "relic.unowned_random_selection.index_draw"
                             },
                             semanticPersistentDeckActionSchemaId =
