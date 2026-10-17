@@ -223,3 +223,24 @@ linking, complete native powers/relics/hooks and initial RNG cursors.
 `NOT_TESTED` in every replay report. Old native trace has no
 source shuffle-operation records, so the real-game acceptance gate
 requires a new source-captured shuffle record when ready.
+
+## 2026-10-17: controlled event and reward continuation follow-on
+
+On the active emulator branch `feature/nature-143-native-policy-comparator`,
+the D3/D4 event adapter now supports a serialized current-effect frame with
+multi-draw replay, a one-request enumerator, the event post-reward modifier-
+curse draw, and the legacy Toy Box event wax-relic offer. The latter resumes
+the bag queue shuffles and rarity tickets inside the originating event effect.
+`controlled_event_advance` runs legal event-reward actions under the controlled
+guard; the saved reward frame retains completed player choices and appends its
+controlled draw to the original event trace. Player observations continue to
+hide Nature outcome actions. See
+[`CONTROLLED_EVENT_CHOICE_D3.md`](CONTROLLED_EVENT_CHOICE_D3.md) for the
+supported sites and JSONL contract.
+
+The emulator Release CLI build passes with zero warnings. This follow-on has
+build and static-check evidence only; no tests were run. It does not certify
+native stream ownership, event-pool parity, source cursor parity or reference
+probabilities. Those remain dependent on native source probes and a fresh
+Fidelity Inspector capture; controlled reward and relic actions outside the
+listed boundaries remain unsupported.
