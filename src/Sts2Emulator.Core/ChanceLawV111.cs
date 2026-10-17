@@ -71,7 +71,7 @@ public sealed record StochasticCapabilityManifestV111(
 
 public static class StochasticCapabilitiesV111
 {
-    public const string SchemaId = "sts2-v111-stochastic-capabilities-v1";
+    public const string SchemaId = "sts2-v111-stochastic-capabilities-v2";
     public const string ExternalSelectionProviderId =
         "external-semantic-selection-v1";
 
@@ -328,6 +328,15 @@ public sealed record ChanceLawV111(
 /// </summary>
 public static partial class ChanceLawEngineV111
 {
+    public const string NativeBoundedIndexSourceVerifiedProvenance =
+        "v0.111.0 Rng.NextInt(maxExclusive) maps a uniform 53-bit " +
+        "NextDouble grid to a bounded integer. Power-of-two bounds divide " +
+        "that grid evenly; run-seed frequencies and stream derivation are " +
+        "outside this claim.";
+
+    internal static bool HasEqualNativeBoundedIndexGridBins(int bound) =>
+        bound > 0 && (bound & (bound - 1)) == 0;
+
     public const string IntentConditioningPolicyId =
         "source-filtered-intent-weights-v1";
     public const string EndTurnIndexConditioningPolicyId =

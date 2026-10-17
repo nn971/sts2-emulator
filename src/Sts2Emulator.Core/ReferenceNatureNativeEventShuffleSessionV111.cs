@@ -978,6 +978,8 @@ public static partial class ChanceLawEngineV111
                 "swap_index:" + index.ToString(
                     System.Globalization.CultureInfo.InvariantCulture), 1L))
             .ToArray();
+        var sourceVerified = HasEqualNativeBoundedIndexGridBins(
+            request.BoundedCount.Value);
         var eventId = CanonicalJson.Sha256(new
         {
             boundary = "native_event.fisher_yates_shuffle_swap",
@@ -987,7 +989,14 @@ public static partial class ChanceLawEngineV111
             request.OperationKind, request.OwnerId, request.Ordinal,
             NativeEventShuffleConditioningPolicyId,
             conditioningFingerprint,
-            "uniform-bounded-event-shuffle-index-unverified", outcomes);
+            sourceVerified
+                ? NativeBoundedIndexSourceVerifiedProvenance
+                : "equal-weight bounded event-shuffle indices; source " +
+                  "bin masses are not exact for this bound",
+            outcomes,
+            sourceVerified
+                ? ChanceLawV111.SourceVerifiedStatus
+                : ChanceLawV111.UnverifiedStatus);
     }
 
     public static ChanceLawV111 QueryNativeRepyPotionOffer(

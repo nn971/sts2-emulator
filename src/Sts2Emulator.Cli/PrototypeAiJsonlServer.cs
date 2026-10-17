@@ -966,7 +966,8 @@ internal static class PrototypeAiJsonlServer
                 decisionTranscript = session.DecisionTranscript,
                 natureProvider = ReferenceNatureV111.ProviderId,
                 natureSampleCount = session.NatureState.SampleCount,
-                probabilityStatus = ChanceLawV111.UnverifiedStatus
+                probabilityStatus = law?.ProbabilityStatus ??
+                    ChanceLawV111.UnverifiedStatus
             };
         }
 

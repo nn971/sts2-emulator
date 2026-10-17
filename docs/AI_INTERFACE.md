@@ -77,7 +77,7 @@ ideas—reset, observe, legal actions, step, fork/batch—behind a versioned cro
 `PrototypeCapabilities.Create()` returns a machine-readable manifest containing the active
 ruleset ID, AI schema ID, character ID, supported content IDs, effect/event kinds, and run phases.
 It also contains `stochasticV111`, a separately versioned capability envelope for the semantic
-Nature interface. The JSONL `hello` response advertises the same envelope as
+Nature interface (schema v2). The JSONL `hello` response advertises the same envelope as
 `stochasticCapabilities`. It lists the supported Chance Law sites and provider modes. The legacy
 `ProbabilityStatus` field remains the conservative `UNVERIFIED` default, while
 `ProbabilityStatuses` enumerates statuses available on individual laws
