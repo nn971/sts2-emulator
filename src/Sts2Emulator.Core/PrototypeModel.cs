@@ -407,7 +407,7 @@ public sealed record PrototypeAutomaticPipelineContinuationState(
         new(
             new PrototypeAutomaticPipelineMechanicsStateV111(
                 NextStepIndex, PendingPostDispatchEventKind, OpeningStage),
-            new PrototypeAutomaticPipelineStochasticStateV111(
+            PrototypeAutomaticPipelineStochasticStateV111.FromFlattenedProgress(
                 ControlledDrawRemaining, ControlledDrawCostRemaining,
                 ControlledSemanticDrawRemaining,
                 ControlledSemanticDrawRequested,

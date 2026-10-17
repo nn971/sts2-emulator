@@ -62,6 +62,8 @@ For a live automatic hand draw, `PrototypeAutomaticPipelineStochasticStateV111` 
 
 The pipeline stochastic owner also provides `TryGetSemanticHandDrawProgress`, used by the engine guard, continuation validator, and draw facade. This keeps active-stage interpretation with the owner of the saved cursor.
 
+Automatic-pipeline `DrawPlayerHand` progress now has one tagged owner, `PrototypeAutomaticHandDrawProgressV111`, for controlled draw, draw-cost, semantic pre-draw, semantic draw, and recycle-Stratagem modes. The existing flattened continuation members project that value into the established snapshot fields, and loading rejects combinations that claim multiple active modes. Common resume flow and cross-provider mechanical equivalence remain open.
+
 `ReferenceNatureChanceLawDecisionV111` maps sampled one-to-one index laws to typed index outcomes and maps configured merchant and Treasure rarity laws to representative source floats, plus merchant rounded-price laws to floats that produce the selected integer price. The price mapper searches the source conversion functions used by ordinary Native shop generation. `ReferenceNatureMerchantSessionV111` replays the actual Shop-node map action; `ReferenceNatureTreasureSessionV111` replays the actual Treasure-node map action. Both use the mixed typed provider, query conditional laws from the pre-entry origin and sampled prefix, and commit the completed room result with the sampler cursor atomically. These representatives preserve the selected mechanic result, while Chance Law weights and float-edge fidelity remain `UNVERIFIED`.
 
 The configured native merchant now runs `StartShop` inside
