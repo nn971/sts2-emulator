@@ -307,6 +307,21 @@ public sealed record ReferenceNatureMerchantSessionV111(
     {
         request.Validate();
         var siteId = request.SiteId;
+        if (request.IndexRequest is { } playerModelRequest &&
+            playerModelRequest.StreamId == NativePlayerRngV111.RewardsStreamId &&
+            siteId is "relic.acquisition.random_rare_card.model" or
+                "relic.acquisition.random_potion.model" or
+                "run.potion.fill_empty_slots.model")
+        {
+            if (candidateLabels is null ||
+                candidateLabels.Length != playerModelRequest.SupportCount)
+                throw new InvalidDataException(
+                    "Native player model request lost its ordered candidate labels.");
+            return ChanceLawEngineV111.QueryNativePlayerModelIndex(
+                siteId, playerModelRequest.OwnerId,
+                playerModelRequest.SupportCount,
+                playerModelRequest.Ordinal);
+        }
         if (siteId == "shop.merchant.sale_slot.index_draw")
             return ChanceLawEngineV111.QueryNativeMerchantOffer(
                 source, siteId, 0);
@@ -438,10 +453,12 @@ public sealed record ReferenceNatureMerchantSessionV111(
                 .Any(node => node.NodeId ==
                     action.ReadPayload<ChooseMapNodePayload>().NodeId &&
                     node.RoomType == PrototypeRoomType.Shop);
-        var validCofferPurchase = IsAlchemicalCofferPurchase(source, action);
-        if ((!validShopEntry && !validCofferPurchase) || !legal)
+        var validConfiguredShopPurchase =
+            ControlledRunActionEngineV111.IsShopPurchaseAction(source, action)
+            && source.World?.Shop is not null;
+        if ((!validShopEntry && !validConfiguredShopPurchase) || !legal)
             throw new InvalidOperationException(
-                "ReferenceNature merchant session requires a current legal configured Shop-entry action or Alchemical Coffer purchase.");
+                "ReferenceNature merchant session requires a current legal configured Shop-entry or purchase action.");
         PrototypeStateInvariants.Validate(source);
     }
 

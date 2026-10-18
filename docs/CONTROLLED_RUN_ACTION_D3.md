@@ -208,8 +208,9 @@ configured native Shop state, but only the registered index-only acquisition
 sites above are controlled; configured native Shop entry and relic-bag
 generation remain outside this controller. The configured Native merchant
 session separately handles Alchemical Coffer's four mixed PotionFactory
-rarity and model picks during its legal relic purchase; other Native unit-float
-purchase hooks remain unsupported.
+rarity and model picks, plus registered Native `player.rewards` model-index
+draws during legal Shop purchases. Other Native unit-float purchase hooks
+remain unsupported.
 
 This boundary does not verify native player-stream ownership, source map or
 relic-pool parity, cursor parity or reference probabilities. Native bag draws
