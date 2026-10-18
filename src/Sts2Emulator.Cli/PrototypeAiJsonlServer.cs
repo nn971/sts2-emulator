@@ -21,6 +21,12 @@ internal static class PrototypeAiJsonlServer
     public const string SemanticChanceSchemaId =
         SemanticPilotCombatV111.SchemaId;
 
+    private static readonly JsonSerializerOptions SnakeCaseJsonOptions =
+        new(JsonSerializerDefaults.Web)
+        {
+            PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.SnakeCaseLower
+        };
+
     public static void Run(TextReader input, TextWriter output)
     {
         var environment = new PrototypeAiEnvironment();
@@ -147,6 +153,12 @@ internal static class PrototypeAiJsonlServer
             new Dictionary<string, ReferenceNatureMapGenerationSessionV111>(
                 StringComparer.Ordinal);
         long nextReferenceNatureMapGenerationHandle = 1;
+        var scriptedRunActionStates =
+            new Dictionary<string, ScriptedRunActionSessionV111>(
+                StringComparer.Ordinal);
+        var scriptedRunActionRunStateHandles =
+            new Dictionary<string, string>(StringComparer.Ordinal);
+        long nextScriptedRunActionHandle = 1;
 
         string StoreSemantic(SemanticPilotCombatV111 state)
         {
@@ -581,6 +593,29 @@ internal static class PrototypeAiJsonlServer
                 : throw new InvalidOperationException(
                     "Unknown ReferenceNature map-generation session handle: " +
                     handle);
+        }
+
+        string StoreScriptedRunAction(
+            ScriptedRunActionSessionV111 session)
+        {
+            var handle = "s" + nextScriptedRunActionHandle++;
+            scriptedRunActionStates.Add(handle, session.Fork());
+            if (session.Complete)
+                scriptedRunActionRunStateHandles.Add(handle,
+                    Store(session.Run!.Fork()));
+            return handle;
+        }
+
+        ScriptedRunActionSessionV111 RequireScriptedRunAction(
+            JsonElement request)
+        {
+            var handle = RequiredString(request,
+                "scripted_run_action_handle");
+            return scriptedRunActionStates.TryGetValue(handle,
+                    out var session)
+                ? session
+                : throw new InvalidOperationException(
+                    "Unknown scripted run-action session handle: " + handle);
         }
 
         object ReferenceNatureResult(
@@ -1410,6 +1445,39 @@ internal static class PrototypeAiJsonlServer
                 decisionTranscript = session.DecisionTranscript,
                 natureProvider = ReferenceNatureV111.ProviderId,
                 natureSampleCount = session.NatureState.SampleCount,
+                probabilityStatus = ChanceLawV111.UnverifiedStatus
+            };
+        }
+
+        object ScriptedRunActionResult(
+            ScriptedRunActionSessionV111 session, string handle,
+            string? parent = null)
+        {
+            scriptedRunActionRunStateHandles.TryGetValue(handle,
+                out var runStateHandle);
+            return new
+            {
+                ok = true,
+                schemaId = ScriptedRunActionSessionV111.CurrentSchemaId,
+                scriptedRunActionHandle = handle,
+                parent,
+                fingerprint = session.Fingerprint,
+                actionId = PrototypeAiEnvironment.StableActionId(
+                    session.Action),
+                boundary = session.Complete ? "committed" : "scripted",
+                nextSequence = session.Decisions.Length + 1,
+                pending = session.PendingRequest is { } pending
+                    ? new
+                    {
+                        request = pending,
+                        candidateLabels = session.PendingCandidateLabels,
+                        probabilityStatus = ChanceLawV111.UnverifiedStatus
+                    }
+                    : null,
+                decisionTranscript = session.Decisions,
+                runStateHandle,
+                runFingerprint = session.Run is null ? null :
+                    CanonicalJson.Sha256(session.Run),
                 probabilityStatus = ChanceLawV111.UnverifiedStatus
             };
         }
@@ -2513,6 +2581,10 @@ internal static class PrototypeAiJsonlServer
                                 ReferenceNatureSessionV111.CurrentSchemaId,
                             referenceNatureRunActionSessionSchemaId =
                                 ReferenceNatureRunActionSessionV111.CurrentSchemaId,
+                            scriptedRunActionSessionSchemaId =
+                                ScriptedRunActionSessionV111.CurrentSchemaId,
+                            scriptedRunActionOperations =
+                                ScriptedRunActionSessionV111.Operations,
                             referenceNatureEventChoiceSessionSchemaId =
                                 ReferenceNatureControlledEventChoiceSessionV111
                                     .CurrentSchemaId,
@@ -6344,6 +6416,123 @@ internal static class PrototypeAiJsonlServer
                                 released++;
                             referenceNatureRunActionRunStateHandles.Remove(
                                 element.GetString()!);
+                        }
+                        Write(new { requestId, ok = true, released });
+                        break;
+                    }
+
+                    case "scripted_run_action_begin":
+                    {
+                        var source = RequireState(request);
+                        var actionId = RequiredString(request, "action_id");
+                        var actionView = environment.Observe(source)
+                            .LegalActions.SingleOrDefault(candidate =>
+                                StringComparer.Ordinal.Equals(
+                                    candidate.ActionId, actionId))
+                            ?? throw new InvalidOperationException(
+                                "Scripted run-action begin requires a current legal action.");
+                        var action = GameAction.Create(actionView.Kind,
+                            actionView.Payload);
+                        var session = ScriptedRunActionSessionV111.Begin(
+                            source, action);
+                        var handle = StoreScriptedRunAction(session);
+                        Write(new { requestId, ok = true, result =
+                            ScriptedRunActionResult(session, handle) });
+                        break;
+                    }
+
+                    case "scripted_run_action_status":
+                    {
+                        var handle = RequiredString(request,
+                            "scripted_run_action_handle");
+                        var session = RequireScriptedRunAction(request);
+                        Write(new { requestId, ok = true, result =
+                            ScriptedRunActionResult(session, handle) });
+                        break;
+                    }
+
+                    case "scripted_run_action_resolve_next":
+                    {
+                        var parentHandle = RequiredString(request,
+                            "scripted_run_action_handle");
+                        var session = RequireScriptedRunAction(request);
+                        if (session.Fingerprint != RequiredString(request,
+                                "fingerprint"))
+                            throw new InvalidOperationException(
+                                "Stale scripted run-action fingerprint.");
+                        if (!request.TryGetProperty("transcript_entry",
+                                out var entryElement) ||
+                            entryElement.ValueKind != JsonValueKind.Object)
+                            throw new ArgumentException(
+                                "transcript_entry must be a random-boundary transcript object.");
+                        var entry = entryElement.Deserialize<
+                                RandomBoundaryTranscriptEntryV111>(
+                                SnakeCaseJsonOptions)
+                            ?? throw new InvalidDataException(
+                                "transcript_entry is empty.");
+                        var outcome = new ScriptedRunActionOutcomeV111(
+                            entry, OptionalStringArray(request,
+                                "candidate_labels"));
+                        var next = session.ResolveNext(outcome);
+                        var handle = StoreScriptedRunAction(next);
+                        Write(new { requestId, ok = true, result =
+                            ScriptedRunActionResult(next, handle,
+                                parentHandle) });
+                        break;
+                    }
+
+                    case "scripted_run_action_fork":
+                    {
+                        var parentHandle = RequiredString(request,
+                            "scripted_run_action_handle");
+                        var next = RequireScriptedRunAction(request).Fork();
+                        var handle = StoreScriptedRunAction(next);
+                        Write(new { requestId, ok = true, result =
+                            ScriptedRunActionResult(next, handle,
+                                parentHandle) });
+                        break;
+                    }
+
+                    case "scripted_run_action_save":
+                    {
+                        var session = RequireScriptedRunAction(request);
+                        Write(new { requestId, ok = true,
+                            schemaId =
+                                ScriptedRunActionSessionV111.CurrentSchemaId,
+                            snapshot =
+                                ScriptedRunActionSessionV111.Save(session) });
+                        break;
+                    }
+
+                    case "scripted_run_action_load":
+                    {
+                        var session = ScriptedRunActionSessionV111.Restore(
+                            RequiredString(request, "snapshot"));
+                        var handle = StoreScriptedRunAction(session);
+                        Write(new { requestId, ok = true, result =
+                            ScriptedRunActionResult(session, handle) });
+                        break;
+                    }
+
+                    case "scripted_run_action_release_many":
+                    {
+                        if (!request.TryGetProperty(
+                                "scripted_run_action_handles",
+                                out var handles) ||
+                            handles.ValueKind != JsonValueKind.Array)
+                            throw new ArgumentException(
+                                "scripted_run_action_handles must be an array.");
+                        var released = 0;
+                        foreach (var element in handles.EnumerateArray())
+                        {
+                            if (element.ValueKind != JsonValueKind.String ||
+                                string.IsNullOrWhiteSpace(element.GetString()))
+                                throw new ArgumentException(
+                                    "Invalid scripted run-action handle.");
+                            var handle = element.GetString()!;
+                            if (scriptedRunActionStates.Remove(handle))
+                                released++;
+                            scriptedRunActionRunStateHandles.Remove(handle);
                         }
                         Write(new { requestId, ok = true, released });
                         break;

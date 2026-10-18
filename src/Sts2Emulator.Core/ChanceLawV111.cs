@@ -57,6 +57,10 @@ public sealed record StochasticCapabilityManifestV111(
         ReferenceNatureTreasureSessionV111.CurrentSchemaId;
     public string ReferenceNatureMapGenerationSessionSchemaId { get; init; } =
         ReferenceNatureMapGenerationSessionV111.CurrentSchemaId;
+    public string ScriptedRunActionSessionSchemaId { get; init; } =
+        ScriptedRunActionSessionV111.CurrentSchemaId;
+    public string[] ScriptedRunActionOperations { get; init; } =
+        ScriptedRunActionSessionV111.Operations;
     public string SemanticNatureChoiceViewSchemaId { get; init; } =
         SemanticNatureChoiceViewV111.CurrentSchemaId;
     public string[] SemanticNatureChoiceViewOperations { get; init; } =
@@ -260,7 +264,11 @@ public static class StochasticCapabilitiesV111
         ReferenceNatureTreasureSessionSchemaId =
             ReferenceNatureTreasureSessionV111.CurrentSchemaId,
         ReferenceNatureMapGenerationSessionSchemaId =
-            ReferenceNatureMapGenerationSessionV111.CurrentSchemaId
+            ReferenceNatureMapGenerationSessionV111.CurrentSchemaId,
+        ScriptedRunActionSessionSchemaId =
+            ScriptedRunActionSessionV111.CurrentSchemaId,
+        ScriptedRunActionOperations =
+            ScriptedRunActionSessionV111.Operations
     };
 }
 

@@ -1,0 +1,417 @@
+using System.Text.Json;
+using System.Text.Json.Serialization;
+
+namespace Sts2Emulator.Core;
+
+/// <summary>
+/// One outcome from the ordered random-boundary journal accepted by a
+/// resumable scripted run-action session. Candidate labels accompany index
+/// entries because the boundary journal intentionally does not own them.
+/// </summary>
+public sealed record ScriptedRunActionOutcomeV111(
+    RandomBoundaryTranscriptEntryV111 Entry,
+    string[]? CandidateLabels = null)
+{
+    public ScriptedRunActionOutcomeV111 Fork() => this with
+    {
+        Entry = Entry with { Event = Entry.Event.Clone() },
+        CandidateLabels = CandidateLabels is null ? null :
+            (string[])CandidateLabels.Clone()
+    };
+
+    public void Validate()
+    {
+        ArgumentNullException.ThrowIfNull(Entry);
+        Entry.Validate();
+        if (CandidateLabels is not null &&
+            (Entry.OperationKind != "index" ||
+             CandidateLabels.Any(string.IsNullOrWhiteSpace)))
+            throw new InvalidDataException(
+                "Scripted run-action candidate labels require a valid index entry.");
+    }
+
+    internal ControlledStochasticDecisionV111 ToDecision()
+    {
+        Validate();
+        var decision = Entry.OperationKind switch
+        {
+            "index" => IndexDecision(),
+            "unit_float" => UnitFloatDecision(),
+            "ranged_float" => RangedFloatDecision(),
+            "ranged_double" => RangedDoubleDecision(),
+            "gaussian_int" => GaussianIntDecision(),
+            "gaussian_double" => GaussianDoubleDecision(),
+            _ => throw new InvalidDataException(
+                "Unsupported scripted run-action operation.")
+        };
+        decision.Validate();
+        return decision;
+    }
+
+    private RandomBoundaryEventV111 ReadIndexEvent() => ReadEvent<
+        RandomBoundaryEventV111>("index");
+
+    private T ReadEvent<T>(string operationKind)
+    {
+        if (Entry.OperationKind != operationKind)
+            throw new InvalidDataException(
+                "Scripted run-action operation kind does not match its payload.");
+        var value = Entry.Event.Deserialize<T>(TranscriptJsonOptions)
+            ?? throw new InvalidDataException(
+                "Scripted run-action transcript payload is empty.");
+        var correctPayload = operationKind switch
+        {
+            "index" => value is RandomBoundaryEventV111,
+            "unit_float" => value is RandomUnitFloatBoundaryEventV111,
+            "ranged_float" => value is RandomRangedFloatBoundaryEventV111,
+            "ranged_double" => value is RandomRangedDoubleBoundaryEventV111,
+            "gaussian_int" => value is RandomGaussianIntBoundaryEventV111,
+            "gaussian_double" => value is RandomGaussianDoubleBoundaryEventV111,
+            _ => false
+        };
+        if (!correctPayload)
+            throw new InvalidDataException(
+                "Scripted run-action operation kind does not match its payload type.");
+        switch (value)
+        {
+            case RandomBoundaryEventV111 item:
+                ValidateRecorded(item.Sequence, item.ProviderMode, item.Request);
+                break;
+            case RandomUnitFloatBoundaryEventV111 item:
+                ValidateRecorded(item.Sequence, item.ProviderMode, item.Request);
+                break;
+            case RandomRangedFloatBoundaryEventV111 item:
+                ValidateRecorded(item.Sequence, item.ProviderMode, item.Request);
+                break;
+            case RandomRangedDoubleBoundaryEventV111 item:
+                ValidateRecorded(item.Sequence, item.ProviderMode, item.Request);
+                break;
+            case RandomGaussianIntBoundaryEventV111 item:
+                ValidateRecorded(item.Sequence, item.ProviderMode, item.Request);
+                break;
+            case RandomGaussianDoubleBoundaryEventV111 item:
+                ValidateRecorded(item.Sequence, item.ProviderMode, item.Request);
+                break;
+            default:
+                throw new InvalidDataException(
+                    "Scripted run-action transcript payload type is invalid.");
+        }
+        return value;
+    }
+
+    private static void ValidateRecorded<TRequest>(
+        int sequence, string providerMode, TRequest request)
+    {
+        if (sequence < 1 || string.IsNullOrWhiteSpace(providerMode))
+            throw new InvalidDataException(
+                "Scripted run-action transcript event metadata is invalid.");
+        switch (request)
+        {
+            case RandomIndexRequestV111 index:
+                index.Validate();
+                break;
+            case RandomUnitFloatRequestV111 unitFloat:
+                unitFloat.Validate();
+                break;
+            case RandomRangedFloatRequestV111 rangedFloat:
+                rangedFloat.Validate();
+                break;
+            case RandomRangedDoubleRequestV111 rangedDouble:
+                rangedDouble.Validate();
+                break;
+            case RandomGaussianIntRequestV111 gaussianInt:
+                gaussianInt.Validate();
+                break;
+            case RandomGaussianDoubleRequestV111 gaussianDouble:
+                gaussianDouble.Validate();
+                break;
+            default:
+                throw new InvalidDataException(
+                    "Scripted run-action request type is invalid.");
+        }
+    }
+
+    private ControlledStochasticDecisionV111 IndexDecision()
+    {
+        var item = ReadIndexEvent();
+        var decision = new RandomIndexDecisionV111(
+            item.Request with
+            {
+                OrderedCandidates = (int[])item.Request.OrderedCandidates.Clone()
+            }, item.SelectedIndex, "controlled-v111");
+        decision.Validate();
+        if (item.SelectedValue != decision.SelectedValue ||
+            CandidateLabels is not null &&
+                CandidateLabels.Length != item.Request.SupportCount)
+            throw new InvalidDataException(
+                "Scripted run-action index outcome disagrees with its support.");
+        return ControlledStochasticDecisionV111.FromIndex(
+            decision, CandidateLabels is null ? null :
+                (string[])CandidateLabels.Clone());
+    }
+
+    private ControlledStochasticDecisionV111 UnitFloatDecision()
+    {
+        var item = ReadEvent<RandomUnitFloatBoundaryEventV111>("unit_float");
+        return ControlledStochasticDecisionV111.FromUnitFloat(
+            new RandomUnitFloatDecisionV111(
+                item.Request with { }, item.SelectedValue,
+                "controlled-v111"));
+    }
+
+    private ControlledStochasticDecisionV111 RangedFloatDecision()
+    {
+        var item = ReadEvent<RandomRangedFloatBoundaryEventV111>(
+            "ranged_float");
+        return ControlledStochasticDecisionV111.FromRangedFloat(
+            new RandomRangedFloatDecisionV111(
+                item.Request with { }, item.SelectedValue,
+                "controlled-v111"));
+    }
+
+    private ControlledStochasticDecisionV111 RangedDoubleDecision()
+    {
+        var item = ReadEvent<RandomRangedDoubleBoundaryEventV111>(
+            "ranged_double");
+        return ControlledStochasticDecisionV111.FromRangedDouble(
+            new RandomRangedDoubleDecisionV111(
+                item.Request with { }, item.SelectedValue,
+                "controlled-v111"));
+    }
+
+    private ControlledStochasticDecisionV111 GaussianIntDecision()
+    {
+        var item = ReadEvent<RandomGaussianIntBoundaryEventV111>(
+            "gaussian_int");
+        return ControlledStochasticDecisionV111.FromGaussianInt(
+            new RandomGaussianIntDecisionV111(
+                item.Request with { }, item.SelectedValue,
+                "controlled-v111"));
+    }
+
+    private ControlledStochasticDecisionV111 GaussianDoubleDecision()
+    {
+        var item = ReadEvent<RandomGaussianDoubleBoundaryEventV111>(
+            "gaussian_double");
+        return ControlledStochasticDecisionV111.FromGaussianDouble(
+            new RandomGaussianDoubleDecisionV111(
+                item.Request with { }, item.SelectedValue,
+                "controlled-v111"));
+    }
+
+    private static readonly JsonSerializerOptions TranscriptJsonOptions =
+        new(JsonSerializerDefaults.Web)
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
+        };
+}
+
+public sealed record ScriptedRunActionSessionSnapshotV111(
+    string SchemaId,
+    string OriginSnapshotJson,
+    GameAction Action,
+    string? RunSnapshotJson,
+    ControlledStochasticDecisionV111[] Decisions,
+    ControlledStochasticContinuationStateV111? Continuation);
+
+/// <summary>
+/// Serializable scripted controller for one legal ordinary run action. It
+/// replays the saved typed prefix through PrototypeGameEngine and pauses at
+/// the next exact provider request until a matching journal outcome arrives.
+/// </summary>
+public sealed record ScriptedRunActionSessionV111(
+    string SchemaId,
+    RunState Origin,
+    GameAction Action,
+    RunState? Run,
+    ControlledStochasticDecisionV111[] Decisions,
+    ControlledStochasticContinuationStateV111? Continuation)
+{
+    public const string CurrentSchemaId =
+        "sts2-v111-scripted-run-action-session-v1";
+
+    public static string[] Operations =>
+    [
+        "scripted_run_action_begin", "scripted_run_action_status",
+        "scripted_run_action_resolve_next", "scripted_run_action_fork",
+        "scripted_run_action_save", "scripted_run_action_load",
+        "scripted_run_action_release_many"
+    ];
+
+    [JsonIgnore]
+    public bool Complete => Run is not null && Continuation is null;
+
+    [JsonIgnore]
+    public ControlledStochasticRequestV111? PendingRequest =>
+        Continuation?.PendingRequest;
+
+    [JsonIgnore]
+    public string[]? PendingCandidateLabels =>
+        Continuation?.PendingCandidateLabels;
+
+    [JsonIgnore]
+    public string Fingerprint => CanonicalJson.Sha256(this);
+
+    public static ScriptedRunActionSessionV111 Begin(
+        RunState source, GameAction action)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(action);
+        ValidateOpeningBoundary(source, action);
+        var replay = Capture(source, action, []);
+        var session = new ScriptedRunActionSessionV111(
+            CurrentSchemaId, source.Fork(), CloneAction(action), replay.Run,
+            replay.Continuation?.Decisions ?? [], replay.Continuation);
+        session.Validate();
+        return session;
+    }
+
+    public ScriptedRunActionSessionV111 Fork()
+    {
+        Validate();
+        return this with
+        {
+            Origin = Origin.Fork(),
+            Action = CloneAction(Action),
+            Run = Run?.Fork(),
+            Decisions = Decisions.Select(decision => decision.Fork()).ToArray(),
+            Continuation = Continuation?.Fork()
+        };
+    }
+
+    public ScriptedRunActionSessionV111 ResolveNext(
+        ScriptedRunActionOutcomeV111 outcome)
+    {
+        Validate();
+        ArgumentNullException.ThrowIfNull(outcome);
+        if (Complete)
+            throw new InvalidOperationException(
+                "Scripted run-action session is already complete.");
+        outcome.Validate();
+        if (outcome.Entry.Sequence != Decisions.Length + 1)
+            throw new InvalidDataException(
+                "Scripted run-action transcript sequence is not contiguous.");
+        var selected = outcome.ToDecision();
+        var replay = ControlledChanceContinuationExecutorV111.ResolveStochastic(
+            Origin, Continuation!, selected,
+            checkpoint => new PrototypeGameEngine().Step(
+                checkpoint, CloneAction(Action)).State);
+        var decisions = replay.Continuation?.Decisions ??
+            Decisions.Append(selected.Fork()).ToArray();
+        var next = this with
+        {
+            Run = replay.Run,
+            Decisions = decisions,
+            Continuation = replay.Continuation
+        };
+        next.Validate();
+        return next;
+    }
+
+    public void Validate()
+    {
+        if (SchemaId != CurrentSchemaId || Origin is null || Action is null ||
+            Decisions is null || string.IsNullOrWhiteSpace(Action.Kind) ||
+            (Run is null) == (Continuation is null))
+            throw new InvalidDataException(
+                "Invalid scripted run-action session envelope.");
+        ValidateOpeningBoundary(Origin, Action);
+        PrototypeStateInvariants.Validate(Origin);
+        foreach (var decision in Decisions)
+        {
+            if (decision is null)
+                throw new InvalidDataException(
+                    "Scripted run-action session contains a null decision.");
+            decision.Validate();
+        }
+        if (Continuation is { } continuation)
+        {
+            continuation.Validate();
+            if (continuation.SchemaId !=
+                    ControlledStochasticContinuationStateV111.MixedPrimitiveSchemaId ||
+                CanonicalJson.Sha256(continuation.Decisions) !=
+                    CanonicalJson.Sha256(Decisions))
+                throw new InvalidDataException(
+                    "Scripted run-action session prefix differs from its continuation.");
+        }
+        var replay = Capture(Origin, Action, Decisions);
+        if (!SameContinuation(replay.Continuation, Continuation) ||
+            (replay.Run is null) != (Run is null) ||
+            replay.Run is { } expectedRun &&
+                CanonicalJson.Sha256(expectedRun) != CanonicalJson.Sha256(Run))
+            throw new InvalidDataException(
+                "Scripted run-action session differs from its action replay.");
+        if (Run is { } run)
+            PrototypeStateInvariants.Validate(run);
+    }
+
+    public static string Save(ScriptedRunActionSessionV111 session)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        session.Validate();
+        var snapshot = new ScriptedRunActionSessionSnapshotV111(
+            CurrentSchemaId, RunSnapshot.Save(session.Origin),
+            CloneAction(session.Action),
+            session.Run is null ? null : RunSnapshot.Save(session.Run),
+            session.Decisions.Select(decision => decision.Fork()).ToArray(),
+            session.Continuation?.Fork());
+        return JsonSerializer.Serialize(snapshot);
+    }
+
+    public static ScriptedRunActionSessionV111 Restore(string json)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(json);
+        var snapshot = JsonSerializer.Deserialize<
+                ScriptedRunActionSessionSnapshotV111>(json)
+            ?? throw new InvalidDataException(
+                "Null scripted run-action snapshot.");
+        if (snapshot.SchemaId != CurrentSchemaId ||
+            string.IsNullOrWhiteSpace(snapshot.OriginSnapshotJson) ||
+            snapshot.Action is null || snapshot.Decisions is null)
+            throw new InvalidDataException(
+                "Invalid scripted run-action snapshot.");
+        var session = new ScriptedRunActionSessionV111(
+            CurrentSchemaId, RunSnapshot.Load(snapshot.OriginSnapshotJson),
+            CloneAction(snapshot.Action),
+            snapshot.RunSnapshotJson is null ? null :
+                RunSnapshot.Load(snapshot.RunSnapshotJson),
+            snapshot.Decisions.Select(decision => decision.Fork()).ToArray(),
+            snapshot.Continuation?.Fork());
+        session.Validate();
+        return session;
+    }
+
+    private static ControlledStochasticContinuationResultV111 Capture(
+        RunState origin, GameAction action,
+        ControlledStochasticDecisionV111[] decisions) =>
+        ControlledChanceContinuationExecutorV111.CaptureStochastic(
+            origin,
+            ControlledStochasticContinuationStateV111.MixedPrimitiveSchemaId,
+            decisions,
+            checkpoint => new PrototypeGameEngine().Step(
+                checkpoint, CloneAction(action)).State);
+
+    private static void ValidateOpeningBoundary(
+        RunState source, GameAction action)
+    {
+        RunConfiguration.ValidateState(source);
+        if (source.ControlledEventRewardChoice is not null ||
+            source.ControlledRunActionChoice is not null ||
+            source.World?.Event?.ControlledChoice is not null ||
+            new PrototypeGameEngine().GetLegalActions(source).All(candidate =>
+                CanonicalJson.Sha256(candidate) != CanonicalJson.Sha256(action)))
+            throw new InvalidOperationException(
+                "Scripted run-action begin requires one current ordinary legal action.");
+    }
+
+    private static bool SameContinuation(
+        ControlledStochasticContinuationStateV111? left,
+        ControlledStochasticContinuationStateV111? right) =>
+        left is null ? right is null : right is not null &&
+            CanonicalJson.Sha256(left) == CanonicalJson.Sha256(right);
+
+    private static GameAction CloneAction(GameAction action) => action with
+    {
+        Payload = action.Payload.Clone()
+    };
+}

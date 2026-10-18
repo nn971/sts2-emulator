@@ -397,8 +397,11 @@ remains separate from seeded emulator RNG equality. See
   ranged-double and Gaussian-double gameplay site identities, other rejection
   operations and dynamic weighted choices still need source call-site audits.
   The new primitive adapters add no gameplay coverage by themselves.
-- The scripting provider validates an exact request sequence but is not yet
-  a serializable resumable game controller.
+- `ScriptedRunActionSessionV111` now provides a serializable resumable
+  controller for one legal run action, backed by the mixed typed continuation
+  executor. It validates each supplied transcript outcome against the exact
+  next request. Whole-run scripted orchestration and Native cursor equivalence
+  remain open.
 - Provider instance state is not in canonical `RunState`, so callers must
   not treat replay/controlled providers as persisted Nature mode.
 - The native Inspector is a **separate** read-only oracle; its current
