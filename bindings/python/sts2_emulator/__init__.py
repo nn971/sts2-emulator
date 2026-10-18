@@ -46,7 +46,8 @@ class State:
                          room=None, gold_proportion=None,
                          current_thousandths=None, elite=None,
                          forced=None, card_rarity_source=None,
-                         current_offset_basis_points=None):
+                         current_offset_basis_points=None,
+                         stream_id=None):
         """Read a pre-outcome law; native event queries may need action_id.
 
         Reflections card-pick laws use action_id="touch_mirror" and the
@@ -68,6 +69,8 @@ class State:
         Ascension, and owner_id; outcomes are raw rarities before pool fallback.
         Combat card-upgrade laws require card_id, Act, and Ascension; outcomes
         are the raw inclusive comparison result before card mutation.
+        PotionFactory rarity laws accept an optional owner_id + stream_id pair
+        for a cursor-blind source-threshold query.
         Repy potion laws use ordinal 0 or 1 and prior_indices containing the
         complete relic-shuffle prefix plus any earlier potion index.
         """
@@ -204,6 +207,18 @@ class State:
                 current_offset_basis_points is not None:
             raise ValueError(
                 "card-rarity source parameters apply only to card_rarity.roll.unit_float")
+        if stream_id is not None:
+            if not isinstance(stream_id, str) or not stream_id:
+                raise ValueError("stream_id must be a nonempty string")
+            if site_id != "potion_factory.rarity_roll.unit_float":
+                raise ValueError(
+                    "stream_id applies only to potion_factory.rarity_roll.unit_float")
+        if site_id == "potion_factory.rarity_roll.unit_float" and (
+                owner_id is not None or stream_id is not None):
+            if owner_id is None or stream_id is None:
+                raise ValueError(
+                    "PotionFactory rarity laws require owner_id and stream_id together")
+            payload["stream_id"] = stream_id
         if site_id == "card_rarity.upgrade_roll.unit_float" and (
                 card_id is None or act is None or ascension is None):
             raise ValueError(

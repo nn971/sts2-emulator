@@ -24,6 +24,12 @@ for any source. It requires the caller to declare source, current offset,
 Ascension, owner ID, and stream ordinal; it returns the raw rarity law before
 available-pool fallback and does not inspect the run or Native RNG state.
 
+`potion_factory.rarity_roll.unit_float` also has a cursor-blind standalone
+query mode. It accepts a typed request with caller-declared owner and one of
+the supported Native streams (`run.combat_potion_generation`,
+`player.rewards`, or `player.shops`) and uses the same exact inclusive
+threshold masses as the merchant and Coffer paths.
+
 For Shop generation, the session begins from a current legal `choose_map_node`
 action for a configured Shop. For the Alchemical Coffer effect, it begins from
 the current legal `buy_relic` action for an unsold Coffer offer. In both cases
@@ -59,7 +65,7 @@ frequencies, stream attribution, and Native cursor parity remain separate.
 | `card_rarity.roll.unit_float` | Rare, Uncommon, Common, using the current rarity offset and Ascension shop thresholds; merchant branch counts exact rounded Native `NextFloat` grid masses |
 | `shop.merchant.card_model.index_draw` | Ordered native Silent card models matching card type and supplied rarity, with exact Native bounded-index grid masses |
 | `shop.colorless_card_model.index_draw` | Ordered implemented single-player Colorless models; ordinal 0 is Uncommon and ordinal 1 is Rare, with exact Native bounded-index grid masses |
-| `potion_factory.rarity_roll.unit_float` | Common, Uncommon, Rare using the PotionFactory's inclusive float thresholds and exact rounded Native `NextFloat` grid masses |
+| `potion_factory.rarity_roll.unit_float` | Common, Uncommon, Rare using the PotionFactory's inclusive float thresholds and exact rounded Native `NextFloat` grid masses; standalone law queries bind the declared supported stream and owner |
 | `potion_factory.model_within_rarity.index_draw` | Ordered potion models in the requested tier after supplied exclusions, with exact Native bounded-index grid masses on the merchant branch |
 | `relic_grab_bag.rarity.unit_float` | Common, Uncommon, Rare using the grab bag's float thresholds and exact rounded Native `NextFloat` grid masses; the third merchant relic offer is forced Shop rarity and has no draw |
 | `shop.merchant.relic_model.index_draw` | Eligible relic identities from the first nonempty fallback tier after the selected rarity, with earlier same-shop selections removed and queue order hidden |

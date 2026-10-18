@@ -160,6 +160,21 @@ threshold the single `NextFloat()` grid input that rounds to `0.0` passes the
 source's inclusive comparison. Card mutation and reward-prefix parity remain
 outside this query.
 
+PotionFactory rarity is also queryable from a declared Native request:
+
+```python
+potion_rarity_law = state.query_chance_law(
+    "potion_factory.rarity_roll.unit_float",
+    ordinal=declared_potion_factory_ordinal,
+    owner_id=declared_potion_factory_owner,
+    stream_id="player.rewards",
+)
+```
+
+The law returns exact rounded-grid masses for Rare at `NextFloat() <= 0.1`,
+Uncommon through `NextFloat() <= 0.35`, and Common otherwise. The source call
+prefix and Native cursor parity remain open.
+
 The fixed Act 1 boss pools have read-only law queries. Each returns
 equal-weight outcomes identified by encounter ID; legacy seed-to-index
 distributions and Native cursor parity remain `UNVERIFIED`:

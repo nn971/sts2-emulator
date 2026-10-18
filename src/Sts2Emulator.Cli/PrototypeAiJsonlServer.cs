@@ -2651,6 +2651,11 @@ internal static class PrototypeAiJsonlServer
                                 .IsChanceLawQuerySite(siteId))
                             throw new NotSupportedException(
                                 $"Chance Law query does not support site '{siteId}'.");
+                        if (OptionalString(request, "stream_id") is not null &&
+                            siteId !=
+                                "potion_factory.rarity_roll.unit_float")
+                            throw new ArgumentException(
+                                "stream_id is accepted only for PotionFactory rarity laws.");
                         int[]? priorIndices = null;
                         if (request.TryGetProperty(
                                 "prior_indices", out var priorIndicesElement))
@@ -2829,6 +2834,43 @@ internal static class PrototypeAiJsonlServer
                                 supportCount != law.Outcomes.Length)
                                 throw new ArgumentException(
                                     "Card-upgrade support_count must match the declared card, act, and Ascension.");
+                            Write(new
+                            {
+                                requestId,
+                                ok = true,
+                                chanceLawSchemaId =
+                                    ChanceLawV111.CurrentSchemaId,
+                                law
+                            });
+                            break;
+                        }
+                        if (siteId ==
+                                "potion_factory.rarity_roll.unit_float" &&
+                            (OptionalString(request, "owner_id") is not null ||
+                             OptionalString(request, "stream_id") is not null))
+                        {
+                            RejectChanceLawQueryParameters(
+                                request, "owner_id", "stream_id",
+                                "support_count");
+                            var potionFactoryOwner = OptionalString(
+                                request, "owner_id") ??
+                                throw new ArgumentException(
+                                    "PotionFactory rarity law requires owner_id.");
+                            var potionFactoryStream = OptionalString(
+                                request, "stream_id") ??
+                                throw new ArgumentException(
+                                    "PotionFactory rarity law requires stream_id.");
+                            var typedRequest = new RandomUnitFloatRequestV111(
+                                siteId, potionFactoryStream,
+                                potionFactoryOwner, ordinal);
+                            law = ChanceLawEngineV111
+                                .QueryNativePotionFactoryRarity(typedRequest);
+                            var supportCount = OptionalInt(
+                                request, "support_count");
+                            if (supportCount is not null &&
+                                supportCount != law.Outcomes.Length)
+                                throw new ArgumentException(
+                                    "PotionFactory rarity support_count must match its declared source request.");
                             Write(new
                             {
                                 requestId,
@@ -7774,7 +7816,7 @@ internal static class PrototypeAiJsonlServer
             "ascension", "act", "include_darv", "hive_receives_darv",
             "room", "gold_proportion", "current_thousandths", "elite",
             "forced", "card_rarity_source",
-            "current_offset_basis_points"
+            "current_offset_basis_points", "stream_id"
         ];
         var unsupported = optionalFields.Where(field =>
             !allowed.Contains(field) && request.TryGetProperty(field, out _))

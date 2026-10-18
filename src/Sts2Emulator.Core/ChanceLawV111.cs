@@ -498,6 +498,19 @@ public static partial class ChanceLawEngineV111
     }
 
     private static (long Common, long Uncommon, long Rare)
+        NativePotionFactoryRarityGridWeights()
+    {
+        var rare = NativeNextFloatGridCountAtOrBelow(0.1f);
+        var uncommonEnd = NativeNextFloatGridCountAtOrBelow(0.35f);
+        if (uncommonEnd < rare)
+            throw new InvalidDataException(
+                "Native PotionFactory rarity thresholds are out of order.");
+        var uncommon = checked(uncommonEnd - rare);
+        var common = checked(NativeNextDoubleGridSize - uncommonEnd);
+        return (common, uncommon, rare);
+    }
+
+    private static (long Common, long Uncommon, long Rare)
         NativeRelicRarityGridWeights()
     {
         var commonThreshold = PrototypeNativeRelicGrabBag
@@ -1540,6 +1553,49 @@ public static partial class ChanceLawEngineV111
             outcomes.ToArray(), ChanceLawV111.SourceVerifiedStatus);
     }
 
+    /// <summary>
+    /// Query the source-ordered PotionFactory rarity thresholds for an
+    /// explicitly declared Native request, independent of its RNG cursor.
+    /// </summary>
+    public static ChanceLawV111 QueryNativePotionFactoryRarity(
+        RandomUnitFloatRequestV111 request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        request.Validate();
+        const string siteId = "potion_factory.rarity_roll.unit_float";
+        if (request.SiteId != siteId || request.StreamId is not
+            ("run.combat_potion_generation" or "player.rewards" or
+             "player.shops"))
+            throw new ArgumentException(
+                "PotionFactory rarity requests require a recognized source stream.",
+                nameof(request));
+
+        var (common, uncommon, rare) =
+            NativePotionFactoryRarityGridWeights();
+        var outcomes = new[]
+            {
+                new ChanceLawOutcomeV111("rarity:common", common),
+                new ChanceLawOutcomeV111("rarity:uncommon", uncommon),
+                new ChanceLawOutcomeV111("rarity:rare", rare)
+            }
+            .Where(outcome => outcome.Weight > 0).ToArray();
+        var conditioning = new
+        {
+            request,
+            rareInclusiveThreshold = 0.1f,
+            uncommonInclusiveThreshold = 0.35f,
+            common,
+            uncommon,
+            rare
+        };
+        return CreateNativeBoundaryLaw(
+            siteId, "unit_float_threshold", request.OwnerId,
+            request.Ordinal, NativePotionFactoryThresholdConditioningPolicyId,
+            CanonicalJson.Sha256(conditioning),
+            NativeUnitFloatThresholdSourceVerifiedProvenance,
+            outcomes, ChanceLawV111.SourceVerifiedStatus);
+    }
+
     private static ChanceLawV111 CreateDeclaredUnverifiedIndexLaw(
         string siteId, string ownerId, int ordinal,
         string conditioningPolicyId, object conditioning,
@@ -1904,13 +1960,8 @@ public static partial class ChanceLawEngineV111
             operationKind = "unit_float_threshold";
             policy = NativeMerchantThresholdConditioningPolicyId;
             provenance = NativeUnitFloatThresholdSourceVerifiedProvenance;
-            var rareWeight = NativeNextFloatGridCountAtOrBelow(0.1f);
-            var uncommonEndWeight =
-                NativeNextFloatGridCountAtOrBelow(0.35f);
-            var commonWeight = checked(
-                NativeNextDoubleGridSize - uncommonEndWeight);
-            var uncommonWeight = checked(
-                uncommonEndWeight - rareWeight);
+            var (commonWeight, uncommonWeight, rareWeight) =
+                NativePotionFactoryRarityGridWeights();
             conditioning = new
             {
                 siteId, ownerId, ordinal,
@@ -2295,10 +2346,8 @@ public static partial class ChanceLawEngineV111
             if (rarity is not null || excludedPotionIds.Length != 0)
                 throw new ArgumentException(
                     "Coffer rarity laws do not accept a model-pool prefix.");
-            var rare = NativeNextFloatGridCountAtOrBelow(0.1f);
-            var uncommonEnd = NativeNextFloatGridCountAtOrBelow(0.35f);
-            var common = checked(NativeNextDoubleGridSize - uncommonEnd);
-            var uncommon = checked(uncommonEnd - rare);
+            var (common, uncommon, rare) =
+                NativePotionFactoryRarityGridWeights();
             var conditioning = new
             {
                 actionFingerprint, request = floatRequest,
