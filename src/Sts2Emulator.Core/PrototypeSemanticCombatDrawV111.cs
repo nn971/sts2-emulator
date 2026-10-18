@@ -559,6 +559,13 @@ public sealed partial class PrototypeGameEngine
             stratagemSelectionPending: false);
 
         var combat = drawn.Combat;
+        var advanced = run with
+        {
+            Player = drawn.Player,
+            World = RequireWorld(run) with { Combat = combat }
+        };
+        var selected = ResumeControlledStratagemSelection(
+            advanced, combat, semanticDraw, continuation);
         if (automaticHandDrawRequested is { } requested)
         {
             if (!semanticDraw.AutomaticSemanticHandDrawSegment ||
@@ -566,21 +573,15 @@ public sealed partial class PrototypeGameEngine
                 requested <= 0)
                 throw new InvalidDataException(
                     "Automatic Stratagem draw cursor is inconsistent.");
-            run = CommitAutomaticHandDrawProgress(
-                run, drawn.Player, combat,
-                PrototypeAutomaticHandDrawProgressV111.SemanticDraw(
-                    requested, drawn.RemainingCount),
-                createCheckpoint: true);
-            combat = run.World!.Combat!;
+            var selectionWorld = RequireWorld(selected);
+            var selectionCombat = selectionWorld.Combat ??
+                throw new InvalidDataException(
+                    "Automatic Stratagem selection removed combat.");
+            selected = CommitAutomaticHandDrawStratagemSelection(
+                selected, selected.Player, selectionCombat,
+                drawn.RemainingCount, requested, createCheckpoint: true);
         }
-
-        var advanced = run with
-        {
-            Player = drawn.Player,
-            World = RequireWorld(run) with { Combat = combat }
-        };
-        return ResumeControlledStratagemSelection(
-            advanced, combat, semanticDraw, continuation);
+        return selected;
     }
 
     private static PrototypeChoiceResolutionContinuationState
@@ -714,7 +715,7 @@ public sealed partial class PrototypeGameEngine
         return 0;
     }
 
-    internal static int ExpectedSemanticStratagemSelectionCount(
+    internal static int ExpectedStratagemSelectionCount(
         CombatState combat)
     {
         int stacks = combat.PlayerPowers

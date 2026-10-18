@@ -151,12 +151,9 @@ public sealed partial class PrototypeGameEngine
             selection)
             throw new InvalidDataException(
                 "Stratagem did not create its expected draw-pile selection.");
-        var suspended = CommitAutomaticHandDrawProgress(
-            state, prompt.Player, prompt.Combat,
-            PrototypeAutomaticHandDrawProgressV111
-                .ControlledRecycleStratagem(remaining));
-        PrototypeStateInvariants.Validate(suspended);
-        return suspended;
+        return CommitAutomaticHandDrawStratagemSelection(
+            state, prompt.Player, prompt.Combat, remaining,
+            semanticRequested: null);
     }
 
     internal static RunState ResumeControlledRecycleStratagemSelection(

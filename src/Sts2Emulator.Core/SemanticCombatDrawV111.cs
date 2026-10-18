@@ -432,7 +432,7 @@ public sealed record SemanticCombatDrawV111(
                   draw.Amount == this.RemainingCount;
             if (!cursorMatches || this.RemainingCount <= 0 ||
                 selectionEvent.MaximumSelections !=
-                    PrototypeGameEngine.ExpectedSemanticStratagemSelectionCount(
+                    PrototypeGameEngine.ExpectedStratagemSelectionCount(
                         combat))
                 throw new InvalidDataException(
                     "Standalone Stratagem selection cursor is inconsistent.");
@@ -552,7 +552,7 @@ public static class SemanticCombatDrawEngineV111
         var decision = SemanticCardSelectionEngineV111.DescribePending(
             run, CanonicalJson.Sha256(run));
         int expectedSelections =
-            PrototypeGameEngine.ExpectedSemanticStratagemSelectionCount(combat);
+            PrototypeGameEngine.ExpectedStratagemSelectionCount(combat);
         if (decision.MaximumSelections != expectedSelections ||
             decision.MinimumSelections != expectedSelections)
             throw new InvalidDataException(

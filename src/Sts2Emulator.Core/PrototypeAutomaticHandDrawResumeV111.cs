@@ -7,6 +7,74 @@ namespace Sts2Emulator.Core;
 /// </summary>
 public sealed partial class PrototypeGameEngine
 {
+    private static RunState CommitAutomaticHandDrawStratagemSelection(
+        RunState state,
+        PlayerState player,
+        CombatState combat,
+        int remaining,
+        int? semanticRequested,
+        bool createCheckpoint = false)
+    {
+        var cursor = combat.AutomaticPipelineContinuation;
+        var choice = combat.PendingChoice;
+        int expectedSelections = ExpectedStratagemSelectionCount(combat);
+        if (!ControlledChanceGuardV111.Active || remaining <= 0 ||
+            combat.PendingKnowledgeDemonChoice is not null ||
+            choice is not
+                { ChoiceId: "select_cards",
+                  Selection.SourceZone: PrototypeCardZone.DrawPile } ||
+            expectedSelections <= 0 ||
+            (cursor is not null &&
+             (!cursor.Mechanics.IsAtStep(
+                  PrototypeAutomaticStepKind.DrawPlayerHand) ||
+              cursor.OpeningStage is not null ||
+              cursor.PendingPostDispatchEventKind is not null)))
+            throw new InvalidDataException(
+                "Automatic Stratagem selection lost its hand-draw boundary.");
+        if (choice!.Selection.MinSelections != expectedSelections ||
+            choice.Selection.MaxSelections != expectedSelections)
+            throw new InvalidDataException(
+                "Automatic Stratagem selection count differs from its power stacks.");
+
+        PrototypeAutomaticHandDrawProgressV111 progress;
+        if (semanticRequested is { } requested)
+        {
+            if (requested <= 0 || combat.SemanticDeck is not
+                    { Mode: SemanticDeckStateV111.NatureMode, Pending: null } ||
+                choice!.SemanticStratagemDrawSelection ||
+                !choice.AutomaticSemanticStratagemDrawSelection ||
+                (cursor?.ControlledSemanticDrawRequested is { } savedRequested &&
+                 savedRequested != requested) ||
+                cursor?.ControlledDrawRemaining is not null ||
+                cursor?.ControlledDrawCostRemaining is not null ||
+                cursor?.ControlledSemanticBeforeHandDrawPending == true ||
+                cursor?.ControlledBeforeHandDrawHookChoicePending == true)
+                throw new InvalidDataException(
+                    "Semantic automatic Stratagem cursor is inconsistent.");
+            progress = PrototypeAutomaticHandDrawProgressV111.SemanticDraw(
+                requested, remaining);
+        }
+        else
+        {
+            if (combat.SemanticDeck is not null ||
+                choice!.AutomaticSemanticStratagemDrawSelection ||
+                choice.SemanticStratagemDrawSelection ||
+                cursor?.ControlledSemanticDrawRequested is not null ||
+                cursor?.ControlledSemanticDrawRemaining is not null ||
+                cursor?.ControlledSemanticBeforeHandDrawPending == true ||
+                cursor?.ControlledBeforeHandDrawHookChoicePending == true)
+                throw new InvalidDataException(
+                    "Controlled automatic Stratagem cursor is inconsistent.");
+            progress = PrototypeAutomaticHandDrawProgressV111
+                .ControlledRecycleStratagem(remaining);
+        }
+
+        var suspended = CommitAutomaticHandDrawProgress(
+            state, player, combat, progress, createCheckpoint);
+        PrototypeStateInvariants.Validate(suspended);
+        return suspended;
+    }
+
     private static RunState SuspendAutomaticHandDrawAtCardDrawnChoice(
         RunState state,
         PlayerState player,
