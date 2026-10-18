@@ -418,6 +418,11 @@ public static partial class ChanceLawEngineV111
         "event.reward.offer_potion.model.index_draw"
     ];
 
+    private static readonly string[] LegacyEliteRelicModelQuerySites =
+    [
+        "reward.elite_relic.model"
+    ];
+
     private sealed record NativeBoundedIntegerLawSiteV111(
         string StreamId, string Boundary);
 
@@ -501,6 +506,9 @@ public static partial class ChanceLawEngineV111
 
     public static string[] LegacyEventOfferPotionModelQuerySiteIds =>
         (string[])LegacyEventOfferPotionModelQuerySites.Clone();
+
+    public static string[] LegacyEliteRelicModelQuerySiteIds =>
+        (string[])LegacyEliteRelicModelQuerySites.Clone();
 
     /// <summary>
     /// Query the retained legacy card-rarity integer ticket after the source
@@ -1177,6 +1185,50 @@ public static partial class ChanceLawEngineV111
             "legacy-event-offer-potion-model-pool-v1", conditioning,
             "Equal index weights over the ordered prototype custom-reward " +
             "potion pool; pool completeness and Native parity remain " +
+            "unverified.", outcomes, operationKind: "choose_index");
+    }
+
+    /// <summary>
+    /// Query the legacy Elite relic model draw over its fixed ordered pool.
+    /// Configured Native relic-grab-bag generation uses a separate route.
+    /// </summary>
+    public static ChanceLawV111 QueryLegacyEliteRelicModel(
+        int act, int floor, int ordinal)
+    {
+        if (act < 1)
+            throw new ArgumentOutOfRangeException(nameof(act));
+        if (floor < 0)
+            throw new ArgumentOutOfRangeException(nameof(floor));
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+
+        const string siteId = "reward.elite_relic.model";
+        const string streamId = "reward";
+        var pool = PrototypeContent.RelicPool;
+        if (pool.Length == 0)
+            throw new InvalidOperationException(
+                "The legacy Elite relic pool is empty.");
+        var poolFingerprint = CanonicalJson.Sha256(pool);
+        var ownerId = $"act:{act}:floor:{floor}:pool:" + poolFingerprint;
+        var outcomes = pool.Select(relicId =>
+            new ChanceLawOutcomeV111("relic:" + relicId, 1L))
+            .ToArray();
+        var conditioning = new
+        {
+            siteId,
+            streamId,
+            ownerId,
+            ordinal,
+            act,
+            floor,
+            orderedRelicPool = pool,
+            poolFingerprint
+        };
+        return CreateLegacyCategoricalLaw(
+            siteId, streamId, ownerId, ordinal,
+            "legacy-elite-relic-model-pool-v1", conditioning,
+            "Equal index weights over the ordered prototype Elite relic pool; " +
+            "source-pool fidelity and Native relic-bag parity remain " +
             "unverified.", outcomes, operationKind: "choose_index");
     }
 

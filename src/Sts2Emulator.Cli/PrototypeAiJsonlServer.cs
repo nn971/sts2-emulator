@@ -4518,6 +4518,36 @@ internal static class PrototypeAiJsonlServer
                             });
                             break;
                         }
+                        if (siteId == "reward.elite_relic.model")
+                        {
+                            RejectChanceLawQueryParameters(
+                                request, "act", "floor", "support_count");
+                            var eliteRelicAct = OptionalInt(request, "act") ??
+                                throw new ArgumentException(
+                                    "Legacy Elite relic model law requires act.");
+                            var eliteRelicFloor = OptionalInt(
+                                request, "floor") ??
+                                throw new ArgumentException(
+                                    "Legacy Elite relic model law requires floor.");
+                            law = ChanceLawEngineV111
+                                .QueryLegacyEliteRelicModel(
+                                    eliteRelicAct, eliteRelicFloor, ordinal);
+                            var supportCount = OptionalInt(
+                                request, "support_count");
+                            if (supportCount is not null &&
+                                supportCount != law.Outcomes.Length)
+                                throw new ArgumentException(
+                                    "Legacy Elite relic model support_count must match the ordered prototype relic pool.");
+                            Write(new
+                            {
+                                requestId,
+                                ok = true,
+                                chanceLawSchemaId =
+                                    ChanceLawV111.CurrentSchemaId,
+                                law
+                            });
+                            break;
+                        }
                         if (ChanceLawEngineV111
                             .IsSupportedAncientOfferQuerySite(siteId))
                         {
