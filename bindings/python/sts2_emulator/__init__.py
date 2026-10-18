@@ -670,6 +670,35 @@ class State:
         return ReferenceNatureNativeEventRelicSession.from_wire(
             self.session, result["result"])
 
+    def begin_reference_nature_native_shovel(
+            self, nature_seed: int | None = None):
+        """Control the rarity and identity for a configured Native Shovel dig."""
+        if self.session.capabilities.get(
+                "referenceNatureNativeShovelSessionSchemaId") != (
+                "sts2-v111-reference-nature-native-shovel-session-v1"):
+            raise EmulatorError(
+                "Emulator does not expose ReferenceNature Native Shovel sessions")
+        site_ids = (
+            "relic_grab_bag.rarity.unit_float",
+            "treasure.relic_grab_bag.model.index_draw")
+        if not all(self.session.supports_reference_nature_site(
+                site_id, session="native_shovel")
+                for site_id in site_ids):
+            raise EmulatorError(
+                "No ReferenceNature Native Shovel session is advertised")
+        if (nature_seed is not None and
+                (not isinstance(nature_seed, int) or
+                 isinstance(nature_seed, bool) or nature_seed < 0 or
+                 nature_seed > 0xFFFFFFFFFFFFFFFF)):
+            raise ValueError("nature_seed must be an unsigned 64-bit integer")
+        payload = {"state_handle": self.handle}
+        if nature_seed is not None:
+            payload["nature_seed"] = nature_seed
+        result = self.session.call(
+            "reference_nature_native_shovel_begin", **payload)
+        return ReferenceNatureNativeShovelSession.from_wire(
+            self.session, result["result"])
+
     def begin_reference_nature_endless_conveyor_dish(
             self, action_id: str, nature_seed: int | None = None):
         """Begin Nature control of one weighted Conveyor roll-producing action."""
@@ -1838,6 +1867,78 @@ class ReferenceNatureNativeEventRelicSession:
 
     def release(self):
         return self.session.release_reference_nature_native_event_relic_many(
+            [self])
+
+
+@dataclass(frozen=True)
+class ReferenceNatureNativeShovelSession:
+    """Atomic Native Shovel Reward and ReferenceNature sampler cursor."""
+    session: "Session"
+    handle: str
+    fingerprint: str
+    state_handle: str | None
+    action_id: str
+    site_id: str
+    run_phase: str
+    boundary: str
+    next_ordinal: int
+    pending: dict | None
+    decision_transcript: list
+    nature_sample_count: int
+
+    @classmethod
+    def from_wire(cls, session, payload):
+        if payload.get("schemaId") != (
+                "sts2-v111-reference-nature-native-shovel-session-v1"):
+            raise EmulatorError(
+                "Unsupported ReferenceNature Native Shovel session schema")
+        return cls(
+            session, payload["referenceNatureNativeShovelHandle"],
+            payload["fingerprint"], payload["stateHandle"],
+            payload["actionId"], payload["siteId"], payload["runPhase"],
+            payload["boundary"], payload["nextOrdinal"], payload["pending"],
+            payload["decisionTranscript"], payload["natureSampleCount"])
+
+    @property
+    def complete(self):
+        return self.boundary == "committed"
+
+    @property
+    def state(self):
+        if self.state_handle is None:
+            raise EmulatorError("Native Shovel has not committed")
+        return State(self.session, self.state_handle)
+
+    def status(self):
+        result = self.session.call(
+            "reference_nature_native_shovel_status",
+            reference_nature_native_shovel_handle=self.handle)
+        return ReferenceNatureNativeShovelSession.from_wire(
+            self.session, result["result"])
+
+    def resolve_next(self):
+        """Sample the rarity or identity, committing the dig after both draws."""
+        result = self.session.call(
+            "reference_nature_native_shovel_resolve_next",
+            reference_nature_native_shovel_handle=self.handle,
+            fingerprint=self.fingerprint)
+        return ReferenceNatureNativeShovelSession.from_wire(
+            self.session, result["result"])
+
+    def fork(self):
+        result = self.session.call(
+            "reference_nature_native_shovel_fork",
+            reference_nature_native_shovel_handle=self.handle)
+        return ReferenceNatureNativeShovelSession.from_wire(
+            self.session, result["result"])
+
+    def save_snapshot(self):
+        return self.session.call(
+            "reference_nature_native_shovel_save",
+            reference_nature_native_shovel_handle=self.handle)["snapshot"]
+
+    def release(self):
+        return self.session.release_reference_nature_native_shovel_many(
             [self])
 
 
@@ -3027,6 +3128,7 @@ class Session:
             "native_shuffle": "referenceNatureNativeEventShuffleSiteIds",
             "native_event_gold": "referenceNatureNativeEventGoldSiteIds",
             "native_event_relic": "referenceNatureNativeEventRelicSiteIds",
+            "native_shovel": "referenceNatureNativeShovelSiteIds",
             "endless_conveyor": "referenceNatureEndlessConveyorSiteIds",
             "glory_reflections": "referenceNatureGloryReflectionsSiteIds",
             "infested_automaton": "referenceNatureInfestedAutomatonSiteIds",
@@ -3038,7 +3140,7 @@ class Session:
         }
         if session != "any" and session not in fields:
             raise ValueError(
-                "session must be semantic, run_action, event_choice, ancient_offer, neow_offer, trash_heap, tablet_of_truth, trial, event_shuffle, native_shuffle, native_event_gold, native_event_relic, endless_conveyor, glory_reflections, infested_automaton, punch_off_reward, punch_off_fight, merchant, treasure, combat_reward, or any")
+                "session must be semantic, run_action, event_choice, ancient_offer, neow_offer, trash_heap, tablet_of_truth, trial, event_shuffle, native_shuffle, native_event_gold, native_event_relic, native_shovel, endless_conveyor, glory_reflections, infested_automaton, punch_off_reward, punch_off_fight, merchant, treasure, combat_reward, or any")
         coverage = self.stochastic_session_coverage
         if not isinstance(coverage, dict) or coverage.get("schemaId") != (
                 "sts2-v111-stochastic-session-coverage-v1"):
@@ -3528,6 +3630,17 @@ class Session:
         return ReferenceNatureNativeEventRelicSession.from_wire(
             self, result["result"])
 
+    def load_reference_nature_native_shovel_snapshot(self, snapshot: str):
+        if self.capabilities.get(
+                "referenceNatureNativeShovelSessionSchemaId") != (
+                "sts2-v111-reference-nature-native-shovel-session-v1"):
+            raise EmulatorError(
+                "Emulator does not expose ReferenceNature Native Shovel sessions")
+        result = self.call(
+            "reference_nature_native_shovel_load", snapshot=snapshot)
+        return ReferenceNatureNativeShovelSession.from_wire(
+            self, result["result"])
+
     def release_reference_nature_native_event_gold_many(self, sessions):
         sessions = list(sessions)
         if any(item.session is not self for item in sessions):
@@ -3546,6 +3659,16 @@ class Session:
         return self.call(
             "reference_nature_native_event_relic_release_many",
             reference_nature_native_event_relic_handles=[
+                item.handle for item in sessions])["released"]
+
+    def release_reference_nature_native_shovel_many(self, sessions):
+        sessions = list(sessions)
+        if any(item.session is not self for item in sessions):
+            raise ValueError(
+                "ReferenceNature Native Shovel handle belongs to another session")
+        return self.call(
+            "reference_nature_native_shovel_release_many",
+            reference_nature_native_shovel_handles=[
                 item.handle for item in sessions])["released"]
 
     def load_reference_nature_endless_conveyor_snapshot(self, snapshot: str):
