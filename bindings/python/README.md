@@ -535,6 +535,13 @@ fixed relic effect or an unrelated stochastic site remain unsupported. Use
 index draws use configured Native laws; relic identity pools remain
 `UNVERIFIED`. See the [Native event relic contract](../../docs/REFERENCE_NATURE_NATIVE_EVENT_RELIC_D3.md).
 
+For a Large Capsule offered by Native Neow's Bones, call
+`State.begin_reference_nature_native_neow_relic_pickup(action_id, nature_seed=None)`
+with the current legal relic-pickup action ID. The session resolves the two
+random relic rarity and identity pairs triggered by Large Capsule, then commits
+the pickup and Nature cursor together. Other Neow relic-pickup effects remain
+outside this boundary.
+
 For a configured Native Rest Shovel dig, call
 `State.begin_reference_nature_native_shovel(nature_seed=None)`. The session
 resolves one rarity and one relic identity request, then commits the ordinary

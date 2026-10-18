@@ -1229,8 +1229,9 @@ internal static class PrototypeAiJsonlServer
             string handle, string? parent = null)
         {
             var law = session.PendingLaw;
-            var choiceId = session.Action.ReadPayload<EventChoicePayload>()
-                .ChoiceId;
+            var choiceId = session.Action.Kind == "event_choice"
+                ? session.Action.ReadPayload<EventChoicePayload>().ChoiceId
+                : null;
             return new
             {
                 ok = true,
@@ -1246,6 +1247,8 @@ internal static class PrototypeAiJsonlServer
                     PrototypeNativeRelicGrabBag.NativeTreasureModelSiteId,
                 eventId = session.Origin.World?.Event?.EventId,
                 choiceId,
+                actionId = PrototypeAiEnvironment.StableActionId(
+                    session.Action),
                 runPhase = session.Run.Phase.ToString(),
                 boundary = session.Complete ? "committed" : "nature",
                 nextOrdinal = session.NextOrdinal,
@@ -7807,9 +7810,24 @@ internal static class PrototypeAiJsonlServer
                     case "reference_nature_native_event_relic_begin":
                     {
                         var source = RequireState(request);
-                        var choiceId = RequiredString(request, "choice_id");
-                        var action = GameAction.Create("event_choice",
-                            new EventChoicePayload(choiceId));
+                        GameAction action;
+                        if (OptionalString(request, "action_id") is { } actionId)
+                        {
+                            var actionView = environment.Observe(source)
+                                .LegalActions.SingleOrDefault(candidate =>
+                                    StringComparer.Ordinal.Equals(
+                                        candidate.ActionId, actionId))
+                                ?? throw new InvalidOperationException(
+                                    "Native event relic begin requires a current legal action.");
+                            action = GameAction.Create(
+                                actionView.Kind, actionView.Payload);
+                        }
+                        else
+                        {
+                            var choiceId = RequiredString(request, "choice_id");
+                            action = GameAction.Create("event_choice",
+                                new EventChoicePayload(choiceId));
+                        }
                         var seed = OptionalULong(request, "nature_seed");
                         var session = seed is { } natureSeed
                             ? ReferenceNatureNativeEventRelicSessionV111.Begin(

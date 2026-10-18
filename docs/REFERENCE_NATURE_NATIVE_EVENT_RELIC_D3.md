@@ -12,11 +12,18 @@ contributes one rarity request and one identity request. The ordinary event
 choice, relic effects, completed reward, and ReferenceNature cursor form one
 saved boundary.
 
+The same session also accepts the legal Native `take_reward_relic` action for
+Large Capsule when it is offered by Neow's Bones. It captures the two
+`GainRandomRelic` effects that run after the Neow relic is acquired, including
+both rarity and identity requests, and commits the selected relic and its
+follow-up rewards with the Nature cursor.
+
 Event selection happens before this boundary and keeps its current provider.
-The session rejects another event, route, choice, or stochastic site outside
-the relic rarity and relic model sites. Choices with another fixed relic
-effect are excluded because their effect ordering changes the live owned
-relic support. Until all expected requests resolve, its published run remains
+The session rejects another event, route, choice, Neow pickup, or stochastic
+site outside the declared relic rarity and relic model requests. Event choices
+with another fixed relic effect are excluded because their effect ordering
+changes the live owned relic support. Other Neow pickup triggers remain outside
+this boundary. Until all expected requests resolve, its published run remains
 at the projected origin. On completion it commits the event result and Nature
 cursor together.
 
@@ -48,8 +55,8 @@ resolve, fork, save, load, release, and the committed playable run.
 ## Scope limits
 
 The session does not cover legacy event rewards, choices with additional fixed
-relic effects, or choices that request a non-relic random operation. It does
-not establish source-pool completeness, hidden queue identity probabilities,
-event-selection parity, seeded Native result parity, or Native cursor parity.
-The Native reference mod and Fidelity Inspector remain needed for those
-source-evidence tasks.
+relic effects, other Neow relic-pickup effects, or choices that request a
+non-relic random operation. It does not establish source-pool completeness,
+hidden queue identity probabilities, event-selection parity, seeded Native
+result parity, or Native cursor parity. The Native reference mod and Fidelity
+Inspector remain needed for those source-evidence tasks.
