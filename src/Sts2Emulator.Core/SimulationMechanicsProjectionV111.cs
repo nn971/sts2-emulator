@@ -10,7 +10,7 @@ public sealed record SimulationMechanicsComparisonV111(
     bool DifferencesTruncated)
 {
     public const string SchemaId =
-        "sts2-v111-simulation-mechanics-comparison-v3";
+        "sts2-v111-simulation-mechanics-comparison-v4";
 
     public bool Equivalent => StringComparer.Ordinal.Equals(
         LeftFingerprint, RightFingerprint);
@@ -34,7 +34,21 @@ public sealed record SimulationMechanicsProjectionV111(
 /// </summary>
 public sealed record SimulationDrawContinuationProjectionV111(
     PrototypeControlledSemanticDrawV111? SemanticDraw,
-    SimulationDrawCostContinuationProjectionV111? DrawCost);
+    SimulationDrawCostContinuationProjectionV111? DrawCost,
+    SimulationDrawInsertionContinuationProjectionV111? DrawInsertion);
+
+/// <summary>Provider-independent mechanics cursor for a deferred draw-pile
+/// insertion. The eligible pile, candidate support and random request identity
+/// remain provider data and are excluded.</summary>
+public sealed record SimulationDrawInsertionContinuationProjectionV111(
+    PrototypeQueuedOperation Operation,
+    string Stage,
+    string? SelectedCardId,
+    PrototypeAfterShuffleRelicInsertionV111? ActiveAfterShuffleRelic,
+    PrototypeAfterShuffleRelicInsertionV111[] CompletedAfterShuffleRelics,
+    PrototypeAfterShuffleRelicInsertionV111[] RemainingAfterShuffleRelics,
+    PrototypePersonalHiveDamageContinuationV111? PersonalHiveDamage,
+    int? AutomaticHandDrawRemaining);
 
 /// <summary>Mechanics progress for a card already drawn and awaiting a cost
 /// choice. The cost bound and provider support are intentionally omitted.
@@ -64,12 +78,27 @@ public static class SimulationMechanicsProjectionEngineV111
         {
             var pendingChoice = combat.PendingChoice;
             var choiceDraw = pendingChoice?.ControlledSemanticDraw;
-            var insertionDraw = pendingChoice?.ControlledDrawInsertion
-                ?.SemanticDrawContinuation;
+            var insertion = pendingChoice?.ControlledDrawInsertion;
+            var insertionDraw = insertion?.SemanticDrawContinuation;
             if (choiceDraw is not null && insertionDraw is not null)
                 throw new InvalidDataException(
                     "A pending combat choice has overlapping semantic draw continuations.");
             var semanticDraw = (choiceDraw ?? insertionDraw)?.Fork();
+            var insertionProgress = insertion is null
+                ? null
+                : new SimulationDrawInsertionContinuationProjectionV111(
+                    MechanicsOperation(insertion.Operation),
+                    insertion.Stage,
+                    insertion.SelectedCardId,
+                    insertion.AfterShuffleRelic is null
+                        ? null : insertion.AfterShuffleRelic with { },
+                    (insertion.CompletedAfterShuffleRelics ?? [])
+                        .Select(item => item with { }).ToArray(),
+                    (insertion.RemainingAfterShuffleRelics ?? [])
+                        .Select(item => item with { }).ToArray(),
+                    MechanicsHiveDamage(
+                        insertion.PersonalHiveDamageContinuation),
+                    insertion.AutomaticHandDrawRemaining);
             var drawCost = pendingChoice?.ControlledDrawCost;
             var costProgress = drawCost is null
                 ? null
@@ -77,10 +106,11 @@ public static class SimulationMechanicsProjectionEngineV111
                     drawCost.CardInstanceId, drawCost.RemainingCount,
                     drawCost.FromHandDraw, drawCost.EventDepth,
                     drawCost.Stage);
-            if (semanticDraw is not null || costProgress is not null)
+            if (semanticDraw is not null || costProgress is not null ||
+                insertionProgress is not null)
                 pendingDrawContinuation =
                     new SimulationDrawContinuationProjectionV111(
-                        semanticDraw, costProgress);
+                        semanticDraw, costProgress, insertionProgress);
 
             var pipeline = combat.AutomaticPipelineContinuation;
             if (pipeline is not null)
@@ -303,4 +333,23 @@ public static class SimulationMechanicsProjectionEngineV111
                 ControlledRandomPileCard = null,
                 ControlledSemanticDraw = null
             };
+
+    private static PrototypeQueuedOperation MechanicsOperation(
+        PrototypeQueuedOperation operation) => operation with
+    {
+        // The resolver mode is provider policy; the operation and selected
+        // mechanics parameters remain part of the comparison.
+        GeneratedChoiceUsesNativeCardGenerationRng = false,
+        DeferredDrawnCardInstanceIds = operation.DeferredDrawnCardInstanceIds
+            is null ? null : (long[])operation.DeferredDrawnCardInstanceIds.Clone()
+    };
+
+    private static PrototypePersonalHiveDamageContinuationV111?
+        MechanicsHiveDamage(
+            PrototypePersonalHiveDamageContinuationV111? continuation) =>
+        continuation is null ? null : continuation with
+        {
+            Operation = MechanicsOperation(continuation.Operation),
+            SplashTarget = continuation.SplashTarget.Fork()
+        };
 }
