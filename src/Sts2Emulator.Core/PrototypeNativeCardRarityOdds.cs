@@ -71,17 +71,26 @@ public static class PrototypeNativeCardRarityOdds
         return (rare, uncommon, common);
     }
 
-    internal static (int Rare, int UncommonEnd)
-        MerchantFloatThresholds(int offsetBasisPoints, int ascension)
+    /// <summary>Return the pinned source thresholds in integer basis points
+    /// for a valid persistent offset and card source.</summary>
+    public static (int Rare, int UncommonEnd) NativeFloatThresholds(
+        int offsetBasisPoints, int ascension,
+        PrototypeNativeCardOddsSource source)
     {
         if (offsetBasisPoints is < InitialOffsetBasisPoints or
-            > MaximumOffsetBasisPoints)
+            > MaximumOffsetBasisPoints || offsetBasisPoints % 50 != 0)
             throw new ArgumentOutOfRangeException(nameof(offsetBasisPoints));
-        var (rareBase, uncommonBase) = Thresholds(
-            ascension, PrototypeNativeCardOddsSource.Shop);
-        var rare = checked(rareBase + offsetBasisPoints);
+        var (rareBase, uncommonBase) = Thresholds(ascension, source);
+        var rare = checked(rareBase + (source ==
+            PrototypeNativeCardOddsSource.BossEncounter
+                ? 0 : offsetBasisPoints));
         return (rare, checked(rare + uncommonBase));
     }
+
+    internal static (int Rare, int UncommonEnd)
+        MerchantFloatThresholds(int offsetBasisPoints, int ascension) =>
+        NativeFloatThresholds(offsetBasisPoints, ascension,
+            PrototypeNativeCardOddsSource.Shop);
 
     private static int RareThreshold(
         int offsetBasisPoints, PrototypeNativeCardOddsSource source,

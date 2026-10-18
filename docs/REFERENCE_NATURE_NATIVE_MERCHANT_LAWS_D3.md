@@ -8,17 +8,21 @@ versioned `chance_law_query` coverage and
 
 ## Boundary and inputs
 
-Queries require a run at `MapChoice`, a native run RNG bundle, native regional
-systems, and at least one currently available Shop node. The query describes
-the merchant boundary conditional on entering that Shop. For existing offer
-and price laws, `ordinal` is the zero-based occurrence within the named offer
-group. Card-rarity and
-card-model laws require `card_type`; a card-model query also requires the
-preceding rarity result. Potion-rarity laws use offer ordinals 0–2; a
-potion-model query requires the preceding rarity and exactly one unique
-`excluded_potion_ids` entry for each preceding potion offer. These values are
-explicit conditional inputs and are fingerprinted; the query never infers a
-selected result from Native RNG state.
+Merchant offer and price queries require a run at `MapChoice`, a native run
+RNG bundle, native regional systems, and at least one currently available Shop
+node. They describe the merchant boundary conditional on entering that Shop.
+For existing offer and price laws, `ordinal` is the zero-based occurrence
+within the named offer group. Card-rarity and card-model merchant laws require
+`card_type`; a card-model query also requires the preceding rarity result.
+Potion-rarity laws use offer ordinals 0–2; a potion-model query requires the
+preceding rarity and exactly one unique `excluded_potion_ids` entry for each
+preceding potion offer. These values are explicit conditional inputs and are
+fingerprinted; the query never infers a selected result from Native RNG state.
+
+The shared `card_rarity.roll.unit_float` site also has a standalone query mode
+for any source. It requires the caller to declare source, current offset,
+Ascension, owner ID, and stream ordinal; it returns the raw rarity law before
+available-pool fallback and does not inspect the run or Native RNG state.
 
 For Shop generation, the session begins from a current legal `choose_map_node`
 action for a configured Shop. For the Alchemical Coffer effect, it begins from

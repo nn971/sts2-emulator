@@ -3800,6 +3800,10 @@ internal static class PrototypeAiJsonlServer
                             request, "sale_reprice");
                         var ownerIdParameter = OptionalString(
                             request, "owner_id");
+                        var cardRaritySourceParameter = OptionalString(
+                            request, "card_rarity_source");
+                        var currentOffsetBasisPoints = OptionalInt(
+                            request, "current_offset_basis_points");
                         var excludedPotionIds = OptionalStringArray(
                             request, "excluded_potion_ids");
                         var offerOrdinal = OptionalInt(
@@ -3829,7 +3833,47 @@ internal static class PrototypeAiJsonlServer
                             if (priorIndices is not null)
                                 throw new ArgumentException(
                                     "prior_indices apply only to Ancient offer shuffle queries.");
-                            if (siteId == "shop.merchant.card_upgrade_roll.unit_float")
+                            if (siteId == "card_rarity.roll.unit_float" &&
+                                (cardRaritySourceParameter is not null ||
+                                 currentOffsetBasisPoints is not null ||
+                                 OptionalInt(request, "ascension") is not null ||
+                                 ownerIdParameter is not null))
+                            {
+                                RejectChanceLawQueryParameters(
+                                    request, "card_rarity_source",
+                                    "current_offset_basis_points", "ascension",
+                                    "owner_id", "support_count");
+                                if (!Enum.TryParse<
+                                        PrototypeNativeCardOddsSource>(
+                                        cardRaritySourceParameter,
+                                        ignoreCase: false,
+                                        out var cardRaritySource) ||
+                                    !Enum.IsDefined(cardRaritySource))
+                                    throw new ArgumentException(
+                                        "card_rarity_source must be RegularEncounter, EliteEncounter, BossEncounter, or Shop.");
+                                var currentOffset =
+                                    currentOffsetBasisPoints ??
+                                    throw new ArgumentException(
+                                        "Native card-rarity law requires current_offset_basis_points.");
+                                var cardRarityAscension = OptionalInt(
+                                    request, "ascension") ??
+                                    throw new ArgumentException(
+                                        "Native card-rarity law requires ascension.");
+                                var cardRarityOwner = ownerIdParameter ??
+                                    throw new ArgumentException(
+                                        "Native card-rarity law requires owner_id.");
+                                law = ChanceLawEngineV111.QueryNativeCardRarity(
+                                    cardRaritySource, currentOffset,
+                                    cardRarityAscension, cardRarityOwner,
+                                    ordinal);
+                                var supportCount = OptionalInt(
+                                    request, "support_count");
+                                if (supportCount is not null &&
+                                    supportCount != law.Outcomes.Length)
+                                    throw new ArgumentException(
+                                        "Card-rarity support_count must match the declared source, offset, and Ascension.");
+                            }
+                            else if (siteId == "shop.merchant.card_upgrade_roll.unit_float")
                             {
                                 if (cardType is not null || rarity is not null ||
                                     cardId is not null || potionId is not null ||
@@ -7693,7 +7737,8 @@ internal static class PrototypeAiJsonlServer
             "relic_candidate_ids", "excluded_relic_ids", "first_boss",
             "ascension", "act", "include_darv", "hive_receives_darv",
             "room", "gold_proportion", "current_thousandths", "elite",
-            "forced"
+            "forced", "card_rarity_source",
+            "current_offset_basis_points"
         ];
         var unsupported = optionalFields.Where(field =>
             !allowed.Contains(field) && request.TryGetProperty(field, out _))

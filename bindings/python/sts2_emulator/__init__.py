@@ -45,7 +45,8 @@ class State:
                          include_darv=None, hive_receives_darv=None,
                          room=None, gold_proportion=None,
                          current_thousandths=None, elite=None,
-                         forced=None):
+                         forced=None, card_rarity_source=None,
+                         current_offset_basis_points=None):
         """Read a pre-outcome law; native event queries may need action_id.
 
         Reflections card-pick laws use action_id="touch_mirror" and the
@@ -63,6 +64,8 @@ class State:
         Elite and Boss queries use fixed room bounds and need no proportion.
         Combat potion-odds laws require current_thousandths, elite, and forced;
         a forced reward has no odds draw and is rejected.
+        Direct card-rarity laws require card_rarity_source, current offset,
+        Ascension, and owner_id; outcomes are raw rarities before pool fallback.
         Repy potion laws use ordinal 0 or 1 and prior_indices containing the
         complete relic-shuffle prefix plus any earlier potion index.
         """
@@ -171,6 +174,30 @@ class State:
                 current_thousandths, elite, forced)):
             raise ValueError(
                 "potion odds parameters apply only to reward.potion_odds.unit_float")
+        if site_id == "card_rarity.roll.unit_float" and (
+                card_rarity_source is not None or
+                current_offset_basis_points is not None):
+            if card_rarity_source not in (
+                    "RegularEncounter", "EliteEncounter",
+                    "BossEncounter", "Shop"):
+                raise ValueError(
+                    "card_rarity_source must be RegularEncounter, EliteEncounter, BossEncounter, or Shop")
+            if type(current_offset_basis_points) is not int or \
+                    not -500 <= current_offset_basis_points <= 4000 or \
+                    current_offset_basis_points % 50 != 0:
+                raise ValueError(
+                    "current_offset_basis_points must be a 50-basis-point value in [-500, 4000]")
+            if ascension is None:
+                raise ValueError("Native card-rarity laws require ascension")
+            if owner_id is None:
+                raise ValueError("Native card-rarity laws require owner_id")
+            payload["card_rarity_source"] = card_rarity_source
+            payload["current_offset_basis_points"] = \
+                current_offset_basis_points
+        elif card_rarity_source is not None or \
+                current_offset_basis_points is not None:
+            raise ValueError(
+                "card-rarity source parameters apply only to card_rarity.roll.unit_float")
         if offer_ordinal is not None:
             if type(offer_ordinal) is not int or offer_ordinal < 0:
                 raise ValueError(

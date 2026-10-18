@@ -1433,6 +1433,56 @@ public static partial class ChanceLawEngineV111
             outcomes.ToArray(), ChanceLawV111.SourceVerifiedStatus);
     }
 
+    /// <summary>
+    /// Query one source-conditioned Native card-rarity float threshold.
+    /// Outcomes are the raw rolled rarity before CardFactory's available-tier
+    /// fallback. The owner and stream ordinal are caller-declared.
+    /// </summary>
+    public static ChanceLawV111 QueryNativeCardRarity(
+        PrototypeNativeCardOddsSource source, int currentOffsetBasisPoints,
+        int ascension, string ownerId, int ordinal)
+    {
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+        ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
+        if (!Enum.IsDefined(source))
+            throw new ArgumentOutOfRangeException(nameof(source));
+
+        var (rareThreshold, uncommonEnd) =
+            PrototypeNativeCardRarityOdds.NativeFloatThresholds(
+                currentOffsetBasisPoints, ascension, source);
+        var weights = rareThreshold >= 10000
+            ? (Rare: NativeNextDoubleGridSize, Uncommon: 0L, Common: 0L)
+            : NativeCardRarityGridWeights(rareThreshold, uncommonEnd);
+        var outcomes = new[]
+            {
+                new ChanceLawOutcomeV111("rarity:rare", weights.Rare),
+                new ChanceLawOutcomeV111("rarity:uncommon", weights.Uncommon),
+                new ChanceLawOutcomeV111("rarity:common", weights.Common)
+            }
+            .Where(outcome => outcome.Weight > 0).ToArray();
+        const string siteId = "card_rarity.roll.unit_float";
+        var conditioning = new
+        {
+            siteId,
+            streamId = NativePlayerRngV111.RewardsStreamId,
+            ownerId,
+            ordinal,
+            source,
+            currentOffsetBasisPoints,
+            ascension,
+            rareThreshold,
+            uncommonEnd,
+            rawRarityBeforeAvailableTierFallback = true
+        };
+        return CreateNativeBoundaryLaw(
+            siteId, "unit_float_threshold", ownerId, ordinal,
+            "native-card-rarity-source-threshold-v1",
+            CanonicalJson.Sha256(conditioning),
+            NativeUnitFloatThresholdSourceVerifiedProvenance,
+            outcomes, ChanceLawV111.SourceVerifiedStatus);
+    }
+
     private static ChanceLawV111 CreateDeclaredUnverifiedIndexLaw(
         string siteId, string ownerId, int ordinal,
         string conditioningPolicyId, object conditioning,

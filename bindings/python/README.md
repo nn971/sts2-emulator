@@ -125,6 +125,24 @@ non-forced branch. It counts exact source-rounded `NextFloat()` grid inputs
 below the source threshold. White Beast Statue forced rewards bypass this draw;
 stream-prefix validation and cursor parity remain open.
 
+Card-rarity thresholds can be queried for an explicit source and saved odds
+state. The outcome is the raw rolled rarity before available-pool fallback:
+
+```python
+law = state.query_chance_law(
+    "card_rarity.roll.unit_float",
+    ordinal=declared_rewards_stream_ordinal,
+    card_rarity_source="RegularEncounter",
+    current_offset_basis_points=-500,
+    ascension=7,
+    owner_id="act:1:room:Combat:pick:0:offset:-500",
+)
+```
+
+The law counts exact source-rounded Native `NextFloat()` masses. The query
+does not validate the reward prefix, available card pool, stream assignment,
+or cursor parity.
+
 The fixed Act 1 boss pools have read-only law queries. Each returns
 equal-weight outcomes identified by encounter ID; legacy seed-to-index
 distributions and Native cursor parity remain `UNVERIFIED`:
