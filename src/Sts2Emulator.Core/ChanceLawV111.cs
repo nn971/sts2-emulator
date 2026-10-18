@@ -373,6 +373,11 @@ public static partial class ChanceLawEngineV111
         "reward.card_rarity.ticket"
     ];
 
+    private static readonly string[] LegacyPotionDropTicketQuerySites =
+    [
+        "reward.random_potion.drop.ticket"
+    ];
+
     private sealed record NativeBoundedIntegerLawSiteV111(
         string StreamId, string Boundary);
 
@@ -429,6 +434,9 @@ public static partial class ChanceLawEngineV111
 
     public static string[] LegacyRewardCardRarityTicketQuerySiteIds =>
         (string[])LegacyRewardCardRarityTicketQuerySites.Clone();
+
+    public static string[] LegacyPotionDropTicketQuerySiteIds =>
+        (string[])LegacyPotionDropTicketQuerySites.Clone();
 
     /// <summary>
     /// Query the retained legacy card-rarity integer ticket after the source
@@ -657,6 +665,59 @@ public static partial class ChanceLawEngineV111
             "Uniform ticket-index weights over the source-shaped prototype " +
             "rarity weights after empty tiers are removed; reward pool and " +
             "Native parity remain unverified.", outcomes);
+    }
+
+    /// <summary>
+    /// Query the retained legacy binary combat-potion ticket. The caller must
+    /// declare that potion acquisition is currently allowed; otherwise the
+    /// source branch does not draw this ticket.
+    /// </summary>
+    public static ChanceLawV111 QueryLegacyPotionDropTicket(
+        int act, int floor, PrototypeRoomType room,
+        bool canAcquirePotion, int ordinal)
+    {
+        if (act < 1)
+            throw new ArgumentOutOfRangeException(nameof(act));
+        if (floor < 0)
+            throw new ArgumentOutOfRangeException(nameof(floor));
+        if (room is not (PrototypeRoomType.Combat or
+            PrototypeRoomType.Elite or PrototypeRoomType.Boss))
+            throw new ArgumentOutOfRangeException(nameof(room),
+                "Legacy combat-potion tickets require Combat, Elite, or Boss rewards.");
+        if (!canAcquirePotion)
+            throw new ArgumentException(
+                "The legacy potion-drop ticket is not drawn when potion acquisition is prevented.",
+                nameof(canAcquirePotion));
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+
+        const string siteId = "reward.random_potion.drop.ticket";
+        const string streamId = "reward";
+        var ownerId = $"act:{act}:floor:{floor}:room:{room}";
+        var outcomes = new[]
+        {
+            new ChanceLawOutcomeV111("potion_reward:offered", 1L),
+            new ChanceLawOutcomeV111("potion_reward:not_offered", 1L)
+        };
+        var conditioning = new
+        {
+            siteId,
+            streamId,
+            ownerId,
+            ordinal,
+            act,
+            floor,
+            room,
+            canAcquirePotion,
+            ticketCount = 2,
+            offeredTicket = 0
+        };
+        return CreateLegacyCategoricalTicketLaw(
+            siteId, streamId, ownerId, ordinal,
+            "legacy-combat-potion-drop-ticket-v1", conditioning,
+            "Uniform two-way legacy bounded ticket when potion acquisition is " +
+            "allowed; the legacy RNG law remains unverified against Native.",
+            outcomes);
     }
 
     private static (long Rare, long Uncommon, long Common)

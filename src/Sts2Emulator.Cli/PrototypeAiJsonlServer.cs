@@ -4188,6 +4188,52 @@ internal static class PrototypeAiJsonlServer
                             });
                             break;
                         }
+                        if (siteId == "reward.random_potion.drop.ticket")
+                        {
+                            RejectChanceLawQueryParameters(
+                                request, "act", "floor", "room",
+                                "can_acquire_potion", "support_count");
+                            var rewardPotionAct = OptionalInt(
+                                request, "act") ??
+                                throw new ArgumentException(
+                                    "Legacy potion-drop ticket law requires act.");
+                            var rewardPotionFloor = OptionalInt(
+                                request, "floor") ??
+                                throw new ArgumentException(
+                                    "Legacy potion-drop ticket law requires floor.");
+                            var rewardPotionRoomText = OptionalString(
+                                request, "room") ??
+                                throw new ArgumentException(
+                                    "Legacy potion-drop ticket law requires room.");
+                            if (!Enum.TryParse<PrototypeRoomType>(
+                                    rewardPotionRoomText, ignoreCase: false,
+                                    out var rewardPotionRoom) ||
+                                !Enum.IsDefined(rewardPotionRoom))
+                                throw new ArgumentException(
+                                    "room must be Combat, Elite, or Boss.");
+                            var canAcquirePotion = RequiredBool(
+                                request, "can_acquire_potion");
+                            law = ChanceLawEngineV111
+                                .QueryLegacyPotionDropTicket(
+                                    rewardPotionAct, rewardPotionFloor,
+                                    rewardPotionRoom, canAcquirePotion,
+                                    ordinal);
+                            var supportCount = OptionalInt(
+                                request, "support_count");
+                            if (supportCount is not null &&
+                                supportCount != law.Outcomes.Length)
+                                throw new ArgumentException(
+                                    "Legacy potion-drop ticket support_count must be two.");
+                            Write(new
+                            {
+                                requestId,
+                                ok = true,
+                                chanceLawSchemaId =
+                                    ChanceLawV111.CurrentSchemaId,
+                                law
+                            });
+                            break;
+                        }
                         if (ChanceLawEngineV111
                             .IsSupportedAncientOfferQuerySite(siteId))
                         {
@@ -8115,7 +8161,8 @@ internal static class PrototypeAiJsonlServer
             "ascension", "act", "include_darv", "hive_receives_darv",
             "room", "gold_proportion", "current_thousandths", "elite",
             "forced", "card_rarity_source",
-            "current_offset_basis_points", "stream_id", "merchant"
+            "current_offset_basis_points", "stream_id", "merchant",
+            "can_acquire_potion", "floor"
         ];
         var unsupported = optionalFields.Where(field =>
             !allowed.Contains(field) && request.TryGetProperty(field, out _))
