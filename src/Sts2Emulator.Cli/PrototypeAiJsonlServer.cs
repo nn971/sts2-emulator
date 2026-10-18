@@ -2565,6 +2565,14 @@ internal static class PrototypeAiJsonlServer
                             {
                                 "nature_choice_observe"
                             },
+                            simulationMechanicsComparisonSchemaId =
+                                SimulationMechanicsComparisonV111.SchemaId,
+                            simulationMechanicsComparisonOperations = new[]
+                            {
+                                "mechanics_compare"
+                            },
+                            simulationMechanicsComparisonScope =
+                                "provider-independent-mechanics-after-matched-semantic-outcomes",
                             semanticNatureChoiceViewSessionKinds = new[]
                             {
                                 "semantic_combat"
@@ -8746,6 +8754,27 @@ internal static class PrototypeAiJsonlServer
                         var handle = Store(state);
                         Write(new { requestId, ok = true, stateHandle = handle,
                             exactHash = CanonicalJson.Sha256(state) });
+                        break;
+                    }
+
+                    case "mechanics_compare":
+                    {
+                        var left = RunSnapshot.Load(
+                            RequiredString(request, "left_snapshot"));
+                        var right = RunSnapshot.Load(
+                            RequiredString(request, "right_snapshot"));
+                        var maximumDifferences =
+                            OptionalInt(request, "maximum_differences") ?? 64;
+                        var comparison = SimulationMechanicsProjectionEngineV111
+                            .Compare(left, right, maximumDifferences);
+                        Write(new
+                        {
+                            requestId,
+                            ok = true,
+                            schemaId =
+                                SimulationMechanicsComparisonV111.SchemaId,
+                            comparison
+                        });
                         break;
                     }
 

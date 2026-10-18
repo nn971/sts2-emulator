@@ -9,6 +9,9 @@ public sealed record SimulationMechanicsComparisonV111(
     SimulationMechanicsDifferenceV111[] Differences,
     bool DifferencesTruncated)
 {
+    public const string SchemaId =
+        "sts2-v111-simulation-mechanics-comparison-v1";
+
     public bool Equivalent => StringComparer.Ordinal.Equals(
         LeftFingerprint, RightFingerprint);
 }
