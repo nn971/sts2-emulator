@@ -165,24 +165,12 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
             throw new InvalidOperationException(
                 "This replay boundary requires the event RNG context to remain absent.");
         var scripted = new ScriptedRandomIndexProviderV111(decisionArray);
-        IRandomIndexProviderV111 replayProvider = scriptedSiteId is null
-            ? scripted
-            : new SelectiveReplayProvider(
-                scriptedSiteId == PrototypeNativeHiveEvents
-                    .WarHistorianRepyRelicShuffleSiteId
-                    ?
-                    [
-                        scriptedSiteId,
-                        "event.war_historian.repy.potion_offer.index_draw"
-                    ]
-                    : [scriptedSiteId],
-                scripted);
         RunState run;
         RandomBoundaryEventV111[] replayIndexEvents = [];
         if (scriptedSiteId is null)
         {
             using var providerScope = StochasticProviderScopeV111.Enter(
-                replayProvider, overrideExplicitProviders: true);
+                scripted, overrideExplicitProviders: true);
             run = new PrototypeGameEngine().Step(
                 origin.Fork(), action).State;
         }
@@ -190,10 +178,45 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
         {
             using var shuffleProbe = NativeEventRandomProbeV111.Begin();
             using var boundaryJournal = RandomBoundaryJournalV111.Begin();
-            using var providerScope = StochasticProviderScopeV111.Enter(
-                replayProvider, overrideExplicitProviders: true);
-            run = new PrototypeGameEngine().Step(
-                origin.Fork(), action).State;
+            var selected = decisionArray.Select(decision =>
+                ControlledStochasticDecisionV111.FromIndex(decision))
+                .ToArray();
+            var requests = selected.Select(decision => decision.ToRequest())
+                .ToArray();
+            var isRepyRelicShuffle = scriptedSiteId ==
+                PrototypeNativeHiveEvents.WarHistorianRepyRelicShuffleSiteId;
+            using var fallbackScope = StochasticProviderScopeV111.Enter(
+                new SelectiveReplayProvider([],
+                    new ScriptedRandomIndexProviderV111([])),
+                overrideExplicitProviders: true);
+            var replay = ControlledChanceContinuationExecutorV111
+                .CaptureStochastic(
+                    origin,
+                    ControlledStochasticContinuationStateV111.CurrentSchemaId,
+                    selected,
+                    checkpoint => new PrototypeGameEngine().Step(
+                        checkpoint.Fork(), action).State,
+                    requestFilter: candidate =>
+                    {
+                        if (candidate.IndexRequest is not { } request)
+                            return false;
+                        if (requests.Any(selectedRequest =>
+                                ControlledStochasticChanceReplayV111.SameRequest(
+                                    candidate, selectedRequest)))
+                            return true;
+                        if (request.SiteId == scriptedSiteId)
+                            return true;
+                        return isRepyRelicShuffle &&
+                            request.SiteId ==
+                                "event.war_historian_repy.potion_offer.index_draw" &&
+                            request.OwnerId is
+                                "event:war_historian_repy:potion_offer:0" or
+                                "event:war_historian_repy:potion_offer:1";
+                    });
+            if (replay.Suspended || replay.Run is not { } completed)
+                throw new InvalidDataException(
+                    "Scripted Native event shuffle action did not consume its complete typed index prefix.");
+            run = completed;
             var matchingCaptures = shuffleProbe.ShuffleCaptures.Where(capture =>
                 capture.SiteId == scriptedSiteId).ToArray();
             if (matchingCaptures.Length != 1 ||
@@ -204,7 +227,8 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
                     "Scripted event shuffle candidate identities differ from the replay plan.");
             replayIndexEvents = boundaryJournal.Entries.ToArray();
         }
-        scripted.AssertComplete();
+        if (scriptedSiteId is null)
+            scripted.AssertComplete();
         if (expectedRunNicheCursor is not null)
         {
             var runNiche = run.NativeRunRng?.Streams.SingleOrDefault(stream =>
@@ -255,7 +279,7 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
                     expectedScriptedDrawCount + expectedUnscriptedDrawCount ||
                 nativeEvents.Length != expectedUnscriptedDrawCount ||
                 streamEvents.Take(scriptedSwapCount).Where((entry, index) =>
-                    entry.ProviderMode != "scripted-v111" ||
+                    entry.ProviderMode != "controlled-v111" ||
                     entry.Request.SiteId != scriptedSiteId ||
                     entry.Request.OwnerId !=
                         "event:war_historian_repy:relic_offer" ||
@@ -265,7 +289,7 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
                         expectedOrderedCandidateIds!.Length - index).Any() ||
                 streamEvents.Skip(scriptedSwapCount)
                     .Take(2).Where((entry, index) =>
-                    entry.ProviderMode != "scripted-v111" ||
+                    entry.ProviderMode != "controlled-v111" ||
                     entry.Request.SiteId !=
                         "event.war_historian_repy.potion_offer.index_draw" ||
                     entry.Request.OwnerId !=
