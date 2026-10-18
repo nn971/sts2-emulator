@@ -418,6 +418,8 @@ public static partial class ChanceLawEngineV111
         {
             ["event.random_upgrade.card_instance"] = new(
                 "event", "choose_index", 1),
+            [PrototypeGameEngine.PaelsToothCardReturnSiteId] = new(
+                "reward", "choose_index", 1),
             ["combat.encounter.formation.index_draw"] = new(
                 "combat", "choose_index", 1),
             ["combat.encounter.overgrowth_elite.index_draw"] = new(
