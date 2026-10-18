@@ -119,6 +119,50 @@ public static class SemanticDrawChoiceV111
     }
 
     /// <summary>
+    /// Confirms that a resumed draw recorded the selected identity for the
+    /// exact request and candidate index supplied to its continuation.
+    /// </summary>
+    internal static SemanticDrawDecisionV111 ValidateRecordedChoice(
+        RunState run, SemanticDeckEventV111 pending, int selectedIndex)
+    {
+        ArgumentNullException.ThrowIfNull(run);
+        ArgumentNullException.ThrowIfNull(pending);
+        ValidatePending(pending);
+        if (selectedIndex < 0 ||
+            selectedIndex >= pending.CandidateCardInstanceIds.Length)
+            throw new ArgumentOutOfRangeException(nameof(selectedIndex));
+
+        var deck = run.World?.Combat?.SemanticDeck ??
+            throw new InvalidDataException(
+                "Semantic draw continuation lost its provider-owned deck.");
+        var recorded = deck.Transcript?.SingleOrDefault(choice =>
+            choice.EventId == pending.EventId) ??
+            throw new InvalidDataException(
+                "Semantic draw continuation did not record its source event.");
+        if (recorded.SiteId != pending.SiteId ||
+            recorded.Purpose != pending.Purpose ||
+            recorded.TopOffset != pending.TopOffset ||
+            recorded.Ordinal != pending.Ordinal ||
+            recorded.ProbabilityStatus != pending.ProbabilityStatus ||
+            !recorded.CandidateCardInstanceIds.SequenceEqual(
+                pending.CandidateCardInstanceIds) ||
+            recorded.SelectedIndex != selectedIndex ||
+            recorded.SelectedCardInstanceId !=
+                pending.CandidateCardInstanceIds[selectedIndex])
+            throw new InvalidDataException(
+                "Semantic draw transcript diverged from its event.");
+
+        var decision = new SemanticDrawDecisionV111(
+            pending with
+            {
+                CandidateCardInstanceIds =
+                    (long[])pending.CandidateCardInstanceIds.Clone()
+            }, recorded.SelectedIndex, recorded.SelectedCardInstanceId);
+        ValidateDecision(pending, decision);
+        return decision;
+    }
+
+    /// <summary>
     /// Revalidates the saved request at the mechanics checkpoint, resolves
     /// its provider state, and publishes the matching physical pile update.
     /// </summary>

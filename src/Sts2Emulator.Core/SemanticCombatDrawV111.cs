@@ -784,10 +784,18 @@ public static class SemanticCombatDrawEngineV111
         if (combat.PendingChoice?.ControlledSemanticDraw?
                 .StandaloneSemanticDrawSegment == true)
         {
+            var effectDrawDecision = SemanticDrawChoiceV111.Select(
+                state.Pending ?? throw new InvalidDataException(
+                    "Semantic card-effect draw lost its pending event."),
+                selectedIndex);
             RunState resumedDraw;
             using (ControlledChanceGuardV111.Enter())
                 resumedDraw = PrototypeGameEngine
-                    .ResumeControlledSemanticEffectDraw(run, selectedIndex);
+                    .ResumeControlledSemanticEffectDraw(
+                        run, effectDrawDecision.SelectedIndex);
+            SemanticDrawChoiceV111.ValidateRecordedChoice(
+                resumedDraw, effectDrawDecision.Event,
+                effectDrawDecision.SelectedIndex);
             var drawNext = state with
             {
                 Run = resumedDraw,
@@ -822,6 +830,8 @@ public static class SemanticCombatDrawEngineV111
             (advanced, remaining) =
                 PrototypeGameEngine.BeginSemanticCombatDraw(
                     run, state.RemainingCount, state.FromHandDraw);
+        SemanticDrawChoiceV111.ValidateRecordedChoice(
+            advanced, cardDecision.Event, cardDecision.SelectedIndex);
         var next = state with { Run = advanced, RemainingCount = remaining };
         Validate(next);
         return next;

@@ -3059,28 +3059,8 @@ public static class SemanticPilotCombatEngineV111
                 else
                     ValidateSemanticCombatBoundary(effectDrawResult);
                 PrototypeStateInvariants.Validate(effectDrawResult);
-                var deck = effectDrawResult.World?.Combat?.SemanticDeck ??
-                    throw new InvalidDataException(
-                        "Resumed card-effect draw lost its semantic deck.");
-                var recorded = deck.Transcript?.SingleOrDefault(choice =>
-                    choice.EventId == drawEvent.EventId) ??
-                    throw new InvalidDataException(
-                        "Card-effect draw did not record the selected identity.");
-                if (recorded.SiteId != drawEvent.SiteId ||
-                    recorded.Purpose != drawEvent.Purpose ||
-                    recorded.TopOffset != drawEvent.TopOffset ||
-                    recorded.Ordinal != drawEvent.Ordinal ||
-                    recorded.ProbabilityStatus !=
-                        drawEvent.ProbabilityStatus ||
-                    !recorded.CandidateCardInstanceIds.SequenceEqual(
-                        drawEvent.CandidateCardInstanceIds) ||
-                    recorded.SelectedIndex != selectedIndex ||
-                    recorded.SelectedCardInstanceId !=
-                        effectDrawDecision.SelectedCardInstanceId ||
-                    recorded.SelectedCardInstanceId !=
-                        drawEvent.CandidateCardInstanceIds[selectedIndex])
-                    throw new InvalidDataException(
-                        "Card-effect draw transcript diverged from its event.");
+                SemanticDrawChoiceV111.ValidateRecordedChoice(
+                    effectDrawResult, drawEvent, selectedIndex);
             }
             else if (effectDrawResult.Phase is not (
                 RunPhase.Reward or RunPhase.Terminal))
@@ -3113,30 +3093,8 @@ public static class SemanticPilotCombatEngineV111
         SemanticDrawDecisionV111? deckDecision = null;
         if (drawEvent is not null)
         {
-            var deck = resolved.Run.World?.Combat?.SemanticDeck ??
-                throw new InvalidDataException(
-                    "Semantic card draw lost its provider-owned deck.");
-            var recordedChoice = deck.Transcript?.SingleOrDefault(choice =>
-                choice.EventId == drawEvent.EventId) ??
-                throw new InvalidDataException(
-                    "Semantic card draw did not record its source event.");
-            if (recordedChoice.SiteId != drawEvent.SiteId ||
-                recordedChoice.Purpose != drawEvent.Purpose ||
-                recordedChoice.TopOffset != drawEvent.TopOffset ||
-                recordedChoice.Ordinal != drawEvent.Ordinal ||
-                recordedChoice.ProbabilityStatus != drawEvent.ProbabilityStatus ||
-                !recordedChoice.CandidateCardInstanceIds.SequenceEqual(
-                    drawEvent.CandidateCardInstanceIds))
-                throw new InvalidDataException(
-                    "Semantic card draw transcript diverged from its event.");
-            deckDecision = new SemanticDrawDecisionV111(drawEvent,
-                recordedChoice.SelectedIndex,
-                recordedChoice.SelectedCardInstanceId);
-            SemanticDrawChoiceV111.ValidateDecision(
-                drawEvent, deckDecision);
-            if (recordedChoice.SelectedIndex != selectedIndex)
-                throw new InvalidDataException(
-                    "Semantic card draw selected a different candidate index.");
+            deckDecision = SemanticDrawChoiceV111.ValidateRecordedChoice(
+                resolved.Run, drawEvent, selectedIndex);
         }
         if (expectedDeckDecision is not null &&
             CanonicalJson.Sha256(expectedDeckDecision) !=
