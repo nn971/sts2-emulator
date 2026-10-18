@@ -21,7 +21,7 @@ from urllib.parse import unquote, urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = ROOT / "src" / "Sts2Emulator.Core"
-SCHEMA_ID = "emulator-rng-callsite-source-inventory-v18"
+SCHEMA_ID = "emulator-rng-callsite-source-inventory-v20"
 SITE_REGISTRY_PATH = SOURCE_ROOT / "StochasticSiteRegistryV111.cs"
 
 CALL_PATTERN = re.compile(
@@ -514,6 +514,37 @@ def _resolve_site_values(
     return sorted(values)
 
 
+def _dictionary_site_values(
+    source: str,
+    dictionary_name: str,
+    local_constants: dict[str, set[str]],
+    global_constants: dict[str, set[str]],
+) -> list[str]:
+    declaration = re.search(
+        rf"\b{re.escape(dictionary_name)}\s*=\s*new\s*"
+        r"(?:\([^)]*\))?\s*\{(?P<body>.*?)\n\s*\};",
+        source,
+        re.DOTALL,
+    )
+    if declaration is None:
+        return []
+    entries = list(re.finditer(
+        r"\[(?P<key>[^\]]+)\]\s*=\s*new\s*\(",
+        declaration.group("body"),
+    ))
+    if not entries:
+        return []
+    values: list[str] = []
+    for entry in entries:
+        value = _resolve_site_value(
+            entry.group("key"), local_constants, global_constants
+        )
+        if value is None:
+            return []
+        values.append(value)
+    return sorted(set(values))
+
+
 def _guarded_site_values(
     source: str,
     construction_start: int,
@@ -554,6 +585,19 @@ def _guarded_site_values(
                           rf"nameof\(\s*{re.escape(name)}\s*\)",
                           member_source)):
         return []
+    dictionary_lookup = re.search(
+        rf"\b(?P<dictionary>[A-Za-z_][A-Za-z0-9_]*)\."
+        rf"(?:TryGetValue\s*\(\s*{re.escape(name)}\s*,|"
+        rf"ContainsKey\s*\(\s*{re.escape(name)}\s*\))",
+        member_source,
+    )
+    if dictionary_lookup:
+        values = _dictionary_site_values(
+            source, dictionary_lookup.group("dictionary"),
+            local_constants, global_constants,
+        )
+        if values:
+            return values
     guard_pattern = re.compile(
         rf"\b{re.escape(name)}\s+is\s+not\s*\((?P<alternatives>[^()]*)\)"
     )
