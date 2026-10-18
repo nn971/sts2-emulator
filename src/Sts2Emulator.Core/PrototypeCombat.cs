@@ -2972,9 +2972,7 @@ public sealed partial class PrototypeGameEngine
         CombatState combat, bool semanticStandaloneDraw = false,
         bool semanticAutomaticDraw = false)
     {
-        var amount = combat.PlayerPowers
-            .Where(power => power.PowerId == "proto.power.stratagem")
-            .Sum(power => Math.Max(0, power.Stacks));
+        var amount = ExpectedStratagemSelectionCount(combat);
         return new PrototypeQueuedOperation(
             PrototypeCombatEffectKind.ChooseCards, 0,
             Selection: new PrototypeCardSelectionSpec(
