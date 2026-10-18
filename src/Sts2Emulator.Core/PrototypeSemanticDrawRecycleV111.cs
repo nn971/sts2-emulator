@@ -67,4 +67,20 @@ public sealed partial class PrototypeGameEngine
         return SemanticDrawPileAdapterV111.CommitNativeRecycle(
             advanced, postHook);
     }
+
+    /// <summary>
+    /// Commits a Nature recycle using the current discard membership as the
+    /// source for Perfect Fit's known-top constraints.
+    /// </summary>
+    private static CombatState CommitNatureDrawPileRecycle(
+        CombatState combat, IReadOnlyList<long> orderedDrawPile)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(orderedDrawPile);
+        var perfectFit = combat.DiscardPile.Where(id =>
+            RequireCombatCard(combat, id).Enchantment?.Kind ==
+            PrototypeCardEnchantmentKind.PerfectFit).ToArray();
+        return SemanticDrawPileAdapterV111.CommitNatureRecycle(
+            combat, orderedDrawPile, perfectFit);
+    }
 }

@@ -1946,11 +1946,7 @@ public sealed partial class PrototypeGameEngine
                     "UNSUPPORTED_SEMANTIC_DECK " +
                     "site=combat.draw.recycle " +
                     "operation=legacy_recycle_with_provider_deck");
-            var perfectFit = eligible.Where(id =>
-                RequireCombatCard(combat, id).Enchantment?.Kind
-                    == PrototypeCardEnchantmentKind.PerfectFit).ToArray();
-            combat = SemanticDrawPileAdapterV111.CommitNatureRecycle(
-                combat, postHook, perfectFit);
+            combat = CommitNatureDrawPileRecycle(combat, postHook);
         }
         else
             combat = SemanticDrawPileAdapterV111.CommitLegacyRecycle(
@@ -8115,18 +8111,11 @@ public sealed partial class PrototypeGameEngine
                             if (semanticDeck?.Mode ==
                                 SemanticDeckStateV111.NatureMode)
                             {
-                                var perfectFit = discard.Where(id =>
-                                    RequireCombatCard(combat, id)
-                                        .Enchantment?.Kind ==
-                                        PrototypeCardEnchantmentKind.PerfectFit)
-                                    .ToArray();
                                 var recycled = discard.ToArray();
                                 var nextPhysicalDrawPile =
                                     draw.Concat(recycled).ToArray();
-                                combat = SemanticDrawPileAdapterV111
-                                    .CommitNatureRecycle(
-                                        combat, nextPhysicalDrawPile,
-                                        perfectFit);
+                                combat = CommitNatureDrawPileRecycle(
+                                    combat, nextPhysicalDrawPile);
                                 semanticDeck = combat.SemanticDeck!;
                                 draw = combat.DrawPile.ToList();
                                 discard = combat.DiscardPile.ToList();
@@ -16152,10 +16141,6 @@ public sealed partial class PrototypeGameEngine
 
                 if (combat.SemanticDeck is { } deferred)
                 {
-                    var perfectFit = discard.Where(id =>
-                        RequireCombatCard(combat, id).Enchantment?.Kind
-                            == PrototypeCardEnchantmentKind.PerfectFit)
-                        .ToArray();
                     if (deferred.Mode == SemanticDeckStateV111.NatureMode)
                     {
                         if (!ControlledChanceGuardV111.Active ||
@@ -16191,8 +16176,8 @@ public sealed partial class PrototypeGameEngine
                         // through the shared adapter boundary.
                         var recycled = discard.ToArray();
                         var nextPhysicalDrawPile = draw.Concat(recycled).ToArray();
-                        combat = SemanticDrawPileAdapterV111.CommitNatureRecycle(
-                            combat, nextPhysicalDrawPile, perfectFit);
+                        combat = CommitNatureDrawPileRecycle(
+                            combat, nextPhysicalDrawPile);
                         deferred = combat.SemanticDeck!;
                         draw = combat.DrawPile.ToList();
                         discard = combat.DiscardPile.ToList();
