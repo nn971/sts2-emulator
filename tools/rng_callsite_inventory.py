@@ -707,11 +707,16 @@ def _typed_request_constructions(
         local_constants = _string_constants(source)
         for match in REQUEST_CONSTRUCTION_PATTERN.finditer(source):
             arguments = _call_arguments(source, match.start())
-            expression = arguments[0] if arguments else None
-            if expression is not None:
-                named = re.match(r"SiteId\s*:\s*(.+)$", expression, re.DOTALL)
-                if named:
-                    expression = named.group(1).strip()
+            expression = None
+            for argument in arguments:
+                named_site = re.match(
+                    r"SiteId\s*:\s*(.+)$", argument, re.DOTALL
+                )
+                if named_site:
+                    expression = named_site.group(1).strip()
+                    break
+            else:
+                expression = arguments[0] if arguments else None
             values = _resolve_site_values(
                 expression, local_constants, global_constants
             )
