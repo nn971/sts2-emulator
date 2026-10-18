@@ -83,6 +83,28 @@ public sealed record SemanticCostDecisionV111(
     }
 }
 
+public static class SemanticCostChoiceV111
+{
+    public static SemanticCostDecisionV111 Select(
+        SemanticCostEventV111 pending, string eventId, int selectedCost)
+    {
+        ArgumentNullException.ThrowIfNull(pending);
+        pending.Validate();
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
+        if (pending.EventId != eventId)
+            throw new InvalidOperationException(
+                "Semantic cost event ID is stale or mismatched.");
+        var index = Array.IndexOf(pending.CandidateCosts, selectedCost);
+        if (index < 0)
+            throw new InvalidOperationException(
+                "Cost value is outside the pending event support.");
+        var decision = new SemanticCostDecisionV111(
+            pending.Fork(), index, selectedCost);
+        decision.Validate();
+        return decision;
+    }
+}
+
 /// <summary>
 /// Resumes a controlled random-hand-cost effect and enforces the same
 /// mechanics boundary for target selection and cost selection.

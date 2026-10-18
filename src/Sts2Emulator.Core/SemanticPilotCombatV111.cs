@@ -2649,16 +2649,9 @@ public static class SemanticPilotCombatEngineV111
         var pending = current.CostPending ??
             throw new InvalidOperationException(
                 "No Nature-controlled drawn-card cost is pending.");
-        if (pending.EventId != eventId)
-            throw new InvalidOperationException(
-                "Semantic cost event ID is stale or mismatched.");
-        var index = Array.IndexOf(pending.CandidateCosts, selectedCost);
-        if (index < 0)
-            throw new InvalidOperationException(
-                "Cost value is outside the pending event support.");
-        var decision = new SemanticCostDecisionV111(
-            pending, index, selectedCost);
-        decision.Validate();
+        var decision = SemanticCostChoiceV111.Select(
+            pending, eventId, selectedCost);
+        var index = decision.SelectedIndex;
         if (current.Run.World?.Combat?.PendingChoice?
                 .ControlledSemanticDraw is not null)
             return Resolve(current, fingerprint, index,
