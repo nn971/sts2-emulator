@@ -1244,14 +1244,14 @@ internal static class PrototypeAiJsonlServer
                 runFingerprint = CanonicalJson.Sha256(session.Run),
                 siteId = law?.SiteId ??
                     PrototypeNativeRelicGrabBag.NativeTreasureModelSiteId,
-                eventId = NativeAncientRewardsV111.TezcataraId,
+                eventId = session.Origin.World?.Event?.EventId,
                 choiceId,
                 runPhase = session.Run.Phase.ToString(),
                 boundary = session.Complete ? "committed" : "nature",
                 nextOrdinal = session.NextOrdinal,
                 pending = law is null ? null : new
                 {
-                    kind = "native_event_toy_box_relic_draw",
+                    kind = "native_event_relic_draw",
                     boundaryFingerprint = law.EventId,
                     chanceLaw = law,
                     probabilityStatus = law.ProbabilityStatus

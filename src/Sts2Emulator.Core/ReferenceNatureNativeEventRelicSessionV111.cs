@@ -26,9 +26,9 @@ public sealed record ReferenceNatureNativeEventRelicSessionSnapshotV111(
     string[]? PendingCandidateLabels);
 
 /// <summary>
-/// Atomic Native Tezcatara Toy Box event choice. Its five relic pulls share a
-/// typed ReferenceNature transcript and publish the run cursor only after all
-/// rarity and identity requests have resolved.
+/// Atomic configured Native event relic choice. Direct random-relic effects
+/// and relic pulls triggered by Toy Box share one typed ReferenceNature
+/// transcript and publish the run cursor only after all requests resolve.
 /// </summary>
 public sealed record ReferenceNatureNativeEventRelicSessionV111(
     string SchemaId, RunState Origin, GameAction Action, RunState Run,
@@ -66,12 +66,12 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
     public static ReferenceNatureNativeEventRelicSessionV111 Begin(
         RunState source, GameAction action, ulong natureSeed) => Begin(
             source, action, ReferenceNatureRunCursorV111.Begin(
-                source, natureSeed, "Native event Toy Box relic"));
+                source, natureSeed, "Native event relic"));
 
     public static ReferenceNatureNativeEventRelicSessionV111 Begin(
         RunState source, GameAction action) => Begin(
             source, action, ReferenceNatureRunCursorV111.Begin(
-                source, null, "Native event Toy Box relic"));
+                source, null, "Native event relic"));
 
     private static ReferenceNatureNativeEventRelicSessionV111 Begin(
         RunState source, GameAction action,
@@ -82,14 +82,14 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
         ArgumentNullException.ThrowIfNull(initialNatureState);
         ValidateOpeningBoundary(source, action);
         ReferenceNatureRunCursorV111.ValidateInitial(
-            source, initialNatureState, "Native event Toy Box relic");
+            source, initialNatureState, "Native event relic");
 
         var origin = ReferenceNatureRunProjectionV111
             .CreateNatureReplayOrigin(source, createRelicBagWhenMissing: true);
         var replay = Replay(origin, action, []);
         if (replay.Continuation is null)
             throw new NotSupportedException(
-                "Native Tezcatara Toy Box did not reach a supported relic draw.");
+                "Native event choice did not reach a supported relic draw.");
         var session = new ReferenceNatureNativeEventRelicSessionV111(
             CurrentSchemaId, origin.Fork(), CloneAction(action), origin.Fork(),
             initialNatureState.Fork(), initialNatureState.Fork(), [], [],
@@ -168,7 +168,8 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
             Run is null || InitialNatureState is null || NatureState is null ||
             ProviderDecisions is null || DecisionTranscript is null ||
             ProviderDecisions.Length != DecisionTranscript.Length ||
-            DecisionTranscript.Length > ToyBoxDrawCount * 2 ||
+            DecisionTranscript.Length >
+                ExpectedDrawCount(Origin, Action) * 2 ||
             string.IsNullOrWhiteSpace(Action.Kind))
             throw new InvalidDataException(
                 "Invalid ReferenceNature Native event relic session envelope.");
@@ -198,7 +199,7 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
         InitialNatureState.Validate();
         NatureState.Validate();
         ReferenceNatureRunCursorV111.ValidateInitial(
-            Origin, InitialNatureState, "Native event Toy Box relic");
+            Origin, InitialNatureState, "Native event relic");
 
         var expectedNatureState = InitialNatureState.Fork();
         for (var index = 0; index < ProviderDecisions.Length; index++)
@@ -239,7 +240,8 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
                 PendingCandidateLabels) ||
             CanonicalJson.Sha256(expectedNatureState) !=
                 CanonicalJson.Sha256(NatureState) ||
-            Complete && ProviderDecisions.Length != ToyBoxDrawCount * 2)
+            Complete && ProviderDecisions.Length !=
+                ExpectedDrawCount(Origin, Action) * 2)
             throw new InvalidDataException(
                 "Native event relic continuation differs from its replay.");
 
@@ -317,7 +319,7 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
                 floatRequest.OwnerId != PrototypeNativeRelicGrabBag
                     .NativeTreasureRarityOwnerId || candidateLabels is not null)
                 throw new InvalidDataException(
-                    "Native event relic rarity request differs from Toy Box draw mechanics.");
+                    "Native event relic rarity request differs from the declared draw mechanics.");
             return ChanceLawEngineV111.QueryNativeRelicRarity(floatRequest);
         }
 
@@ -349,10 +351,19 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
                 throw new InvalidDataException(
                     "Native event relic identities differ from the canonical remaining relic bag.");
 
+            var eventId = source.World?.Event?.EventId;
+            var legacyToyBoxBoundary = eventId ==
+                    NativeAncientRewardsV111.TezcataraId &&
+                EventChoiceId(action) is { } choiceId &&
+                HasToyBoxEffect(eventId, choiceId);
             var lawEventId = CanonicalJson.Sha256(new
             {
-                boundary = "native-event-toy-box-relic",
-                eventId = NativeAncientRewardsV111.TezcataraId,
+                boundary = legacyToyBoxBoundary
+                    ? "native-event-toy-box-relic"
+                    : "native-event-relic",
+                eventId = legacyToyBoxBoundary
+                    ? NativeAncientRewardsV111.TezcataraId
+                    : eventId,
                 choiceId = EventChoiceId(action),
                 request = indexRequest
             });
@@ -449,7 +460,6 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
             ? EventChoiceId(action) : null;
         if (source.Phase != RunPhase.Event || world is null ||
             eventState is null ||
-            eventState.EventId != NativeAncientRewardsV111.TezcataraId ||
             eventState.ControlledChoice is not null ||
             eventState.ChosenChoiceId is not null ||
             source.NativeRunRng is null ||
@@ -458,21 +468,63 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
             choiceId is null ||
             !PrototypeGameEngine.IsControlledEventChoice(
                 eventState.EventId, choiceId) ||
-            !HasToyBoxEffect(eventState.EventId, choiceId) ||
+            ExpectedDrawCount(source, action) <= 0 ||
+            HasUnsupportedFixedRelicEffect(eventState.EventId, choiceId) ||
             !new PrototypeGameEngine().GetLegalActions(source).Any(candidate =>
                 PrototypeAiEnvironment.StableActionId(candidate) ==
                 PrototypeAiEnvironment.StableActionId(action)))
             throw new InvalidOperationException(
-                "Native event relic session requires a current legal Tezcatara Toy Box choice on a configured Native route.");
+                "Native event relic session requires a current legal configured Native event choice with supported relic draws.");
         PrototypeStateInvariants.Validate(source);
+    }
+
+    private static int ExpectedDrawCount(RunState source, GameAction action)
+    {
+        var eventState = source.World?.Event;
+        var choiceId = EventChoiceId(action);
+        if (eventState is null || choiceId is null ||
+            !PrototypeContent.Events.TryGetValue(
+                eventState.EventId, out var definition))
+            return 0;
+        var effects = definition.Choices.FirstOrDefault(choice =>
+            StringComparer.Ordinal.Equals(choice.Id, choiceId))?.Effects;
+        if (effects is null)
+            return 0;
+        var randomRelicDraws = effects.Count(effect =>
+            effect.Kind == PrototypeRunEffectKind.GainRandomRelic);
+        var toyBoxAcquisitions = effects.Count(effect =>
+            effect.Kind == PrototypeRunEffectKind.GainRelic &&
+            StringComparer.Ordinal.Equals(
+                effect.RelicId, NativeAncientRewardsV111.ToyBoxId));
+        var existingReward = source.World?.Reward;
+        if (existingReward?.ExtraRelicWaxFlags is { Length: 5 } flags &&
+            flags.All(flag => flag) &&
+            existingReward.SourceRoom.StartsWith(
+                "Event:", StringComparison.Ordinal))
+            toyBoxAcquisitions = 0;
+        return randomRelicDraws + toyBoxAcquisitions * ToyBoxDrawCount;
+    }
+
+    private static bool HasUnsupportedFixedRelicEffect(
+        string eventId, string choiceId)
+    {
+        if (!PrototypeContent.Events.TryGetValue(eventId, out var definition))
+            return true;
+        var effects = definition.Choices.FirstOrDefault(choice =>
+            StringComparer.Ordinal.Equals(choice.Id, choiceId))?.Effects;
+        return effects is null || effects.Any(effect =>
+            effect.Kind == PrototypeRunEffectKind.GainRelic &&
+            !StringComparer.Ordinal.Equals(
+                effect.RelicId, NativeAncientRewardsV111.ToyBoxId));
     }
 
     private static bool HasToyBoxEffect(string eventId, string choiceId) =>
         PrototypeContent.Events.TryGetValue(eventId, out var definition) &&
-        definition.Choices.FirstOrDefault(choice => choice.Id == choiceId)
-            ?.Effects.Any(effect =>
-                effect.Kind == PrototypeRunEffectKind.GainRelic &&
-                effect.RelicId == NativeAncientRewardsV111.ToyBoxId) == true;
+        definition.Choices.FirstOrDefault(choice =>
+            StringComparer.Ordinal.Equals(choice.Id, choiceId))?.Effects.Any(
+                effect => effect.Kind == PrototypeRunEffectKind.GainRelic &&
+                    StringComparer.Ordinal.Equals(
+                        effect.RelicId, NativeAncientRewardsV111.ToyBoxId)) == true;
 
     private static string? EventChoiceId(GameAction action) =>
         action.Payload.Deserialize<EventChoicePayload>()?.ChoiceId;

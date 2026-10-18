@@ -641,7 +641,7 @@ class State:
 
     def begin_reference_nature_native_event_relic(
             self, choice_id: str, nature_seed: int | None = None):
-        """Control Tezcatara's five Toy Box relic draws as one Native event choice."""
+        """Control supported Native event random-relic and Toy Box draws atomically."""
         if self.session.capabilities.get(
                 "referenceNatureNativeEventRelicSessionSchemaId") != (
                 "sts2-v111-reference-nature-native-event-relic-session-v1"):

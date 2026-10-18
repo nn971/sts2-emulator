@@ -522,15 +522,18 @@ The session exposes the playable
 Event selection and other requests keep their current providers. See the
 [Native event-entry contract](../../docs/REFERENCE_NATURE_NATIVE_EVENT_GOLD_D3.md).
 
-For Tezcatara's Toy Box choice, call
+For a supported configured Native event choice with random relic effects or
+Toy Box acquisition, call
 `State.begin_reference_nature_native_event_relic(choice_id, nature_seed=None)`
-with a legal event choice that grants Toy Box. The session resolves five
-rarity and relic-identity pairs, then publishes the reward and Nature cursor
-together. Use `resolve_next()`, `status()`, `fork()`, `save_snapshot()`,
+with its legal choice ID. The session resolves each random relic rarity and
+identity pair plus the five Wax relic draws triggered by each Toy Box, then
+publishes the event result and Nature cursor together. Choices with another
+fixed relic effect or an unrelated stochastic site remain unsupported. Use
+`resolve_next()`, `status()`, `fork()`, `save_snapshot()`,
 `Session.load_reference_nature_native_event_relic_snapshot()`, and
 `release()` to manage the continuation. The rarity thresholds and bounded
 index draws use configured Native laws; relic identity pools remain
-`UNVERIFIED`. See the [Native Toy Box event contract](../../docs/REFERENCE_NATURE_NATIVE_EVENT_RELIC_D3.md).
+`UNVERIFIED`. See the [Native event relic contract](../../docs/REFERENCE_NATURE_NATIVE_EVENT_RELIC_D3.md).
 
 For a configured Native Rest Shovel dig, call
 `State.begin_reference_nature_native_shovel(nature_seed=None)`. The session
