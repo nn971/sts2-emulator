@@ -65,6 +65,8 @@ pool query keyed by `event_id` and the selected choice `action_id`; it does not
 cover Wellspring or Whispering Hollow's separate Native-shaped routes.
 The legacy `event.reward.random_rare_card.model` site has the same direct
 query inputs and returns the current prototype Rare-card reward pool.
+The custom event reward potion option also has a direct pool query; callers
+declare its reward owner prefix and confirm potion acquisition is allowed.
 
 The supported event-choice sites are:
 

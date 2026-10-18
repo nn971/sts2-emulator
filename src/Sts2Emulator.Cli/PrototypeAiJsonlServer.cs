@@ -4486,6 +4486,38 @@ internal static class PrototypeAiJsonlServer
                             });
                             break;
                         }
+                        if (siteId ==
+                            "event.reward.offer_potion.model.index_draw")
+                        {
+                            RejectChanceLawQueryParameters(
+                                request, "owner_id", "can_acquire_potion",
+                                "support_count");
+                            var rewardOwnerPrefix = OptionalString(
+                                request, "owner_id") ??
+                                throw new ArgumentException(
+                                    "Event potion-option law requires owner_id as the custom reward prefix.");
+                            var eventOfferCanAcquirePotion = RequiredBool(
+                                request, "can_acquire_potion");
+                            law = ChanceLawEngineV111
+                                .QueryLegacyEventOfferPotionModel(
+                                    rewardOwnerPrefix,
+                                    eventOfferCanAcquirePotion, ordinal);
+                            var supportCount = OptionalInt(
+                                request, "support_count");
+                            if (supportCount is not null &&
+                                supportCount != law.Outcomes.Length)
+                                throw new ArgumentException(
+                                    "Event potion-option support_count must match the prototype potion pool.");
+                            Write(new
+                            {
+                                requestId,
+                                ok = true,
+                                chanceLawSchemaId =
+                                    ChanceLawV111.CurrentSchemaId,
+                                law
+                            });
+                            break;
+                        }
                         if (ChanceLawEngineV111
                             .IsSupportedAncientOfferQuerySite(siteId))
                         {

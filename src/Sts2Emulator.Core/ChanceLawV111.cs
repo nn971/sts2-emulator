@@ -413,6 +413,11 @@ public static partial class ChanceLawEngineV111
         "event.reward.random_rare_card.model"
     ];
 
+    private static readonly string[] LegacyEventOfferPotionModelQuerySites =
+    [
+        "event.reward.offer_potion.model.index_draw"
+    ];
+
     private sealed record NativeBoundedIntegerLawSiteV111(
         string StreamId, string Boundary);
 
@@ -493,6 +498,9 @@ public static partial class ChanceLawEngineV111
 
     public static string[] LegacyEventRewardRareCardModelQuerySiteIds =>
         (string[])LegacyEventRewardRareCardModelQuerySites.Clone();
+
+    public static string[] LegacyEventOfferPotionModelQuerySiteIds =>
+        (string[])LegacyEventOfferPotionModelQuerySites.Clone();
 
     /// <summary>
     /// Query the retained legacy card-rarity integer ticket after the source
@@ -1124,6 +1132,51 @@ public static partial class ChanceLawEngineV111
             "legacy-event-reward-rare-card-pool-v1", conditioning,
             "Equal index weights over the ordered prototype Rare-card reward " +
             "pool; Native character-pool fidelity and stream parity remain " +
+            "unverified.", outcomes, operationKind: "choose_index");
+    }
+
+    /// <summary>
+    /// Query the legacy custom event reward's potion option. The source skips
+    /// the draw when potion acquisition is prevented.
+    /// </summary>
+    public static ChanceLawV111 QueryLegacyEventOfferPotionModel(
+        string rewardOwnerPrefix, bool canAcquirePotion, int ordinal)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(rewardOwnerPrefix);
+        if (!canAcquirePotion)
+            throw new ArgumentException(
+                "The event potion-option draw is skipped when potion acquisition is prevented.",
+                nameof(canAcquirePotion));
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+
+        const string siteId = "event.reward.offer_potion.model.index_draw";
+        const string streamId = "reward";
+        var pool = PrototypeContent.PotionPool;
+        if (pool.Length == 0)
+            throw new InvalidOperationException(
+                "The custom event potion-option pool is empty.");
+        var poolFingerprint = CanonicalJson.Sha256(pool);
+        var ownerId = rewardOwnerPrefix + ":potion_pool:" + poolFingerprint;
+        var outcomes = pool.Select(potionId =>
+            new ChanceLawOutcomeV111("potion:" + potionId, 1L))
+            .ToArray();
+        var conditioning = new
+        {
+            siteId,
+            streamId,
+            ownerId,
+            rewardOwnerPrefix,
+            ordinal,
+            canAcquirePotion,
+            orderedPotionPool = pool,
+            poolFingerprint
+        };
+        return CreateLegacyCategoricalLaw(
+            siteId, streamId, ownerId, ordinal,
+            "legacy-event-offer-potion-model-pool-v1", conditioning,
+            "Equal index weights over the ordered prototype custom-reward " +
+            "potion pool; pool completeness and Native parity remain " +
             "unverified.", outcomes, operationKind: "choose_index");
     }
 
