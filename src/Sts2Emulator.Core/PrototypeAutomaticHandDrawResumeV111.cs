@@ -24,28 +24,19 @@ public sealed partial class PrototypeGameEngine
         var combat = world.Combat ?? throw new InvalidDataException(
             "Automatic hand-draw resumption has no combat.");
         var cursor = combat.AutomaticPipelineContinuation;
-        if (cursor is null || !cursor.Mechanics.IsAtStep(
-                PrototypeAutomaticStepKind.DrawPlayerHand) ||
-            cursor.OpeningStage is not null ||
-            cursor.PendingPostDispatchEventKind is not null)
+        if (cursor is null ||
+            !cursor.Stochastic.TryGetAutomaticHandDrawRemainder(
+                cursor.Mechanics, out int savedRemaining) ||
+            savedRemaining != remaining)
             throw new InvalidDataException(
                 "Automatic hand-draw resume cursor is inconsistent.");
 
-        var progress = cursor.Stochastic.HandDrawProgress;
-        if (progress is null || progress.RemainingCount != remaining ||
-            progress.Kind is not (
-                PrototypeAutomaticHandDrawProgressKindV111.ControlledDraw or
-                PrototypeAutomaticHandDrawProgressKindV111.ControlledDrawCost or
-                PrototypeAutomaticHandDrawProgressKindV111.SemanticDraw or
-                PrototypeAutomaticHandDrawProgressKindV111.ControlledRecycleStratagem or
-                PrototypeAutomaticHandDrawProgressKindV111.ControlledDrawHookChoice) ||
-            combat.PendingChoice is not null ||
+        if (combat.PendingChoice is not null ||
             combat.PendingKnowledgeDemonChoice is not null ||
             combat.SemanticDeck?.Pending is not null)
             throw new InvalidDataException(
                 "Automatic hand-draw resume boundary is inconsistent.");
 
-        progress.Validate();
         combat = combat with
         {
             AutomaticPipelineContinuation = cursor.WithHandDrawProgress(null)

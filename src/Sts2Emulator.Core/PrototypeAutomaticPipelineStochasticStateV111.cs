@@ -190,19 +190,40 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
         ArgumentNullException.ThrowIfNull(mechanics);
         requested = 0;
         remaining = 0;
-        if (ControlledSemanticBeforeHandDrawPending ||
-            ControlledSemanticDrawRequested is not > 0 ||
-            ControlledSemanticDrawRemaining is not { } savedRemaining ||
-            savedRemaining < 0 ||
+        var progress = HandDrawProgress;
+        if (progress?.Kind !=
+                PrototypeAutomaticHandDrawProgressKindV111.SemanticDraw ||
+            progress.RequestedCount is not > 0 ||
+            !TryGetAutomaticHandDrawRemainder(
+                mechanics, out int savedRemaining))
+            return false;
+
+        requested = progress.RequestedCount.Value;
+        remaining = savedRemaining;
+        return true;
+    }
+
+    public bool TryGetAutomaticHandDrawRemainder(
+        PrototypeAutomaticPipelineMechanicsStateV111 mechanics,
+        out int remaining)
+    {
+        ArgumentNullException.ThrowIfNull(mechanics);
+        remaining = 0;
+        var progress = HandDrawProgress;
+        if (progress is null || progress.RemainingCount is not >= 0 ||
+            progress.Kind is not (
+                PrototypeAutomaticHandDrawProgressKindV111.ControlledDraw or
+                PrototypeAutomaticHandDrawProgressKindV111.ControlledDrawCost or
+                PrototypeAutomaticHandDrawProgressKindV111.SemanticDraw or
+                PrototypeAutomaticHandDrawProgressKindV111.ControlledRecycleStratagem or
+                PrototypeAutomaticHandDrawProgressKindV111.ControlledDrawHookChoice) ||
             !mechanics.IsAtStep(
                 PrototypeAutomaticStepKind.DrawPlayerHand) ||
-            ControlledDrawRemaining is not null ||
-            ControlledDrawCostRemaining is not null ||
             mechanics.OpeningStage is not null ||
             mechanics.PendingPostDispatchEventKind is not null)
             return false;
-        requested = ControlledSemanticDrawRequested.Value;
-        remaining = savedRemaining;
+
+        remaining = progress.RemainingCount.Value;
         return true;
     }
 
