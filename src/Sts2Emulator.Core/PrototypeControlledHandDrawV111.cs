@@ -5,6 +5,60 @@ namespace Sts2Emulator.Core;
 /// subsequent recycle tickets all resume the same saved pipeline cursor.</summary>
 public sealed partial class PrototypeGameEngine
 {
+    /// <summary>
+    /// Commit provider progress at the ordinary DrawPlayerHand checkpoint.
+    /// This is the shared write boundary for legacy and semantic adapters:
+    /// the selected progress and the latest player/combat mechanics become
+    /// visible together, while the provider keeps ownership of resumption.
+    /// </summary>
+    internal static RunState CommitAutomaticHandDrawProgress(
+        RunState state,
+        PlayerState player,
+        CombatState combat,
+        PrototypeAutomaticHandDrawProgressV111? progress,
+        bool createCheckpoint = false)
+    {
+        if (!ControlledChanceGuardV111.Active)
+            throw new InvalidOperationException(
+                "Automatic hand-draw progress requires the RNG guard.");
+        ArgumentNullException.ThrowIfNull(player);
+        ArgumentNullException.ThrowIfNull(combat);
+        progress?.Validate();
+
+        int stageIndex = SemanticHandDrawStepIndex;
+        if (stageIndex < 0)
+            throw new InvalidDataException(
+                "DrawPlayerHand has no automatic pipeline index.");
+        var cursor = combat.AutomaticPipelineContinuation;
+        if (cursor is null)
+        {
+            if (!createCheckpoint)
+                throw new InvalidDataException(
+                    "Automatic hand-draw progress has no pipeline cursor.");
+            cursor = new PrototypeAutomaticPipelineContinuationState(
+                stageIndex);
+        }
+        if (cursor.NextStepIndex != stageIndex ||
+            cursor.Mechanics.CurrentStepKind !=
+                PrototypeAutomaticStepKind.DrawPlayerHand ||
+            cursor.OpeningStage is not null ||
+            cursor.PendingPostDispatchEventKind is not null)
+            throw new InvalidDataException(
+                "Automatic hand-draw progress is outside its pipeline checkpoint.");
+
+        var world = RequireWorld(state);
+        combat = combat with
+        {
+            AutomaticPipelineContinuation =
+                cursor.WithHandDrawProgress(progress)
+        };
+        return state with
+        {
+            Player = player,
+            World = world with { Combat = combat }
+        };
+    }
+
     private static RunState ContinueInitialControlledHandDrawBoundary(
         RunState state, PrototypeDrawCardsResult drawn)
     {
@@ -30,23 +84,10 @@ public sealed partial class PrototypeGameEngine
             combat.SemanticDeck is not null)
             throw new InvalidDataException(
                 "Initial controlled hand draw boundary has an incompatible owner.");
-        int stageIndex = SemanticHandDrawStepIndex;
-        if (stageIndex < 0)
-            throw new InvalidDataException(
-                "DrawPlayerHand has no automatic pipeline index.");
-
-        var suspendedCombat = drawn.Combat with
-        {
-            AutomaticPipelineContinuation = new(stageIndex)
-        };
-        var checkpoint = state with
-        {
-            Player = drawn.Player,
-            World = world with
-            {
-                Combat = suspendedCombat
-            }
-        };
+        var checkpoint = CommitAutomaticHandDrawProgress(
+            state, drawn.Player, drawn.Combat, progress: null,
+            createCheckpoint: true);
+        var suspendedCombat = checkpoint.World!.Combat!;
         return ContinueControlledHandDraw(
             checkpoint, drawn with { Combat = suspendedCombat });
     }
@@ -116,17 +157,10 @@ public sealed partial class PrototypeGameEngine
             selection)
             throw new InvalidDataException(
                 "Stratagem did not create its expected draw-pile selection.");
-        var suspendedCombat = prompt.Combat with
-        {
-            AutomaticPipelineContinuation = cursor.WithHandDrawProgress(
-                PrototypeAutomaticHandDrawProgressV111
-                    .ControlledRecycleStratagem(remaining))
-        };
-        var suspended = state with
-        {
-            Player = prompt.Player,
-            World = world with { Combat = suspendedCombat }
-        };
+        var suspended = CommitAutomaticHandDrawProgress(
+            state, prompt.Player, prompt.Combat,
+            PrototypeAutomaticHandDrawProgressV111
+                .ControlledRecycleStratagem(remaining));
         PrototypeStateInvariants.Validate(suspended);
         return suspended;
     }
@@ -200,21 +234,10 @@ public sealed partial class PrototypeGameEngine
             if (combat.PendingChoice?.ControlledDrawCost is null)
                 throw new InvalidDataException(
                     "Controlled hand draw lost its pending cost ticket.");
-            return state with
-            {
-                Player = drawn.Player,
-                World = world with
-                {
-                    Combat = combat with
-                    {
-                        AutomaticPipelineContinuation =
-                            cursor.WithHandDrawProgress(
-                                PrototypeAutomaticHandDrawProgressV111
-                                    .ControlledDrawCost(
-                                        drawn.RemainingCount))
-                    }
-                }
-            };
+            return CommitAutomaticHandDrawProgress(
+                state, drawn.Player, combat,
+                PrototypeAutomaticHandDrawProgressV111
+                    .ControlledDrawCost(drawn.RemainingCount));
         }
 
         if (drawBoundary ==
@@ -224,20 +247,10 @@ public sealed partial class PrototypeGameEngine
                 combat.DrawPile.Length != 0 || combat.DiscardPile.Length == 0)
                 throw new InvalidDataException(
                     "Controlled hand draw lost its recycle support.");
-            return state with
-            {
-                Player = drawn.Player,
-                World = world with
-                {
-                    Combat = combat with
-                    {
-                        AutomaticPipelineContinuation =
-                            cursor.WithHandDrawProgress(
-                                PrototypeAutomaticHandDrawProgressV111
-                                    .ControlledDraw(drawn.RemainingCount))
-                    }
-                }
-            };
+            return CommitAutomaticHandDrawProgress(
+                state, drawn.Player, combat,
+                PrototypeAutomaticHandDrawProgressV111
+                    .ControlledDraw(drawn.RemainingCount));
         }
 
         if (drawBoundary ==
@@ -250,21 +263,10 @@ public sealed partial class PrototypeGameEngine
                 combat.PendingKnowledgeDemonChoice is not null)
                 throw new InvalidDataException(
                     "Controlled hand draw has a malformed CardDrawn hook boundary.");
-            var suspended = state with
-            {
-                Player = drawn.Player,
-                World = world with
-                {
-                    Combat = combat with
-                    {
-                        AutomaticPipelineContinuation =
-                            cursor.WithHandDrawProgress(
-                                PrototypeAutomaticHandDrawProgressV111
-                                    .ControlledDrawHookChoice(
-                                        drawn.RemainingCount))
-                    }
-                }
-            };
+            var suspended = CommitAutomaticHandDrawProgress(
+                state, drawn.Player, combat,
+                PrototypeAutomaticHandDrawProgressV111
+                    .ControlledDrawHookChoice(drawn.RemainingCount));
             PrototypeStateInvariants.Validate(suspended);
             return suspended;
         }

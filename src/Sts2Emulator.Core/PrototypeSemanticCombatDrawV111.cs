@@ -279,32 +279,20 @@ public sealed partial class PrototypeGameEngine
     private static RunState SaveAutomaticSemanticHandDrawBoundary(
         RunState run, PrototypeDrawCardsResult drawn, int requested)
     {
-        var world = RequireWorld(run);
         var combat = drawn.Combat;
         var boundary = drawn.BoundaryKind;
-        int stageIndex = SemanticHandDrawStepIndex;
-        if (stageIndex < 0 || drawn.RemainingCount < 0 || requested <= 0 ||
+        if (drawn.RemainingCount < 0 || requested <= 0 ||
             (boundary == PrototypeDrawCardsBoundaryKind.SemanticDraw &&
              combat.SemanticDeck?.Pending is null) ||
             (boundary == PrototypeDrawCardsBoundaryKind.ControlledDrawCost &&
              combat.PendingChoice?.ControlledDrawCost is null))
             throw new InvalidDataException(
                 "Semantic hand-draw stage lost its suspended request.");
-        var continuation = new PrototypeAutomaticPipelineContinuationState(
-            stageIndex).WithHandDrawProgress(
-                PrototypeAutomaticHandDrawProgressV111.SemanticDraw(
-                    requested, drawn.RemainingCount));
-        return run with
-        {
-            Player = drawn.Player,
-            World = world with
-            {
-                Combat = combat with
-                {
-                    AutomaticPipelineContinuation = continuation
-                }
-            }
-        };
+        return CommitAutomaticHandDrawProgress(
+            run, drawn.Player, combat,
+            PrototypeAutomaticHandDrawProgressV111.SemanticDraw(
+                requested, drawn.RemainingCount),
+            createCheckpoint: true);
     }
 
     private static (RunState Run, int RemainingCount)
@@ -337,23 +325,17 @@ public sealed partial class PrototypeGameEngine
         var insertionCombat = drawn.Combat;
         if (automaticHandDrawRequested is { } requested)
         {
-            int stepIndex = SemanticHandDrawStepIndex;
             if (!semanticDraw.AutomaticSemanticHandDrawSegment ||
                 !semanticDraw.FromHandDraw || semanticDraw.EventDepth != 0 ||
-                requested <= 0 || stepIndex < 0 ||
-                (insertionCombat.AutomaticPipelineContinuation is { } cursor &&
-                 cursor.NextStepIndex != stepIndex))
+                requested <= 0)
                 throw new InvalidDataException(
                     "Automatic after-shuffle draw cursor is inconsistent.");
-            insertionCombat = insertionCombat with
-            {
-                AutomaticPipelineContinuation =
-                    new PrototypeAutomaticPipelineContinuationState(
-                        stepIndex,
-                        ControlledSemanticDrawRemaining:
-                            drawn.RemainingCount,
-                        ControlledSemanticDrawRequested: requested)
-            };
+            run = CommitAutomaticHandDrawProgress(
+                run, drawn.Player, insertionCombat,
+                PrototypeAutomaticHandDrawProgressV111.SemanticDraw(
+                    requested, drawn.RemainingCount),
+                createCheckpoint: true);
+            insertionCombat = run.World!.Combat!;
         }
 
         var combat = MakeControlledAfterShuffleInsertionChoice(
@@ -392,23 +374,17 @@ public sealed partial class PrototypeGameEngine
         var combat = drawn.Combat;
         if (automaticHandDrawRequested is { } requested)
         {
-            int stepIndex = SemanticHandDrawStepIndex;
             if (!semanticDraw.AutomaticSemanticHandDrawSegment ||
                 !semanticDraw.FromHandDraw || semanticDraw.EventDepth != 0 ||
-                requested <= 0 || stepIndex < 0 ||
-                (combat.AutomaticPipelineContinuation is { } cursor &&
-                 cursor.NextStepIndex != stepIndex))
+                requested <= 0)
                 throw new InvalidDataException(
                     "Automatic Stratagem draw cursor is inconsistent.");
-            combat = combat with
-            {
-                AutomaticPipelineContinuation =
-                    new PrototypeAutomaticPipelineContinuationState(
-                        stepIndex,
-                        ControlledSemanticDrawRemaining:
-                            drawn.RemainingCount,
-                        ControlledSemanticDrawRequested: requested)
-            };
+            run = CommitAutomaticHandDrawProgress(
+                run, drawn.Player, combat,
+                PrototypeAutomaticHandDrawProgressV111.SemanticDraw(
+                    requested, drawn.RemainingCount),
+                createCheckpoint: true);
+            combat = run.World!.Combat!;
         }
 
         var advanced = run with
@@ -544,19 +520,15 @@ public sealed partial class PrototypeGameEngine
                 "Automatic CardDrawn choice lost its hand-draw cursor.");
         combat = combat with
         {
-            AutomaticPipelineContinuation = cursor.WithHandDrawProgress(
-                PrototypeAutomaticHandDrawProgressV111.SemanticDraw(
-                    requested, remaining)),
             PendingChoice = combat.PendingChoice with
             {
                 AutomaticSemanticDrawHookChoice = true
             }
         };
-        var suspended = run with
-        {
-            Player = player,
-            World = run.World! with { Combat = combat }
-        };
+        var suspended = CommitAutomaticHandDrawProgress(
+            run, player, combat,
+            PrototypeAutomaticHandDrawProgressV111.SemanticDraw(
+                requested, remaining));
         PrototypeStateInvariants.Validate(suspended);
         return suspended;
     }

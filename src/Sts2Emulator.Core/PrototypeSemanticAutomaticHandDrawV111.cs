@@ -123,21 +123,11 @@ public sealed partial class PrototypeGameEngine
                 combat.PendingChoice?.ControlledDrawCost is null)
                 throw new InvalidDataException(
                     "Missing next semantic hand-draw choice.");
-            return (run with
-            {
-                World = world with
-                {
-                    Combat = combat with
-                    {
-                        AutomaticPipelineContinuation =
-                            cursor.WithHandDrawProgress(
-                                PrototypeAutomaticHandDrawProgressV111
-                                    .SemanticDraw(
-                                        cursor.ControlledSemanticDrawRequested!.Value,
-                                        remaining))
-                    }
-                }
-            }, remaining);
+            return (CommitAutomaticHandDrawProgress(
+                run, run.Player, combat,
+                PrototypeAutomaticHandDrawProgressV111.SemanticDraw(
+                    cursor.ControlledSemanticDrawRequested!.Value,
+                    remaining)), remaining);
         }
 
         if (combat.SemanticDeck?.Pending is not null ||

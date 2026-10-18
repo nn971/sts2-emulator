@@ -2744,25 +2744,11 @@ public sealed partial class PrototypeGameEngine
                     combat = beforeHandDraw.Combat;
                     if (combat.PendingChoice?.ControlledRandomPileCard is not null)
                     {
-                        int stageIndex = SemanticHandDrawStepIndex;
-                        if (stageIndex < 0)
-                            throw new InvalidDataException(
-                                "DrawPlayerHand has no automatic pipeline index.");
-                        return state with
-                        {
-                            Player = player,
-                            World = world with
-                            {
-                                Combat = combat with
-                                {
-                                    AutomaticPipelineContinuation =
-                                        new PrototypeAutomaticPipelineContinuationState(
-                                            stageIndex).WithHandDrawProgress(
-                                            PrototypeAutomaticHandDrawProgressV111
-                                                .SemanticBeforeHandDraw())
-                                }
-                            }
-                        };
+                        return CommitAutomaticHandDrawProgress(
+                            state, player, combat,
+                            PrototypeAutomaticHandDrawProgressV111
+                                .SemanticBeforeHandDraw(),
+                            createCheckpoint: true);
                     }
                     if (ControlledChanceGuardV111.Active &&
                         combat.PendingChoice is not null)
@@ -2783,10 +2769,6 @@ public sealed partial class PrototypeGameEngine
                             throw new NotSupportedException(
                                 "UNSUPPORTED_SEMANTIC_DECK site=combat.BeforeHandDraw " +
                                 "operation=nested_controlled_choice");
-                        int stageIndex = SemanticHandDrawStepIndex;
-                        if (stageIndex < 0)
-                            throw new InvalidDataException(
-                                "DrawPlayerHand has no automatic pipeline index.");
                         bool semanticBeforeHandDraw = combat.SemanticDeck is
                             { Mode: SemanticDeckStateV111.NatureMode };
                         if (!semanticBeforeHandDraw &&
@@ -2809,16 +2791,11 @@ public sealed partial class PrototypeGameEngine
                                 {
                                     AutomaticSemanticDrawHookChoice = true
                                 }
-                                : pending,
-                            AutomaticPipelineContinuation =
-                                new PrototypeAutomaticPipelineContinuationState(
-                                    stageIndex).WithHandDrawProgress(progress)
+                                : pending
                         };
-                        return state with
-                        {
-                            Player = player,
-                            World = world with { Combat = combat }
-                        };
+                        return CommitAutomaticHandDrawProgress(
+                            state, player, combat, progress,
+                            createCheckpoint: true);
                     }
                 }
                 combat = ReturnLastTurnReboundCardsToHand(combat);
