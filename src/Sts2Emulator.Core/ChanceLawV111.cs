@@ -418,6 +418,28 @@ public static partial class ChanceLawEngineV111
         {
             ["event.random_upgrade.card_instance"] = new(
                 "event", "choose_index", 1),
+            ["combat.encounter.formation.index_draw"] = new(
+                "combat", "choose_index", 1),
+            ["combat.encounter.overgrowth_elite.index_draw"] = new(
+                "combat", "choose_index", 1),
+            ["combat.encounter.overgrowth_weak.index_draw"] = new(
+                "combat", "choose_index", 1),
+            ["combat.encounter.overgrowth_normal.index_draw"] = new(
+                "combat", "choose_index", 1),
+            ["combat.encounter.weighted_selection.ticket"] = new(
+                "combat", "bounded_integer", 1),
+            ["combat.encounter.underdocks.elite.index_draw"] = new(
+                "combat", "choose_index", 1),
+            ["combat.encounter.underdocks.weak.index_draw"] = new(
+                "combat", "choose_index", 1),
+            ["combat.encounter.underdocks.normal.index_draw"] = new(
+                "combat", "choose_index", 1),
+            ["combat.encounter.later_act.weak.index_draw"] = new(
+                "combat", "choose_index", 1),
+            ["combat.encounter.later_act.normal.index_draw"] = new(
+                "combat", "choose_index", 1),
+            ["combat.encounter.later_act.elite.index_draw"] = new(
+                "combat", "choose_index", 1),
             ["map.legacy.floor_width.index_draw"] = new(
                 "map", "choose_index", 2),
             ["map.legacy.edge_source.index_draw"] = new(
