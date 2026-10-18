@@ -8106,6 +8106,9 @@ public sealed partial class PrototypeGameEngine
                         throw new InvalidDataException(
                             "Top-draw autoplay continuation has stale staged cards.");
                     var previouslyStagedCount = staged.Count;
+                    int committedStagedCount = previouslyStagedCount;
+                    var resolvedTopCards = new List<
+                        SemanticDrawPileTopCardV111>();
 
                     for (var index = 0;
                          index < count;
@@ -8114,6 +8117,16 @@ public sealed partial class PrototypeGameEngine
                         if (draw.Count == 0
                             && discard.Count > 0)
                         {
+                            combat = CommitTopAutoplayDrawCheckpoint(
+                                combat, draw, discard,
+                                staged.Skip(committedStagedCount).ToArray(),
+                                resolvedTopCards);
+                            committedStagedCount = staged.Count;
+                            semanticDeck = combat.SemanticDeck;
+                            draw = combat.DrawPile.ToList();
+                            discard = combat.DiscardPile.ToList();
+                            resolvedTopCards.Clear();
+
                             if (semanticDeck?.Mode ==
                                 SemanticDeckStateV111.NatureMode)
                             {
@@ -8144,10 +8157,6 @@ public sealed partial class PrototypeGameEngine
                                         DeferredDrawnCardInstanceIds =
                                             (long[])staged.ToArray().Clone()
                                     };
-                                    combat = SetZone(
-                                        combat, PrototypeCardZone.PlayPile,
-                                        combat.PlayCardIds.Concat(staged.Skip(
-                                            previouslyStagedCount)).ToArray());
                                     var continuation = new
                                         PrototypeChoiceResolutionContinuationState(
                                             SourceCardInstanceId:
@@ -8218,6 +8227,7 @@ public sealed partial class PrototypeGameEngine
                             var resolvedTop =
                                 SemanticDrawPileAdapterV111.ResolveTopCard(
                                     semanticDeck, draw);
+                            resolvedTopCards.Add(resolvedTop);
                             semanticDeck = resolvedTop.Deck;
                             if (resolvedTop.IsPending)
                             {
@@ -8225,19 +8235,10 @@ public sealed partial class PrototypeGameEngine
                                     SemanticDeckStateV111.NatureMode)
                                     throw new InvalidDataException(
                                         "Only a Nature top-card reveal may suspend autoplay.");
-                                combat = SemanticDrawPileAdapterV111
-                                    .ApplyCommittedZoneTransition(
-                                        combat,
-                                        combat.Mechanics.CardZones
-                                            .WithZoneChanges(
-                                                new Dictionary<PrototypeCardZone, long[]>
-                                                {
-                                                    [PrototypeCardZone.DrawPile] = draw.ToArray(),
-                                                    [PrototypeCardZone.PlayPile] = combat.PlayCardIds
-                                                        .Concat(staged.Skip(previouslyStagedCount))
-                                                        .ToArray()
-                                                }),
-                                        semanticDeck);
+                                combat = CommitTopAutoplayDrawCheckpoint(
+                                    combat, draw, discard,
+                                    staged.Skip(committedStagedCount).ToArray(),
+                                    resolvedTopCards);
                                 var remainingCount = count - index;
                                 var resumeOperation = operation with
                                 {
@@ -8290,19 +8291,10 @@ public sealed partial class PrototypeGameEngine
                         break;
                     }
 
-                    combat = SemanticDrawPileAdapterV111
-                        .ApplyCommittedZoneTransition(
-                            combat,
-                            combat.Mechanics.CardZones.WithZoneChanges(
-                                new Dictionary<PrototypeCardZone, long[]>
-                                {
-                                    [PrototypeCardZone.DrawPile] = draw.ToArray(),
-                                    [PrototypeCardZone.DiscardPile] = discard.ToArray(),
-                                    [PrototypeCardZone.PlayPile] = combat.PlayCardIds
-                                        .Concat(staged.Skip(previouslyStagedCount))
-                                        .ToArray()
-                                }),
-                            semanticDeck);
+                    combat = CommitTopAutoplayDrawCheckpoint(
+                        combat, draw, discard,
+                        staged.Skip(committedStagedCount).ToArray(),
+                        resolvedTopCards);
 
                     operations = new Queue<
                         PrototypeQueuedOperation>(
@@ -16109,6 +16101,34 @@ public sealed partial class PrototypeGameEngine
                 Boundary.AfterShuffleInsertions;
     }
 
+    private static CombatState CommitTopAutoplayDrawCheckpoint(
+        CombatState combat,
+        IReadOnlyList<long> drawPile,
+        IReadOnlyList<long> discardPile,
+        IReadOnlyCollection<long> newlyStagedCardInstanceIds,
+        IReadOnlyList<SemanticDrawPileTopCardV111> topCardResolutions)
+    {
+        var nextZones = combat.Mechanics.CardZones.WithZoneChanges(
+            new Dictionary<PrototypeCardZone, long[]>
+            {
+                [PrototypeCardZone.DrawPile] = drawPile.ToArray(),
+                [PrototypeCardZone.DiscardPile] = discardPile.ToArray(),
+                [PrototypeCardZone.PlayPile] = combat.PlayCardIds
+                    .Concat(newlyStagedCardInstanceIds).ToArray()
+            });
+        if (combat.SemanticDeck is null)
+        {
+            if (topCardResolutions.Count != 0)
+                throw new InvalidDataException(
+                    "Legacy top autoplay cannot carry semantic top-card resolutions.");
+            return SemanticDrawPileAdapterV111.ApplyCommittedZoneTransition(
+                combat, nextZones, null);
+        }
+
+        return SemanticDrawPileAdapterV111.CommitResolvedTopCards(
+            combat, topCardResolutions, nextZones);
+    }
+
     private static PrototypeDrawCardsResult DrawCards(
         PlayerState player,
         CombatState combat,
@@ -16302,35 +16322,44 @@ public sealed partial class PrototypeGameEngine
                         "operation=missing_native_stream_owner");
                 var resolvedTop = SemanticDrawPileAdapterV111
                     .ResolveTopCard(semantic, draw);
-                semantic = resolvedTop.Deck;
                 if (resolvedTop.IsPending)
                     return new PrototypeDrawCardsResult(
-                        player, combat with { SemanticDeck = semantic },
+                        player,
+                        SemanticDrawPileAdapterV111.CommitResolvedTopCards(
+                            combat, [resolvedTop], combat.Mechanics.CardZones),
                         drawnCardInstanceIds.ToArray(),
                         PrototypeDrawCardsBoundaryV111
                             .SemanticDraw(count - drawNumber));
                 cardInstanceId = resolvedTop.CardInstanceId!.Value;
                 draw = resolvedTop.RemainingPhysicalDrawPile.ToList();
-                combat = combat with { SemanticDeck = semantic };
-            }
-            else
-            {
-                var index = draw.Count - 1;
-                cardInstanceId = draw[index];
-                draw.RemoveAt(index);
-            }
-
-            combat = SemanticDrawPileAdapterV111.ApplyCommittedZoneTransition(
-                combat,
-                combat.Mechanics.CardZones.WithZoneChanges(
+                var nextZones = combat.Mechanics.CardZones.WithZoneChanges(
                     new Dictionary<PrototypeCardZone, long[]>
                     {
                         [PrototypeCardZone.DrawPile] = draw.ToArray(),
                         [PrototypeCardZone.Hand] = combat.Hand
                             .Append(cardInstanceId).ToArray(),
                         [PrototypeCardZone.DiscardPile] = discard.ToArray()
-                    }),
-                combat.SemanticDeck);
+                    });
+                combat = SemanticDrawPileAdapterV111.CommitResolvedTopCards(
+                    combat, [resolvedTop], nextZones);
+            }
+            else
+            {
+                var index = draw.Count - 1;
+                cardInstanceId = draw[index];
+                draw.RemoveAt(index);
+                combat = SemanticDrawPileAdapterV111.ApplyCommittedZoneTransition(
+                    combat,
+                    combat.Mechanics.CardZones.WithZoneChanges(
+                        new Dictionary<PrototypeCardZone, long[]>
+                        {
+                            [PrototypeCardZone.DrawPile] = draw.ToArray(),
+                            [PrototypeCardZone.Hand] = combat.Hand
+                                .Append(cardInstanceId).ToArray(),
+                            [PrototypeCardZone.DiscardPile] = discard.ToArray()
+                        }),
+                    combat.SemanticDeck);
+            }
             drawnCardInstanceIds.Add(cardInstanceId);
 
             var card = RequireCombatCard(combat, cardInstanceId);

@@ -75,6 +75,50 @@ public static class SemanticDrawPileAdapterV111
     }
 
     /// <summary>
+    /// Replays the saved top-card resolutions from the synchronized source
+    /// checkpoint, then commits their final provider state with the matching
+    /// physical draw-pile and destination-zone changes.
+    /// </summary>
+    internal static CombatState CommitResolvedTopCards(
+        CombatState combat,
+        IReadOnlyList<SemanticDrawPileTopCardV111> resolutions,
+        CombatCardZonesV111 nextCardZones)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(resolutions);
+        ArgumentNullException.ThrowIfNull(nextCardZones);
+        if (combat.SemanticDeck is not { } sourceDeck)
+            throw new InvalidOperationException(
+                "Resolved semantic top cards require a provider-owned deck.");
+        ValidateSynchronized(combat, requireIdle: true);
+
+        var semantic = sourceDeck;
+        IReadOnlyList<long> physicalDrawPile = combat.DrawPile;
+        for (int index = 0; index < resolutions.Count; index++)
+        {
+            var expected = ResolveTopCard(semantic, physicalDrawPile);
+            var saved = resolutions[index];
+            if (expected.IsPending != saved.IsPending ||
+                expected.CardInstanceId != saved.CardInstanceId ||
+                expected.Deck.Fingerprint != saved.Deck.Fingerprint ||
+                !expected.RemainingPhysicalDrawPile.SequenceEqual(
+                    saved.RemainingPhysicalDrawPile) ||
+                expected.IsPending && index != resolutions.Count - 1)
+                throw new InvalidDataException(
+                    "Resolved semantic top-card sequence differs from its source checkpoint.");
+            semantic = expected.Deck;
+            physicalDrawPile = expected.RemainingPhysicalDrawPile;
+        }
+
+        if (!nextCardZones.DrawPile.SequenceEqual(physicalDrawPile))
+            throw new InvalidDataException(
+                "Resolved semantic top cards differ from the committed physical draw pile.");
+        ValidateProviderCorrespondence(semantic, nextCardZones.DrawPile);
+        return ApplyCommittedZoneTransition(
+            combat, nextCardZones, semantic);
+    }
+
+    /// <summary>
     /// Atomically transfers an exhausted draw pile's discard identities into
     /// a new unresolved Nature shuffle epoch. Callers retain ownership of
     /// shuffle hooks and any selected physical ordering used by their frame.
