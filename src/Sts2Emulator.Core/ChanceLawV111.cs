@@ -537,6 +537,16 @@ public static partial class ChanceLawEngineV111
         "treasure.relic_model.index_draw"
     ];
 
+    private static readonly string[] LegacyRelicAcquisitionRareCardQuerySites =
+    [
+        "relic.acquisition.random_rare_card.model"
+    ];
+
+    private static readonly string[] LegacyRelicAcquisitionPotionQuerySites =
+    [
+        "relic.acquisition.random_potion.model"
+    ];
+
     private sealed record NativeBoundedIntegerLawSiteV111(
         string StreamId, string Boundary);
 
@@ -660,6 +670,12 @@ public static partial class ChanceLawEngineV111
 
     public static string[] LegacyTreasureRelicModelQuerySiteIds =>
         (string[])LegacyTreasureRelicModelQuerySites.Clone();
+
+    public static string[] LegacyRelicAcquisitionRareCardQuerySiteIds =>
+        (string[])LegacyRelicAcquisitionRareCardQuerySites.Clone();
+
+    public static string[] LegacyRelicAcquisitionPotionQuerySiteIds =>
+        (string[])LegacyRelicAcquisitionPotionQuerySites.Clone();
 
     /// <summary>
     /// Query the retained legacy card-rarity integer ticket after the source
@@ -1665,6 +1681,116 @@ public static partial class ChanceLawEngineV111
             "Equal index weights over the ordered prototype Rare-card reward " +
             "pool; Native character-pool fidelity and stream parity remain " +
             "unverified.", outcomes, operationKind: "choose_index");
+    }
+
+    /// <summary>
+    /// Query the legacy random-Rare-card relic acquisition model draw. The
+    /// configured Native route can query its declared player-stream bound
+    /// separately through <see cref="QueryNativeRelicAcquisitionModel"/>.
+    /// </summary>
+    public static ChanceLawV111 QueryLegacyRelicAcquisitionRareCardModel(
+        int ordinal)
+    {
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+
+        const string siteId = "relic.acquisition.random_rare_card.model";
+        const string streamId = "reward";
+        var pool = PrototypeContent.RewardCardPool.Where(cardId =>
+            PrototypeContent.Card(cardId).Rarity ==
+            PrototypeCardRarity.Rare).ToArray();
+        if (pool.Length == 0)
+            throw new InvalidOperationException(
+                "The legacy random-Rare-card relic acquisition pool is empty.");
+        var poolFingerprint = CanonicalJson.Sha256(pool);
+        var ownerId = "player:rare_pool:" + poolFingerprint;
+        var outcomes = pool.Select(cardId =>
+            new ChanceLawOutcomeV111("card:" + cardId, 1L)).ToArray();
+        var conditioning = new
+        {
+            siteId,
+            streamId,
+            ownerId,
+            ordinal,
+            orderedRareRewardPool = pool,
+            poolFingerprint
+        };
+        return CreateLegacyCategoricalLaw(
+            siteId, streamId, ownerId, ordinal,
+            "legacy-relic-acquisition-rare-card-pool-v1", conditioning,
+            "Equal index weights over the ordered prototype Rare reward-card " +
+            "pool; Native character-pool fidelity and stream attribution " +
+            "remain unverified.", outcomes, operationKind: "choose_index");
+    }
+
+    /// <summary>
+    /// Query the legacy random-potion relic acquisition model draw for the
+    /// caller-declared first open potion slot.
+    /// </summary>
+    public static ChanceLawV111 QueryLegacyRelicAcquisitionPotionModel(
+        int slotIndex, int ordinal)
+    {
+        if (slotIndex < 0)
+            throw new ArgumentOutOfRangeException(nameof(slotIndex));
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+
+        const string siteId = "relic.acquisition.random_potion.model";
+        const string streamId = "event";
+        var pool = PrototypeContent.PotionPool;
+        if (pool.Length == 0)
+            throw new InvalidOperationException(
+                "The legacy random-potion relic acquisition pool is empty.");
+        var poolFingerprint = CanonicalJson.Sha256(pool);
+        var ownerId = $"player:potion_slot:{slotIndex}:pool:" +
+            poolFingerprint;
+        var outcomes = pool.Select(potionId =>
+            new ChanceLawOutcomeV111("potion:" + potionId, 1L)).ToArray();
+        var conditioning = new
+        {
+            siteId,
+            streamId,
+            ownerId,
+            ordinal,
+            slotIndex,
+            orderedPotionPool = pool,
+            poolFingerprint
+        };
+        return CreateLegacyCategoricalLaw(
+            siteId, streamId, ownerId, ordinal,
+            "legacy-relic-acquisition-potion-pool-v1", conditioning,
+            "Equal index weights over the ordered prototype potion pool for " +
+            "the caller-declared open slot; source-pool fidelity and Native " +
+            "stream attribution remain unverified.", outcomes,
+            operationKind: "choose_index");
+    }
+
+    /// <summary>
+    /// Query an acquisition model's declared Native player-stream bounded
+    /// index. This verifies the NextInt transform, not owner or pool fidelity.
+    /// </summary>
+    public static ChanceLawV111 QueryNativeRelicAcquisitionModel(
+        string siteId, string ownerId, int supportCount, int ordinal)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
+        if (siteId is not ("relic.acquisition.random_rare_card.model" or
+            "relic.acquisition.random_potion.model"))
+            throw new NotSupportedException(
+                $"Native relic-acquisition model law does not support site '{siteId}'.");
+        if (supportCount < 1)
+            throw new ArgumentOutOfRangeException(nameof(supportCount));
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+
+        var request = new RandomIndexRequestV111(
+            siteId, NativePlayerRngV111.RewardsStreamId, ownerId, ordinal,
+            Enumerable.Range(0, supportCount).ToArray());
+        var eventId = CanonicalJson.Sha256(new
+        {
+            boundary = "native-relic-acquisition-model-index",
+            request
+        });
+        return QueryRandomIndex(eventId, request);
     }
 
     /// <summary>

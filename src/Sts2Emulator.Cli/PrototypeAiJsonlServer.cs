@@ -2668,7 +2668,9 @@ internal static class PrototypeAiJsonlServer
                                  "potion.rarity_roll.ticket" or
                                  "potion.uncommon_model.index_draw" or
                                  "potion.model_within_rarity.index_draw" or
-                                 "potion.uniform_model.index_draw"))
+                                 "potion.uniform_model.index_draw" or
+                                 "relic.acquisition.random_rare_card.model" or
+                                 "relic.acquisition.random_potion.model"))
                             throw new ArgumentException(
                                 "stream_id is accepted only for PotionFactory, relic, legacy potion rarity, and potion model laws.");
                         int[]? priorIndices = null;
@@ -4790,6 +4792,116 @@ internal static class PrototypeAiJsonlServer
                                 supportCount != law.Outcomes.Length)
                                 throw new ArgumentException(
                                     "Event Rare-card model support_count must match the prototype Rare-card pool.");
+                            Write(new
+                            {
+                                requestId,
+                                ok = true,
+                                chanceLawSchemaId =
+                                    ChanceLawV111.CurrentSchemaId,
+                                law
+                            });
+                            break;
+                        }
+                        if (siteId ==
+                            "relic.acquisition.random_rare_card.model")
+                        {
+                            RejectChanceLawQueryParameters(
+                                request, "stream_id", "owner_id",
+                                "support_count");
+                            var acquisitionStream = OptionalString(
+                                request, "stream_id") ?? "reward";
+                            if (acquisitionStream == "reward")
+                            {
+                                if (OptionalString(request, "owner_id") is not null)
+                                    throw new ArgumentException(
+                                        "Legacy Rare-card relic acquisition derives its owner from the prototype pool.");
+                                law = ChanceLawEngineV111
+                                    .QueryLegacyRelicAcquisitionRareCardModel(
+                                        ordinal);
+                                var supportCount = OptionalInt(
+                                    request, "support_count");
+                                if (supportCount is not null &&
+                                    supportCount != law.Outcomes.Length)
+                                    throw new ArgumentException(
+                                        "Legacy Rare-card relic acquisition support_count must match the prototype Rare-card pool.");
+                            }
+                            else if (acquisitionStream == "player.rewards")
+                            {
+                                var ownerId = OptionalString(
+                                    request, "owner_id") ??
+                                    throw new ArgumentException(
+                                        "Native Rare-card relic acquisition law requires owner_id.");
+                                var supportCount = OptionalInt(
+                                    request, "support_count") ??
+                                    throw new ArgumentException(
+                                        "Native Rare-card relic acquisition law requires support_count.");
+                                law = ChanceLawEngineV111
+                                    .QueryNativeRelicAcquisitionModel(
+                                        siteId, ownerId, supportCount, ordinal);
+                            }
+                            else
+                            {
+                                throw new ArgumentException(
+                                    "Rare-card relic acquisition stream_id must be reward or player.rewards.");
+                            }
+                            Write(new
+                            {
+                                requestId,
+                                ok = true,
+                                chanceLawSchemaId =
+                                    ChanceLawV111.CurrentSchemaId,
+                                law
+                            });
+                            break;
+                        }
+                        if (siteId ==
+                            "relic.acquisition.random_potion.model")
+                        {
+                            RejectChanceLawQueryParameters(
+                                request, "stream_id", "owner_id", "slot_index",
+                                "slot_empty", "support_count");
+                            var slotIndex = OptionalInt(request, "slot_index") ??
+                                throw new ArgumentException(
+                                    "Random-potion relic acquisition law requires slot_index for the first open potion slot.");
+                            if (OptionalBool(request, "slot_empty") != true)
+                                throw new ArgumentException(
+                                    "Random-potion relic acquisition law requires slot_empty=true.");
+                            var acquisitionStream = OptionalString(
+                                request, "stream_id") ?? "event";
+                            if (acquisitionStream == "event")
+                            {
+                                if (OptionalString(request, "owner_id") is not null)
+                                    throw new ArgumentException(
+                                        "Legacy potion relic acquisition derives its owner from the open slot and prototype pool.");
+                                law = ChanceLawEngineV111
+                                    .QueryLegacyRelicAcquisitionPotionModel(
+                                        slotIndex, ordinal);
+                                var supportCount = OptionalInt(
+                                    request, "support_count");
+                                if (supportCount is not null &&
+                                    supportCount != law.Outcomes.Length)
+                                    throw new ArgumentException(
+                                        "Legacy potion relic acquisition support_count must match the ordered prototype potion pool.");
+                            }
+                            else if (acquisitionStream == "player.rewards")
+                            {
+                                var ownerId = OptionalString(
+                                    request, "owner_id") ??
+                                    throw new ArgumentException(
+                                        "Native potion relic acquisition law requires owner_id.");
+                                var supportCount = OptionalInt(
+                                    request, "support_count") ??
+                                    throw new ArgumentException(
+                                        "Native potion relic acquisition law requires support_count.");
+                                law = ChanceLawEngineV111
+                                    .QueryNativeRelicAcquisitionModel(
+                                        siteId, ownerId, supportCount, ordinal);
+                            }
+                            else
+                            {
+                                throw new ArgumentException(
+                                    "Potion relic acquisition stream_id must be event or player.rewards.");
+                            }
                             Write(new
                             {
                                 requestId,
