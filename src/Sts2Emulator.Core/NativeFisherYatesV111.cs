@@ -9,7 +9,8 @@ namespace Sts2Emulator.Core;
 /// comparison-order sorting BEFORE invoking UnstableShuffle; initial
 /// CardPile.RandomizeOrderInternal uses its existing input order.
 /// Hooks such as ModifyShuffleOrder run AFTER this method and are verified
-/// separately. This is a mechanics primitive, not full combat continuation.
+/// separately. SiteIds are restricted to registered Native shuffle
+/// boundaries. This is a mechanics primitive, not full combat continuation.
 /// </summary>
 public static class NativeFisherYatesV111
 {
@@ -58,7 +59,9 @@ public static class NativeFisherYatesV111
         ArgumentNullException.ThrowIfNull(provider);
         ArgumentException.ThrowIfNullOrWhiteSpace(streamId);
         ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
-        ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
+        ValidateSiteId(siteId,
+            StochasticSiteRegistryV111.NativeFisherYatesSiteIds,
+            "shuffle");
         if (ordinalOffset < 0)
             throw new ArgumentOutOfRangeException(nameof(ordinalOffset));
         var decisions = new List<RandomIndexDecisionV111>();
@@ -104,6 +107,18 @@ public static class NativeFisherYatesV111
             decisions.Add(decision);
         }
         return decisions.ToArray();
+    }
+
+    private static void ValidateSiteId(
+        string siteId, string[] supportedSiteIds, string operation)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
+        ArgumentNullException.ThrowIfNull(supportedSiteIds);
+        ArgumentException.ThrowIfNullOrWhiteSpace(operation);
+        if (!supportedSiteIds.Contains(siteId, StringComparer.Ordinal))
+            throw new NotSupportedException(
+                $"Native Fisher-Yates does not support {operation} site " +
+                $"'{siteId}'.");
     }
 }
 

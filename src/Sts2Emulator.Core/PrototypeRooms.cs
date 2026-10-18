@@ -5594,7 +5594,8 @@ public sealed partial class PrototypeGameEngine
             {
                 relicOptions = PickDistinct(
                     bossRelicPool, 3, state.Rng, "reward",
-                    "reward.boss_relic_offer.shuffle_swap_index",
+                    StochasticSiteRegistryV111
+                        .RewardBossRelicOfferShuffleSiteId,
                     $"act:{world.Act}:floor:{world.Floor}");
             }
             else
@@ -5605,7 +5606,8 @@ public sealed partial class PrototypeGameEngine
                     new NativeRandomIndexProviderV111(),
                     NativePlayerRngV111.RewardsStreamId,
                     $"act:{world.Act}:floor:{world.Floor}:boss_relics",
-                    "reward.boss_relic_offer.shuffle_swap_index");
+                    StochasticSiteRegistryV111
+                        .RewardBossRelicOfferShuffleSiteId);
                 relicOptions = bossRelicPool.Take(3).ToArray();
             }
         }

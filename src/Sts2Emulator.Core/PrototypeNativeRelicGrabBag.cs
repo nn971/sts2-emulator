@@ -44,6 +44,8 @@ public sealed record PrototypeRelicBagState(
 
 public static class PrototypeNativeRelicGrabBag
 {
+    public const string QueueShuffleSiteId =
+        "relic_grab_bag.queue_shuffle.swap_index";
     public const string NativeMerchantModelSiteId =
         "shop.merchant.relic_model.index_draw";
     public const string NativeTreasureModelSiteId =
@@ -205,7 +207,7 @@ public static class PrototypeNativeRelicGrabBag
                 ids,
                 rng,
                 "reward",
-                "relic_grab_bag.queue_shuffle.swap_index",
+                QueueShuffleSiteId,
                 "player:0:relic_grab_bag:" + rarity);
             return ids;
         }
@@ -267,7 +269,7 @@ public static class PrototypeNativeRelicGrabBag
                 new NativeRandomIndexProviderV111(),
                 "run.treasure_room_relics",
                 "player:0:relic_grab_bag:" + rarity,
-                "relic_grab_bag.queue_shuffle.swap_index");
+                QueueShuffleSiteId);
             return ids;
         }
 

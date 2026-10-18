@@ -79,7 +79,7 @@ internal static class NativeEventShufflePlanBuilderV111
         var warHammerEliteVictoryAction =
             origin.Phase == RunPhase.Combat &&
             (siteId is null || siteId ==
-                "relic.war_hammer.elite_upgrade.shuffle_swap_index") &&
+                StochasticSiteRegistryV111.WarHammerEliteUpgradeShuffleSiteId) &&
             origin.World is { ActiveRoom: PrototypeRoomType.Elite,
                 Event: null, Combat: not null } &&
             origin.Player.ActiveRelics.Any(relic =>
@@ -154,7 +154,7 @@ internal static class NativeEventShufflePlanBuilderV111
                     PrototypeNativeHiveEvents
                         .WarHistorianRepyRelicShuffleSiteId,
             _ when warHammerEliteVictoryAction =>
-                "relic.war_hammer.elite_upgrade.shuffle_swap_index",
+                StochasticSiteRegistryV111.WarHammerEliteUpgradeShuffleSiteId,
             _ when fishingRodVictoryAction =>
                 PrototypeGameEngine.FishingRodUpgradeSiteId,
             _ when improvementVictoryAction =>
@@ -310,7 +310,7 @@ internal static class NativeEventShufflePlanBuilderV111
             nativeRngEventId = PrototypeNativeFakeMerchant.NativeRngEventId;
         }
         else if (warHammerEliteVictoryAction && siteId ==
-            "relic.war_hammer.elite_upgrade.shuffle_swap_index")
+            StochasticSiteRegistryV111.WarHammerEliteUpgradeShuffleSiteId)
         {
             if (world.ActiveRoom != PrototypeRoomType.Elite ||
                 world.Combat is null ||
@@ -605,7 +605,7 @@ internal static class NativeEventShufflePlanBuilderV111
         var isCombatEndIndex = isFishingRodUpgrade || isImprovementUpgrade ||
             isPaelsToothReturn;
         var isWarHammerShuffle = siteId ==
-            "relic.war_hammer.elite_upgrade.shuffle_swap_index";
+            StochasticSiteRegistryV111.WarHammerEliteUpgradeShuffleSiteId;
         var isRepyShuffle = siteId == PrototypeNativeHiveEvents
             .WarHistorianRepyRelicShuffleSiteId;
         NativeRngSnapshot? streamSnapshot;
@@ -1205,7 +1205,7 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
                 plan.NativeRngEventId, plan.EventId,
                 SelectiveReplaySite(plan), plan.OrderedCandidateIds,
                 plan.SiteId ==
-                    "relic.war_hammer.elite_upgrade.shuffle_swap_index"
+                    StochasticSiteRegistryV111.WarHammerEliteUpgradeShuffleSiteId
                     ? plan.NativeCursorBefore : null,
                 plan.PreserveEventRng,
                 plan.ExpectedUnscriptedStreamId,
@@ -1283,7 +1283,7 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
                 plan.NativeRngEventId, plan.EventId,
                 SelectiveReplaySite(plan), plan.OrderedCandidateIds,
                 plan.SiteId ==
-                    "relic.war_hammer.elite_upgrade.shuffle_swap_index"
+                    StochasticSiteRegistryV111.WarHammerEliteUpgradeShuffleSiteId
                     ? plan.NativeCursorBefore : null,
                 plan.PreserveEventRng,
                 plan.ExpectedUnscriptedStreamId,
@@ -1443,7 +1443,7 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
 
     private static string? SelectiveReplaySite(
         NativeEventShufflePlanV111 plan) =>
-        plan.SiteId is "relic.war_hammer.elite_upgrade.shuffle_swap_index" or
+        plan.SiteId is StochasticSiteRegistryV111.WarHammerEliteUpgradeShuffleSiteId or
             PrototypeNativeGloryEvents
             .BattlewornUpgradeShuffleSiteId or
             PrototypeNativeFakeMerchant.RelicOfferShuffleSiteId or
@@ -1544,7 +1544,7 @@ public static partial class ChanceLawEngineV111
         "relic.persistent_combat_end.random_upgrade.index_draw",
         "combat.glory_tinker.improvement_card.index_draw",
         "relic.paels_tooth.card_return.index_draw",
-        "relic.war_hammer.elite_upgrade.shuffle_swap_index",
+        StochasticSiteRegistryV111.WarHammerEliteUpgradeShuffleSiteId,
         PrototypeNativeUnderdocksDoors.ShuffleSiteId,
         PrototypeNativeGloryEvents.HungryForMushroomsShuffleSiteId,
         PrototypeNativeGloryEvents.TinkerTypeOfferShuffleSiteId,

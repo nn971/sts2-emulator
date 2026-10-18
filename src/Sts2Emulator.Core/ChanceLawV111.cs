@@ -657,13 +657,13 @@ public static partial class ChanceLawEngineV111
         NativeBoundedIntegerLawSiteV111> NativeBoundedIntegerLawSites =
         new(StringComparer.Ordinal)
         {
-            ["relic_grab_bag.queue_shuffle.swap_index"] = new(
+            [PrototypeNativeRelicGrabBag.QueueShuffleSiteId] = new(
                 "run.treasure_room_relics",
                 "native-relic-bag-queue-shuffle-index"),
-            ["reward.boss_relic_offer.shuffle_swap_index"] = new(
+            [StochasticSiteRegistryV111.RewardBossRelicOfferShuffleSiteId] = new(
                 NativePlayerRngV111.RewardsStreamId,
                 "native-boss-relic-offer-shuffle-index"),
-            ["reward.lava_rock.relic_offer.shuffle_swap_index"] = new(
+            [StochasticSiteRegistryV111.RewardLavaRockRelicOfferShuffleSiteId] = new(
                 NativePlayerRngV111.RewardsStreamId,
                 "native-lava-rock-relic-offer-shuffle-index"),
             [NativeFisherYatesV111.SiteId] = new(
@@ -4002,7 +4002,7 @@ public static partial class ChanceLawEngineV111
         string ownerId, int supportCount, int ordinal)
     {
         return QueryNativeBoundedIntegerLawSite(
-            "relic_grab_bag.queue_shuffle.swap_index", ownerId,
+            PrototypeNativeRelicGrabBag.QueueShuffleSiteId, ownerId,
             supportCount, ordinal);
     }
 
@@ -4014,7 +4014,7 @@ public static partial class ChanceLawEngineV111
         string ownerId, int supportCount, int ordinal)
     {
         return QueryNativeBoundedIntegerLawSite(
-            "reward.boss_relic_offer.shuffle_swap_index", ownerId,
+            StochasticSiteRegistryV111.RewardBossRelicOfferShuffleSiteId, ownerId,
             supportCount, ordinal);
     }
 
@@ -4027,7 +4027,7 @@ public static partial class ChanceLawEngineV111
         string ownerId, int supportCount, int ordinal)
     {
         return QueryNativeBoundedIntegerLawSite(
-            "reward.lava_rock.relic_offer.shuffle_swap_index", ownerId,
+            StochasticSiteRegistryV111.RewardLavaRockRelicOfferShuffleSiteId, ownerId,
             supportCount, ordinal);
     }
 
