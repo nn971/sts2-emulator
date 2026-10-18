@@ -2664,9 +2664,10 @@ internal static class PrototypeAiJsonlServer
                         if (OptionalString(request, "stream_id") is not null &&
                             siteId is not
                                 ("potion_factory.rarity_roll.unit_float" or
-                                 "relic_grab_bag.rarity.unit_float"))
+                                 "relic_grab_bag.rarity.unit_float" or
+                                 "potion.rarity_roll.ticket"))
                             throw new ArgumentException(
-                                "stream_id is accepted only for PotionFactory and relic rarity laws.");
+                                "stream_id is accepted only for PotionFactory, relic, and legacy potion rarity laws.");
                         int[]? priorIndices = null;
                         if (request.TryGetProperty(
                                 "prior_indices", out var priorIndicesElement))
@@ -4004,6 +4005,108 @@ internal static class PrototypeAiJsonlServer
                             law = ChanceLawEngineV111
                                 .QueryLegacyMerchantIndexRequest(
                                     siteId, ownerId, ordinal, supportCount);
+                            Write(new
+                            {
+                                requestId,
+                                ok = true,
+                                chanceLawSchemaId =
+                                    ChanceLawV111.CurrentSchemaId,
+                                law
+                            });
+                            break;
+                        }
+                        if (siteId == "card_rarity.roll.ticket")
+                        {
+                            RejectChanceLawQueryParameters(
+                                request, "card_rarity_source",
+                                "current_offset_basis_points", "ascension",
+                                "support_count");
+                            var sourceText = OptionalString(
+                                request, "card_rarity_source") ??
+                                throw new ArgumentException(
+                                    "Legacy card-rarity ticket law requires card_rarity_source.");
+                            if (!Enum.TryParse<
+                                    PrototypeNativeCardOddsSource>(
+                                        sourceText, ignoreCase: false,
+                                        out var source) ||
+                                !Enum.IsDefined(source))
+                                throw new ArgumentException(
+                                    "card_rarity_source must be RegularEncounter, EliteEncounter, BossEncounter, or Shop.");
+                            var currentOffset = OptionalInt(
+                                request, "current_offset_basis_points") ??
+                                throw new ArgumentException(
+                                    "Legacy card-rarity ticket law requires current_offset_basis_points.");
+                            var ascension = OptionalInt(request, "ascension") ??
+                                throw new ArgumentException(
+                                    "Legacy card-rarity ticket law requires ascension.");
+                            law = ChanceLawEngineV111
+                                .QueryLegacyCardRarityTicket(
+                                    source, currentOffset, ascension,
+                                    ordinal);
+                            var supportCount = OptionalInt(
+                                request, "support_count");
+                            if (supportCount is not null &&
+                                supportCount != law.Outcomes.Length)
+                                throw new ArgumentException(
+                                    "Card-rarity ticket support_count must match the declared source, offset, and Ascension.");
+                            Write(new
+                            {
+                                requestId,
+                                ok = true,
+                                chanceLawSchemaId =
+                                    ChanceLawV111.CurrentSchemaId,
+                                law
+                            });
+                            break;
+                        }
+                        if (siteId == "potion.rarity_roll.ticket")
+                        {
+                            RejectChanceLawQueryParameters(
+                                request, "owner_id", "stream_id",
+                                "support_count");
+                            var ownerId = OptionalString(request, "owner_id")
+                                ?? throw new ArgumentException(
+                                    "Legacy potion-rarity ticket law requires owner_id.");
+                            var streamId = OptionalString(request, "stream_id")
+                                ?? throw new ArgumentException(
+                                    "Legacy potion-rarity ticket law requires stream_id.");
+                            law = ChanceLawEngineV111
+                                .QueryLegacyPotionRarityTicket(
+                                    streamId, ownerId, ordinal);
+                            var supportCount = OptionalInt(
+                                request, "support_count");
+                            if (supportCount is not null &&
+                                supportCount != law.Outcomes.Length)
+                                throw new ArgumentException(
+                                    "Potion-rarity ticket support_count must be three.");
+                            Write(new
+                            {
+                                requestId,
+                                ok = true,
+                                chanceLawSchemaId =
+                                    ChanceLawV111.CurrentSchemaId,
+                                law
+                            });
+                            break;
+                        }
+                        if (siteId == "relic_grab_bag.rarity.ticket")
+                        {
+                            RejectChanceLawQueryParameters(
+                                request, "owner_id", "merchant",
+                                "support_count");
+                            var ownerId = OptionalString(request, "owner_id")
+                                ?? throw new ArgumentException(
+                                    "Legacy relic-rarity ticket law requires owner_id.");
+                            var merchant = RequiredBool(request, "merchant");
+                            law = ChanceLawEngineV111
+                                .QueryLegacyRelicRarityTicket(
+                                    ownerId, merchant, ordinal);
+                            var supportCount = OptionalInt(
+                                request, "support_count");
+                            if (supportCount is not null &&
+                                supportCount != law.Outcomes.Length)
+                                throw new ArgumentException(
+                                    "Relic-rarity ticket support_count must be three.");
                             Write(new
                             {
                                 requestId,
@@ -7940,7 +8043,7 @@ internal static class PrototypeAiJsonlServer
             "ascension", "act", "include_darv", "hive_receives_darv",
             "room", "gold_proportion", "current_thousandths", "elite",
             "forced", "card_rarity_source",
-            "current_offset_basis_points", "stream_id"
+            "current_offset_basis_points", "stream_id", "merchant"
         ];
         var unsupported = optionalFields.Where(field =>
             !allowed.Contains(field) && request.TryGetProperty(field, out _))

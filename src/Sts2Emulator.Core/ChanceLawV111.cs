@@ -356,6 +356,13 @@ public static partial class ChanceLawEngineV111
         "shop.merchant.relic_price_modifier.index_draw"
     ];
 
+    private static readonly string[] LegacyRarityTicketQuerySites =
+    [
+        "card_rarity.roll.ticket",
+        "potion.rarity_roll.ticket",
+        "relic_grab_bag.rarity.ticket"
+    ];
+
     private sealed record NativeBoundedIntegerLawSiteV111(
         string StreamId, string Boundary);
 
@@ -403,6 +410,157 @@ public static partial class ChanceLawEngineV111
 
     public static string[] LegacyMerchantIndexQuerySiteIds =>
         (string[])LegacyMerchantIndexQuerySites.Clone();
+
+    public static string[] LegacyRarityTicketQuerySiteIds =>
+        (string[])LegacyRarityTicketQuerySites.Clone();
+
+    /// <summary>
+    /// Query the retained legacy card-rarity integer ticket after the source
+    /// thresholds have been converted to exact ticket counts. The outcome
+    /// law remains unverified against the native game RNG.
+    /// </summary>
+    public static ChanceLawV111 QueryLegacyCardRarityTicket(
+        PrototypeNativeCardOddsSource source, int currentOffsetBasisPoints,
+        int ascension, int ordinal)
+    {
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+        var (rareThreshold, uncommonEnd) =
+            PrototypeNativeCardRarityOdds.NativeFloatThresholds(
+                currentOffsetBasisPoints, ascension, source);
+        const string siteId = "card_rarity.roll.ticket";
+        const string streamId = "reward";
+        var ownerId = $"source:{source}:offset:{currentOffsetBasisPoints}";
+        var weights = LegacyRarityTicketWeights(rareThreshold, uncommonEnd);
+        var outcomes = LegacyRarityOutcomes(weights.Common,
+            weights.Uncommon, weights.Rare);
+        var conditioning = new
+        {
+            siteId,
+            streamId,
+            ownerId,
+            ordinal,
+            source,
+            currentOffsetBasisPoints,
+            ascension,
+            rareThreshold,
+            uncommonEnd,
+            ticketCount = 10000
+        };
+        return CreateLegacyCategoricalTicketLaw(
+            siteId, streamId, ownerId, ordinal,
+            "legacy-card-rarity-ticket-threshold-v1", conditioning,
+            "uniform 10,000-way legacy bounded-ticket model; threshold " +
+            "mapping is source-shaped and remains unverified against the " +
+            "native game RNG.", outcomes);
+    }
+
+    /// <summary>Query the retained legacy 10/25/65 potion rarity ticket.</summary>
+    public static ChanceLawV111 QueryLegacyPotionRarityTicket(
+        string streamId, string ownerId, int ordinal)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(streamId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
+        if (streamId is not ("reward" or "event" or "shop"))
+            throw new ArgumentException(
+                "Legacy potion rarity tickets use reward, event, or shop streams.",
+                nameof(streamId));
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+
+        const string siteId = "potion.rarity_roll.ticket";
+        var outcomes = LegacyRarityOutcomes(65, 25, 10);
+        var conditioning = new
+        {
+            siteId,
+            streamId,
+            ownerId,
+            ordinal,
+            ticketCount = 100,
+            rareTicketEnd = 10,
+            uncommonTicketEnd = 35
+        };
+        return CreateLegacyCategoricalTicketLaw(
+            siteId, streamId, ownerId, ordinal,
+            "legacy-potion-rarity-ticket-v1", conditioning,
+            "uniform 100-way legacy bounded-ticket model with source-shaped " +
+            "10/25/65 rarity bins; probabilities remain unverified against " +
+            "the native game RNG.", outcomes);
+    }
+
+    /// <summary>
+    /// Query the retained legacy 50/33/17 relic rarity ticket. The merchant
+    /// flag selects the exact owner suffix used by the legacy call.
+    /// </summary>
+    public static ChanceLawV111 QueryLegacyRelicRarityTicket(
+        string ownerId, bool merchant, int ordinal)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+
+        const string siteId = "relic_grab_bag.rarity.ticket";
+        const string streamId = "reward";
+        var requestOwnerId = ownerId + (merchant ? ":merchant" : ":reward");
+        var outcomes = LegacyRarityOutcomes(50, 33, 17);
+        var conditioning = new
+        {
+            siteId,
+            streamId,
+            ownerId = requestOwnerId,
+            ownerPrefix = ownerId,
+            ordinal,
+            merchant,
+            ticketCount = 100,
+            commonTicketEnd = 50,
+            uncommonTicketEnd = 83
+        };
+        return CreateLegacyCategoricalTicketLaw(
+            siteId, streamId, requestOwnerId, ordinal,
+            "legacy-relic-rarity-ticket-v1", conditioning,
+            "uniform 100-way legacy bounded-ticket model with source-shaped " +
+            "50/33/17 rarity bins; probabilities remain unverified against " +
+            "the native game RNG.", outcomes);
+    }
+
+    private static (long Rare, long Uncommon, long Common)
+        LegacyRarityTicketWeights(int rareThreshold, int uncommonEnd)
+    {
+        const int ticketCount = 10000;
+        var rare = Math.Clamp(rareThreshold, 0, ticketCount);
+        var uncommonThrough = Math.Clamp(uncommonEnd, 0, ticketCount);
+        var uncommon = Math.Max(0, uncommonThrough - rare);
+        var common = checked(ticketCount - rare - uncommon);
+        return (rare, uncommon, common);
+    }
+
+    private static ChanceLawOutcomeV111[] LegacyRarityOutcomes(
+        long common, long uncommon, long rare) =>
+        new[]
+        {
+            new ChanceLawOutcomeV111("rarity:common", common),
+            new ChanceLawOutcomeV111("rarity:uncommon", uncommon),
+            new ChanceLawOutcomeV111("rarity:rare", rare)
+        }.Where(outcome => outcome.Weight > 0).ToArray();
+
+    private static ChanceLawV111 CreateLegacyCategoricalTicketLaw(
+        string siteId, string streamId, string ownerId, int ordinal,
+        string conditioningPolicyId, object conditioning,
+        string probabilityProvenance, ChanceLawOutcomeV111[] outcomes)
+    {
+        var conditioningFingerprint = CanonicalJson.Sha256(conditioning);
+        var eventId = CanonicalJson.Sha256(new
+        {
+            boundary = siteId,
+            streamId,
+            ownerId,
+            ordinal,
+            conditioningFingerprint
+        });
+        return Create(eventId, siteId, "bounded_integer", ownerId,
+            ordinal, conditioningPolicyId, conditioningFingerprint,
+            probabilityProvenance, outcomes);
+    }
 
     /// <summary>
     /// Query the retained legacy Native-merchant request-index model. The
