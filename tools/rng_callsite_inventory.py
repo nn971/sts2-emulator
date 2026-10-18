@@ -21,7 +21,7 @@ from urllib.parse import unquote, urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = ROOT / "src" / "Sts2Emulator.Core"
-SCHEMA_ID = "emulator-rng-callsite-source-inventory-v20"
+SCHEMA_ID = "emulator-rng-callsite-source-inventory-v22"
 SITE_REGISTRY_PATH = SOURCE_ROOT / "StochasticSiteRegistryV111.cs"
 
 CALL_PATTERN = re.compile(
@@ -581,7 +581,7 @@ def _guarded_site_values(
     member_source = source[member_start:member_end]
     name = identifier.group("name")
     if ("NotSupportedException" not in member_source or
-            not re.search(rf"\{{\s*{re.escape(name)}\s*\}}|"
+            not re.search(rf"\{{[^{{}}]*\b{re.escape(name)}\b[^{{}}]*\}}|"
                           rf"nameof\(\s*{re.escape(name)}\s*\)",
                           member_source)):
         return []
@@ -598,14 +598,26 @@ def _guarded_site_values(
         )
         if values:
             return values
+    site_array_lookup = re.search(
+        rf"\b(?P<array>[A-Za-z_][A-Za-z0-9_]*"
+        rf"(?:\.[A-Za-z_][A-Za-z0-9_]*)+)\.Contains\s*\(\s*"
+        rf"{re.escape(name)}\s*,\s*StringComparer\.Ordinal\s*\)",
+        member_source,
+    )
+    if site_array_lookup:
+        values, unresolved = _resolve_site_array_property(
+            site_array_lookup.group("array"), global_constants
+        )
+        if values and not unresolved:
+            return sorted(set(values))
     guard_pattern = re.compile(
         rf"\b{re.escape(name)}\s+is\s+not\s*\((?P<alternatives>[^()]*)\)"
     )
     guards = list(guard_pattern.finditer(member_source))
     if guards:
-        alternatives = _split_csharp_or_alternatives(
-            guards[-1].group("alternatives")
-        )
+        guard_expression = guards[-1].group("alternatives")
+        alternatives = (_split_csharp_or_alternatives(guard_expression)
+                       or [guard_expression.strip()])
         return sorted({
             value
             for alternative in alternatives

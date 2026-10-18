@@ -34,6 +34,10 @@ internal sealed record NativeEventShufflePlanV111(
 
     public RandomIndexRequestV111 Request(int ordinal)
     {
+        if (!ChanceLawEngineV111.NativeEventShufflePlanSiteIds.Contains(
+                SiteId, StringComparer.Ordinal))
+            throw new NotSupportedException(
+                $"Native event shuffle plan does not support site '{SiteId}'.");
         if (ordinal < 0 || ordinal >= SwapCount)
             throw new ArgumentOutOfRangeException(nameof(ordinal));
         return new RandomIndexRequestV111(
@@ -1535,7 +1539,7 @@ public static partial class ChanceLawEngineV111
     public const string NativeEndlessConveyorColorlessConditioningPolicyId =
         "native-event-endless-conveyor-colorless-card-v1";
 
-    public static string[] NativeEventShuffleSessionSiteIds =>
+    public static string[] NativeEventShufflePlanSiteIds =>
     [
         "relic.persistent_combat_end.random_upgrade.index_draw",
         "combat.glory_tinker.improvement_card.index_draw",
@@ -1547,7 +1551,12 @@ public static partial class ChanceLawEngineV111
         PrototypeNativeGloryEvents.TinkerRiderOfferShuffleSiteId,
         PrototypeNativeGloryEvents.BattlewornUpgradeShuffleSiteId,
         PrototypeNativeFakeMerchant.RelicOfferShuffleSiteId,
-        PrototypeNativeHiveEvents.WarHistorianRepyRelicShuffleSiteId,
+        PrototypeNativeHiveEvents.WarHistorianRepyRelicShuffleSiteId
+    ];
+
+    public static string[] NativeEventShuffleSessionSiteIds =>
+    [
+        .. ChanceLawEngineV111.NativeEventShufflePlanSiteIds,
         "event.war_historian.repy.potion_offer.index_draw"
     ];
 
