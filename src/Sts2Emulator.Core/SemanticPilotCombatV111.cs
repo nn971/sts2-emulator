@@ -3475,26 +3475,12 @@ public static class SemanticPilotCombatEngineV111
         }
         else if (current.Run.World?.Combat?.PendingChoice is
                     { ChoiceId: "controlled_draw_cost",
-                      ControlledDrawCost: { } drawCost,
+                      ControlledDrawCost: not null,
                       ControlledSemanticDraw: not null })
-        {
-            SemanticCostChoiceV111.ValidateDrawBoundary(current.Run);
-            var combat = current.Run.World!.Combat!;
-            targetCardInstanceId = drawCost.CardInstanceId;
-            var card = combat.Cards.Single(item =>
-                item.InstanceId == drawCost.CardInstanceId);
-            targetCardModelId = card.CardId;
-            var relic = drawCost.Stage == "relic";
-            request = new RandomIndexRequestV111(
-                relic ? "combat.card_draw.relic_energy_cost"
-                      : "combat.card_draw.slither_energy_cost",
-                "semantic.combat", "card_instance:" + card.InstanceId +
-                    ":model:" + card.CardId + ":stage:" + drawCost.Stage,
+            return SemanticCostChoiceV111.DescribeEffectDrawEvent(
+                current.Run, current.Fingerprint,
                 current.History.Count(transition =>
-                    transition.Kind == "semantic_cost"), [],
-                OperationKind: "bounded_integer",
-                BoundedCount: relic ? drawCost.RelicMaxExclusive : 4);
-        }
+                    transition.Kind == "semantic_cost"));
         else
             return null;
         request.Validate();

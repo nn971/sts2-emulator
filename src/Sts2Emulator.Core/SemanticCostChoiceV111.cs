@@ -125,6 +125,52 @@ public static class SemanticCostChoiceV111
         PrototypeStateInvariants.Validate(run);
     }
 
+    internal static SemanticCostEventV111? DescribeEffectDrawEvent(
+        RunState run, string boundaryFingerprint, int ordinal)
+    {
+        ArgumentNullException.ThrowIfNull(run);
+        ArgumentException.ThrowIfNullOrWhiteSpace(boundaryFingerprint);
+        if (run.World?.Combat?.PendingChoice is not
+                { ChoiceId: "controlled_draw_cost",
+                  ControlledDrawCost: { } drawCost,
+                  ControlledSemanticDraw: not null })
+            return null;
+        ValidateDrawBoundary(run);
+        var combat = run.World!.Combat!;
+        var card = combat.Cards.Single(item =>
+            item.InstanceId == drawCost.CardInstanceId);
+        bool relic = drawCost.Stage == "relic";
+        var request = new RandomIndexRequestV111(
+            relic ? "combat.card_draw.relic_energy_cost"
+                  : "combat.card_draw.slither_energy_cost",
+            "semantic.combat", "card_instance:" + card.InstanceId +
+                ":model:" + card.CardId + ":stage:" + drawCost.Stage,
+            ordinal, [], OperationKind: "bounded_integer",
+            BoundedCount: relic ? drawCost.RelicMaxExclusive : 4);
+        request.Validate();
+        var costs = Enumerable.Range(0, request.SupportCount).ToArray();
+        var supportFingerprint = CanonicalJson.Sha256(new
+        {
+            request,
+            costs,
+            targetCardInstanceId = drawCost.CardInstanceId,
+            targetCardModelId = card.CardId
+        });
+        var eventId = CanonicalJson.Sha256(new
+        {
+            SchemaId = SemanticCostEventV111.EventSchemaId,
+            BoundaryFingerprint = boundaryFingerprint,
+            SupportFingerprint = supportFingerprint
+        });
+        var semanticEvent = new SemanticCostEventV111(
+            SemanticCostEventV111.EventSchemaId, eventId,
+            boundaryFingerprint, supportFingerprint, request, costs,
+            TargetCardInstanceId: drawCost.CardInstanceId,
+            TargetCardModelId: card.CardId);
+        semanticEvent.Validate();
+        return semanticEvent;
+    }
+
     public static SemanticCostDecisionV111 Select(
         SemanticCostEventV111 pending, string eventId, int selectedCost)
     {
