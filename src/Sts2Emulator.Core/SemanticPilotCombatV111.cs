@@ -2755,55 +2755,10 @@ public static class SemanticPilotCombatEngineV111
         var pending = current.PoolShufflePending ??
             throw new InvalidOperationException(
                 "No generated-card pool shuffle is pending.");
-        if (pending.EventId != eventId)
-            throw new InvalidOperationException(
-                "Pool-shuffle event ID is stale or mismatched.");
-        var decision = new SemanticPoolShuffleDecisionV111(
-            pending, swapIndex);
-        decision.Validate();
-
-        RunState result;
-        using (ControlledChanceGuardV111.Enter())
-            result = PrototypeGameEngine.ResumeControlledPoolShuffle(
-                current.Run.Fork(), swapIndex);
-        if (result.Phase != RunPhase.Combat)
-            throw new NotSupportedException(
-                "UNSUPPORTED_SEMANTIC_POOL site=" + pending.SiteId + " " +
-                "operation=unsupported_post_shuffle_phase");
-        var resultCombat = result.World?.Combat ??
-            throw new InvalidDataException(
-                "Full-pool shuffle continuation lost combat.");
-        if (resultCombat.PendingChoice?.ControlledPoolShuffle is not null)
-            ValidatePoolShuffleBoundary(result);
-        else if (resultCombat.PendingChoice?.ControlledDrawInsertion is not null)
-            ValidateDrawInsertionBoundary(result);
-        else if (resultCombat.PendingChoice?.ChoiceId == "select_cards")
-        {
-            SemanticCardSelectionEngineV111.ValidatePendingBoundary(result);
-            _ = SemanticCardSelectionEngineV111.DescribePending(
-                result, CanonicalJson.Sha256(result));
-        }
-        else
-            ValidateSemanticCombatBoundary(result);
-        var priorCombat = current.Run.World!.Combat!;
-        bool randomRareToHand = priorCombat.PendingChoice!
-            .ControlledPoolShuffle!.Operation.Kind ==
-            PrototypeCombatEffectKind.MoveRandomRareDrawCardsToHand;
-        bool handReturn = priorCombat.PendingChoice!
-            .ControlledPoolShuffle!.Operation.Kind ==
-            PrototypeCombatEffectKind.ReturnHandToDrawAndShuffle;
-        bool recycle = priorCombat.PendingChoice!
-            .ControlledPoolShuffle!.Operation.Kind ==
-            PrototypeCombatEffectKind.RecycleDrawPileForEffectDraw;
-        if (!randomRareToHand && !handReturn && !recycle &&
-            (!priorCombat.DrawPile.SequenceEqual(resultCombat.DrawPile) ||
-             CanonicalJson.Sha256(priorCombat.SemanticDeck) !=
-                 CanonicalJson.Sha256(resultCombat.SemanticDeck)))
-            throw new NotSupportedException(
-                "UNSUPPORTED_SEMANTIC_DECK site=" + pending.SiteId + " " +
-                "operation=unmodeled_draw_pile_mutation");
-        if (randomRareToHand || handReturn || recycle)
-            PrototypeStateInvariants.Validate(result);
+        var decision = SemanticPoolShuffleChoiceV111.Select(
+            pending, eventId, swapIndex);
+        var result = SemanticPoolShuffleChoiceV111.Resume(
+            current.Run, decision);
         var next = current with
         {
             Run = result,

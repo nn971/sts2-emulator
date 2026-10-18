@@ -116,3 +116,142 @@ public sealed record SemanticPoolShuffleDecisionV111(
                 "Full-pool shuffle swap is outside its bounded support.");
     }
 }
+
+public static class SemanticPoolShuffleChoiceV111
+{
+    public static SemanticPoolShuffleDecisionV111 Select(
+        SemanticPoolShuffleEventV111 pending, string eventId, int swapIndex)
+    {
+        ArgumentNullException.ThrowIfNull(pending);
+        pending.Validate();
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
+        if (pending.EventId != eventId)
+            throw new InvalidOperationException(
+                "Pool-shuffle event ID is stale or mismatched.");
+        var decision = new SemanticPoolShuffleDecisionV111(
+            pending.Fork(), swapIndex);
+        decision.Validate();
+        return decision;
+    }
+
+    /// <summary>Revalidate one bounded source swap and resume the ordinary
+    /// full-pool shuffle continuation.</summary>
+    internal static RunState Resume(
+        RunState checkpoint, SemanticPoolShuffleDecisionV111 decision)
+    {
+        ArgumentNullException.ThrowIfNull(checkpoint);
+        ArgumentNullException.ThrowIfNull(decision);
+        decision.Validate();
+        var combat = checkpoint.World?.Combat ??
+            throw new InvalidDataException(
+                "Full-pool shuffle lost its source combat.");
+        var choice = combat.PendingChoice;
+        var shuffle = choice?.ControlledPoolShuffle;
+        if (shuffle is null)
+            throw new InvalidDataException(
+                "Full-pool shuffle is missing its source operation.");
+        SemanticPilotCombatEngineV111.ValidatePoolShuffleBoundary(checkpoint);
+        ValidateLiveSupport(combat, choice!, shuffle, decision.Event);
+
+        RunState result;
+        using (ControlledChanceGuardV111.Enter())
+            result = PrototypeGameEngine.ResumeControlledPoolShuffle(
+                checkpoint.Fork(), decision.SelectedSwapIndex);
+        if (result.Phase != RunPhase.Combat)
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_POOL site=" + decision.Event.SiteId + " " +
+                "operation=unsupported_post_shuffle_phase");
+        var resultCombat = result.World?.Combat ??
+            throw new InvalidDataException(
+                "Full-pool shuffle continuation lost combat.");
+        if (resultCombat.PendingChoice?.ControlledPoolShuffle is not null)
+            SemanticPilotCombatEngineV111.ValidatePoolShuffleBoundary(result);
+        else if (resultCombat.PendingChoice?.ControlledDrawInsertion is not null)
+            SemanticPilotCombatEngineV111.ValidateDrawInsertionBoundary(result);
+        else if (resultCombat.PendingChoice?.ChoiceId == "select_cards")
+        {
+            SemanticCardSelectionEngineV111.ValidatePendingBoundary(result);
+            _ = SemanticCardSelectionEngineV111.DescribePending(
+                result, CanonicalJson.Sha256(result));
+        }
+        else
+            SemanticPilotCombatEngineV111.ValidateSemanticCombatBoundary(result);
+
+        bool randomRareToHand = shuffle.Operation.Kind ==
+            PrototypeCombatEffectKind.MoveRandomRareDrawCardsToHand;
+        bool handReturn = shuffle.Operation.Kind ==
+            PrototypeCombatEffectKind.ReturnHandToDrawAndShuffle;
+        bool recycle = shuffle.Operation.Kind ==
+            PrototypeCombatEffectKind.RecycleDrawPileForEffectDraw;
+        if (!randomRareToHand && !handReturn && !recycle &&
+            (!combat.DrawPile.SequenceEqual(resultCombat.DrawPile) ||
+             CanonicalJson.Sha256(combat.SemanticDeck) !=
+                 CanonicalJson.Sha256(resultCombat.SemanticDeck)))
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_DECK site=" + decision.Event.SiteId + " " +
+                "operation=unmodeled_draw_pile_mutation");
+        if (randomRareToHand || handReturn || recycle)
+            PrototypeStateInvariants.Validate(result);
+        return result;
+    }
+
+    private static void ValidateLiveSupport(
+        CombatState combat, PendingCombatChoiceState choice,
+        PrototypeControlledPoolShuffleV111 shuffle,
+        SemanticPoolShuffleEventV111 pending)
+    {
+        bool handReturn = shuffle.Operation.Kind ==
+            PrototypeCombatEffectKind.ReturnHandToDrawAndShuffle;
+        bool recycle = shuffle.Operation.Kind ==
+            PrototypeCombatEffectKind.RecycleDrawPileForEffectDraw;
+        bool randomRareToHand = shuffle.Operation.Kind ==
+            PrototypeCombatEffectKind.MoveRandomRareDrawCardsToHand;
+        bool randomShortlist = shuffle.Operation.Kind ==
+            PrototypeCombatEffectKind.ChooseCards;
+        var expectedSite = handReturn
+            ? "combat.hand_return.draw_pile.shuffle_swap_index"
+            : recycle
+                ? "combat.draw.recycle.shuffle_swap_index"
+                : randomRareToHand
+                    ? "combat.draw_pile.random_rare_to_hand.shuffle_swap_index"
+                    : randomShortlist
+                        ? "combat.card_selection.random_shortlist"
+                        : "combat.generation.full_pool_shuffle.swap_index";
+        var expectedStream = handReturn || recycle
+            ? combat.NativeRng is not null
+                ? "run.shuffle" : "prototype.combat"
+            : randomShortlist && combat.NativeRng?.RunStreams is not null
+                ? "run.combat_card_selection"
+                : shuffle.Operation.GeneratedChoiceUsesNativeCardGenerationRng &&
+                  combat.NativeRng?.RunStreams is not null
+                    ? "run.combat_card_generation" : "prototype.combat";
+        var sourceCardId = choice.SourceCardInstanceId;
+        var shortlistCardIds = randomShortlist
+            ? PrototypeGameEngine.ControlledCardShortlistCandidates(
+                combat, shuffle.Operation) ?? throw new InvalidDataException(
+                    "Random shortlist lost its source card pool.")
+            : [];
+        var expectedOwner = handReturn || recycle
+            ? "effect:" + shuffle.Operation.Kind + ":source:" +
+                (sourceCardId?.ToString() ?? "none") + ":pool:" +
+                CanonicalJson.Sha256(shuffle.OriginalCardIds)
+            : randomShortlist
+                ? "selection:" + shuffle.Operation.Selection!.SourceZone +
+                    ":pool:" + CanonicalJson.Sha256(shortlistCardIds)
+                : "card:" + (sourceCardId?.ToString() ?? "effect") +
+                    ":operation:" + shuffle.Operation.Kind + ":pool:" +
+                    CanonicalJson.Sha256(shuffle.OriginalCardIds);
+        if (!pending.OriginalCardIds.SequenceEqual(shuffle.OriginalCardIds) ||
+            !pending.CurrentCardIds.SequenceEqual(shuffle.CurrentCardIds) ||
+            pending.NextSwapIndex != shuffle.NextSwapIndex ||
+            pending.SelectedCount != shuffle.SelectedCount ||
+            pending.SourceOperationKind != shuffle.Operation.Kind.ToString() ||
+            pending.SourceCardInstanceId != sourceCardId ||
+            pending.SiteId != expectedSite ||
+            pending.StreamId != expectedStream ||
+            pending.OwnerId != expectedOwner ||
+            pending.Request.BoundedCount != shuffle.NextSwapIndex + 1)
+            throw new InvalidDataException(
+                "Pool-shuffle decision no longer matches its live support.");
+    }
+}
