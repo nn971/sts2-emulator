@@ -3011,8 +3011,8 @@ public static class SemanticPilotCombatEngineV111
         if (pending.EventId != eventId)
             throw new InvalidOperationException(
                 "Draw-insertion event ID is stale or mismatched.");
-        var decision = new SemanticDrawInsertionDecisionV111(pending, position);
-        decision.Validate();
+        var decision = SemanticDrawInsertionChoiceV111.Select(
+            pending, eventId, position);
 
         var priorCombat = current.Run.World!.Combat!;
         var pendingInsertion = priorCombat.PendingChoice?
@@ -3023,10 +3023,8 @@ public static class SemanticPilotCombatEngineV111
         var resumesAfterShuffleRelic =
             pendingInsertion.AfterShuffleRelic is not null;
         var insertedInstanceId = priorCombat.NextCardInstanceId;
-        RunState result;
-        using (ControlledChanceGuardV111.Enter())
-            result = PrototypeGameEngine.ResumeControlledDrawInsertion(
-                current.Run.Fork(), position);
+        var result = SemanticDrawInsertionChoiceV111.Resume(
+            current.Run, decision);
         var resultCombat = result.World?.Combat;
         var expectedPile = priorCombat.DrawPile.ToList();
         expectedPile.Insert(position, insertedInstanceId);

@@ -157,3 +157,37 @@ public sealed record SemanticDrawInsertionDecisionV111(
                 "Draw insertion position is outside its bounded support.");
     }
 }
+
+public static class SemanticDrawInsertionChoiceV111
+{
+    public static SemanticDrawInsertionDecisionV111 Select(
+        SemanticDrawInsertionEventV111 pending,
+        string eventId,
+        int position)
+    {
+        ArgumentNullException.ThrowIfNull(pending);
+        pending.Validate();
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
+        if (pending.EventId != eventId)
+            throw new InvalidOperationException(
+                "Draw-insertion event ID is stale or mismatched.");
+        var decision = new SemanticDrawInsertionDecisionV111(
+            pending.Fork(), position);
+        decision.Validate();
+        return decision;
+    }
+
+    /// <summary>Resume the ordinary insertion continuation under the shared
+    /// controlled provider scope using the saved source position.</summary>
+    internal static RunState Resume(
+        RunState checkpoint,
+        SemanticDrawInsertionDecisionV111 decision)
+    {
+        ArgumentNullException.ThrowIfNull(checkpoint);
+        ArgumentNullException.ThrowIfNull(decision);
+        decision.Validate();
+        using (ControlledChanceGuardV111.Enter())
+            return PrototypeGameEngine.ResumeControlledDrawInsertion(
+                checkpoint.Fork(), decision.SelectedPosition);
+    }
+}

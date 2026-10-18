@@ -710,14 +710,11 @@ public static class SemanticCombatDrawEngineV111
 
         if (state.DrawInsertionPending is { } insertionEvent)
         {
-            var decision = new SemanticDrawInsertionDecisionV111(
-                insertionEvent, selectedIndex);
-            decision.Validate();
+            var decision = SemanticDrawInsertionChoiceV111.Select(
+                insertionEvent, insertionEvent.EventId, selectedIndex);
             int drawnBefore = combat.CounterState.CardsDrawnThisCombat;
-            RunState resumed;
-            using (ControlledChanceGuardV111.Enter())
-                resumed = PrototypeGameEngine.ResumeControlledDrawInsertion(
-                    run, decision.SelectedPosition);
+            var resumed = SemanticDrawInsertionChoiceV111.Resume(
+                run, decision);
             var insertionRemaining =
                 PrototypeGameEngine.GetSemanticDrawRemainingCount(
                     resumed, state.RemainingCount, drawnBefore);
