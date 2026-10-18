@@ -91,6 +91,26 @@ law = state.query_chance_law(
 The emulator derives the skin RNG from the reward-stream snapshot and relic
 slot. That seed derivation remains unverified.
 
+The fixed Act 1 boss pools have read-only law queries. Each returns
+equal-weight outcomes identified by encounter ID; legacy seed-to-index
+distributions and Native cursor parity remain `UNVERIFIED`:
+
+```python
+law = state.query_chance_law(
+    "run.encounter.overgrowth_boss.index_draw",
+    ordinal=0,
+    support_count=3,
+)
+law = state.query_chance_law(
+    "combat.encounter.underdocks.boss.index_draw",
+    ordinal=0,
+    support_count=3,
+)
+```
+
+The Overgrowth law complements its existing legacy run-start continuation.
+The Underdocks query does not make configured run creation resumable.
+
 The event shuffle and combat-victory session is available through
 `State.begin_reference_nature_native_event_shuffle(nature_seed=None, action_id=None, site_id=None)`. It
 covers the Light shuffle in Doors of Light and Dark, Fragrant Mushroom's

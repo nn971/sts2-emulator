@@ -10,6 +10,8 @@ public static class PrototypeNativeUnderdocks
 {
     public const string GenerationProfileId =
         "native-underdocks-map-structure-v0.111.0-v1";
+    public const string BossEncounterIndexSiteId =
+        "combat.encounter.underdocks.boss.index_draw";
 
     // Source: Underdocks.GenerateAllEncounters() and IsWeak.
     public static string[] NativeWeakEncounterIds { get; } =
@@ -1348,7 +1350,7 @@ public static class PrototypeNativeUnderdocksRunFactory
         var bosses = PrototypeNativeUnderdocks.NativeBossEncounterIds;
         var boss = bosses[LegacyRandomChoiceV111.ChooseIndexRange(
             rng,
-            "combat.encounter.underdocks.boss.index_draw",
+            PrototypeNativeUnderdocks.BossEncounterIndexSiteId,
             "combat",
             "act:1:underdocks:boss_pool:" + CanonicalJson.Sha256(bosses),
             bosses.Length).SelectedIndex];

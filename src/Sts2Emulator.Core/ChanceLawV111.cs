@@ -816,6 +816,69 @@ public static partial class ChanceLawEngineV111
     }
 
     /// <summary>
+    /// Query one of the fixed Act 1 boss pools before run initialization.
+    /// Outcomes preserve source-ordered encounter identities; these laws do
+    /// not claim their legacy seed-to-index distribution is calibrated.
+    /// </summary>
+    public static ChanceLawV111 QueryOvergrowthBossEncounter(int ordinal) =>
+        QueryActOneBossEncounter(
+            "run.encounter.overgrowth_boss.index_draw", ordinal);
+
+    public static ChanceLawV111 QueryUnderdocksBossEncounter(int ordinal) =>
+        QueryActOneBossEncounter(
+            PrototypeNativeUnderdocks.BossEncounterIndexSiteId, ordinal);
+
+    private static ChanceLawV111 QueryActOneBossEncounter(
+        string siteId, int ordinal)
+    {
+        if (ordinal != 0)
+            throw new ArgumentOutOfRangeException(
+                nameof(ordinal),
+                "Act 1 boss selection has exactly one draw at ordinal zero.");
+
+        var (bossPool, ownerPrefix) = siteId switch
+        {
+            "run.encounter.overgrowth_boss.index_draw" =>
+                (PrototypeContent.OvergrowthBossEncounterPool,
+                    "run:act:1:boss_pool:"),
+            PrototypeNativeUnderdocks.BossEncounterIndexSiteId =>
+                (PrototypeNativeUnderdocks.NativeBossEncounterIds,
+                    "act:1:underdocks:boss_pool:"),
+            _ => throw new NotSupportedException(
+                $"Act 1 boss law does not support site '{siteId}'.")
+        };
+        var ownerId = ownerPrefix
+            + CanonicalJson.Sha256(bossPool);
+        var outcomes = bossPool.Select(encounterId =>
+            new ChanceLawOutcomeV111(
+                "encounter:" + encounterId, 1L)).ToArray();
+        var eventId = CanonicalJson.Sha256(new
+        {
+            boundary = siteId,
+            ownerId,
+            ordinal
+        });
+        var conditioningFingerprint = CanonicalJson.Sha256(new
+        {
+            siteId,
+            ownerId,
+            ordinal,
+            orderedEncounterIds = bossPool
+        });
+
+        return Create(
+            eventId,
+            siteId,
+            "choose_index",
+            ownerId,
+            ordinal,
+            "uniform-source-ordered-boss-index-unverified",
+            conditioningFingerprint,
+            "equal-index-mass-over-configured-underdocks-boss-pool-unverified",
+            outcomes);
+    }
+
+    /// <summary>
     /// Query one pre-event Ancient offer decision. Direct offer pools return
     /// stable choice identities; shuffle-based offers return the bounded
     /// Fisher-Yates swap index at the requested ordinal. The same pool builders

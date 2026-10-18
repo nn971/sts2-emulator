@@ -2729,6 +2729,55 @@ internal static class PrototypeAiJsonlServer
                             });
                             break;
                         }
+                        if (siteId is "run.encounter.overgrowth_boss.index_draw"
+                            or PrototypeNativeUnderdocks.BossEncounterIndexSiteId)
+                        {
+                            var bossCount = siteId ==
+                                    "run.encounter.overgrowth_boss.index_draw"
+                                ? PrototypeContent.OvergrowthBossEncounterPool.Length
+                                : PrototypeNativeUnderdocks
+                                    .NativeBossEncounterIds.Length;
+                            var supportCount = OptionalInt(
+                                request, "support_count");
+                            if (priorIndices is not null ||
+                                priorVariantIndex is not null ||
+                                supportCount is not null && supportCount !=
+                                    bossCount ||
+                                OptionalString(request, "action_id") is not null ||
+                                OptionalString(request, "event_id") is not null ||
+                                OptionalString(request, "card_type") is not null ||
+                                OptionalString(request, "rarity") is not null ||
+                                OptionalString(request, "owner_id") is not null ||
+                                OptionalString(request, "card_id") is not null ||
+                                OptionalString(request, "potion_id") is not null ||
+                                OptionalString(request, "relic_id") is not null ||
+                                OptionalBool(request, "colorless_offer") ||
+                                OptionalBool(request, "sale_reprice") ||
+                                OptionalStringArray(request,
+                                    "excluded_potion_ids") is not null ||
+                                OptionalInt(request, "offer_ordinal") is not null ||
+                                OptionalStringArray(request,
+                                    "relic_candidate_ids") is not null ||
+                                OptionalStringArray(request,
+                                    "excluded_relic_ids") is not null)
+                                throw new ArgumentException(
+                                    "Act 1 boss queries accept state_handle, site_id, ordinal and an optional support_count matching the configured pool size.");
+                            law = siteId ==
+                                    "run.encounter.overgrowth_boss.index_draw"
+                                ? ChanceLawEngineV111
+                                    .QueryOvergrowthBossEncounter(ordinal)
+                                : ChanceLawEngineV111
+                                    .QueryUnderdocksBossEncounter(ordinal);
+                            Write(new
+                            {
+                                requestId,
+                                ok = true,
+                                chanceLawSchemaId =
+                                    ChanceLawV111.CurrentSchemaId,
+                                law
+                            });
+                            break;
+                        }
                         if (StochasticSiteRegistryV111
                             .NeowOfferSessionSiteIds.Contains(
                                 siteId, StringComparer.Ordinal))
