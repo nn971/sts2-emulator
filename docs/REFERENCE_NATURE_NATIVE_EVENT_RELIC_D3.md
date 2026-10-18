@@ -1,6 +1,6 @@
 # Native event relic ReferenceNature continuation
 
-**Snapshot:** 2026-10-19. **Status:** implemented for supported configured Native event-choice relic draws; identity-pool fidelity and Native cursor parity remain open.
+**Snapshot:** 2026-10-19. **Status:** implemented for supported configured Native event-choice relic draws, Neow's Bones Large Capsule pickup, and Battleworn Dummy setting-three victory; identity-pool fidelity and Native cursor parity remain open.
 
 ## Boundary
 
@@ -8,23 +8,33 @@
 event choice on a configured Native route. It supports choices whose effects
 include one or more `GainRandomRelic` operations, and choices that acquire Toy
 Box and then create its five Wax relic rewards. Each expected relic pull
-contributes one rarity request and one identity request. The ordinary event
-choice, relic effects, completed reward, and ReferenceNature cursor form one
-saved boundary.
+contributes one rarity request and, when the remaining bag has an eligible
+identity, one identity request. The ordinary event choice, relic effects,
+completed reward, and ReferenceNature cursor form one saved boundary.
 
 The same session also accepts the legal Native `take_reward_relic` action for
 Large Capsule when it is offered by Neow's Bones. It captures the two
 `GainRandomRelic` effects that run after the Neow relic is acquired, including
-both rarity and identity requests, and commits the selected relic and its
-follow-up rewards with the Nature cursor.
+both rarity and eligible identity requests, and commits the selected relic
+and its follow-up rewards with the Nature cursor. If the bag has no eligible
+identity, the session resolves the rarity request and follows the source's
+no-relic result without an identity request.
+
+The session also accepts a legal combat action during Battleworn Dummy's
+setting-three fight. Replay must finish the combat as a victory and reach its
+single relic reward draw; unsupported stochastic requests encountered earlier
+in the action fail closed. The action, victory reward, event result, and Nature
+cursor commit together. Setting one and setting two, multi-action fights, and
+draw-free or losing combat actions are outside this boundary.
 
 Event selection happens before this boundary and keeps its current provider.
-The session rejects another event, route, choice, Neow pickup, or stochastic
-site outside the declared relic rarity and relic model requests. Event choices
-with another fixed relic effect are excluded because their effect ordering
-changes the live owned relic support. Other Neow pickup triggers remain outside
-this boundary. Until all expected requests resolve, its published run remains
-at the projected origin. On completion it commits the event result and Nature
+The session rejects unsupported event choices and Neow pickups, Battleworn
+actions outside the setting-three victory boundary, and stochastic sites
+outside the declared relic rarity and model requests. Event choices with
+another fixed relic effect are excluded because their effect ordering changes
+the live owned relic support. Other Neow pickup triggers remain outside this
+boundary. Until all expected requests resolve, its published run remains at
+the projected origin. On completion it commits the event result and Nature
 cursor together.
 
 ## Law and replay
@@ -55,8 +65,9 @@ resolve, fork, save, load, release, and the committed playable run.
 ## Scope limits
 
 The session does not cover legacy event rewards, choices with additional fixed
-relic effects, other Neow relic-pickup effects, or choices that request a
-non-relic random operation. It does not establish source-pool completeness,
-hidden queue identity probabilities, event-selection parity, seeded Native
-result parity, or Native cursor parity. The Native reference mod and Fidelity
-Inspector remain needed for those source-evidence tasks.
+relic effects, other Neow relic-pickup effects, Battleworn settings one or two,
+or choices/actions that request a non-relic random operation. It does not
+establish source-pool completeness, hidden queue identity probabilities,
+event-selection parity, seeded Native result parity, or Native cursor parity.
+The Native reference mod and Fidelity Inspector remain needed for those
+source-evidence tasks.

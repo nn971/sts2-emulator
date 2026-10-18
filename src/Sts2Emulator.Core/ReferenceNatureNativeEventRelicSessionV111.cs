@@ -27,8 +27,8 @@ public sealed record ReferenceNatureNativeEventRelicSessionSnapshotV111(
 
 /// <summary>
 /// Atomic configured Native event relic continuation. Direct random-relic
-/// effects, supported Neow relic-pickup triggers, and Toy Box pulls share one
-/// typed ReferenceNature transcript and publish the run cursor after replay.
+/// effects, supported Neow relic-pickup triggers, Battleworn's setting-three
+/// relic reward, and Toy Box pulls share one typed ReferenceNature transcript.
 /// </summary>
 public sealed record ReferenceNatureNativeEventRelicSessionV111(
     string SchemaId, RunState Origin, GameAction Action, RunState Run,
@@ -89,7 +89,7 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
         var replay = Replay(origin, action, []);
         if (replay.Continuation is null)
             throw new NotSupportedException(
-                "Native event choice did not reach a supported relic draw.");
+                "Native event relic action did not reach a supported relic draw.");
         var session = new ReferenceNatureNativeEventRelicSessionV111(
             CurrentSchemaId, origin.Fork(), CloneAction(action), origin.Fork(),
             initialNatureState.Fork(), initialNatureState.Fork(), [], [],
@@ -234,14 +234,20 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
         }
 
         var replay = Replay(Origin, Action, ProviderDecisions);
+        var rarityRequestCount = ProviderDecisions.Count(decision =>
+            decision.UnitFloatDecision?.Request.SiteId == RelicRaritySiteId);
+        var identityRequestCount = ProviderDecisions.Count(decision =>
+            decision.IndexDecision?.Request.SiteId == RelicModelSiteId);
         if ((replay.Continuation is null) != Complete ||
             !SameRequest(replay.Continuation?.PendingRequest, PendingRequest) ||
             !SameLabels(replay.Continuation?.PendingCandidateLabels,
                 PendingCandidateLabels) ||
             CanonicalJson.Sha256(expectedNatureState) !=
                 CanonicalJson.Sha256(NatureState) ||
-            Complete && ProviderDecisions.Length !=
-                ExpectedDrawCount(Origin, Action) * 2)
+            rarityRequestCount > ExpectedDrawCount(Origin, Action) ||
+            identityRequestCount > rarityRequestCount ||
+            Complete && rarityRequestCount !=
+                ExpectedDrawCount(Origin, Action))
             throw new InvalidDataException(
                 "Native event relic continuation differs from its replay.");
 
@@ -372,6 +378,14 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
                         choiceId = EventChoiceId(action),
                         request = indexRequest
                     })
+                    : IsBattlewornSettingThreeCombat(source)
+                    ? CanonicalJson.Sha256(new
+                    {
+                        boundary = "native-battleworn-relic-reward",
+                        eventId,
+                        actionId = PrototypeAiEnvironment.StableActionId(action),
+                        request = indexRequest
+                    })
                     : CanonicalJson.Sha256(new
                     {
                         boundary = "native-neow-relic-pickup",
@@ -477,10 +491,12 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
             ExpectedEventRelicDrawCount(source, action) > 0 &&
             !HasUnsupportedFixedRelicEffect(eventState.EventId, choiceId);
         var neowRelicPickup = NeowRelicPickupDrawCount(source, action) > 0;
-        var supportedBoundary = eventRelicChoice && eventState is
-                { ControlledChoice: null, ChosenChoiceId: null } ||
-            neowRelicPickup && eventState?.EventId ==
-                PrototypeNativeOvergrowthEvents.NeowEventId;
+        var battlewornRelicVictory =
+            IsBattlewornSettingThreeCombat(source);
+        var supportedBoundary =
+            (eventRelicChoice && eventState is
+                { ControlledChoice: null, ChosenChoiceId: null }) ||
+            neowRelicPickup || battlewornRelicVictory;
         if (world is null || source.NativeRunRng is null ||
             source.ControlledRunActionChoice is not null ||
             !PrototypeGameEngine.UsesNativeRegionalSystems(world) ||
@@ -489,14 +505,16 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
                 PrototypeAiEnvironment.StableActionId(candidate) ==
                 PrototypeAiEnvironment.StableActionId(action)))
             throw new InvalidOperationException(
-                "Native event relic session requires a current legal configured Native event choice or supported Neow relic pickup.");
+                "Native event relic session requires a current legal configured Native event choice, Neow relic pickup, or Battleworn relic-reward action.");
         PrototypeStateInvariants.Validate(source);
     }
 
     private static int ExpectedDrawCount(RunState source, GameAction action)
     {
         if (action.Kind != "event_choice")
-            return NeowRelicPickupDrawCount(source, action);
+            return IsBattlewornSettingThreeCombat(source)
+                ? 1
+                : NeowRelicPickupDrawCount(source, action);
         return ExpectedEventRelicDrawCount(source, action);
     }
 
@@ -567,6 +585,20 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
             return 0;
         return effects.Count(effect =>
             effect.Kind == PrototypeRunEffectKind.GainRandomRelic);
+    }
+
+    private static bool IsBattlewornSettingThreeCombat(RunState source)
+    {
+        var world = source.World;
+        var eventState = world?.Event;
+        return source.Phase == RunPhase.Combat &&
+            world?.Combat is not null &&
+            eventState is
+            {
+                EventId: PrototypeNativeGloryEvents.BattlewornDummyId,
+                NativePageIndex: 3,
+                ChosenChoiceId: "setting_3"
+            };
     }
 
     private static bool HasUnsupportedFixedRelicEffect(
