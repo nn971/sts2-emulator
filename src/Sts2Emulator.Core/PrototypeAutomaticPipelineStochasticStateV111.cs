@@ -7,7 +7,8 @@ public enum PrototypeAutomaticHandDrawProgressKindV111
     SemanticBeforeHandDraw,
     SemanticDraw,
     ControlledRecycleStratagem,
-    ControlledDrawHookChoice
+    ControlledDrawHookChoice,
+    ControlledBeforeHandDrawHookChoice
 }
 
 /// <summary>One active DrawPlayerHand progress mode in the ordinary pipeline.
@@ -39,6 +40,12 @@ public sealed record PrototypeAutomaticHandDrawProgressV111(
             PrototypeAutomaticHandDrawProgressKindV111.SemanticBeforeHandDraw,
             requestedCount: null, remainingCount: null);
 
+    public static PrototypeAutomaticHandDrawProgressV111
+        ControlledBeforeHandDrawHookChoice() => Create(
+            PrototypeAutomaticHandDrawProgressKindV111
+                .ControlledBeforeHandDrawHookChoice,
+            requestedCount: null, remainingCount: null);
+
     public static PrototypeAutomaticHandDrawProgressV111 SemanticDraw(
         int requestedCount, int remainingCount) => Create(
             PrototypeAutomaticHandDrawProgressKindV111.SemanticDraw,
@@ -64,9 +71,10 @@ public sealed record PrototypeAutomaticHandDrawProgressV111(
                         "Controlled automatic hand-draw progress is malformed.");
                 break;
             case PrototypeAutomaticHandDrawProgressKindV111.SemanticBeforeHandDraw:
+            case PrototypeAutomaticHandDrawProgressKindV111.ControlledBeforeHandDrawHookChoice:
                 if (RequestedCount is not null || RemainingCount is not null)
                     throw new InvalidOperationException(
-                        "Semantic BeforeHandDraw progress cannot contain draw counts.");
+                        "BeforeHandDraw hook progress cannot contain draw counts.");
                 break;
             case PrototypeAutomaticHandDrawProgressKindV111.SemanticDraw:
                 if (RequestedCount is not > 0 || RemainingCount is not >= 0)
@@ -121,6 +129,14 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
         get => HandDrawProgress?.Kind ==
             PrototypeAutomaticHandDrawProgressKindV111.ControlledDrawHookChoice;
         init => HandDrawProgress = SetControlledDrawHookChoicePending(
+            HandDrawProgress, value);
+    }
+
+    public bool ControlledBeforeHandDrawHookChoicePending
+    {
+        get => HandDrawProgress?.Kind == PrototypeAutomaticHandDrawProgressKindV111
+            .ControlledBeforeHandDrawHookChoice;
+        init => HandDrawProgress = SetControlledBeforeHandDrawHookChoicePending(
             HandDrawProgress, value);
     }
 
@@ -207,6 +223,7 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
             bool controlledSemanticBeforeHandDrawPending,
             bool controlledRecycleStratagemPending,
             bool controlledDrawHookChoicePending,
+            bool controlledBeforeHandDrawHookChoicePending,
             PrototypeControlledEnemyActionContinuationV111? controlledEnemyAction,
             ControlledTurnIntentsV111? controlledTurnIntents)
     {
@@ -217,7 +234,8 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
             controlledSemanticDrawRequested,
             controlledSemanticBeforeHandDrawPending,
             controlledRecycleStratagemPending,
-            controlledDrawHookChoicePending);
+            controlledDrawHookChoicePending,
+            controlledBeforeHandDrawHookChoicePending);
 
         PrototypeAutomaticHandDrawProgressV111? progress = null;
         if (controlledDrawRemaining is { } drawRemaining)
@@ -244,6 +262,12 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
                 PrototypeAutomaticHandDrawProgressKindV111
                     .SemanticBeforeHandDraw);
         }
+        else if (controlledBeforeHandDrawHookChoicePending)
+        {
+            progress = new(
+                PrototypeAutomaticHandDrawProgressKindV111
+                    .ControlledBeforeHandDrawHookChoice);
+        }
         else if (controlledSemanticDrawRemaining is not null ||
                  controlledSemanticDrawRequested is not null)
         {
@@ -269,13 +293,15 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
         int? controlledSemanticDrawRequested,
         bool controlledSemanticBeforeHandDrawPending,
         bool controlledRecycleStratagemPending,
-        bool controlledDrawHookChoicePending)
+        bool controlledDrawHookChoicePending,
+        bool controlledBeforeHandDrawHookChoicePending)
     {
         int activeModes = (controlledDrawRemaining is not null ? 1 : 0) +
             (controlledDrawCostRemaining is not null ? 1 : 0) +
             (controlledSemanticDrawRemaining is not null ||
              controlledSemanticDrawRequested is not null ? 1 : 0) +
-            (controlledSemanticBeforeHandDrawPending ? 1 : 0);
+            (controlledSemanticBeforeHandDrawPending ? 1 : 0) +
+            (controlledBeforeHandDrawHookChoicePending ? 1 : 0);
         if (activeModes > 1 ||
             (controlledRecycleStratagemPending &&
              controlledDrawCostRemaining is not null) ||
@@ -285,7 +311,9 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
               controlledSemanticBeforeHandDrawPending)) ||
             (controlledDrawHookChoicePending &&
              (controlledRecycleStratagemPending ||
-              controlledDrawRemaining is null)))
+              controlledDrawRemaining is null)) ||
+            (controlledBeforeHandDrawHookChoicePending &&
+             controlledSemanticBeforeHandDrawPending))
             throw new InvalidOperationException(
                 "Flattened automatic hand-draw progress contains conflicting modes.");
     }
@@ -346,6 +374,17 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
             };
         return new(PrototypeAutomaticHandDrawProgressKindV111
             .ControlledDrawHookChoice);
+    }
+
+    private static PrototypeAutomaticHandDrawProgressV111?
+        SetControlledBeforeHandDrawHookChoicePending(
+            PrototypeAutomaticHandDrawProgressV111? progress, bool value)
+    {
+        if (!value)
+            return progress?.Kind == PrototypeAutomaticHandDrawProgressKindV111
+                .ControlledBeforeHandDrawHookChoice ? null : progress;
+        return new(PrototypeAutomaticHandDrawProgressKindV111
+            .ControlledBeforeHandDrawHookChoice);
     }
 
     private static PrototypeAutomaticHandDrawProgressV111?
@@ -490,6 +529,23 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
              combat.SemanticDeck is not null))
             throw new InvalidOperationException(
                 "Controlled automatic CardDrawn hook choice is malformed.");
+
+        if (ControlledBeforeHandDrawHookChoicePending &&
+            (!continuation.Mechanics.IsAtStep(
+                 PrototypeAutomaticStepKind.DrawPlayerHand) ||
+             ControlledDrawRemaining is not null ||
+             ControlledDrawCostRemaining is not null ||
+             ControlledSemanticDrawRemaining is not null ||
+             ControlledSemanticDrawRequested is not null ||
+             ControlledSemanticBeforeHandDrawPending ||
+             ControlledRecycleStratagemPending ||
+             ControlledDrawHookChoicePending ||
+             ControlledEnemyAction is not null ||
+             !combat.IsPlayerTurn || combat.PendingChoice is null ||
+             combat.PendingKnowledgeDemonChoice is not null ||
+             combat.SemanticDeck is not null))
+            throw new InvalidOperationException(
+                "Controlled BeforeHandDraw hook choice is malformed.");
 
         ValidateSemanticHandDrawCursor(combat, continuation);
 

@@ -8,15 +8,19 @@ public sealed partial class PrototypeGameEngine
     private static RunState ContinueInitialControlledHandDrawBoundary(
         RunState state, PrototypeDrawCardsResult drawn)
     {
-        bool hookChoice = drawn.BoundaryKind ==
+        bool nestedHookChoice = drawn.BoundaryKind ==
             PrototypeDrawCardsBoundaryKind.NestedCardDrawnChoice &&
             drawn.Combat.SemanticDeck is null &&
             drawn.Combat.PendingChoice is not null;
+        bool stratagemSelection = drawn.BoundaryKind ==
+            PrototypeDrawCardsBoundaryKind.ShuffleSelection &&
+            drawn.Combat.SemanticDeck is null &&
+            drawn.Combat.PendingChoice is null;
         if (!ControlledChanceGuardV111.Active ||
             (drawn.BoundaryKind is not (
                 PrototypeDrawCardsBoundaryKind.ControlledDrawCost or
                 PrototypeDrawCardsBoundaryKind.ControlledRecycle) &&
-             !hookChoice))
+             !nestedHookChoice && !stratagemSelection))
             throw new InvalidOperationException(
                 "Initial controlled hand draw is not at a resumable legacy boundary.");
         var world = RequireWorld(state);

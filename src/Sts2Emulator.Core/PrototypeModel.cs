@@ -399,6 +399,7 @@ public sealed record PrototypeAutomaticPipelineContinuationState(
     bool ControlledSemanticBeforeHandDrawPending = false,
     bool ControlledRecycleStratagemPending = false,
     bool ControlledDrawHookChoicePending = false,
+    bool ControlledBeforeHandDrawHookChoicePending = false,
     PrototypeControlledEnemyActionContinuationV111? ControlledEnemyAction = null,
     ControlledTurnIntentsV111? ControlledTurnIntents = null)
 {
@@ -419,6 +420,7 @@ public sealed record PrototypeAutomaticPipelineContinuationState(
                 ControlledSemanticBeforeHandDrawPending,
                 ControlledRecycleStratagemPending,
                 ControlledDrawHookChoicePending,
+                ControlledBeforeHandDrawHookChoicePending,
                 ControlledEnemyAction,
                 ControlledTurnIntents));
 
@@ -526,6 +528,15 @@ public sealed record PrototypeAutomaticPipelineContinuationState(
         get => Stochastic.ControlledDrawHookChoicePending;
         init => Stochastic = Stochastic with
         { ControlledDrawHookChoicePending = value };
+    }
+
+    [System.Text.Json.Serialization.JsonIgnore(Condition =
+        System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public bool ControlledBeforeHandDrawHookChoicePending
+    {
+        get => Stochastic.ControlledBeforeHandDrawHookChoicePending;
+        init => Stochastic = Stochastic with
+        { ControlledBeforeHandDrawHookChoicePending = value };
     }
 
     [System.Text.Json.Serialization.JsonIgnore(Condition =

@@ -1615,6 +1615,11 @@ public sealed partial class PrototypeGameEngine
             if (currentCombat.PendingChoice?.ControlledRandomPileCard is not null)
                 return state;
 
+            if (currentCombat.AutomaticPipelineContinuation is
+                { ControlledSemanticBeforeHandDrawPending: true } or
+                { ControlledBeforeHandDrawHookChoicePending: true })
+                return state;
+
             if (currentCombat.PendingChoice is not null
                 || currentCombat.PendingKnowledgeDemonChoice is not null)
             {
@@ -1697,6 +1702,19 @@ public sealed partial class PrototypeGameEngine
     internal static RunState ResumeAutomaticPipelineContinuation(
         RunState state)
     {
+        if (state.World?.Combat is
+            { PendingChoice: null,
+              PendingKnowledgeDemonChoice: null,
+              AutomaticPipelineContinuation:
+                { ControlledBeforeHandDrawHookChoicePending: true } } beforeDraw)
+        {
+            if (!ControlledChanceGuardV111.Active)
+                throw new InvalidOperationException(
+                    "Controlled BeforeHandDraw choice requires the RNG guard.");
+            return ResumeAutomaticPipeline(
+                state, beforeDraw.AutomaticPipelineContinuation!.NextStepIndex);
+        }
+
         if (state.World?.Combat is
             { PendingChoice: null,
               PendingKnowledgeDemonChoice: null,
@@ -2696,7 +2714,10 @@ public sealed partial class PrototypeGameEngine
                 bool resumedAfterSemanticHook =
                     combat.AutomaticPipelineContinuation?
                         .ControlledSemanticBeforeHandDrawPending == true;
-                if (resumedAfterSemanticHook)
+                bool resumedAfterControlledHook =
+                    combat.AutomaticPipelineContinuation?
+                        .ControlledBeforeHandDrawHookChoicePending == true;
+                if (resumedAfterSemanticHook || resumedAfterControlledHook)
                 {
                     combat = combat with
                     {
@@ -2714,8 +2735,11 @@ public sealed partial class PrototypeGameEngine
                             PrototypeCombatEventKind.BeforeHandDraw),
                         state.Rng,
                         allowSuspension: ControlledChanceGuardV111.Active &&
-                            combat.SemanticDeck is
-                                { Mode: SemanticDeckStateV111.NatureMode });
+                            (combat.SemanticDeck is
+                                { Mode: SemanticDeckStateV111.NatureMode } ||
+                             (!ControlledChanceGuardV111
+                                  .EngineOwnedNativeProviderActive &&
+                              combat.SemanticDeck is null)));
                     player = beforeHandDraw.Player;
                     combat = beforeHandDraw.Combat;
                     if (combat.PendingChoice?.ControlledRandomPileCard is not null)
@@ -2763,17 +2787,32 @@ public sealed partial class PrototypeGameEngine
                         if (stageIndex < 0)
                             throw new InvalidDataException(
                                 "DrawPlayerHand has no automatic pipeline index.");
+                        bool semanticBeforeHandDraw = combat.SemanticDeck is
+                            { Mode: SemanticDeckStateV111.NatureMode };
+                        if (!semanticBeforeHandDraw &&
+                            (ControlledChanceGuardV111
+                                 .EngineOwnedNativeProviderActive ||
+                             combat.SemanticDeck is not null))
+                            throw new NotSupportedException(
+                                "UNSUPPORTED_CONTROLLED_CHANCE " +
+                                "site=combat.BeforeHandDraw " +
+                                "operation=nested_choice");
+                        var progress = semanticBeforeHandDraw
+                            ? PrototypeAutomaticHandDrawProgressV111
+                                .SemanticBeforeHandDraw()
+                            : PrototypeAutomaticHandDrawProgressV111
+                                .ControlledBeforeHandDrawHookChoice();
                         combat = combat with
                         {
-                            PendingChoice = pending with
-                            {
-                                AutomaticSemanticDrawHookChoice = true
-                            },
+                            PendingChoice = semanticBeforeHandDraw
+                                ? pending with
+                                {
+                                    AutomaticSemanticDrawHookChoice = true
+                                }
+                                : pending,
                             AutomaticPipelineContinuation =
                                 new PrototypeAutomaticPipelineContinuationState(
-                                    stageIndex).WithHandDrawProgress(
-                                    PrototypeAutomaticHandDrawProgressV111
-                                        .SemanticBeforeHandDraw())
+                                    stageIndex).WithHandDrawProgress(progress)
                         };
                         return state with
                         {
@@ -2859,16 +2898,19 @@ public sealed partial class PrototypeGameEngine
                         recycleSite: "combat.DrawPlayerHand",
                         recycleOperation: "unsupported_nested_stage").Run;
                 }
-                if (drawBoundary is
-                    PrototypeDrawCardsBoundaryKind.ControlledDrawCost or
-                    PrototypeDrawCardsBoundaryKind.ControlledRecycle)
-                    return ContinueInitialControlledHandDrawBoundary(
-                        state, drawn);
-                if (drawBoundary ==
-                        PrototypeDrawCardsBoundaryKind.NestedCardDrawnChoice &&
-                    combat.SemanticDeck is null)
-                    return ContinueInitialControlledHandDrawBoundary(
-                        state, drawn);
+                if (ControlledChanceGuardV111.Active &&
+                    combat.SemanticDeck is null &&
+                    drawBoundary is
+                        (PrototypeDrawCardsBoundaryKind.ControlledDrawCost or
+                         PrototypeDrawCardsBoundaryKind.ControlledRecycle or
+                         PrototypeDrawCardsBoundaryKind.ShuffleSelection or
+                         PrototypeDrawCardsBoundaryKind.NestedCardDrawnChoice))
+                {
+                    return combat.AutomaticPipelineContinuation is null
+                        ? ContinueInitialControlledHandDrawBoundary(
+                            state, drawn)
+                        : ContinueControlledHandDraw(state, drawn);
+                }
                 if (drawBoundary ==
                     PrototypeDrawCardsBoundaryKind.ShuffleSelection)
                 {
