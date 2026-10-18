@@ -2571,6 +2571,10 @@ internal static class PrototypeAiJsonlServer
                             {
                                 "mechanics_compare"
                             },
+                            simulationMechanicsComparisonInputs = new[]
+                            {
+                                "each side: <side>_snapshot or <side>_semantic_handle"
+                            },
                             simulationMechanicsComparisonScope =
                                 "provider-independent-mechanics-after-matched-semantic-outcomes",
                             semanticNatureChoiceViewSessionKinds = new[]
@@ -8759,10 +8763,46 @@ internal static class PrototypeAiJsonlServer
 
                     case "mechanics_compare":
                     {
-                        var left = RunSnapshot.Load(
-                            RequiredString(request, "left_snapshot"));
-                        var right = RunSnapshot.Load(
-                            RequiredString(request, "right_snapshot"));
+                        RunState ResolveComparisonRun(string side)
+                        {
+                            var snapshotName = side + "_snapshot";
+                            var semanticHandleName =
+                                side + "_semantic_handle";
+                            bool hasSnapshot = request.TryGetProperty(
+                                snapshotName, out var snapshotElement);
+                            bool hasSemanticHandle = request.TryGetProperty(
+                                semanticHandleName, out var handleElement);
+                            if (hasSnapshot == hasSemanticHandle)
+                                throw new ArgumentException(
+                                    $"mechanics_compare requires exactly one of {snapshotName} or {semanticHandleName}.");
+                            if (hasSnapshot)
+                            {
+                                if (snapshotElement.ValueKind !=
+                                        JsonValueKind.String ||
+                                    string.IsNullOrWhiteSpace(
+                                        snapshotElement.GetString()))
+                                    throw new ArgumentException(
+                                        $"{snapshotName} must be a nonempty snapshot string.");
+                                return RunSnapshot.Load(
+                                    snapshotElement.GetString()!);
+                            }
+
+                            if (handleElement.ValueKind !=
+                                    JsonValueKind.String ||
+                                string.IsNullOrWhiteSpace(
+                                    handleElement.GetString()))
+                                throw new ArgumentException(
+                                    $"{semanticHandleName} must be a nonempty session handle.");
+                            var handle = handleElement.GetString()!;
+                            return semanticStates.TryGetValue(handle,
+                                out var semanticState)
+                                ? semanticState.Run
+                                : throw new InvalidOperationException(
+                                    "Unknown semantic session handle: " + handle);
+                        }
+
+                        var left = ResolveComparisonRun("left");
+                        var right = ResolveComparisonRun("right");
                         var maximumDifferences =
                             OptionalInt(request, "maximum_differences") ?? 64;
                         var comparison = SimulationMechanicsProjectionEngineV111
