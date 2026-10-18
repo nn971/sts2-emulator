@@ -199,17 +199,7 @@ public sealed partial class PrototypeGameEngine
                 throw new NotSupportedException(
                     "UNSUPPORTED_SEMANTIC_DECK site=combat.DrawPlayerHand " +
                     "operation=" + unsupportedOperation);
-            after = after with
-            {
-                AutomaticPipelineContinuation = completed with
-                {
-                    NextStepIndex = SemanticHandDrawStepIndex + 1
-                }
-            };
-            result = result with
-            {
-                World = RequireWorld(result) with { Combat = after }
-            };
+            result = CompleteAutomaticHandDrawStage(result, drawn);
             return (result, drawn, 0);
         }
         if (after.PendingChoice is not null ||
