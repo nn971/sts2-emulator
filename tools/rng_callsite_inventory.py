@@ -16,12 +16,12 @@ import sys
 from collections import Counter
 from pathlib import Path
 from typing import Any
-from urllib.parse import urlparse
+from urllib.parse import unquote, urlparse
 
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = ROOT / "src" / "Sts2Emulator.Core"
-SCHEMA_ID = "emulator-rng-callsite-source-inventory-v13"
+SCHEMA_ID = "emulator-rng-callsite-source-inventory-v14"
 SITE_REGISTRY_PATH = SOURCE_ROOT / "StochasticSiteRegistryV111.cs"
 
 CALL_PATTERN = re.compile(
@@ -440,17 +440,70 @@ def _migration_matrix_site_rows() -> list[dict[str, Any]]:
     return site_rows
 
 
+def _markdown_heading_context(text: str, fragment: str) -> str | None:
+    """Return a linked heading section, without searching unrelated sections."""
+    target = unquote(fragment).lstrip("#").lower()
+    headings: list[tuple[int, int, int, str]] = []
+    for match in re.finditer(
+        r"^(?P<marks>#{1,6})\s+(?P<title>.+?)\s*#*\s*$",
+        text,
+        re.MULTILINE,
+    ):
+        title = match.group("title").strip()
+        explicit_id = re.search(r"\s+\{#([^}]+)\}$", title)
+        if explicit_id:
+            slug = explicit_id.group(1).lower()
+            title = title[:explicit_id.start()].strip()
+        else:
+            slug = re.sub(r"[^\w -]", "", title.lower())
+            slug = re.sub(r"\s+", "-", slug.strip())
+        headings.append((len(match.group("marks")), match.start(),
+                         match.end(), slug))
+
+    for index, (level, start, heading_end, slug) in enumerate(headings):
+        if slug != target:
+            continue
+        end = len(text)
+        for next_level, next_start, _, _ in headings[index + 1:]:
+            if next_level <= level:
+                end = next_start
+                break
+        return text[start:end]
+    return None
+
+
+def _site_link_context(
+    text: str, site_id: str, fragment: str
+) -> str:
+    if fragment:
+        section = _markdown_heading_context(text, fragment)
+        if section is not None:
+            return section
+
+    contexts: list[str] = []
+    for block in re.split(r"\n\s*\n", text):
+        if site_id not in block:
+            continue
+        table_rows = [
+            line for line in block.splitlines()
+            if line.lstrip().startswith("|") and site_id in line
+        ]
+        contexts.append("\n".join(table_rows) if table_rows else block)
+    return "\n".join(contexts)
+
+
 def _site_matrix_contract_evidence(
     site_rows: list[dict[str, Any]],
 ) -> dict[str, Any]:
-    """Locate row-level S0 evidence without treating keyword matches as proof."""
+    """Locate site-specific S0 evidence without treating matches as proof."""
     facet_patterns = {
         "private_constraint": re.compile(
             r"constraint|fingerprint|eligible|eligibility|ordered pool|filter|support",
             re.IGNORECASE,
         ),
         "audience_projection": re.compile(
-            r"player.?visible|public.?view|observation|nature.?view|"
+            r"player.?visible|player.?view|public.?view|observation|"
+            r"nature.?view|nature.?facing|nature.?choice|"
             r"privileged.?inspector|inspector.?view|projection",
             re.IGNORECASE,
         ),
@@ -477,6 +530,7 @@ def _site_matrix_contract_evidence(
     for row in site_rows:
         linked_text: list[str] = []
         linked_docs: list[str] = []
+        site_specific_docs: list[str] = []
         for target in row["links"]:
             parsed = urlparse(target)
             if parsed.scheme or parsed.netloc:
@@ -491,7 +545,13 @@ def _site_matrix_contract_evidence(
             if relative not in doc_text:
                 doc_text[relative] = doc_path.read_text(encoding="utf-8")
             linked_docs.append(relative)
-            linked_text.append(doc_text[relative])
+            text = doc_text[relative]
+            context = _site_link_context(
+                text, row["site_id"], parsed.fragment
+            )
+            if context:
+                site_specific_docs.append(relative)
+                linked_text.append(context)
 
         row_text = " ".join(
             row[key] for key in (
@@ -518,7 +578,7 @@ def _site_matrix_contract_evidence(
                 or any(facet_patterns["probability_provenance"].search(doc) for doc in linked_text)
             ),
             "unsupported_handling": bool(
-                facet_patterns["unsupported_handling"].search(row["controlled_implemented"])
+                facet_patterns["unsupported_handling"].search(row_text)
                 or any(facet_patterns["unsupported_handling"].search(doc) for doc in linked_text)
             ),
         }
@@ -528,15 +588,17 @@ def _site_matrix_contract_evidence(
         audit_rows.append({
             "site_id": row["site_id"],
             "linked_contract_docs": sorted(set(linked_docs)),
+            "site_specific_contract_docs": sorted(set(site_specific_docs)),
             "evidence_presence": evidence,
             "missing_facets": missing,
         })
 
     return {
         "method": (
-            "Keyword and linked-document locator for manual S0 review. A match "
-            "only identifies a place to inspect; it does not prove that the "
-            "site-specific contract is complete or correct."
+            "Keyword locator for manual S0 review. Matches come from the row "
+            "or a linked heading section or line tied to that site ID; generic "
+            "document-wide matches are excluded. A match only identifies a "
+            "place to inspect and does not prove the contract is complete."
         ),
         "row_count": len(audit_rows),
         "rows_with_all_facets_located": sum(not row["missing_facets"] for row in audit_rows),
@@ -917,10 +979,11 @@ def collect() -> dict[str, Any]:
             "The site-matrix report shows registry-to-ledger and ledger-to-registry "
             "differences, unique ledger IDs, and explicit reference-law status. "
             "Unregistered ledger rows are informational because legacy and conditional "
-            "sites may remain outside the active registry. The S0 locator reports text or "
-            "linked-document matches for private constraints, audience projections, "
-            "resolvers/continuations, probability provenance, and unsupported handling; "
-            "these matches require manual review and do not prove source completeness."
+            "sites may remain outside the active registry. The S0 locator reports "
+            "row-local or site-tied linked contexts for private constraints, audience "
+            "projections, resolvers/continuations, probability provenance, and "
+            "unsupported handling; these matches require manual review and do not "
+            "prove source completeness."
         ),
         "total_direct_calls": len(entries),
         "ambient_entropy_calls": ambient_entropy_calls,
@@ -1057,6 +1120,7 @@ def render_markdown(report: dict[str, Any]) -> str:
         f"**{report['site_matrix_contract_evidence']['rows_with_all_facets_located']}/"
         f"{report['site_matrix_contract_evidence']['row_count']} rows** have a text or linked-document match for every facet. "
         "Matches are review pointers, not evidence that a contract is complete.",
+        report["site_matrix_contract_evidence"]["method"],
         "Rows without a text or linked-document match by S0 facet:",
         "",
         *[
@@ -1138,7 +1202,7 @@ def main() -> int:
     )
     parser.add_argument(
         "--check-s0-contract-links", action="store_true",
-        help="fail if a matrix row links to a missing local contract document",
+        help="fail if a matrix row links to a missing local document or heading",
     )
     parser.add_argument(
         "--check-no-ambient-entropy", action="store_true",
@@ -1159,17 +1223,29 @@ def main() -> int:
                   file=sys.stderr)
             return 1
     if args.check_s0_contract_links:
-        broken_contract_links = sorted({
-            target
-            for row in _migration_matrix_site_rows()
-            for target in row["links"]
-            if not urlparse(target).scheme
-            and not urlparse(target).netloc
-            and not (ROOT / "docs" / urlparse(target).path).is_file()
-        })
-        if broken_contract_links:
+        broken_contract_links: set[str] = set()
+        broken_contract_anchors: set[str] = set()
+        for row in _migration_matrix_site_rows():
+            for target in row["links"]:
+                parsed = urlparse(target)
+                if parsed.scheme or parsed.netloc:
+                    continue
+                path = (ROOT / "docs" / parsed.path).resolve()
+                if not path.is_file():
+                    broken_contract_links.add(target)
+                    continue
+                if parsed.fragment and path.suffix.lower() == ".md":
+                    if _markdown_heading_context(
+                        path.read_text(encoding="utf-8"),
+                        parsed.fragment,
+                    ) is None:
+                        broken_contract_anchors.add(target)
+        if broken_contract_links or broken_contract_anchors:
             print(json.dumps({
-                "broken_local_contract_links": broken_contract_links,
+                "broken_local_contract_links":
+                    sorted(broken_contract_links),
+                "broken_local_contract_anchors":
+                    sorted(broken_contract_anchors),
             }, indent=2, sort_keys=True), file=sys.stderr)
             return 1
     if args.check_no_ambient_entropy and report["ambient_entropy_calls"]:
