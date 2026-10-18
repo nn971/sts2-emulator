@@ -378,6 +378,11 @@ public static partial class ChanceLawEngineV111
         "reward.random_potion.drop.ticket"
     ];
 
+    private static readonly string[] LegacyRewardPotionModelQuerySites =
+    [
+        "reward.random_potion.model"
+    ];
+
     private sealed record NativeBoundedIntegerLawSiteV111(
         string StreamId, string Boundary);
 
@@ -438,6 +443,9 @@ public static partial class ChanceLawEngineV111
     public static string[] LegacyPotionDropTicketQuerySiteIds =>
         (string[])LegacyPotionDropTicketQuerySites.Clone();
 
+    public static string[] LegacyRewardPotionModelQuerySiteIds =>
+        (string[])LegacyRewardPotionModelQuerySites.Clone();
+
     /// <summary>
     /// Query the retained legacy card-rarity integer ticket after the source
     /// thresholds have been converted to exact ticket counts. The outcome
@@ -471,7 +479,7 @@ public static partial class ChanceLawEngineV111
             uncommonEnd,
             ticketCount = 10000
         };
-        return CreateLegacyCategoricalTicketLaw(
+        return CreateLegacyCategoricalLaw(
             siteId, streamId, ownerId, ordinal,
             "legacy-card-rarity-ticket-threshold-v1", conditioning,
             "uniform 10,000-way legacy bounded-ticket model; threshold " +
@@ -504,7 +512,7 @@ public static partial class ChanceLawEngineV111
             rareTicketEnd = 10,
             uncommonTicketEnd = 35
         };
-        return CreateLegacyCategoricalTicketLaw(
+        return CreateLegacyCategoricalLaw(
             siteId, streamId, ownerId, ordinal,
             "legacy-potion-rarity-ticket-v1", conditioning,
             "uniform 100-way legacy bounded-ticket model with source-shaped " +
@@ -539,7 +547,7 @@ public static partial class ChanceLawEngineV111
             commonTicketEnd = 50,
             uncommonTicketEnd = 83
         };
-        return CreateLegacyCategoricalTicketLaw(
+        return CreateLegacyCategoricalLaw(
             siteId, streamId, requestOwnerId, ordinal,
             "legacy-relic-rarity-ticket-v1", conditioning,
             "uniform 100-way legacy bounded-ticket model with source-shaped " +
@@ -587,7 +595,7 @@ public static partial class ChanceLawEngineV111
             ticketCount,
             comparison = "ticket_less_than_threshold"
         };
-        return CreateLegacyCategoricalTicketLaw(
+        return CreateLegacyCategoricalLaw(
             siteId, streamId, ownerId, ordinal,
             "legacy-card-upgrade-threshold-ticket-v1", conditioning,
             "uniform 10,000-way legacy bounded-ticket model; source-shaped " +
@@ -659,7 +667,7 @@ public static partial class ChanceLawEngineV111
             raritySupport,
             totalWeight = rarityWeights.Sum(item => item.Weight)
         };
-        return CreateLegacyCategoricalTicketLaw(
+        return CreateLegacyCategoricalLaw(
             siteId, streamId, ownerId, ordinal,
             "legacy-reward-card-rarity-ticket-v1", conditioning,
             "Uniform ticket-index weights over the source-shaped prototype " +
@@ -712,12 +720,69 @@ public static partial class ChanceLawEngineV111
             ticketCount = 2,
             offeredTicket = 0
         };
-        return CreateLegacyCategoricalTicketLaw(
+        return CreateLegacyCategoricalLaw(
             siteId, streamId, ownerId, ordinal,
             "legacy-combat-potion-drop-ticket-v1", conditioning,
             "Uniform two-way legacy bounded ticket when potion acquisition is " +
             "allowed; the legacy RNG law remains unverified against Native.",
             outcomes);
+    }
+
+    /// <summary>
+    /// Query the legacy reward-potion model after a successful drop ticket.
+    /// It uses the fixed ordered prototype pool and does not verify source
+    /// pool completeness or Native stream parity.
+    /// </summary>
+    public static ChanceLawV111 QueryLegacyRewardPotionModel(
+        int act, int floor, PrototypeRoomType room,
+        bool canAcquirePotion, bool dropOffered, int ordinal)
+    {
+        if (act < 1)
+            throw new ArgumentOutOfRangeException(nameof(act));
+        if (floor < 0)
+            throw new ArgumentOutOfRangeException(nameof(floor));
+        if (room is not (PrototypeRoomType.Combat or
+            PrototypeRoomType.Elite or PrototypeRoomType.Boss))
+            throw new ArgumentOutOfRangeException(nameof(room),
+                "Legacy combat-potion rewards require Combat, Elite, or Boss rooms.");
+        if (!canAcquirePotion || !dropOffered)
+            throw new ArgumentException(
+                "The reward-potion model draw requires an allowed, successful potion drop.");
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+
+        const string siteId = "reward.random_potion.model";
+        const string streamId = "reward";
+        var pool = PrototypeContent.PotionPool;
+        if (pool.Length == 0)
+            throw new InvalidOperationException(
+                "The legacy reward-potion pool is empty.");
+        var poolFingerprint = CanonicalJson.Sha256(pool);
+        var ownerId = $"act:{act}:floor:{floor}:room:{room}:pool:" +
+            poolFingerprint;
+        var outcomes = pool.Select(potionId =>
+            new ChanceLawOutcomeV111("potion:" + potionId, 1L))
+            .ToArray();
+        var conditioning = new
+        {
+            siteId,
+            streamId,
+            ownerId,
+            ordinal,
+            act,
+            floor,
+            room,
+            canAcquirePotion,
+            dropOffered,
+            orderedPotionPool = pool,
+            poolFingerprint
+        };
+        return CreateLegacyCategoricalLaw(
+            siteId, streamId, ownerId, ordinal,
+            "legacy-reward-potion-model-pool-v1", conditioning,
+            "Equal index weights over the declared ordered prototype reward " +
+            "potion pool; pool fidelity and Native parity remain unverified.",
+            outcomes, operationKind: "choose_index");
     }
 
     private static (long Rare, long Uncommon, long Common)
@@ -740,10 +805,11 @@ public static partial class ChanceLawEngineV111
             new ChanceLawOutcomeV111("rarity:rare", rare)
         }.Where(outcome => outcome.Weight > 0).ToArray();
 
-    private static ChanceLawV111 CreateLegacyCategoricalTicketLaw(
+    private static ChanceLawV111 CreateLegacyCategoricalLaw(
         string siteId, string streamId, string ownerId, int ordinal,
         string conditioningPolicyId, object conditioning,
-        string probabilityProvenance, ChanceLawOutcomeV111[] outcomes)
+        string probabilityProvenance, ChanceLawOutcomeV111[] outcomes,
+        string operationKind = "bounded_integer")
     {
         var conditioningFingerprint = CanonicalJson.Sha256(conditioning);
         var eventId = CanonicalJson.Sha256(new
@@ -754,7 +820,7 @@ public static partial class ChanceLawEngineV111
             ordinal,
             conditioningFingerprint
         });
-        return Create(eventId, siteId, "bounded_integer", ownerId,
+        return Create(eventId, siteId, operationKind, ownerId,
             ordinal, conditioningPolicyId, conditioningFingerprint,
             probabilityProvenance, outcomes);
     }

@@ -4234,6 +4234,52 @@ internal static class PrototypeAiJsonlServer
                             });
                             break;
                         }
+                        if (siteId == "reward.random_potion.model")
+                        {
+                            RejectChanceLawQueryParameters(
+                                request, "act", "floor", "room",
+                                "can_acquire_potion", "drop_offered",
+                                "support_count");
+                            var modelAct = OptionalInt(request, "act") ??
+                                throw new ArgumentException(
+                                    "Legacy reward-potion model law requires act.");
+                            var modelFloor = OptionalInt(request, "floor") ??
+                                throw new ArgumentException(
+                                    "Legacy reward-potion model law requires floor.");
+                            var modelRoomText = OptionalString(
+                                request, "room") ??
+                                throw new ArgumentException(
+                                    "Legacy reward-potion model law requires room.");
+                            if (!Enum.TryParse<PrototypeRoomType>(
+                                    modelRoomText, ignoreCase: false,
+                                    out var modelRoom) ||
+                                !Enum.IsDefined(modelRoom))
+                                throw new ArgumentException(
+                                    "room must be Combat, Elite, or Boss.");
+                            var canAcquirePotion = RequiredBool(
+                                request, "can_acquire_potion");
+                            var dropOffered = RequiredBool(
+                                request, "drop_offered");
+                            law = ChanceLawEngineV111
+                                .QueryLegacyRewardPotionModel(
+                                    modelAct, modelFloor, modelRoom,
+                                    canAcquirePotion, dropOffered, ordinal);
+                            var supportCount = OptionalInt(
+                                request, "support_count");
+                            if (supportCount is not null &&
+                                supportCount != law.Outcomes.Length)
+                                throw new ArgumentException(
+                                    "Legacy reward-potion model support_count must match the ordered prototype potion pool.");
+                            Write(new
+                            {
+                                requestId,
+                                ok = true,
+                                chanceLawSchemaId =
+                                    ChanceLawV111.CurrentSchemaId,
+                                law
+                            });
+                            break;
+                        }
                         if (ChanceLawEngineV111
                             .IsSupportedAncientOfferQuerySite(siteId))
                         {
@@ -8162,7 +8208,7 @@ internal static class PrototypeAiJsonlServer
             "room", "gold_proportion", "current_thousandths", "elite",
             "forced", "card_rarity_source",
             "current_offset_basis_points", "stream_id", "merchant",
-            "can_acquire_potion", "floor"
+            "can_acquire_potion", "floor", "drop_offered"
         ];
         var unsupported = optionalFields.Where(field =>
             !allowed.Contains(field) && request.TryGetProperty(field, out _))
