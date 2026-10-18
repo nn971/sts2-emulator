@@ -202,14 +202,7 @@ public sealed record ReferenceNatureTrashHeapSessionV111(
             new ReferenceNatureDecisionV111(
                 law.LawId, law.EventId, selection.OutcomeId,
                 selection.OutcomeIndex)).ToArray();
-        var replay = Replay(Origin, ChoiceId, plan,
-            selection.OutcomeIndex);
-        if (CanonicalJson.Sha256(replay.World?.Event?.NativeEventRng) !=
-            CanonicalJson.Sha256(NativeRngV111Contexts.ForEvent(
-                Origin.RunSeed,
-                PrototypeNativeUnderdocksTrashHeap.NativeRngEventId)))
-            throw new InvalidDataException(
-                "Scripted Trash Heap resolution advanced its Native event cursor.");
+        var replay = Replay(Origin, ChoiceId, plan, law, selection);
         var next = this with
         {
             Run = ReferenceNatureRunCursorV111.Commit(
@@ -260,8 +253,7 @@ public sealed record ReferenceNatureTrashHeapSessionV111(
                 throw new InvalidDataException(
                     "ReferenceNature Trash Heap transcript does not replay.");
             expectedNatureState = selection.NextState;
-            expectedRun = Replay(Origin, ChoiceId, plan,
-                selection.OutcomeIndex);
+            expectedRun = Replay(Origin, ChoiceId, plan, law, selection);
             expectedRun = ReferenceNatureRunCursorV111.Commit(
                 expectedRun, expectedNatureState);
         }
@@ -327,33 +319,23 @@ public sealed record ReferenceNatureTrashHeapSessionV111(
 
     private static RunState Replay(
         RunState origin, string choiceId,
-        TrashHeapChoicePlanV111 plan, int selectedIndex)
+        TrashHeapChoicePlanV111 plan, ChanceLawV111 law,
+        ReferenceNatureSelectionV111 selection)
     {
-        var scripted = new ScriptedRandomIndexProviderV111(
-        [
-            new RandomIndexDecisionV111(
-                plan.Request, selectedIndex, "scripted-v111")
-        ]);
-        var action = GameAction.Create(
-            "event_choice", new EventChoicePayload(choiceId));
-        using var providerScope = StochasticProviderScopeV111.Enter(
-            scripted, overrideExplicitProviders: true);
-        var run = new PrototypeGameEngine().Step(origin.Fork(), action).State;
-        scripted.AssertComplete();
-        var world = run.World ?? throw new InvalidDataException(
-            "Trash Heap scripted resolution lost its event world.");
-        var eventState = world.Event ?? throw new InvalidDataException(
-            "Trash Heap scripted resolution lost its completed event page.");
-        return run with
-        {
-            World = world with
-            {
-                Event = eventState with
-                {
-                    NativeEventRngProviderMode = "scripted-v111"
-                }
-            }
-        };
+        var request = ControlledStochasticRequestV111.FromIndex(plan.Request);
+        var orderedOutcomeIds = plan.OutcomeIds.Select((id, index) =>
+            $"trash_heap_reward:{id}:index:{index}").ToArray();
+        var selected = ReferenceNatureChanceLawDecisionV111
+            .FromOrderedIndexSelection(
+                law, request, selection, orderedOutcomeIds);
+        return ReferenceNatureNativeEventIndexReplayV111
+            .ReplayControlledIndex(
+                origin, plan.Request, selected,
+                run => new PrototypeGameEngine().Step(
+                    run, GameAction.Create("event_choice",
+                        new EventChoicePayload(choiceId))).State,
+                PrototypeNativeUnderdocksTrashHeap.NativeRngEventId,
+                "Trash Heap");
     }
 
     private static string SiteIdForChoice(string choiceId) => choiceId switch
