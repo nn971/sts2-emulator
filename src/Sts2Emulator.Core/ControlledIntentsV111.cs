@@ -138,13 +138,25 @@ public static class ControlledIntentsV111
     {
         var request = state.Pending ??
             throw new InvalidOperationException("Pending intent unavailable.");
-        var choice = new ControlledRandomIndexProviderV111(selectedIndex)
-            .Resolve(request, state.ReferenceStreams);
-        return AdvanceToBoundary(state.Fork() with
-        {
-            Transcript = state.Transcript.Append(choice).ToArray(),
-            Pending = null
-        });
+        return ControlledChanceContinuationExecutorV111
+            .ResolveSelectedIndex<ControlledIntentStateV111,
+                ControlledIntentStateV111>(
+                state, request, selectedIndex, (checkpoint, replayedIndex) =>
+                {
+                    var choice = new RandomIndexDecisionV111(
+                        request with
+                        {
+                            OrderedCandidates = (int[])
+                                request.OrderedCandidates.Clone()
+                        }, replayedIndex, "controlled-v111");
+                    choice.Validate();
+                    return AdvanceToBoundary(checkpoint.Fork() with
+                    {
+                        Transcript = checkpoint.Transcript
+                            .Append(choice).ToArray(),
+                        Pending = null
+                    });
+                });
     }
 
     private sealed class ChoiceBoundary(RandomIndexRequestV111 request) : Exception

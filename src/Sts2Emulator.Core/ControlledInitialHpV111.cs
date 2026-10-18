@@ -82,22 +82,36 @@ public static class ControlledInitialHpV111
             throw new InvalidOperationException("Persisted pending eligibility is stale.");
         var working = state.Fork();
         var request = working.Pending!;
-        var choice = new ControlledRandomIndexProviderV111(selectedIndex)
-            .Resolve(request, working.ReferenceStreams);
-        int hp = choice.SelectedValue;
-        var enemies = working.Combat.Enemies.Select(e => e.Fork()).ToArray();
-        enemies[working.NextEnemyIndex] = enemies[working.NextEnemyIndex] with
-        {
-            Hp = hp, MaxHp = hp
-        };
-        var next = working with
-        {
-            Combat = working.Combat with { Enemies = enemies },
-            NextEnemyIndex = working.NextEnemyIndex + 1,
-            Transcript = working.Transcript.Append(choice).ToArray(),
-            Pending = null
-        };
-        return next with { Pending = MakePending(next) };
+        return ControlledChanceContinuationExecutorV111
+            .ResolveSelectedIndex<ControlledInitialHpStateV111,
+                ControlledInitialHpStateV111>(
+                working, request, selectedIndex, (checkpoint, replayedIndex) =>
+                {
+                    var choice = new RandomIndexDecisionV111(
+                        request with
+                        {
+                            OrderedCandidates = (int[])
+                                request.OrderedCandidates.Clone()
+                        }, replayedIndex, "controlled-v111");
+                    choice.Validate();
+                    var enemies = checkpoint.Combat.Enemies
+                        .Select(enemy => enemy.Fork()).ToArray();
+                    enemies[checkpoint.NextEnemyIndex] =
+                        enemies[checkpoint.NextEnemyIndex] with
+                        {
+                            Hp = choice.SelectedValue,
+                            MaxHp = choice.SelectedValue
+                        };
+                    var next = checkpoint with
+                    {
+                        Combat = checkpoint.Combat with { Enemies = enemies },
+                        NextEnemyIndex = checkpoint.NextEnemyIndex + 1,
+                        Transcript = checkpoint.Transcript
+                            .Append(choice).ToArray(),
+                        Pending = null
+                    };
+                    return next with { Pending = MakePending(next) };
+                });
     }
 
     public static ControlledInitialHpStateV111 Restore(string json)
