@@ -185,6 +185,30 @@ public static class StochasticSiteRegistryV111
         "combat.relic.after_shuffle.generated_card.random_insert_index";
     public const string UnownedRandomRelicSelectionSiteId =
         "relic.unowned_random_selection.index_draw";
+    public const string CombatEffectRandomTargetSiteId =
+        "combat.effect.random_enemy";
+    public const string CombatSlyAutoplayRandomTargetSiteId =
+        "combat.sly_autoplay.random_enemy";
+    public const string CombatAutoplayRandomTargetSiteId =
+        "combat.autoplay.random_enemy";
+    public const string CombatGeneratedCardSelectSiteId =
+        "combat.generated_card.select";
+    public const string CombatRandomDrawAttackCardModelSiteId =
+        "combat.random_draw_attack.card_model";
+    public const string CombatCardTransformReplacementSiteId =
+        "combat.card_transform.replacement.index_draw";
+    public const string CombatEnemyDiscardRandomInsertSiteId =
+        "combat.enemy.discard.random_insert_index";
+    public const string CombatEnemyDrawRandomInsertSiteId =
+        "combat.enemy.draw.random_insert_index";
+    public const string CombatHandReturnShuffleSiteId =
+        "combat.hand_return.draw_pile.shuffle_swap_index";
+    public const string CombatRandomRareDrawToHandShuffleSiteId =
+        "combat.draw_pile.random_rare_to_hand.shuffle_swap_index";
+    public const string CombatRandomShortlistShuffleSiteId =
+        "combat.card_selection.random_shortlist";
+    public const string CombatFullPoolShuffleSiteId =
+        "combat.generation.full_pool_shuffle.swap_index";
 
     public static string[] ControlledDrawInsertionSiteIds =>
     [
@@ -193,37 +217,82 @@ public static class StochasticSiteRegistryV111
         PrototypeControlledDrawInsertionV111.PersonalHiveDazedSiteId
     ];
 
+    public static string[] CombatRandomTargetSiteIds =>
+    [
+        CombatEffectRandomTargetSiteId,
+        CombatSlyAutoplayRandomTargetSiteId,
+        CombatAutoplayRandomTargetSiteId
+    ];
+
+    public static string[] CombatGeneratedCardModelSiteIds =>
+    [
+        CombatGeneratedCardSelectSiteId,
+        CombatRandomDrawAttackCardModelSiteId,
+        CombatCardTransformReplacementSiteId
+    ];
+
+    public static string[] CombatRandomPilePositionSiteIds =>
+    [
+        DrawPileRandomInsertSiteId,
+        AfterShuffleRelicDrawPileInsertSiteId,
+        PrototypeControlledDrawInsertionV111.PersonalHiveDazedSiteId,
+        CombatEnemyDiscardRandomInsertSiteId,
+        CombatEnemyDrawRandomInsertSiteId
+    ];
+
+    public static string[] CombatCardPoolShuffleSiteIds =>
+    [
+        CombatHandReturnShuffleSiteId,
+        CombatRandomRareDrawToHandShuffleSiteId,
+        CombatRandomShortlistShuffleSiteId,
+        CombatFullPoolShuffleSiteId
+    ];
+
+    public static string[] CombatIntentSiteIds =>
+    [
+        NativeCombatRngEntryV111.CommittedIntentSiteId,
+        NativeCombatRngEntryV111.NextTurnIntentSiteId
+    ];
+
+    public static string[] NeowOfferIndexSiteIds =>
+    [
+        PrototypeNativeOvergrowthEvents.NeowCursedRelicSiteId,
+        PrototypeNativeOvergrowthEvents.NeowLavaRockPairSiteId,
+        PrototypeNativeOvergrowthEvents.NeowOysterPairSiteId,
+        PrototypeNativeOvergrowthEvents.NeowTalismanPairSiteId
+    ];
+
     private static readonly string[] SemanticReferenceNatureSites =
     [
-        "combat.committed_intent.index_draw",
-        "combat.next_turn_intent.index_draw",
-        "combat.enemy.discard.random_insert_index",
-        "combat.enemy.draw.random_insert_index",
+        NativeCombatRngEntryV111.CommittedIntentSiteId,
+        NativeCombatRngEntryV111.NextTurnIntentSiteId,
+        CombatEnemyDiscardRandomInsertSiteId,
+        CombatEnemyDrawRandomInsertSiteId,
         "combat.enemy.theft_card.select",
         "combat.enemy.summon_pool.select",
         NativeCombatRngEntryV111.InitialUniqueHpSiteId,
         NativeCombatRngEntryV111.ToughEggHatchHpSiteId,
         "combat.draw_pile.draw_card",
         "combat.draw_pile.reveal_card",
-        "combat.effect.random_enemy",
-        "combat.sly_autoplay.random_enemy",
-        "combat.autoplay.random_enemy",
-        "combat.generated_card.select",
-        "combat.random_draw_attack.card_model",
+        CombatEffectRandomTargetSiteId,
+        CombatSlyAutoplayRandomTargetSiteId,
+        CombatAutoplayRandomTargetSiteId,
+        CombatGeneratedCardSelectSiteId,
+        CombatRandomDrawAttackCardModelSiteId,
         "combat.random_hand_card.energy_cost",
         "combat.card_draw.relic_energy_cost",
         "combat.card_draw.slither_energy_cost",
         "combat.relic.jeweled_mask.random_power_draw_card",
-        "combat.card_transform.replacement.index_draw",
+        CombatCardTransformReplacementSiteId,
         "combat.potion_generation.random_model",
         "combat.random_hand_card.select",
-        "combat.hand_return.draw_pile.shuffle_swap_index",
-        "combat.generation.full_pool_shuffle.swap_index",
-        "combat.draw_pile.random_rare_to_hand.shuffle_swap_index",
+        CombatHandReturnShuffleSiteId,
+        CombatFullPoolShuffleSiteId,
+        CombatRandomRareDrawToHandShuffleSiteId,
         "combat.draw.recycle.shuffle_swap_index",
         DrawPileRandomInsertSiteId,
         AfterShuffleRelicDrawPileInsertSiteId,
-        "combat.card_selection.random_shortlist",
+        CombatRandomShortlistShuffleSiteId,
         "combat.autoplay.random_card.select",
         "combat.draw_pile.random_replay_card.select"
     ];
@@ -307,7 +376,7 @@ public static class StochasticSiteRegistryV111
         "combat.encounter.formation.index_draw",
         "combat.encounter.weighted_selection.ticket",
         NativeCombatRngEntryV111.InitialUniqueHpSiteId,
-        "combat.committed_intent.index_draw",
+        NativeCombatRngEntryV111.CommittedIntentSiteId,
         NativeFisherYatesV111.SiteId
     ];
 
@@ -355,22 +424,22 @@ public static class StochasticSiteRegistryV111
         NativeCombatRngEntryV111.ToughEggHatchHpSiteId,
         NativeCombatRngEntryV111.NextTurnIntentSiteId,
         ControlledRecycleShuffleEngineV111.SiteId,
-        "combat.effect.random_enemy",
-        "combat.sly_autoplay.random_enemy",
-        "combat.autoplay.random_enemy",
-        "combat.generated_card.select",
+        CombatEffectRandomTargetSiteId,
+        CombatSlyAutoplayRandomTargetSiteId,
+        CombatAutoplayRandomTargetSiteId,
+        CombatGeneratedCardSelectSiteId,
         "combat.potion_generation.random_model",
-        "combat.card_transform.replacement.index_draw",
-        "combat.random_draw_attack.card_model",
+        CombatCardTransformReplacementSiteId,
+        CombatRandomDrawAttackCardModelSiteId,
         DrawPileRandomInsertSiteId,
         PrototypeControlledDrawInsertionV111.PersonalHiveDazedSiteId,
         "combat.enemy.theft_card.select",
         "combat.enemy.summon_pool.select",
-        "combat.hand_return.draw_pile.shuffle_swap_index",
-        "combat.generation.full_pool_shuffle.swap_index",
+        CombatHandReturnShuffleSiteId,
+        CombatFullPoolShuffleSiteId,
         "combat.random_hand_card.select",
         "combat.random_hand_card.energy_cost",
-        "combat.card_selection.random_shortlist"
+        CombatRandomShortlistShuffleSiteId
     ];
 
     private static readonly string[] ChanceLawQuerySites =
@@ -447,8 +516,8 @@ public static class StochasticSiteRegistryV111
         "combat.effect.personal_hive.dazed.random_insert_index",
         DrawPileRandomInsertSiteId,
         AfterShuffleRelicDrawPileInsertSiteId,
-        "combat.enemy.draw.random_insert_index",
-        "combat.enemy.discard.random_insert_index",
+        CombatEnemyDrawRandomInsertSiteId,
+        CombatEnemyDiscardRandomInsertSiteId,
         "card_rarity.encounter_model.index_draw",
         "card_rarity.upgrade_roll.unit_float",
         "event.endless_conveyor.dish_weighted_ticket",

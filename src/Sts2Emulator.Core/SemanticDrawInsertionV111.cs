@@ -30,6 +30,11 @@ public sealed record SemanticDrawInsertionEventV111(
         string legacyOwnerId, string nativeOwnerId, int ordinal,
         int supportCount)
     {
+        if (!StochasticSiteRegistryV111.ControlledDrawInsertionSiteIds.Contains(
+                siteId, StringComparer.Ordinal))
+            throw new NotSupportedException(
+                $"UNSUPPORTED_RANDOM_SITE site={siteId} " +
+                "operation=semantic_draw_insertion.");
         var request = new RandomIndexRequestV111(
             siteId,
             nativeStreamAvailable ? "run.shuffle" : "prototype.combat",

@@ -31,6 +31,11 @@ public static class NativeNeowEventV111
         var decisions = new List<RandomIndexDecisionV111>();
         int ChooseIndex(string siteId, string ownerId, int count)
         {
+            if (!StochasticSiteRegistryV111.NeowOfferIndexSiteIds.Contains(
+                    siteId, StringComparer.Ordinal))
+                throw new NotSupportedException(
+                    $"UNSUPPORTED_RANDOM_SITE site={siteId} " +
+                    "operation=neow_offer_index.");
             var request = new RandomIndexRequestV111(
                 siteId, stream.StreamId, ownerId, 0,
                 Enumerable.Range(0, count).ToArray());
