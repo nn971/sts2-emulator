@@ -1,6 +1,6 @@
 # Native event relic ReferenceNature continuation
 
-**Snapshot:** 2026-10-19. **Status:** implemented for supported configured Native event-choice relic draws, Neow's Bones Large Capsule pickup, and Battleworn Dummy setting-three victory; identity-pool fidelity and Native cursor parity remain open.
+**Snapshot:** 2026-10-19. **Status:** implemented for supported configured Native event-choice relic draws, Round Tea Party, Trial, Neow's Bones Large Capsule pickup, Battleworn Dummy setting-three victory, and Pael's Wing; identity-pool fidelity and Native cursor parity remain open.
 
 ## Boundary
 
@@ -11,6 +11,11 @@ Box and then create its five Wax relic rewards. Each expected relic pull
 contributes one rarity request and, when the remaining bag has an eligible
 identity, one identity request. The ordinary event choice, relic effects,
 completed reward, and ReferenceNature cursor form one saved boundary.
+
+Two event-specific branches also use direct relic draws outside the event
+effect list: Round Tea Party's `continue_fight` draw on page one, and Trial's
+two draws after `merchant_guilty` on page two. They use the same replay
+boundary when the current action is legal.
 
 The same session also accepts the legal Native `take_reward_relic` action for
 Large Capsule when it is offered by Neow's Bones. It captures the two
@@ -27,15 +32,21 @@ in the action fail closed. The action, victory reward, event result, and Nature
 cursor commit together. Setting one and setting two, multi-action fights, and
 draw-free or losing combat actions are outside this boundary.
 
+For Pael's Wing, the session accepts the current legal
+`sacrifice_reward_card` or `sacrifice_reward_card_group` action when it
+advances the Wing's saved sacrifice count to an even number. It captures the
+resulting relic draw and commits the sacrifice and acquisition with the Nature
+cursor. Other reward actions remain outside this boundary.
+
 Event selection happens before this boundary and keeps its current provider.
 The session rejects unsupported event choices and Neow pickups, Battleworn
-actions outside the setting-three victory boundary, and stochastic sites
-outside the declared relic rarity and model requests. Event choices with
-another fixed relic effect are excluded because their effect ordering changes
-the live owned relic support. Other Neow pickup triggers remain outside this
-boundary. Until all expected requests resolve, its published run remains at
-the projected origin. On completion it commits the event result and Nature
-cursor together.
+actions outside the setting-three victory boundary, Pael's Wing actions that
+do not draw a relic, and stochastic sites outside the declared relic rarity
+and model requests. Event choices with another fixed relic effect are excluded
+because their effect ordering changes the live owned relic support. Other Neow
+pickup triggers remain outside this boundary. Until all expected requests
+resolve, its published run remains at the projected origin. On completion it
+commits the event result and Nature cursor together.
 
 ## Law and replay
 
@@ -54,8 +65,8 @@ order. The bounded transform is `SOURCE_VERIFIED`; candidate-pool completeness
 and the conditional Native identity distribution over its hidden queue remain
 `UNVERIFIED`.
 
-The transcript follows actual source request order. A mixed event choice that
-also reaches another stochastic site fails closed rather than partially
+The transcript follows actual source request order. An action that also
+reaches another stochastic site fails closed rather than partially
 committing a relic-only prefix. Each `ResolveNext()` samples the next law and
 maps it to the typed Native float or index provider value, then replays the
 action from its saved origin. Save/restore recomputes the complete prefix.

@@ -673,37 +673,23 @@ class State:
     def begin_reference_nature_native_neow_relic_pickup(
             self, action_id: str, nature_seed: int | None = None):
         """Control relic draws triggered by a supported Native Neow pickup."""
-        if self.session.capabilities.get(
-                "referenceNatureNativeEventRelicSessionSchemaId") != (
-                "sts2-v111-reference-nature-native-event-relic-session-v1"):
-            raise EmulatorError(
-                "Emulator does not expose ReferenceNature Native event relic sessions")
-        if not isinstance(action_id, str) or not action_id:
-            raise ValueError("action_id must be a nonempty string")
-        site_ids = (
-            "relic_grab_bag.rarity.unit_float",
-            "treasure.relic_grab_bag.model.index_draw")
-        if not all(self.session.supports_reference_nature_site(
-                site_id, session="native_event_relic")
-                for site_id in site_ids):
-            raise EmulatorError(
-                "No ReferenceNature Native event relic session is advertised")
-        if (nature_seed is not None and
-                (not isinstance(nature_seed, int) or
-                 isinstance(nature_seed, bool) or nature_seed < 0 or
-                 nature_seed > 0xFFFFFFFFFFFFFFFF)):
-            raise ValueError("nature_seed must be an unsigned 64-bit integer")
-        payload = {"state_handle": self.handle, "action_id": action_id}
-        if nature_seed is not None:
-            payload["nature_seed"] = nature_seed
-        result = self.session.call(
-            "reference_nature_native_event_relic_begin", **payload)
-        return ReferenceNatureNativeEventRelicSession.from_wire(
-            self.session, result["result"])
+        return self._begin_reference_nature_native_event_relic_action(
+            action_id, nature_seed)
 
     def begin_reference_nature_native_battleworn_relic_reward(
             self, action_id: str, nature_seed: int | None = None):
-        """Control the relic reward reached by a legal Battleworn setting-three victory."""
+        """Control the relic reward from a legal setting-three victory."""
+        return self._begin_reference_nature_native_event_relic_action(
+            action_id, nature_seed)
+
+    def begin_reference_nature_native_pael_wing_relic_reward(
+            self, action_id: str, nature_seed: int | None = None):
+        """Control Pael's Wing's relic draw on every second card sacrifice."""
+        return self._begin_reference_nature_native_event_relic_action(
+            action_id, nature_seed)
+
+    def _begin_reference_nature_native_event_relic_action(
+            self, action_id: str, nature_seed: int | None):
         if self.session.capabilities.get(
                 "referenceNatureNativeEventRelicSessionSchemaId") != (
                 "sts2-v111-reference-nature-native-event-relic-session-v1"):
@@ -1865,7 +1851,7 @@ class ReferenceNatureNativeEventRelicSession:
     handle: str
     fingerprint: str
     state_handle: str | None
-    event_id: str
+    event_id: str | None
     choice_id: str | None
     action_id: str
     site_id: str
