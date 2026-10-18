@@ -11,8 +11,8 @@ Counts by direct API family:
 - `native_shuffle_mechanics`: 24
 
 Shuffle site IDs mapped to migration-matrix rows: **18**; dynamic expressions: **6**; unmapped: **0**; missing: **0**.
-Registered stochastic site IDs mapped to migration-matrix rows: **153/153**; IDs without rows: **0**; duplicate matrix IDs: **0**; unresolved registry references: **0**.
-Reference-law column status: **93 UNVERIFIED**; **23 conditional**; **67 calibrated**; **0 unspecified**.
+Registered stochastic site IDs mapped to migration-matrix rows: **155/155**; IDs without rows: **0**; duplicate matrix IDs: **0**; unresolved registry references: **0**.
+Reference-law column status: **91 UNVERIFIED**; **23 conditional**; **69 calibrated**; **0 unspecified**.
 S0 contract-evidence locator: **183/183 rows** have a text or linked-document match for every facet. Matches are review pointers, not evidence that a contract is complete.
 Rows without a text or linked-document match by S0 facet:
 
@@ -43,9 +43,9 @@ Known RNG helper callsites with forwarded stable site IDs:
                     .HungryForMushroomsShuffleSiteId` | `event.glory.random_upgrade.shuffle_swap_index` | `mapped` | `mapped` |
 | [`src/Sts2Emulator.Core/PrototypeNativeGloryTinker.cs:116`](../src/Sts2Emulator.Core/PrototypeNativeGloryTinker.cs#L116) `NativeEventContextRngV111.ShuffleInPlace` | `PrototypeNativeGloryEvents.TinkerTypeOfferShuffleSiteId` | `event.glory_tinker.type_offer.shuffle_swap_index` | `mapped` | `mapped` |
 | [`src/Sts2Emulator.Core/PrototypeNativeGloryTinker.cs:141`](../src/Sts2Emulator.Core/PrototypeNativeGloryTinker.cs#L141) `NativeEventContextRngV111.ShuffleInPlace` | `PrototypeNativeGloryEvents.TinkerRiderOfferShuffleSiteId` | `event.glory_tinker.rider_offer.shuffle_swap_index` | `mapped` | `mapped` |
-| [`src/Sts2Emulator.Core/PrototypeNativeLaterActMap.cs:223`](../src/Sts2Emulator.Core/PrototypeNativeLaterActMap.cs#L223) `NativeMapRandom.Shuffle` | `PathDeltaShuffleSiteId` | `map.later_act.path_delta.shuffle_swap_index` | `not_registered` | `mapped` |
+| [`src/Sts2Emulator.Core/PrototypeNativeLaterActMap.cs:223`](../src/Sts2Emulator.Core/PrototypeNativeLaterActMap.cs#L223) `NativeMapRandom.Shuffle` | `PathDeltaShuffleSiteId` | `map.later_act.path_delta.shuffle_swap_index` | `mapped` | `mapped` |
 | [`src/Sts2Emulator.Core/PrototypeNativeLaterActMap.cs:321`](../src/Sts2Emulator.Core/PrototypeNativeLaterActMap.cs#L321) `NativeMapRandom.Shuffle` | `RoomAssignmentShuffleSiteId` | `map.later_act.room_assignment.shuffle_swap_index` | `not_registered` | `mapped` |
-| [`src/Sts2Emulator.Core/PrototypeNativeOvergrowthMap.cs:175`](../src/Sts2Emulator.Core/PrototypeNativeOvergrowthMap.cs#L175) `NativeMapRandom.Shuffle` | `PathDeltaShuffleSiteId` | `map.overgrowth.path_delta.shuffle_swap_index` | `not_registered` | `mapped` |
+| [`src/Sts2Emulator.Core/PrototypeNativeOvergrowthMap.cs:175`](../src/Sts2Emulator.Core/PrototypeNativeOvergrowthMap.cs#L175) `NativeMapRandom.Shuffle` | `PathDeltaShuffleSiteId` | `map.overgrowth.path_delta.shuffle_swap_index` | `mapped` | `mapped` |
 | [`src/Sts2Emulator.Core/PrototypeNativeOvergrowthMap.cs:268`](../src/Sts2Emulator.Core/PrototypeNativeOvergrowthMap.cs#L268) `NativeMapRandom.Shuffle` | `RoomAssignmentShuffleSiteId` | `map.overgrowth.room_assignment.shuffle_swap_index` | `not_registered` | `mapped` |
 | [`src/Sts2Emulator.Core/PrototypeNativeUnderdocksDoors.cs:43`](../src/Sts2Emulator.Core/PrototypeNativeUnderdocksDoors.cs#L43) `NativeEventContextRngV111.ShuffleInPlace` | `PrototypeNativeUnderdocksDoors.ShuffleSiteId` | `event.doors_light.shuffle_swap_index` | `mapped` | `mapped` |
 

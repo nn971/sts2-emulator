@@ -1026,6 +1026,84 @@ public static partial class ChanceLawEngineV111
             ownerId, 1, ordinal);
     }
 
+    /// <summary>
+    /// Query one raw Native Hive/Glory delta-shuffle index. Every three-entry
+    /// Fisher-Yates shuffle uses bounds 3 then 2 at successive site ordinals.
+    /// </summary>
+    public static ChanceLawV111 QueryLaterActPathDeltaSwap(
+        int act, int ordinal)
+    {
+        if (act is not (2 or 3))
+            throw new ArgumentOutOfRangeException(
+                nameof(act), "Later-act path deltas support Hive or Glory.");
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(
+                nameof(ordinal),
+                "Later-act path-delta queries require a nonnegative site-local ordinal.");
+
+        return QueryMapPathDeltaSwap(
+            PrototypeNativeLaterActMap.PathDeltaShuffleSiteId,
+            $"map:act:{act}", ordinal);
+    }
+
+    /// <summary>
+    /// Query one raw Native Overgrowth delta-shuffle index using its source
+    /// path/floor owner and site-local ordinal.
+    /// </summary>
+    public static ChanceLawV111 QueryOvergrowthPathDeltaSwap(
+        string ownerId, int ordinal)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
+        if (!IsOvergrowthPathDeltaOwner(ownerId))
+            throw new ArgumentException(
+                "Owner ID must identify an Act 1 path and floor delta shuffle.",
+                nameof(ownerId));
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(
+                nameof(ordinal),
+                "Overgrowth path-delta queries require a nonnegative site-local ordinal.");
+
+        return QueryMapPathDeltaSwap(
+            PrototypeNativeOvergrowthMap.PathDeltaShuffleSiteId,
+            ownerId, ordinal);
+    }
+
+    private static ChanceLawV111 QueryMapPathDeltaSwap(
+        string siteId, string ownerId, int ordinal)
+    {
+        var supportCount = ordinal % 2 == 0 ? 3 : 2;
+        var indexWeights = NativeNextIntGridWeights(supportCount);
+        var outcomes = indexWeights.Select((weight, index) =>
+            new ChanceLawOutcomeV111($"swap_index:{index}", weight))
+            .ToArray();
+        var eventId = CanonicalJson.Sha256(new
+        {
+            boundary = siteId,
+            ownerId,
+            ordinal
+        });
+        var conditioningFingerprint = CanonicalJson.Sha256(new
+        {
+            siteId,
+            ownerId,
+            ordinal,
+            sourcePoolSize = 3,
+            supportCount
+        });
+
+        return Create(
+            eventId,
+            siteId,
+            "bounded_integer",
+            ownerId,
+            ordinal,
+            NativeRandomIndexConditioningPolicyId,
+            conditioningFingerprint,
+            NativeBoundedIndexSourceVerifiedProvenance,
+            outcomes,
+            ChanceLawV111.SourceVerifiedStatus);
+    }
+
     private static ChanceLawV111 QueryMapPathStart(
         string siteId, string ownerId, int act, int ordinal)
     {
@@ -1073,6 +1151,20 @@ public static partial class ChanceLawEngineV111
             return false;
         return parts[4] == "start" ||
             pathOrdinal == 1 && parts[4] == "start_retry";
+    }
+
+    private static bool IsOvergrowthPathDeltaOwner(string ownerId)
+    {
+        var parts = ownerId.Split(':');
+        return parts.Length == 7 && parts[0] == "act" && parts[1] == "1" &&
+            parts[2] == "path" &&
+            int.TryParse(parts[3], NumberStyles.None,
+                CultureInfo.InvariantCulture, out var pathOrdinal) &&
+            pathOrdinal is >= 0 and <= 6 && parts[4] == "floor" &&
+            int.TryParse(parts[5], NumberStyles.None,
+                CultureInfo.InvariantCulture, out var floorOrdinal) &&
+            floorOrdinal is >= 1 and < PrototypeNativeOvergrowthMap.RoomRows &&
+            parts[6] == "deltas";
     }
 
     public static ChanceLawV111 QueryLaterActDarvHiveAssignment(int ordinal)

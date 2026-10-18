@@ -173,6 +173,28 @@ law = state.query_chance_law(
 )
 ```
 
+Native map delta-shuffle queries report each raw Fisher-Yates swap index.
+Three-entry delta pools use bound 3 then bound 2 at successive ordinals:
+
+```python
+first_swap = state.query_chance_law(
+    "map.later_act.path_delta.shuffle_swap_index",
+    ordinal=0,
+    act=2,
+    support_count=3,
+)
+second_swap = state.query_chance_law(
+    "map.later_act.path_delta.shuffle_swap_index",
+    ordinal=1,
+    act=2,
+    support_count=2,
+)
+```
+
+For Act 1 Overgrowth, declare the path/floor owner, for example
+`owner_id="act:1:path:0:floor:1:deltas"`. These laws describe the swap
+indices; they do not validate or return the final shuffled path deltas.
+
 Glory's later-act map rest-count draw has a separate read-only Native law:
 
 ```python

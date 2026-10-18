@@ -64,14 +64,16 @@ part of that projection. There is currently no Nature-view observation or
 controlled continuation for these sites. Read-only `chance_law_query` laws
 cover the raw Act 1 Overgrowth and Hive/Glory
 `map.*.path_start_column.index_draw` calls before any path-start retry, and
-the `map.later_act.glory_rest_count.index_draw` at site-local ordinal zero.
-Act 1 queries require the source owner ID for the path or retry; later-act
-queries require the declared act and site-local ordinal. The path-start and
-rest-count laws return exact Native bounded-index grid masses. These queries
-do not read map state, seed, or cursor. The explicit `GenerateNativeWithAudit`
-helpers can return the final native map stream snapshot for source
-investigation; ordinary map generation does not publish it, and no
-per-decision privileged-inspector transcript exists.
+the raw `map.*.path_delta.shuffle_swap_index` calls, and the
+`map.later_act.glory_rest_count.index_draw` at site-local ordinal zero. Act 1
+queries require the source owner ID for the path/retry or path/floor; later-act
+queries require the declared act and site-local ordinal. Delta-swap bounds are
+3 then 2 on alternating site ordinals. These path-start, delta-swap, and
+rest-count laws return exact Native bounded-index grid masses. They do not
+read map state, seed, or cursor, and do not compute the final accepted path.
+The explicit `GenerateNativeWithAudit` helpers can return the final native
+map stream snapshot for source investigation; ordinary map generation does
+not publish it, and no per-decision privileged-inspector transcript exists.
 
 The resolver is the synchronous map-generation algorithm: it chooses starts
 and paths, assigns fixed rooms and randomized quotas, then returns a complete
@@ -86,10 +88,11 @@ The native stream construction is pinned to the v0.111.0 source revision
 `706ef1c9fa2219220065849fd5265328607ece20`; see
 [`NativeRngV111Contexts.ForActMap`](../src/Sts2Emulator.Core/NativeRngV111Contexts.cs).
 The Glory rest-count `NextInt(2)` and Act 1/Hive/Glory path-start `NextInt(7)`
-transforms are `SOURCE_VERIFIED` under the uniform 53-bit input-grid model.
-The path-start law describes each raw column draw before the retry condition
-and does not model its full accepted start. These laws do not establish seed
-frequencies, stream derivation, or per-call cursor parity.
+and three-entry path-delta Fisher-Yates swap transforms are `SOURCE_VERIFIED`
+under the uniform 53-bit input-grid model. Path laws describe raw indices
+before retry or path-selection constraints and do not model the final map.
+These laws do not establish seed frequencies, stream derivation, or per-call
+cursor parity.
 Other map operation laws remain **UNVERIFIED**. Seed derivation and typed
 bounded, shuffle, and Gaussian providers do not establish distribution
 calibration or per-call cursor parity.

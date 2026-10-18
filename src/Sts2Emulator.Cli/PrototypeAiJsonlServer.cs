@@ -2893,6 +2893,61 @@ internal static class PrototypeAiJsonlServer
                             break;
                         }
                         if (siteId == PrototypeNativeOvergrowthMap
+                                .PathDeltaShuffleSiteId)
+                        {
+                            RejectChanceLawQueryParameters(
+                                request, "owner_id", "support_count");
+                            var ownerId = OptionalString(
+                                request, "owner_id") ??
+                                throw new ArgumentException(
+                                    "Overgrowth path-delta law requires owner_id.");
+                            var expectedSupport = ordinal % 2 == 0 ? 3 : 2;
+                            var supportCount = OptionalInt(
+                                request, "support_count");
+                            if (supportCount is not null &&
+                                supportCount != expectedSupport)
+                                throw new ArgumentException(
+                                    $"Overgrowth path-delta support_count must be {expectedSupport} at this ordinal.");
+                            law = ChanceLawEngineV111
+                                .QueryOvergrowthPathDeltaSwap(ownerId, ordinal);
+                            Write(new
+                            {
+                                requestId,
+                                ok = true,
+                                chanceLawSchemaId =
+                                    ChanceLawV111.CurrentSchemaId,
+                                law
+                            });
+                            break;
+                        }
+                        if (siteId == PrototypeNativeLaterActMap
+                                .PathDeltaShuffleSiteId)
+                        {
+                            RejectChanceLawQueryParameters(
+                                request, "act", "support_count");
+                            var act = OptionalInt(request, "act") ??
+                                throw new ArgumentException(
+                                    "Later-act path-delta law requires act 2 or 3.");
+                            var expectedSupport = ordinal % 2 == 0 ? 3 : 2;
+                            var supportCount = OptionalInt(
+                                request, "support_count");
+                            if (supportCount is not null &&
+                                supportCount != expectedSupport)
+                                throw new ArgumentException(
+                                    $"Later-act path-delta support_count must be {expectedSupport} at this ordinal.");
+                            law = ChanceLawEngineV111
+                                .QueryLaterActPathDeltaSwap(act, ordinal);
+                            Write(new
+                            {
+                                requestId,
+                                ok = true,
+                                chanceLawSchemaId =
+                                    ChanceLawV111.CurrentSchemaId,
+                                law
+                            });
+                            break;
+                        }
+                        if (siteId == PrototypeNativeOvergrowthMap
                                 .PathStartColumnSiteId)
                         {
                             RejectChanceLawQueryParameters(
