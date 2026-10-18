@@ -295,10 +295,10 @@ public sealed partial class PrototypeGameEngine
                      definition.Cost.Amount >= 0);
             }).ToArray();
 
-        int maxHandSize = PrototypeContent.Rules.MaxHandSize;
         var capacity = selection.Resolution ==
                 PrototypeCardSelectionResolutionKind.MoveToHand
-            ? Math.Max(0, maxHandSize - combat.Hand.Length)
+            ? PrototypeContent.Rules.RemainingHandCapacity(
+                combat.Hand.Length)
             : int.MaxValue;
         var maximum = Math.Min(
             Math.Min(selection.MaxSelections, candidates.Length), capacity);

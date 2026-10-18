@@ -1750,6 +1750,12 @@ public sealed record PrototypeRuleset(
     PrototypeAutomaticStep[] EndTurnPipeline)
 {
     public int MaxHandSize { get; init; } = 10;
+
+    public bool HasHandCapacity(int currentHandSize) =>
+        currentHandSize < MaxHandSize;
+
+    public int RemainingHandCapacity(int currentHandSize) =>
+        Math.Max(0, MaxHandSize - currentHandSize);
 }
 
 public sealed record MapNodeState(

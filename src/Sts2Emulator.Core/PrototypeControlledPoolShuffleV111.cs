@@ -111,11 +111,11 @@ public sealed partial class PrototypeGameEngine
                     power.ApplicationOrder == order).StoredValue,
             PrototypeCombatEffectKind.CreateDistinctColorlessCardsInHand =>
                 Math.Min(Math.Max(0, op.Amount),
-                    Math.Max(0, PrototypeContent.Rules.MaxHandSize -
+                    PrototypeContent.Rules.RemainingHandCapacity(
                         combat.Hand.Length)),
             PrototypeCombatEffectKind.MoveRandomRareDrawCardsToHand =>
                 Math.Min(Math.Max(0, op.Amount),
-                    Math.Max(0, PrototypeContent.Rules.MaxHandSize -
+                    PrototypeContent.Rules.RemainingHandCapacity(
                         combat.Hand.Length)),
             PrototypeCombatEffectKind.RecycleDrawPileForEffectDraw =>
                 poolCount,
@@ -330,10 +330,10 @@ public sealed partial class PrototypeGameEngine
                          definition.Cost.Amount >= 0);
                 }).ToArray();
 
-            int maxHandSize = PrototypeContent.Rules.MaxHandSize;
             var capacity = selection.Resolution ==
                     PrototypeCardSelectionResolutionKind.MoveToHand
-                ? Math.Max(0, maxHandSize - combat.Hand.Length)
+                ? PrototypeContent.Rules.RemainingHandCapacity(
+                    combat.Hand.Length)
                 : int.MaxValue;
             var maximum = Math.Min(
                 Math.Min(selection.MaxSelections, candidates.Length), capacity);
@@ -482,8 +482,8 @@ public sealed partial class PrototypeGameEngine
             {
                 if (op.Kind == PrototypeCombatEffectKind.CreateDistinctColorlessCardsInHand)
                 {
-                    if (combat.Hand.Length >=
-                        PrototypeContent.Rules.MaxHandSize)
+                    if (!PrototypeContent.Rules.HasHandCapacity(
+                            combat.Hand.Length))
                         break;
                     var card = new CombatCardInstance(
                         combat.NextCardInstanceId, null, cardId, 0, true,

@@ -266,8 +266,8 @@ public sealed partial class PrototypeGameEngine
         if (combat.SemanticDeck is null)
             throw new InvalidDataException(
                 "Random pile-card choice lost its semantic deck.");
-        var handHasSpace = combat.Hand.Length <
-            PrototypeContent.Rules.MaxHandSize;
+        var handHasSpace = PrototypeContent.Rules.HasHandCapacity(
+            combat.Hand.Length);
         combat = SetCardTemporaryEnergyCost(
             combat, selectedId,
             new PrototypeTemporaryCardCost(

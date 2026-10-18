@@ -719,7 +719,7 @@ public sealed partial class PrototypeGameEngine
             .Sum(power => Math.Max(0, power.Stacks));
         return Math.Min(stacks,
             Math.Min(combat.DrawPile.Length,
-                Math.Max(0, PrototypeContent.Rules.MaxHandSize -
+                PrototypeContent.Rules.RemainingHandCapacity(
                     combat.Hand.Length)));
     }
 
