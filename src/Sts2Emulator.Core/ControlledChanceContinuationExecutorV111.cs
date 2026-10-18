@@ -194,6 +194,45 @@ internal static class ControlledChanceContinuationExecutorV111
             requestFilter);
     }
 
+    /// <summary>
+    /// Replays one selected index through the typed executor when a boundary
+    /// owns the request's logical ordinal. The mechanics callback receives
+    /// the consumed selection only after the exact request has matched.
+    /// </summary>
+    public static TValue ResolveSelectedIndex<TCheckpoint, TValue>(
+        TCheckpoint checkpoint,
+        RandomIndexRequestV111 request,
+        int selectedIndex,
+        Func<TCheckpoint, int, TValue> mechanics)
+        where TValue : class
+    {
+        ArgumentNullException.ThrowIfNull(checkpoint);
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(mechanics);
+        request.Validate();
+
+        var typedRequest = ControlledStochasticRequestV111.FromIndex(request);
+        var continuation = new ControlledStochasticContinuationStateV111(
+            ControlledStochasticContinuationStateV111.CurrentSchemaId,
+            [], typedRequest);
+        var selectedOutcome = ControlledStochasticDecisionV111.FromIndex(
+            new RandomIndexDecisionV111(
+                request, selectedIndex, "controlled-v111"));
+        var replay = ResolveTyped<TCheckpoint, TValue>(
+            checkpoint, continuation, selectedOutcome,
+            (savedCheckpoint) =>
+            {
+                int resolvedIndex = StochasticProviderScopeV111
+                    .ResolveIndexAtDeclaredOrdinal(
+                        null, request, RngBundle.Empty).SelectedIndex;
+                return mechanics(savedCheckpoint, resolvedIndex);
+            },
+            candidate => ControlledStochasticChanceReplayV111.SameRequest(
+                typedRequest, candidate));
+        return replay.Value ?? throw new InvalidDataException(
+            "Selected index replay suspended outside its exact request.");
+    }
+
     public static ControlledChanceReplayResultV111 Resume(
         RunState checkpoint,
         RandomIndexDecisionV111[] decisions,

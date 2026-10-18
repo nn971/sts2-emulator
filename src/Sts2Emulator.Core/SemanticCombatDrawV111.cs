@@ -742,24 +742,13 @@ public static class SemanticCombatDrawEngineV111
             var decision = new RandomIndexDecisionV111(
                 costRequest, selectedIndex, "semantic-controlled-v1");
             decision.Validate();
-            var controlledRequest =
-                ControlledStochasticRequestV111.FromIndex(costRequest);
-            var continuation = new ControlledStochasticContinuationStateV111(
-                ControlledStochasticContinuationStateV111.CurrentSchemaId,
-                [], controlledRequest);
-            var typedDecision = ControlledStochasticDecisionV111.FromIndex(
-                new RandomIndexDecisionV111(
-                    costRequest, selectedIndex, "controlled-v111"));
-            string requestFingerprint = CanonicalJson.Sha256(costRequest);
-            var replay = ControlledChanceContinuationExecutorV111.ResolveTyped<
+            var resumedCost = ControlledChanceContinuationExecutorV111
+                .ResolveSelectedIndex<
                 SemanticCombatDrawV111, SemanticDrawCostResumeV111>(
-                state, continuation, typedDecision, checkpoint =>
+                state, costRequest, selectedIndex, (checkpoint, replayedIndex) =>
                 {
                     RunState checkpointRun = checkpoint.Run.Fork();
                     var checkpointCombat = checkpointRun.World!.Combat!;
-                    int replayedIndex = StochasticProviderScopeV111
-                        .ResolveIndexAtDeclaredOrdinal(
-                            null, costRequest, RngBundle.Empty).SelectedIndex;
                     if (checkpointCombat.PendingChoice?.ControlledSemanticDraw?
                             .StandaloneSemanticDrawSegment == true)
                     {
@@ -784,10 +773,7 @@ public static class SemanticCombatDrawEngineV111
                         return new SemanticDrawCostResumeV111(
                             advanced, remaining);
                     }
-                }, request => request.IndexRequest is { } indexRequest &&
-                    CanonicalJson.Sha256(indexRequest) == requestFingerprint);
-            var resumedCost = replay.Value ?? throw new InvalidDataException(
-                "Semantic draw cost replay suspended outside its saved ticket.");
+                });
             var costNext = state with
             {
                 Run = resumedCost.Run,

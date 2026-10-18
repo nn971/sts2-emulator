@@ -860,12 +860,17 @@ public static class ControlledPlayableCombatEngineV111
     {
         var request = state.DrawCostPending ??
             throw new InvalidOperationException("Missing drawn-card cost ticket.");
-        var decision = new ControlledRandomIndexProviderV111(selectedIndex)
-            .Resolve(request, state.Origin.ReferenceStreams);
-        RunState result;
-        using (ControlledChanceGuardV111.Enter())
-            result = PrototypeGameEngine.ResumeControlledDrawCost(
-                state.Run.Fork(), selectedIndex);
+        var decision = new RandomIndexDecisionV111(
+            request, selectedIndex, "controlled-v111");
+        decision.Validate();
+        RunState result = ControlledChanceContinuationExecutorV111
+            .ResolveSelectedIndex<ControlledPlayableCombatV111, RunState>(
+                state, request, selectedIndex, (checkpoint, replayedIndex) =>
+                {
+                    using (ControlledChanceGuardV111.Enter())
+                        return PrototypeGameEngine.ResumeControlledDrawCost(
+                            checkpoint.Run.Fork(), replayedIndex);
+                });
         var next = state.Fork() with
         {
             Run = result,
@@ -881,12 +886,17 @@ public static class ControlledPlayableCombatEngineV111
     {
         var request = state.RandomCostPending ??
             throw new InvalidOperationException("Missing random-cost ticket.");
-        var decision = new ControlledRandomIndexProviderV111(selectedIndex)
-            .Resolve(request, state.Origin.ReferenceStreams);
-        RunState result;
-        using (ControlledChanceGuardV111.Enter())
-            result = PrototypeGameEngine.ResumeControlledRandomCost(
-                state.Run.Fork(), selectedIndex);
+        var decision = new RandomIndexDecisionV111(
+            request, selectedIndex, "controlled-v111");
+        decision.Validate();
+        RunState result = ControlledChanceContinuationExecutorV111
+            .ResolveSelectedIndex<ControlledPlayableCombatV111, RunState>(
+                state, request, selectedIndex, (checkpoint, replayedIndex) =>
+                {
+                    using (ControlledChanceGuardV111.Enter())
+                        return PrototypeGameEngine.ResumeControlledRandomCost(
+                            checkpoint.Run.Fork(), replayedIndex);
+                });
         var next = state.Fork() with
         {
             Run = result,
