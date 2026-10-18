@@ -82,3 +82,59 @@ public sealed record SemanticCostDecisionV111(
                 "Semantic cost decision is outside its event support.");
     }
 }
+
+/// <summary>
+/// Resumes a controlled random-hand-cost effect and enforces the same
+/// mechanics boundary for target selection and cost selection.
+/// </summary>
+internal static class SemanticRandomHandCostChoiceV111
+{
+    internal static RunState Resume(
+        RunState checkpoint, string siteId, int selectedIndex)
+    {
+        ArgumentNullException.ThrowIfNull(checkpoint);
+        ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
+        var expectedOperation = siteId switch
+        {
+            "combat.random_hand_card.select" =>
+                PrototypeCombatEffectKind
+                    .SetRandomHandCardEnergyCostUntilTurnEndOrPlayed,
+            "combat.random_hand_card.energy_cost" =>
+                PrototypeCombatEffectKind
+                    .RandomizeHandCardEnergyCostsUntilTurnEndOrPlayed,
+            _ => throw new ArgumentOutOfRangeException(nameof(siteId))
+        };
+        var priorCombat = checkpoint.World?.Combat ??
+            throw new InvalidDataException(
+                "Random hand-cost choice lost its source combat.");
+        if (priorCombat.PendingChoice?.ControlledRandomCost is not
+                { } pending || pending.Operation.Kind != expectedOperation)
+            throw new InvalidDataException(
+                "Random hand-cost choice does not match its source operation.");
+        SemanticPilotCombatEngineV111.ValidateRandomHandCostBoundary(
+            checkpoint);
+
+        RunState resumed;
+        using (ControlledChanceGuardV111.Enter())
+            resumed = PrototypeGameEngine.ResumeControlledRandomCost(
+                checkpoint.Fork(), selectedIndex);
+        var nextCombat = resumed.World?.Combat;
+        if (resumed.Phase != RunPhase.Combat || nextCombat is null)
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_COST site=" + siteId +
+                " operation=unsupported_post_cost_phase");
+        if (nextCombat.PendingChoice?.ControlledRandomCost is not null)
+            SemanticPilotCombatEngineV111.ValidateRandomHandCostBoundary(
+                resumed);
+        else
+            SemanticPilotCombatEngineV111.ValidateSemanticCombatBoundary(
+                resumed);
+        if (!priorCombat.DrawPile.SequenceEqual(nextCombat.DrawPile) ||
+            CanonicalJson.Sha256(priorCombat.SemanticDeck) !=
+                CanonicalJson.Sha256(nextCombat.SemanticDeck))
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_DECK site=" + siteId +
+                " operation=unmodeled_draw_pile_mutation");
+        return resumed;
+    }
+}

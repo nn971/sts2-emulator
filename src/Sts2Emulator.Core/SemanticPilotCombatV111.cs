@@ -2740,27 +2740,8 @@ public static class SemanticPilotCombatEngineV111
         if (pending.TargetCardInstanceId is not null)
         {
             ValidateCostDecision(current.CostPending, decision, index);
-            ValidateRandomHandCostBoundary(current.Run);
-            var priorCombat = current.Run.World!.Combat!;
-            RunState result;
-            using (ControlledChanceGuardV111.Enter())
-                result = PrototypeGameEngine.ResumeControlledRandomCost(
-                    current.Run.Fork(), index);
-            var nextCombat = result.World?.Combat;
-            if (result.Phase != RunPhase.Combat || nextCombat is null)
-                throw new NotSupportedException(
-                    "UNSUPPORTED_SEMANTIC_COST site=combat.random_hand_card.energy_cost " +
-                    "operation=unsupported_post_cost_phase");
-            if (nextCombat.PendingChoice?.ControlledRandomCost is not null)
-                ValidateRandomHandCostBoundary(result);
-            else
-                ValidateSemanticCombatBoundary(result);
-            if (!priorCombat.DrawPile.SequenceEqual(nextCombat.DrawPile) ||
-                CanonicalJson.Sha256(priorCombat.SemanticDeck) !=
-                    CanonicalJson.Sha256(nextCombat.SemanticDeck))
-                throw new NotSupportedException(
-                    "UNSUPPORTED_SEMANTIC_DECK site=combat.random_hand_card.energy_cost " +
-                    "operation=unmodeled_draw_pile_mutation");
+            var result = SemanticRandomHandCostChoiceV111.Resume(
+                current.Run, pending.SiteId, index);
             var next = current with
             {
                 Run = result,
@@ -2801,27 +2782,8 @@ public static class SemanticPilotCombatEngineV111
         decision.Validate();
         ValidateHandCostSelectionDecision(
             current.HandCostSelectionPending, decision, index);
-        ValidateRandomHandCostBoundary(current.Run);
-        var priorCombat = current.Run.World!.Combat!;
-        RunState result;
-        using (ControlledChanceGuardV111.Enter())
-            result = PrototypeGameEngine.ResumeControlledRandomCost(
-                current.Run.Fork(), index);
-        var nextCombat = result.World?.Combat;
-        if (result.Phase != RunPhase.Combat || nextCombat is null)
-            throw new NotSupportedException(
-                "UNSUPPORTED_SEMANTIC_COST site=combat.random_hand_card.select " +
-                "operation=unsupported_post_cost_phase");
-        if (nextCombat.PendingChoice?.ControlledRandomCost is not null)
-            ValidateRandomHandCostBoundary(result);
-        else
-            ValidateSemanticCombatBoundary(result);
-        if (!priorCombat.DrawPile.SequenceEqual(nextCombat.DrawPile) ||
-            CanonicalJson.Sha256(priorCombat.SemanticDeck) !=
-                CanonicalJson.Sha256(nextCombat.SemanticDeck))
-            throw new NotSupportedException(
-                "UNSUPPORTED_SEMANTIC_DECK site=combat.random_hand_card.select " +
-                "operation=unmodeled_draw_pile_mutation");
+        var result = SemanticRandomHandCostChoiceV111.Resume(
+            current.Run, pending.SiteId, index);
         var next = current with
         {
             Run = result,
