@@ -477,7 +477,8 @@ public sealed partial class PrototypeGameEngine
                 semanticDraw.FromHandDraw, eventDepth: semanticDraw.EventDepth,
                 controlledDrawCostSuspension: true,
                 controlledSemanticDrawSuspension: true,
-                controlledAfterShuffleInsertionSuspension: true);
+                controlledAfterShuffleInsertionSuspension: true,
+                controlledCardDrawnChoiceSuspension: true);
             var drawState = state with
             {
                 World = world with { Combat = combat }
