@@ -61,6 +61,10 @@ public sealed record StochasticCapabilityManifestV111(
         ScriptedRunActionSessionV111.CurrentSchemaId;
     public string[] ScriptedRunActionOperations { get; init; } =
         ScriptedRunActionSessionV111.Operations;
+    public string ScriptedRunSessionSchemaId { get; init; } =
+        ScriptedRunSessionV111.CurrentSchemaId;
+    public string[] ScriptedRunSessionOperations { get; init; } =
+        ScriptedRunSessionV111.Operations;
     public string SemanticNatureChoiceViewSchemaId { get; init; } =
         SemanticNatureChoiceViewV111.CurrentSchemaId;
     public string[] SemanticNatureChoiceViewOperations { get; init; } =
@@ -81,7 +85,7 @@ public sealed record StochasticCapabilityManifestV111(
 
 public static class StochasticCapabilitiesV111
 {
-    public const string SchemaId = "sts2-v111-stochastic-capabilities-v2";
+    public const string SchemaId = "sts2-v111-stochastic-capabilities-v3";
     public const string ExternalSelectionProviderId =
         "external-semantic-selection-v1";
 
@@ -280,7 +284,11 @@ public static class StochasticCapabilitiesV111
         ScriptedRunActionSessionSchemaId =
             ScriptedRunActionSessionV111.CurrentSchemaId,
         ScriptedRunActionOperations =
-            ScriptedRunActionSessionV111.Operations
+            ScriptedRunActionSessionV111.Operations,
+        ScriptedRunSessionSchemaId =
+            ScriptedRunSessionV111.CurrentSchemaId,
+        ScriptedRunSessionOperations =
+            ScriptedRunSessionV111.Operations
     };
 }
 

@@ -159,6 +159,12 @@ internal static class PrototypeAiJsonlServer
         var scriptedRunActionRunStateHandles =
             new Dictionary<string, string>(StringComparer.Ordinal);
         long nextScriptedRunActionHandle = 1;
+        var scriptedRunStates =
+            new Dictionary<string, ScriptedRunSessionV111>(
+                StringComparer.Ordinal);
+        var scriptedRunStateHandles =
+            new Dictionary<string, string>(StringComparer.Ordinal);
+        long nextScriptedRunHandle = 1;
 
         string StoreSemantic(SemanticPilotCombatV111 state)
         {
@@ -616,6 +622,23 @@ internal static class PrototypeAiJsonlServer
                 ? session
                 : throw new InvalidOperationException(
                     "Unknown scripted run-action session handle: " + handle);
+        }
+
+        string StoreScriptedRun(ScriptedRunSessionV111 session)
+        {
+            var handle = "u" + nextScriptedRunHandle++;
+            scriptedRunStates.Add(handle, session.Fork());
+            scriptedRunStateHandles.Add(handle, Store(session.Run.Fork()));
+            return handle;
+        }
+
+        ScriptedRunSessionV111 RequireScriptedRun(JsonElement request)
+        {
+            var handle = RequiredString(request, "scripted_run_handle");
+            return scriptedRunStates.TryGetValue(handle, out var session)
+                ? session
+                : throw new InvalidOperationException(
+                    "Unknown scripted run session handle: " + handle);
         }
 
         object ReferenceNatureResult(
@@ -1478,6 +1501,49 @@ internal static class PrototypeAiJsonlServer
                 runStateHandle,
                 runFingerprint = session.Run is null ? null :
                     CanonicalJson.Sha256(session.Run),
+                probabilityStatus = ChanceLawV111.UnverifiedStatus
+            };
+        }
+
+        object ScriptedRunResult(
+            ScriptedRunSessionV111 session, string handle,
+            string? parent = null)
+        {
+            scriptedRunStateHandles.TryGetValue(handle,
+                out var runStateHandle);
+            return new
+            {
+                ok = true,
+                schemaId = ScriptedRunSessionV111.CurrentSchemaId,
+                scriptedRunHandle = handle,
+                parent,
+                fingerprint = session.Fingerprint,
+                boundary = session.Complete ? "terminal" :
+                    session.ActiveAction is null ? "player" : "scripted",
+                completedActionCount = session.CompletedActions.Length,
+                activeActionId = session.ActiveAction is null ? null :
+                    PrototypeAiEnvironment.StableActionId(
+                        session.ActiveAction.Action),
+                nextSequence = session.ActiveAction is null ? (int?)null :
+                    session.ActiveAction.Decisions.Length + 1,
+                pending = session.PendingRequest is { } pending
+                    ? new
+                    {
+                        request = pending,
+                        candidateLabels = session.PendingCandidateLabels,
+                        probabilityStatus = ChanceLawV111.UnverifiedStatus
+                    }
+                    : null,
+                decisionTranscript = session.ActiveAction?.Decisions ?? [],
+                legalActions = session.LegalActions.Select(action =>
+                    new
+                    {
+                        actionId = PrototypeAiEnvironment.StableActionId(action),
+                        kind = action.Kind,
+                        payload = action.Payload
+                    }).ToArray(),
+                runStateHandle,
+                runFingerprint = CanonicalJson.Sha256(session.Run),
                 probabilityStatus = ChanceLawV111.UnverifiedStatus
             };
         }
@@ -2600,6 +2666,12 @@ internal static class PrototypeAiJsonlServer
                                 ScriptedRunActionSessionV111.CurrentSchemaId,
                             scriptedRunActionOperations =
                                 ScriptedRunActionSessionV111.Operations,
+                            scriptedRunSessionSchemaId =
+                                ScriptedRunSessionV111.CurrentSchemaId,
+                            scriptedRunSessionOperations =
+                                ScriptedRunSessionV111.Operations,
+                            scriptedRunSessionScope =
+                                "whole-run-ordinary-legal-actions-with-typed-random-boundary-transcripts",
                             referenceNatureEventChoiceSessionSchemaId =
                                 ReferenceNatureControlledEventChoiceSessionV111
                                     .CurrentSchemaId,
@@ -6549,6 +6621,131 @@ internal static class PrototypeAiJsonlServer
                             if (scriptedRunActionStates.Remove(handle))
                                 released++;
                             scriptedRunActionRunStateHandles.Remove(handle);
+                        }
+                        Write(new { requestId, ok = true, released });
+                        break;
+                    }
+
+                    case "scripted_run_begin":
+                    {
+                        var session = ScriptedRunSessionV111.Begin(
+                            RequireState(request));
+                        var handle = StoreScriptedRun(session);
+                        Write(new { requestId, ok = true, result =
+                            ScriptedRunResult(session, handle) });
+                        break;
+                    }
+
+                    case "scripted_run_status":
+                    {
+                        var handle = RequiredString(request,
+                            "scripted_run_handle");
+                        var session = RequireScriptedRun(request);
+                        Write(new { requestId, ok = true, result =
+                            ScriptedRunResult(session, handle) });
+                        break;
+                    }
+
+                    case "scripted_run_begin_action":
+                    {
+                        var parentHandle = RequiredString(request,
+                            "scripted_run_handle");
+                        var session = RequireScriptedRun(request);
+                        if (session.Fingerprint != RequiredString(request,
+                                "fingerprint"))
+                            throw new InvalidOperationException(
+                                "Stale scripted run fingerprint.");
+                        var actionId = RequiredString(request, "action_id");
+                        var action = session.LegalActions.SingleOrDefault(
+                            candidate => StringComparer.Ordinal.Equals(
+                                PrototypeAiEnvironment.StableActionId(candidate),
+                                actionId))
+                            ?? throw new InvalidOperationException(
+                                "Scripted run action must be currently legal.");
+                        var next = session.BeginAction(action);
+                        var handle = StoreScriptedRun(next);
+                        Write(new { requestId, ok = true, result =
+                            ScriptedRunResult(next, handle, parentHandle) });
+                        break;
+                    }
+
+                    case "scripted_run_resolve_next":
+                    {
+                        var parentHandle = RequiredString(request,
+                            "scripted_run_handle");
+                        var session = RequireScriptedRun(request);
+                        if (session.Fingerprint != RequiredString(request,
+                                "fingerprint"))
+                            throw new InvalidOperationException(
+                                "Stale scripted run fingerprint.");
+                        if (!request.TryGetProperty("transcript_entry",
+                                out var entryElement) ||
+                            entryElement.ValueKind != JsonValueKind.Object)
+                            throw new ArgumentException(
+                                "transcript_entry must be a random-boundary transcript object.");
+                        var entry = entryElement.Deserialize<
+                                RandomBoundaryTranscriptEntryV111>(
+                                SnakeCaseJsonOptions)
+                            ?? throw new InvalidDataException(
+                                "transcript_entry is empty.");
+                        var next = session.ResolveNext(
+                            new ScriptedRunActionOutcomeV111(
+                                entry, OptionalStringArray(request,
+                                    "candidate_labels")));
+                        var handle = StoreScriptedRun(next);
+                        Write(new { requestId, ok = true, result =
+                            ScriptedRunResult(next, handle, parentHandle) });
+                        break;
+                    }
+
+                    case "scripted_run_fork":
+                    {
+                        var parentHandle = RequiredString(request,
+                            "scripted_run_handle");
+                        var next = RequireScriptedRun(request).Fork();
+                        var handle = StoreScriptedRun(next);
+                        Write(new { requestId, ok = true, result =
+                            ScriptedRunResult(next, handle, parentHandle) });
+                        break;
+                    }
+
+                    case "scripted_run_save":
+                    {
+                        var session = RequireScriptedRun(request);
+                        Write(new { requestId, ok = true,
+                            schemaId = ScriptedRunSessionV111.CurrentSchemaId,
+                            snapshot = ScriptedRunSessionV111.Save(session) });
+                        break;
+                    }
+
+                    case "scripted_run_load":
+                    {
+                        var session = ScriptedRunSessionV111.Restore(
+                            RequiredString(request, "snapshot"));
+                        var handle = StoreScriptedRun(session);
+                        Write(new { requestId, ok = true, result =
+                            ScriptedRunResult(session, handle) });
+                        break;
+                    }
+
+                    case "scripted_run_release_many":
+                    {
+                        if (!request.TryGetProperty(
+                                "scripted_run_handles", out var handles) ||
+                            handles.ValueKind != JsonValueKind.Array)
+                            throw new ArgumentException(
+                                "scripted_run_handles must be an array.");
+                        var released = 0;
+                        foreach (var element in handles.EnumerateArray())
+                        {
+                            if (element.ValueKind != JsonValueKind.String ||
+                                string.IsNullOrWhiteSpace(element.GetString()))
+                                throw new ArgumentException(
+                                    "Invalid scripted run session handle.");
+                            var handle = element.GetString()!;
+                            if (scriptedRunStates.Remove(handle))
+                                released++;
+                            scriptedRunStateHandles.Remove(handle);
                         }
                         Write(new { requestId, ok = true, released });
                         break;

@@ -29,6 +29,8 @@ JSONL operations are:
 The versioned session snapshot stores the origin run, selected action, typed
 outcome prefix, pending mixed-primitive continuation, and completed run when
 available. It does not alter canonical `RunState` provider ownership. The
-controller covers one action boundary; whole-run scripted orchestration,
-Chance Law declarations, and cross-provider mechanical-equivalence review
-remain separate work.
+controller covers one action boundary; the versioned
+[whole-run scripted session](SCRIPTED_RUN_SESSION_D3.md) composes it across
+ordinary legal player actions and replays completed typed histories from the
+original run. Chance Law declarations and cross-provider
+mechanical-equivalence review remain separate work.

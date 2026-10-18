@@ -381,6 +381,32 @@ public sealed record ScriptedRunActionSessionV111(
         return session;
     }
 
+    internal static ScriptedRunActionSessionV111 ReplayCompleted(
+        RunState origin, GameAction action,
+        ControlledStochasticDecisionV111[] decisions)
+    {
+        ArgumentNullException.ThrowIfNull(origin);
+        ArgumentNullException.ThrowIfNull(action);
+        ArgumentNullException.ThrowIfNull(decisions);
+        ValidateOpeningBoundary(origin, action);
+        var copiedDecisions = decisions.Select(decision =>
+        {
+            ArgumentNullException.ThrowIfNull(decision);
+            return decision.Fork();
+        }).ToArray();
+        foreach (var decision in copiedDecisions)
+            decision.Validate();
+
+        var replay = Capture(origin, action, copiedDecisions);
+        if (replay.Run is null || replay.Continuation is not null)
+            throw new InvalidDataException(
+                "Completed scripted action history did not reach a clean action boundary.");
+        var session = new ScriptedRunActionSessionV111(
+            CurrentSchemaId, origin.Fork(), CloneAction(action),
+            replay.Run, copiedDecisions, null);
+        return session;
+    }
+
     private static ControlledStochasticContinuationResultV111 Capture(
         RunState origin, GameAction action,
         ControlledStochasticDecisionV111[] decisions) =>
