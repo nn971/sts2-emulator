@@ -21,7 +21,7 @@ from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = ROOT / "src" / "Sts2Emulator.Core"
-SCHEMA_ID = "emulator-rng-callsite-source-inventory-v10"
+SCHEMA_ID = "emulator-rng-callsite-source-inventory-v11"
 SITE_REGISTRY_PATH = SOURCE_ROOT / "StochasticSiteRegistryV111.cs"
 
 CALL_PATTERN = re.compile(
@@ -29,6 +29,20 @@ CALL_PATTERN = re.compile(
     r"\.(?P<operation>NextInt|NextBool|NextFloat|NextDouble|"
     r"NextGaussianInt|NextGaussianDouble|Shuffle|ShuffleInPlace|Execute|NextItem)"
     r"\s*\("
+)
+
+AMBIENT_ENTROPY_PATTERNS = (
+    ("system_random_constructor", re.compile(
+        r"\bnew\s+(?:(?:global::)?System\.)?Random\s*\("
+    )),
+    ("system_random_shared", re.compile(
+        r"\b(?:(?:global::)?System\.)?Random\s*\.\s*Shared\b"
+    )),
+    ("cryptographic_random_api", re.compile(
+        r"\b(?:(?:global::)?System\.Security\.Cryptography\.)?"
+        r"RandomNumberGenerator\s*\.\s*"
+        r"(?:GetInt32|GetBytes|GetNonZeroBytes|Fill|Create)\s*\("
+    )),
 )
 
 STRING_CONSTANT_PATTERN = re.compile(
@@ -530,6 +544,35 @@ def _site_id_forwarder_calls(
     return sorted(calls, key=lambda call: (call["path"], call["line"]))
 
 
+def _ambient_entropy_calls(
+    sources: dict[Path, str],
+) -> list[dict[str, Any]]:
+    """Find direct ad hoc entropy APIs in the inventoried Core sources."""
+    calls: list[dict[str, Any]] = []
+    for path, source in sources.items():
+        for api, pattern in AMBIENT_ENTROPY_PATTERNS:
+            for match in pattern.finditer(source):
+                line_number = source.count("\n", 0, match.start()) + 1
+                arguments = _call_arguments(source, match.start())
+                finding = api
+                if api == "system_random_constructor":
+                    finding = (
+                        "system_random_unseeded_constructor"
+                        if not arguments else
+                        "system_random_ad_hoc_seeded_constructor"
+                    )
+                calls.append({
+                    "path": path.relative_to(ROOT).as_posix(),
+                    "line": line_number,
+                    "api": api,
+                    "finding": finding,
+                    "source_excerpt": source.splitlines()[
+                        line_number - 1
+                    ].strip(),
+                })
+    return sorted(calls, key=lambda call: (call["path"], call["line"]))
+
+
 def collect() -> dict[str, Any]:
     entries: list[dict[str, Any]] = []
     matrix_site_rows = _migration_matrix_site_rows()
@@ -552,6 +595,7 @@ def collect() -> dict[str, Any]:
         path: path.read_text(encoding="utf-8")
         for path in sorted(SOURCE_ROOT.rglob("*.cs"))
     }
+    ambient_entropy_calls = _ambient_entropy_calls(sources)
     string_constants: dict[str, set[str]] = {}
     for source in sources.values():
         for name, values in _string_constants(source).items():
@@ -674,6 +718,9 @@ def collect() -> dict[str, Any]:
             "NativeFisherYatesV111 in Sts2Emulator.Core. This does not include "
             "indirect delegates, random provider interfaces, third-party/native "
             "source callsites, or prove that every source operation is mapped. "
+            "A separate direct-API scan reports ad hoc System.Random and "
+            "RandomNumberGenerator use; it cannot prove the absence of indirect "
+            "or aliased entropy sources. "
             "The site-matrix report shows registry-to-ledger and ledger-to-registry "
             "differences, unique ledger IDs, and explicit reference-law status. "
             "Unregistered ledger rows are informational because legacy and conditional "
@@ -683,6 +730,7 @@ def collect() -> dict[str, Any]:
             "these matches require manual review and do not prove source completeness."
         ),
         "total_direct_calls": len(entries),
+        "ambient_entropy_calls": ambient_entropy_calls,
         "counts_by_category": counts,
         "shuffle_matrix_mapping_counts": {
             status: sum(
@@ -753,6 +801,16 @@ def render_markdown(report: dict[str, Any]) -> str:
             )
         ],
         "",
+        "Direct ad hoc entropy API expressions in Core: "
+        f"**{len(report['ambient_entropy_calls'])}**. The scan covers direct "
+        "System.Random construction/shared-instance use and "
+        "RandomNumberGenerator APIs; it does not prove the absence of indirect "
+        "or aliased entropy sources.",
+        *[
+            f"- {call['path']}:{call['line']} {call['finding']}"
+            for call in report["ambient_entropy_calls"]
+        ],
+        "",
         "Shuffle site IDs mapped to migration-matrix rows: "
         f"**{report['shuffle_matrix_mapping_counts']['mapped']}**; dynamic "
         f"expressions: **{report['shuffle_matrix_mapping_counts']['dynamic_expression']}**; "
@@ -799,7 +857,8 @@ def render_markdown(report: dict[str, Any]) -> str:
         ],
         "",
         "Regenerate this report with `python3 tools/rng_callsite_inventory.py "
-        "--check-site-matrix --check-s0-contract-links --format markdown > "
+        "--check-site-matrix --check-s0-contract-links "
+        "--check-no-ambient-entropy --format markdown > "
         "docs/RNG_DIRECT_CALLSITE_CENSUS.md`.",
         "Rows distinguish legacy prototype calls, native primitive calls, "
         "generic shuffle-helper calls, and recognized provider/fixture support. "
@@ -871,6 +930,10 @@ def main() -> int:
         "--check-s0-contract-links", action="store_true",
         help="fail if a matrix row links to a missing local contract document",
     )
+    parser.add_argument(
+        "--check-no-ambient-entropy", action="store_true",
+        help="fail if Core directly constructs or consumes ad hoc entropy APIs",
+    )
     args = parser.parse_args()
     report = collect()
     if args.check_site_matrix:
@@ -899,6 +962,11 @@ def main() -> int:
                 "broken_local_contract_links": broken_contract_links,
             }, indent=2, sort_keys=True), file=sys.stderr)
             return 1
+    if args.check_no_ambient_entropy and report["ambient_entropy_calls"]:
+        print(json.dumps({
+            "ambient_entropy_calls": report["ambient_entropy_calls"],
+        }, indent=2, sort_keys=True), file=sys.stderr)
+        return 1
     if args.format == "markdown":
         print(render_markdown(report), end="")
     else:
