@@ -195,6 +195,49 @@ internal static class ControlledChanceContinuationExecutorV111
     }
 
     /// <summary>
+    /// Resolves a boundary-selected index against an existing typed prefix.
+    /// It records the selected outcome once for the caller-owned transition
+    /// journal, then replays the complete saved prefix through the same scope.
+    /// </summary>
+    public static ControlledStochasticTypedContinuationResultV111<TValue>
+        ResolveTypedSelectedIndex<TCheckpoint, TValue>(
+            TCheckpoint checkpoint,
+            ControlledStochasticContinuationStateV111 continuation,
+            RandomIndexRequestV111 request,
+            int selectedIndex,
+            Func<TCheckpoint, RandomIndexDecisionV111, TValue> mechanics,
+            string[]? candidateLabels = null,
+            Func<ControlledStochasticRequestV111, bool>? requestFilter = null)
+        where TValue : class
+    {
+        ArgumentNullException.ThrowIfNull(checkpoint);
+        ArgumentNullException.ThrowIfNull(continuation);
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(mechanics);
+        continuation.Validate();
+        request.Validate();
+        if (!ControlledStochasticChanceReplayV111.SameRequest(
+                continuation.PendingRequest,
+                ControlledStochasticRequestV111.FromIndex(request)))
+            throw new InvalidDataException(
+                "Selected index does not match the saved typed request.");
+
+        var selected = new RandomIndexDecisionV111(
+            request with
+            {
+                OrderedCandidates = (int[])request.OrderedCandidates.Clone()
+            }, selectedIndex, "controlled-v111");
+        selected.Validate();
+        RandomBoundaryJournalV111.Record(selected);
+        var outcome = ControlledStochasticDecisionV111.FromIndex(
+            selected, candidateLabels);
+        return ResolveTyped<TCheckpoint, TValue>(
+            checkpoint, continuation, outcome,
+            savedCheckpoint => mechanics(savedCheckpoint, selected),
+            requestFilter);
+    }
+
+    /// <summary>
     /// Replays one selected index through the typed executor when a boundary
     /// owns the request's logical ordinal. The mechanics callback receives
     /// the consumed selection only after the exact request has matched.

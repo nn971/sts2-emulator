@@ -155,25 +155,26 @@ public static class ControlledTurnIntentEngineV111
         ControlledTurnIntentsV111 state, int selectedIndex, RngBundle streams)
     {
         ArgumentNullException.ThrowIfNull(state);
+        ArgumentNullException.ThrowIfNull(streams);
         if (state.Pending is null)
             throw new InvalidOperationException("No pending next-turn intent ticket.");
         Validate(state);
         var working = state.Fork();
-        var chosen = new ControlledRandomIndexProviderV111(selectedIndex)
-            .Resolve(working.Pending!, streams);
-        var transcript = working.Transcript.Append(chosen).ToArray();
+        var request = working.Pending!;
         var continuation = new ControlledStochasticContinuationStateV111(
             ControlledStochasticContinuationStateV111.CurrentSchemaId,
             working.Transcript.Select(decision =>
                 ControlledStochasticDecisionV111.FromIndex(decision)).ToArray(),
-            ControlledStochasticRequestV111.FromIndex(working.Pending!));
-        var replay = ControlledChanceContinuationExecutorV111.ResolveTyped(
+            ControlledStochasticRequestV111.FromIndex(request));
+        var replay = ControlledChanceContinuationExecutorV111
+            .ResolveTypedSelectedIndex(
             working,
             continuation,
-            ControlledStochasticDecisionV111.FromIndex(chosen),
-            checkpoint => ReplayIntentPass(checkpoint with
+            request,
+            selectedIndex,
+            (checkpoint, chosen) => ReplayIntentPass(checkpoint with
             {
-                Transcript = transcript,
+                Transcript = checkpoint.Transcript.Append(chosen).ToArray(),
                 Pending = null
             }));
         return replay.Value ?? throw new InvalidDataException(
