@@ -472,55 +472,10 @@ public static class SemanticEndTurnEngineV111
             var boundaries = EnsureBoundaryTranscript(state).Append(
                 new SemanticEndTurnBoundaryChoiceV111(
                     "enemy_action", state.EnemyActionTranscript.Length)).ToArray();
-            if (resumed.Phase is RunPhase.Reward or RunPhase.Terminal)
-            {
-                state = state with
-                {
-                    Run = resumed,
-                    Intents = null,
-                    HandDraw = null,
-                    EnemyActionTranscript = transcript,
-                    BoundaryTranscript = boundaries,
-                    Complete = true
-                };
-            }
-            else if (resumed.World?.Combat?.AutomaticPipelineContinuation?
-                         .ControlledEnemyAction is not null)
-            {
-                state = state with
-                {
-                    Run = resumed,
-                    EnemyActionTranscript = transcript,
-                    BoundaryTranscript = boundaries
-                };
-            }
-            else if (resumed.World?.Combat?.PendingChoice?
-                         .ControlledTarget is not null)
-            {
-                state = state with
-                {
-                    Run = resumed,
-                    EnemyActionTranscript = transcript,
-                    BoundaryTranscript = boundaries
-                };
-            }
-            else if (resumed.World?.Combat?.AutomaticPipelineContinuation?
-                         .Mechanics.CurrentStepKind ==
-                     PrototypeAutomaticStepKind.AdvanceTurn)
-            {
-                state = BeginAtAdvanceTurn(
-                    resumed, state.NativeEncounterEntry) with
-                {
-                    PlayerActionSource = state.PlayerActionSource?.Fork(),
-                    PlayerActionId = state.PlayerActionId,
-                    EnemyActionTranscript = transcript,
-                    BoundaryTranscript = boundaries
-                };
-            }
-            else
-                throw new NotSupportedException(
-                    "UNSUPPORTED_CONTROLLED_CHANCE site=combat.enemy_action " +
-                    "operation=unexpected_pipeline_boundary");
+            state = ContinueAutomaticPipelineBoundaryChoice(
+                state, resumed, transcript,
+                (SemanticTargetDecisionV111[])state.TargetTranscript.Clone(),
+                boundaries, "combat.enemy_action");
         }
         else if (state.TargetPending is { } target)
         {
@@ -589,50 +544,61 @@ public static class SemanticEndTurnEngineV111
         var boundaryTranscript = EnsureBoundaryTranscript(source).Append(
             new SemanticEndTurnBoundaryChoiceV111(
                 "random_target", source.TargetTranscript.Length)).ToArray();
+        var next = ContinueAutomaticPipelineBoundaryChoice(
+            source, resumed,
+            (RandomIndexDecisionV111[])
+                source.EnemyActionTranscript.Clone(),
+            targetTranscript, boundaryTranscript, pending.SiteId);
+        Validate(next);
+        return next;
+    }
+
+    private static SemanticEndTurnV111 ContinueAutomaticPipelineBoundaryChoice(
+        SemanticEndTurnV111 source,
+        RunState resumed,
+        RandomIndexDecisionV111[] enemyActionTranscript,
+        SemanticTargetDecisionV111[] targetTranscript,
+        SemanticEndTurnBoundaryChoiceV111[] boundaryTranscript,
+        string siteId)
+    {
         var next = source with
         {
             Run = resumed,
+            EnemyActionTranscript = enemyActionTranscript,
             TargetTranscript = targetTranscript,
             BoundaryTranscript = boundaryTranscript
         };
         if (resumed.Phase is RunPhase.Reward or RunPhase.Terminal)
-        {
-            next = next with
+            return next with
             {
                 Intents = null,
                 HandDraw = null,
                 Complete = true
             };
-        }
-        else if (resumed.World?.Combat?.PendingChoice?.ControlledTarget is not null ||
-                 resumed.World?.Combat?.AutomaticPipelineContinuation?
-                     .ControlledEnemyAction is not null)
+
+        var combat = resumed.World?.Combat;
+        if (combat?.PendingChoice?.ControlledTarget is not null ||
+            combat?.AutomaticPipelineContinuation?
+                .ControlledEnemyAction is not null)
+            return next;
+
+        if (combat?.AutomaticPipelineContinuation?.Mechanics.IsAtStep(
+                PrototypeAutomaticStepKind.AdvanceTurn) == true)
         {
-            // The next suspended chance is represented by the same saved
-            // automatic-pipeline run state and replay transcript.
-        }
-        else if (resumed.World?.Combat?.AutomaticPipelineContinuation?
-                     .Mechanics.CurrentStepKind ==
-                 PrototypeAutomaticStepKind.AdvanceTurn)
-        {
-            next = BeginAtAdvanceTurn(
+            return BeginAtAdvanceTurn(
                 resumed, source.NativeEncounterEntry) with
             {
                 PlayerActionSource = source.PlayerActionSource?.Fork(),
                 PlayerActionId = source.PlayerActionId,
-                EnemyActionTranscript = (RandomIndexDecisionV111[])
-                    source.EnemyActionTranscript.Clone(),
+                EnemyActionTranscript = enemyActionTranscript,
                 TargetTranscript = targetTranscript,
                 BoundaryTranscript = boundaryTranscript
             };
         }
-        else
-            throw new NotSupportedException(
-                "UNSUPPORTED_CONTROLLED_CHANCE site=" + pending.SiteId +
-                " operation=unexpected_pipeline_boundary");
 
-        Validate(next);
-        return next;
+        throw new NotSupportedException(
+            "UNSUPPORTED_CONTROLLED_CHANCE site=" + siteId +
+            " operation=unexpected_pipeline_boundary");
     }
 
     public static SemanticEndTurnV111 ResolveDrawHookChoice(
