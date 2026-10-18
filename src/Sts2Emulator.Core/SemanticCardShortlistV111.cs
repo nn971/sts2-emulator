@@ -207,11 +207,9 @@ public static class SemanticCardShortlistChoiceV111
         else
             SemanticPilotCombatEngineV111.ValidateSemanticCombatBoundary(
                 resumed);
-        if (!randomAutoplay &&
-            (!combat.DrawPile.SequenceEqual(nextCombat.DrawPile) ||
-             CanonicalJson.Sha256(combat.SemanticDeck) !=
-                 CanonicalJson.Sha256(nextCombat.SemanticDeck)))
-            throw new NotSupportedException(
+        if (!randomAutoplay)
+            SemanticDrawPileAdapterV111.RequireUnchangedDrawPile(
+                combat, nextCombat,
                 "UNSUPPORTED_SEMANTIC_DECK " +
                 "site=combat.card_selection.random_shortlist " +
                 "operation=unmodeled_draw_pile_mutation");

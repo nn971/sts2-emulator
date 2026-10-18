@@ -131,12 +131,10 @@ public static class SemanticPotionGenerationChoiceV111
         var nextCombat = resumed.World?.Combat ??
             throw new InvalidDataException(
                 "Potion-generation continuation lost its resulting combat.");
-        if (!combat.DrawPile.SequenceEqual(nextCombat.DrawPile) ||
-            CanonicalJson.Sha256(combat.SemanticDeck) !=
-                CanonicalJson.Sha256(nextCombat.SemanticDeck))
-            throw new NotSupportedException(
-                "UNSUPPORTED_SEMANTIC_DECK site=combat.potion_generation " +
-                "operation=unmodeled_draw_pile_mutation");
+        SemanticDrawPileAdapterV111.RequireUnchangedDrawPile(
+            combat, nextCombat,
+            "UNSUPPORTED_SEMANTIC_DECK site=combat.potion_generation " +
+            "operation=unmodeled_draw_pile_mutation");
         return resumed;
     }
 }

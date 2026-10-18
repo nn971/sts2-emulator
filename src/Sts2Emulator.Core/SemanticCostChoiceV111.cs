@@ -327,12 +327,10 @@ internal static class SemanticRandomHandCostChoiceV111
         else
             SemanticPilotCombatEngineV111.ValidateSemanticCombatBoundary(
                 resumed);
-        if (!priorCombat.DrawPile.SequenceEqual(nextCombat.DrawPile) ||
-            CanonicalJson.Sha256(priorCombat.SemanticDeck) !=
-                CanonicalJson.Sha256(nextCombat.SemanticDeck))
-            throw new NotSupportedException(
-                "UNSUPPORTED_SEMANTIC_DECK site=" + siteId +
-                " operation=unmodeled_draw_pile_mutation");
+        SemanticDrawPileAdapterV111.RequireUnchangedDrawPile(
+            priorCombat, nextCombat,
+            "UNSUPPORTED_SEMANTIC_DECK site=" + siteId +
+            " operation=unmodeled_draw_pile_mutation");
         return resumed;
     }
 }

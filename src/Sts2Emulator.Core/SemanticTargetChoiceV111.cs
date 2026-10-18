@@ -186,12 +186,10 @@ public static class SemanticTargetChoiceV111
             var nextCombat = resumed.World?.Combat ??
                 throw new InvalidDataException(
                     "Automatic target continuation lost combat.");
-            if (!priorCombat.DrawPile.SequenceEqual(nextCombat.DrawPile) ||
-                CanonicalJson.Sha256(priorCombat.SemanticDeck) !=
-                    CanonicalJson.Sha256(nextCombat.SemanticDeck))
-                throw new NotSupportedException(
-                    "UNSUPPORTED_SEMANTIC_DECK site=combat.random_target " +
-                    "operation=unmodeled_draw_pile_mutation");
+            SemanticDrawPileAdapterV111.RequireUnchangedDrawPile(
+                priorCombat, nextCombat,
+                "UNSUPPORTED_SEMANTIC_DECK site=combat.random_target " +
+                "operation=unmodeled_draw_pile_mutation");
         }
         else if (resumed.Phase is not (RunPhase.Reward or RunPhase.Terminal))
             throw new NotSupportedException(

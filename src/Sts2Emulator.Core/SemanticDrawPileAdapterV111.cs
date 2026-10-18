@@ -44,6 +44,22 @@ public static class SemanticDrawPileAdapterV111
     }
 
     /// <summary>
+    /// Rejects a continuation whose supported mechanics must preserve both
+    /// the physical draw-pile order and its provider-owned deck state.
+    /// </summary>
+    internal static void RequireUnchangedDrawPile(
+        CombatState before, CombatState after, string errorMessage)
+    {
+        ArgumentNullException.ThrowIfNull(before);
+        ArgumentNullException.ThrowIfNull(after);
+        ArgumentException.ThrowIfNullOrWhiteSpace(errorMessage);
+        if (!before.DrawPile.SequenceEqual(after.DrawPile) ||
+            CanonicalJson.Sha256(before.SemanticDeck) !=
+                CanonicalJson.Sha256(after.SemanticDeck))
+            throw new NotSupportedException(errorMessage);
+    }
+
+    /// <summary>
     /// Validates a Nature choice boundary against the physical draw pile.
     /// A few legacy-compatible continuations may omit the provider deck;
     /// their caller decides whether that is valid for the current boundary.
