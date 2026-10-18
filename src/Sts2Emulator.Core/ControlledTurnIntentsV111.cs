@@ -305,8 +305,8 @@ public static class ControlledTurnIntentEngineV111
                     OperationKind: "bounded_integer",
                     BoundedCount: bound);
                 return StochasticProviderScopeV111
-                    .SelectIndexProvider(null)
-                    .Resolve(request, RngBundle.Empty).SelectedIndex;
+                    .ResolveIndexAtDeclaredOrdinal(
+                        null, request, RngBundle.Empty).SelectedIndex;
             };
             try
             {

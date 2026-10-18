@@ -182,6 +182,24 @@ internal static class StochasticProviderScopeV111
         return decision;
     }
 
+    /// <summary>
+    /// Resolves a request whose boundary owner supplies its logical ordinal
+    /// directly rather than deriving it from a native stream cursor. The
+    /// request still selects the scoped provider, including request filters.
+    /// </summary>
+    public static RandomIndexDecisionV111 ResolveIndexAtDeclaredOrdinal(
+        IRandomIndexProviderV111? explicitProvider,
+        RandomIndexRequestV111 request, RngBundle streams)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(streams);
+        request.Validate();
+        return SelectIndexProvider(
+                explicitProvider,
+                ControlledStochasticRequestV111.FromIndex(request))
+            .Resolve(request, streams);
+    }
+
     public static IRandomUnitFloatProviderV111 SelectUnitFloatProvider(
         IRandomUnitFloatProviderV111? explicitProvider)
         => SelectUnitFloatProvider(explicitProvider, null);
