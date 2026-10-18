@@ -6955,8 +6955,36 @@ public sealed record ReferenceNatureAncientOfferSessionV111(
         RunState origin, string siteId,
         ReferenceNatureDecisionV111[] transcript)
     {
+        var scripted = BuildReplayChoices(origin, siteId, transcript);
+        var decisions = scripted.Select(choice =>
+        {
+            var decision = new RandomIndexDecisionV111(
+                choice.Request with
+                {
+                    OrderedCandidates = (int[])
+                        choice.Request.OrderedCandidates.Clone()
+                }, choice.SelectedIndex, "controlled-v111");
+            decision.Validate();
+            return ControlledStochasticDecisionV111.FromIndex(decision);
+        }).ToArray();
+        // Session validation replays the generator repeatedly; keep those
+        // audit-only calls out of any enclosing source-boundary journal.
+        using var replayJournal = RandomBoundaryJournalV111.Begin();
+        var replay = ControlledChanceContinuationExecutorV111.CaptureStochastic(
+            origin, ControlledStochasticContinuationStateV111.CurrentSchemaId,
+            decisions, checkpoint => GenerateEventMechanics(checkpoint, siteId));
+        if (replay.Run is not { } run || replay.Continuation is not null)
+            throw new InvalidOperationException(
+                "Ancient offer generator did not consume the complete Nature transcript.");
+        return run;
+    }
+
+    private static AncientOfferReplayChoiceV111[] BuildReplayChoices(
+        RunState origin, string siteId,
+        ReferenceNatureDecisionV111[] transcript)
+    {
         if (siteId == NativeDarvEventV111.OfferVariantSiteId)
-            return GenerateDarvEvent(origin, transcript);
+            return BuildDarvReplayChoices(origin, transcript);
         var isShuffle = ChanceLawEngineV111.IsShuffleAncientOfferSite(siteId);
         var expectedCount = ChanceLawEngineV111.AncientOfferDecisionCount(
             origin, siteId);
@@ -7001,8 +7029,14 @@ public sealed record ReferenceNatureAncientOfferSessionV111(
                 return new AncientOfferReplayChoiceV111(request, selectedIndex);
             }).ToArray();
         }
-        var provider = new AncientOfferReplayProviderV111(scripted);
-        var run = siteId switch
+        return scripted;
+    }
+
+    private static RunState GenerateEventMechanics(
+        RunState origin, string siteId)
+    {
+        var provider = new AncientOfferScopedIndexProviderV111();
+        return siteId switch
         {
             NativeOrobasEventV111.OfferSiteId =>
                 NativeOrobasEventV111.BeginOpeningWithAudit(origin, provider).State,
@@ -7015,21 +7049,17 @@ public sealed record ReferenceNatureAncientOfferSessionV111(
                 NativeNonupeipeEventV111.BeginOpeningWithAudit(
                     origin, provider).State,
             NativeTanxEventV111.ShuffleSiteId =>
-                NativeTanxEventV111.BeginOpeningWithAudit(
-                    origin, provider).State,
+                NativeTanxEventV111.BeginOpeningWithAudit(origin, provider).State,
             NativeVakuuEventV111.ShuffleSiteId =>
-                NativeVakuuEventV111.BeginOpeningWithAudit(
-                    origin, provider).State,
+                NativeVakuuEventV111.BeginOpeningWithAudit(origin, provider).State,
+            NativeDarvEventV111.OfferVariantSiteId =>
+                NativeDarvEventV111.BeginOpeningWithAudit(origin, provider).State,
             _ => throw new NotSupportedException(
                 $"ReferenceNature Ancient-offer session does not support '{siteId}'.")
         };
-        if (provider.Remaining != 0)
-            throw new InvalidOperationException(
-                "Ancient offer generator did not consume the complete Nature transcript.");
-        return run;
     }
 
-    private static RunState GenerateDarvEvent(
+    private static AncientOfferReplayChoiceV111[] BuildDarvReplayChoices(
         RunState origin, ReferenceNatureDecisionV111[] transcript)
     {
         var shuffleRequests = ChanceLawEngineV111
@@ -7068,14 +7098,7 @@ public sealed record ReferenceNatureAncientOfferSessionV111(
             scripted.Add(new AncientOfferReplayChoiceV111(
                 shuffleRequests[index], decision.OutcomeIndex));
         }
-
-        var provider = new AncientOfferReplayProviderV111(scripted.ToArray());
-        var run = NativeDarvEventV111
-            .BeginOpeningWithAudit(origin, provider).State;
-        if (provider.Remaining != 0)
-            throw new InvalidOperationException(
-                "Darv generator did not consume the complete Nature transcript.");
-        return run;
+        return scripted.ToArray();
     }
 
     private static string[] CandidateChoiceIds(
@@ -7124,43 +7147,17 @@ public sealed record ReferenceNatureAncientOfferSessionV111(
     private sealed record AncientOfferReplayChoiceV111(
         RandomIndexRequestV111 Request, int SelectedIndex);
 
-    /// <summary>Silent exact replay used during validation; it does not append
-    /// duplicate entries to the process-wide random-boundary journal.</summary>
-    private sealed class AncientOfferReplayProviderV111(
-        AncientOfferReplayChoiceV111[] choices) : IRandomIndexProviderV111
+    /// <summary>Routes explicit Ancient-offer providers through the active
+    /// shared continuation scope while preserving the event generator's
+    /// established controlled-provider marker.</summary>
+    private sealed class AncientOfferScopedIndexProviderV111
+        : IRandomIndexProviderV111
     {
-        private int _cursor;
         public string Mode => "scripted-v111";
-        public int Remaining => choices.Length - _cursor;
 
         public RandomIndexDecisionV111 Resolve(
-            RandomIndexRequestV111 request, RngBundle streams)
-        {
-            ArgumentNullException.ThrowIfNull(request);
-            ArgumentNullException.ThrowIfNull(streams);
-            request.Validate();
-            if (_cursor >= choices.Length)
-                throw new InvalidOperationException(
-                    "Ancient offer replay transcript is exhausted.");
-            var expected = choices[_cursor++];
-            if (request.SiteId != expected.Request.SiteId ||
-                request.StreamId != expected.Request.StreamId ||
-                request.OwnerId != expected.Request.OwnerId ||
-                request.Ordinal != expected.Request.Ordinal ||
-                request.SourceVersion != expected.Request.SourceVersion ||
-                request.OperationKind != expected.Request.OperationKind ||
-                request.BoundedCount != expected.Request.BoundedCount ||
-                !request.OrderedCandidates.SequenceEqual(
-                    expected.Request.OrderedCandidates))
-                throw new InvalidOperationException(
-                    "Ancient offer replay site/owner/ordinal/eligibility mismatch.");
-            var decision = new RandomIndexDecisionV111(
-                request with { OrderedCandidates =
-                    (int[])request.OrderedCandidates.Clone() },
-                expected.SelectedIndex, Mode);
-            decision.Validate();
-            return decision;
-        }
+            RandomIndexRequestV111 request, RngBundle streams) =>
+            StochasticProviderScopeV111.ResolveIndex(this, request, streams);
     }
 }
 
