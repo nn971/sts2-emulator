@@ -2673,7 +2673,9 @@ internal static class PrototypeAiJsonlServer
                                  "relic.acquisition.random_potion.model" or
                                  "run.potion.fill_empty_slots.model" or
                                  StochasticSiteRegistryV111
-                                     .UnownedRandomRelicSelectionSiteId))
+                                     .UnownedRandomRelicSelectionSiteId or
+                                 PrototypeNativePunchOff.RelicRewardSiteId or
+                                 PrototypeNativePunchOff.PotionRewardSiteId))
                             throw new ArgumentException(
                                 "stream_id is accepted only for PotionFactory, relic, legacy potion rarity, and potion model laws.");
                         int[]? priorIndices = null;
@@ -3731,6 +3733,41 @@ internal static class PrototypeAiJsonlServer
                             .NativePunchOffRewardQuerySiteIds.Contains(
                                 siteId, StringComparer.Ordinal))
                         {
+                            var punchOffStream = OptionalString(
+                                request, "stream_id");
+                            if (punchOffStream == "reward")
+                            {
+                                RejectChanceLawQueryParameters(
+                                    request, "stream_id", "owner_id",
+                                    "support_count");
+                                var ownerId = OptionalString(
+                                    request, "owner_id") ??
+                                    throw new ArgumentException(
+                                        "Legacy Punch Off reward law requires owner_id with its current pool fingerprint.");
+                                var supportCount = OptionalInt(
+                                    request, "support_count") ??
+                                    throw new ArgumentException(
+                                        "Legacy Punch Off reward law requires support_count for the current reward pool.");
+                                law = ChanceLawEngineV111
+                                    .QueryLegacyPunchOffReward(
+                                        siteId, ownerId, supportCount, ordinal);
+                                Write(new
+                                {
+                                    requestId,
+                                    ok = true,
+                                    chanceLawSchemaId =
+                                        ChanceLawV111.CurrentSchemaId,
+                                    law
+                                });
+                                break;
+                            }
+                            if (punchOffStream is not null &&
+                                punchOffStream != "player.rewards")
+                                throw new ArgumentException(
+                                    "Punch Off reward stream_id must be reward or player.rewards.");
+                            if (OptionalInt(request, "support_count") is not null)
+                                throw new ArgumentException(
+                                    "Native Punch Off reward laws derive support_count from the live reward plan.");
                             if (OptionalString(request, "card_type") is not null ||
                                 OptionalString(request, "rarity") is not null ||
                                 OptionalString(request, "card_id") is not null ||

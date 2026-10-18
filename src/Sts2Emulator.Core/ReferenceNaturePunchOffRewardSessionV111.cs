@@ -167,7 +167,7 @@ internal static class NativePunchOffRewardPlanBuilderV111
             rewardsCursorBefore = cursorBefore,
             eventCursorBefore,
             request,
-            probabilityModel = "equal-index-under-unverified-player-rewards-hypothesis"
+            probabilityModel = "source-nextint-grid-under-player-rewards-stream-hypothesis"
         });
         return new(relicCandidates, potionCandidates,
             new RandomIndexRequestV111(
@@ -207,6 +207,30 @@ public static partial class ChanceLawEngineV111
         "event.punch_off.potion_reward.index_draw"
     ];
 
+    public static ChanceLawV111 QueryLegacyPunchOffReward(
+        string siteId, string ownerId, int supportCount, int ordinal)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
+        if (!NativePunchOffRewardQuerySiteIds.Contains(
+                siteId, StringComparer.Ordinal))
+            throw new NotSupportedException(
+                $"Legacy Punch Off reward law does not support site '{siteId}'.");
+        if (supportCount < 1)
+            throw new ArgumentOutOfRangeException(nameof(supportCount));
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+
+        var request = new RandomIndexRequestV111(
+            siteId, "reward", ownerId, ordinal,
+            Enumerable.Range(0, supportCount).ToArray());
+        var eventId = CanonicalJson.Sha256(new
+        {
+            boundary = "legacy-punch-off-combat-victory-reward-index",
+            request
+        });
+        return ChanceLawEngineV111.QueryRandomIndex(eventId, request);
+    }
+
     public static ChanceLawV111 QueryNativePunchOffReward(
         RunState origin, string siteId, int ordinal, int[]? priorIndices,
         string actionId)
@@ -216,24 +240,25 @@ public static partial class ChanceLawEngineV111
         var plan = NativePunchOffRewardPlanBuilderV111.Build(
             origin, siteId, ordinal, priorIndices, actionId);
         var candidates = NativePunchOffRewardPlanBuilderV111.Candidates(plan);
-        var outcomes = candidates.Select(candidateId =>
-            new ChanceLawOutcomeV111(
-                (siteId == PrototypeNativePunchOff.RelicRewardSiteId
-                    ? "relic:" : "potion:") + candidateId, 1L))
-            .ToArray();
         var eventId = CanonicalJson.Sha256(new
         {
             boundary = "native_event.punch_off_reward",
             plan.ConditioningFingerprint
         });
+        var request = NativePunchOffRewardPlanBuilderV111.Request(plan);
+        var boundedIndexLaw = QueryRandomIndex(eventId, request);
+        var outcomes = candidates.Select((candidateId, index) =>
+            new ChanceLawOutcomeV111(
+                (siteId == PrototypeNativePunchOff.RelicRewardSiteId
+                    ? "relic:" : "potion:") + candidateId,
+                boundedIndexLaw.Outcomes[index].Weight)).ToArray();
         return Create(eventId, plan.SiteId,
-            NativePunchOffRewardPlanBuilderV111.Request(plan).OperationKind,
-            NativePunchOffRewardPlanBuilderV111.Request(plan).OwnerId,
-            NativePunchOffRewardPlanBuilderV111.Request(plan).Ordinal,
+            request.OperationKind, request.OwnerId, request.Ordinal,
             NativePunchOffRewardConditioningPolicyId,
             plan.ConditioningFingerprint,
-            "uniform-index-under-source-player-rewards-hypothesis-unverified",
-            outcomes);
+            NativeBoundedIndexSourceVerifiedProvenance,
+            outcomes,
+            ChanceLawV111.SourceVerifiedStatus);
     }
 }
 
