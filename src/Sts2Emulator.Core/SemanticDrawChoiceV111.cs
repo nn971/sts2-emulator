@@ -194,10 +194,33 @@ public static class SemanticDrawChoiceV111
                         checkpoint, decision.SelectedIndex);
         }
 
-        if (resumed.Phase == RunPhase.Combat)
-            ValidateRecordedChoice(
-                resumed, decision.Event, decision.SelectedIndex);
+        ValidateEffectDrawResult(
+            resumed, decision.Event, decision.SelectedIndex);
         return resumed;
+    }
+
+    private static void ValidateEffectDrawResult(
+        RunState run, SemanticDeckEventV111 pending, int selectedIndex)
+    {
+        if (run.Phase == RunPhase.Combat)
+        {
+            var nextChoice = run.World?.Combat?.PendingChoice;
+            if (nextChoice?.ControlledSemanticDraw is not null)
+                ValidateBoundary(run);
+            else if (nextChoice?.ChoiceId == "select_cards")
+                SemanticCardSelectionEngineV111
+                    .ValidatePendingBoundary(run);
+            else
+                SemanticPilotCombatEngineV111
+                    .ValidateSemanticCombatBoundary(run);
+            PrototypeStateInvariants.Validate(run);
+            ValidateRecordedChoice(
+                run, pending, selectedIndex);
+        }
+        else if (run.Phase is not (RunPhase.Reward or RunPhase.Terminal))
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_DECK site=combat.card_effect.draw " +
+                "operation=unsupported_post_draw_phase");
     }
 
     /// <summary>

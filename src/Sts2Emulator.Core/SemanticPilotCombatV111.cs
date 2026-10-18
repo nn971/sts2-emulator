@@ -3021,24 +3021,6 @@ public static class SemanticPilotCombatEngineV111
                 .ResumeControlledEffectDraw(
                     current.Run.Fork(), effectDrawDecision,
                     allowEngineOwnedPrototypeReward: true);
-            if (effectDrawResult.Phase == RunPhase.Combat)
-            {
-                if (effectDrawResult.World?.Combat?.PendingChoice?
-                        .ControlledSemanticDraw is not null)
-                    SemanticDrawChoiceV111.ValidateBoundary(effectDrawResult);
-                else if (effectDrawResult.World?.Combat?.PendingChoice?
-                    .ChoiceId == "select_cards")
-                    SemanticCardSelectionEngineV111
-                        .ValidatePendingBoundary(effectDrawResult);
-                else
-                    ValidateSemanticCombatBoundary(effectDrawResult);
-                PrototypeStateInvariants.Validate(effectDrawResult);
-            }
-            else if (effectDrawResult.Phase is not (
-                RunPhase.Reward or RunPhase.Terminal))
-                throw new NotSupportedException(
-                    "UNSUPPORTED_SEMANTIC_DECK site=combat.card_effect.draw " +
-                    "operation=unsupported_post_draw_phase");
             var effectDrawState = current with
             {
                 Run = effectDrawResult,
