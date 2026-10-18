@@ -448,6 +448,8 @@ public static partial class ChanceLawEngineV111
                 "combat", "choose_index", 1),
             ["combat.enemy.summon_pool.select"] = new(
                 "combat", "choose_index", 1),
+            [PrototypeGameEngine.ImprovementCardSiteId] = new(
+                "combat", "choose_index", 1),
             ["map.legacy.floor_width.index_draw"] = new(
                 "map", "choose_index", 2),
             ["map.legacy.edge_source.index_draw"] = new(

@@ -2672,12 +2672,13 @@ internal static class PrototypeAiJsonlServer
                                  "relic.acquisition.random_rare_card.model" or
                                  "relic.acquisition.random_potion.model" or
                                  "run.potion.fill_empty_slots.model" or
+                                 PrototypeGameEngine.ImprovementCardSiteId or
                                  StochasticSiteRegistryV111
                                      .UnownedRandomRelicSelectionSiteId or
                                  PrototypeNativePunchOff.RelicRewardSiteId or
                                  PrototypeNativePunchOff.PotionRewardSiteId))
                             throw new ArgumentException(
-                                "stream_id is accepted only for PotionFactory, relic, legacy potion rarity, and potion model laws.");
+                                "stream_id is accepted only for PotionFactory, relic, legacy potion rarity/model laws, and the legacy Mad Science Improvement route.");
                         int[]? priorIndices = null;
                         if (request.TryGetProperty(
                                 "prior_indices", out var priorIndicesElement))
@@ -2743,8 +2744,42 @@ internal static class PrototypeAiJsonlServer
                             });
                             break;
                         }
+                        if (siteId == PrototypeGameEngine
+                                .ImprovementCardSiteId &&
+                            OptionalString(request, "stream_id") is { } improvementStreamId)
+                        {
+                            RejectChanceLawQueryParameters(
+                                request, "stream_id", "owner_id",
+                                "support_count");
+                            if (improvementStreamId != "combat")
+                                throw new ArgumentException(
+                                    "The direct Mad Science Improvement law requires the legacy combat stream; omit stream_id to use the state-bound query.");
+                            var improvementOwnerId = OptionalString(
+                                request, "owner_id") ??
+                                throw new ArgumentException(
+                                    "Legacy bounded-index law requires owner_id.");
+                            var improvementSupportCount = OptionalInt(
+                                request, "support_count") ??
+                                throw new ArgumentException(
+                                    "Legacy bounded-index law requires support_count.");
+                            law = ChanceLawEngineV111
+                                .QueryLegacyCallerBoundIndex(
+                                    siteId, improvementOwnerId, ordinal,
+                                    improvementSupportCount);
+                            Write(new
+                            {
+                                requestId,
+                                ok = true,
+                                chanceLawSchemaId =
+                                    ChanceLawV111.CurrentSchemaId,
+                                law
+                            });
+                            break;
+                        }
                         if (ChanceLawEngineV111
-                            .IsLegacyCallerBoundIndexQuerySite(siteId))
+                                .IsLegacyCallerBoundIndexQuerySite(siteId) &&
+                            siteId != PrototypeGameEngine
+                                .ImprovementCardSiteId)
                         {
                             RejectChanceLawQueryParameters(
                                 request, "owner_id", "support_count");
