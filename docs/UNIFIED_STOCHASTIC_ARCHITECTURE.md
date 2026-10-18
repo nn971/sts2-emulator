@@ -88,6 +88,8 @@ Legacy automatic hand-draw cost, semantic hand-draw cost, and nested effect-draw
 
 `ContinueSemanticDrawCost` now owns the shared post-cost continuation for semantic hand draws and nested semantic effect draws: it resumes `CardDrawn` hook suspension, re-enters `DrawCards`, and routes the tagged result through the shared interpreter. Its callers retain validation, saved frame selection, and the automatic-pipeline handoff policy.
 
+`ResumeSemanticDrawHookChoice` now owns the post-action continuation for standalone and automatic semantic draw-hook choices. It resumes the saved `BeforeHandDraw` step, retains an active automatic draw cursor, or continues the saved draw count through the engine; `SemanticCombatDrawV111` retains the typed action transcript.
+
 Semantic hand draws and nested effect draws also suspend after-shuffle insertion through `SuspendDrawCardsAfterShuffleInsertion`. That owner carries forward the remaining count, deferred keyword identities, Stratagem condition, and insertion suffix; automatic hand-draw cursor ownership remains opt-in at its calling boundary.
 
 Semantic draws and nested effect draws now route Stratagem's post-shuffle selection through `SuspendDrawCardsForStratagemSelection`. The shared owner validates the tagged boundary and eligibility, carries the remaining count, clears the pending-selection marker, and resumes the controlled choice. Nested effects retain their outer choice continuation and accumulate drawn identities; standalone and automatic semantic draws retain their own frame policy, with the automatic hand-draw caller alone updating pipeline progress.

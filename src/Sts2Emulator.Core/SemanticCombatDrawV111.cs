@@ -894,44 +894,10 @@ public static class SemanticCombatDrawEngineV111
                 "No nested CardDrawn hook choice is pending.");
         int drawnBefore = state.Run.World!.Combat!
             .CounterState.CardsDrawnThisCombat;
-        bool beforeHandDraw = pending.BeforeHandDraw;
-        var (run, decision) = SemanticDrawHookChoiceEngineV111.Resolve(
-            state.Run.Fork(), pending, actionId);
-        int remaining;
-        int requested = state.RequestedCount;
-        if (pending.AutomaticHandDraw)
-        {
-            var combat = run.World?.Combat ??
-                throw new InvalidDataException(
-                    "Automatic draw-hook choice removed combat.");
-            if (beforeHandDraw &&
-                combat.PendingChoice?.AutomaticSemanticDrawHookChoice == true)
-            {
-                remaining = 0;
-            }
-            else if (beforeHandDraw)
-            {
-                using (ControlledChanceGuardV111.Enter())
-                    (run, requested, remaining) =
-                        PrototypeGameEngine
-                            .ResumeSemanticBeforeHandDrawActionChoice(run);
-            }
-            else if (combat.PendingChoice?.AutomaticSemanticDrawHookChoice == true)
-                remaining = combat.AutomaticPipelineContinuation?
-                    .ControlledSemanticDrawRemaining ??
-                    throw new InvalidDataException(
-                        "Automatic draw-hook choice lost its cursor.");
-            else
-            {
-                using (ControlledChanceGuardV111.Enter())
-                    (run, remaining) =
-                        PrototypeGameEngine.BeginSemanticCombatDraw(
-                            run, state.RemainingCount, fromHandDraw: true);
-            }
-        }
-        else
-            remaining = PrototypeGameEngine.GetSemanticDrawRemainingCount(
-                run, state.RemainingCount, drawnBefore);
+        var (run, requested, remaining, decision) =
+            PrototypeGameEngine.ResumeSemanticDrawHookChoice(
+                state.Run.Fork(), pending, actionId,
+                state.RequestedCount, state.RemainingCount, drawnBefore);
         var next = state with
         {
             Run = run,

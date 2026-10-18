@@ -209,6 +209,60 @@ public sealed partial class PrototypeGameEngine
             automaticHandDrawRequested, recycleSite, recycleOperation);
     }
 
+    internal static (RunState Run, int Requested, int Remaining,
+        SemanticDrawHookChoiceDecisionV111 Decision)
+        ResumeSemanticDrawHookChoice(
+            RunState checkpoint,
+            SemanticDrawHookChoiceEventV111 pending,
+            string actionId,
+            int requested,
+            int remaining,
+            int drawnBefore)
+    {
+        ArgumentNullException.ThrowIfNull(checkpoint);
+        ArgumentNullException.ThrowIfNull(pending);
+        pending.Validate();
+        if (drawnBefore < 0 || requested < 0 || remaining < 0)
+            throw new InvalidDataException(
+                "Semantic draw-hook resume progress is invalid.");
+
+        var (run, decision) = SemanticDrawHookChoiceEngineV111.Resolve(
+            checkpoint, pending, actionId);
+        if (!pending.AutomaticHandDraw)
+            return (run, requested,
+                GetSemanticDrawRemainingCount(run, remaining, drawnBefore),
+                decision);
+
+        var combat = RequireWorld(run).Combat ??
+            throw new InvalidDataException(
+                "Automatic draw-hook choice removed combat.");
+        if (pending.BeforeHandDraw &&
+            combat.PendingChoice?.AutomaticSemanticDrawHookChoice == true)
+            return (run, requested, 0, decision);
+
+        if (pending.BeforeHandDraw)
+        {
+            using (ControlledChanceGuardV111.Enter())
+                (run, requested, remaining) =
+                    ResumeSemanticBeforeHandDrawActionChoice(run);
+            return (run, requested, remaining, decision);
+        }
+
+        if (combat.PendingChoice?.AutomaticSemanticDrawHookChoice == true)
+        {
+            remaining = combat.AutomaticPipelineContinuation?
+                .ControlledSemanticDrawRemaining ??
+                throw new InvalidDataException(
+                    "Automatic draw-hook choice lost its cursor.");
+            return (run, requested, remaining, decision);
+        }
+
+        using (ControlledChanceGuardV111.Enter())
+            (run, remaining) = BeginSemanticCombatDraw(
+                run, remaining, fromHandDraw: true);
+        return (run, requested, remaining, decision);
+    }
+
     private static PrototypeControlledSemanticDrawV111
         CreateSemanticDrawResultFrame(
             int remainingCount, bool fromHandDraw, int eventDepth,
