@@ -2803,6 +2803,42 @@ internal static class PrototypeAiJsonlServer
                             });
                             break;
                         }
+                        if (siteId ==
+                            "card_rarity.upgrade_roll.unit_float")
+                        {
+                            RejectChanceLawQueryParameters(
+                                request, "card_id", "act", "ascension",
+                                "support_count");
+                            var cardUpgradeCardId = OptionalString(
+                                request, "card_id") ??
+                                throw new ArgumentException(
+                                    "Card-upgrade law requires card_id.");
+                            var act = OptionalInt(request, "act") ??
+                                throw new ArgumentException(
+                                    "Card-upgrade law requires act.");
+                            var ascension = OptionalInt(request, "ascension") ??
+                                throw new ArgumentException(
+                                    "Card-upgrade law requires ascension.");
+                            law = ChanceLawEngineV111
+                                .QueryNativeEncounterCardUpgrade(
+                                    cardUpgradeCardId, act, ascension,
+                                    ordinal);
+                            var supportCount = OptionalInt(
+                                request, "support_count");
+                            if (supportCount is not null &&
+                                supportCount != law.Outcomes.Length)
+                                throw new ArgumentException(
+                                    "Card-upgrade support_count must match the declared card, act, and Ascension.");
+                            Write(new
+                            {
+                                requestId,
+                                ok = true,
+                                chanceLawSchemaId =
+                                    ChanceLawV111.CurrentSchemaId,
+                                law
+                            });
+                            break;
+                        }
                         if (siteId == ExperimentalSilentThreeActRouteV111
                                 .SecondBossIndexSiteId)
                         {

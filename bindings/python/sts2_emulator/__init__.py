@@ -66,6 +66,8 @@ class State:
         a forced reward has no odds draw and is rejected.
         Direct card-rarity laws require card_rarity_source, current offset,
         Ascension, and owner_id; outcomes are raw rarities before pool fallback.
+        Combat card-upgrade laws require card_id, Act, and Ascension; outcomes
+        are the raw inclusive comparison result before card mutation.
         Repy potion laws use ordinal 0 or 1 and prior_indices containing the
         complete relic-shuffle prefix plus any earlier potion index.
         """
@@ -122,8 +124,12 @@ class State:
                 raise ValueError("ascension must be a nonnegative integer")
             payload["ascension"] = ascension
         if act is not None:
-            if type(act) is not int or act not in (2, 3):
-                raise ValueError("act must be 2 or 3 for later-act boss queries")
+            valid_act = type(act) is int and (
+                act >= 1 if site_id ==
+                "card_rarity.upgrade_roll.unit_float" else act in (2, 3))
+            if not valid_act:
+                raise ValueError(
+                    "act must be a positive integer for card-upgrade laws or 2/3 for later-act boss queries")
             payload["act"] = act
         if include_darv is not None:
             if type(include_darv) is not bool:
@@ -198,6 +204,10 @@ class State:
                 current_offset_basis_points is not None:
             raise ValueError(
                 "card-rarity source parameters apply only to card_rarity.roll.unit_float")
+        if site_id == "card_rarity.upgrade_roll.unit_float" and (
+                card_id is None or act is None or ascension is None):
+            raise ValueError(
+                "card-upgrade laws require card_id, act, and ascension")
         if offer_ordinal is not None:
             if type(offer_ordinal) is not int or offer_ordinal < 0:
                 raise ValueError(

@@ -1483,6 +1483,63 @@ public static partial class ChanceLawEngineV111
             outcomes, ChanceLawV111.SourceVerifiedStatus);
     }
 
+    /// <summary>
+    /// Query the raw Native combat-card upgrade comparison. The inclusive
+    /// float endpoint means a zero threshold still has a one-grid-input pass.
+    /// </summary>
+    public static ChanceLawV111 QueryNativeEncounterCardUpgrade(
+        string cardId, int act, int ascension, int ordinal)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(cardId);
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+        if (!PrototypeContent.NativeSilentRewardCardPool.Contains(
+                cardId, StringComparer.Ordinal))
+            throw new ArgumentException(
+                "Card-upgrade laws require an implemented Native Silent reward card.",
+                nameof(cardId));
+
+        var thresholdBasisPoints =
+            PrototypeNativeCardRarityOdds
+                .EncounterCardUpgradeThresholdBasisPoints(
+                    cardId, act, ascension);
+        var threshold = thresholdBasisPoints / 10000f;
+        var upgradedWeight =
+            NativeNextFloatGridCountAtOrBelow(threshold);
+        var notUpgradedWeight = checked(
+            NativeNextDoubleGridSize - upgradedWeight);
+        var outcomes = new List<ChanceLawOutcomeV111>(2);
+        if (upgradedWeight > 0)
+            outcomes.Add(new ChanceLawOutcomeV111(
+                "upgrade_check:passed", upgradedWeight));
+        if (notUpgradedWeight > 0)
+            outcomes.Add(new ChanceLawOutcomeV111(
+                "upgrade_check:not_passed", notUpgradedWeight));
+
+        const string siteId = "card_rarity.upgrade_roll.unit_float";
+        var ownerId = $"card:{cardId}:act:{act}:ascension:{ascension}";
+        var conditioning = new
+        {
+            siteId,
+            streamId = NativePlayerRngV111.RewardsStreamId,
+            ownerId,
+            ordinal,
+            cardId,
+            act,
+            ascension,
+            thresholdBasisPoints,
+            threshold,
+            comparison = "source_float_less_than_or_equal_to_threshold",
+            outcomeScope = "upgrade_check_flag"
+        };
+        return CreateNativeBoundaryLaw(
+            siteId, "unit_float_inclusive_threshold", ownerId, ordinal,
+            "native-card-upgrade-inclusive-float-threshold-v1",
+            CanonicalJson.Sha256(conditioning),
+            NativeUnitFloatThresholdSourceVerifiedProvenance,
+            outcomes.ToArray(), ChanceLawV111.SourceVerifiedStatus);
+    }
+
     private static ChanceLawV111 CreateDeclaredUnverifiedIndexLaw(
         string siteId, string ownerId, int ordinal,
         string conditioningPolicyId, object conditioning,

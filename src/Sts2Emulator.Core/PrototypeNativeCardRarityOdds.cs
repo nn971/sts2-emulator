@@ -194,6 +194,22 @@ public static class PrototypeNativeCardRarityOdds
         return (rarity, nextOffset);
     }
 
+    internal static int EncounterCardUpgradeThresholdBasisPoints(
+        string cardId, int act, int ascension)
+    {
+        if (act < 1)
+            throw new ArgumentOutOfRangeException(nameof(act));
+        if (ascension < 0)
+            throw new ArgumentOutOfRangeException(nameof(ascension));
+        var definition = PrototypeContent.Card(cardId);
+        return definition.Rarity == PrototypeCardRarity.Rare ||
+            definition.MaxUpgradeLevel <= 0
+                ? 0
+                : (int)Math.Min(10000L,
+                    (long)(act - 1) * (ascension >= ScarcityAscension
+                        ? 2500L : 1250L));
+    }
+
     /// <summary>
     /// CardFactory.GetNextAllowedRarity cycles Common, Uncommon, Rare,
     /// wrapping after Rare. The odds advance according to the original
@@ -233,21 +249,8 @@ public static class PrototypeNativeCardRarityOdds
         string cardId, int act, int ascension, RngBundle rng,
         RngBundle? nativeRunRng = null)
     {
-        if (act < 1)
-        {
-            throw new ArgumentOutOfRangeException(nameof(act));
-        }
-        if (ascension < 0)
-        {
-            throw new ArgumentOutOfRangeException(nameof(ascension));
-        }
-        var definition = PrototypeContent.Card(cardId);
-        var threshold = definition.Rarity == PrototypeCardRarity.Rare
-            || definition.MaxUpgradeLevel <= 0
-                ? 0
-                : Math.Min(10000,
-                    (act - 1) * (ascension >= ScarcityAscension
-                        ? 2500 : 1250));
+        var threshold = EncounterCardUpgradeThresholdBasisPoints(
+            cardId, act, ascension);
         var ownerId = $"card:{cardId}:act:{act}:ascension:{ascension}";
         if (nativeRunRng is not null)
         {

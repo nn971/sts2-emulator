@@ -349,6 +349,7 @@ public static class StochasticSiteRegistryV111
         PrototypeNativeLaterActMap.GloryRestCountSiteId,
         "reward.combat_gold.index_draw",
         "reward.potion_odds.unit_float",
+        "card_rarity.upgrade_roll.unit_float",
         "event.endless_conveyor.dish_weighted_ticket",
         "event.endless_conveyor.random_upgrade.card_instance",
         "event.endless_conveyor.colorless_card.index_draw",

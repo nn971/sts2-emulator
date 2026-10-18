@@ -143,6 +143,23 @@ The law counts exact source-rounded Native `NextFloat()` masses. The query
 does not validate the reward prefix, available card pool, stream assignment,
 or cursor parity.
 
+The combat-card upgrade check also has an exact inclusive-threshold law:
+
+```python
+upgrade_law = state.query_chance_law(
+    "card_rarity.upgrade_roll.unit_float",
+    ordinal=declared_rewards_stream_ordinal,
+    card_id=native_silent_reward_card_id,
+    act=1,
+    ascension=0,
+)
+```
+
+Outcomes describe the raw comparison flag before card mutation. At a zero
+threshold the single `NextFloat()` grid input that rounds to `0.0` passes the
+source's inclusive comparison. Card mutation and reward-prefix parity remain
+outside this query.
+
 The fixed Act 1 boss pools have read-only law queries. Each returns
 equal-weight outcomes identified by encounter ID; legacy seed-to-index
 distributions and Native cursor parity remain `UNVERIFIED`:
