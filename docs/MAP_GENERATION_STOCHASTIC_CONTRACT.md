@@ -60,9 +60,11 @@ avoid matching sibling rooms.
 The player-facing result is the committed map: nodes, floors, room types,
 entry nodes, and outgoing connections. The generation seed, stream cursor,
 partial path graph, candidate ordering, and room-placement retries are not
-part of that projection. There is currently no Nature-view observation or
-controlled continuation for these sites. Read-only `chance_law_query` laws
-cover the raw Act 1 Overgrowth and Hive/Glory
+part of that projection. The opt-in [map-generation session](REFERENCE_NATURE_MAP_GENERATION_D3.md)
+exposes only its pending request and Chance Law through the Nature choice
+view; it does not expose the private map seed, Native cursor, or partial
+generator state. There is no privileged-inspector transcript for these sites.
+Read-only `chance_law_query` laws cover the raw Act 1 Overgrowth and Hive/Glory
 `map.*.path_start_column.index_draw` calls before any path-start retry, and
 raw `map.*.path_delta.shuffle_swap_index` calls, the raw
 `map.*.room_assignment.shuffle_swap_index` calls using a caller-declared
@@ -73,18 +75,26 @@ ordinal. Act 1 room-assignment queries require the source owner ID for the room
 type, attempt, and pool fingerprint; later-act queries require act and the
 current bounded support. Delta-swap bounds are 3 then 2 on alternating site
 ordinals. These path, room-swap, and rest-count laws return exact Native
-bounded-index grid masses. They do not read map state, seed, or cursor, and do
-not compute the final accepted path or room assignment. The explicit
-`GenerateNativeWithAudit` helpers can return the final native map stream
-snapshot for source investigation; ordinary map generation does not publish
-it, and no per-decision privileged-inspector transcript exists.
+bounded-index grid masses. They do not read map state, seed, or cursor, or
+compute the final accepted path or room assignment. The map session replays
+the complete generator from its seed for every saved typed prefix, so it
+derives retries and dynamic room-placement supports from the current
+source-shaped emulator algorithm and validates the resulting map only at
+completion. Its Gaussian quota laws use a continuous rounded/truncated-normal
+approximation and remain `UNVERIFIED` against Native finite-grid masses. The
+explicit `GenerateNativeWithAudit` helpers can return the final native map
+stream snapshot for source investigation; ordinary map generation does not
+publish it.
 
-The resolver is the synchronous map-generation algorithm: it chooses starts
-and paths, assigns fixed rooms and randomized quotas, then returns a complete
-`MapState`. Neither family has a saved resolver continuation or hook-once
-replay frame. The source-owned mechanics continuation is the completed map
-itself. Exact parity for path traversal, pruning, room placement, and call
-order is still open, as recorded by the generator source comments.
+The ordinary resolver is the synchronous map-generation algorithm: it chooses
+starts and paths, assigns fixed rooms and randomized quotas, then returns a
+complete `MapState`. The opt-in `ReferenceNatureMapGenerationSessionV111`
+provides a saved typed-prefix continuation over that resolver. Each resolve
+replays from the original seed and saved decisions, and publishes the map only
+when the generator, decision transcript, and Nature cursor validate together.
+This checks replay consistency for the emulator generator; it does not
+establish source path traversal, pruning, room placement, call order, or Native
+cursor parity.
 
 ## Provenance and unsupported handling
 
@@ -102,20 +112,22 @@ per-call cursor parity. Other map operation laws remain **UNVERIFIED**. Seed
 derivation and typed bounded, shuffle, and Gaussian providers do not establish
 distribution calibration or per-call cursor parity.
 
-No controlled ReferenceNature operation is supported for these sites, so a
-Nature request must remain unavailable rather than inventing a law or
-continuation. The Hive/Glory APIs reject acts outside 2 and 3 and ascension
-outside 0–10. Overgrowth generation is fixed to Act 1 and does not locally
-validate its ascension argument. Invalid Hive/Glory inputs and any path with
-no legal noncrossing continuation throw without returning a map. The ordinary
-source-owned generation path remains the resolver until a Nature session with
-matching support fingerprints and atomic replay is implemented.
+The opt-in ReferenceNature session supports Overgrowth, Hive, and Glory map
+generation; it is separate from ordinary Native run initialization, which
+remains source-owned. The session envelope rejects acts outside 1–3 and
+ascension outside 0–10. The direct Hive/Glory generators also reject acts
+outside 2 and 3 and ascension outside 0–10. Direct Overgrowth generation is
+fixed to Act 1 and does not locally validate ascension, though the session
+envelope does. Invalid Hive/Glory inputs and any path with no legal
+noncrossing continuation throw without returning a map. Legacy prototype
+`map.*` rows remain outside this Native-source-shaped session.
 
 ## S0 status
 
 The migration matrix supplies each row's operation-specific support summary;
 this contract supplies the player/Nature/inspector projections, resolver
 boundary, probability provenance, and unsupported behavior for both map
-families. S0 implementation acceptance remains open until the supported laws,
-state fingerprints, source call order, and any future Nature continuation are
-validated against the native source.
+families. The session and bounded-index laws implement the current emulator
+continuation, while Gaussian laws remain approximate. S0 acceptance remains
+open until source geometry and support, call order, and Native stream/cursor
+parity are validated; the session does not provide that source evidence.
