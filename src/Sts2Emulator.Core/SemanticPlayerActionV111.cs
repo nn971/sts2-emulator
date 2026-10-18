@@ -210,15 +210,12 @@ public static class SemanticPlayerActionEngineV111
             run.World?.Combat is not { IsPlayerTurn: true,
                 AutomaticPipelineContinuation: null, PendingChoice: null,
                 PendingKnowledgeDemonChoice: null } combat ||
-            combat.SemanticDeck is not { } deck)
+            combat.SemanticDeck is null)
             throw new InvalidOperationException(
                 "Expected an idle semantic Nature player combat boundary.");
-        SemanticDeckEngineV111.Validate(deck);
-        if (deck.Mode != SemanticDeckStateV111.NatureMode ||
-            deck.Pending is not null ||
-            !SemanticDeckEngineV111.AllCardInstanceIds(deck)
-                .Order().SequenceEqual(combat.DrawPile.Order()))
-            throw new InvalidDataException(
-                "Player-boundary physical pile diverges from Nature's private deck.");
+        SemanticDrawPileAdapterV111.ValidateNatureDeckBoundary(
+            combat,
+            "Expected an idle semantic Nature player combat boundary.",
+            "Player-boundary physical pile diverges from Nature's private deck.");
     }
 }
