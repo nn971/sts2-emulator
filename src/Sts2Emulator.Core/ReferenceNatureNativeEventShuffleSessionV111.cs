@@ -23,8 +23,10 @@ internal sealed record NativeEventShufflePlanV111(
         SiteId == PrototypeGameEngine.FishingRodUpgradeSiteId;
     public bool IsImprovementUpgrade =>
         SiteId == PrototypeGameEngine.ImprovementCardSiteId;
+    public bool IsPaelsToothReturn =>
+        SiteId == PrototypeGameEngine.PaelsToothCardReturnSiteId;
     public bool IsCombatEndIndex => IsFishingRodUpgrade ||
-        IsImprovementUpgrade;
+        IsImprovementUpgrade || IsPaelsToothReturn;
     public int SwapCount => CandidateCount - 1;
     public bool IsRepyChestOffer => SiteId == PrototypeNativeHiveEvents
         .WarHistorianRepyRelicShuffleSiteId;
@@ -95,15 +97,25 @@ internal static class NativeEventShufflePlanBuilderV111
             origin.World.Combat.PlayerPowers.Any(power =>
                 power.PowerId == PrototypeNativeGloryEvents.ImprovementId &&
                 power.Stacks > 0);
+        var paelsToothVictoryAction =
+            origin.Phase == RunPhase.Combat &&
+            (siteId is null || siteId ==
+                PrototypeGameEngine.PaelsToothCardReturnSiteId) &&
+            origin.World is { Event: null, Combat: not null } &&
+            origin.Player.Relics.Any(relic => !relic.IsMelted &&
+                relic.RelicId == NativePaelRewardsV111.ToothId &&
+                NativePaelRewardsV111.ToothCards(relic).Length > 0);
         var world = origin.World;
         var activeEvent = world?.Event;
         if (string.IsNullOrWhiteSpace(origin.RunSeed) ||
-            origin.NativeRunRng is null && !improvementVictoryAction ||
+            origin.NativeRunRng is null && !improvementVictoryAction &&
+                !paelsToothVictoryAction ||
             world is null ||
             activeEvent is null && !fakeMerchantEntryAction &&
                 !warHammerEliteVictoryAction &&
                 !fishingRodVictoryAction &&
-                !improvementVictoryAction ||
+                !improvementVictoryAction &&
+                !paelsToothVictoryAction ||
             activeEvent?.ControlledChoice is not null ||
             activeEvent?.NativeEventPotionSlot is not null ||
             origin.ControlledEventRewardChoice is not null)
@@ -116,7 +128,9 @@ internal static class NativeEventShufflePlanBuilderV111
                     ? "run.combat.fishing_rod"
                     : improvementVictoryAction
                         ? "run.combat.improvement_upgrade"
-                        : "run.combat.elite_war_hammer");
+                        : paelsToothVictoryAction
+                            ? "run.combat.paels_tooth"
+                            : "run.combat.elite_war_hammer");
         siteId ??= evt.EventId switch
         {
             PrototypeNativeUnderdocksDoors.EventId =>
@@ -141,6 +155,8 @@ internal static class NativeEventShufflePlanBuilderV111
                 PrototypeGameEngine.FishingRodUpgradeSiteId,
             _ when improvementVictoryAction =>
                 PrototypeGameEngine.ImprovementCardSiteId,
+            _ when paelsToothVictoryAction =>
+                PrototypeGameEngine.PaelsToothCardReturnSiteId,
             _ => throw new InvalidOperationException(
                 "No native event shuffle is pending at this event page.")
         };
@@ -159,6 +175,7 @@ internal static class NativeEventShufflePlanBuilderV111
             !warHammerEliteVictoryAction &&
             !fishingRodVictoryAction &&
             !improvementVictoryAction &&
+            !paelsToothVictoryAction &&
             !fakeMerchantEntryAction)
             throw new InvalidOperationException(
                 "Native shuffle Nature choices require a pending event action, an admitted combat-victory hook, or Fake Merchant entry.");
@@ -227,6 +244,34 @@ internal static class NativeEventShufflePlanBuilderV111
                 capture.Run.World?.Combat is not null || requests.Length == 0)
                 throw new InvalidOperationException(
                     "Improvement ReferenceNature requires a combat action that immediately wins and triggers at least one upgrade draw.");
+            var firstRequest = requests[0].Request;
+            orderedCandidateIds = firstRequest.OrderedCandidates
+                .Select(index => index.ToString(
+                    System.Globalization.CultureInfo.InvariantCulture))
+                .ToArray();
+            candidateCount = firstRequest.SupportCount;
+            ownerId = firstRequest.OwnerId;
+            nativeRngEventId = string.Empty;
+        }
+        else if (paelsToothVictoryAction && siteId ==
+            PrototypeGameEngine.PaelsToothCardReturnSiteId)
+        {
+            resolvedActionId = actionId ?? throw new InvalidOperationException(
+                "Pael's Tooth card return requires the stable ID of its victory action.");
+            replayAction = new PrototypeGameEngine().GetLegalActions(origin)
+                .SingleOrDefault(action =>
+                    PrototypeAiEnvironment.StableActionId(action) ==
+                    resolvedActionId);
+            if (replayAction is null)
+                throw new InvalidOperationException(
+                    "Pael's Tooth card return action is not legal in the current combat state.");
+            var capture = CapturePaelsToothRequests(
+                origin, replayAction, [], allowLegacyTail: true);
+            var requests = capture.SiteRequests;
+            if (capture.Run.Phase != RunPhase.Reward ||
+                capture.Run.World?.Combat is not null || requests.Length == 0)
+                throw new InvalidOperationException(
+                    "Pael's Tooth ReferenceNature requires a combat action that immediately wins and returns at least one saved card.");
             var firstRequest = requests[0].Request;
             orderedCandidateIds = firstRequest.OrderedCandidates
                 .Select(index => index.ToString(
@@ -551,7 +596,10 @@ internal static class NativeEventShufflePlanBuilderV111
             PrototypeGameEngine.FishingRodUpgradeSiteId;
         var isImprovementUpgrade = siteId ==
             PrototypeGameEngine.ImprovementCardSiteId;
-        var isCombatEndIndex = isFishingRodUpgrade || isImprovementUpgrade;
+        var isPaelsToothReturn = siteId ==
+            PrototypeGameEngine.PaelsToothCardReturnSiteId;
+        var isCombatEndIndex = isFishingRodUpgrade || isImprovementUpgrade ||
+            isPaelsToothReturn;
         var isWarHammerShuffle = siteId ==
             "relic.war_hammer.elite_upgrade.shuffle_swap_index";
         var isRepyShuffle = siteId == PrototypeNativeHiveEvents
@@ -570,6 +618,11 @@ internal static class NativeEventShufflePlanBuilderV111
         {
             streamSnapshot = null;
             streamId = "combat";
+        }
+        else if (isPaelsToothReturn)
+        {
+            streamSnapshot = null;
+            streamId = "reward";
         }
         else if (isRepyShuffle)
         {
@@ -662,7 +715,9 @@ internal static class NativeEventShufflePlanBuilderV111
                 ? "run.persistent_combat_end.index_choice"
                 : isImprovementUpgrade
                     ? "combat.improvement.power.index_choice"
-                    : "native_event.fisher_yates_shuffle",
+                    : isPaelsToothReturn
+                        ? "relic.paels_tooth.card_return.index_choice"
+                        : "native_event.fisher_yates_shuffle",
             eventId = evt.EventId,
             page = evt.NativePageIndex,
             actionId = resolvedActionId,
@@ -676,11 +731,14 @@ internal static class NativeEventShufflePlanBuilderV111
                 ? ChanceLawEngineV111.NativeRandomIndexConditioningPolicyId
                 : isImprovementUpgrade
                     ? ChanceLawEngineV111.RandomIndexConditioningPolicyId
-                    : ChanceLawEngineV111.NativeEventShuffleConditioningPolicyId
+                    : isPaelsToothReturn
+                        ? ChanceLawEngineV111.RandomIndexConditioningPolicyId
+                        : ChanceLawEngineV111.NativeEventShuffleConditioningPolicyId
         });
         return new(isWarHammerShuffle ? "run.combat.elite_war_hammer" :
                 isFishingRodUpgrade ? "run.combat.fishing_rod" :
                 isImprovementUpgrade ? "run.combat.improvement_upgrade" :
+                isPaelsToothReturn ? "run.combat.paels_tooth" :
                 evt.EventId,
             nativeRngEventId, siteId,
             resolvedActionId, replayAction, orderedCandidateIds, candidateCount,
@@ -855,6 +913,96 @@ internal static class NativeEventShufflePlanBuilderV111
         return new CombatEndIndexCaptureV111(run, siteRequests);
     }
 
+    internal static CombatEndIndexCaptureV111 CapturePaelsToothRequests(
+        RunState origin, GameAction action,
+        IReadOnlyList<RandomIndexDecisionV111> scriptedPrefix,
+        bool allowLegacyTail)
+    {
+        ArgumentNullException.ThrowIfNull(origin);
+        ArgumentNullException.ThrowIfNull(action);
+        ArgumentNullException.ThrowIfNull(scriptedPrefix);
+        var beforeStream = origin.Rng.Streams.SingleOrDefault(stream =>
+            stream.StreamId == "reward")
+            ?? throw new InvalidOperationException(
+                "Pael's Tooth replay requires the legacy reward stream.");
+        var beforeCallCount = beforeStream.CallCount ?? 0;
+        var toothId = NativePaelRewardsV111.ToothId;
+        var expectedReturns = origin.Player.Relics
+            .Select((relic, index) => (Relic: relic, Index: index))
+            .Where(item => !item.Relic.IsMelted &&
+                item.Relic.RelicId == toothId)
+            .Select(item => (item.Index,
+                Saved: NativePaelRewardsV111.ToothCards(item.Relic)))
+            .Where(item => item.Saved.Length > 0)
+            .ToArray();
+        var legacyProvider = new LegacyPrototypeRandomIndexProviderV111();
+        var provider = new CombatEndIndexPrefixProviderV111(
+            scriptedPrefix, allowLegacyTail, legacyProvider);
+        RunState run;
+        RandomBoundaryEventV111[] entries;
+        using (var journal = RandomBoundaryJournalV111.Begin())
+        using (StochasticProviderScopeV111.EnterFiltered(
+            provider, null,
+            request => request.IndexRequest?.SiteId ==
+                PrototypeGameEngine.PaelsToothCardReturnSiteId,
+            overrideExplicitProviders: true))
+        {
+            run = new PrototypeGameEngine().Step(
+                origin.Fork(), action).State;
+            entries = journal.Entries.ToArray();
+        }
+        provider.AssertComplete();
+        var siteRequests = entries.Where(entry => entry.Request.SiteId ==
+            PrototypeGameEngine.PaelsToothCardReturnSiteId).ToArray();
+        var rewardEvents = entries.Where(entry =>
+            entry.Request.StreamId == "reward").ToArray();
+        var targetRequestsAreLeading = siteRequests.Length <=
+            rewardEvents.Length && rewardEvents.Take(siteRequests.Length)
+                .All(entry => entry.Request.SiteId ==
+                    PrototypeGameEngine.PaelsToothCardReturnSiteId);
+        var validSiteRequests = siteRequests.Select((entry, index) =>
+        {
+            if (index >= expectedReturns.Length)
+                return false;
+            var expected = expectedReturns[index];
+            var request = entry.Request;
+            var expectedOwner = $"player:0:relic:{expected.Index}:saved_cards:"
+                + CanonicalJson.Sha256(expected.Saved);
+            return request.StreamId == "reward" &&
+                request.Ordinal == checked((int)(beforeCallCount +
+                    (ulong)index)) &&
+                request.OperationKind == "choose_index" &&
+                request.OwnerId == expectedOwner &&
+                request.SupportCount == expected.Saved.Length &&
+                request.OrderedCandidates.SequenceEqual(
+                    Enumerable.Range(0, expected.Saved.Length));
+        }).All(valid => valid);
+        var rewardOrdinalsMatch = rewardEvents.Select((entry, index) =>
+            beforeCallCount + (ulong)index <= int.MaxValue &&
+            entry.Request.Ordinal == checked((int)(beforeCallCount +
+                (ulong)index))).All(matches => matches);
+        var scriptedCount = Math.Min(scriptedPrefix.Count,
+            siteRequests.Length);
+        var expectedLegacyDraws = rewardEvents.Length - scriptedCount;
+        var afterStream = run.Rng.Streams.SingleOrDefault(stream =>
+            stream.StreamId == "reward");
+        var actualAdvance = afterStream is null ? ulong.MaxValue :
+            unchecked((afterStream.CallCount ?? 0) - beforeCallCount);
+        var expectedModes = siteRequests.Select((entry, index) =>
+            entry.ProviderMode == (index < scriptedPrefix.Count
+                ? "scripted-v111" : legacyProvider.Mode)).All(matches => matches);
+        if (siteRequests.Length < scriptedPrefix.Count ||
+            siteRequests.Length != expectedReturns.Length ||
+            !targetRequestsAreLeading || !validSiteRequests ||
+            !rewardOrdinalsMatch || !expectedModes ||
+            actualAdvance != (ulong)expectedLegacyDraws ||
+            run.Phase != RunPhase.Reward || run.World?.Combat is not null ||
+            !allowLegacyTail && siteRequests.Length != scriptedPrefix.Count)
+            throw new InvalidDataException(
+                "Pael's Tooth replay differs from the captured immediate-victory saved-card prefix or reward cursor.");
+        return new CombatEndIndexCaptureV111(run, siteRequests);
+    }
+
     internal static CombatEndIndexCaptureV111
         CaptureCombatEndIndexRequests(
             RunState origin, NativeEventShufflePlanV111 plan,
@@ -866,6 +1014,9 @@ internal static class NativeEventShufflePlanBuilderV111
             : plan.IsImprovementUpgrade
                 ? CaptureImprovementRequests(
                     origin, plan.ReplayAction, scriptedPrefix, allowTail)
+                : plan.IsPaelsToothReturn
+                    ? CapturePaelsToothRequests(
+                        origin, plan.ReplayAction, scriptedPrefix, allowTail)
                 : throw new InvalidOperationException(
                     "Combat-end capture requested for another stochastic site.");
 
@@ -1268,8 +1419,11 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
         plan.IsFishingRodUpgrade
             ? ChanceLawEngineV111
                 .QueryNativePersistentCombatEndUpgrade(request)
-            : ChanceLawEngineV111.QueryImprovementCombatEndUpgrade(
-                plan.ActionId, request);
+            : plan.IsImprovementUpgrade
+                ? ChanceLawEngineV111.QueryImprovementCombatEndUpgrade(
+                    plan.ActionId, request)
+                : ChanceLawEngineV111.QueryPaelsToothCombatEndReturn(
+                    plan.ActionId, request);
 
     private void ValidateCombatEndIndex(NativeEventShufflePlanV111 plan)
     {
@@ -1412,6 +1566,7 @@ public static partial class ChanceLawEngineV111
     [
         "relic.persistent_combat_end.random_upgrade.index_draw",
         "combat.glory_tinker.improvement_card.index_draw",
+        "relic.paels_tooth.card_return.index_draw",
         "relic.war_hammer.elite_upgrade.shuffle_swap_index",
         PrototypeNativeUnderdocksDoors.ShuffleSiteId,
         PrototypeNativeGloryEvents.HungryForMushroomsShuffleSiteId,
@@ -1507,8 +1662,11 @@ public static partial class ChanceLawEngineV111
         return plan.IsFishingRodUpgrade
             ? ChanceLawEngineV111
                 .QueryNativePersistentCombatEndUpgrade(selectedRequest)
-            : ChanceLawEngineV111.QueryImprovementCombatEndUpgrade(
-                plan.ActionId, selectedRequest);
+            : plan.IsImprovementUpgrade
+                ? ChanceLawEngineV111.QueryImprovementCombatEndUpgrade(
+                    plan.ActionId, selectedRequest)
+                : ChanceLawEngineV111.QueryPaelsToothCombatEndReturn(
+                    plan.ActionId, selectedRequest);
     }
 
     public static ChanceLawV111 QueryNativeRepyPotionOffer(

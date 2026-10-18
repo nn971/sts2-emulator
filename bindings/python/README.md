@@ -103,6 +103,15 @@ The Improvement law can be queried directly with the same legal victory
 action ID and a complete `prior_indices` prefix. Later pick support is rebuilt
 after those earlier selected cards are removed.
 
+The same session also accepts a legal combat victory that returns cards from
+Pael's Tooth. Pass `site_id="relic.paels_tooth.card_return.index_draw"` and
+the legal victory `action_id`. Each nonempty, non-melted Tooth queue is
+sampled in relic-slot order with an `UNVERIFIED` legacy `reward` index law.
+Unrelated reward draws before or between returns make the action ineligible;
+later ordinary reward generation keeps its legacy provider. The law can be
+queried directly with the same action ID and a complete `prior_indices`
+prefix.
+
 For supported configured Native event-entry draws, call
 `State.begin_reference_nature_native_event_gold(action_id, nature_seed=None)`
 with the stable legal Event-node action ID. The session covers generated gold,

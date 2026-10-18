@@ -2,6 +2,9 @@ namespace Sts2Emulator.Core;
 
 public sealed partial class PrototypeGameEngine
 {
+    public const string PaelsToothCardReturnSiteId =
+        "relic.paels_tooth.card_return.index_draw";
+
     internal static RunState ApplyPaelsToothAfterCombat(RunState state)
     {
         if (state.Player.Hp <= 0 || state.World is not { } world)
@@ -24,7 +27,7 @@ public sealed partial class PrototypeGameEngine
 
             var selectedIndex = LegacyRandomChoiceV111.ChooseIndexRange(
                 state.Rng,
-                "relic.paels_tooth.card_return.index_draw",
+                PaelsToothCardReturnSiteId,
                 "reward",
                 $"player:0:relic:{relicIndex}:saved_cards:"
                     + CanonicalJson.Sha256(saved),

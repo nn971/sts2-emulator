@@ -769,6 +769,26 @@ public static partial class ChanceLawEngineV111
         return QueryRandomIndex(eventId, request);
     }
 
+    internal static ChanceLawV111 QueryPaelsToothCombatEndReturn(
+        string actionId, RandomIndexRequestV111 request)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(actionId);
+        ArgumentNullException.ThrowIfNull(request);
+        request.Validate();
+        if (request.SiteId != PrototypeGameEngine.PaelsToothCardReturnSiteId ||
+            request.StreamId != "reward" ||
+            request.OperationKind != "choose_index")
+            throw new ArgumentException(
+                "Pael's Tooth law requires its legacy reward index request.",
+                nameof(request));
+        var eventId = CanonicalJson.Sha256(new
+        {
+            boundary = "relic.paels_tooth.card_return.index_choice",
+            actionId
+        });
+        return QueryRandomIndex(eventId, request);
+    }
+
     /// <summary>
     /// Query one pre-event Ancient offer decision. Direct offer pools return
     /// stable choice identities; shuffle-based offers return the bounded

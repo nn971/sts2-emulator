@@ -12,7 +12,8 @@ The run-stream resolvers cover one War Hammer after an action immediately
 wins an ordinary Elite fight and Fishing Rod's triggered combat-end upgrade
 indices after an ordinary combat victory. The same saved replay also covers
 Mad Science Improvement's legacy combat-stream indices after an immediate
-combat victory.
+combat victory, and Pael's Tooth's legacy reward-stream indices during its
+post-combat card return.
 
 ## Boundary
 
@@ -73,6 +74,14 @@ the Improvement Power reaches at least one eligible-card draw. Its legacy
 pick. The session recaptures later supports after earlier indices are applied
 and rejects other `combat`-stream draws at the same boundary.
 
+Pael's Tooth accepts a legal combat action only when it wins immediately and
+at least one non-melted Tooth has saved cards to return. It scripts one
+`reward` index per nonempty Tooth in relic-slot order, using each queue's
+source-ordered physical card instances. It rejects unrelated `reward` draws
+before or between those selections. Requests after the final Tooth selection,
+including ordinary reward generation, keep their legacy provider and are
+preserved by the replay.
+
 ## Laws and replay
 
 The player-visible event projection exposes the resulting page, offers, and
@@ -106,6 +115,12 @@ Improvement's pending law is the generic uniform-index model for its saved
 legacy `combat` request and remains `UNVERIFIED`. The ordinary victory hook
 maps each index to one eligible physical card and removes that card from the
 next request's support.
+
+Pael's Tooth's pending law is the generic uniform-index model for its saved
+legacy `reward` request and remains `UNVERIFIED`. The direct query and session
+reconstruct the current queue from the selected relic slot and saved-card
+identity hash; the law does not establish source probability or Native stream
+ownership.
 
 The Fragrant Mushroom, Tinker type, Tinker rider, and Fake Merchant stock
 shuffle sites have separate laws. A rider law is conditioned on the prior
@@ -152,6 +167,13 @@ leaves the legacy stream at its entry cursor. The hook's without-replacement
 support is recaptured after each prior selection; the ordinary victory action
 then applies all selected upgrades before the result and Nature cursor commit.
 
+For Pael's Tooth, replay scripts each captured `reward` index request and
+does not advance the legacy stream for those scripted selections. It commits
+returned cards, relic saved-card queues, any later ordinary reward mechanics,
+and the Nature cursor together. Additional `reward` draws after the final
+Tooth return remain legacy draws and advance the legacy cursor; those draws do
+not enter the Tooth Nature prefix.
+
 For Repy, replay scripts the relic Fisher–Yates requests and both potion
 index requests as one typed prefix. The `player.rewards` cursor remains at its
 captured entry state, while request ordinals preserve the source call order
@@ -166,11 +188,11 @@ This does not establish source probability calibration, live-game parity, or
 Native seeded result parity. It does not add shuffle mechanics: future sites
 can use the same session only when their existing
 resolver's conditioning plan and action replay are explicitly admitted. The
-Doors, Tinker, Battleworn, Fake Merchant, War Hammer, Fishing Rod, and
-Improvement source audits remain authoritative for their modeled eligibility
+Doors, Tinker, Battleworn, Fake Merchant, War Hammer, Fishing Rod,
+Improvement, and Pael's Tooth source audits remain authoritative for their modeled eligibility
 and flow. Battleworn's session covers a
 winning combat action boundary; it does not create a multi-action combat
-continuation. Fishing Rod and Improvement use their existing ordinary
+continuation. Fishing Rod, Improvement, and Pael's Tooth use their existing ordinary
 victory hooks and do not establish source trigger or pool fidelity. Fake Merchant's session does not control or reinterpret the
 ordinary weighted event-selection law; its availability depends on that
 provider's result for the selected Event node.
