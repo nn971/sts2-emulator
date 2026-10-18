@@ -169,44 +169,12 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidDataException(
                 "Semantic effect-draw cost checkpoint is inconsistent.");
 
-        var progress = ResolveDrawCostAndDispatchCardDrawn(
-            state, cost, value, allowHookSuspension: true);
-        if (progress.CostStagePending)
-            return progress.Run;
-        var resumedRun = progress.Run;
-        var resumedWorld = RequireWorld(resumedRun);
-        var resumedCombat = resumedWorld.Combat ??
-            throw new InvalidDataException(
-                "Draw-cost resume removed combat.");
-        if (progress.DrawnHookSuspended)
-        {
-            if (resumedCombat.PendingChoice is null)
-                throw new NotSupportedException(
-                    "UNSUPPORTED_SEMANTIC_DECK site=combat.draw.CardDrawn " +
-                    "operation=nested_choice_continuation");
-            var resumeDraw = CreateDrawResumeOperation(
-                cost.RemainingCount,
-                draw.FromHandDraw,
-                draw.EventDepth,
-                draw.DrawnCardKeyword,
-                draw.DeferredKeywordCardInstanceIds);
-            var combatWithDraw = AttachDrawResumeContinuation(
-                resumedCombat, resumeDraw, continuation);
-            return resumedRun with
-            {
-                World = resumedWorld with { Combat = combatWithDraw }
-            };
-        }
-
-        var drawn = DrawCards(
-            resumedRun.Player, resumedCombat, cost.RemainingCount,
-            resumedRun.Rng, cost.FromHandDraw, eventDepth: cost.EventDepth,
-            suspensionPolicy:
-                PrototypeDrawCardsSuspensionPolicyV111
-                    .SemanticDrawCards(effectDraw: true));
-        var continued = ContinueControlledSemanticEffectDraw(
-            resumedRun, drawn, draw, continuation);
-        return ResumeAutomaticPipelineContinuation(continued);
+        return ContinueSemanticDrawCost(
+            state, cost, draw, value, continuation,
+            automaticHandDrawRequested: null,
+            resumeKind: SemanticDrawCostResumeKindV111.CardEffect,
+            recycleSite: "combat.card_effect.draw",
+            recycleOperation: "recycle_requires_composed_continuation").Run;
     }
 
     /// <summary>Advance one cost decision, then dispatch CardDrawn once and

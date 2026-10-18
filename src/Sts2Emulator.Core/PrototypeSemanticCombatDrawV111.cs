@@ -7,6 +7,13 @@ namespace Sts2Emulator.Core;
 /// </summary>
 public sealed partial class PrototypeGameEngine
 {
+    private enum SemanticDrawCostResumeKindV111
+    {
+        Standalone,
+        AutomaticHandDraw,
+        CardEffect
+    }
+
     internal static (RunState Run, int RemainingCount)
         BeginSemanticCombatDraw(RunState run, int count, bool fromHandDraw)
     {
@@ -64,13 +71,12 @@ public sealed partial class PrototypeGameEngine
         var pending = combat.PendingChoice;
         var cost = pending?.ControlledDrawCost;
         bool automatic = IsSemanticAutomaticHandDraw(combat);
-        if (deck.Pending is not null ||
+        if (cost is null || deck.Pending is not null ||
             (combat.AutomaticPipelineContinuation is not null && !automatic) ||
             (automatic && (
-                !cost!.FromHandDraw ||
+                !cost.FromHandDraw ||
                 combat.AutomaticPipelineContinuation!
                     .ControlledSemanticDrawRemaining != cost.RemainingCount)) ||
-            cost is null ||
             combat.PendingKnowledgeDemonChoice is not null ||
             cost.RemainingCount < 0 || cost.EventDepth != 0 ||
             !ValidateControlledDrawCost(
@@ -78,15 +84,65 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidDataException(
                 "Semantic cost checkpoint/card identity/stage is inconsistent.");
 
-        // Cost selection and its CardDrawn mechanics are shared with nested
-        // effect draws; the facade below only chooses the saved resume frame.
+        int? automaticRequested = automatic
+            ? combat.AutomaticPipelineContinuation!
+                .ControlledSemanticDrawRequested ??
+                throw new InvalidDataException(
+                    "Automatic semantic draw lost its requested count.")
+            : null;
+        var draw = CreateSemanticDrawResultFrame(
+            cost.RemainingCount, cost.FromHandDraw, cost.EventDepth,
+            automatic);
+        return ContinueSemanticDrawCost(
+            run, cost, draw, value, continuation: null,
+            automaticRequested,
+            resumeKind: automatic
+                ? SemanticDrawCostResumeKindV111.AutomaticHandDraw
+                : SemanticDrawCostResumeKindV111.Standalone,
+            recycleSite: "combat.draw.cost",
+            recycleOperation: "unsupported_post_cost_stage");
+    }
+
+    /// <summary>
+    /// Shared post-cost continuation for automatic/standalone semantic draws
+    /// and nested card-effect draws. The frame and caller policy determine
+    /// which saved continuation owns any later hook or pipeline boundary.
+    /// </summary>
+    private static (RunState Run, int RemainingCount)
+        ContinueSemanticDrawCost(
+            RunState run,
+            PrototypeControlledDrawCostV111 cost,
+            PrototypeControlledSemanticDrawV111 draw,
+            int selectedCost,
+            PrototypeChoiceResolutionContinuationState? continuation,
+            int? automaticHandDrawRequested,
+            SemanticDrawCostResumeKindV111 resumeKind,
+            string recycleSite,
+            string recycleOperation)
+    {
+        bool automaticHandDraw =
+            resumeKind == SemanticDrawCostResumeKindV111.AutomaticHandDraw;
+        bool effectDraw =
+            resumeKind == SemanticDrawCostResumeKindV111.CardEffect;
+        if (!ControlledChanceGuardV111.Active ||
+            cost.RemainingCount != draw.RemainingCount ||
+            cost.FromHandDraw != draw.FromHandDraw ||
+            cost.EventDepth != draw.EventDepth ||
+            automaticHandDraw != (automaticHandDrawRequested is not null) ||
+            effectDraw != (continuation is not null) ||
+            !Enum.IsDefined(resumeKind))
+            throw new InvalidDataException(
+                "Semantic draw-cost continuation frame is inconsistent.");
+
         var progress = ResolveDrawCostAndDispatchCardDrawn(
-            run, cost, value, allowHookSuspension: !automatic);
+            run, cost, selectedCost,
+            allowHookSuspension: !automaticHandDraw);
         if (progress.CostStagePending)
             return (progress.Run, cost.RemainingCount);
+
         run = progress.Run;
-        world = RequireWorld(run);
-        combat = world.Combat ?? throw new InvalidDataException(
+        var world = RequireWorld(run);
+        var combat = world.Combat ?? throw new InvalidDataException(
             "Semantic cost resume removed combat.");
         if (progress.DrawnHookSuspended)
         {
@@ -94,31 +150,45 @@ public sealed partial class PrototypeGameEngine
                 throw new NotSupportedException(
                     "UNSUPPORTED_SEMANTIC_DECK site=combat.draw.CardDrawn " +
                     "operation=nested_choice_continuation");
-            if (automatic)
+            if (effectDraw)
+            {
+                var outerContinuation = continuation!;
+                var resumeDraw = CreateDrawResumeOperation(
+                    cost.RemainingCount,
+                    draw.FromHandDraw,
+                    draw.EventDepth,
+                    draw.DrawnCardKeyword,
+                    draw.DeferredKeywordCardInstanceIds);
+                var combatWithDraw = AttachDrawResumeContinuation(
+                    combat, resumeDraw, outerContinuation);
+                return (run with
+                {
+                    World = world with { Combat = combatWithDraw }
+                }, cost.RemainingCount);
+            }
+            if (automaticHandDraw)
                 return (SuspendSemanticAutomaticDrawAtHookChoice(
                     run, run.Player, combat, cost.RemainingCount,
-                    combat.AutomaticPipelineContinuation!
-                        .ControlledSemanticDrawRequested!.Value),
+                    automaticHandDrawRequested!.Value),
                     cost.RemainingCount);
-            var hookRun = SuspendStandaloneSemanticDrawAtHookChoice(
+            return (SuspendStandaloneSemanticDrawAtHookChoice(
                 run, run.Player, combat, cost.RemainingCount,
-                cost.FromHandDraw, cost.EventDepth);
-            return (hookRun, cost.RemainingCount);
+                cost.FromHandDraw, cost.EventDepth), cost.RemainingCount);
         }
 
-        var continued = DrawCards(
+        var drawn = DrawCards(
             run.Player, combat, cost.RemainingCount, run.Rng,
             cost.FromHandDraw, eventDepth: cost.EventDepth,
             suspensionPolicy:
-                PrototypeDrawCardsSuspensionPolicyV111.SemanticDrawCards());
-        return ResumeSemanticCombatDrawResult(
-            run, continued, cost.FromHandDraw, cost.EventDepth,
-            automaticHandDrawRequested: automatic
-                ? combat.AutomaticPipelineContinuation!
-                    .ControlledSemanticDrawRequested
-                : null,
-            recycleSite: "combat.draw.cost",
-            recycleOperation: "unsupported_post_cost_stage");
+                PrototypeDrawCardsSuspensionPolicyV111.SemanticDrawCards(
+                    effectDraw: effectDraw));
+        var continued = ResolveControlledSemanticDrawResult(
+            run, drawn, draw, continuation, automaticHandDrawRequested,
+            recycleSite, recycleOperation);
+        var result = effectDraw
+            ? ResumeAutomaticPipelineContinuation(continued.Run)
+            : continued.Run;
+        return (result, continued.RemainingCount);
     }
 
     private static (RunState Run, int RemainingCount)
