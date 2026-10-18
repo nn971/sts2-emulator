@@ -1925,8 +1925,7 @@ public sealed partial class PrototypeGameEngine
                 RequireCombatCard(combat, id).Enchantment?.Kind
                     == PrototypeCardEnchantmentKind.PerfectFit).ToArray();
             combat = SemanticDrawPileAdapterV111.CommitNatureRecycle(
-                combat, semanticDeck, combat.DrawPile, eligible,
-                eligible, postHook, perfectFit);
+                combat, postHook, perfectFit);
         }
         else
             combat = SemanticDrawPileAdapterV111.ApplyDrawPileShuffle(
@@ -8140,9 +8139,8 @@ public sealed partial class PrototypeGameEngine
                                     draw.Concat(recycled).ToArray();
                                 combat = SemanticDrawPileAdapterV111
                                     .CommitNatureRecycle(
-                                        combat, semanticDeck, draw, discard,
-                                        recycled,
-                                        nextPhysicalDrawPile, perfectFit);
+                                        combat, nextPhysicalDrawPile,
+                                        perfectFit);
                                 semanticDeck = combat.SemanticDeck!;
                                 draw = combat.DrawPile.ToList();
                                 discard = combat.DiscardPile.ToList();
@@ -8191,8 +8189,7 @@ public sealed partial class PrototypeGameEngine
                                 { Mode: SemanticDeckStateV111.NativeMode })
                             {
                                 combat = CommitNativeSemanticRecycle(
-                                    combat, semanticDeck, draw, discard,
-                                    "combat.autoplay.top_draw");
+                                    combat, "combat.autoplay.top_draw");
                                 semanticDeck = combat.SemanticDeck!;
                                 draw = combat.DrawPile.ToList();
                                 discard = combat.DiscardPile.ToList();
@@ -8200,7 +8197,7 @@ public sealed partial class PrototypeGameEngine
                             else
                             {
                                 combat = CommitLegacyDrawPileRecycle(
-                                    combat, draw, discard, rng);
+                                    combat, rng);
                                 semanticDeck = combat.SemanticDeck;
                                 draw = combat.DrawPile.ToList();
                                 discard = combat.DiscardPile.ToList();
@@ -16196,8 +16193,7 @@ public sealed partial class PrototypeGameEngine
                         // card draws reveal this order without a second
                         // per-card random choice.
                         combat = CommitNativeSemanticRecycle(
-                            combat, deferred, draw, discard,
-                            "combat.draw.recycle");
+                            combat, "combat.draw.recycle");
                         deferred = combat.SemanticDeck!;
                         draw = combat.DrawPile.ToList();
                         discard = combat.DiscardPile.ToList();
@@ -16218,8 +16214,7 @@ public sealed partial class PrototypeGameEngine
                         var recycled = discard.ToArray();
                         var nextPhysicalDrawPile = draw.Concat(recycled).ToArray();
                         combat = SemanticDrawPileAdapterV111.CommitNatureRecycle(
-                            combat, deferred, draw, discard, recycled,
-                            nextPhysicalDrawPile, perfectFit);
+                            combat, nextPhysicalDrawPile, perfectFit);
                         deferred = combat.SemanticDeck!;
                         draw = combat.DrawPile.ToList();
                         discard = combat.DiscardPile.ToList();
@@ -16277,7 +16272,7 @@ public sealed partial class PrototypeGameEngine
                                 .ControlledRecycle(count - drawNumber));
 
                     combat = CommitLegacyDrawPileRecycle(
-                        combat, draw, discard, rng);
+                        combat, rng);
                     draw = combat.DrawPile.ToList();
                     discard = combat.DiscardPile.ToList();
                     combat = ApplyRelicAfterShuffleCards(combat, rng);
