@@ -408,6 +408,27 @@ public static partial class ChanceLawEngineV111
         "shop.relic_offer.price.index_draw"
     ];
 
+    private sealed record LegacyCallerBoundIndexQuerySiteV111(
+        string StreamId, string OperationKind, int MinimumSupportCount);
+
+    private static readonly Dictionary<string,
+        LegacyCallerBoundIndexQuerySiteV111>
+        LegacyCallerBoundIndexQuerySites = new(StringComparer.Ordinal)
+        {
+            ["event.random_upgrade.card_instance"] = new(
+                "event", "choose_index", 1),
+            ["event.reward.card_bundle.shuffle_swap_index"] = new(
+                "reward", "bounded_integer", 2),
+            ["relic.sand_castle.acquisition_upgrade.shuffle_swap_index"] =
+                new("event", "bounded_integer", 2),
+            ["run.random_pool_distinct.shuffle_swap_index"] = new(
+                "reward", "bounded_integer", 2),
+            ["shop.potion_offer.shuffle_swap_index"] = new(
+                "shop", "bounded_integer", 2),
+            ["shop.relic_offer.shuffle_swap_index"] = new(
+                "shop", "bounded_integer", 2)
+        };
+
     private static readonly string[] LegacyPotionDropTicketQuerySites =
     [
         "reward.random_potion.drop.ticket"
@@ -545,6 +566,13 @@ public static partial class ChanceLawEngineV111
 
     public static string[] LegacyShopRelicPriceQuerySiteIds =>
         (string[])LegacyShopRelicPriceQuerySites.Clone();
+
+    public static string[] LegacyCallerBoundIndexQuerySiteIds =>
+        LegacyCallerBoundIndexQuerySites.Keys
+            .Order(StringComparer.Ordinal).ToArray();
+
+    public static bool IsLegacyCallerBoundIndexQuerySite(string siteId) =>
+        LegacyCallerBoundIndexQuerySites.ContainsKey(siteId);
 
     public static string[] LegacyPotionDropTicketQuerySiteIds =>
         (string[])LegacyPotionDropTicketQuerySites.Clone();
@@ -1801,6 +1829,42 @@ public static partial class ChanceLawEngineV111
         return Create(eventId, siteId, operationKind, ownerId,
             ordinal, conditioningPolicyId, conditioningFingerprint,
             probabilityProvenance, outcomes);
+    }
+
+    /// <summary>
+    /// Query an allowlisted legacy index request using its fixed stream and
+    /// source operation. The caller declares the owner and current support.
+    /// </summary>
+    public static ChanceLawV111 QueryLegacyCallerBoundIndex(
+        string siteId, string ownerId, int ordinal, int supportCount)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+        if (!LegacyCallerBoundIndexQuerySites.TryGetValue(
+                siteId, out var site))
+            throw new NotSupportedException(
+                $"Legacy bounded-index Chance Law does not support site '{siteId}'.");
+        if (supportCount < site.MinimumSupportCount)
+            throw new ArgumentOutOfRangeException(nameof(supportCount),
+                $"The declared support for '{siteId}' must be at least {site.MinimumSupportCount}.");
+
+        var request = site.OperationKind == "bounded_integer"
+            ? new RandomIndexRequestV111(
+                siteId, site.StreamId, ownerId, ordinal, [],
+                OperationKind: site.OperationKind,
+                BoundedCount: supportCount)
+            : new RandomIndexRequestV111(
+                siteId, site.StreamId, ownerId, ordinal,
+                Enumerable.Range(0, supportCount).ToArray(),
+                OperationKind: site.OperationKind);
+        var eventId = CanonicalJson.Sha256(new
+        {
+            boundary = "legacy-caller-bounded-index-request",
+            request
+        });
+        return QueryRandomIndex(eventId, request);
     }
 
     /// <summary>

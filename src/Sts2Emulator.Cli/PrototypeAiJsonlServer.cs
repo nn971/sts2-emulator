@@ -2736,6 +2736,33 @@ internal static class PrototypeAiJsonlServer
                             });
                             break;
                         }
+                        if (ChanceLawEngineV111
+                            .IsLegacyCallerBoundIndexQuerySite(siteId))
+                        {
+                            RejectChanceLawQueryParameters(
+                                request, "owner_id", "support_count");
+                            var legacyBoundedOwnerId = OptionalString(
+                                request, "owner_id") ??
+                                throw new ArgumentException(
+                                    "Legacy bounded-index law requires owner_id.");
+                            var legacyBoundedSupportCount = OptionalInt(
+                                request, "support_count") ??
+                                throw new ArgumentException(
+                                    "Legacy bounded-index law requires support_count.");
+                            law = ChanceLawEngineV111
+                                .QueryLegacyCallerBoundIndex(
+                                    siteId, legacyBoundedOwnerId, ordinal,
+                                    legacyBoundedSupportCount);
+                            Write(new
+                            {
+                                requestId,
+                                ok = true,
+                                chanceLawSchemaId =
+                                    ChanceLawV111.CurrentSchemaId,
+                                law
+                            });
+                            break;
+                        }
                         if (siteId == NativePaelRewardsV111.LegionSkinSiteId)
                         {
                             var ownerId = OptionalString(request, "owner_id");
