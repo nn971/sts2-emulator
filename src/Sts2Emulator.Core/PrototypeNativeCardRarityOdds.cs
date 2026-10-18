@@ -117,25 +117,31 @@ public static class PrototypeNativeCardRarityOdds
 
     internal static float MerchantRarityRepresentative(
         string outcomeId, int offsetBasisPoints, int ascension)
-    {
-        var (rareBase, uncommonBase) = Thresholds(
+        => NativeRarityRepresentative(outcomeId, offsetBasisPoints,
             ascension, PrototypeNativeCardOddsSource.Shop);
-        var rareThreshold = checked(rareBase + offsetBasisPoints);
+
+    internal static float NativeRarityRepresentative(
+        string outcomeId, int offsetBasisPoints, int ascension,
+        PrototypeNativeCardOddsSource source)
+    {
+        var (rareThreshold, uncommonEnd) = NativeFloatThresholds(
+            offsetBasisPoints, ascension, source);
         var rareEnd = rareThreshold / 10000f;
-        var uncommonEnd =
-            (rareThreshold + uncommonBase) / 10000f;
+        var uncommonEndFloat = uncommonEnd / 10000f;
         var roll = outcomeId switch
         {
             "rarity:rare" when rareThreshold > 0 => 0f,
-            "rarity:uncommon" => (rareEnd + uncommonEnd) / 2f,
-            "rarity:common" => (uncommonEnd + 1f) / 2f,
+            "rarity:uncommon" when uncommonEnd > rareThreshold =>
+                (rareEnd + uncommonEndFloat) / 2f,
+            "rarity:common" when uncommonEnd < 10000 =>
+                (uncommonEndFloat + 1f) / 2f,
             _ => throw new ArgumentException(
-                "Outcome is not a positive native merchant card rarity.",
+                "Outcome is not a positive Native card rarity.",
                 nameof(outcomeId))
         };
         if (!float.IsFinite(roll) || roll < 0 || roll > 1 ||
             ResolveRarity(roll, offsetBasisPoints,
-                PrototypeNativeCardOddsSource.Shop, ascension).ToString()
+                source, ascension).ToString()
                 .ToLowerInvariant() != outcomeId[7..])
             throw new InvalidOperationException(
                 "No representative source float maps to the selected card rarity.");

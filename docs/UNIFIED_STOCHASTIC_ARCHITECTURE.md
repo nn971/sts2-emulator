@@ -189,18 +189,23 @@ conditioned discard-pile swap and resumes the same draw/effect suffix before
 the Mayhem pipeline advances. This integration does not claim source-calibrated
 draw probabilities.
 `ReferenceNatureMerchantSessionV111`,
-`ReferenceNatureTreasureSessionV111`, and
+`ReferenceNatureTreasureSessionV111`,
+`ReferenceNatureCombatRewardSessionV111`, and
 `ReferenceNatureNativeEventGoldSessionV111` provide serialized continuations
 and use the shared law-to-source mapping. Their opening projections sort the existing
 relic bag queues so Native's committed hidden queue order is not retained in
 Nature snapshots. Merchant and Treasure sessions seed sorted eligible rarity
 sets if the source run has no bag, while Native event-entry replay preserves an absent bag. Nature-owned sets
 serialize an optional `NatureUnordered` tag in the v3 snapshot schema, while
-Native bags omit the field and keep their current snapshot shape. The merchant
-and Treasure sessions do not model Native cursor advancement; the merchant also
-handles the four mixed rarity-float and model-index picks from a legal Alchemical
-Coffer purchase. Other stochastic merchant purchase effects and
-continued relic-bag pulls remain outside those boundaries. The
+Native bags omit the field and keep their current snapshot shape. The merchant,
+Treasure, and combat reward sessions do not model Native cursor advancement;
+the combat reward session replays registered reward requests from a legal
+immediate winning action and commits the reward and Nature cursor only after
+the full prefix completes. Legacy reward paths, Native relic-bag queue
+construction, and unregistered requests remain outside its coverage. The
+merchant also handles the four mixed rarity-float and model-index picks from a
+legal Alchemical Coffer purchase. Other stochastic merchant purchase effects
+and continued relic-bag pulls remain outside those boundaries. The
 generic ReferenceNature run-action session wraps deterministic Shop actions
 and a registered subset of index-only relic-acquisition hooks; it also
 continues legal legacy Act 1 Overgrowth and Underdocks Combat/Elite map-node
@@ -217,10 +222,11 @@ resolver used by ordinary relic pulls and native Treasure laws. It retains
 queue order for Native while exposing the selected fallback
 tier and eligible identities separately; `PullSelected` can remove a legal
 chosen identity while preserving all other queue entries. This is the shared
-mechanics apply path for controlled relic identity resolution. The merchant
-and Treasure sessions own their relic identity choices during their respective
-room entries; queue construction, later Treasure draws after purchases, and
-subsequent purchase effects remain outside those boundaries. Nature residual
+mechanics apply path for controlled relic identity resolution. The merchant,
+Treasure, and combat reward sessions own their relic identity choices during
+their respective room/reward boundaries; queue construction, later Treasure
+draws after purchases, and subsequent purchase effects remain outside those
+boundaries. Nature residual
 sets retain canonical identity support only; unsupported queue-order pulls
 fail closed until their matching Chance Law continuation is implemented.
 
@@ -233,7 +239,9 @@ queue order. During Treasure replay, `Draw` exposes the Nature-only typed site
 `treasure.relic_grab_bag.model.index_draw` after the rarity float, labels the
 sorted fallback support, and applies the selected identity through the same
 pull plan. The merchant and Treasure sessions consume their respective sites
-as steps in their atomic room-entry continuations.
+as steps in their atomic room-entry continuations; the combat reward session
+consumes the same identity site after each registered reward rarity request
+and prior pull.
 
 ## Semantic lifecycle and provider interchangeability
 
@@ -244,7 +252,7 @@ The **same game mechanics** issues semantic stochastic operations and applies th
 3. **Consume / apply** the resulting physical identity or move through the ordinary engine; run its hooks **exactly once**, and continue to the next mechanical/chance/player boundary.
 4. **Update / reset** the provider's ordering constraints in response to exact insertions, reveals, peeks/scry, removals, card creation, discard/recycle and source-time reshuffles.
 
-The JSONL bridge keeps `semantic_observe` as the fair player projection and exposes Nature-only pending chance boundaries through the separately versioned `SemanticNatureChoiceViewV111` contract. `nature_choice_observe` reuses the existing pending-law projections for semantic combat, ReferenceNature combat, run-action, event-choice, Ancient-offer, Neow-offer, Trash Heap, Tablet of Truth, Trial, native event shuffle, Native event entry, Endless Conveyor, Glory Reflections, Infested Automaton, Punch Off fight and reward, merchant, Treasure, map generation, and controlled event/run-action sessions; `semantic_nature_observe` remains a semantic-combat alias. The v2 view binds event identity and event/law support fingerprints to the Chance Law conditioning state; it filters forbidden provider fields and current selected-result fields at the event envelope and recursively removes provider stream, seed, cursor, RNG-state, and call-count metadata plus named or structurally recognized raw run snapshots. Validation rejects any such metadata that remains. The capability manifest advertises the schema, operations, and accepted session kinds. The JSONL `hello` response builds its manifest from the same validated coverage object it publishes, keeping negotiated session schema IDs identical to that response's coverage fields.
+The JSONL bridge keeps `semantic_observe` as the fair player projection and exposes Nature-only pending chance boundaries through the separately versioned `SemanticNatureChoiceViewV111` contract. `nature_choice_observe` reuses the existing pending-law projections for semantic combat, ReferenceNature combat, run-action, event-choice, Ancient-offer, Neow-offer, Trash Heap, Tablet of Truth, Trial, native event shuffle, Native event entry, Endless Conveyor, Glory Reflections, Infested Automaton, Punch Off fight and reward, merchant, Treasure, combat reward, map generation, and controlled event/run-action sessions; `semantic_nature_observe` remains a semantic-combat alias. The v2 view binds event identity and event/law support fingerprints to the Chance Law conditioning state; it filters forbidden provider fields and current selected-result fields at the event envelope and recursively removes provider stream, seed, cursor, RNG-state, and call-count metadata plus named or structurally recognized raw run snapshots. Validation rejects any such metadata that remains. The capability manifest advertises the schema, operations, and accepted session kinds. The JSONL `hello` response builds its manifest from the same validated coverage object it publishes, keeping negotiated session schema IDs identical to that response's coverage fields.
 
 A native Fisher–Yates shuffle and Nature's later `draw_card` events can express the **same underlying random permutation**. Never expose or likelihood-weight both for that single randomization. Source-native low-level primitive calls (including singleton draws) remain available for native parity instrumentation, independently of semantic Nature events. Preserve stable card **instance** identity and history-dependent eligibility.
 
@@ -333,6 +341,7 @@ approximations at other bounds remain `UNVERIFIED`.
 - The retained legacy Native-merchant price-index and card-upgrade ticket requests have direct Chance Law queries over their source-shaped supports. Their equal request-index weights remain `UNVERIFIED`, and no atomic ReferenceNature continuation covers that fallback route; reaching one during a session remains fail-closed.
 - Native merchant laws are queryable at a pre-entry configured Shop boundary and are consumed by `ReferenceNatureMerchantSessionV111` during atomic Shop generation. Sale-slot and card, Colorless-card, and merchant-potion model indices use exact Native bounded-index masses; merchant card, potion, and relic rarity thresholds use exact preimages of the rounded Native `NextFloat()` grid; supported rounded-price mappings count exact preimages through the source modifier and price conversion. The same mixed merchant session also accepts the legal Alchemical Coffer purchase and conditions its four PotionFactory rarity/model pairs on the sampled prefix. These transforms are `SOURCE_VERIFIED` on their declared supports. Native completeness of the restricted item pools and base-cost tables, stream attribution, seed frequencies, and cursor parity remain separate. The generic run-action session handles deterministic Shop purchases and a registered subset of index-only purchase effects; other stochastic purchase hooks remain fail-closed.
 - Native Treasure laws are available before a reachable, non-skipped configured Treasure node. The compact `treasure.relic_grab_bag.draw` query integrates nominal rarity thresholds with the hidden uniform permutation of remaining rarity queues. The atomic `ReferenceNatureTreasureSessionV111` samples the rarity float and then, when eligible, a conditional relic identity, applying the shared source fallback plan without exposing queue order. Its provenance remains `UNVERIFIED`; ordinary Native entry retains its source-owned rarity roll and queue-front draw.
+- Configured Native combat victory now has an atomic `ReferenceNatureCombatRewardSessionV111`. Begin with a legal Combat, Elite, or Boss action that immediately enters `Reward`; replay captures the registered pity, gold, potion, card, relic, boss-offer, and Lava Rock reward requests, and publishes the reward state with the Nature cursor only after the entire prefix validates. It reuses exact source-grid laws for bounded indices and threshold floats and leaves the Native relic identity law `UNVERIFIED`. Legacy reward generation, Native relic-bag queue construction, other unlisted requests, source-pool completeness, stream attribution, seeded Native parity, and Native cursor parity remain outside the claim. See the [combat reward session contract](REFERENCE_NATURE_COMBAT_REWARD_D3.md).
 - Native Lost Wisp and Jungle Maze Adventure unit-float mappings and the pinned generated-gold bounded-index mappings have conditional read-only laws with exact source-grid masses. Callers supply `event_id` as an explicit branch condition; queries do not inspect Native event-selection results. `ReferenceNatureNativeEventGoldSessionV111` consumes those requests during configured Event-node entry. It does not model the complete Event-node selection law; legacy fallbacks, event-pool completeness, seed frequencies, stream attribution, and cursor parity remain open.
 - Stone of All Time `push_ticket` and `lift_ticket` queries condition on a legal event action and return one `no_effect` outcome because the pinned resolver discards each bounded result. Native tickets use declared source ordinal 1 after the entry potion-slot draw; legacy callers supply the request ordinal. Queries do not inspect the saved `event` stream cursor. Replay validates the typed request against the saved mechanics boundary and chronological provider prefix. The atomic controlled event-choice session covers both Native and retained legacy routes: lift suspends before potion/Max HP mutation, while push first records the player deck-card choice and then suspends at its ticket. A lethal push HP cost ends the run before the ticket. Controlled outcomes advance neither provider cursor; seeded stream parity remains open.
 - Stone of All Time's entry-time potion-slot query conditions on an explicit `event_id` branch and a legal Event-node action. Native reports exact bounded-index masses over the ordered occupied slots with ordinal 0; the legacy ReferenceNature route reports equal support weights, uses the caller's declared source ordinal after Event selection, and remains `UNVERIFIED`. The query does not read the legacy stream cursor. The Native event-entry session consumes the declared Native request; the existing push/lift continuation composes afterward at Native ordinal 1. Neither query nor session observes the selected Event, and Native cursor parity remains open.
