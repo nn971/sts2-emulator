@@ -326,6 +326,7 @@ public static class StochasticSiteRegistryV111
         .. ChanceLawEngineV111.LegacyShopPotionPriceQuerySiteIds,
         .. ChanceLawEngineV111.LegacyShopRelicPriceQuerySiteIds,
         .. ChanceLawEngineV111.LegacyCallerBoundIndexQuerySiteIds,
+        .. ChanceLawEngineV111.NativeMapGaussianIntQuerySiteIds,
         .. ChanceLawEngineV111.LegacyPotionDropTicketQuerySiteIds,
         .. ChanceLawEngineV111.LegacyRewardPotionModelQuerySiteIds,
         .. ChanceLawEngineV111.LegacyPotionRewardOddsTicketQuerySiteIds,

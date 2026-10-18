@@ -2672,13 +2672,21 @@ internal static class PrototypeAiJsonlServer
                                  "relic.acquisition.random_rare_card.model" or
                                  "relic.acquisition.random_potion.model" or
                                  "run.potion.fill_empty_slots.model" or
+                                 PrototypeNativeOvergrowthMap
+                                     .RestCountGaussianSiteId or
+                                 PrototypeNativeOvergrowthMap
+                                     .UnknownCountGaussianSiteId or
+                                 PrototypeNativeLaterActMap
+                                     .HiveRestCountGaussianSiteId or
+                                 PrototypeNativeLaterActMap
+                                     .UnknownCountGaussianSiteId or
                                  PrototypeGameEngine.ImprovementCardSiteId or
                                  StochasticSiteRegistryV111
                                      .UnownedRandomRelicSelectionSiteId or
                                  PrototypeNativePunchOff.RelicRewardSiteId or
                                  PrototypeNativePunchOff.PotionRewardSiteId))
                             throw new ArgumentException(
-                                "stream_id is accepted only for PotionFactory, relic, legacy potion rarity/model laws, and the legacy Mad Science Improvement route.");
+                                "stream_id is accepted only for PotionFactory, relic, legacy potion rarity/model laws, map Gaussian laws, and the legacy Mad Science Improvement route.");
                         int[]? priorIndices = null;
                         if (request.TryGetProperty(
                                 "prior_indices", out var priorIndicesElement))
@@ -2718,6 +2726,32 @@ internal static class PrototypeAiJsonlServer
                                 "Request field 'ordinal' is required.");
                         var ordinal = suppliedOrdinal ?? 0;
                         ChanceLawV111 law;
+                        if (ChanceLawEngineV111
+                            .IsNativeMapGaussianIntQuerySite(siteId))
+                        {
+                            RejectChanceLawQueryParameters(
+                                request, "owner_id", "stream_id");
+                            var ownerId = OptionalString(
+                                request, "owner_id") ??
+                                throw new ArgumentException(
+                                    "Native map Gaussian law requires owner_id.");
+                            var streamId = OptionalString(
+                                request, "stream_id") ??
+                                throw new ArgumentException(
+                                    "Native map Gaussian law requires stream_id.");
+                            law = ChanceLawEngineV111
+                                .QueryNativeMapGaussianInt(
+                                    siteId, streamId, ownerId, ordinal);
+                            Write(new
+                            {
+                                requestId,
+                                ok = true,
+                                chanceLawSchemaId =
+                                    ChanceLawV111.CurrentSchemaId,
+                                law
+                            });
+                            break;
+                        }
                         if (ChanceLawEngineV111
                                 .IsNativeBoundedIntegerLawSite(siteId))
                         {

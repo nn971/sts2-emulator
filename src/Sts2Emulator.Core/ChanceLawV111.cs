@@ -482,6 +482,14 @@ public static partial class ChanceLawEngineV111
                 "shop", "bounded_integer", 2)
         };
 
+    private static readonly string[] NativeMapGaussianIntQuerySites =
+    [
+        PrototypeNativeOvergrowthMap.RestCountGaussianSiteId,
+        PrototypeNativeOvergrowthMap.UnknownCountGaussianSiteId,
+        PrototypeNativeLaterActMap.HiveRestCountGaussianSiteId,
+        PrototypeNativeLaterActMap.UnknownCountGaussianSiteId
+    ];
+
     private static readonly string[] LegacyPotionDropTicketQuerySites =
     [
         "reward.random_potion.drop.ticket"
@@ -651,6 +659,125 @@ public static partial class ChanceLawEngineV111
 
     public static bool IsLegacyCallerBoundIndexQuerySite(string siteId) =>
         LegacyCallerBoundIndexQuerySites.ContainsKey(siteId);
+
+    public static string[] NativeMapGaussianIntQuerySiteIds =>
+        (string[])NativeMapGaussianIntQuerySites.Clone();
+
+    public static bool IsNativeMapGaussianIntQuerySite(string siteId) =>
+        NativeMapGaussianIntQuerySites.Contains(siteId,
+            StringComparer.Ordinal);
+
+    /// <summary>
+    /// Query the emulator's continuous truncated-normal model for one of the
+    /// source-shaped Native map quota Gaussian requests. The model does not
+    /// count the finite Native RNG grid and is intentionally unverified.
+    /// </summary>
+    public static ChanceLawV111 QueryNativeMapGaussianInt(
+        string siteId, string streamId, string ownerId, int ordinal)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(streamId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
+        if (ordinal != 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal),
+                "Each Native map quota Gaussian site is queried at ordinal zero.");
+
+        int mean;
+        int standardDeviation = 1;
+        int minInclusive;
+        int maxInclusive;
+        string expectedStream;
+        string expectedOwner;
+        switch (siteId)
+        {
+            case PrototypeNativeOvergrowthMap.RestCountGaussianSiteId:
+                mean = 7;
+                minInclusive = 6;
+                maxInclusive = 7;
+                expectedStream = "context.act_1_map";
+                expectedOwner = "act:1:rest_count";
+                break;
+            case PrototypeNativeOvergrowthMap.UnknownCountGaussianSiteId:
+                mean = 12;
+                minInclusive = 10;
+                maxInclusive = 14;
+                expectedStream = "context.act_1_map";
+                expectedOwner = "act:1:unknown_count";
+                break;
+            case PrototypeNativeLaterActMap.HiveRestCountGaussianSiteId:
+                mean = 6;
+                minInclusive = 6;
+                maxInclusive = 7;
+                expectedStream = "context.act_2_map";
+                expectedOwner = "map:act:2";
+                break;
+            case PrototypeNativeLaterActMap.UnknownCountGaussianSiteId:
+                mean = 12;
+                minInclusive = 10;
+                maxInclusive = 14;
+                if (ownerId is not ("map:act:2" or "map:act:3"))
+                    throw new ArgumentException(
+                        "Later-act Unknown quota law requires owner map:act:2 or map:act:3.",
+                        nameof(ownerId));
+                expectedStream = ownerId == "map:act:2"
+                    ? "context.act_2_map" : "context.act_3_map";
+                expectedOwner = ownerId;
+                break;
+            default:
+                throw new NotSupportedException(
+                    $"Native map Gaussian Chance Law does not support site '{siteId}'.");
+        }
+
+        if (streamId != expectedStream || ownerId != expectedOwner)
+            throw new ArgumentException(
+                $"Native map Gaussian site '{siteId}' requires stream '{expectedStream}' and owner '{expectedOwner}'.");
+
+        const double weightScale = 1_000_000_000_000d;
+        var outcomes = Enumerable.Range(minInclusive,
+                maxInclusive - minInclusive + 1)
+            .Select(value => new ChanceLawOutcomeV111(
+                "integer:" + value.ToString(CultureInfo.InvariantCulture),
+                Math.Max(1L, checked((long)Math.Round(
+                    (NormalCdf((value + 0.5 - mean) /
+                        (double)standardDeviation) -
+                     NormalCdf((value - 0.5 - mean) /
+                        (double)standardDeviation)) * weightScale,
+                    MidpointRounding.AwayFromZero)))))
+            .ToArray();
+        var eventId = CanonicalJson.Sha256(new
+        {
+            boundary = "native-map-truncated-gaussian-request",
+            siteId,
+            streamId,
+            ownerId,
+            ordinal
+        });
+        var conditioning = new
+        {
+            model = "continuous-normal-rounded-and-truncated-v1",
+            mean,
+            standardDeviation,
+            minInclusive,
+            maxInclusive
+        };
+        return Create(eventId, siteId, "gaussian_int", ownerId, ordinal,
+            "native-map-truncated-rounded-normal-model-v1",
+            CanonicalJson.Sha256(new { streamId, ownerId, ordinal, conditioning }),
+            "continuous truncated-rounded-normal approximation; Native finite-grid and source parity UNVERIFIED",
+            outcomes);
+    }
+
+    private static double NormalCdf(double value)
+    {
+        var absolute = Math.Abs(value);
+        var t = 1.0 / (1.0 + 0.2316419 * absolute);
+        var polynomial = t * (0.319381530 + t * (-0.356563782 +
+            t * (1.781477937 + t * (-1.821255978 +
+            t * 1.330274429))));
+        var tail = 0.3989422804014327 *
+            Math.Exp(-0.5 * absolute * absolute) * polynomial;
+        return value >= 0 ? 1.0 - tail : tail;
+    }
 
     public static string[] LegacyPotionDropTicketQuerySiteIds =>
         (string[])LegacyPotionDropTicketQuerySites.Clone();
