@@ -1700,6 +1700,13 @@ public sealed partial class PrototypeGameEngine
         if (state.World?.Combat is
             { PendingChoice: null,
               PendingKnowledgeDemonChoice: null,
+              AutomaticPipelineContinuation:
+                { ControlledDrawHookChoicePending: true } })
+            return ResumeControlledAutomaticHandDrawHookChoice(state);
+
+        if (state.World?.Combat is
+            { PendingChoice: null,
+              PendingKnowledgeDemonChoice: null,
               AutomaticPipelineContinuation: { } continuation } combat)
         {
             var stochastic = continuation.Stochastic;
@@ -1969,7 +1976,9 @@ public sealed partial class PrototypeGameEngine
         var drawn = DrawCards(player, combat, remainingHandDraw,
             state.Rng, fromHandDraw: true,
             controlledRecycleSuspension: true,
-            controlledDrawCostSuspension: true);
+            controlledDrawCostSuspension: true,
+            controlledCardDrawnChoiceSuspension: semanticDeck is null &&
+                !ControlledChanceGuardV111.EngineOwnedNativeProviderActive);
         return ContinueControlledHandDraw(state, drawn);
     }
 
@@ -2812,8 +2821,11 @@ public sealed partial class PrototypeGameEngine
                             { Mode: SemanticDeckStateV111.NatureMode },
                     controlledCardDrawnChoiceSuspension:
                         ControlledChanceGuardV111.Active &&
-                        combat.SemanticDeck is
-                            { Mode: SemanticDeckStateV111.NatureMode });
+                        !ControlledChanceGuardV111
+                            .EngineOwnedNativeProviderActive &&
+                        (combat.SemanticDeck is null ||
+                         combat.SemanticDeck is
+                            { Mode: SemanticDeckStateV111.NatureMode }));
                 player = drawn.Player;
                 combat = drawn.Combat;
                 var drawBoundary = drawn.BoundaryKind;
@@ -2850,6 +2862,11 @@ public sealed partial class PrototypeGameEngine
                 if (drawBoundary is
                     PrototypeDrawCardsBoundaryKind.ControlledDrawCost or
                     PrototypeDrawCardsBoundaryKind.ControlledRecycle)
+                    return ContinueInitialControlledHandDrawBoundary(
+                        state, drawn);
+                if (drawBoundary ==
+                        PrototypeDrawCardsBoundaryKind.NestedCardDrawnChoice &&
+                    combat.SemanticDeck is null)
                     return ContinueInitialControlledHandDrawBoundary(
                         state, drawn);
                 if (drawBoundary ==

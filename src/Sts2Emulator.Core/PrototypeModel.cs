@@ -398,6 +398,7 @@ public sealed record PrototypeAutomaticPipelineContinuationState(
     // the deterministic hand-draw prelude and starting DrawCards.
     bool ControlledSemanticBeforeHandDrawPending = false,
     bool ControlledRecycleStratagemPending = false,
+    bool ControlledDrawHookChoicePending = false,
     PrototypeControlledEnemyActionContinuationV111? ControlledEnemyAction = null,
     ControlledTurnIntentsV111? ControlledTurnIntents = null)
 {
@@ -417,6 +418,7 @@ public sealed record PrototypeAutomaticPipelineContinuationState(
                 ControlledSemanticDrawRequested,
                 ControlledSemanticBeforeHandDrawPending,
                 ControlledRecycleStratagemPending,
+                ControlledDrawHookChoicePending,
                 ControlledEnemyAction,
                 ControlledTurnIntents));
 
@@ -515,6 +517,15 @@ public sealed record PrototypeAutomaticPipelineContinuationState(
         get => Stochastic.ControlledRecycleStratagemPending;
         init => Stochastic = Stochastic with
         { ControlledRecycleStratagemPending = value };
+    }
+
+    [System.Text.Json.Serialization.JsonIgnore(Condition =
+        System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
+    public bool ControlledDrawHookChoicePending
+    {
+        get => Stochastic.ControlledDrawHookChoicePending;
+        init => Stochastic = Stochastic with
+        { ControlledDrawHookChoicePending = value };
     }
 
     [System.Text.Json.Serialization.JsonIgnore(Condition =

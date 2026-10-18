@@ -8,10 +8,15 @@ public sealed partial class PrototypeGameEngine
     private static RunState ContinueInitialControlledHandDrawBoundary(
         RunState state, PrototypeDrawCardsResult drawn)
     {
+        bool hookChoice = drawn.BoundaryKind ==
+            PrototypeDrawCardsBoundaryKind.NestedCardDrawnChoice &&
+            drawn.Combat.SemanticDeck is null &&
+            drawn.Combat.PendingChoice is not null;
         if (!ControlledChanceGuardV111.Active ||
-            drawn.BoundaryKind is not (
+            (drawn.BoundaryKind is not (
                 PrototypeDrawCardsBoundaryKind.ControlledDrawCost or
-                PrototypeDrawCardsBoundaryKind.ControlledRecycle))
+                PrototypeDrawCardsBoundaryKind.ControlledRecycle) &&
+             !hookChoice))
             throw new InvalidOperationException(
                 "Initial controlled hand draw is not at a resumable legacy boundary.");
         var world = RequireWorld(state);
@@ -40,6 +45,43 @@ public sealed partial class PrototypeGameEngine
         };
         return ContinueControlledHandDraw(
             checkpoint, drawn with { Combat = suspendedCombat });
+    }
+
+    internal static RunState ResumeControlledAutomaticHandDrawHookChoice(
+        RunState state)
+    {
+        if (!ControlledChanceGuardV111.Active ||
+            ControlledChanceGuardV111.EngineOwnedNativeProviderActive)
+            throw new InvalidOperationException(
+                "Controlled automatic hand-draw hook resumption requires the controlled provider.");
+        var world = RequireWorld(state);
+        var combat = world.Combat ?? throw new InvalidDataException(
+            "Controlled automatic hand-draw hook has no combat.");
+        var cursor = combat.AutomaticPipelineContinuation;
+        if (state.Phase != RunPhase.Combat ||
+            combat.PendingChoice is not null ||
+            combat.PendingKnowledgeDemonChoice is not null ||
+            combat.SemanticDeck is not null || cursor is not
+                { ControlledDrawHookChoicePending: true,
+                  ControlledDrawRemaining: >= 0 } ||
+            !cursor.Mechanics.IsAtStep(
+                PrototypeAutomaticStepKind.DrawPlayerHand))
+            throw new InvalidDataException(
+                "Controlled automatic hand-draw hook cursor is inconsistent.");
+
+        int remaining = cursor.ControlledDrawRemaining!.Value;
+        combat = combat with
+        {
+            AutomaticPipelineContinuation =
+                cursor.WithHandDrawProgress(null)
+        };
+        var drawn = DrawCards(
+            state.Player, combat, remaining, state.Rng,
+            fromHandDraw: true,
+            controlledRecycleSuspension: true,
+            controlledDrawCostSuspension: true,
+            controlledCardDrawnChoiceSuspension: true);
+        return ContinueControlledHandDraw(state, drawn);
     }
 
     private static RunState BeginControlledRecycleStratagemSelection(
@@ -113,7 +155,9 @@ public sealed partial class PrototypeGameEngine
             state.Player, combat, remaining, state.Rng,
             fromHandDraw: true,
             controlledRecycleSuspension: true,
-            controlledDrawCostSuspension: true);
+            controlledDrawCostSuspension: true,
+            controlledCardDrawnChoiceSuspension:
+                !ControlledChanceGuardV111.EngineOwnedNativeProviderActive);
         return ContinueControlledHandDraw(state, drawn);
     }
 
@@ -190,6 +234,35 @@ public sealed partial class PrototypeGameEngine
                     }
                 }
             };
+        }
+
+        if (drawBoundary ==
+            PrototypeDrawCardsBoundaryKind.NestedCardDrawnChoice)
+        {
+            if (!ControlledChanceGuardV111.Active ||
+                ControlledChanceGuardV111.EngineOwnedNativeProviderActive ||
+                combat.SemanticDeck is not null ||
+                combat.PendingChoice is null ||
+                combat.PendingKnowledgeDemonChoice is not null)
+                throw new InvalidDataException(
+                    "Controlled hand draw has a malformed CardDrawn hook boundary.");
+            var suspended = state with
+            {
+                Player = drawn.Player,
+                World = world with
+                {
+                    Combat = combat with
+                    {
+                        AutomaticPipelineContinuation =
+                            cursor.WithHandDrawProgress(
+                                PrototypeAutomaticHandDrawProgressV111
+                                    .ControlledDrawHookChoice(
+                                        drawn.RemainingCount))
+                    }
+                }
+            };
+            PrototypeStateInvariants.Validate(suspended);
+            return suspended;
         }
 
         if (combat.PendingChoice is not null ||

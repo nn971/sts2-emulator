@@ -505,7 +505,9 @@ public sealed partial class PrototypeGameEngine
                 drawRun.Player, combat, handDrawRemaining, drawRun.Rng,
                 fromHandDraw: true,
                 controlledRecycleSuspension: true,
-                controlledDrawCostSuspension: true);
+                controlledDrawCostSuspension: true,
+                controlledCardDrawnChoiceSuspension:
+                    !ControlledChanceGuardV111.EngineOwnedNativeProviderActive);
             return ContinueControlledHandDraw(drawRun, resumedDraw);
         }
 

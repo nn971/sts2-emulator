@@ -239,7 +239,9 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidDataException(
                 "Saved drawn-card cost does not match the hand-draw checkpoint.");
         var progress = ResolveDrawCostAndDispatchCardDrawn(
-            state, cost, value, allowHookSuspension: false);
+            state, cost, value,
+            allowHookSuspension: combat.SemanticDeck is null &&
+                !ControlledChanceGuardV111.EngineOwnedNativeProviderActive);
         if (progress.CostStagePending)
             return progress.Run;
 
@@ -248,8 +250,16 @@ public sealed partial class PrototypeGameEngine
         var resumedCombat = resumedWorld.Combat ??
             throw new InvalidDataException(
                 "Draw-cost resume removed combat.");
-        // Nested choice/relic chains need their own explicit continuation.
-        // Do not allow an unsupported event suspension to be overwritten.
+        if (progress.DrawnHookSuspended &&
+            resumedCombat.PendingChoice is not null &&
+            resumedCombat.PendingKnowledgeDemonChoice is null)
+        {
+            var suspendedHook = new PrototypeDrawCardsResult(
+                resumedRun.Player, resumedCombat, [],
+                PrototypeDrawCardsBoundaryV111.NestedCardDrawnChoice(
+                    cost.RemainingCount));
+            return ContinueControlledHandDraw(resumedRun, suspendedHook);
+        }
         if (progress.DrawnHookSuspended ||
             resumedCombat.PendingChoice is not null ||
             resumedCombat.PendingKnowledgeDemonChoice is not null)
@@ -261,7 +271,9 @@ public sealed partial class PrototypeGameEngine
             resumedRun.Player, resumedCombat, cost.RemainingCount,
             resumedRun.Rng, fromHandDraw: true, eventDepth: cost.EventDepth,
             controlledRecycleSuspension: true,
-            controlledDrawCostSuspension: true);
+            controlledDrawCostSuspension: true,
+            controlledCardDrawnChoiceSuspension: combat.SemanticDeck is null &&
+                !ControlledChanceGuardV111.EngineOwnedNativeProviderActive);
         return ContinueControlledHandDraw(resumedRun, drawn);
     }
 }
