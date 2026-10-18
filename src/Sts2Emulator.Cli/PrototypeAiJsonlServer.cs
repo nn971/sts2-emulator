@@ -2729,6 +2729,49 @@ internal static class PrototypeAiJsonlServer
                             });
                             break;
                         }
+                        if (siteId == "reward.combat_gold.index_draw")
+                        {
+                            RejectChanceLawQueryParameters(
+                                request, "room", "ascension",
+                                "gold_proportion", "support_count");
+                            var roomText = OptionalString(request, "room") ??
+                                throw new ArgumentException(
+                                    "Combat gold law requires room.");
+                            if (!Enum.TryParse<PrototypeRoomType>(
+                                    roomText, ignoreCase: false,
+                                    out var room) || !Enum.IsDefined(room))
+                                throw new ArgumentException(
+                                    "Combat gold room must be Combat, Elite, or Boss.");
+                            var ascension = OptionalInt(request, "ascension") ??
+                                throw new ArgumentException(
+                                    "Combat gold law requires ascension.");
+                            float? goldProportion = null;
+                            if (request.TryGetProperty(
+                                    "gold_proportion", out var proportion))
+                            {
+                                if (proportion.ValueKind != JsonValueKind.Number)
+                                    throw new ArgumentException(
+                                        "gold_proportion must be a JSON number.");
+                                goldProportion = proportion.GetSingle();
+                            }
+                            law = ChanceLawEngineV111.QueryNativeCombatGold(
+                                room, ascension, goldProportion, ordinal);
+                            var supportCount = OptionalInt(
+                                request, "support_count");
+                            if (supportCount is not null &&
+                                supportCount != law.Outcomes.Length)
+                                throw new ArgumentException(
+                                    "Combat gold support_count must match the room, Ascension, and declared gold proportion.");
+                            Write(new
+                            {
+                                requestId,
+                                ok = true,
+                                chanceLawSchemaId =
+                                    ChanceLawV111.CurrentSchemaId,
+                                law
+                            });
+                            break;
+                        }
                         if (siteId == ExperimentalSilentThreeActRouteV111
                                 .SecondBossIndexSiteId)
                         {
@@ -7617,7 +7660,8 @@ internal static class PrototypeAiJsonlServer
             "potion_id", "relic_id", "colorless_offer", "sale_reprice",
             "owner_id", "excluded_potion_ids", "offer_ordinal",
             "relic_candidate_ids", "excluded_relic_ids", "first_boss",
-            "ascension", "act", "include_darv", "hive_receives_darv"
+            "ascension", "act", "include_darv", "hive_receives_darv",
+            "room", "gold_proportion"
         ];
         var unsupported = optionalFields.Where(field =>
             !allowed.Contains(field) && request.TryGetProperty(field, out _))

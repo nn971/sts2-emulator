@@ -1312,6 +1312,74 @@ public static partial class ChanceLawEngineV111
             outcomes);
     }
 
+    /// <summary>
+    /// Query the exact Native bounded-index law for a combat gold amount.
+    /// Combat bounds require the caller's source gold proportion; elite and
+    /// boss bounds are fixed by room and Ascension.
+    /// </summary>
+    public static ChanceLawV111 QueryNativeCombatGold(
+        PrototypeRoomType room, int ascension, float? goldProportion,
+        int ordinal)
+    {
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+        if (room == PrototypeRoomType.Combat && goldProportion is null)
+            throw new ArgumentException(
+                "Combat gold queries require the declared gold proportion.",
+                nameof(goldProportion));
+        if (room != PrototypeRoomType.Combat && goldProportion is not null)
+            throw new ArgumentException(
+                "Gold proportion is only accepted for normal combat rewards.",
+                nameof(goldProportion));
+
+        var bounds = PrototypeNativeCombatGoldReward.Bounds(
+            room, ascension, goldProportion ?? 1f);
+        if (bounds is null)
+            throw new ArgumentException(
+                "No combat gold draw occurs at zero gold proportion.",
+                nameof(goldProportion));
+
+        var (minimum, maximum) = bounds.Value;
+        var supportCount = checked(maximum - minimum + 1);
+        var ownerId =
+            $"room:{room}:ascension:{ascension}:bounds:{minimum}:{maximum}";
+        const string siteId = "reward.combat_gold.index_draw";
+        var indexWeights = NativeNextIntGridWeights(supportCount);
+        var outcomes = indexWeights.Select((weight, index) =>
+            new ChanceLawOutcomeV111($"gold:{minimum + index}", weight))
+            .ToArray();
+        var eventId = CanonicalJson.Sha256(new
+        {
+            boundary = siteId,
+            ownerId,
+            ordinal
+        });
+        var conditioningFingerprint = CanonicalJson.Sha256(new
+        {
+            siteId,
+            room,
+            ascension,
+            goldProportion = room == PrototypeRoomType.Combat
+                ? goldProportion : null,
+            minimum,
+            maximum,
+            supportCount,
+            ownerId
+        });
+
+        return Create(
+            eventId,
+            siteId,
+            "bounded_integer",
+            ownerId,
+            ordinal,
+            NativeRandomIndexConditioningPolicyId,
+            conditioningFingerprint,
+            NativeBoundedIndexSourceVerifiedProvenance,
+            outcomes,
+            ChanceLawV111.SourceVerifiedStatus);
+    }
+
     private static ChanceLawV111 CreateDeclaredUnverifiedIndexLaw(
         string siteId, string ownerId, int ordinal,
         string conditioningPolicyId, object conditioning,

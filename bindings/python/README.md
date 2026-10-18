@@ -91,6 +91,23 @@ law = state.query_chance_law(
 The emulator derives the skin RNG from the reward-stream snapshot and relic
 slot. That seed derivation remains unverified.
 
+Combat gold has a read-only Native law over the inclusive reward amounts:
+
+```python
+law = state.query_chance_law(
+    "reward.combat_gold.index_draw",
+    ordinal=declared_rewards_stream_ordinal,
+    room="Combat",
+    ascension=3,
+    gold_proportion=0.8,
+)
+```
+
+Declare `gold_proportion` for normal Combat; Elite and Boss use their
+Ascension-adjusted fixed bounds. A zero Combat proportion means no draw occurs.
+The law's exact Native bounded-index masses are `SOURCE_VERIFIED`; the query
+does not validate earlier reward-generation calls or stream parity.
+
 The fixed Act 1 boss pools have read-only law queries. Each returns
 equal-weight outcomes identified by encounter ID; legacy seed-to-index
 distributions and Native cursor parity remain `UNVERIFIED`:

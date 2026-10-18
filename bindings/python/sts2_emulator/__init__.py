@@ -42,7 +42,8 @@ class State:
                          action_id=None, prior_variant_index=None,
                          event_id=None, support_count=None,
                          first_boss=None, ascension=None, act=None,
-                         include_darv=None, hive_receives_darv=None):
+                         include_darv=None, hive_receives_darv=None,
+                         room=None, gold_proportion=None):
         """Read a pre-outcome law; native event queries may need action_id.
 
         Reflections card-pick laws use action_id="touch_mirror" and the
@@ -56,6 +57,8 @@ class State:
         pool index before the first-undiscovered-boss override.
         Later-act Ancient laws require act and include_darv; Glory Darv
         assignment laws require hive_receives_darv.
+        Combat-gold laws require room, ascension and the source gold_proportion;
+        Elite and Boss queries use fixed room bounds and need no proportion.
         Repy potion laws use ordinal 0 or 1 and prior_indices containing the
         complete relic-shuffle prefix plus any earlier potion index.
         """
@@ -123,6 +126,29 @@ class State:
             if type(hive_receives_darv) is not bool:
                 raise ValueError("hive_receives_darv must be a boolean")
             payload["hive_receives_darv"] = hive_receives_darv
+        if room is not None:
+            if not isinstance(room, str) or room not in (
+                    "Combat", "Elite", "Boss"):
+                raise ValueError("room must be Combat, Elite, or Boss")
+            if ascension is None:
+                raise ValueError("combat gold laws require ascension")
+            if room == "Combat" and gold_proportion is None:
+                raise ValueError(
+                    "normal Combat gold laws require gold_proportion")
+            if room != "Combat" and gold_proportion is not None:
+                raise ValueError(
+                    "gold_proportion is only used for normal Combat")
+            payload["room"] = room
+        elif gold_proportion is not None:
+            raise ValueError("gold_proportion requires a combat gold room")
+        if gold_proportion is not None:
+            if isinstance(gold_proportion, bool) or not isinstance(
+                    gold_proportion, (int, float)):
+                raise ValueError("gold_proportion must be a number in [0, 1]")
+            proportion = float(gold_proportion)
+            if not 0.0 <= proportion <= 1.0:
+                raise ValueError("gold_proportion must be a number in [0, 1]")
+            payload["gold_proportion"] = proportion
         if offer_ordinal is not None:
             if type(offer_ordinal) is not int or offer_ordinal < 0:
                 raise ValueError(
