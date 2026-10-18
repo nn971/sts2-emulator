@@ -617,11 +617,7 @@ public sealed record ReferenceNatureMerchantSessionV111(
             CanonicalJson.Sha256(left) == CanonicalJson.Sha256(right);
 
     private static ControlledStochasticRequestV111 AsRequest(
-        ControlledStochasticDecisionV111 decision) =>
-        decision.IndexDecision is { } index
-            ? ControlledStochasticRequestV111.FromIndex(index.Request)
-            : ControlledStochasticRequestV111.FromUnitFloat(
-                decision.UnitFloatDecision!.Request);
+        ControlledStochasticDecisionV111 decision) => decision.ToRequest();
 
     private static GameAction CloneAction(GameAction action) => action with
     {

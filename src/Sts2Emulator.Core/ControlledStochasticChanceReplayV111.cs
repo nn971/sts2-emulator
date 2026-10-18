@@ -1,20 +1,66 @@
+using System.Text.Json.Serialization;
+
 namespace Sts2Emulator.Core;
 
 /// <summary>
-/// One ordered provider outcome for a continuation that crosses discrete
-/// index and unit-float boundaries. Exactly one typed decision is present.
+/// One ordered provider outcome for a versioned continuation that can cross
+/// any typed random primitive. Exactly one typed decision is present.
 /// </summary>
 public sealed record ControlledStochasticDecisionV111(
     RandomIndexDecisionV111? IndexDecision = null,
     RandomUnitFloatDecisionV111? UnitFloatDecision = null,
     string[]? CandidateLabels = null)
 {
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public RandomRangedFloatDecisionV111? RangedFloatDecision { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public RandomRangedDoubleDecisionV111? RangedDoubleDecision { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public RandomGaussianIntDecisionV111? GaussianIntDecision { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public RandomGaussianDoubleDecisionV111? GaussianDoubleDecision { get; init; }
+
     public static ControlledStochasticDecisionV111 FromIndex(
         RandomIndexDecisionV111 decision, string[]? candidateLabels = null) =>
         new(decision, null, candidateLabels);
 
     public static ControlledStochasticDecisionV111 FromUnitFloat(
         RandomUnitFloatDecisionV111 decision) => new(null, decision);
+
+    public static ControlledStochasticDecisionV111 FromRangedFloat(
+        RandomRangedFloatDecisionV111 decision) => new()
+        { RangedFloatDecision = decision };
+
+    public static ControlledStochasticDecisionV111 FromRangedDouble(
+        RandomRangedDoubleDecisionV111 decision) => new()
+        { RangedDoubleDecision = decision };
+
+    public static ControlledStochasticDecisionV111 FromGaussianInt(
+        RandomGaussianIntDecisionV111 decision) => new()
+        { GaussianIntDecision = decision };
+
+    public static ControlledStochasticDecisionV111 FromGaussianDouble(
+        RandomGaussianDoubleDecisionV111 decision) => new()
+        { GaussianDoubleDecision = decision };
+
+    public ControlledStochasticRequestV111 ToRequest() =>
+        IndexDecision is { } index ?
+            ControlledStochasticRequestV111.FromIndex(index.Request) :
+        UnitFloatDecision is { } unitFloat ?
+            ControlledStochasticRequestV111.FromUnitFloat(unitFloat.Request) :
+        RangedFloatDecision is { } rangedFloat ?
+            ControlledStochasticRequestV111.FromRangedFloat(rangedFloat.Request) :
+        RangedDoubleDecision is { } rangedDouble ?
+            ControlledStochasticRequestV111.FromRangedDouble(rangedDouble.Request) :
+        GaussianIntDecision is { } gaussianInt ?
+            ControlledStochasticRequestV111.FromGaussianInt(gaussianInt.Request) :
+        GaussianDoubleDecision is { } gaussianDouble ?
+            ControlledStochasticRequestV111.FromGaussianDouble(gaussianDouble.Request) :
+        throw new InvalidDataException(
+            "A typed stochastic outcome has no request.");
+
+    public bool IsIndexOrUnitFloat() =>
+        IndexDecision is not null || UnitFloatDecision is not null;
 
     public ControlledStochasticDecisionV111 Fork() => this with
     {
@@ -32,13 +78,39 @@ public sealed record ControlledStochasticDecisionV111(
             {
                 Request = UnitFloatDecision.Request with { }
             },
+        RangedFloatDecision = RangedFloatDecision is null ? null :
+            RangedFloatDecision with
+            {
+                Request = RangedFloatDecision.Request with { }
+            },
+        RangedDoubleDecision = RangedDoubleDecision is null ? null :
+            RangedDoubleDecision with
+            {
+                Request = RangedDoubleDecision.Request with { }
+            },
+        GaussianIntDecision = GaussianIntDecision is null ? null :
+            GaussianIntDecision with
+            {
+                Request = GaussianIntDecision.Request with { }
+            },
+        GaussianDoubleDecision = GaussianDoubleDecision is null ? null :
+            GaussianDoubleDecision with
+            {
+                Request = GaussianDoubleDecision.Request with { }
+            },
         CandidateLabels = CandidateLabels is null ? null :
             (string[])CandidateLabels.Clone()
     };
 
     public void Validate()
     {
-        if ((IndexDecision is null) == (UnitFloatDecision is null))
+        int count = (IndexDecision is not null ? 1 : 0) +
+            (UnitFloatDecision is not null ? 1 : 0) +
+            (RangedFloatDecision is not null ? 1 : 0) +
+            (RangedDoubleDecision is not null ? 1 : 0) +
+            (GaussianIntDecision is not null ? 1 : 0) +
+            (GaussianDoubleDecision is not null ? 1 : 0);
+        if (count != 1)
             throw new InvalidDataException(
                 "A typed stochastic outcome must contain exactly one decision.");
         if (IndexDecision is { } index)
@@ -55,33 +127,121 @@ public sealed record ControlledStochasticDecisionV111(
         }
         else
         {
-            var unitFloat = UnitFloatDecision!;
-            unitFloat.Validate();
-            if (unitFloat.ProviderMode != "controlled-v111" ||
-                unitFloat.NativeCursorBefore is not null ||
-                unitFloat.NativeCursorAfter is not null ||
-                CandidateLabels is not null)
+            if (CandidateLabels is not null)
                 throw new InvalidDataException(
-                    "Typed stochastic unit-float outcome has invalid controlled provenance.");
+                    "Only index outcomes can carry candidate labels.");
+            if (UnitFloatDecision is { } unitFloat)
+            {
+                unitFloat.Validate();
+                if (unitFloat.ProviderMode != "controlled-v111" ||
+                    unitFloat.NativeCursorBefore is not null ||
+                    unitFloat.NativeCursorAfter is not null)
+                    throw new InvalidDataException(
+                        "Typed stochastic unit-float outcome has invalid controlled provenance.");
+            }
+            else if (RangedFloatDecision is { } rangedFloat)
+            {
+                rangedFloat.Validate();
+                if (!HasControlledProvenance(
+                        rangedFloat.ProviderMode,
+                        rangedFloat.NativeCursorBefore,
+                        rangedFloat.NativeCursorAfter))
+                    throw new InvalidDataException(
+                        "Typed stochastic ranged-float outcome has invalid controlled provenance.");
+            }
+            else if (RangedDoubleDecision is { } rangedDouble)
+            {
+                rangedDouble.Validate();
+                if (!HasControlledProvenance(
+                        rangedDouble.ProviderMode,
+                        rangedDouble.NativeCursorBefore,
+                        rangedDouble.NativeCursorAfter))
+                    throw new InvalidDataException(
+                        "Typed stochastic ranged-double outcome has invalid controlled provenance.");
+            }
+            else if (GaussianIntDecision is { } gaussianInt)
+            {
+                gaussianInt.Validate();
+                if (!HasControlledProvenance(
+                        gaussianInt.ProviderMode,
+                        gaussianInt.NativeCursorBefore,
+                        gaussianInt.NativeCursorAfter))
+                    throw new InvalidDataException(
+                        "Typed stochastic Gaussian-integer outcome has invalid controlled provenance.");
+            }
+            else
+            {
+                var gaussianDouble = GaussianDoubleDecision!;
+                gaussianDouble.Validate();
+                if (!HasControlledProvenance(
+                        gaussianDouble.ProviderMode,
+                        gaussianDouble.NativeCursorBefore,
+                        gaussianDouble.NativeCursorAfter))
+                    throw new InvalidDataException(
+                        "Typed stochastic Gaussian-double outcome has invalid controlled provenance.");
+            }
         }
     }
+
+    private static bool HasControlledProvenance(
+        string providerMode, NativeRngSnapshot? cursorBefore,
+        NativeRngSnapshot? cursorAfter) =>
+        providerMode == "controlled-v111" && cursorBefore is null &&
+        cursorAfter is null;
 }
 
-/// <summary>Exact request identity for the next mixed stochastic boundary.</summary>
+/// <summary>Exact request identity for the next typed stochastic boundary.</summary>
 public sealed record ControlledStochasticRequestV111(
     RandomIndexRequestV111? IndexRequest = null,
     RandomUnitFloatRequestV111? UnitFloatRequest = null)
 {
-    public string SiteId => IndexRequest?.SiteId ?? UnitFloatRequest!.SiteId;
-    public string StreamId => IndexRequest?.StreamId ?? UnitFloatRequest!.StreamId;
-    public string OwnerId => IndexRequest?.OwnerId ?? UnitFloatRequest!.OwnerId;
-    public int Ordinal => IndexRequest?.Ordinal ?? UnitFloatRequest!.Ordinal;
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public RandomRangedFloatRequestV111? RangedFloatRequest { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public RandomRangedDoubleRequestV111? RangedDoubleRequest { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public RandomGaussianIntRequestV111? GaussianIntRequest { get; init; }
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public RandomGaussianDoubleRequestV111? GaussianDoubleRequest { get; init; }
+
+    public string SiteId => IndexRequest?.SiteId ?? UnitFloatRequest?.SiteId ??
+        RangedFloatRequest?.SiteId ?? RangedDoubleRequest?.SiteId ??
+        GaussianIntRequest?.SiteId ?? GaussianDoubleRequest?.SiteId ??
+        throw new InvalidDataException("Typed stochastic request is empty.");
+    public string StreamId => IndexRequest?.StreamId ?? UnitFloatRequest?.StreamId ??
+        RangedFloatRequest?.StreamId ?? RangedDoubleRequest?.StreamId ??
+        GaussianIntRequest?.StreamId ?? GaussianDoubleRequest?.StreamId ??
+        throw new InvalidDataException("Typed stochastic request is empty.");
+    public string OwnerId => IndexRequest?.OwnerId ?? UnitFloatRequest?.OwnerId ??
+        RangedFloatRequest?.OwnerId ?? RangedDoubleRequest?.OwnerId ??
+        GaussianIntRequest?.OwnerId ?? GaussianDoubleRequest?.OwnerId ??
+        throw new InvalidDataException("Typed stochastic request is empty.");
+    public int Ordinal => IndexRequest?.Ordinal ?? UnitFloatRequest?.Ordinal ??
+        RangedFloatRequest?.Ordinal ?? RangedDoubleRequest?.Ordinal ??
+        GaussianIntRequest?.Ordinal ?? GaussianDoubleRequest?.Ordinal ??
+        throw new InvalidDataException("Typed stochastic request is empty.");
 
     public static ControlledStochasticRequestV111 FromIndex(
         RandomIndexRequestV111 request) => new(request, null);
 
     public static ControlledStochasticRequestV111 FromUnitFloat(
         RandomUnitFloatRequestV111 request) => new(null, request);
+
+    public static ControlledStochasticRequestV111 FromRangedFloat(
+        RandomRangedFloatRequestV111 request) => new()
+        { RangedFloatRequest = request };
+
+    public static ControlledStochasticRequestV111 FromRangedDouble(
+        RandomRangedDoubleRequestV111 request) => new()
+        { RangedDoubleRequest = request };
+
+    public static ControlledStochasticRequestV111 FromGaussianInt(
+        RandomGaussianIntRequestV111 request) => new()
+        { GaussianIntRequest = request };
+
+    public static ControlledStochasticRequestV111 FromGaussianDouble(
+        RandomGaussianDoubleRequestV111 request) => new()
+        { GaussianDoubleRequest = request };
 
     public ControlledStochasticRequestV111 Fork() => this with
     {
@@ -90,21 +250,40 @@ public sealed record ControlledStochasticRequestV111(
             OrderedCandidates = (int[])IndexRequest.OrderedCandidates.Clone()
         },
         UnitFloatRequest = UnitFloatRequest is null ? null :
-            UnitFloatRequest with { }
+            UnitFloatRequest with { },
+        RangedFloatRequest = RangedFloatRequest is null ? null :
+            RangedFloatRequest with { },
+        RangedDoubleRequest = RangedDoubleRequest is null ? null :
+            RangedDoubleRequest with { },
+        GaussianIntRequest = GaussianIntRequest is null ? null :
+            GaussianIntRequest with { },
+        GaussianDoubleRequest = GaussianDoubleRequest is null ? null :
+            GaussianDoubleRequest with { }
     };
 
     public void Validate()
     {
-        if ((IndexRequest is null) == (UnitFloatRequest is null))
+        int count = (IndexRequest is not null ? 1 : 0) +
+            (UnitFloatRequest is not null ? 1 : 0) +
+            (RangedFloatRequest is not null ? 1 : 0) +
+            (RangedDoubleRequest is not null ? 1 : 0) +
+            (GaussianIntRequest is not null ? 1 : 0) +
+            (GaussianDoubleRequest is not null ? 1 : 0);
+        if (count != 1)
             throw new InvalidDataException(
                 "A typed stochastic request must contain exactly one request.");
         IndexRequest?.Validate();
         UnitFloatRequest?.Validate();
+        RangedFloatRequest?.Validate();
+        RangedDoubleRequest?.Validate();
+        GaussianIntRequest?.Validate();
+        GaussianDoubleRequest?.Validate();
     }
 }
 
 /// <summary>Serializable prefix and pending request for a versioned mixed
-/// index/unit-float continuation.</summary>
+/// stochastic continuation. Version 1 remains restricted to index and
+/// unit-float operations; version 2 admits all six provider primitives.</summary>
 public sealed record ControlledStochasticContinuationStateV111(
     string SchemaId,
     ControlledStochasticDecisionV111[] Decisions,
@@ -113,6 +292,8 @@ public sealed record ControlledStochasticContinuationStateV111(
 {
     public const string CurrentSchemaId =
         "sts2-v111-controlled-stochastic-continuation-v1";
+    public const string MixedPrimitiveSchemaId =
+        "sts2-v111-controlled-stochastic-continuation-v2";
 
     public ControlledStochasticContinuationStateV111 Fork() => this with
     {
@@ -124,7 +305,8 @@ public sealed record ControlledStochasticContinuationStateV111(
 
     public void Validate()
     {
-        if (SchemaId != CurrentSchemaId || Decisions is null ||
+        if (SchemaId is not (CurrentSchemaId or MixedPrimitiveSchemaId) ||
+            Decisions is null ||
             PendingRequest is null || PendingCandidateLabels is not null &&
                 (PendingRequest.IndexRequest is null ||
                  PendingCandidateLabels.Length !=
@@ -139,13 +321,22 @@ public sealed record ControlledStochasticContinuationStateV111(
                 throw new InvalidDataException(
                     "Mixed stochastic continuation contains a null decision.");
             decision.Validate();
+            if (SchemaId == CurrentSchemaId &&
+                !decision.IsIndexOrUnitFloat())
+                throw new InvalidDataException(
+                    "Version 1 stochastic continuations contain only index and unit-float outcomes.");
         }
+        if (SchemaId == CurrentSchemaId &&
+            PendingRequest.IndexRequest is null &&
+            PendingRequest.UnitFloatRequest is null)
+            throw new InvalidDataException(
+                "Version 1 stochastic continuations contain only index and unit-float requests.");
     }
 }
 
 /// <summary>
 /// Suspension raised when a mixed provider replay reaches a request beyond
-/// its saved prefix. The request retains its original index or float type.
+/// its saved prefix. The request retains its original primitive type.
 /// </summary>
 public sealed class ControlledStochasticChanceRequiredExceptionV111 : Exception
 {
@@ -180,12 +371,11 @@ internal sealed record ControlledStochasticReplayResultV111(
 }
 
 /// <summary>
-/// Replays a single chronological prefix across both existing typed provider
-/// interfaces. It deliberately owns no law, boundary allowlist, or mechanics.
+/// Replays one chronological prefix across every typed provider interface.
+/// It deliberately owns no law, boundary allowlist, or mechanics.
 /// </summary>
 internal sealed class ControlledStochasticChanceReplayV111 :
-    IRandomIndexProviderV111,
-    IRandomUnitFloatProviderV111,
+    IRandomBoundaryProviderV111,
     IControlledChanceReplayScopeV111
 {
     private static readonly AsyncLocal<ControlledStochasticChanceReplayV111?>
@@ -265,6 +455,90 @@ internal sealed class ControlledStochasticChanceReplayV111 :
         return resolved;
     }
 
+    public RandomRangedFloatDecisionV111 Resolve(
+        RandomRangedFloatRequestV111 request, RngBundle streams)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(streams);
+        request.Validate();
+        var active = Active.Value ?? throw new InvalidOperationException(
+            "Typed stochastic replay is not active.");
+        var expected = active.Take(
+            ControlledStochasticRequestV111.FromRangedFloat(request), null);
+        if (expected.RangedFloatDecision is not { } rangedFloat ||
+            !SameRequest(rangedFloat.Request, request))
+            throw new InvalidDataException(
+                "Typed stochastic replay diverged from its saved ranged-float request.");
+        var resolved = new RandomRangedFloatDecisionV111(
+            request with { }, rangedFloat.SelectedValue, Mode);
+        resolved.Validate();
+        RandomBoundaryJournalV111.Record(resolved);
+        return resolved;
+    }
+
+    public RandomRangedDoubleDecisionV111 Resolve(
+        RandomRangedDoubleRequestV111 request, RngBundle streams)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(streams);
+        request.Validate();
+        var active = Active.Value ?? throw new InvalidOperationException(
+            "Typed stochastic replay is not active.");
+        var expected = active.Take(
+            ControlledStochasticRequestV111.FromRangedDouble(request), null);
+        if (expected.RangedDoubleDecision is not { } rangedDouble ||
+            !SameRequest(rangedDouble.Request, request))
+            throw new InvalidDataException(
+                "Typed stochastic replay diverged from its saved ranged-double request.");
+        var resolved = new RandomRangedDoubleDecisionV111(
+            request with { }, rangedDouble.SelectedValue, Mode);
+        resolved.Validate();
+        RandomBoundaryJournalV111.Record(resolved);
+        return resolved;
+    }
+
+    public RandomGaussianIntDecisionV111 Resolve(
+        RandomGaussianIntRequestV111 request, RngBundle streams)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(streams);
+        request.Validate();
+        var active = Active.Value ?? throw new InvalidOperationException(
+            "Typed stochastic replay is not active.");
+        var expected = active.Take(
+            ControlledStochasticRequestV111.FromGaussianInt(request), null);
+        if (expected.GaussianIntDecision is not { } gaussianInt ||
+            !SameRequest(gaussianInt.Request, request))
+            throw new InvalidDataException(
+                "Typed stochastic replay diverged from its saved Gaussian-integer request.");
+        var resolved = new RandomGaussianIntDecisionV111(
+            request with { }, gaussianInt.SelectedValue, Mode);
+        resolved.Validate();
+        RandomBoundaryJournalV111.Record(resolved);
+        return resolved;
+    }
+
+    public RandomGaussianDoubleDecisionV111 Resolve(
+        RandomGaussianDoubleRequestV111 request, RngBundle streams)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(streams);
+        request.Validate();
+        var active = Active.Value ?? throw new InvalidOperationException(
+            "Typed stochastic replay is not active.");
+        var expected = active.Take(
+            ControlledStochasticRequestV111.FromGaussianDouble(request), null);
+        if (expected.GaussianDoubleDecision is not { } gaussianDouble ||
+            !SameRequest(gaussianDouble.Request, request))
+            throw new InvalidDataException(
+                "Typed stochastic replay diverged from its saved Gaussian-double request.");
+        var resolved = new RandomGaussianDoubleDecisionV111(
+            request with { }, gaussianDouble.SelectedValue, Mode);
+        resolved.Validate();
+        RandomBoundaryJournalV111.Record(resolved);
+        return resolved;
+    }
+
     private ControlledStochasticDecisionV111 Take(
         ControlledStochasticRequestV111 request,
         string[]? candidateLabels)
@@ -273,10 +547,7 @@ internal sealed class ControlledStochasticChanceReplayV111 :
             throw new ControlledStochasticChanceRequiredExceptionV111(
                 request, candidateLabels);
         var expected = _decisions[_cursor];
-        var expectedRequest = expected.IndexDecision is { } index
-            ? ControlledStochasticRequestV111.FromIndex(index.Request)
-            : ControlledStochasticRequestV111.FromUnitFloat(
-                expected.UnitFloatDecision!.Request);
+        var expectedRequest = expected.ToRequest();
         if (!SameRequest(expectedRequest, request))
             throw new InvalidDataException(
                 "Typed stochastic replay diverged from its ordered saved prefix.");
@@ -353,11 +624,26 @@ internal sealed class ControlledStochasticChanceReplayV111 :
         ControlledStochasticRequestV111 right)
     {
         if (left.IndexRequest is not null || right.IndexRequest is not null)
-            return left.IndexRequest is { } a && right.IndexRequest is { } b
-                && SameRequest(a, b);
-        return left.UnitFloatRequest is { } leftFloat &&
-            right.UnitFloatRequest is { } rightFloat &&
-            SameRequest(leftFloat, rightFloat);
+            return left.IndexRequest is { } a && right.IndexRequest is { } b &&
+                SameRequest(a, b);
+        if (left.UnitFloatRequest is not null || right.UnitFloatRequest is not null)
+            return left.UnitFloatRequest is { } a &&
+                right.UnitFloatRequest is { } b && SameRequest(a, b);
+        if (left.RangedFloatRequest is not null ||
+            right.RangedFloatRequest is not null)
+            return left.RangedFloatRequest is { } a &&
+                right.RangedFloatRequest is { } b && SameRequest(a, b);
+        if (left.RangedDoubleRequest is not null ||
+            right.RangedDoubleRequest is not null)
+            return left.RangedDoubleRequest is { } a &&
+                right.RangedDoubleRequest is { } b && SameRequest(a, b);
+        if (left.GaussianIntRequest is not null ||
+            right.GaussianIntRequest is not null)
+            return left.GaussianIntRequest is { } a &&
+                right.GaussianIntRequest is { } b && SameRequest(a, b);
+        return left.GaussianDoubleRequest is { } leftGaussian &&
+            right.GaussianDoubleRequest is { } rightGaussian &&
+            SameRequest(leftGaussian, rightGaussian);
     }
 
     private static bool SameRequest(
@@ -374,5 +660,45 @@ internal sealed class ControlledStochasticChanceReplayV111 :
         RandomUnitFloatRequestV111 right) =>
         left.SiteId == right.SiteId && left.StreamId == right.StreamId &&
         left.OwnerId == right.OwnerId && left.Ordinal == right.Ordinal &&
+        left.SourceVersion == right.SourceVersion;
+
+    private static bool SameRequest(
+        RandomRangedFloatRequestV111 left,
+        RandomRangedFloatRequestV111 right) =>
+        left.SiteId == right.SiteId && left.StreamId == right.StreamId &&
+        left.OwnerId == right.OwnerId && left.Ordinal == right.Ordinal &&
+        left.MinInclusive == right.MinInclusive &&
+        left.MaxInclusive == right.MaxInclusive &&
+        left.SourceVersion == right.SourceVersion;
+
+    private static bool SameRequest(
+        RandomRangedDoubleRequestV111 left,
+        RandomRangedDoubleRequestV111 right) =>
+        left.SiteId == right.SiteId && left.StreamId == right.StreamId &&
+        left.OwnerId == right.OwnerId && left.Ordinal == right.Ordinal &&
+        left.MinInclusive == right.MinInclusive &&
+        left.MaxInclusive == right.MaxInclusive &&
+        left.SourceVersion == right.SourceVersion;
+
+    private static bool SameRequest(
+        RandomGaussianIntRequestV111 left,
+        RandomGaussianIntRequestV111 right) =>
+        left.SiteId == right.SiteId && left.StreamId == right.StreamId &&
+        left.OwnerId == right.OwnerId && left.Ordinal == right.Ordinal &&
+        left.Mean == right.Mean &&
+        left.StandardDeviation == right.StandardDeviation &&
+        left.MinInclusive == right.MinInclusive &&
+        left.MaxInclusive == right.MaxInclusive &&
+        left.SourceVersion == right.SourceVersion;
+
+    private static bool SameRequest(
+        RandomGaussianDoubleRequestV111 left,
+        RandomGaussianDoubleRequestV111 right) =>
+        left.SiteId == right.SiteId && left.StreamId == right.StreamId &&
+        left.OwnerId == right.OwnerId && left.Ordinal == right.Ordinal &&
+        left.Mean == right.Mean &&
+        left.StandardDeviation == right.StandardDeviation &&
+        left.MinInclusive == right.MinInclusive &&
+        left.MaxInclusive == right.MaxInclusive &&
         left.SourceVersion == right.SourceVersion;
 }

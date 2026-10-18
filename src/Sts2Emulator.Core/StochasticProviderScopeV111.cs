@@ -101,6 +101,17 @@ internal static class StochasticProviderScopeV111
             overrideExplicitProviders, requestFilter);
     }
 
+    public static IDisposable EnterFilteredBoundary(
+        IRandomBoundaryProviderV111 provider,
+        Func<ControlledStochasticRequestV111, bool> requestFilter,
+        bool overrideExplicitProviders = true)
+    {
+        ArgumentNullException.ThrowIfNull(provider);
+        ArgumentNullException.ThrowIfNull(requestFilter);
+        return EnterCore(provider, provider, provider, provider, provider,
+            provider, overrideExplicitProviders, requestFilter);
+    }
+
     private static IDisposable EnterCore(
         IRandomIndexProviderV111? indexProvider,
         IRandomUnitFloatProviderV111? unitFloatProvider,
@@ -224,7 +235,8 @@ internal static class StochasticProviderScopeV111
     {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(streams);
-        return SelectRangedFloatProvider(explicitProvider)
+        return SelectRangedFloatProvider(explicitProvider,
+                ControlledStochasticRequestV111.FromRangedFloat(request))
             .Resolve(request, streams);
     }
 
@@ -234,7 +246,8 @@ internal static class StochasticProviderScopeV111
     {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(streams);
-        return SelectRangedDoubleProvider(explicitProvider)
+        return SelectRangedDoubleProvider(explicitProvider,
+                ControlledStochasticRequestV111.FromRangedDouble(request))
             .Resolve(request, streams);
     }
 
@@ -244,7 +257,8 @@ internal static class StochasticProviderScopeV111
     {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(streams);
-        return SelectGaussianIntProvider(explicitProvider)
+        return SelectGaussianIntProvider(explicitProvider,
+                ControlledStochasticRequestV111.FromGaussianInt(request))
             .Resolve(request, streams);
     }
 
@@ -254,19 +268,21 @@ internal static class StochasticProviderScopeV111
     {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(streams);
-        return SelectGaussianDoubleProvider(explicitProvider)
+        return SelectGaussianDoubleProvider(explicitProvider,
+                ControlledStochasticRequestV111.FromGaussianDouble(request))
             .Resolve(request, streams);
     }
 
     private static IRandomRangedFloatProviderV111 SelectRangedFloatProvider(
-        IRandomRangedFloatProviderV111? explicitProvider)
+        IRandomRangedFloatProviderV111? explicitProvider,
+        ControlledStochasticRequestV111 request)
     {
         IRandomRangedFloatProviderV111? fallback = null;
         for (var frame = Current.Value; frame is not null;
              frame = frame.Parent)
         {
-            if (frame.RequestFilter is not null ||
-                frame.RangedFloatProvider is not { } scopedProvider)
+            if (frame.RangedFloatProvider is not { } scopedProvider ||
+                frame.RequestFilter is { } filter && !filter(request))
                 continue;
             fallback ??= scopedProvider;
             if (frame.OverrideExplicitProviders)
@@ -277,14 +293,15 @@ internal static class StochasticProviderScopeV111
     }
 
     private static IRandomRangedDoubleProviderV111 SelectRangedDoubleProvider(
-        IRandomRangedDoubleProviderV111? explicitProvider)
+        IRandomRangedDoubleProviderV111? explicitProvider,
+        ControlledStochasticRequestV111 request)
     {
         IRandomRangedDoubleProviderV111? fallback = null;
         for (var frame = Current.Value; frame is not null;
              frame = frame.Parent)
         {
-            if (frame.RequestFilter is not null ||
-                frame.RangedDoubleProvider is not { } scopedProvider)
+            if (frame.RangedDoubleProvider is not { } scopedProvider ||
+                frame.RequestFilter is { } filter && !filter(request))
                 continue;
             fallback ??= scopedProvider;
             if (frame.OverrideExplicitProviders)
@@ -295,14 +312,15 @@ internal static class StochasticProviderScopeV111
     }
 
     private static IRandomGaussianIntProviderV111 SelectGaussianIntProvider(
-        IRandomGaussianIntProviderV111? explicitProvider)
+        IRandomGaussianIntProviderV111? explicitProvider,
+        ControlledStochasticRequestV111 request)
     {
         IRandomGaussianIntProviderV111? fallback = null;
         for (var frame = Current.Value; frame is not null;
              frame = frame.Parent)
         {
-            if (frame.RequestFilter is not null ||
-                frame.GaussianIntProvider is not { } scopedProvider)
+            if (frame.GaussianIntProvider is not { } scopedProvider ||
+                frame.RequestFilter is { } filter && !filter(request))
                 continue;
             fallback ??= scopedProvider;
             if (frame.OverrideExplicitProviders)
@@ -314,14 +332,15 @@ internal static class StochasticProviderScopeV111
 
     private static IRandomGaussianDoubleProviderV111
         SelectGaussianDoubleProvider(
-            IRandomGaussianDoubleProviderV111? explicitProvider)
+            IRandomGaussianDoubleProviderV111? explicitProvider,
+            ControlledStochasticRequestV111 request)
     {
         IRandomGaussianDoubleProviderV111? fallback = null;
         for (var frame = Current.Value; frame is not null;
              frame = frame.Parent)
         {
-            if (frame.RequestFilter is not null ||
-                frame.GaussianDoubleProvider is not { } scopedProvider)
+            if (frame.GaussianDoubleProvider is not { } scopedProvider ||
+                frame.RequestFilter is { } filter && !filter(request))
                 continue;
             fallback ??= scopedProvider;
             if (frame.OverrideExplicitProviders)

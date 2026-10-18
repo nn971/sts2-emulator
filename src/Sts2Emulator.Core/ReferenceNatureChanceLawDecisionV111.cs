@@ -120,7 +120,9 @@ public static class ReferenceNatureChanceLawDecisionV111
             throw new NotSupportedException(
                 "Chance Law is not a supported unit-float outcome mapping.");
 
-        var floatRequest = request.UnitFloatRequest!;
+        var floatRequest = request.UnitFloatRequest ??
+            throw new NotSupportedException(
+                "Chance Law outcome mapping does not yet support this typed provider primitive.");
         var selectedValue = ResolveUnitFloatOutcome(
             law, floatRequest, outcome.OutcomeId, conditioningRun);
         var floatDecision = new RandomUnitFloatDecisionV111(

@@ -49,9 +49,9 @@ internal static class ControlledChanceContinuationExecutorV111
 
         using var replay = ControlledStochasticChanceReplayV111.Begin(decisions);
         using var providers = requestFilter is null
-            ? StochasticProviderScopeV111.Enter(replay, replay)
-            : StochasticProviderScopeV111.EnterFiltered(
-                replay, replay, requestFilter);
+            ? StochasticProviderScopeV111.EnterBoundary(replay)
+            : StochasticProviderScopeV111.EnterFilteredBoundary(
+                replay, requestFilter);
         try
         {
             var run = mechanics(checkpoint) ?? throw new InvalidDataException(
