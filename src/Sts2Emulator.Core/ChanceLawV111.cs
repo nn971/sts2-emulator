@@ -416,6 +416,8 @@ public static partial class ChanceLawEngineV111
         LegacyCallerBoundIndexQuerySiteV111>
         LegacyCallerBoundIndexQuerySites = new(StringComparer.Ordinal)
         {
+            ["event.unknown_room.odds.ticket"] = new(
+                "event", "bounded_integer", 1000, 1000),
             ["event.random_upgrade.card_instance"] = new(
                 "event", "choose_index", 1),
             [PrototypeGameEngine.PaelsToothCardReturnSiteId] = new(
