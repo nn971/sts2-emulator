@@ -4,6 +4,58 @@ namespace Sts2Emulator.Core;
 /// player action while preserving the relevant Native stream cursor.</summary>
 internal static class ReferenceNatureNativeEventIndexReplayV111
 {
+    public static RunState ReplayControlledIndex(
+        RunState origin, RandomIndexRequestV111 request,
+        ControlledStochasticDecisionV111 selected,
+        Func<RunState, RunState> mechanics,
+        string nativeEventRngEventId, string eventName)
+    {
+        ArgumentNullException.ThrowIfNull(origin);
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(selected);
+        ArgumentNullException.ThrowIfNull(mechanics);
+        ArgumentException.ThrowIfNullOrWhiteSpace(nativeEventRngEventId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventName);
+        var typedRequest = ControlledStochasticRequestV111.FromIndex(request);
+        if (!ControlledStochasticChanceReplayV111.SameRequest(
+                selected.ToRequest(), typedRequest))
+            throw new InvalidDataException(
+                $"Selected {eventName} outcome differs from its index request.");
+        selected.Validate();
+        var expectedStream = origin.World?.Event?.NativeEventRng ??
+            NativeRngV111Contexts.ForEvent(
+                origin.RunSeed, nativeEventRngEventId);
+        var replay = ControlledChanceContinuationExecutorV111.CaptureStochastic(
+            origin,
+            ControlledStochasticContinuationStateV111.CurrentSchemaId,
+            [selected], mechanics,
+            requestFilter: candidate =>
+                ControlledStochasticChanceReplayV111.SameRequest(
+                    candidate, typedRequest));
+        if (replay.Suspended || replay.Run is not { } resolved)
+            throw new InvalidDataException(
+                $"{eventName} action did not consume exactly its selected index request.");
+        if (CanonicalJson.Sha256(
+                resolved.World?.Event?.NativeEventRng) !=
+            CanonicalJson.Sha256(expectedStream))
+            throw new InvalidDataException(
+                $"Scripted {eventName} resolution advanced its Native event cursor.");
+        var world = resolved.World ?? throw new InvalidDataException(
+            $"{eventName} replay lost its event world.");
+        var eventState = world.Event ?? throw new InvalidDataException(
+            $"{eventName} replay lost its event state.");
+        return resolved with
+        {
+            World = world with
+            {
+                Event = eventState with
+                {
+                    NativeEventRngProviderMode = "scripted-v111"
+                }
+            }
+        };
+    }
+
     public static RunState Replay(
         RunState origin, RandomIndexRequestV111 request,
         int selectedIndex, GameAction action, string nativeEventRngEventId,

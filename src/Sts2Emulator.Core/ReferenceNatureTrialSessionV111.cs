@@ -176,7 +176,7 @@ public sealed record ReferenceNatureTrialSessionV111(
             new ReferenceNatureDecisionV111(
                 law.LawId, law.EventId, selection.OutcomeId,
                 selection.OutcomeIndex)).ToArray();
-        var replay = Replay(Origin, plan, selection.OutcomeIndex);
+        var replay = Replay(Origin, plan, law, selection);
         var next = this with
         {
             Run = ReferenceNatureRunCursorV111.Commit(
@@ -225,7 +225,7 @@ public sealed record ReferenceNatureTrialSessionV111(
                     "ReferenceNature Trial transcript does not replay.");
             expectedNatureState = selection.NextState;
             expectedRun = ReferenceNatureRunCursorV111.Commit(
-                Replay(Origin, plan, selection.OutcomeIndex),
+                Replay(Origin, plan, law, selection),
                 expectedNatureState);
         }
         else
@@ -287,13 +287,22 @@ public sealed record ReferenceNatureTrialSessionV111(
     }
 
     private static RunState Replay(
-        RunState origin, TrialCaseChoicePlanV111 plan, int selectedIndex) =>
-        ReferenceNatureNativeEventIndexReplayV111.Replay(
-            origin, plan.Request, selectedIndex,
-            GameAction.Create("event_choice",
-                new EventChoicePayload("accept")),
-            PrototypeNativeGloryEvents.TrialNativeRngEventId,
-            "Trial");
+        RunState origin, TrialCaseChoicePlanV111 plan,
+        ChanceLawV111 law, ReferenceNatureSelectionV111 selection)
+    {
+        var request = ControlledStochasticRequestV111.FromIndex(plan.Request);
+        var selected = ReferenceNatureChanceLawDecisionV111
+            .FromOrderedIndexSelection(
+                law, request, selection, plan.OutcomeIds);
+        return ReferenceNatureNativeEventIndexReplayV111
+            .ReplayControlledIndex(
+                origin, plan.Request, selected,
+                run => new PrototypeGameEngine().Step(
+                    run, GameAction.Create("event_choice",
+                        new EventChoicePayload("accept"))).State,
+                PrototypeNativeGloryEvents.TrialNativeRngEventId,
+                "Trial");
+    }
 }
 
 public static partial class ChanceLawEngineV111

@@ -121,44 +121,18 @@ public sealed record ReferenceNatureInfestedAutomatonSessionV111(
             origin, PrototypeNativeHiveEvents.InfestedAutomatonCardOfferSiteId,
             0, choiceId);
         var request = ControlledStochasticRequestV111.FromIndex(plan.Request);
-        var selected = ReferenceNatureChanceLawDecisionV111.FromSelection(
-            law, request, selection);
-        var expectedNativeEventStream = origin.World?.Event?.NativeEventRng ??
-            NativeRngV111Contexts.ForEvent(
-                origin.RunSeed,
-                PrototypeNativeHiveEvents.InfestedAutomatonNativeRngEventId);
-        var replay = ControlledChanceContinuationExecutorV111.CaptureStochastic(
-            origin,
-            ControlledStochasticContinuationStateV111.CurrentSchemaId,
-            [selected],
-            run => new PrototypeGameEngine().Step(
-                run, GameAction.Create("event_choice",
-                    new EventChoicePayload(choiceId))).State,
-            requestFilter: candidate =>
-                ControlledStochasticChanceReplayV111.SameRequest(
-                    candidate, request));
-        if (replay.Suspended || replay.Run is not { } resolved)
-            throw new InvalidDataException(
-                "Infested Automaton action did not consume exactly its selected card request.");
-        if (CanonicalJson.Sha256(
-                resolved.World?.Event?.NativeEventRng) !=
-            CanonicalJson.Sha256(expectedNativeEventStream))
-            throw new InvalidDataException(
-                "Scripted Infested Automaton resolution advanced its Native event cursor.");
-        var world = resolved.World ?? throw new InvalidDataException(
-            "Infested Automaton replay lost its event world.");
-        var eventState = world.Event ?? throw new InvalidDataException(
-            "Infested Automaton replay lost its event state.");
-        return resolved with
-        {
-            World = world with
-            {
-                Event = eventState with
-                {
-                    NativeEventRngProviderMode = "scripted-v111"
-                }
-            }
-        };
+        var selected = ReferenceNatureChanceLawDecisionV111
+            .FromOrderedIndexSelection(law, request, selection,
+                plan.CandidateCardIds.Select(cardId => "card:" + cardId)
+                    .ToArray());
+        return ReferenceNatureNativeEventIndexReplayV111
+            .ReplayControlledIndex(
+                origin, plan.Request, selected,
+                run => new PrototypeGameEngine().Step(
+                    run, GameAction.Create("event_choice",
+                        new EventChoicePayload(choiceId))).State,
+                PrototypeNativeHiveEvents.InfestedAutomatonNativeRngEventId,
+                "Infested Automaton");
     }
 
     public void Validate()

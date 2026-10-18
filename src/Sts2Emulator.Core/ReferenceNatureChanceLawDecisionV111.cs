@@ -11,6 +11,52 @@ public static class ReferenceNatureChanceLawDecisionV111
 {
     private const uint OneFloatBits = 0x3f800000;
 
+    public static ControlledStochasticDecisionV111 FromOrderedIndexSelection(
+        ChanceLawV111 law,
+        ControlledStochasticRequestV111 request,
+        ReferenceNatureSelectionV111 selection,
+        IReadOnlyList<string> orderedOutcomeIds)
+    {
+        ArgumentNullException.ThrowIfNull(law);
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(selection);
+        ArgumentNullException.ThrowIfNull(orderedOutcomeIds);
+        law.Validate();
+        request.Validate();
+        if (request.IndexRequest is not { } indexRequest ||
+            selection.LawId != law.LawId ||
+            selection.EventId != law.EventId ||
+            selection.OutcomeIndex < 0 ||
+            selection.OutcomeIndex >= law.Outcomes.Length ||
+            selection.OutcomeId !=
+                law.Outcomes[selection.OutcomeIndex].OutcomeId ||
+            law.SiteId != indexRequest.SiteId ||
+            law.OperationKind != indexRequest.OperationKind ||
+            law.OwnerId != indexRequest.OwnerId ||
+            law.Ordinal != indexRequest.Ordinal ||
+            law.Outcomes.Length != indexRequest.SupportCount ||
+            orderedOutcomeIds.Count != indexRequest.SupportCount)
+            throw new InvalidDataException(
+                "ReferenceNature selection does not match the ordered index support.");
+        for (var index = 0; index < orderedOutcomeIds.Count; index++)
+        {
+            if (string.IsNullOrWhiteSpace(orderedOutcomeIds[index]) ||
+                law.Outcomes[index].OutcomeId != orderedOutcomeIds[index])
+                throw new InvalidDataException(
+                    "Chance Law outcome order differs from its typed index support.");
+        }
+
+        var decision = new RandomIndexDecisionV111(
+            indexRequest with
+            {
+                OrderedCandidates = (int[])indexRequest.OrderedCandidates.Clone()
+            }, selection.OutcomeIndex, "controlled-v111");
+        decision.Validate();
+        var controlled = ControlledStochasticDecisionV111.FromIndex(decision);
+        controlled.Validate();
+        return controlled;
+    }
+
     public static ControlledStochasticDecisionV111 FromSelection(
         ChanceLawV111 law,
         ControlledStochasticRequestV111 request,

@@ -166,7 +166,7 @@ public sealed record ReferenceNatureTabletOfTruthSessionV111(
             new ReferenceNatureDecisionV111(
                 law.LawId, law.EventId, selection.OutcomeId,
                 selection.OutcomeIndex)).ToArray();
-        var replay = Replay(Origin, plan, selection.OutcomeIndex);
+        var replay = Replay(Origin, plan, law, selection);
         var expectedStream = Origin.World?.Event?.NativeEventRng ??
             NativeRngV111Contexts.ForEvent(
                 Origin.RunSeed,
@@ -220,7 +220,7 @@ public sealed record ReferenceNatureTabletOfTruthSessionV111(
                 throw new InvalidDataException(
                     "ReferenceNature Tablet of Truth transcript does not replay.");
             expectedNatureState = selection.NextState;
-            expectedRun = Replay(Origin, plan, selection.OutcomeIndex);
+            expectedRun = Replay(Origin, plan, law, selection);
             expectedRun = ReferenceNatureRunCursorV111.Commit(
                 expectedRun, expectedNatureState);
         }
@@ -285,13 +285,24 @@ public sealed record ReferenceNatureTabletOfTruthSessionV111(
 
     private static RunState Replay(
         RunState origin, TabletOfTruthChoicePlanV111 plan,
-        int selectedIndex)
-        => ReferenceNatureNativeEventIndexReplayV111.Replay(
-            origin, plan.Request, selectedIndex,
-            GameAction.Create("event_choice",
-                new EventChoicePayload("decipher")),
-            PrototypeNativeTabletOfTruth.NativeRngEventId,
-            "Tablet of Truth");
+        ChanceLawV111 law, ReferenceNatureSelectionV111 selection)
+    {
+        var request = ControlledStochasticRequestV111.FromIndex(plan.Request);
+        var orderedOutcomeIds = plan.CandidateCardInstanceIds.Select(
+            instanceId => "card_instance:" + instanceId.ToString(
+                System.Globalization.CultureInfo.InvariantCulture)).ToArray();
+        var selected = ReferenceNatureChanceLawDecisionV111
+            .FromOrderedIndexSelection(
+                law, request, selection, orderedOutcomeIds);
+        return ReferenceNatureNativeEventIndexReplayV111
+            .ReplayControlledIndex(
+                origin, plan.Request, selected,
+                run => new PrototypeGameEngine().Step(
+                    run, GameAction.Create("event_choice",
+                        new EventChoicePayload("decipher"))).State,
+                PrototypeNativeTabletOfTruth.NativeRngEventId,
+                "Tablet of Truth");
+    }
 }
 
 public static partial class ChanceLawEngineV111
