@@ -204,15 +204,8 @@ public static class SemanticDrawChoiceV111
     {
         if (run.Phase == RunPhase.Combat)
         {
-            var nextChoice = run.World?.Combat?.PendingChoice;
-            if (nextChoice?.ControlledSemanticDraw is not null)
-                ValidateBoundary(run);
-            else if (nextChoice?.ChoiceId == "select_cards")
-                SemanticCardSelectionEngineV111
-                    .ValidatePendingBoundary(run);
-            else
-                SemanticPilotCombatEngineV111
-                    .ValidateSemanticCombatBoundary(run);
+            SemanticPilotCombatEngineV111
+                .ValidateSemanticCombatBoundary(run);
             PrototypeStateInvariants.Validate(run);
             ValidateRecordedChoice(
                 run, pending, selectedIndex);

@@ -244,20 +244,8 @@ public static class SemanticCostChoiceV111
     {
         if (run.Phase == RunPhase.Combat)
         {
-            var nextChoice = run.World?.Combat?.PendingChoice;
-            if (nextChoice is
-                    { ChoiceId: "controlled_draw_cost",
-                      ControlledSemanticDraw: not null })
-                ValidateDrawBoundary(run);
-            else if (nextChoice is
-                    { ChoiceId: "controlled_semantic_draw" })
-                SemanticDrawChoiceV111.ValidateBoundary(run);
-            else if (nextChoice?.ChoiceId == "select_cards")
-                SemanticCardSelectionEngineV111
-                    .ValidatePendingBoundary(run);
-            else
-                SemanticPilotCombatEngineV111
-                    .ValidateSemanticCombatBoundary(run);
+            SemanticPilotCombatEngineV111
+                .ValidateSemanticCombatBoundary(run);
             PrototypeStateInvariants.Validate(run);
         }
         else if (run.Phase is not (RunPhase.Reward or RunPhase.Terminal))
