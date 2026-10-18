@@ -33,6 +33,8 @@ public sealed record NativeIntentAuditV111(
 
 public static class NativeCombatRngEntryV111
 {
+    public const string DiagnosticMonsterLocalSiteId =
+        "diagnostic.monster_local.index_sample";
     public const string InitialUniqueHpSiteId =
         "combat.initial_unique_hp";
     public const string CommittedIntentSiteId =
@@ -525,7 +527,7 @@ public static class NativeCombatRngEntryV111
         AdvanceMonsterLocal(
             combat,
             combatId,
-            "diagnostic.monster_local.index_sample",
+            DiagnosticMonsterLocalSiteId,
             "creature:" + combatId,
             maxExclusive,
             ordinal: 0,
@@ -540,7 +542,11 @@ public static class NativeCombatRngEntryV111
         int maxExclusive, int ordinal, out int sampled)
     {
         ArgumentNullException.ThrowIfNull(combat);
-        ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
+        if (siteId is not (DiagnosticMonsterLocalSiteId or
+            PrototypeNativePunchOff.ConstructHpOffsetSiteId))
+            throw new NotSupportedException(
+                $"UNSUPPORTED_RANDOM_SITE site={siteId} " +
+                "operation=monster_local_advance.");
         ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
         if (ordinal < 0)
             throw new ArgumentOutOfRangeException(nameof(ordinal));

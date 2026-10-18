@@ -3330,7 +3330,11 @@ public sealed partial class PrototypeGameEngine
         CombatState combat, RngBundle rng,
         List<RandomIndexDecisionV111>? audit, string siteId)
     {
-        ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
+        if (!StochasticSiteRegistryV111.CombatIntentSiteIds.Contains(
+                siteId, StringComparer.Ordinal))
+            throw new NotSupportedException(
+                $"UNSUPPORTED_RANDOM_SITE site={siteId} " +
+                "operation=enemy_intent_commit.");
         var ownedNative = combat.NativeRng?.Fork();
         var formation = combat.Enemies.Select(enemy => enemy.Fork()).ToArray();
         var provider = new NativeRandomIndexProviderV111();
@@ -4649,7 +4653,7 @@ public sealed partial class PrototypeGameEngine
                                     sourceCardInstanceId: null,
                                     ordinal: randomDiscardInsertionOrdinal++,
                                     siteId:
-                                        "combat.enemy.discard.random_insert_index",
+                                        StochasticSiteRegistryV111.CombatEnemyDiscardRandomInsertSiteId,
                                     requestOwnerPrefix:
                                         "creature:" + enemyCombatId +
                                         ":move:" + move.Id +
@@ -4690,7 +4694,7 @@ public sealed partial class PrototypeGameEngine
                                     sourceCardInstanceId: null,
                                     ordinal: randomDrawInsertionOrdinal++,
                                     siteId:
-                                        "combat.enemy.draw.random_insert_index",
+                                        StochasticSiteRegistryV111.CombatEnemyDrawRandomInsertSiteId,
                                     requestOwnerPrefix:
                                         "creature:" + enemyCombatId +
                                         ":move:" + move.Id +
@@ -5512,7 +5516,7 @@ public sealed partial class PrototypeGameEngine
                 }
                 var target = ResolveRandomEnemyTarget(
                     combat, rng, liveEnemies,
-                    "combat.effect.random_enemy",
+                    StochasticSiteRegistryV111.CombatEffectRandomTargetSiteId,
                     "combat_targets",
                     "effect_operation",
                     randomTargetOrdinal++);
@@ -6492,7 +6496,7 @@ public sealed partial class PrototypeGameEngine
                         .ToArray();
                     combat = ShuffleCombatCardPool(
                         combat, rng, shuffled,
-                        "combat.hand_return.draw_pile.shuffle_swap_index",
+                        StochasticSiteRegistryV111.CombatHandReturnShuffleSiteId,
                         "combat", "run.shuffle",
                         "effect:" + operation.Kind + ":source:" +
                             (sourceCardInstanceId?.ToString() ?? "none"));
@@ -6904,7 +6908,7 @@ public sealed partial class PrototypeGameEngine
 
                     combat = ShuffleCombatCardPool(
                         combat, rng, rareCards,
-                        "combat.draw_pile.random_rare_to_hand.shuffle_swap_index",
+                        StochasticSiteRegistryV111.CombatRandomRareDrawToHandShuffleSiteId,
                         "combat", "run.combat_card_selection",
                         "effect:" + operation.Kind + ":source:" +
                             (sourceCardInstanceId?.ToString() ?? "none") +
@@ -7082,7 +7086,7 @@ public sealed partial class PrototypeGameEngine
                         var shuffledCandidates = (long[])candidates.Clone();
                         combat = ShuffleCombatCardPool(
                             combat, rng, shuffledCandidates,
-                            "combat.card_selection.random_shortlist",
+                            StochasticSiteRegistryV111.CombatRandomShortlistShuffleSiteId,
                             "combat", "run.combat_card_selection",
                             "card_selection:" + selection.SourceZone +
                                 ":source:" +
@@ -7584,7 +7588,7 @@ public sealed partial class PrototypeGameEngine
                         var modelSelection = ResolveGeneratedCardModelIndex(
                             combat, rng, pool, operation.Kind,
                             sourceCardInstanceId, generatedCardOrdinal++,
-                            "combat.random_draw_attack.card_model");
+                            StochasticSiteRegistryV111.CombatRandomDrawAttackCardModelSiteId);
                         combat = modelSelection.Combat;
                         var selected = pool[modelSelection.SelectedIndex];
                         var id = combat.NextCardInstanceId;
@@ -7715,7 +7719,7 @@ public sealed partial class PrototypeGameEngine
                     // taking a distinct prefix, even for a single generated card.
                     combat = ShuffleCombatCardPool(
                         combat, rng, pool,
-                        "combat.generation.full_pool_shuffle.swap_index",
+                        StochasticSiteRegistryV111.CombatFullPoolShuffleSiteId,
                         "combat", "run.combat_card_generation",
                         "effect:" + operation.Kind + ":source:" +
                             (sourceCardInstanceId?.ToString() ?? "none"));
@@ -8480,7 +8484,7 @@ public sealed partial class PrototypeGameEngine
                             }
                             var target = ResolveRandomEnemyTarget(
                                 combat, rng, liveTargets,
-                                "combat.autoplay.random_enemy",
+                                StochasticSiteRegistryV111.CombatAutoplayRandomTargetSiteId,
                                 "combat_targets",
                                 "card:" + autoPlayId,
                                 autoPlayTargetOrdinal++);
@@ -9051,7 +9055,7 @@ public sealed partial class PrototypeGameEngine
         // models until the native unlock bridge exists.
         combat = ShuffleCombatCardPool(
             combat, rng, candidates,
-            "combat.generation.full_pool_shuffle.swap_index",
+            StochasticSiteRegistryV111.CombatFullPoolShuffleSiteId,
             "combat", "run.combat_card_generation",
             "effect:CreateDistinctColorlessCardsInHand:source:" +
                 (sourceCardId ?? "none"),
@@ -9123,7 +9127,7 @@ public sealed partial class PrototypeGameEngine
         // count even when the effect asks for only a few cards.
         combat = ShuffleCombatCardPool(
             combat, rng, candidates,
-            "combat.generation.full_pool_shuffle.swap_index",
+            StochasticSiteRegistryV111.CombatFullPoolShuffleSiteId,
             "combat", "run.combat_card_generation",
             "combat:generated_cards:first_instance:" +
                 combat.NextCardInstanceId,
@@ -13774,7 +13778,11 @@ public sealed partial class PrototypeGameEngine
         ArgumentNullException.ThrowIfNull(combat);
         ArgumentNullException.ThrowIfNull(legacyRng);
         ArgumentNullException.ThrowIfNull(eligibleEnemyInstanceIds);
-        ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
+        if (!StochasticSiteRegistryV111.CombatRandomTargetSiteIds.Contains(
+                siteId, StringComparer.Ordinal))
+            throw new NotSupportedException(
+                $"UNSUPPORTED_RANDOM_SITE site={siteId} " +
+                "operation=random_enemy_target.");
         ArgumentException.ThrowIfNullOrWhiteSpace(legacyStreamId);
         ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
         if (ordinal < 0)
@@ -13995,7 +14003,11 @@ public sealed partial class PrototypeGameEngine
         ArgumentNullException.ThrowIfNull(combat);
         ArgumentNullException.ThrowIfNull(legacyRng);
         ArgumentNullException.ThrowIfNull(orderedPool);
-        ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
+        if (!StochasticSiteRegistryV111.CombatCardPoolShuffleSiteIds.Contains(
+                siteId, StringComparer.Ordinal))
+            throw new NotSupportedException(
+                $"UNSUPPORTED_RANDOM_SITE site={siteId} " +
+                "operation=combat_card_pool_shuffle.");
         ArgumentException.ThrowIfNullOrWhiteSpace(legacyStreamId);
         ArgumentException.ThrowIfNullOrWhiteSpace(nativeStreamId);
         ArgumentException.ThrowIfNullOrWhiteSpace(ownerPrefix);
@@ -14049,11 +14061,16 @@ public sealed partial class PrototypeGameEngine
             PrototypeCombatEffectKind operationKind,
             long? sourceCardInstanceId,
             int ordinal,
-            string siteId = "combat.generated_card.select")
+            string siteId = StochasticSiteRegistryV111.CombatGeneratedCardSelectSiteId)
     {
         ArgumentNullException.ThrowIfNull(combat);
         ArgumentNullException.ThrowIfNull(legacyRng);
         ArgumentNullException.ThrowIfNull(candidateCardIds);
+        if (!StochasticSiteRegistryV111.CombatGeneratedCardModelSiteIds.Contains(
+                siteId, StringComparer.Ordinal))
+            throw new NotSupportedException(
+                $"UNSUPPORTED_RANDOM_SITE site={siteId} " +
+                "operation=generated_card_selection.");
         if (candidateCardIds.Length == 0 ||
             candidateCardIds.Any(string.IsNullOrWhiteSpace) ||
             candidateCardIds.Distinct(StringComparer.Ordinal).Count() !=
@@ -14107,6 +14124,11 @@ public sealed partial class PrototypeGameEngine
         ArgumentNullException.ThrowIfNull(legacyRng);
         ArgumentNullException.ThrowIfNull(orderedDrawPile);
         ArgumentException.ThrowIfNullOrWhiteSpace(cardModelId);
+        if (!StochasticSiteRegistryV111.CombatRandomPilePositionSiteIds.Contains(
+                siteId, StringComparer.Ordinal))
+            throw new NotSupportedException(
+                $"UNSUPPORTED_RANDOM_SITE site={siteId} " +
+                "operation=random_pile_insertion.");
         if (ordinal < 0)
             throw new ArgumentOutOfRangeException(nameof(ordinal));
         if (requestOwnerPrefix is not null)
@@ -14530,7 +14552,7 @@ public sealed partial class PrototypeGameEngine
                     enemy.InstanceId).ToArray();
                 var target = ResolveRandomEnemyTarget(
                     combat, rng, eligibleIds,
-                    "combat.sly_autoplay.random_enemy",
+                    StochasticSiteRegistryV111.CombatSlyAutoplayRandomTargetSiteId,
                     "combat",
                     "card:" + cardInstanceId,
                     combat.AutoPlayTargetRolls?.Count(roll =>
@@ -14666,7 +14688,7 @@ public sealed partial class PrototypeGameEngine
                         combat, rng, eligible,
                         PrototypeCombatEffectKind.ChooseCards,
                         instanceId, transformOrdinal,
-                        "combat.card_transform.replacement.index_draw");
+                        StochasticSiteRegistryV111.CombatCardTransformReplacementSiteId);
                     combat = replacementChoice.Combat;
                     replacement = eligible[replacementChoice.SelectedIndex];
                 }
