@@ -10,7 +10,7 @@ public sealed record SimulationMechanicsComparisonV111(
     bool DifferencesTruncated)
 {
     public const string SchemaId =
-        "sts2-v111-simulation-mechanics-comparison-v1";
+        "sts2-v111-simulation-mechanics-comparison-v2";
 
     public bool Equivalent => StringComparer.Ordinal.Equals(
         LeftFingerprint, RightFingerprint);
@@ -26,7 +26,8 @@ public sealed record SimulationMechanicsProjectionV111(
     RunMechanicsStateV111 Run,
     RunWorldMechanicsStateV111? World,
     CombatMechanicsStateV111? Combat,
-    EventMechanicsStateV111? Event);
+    EventMechanicsStateV111? Event,
+    PrototypeControlledSemanticDrawV111? PendingDrawContinuation = null);
 
 /// <summary>
 /// Builds stable provider-independent mechanics projections for replay and
@@ -44,14 +45,28 @@ public static class SimulationMechanicsProjectionEngineV111
         var snapshot = run.Fork();
         var world = snapshot.World;
         var combat = world?.Combat?.Mechanics;
+        PrototypeControlledSemanticDrawV111? pendingDrawContinuation = null;
         if (combat is not null)
         {
+            var pendingChoice = combat.PendingChoice;
+            var choiceDraw = pendingChoice?.ControlledSemanticDraw;
+            var insertionDraw = pendingChoice?.ControlledDrawInsertion
+                ?.SemanticDrawContinuation;
+            if (choiceDraw is not null && insertionDraw is not null)
+                throw new InvalidDataException(
+                    "A pending combat choice has overlapping semantic draw continuations.");
+            pendingDrawContinuation = (choiceDraw ?? insertionDraw)?.Fork();
+
             var pipeline = combat.AutomaticPipelineContinuation;
             if (pipeline is not null)
+            {
+                var stochastic = pipeline.Stochastic;
                 pipeline = pipeline with
                 {
-                    Stochastic = new PrototypeAutomaticPipelineStochasticStateV111()
+                    Stochastic = new PrototypeAutomaticPipelineStochasticStateV111(
+                        HandDrawProgress: stochastic.HandDrawProgress)
                 };
+            }
 
             combat = combat with
             {
@@ -79,7 +94,8 @@ public static class SimulationMechanicsProjectionEngineV111
             runMechanics,
             worldMechanics,
             combat,
-            world?.Event?.Mechanics);
+            world?.Event?.Mechanics,
+            pendingDrawContinuation);
     }
 
     public static string Fingerprint(RunState run) =>
@@ -260,10 +276,6 @@ public static class SimulationMechanicsProjectionEngineV111
                 ControlledDrawCost = null,
                 ControlledCardShortlist = null,
                 ControlledRandomPileCard = null,
-                ControlledSemanticDraw = null,
-                SemanticStratagemDrawSelection = false,
-                AutomaticSemanticStratagemDrawSelection = false,
-                StandaloneSemanticDrawHookChoice = false,
-                AutomaticSemanticDrawHookChoice = false
+                ControlledSemanticDraw = null
             };
 }
