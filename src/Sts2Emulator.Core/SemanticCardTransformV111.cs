@@ -11,6 +11,11 @@ public sealed record SemanticCardTransformEventV111(
     public const string EventSchemaId =
         "sts2-v111-semantic-card-transform-v1";
 
+    public SemanticCardTransformEventV111 Fork() => this with
+    {
+        CandidateCardIds = (string[])CandidateCardIds.Clone()
+    };
+
     public void Validate()
     {
         if (SchemaId != EventSchemaId || string.IsNullOrWhiteSpace(EventId) ||
@@ -46,9 +51,72 @@ public sealed record SemanticCardTransformDecisionV111(
 
     public SemanticCardTransformDecisionV111 Fork() => this with
     {
-        Event = Event with
-        {
-            CandidateCardIds = (string[])Event.CandidateCardIds.Clone()
-        }
+        Event = Event.Fork()
     };
+}
+
+public static class SemanticCardTransformChoiceV111
+{
+    public static SemanticCardTransformDecisionV111 Select(
+        SemanticCardTransformEventV111 pending, string eventId,
+        string cardId)
+    {
+        ArgumentNullException.ThrowIfNull(pending);
+        pending.Validate();
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(cardId);
+        if (pending.EventId != eventId)
+            throw new InvalidOperationException(
+                "Card-transform event ID is stale or mismatched.");
+        var index = Array.IndexOf(pending.CandidateCardIds, cardId);
+        if (index < 0)
+            throw new InvalidOperationException(
+                "Card model is outside the pending transform support.");
+        var decision = new SemanticCardTransformDecisionV111(
+            pending.Fork(), index, cardId);
+        decision.Validate();
+        return decision;
+    }
+
+    /// <summary>Revalidate the live replacement pool and apply one outcome
+    /// through the ordinary controlled transform continuation.</summary>
+    internal static RunState Resume(
+        RunState checkpoint, SemanticCardTransformDecisionV111 decision)
+    {
+        ArgumentNullException.ThrowIfNull(checkpoint);
+        ArgumentNullException.ThrowIfNull(decision);
+        decision.Validate();
+        var combat = checkpoint.World?.Combat ??
+            throw new InvalidDataException(
+                "Card-transform choice lost its source combat.");
+        var transform = combat.PendingChoice?.ControlledCardTransform ??
+            throw new InvalidDataException(
+                "Card-transform choice lost its suspended operation.");
+        SemanticPilotCombatEngineV111.ValidateCardTransformBoundary(
+            checkpoint, transform);
+        var sourceCardInstanceId = transform.SelectedCardInstanceIds[
+            transform.NextTransformIndex];
+        var sourceCard = combat.Cards.Single(card =>
+            card.InstanceId == sourceCardInstanceId);
+        if (decision.Event.SourceCardInstanceId != sourceCardInstanceId ||
+            decision.Event.OriginalCardId != sourceCard.CardId ||
+            !transform.CandidateCardIds.SequenceEqual(
+                decision.Event.CandidateCardIds))
+            throw new InvalidDataException(
+                "Card-transform decision no longer matches its source pool.");
+
+        RunState resumed;
+        using (ControlledChanceGuardV111.Enter())
+            resumed = PrototypeGameEngine.ResumeControlledCardTransform(
+                checkpoint.Fork(), decision.SelectedIndex);
+        if (resumed.Phase == RunPhase.Combat)
+            SemanticPilotCombatEngineV111.ValidateSemanticCombatBoundary(
+                resumed);
+        else if (resumed.Phase is not (RunPhase.Reward or RunPhase.Terminal))
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_TRANSFORM " +
+                "site=combat.card_transform " +
+                "operation=unsupported_post_transform_phase");
+        return resumed;
+    }
 }

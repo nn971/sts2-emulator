@@ -2482,34 +2482,10 @@ public static class SemanticPilotCombatEngineV111
         var pending = current.PotionGenerationPending ??
             throw new InvalidOperationException(
                 "No semantic potion-generation event is pending.");
-        if (pending.EventId != eventId)
-            throw new InvalidOperationException(
-                "Potion-generation event ID is stale or mismatched.");
-        var index = Array.IndexOf(pending.CandidatePotionIds, potionId);
-        if (index < 0)
-            throw new InvalidOperationException(
-                "Potion model is outside the pending source pool.");
-        var expected = new SemanticPotionGenerationDecisionV111(
-            pending, index, potionId);
-        expected.Validate();
-
-        RunState result;
-        using (ControlledChanceGuardV111.Enter())
-            result = PrototypeGameEngine.ResumeControlledPotionGeneration(
-                current.Run.Fork(), index);
-        if (result.Phase != RunPhase.Combat)
-            throw new NotSupportedException(
-                "UNSUPPORTED_SEMANTIC_POTION site=combat.potion_generation " +
-                "operation=unsupported_post_generation_phase");
-        ValidateSemanticCombatBoundary(result);
-        var priorCombat = current.Run.World!.Combat!;
-        var nextCombat = result.World!.Combat!;
-        if (!priorCombat.DrawPile.SequenceEqual(nextCombat.DrawPile) ||
-            CanonicalJson.Sha256(priorCombat.SemanticDeck) !=
-                CanonicalJson.Sha256(nextCombat.SemanticDeck))
-            throw new NotSupportedException(
-                "UNSUPPORTED_SEMANTIC_DECK site=combat.potion_generation " +
-                "operation=unmodeled_draw_pile_mutation");
+        var expected = SemanticPotionGenerationChoiceV111.Select(
+            pending, eventId, potionId);
+        var result = SemanticPotionGenerationChoiceV111.Resume(
+            current.Run, expected);
         return NormalizeNoncontrolledCosts(current with
         {
             Run = result,
@@ -2533,27 +2509,10 @@ public static class SemanticPilotCombatEngineV111
         var pending = current.CardTransformPending ??
             throw new InvalidOperationException(
                 "No semantic card-transform event is pending.");
-        if (pending.EventId != eventId)
-            throw new InvalidOperationException(
-                "Card-transform event ID is stale or mismatched.");
-        var index = Array.IndexOf(pending.CandidateCardIds, cardId);
-        if (index < 0)
-            throw new InvalidOperationException(
-                "Card model is outside the pending transform support.");
-        var expected = new SemanticCardTransformDecisionV111(
-            pending, index, cardId);
-        expected.Validate();
-
-        RunState result;
-        using (ControlledChanceGuardV111.Enter())
-            result = PrototypeGameEngine.ResumeControlledCardTransform(
-                current.Run.Fork(), index);
-        if (result.Phase == RunPhase.Combat)
-            ValidateSemanticCombatBoundary(result);
-        else if (result.Phase is not (RunPhase.Reward or RunPhase.Terminal))
-            throw new NotSupportedException(
-                "UNSUPPORTED_SEMANTIC_TRANSFORM site=combat.card_transform " +
-                "operation=unsupported_post_transform_phase");
+        var expected = SemanticCardTransformChoiceV111.Select(
+            pending, eventId, cardId);
+        var result = SemanticCardTransformChoiceV111.Resume(
+            current.Run, expected);
 
         return NormalizeNoncontrolledCosts(current with
         {
