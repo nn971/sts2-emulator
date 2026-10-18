@@ -28,7 +28,9 @@ public static class NativeEventContextRngV111
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(eventState);
         ArgumentException.ThrowIfNullOrWhiteSpace(nativeEventEntry);
-        ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
+        ValidateSiteId(siteId,
+            StochasticSiteRegistryV111.NativeEventContextIndexSiteIds,
+            "index");
         ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
         if (candidateCount <= 0)
             throw new ArgumentOutOfRangeException(nameof(candidateCount));
@@ -90,7 +92,9 @@ public static class NativeEventContextRngV111
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(eventState);
         ArgumentException.ThrowIfNullOrWhiteSpace(nativeEventEntry);
-        ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
+        ValidateSiteId(siteId,
+            StochasticSiteRegistryV111.NativeEventContextBoundedIntegerSiteIds,
+            "bounded-integer");
         ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
         if (boundedCount <= 0)
             throw new ArgumentOutOfRangeException(nameof(boundedCount));
@@ -150,7 +154,9 @@ public static class NativeEventContextRngV111
         ArgumentNullException.ThrowIfNull(state);
         ArgumentNullException.ThrowIfNull(eventState);
         ArgumentException.ThrowIfNullOrWhiteSpace(nativeEventEntry);
-        ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
+        ValidateSiteId(siteId,
+            StochasticSiteRegistryV111.NativeEventContextUnitFloatSiteIds,
+            "unit-float");
         ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
         if (ordinal < 0)
             throw new ArgumentOutOfRangeException(nameof(ordinal));
@@ -206,7 +212,9 @@ public static class NativeEventContextRngV111
         ArgumentNullException.ThrowIfNull(eventState);
         ArgumentException.ThrowIfNullOrWhiteSpace(nativeEventEntry);
         ArgumentNullException.ThrowIfNull(values);
-        ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
+        ValidateSiteId(siteId,
+            StochasticSiteRegistryV111.NativeEventContextShuffleSiteIds,
+            "shuffle");
         ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
         if (ordinalOffset is < 0)
             throw new ArgumentOutOfRangeException(nameof(ordinalOffset));
@@ -538,6 +546,18 @@ public static class NativeEventContextRngV111
             return;
         throw new InvalidOperationException(
             "Native event state cannot use this counterfactual RNG provider.");
+    }
+
+    private static void ValidateSiteId(
+        string siteId, string[] supportedSiteIds, string operation)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
+        ArgumentNullException.ThrowIfNull(supportedSiteIds);
+        ArgumentException.ThrowIfNullOrWhiteSpace(operation);
+        if (!supportedSiteIds.Contains(siteId, StringComparer.Ordinal))
+            throw new NotSupportedException(
+                $"Native event RNG does not support {operation} site " +
+                $"'{siteId}'.");
     }
 
     private static int ResolveRequestOrdinal(

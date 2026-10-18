@@ -21,7 +21,7 @@ from urllib.parse import unquote, urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = ROOT / "src" / "Sts2Emulator.Core"
-SCHEMA_ID = "emulator-rng-callsite-source-inventory-v26"
+SCHEMA_ID = "emulator-rng-callsite-source-inventory-v27"
 SITE_REGISTRY_PATH = SOURCE_ROOT / "StochasticSiteRegistryV111.cs"
 
 CALL_PATTERN = re.compile(
@@ -585,7 +585,47 @@ def _guarded_site_values(
             not re.search(rf"\{{[^{{}}]*\b{re.escape(name)}\b[^{{}}]*\}}|"
                           rf"nameof\(\s*{re.escape(name)}\s*\)",
                           member_source)):
-        return []
+        delegated_guard = re.search(
+            rf"\bValidateSiteId\s*\(\s*{re.escape(name)}\s*,\s*"
+            r"(?P<sites>[A-Za-z_][A-Za-z0-9_.]*)\s*,",
+            member_source,
+        )
+        if delegated_guard is None:
+            return []
+        validator = re.search(
+            r"private\s+static\s+void\s+ValidateSiteId\s*\(\s*"
+            r"string\s+(?P<parameter>[A-Za-z_][A-Za-z0-9_]*)\s*,\s*"
+            r"string\[\]\s+(?P<sites_parameter>"
+            r"[A-Za-z_][A-Za-z0-9_]*)\s*,\s*"
+            r"string\s+[A-Za-z_][A-Za-z0-9_]*\s*\)\s*"
+            r"\{(?P<body>.*?)\n\s*\}",
+            source,
+            re.DOTALL,
+        )
+        if validator is None:
+            return []
+        parameter = validator.group("parameter")
+        sites_parameter = validator.group("sites_parameter")
+        body = validator.group("body")
+        if ("NotSupportedException" not in body or
+                not re.search(
+                    rf"{re.escape(sites_parameter)}\.Contains\s*\(\s*"
+                    rf"{re.escape(parameter)}\s*,\s*"
+                    r"StringComparer\.Ordinal\s*\)", body) or
+                not re.search(
+                    rf"\{{[^{{}}]*\b{re.escape(parameter)}\b[^{{}}]*\}}",
+                    body,
+                )):
+            return []
+        site_array = delegated_guard.group("sites")
+        if not site_array.startswith(
+            "StochasticSiteRegistryV111.NativeEventContext"
+        ) or not site_array.endswith("SiteIds"):
+            return []
+        values, unresolved = _resolve_site_array_property(
+            site_array, global_constants,
+        )
+        return sorted(set(values)) if values and not unresolved else []
     dictionary_lookup = re.search(
         rf"\b(?P<dictionary>[A-Za-z_][A-Za-z0-9_]*)\."
         rf"(?:TryGetValue\s*\(\s*{re.escape(name)}\s*,|"
