@@ -901,7 +901,6 @@ public sealed record SemanticPilotCombatV111(
             var nativeAudit = this.NativePolicyAudit ??
                 throw new InvalidDataException(
                     "Native policy baseline is missing provider provenance.");
-            nativeAudit.Validate();
             if (this.AtPlayerBoundary)
                 SemanticPilotCombatEngineV111.ValidateNativePolicyBoundary(this.Run);
             else

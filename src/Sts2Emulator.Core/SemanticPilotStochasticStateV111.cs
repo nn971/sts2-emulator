@@ -50,6 +50,7 @@ public sealed record SemanticPilotStochasticStateV111(
 
     public void Validate()
     {
+        NativePolicyAudit?.Validate();
         if (PendingEndTurn is not null)
             PendingEndTurn.Validate();
     }
