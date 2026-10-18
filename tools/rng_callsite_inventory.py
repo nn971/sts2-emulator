@@ -21,7 +21,7 @@ from urllib.parse import unquote, urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = ROOT / "src" / "Sts2Emulator.Core"
-SCHEMA_ID = "emulator-rng-callsite-source-inventory-v28"
+SCHEMA_ID = "emulator-rng-callsite-source-inventory-v29"
 SITE_REGISTRY_PATH = SOURCE_ROOT / "StochasticSiteRegistryV111.cs"
 
 CALL_PATTERN = re.compile(
@@ -585,6 +585,39 @@ def _guarded_site_values(
             not re.search(rf"\{{[^{{}}]*\b{re.escape(name)}\b[^{{}}]*\}}|"
                           rf"nameof\(\s*{re.escape(name)}\s*\)",
                           member_source)):
+        registered_query_guard = re.search(
+            rf"\bValidateSiteId\s*\(\s*{re.escape(name)}\s*,\s*"
+            r"\"(?:index|bounded-integer|unit-float)\"\s*\)",
+            member_source,
+        )
+        if registered_query_guard is not None:
+            validator = re.search(
+                r"private\s+static\s+void\s+ValidateSiteId\s*\(\s*"
+                r"string\s+(?P<parameter>[A-Za-z_][A-Za-z0-9_]*)\s*,\s*"
+                r"string\s+[A-Za-z_][A-Za-z0-9_]*\s*\)\s*"
+                r"\{(?P<body>.*?)\n\s*\}",
+                source,
+                re.DOTALL,
+            )
+            if validator is None:
+                return []
+            parameter = validator.group("parameter")
+            body = validator.group("body")
+            if ("NotSupportedException" not in body or
+                    not re.search(
+                        rf"StochasticSiteRegistryV111\."
+                        rf"IsChanceLawQuerySite\s*\(\s*"
+                        rf"{re.escape(parameter)}\s*\)", body) or
+                    not re.search(
+                        rf"\{{[^{{}}]*\b{re.escape(parameter)}\b"
+                        rf"[^{{}}]*\}}", body)):
+                return []
+            values, unresolved = _resolve_site_array_property(
+                "StochasticSiteRegistryV111.ChanceLawQuerySiteIds",
+                global_constants,
+            )
+            return sorted(set(values)) if values and not unresolved else []
+
         delegated_guard = re.search(
             rf"\bValidateSiteId\s*\(\s*{re.escape(name)}\s*,\s*"
             r"(?P<sites>[A-Za-z_][A-Za-z0-9_.]*)\s*,",
