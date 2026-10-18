@@ -502,28 +502,30 @@ public sealed record ReferenceNaturePunchOffRewardSessionV111(
             origin, PrototypeNativePunchOff.PotionRewardSiteId,
             unchecked(CurrentRewardCursor(origin) + 1),
             [transcript[0].OutcomeIndex], actionId);
-        var script = new ScriptedRandomIndexProviderV111(
-        [
+        var decisions = new[]
+        {
             new RandomIndexDecisionV111(
                 relicPlan.RelicRequest, transcript[0].OutcomeIndex,
                 "scripted-v111"),
             new RandomIndexDecisionV111(
                 potionPlan.PotionRequest, transcript[1].OutcomeIndex,
                 "scripted-v111")
-        ]);
-        using var journal = RandomBoundaryJournalV111.Begin();
-        using var providerScope = StochasticProviderScopeV111.Enter(
-            new SelectiveScriptedIndexReplayProviderV111(script,
-            [PrototypeNativePunchOff.RelicRewardSiteId,
-             PrototypeNativePunchOff.PotionRewardSiteId]),
-            overrideExplicitProviders: true);
+        };
         var action = new PrototypeGameEngine().GetLegalActions(origin)
             .SingleOrDefault(candidate =>
                 PrototypeAiEnvironment.StableActionId(candidate) == actionId)
             ?? throw new InvalidDataException(
                 "Punch Off replay action is no longer legal at the session origin.");
-        var run = new PrototypeGameEngine().Step(origin.Fork(), action).State;
-        script.AssertComplete();
+        using var journal = RandomBoundaryJournalV111.Begin();
+        var replay = NativePunchOffControlledIndexReplayV111.Capture(
+            origin, decisions,
+            checkpoint => new PrototypeGameEngine().Step(
+                checkpoint.Fork(), action).State,
+            [PrototypeNativePunchOff.RelicRewardSiteId,
+             PrototypeNativePunchOff.PotionRewardSiteId]);
+        if (replay.Suspended || replay.Run is not { } run)
+            throw new InvalidDataException(
+                "Punch Off reward action did not consume its complete selected reward prefix.");
         var entries = journal.Entries;
         var rewardsStream = run.NativeRunRng?.Streams.SingleOrDefault(item =>
             item.StreamId == NativePlayerRngV111.RewardsStreamId);
@@ -545,9 +547,9 @@ public sealed record ReferenceNaturePunchOffRewardSessionV111(
             NativeRngV111.ToSnapshot(rewardsStream) != originRewards ||
             expectedEventCursor != actualEventCursor ||
             rewardEntries.Length != 2 ||
-            rewardEntries[0].ProviderMode != "scripted-v111" ||
+            rewardEntries[0].ProviderMode != "controlled-v111" ||
             rewardEntries[0].Request.SiteId != relicPlan.RelicRequest.SiteId ||
-            rewardEntries[1].ProviderMode != "scripted-v111" ||
+            rewardEntries[1].ProviderMode != "controlled-v111" ||
             rewardEntries[1].Request.SiteId != potionPlan.PotionRequest.SiteId ||
             CanonicalJson.Sha256(rewardEntries[0].Request) !=
                 CanonicalJson.Sha256(relicPlan.RelicRequest) ||

@@ -28,6 +28,34 @@ internal sealed class SelectiveScriptedIndexReplayProviderV111(
     }
 }
 
+internal static class NativePunchOffControlledIndexReplayV111
+{
+    public static ControlledStochasticContinuationResultV111 Capture(
+        RunState checkpoint, RandomIndexDecisionV111[] decisions,
+        Func<RunState, RunState> mechanics, string[] siteIds)
+    {
+        ArgumentNullException.ThrowIfNull(checkpoint);
+        ArgumentNullException.ThrowIfNull(decisions);
+        ArgumentNullException.ThrowIfNull(mechanics);
+        ArgumentNullException.ThrowIfNull(siteIds);
+        var allowedSites = new HashSet<string>(siteIds,
+            StringComparer.Ordinal);
+        var selected = decisions.Select(decision =>
+            ControlledStochasticDecisionV111.FromIndex(decision)).ToArray();
+        using var fallbackScope = StochasticProviderScopeV111.Enter(
+            new SelectiveScriptedIndexReplayProviderV111(
+                new ScriptedRandomIndexProviderV111([]), []),
+            overrideExplicitProviders: true);
+        return ControlledChanceContinuationExecutorV111.CaptureStochastic(
+            checkpoint,
+            ControlledStochasticContinuationStateV111.CurrentSchemaId,
+            selected, mechanics,
+            requestFilter: candidate =>
+                candidate.IndexRequest is { } request &&
+                allowedSites.Contains(request.SiteId));
+    }
+}
+
 internal sealed record NativePunchOffFightPlanV111(
     RandomIndexRequestV111[] Requests,
     int[] ConstructHpBeforeOffsets,
@@ -399,23 +427,24 @@ public sealed record ReferenceNaturePunchOffFightSessionV111(
     {
         var plan = NativePunchOffFightPlanBuilderV111.Build(
             origin, actionId, 0, []);
-        var script = new ScriptedRandomIndexProviderV111(
-            plan.Requests.Select((request, index) =>
-                new RandomIndexDecisionV111(
-                    request, transcript[index].OutcomeIndex,
-                    "scripted-v111")).ToArray());
-        using var journal = RandomBoundaryJournalV111.Begin();
-        using var scope = StochasticProviderScopeV111.Enter(
-            new SelectiveScriptedIndexReplayProviderV111(script,
-            [PrototypeNativePunchOff.ConstructHpOffsetSiteId]),
-            overrideExplicitProviders: true);
+        var decisions = plan.Requests.Select((request, index) =>
+            new RandomIndexDecisionV111(
+                request, transcript[index].OutcomeIndex,
+                "scripted-v111")).ToArray();
         var engine = new PrototypeGameEngine();
         var action = engine.GetLegalActions(origin).SingleOrDefault(candidate =>
             PrototypeAiEnvironment.StableActionId(candidate) == actionId)
             ?? throw new InvalidDataException(
                 "Punch Off Fight action is no longer legal at replay origin.");
-        var run = engine.Step(origin.Fork(), action).State;
-        script.AssertComplete();
+        using var journal = RandomBoundaryJournalV111.Begin();
+        var replay = NativePunchOffControlledIndexReplayV111.Capture(
+            origin,
+            decisions,
+            checkpoint => engine.Step(checkpoint.Fork(), action).State,
+            [PrototypeNativePunchOff.ConstructHpOffsetSiteId]);
+        if (replay.Suspended || replay.Run is not { } run)
+            throw new InvalidDataException(
+                "Punch Off fight action did not consume its complete selected HP-offset prefix.");
         var entries = journal.Entries.Where(entry =>
             entry.Request.SiteId ==
                 PrototypeNativePunchOff.ConstructHpOffsetSiteId).ToArray();
@@ -440,7 +469,7 @@ public sealed record ReferenceNaturePunchOffFightSessionV111(
             !combat.Enemies.Select(enemy => enemy.MoveIndex)
                 .SequenceEqual([1, 0]) ||
             entries.Length != 2 || entries.Any(entry =>
-                entry.ProviderMode != "scripted-v111") ||
+                entry.ProviderMode != "controlled-v111") ||
             entries.Where((entry, index) =>
                 CanonicalJson.Sha256(entry.Request) !=
                     CanonicalJson.Sha256(plan.Requests[index]) ||
