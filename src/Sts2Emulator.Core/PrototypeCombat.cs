@@ -8083,7 +8083,7 @@ public sealed partial class PrototypeGameEngine
                     var previouslyStagedCount = staged.Count;
                     int committedStagedCount = previouslyStagedCount;
                     var resolvedTopCards = new List<
-                        SemanticDrawPileTopCardV111>();
+                        DrawPileTopCardResolutionV111>();
 
                     for (var index = 0;
                          index < count;
@@ -8194,68 +8194,57 @@ public sealed partial class PrototypeGameEngine
                             break;
                         }
 
-                        var cardId = draw[^1];
-                        if (semanticDeck is not null)
+                        var resolvedTop =
+                            SemanticDrawPileAdapterV111.ResolveTopCard(
+                                semanticDeck, draw);
+                        resolvedTopCards.Add(resolvedTop);
+                        semanticDeck = resolvedTop.Deck;
+                        if (resolvedTop.IsPending)
                         {
-                            var resolvedTop =
-                                SemanticDrawPileAdapterV111.ResolveTopCard(
-                                    semanticDeck, draw);
-                            resolvedTopCards.Add(resolvedTop);
-                            semanticDeck = resolvedTop.Deck;
-                            if (resolvedTop.IsPending)
-                            {
-                                if (semanticDeck.Mode !=
+                            if (semanticDeck?.Mode !=
                                     SemanticDeckStateV111.NatureMode)
-                                    throw new InvalidDataException(
-                                        "Only a Nature top-card reveal may suspend autoplay.");
-                                combat = CommitTopAutoplayDrawCheckpoint(
-                                    combat, draw, discard,
-                                    staged.Skip(committedStagedCount).ToArray(),
-                                    resolvedTopCards);
-                                var remainingCount = count - index;
-                                var resumeOperation = operation with
-                                {
-                                    Amount = remainingCount,
-                                    DeferredDrawnCardInstanceIds =
-                                        (long[])staged.ToArray().Clone()
-                                };
-                                var continuation =
-                                    new PrototypeChoiceResolutionContinuationState(
-                                        SourceCardInstanceId: sourceCardInstanceId,
-                                        SourceCardDestination: sourceCardDestination,
-                                        Operations: new[] { resumeOperation }
-                                            .Concat(operations).ToArray(),
-                                        PendingDiscardEvents: [],
-                                        PendingSlyCardInstanceIds: [],
-                                        CompletionEvents: completionEvents ?? [],
-                                        CardPlaySeries: cardPlaySeries,
-                                        MoveSourceCardOnCompletion:
-                                            moveSourceCardOnCompletion,
-                                        RemoveSourceCardOnCompletion:
-                                            removeSourceCardOnCompletion,
-                                        SourceCardAlreadyMoved:
-                                            sourceCardAlreadyMoved,
-                                        EventDispatchContinuation:
-                                            eventDispatchContinuation?.Fork());
-                                return (player, MakeControlledSemanticDrawChoice(
-                                    combat,
-                                    new PrototypeControlledSemanticDrawV111(
-                                        remainingCount,
-                                        FromHandDraw: false,
-                                        EventDepth: eventDepth,
-                                        DrawnCardKeyword: null),
-                                    continuation));
-                            }
-                            var semanticCardId =
-                                resolvedTop.CardInstanceId!.Value;
-                            cardId = semanticCardId;
-                            draw = resolvedTop.RemainingPhysicalDrawPile
-                                .ToList();
+                                throw new InvalidDataException(
+                                    "Only a Nature top-card reveal may suspend autoplay.");
+                            combat = CommitTopAutoplayDrawCheckpoint(
+                                combat, draw, discard,
+                                staged.Skip(committedStagedCount).ToArray(),
+                                resolvedTopCards);
+                            var remainingCount = count - index;
+                            var resumeOperation = operation with
+                            {
+                                Amount = remainingCount,
+                                DeferredDrawnCardInstanceIds =
+                                    (long[])staged.ToArray().Clone()
+                            };
+                            var continuation =
+                                new PrototypeChoiceResolutionContinuationState(
+                                    SourceCardInstanceId: sourceCardInstanceId,
+                                    SourceCardDestination: sourceCardDestination,
+                                    Operations: new[] { resumeOperation }
+                                        .Concat(operations).ToArray(),
+                                    PendingDiscardEvents: [],
+                                    PendingSlyCardInstanceIds: [],
+                                    CompletionEvents: completionEvents ?? [],
+                                    CardPlaySeries: cardPlaySeries,
+                                    MoveSourceCardOnCompletion:
+                                        moveSourceCardOnCompletion,
+                                    RemoveSourceCardOnCompletion:
+                                        removeSourceCardOnCompletion,
+                                    SourceCardAlreadyMoved:
+                                        sourceCardAlreadyMoved,
+                                    EventDispatchContinuation:
+                                        eventDispatchContinuation?.Fork());
+                            return (player, MakeControlledSemanticDrawChoice(
+                                combat,
+                                new PrototypeControlledSemanticDrawV111(
+                                    remainingCount,
+                                    FromHandDraw: false,
+                                    EventDepth: eventDepth,
+                                    DrawnCardKeyword: null),
+                                continuation));
                         }
-                        else
-                        {
-                            draw.RemoveAt(draw.Count - 1);
-                        }
+                        var cardId = resolvedTop.CardInstanceId!.Value;
+                        draw = resolvedTop.RemainingPhysicalDrawPile.ToList();
                         staged.Add(cardId);
                     }
 
@@ -16077,7 +16066,7 @@ public sealed partial class PrototypeGameEngine
         IReadOnlyList<long> drawPile,
         IReadOnlyList<long> discardPile,
         IReadOnlyCollection<long> newlyStagedCardInstanceIds,
-        IReadOnlyList<SemanticDrawPileTopCardV111> topCardResolutions)
+        IReadOnlyList<DrawPileTopCardResolutionV111> topCardResolutions)
     {
         var nextZones = combat.Mechanics.CardZones.WithZoneChanges(
             new Dictionary<PrototypeCardZone, long[]>
@@ -16087,16 +16076,7 @@ public sealed partial class PrototypeGameEngine
                 [PrototypeCardZone.PlayPile] = combat.PlayCardIds
                     .Concat(newlyStagedCardInstanceIds).ToArray()
             });
-        if (combat.SemanticDeck is null)
-        {
-            if (topCardResolutions.Count != 0)
-                throw new InvalidDataException(
-                    "Legacy top autoplay cannot carry semantic top-card resolutions.");
-            return SemanticDrawPileAdapterV111.ApplyDrawPileRemoval(
-                combat, newlyStagedCardInstanceIds, nextZones);
-        }
-
-        return SemanticDrawPileAdapterV111.CommitResolvedTopCards(
+        return SemanticDrawPileAdapterV111.CommitTopCardResolutions(
             combat, topCardResolutions, nextZones);
     }
 
@@ -16275,60 +16255,44 @@ public sealed partial class PrototypeGameEngine
                 }
             }
 
-            long cardInstanceId;
-            if (combat.SemanticDeck is { } semantic)
-            {
-                if (semantic.Mode == SemanticDeckStateV111.NatureMode &&
-                    (!ControlledChanceGuardV111.Active ||
-                     !controlledSemanticDrawSuspension))
-                    throw new NotSupportedException(
-                        "UNSUPPORTED_SEMANTIC_DECK site=combat.draw " +
-                        "operation=missing_semantic_continuation");
-                if (semantic.Mode == SemanticDeckStateV111.NativeMode &&
-                    combat.NativeRng is null)
-                    throw new NotSupportedException(
-                        "UNSUPPORTED_SEMANTIC_NATIVE site=combat.draw " +
-                        "operation=missing_native_stream_owner");
-                var resolvedTop = SemanticDrawPileAdapterV111
-                    .ResolveTopCard(semantic, draw);
-                if (resolvedTop.IsPending)
-                    return new PrototypeDrawCardsResult(
-                        player,
-                        SemanticDrawPileAdapterV111.CommitResolvedTopCards(
-                            combat, [resolvedTop], combat.Mechanics.CardZones),
-                        drawnCardInstanceIds.ToArray(),
-                        PrototypeDrawCardsBoundaryV111
-                            .SemanticDraw(count - drawNumber));
-                cardInstanceId = resolvedTop.CardInstanceId!.Value;
-                draw = resolvedTop.RemainingPhysicalDrawPile.ToList();
-                var nextZones = combat.Mechanics.CardZones.WithZoneChanges(
-                    new Dictionary<PrototypeCardZone, long[]>
-                    {
-                        [PrototypeCardZone.DrawPile] = draw.ToArray(),
-                        [PrototypeCardZone.Hand] = combat.Hand
-                            .Append(cardInstanceId).ToArray(),
-                        [PrototypeCardZone.DiscardPile] = discard.ToArray()
-                    });
-                combat = SemanticDrawPileAdapterV111.CommitResolvedTopCards(
-                    combat, [resolvedTop], nextZones);
-            }
-            else
-            {
-                var index = draw.Count - 1;
-                cardInstanceId = draw[index];
-                draw.RemoveAt(index);
-                combat = SemanticDrawPileAdapterV111.ApplyDrawPileRemoval(
-                    combat,
-                    [cardInstanceId],
-                    combat.Mechanics.CardZones.WithZoneChanges(
-                        new Dictionary<PrototypeCardZone, long[]>
-                        {
-                            [PrototypeCardZone.DrawPile] = draw.ToArray(),
-                            [PrototypeCardZone.Hand] = combat.Hand
-                                .Append(cardInstanceId).ToArray(),
-                            [PrototypeCardZone.DiscardPile] = discard.ToArray()
-                        }));
-            }
+            var semanticDeck = combat.SemanticDeck;
+            if (semanticDeck is
+                    { Mode: SemanticDeckStateV111.NatureMode } &&
+                (!ControlledChanceGuardV111.Active ||
+                 !controlledSemanticDrawSuspension))
+                throw new NotSupportedException(
+                    "UNSUPPORTED_SEMANTIC_DECK site=combat.draw " +
+                    "operation=missing_semantic_continuation");
+            if (semanticDeck is
+                    { Mode: SemanticDeckStateV111.NativeMode } &&
+                combat.NativeRng is null)
+                throw new NotSupportedException(
+                    "UNSUPPORTED_SEMANTIC_NATIVE site=combat.draw " +
+                    "operation=missing_native_stream_owner");
+
+            var resolvedTop = SemanticDrawPileAdapterV111
+                .ResolveTopCard(semanticDeck, draw);
+            if (resolvedTop.IsPending)
+                return new PrototypeDrawCardsResult(
+                    player,
+                    SemanticDrawPileAdapterV111.CommitTopCardResolutions(
+                        combat, [resolvedTop], combat.Mechanics.CardZones),
+                    drawnCardInstanceIds.ToArray(),
+                    PrototypeDrawCardsBoundaryV111
+                        .SemanticDraw(count - drawNumber));
+
+            var cardInstanceId = resolvedTop.CardInstanceId!.Value;
+            draw = resolvedTop.RemainingPhysicalDrawPile.ToList();
+            var nextZones = combat.Mechanics.CardZones.WithZoneChanges(
+                new Dictionary<PrototypeCardZone, long[]>
+                {
+                    [PrototypeCardZone.DrawPile] = draw.ToArray(),
+                    [PrototypeCardZone.Hand] = combat.Hand
+                        .Append(cardInstanceId).ToArray(),
+                    [PrototypeCardZone.DiscardPile] = discard.ToArray()
+                });
+            combat = SemanticDrawPileAdapterV111.CommitTopCardResolutions(
+                combat, [resolvedTop], nextZones);
             drawnCardInstanceIds.Add(cardInstanceId);
 
             var card = RequireCombatCard(combat, cardInstanceId);

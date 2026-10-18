@@ -1,7 +1,7 @@
 namespace Sts2Emulator.Core;
 
-internal readonly record struct SemanticDrawPileTopCardV111(
-    SemanticDeckStateV111 Deck,
+internal readonly record struct DrawPileTopCardResolutionV111(
+    SemanticDeckStateV111? Deck,
     long? CardInstanceId,
     IReadOnlyList<long> RemainingPhysicalDrawPile)
 {
@@ -34,21 +34,29 @@ public static class SemanticDrawPileAdapterV111
     /// Resolves the current top card from the shared provider/physical-pile
     /// contract. A Nature-owned unknown position returns its pending reveal;
     /// a known position is consumed from the provider state and returned by
-    /// stable physical identity. The caller still runs its own draw hooks.
+    /// stable physical identity. With no semantic provider, the physical
+    /// pile's top identity is resolved directly. The caller still runs its
+    /// own draw hooks.
     /// </summary>
-    internal static SemanticDrawPileTopCardV111 ResolveTopCard(
-        SemanticDeckStateV111 semantic, IReadOnlyList<long> physicalDrawPile)
+    internal static DrawPileTopCardResolutionV111 ResolveTopCard(
+        SemanticDeckStateV111? semantic,
+        IReadOnlyList<long> physicalDrawPile)
     {
-        ArgumentNullException.ThrowIfNull(semantic);
         ArgumentNullException.ThrowIfNull(physicalDrawPile);
         ValidateProviderCorrespondence(semantic, physicalDrawPile);
         if (physicalDrawPile.Count == 0)
             throw new InvalidOperationException(
-                "Cannot resolve the top of an empty semantic draw pile.");
+                "Cannot resolve the top of an empty draw pile.");
+
+        if (semantic is null)
+            return new DrawPileTopCardResolutionV111(
+                null,
+                physicalDrawPile[^1],
+                physicalDrawPile.Take(physicalDrawPile.Count - 1).ToArray());
 
         var required = SemanticDeckEngineV111.Require(semantic, 0, "draw");
         if (required.Pending is not null)
-            return new SemanticDrawPileTopCardV111(
+            return new DrawPileTopCardResolutionV111(
                 required, null, physicalDrawPile.ToArray());
 
         var (consumed, cardInstanceId) =
@@ -70,7 +78,7 @@ public static class SemanticDrawPileAdapterV111
                 remainingPhysicalDrawPile[i - 1] = physicalDrawPile[i];
         }
         ValidateProviderCorrespondence(consumed, remainingPhysicalDrawPile);
-        return new SemanticDrawPileTopCardV111(
+        return new DrawPileTopCardResolutionV111(
             consumed, cardInstanceId, remainingPhysicalDrawPile);
     }
 
@@ -79,20 +87,17 @@ public static class SemanticDrawPileAdapterV111
     /// checkpoint, then commits their final provider state with the matching
     /// physical draw-pile and destination-zone changes.
     /// </summary>
-    internal static CombatState CommitResolvedTopCards(
+    internal static CombatState CommitTopCardResolutions(
         CombatState combat,
-        IReadOnlyList<SemanticDrawPileTopCardV111> resolutions,
+        IReadOnlyList<DrawPileTopCardResolutionV111> resolutions,
         CombatCardZonesV111 nextCardZones)
     {
         ArgumentNullException.ThrowIfNull(combat);
         ArgumentNullException.ThrowIfNull(resolutions);
         ArgumentNullException.ThrowIfNull(nextCardZones);
-        if (combat.SemanticDeck is not { } sourceDeck)
-            throw new InvalidOperationException(
-                "Resolved semantic top cards require a provider-owned deck.");
         ValidateSynchronized(combat, requireIdle: true);
 
-        var semantic = sourceDeck;
+        var semantic = combat.SemanticDeck;
         IReadOnlyList<long> physicalDrawPile = combat.DrawPile;
         for (int index = 0; index < resolutions.Count; index++)
         {
@@ -100,7 +105,7 @@ public static class SemanticDrawPileAdapterV111
             var saved = resolutions[index];
             if (expected.IsPending != saved.IsPending ||
                 expected.CardInstanceId != saved.CardInstanceId ||
-                expected.Deck.Fingerprint != saved.Deck.Fingerprint ||
+                expected.Deck?.Fingerprint != saved.Deck?.Fingerprint ||
                 !expected.RemainingPhysicalDrawPile.SequenceEqual(
                     saved.RemainingPhysicalDrawPile) ||
                 expected.IsPending && index != resolutions.Count - 1)
