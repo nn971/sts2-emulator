@@ -2640,7 +2640,8 @@ public static class SemanticPilotCombatEngineV111
                 null, null, false, decision);
         if (pending.TargetCardInstanceId is not null)
         {
-            ValidateCostDecision(current.CostPending, decision, index);
+            SemanticCostChoiceV111.ValidateDecision(
+                current.CostPending, decision, index);
             var result = SemanticRandomHandCostChoiceV111.Resume(
                 current.Run, pending.SiteId, index);
             var next = current with
@@ -2882,18 +2883,30 @@ public static class SemanticPilotCombatEngineV111
                 automaticTarget.CandidateEnemyInstanceIds[selectedIndex]);
         }
         if (semanticIntent is not null)
-            ValidateSemanticIntentDecision(current, semanticIntent, selectedIndex);
+        {
+            var ticket = current.PendingInitialIntents ??
+                current.PendingEndTurn?.Intents;
+            if (ticket?.Pending is not { } request)
+                throw new InvalidOperationException(
+                    "Semantic intent decision has no matching pending event.");
+            var support = ControlledTurnIntentEngineV111
+                .DescribePendingSemanticIntent(ticket) ??
+                throw new InvalidDataException(
+                    "Missing weighted intent support.");
+            var semanticEvent = MakeSemanticIntentEvent(
+                current, request, support);
+            SemanticIntentChoiceV111.ValidateDecision(
+                semanticEvent, semanticIntent, selectedIndex);
+        }
         var drawEvent = current.DrawPending;
         var randomPileCardEvent = current.RandomPileCardPending;
         if (expectedDeckDecision is not null)
-            ValidateDeckDecision(drawEvent, expectedDeckDecision);
-        if (expectedRandomPileCardDecision is not null &&
-            (randomPileCardEvent is null ||
-             CanonicalJson.Sha256(expectedRandomPileCardDecision.Event) !=
-                CanonicalJson.Sha256(randomPileCardEvent) ||
-             expectedRandomPileCardDecision.SelectedIndex != selectedIndex))
-            throw new InvalidOperationException(
-                "Random pile-card decision is stale or outside current support.");
+            SemanticDrawChoiceV111.ValidateDecision(
+                drawEvent, expectedDeckDecision);
+        if (expectedRandomPileCardDecision is not null)
+            SemanticRandomPileCardEngineV111.ValidateDecision(
+                randomPileCardEvent, expectedRandomPileCardDecision,
+                selectedIndex);
         if (current.CardShortlistPending is not null)
             throw new InvalidOperationException(
                 "Resolve the pending pile shortlist by card instance ID.");
@@ -2903,7 +2916,8 @@ public static class SemanticPilotCombatEngineV111
             throw new InvalidOperationException(
                 "Resolve the pending hand-cost selection event by card instance ID.");
         if (expectedCostDecision is not null)
-            ValidateCostDecision(costEvent, expectedCostDecision, selectedIndex);
+            SemanticCostChoiceV111.ValidateDecision(
+                costEvent, expectedCostDecision, selectedIndex);
         if (current.PendingInitialIntents is { Pending: not null } initialIntents)
         {
             var resolvedInitial = ControlledTurnIntentEngineV111.Resolve(
@@ -2963,7 +2977,7 @@ public static class SemanticPilotCombatEngineV111
                 SemanticCostChoiceV111.Select(
                     costEvent, costEvent.EventId,
                     costEvent.CandidateCosts[selectedIndex]);
-            ValidateCostDecision(
+            SemanticCostChoiceV111.ValidateDecision(
                 costEvent, effectCostDecision, selectedIndex);
             RunState effectCostResult;
             using (ControlledChanceGuardV111.Enter())
@@ -3015,7 +3029,8 @@ public static class SemanticPilotCombatEngineV111
                 throw new InvalidDataException(
                     "Card-effect draw continuation lost its Nature event.");
             if (expectedDeckDecision is not null)
-                ValidateDeckDecision(drawEvent, expectedDeckDecision);
+                SemanticDrawChoiceV111.ValidateDecision(
+                    drawEvent, expectedDeckDecision);
             if (selectedIndex < 0 ||
                 selectedIndex >= drawEvent.CandidateCardInstanceIds.Length)
                 throw new ArgumentOutOfRangeException(nameof(selectedIndex));
@@ -3117,7 +3132,8 @@ public static class SemanticPilotCombatEngineV111
             deckDecision = new SemanticDrawDecisionV111(drawEvent,
                 recordedChoice.SelectedIndex,
                 recordedChoice.SelectedCardInstanceId);
-            ValidateDeckDecision(drawEvent, deckDecision);
+            SemanticDrawChoiceV111.ValidateDecision(
+                drawEvent, deckDecision);
             if (recordedChoice.SelectedIndex != selectedIndex)
                 throw new InvalidDataException(
                     "Semantic card draw selected a different candidate index.");
@@ -4025,18 +4041,6 @@ public static class SemanticPilotCombatEngineV111
         PrototypeStateInvariants.Validate(run);
     }
 
-    private static void ValidateCostDecision(
-        SemanticCostEventV111? pending,
-        SemanticCostDecisionV111 decision, int sourceIndex)
-    {
-        decision.Validate();
-        if (pending is null || sourceIndex != decision.SelectedIndex ||
-            CanonicalJson.Sha256(pending) !=
-                CanonicalJson.Sha256(decision.Event))
-            throw new InvalidOperationException(
-                "Semantic cost decision is stale or outside current support.");
-    }
-
     internal static void ValidateSemanticCombatBoundary(RunState run)
     {
         var choice = run.World?.Combat?.PendingChoice;
@@ -4352,49 +4356,6 @@ public static class SemanticPilotCombatEngineV111
             request.Ordinal, detachedSupport);
         semanticEvent.Validate();
         return semanticEvent;
-    }
-
-    private static void ValidateSemanticIntentDecision(
-        SemanticPilotCombatV111 current,
-        SemanticIntentDecisionV111 decision, int sourceTicket)
-    {
-        decision.Validate();
-        var ticket = current.PendingInitialIntents ??
-            current.PendingEndTurn?.Intents;
-        if (ticket?.Pending is not { } request)
-            throw new InvalidOperationException(
-                "Semantic intent decision has no matching pending event.");
-        var support = ControlledTurnIntentEngineV111
-            .DescribePendingSemanticIntent(ticket) ??
-            throw new InvalidDataException("Missing weighted intent support.");
-        var semanticEvent = MakeSemanticIntentEvent(current, request, support);
-        var candidate = support.Candidates.SingleOrDefault(x =>
-            x.IntentId == decision.IntentId);
-        if (candidate is null || sourceTicket != candidate.TicketStart ||
-            CanonicalJson.Sha256(semanticEvent) !=
-                CanonicalJson.Sha256(decision.Event))
-            throw new InvalidOperationException(
-                "Semantic intent event is stale or outside current support.");
-        decision.Validate();
-    }
-
-    private static void ValidateDeckDecision(
-        SemanticDeckEventV111? pending,
-        SemanticDrawDecisionV111 decision)
-    {
-        decision.Validate();
-        var recordedEvent = decision.Event;
-        if (pending is null ||
-            CanonicalJson.Sha256(recordedEvent) !=
-                CanonicalJson.Sha256(pending) ||
-            !recordedEvent.CandidateCardInstanceIds.SequenceEqual(
-                pending.CandidateCardInstanceIds) ||
-            decision.SelectedIndex < 0 ||
-            decision.SelectedIndex >= pending.CandidateCardInstanceIds.Length ||
-            pending.CandidateCardInstanceIds[decision.SelectedIndex] !=
-                decision.SelectedCardInstanceId)
-            throw new InvalidOperationException(
-                "Semantic draw decision is outside its pending event support.");
     }
 
     private static SemanticPilotContinuationV111 NatureContinuation(

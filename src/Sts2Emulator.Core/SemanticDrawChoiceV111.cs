@@ -62,6 +62,25 @@ public static class SemanticDrawChoiceV111
                 "Invalid semantic draw-card request.");
     }
 
+    internal static void ValidateDecision(
+        SemanticDeckEventV111? pending,
+        SemanticDrawDecisionV111 decision)
+    {
+        ArgumentNullException.ThrowIfNull(decision);
+        decision.Validate();
+        if (pending is null ||
+            CanonicalJson.Sha256(decision.Event) !=
+                CanonicalJson.Sha256(pending) ||
+            !decision.Event.CandidateCardInstanceIds.SequenceEqual(
+                pending.CandidateCardInstanceIds) ||
+            decision.SelectedIndex < 0 ||
+            decision.SelectedIndex >= pending.CandidateCardInstanceIds.Length ||
+            pending.CandidateCardInstanceIds[decision.SelectedIndex] !=
+                decision.SelectedCardInstanceId)
+            throw new InvalidOperationException(
+                "Semantic draw decision is outside its pending event support.");
+    }
+
     /// <summary>
     /// Revalidates the saved request at the mechanics checkpoint, resolves
     /// its provider state, and publishes the matching physical pile update.

@@ -156,4 +156,17 @@ public static class SemanticRandomPileCardEngineV111
                 "Card instance is outside the random pile-card support.");
         return Resolve(pending, index);
     }
+
+    internal static void ValidateDecision(
+        SemanticRandomPileCardEventV111? pending,
+        SemanticRandomPileCardDecisionV111 decision, int sourceIndex)
+    {
+        ArgumentNullException.ThrowIfNull(decision);
+        decision.Validate();
+        if (pending is null || sourceIndex != decision.SelectedIndex ||
+            CanonicalJson.Sha256(pending) !=
+                CanonicalJson.Sha256(decision.Event))
+            throw new InvalidOperationException(
+                "Random pile-card decision is stale or outside current support.");
+    }
 }

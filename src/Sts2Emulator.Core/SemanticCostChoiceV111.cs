@@ -103,6 +103,19 @@ public static class SemanticCostChoiceV111
         decision.Validate();
         return decision;
     }
+
+    internal static void ValidateDecision(
+        SemanticCostEventV111? pending,
+        SemanticCostDecisionV111 decision, int sourceIndex)
+    {
+        ArgumentNullException.ThrowIfNull(decision);
+        decision.Validate();
+        if (pending is null || sourceIndex != decision.SelectedIndex ||
+            CanonicalJson.Sha256(pending) !=
+                CanonicalJson.Sha256(decision.Event))
+            throw new InvalidOperationException(
+                "Semantic cost decision is stale or outside current support.");
+    }
 }
 
 /// <summary>
