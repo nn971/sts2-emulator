@@ -2960,8 +2960,8 @@ public static class SemanticPilotCombatEngineV111
                 throw new InvalidDataException(
                     "Card-effect draw cost continuation lost its Nature event.");
             var effectCostDecision = expectedCostDecision ??
-                new SemanticCostDecisionV111(
-                    costEvent, selectedIndex,
+                SemanticCostChoiceV111.Select(
+                    costEvent, costEvent.EventId,
                     costEvent.CandidateCosts[selectedIndex]);
             ValidateCostDecision(
                 costEvent, effectCostDecision, selectedIndex);
@@ -3019,10 +3019,8 @@ public static class SemanticPilotCombatEngineV111
             if (selectedIndex < 0 ||
                 selectedIndex >= drawEvent.CandidateCardInstanceIds.Length)
                 throw new ArgumentOutOfRangeException(nameof(selectedIndex));
-            var effectDrawDecision = new SemanticDrawDecisionV111(
-                drawEvent, selectedIndex,
-                drawEvent.CandidateCardInstanceIds[selectedIndex]);
-            effectDrawDecision.Validate();
+            var effectDrawDecision = SemanticDrawChoiceV111.Select(
+                drawEvent, selectedIndex);
             if (expectedDeckDecision is not null &&
                 CanonicalJson.Sha256(expectedDeckDecision) !=
                     CanonicalJson.Sha256(effectDrawDecision))
