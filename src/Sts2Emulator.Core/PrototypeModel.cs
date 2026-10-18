@@ -1747,7 +1747,10 @@ public sealed record PrototypeRuleset(
     int RestHealPercent,
     int RestTrainMaxHp,
     PrototypeMapFloorRule[] MapFloorRules,
-    PrototypeAutomaticStep[] EndTurnPipeline);
+    PrototypeAutomaticStep[] EndTurnPipeline)
+{
+    public int MaxHandSize { get; init; } = 10;
+}
 
 public sealed record MapNodeState(
     string NodeId,

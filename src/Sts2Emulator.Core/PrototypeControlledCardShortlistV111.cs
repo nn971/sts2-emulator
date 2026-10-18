@@ -295,7 +295,7 @@ public sealed partial class PrototypeGameEngine
                      definition.Cost.Amount >= 0);
             }).ToArray();
 
-        const int maxHandSize = 10;
+        int maxHandSize = PrototypeContent.Rules.MaxHandSize;
         var capacity = selection.Resolution ==
                 PrototypeCardSelectionResolutionKind.MoveToHand
             ? Math.Max(0, maxHandSize - combat.Hand.Length)

@@ -111,10 +111,12 @@ public sealed partial class PrototypeGameEngine
                     power.ApplicationOrder == order).StoredValue,
             PrototypeCombatEffectKind.CreateDistinctColorlessCardsInHand =>
                 Math.Min(Math.Max(0, op.Amount),
-                    Math.Max(0, 10 - combat.Hand.Length)),
+                    Math.Max(0, PrototypeContent.Rules.MaxHandSize -
+                        combat.Hand.Length)),
             PrototypeCombatEffectKind.MoveRandomRareDrawCardsToHand =>
                 Math.Min(Math.Max(0, op.Amount),
-                    Math.Max(0, 10 - combat.Hand.Length)),
+                    Math.Max(0, PrototypeContent.Rules.MaxHandSize -
+                        combat.Hand.Length)),
             PrototypeCombatEffectKind.RecycleDrawPileForEffectDraw =>
                 poolCount,
             PrototypeCombatEffectKind.ReturnHandToDrawAndShuffle => poolCount,
@@ -328,7 +330,7 @@ public sealed partial class PrototypeGameEngine
                          definition.Cost.Amount >= 0);
                 }).ToArray();
 
-            const int maxHandSize = 10;
+            int maxHandSize = PrototypeContent.Rules.MaxHandSize;
             var capacity = selection.Resolution ==
                     PrototypeCardSelectionResolutionKind.MoveToHand
                 ? Math.Max(0, maxHandSize - combat.Hand.Length)
@@ -480,7 +482,8 @@ public sealed partial class PrototypeGameEngine
             {
                 if (op.Kind == PrototypeCombatEffectKind.CreateDistinctColorlessCardsInHand)
                 {
-                    if (combat.Hand.Length >= 10)
+                    if (combat.Hand.Length >=
+                        PrototypeContent.Rules.MaxHandSize)
                         break;
                     var card = new CombatCardInstance(
                         combat.NextCardInstanceId, null, cardId, 0, true,

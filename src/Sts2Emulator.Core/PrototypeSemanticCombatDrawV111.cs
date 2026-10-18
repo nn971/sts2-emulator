@@ -718,7 +718,9 @@ public sealed partial class PrototypeGameEngine
             .Where(power => power.PowerId == "proto.power.stratagem")
             .Sum(power => Math.Max(0, power.Stacks));
         return Math.Min(stacks,
-            Math.Min(combat.DrawPile.Length, Math.Max(0, 10 - combat.Hand.Length)));
+            Math.Min(combat.DrawPile.Length,
+                Math.Max(0, PrototypeContent.Rules.MaxHandSize -
+                    combat.Hand.Length)));
     }
 
     internal static bool TryGetStandaloneSemanticDrawOperation(

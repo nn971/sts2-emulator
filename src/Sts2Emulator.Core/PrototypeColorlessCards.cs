@@ -375,7 +375,7 @@ public static class PrototypeColorlessCards
             1,
             PrototypeCardTarget.None,
             [
-                // Draw's normal hand capacity of 10 bounds this request.
+                // Draw's normal hand capacity bounds this request.
                 new(PrototypeCombatEffectKind.DrawCards, 10)
             ],
             ExhaustOnUse: true,

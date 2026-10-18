@@ -3003,7 +3003,7 @@ public sealed partial class PrototypeGameEngine
                 continue;
             }
 
-            if (combat.Hand.Length >= 10)
+            if (combat.Hand.Length >= PrototypeContent.Rules.MaxHandSize)
             {
                 break;
             }
@@ -6883,7 +6883,7 @@ public sealed partial class PrototypeGameEngine
                 {
                     // Anointed uses pile insertion rather than a normal draw:
                     // it must preserve card instances and avoid draw triggers.
-                    const int maxHandSize = 10;
+                    int maxHandSize = PrototypeContent.Rules.MaxHandSize;
                     var capacity = Math.Max(0, maxHandSize - combat.Hand.Length);
                     var take = Math.Min(Math.Max(0, operation.Amount), capacity);
                     if (take == 0)
@@ -6995,7 +6995,8 @@ public sealed partial class PrototypeGameEngine
                             0,
                             PrototypeTemporaryCardCostExpiry.EndOfTurn
                             | PrototypeTemporaryCardCostExpiry.WhenPlayed));
-                    var handHasSpace = combat.Hand.Length < 10;
+                    var handHasSpace = combat.Hand.Length <
+                        PrototypeContent.Rules.MaxHandSize;
                     var zoneChanges = new Dictionary<PrototypeCardZone, long[]>
                     {
                         [PrototypeCardZone.DrawPile] = combat.DrawPile
@@ -7111,7 +7112,7 @@ public sealed partial class PrototypeGameEngine
                             .ToArray();
                     }
 
-                    const int maxHandSize = 10;
+                    int maxHandSize = PrototypeContent.Rules.MaxHandSize;
                     var capacity = selection.Resolution
                             == PrototypeCardSelectionResolutionKind.MoveToHand
                         ? Math.Max(0, maxHandSize - combat.Hand.Length)
@@ -8907,7 +8908,7 @@ public sealed partial class PrototypeGameEngine
         int count)
     {
         _ = PrototypeContent.Card(cardId);
-        const int maxHandSize = 10;
+        int maxHandSize = PrototypeContent.Rules.MaxHandSize;
         for (var index = 0; index < Math.Max(0, count); index++)
         {
             var instance = new CombatCardInstance(
@@ -9025,7 +9026,7 @@ public sealed partial class PrototypeGameEngine
     private static CombatState AddDistinctGeneratedColorlessCardsToHand(
         CombatState combat, int count, RngBundle rng, string? sourceCardId)
     {
-        const int maxHandSize = 10;
+        int maxHandSize = PrototypeContent.Rules.MaxHandSize;
         var capacity = Math.Max(0, maxHandSize - combat.Hand.Length);
         if (capacity == 0 || count <= 0)
             return combat;
@@ -9172,7 +9173,7 @@ public sealed partial class PrototypeGameEngine
         PrototypeCombatCardSnapshot snapshot,
         int count)
     {
-        const int maxHandSize = 10;
+        int maxHandSize = PrototypeContent.Rules.MaxHandSize;
 
         _ = PrototypeContent.Card(snapshot.CardId);
         for (var index = 0; index < Math.Max(0, count); index++)
@@ -16099,7 +16100,7 @@ public sealed partial class PrototypeGameEngine
     {
         var suspension = suspensionPolicy ??
             PrototypeDrawCardsSuspensionPolicyV111.None;
-        const int maxHandSize = 10;
+        int maxHandSize = PrototypeContent.Rules.MaxHandSize;
         var drawnCardInstanceIds = new List<long>();
 
         for (var drawNumber = 0; drawNumber < count; drawNumber++)
