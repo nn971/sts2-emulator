@@ -368,6 +368,11 @@ public static partial class ChanceLawEngineV111
         "card_rarity.upgrade_roll.ticket"
     ];
 
+    private static readonly string[] LegacyRewardCardRarityTicketQuerySites =
+    [
+        "reward.card_rarity.ticket"
+    ];
+
     private sealed record NativeBoundedIntegerLawSiteV111(
         string StreamId, string Boundary);
 
@@ -421,6 +426,9 @@ public static partial class ChanceLawEngineV111
 
     public static string[] LegacyCardUpgradeTicketQuerySiteIds =>
         (string[])LegacyCardUpgradeTicketQuerySites.Clone();
+
+    public static string[] LegacyRewardCardRarityTicketQuerySiteIds =>
+        (string[])LegacyRewardCardRarityTicketQuerySites.Clone();
 
     /// <summary>
     /// Query the retained legacy card-rarity integer ticket after the source
@@ -577,6 +585,78 @@ public static partial class ChanceLawEngineV111
             "uniform 10,000-way legacy bounded-ticket model; source-shaped " +
             "upgrade threshold remains unverified against the native game RNG.",
             outcomes.ToArray());
+    }
+
+    /// <summary>
+    /// Query the next legacy card-reward rarity ticket after the caller's
+    /// declared within-group selections. Empty rarity pools are removed using
+    /// the same ordered prototype pool as reward generation.
+    /// </summary>
+    public static ChanceLawV111 QueryLegacyRewardCardRarityTicket(
+        int act, string groupOwnerId, string[] priorCardIds, int ordinal)
+    {
+        if (act < 1)
+            throw new ArgumentOutOfRangeException(nameof(act));
+        ArgumentException.ThrowIfNullOrWhiteSpace(groupOwnerId);
+        ArgumentNullException.ThrowIfNull(priorCardIds);
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+
+        var pool = PrototypeContent.RewardCardPool;
+        var poolSet = pool.ToHashSet(StringComparer.Ordinal);
+        var selected = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var cardId in priorCardIds)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(cardId);
+            if (!poolSet.Contains(cardId) || !selected.Add(cardId))
+                throw new ArgumentException(
+                    "Prior reward card IDs must be unique members of the reward card pool.",
+                    nameof(priorCardIds));
+        }
+
+        var available = pool.Where(cardId => !selected.Contains(cardId))
+            .ToArray();
+        var rarityWeights = PrototypeContent.RewardRarityWeights(act)
+            .Where(item => item.Weight > 0 && available.Any(cardId =>
+                PrototypeContent.Card(cardId).Rarity == item.Rarity))
+            .ToArray();
+        if (rarityWeights.Length == 0)
+            throw new ArgumentException(
+                "The declared remaining reward card pool has no drawable rarity.",
+                nameof(priorCardIds));
+
+        var raritySupport = rarityWeights.Select(item => new
+        {
+            item.Rarity,
+            item.Weight
+        }).ToArray();
+        var ownerId = groupOwnerId + ":card:" + priorCardIds.Length +
+            ":weights:" + CanonicalJson.Sha256(raritySupport);
+        var outcomes = rarityWeights.Select(item =>
+            new ChanceLawOutcomeV111(
+                "rarity:" + item.Rarity.ToString().ToLowerInvariant(),
+                item.Weight)).ToArray();
+        const string siteId = "reward.card_rarity.ticket";
+        const string streamId = "reward";
+        var conditioning = new
+        {
+            siteId,
+            streamId,
+            ownerId,
+            groupOwnerId,
+            ordinal,
+            act,
+            priorCardIds,
+            availableCardPoolFingerprint = CanonicalJson.Sha256(available),
+            raritySupport,
+            totalWeight = rarityWeights.Sum(item => item.Weight)
+        };
+        return CreateLegacyCategoricalTicketLaw(
+            siteId, streamId, ownerId, ordinal,
+            "legacy-reward-card-rarity-ticket-v1", conditioning,
+            "Uniform ticket-index weights over the source-shaped prototype " +
+            "rarity weights after empty tiers are removed; reward pool and " +
+            "Native parity remain unverified.", outcomes);
     }
 
     private static (long Rare, long Uncommon, long Common)

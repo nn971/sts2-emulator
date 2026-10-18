@@ -4152,6 +4152,42 @@ internal static class PrototypeAiJsonlServer
                             });
                             break;
                         }
+                        if (siteId == "reward.card_rarity.ticket")
+                        {
+                            RejectChanceLawQueryParameters(
+                                request, "owner_id", "act",
+                                "prior_card_ids", "support_count");
+                            var groupOwnerId = OptionalString(
+                                request, "owner_id") ??
+                                throw new ArgumentException(
+                                    "Reward card-rarity ticket law requires owner_id as the reward-group owner prefix.");
+                            var rewardCardAct = OptionalInt(request, "act") ??
+                                throw new ArgumentException(
+                                    "Reward card-rarity ticket law requires act.");
+                            var priorCardIds = OptionalStringArray(
+                                request, "prior_card_ids") ??
+                                throw new ArgumentException(
+                                    "Reward card-rarity ticket law requires prior_card_ids (an empty array for the first pick).");
+                            law = ChanceLawEngineV111
+                                .QueryLegacyRewardCardRarityTicket(
+                                    rewardCardAct, groupOwnerId,
+                                    priorCardIds, ordinal);
+                            var supportCount = OptionalInt(
+                                request, "support_count");
+                            if (supportCount is not null &&
+                                supportCount != law.Outcomes.Length)
+                                throw new ArgumentException(
+                                    "Reward card-rarity ticket support_count must match the declared Act and prior selections.");
+                            Write(new
+                            {
+                                requestId,
+                                ok = true,
+                                chanceLawSchemaId =
+                                    ChanceLawV111.CurrentSchemaId,
+                                law
+                            });
+                            break;
+                        }
                         if (ChanceLawEngineV111
                             .IsSupportedAncientOfferQuerySite(siteId))
                         {
@@ -8070,7 +8106,8 @@ internal static class PrototypeAiJsonlServer
             StringComparer.Ordinal);
         string[] optionalFields =
         [
-            "prior_indices", "prior_variant_index", "support_count",
+            "prior_indices", "prior_variant_index", "prior_card_ids",
+            "support_count",
             "action_id", "event_id", "card_type", "rarity", "card_id",
             "potion_id", "relic_id", "colorless_offer", "sale_reprice",
             "owner_id", "excluded_potion_ids", "offer_ordinal",

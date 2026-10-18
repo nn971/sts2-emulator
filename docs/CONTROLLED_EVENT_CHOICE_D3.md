@@ -56,6 +56,11 @@ The pending boundary fingerprint binds the event/choice/request context and
 excludes private RNG state. The response's top-level `fingerprint` remains the
 exact-state stale-request guard.
 
+The direct `chance_law_query` for `reward.card_rarity.ticket` can return the
+rarity-category law after callers declare the reward group and earlier card
+models. The pending event-effect frame still records its typed ticket-index
+support; the direct category law does not replace that saved continuation.
+
 The supported event-choice sites are:
 
 - `event.random_upgrade.card_instance`
