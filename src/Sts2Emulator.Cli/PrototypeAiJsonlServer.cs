@@ -4424,6 +4424,37 @@ internal static class PrototypeAiJsonlServer
                             });
                             break;
                         }
+                        if (siteId == "event.reward.random_potion.model")
+                        {
+                            RejectChanceLawQueryParameters(
+                                request, "event_id", "action_id",
+                                "support_count");
+                            var eventId = OptionalString(request, "event_id") ??
+                                throw new ArgumentException(
+                                    "Event reward-potion model law requires event_id.");
+                            var choiceId = OptionalString(
+                                request, "action_id") ??
+                                throw new ArgumentException(
+                                    "Event reward-potion model law requires action_id as the selected choice ID.");
+                            law = ChanceLawEngineV111
+                                .QueryLegacyEventRewardPotionModel(
+                                    eventId, choiceId, ordinal);
+                            var supportCount = OptionalInt(
+                                request, "support_count");
+                            if (supportCount is not null &&
+                                supportCount != law.Outcomes.Length)
+                                throw new ArgumentException(
+                                    "Event reward-potion model support_count must match the prototype event potion pool.");
+                            Write(new
+                            {
+                                requestId,
+                                ok = true,
+                                chanceLawSchemaId =
+                                    ChanceLawV111.CurrentSchemaId,
+                                law
+                            });
+                            break;
+                        }
                         if (ChanceLawEngineV111
                             .IsSupportedAncientOfferQuerySite(siteId))
                         {

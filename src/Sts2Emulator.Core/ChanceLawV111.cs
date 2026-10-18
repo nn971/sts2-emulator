@@ -403,6 +403,11 @@ public static partial class ChanceLawEngineV111
         "potion.uniform_model.index_draw"
     ];
 
+    private static readonly string[] LegacyEventRewardPotionModelQuerySites =
+    [
+        "event.reward.random_potion.model"
+    ];
+
     private sealed record NativeBoundedIntegerLawSiteV111(
         string StreamId, string Boundary);
 
@@ -477,6 +482,9 @@ public static partial class ChanceLawEngineV111
 
     public static string[] LegacyUniformPotionModelQuerySiteIds =>
         (string[])LegacyUniformPotionModelQuerySites.Clone();
+
+    public static string[] LegacyEventRewardPotionModelQuerySiteIds =>
+        (string[])LegacyEventRewardPotionModelQuerySites.Clone();
 
     /// <summary>
     /// Query the retained legacy card-rarity integer ticket after the source
@@ -1019,6 +1027,51 @@ public static partial class ChanceLawEngineV111
             "Equal index weights over the ordered legacy uniform potion pool; " +
             "source-pool completeness and stream parity remain unverified.",
             outcomes, operationKind: "choose_index");
+    }
+
+    /// <summary>
+    /// Query the generic legacy random-potion event effect. Event-specific
+    /// Native branches use separate source sites and are outside this law.
+    /// </summary>
+    public static ChanceLawV111 QueryLegacyEventRewardPotionModel(
+        string eventId, string choiceId, int ordinal)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(choiceId);
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+
+        const string siteId = "event.reward.random_potion.model";
+        const string streamId = "event";
+        var pool = PrototypeContent.PotionPool;
+        if (pool.Length == 0)
+            throw new InvalidOperationException(
+                "The generic event reward potion pool is empty.");
+        var poolFingerprint = CanonicalJson.Sha256(pool);
+        var ownerId = $"event:{eventId}:choice:{choiceId}:pool:" +
+            poolFingerprint;
+        var outcomes = pool.Select(potionId =>
+            new ChanceLawOutcomeV111("potion:" + potionId, 1L))
+            .ToArray();
+        var conditioning = new
+        {
+            siteId,
+            streamId,
+            ownerId,
+            ordinal,
+            eventId,
+            choiceId,
+            orderedPotionPool = pool,
+            poolFingerprint,
+            route = "generic_legacy_uniform_pool"
+        };
+        return CreateLegacyCategoricalLaw(
+            siteId, streamId, ownerId, ordinal,
+            "legacy-event-reward-potion-model-pool-v1", conditioning,
+            "Equal index weights over the generic event's ordered prototype " +
+            "potion pool; Native event-specific branches and source-pool " +
+            "completeness remain unverified.", outcomes,
+            operationKind: "choose_index");
     }
 
     private static (long Rare, long Uncommon, long Common)

@@ -60,6 +60,9 @@ The direct `chance_law_query` for `reward.card_rarity.ticket` can return the
 rarity-category law after callers declare the reward group and earlier card
 models. The pending event-effect frame still records its typed ticket-index
 support; the direct category law does not replace that saved continuation.
+The generic legacy `event.reward.random_potion.model` site also has a direct
+pool query keyed by `event_id` and the selected choice `action_id`; it does not
+cover Wellspring or Whispering Hollow's separate Native-shaped routes.
 
 The supported event-choice sites are:
 
