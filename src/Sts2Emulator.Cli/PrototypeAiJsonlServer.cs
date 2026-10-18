@@ -4924,6 +4924,42 @@ internal static class PrototypeAiJsonlServer
                             });
                             break;
                         }
+                        if (siteId == "treasure.relic_model.index_draw")
+                        {
+                            RejectChanceLawQueryParameters(
+                                request, "act", "floor", "owned_relic_ids",
+                                "support_count");
+                            var treasureRelicAct = OptionalInt(request, "act") ??
+                                throw new ArgumentException(
+                                    "Legacy Treasure relic model law requires act.");
+                            var treasureRelicFloor = OptionalInt(
+                                request, "floor") ??
+                                throw new ArgumentException(
+                                    "Legacy Treasure relic model law requires floor.");
+                            var ownedRelicIds = OptionalStringArray(
+                                request, "owned_relic_ids") ??
+                                throw new ArgumentException(
+                                    "Legacy Treasure relic model law requires owned_relic_ids (an empty array when the player owns no prototype relics).");
+                            law = ChanceLawEngineV111
+                                .QueryLegacyTreasureRelicModel(
+                                    treasureRelicAct, treasureRelicFloor,
+                                    ownedRelicIds, ordinal);
+                            var supportCount = OptionalInt(
+                                request, "support_count");
+                            if (supportCount is not null &&
+                                supportCount != law.Outcomes.Length)
+                                throw new ArgumentException(
+                                    "Legacy Treasure relic model support_count must match the ordered unowned prototype relic pool.");
+                            Write(new
+                            {
+                                requestId,
+                                ok = true,
+                                chanceLawSchemaId =
+                                    ChanceLawV111.CurrentSchemaId,
+                                law
+                            });
+                            break;
+                        }
                         if (ChanceLawEngineV111
                             .IsSupportedAncientOfferQuerySite(siteId))
                         {
@@ -8848,6 +8884,7 @@ internal static class PrototypeAiJsonlServer
             "potion_id", "relic_id", "colorless_offer", "sale_reprice",
             "owner_id", "excluded_potion_ids", "offer_ordinal",
             "relic_candidate_ids", "excluded_relic_ids", "first_boss",
+            "owned_relic_ids",
             "ascension", "act", "include_darv", "hive_receives_darv",
             "room", "gold_proportion", "current_thousandths", "elite",
             "forced", "card_rarity_source",
