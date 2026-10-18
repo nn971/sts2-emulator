@@ -2979,34 +2979,10 @@ public static class SemanticPilotCombatEngineV111
                     costEvent.CandidateCosts[selectedIndex]);
             SemanticCostChoiceV111.ValidateDecision(
                 costEvent, effectCostDecision, selectedIndex);
-            RunState effectCostResult;
-            using (ControlledChanceGuardV111.Enter())
-            using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
-                effectCostResult = PrototypeGameEngine
-                    .ResumeControlledSemanticEffectDrawCost(
-                        current.Run.Fork(), effectCostDecision.SelectedCost);
-            if (effectCostResult.Phase == RunPhase.Combat)
-            {
-                var nextChoice = effectCostResult.World?.Combat?.PendingChoice;
-                if (nextChoice is
-                        { ChoiceId: "controlled_draw_cost",
-                          ControlledSemanticDraw: not null })
-                    SemanticCostChoiceV111.ValidateDrawBoundary(effectCostResult);
-                else if (nextChoice is
-                        { ChoiceId: "controlled_semantic_draw" })
-                    SemanticDrawChoiceV111.ValidateBoundary(effectCostResult);
-                else if (nextChoice?.ChoiceId == "select_cards")
-                    SemanticCardSelectionEngineV111
-                        .ValidatePendingBoundary(effectCostResult);
-                else
-                    ValidateSemanticCombatBoundary(effectCostResult);
-                PrototypeStateInvariants.Validate(effectCostResult);
-            }
-            else if (effectCostResult.Phase is not (
-                RunPhase.Reward or RunPhase.Terminal))
-                throw new NotSupportedException(
-                    "UNSUPPORTED_SEMANTIC_DECK site=combat.card_draw.cost " +
-                    "operation=unsupported_post_cost_phase");
+            var effectCostResult = SemanticCostChoiceV111
+                .ResumeEffectDrawCost(
+                    current.Run.Fork(), effectCostDecision.SelectedCost,
+                    allowEngineOwnedPrototypeReward: true);
             var effectCostState = current with
             {
                 Run = effectCostResult,
@@ -3041,12 +3017,10 @@ public static class SemanticPilotCombatEngineV111
                     CanonicalJson.Sha256(effectDrawDecision))
                 throw new InvalidOperationException(
                     "Semantic card-effect draw decision is stale or outside support.");
-            RunState effectDrawResult;
-            using (ControlledChanceGuardV111.Enter())
-            using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
-                effectDrawResult = PrototypeGameEngine
-                    .ResumeControlledSemanticEffectDraw(
-                        current.Run.Fork(), selectedIndex);
+            var effectDrawResult = SemanticDrawChoiceV111
+                .ResumeControlledEffectDraw(
+                    current.Run.Fork(), effectDrawDecision,
+                    allowEngineOwnedPrototypeReward: true);
             if (effectDrawResult.Phase == RunPhase.Combat)
             {
                 if (effectDrawResult.World?.Combat?.PendingChoice?
@@ -3059,8 +3033,6 @@ public static class SemanticPilotCombatEngineV111
                 else
                     ValidateSemanticCombatBoundary(effectDrawResult);
                 PrototypeStateInvariants.Validate(effectDrawResult);
-                SemanticDrawChoiceV111.ValidateRecordedChoice(
-                    effectDrawResult, drawEvent, selectedIndex);
             }
             else if (effectDrawResult.Phase is not (
                 RunPhase.Reward or RunPhase.Terminal))

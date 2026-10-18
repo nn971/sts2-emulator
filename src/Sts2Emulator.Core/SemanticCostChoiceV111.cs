@@ -156,6 +156,69 @@ public static class SemanticCostChoiceV111
             throw new InvalidOperationException(
                 "Semantic cost decision is stale or outside current support.");
     }
+
+    /// <summary>
+    /// Resumes a cost inside a semantic card-effect draw, validates the next
+    /// supported boundary, and preserves the caller's reward policy.
+    /// </summary>
+    internal static RunState ResumeEffectDrawCost(
+        RunState checkpoint, int selectedCost,
+        bool allowEngineOwnedPrototypeReward)
+    {
+        ArgumentNullException.ThrowIfNull(checkpoint);
+        ValidateDrawBoundary(checkpoint);
+        var combat = checkpoint.World!.Combat!;
+        var cost = combat.PendingChoice!.ControlledDrawCost!;
+        int bound = cost.Stage == "relic" ? cost.RelicMaxExclusive : 4;
+        if (selectedCost < 0 || selectedCost >= bound)
+            throw new ArgumentOutOfRangeException(nameof(selectedCost));
+
+        RunState resumed;
+        if (allowEngineOwnedPrototypeReward)
+        {
+            using (ControlledChanceGuardV111.Enter())
+            using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
+                resumed = PrototypeGameEngine
+                    .ResumeControlledSemanticEffectDrawCost(
+                        checkpoint, selectedCost);
+        }
+        else
+        {
+            using (ControlledChanceGuardV111.Enter())
+                resumed = PrototypeGameEngine
+                    .ResumeControlledSemanticEffectDrawCost(
+                        checkpoint, selectedCost);
+        }
+
+        ValidateEffectDrawCostResult(resumed);
+        return resumed;
+    }
+
+    private static void ValidateEffectDrawCostResult(RunState run)
+    {
+        if (run.Phase == RunPhase.Combat)
+        {
+            var nextChoice = run.World?.Combat?.PendingChoice;
+            if (nextChoice is
+                    { ChoiceId: "controlled_draw_cost",
+                      ControlledSemanticDraw: not null })
+                ValidateDrawBoundary(run);
+            else if (nextChoice is
+                    { ChoiceId: "controlled_semantic_draw" })
+                SemanticDrawChoiceV111.ValidateBoundary(run);
+            else if (nextChoice?.ChoiceId == "select_cards")
+                SemanticCardSelectionEngineV111
+                    .ValidatePendingBoundary(run);
+            else
+                SemanticPilotCombatEngineV111
+                    .ValidateSemanticCombatBoundary(run);
+            PrototypeStateInvariants.Validate(run);
+        }
+        else if (run.Phase is not (RunPhase.Reward or RunPhase.Terminal))
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_DECK site=combat.card_draw.cost " +
+                "operation=unsupported_post_cost_phase");
+    }
 }
 
 /// <summary>

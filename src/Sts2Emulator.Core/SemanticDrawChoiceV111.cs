@@ -163,6 +163,44 @@ public static class SemanticDrawChoiceV111
     }
 
     /// <summary>
+    /// Resumes a controlled card-effect draw through the ordinary engine and
+    /// verifies its committed transcript when the continuation stays in combat.
+    /// </summary>
+    internal static RunState ResumeControlledEffectDraw(
+        RunState checkpoint, SemanticDrawDecisionV111 decision,
+        bool allowEngineOwnedPrototypeReward)
+    {
+        ArgumentNullException.ThrowIfNull(checkpoint);
+        ArgumentNullException.ThrowIfNull(decision);
+        ValidateBoundary(checkpoint);
+        var deck = checkpoint.World!.Combat!.SemanticDeck!;
+        ValidateDecision(
+            SemanticDeckEngineV111.Inspect(deck), decision);
+
+        RunState resumed;
+        if (allowEngineOwnedPrototypeReward)
+        {
+            using (ControlledChanceGuardV111.Enter())
+            using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
+                resumed = PrototypeGameEngine
+                    .ResumeControlledSemanticEffectDraw(
+                        checkpoint, decision.SelectedIndex);
+        }
+        else
+        {
+            using (ControlledChanceGuardV111.Enter())
+                resumed = PrototypeGameEngine
+                    .ResumeControlledSemanticEffectDraw(
+                        checkpoint, decision.SelectedIndex);
+        }
+
+        if (resumed.Phase == RunPhase.Combat)
+            ValidateRecordedChoice(
+                resumed, decision.Event, decision.SelectedIndex);
+        return resumed;
+    }
+
+    /// <summary>
     /// Revalidates the saved request at the mechanics checkpoint, resolves
     /// its provider state, and publishes the matching physical pile update.
     /// </summary>

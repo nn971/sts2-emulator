@@ -749,11 +749,10 @@ public static class SemanticCombatDrawEngineV111
                     if (checkpointCombat.PendingChoice?.ControlledSemanticDraw?
                             .StandaloneSemanticDrawSegment == true)
                     {
-                        RunState advanced;
-                        using (ControlledChanceGuardV111.Enter())
-                            advanced = PrototypeGameEngine
-                                .ResumeControlledSemanticEffectDrawCost(
-                                    checkpointRun, replayedIndex);
+                        var advanced = SemanticCostChoiceV111
+                            .ResumeEffectDrawCost(
+                                checkpointRun, replayedIndex,
+                                allowEngineOwnedPrototypeReward: false);
                         return new SemanticDrawCostResumeV111(
                             advanced,
                             PrototypeGameEngine.GetSemanticDrawRemainingCount(
@@ -788,14 +787,10 @@ public static class SemanticCombatDrawEngineV111
                 state.Pending ?? throw new InvalidDataException(
                     "Semantic card-effect draw lost its pending event."),
                 selectedIndex);
-            RunState resumedDraw;
-            using (ControlledChanceGuardV111.Enter())
-                resumedDraw = PrototypeGameEngine
-                    .ResumeControlledSemanticEffectDraw(
-                        run, effectDrawDecision.SelectedIndex);
-            SemanticDrawChoiceV111.ValidateRecordedChoice(
-                resumedDraw, effectDrawDecision.Event,
-                effectDrawDecision.SelectedIndex);
+            var resumedDraw = SemanticDrawChoiceV111
+                .ResumeControlledEffectDraw(
+                    run, effectDrawDecision,
+                    allowEngineOwnedPrototypeReward: false);
             var drawNext = state with
             {
                 Run = resumedDraw,
