@@ -347,7 +347,8 @@ public static class StochasticSiteRegistryV111
         PrototypeNativeRelicGrabBag.NativeTreasureModelSiteId,
         "shop.merchant.card_price_modifier.unit_float",
         "shop.merchant.potion_price_modifier.unit_float",
-        "shop.merchant.relic_price_modifier.unit_float"
+        "shop.merchant.relic_price_modifier.unit_float",
+        "relic.persistent_combat_end.random_upgrade.index_draw"
     ];
 
     private static readonly string[] NativeMerchantPriceSites =

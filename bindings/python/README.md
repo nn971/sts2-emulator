@@ -33,6 +33,21 @@ The query is admitted only when the ordinary event-selection provider resolves
 that action to Endless Conveyor. It covers the first dish roll; later rolls
 and a ReferenceNature unit-float continuation are not included yet.
 
+The Fishing Rod combat-end index law takes a caller-declared support size and
+the source owner ID:
+
+```python
+law = state.query_chance_law(
+    "relic.persistent_combat_end.random_upgrade.index_draw",
+    owner_id="relic:proto.native.neow.fishingrod:slot:0",
+    support_count=eligible_card_count,
+)
+```
+
+This reports the exact Native `NextInt` index masses for that support size. It
+does not validate the Fishing Rod trigger or eligible-card pool, and no saved
+ReferenceNature victory continuation is exposed yet.
+
 Construction checks wire/snapshot/batch compatibility. Handles belong to one
 session; release invalidates them. Calls are serialized with a lock.
 `EmulatorError` exposes server failures; the context manager closes the server.

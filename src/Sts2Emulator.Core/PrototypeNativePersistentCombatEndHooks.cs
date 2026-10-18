@@ -9,6 +9,9 @@ namespace Sts2Emulator.Core;
 /// </summary>
 public sealed partial class PrototypeGameEngine
 {
+    public const string FishingRodUpgradeSiteId =
+        "relic.persistent_combat_end.random_upgrade.index_draw";
+
     private sealed record NativeCombatsSeen(int CombatsSeen);
 
     private sealed record NativeElitesDefeated(int ElitesDefeated);
@@ -117,13 +120,14 @@ public sealed partial class PrototypeGameEngine
                 if (nativeRunStreams is not null)
                 {
                     var ownerId = $"relic:{relics[index].RelicId}:slot:{index}";
-                    var decision = new NativeRandomIndexProviderV111().Resolve(
-                        new RandomIndexRequestV111(
-                            "relic.persistent_combat_end.random_upgrade.index_draw",
-                            "run.niche",
-                            ownerId,
-                            count / 3 - 1,
-                            Enumerable.Range(0, candidates.Length).ToArray()),
+                    var request = new RandomIndexRequestV111(
+                        FishingRodUpgradeSiteId,
+                        "run.niche",
+                        ownerId,
+                        count / 3 - 1,
+                        Enumerable.Range(0, candidates.Length).ToArray());
+                    var decision = StochasticProviderScopeV111.ResolveIndex(
+                        new NativeRandomIndexProviderV111(), request,
                         nativeRunStreams);
                     selectedIndex = decision.SelectedIndex;
                 }

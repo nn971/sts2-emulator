@@ -40,7 +40,7 @@ class State:
                          owner_id=None, offer_ordinal=None,
                          relic_candidate_ids=None, excluded_relic_ids=None,
                          action_id=None, prior_variant_index=None,
-                         event_id=None):
+                         event_id=None, support_count=None):
         """Read a pre-outcome law; native event queries may need action_id.
 
         Reflections card-pick laws use action_id="touch_mirror" and the
@@ -92,6 +92,10 @@ class State:
             if not isinstance(owner_id, str) or not owner_id:
                 raise ValueError("owner_id must be a nonempty string")
             payload["owner_id"] = owner_id
+        if support_count is not None:
+            if type(support_count) is not int or support_count <= 0:
+                raise ValueError("support_count must be a positive integer")
+            payload["support_count"] = support_count
         if offer_ordinal is not None:
             if type(offer_ordinal) is not int or offer_ordinal < 0:
                 raise ValueError(

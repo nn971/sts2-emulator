@@ -730,6 +730,26 @@ public static partial class ChanceLawEngineV111
     }
 
     /// <summary>
+    /// Query the bounded-index transform used by Fishing Rod's persistent
+    /// combat-end upgrade. The caller supplies the declared support size;
+    /// this law certifies only Native NextInt masses on that support, not the
+    /// source relic trigger or eligible-card pool.
+    /// </summary>
+    public static ChanceLawV111 QueryNativePersistentCombatEndUpgrade(
+        RandomIndexRequestV111 request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        request.Validate();
+        if (request.SiteId != PrototypeGameEngine.FishingRodUpgradeSiteId ||
+            request.StreamId != "run.niche" ||
+            request.OperationKind != "choose_index")
+            throw new ArgumentException(
+                "Fishing Rod law requires its Native run.niche index request.",
+                nameof(request));
+        return QueryRandomIndex("relic.persistent_combat_end", request);
+    }
+
+    /// <summary>
     /// Query one pre-event Ancient offer decision. Direct offer pools return
     /// stable choice identities; shuffle-based offers return the bounded
     /// Fisher-Yates swap index at the requested ordinal. The same pool builders

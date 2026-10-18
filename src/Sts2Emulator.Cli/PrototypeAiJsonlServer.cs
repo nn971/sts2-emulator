@@ -3224,7 +3224,60 @@ internal static class PrototypeAiJsonlServer
                             request, "relic_candidate_ids");
                         var excludedRelicIds = OptionalStringArray(
                             request, "excluded_relic_ids");
-                        if (ChanceLawEngineV111
+                        if (siteId == PrototypeGameEngine
+                                .FishingRodUpgradeSiteId)
+                        {
+                            var supportCount = OptionalInt(
+                                request, "support_count");
+                            var ownerId = ownerIdParameter ??
+                                throw new ArgumentException(
+                                    "Fishing Rod index law requires owner_id.");
+                            var rodRelicId = PrototypeNativeOvergrowthEvents
+                                .NeowRelicId("FishingRod");
+                            var ownerPrefix = $"relic:{rodRelicId}:slot:";
+                            var slotText = ownerId.StartsWith(ownerPrefix,
+                                StringComparison.Ordinal)
+                                ? ownerId[ownerPrefix.Length..] : string.Empty;
+                            if (!int.TryParse(slotText,
+                                    System.Globalization.NumberStyles.None,
+                                    System.Globalization.CultureInfo.InvariantCulture,
+                                    out var relicSlot) ||
+                                relicSlot >= run.Player.Relics.Length ||
+                                run.Player.Relics[relicSlot].RelicId !=
+                                    rodRelicId ||
+                                run.Player.Relics[relicSlot].IsMelted)
+                                throw new ArgumentException(
+                                    "Fishing Rod owner_id must identify an active Fishing Rod relic slot.");
+                            var streams = run.World?.Combat?.NativeRng?
+                                .RunStreams ?? run.NativeRunRng;
+                            if (priorIndices is not null ||
+                                priorVariantIndex is not null ||
+                                cardType is not null || rarity is not null ||
+                                cardId is not null || potionId is not null ||
+                                relicId is not null || colorlessOffer ||
+                                saleReprice || excludedPotionIds is not null ||
+                                offerOrdinal is not null ||
+                                relicCandidateIds is not null ||
+                                excludedRelicIds is not null ||
+                                supportCount is null or <= 0 ||
+                                supportCount > run.Player.Deck.Length ||
+                                run.Phase != RunPhase.Combat ||
+                                run.World?.ActiveRoom !=
+                                    PrototypeRoomType.Combat ||
+                                run.World?.Combat is null ||
+                                streams is null || streams.Streams.Count(stream =>
+                                    stream.StreamId == "run.niche") != 1)
+                                throw new ArgumentException(
+                                    "Fishing Rod law requires a Native run.niche owner and support_count within the current deck size.");
+                            var typedRequest = new RandomIndexRequestV111(
+                                siteId, "run.niche", ownerId, ordinal,
+                                Enumerable.Range(0, supportCount.Value)
+                                    .ToArray());
+                            law = ChanceLawEngineV111
+                                .QueryNativePersistentCombatEndUpgrade(
+                                    typedRequest);
+                        }
+                        else if (ChanceLawEngineV111
                             .IsSupportedAncientOfferQuerySite(siteId))
                         {
                             if (cardType is not null || rarity is not null ||
