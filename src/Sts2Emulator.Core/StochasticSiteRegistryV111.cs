@@ -707,6 +707,8 @@ public static class StochasticSiteRegistryV111
         new(RunActionShovelSites, StringComparer.Ordinal);
     private static readonly HashSet<string> ControlledEventChoiceSiteSet =
         new(ControlledEventChoiceSites, StringComparer.Ordinal);
+    private static readonly HashSet<string> ChanceLawQuerySiteSet =
+        new(ChanceLawQuerySites, StringComparer.Ordinal);
     private static readonly string[] RunActionSessionSites = RunActionSites
         .Concat(RunActionEventEntrySites)
         .Concat(RunActionShopSites)
@@ -885,7 +887,7 @@ public static class StochasticSiteRegistryV111
         ControlledEventChoiceSiteSet.Contains(siteId);
 
     public static bool IsChanceLawQuerySite(string siteId) =>
-        ChanceLawQuerySites.Contains(siteId, StringComparer.Ordinal);
+        ChanceLawQuerySiteSet.Contains(siteId);
 
     public static bool IsNativeMerchantPriceSite(string siteId) =>
         NativeMerchantPriceSites.Contains(siteId, StringComparer.Ordinal);
