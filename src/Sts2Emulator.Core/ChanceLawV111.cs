@@ -409,7 +409,8 @@ public static partial class ChanceLawEngineV111
     ];
 
     private sealed record LegacyCallerBoundIndexQuerySiteV111(
-        string StreamId, string OperationKind, int MinimumSupportCount);
+        string StreamId, string OperationKind, int MinimumSupportCount,
+        int? ExactSupportCount = null);
 
     private static readonly Dictionary<string,
         LegacyCallerBoundIndexQuerySiteV111>
@@ -417,6 +418,26 @@ public static partial class ChanceLawEngineV111
         {
             ["event.random_upgrade.card_instance"] = new(
                 "event", "choose_index", 1),
+            ["map.legacy.floor_width.index_draw"] = new(
+                "map", "choose_index", 2),
+            ["map.legacy.edge_source.index_draw"] = new(
+                "map", "choose_index", 1),
+            ["map.legacy.orphan_target.index_draw"] = new(
+                "map", "choose_index", 1),
+            ["map.legacy.edge_extra_chance.ticket"] = new(
+                "map", "bounded_integer", 100, 100),
+            ["map.legacy.second_edge_source.index_draw"] = new(
+                "map", "choose_index", 1),
+            ["map.legacy.convergence.order_key"] = new(
+                "map", "bounded_integer", int.MaxValue, int.MaxValue),
+            ["map.legacy.convergence.source.index_draw"] = new(
+                "map", "choose_index", 1),
+            ["map.legacy.second_edge_target.index_draw"] = new(
+                "map", "choose_index", 1),
+            ["map.legacy.required_room.node.index_draw"] = new(
+                "map", "choose_index", 1),
+            ["map.legacy.room_assignment.index_draw"] = new(
+                "map", "choose_index", 1),
             ["event.reward.card_bundle.shuffle_swap_index"] = new(
                 "reward", "bounded_integer", 2),
             ["relic.sand_castle.acquisition_upgrade.shuffle_swap_index"] =
@@ -1849,6 +1870,11 @@ public static partial class ChanceLawEngineV111
         if (supportCount < site.MinimumSupportCount)
             throw new ArgumentOutOfRangeException(nameof(supportCount),
                 $"The declared support for '{siteId}' must be at least {site.MinimumSupportCount}.");
+        if (site.ExactSupportCount is { } exactSupportCount &&
+            supportCount != exactSupportCount)
+            throw new ArgumentException(
+                $"The declared support for '{siteId}' must be {exactSupportCount}.",
+                nameof(supportCount));
 
         var request = site.OperationKind == "bounded_integer"
             ? new RandomIndexRequestV111(
