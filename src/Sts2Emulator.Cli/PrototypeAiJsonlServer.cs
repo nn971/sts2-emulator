@@ -2671,7 +2671,9 @@ internal static class PrototypeAiJsonlServer
                                  "potion.uniform_model.index_draw" or
                                  "relic.acquisition.random_rare_card.model" or
                                  "relic.acquisition.random_potion.model" or
-                                 "run.potion.fill_empty_slots.model"))
+                                 "run.potion.fill_empty_slots.model" or
+                                 StochasticSiteRegistryV111
+                                     .UnownedRandomRelicSelectionSiteId))
                             throw new ArgumentException(
                                 "stream_id is accepted only for PotionFactory, relic, legacy potion rarity, and potion model laws.");
                         int[]? priorIndices = null;
@@ -2756,6 +2758,38 @@ internal static class PrototypeAiJsonlServer
                                 .QueryLegacyCallerBoundIndex(
                                     siteId, legacyBoundedOwnerId, ordinal,
                                     legacyBoundedSupportCount);
+                            Write(new
+                            {
+                                requestId,
+                                ok = true,
+                                chanceLawSchemaId =
+                                    ChanceLawV111.CurrentSchemaId,
+                                law
+                            });
+                            break;
+                        }
+                        if (siteId == StochasticSiteRegistryV111
+                                .UnownedRandomRelicSelectionSiteId)
+                        {
+                            RejectChanceLawQueryParameters(
+                                request, "stream_id", "owner_id",
+                                "support_count");
+                            var unownedRelicStream = OptionalString(
+                                request, "stream_id") ??
+                                throw new ArgumentException(
+                                    "Unowned-relic selection law requires stream_id (event, reward, or player.rewards).");
+                            var unownedRelicOwner = OptionalString(
+                                request, "owner_id") ??
+                                throw new ArgumentException(
+                                    "Unowned-relic selection law requires owner_id, including the current pool fingerprint.");
+                            var unownedRelicSupport = OptionalInt(
+                                request, "support_count") ??
+                                throw new ArgumentException(
+                                    "Unowned-relic selection law requires support_count for the current eligible pool.");
+                            law = ChanceLawEngineV111
+                                .QueryUnownedRelicSelectionIndex(
+                                    unownedRelicStream, unownedRelicOwner,
+                                    unownedRelicSupport, ordinal);
                             Write(new
                             {
                                 requestId,

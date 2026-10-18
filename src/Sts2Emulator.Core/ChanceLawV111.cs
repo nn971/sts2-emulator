@@ -554,6 +554,11 @@ public static partial class ChanceLawEngineV111
         "run.potion.fill_empty_slots.model"
     ];
 
+    private static readonly string[] UnownedRelicSelectionQuerySites =
+    [
+        StochasticSiteRegistryV111.UnownedRandomRelicSelectionSiteId
+    ];
+
     private sealed record NativeBoundedIntegerLawSiteV111(
         string StreamId, string Boundary);
 
@@ -686,6 +691,9 @@ public static partial class ChanceLawEngineV111
 
     public static string[] LegacyRunPotionFillSlotQuerySiteIds =>
         (string[])LegacyRunPotionFillSlotQuerySites.Clone();
+
+    public static string[] UnownedRelicSelectionQuerySiteIds =>
+        (string[])UnownedRelicSelectionQuerySites.Clone();
 
     /// <summary>
     /// Query the retained legacy card-rarity integer ticket after the source
@@ -1833,7 +1841,8 @@ public static partial class ChanceLawEngineV111
         ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
         if (siteId is not ("relic.acquisition.random_rare_card.model" or
             "relic.acquisition.random_potion.model" or
-            "run.potion.fill_empty_slots.model"))
+            "run.potion.fill_empty_slots.model" or
+            StochasticSiteRegistryV111.UnownedRandomRelicSelectionSiteId))
             throw new NotSupportedException(
                 $"Native player model law does not support site '{siteId}'.");
         if (supportCount < 1)
@@ -1847,6 +1856,42 @@ public static partial class ChanceLawEngineV111
         var eventId = CanonicalJson.Sha256(new
         {
             boundary = "native-relic-acquisition-model-index",
+            request
+        });
+        return QueryRandomIndex(eventId, request);
+    }
+
+    /// <summary>
+    /// Query the caller-declared unowned-relic index support on one of its
+    /// legacy event streams or the hypothesized Native player reward stream.
+    /// Pool filtering and the owner prefix are supplied by the caller.
+    /// </summary>
+    public static ChanceLawV111 QueryUnownedRelicSelectionIndex(
+        string streamId, string ownerId, int supportCount, int ordinal)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(streamId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
+        if (supportCount < 1)
+            throw new ArgumentOutOfRangeException(nameof(supportCount));
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+
+        const string siteId =
+            StochasticSiteRegistryV111.UnownedRandomRelicSelectionSiteId;
+        if (streamId == NativePlayerRngV111.RewardsStreamId)
+            return QueryNativePlayerModelIndex(
+                siteId, ownerId, supportCount, ordinal);
+        if (streamId is not ("event" or "reward"))
+            throw new ArgumentException(
+                "Unowned-relic selection stream must be event, reward, or player.rewards.",
+                nameof(streamId));
+
+        var request = new RandomIndexRequestV111(
+            siteId, streamId, ownerId, ordinal,
+            Enumerable.Range(0, supportCount).ToArray());
+        var eventId = CanonicalJson.Sha256(new
+        {
+            boundary = "legacy-unowned-relic-selection-index",
             request
         });
         return QueryRandomIndex(eventId, request);
