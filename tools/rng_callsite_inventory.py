@@ -21,7 +21,7 @@ from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = ROOT / "src" / "Sts2Emulator.Core"
-SCHEMA_ID = "emulator-rng-callsite-source-inventory-v12"
+SCHEMA_ID = "emulator-rng-callsite-source-inventory-v13"
 SITE_REGISTRY_PATH = SOURCE_ROOT / "StochasticSiteRegistryV111.cs"
 
 CALL_PATTERN = re.compile(
@@ -49,9 +49,20 @@ AMBIENT_ENTROPY_PATTERNS = (
     )),
 )
 
+REQUEST_CONSTRUCTION_PATTERN = re.compile(
+    r"\bnew\s+(?P<request_type>RandomIndexRequestV111|"
+    r"RandomUnitFloatRequestV111|RandomRangedFloatRequestV111|"
+    r"RandomRangedDoubleRequestV111|RandomGaussianIntRequestV111|"
+    r"RandomGaussianDoubleRequestV111)\s*\("
+)
+
 STRING_CONSTANT_PATTERN = re.compile(
     r"\bconst\s+string\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*=\s*"
     r'"(?P<value>[^"\\]*(?:\\.[^"\\]*)*)"\s*;'
+)
+
+STRING_LITERAL_PATTERN = re.compile(
+    r'"(?P<value>[^"\\]*(?:\\.[^"\\]*)*)"'
 )
 
 SITE_ARRAY_PATTERN = re.compile(
@@ -179,7 +190,8 @@ def _resolve_site_value(
         for candidate in candidate_files:
             source = candidate.read_text(encoding="utf-8")
             if not re.search(
-                rf"\bclass\s+{re.escape(class_name.rsplit('.', 1)[-1])}\b",
+                rf"\b(?:class|record|struct)\s+"
+                rf"{re.escape(class_name.rsplit('.', 1)[-1])}\b",
                 source,
             ):
                 continue
@@ -189,6 +201,109 @@ def _resolve_site_value(
         if not candidates:
             candidates = global_constants.get(name, set())
     return next(iter(candidates)) if len(candidates) == 1 else None
+
+
+def _conditional_site_branches(expression: str) -> tuple[str, str] | None:
+    """Split one top-level C# conditional expression, ignoring strings/nesting."""
+    question_index = None
+    depth = {"(": 0, "[": 0, "{": 0}
+    closing = {")": "(", "]": "[", "}": "{"}
+    in_string = False
+    escaped = False
+    for index, character in enumerate(expression):
+        if in_string:
+            if escaped:
+                escaped = False
+            elif character == "\\":
+                escaped = True
+            elif character == '"':
+                in_string = False
+            continue
+        if character == '"':
+            in_string = True
+        elif character in depth:
+            depth[character] += 1
+        elif character in closing:
+            depth[closing[character]] -= 1
+        elif character == "?" and not any(depth.values()) and \
+                not expression.startswith(("??", "?."), index):
+            question_index = index
+            break
+    if question_index is None:
+        return None
+
+    nested_conditionals = 0
+    depth = {"(": 0, "[": 0, "{": 0}
+    in_string = False
+    escaped = False
+    for index in range(question_index + 1, len(expression)):
+        character = expression[index]
+        if in_string:
+            if escaped:
+                escaped = False
+            elif character == "\\":
+                escaped = True
+            elif character == '"':
+                in_string = False
+            continue
+        if character == '"':
+            in_string = True
+        elif character in depth:
+            depth[character] += 1
+        elif character in closing:
+            depth[closing[character]] -= 1
+        elif any(depth.values()):
+            continue
+        elif character == "?" and not expression.startswith(("??", "?."), index):
+            nested_conditionals += 1
+        elif character == ":":
+            if nested_conditionals:
+                nested_conditionals -= 1
+            else:
+                return (
+                    expression[question_index + 1:index].strip(),
+                    expression[index + 1:].strip(),
+                )
+    return None
+
+
+def _resolve_site_values(
+    expression: str | None,
+    local_constants: dict[str, set[str]],
+    global_constants: dict[str, set[str]],
+) -> list[str]:
+    """Resolve exact or statically visible alternatives in a site expression."""
+    if expression is None:
+        return []
+    branches = _conditional_site_branches(expression)
+    if branches is not None:
+        values: set[str] = set()
+        for branch in branches:
+            values.update(_resolve_site_values(
+                branch, local_constants, global_constants
+            ))
+        return sorted(values)
+    exact = _resolve_site_value(
+        expression, local_constants, global_constants
+    )
+    if exact is not None:
+        return [exact]
+
+    values = {
+        match.group("value")
+        for match in STRING_LITERAL_PATTERN.finditer(expression)
+    }
+    member_pattern = re.compile(
+        r"\b[A-Za-z_][A-Za-z0-9_]*"
+        r"(?:\.[A-Za-z_][A-Za-z0-9_]*)+\b"
+    )
+    for match in member_pattern.finditer(expression):
+        value = _resolve_site_value(
+            match.group(0), local_constants, global_constants
+        )
+        if value is not None:
+            values.add(value)
+    return sorted(values)
 
 
 def _resolve_site_array_property(
@@ -580,6 +695,66 @@ def _ambient_entropy_calls(
     return sorted(calls, key=lambda call: (call["path"], call["line"]))
 
 
+def _typed_request_constructions(
+    sources: dict[Path, str],
+    global_constants: dict[str, set[str]],
+    registry_site_ids: set[str],
+    matrix_site_ids: set[str],
+) -> list[dict[str, Any]]:
+    """Inventory explicit typed random-request construction boundaries."""
+    calls: list[dict[str, Any]] = []
+    for path, source in sources.items():
+        local_constants = _string_constants(source)
+        for match in REQUEST_CONSTRUCTION_PATTERN.finditer(source):
+            arguments = _call_arguments(source, match.start())
+            expression = arguments[0] if arguments else None
+            if expression is not None:
+                named = re.match(r"SiteId\s*:\s*(.+)$", expression, re.DOTALL)
+                if named:
+                    expression = named.group(1).strip()
+            values = _resolve_site_values(
+                expression, local_constants, global_constants
+            )
+            value = values[0] if len(values) == 1 else None
+            registry_misses = [
+                item for item in values if item not in registry_site_ids
+            ]
+            matrix_misses = [
+                item for item in values if item not in matrix_site_ids
+            ]
+            registry_status = (
+                "dynamic_expression" if not values and expression is not None
+                else "missing" if not values
+                else "mapped" if not registry_misses and len(values) == 1
+                else "conditional" if not registry_misses
+                else "not_registered" if len(registry_misses) == len(values)
+                else "partially_unregistered"
+            )
+            matrix_status = (
+                "dynamic_expression" if not values and expression is not None
+                else "missing" if not values
+                else "mapped" if not matrix_misses and len(values) == 1
+                else "conditional" if not matrix_misses
+                else "unmapped" if len(matrix_misses) == len(values)
+                else "partially_unmapped"
+            )
+            line_number = source.count("\n", 0, match.start()) + 1
+            calls.append({
+                "path": path.relative_to(ROOT).as_posix(),
+                "line": line_number,
+                "request_type": match.group("request_type"),
+                "site_id_expression": expression,
+                "site_id_value": value,
+                "site_id_values": values,
+                "registry_status": registry_status,
+                "matrix_status": matrix_status,
+                "source_excerpt": source.splitlines()[
+                    line_number - 1
+                ].strip(),
+            })
+    return sorted(calls, key=lambda call: (call["path"], call["line"]))
+
+
 def collect() -> dict[str, Any]:
     entries: list[dict[str, Any]] = []
     matrix_site_rows = _migration_matrix_site_rows()
@@ -628,6 +803,9 @@ def collect() -> dict[str, Any]:
         if row["site_id"] in matrix_site_ids_without_registry_set
     )
     site_id_forwarder_calls = _site_id_forwarder_calls(
+        sources, string_constants, registry_site_ids, matrix_site_ids
+    )
+    typed_request_constructions = _typed_request_constructions(
         sources, string_constants, registry_site_ids, matrix_site_ids
     )
     site_id_forwarder_failures = [
@@ -728,7 +906,9 @@ def collect() -> dict[str, Any]:
             "A separate direct-API scan reports typed and target-typed "
             "System.Random construction, shared-instance use, and "
             "RandomNumberGenerator use; it cannot prove the absence of indirect "
-            "or aliased entropy sources. "
+            "or aliased entropy sources. Explicit typed random-request "
+            "constructions are listed with their site ID and registry/matrix "
+            "resolution status. "
             "The site-matrix report shows registry-to-ledger and ledger-to-registry "
             "differences, unique ledger IDs, and explicit reference-law status. "
             "Unregistered ledger rows are informational because legacy and conditional "
@@ -739,6 +919,7 @@ def collect() -> dict[str, Any]:
         ),
         "total_direct_calls": len(entries),
         "ambient_entropy_calls": ambient_entropy_calls,
+        "typed_request_constructions": typed_request_constructions,
         "counts_by_category": counts,
         "shuffle_matrix_mapping_counts": {
             status: sum(
@@ -817,6 +998,22 @@ def render_markdown(report: dict[str, Any]) -> str:
         *[
             f"- {call['path']}:{call['line']} {call['finding']}"
             for call in report["ambient_entropy_calls"]
+        ],
+        "",
+        "Explicit typed random-request constructions: "
+        f"**{len(report['typed_request_constructions'])}**; site IDs resolved "
+        f"to registry: **{sum(call['registry_status'] in ('mapped', 'conditional') for call in report['typed_request_constructions'])}**; "
+        f"dynamic or missing IDs: **{sum(call['registry_status'] in ('dynamic_expression', 'missing') for call in report['typed_request_constructions'])}**; "
+        f"static IDs absent from registry: **{sum(call['registry_status'] in ('not_registered', 'partially_unregistered') for call in report['typed_request_constructions'])}**.",
+        "",
+        "| File:line | Request type | Site ID expression | Resolved site ID | Registry | Matrix |",
+        "| --- | --- | --- | --- | --- | --- |",
+        *[
+            f"| [{call['path']}:{call['line']}](../{call['path']}#L{call['line']}) "
+            f"| {call['request_type']} | {call['site_id_expression'] or '—'} | "
+            f"{', '.join(call['site_id_values']) or '—'} | {call['registry_status']} | "
+            f"{call['matrix_status']} |"
+            for call in report["typed_request_constructions"]
         ],
         "",
         "Shuffle site IDs mapped to migration-matrix rows: "

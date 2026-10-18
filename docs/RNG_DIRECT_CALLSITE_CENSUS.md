@@ -1,6 +1,6 @@
-# RNG direct-call source inventory (emulator-rng-callsite-source-inventory-v12)
+# RNG direct-call source inventory (emulator-rng-callsite-source-inventory-v13)
 
-Direct qualified calls to PrototypeRng, NativeRngV111, and NativeFisherYatesV111 in Sts2Emulator.Core. This does not include indirect delegates, random provider interfaces, third-party/native source callsites, or prove that every source operation is mapped. A separate direct-API scan reports typed and target-typed System.Random construction, shared-instance use, and RandomNumberGenerator use; it cannot prove the absence of indirect or aliased entropy sources. The site-matrix report shows registry-to-ledger and ledger-to-registry differences, unique ledger IDs, and explicit reference-law status. Unregistered ledger rows are informational because legacy and conditional sites may remain outside the active registry. The S0 locator reports text or linked-document matches for private constraints, audience projections, resolvers/continuations, probability provenance, and unsupported handling; these matches require manual review and do not prove source completeness.
+Direct qualified calls to PrototypeRng, NativeRngV111, and NativeFisherYatesV111 in Sts2Emulator.Core. This does not include indirect delegates, random provider interfaces, third-party/native source callsites, or prove that every source operation is mapped. A separate direct-API scan reports typed and target-typed System.Random construction, shared-instance use, and RandomNumberGenerator use; it cannot prove the absence of indirect or aliased entropy sources. Explicit typed random-request constructions are listed with their site ID and registry/matrix resolution status. The site-matrix report shows registry-to-ledger and ledger-to-registry differences, unique ledger IDs, and explicit reference-law status. Unregistered ledger rows are informational because legacy and conditional sites may remain outside the active registry. The S0 locator reports text or linked-document matches for private constraints, audience projections, resolvers/continuations, probability provenance, and unsupported handling; these matches require manual review and do not prove source completeness.
 
 Direct call expressions: **35**.
 
@@ -12,13 +12,130 @@ Counts by direct API family:
 
 Direct ad hoc entropy API expressions in Core: **0**. The scan covers direct System.Random typed or target-typed construction/shared-instance use and RandomNumberGenerator APIs; it does not prove the absence of indirect or aliased entropy sources.
 
+Explicit typed random-request constructions: **100**; site IDs resolved to registry: **54**; dynamic or missing IDs: **46**; static IDs absent from registry: **0**.
+
+| File:line | Request type | Site ID expression | Resolved site ID | Registry | Matrix |
+| --- | --- | --- | --- | --- | --- |
+| [src/Sts2Emulator.Core/ChanceLawV111.cs:2157](../src/Sts2Emulator.Core/ChanceLawV111.cs#L2157) | RandomIndexRequestV111 | siteId | — | dynamic_expression | dynamic_expression |
+| [src/Sts2Emulator.Core/ChanceLawV111.cs:2193](../src/Sts2Emulator.Core/ChanceLawV111.cs#L2193) | RandomIndexRequestV111 | siteId | — | dynamic_expression | dynamic_expression |
+| [src/Sts2Emulator.Core/ChanceLawV111.cs:2502](../src/Sts2Emulator.Core/ChanceLawV111.cs#L2502) | RandomIndexRequestV111 | siteId | — | dynamic_expression | dynamic_expression |
+| [src/Sts2Emulator.Core/ChanceLawV111.cs:2506](../src/Sts2Emulator.Core/ChanceLawV111.cs#L2506) | RandomIndexRequestV111 | siteId | — | dynamic_expression | dynamic_expression |
+| [src/Sts2Emulator.Core/ChanceLawV111.cs:2539](../src/Sts2Emulator.Core/ChanceLawV111.cs#L2539) | RandomIndexRequestV111 | siteId | — | dynamic_expression | dynamic_expression |
+| [src/Sts2Emulator.Core/ChanceLawV111.cs:2550](../src/Sts2Emulator.Core/ChanceLawV111.cs#L2550) | RandomIndexRequestV111 | siteId | — | dynamic_expression | dynamic_expression |
+| [src/Sts2Emulator.Core/ChanceLawV111.cs:2560](../src/Sts2Emulator.Core/ChanceLawV111.cs#L2560) | RandomIndexRequestV111 | siteId | — | dynamic_expression | dynamic_expression |
+| [src/Sts2Emulator.Core/ChanceLawV111.cs:3061](../src/Sts2Emulator.Core/ChanceLawV111.cs#L3061) | RandomIndexRequestV111 | NativePaelRewardsV111.LegionSkinSiteId | relic.paels_legion.skin.index_draw | mapped | mapped |
+| [src/Sts2Emulator.Core/ChanceLawV111.cs:3901](../src/Sts2Emulator.Core/ChanceLawV111.cs#L3901) | RandomIndexRequestV111 | siteId | — | dynamic_expression | dynamic_expression |
+| [src/Sts2Emulator.Core/ChanceLawV111.cs:4001](../src/Sts2Emulator.Core/ChanceLawV111.cs#L4001) | RandomIndexRequestV111 | siteId | — | dynamic_expression | dynamic_expression |
+| [src/Sts2Emulator.Core/ChanceLawV111.cs:5373](../src/Sts2Emulator.Core/ChanceLawV111.cs#L5373) | RandomIndexRequestV111 | siteId | — | dynamic_expression | dynamic_expression |
+| [src/Sts2Emulator.Core/ChanceLawV111.cs:5555](../src/Sts2Emulator.Core/ChanceLawV111.cs#L5555) | RandomIndexRequestV111 | NativeDarvEventV111.OfferVariantSiteId | event.darv.offer_variant.index_draw | mapped | mapped |
+| [src/Sts2Emulator.Core/ChanceLawV111.cs:5575](../src/Sts2Emulator.Core/ChanceLawV111.cs#L5575) | RandomIndexRequestV111 | NativeDarvEventV111.RelicShuffleSiteId | event.darv.relic_offer.shuffle_swap_index | mapped | mapped |
+| [src/Sts2Emulator.Core/ChanceLawV111.cs:7046](../src/Sts2Emulator.Core/ChanceLawV111.cs#L7046) | RandomIndexRequestV111 | siteId | — | dynamic_expression | dynamic_expression |
+| [src/Sts2Emulator.Core/ControlledInitialHpV111.cs:147](../src/Sts2Emulator.Core/ControlledInitialHpV111.cs#L147) | RandomIndexRequestV111 | "combat.initial_unique_hp" | combat.initial_unique_hp | mapped | mapped |
+| [src/Sts2Emulator.Core/ControlledInitialHpV111.cs:192](../src/Sts2Emulator.Core/ControlledInitialHpV111.cs#L192) | RandomIndexRequestV111 | "combat.initial_unique_hp" | combat.initial_unique_hp | mapped | mapped |
+| [src/Sts2Emulator.Core/ControlledIntentsV111.cs:182](../src/Sts2Emulator.Core/ControlledIntentsV111.cs#L182) | RandomIndexRequestV111 | "combat.committed_intent.index_draw" | combat.committed_intent.index_draw | mapped | mapped |
+| [src/Sts2Emulator.Core/ControlledIntentsV111.cs:256](../src/Sts2Emulator.Core/ControlledIntentsV111.cs#L256) | RandomIndexRequestV111 | "combat.initial_unique_hp" | combat.initial_unique_hp | mapped | mapped |
+| [src/Sts2Emulator.Core/ControlledPlayableCombatV111.cs:248](../src/Sts2Emulator.Core/ControlledPlayableCombatV111.cs#L248) | RandomIndexRequestV111 | relic ? "combat.card_draw.relic_energy_cost"
+                      : "combat.card_draw.slither_energy_cost" | combat.card_draw.relic_energy_cost, combat.card_draw.slither_energy_cost | conditional | conditional |
+| [src/Sts2Emulator.Core/ControlledPlayableCombatV111.cs:269](../src/Sts2Emulator.Core/ControlledPlayableCombatV111.cs#L269) | RandomIndexRequestV111 | single ? "combat.random_hand_card.select"
+                       : "combat.random_hand_card.energy_cost" | combat.random_hand_card.energy_cost, combat.random_hand_card.select | conditional | conditional |
+| [src/Sts2Emulator.Core/ControlledPlayableCombatV111.cs:305](../src/Sts2Emulator.Core/ControlledPlayableCombatV111.cs#L305) | RandomIndexRequestV111 | handReturn
+                    ? "combat.hand_return.draw_pile.shuffle_swap_index"
+                    : recycle
+                        ? "combat.draw.recycle.shuffle_swap_index"
+                        : "combat.generation.full_pool_shuffle.swap_index" | combat.draw.recycle.shuffle_swap_index, combat.generation.full_pool_shuffle.swap_index, combat.hand_return.draw_pile.shuffle_swap_index | conditional | conditional |
+| [src/Sts2Emulator.Core/ControlledPlayableCombatV111.cs:335](../src/Sts2Emulator.Core/ControlledPlayableCombatV111.cs#L335) | RandomIndexRequestV111 | "combat.random_draw_attack.card_model" | combat.random_draw_attack.card_model | mapped | mapped |
+| [src/Sts2Emulator.Core/ControlledPlayableCombatV111.cs:341](../src/Sts2Emulator.Core/ControlledPlayableCombatV111.cs#L341) | RandomIndexRequestV111 | choice.RequestSiteId | — | dynamic_expression | dynamic_expression |
+| [src/Sts2Emulator.Core/ControlledPlayableCombatV111.cs:366](../src/Sts2Emulator.Core/ControlledPlayableCombatV111.cs#L366) | RandomIndexRequestV111 | "combat.generated_card.select" | combat.generated_card.select | mapped | mapped |
+| [src/Sts2Emulator.Core/ControlledPlayableCombatV111.cs:387](../src/Sts2Emulator.Core/ControlledPlayableCombatV111.cs#L387) | RandomIndexRequestV111 | "combat.potion_generation.random_model" | combat.potion_generation.random_model | mapped | mapped |
+| [src/Sts2Emulator.Core/ControlledPlayableCombatV111.cs:404](../src/Sts2Emulator.Core/ControlledPlayableCombatV111.cs#L404) | RandomIndexRequestV111 | "combat.card_transform.replacement.index_draw" | combat.card_transform.replacement.index_draw | mapped | mapped |
+| [src/Sts2Emulator.Core/ControlledPlayableCombatV111.cs:431](../src/Sts2Emulator.Core/ControlledPlayableCombatV111.cs#L431) | RandomIndexRequestV111 | siteId | — | dynamic_expression | dynamic_expression |
+| [src/Sts2Emulator.Core/ControlledPlayableCombatV111.cs:1270](../src/Sts2Emulator.Core/ControlledPlayableCombatV111.cs#L1270) | RandomIndexRequestV111 | ShuffleSite | controlled.fixture.opening_shuffle.swap_index | mapped | mapped |
+| [src/Sts2Emulator.Core/ControlledRecycleShuffleV111.cs:125](../src/Sts2Emulator.Core/ControlledRecycleShuffleV111.cs#L125) | RandomIndexRequestV111 | SiteId | combat.draw_pile_recycle.swap_index | mapped | mapped |
+| [src/Sts2Emulator.Core/ControlledTurnIntentsV111.cs:302](../src/Sts2Emulator.Core/ControlledTurnIntentsV111.cs#L302) | RandomIndexRequestV111 | mechanics.SiteId | — | dynamic_expression | dynamic_expression |
+| [src/Sts2Emulator.Core/NativeAncientRewardsV111.cs:221](../src/Sts2Emulator.Core/NativeAncientRewardsV111.cs#L221) | RandomIndexRequestV111 | TezcataraOfferSiteId | event.tezcatara.relic_offer.index_draw | mapped | mapped |
+| [src/Sts2Emulator.Core/NativeAncientRewardsV111.cs:270](../src/Sts2Emulator.Core/NativeAncientRewardsV111.cs#L270) | RandomIndexRequestV111 | TezcataraOfferSiteId | event.tezcatara.relic_offer.index_draw | mapped | mapped |
+| [src/Sts2Emulator.Core/NativeCombatRngEntryV111.cs:113](../src/Sts2Emulator.Core/NativeCombatRngEntryV111.cs#L113) | RandomIndexRequestV111 | InitialUniqueHpSiteId | combat.initial_unique_hp | mapped | mapped |
+| [src/Sts2Emulator.Core/NativeCombatRngEntryV111.cs:283](../src/Sts2Emulator.Core/NativeCombatRngEntryV111.cs#L283) | RandomIndexRequestV111 | ToughEggHatchHpSiteId | combat.tough_egg.hatchling_hp | mapped | mapped |
+| [src/Sts2Emulator.Core/NativeCombatRngEntryV111.cs:399](../src/Sts2Emulator.Core/NativeCombatRngEntryV111.cs#L399) | RandomIndexRequestV111 | InitialUniqueHpSiteId | combat.initial_unique_hp | mapped | mapped |
+| [src/Sts2Emulator.Core/NativeCombatRngEntryV111.cs:560](../src/Sts2Emulator.Core/NativeCombatRngEntryV111.cs#L560) | RandomIndexRequestV111 | siteId | — | dynamic_expression | dynamic_expression |
+| [src/Sts2Emulator.Core/NativeDarvEventV111.cs:163](../src/Sts2Emulator.Core/NativeDarvEventV111.cs#L163) | RandomIndexRequestV111 | OfferVariantSiteId | event.darv.offer_variant.index_draw | mapped | mapped |
+| [src/Sts2Emulator.Core/NativeDarvEventV111.cs:256](../src/Sts2Emulator.Core/NativeDarvEventV111.cs#L256) | RandomIndexRequestV111 | OfferVariantSiteId | event.darv.offer_variant.index_draw | mapped | mapped |
+| [src/Sts2Emulator.Core/NativeEncounterFormationFactoryV111.cs:119](../src/Sts2Emulator.Core/NativeEncounterFormationFactoryV111.cs#L119) | RandomIndexRequestV111 | FormationSiteId | combat.encounter.formation.index_draw | mapped | mapped |
+| [src/Sts2Emulator.Core/NativeEventContextRngV111.cs:58](../src/Sts2Emulator.Core/NativeEventContextRngV111.cs#L58) | RandomIndexRequestV111 | siteId | — | dynamic_expression | dynamic_expression |
+| [src/Sts2Emulator.Core/NativeEventContextRngV111.cs:118](../src/Sts2Emulator.Core/NativeEventContextRngV111.cs#L118) | RandomIndexRequestV111 | siteId | — | dynamic_expression | dynamic_expression |
+| [src/Sts2Emulator.Core/NativeEventContextRngV111.cs:174](../src/Sts2Emulator.Core/NativeEventContextRngV111.cs#L174) | RandomUnitFloatRequestV111 | siteId | — | dynamic_expression | dynamic_expression |
+| [src/Sts2Emulator.Core/NativeFisherYatesV111.cs:72](../src/Sts2Emulator.Core/NativeFisherYatesV111.cs#L72) | RandomIndexRequestV111 | siteId | — | dynamic_expression | dynamic_expression |
+| [src/Sts2Emulator.Core/NativeNeowEventV111.cs:34](../src/Sts2Emulator.Core/NativeNeowEventV111.cs#L34) | RandomIndexRequestV111 | siteId | — | dynamic_expression | dynamic_expression |
+| [src/Sts2Emulator.Core/NativeOrobasEventV111.cs:106](../src/Sts2Emulator.Core/NativeOrobasEventV111.cs#L106) | RandomIndexRequestV111 | OfferSiteId | event.orobas.relic_offer.index_draw | mapped | mapped |
+| [src/Sts2Emulator.Core/NativeOrobasEventV111.cs:183](../src/Sts2Emulator.Core/NativeOrobasEventV111.cs#L183) | RandomIndexRequestV111 | OfferSiteId | event.orobas.relic_offer.index_draw | mapped | mapped |
+| [src/Sts2Emulator.Core/NativePaelRewardsV111.cs:280](../src/Sts2Emulator.Core/NativePaelRewardsV111.cs#L280) | RandomIndexRequestV111 | OfferSiteId | event.pael.relic_offer.index_draw | mapped | mapped |
+| [src/Sts2Emulator.Core/NativePaelRewardsV111.cs:339](../src/Sts2Emulator.Core/NativePaelRewardsV111.cs#L339) | RandomIndexRequestV111 | OfferSiteId | event.pael.relic_offer.index_draw | mapped | mapped |
+| [src/Sts2Emulator.Core/NativeRandomChoiceV111.cs:23](../src/Sts2Emulator.Core/NativeRandomChoiceV111.cs#L23) | RandomIndexRequestV111 | siteId | — | dynamic_expression | dynamic_expression |
+| [src/Sts2Emulator.Core/NativeRandomChoiceV111.cs:42](../src/Sts2Emulator.Core/NativeRandomChoiceV111.cs#L42) | RandomIndexRequestV111 | siteId | — | dynamic_expression | dynamic_expression |
+| [src/Sts2Emulator.Core/NativeRandomChoiceV111.cs:58](../src/Sts2Emulator.Core/NativeRandomChoiceV111.cs#L58) | RandomUnitFloatRequestV111 | siteId | — | dynamic_expression | dynamic_expression |
+| [src/Sts2Emulator.Core/NativeShuffleStepReplayV111.cs:167](../src/Sts2Emulator.Core/NativeShuffleStepReplayV111.cs#L167) | RandomIndexRequestV111 | expected.SiteId | — | dynamic_expression | dynamic_expression |
+| [src/Sts2Emulator.Core/PrototypeCombat.cs:3349](../src/Sts2Emulator.Core/PrototypeCombat.cs#L3349) | RandomIndexRequestV111 | siteId | — | dynamic_expression | dynamic_expression |
+| [src/Sts2Emulator.Core/PrototypeCombat.cs:6985](../src/Sts2Emulator.Core/PrototypeCombat.cs#L6985) | RandomIndexRequestV111 | "combat.relic.jeweled_mask.random_power_draw_card" | combat.relic.jeweled_mask.random_power_draw_card | mapped | mapped |
+| [src/Sts2Emulator.Core/PrototypeCombat.cs:7763](../src/Sts2Emulator.Core/PrototypeCombat.cs#L7763) | RandomIndexRequestV111 | "combat.potion_generation.random_model" | combat.potion_generation.random_model | mapped | mapped |
+| [src/Sts2Emulator.Core/PrototypeCombat.cs:10360](../src/Sts2Emulator.Core/PrototypeCombat.cs#L10360) | RandomIndexRequestV111 | stage == "relic"
+                ? "combat.card_draw.relic_energy_cost"
+                : "combat.card_draw.slither_energy_cost" | combat.card_draw.relic_energy_cost, combat.card_draw.slither_energy_cost | conditional | conditional |
+| [src/Sts2Emulator.Core/PrototypeCombat.cs:13800](../src/Sts2Emulator.Core/PrototypeCombat.cs#L13800) | RandomIndexRequestV111 | siteId | — | dynamic_expression | dynamic_expression |
+| [src/Sts2Emulator.Core/PrototypeCombat.cs:13879](../src/Sts2Emulator.Core/PrototypeCombat.cs#L13879) | RandomIndexRequestV111 | selectingCard ? "combat.random_hand_card.select"
+                          : "combat.random_hand_card.energy_cost" | combat.random_hand_card.energy_cost, combat.random_hand_card.select | conditional | conditional |
+| [src/Sts2Emulator.Core/PrototypeCombat.cs:13953](../src/Sts2Emulator.Core/PrototypeCombat.cs#L13953) | RandomIndexRequestV111 | siteId | — | dynamic_expression | dynamic_expression |
+| [src/Sts2Emulator.Core/PrototypeCombat.cs:14078](../src/Sts2Emulator.Core/PrototypeCombat.cs#L14078) | RandomIndexRequestV111 | siteId | — | dynamic_expression | dynamic_expression |
+| [src/Sts2Emulator.Core/PrototypeCombat.cs:14137](../src/Sts2Emulator.Core/PrototypeCombat.cs#L14137) | RandomIndexRequestV111 | siteId | — | dynamic_expression | dynamic_expression |
+| [src/Sts2Emulator.Core/PrototypeEncounterFormationResolver.cs:48](../src/Sts2Emulator.Core/PrototypeEncounterFormationResolver.cs#L48) | RandomIndexRequestV111 | "combat.encounter.formation.index_draw" | combat.encounter.formation.index_draw | mapped | mapped |
+| [src/Sts2Emulator.Core/PrototypeGameEngine.cs:546](../src/Sts2Emulator.Core/PrototypeGameEngine.cs#L546) | RandomIndexRequestV111 | NativeGloryAncientsV111
+                            .DistinguishedCapeCurseSiteId | run.relic.distinguished_cape.modifier_curse.index_draw | mapped | mapped |
+| [src/Sts2Emulator.Core/PrototypeModel.cs:1554](../src/Sts2Emulator.Core/PrototypeModel.cs#L1554) | RandomIndexRequestV111 | siteId | combat.encounter.formation.index_draw | mapped | mapped |
+| [src/Sts2Emulator.Core/PrototypeNativeLaterActMap.cs:94](../src/Sts2Emulator.Core/PrototypeNativeLaterActMap.cs#L94) | RandomIndexRequestV111 | siteId | — | dynamic_expression | dynamic_expression |
+| [src/Sts2Emulator.Core/PrototypeNativeLaterActMap.cs:133](../src/Sts2Emulator.Core/PrototypeNativeLaterActMap.cs#L133) | RandomGaussianIntRequestV111 | siteId | — | dynamic_expression | dynamic_expression |
+| [src/Sts2Emulator.Core/PrototypeNativeOvergrowthMap.cs:60](../src/Sts2Emulator.Core/PrototypeNativeOvergrowthMap.cs#L60) | RandomIndexRequestV111 | siteId | — | dynamic_expression | dynamic_expression |
+| [src/Sts2Emulator.Core/PrototypeNativeOvergrowthMap.cs:91](../src/Sts2Emulator.Core/PrototypeNativeOvergrowthMap.cs#L91) | RandomGaussianIntRequestV111 | siteId | — | dynamic_expression | dynamic_expression |
+| [src/Sts2Emulator.Core/PrototypeNativePersistentCombatEndHooks.cs:123](../src/Sts2Emulator.Core/PrototypeNativePersistentCombatEndHooks.cs#L123) | RandomIndexRequestV111 | FishingRodUpgradeSiteId | relic.persistent_combat_end.random_upgrade.index_draw | mapped | mapped |
+| [src/Sts2Emulator.Core/PrototypeNativePotionShop.cs:278](../src/Sts2Emulator.Core/PrototypeNativePotionShop.cs#L278) | RandomUnitFloatRequestV111 | "potion_factory.rarity_roll.unit_float" | potion_factory.rarity_roll.unit_float | mapped | mapped |
+| [src/Sts2Emulator.Core/PrototypeNativePotionShop.cs:292](../src/Sts2Emulator.Core/PrototypeNativePotionShop.cs#L292) | RandomIndexRequestV111 | "potion_factory.model_within_rarity.index_draw" | potion_factory.model_within_rarity.index_draw | mapped | mapped |
+| [src/Sts2Emulator.Core/RandomIndexProvidersV111.cs:245](../src/Sts2Emulator.Core/RandomIndexProvidersV111.cs#L245) | RandomIndexRequestV111 | siteId | — | dynamic_expression | dynamic_expression |
+| [src/Sts2Emulator.Core/ReferenceNatureEndlessConveyorSessionV111.cs:425](../src/Sts2Emulator.Core/ReferenceNatureEndlessConveyorSessionV111.cs#L425) | RandomIndexRequestV111 | law.SiteId | — | dynamic_expression | dynamic_expression |
+| [src/Sts2Emulator.Core/ReferenceNatureNativeEventChoiceLawV111.cs:62](../src/Sts2Emulator.Core/ReferenceNatureNativeEventChoiceLawV111.cs#L62) | RandomIndexRequestV111 | PrototypeNativeHiveEvents.InfestedAutomatonCardOfferSiteId | event.hive.card_offer.index_draw | mapped | mapped |
+| [src/Sts2Emulator.Core/ReferenceNatureNativeEventChoiceLawV111.cs:192](../src/Sts2Emulator.Core/ReferenceNatureNativeEventChoiceLawV111.cs#L192) | RandomIndexRequestV111 | expectedSiteId | — | dynamic_expression | dynamic_expression |
+| [src/Sts2Emulator.Core/ReferenceNatureNativeEventChoiceLawV111.cs:392](../src/Sts2Emulator.Core/ReferenceNatureNativeEventChoiceLawV111.cs#L392) | RandomIndexRequestV111 | siteId | — | dynamic_expression | dynamic_expression |
+| [src/Sts2Emulator.Core/ReferenceNatureNativeEventChoiceLawV111.cs:495](../src/Sts2Emulator.Core/ReferenceNatureNativeEventChoiceLawV111.cs#L495) | RandomIndexRequestV111 | siteId | — | dynamic_expression | dynamic_expression |
+| [src/Sts2Emulator.Core/ReferenceNatureNativeEventChoiceLawV111.cs:708](../src/Sts2Emulator.Core/ReferenceNatureNativeEventChoiceLawV111.cs#L708) | RandomUnitFloatRequestV111 | siteId | — | dynamic_expression | dynamic_expression |
+| [src/Sts2Emulator.Core/ReferenceNatureNativeEventChoiceLawV111.cs:807](../src/Sts2Emulator.Core/ReferenceNatureNativeEventChoiceLawV111.cs#L807) | RandomIndexRequestV111 | siteId | — | dynamic_expression | dynamic_expression |
+| [src/Sts2Emulator.Core/ReferenceNatureNativeEventShuffleSessionV111.cs:39](../src/Sts2Emulator.Core/ReferenceNatureNativeEventShuffleSessionV111.cs#L39) | RandomIndexRequestV111 | SiteId | — | dynamic_expression | dynamic_expression |
+| [src/Sts2Emulator.Core/ReferenceNatureNativeEventShuffleSessionV111.cs:53](../src/Sts2Emulator.Core/ReferenceNatureNativeEventShuffleSessionV111.cs#L53) | RandomIndexRequestV111 | "event.war_historian.repy.potion_offer.index_draw" | event.war_historian.repy.potion_offer.index_draw | mapped | mapped |
+| [src/Sts2Emulator.Core/ReferenceNatureNativeEventShuffleSessionV111.cs:1903](../src/Sts2Emulator.Core/ReferenceNatureNativeEventShuffleSessionV111.cs#L1903) | RandomIndexRequestV111 | PrototypeNativeEndlessConveyor.UpgradeCardSiteId | event.endless_conveyor.random_upgrade.card_instance | mapped | mapped |
+| [src/Sts2Emulator.Core/ReferenceNatureNativeEventShuffleSessionV111.cs:1996](../src/Sts2Emulator.Core/ReferenceNatureNativeEventShuffleSessionV111.cs#L1996) | RandomIndexRequestV111 | PrototypeNativeEndlessConveyor.ColorlessCardSiteId | event.endless_conveyor.colorless_card.index_draw | mapped | mapped |
+| [src/Sts2Emulator.Core/ReferenceNatureNeowOfferSessionV111.cs:46](../src/Sts2Emulator.Core/ReferenceNatureNeowOfferSessionV111.cs#L46) | RandomIndexRequestV111 | siteId | — | dynamic_expression | dynamic_expression |
+| [src/Sts2Emulator.Core/ReferenceNatureNeowOfferSessionV111.cs:49](../src/Sts2Emulator.Core/ReferenceNatureNeowOfferSessionV111.cs#L49) | RandomIndexRequestV111 | siteId | — | dynamic_expression | dynamic_expression |
+| [src/Sts2Emulator.Core/ReferenceNaturePunchOffRewardSessionV111.cs:112](../src/Sts2Emulator.Core/ReferenceNaturePunchOffRewardSessionV111.cs#L112) | RandomIndexRequestV111 | PrototypeNativePunchOff.RelicRewardSiteId | event.punch_off.relic_reward.index_draw | mapped | mapped |
+| [src/Sts2Emulator.Core/ReferenceNaturePunchOffRewardSessionV111.cs:117](../src/Sts2Emulator.Core/ReferenceNaturePunchOffRewardSessionV111.cs#L117) | RandomIndexRequestV111 | PrototypeNativePunchOff.PotionRewardSiteId | event.punch_off.potion_reward.index_draw | mapped | mapped |
+| [src/Sts2Emulator.Core/ReferenceNaturePunchOffRewardSessionV111.cs:133](../src/Sts2Emulator.Core/ReferenceNaturePunchOffRewardSessionV111.cs#L133) | RandomIndexRequestV111 | PrototypeNativePunchOff.RelicRewardSiteId | event.punch_off.relic_reward.index_draw | mapped | mapped |
+| [src/Sts2Emulator.Core/ReferenceNaturePunchOffRewardSessionV111.cs:139](../src/Sts2Emulator.Core/ReferenceNaturePunchOffRewardSessionV111.cs#L139) | RandomIndexRequestV111 | PrototypeNativePunchOff.PotionRewardSiteId | event.punch_off.potion_reward.index_draw | mapped | mapped |
+| [src/Sts2Emulator.Core/ReferenceNaturePunchOffRewardSessionV111.cs:173](../src/Sts2Emulator.Core/ReferenceNaturePunchOffRewardSessionV111.cs#L173) | RandomIndexRequestV111 | PrototypeNativePunchOff.RelicRewardSiteId | event.punch_off.relic_reward.index_draw | mapped | mapped |
+| [src/Sts2Emulator.Core/ReferenceNaturePunchOffRewardSessionV111.cs:178](../src/Sts2Emulator.Core/ReferenceNaturePunchOffRewardSessionV111.cs#L178) | RandomIndexRequestV111 | PrototypeNativePunchOff.PotionRewardSiteId | event.punch_off.potion_reward.index_draw | mapped | mapped |
+| [src/Sts2Emulator.Core/ReferenceNaturePunchOffRewardSessionV111.cs:223](../src/Sts2Emulator.Core/ReferenceNaturePunchOffRewardSessionV111.cs#L223) | RandomIndexRequestV111 | siteId | — | dynamic_expression | dynamic_expression |
+| [src/Sts2Emulator.Core/ReferenceNatureTabletOfTruthSessionV111.cs:63](../src/Sts2Emulator.Core/ReferenceNatureTabletOfTruthSessionV111.cs#L63) | RandomIndexRequestV111 | PrototypeNativeTabletOfTruth.CardDrawSiteId | event.tablet_of_truth.card.index_draw | mapped | mapped |
+| [src/Sts2Emulator.Core/ReferenceNatureTrashHeapSessionV111.cs:62](../src/Sts2Emulator.Core/ReferenceNatureTrashHeapSessionV111.cs#L62) | RandomIndexRequestV111 | siteId | — | dynamic_expression | dynamic_expression |
+| [src/Sts2Emulator.Core/ReferenceNatureTrialSessionV111.cs:47](../src/Sts2Emulator.Core/ReferenceNatureTrialSessionV111.cs#L47) | RandomIndexRequestV111 | "event.glory_trial.damage_amount.index_draw" | event.glory_trial.damage_amount.index_draw | mapped | mapped |
+| [src/Sts2Emulator.Core/SemanticCombatDrawV111.cs:191](../src/Sts2Emulator.Core/SemanticCombatDrawV111.cs#L191) | RandomIndexRequestV111 | relic ? "combat.card_draw.relic_energy_cost"
+                      : "combat.card_draw.slither_energy_cost" | combat.card_draw.relic_energy_cost, combat.card_draw.slither_energy_cost | conditional | conditional |
+| [src/Sts2Emulator.Core/SemanticCostChoiceV111.cs:143](../src/Sts2Emulator.Core/SemanticCostChoiceV111.cs#L143) | RandomIndexRequestV111 | relic ? "combat.card_draw.relic_energy_cost"
+                  : "combat.card_draw.slither_energy_cost" | combat.card_draw.relic_energy_cost, combat.card_draw.slither_energy_cost | conditional | conditional |
+| [src/Sts2Emulator.Core/SemanticDrawInsertionV111.cs:33](../src/Sts2Emulator.Core/SemanticDrawInsertionV111.cs#L33) | RandomIndexRequestV111 | siteId | — | dynamic_expression | dynamic_expression |
+| [src/Sts2Emulator.Core/SemanticPilotCombatV111.cs:3400](../src/Sts2Emulator.Core/SemanticPilotCombatV111.cs#L3400) | RandomIndexRequestV111 | "combat.random_hand_card.energy_cost" | combat.random_hand_card.energy_cost | mapped | mapped |
+| [src/Sts2Emulator.Core/SemanticPilotCombatV111.cs:3648](../src/Sts2Emulator.Core/SemanticPilotCombatV111.cs#L3648) | RandomIndexRequestV111 | siteId | combat.random_hand_card.select | mapped | mapped |
+
 Shuffle site IDs mapped to migration-matrix rows: **18**; dynamic expressions: **6**; unmapped: **0**; missing: **0**.
-Registered stochastic site IDs mapped to migration-matrix rows: **183/183**; IDs without rows: **0**; duplicate matrix IDs: **0**; unresolved registry references: **0**.
+Registered stochastic site IDs mapped to migration-matrix rows: **184/184**; IDs without rows: **0**; duplicate matrix IDs: **0**; unresolved registry references: **0**.
 Migration-matrix rows absent from the active registry: **0** (informational; legacy and conditional rows may remain unregistered). Their law-status counts are UNVERIFIED 0, conditional 0, calibrated 0, unspecified 0.
 Matrix-only IDs for manual disposition:
 
-Reference-law column status: **58 UNVERIFIED**; **10 conditional**; **115 calibrated**; **0 unspecified**.
-S0 contract-evidence locator: **183/183 rows** have a text or linked-document match for every facet. Matches are review pointers, not evidence that a contract is complete.
+Reference-law column status: **59 UNVERIFIED**; **10 conditional**; **115 calibrated**; **0 unspecified**.
+S0 contract-evidence locator: **184/184 rows** have a text or linked-document match for every facet. Matches are review pointers, not evidence that a contract is complete.
 Rows without a text or linked-document match by S0 facet:
 
 - `audience_projection`: 0

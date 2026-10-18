@@ -318,6 +318,31 @@ public static class StochasticSiteRegistryV111
         UnownedRandomRelicSelectionSiteId
     ];
 
+    private static readonly string[] ControlledPlayableSites =
+    [
+        ControlledPlayableCombatEngineV111.ShuffleSite,
+        NativeCombatRngEntryV111.InitialUniqueHpSiteId,
+        NativeCombatRngEntryV111.ToughEggHatchHpSiteId,
+        NativeCombatRngEntryV111.NextTurnIntentSiteId,
+        ControlledRecycleShuffleEngineV111.SiteId,
+        "combat.effect.random_enemy",
+        "combat.sly_autoplay.random_enemy",
+        "combat.autoplay.random_enemy",
+        "combat.generated_card.select",
+        "combat.potion_generation.random_model",
+        "combat.card_transform.replacement.index_draw",
+        "combat.random_draw_attack.card_model",
+        "combat.draw_pile.random_insert_index",
+        PrototypeControlledDrawInsertionV111.PersonalHiveDazedSiteId,
+        "combat.enemy.theft_card.select",
+        "combat.enemy.summon_pool.select",
+        "combat.hand_return.draw_pile.shuffle_swap_index",
+        "combat.generation.full_pool_shuffle.swap_index",
+        "combat.random_hand_card.select",
+        "combat.random_hand_card.energy_cost",
+        "combat.card_selection.random_shortlist"
+    ];
+
     private static readonly string[] ChanceLawQuerySites =
     [
         .. ChanceLawEngineV111.LegacyMerchantIndexQuerySiteIds,
@@ -591,6 +616,8 @@ public static class StochasticSiteRegistryV111
         (string[])RunActionSessionSites.Clone();
     public static string[] ControlledEventChoiceSiteIds =>
         (string[])ControlledEventChoiceSites.Clone();
+    public static string[] ControlledPlayableSiteIds =>
+        (string[])ControlledPlayableSites.Clone();
     public static string[] ChanceLawQuerySiteIds =>
         (string[])ChanceLawQuerySites.Clone();
     public static string[] NativeMerchantPriceSiteIds =>
