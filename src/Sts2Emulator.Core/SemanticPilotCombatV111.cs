@@ -3085,23 +3085,11 @@ public static class SemanticPilotCombatEngineV111
             }
             else
             {
-                // Source positions index the physical bottom-first DrawPile array;
-                // semantic slots are top-first. Convert the source index while
-                // preserving the exact selected insertion point.
-                var topOffset = priorCombat.DrawPile.Length - position;
-                var deck = SemanticDeckEngineV111.InsertKnown(
-                    priorCombat.SemanticDeck!, topOffset, insertedInstanceId,
-                    publiclyKnown: false);
-                var committedCombat =
-                    SemanticDrawPileAdapterV111.ApplyCommittedPhysicalMutation(
-                        resultCombat!, resultCombat!.DrawPile, deck);
-                result = result with
-                {
-                    World = result.World! with
-                    {
-                        Combat = committedCombat
-                    }
-                };
+                // ResumeControlledDrawInsertion committed the selected
+                // provider position with the physical insertion. Keep this
+                // facade on validation and transcript ownership; replaying
+                // the provider write here could overwrite later continuation
+                // progress from the same engine resume.
                 ValidateSemanticCombatBoundary(result);
             }
         }
