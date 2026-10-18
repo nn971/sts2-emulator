@@ -205,40 +205,17 @@ public sealed partial class PrototypeGameEngine
             !ValidateControlledDrawCost(state.Player, combat, cost))
             throw new InvalidDataException(
                 "Saved drawn-card cost does not match the hand-draw checkpoint.");
-        var progress = ResolveDrawCostAndDispatchCardDrawn(
+        var resumed = ResumeAutomaticHandDrawAfterCost(
             state, cost, value,
+            PrototypeDrawCardsSuspensionPolicyV111
+                .ControlledLegacyAutomaticHandDraw(combat),
             allowHookSuspension: combat.SemanticDeck is null &&
-                !ControlledChanceGuardV111.EngineOwnedNativeProviderActive);
-        if (progress.CostStagePending)
-            return progress.Run;
-
-        var resumedRun = progress.Run;
-        var resumedWorld = RequireWorld(resumedRun);
-        var resumedCombat = resumedWorld.Combat ??
-            throw new InvalidDataException(
-                "Draw-cost resume removed combat.");
-        if (progress.DrawnHookSuspended &&
-            resumedCombat.PendingChoice is not null &&
-            resumedCombat.PendingKnowledgeDemonChoice is null)
-        {
-            var suspendedHook = new PrototypeDrawCardsResult(
-                resumedRun.Player, resumedCombat, [],
-                PrototypeDrawCardsBoundaryV111.NestedCardDrawnChoice(
-                    cost.RemainingCount));
-            return ContinueControlledHandDraw(resumedRun, suspendedHook);
-        }
-        if (progress.DrawnHookSuspended ||
-            resumedCombat.PendingChoice is not null ||
-            resumedCombat.PendingKnowledgeDemonChoice is not null)
-            throw new NotSupportedException(
+                !ControlledChanceGuardV111.EngineOwnedNativeProviderActive,
+            unsupportedBoundaryMessage:
                 "UNSUPPORTED_CONTROLLED_CHANCE site=combat.draw_cost." +
                 "drawn_event operation=nested_choice");
-
-        var drawn = ResumeAutomaticHandDrawCards(
-            resumedRun, cost.RemainingCount,
-            PrototypeDrawCardsSuspensionPolicyV111
-                .ControlledLegacyAutomaticHandDraw(resumedCombat),
-            eventDepth: cost.EventDepth);
-        return ContinueControlledHandDraw(resumedRun, drawn);
+        return resumed.Drawn is null
+            ? resumed.Run
+            : ContinueControlledHandDraw(resumed.Run, resumed.Drawn);
     }
 }

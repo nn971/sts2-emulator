@@ -138,9 +138,26 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidDataException(
                 "Semantic draw-cost continuation frame is inconsistent.");
 
+        if (automaticHandDraw)
+        {
+            var resumed = ResumeAutomaticHandDrawAfterCost(
+                run, cost, selectedCost,
+                PrototypeDrawCardsSuspensionPolicyV111.SemanticDrawCards(),
+                allowHookSuspension: false,
+                unsupportedBoundaryMessage:
+                    "UNSUPPORTED_SEMANTIC_DECK site=combat.draw.CardDrawn " +
+                    "operation=nested_choice_continuation");
+            if (resumed.Drawn is null)
+                return (resumed.Run, cost.RemainingCount);
+
+            return ResolveControlledSemanticDrawResult(
+                resumed.Run, resumed.Drawn, draw, continuation,
+                automaticHandDrawRequested, recycleSite, recycleOperation);
+        }
+
         var progress = ResolveDrawCostAndDispatchCardDrawn(
             run, cost, selectedCost,
-            allowHookSuspension: !automaticHandDraw);
+            allowHookSuspension: true);
         if (progress.CostStagePending)
             return (progress.Run, cost.RemainingCount);
 
@@ -180,17 +197,12 @@ public sealed partial class PrototypeGameEngine
                 cost.FromHandDraw, cost.EventDepth), cost.RemainingCount);
         }
 
-        var suspensionPolicy =
-            PrototypeDrawCardsSuspensionPolicyV111.SemanticDrawCards(
-                effectDraw: effectDraw);
-        var drawn = automaticHandDraw
-            ? ResumeAutomaticHandDrawCards(
-                run, cost.RemainingCount, suspensionPolicy,
-                eventDepth: cost.EventDepth)
-            : DrawCards(
-                run.Player, combat, cost.RemainingCount, run.Rng,
-                cost.FromHandDraw, eventDepth: cost.EventDepth,
-                suspensionPolicy: suspensionPolicy);
+        var drawn = DrawCards(
+            run.Player, combat, cost.RemainingCount, run.Rng,
+            cost.FromHandDraw, eventDepth: cost.EventDepth,
+            suspensionPolicy:
+                PrototypeDrawCardsSuspensionPolicyV111.SemanticDrawCards(
+                    effectDraw: effectDraw));
         var continued = ResolveControlledSemanticDrawResult(
             run, drawn, draw, continuation, automaticHandDrawRequested,
             recycleSite, recycleOperation);

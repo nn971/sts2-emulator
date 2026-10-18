@@ -7,6 +7,42 @@ namespace Sts2Emulator.Core;
 /// </summary>
 public sealed partial class PrototypeGameEngine
 {
+    // The provider adapters supply their suspension policy and continue the
+    // tagged result through their own saved frame.
+    private static (RunState Run, PrototypeDrawCardsResult? Drawn)
+        ResumeAutomaticHandDrawAfterCost(
+            RunState checkpoint,
+            PrototypeControlledDrawCostV111 cost,
+            int selectedCost,
+            PrototypeDrawCardsSuspensionPolicyV111 suspensionPolicy,
+            bool allowHookSuspension,
+            string unsupportedBoundaryMessage)
+    {
+        var costProgress = ResolveDrawCostAndDispatchCardDrawn(
+            checkpoint, cost, selectedCost, allowHookSuspension);
+        if (costProgress.CostStagePending)
+            return (costProgress.Run, null);
+
+        var world = RequireWorld(costProgress.Run);
+        var combat = world.Combat ?? throw new InvalidDataException(
+            "Draw-cost resume removed combat.");
+        if (costProgress.DrawnHookSuspended &&
+            combat.PendingChoice is not null &&
+            combat.PendingKnowledgeDemonChoice is null)
+            return (costProgress.Run, new PrototypeDrawCardsResult(
+                costProgress.Run.Player, combat, [],
+                PrototypeDrawCardsBoundaryV111.NestedCardDrawnChoice(
+                    cost.RemainingCount)));
+        if (costProgress.DrawnHookSuspended ||
+            combat.PendingChoice is not null ||
+            combat.PendingKnowledgeDemonChoice is not null)
+            throw new NotSupportedException(unsupportedBoundaryMessage);
+
+        return (costProgress.Run, ResumeAutomaticHandDrawCards(
+            costProgress.Run, cost.RemainingCount, suspensionPolicy,
+            eventDepth: cost.EventDepth));
+    }
+
     private static PrototypeDrawCardsResult ResumeAutomaticHandDrawCards(
         RunState checkpoint,
         int remaining,
