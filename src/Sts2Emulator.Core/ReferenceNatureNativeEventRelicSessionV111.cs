@@ -26,9 +26,9 @@ public sealed record ReferenceNatureNativeEventRelicSessionSnapshotV111(
     string[]? PendingCandidateLabels);
 
 /// <summary>
-/// Atomic configured Native event relic choice. Direct random-relic effects
-/// and relic pulls triggered by Toy Box share one typed ReferenceNature
-/// transcript and publish the run cursor only after all requests resolve.
+/// Atomic configured Native event relic continuation. Direct random-relic
+/// effects, supported Neow relic-pickup triggers, and Toy Box pulls share one
+/// typed ReferenceNature transcript and publish the run cursor after replay.
 /// </summary>
 public sealed record ReferenceNatureNativeEventRelicSessionV111(
     string SchemaId, RunState Origin, GameAction Action, RunState Run,
@@ -356,17 +356,29 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
                     NativeAncientRewardsV111.TezcataraId &&
                 EventChoiceId(action) is { } choiceId &&
                 HasToyBoxEffect(eventId, choiceId);
-            var lawEventId = CanonicalJson.Sha256(new
-            {
-                boundary = legacyToyBoxBoundary
-                    ? "native-event-toy-box-relic"
-                    : "native-event-relic",
-                eventId = legacyToyBoxBoundary
-                    ? NativeAncientRewardsV111.TezcataraId
-                    : eventId,
-                choiceId = EventChoiceId(action),
-                request = indexRequest
-            });
+            var lawEventId = legacyToyBoxBoundary
+                ? CanonicalJson.Sha256(new
+                {
+                    boundary = "native-event-toy-box-relic",
+                    eventId = NativeAncientRewardsV111.TezcataraId,
+                    choiceId = EventChoiceId(action),
+                    request = indexRequest
+                })
+                : action.Kind == "event_choice"
+                    ? CanonicalJson.Sha256(new
+                    {
+                        boundary = "native-event-relic",
+                        eventId,
+                        choiceId = EventChoiceId(action),
+                        request = indexRequest
+                    })
+                    : CanonicalJson.Sha256(new
+                    {
+                        boundary = "native-neow-relic-pickup",
+                        eventId,
+                        actionId = PrototypeAiEnvironment.StableActionId(action),
+                        request = indexRequest
+                    });
             return ChanceLawEngineV111.QueryRandomIndex(
                 lawEventId, indexRequest);
         }
@@ -456,29 +468,40 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
     {
         var world = source.World;
         var eventState = world?.Event;
-        var choiceId = action.Kind == "event_choice"
-            ? EventChoiceId(action) : null;
-        if (source.Phase != RunPhase.Event || world is null ||
-            eventState is null ||
-            eventState.ControlledChoice is not null ||
-            eventState.ChosenChoiceId is not null ||
-            source.NativeRunRng is null ||
+        var choiceId = EventChoiceId(action);
+        var eventRelicChoice = source.Phase == RunPhase.Event &&
+            action.Kind == "event_choice" &&
+            eventState is not null && choiceId is not null &&
+            PrototypeGameEngine.IsControlledEventChoice(
+                eventState.EventId, choiceId) &&
+            ExpectedEventRelicDrawCount(source, action) > 0 &&
+            !HasUnsupportedFixedRelicEffect(eventState.EventId, choiceId);
+        var neowRelicPickup = NeowRelicPickupDrawCount(source, action) > 0;
+        var supportedBoundary = eventRelicChoice && eventState is
+                { ControlledChoice: null, ChosenChoiceId: null } ||
+            neowRelicPickup && eventState?.EventId ==
+                PrototypeNativeOvergrowthEvents.NeowEventId;
+        if (world is null || source.NativeRunRng is null ||
             source.ControlledRunActionChoice is not null ||
             !PrototypeGameEngine.UsesNativeRegionalSystems(world) ||
-            choiceId is null ||
-            !PrototypeGameEngine.IsControlledEventChoice(
-                eventState.EventId, choiceId) ||
-            ExpectedDrawCount(source, action) <= 0 ||
-            HasUnsupportedFixedRelicEffect(eventState.EventId, choiceId) ||
+            !supportedBoundary ||
             !new PrototypeGameEngine().GetLegalActions(source).Any(candidate =>
                 PrototypeAiEnvironment.StableActionId(candidate) ==
                 PrototypeAiEnvironment.StableActionId(action)))
             throw new InvalidOperationException(
-                "Native event relic session requires a current legal configured Native event choice with supported relic draws.");
+                "Native event relic session requires a current legal configured Native event choice or supported Neow relic pickup.");
         PrototypeStateInvariants.Validate(source);
     }
 
     private static int ExpectedDrawCount(RunState source, GameAction action)
+    {
+        if (action.Kind != "event_choice")
+            return NeowRelicPickupDrawCount(source, action);
+        return ExpectedEventRelicDrawCount(source, action);
+    }
+
+    private static int ExpectedEventRelicDrawCount(
+        RunState source, GameAction action)
     {
         var eventState = source.World?.Event;
         var choiceId = EventChoiceId(action);
@@ -505,6 +528,47 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
         return randomRelicDraws + toyBoxAcquisitions * ToyBoxDrawCount;
     }
 
+    private static int NeowRelicPickupDrawCount(
+        RunState source, GameAction action)
+    {
+        var world = source.World;
+        if (source.Phase != RunPhase.Reward || world is null ||
+            world.Event?.EventId !=
+                PrototypeNativeOvergrowthEvents.NeowEventId ||
+            !PrototypeGameEngine.UsesNativeRegionalSystems(world) ||
+            action.Kind is not ("take_reward_relic" or
+                "take_reward_extra_relic") ||
+            world.Reward is not { } reward ||
+            !reward.RelicResolved || reward.ExtraRelicRewardIds is not { } ids)
+            return 0;
+
+        var payload = action.Payload.Deserialize<ChooseRelicPayload>();
+        var groupIndex = action.Kind == "take_reward_relic"
+            ? reward.FirstPendingExtraRelicGroupIndex
+            : payload?.Index ?? -1;
+        if (payload is null ||
+            action.Kind == "take_reward_relic" && payload.Index != 0 ||
+            groupIndex < 0 || groupIndex >= ids.Length ||
+            reward.IsExtraRelicGroupResolved(groupIndex))
+            return 0;
+
+        var relicId = ids[groupIndex];
+        var choiceId = "take_" + relicId;
+        var choice = PrototypeNativeOvergrowthEvents.NeowDefinition
+            .Choices.SingleOrDefault(candidate =>
+                StringComparer.Ordinal.Equals(candidate.Id, choiceId));
+        var effects = choice?.Effects;
+        if (effects is not { Length: > 1 } ||
+            effects[0].Kind != PrototypeRunEffectKind.GainRelic ||
+            !StringComparer.Ordinal.Equals(effects[0].RelicId, relicId) ||
+            effects.Skip(1).Any(effect =>
+                effect.Kind is not (PrototypeRunEffectKind.GainRandomRelic or
+                    PrototypeRunEffectKind.AddCard)))
+            return 0;
+        return effects.Count(effect =>
+            effect.Kind == PrototypeRunEffectKind.GainRandomRelic);
+    }
+
     private static bool HasUnsupportedFixedRelicEffect(
         string eventId, string choiceId)
     {
@@ -527,7 +591,9 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
                         effect.RelicId, NativeAncientRewardsV111.ToyBoxId)) == true;
 
     private static string? EventChoiceId(GameAction action) =>
-        action.Payload.Deserialize<EventChoicePayload>()?.ChoiceId;
+        action.Kind == "event_choice"
+            ? action.Payload.Deserialize<EventChoicePayload>()?.ChoiceId
+            : null;
 
     private static bool SameRequest(
         ControlledStochasticRequestV111? left,

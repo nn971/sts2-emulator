@@ -670,6 +670,37 @@ class State:
         return ReferenceNatureNativeEventRelicSession.from_wire(
             self.session, result["result"])
 
+    def begin_reference_nature_native_neow_relic_pickup(
+            self, action_id: str, nature_seed: int | None = None):
+        """Control relic draws triggered by a supported Native Neow pickup."""
+        if self.session.capabilities.get(
+                "referenceNatureNativeEventRelicSessionSchemaId") != (
+                "sts2-v111-reference-nature-native-event-relic-session-v1"):
+            raise EmulatorError(
+                "Emulator does not expose ReferenceNature Native event relic sessions")
+        if not isinstance(action_id, str) or not action_id:
+            raise ValueError("action_id must be a nonempty string")
+        site_ids = (
+            "relic_grab_bag.rarity.unit_float",
+            "treasure.relic_grab_bag.model.index_draw")
+        if not all(self.session.supports_reference_nature_site(
+                site_id, session="native_event_relic")
+                for site_id in site_ids):
+            raise EmulatorError(
+                "No ReferenceNature Native event relic session is advertised")
+        if (nature_seed is not None and
+                (not isinstance(nature_seed, int) or
+                 isinstance(nature_seed, bool) or nature_seed < 0 or
+                 nature_seed > 0xFFFFFFFFFFFFFFFF)):
+            raise ValueError("nature_seed must be an unsigned 64-bit integer")
+        payload = {"state_handle": self.handle, "action_id": action_id}
+        if nature_seed is not None:
+            payload["nature_seed"] = nature_seed
+        result = self.session.call(
+            "reference_nature_native_event_relic_begin", **payload)
+        return ReferenceNatureNativeEventRelicSession.from_wire(
+            self.session, result["result"])
+
     def begin_reference_nature_native_shovel(
             self, nature_seed: int | None = None):
         """Control the rarity and identity for a configured Native Shovel dig."""
@@ -1798,13 +1829,14 @@ class ReferenceNatureNativeEventGoldSession:
 
 @dataclass(frozen=True)
 class ReferenceNatureNativeEventRelicSession:
-    """Atomic Tezcatara Toy Box reward and ReferenceNature sampler cursor."""
+    """Atomic Native event relic reward and ReferenceNature sampler cursor."""
     session: "Session"
     handle: str
     fingerprint: str
     state_handle: str | None
     event_id: str
-    choice_id: str
+    choice_id: str | None
+    action_id: str
     site_id: str
     run_phase: str
     boundary: str
@@ -1822,7 +1854,8 @@ class ReferenceNatureNativeEventRelicSession:
         return cls(
             session, payload["referenceNatureNativeEventRelicHandle"],
             payload["fingerprint"], payload["stateHandle"],
-            payload["eventId"], payload["choiceId"], payload["siteId"],
+            payload["eventId"], payload.get("choiceId"),
+            payload["actionId"], payload["siteId"],
             payload["runPhase"], payload["boundary"],
             payload["nextOrdinal"], payload["pending"],
             payload["decisionTranscript"], payload["natureSampleCount"])
@@ -1845,7 +1878,7 @@ class ReferenceNatureNativeEventRelicSession:
             self.session, result["result"])
 
     def resolve_next(self):
-        """Sample one relic rarity or identity and commit after all five draws."""
+        """Sample one relic rarity or identity and commit after all pulls."""
         result = self.session.call(
             "reference_nature_native_event_relic_resolve_next",
             reference_nature_native_event_relic_handle=self.handle,
