@@ -126,10 +126,16 @@ migration matrix remain separate: three price rows use discrete integer
 percentage bins that approximate the Native unit-float price sites, and the
 legacy card-upgrade row consumes a 10,000-way ticket even though the generated
 merchant card cannot be upgraded. These legacy requests do not enter the
-configured Native merchant session, and the Native no-effect float law does
-not certify their legacy cursor behavior. A ReferenceNature request for those
-legacy boundaries remains unsupported and must fail closed until a matching
-legacy merchant continuation exists.
+configured Native merchant session. Read-only Chance Law queries now expose
+their source-shaped saved-index supports: eleven request indices mapped to the
+integer-percent card and potion prices, thirty-one indices mapped to relic
+prices, and the 10,000-way card-upgrade ticket. Their equal request weights
+remain `UNVERIFIED`; the price bins approximate the Native float paths, and
+the query does not certify legacy cursor behavior. No atomic ReferenceNature
+continuation covers these legacy merchant requests, so a session that reaches
+one still fails closed.
+For `chance_law_query`, callers declare the request `owner_id`, `ordinal`, and
+the fixed `support_count` (11, 31, or 10,000) for the selected site.
 
 ## Python binding
 

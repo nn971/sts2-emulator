@@ -314,6 +314,7 @@ public static class StochasticSiteRegistryV111
 
     private static readonly string[] ChanceLawQuerySites =
     [
+        .. ChanceLawEngineV111.LegacyMerchantIndexQuerySiteIds,
         NativeOrobasEventV111.OfferSiteId,
         NativePaelRewardsV111.OfferSiteId,
         NativeAncientRewardsV111.TezcataraOfferSiteId,

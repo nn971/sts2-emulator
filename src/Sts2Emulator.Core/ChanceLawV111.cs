@@ -348,6 +348,14 @@ public sealed record ChanceLawV111(
 /// </summary>
 public static partial class ChanceLawEngineV111
 {
+    private static readonly string[] LegacyMerchantIndexQuerySites =
+    [
+        "shop.merchant.card_price_modifier.index_draw",
+        "shop.merchant.card_upgrade_roll.ticket",
+        "shop.merchant.potion_price_modifier.index_draw",
+        "shop.merchant.relic_price_modifier.index_draw"
+    ];
+
     private sealed record NativeBoundedIntegerLawSiteV111(
         string StreamId, string Boundary);
 
@@ -392,6 +400,69 @@ public static partial class ChanceLawEngineV111
 
     public static bool IsNativeBoundedIntegerLawSite(string siteId) =>
         NativeBoundedIntegerLawSites.ContainsKey(siteId);
+
+    public static string[] LegacyMerchantIndexQuerySiteIds =>
+        (string[])LegacyMerchantIndexQuerySites.Clone();
+
+    /// <summary>
+    /// Query the retained legacy Native-merchant request-index model. The
+    /// declared support is checked against the source-shaped integer range;
+    /// weights remain unverified because these calls use the prototype RNG.
+    /// </summary>
+    public static ChanceLawV111 QueryLegacyMerchantIndexRequest(
+        string siteId, string ownerId, int ordinal, int supportCount)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+
+        RandomIndexRequestV111 request;
+        if (siteId is "shop.merchant.card_price_modifier.index_draw" or
+            "shop.merchant.potion_price_modifier.index_draw")
+        {
+            if (supportCount != 11)
+                throw new ArgumentException(
+                    "Legacy card and potion price requests have eleven integer-percent outcomes.",
+                    nameof(supportCount));
+            request = new RandomIndexRequestV111(
+                siteId, "shop", ownerId, ordinal,
+                Enumerable.Range(0, 11).ToArray());
+        }
+        else if (siteId ==
+            "shop.merchant.relic_price_modifier.index_draw")
+        {
+            if (supportCount != 31)
+                throw new ArgumentException(
+                    "Legacy relic price requests have thirty-one integer-percent outcomes.",
+                    nameof(supportCount));
+            request = new RandomIndexRequestV111(
+                siteId, "shop", ownerId, ordinal,
+                Enumerable.Range(0, 31).ToArray());
+        }
+        else if (siteId == "shop.merchant.card_upgrade_roll.ticket")
+        {
+            if (supportCount != 10000)
+                throw new ArgumentException(
+                    "The legacy merchant upgrade request has a 10,000-way ticket.",
+                    nameof(supportCount));
+            request = new RandomIndexRequestV111(
+                siteId, "shop", ownerId, ordinal, [],
+                OperationKind: "bounded_integer", BoundedCount: 10000);
+        }
+        else
+        {
+            throw new NotSupportedException(
+                $"Legacy merchant Chance Law does not support site '{siteId}'.");
+        }
+
+        var eventId = CanonicalJson.Sha256(new
+        {
+            boundary = "legacy-native-merchant-request-index",
+            request
+        });
+        return QueryRandomIndex(eventId, request);
+    }
 
     /// <summary>
     /// Query an allowlisted Native bounded-integer site using its fixed source

@@ -3989,6 +3989,31 @@ internal static class PrototypeAiJsonlServer
                             request, "relic_candidate_ids");
                         var excludedRelicIds = OptionalStringArray(
                             request, "excluded_relic_ids");
+                        if (ChanceLawEngineV111.LegacyMerchantIndexQuerySiteIds
+                            .Contains(siteId, StringComparer.Ordinal))
+                        {
+                            RejectChanceLawQueryParameters(
+                                request, "owner_id", "support_count");
+                            var ownerId = OptionalString(request, "owner_id")
+                                ?? throw new ArgumentException(
+                                    "Legacy merchant index query requires owner_id.");
+                            var supportCount = OptionalInt(
+                                request, "support_count") ??
+                                throw new ArgumentException(
+                                    "Legacy merchant index query requires support_count.");
+                            law = ChanceLawEngineV111
+                                .QueryLegacyMerchantIndexRequest(
+                                    siteId, ownerId, ordinal, supportCount);
+                            Write(new
+                            {
+                                requestId,
+                                ok = true,
+                                chanceLawSchemaId =
+                                    ChanceLawV111.CurrentSchemaId,
+                                law
+                            });
+                            break;
+                        }
                         if (ChanceLawEngineV111
                             .IsSupportedAncientOfferQuerySite(siteId))
                         {
