@@ -418,6 +418,8 @@ public static partial class ChanceLawEngineV111
         {
             ["event.unknown_room.odds.ticket"] = new(
                 "event", "bounded_integer", 1000, 1000),
+            ["event.selection.weighted_ticket"] = new(
+                "event", "bounded_integer", 1),
             ["event.random_upgrade.card_instance"] = new(
                 "event", "choose_index", 1),
             [PrototypeGameEngine.PaelsToothCardReturnSiteId] = new(
@@ -443,6 +445,8 @@ public static partial class ChanceLawEngineV111
             ["combat.encounter.later_act.normal.index_draw"] = new(
                 "combat", "choose_index", 1),
             ["combat.encounter.later_act.elite.index_draw"] = new(
+                "combat", "choose_index", 1),
+            ["combat.enemy.summon_pool.select"] = new(
                 "combat", "choose_index", 1),
             ["map.legacy.floor_width.index_draw"] = new(
                 "map", "choose_index", 2),
