@@ -201,10 +201,9 @@ public sealed partial class PrototypeGameEngine
         var drawn = DrawCards(
             resumedRun.Player, resumedCombat, cost.RemainingCount,
             resumedRun.Rng, cost.FromHandDraw, eventDepth: cost.EventDepth,
-            controlledDrawCostSuspension: true,
-            controlledSemanticDrawSuspension: true,
-            controlledAfterShuffleInsertionSuspension: true,
-            controlledCardDrawnChoiceSuspension: true);
+            suspensionPolicy:
+                PrototypeDrawCardsSuspensionPolicyV111
+                    .SemanticDrawCards(effectDraw: true));
         var continued = ContinueControlledSemanticEffectDraw(
             resumedRun, drawn, draw, continuation);
         return ResumeAutomaticPipelineContinuation(continued);
@@ -270,10 +269,9 @@ public sealed partial class PrototypeGameEngine
         var drawn = DrawCards(
             resumedRun.Player, resumedCombat, cost.RemainingCount,
             resumedRun.Rng, fromHandDraw: true, eventDepth: cost.EventDepth,
-            controlledRecycleSuspension: true,
-            controlledDrawCostSuspension: true,
-            controlledCardDrawnChoiceSuspension: combat.SemanticDeck is null &&
-                !ControlledChanceGuardV111.EngineOwnedNativeProviderActive);
+            suspensionPolicy:
+                PrototypeDrawCardsSuspensionPolicyV111
+                    .ControlledLegacyAutomaticHandDraw(resumedCombat));
         return ContinueControlledHandDraw(resumedRun, drawn);
     }
 }

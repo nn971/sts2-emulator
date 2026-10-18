@@ -31,9 +31,8 @@ public sealed partial class PrototypeGameEngine
                 "operation=nested_choice_or_automatic_pipeline");
         var result = DrawCards(
             run.Player, combat, count, run.Rng, fromHandDraw,
-            controlledSemanticDrawSuspension: true,
-            controlledAfterShuffleInsertionSuspension: true,
-            controlledCardDrawnChoiceSuspension: true);
+            suspensionPolicy:
+                PrototypeDrawCardsSuspensionPolicyV111.SemanticDrawCards());
         return ResumeSemanticCombatDrawResult(
             run, result, fromHandDraw, eventDepth: 0,
             automaticHandDrawRequested: automatic
@@ -110,9 +109,8 @@ public sealed partial class PrototypeGameEngine
         var continued = DrawCards(
             run.Player, combat, cost.RemainingCount, run.Rng,
             cost.FromHandDraw, eventDepth: cost.EventDepth,
-            controlledSemanticDrawSuspension: true,
-            controlledAfterShuffleInsertionSuspension: true,
-            controlledCardDrawnChoiceSuspension: true);
+            suspensionPolicy:
+                PrototypeDrawCardsSuspensionPolicyV111.SemanticDrawCards());
         return ResumeSemanticCombatDrawResult(
             run, continued, cost.FromHandDraw, cost.EventDepth,
             automaticHandDrawRequested: automatic

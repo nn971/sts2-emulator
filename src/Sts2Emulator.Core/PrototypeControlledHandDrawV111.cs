@@ -123,9 +123,10 @@ public sealed partial class PrototypeGameEngine
         var drawn = DrawCards(
             state.Player, combat, remaining, state.Rng,
             fromHandDraw: true,
-            controlledRecycleSuspension: true,
-            controlledDrawCostSuspension: true,
-            controlledCardDrawnChoiceSuspension: true);
+            suspensionPolicy:
+                PrototypeDrawCardsSuspensionPolicyV111
+                    .ControlledLegacyAutomaticHandDraw(
+                        combat, cardDrawnChoice: true));
         return ContinueControlledHandDraw(state, drawn);
     }
 
@@ -192,10 +193,9 @@ public sealed partial class PrototypeGameEngine
         var drawn = DrawCards(
             state.Player, combat, remaining, state.Rng,
             fromHandDraw: true,
-            controlledRecycleSuspension: true,
-            controlledDrawCostSuspension: true,
-            controlledCardDrawnChoiceSuspension:
-                !ControlledChanceGuardV111.EngineOwnedNativeProviderActive);
+            suspensionPolicy:
+                PrototypeDrawCardsSuspensionPolicyV111
+                    .ControlledLegacyAutomaticHandDraw(combat));
         return ContinueControlledHandDraw(state, drawn);
     }
 

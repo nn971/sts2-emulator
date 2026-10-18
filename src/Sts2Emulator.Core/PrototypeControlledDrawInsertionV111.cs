@@ -475,10 +475,9 @@ public sealed partial class PrototypeGameEngine
             var resumedDraw = DrawCards(
                 state.Player, combat, semanticDraw.RemainingCount, state.Rng,
                 semanticDraw.FromHandDraw, eventDepth: semanticDraw.EventDepth,
-                controlledDrawCostSuspension: true,
-                controlledSemanticDrawSuspension: true,
-                controlledAfterShuffleInsertionSuspension: true,
-                controlledCardDrawnChoiceSuspension: true);
+                suspensionPolicy:
+                    PrototypeDrawCardsSuspensionPolicyV111
+                        .SemanticDrawCards(effectDraw: true));
             var drawState = state with
             {
                 World = world with { Combat = combat }
@@ -505,10 +504,12 @@ public sealed partial class PrototypeGameEngine
             var resumedDraw = DrawCards(
                 drawRun.Player, combat, handDrawRemaining, drawRun.Rng,
                 fromHandDraw: true,
-                controlledRecycleSuspension: true,
-                controlledDrawCostSuspension: true,
-                controlledCardDrawnChoiceSuspension:
-                    !ControlledChanceGuardV111.EngineOwnedNativeProviderActive);
+                suspensionPolicy:
+                    PrototypeDrawCardsSuspensionPolicyV111
+                        .ControlledLegacyAutomaticHandDraw(
+                            combat,
+                            cardDrawnChoice: !ControlledChanceGuardV111
+                                .EngineOwnedNativeProviderActive));
             return ContinueControlledHandDraw(drawRun, resumedDraw);
         }
 

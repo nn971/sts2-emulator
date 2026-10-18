@@ -1993,10 +1993,9 @@ public sealed partial class PrototypeGameEngine
         var player = state.Player;
         var drawn = DrawCards(player, combat, remainingHandDraw,
             state.Rng, fromHandDraw: true,
-            controlledRecycleSuspension: true,
-            controlledDrawCostSuspension: true,
-            controlledCardDrawnChoiceSuspension: semanticDeck is null &&
-                !ControlledChanceGuardV111.EngineOwnedNativeProviderActive);
+            suspensionPolicy:
+                PrototypeDrawCardsSuspensionPolicyV111
+                    .ControlledLegacyAutomaticHandDraw(combat));
         return ContinueControlledHandDraw(state, drawn);
     }
 
@@ -2826,22 +2825,9 @@ public sealed partial class PrototypeGameEngine
                     requestedHandDraw,
                     state.Rng,
                     fromHandDraw: true,
-                    controlledRecycleSuspension: ControlledChanceGuardV111.Active,
-                    controlledDrawCostSuspension: ControlledChanceGuardV111.Active,
-                    controlledSemanticDrawSuspension:
-                        ControlledChanceGuardV111.Active &&
-                        combat.SemanticDeck is not null,
-                    controlledAfterShuffleInsertionSuspension:
-                        ControlledChanceGuardV111.Active &&
-                        combat.SemanticDeck is
-                            { Mode: SemanticDeckStateV111.NatureMode },
-                    controlledCardDrawnChoiceSuspension:
-                        ControlledChanceGuardV111.Active &&
-                        !ControlledChanceGuardV111
-                            .EngineOwnedNativeProviderActive &&
-                        (combat.SemanticDeck is null ||
-                         combat.SemanticDeck is
-                            { Mode: SemanticDeckStateV111.NatureMode }));
+                    suspensionPolicy:
+                        PrototypeDrawCardsSuspensionPolicyV111
+                            .AutomaticHandDraw(combat));
                 player = drawn.Player;
                 combat = drawn.Combat;
                 var drawBoundary = drawn.BoundaryKind;
@@ -6265,15 +6251,6 @@ public sealed partial class PrototypeGameEngine
                 {
                     var drawEventDepth = operation.DrawEventDepth ??
                         eventDepth + 1;
-                    var semanticDrawSuspension =
-                        ControlledChanceGuardV111.Active &&
-                        combat.SemanticDeck is
-                            { Mode: SemanticDeckStateV111.NatureMode };
-                    var controlledLegacyRecycleSuspension =
-                        ControlledChanceGuardV111.Active &&
-                        !ControlledChanceGuardV111
-                            .EngineOwnedNativeProviderActive &&
-                        combat.SemanticDeck is null;
                     var drawn = DrawCards(
                         player,
                         combat,
@@ -6281,18 +6258,9 @@ public sealed partial class PrototypeGameEngine
                         rng,
                         fromHandDraw: operation.FromHandDraw,
                         eventDepth: drawEventDepth,
-                        controlledRecycleSuspension:
-                            controlledLegacyRecycleSuspension,
-                        controlledDrawCostSuspension:
-                            semanticDrawSuspension,
-                        controlledSemanticDrawSuspension:
-                            semanticDrawSuspension,
-                        controlledAfterShuffleInsertionSuspension:
-                            semanticDrawSuspension,
-                        controlledCardDrawnChoiceSuspension:
-                            ControlledChanceGuardV111.Active &&
-                            !ControlledChanceGuardV111
-                                .EngineOwnedNativeProviderActive);
+                        suspensionPolicy:
+                            PrototypeDrawCardsSuspensionPolicyV111
+                                .ControlledEffectDraw(combat));
                     player = drawn.Player;
                     combat = drawn.Combat;
                     var drawBoundary = drawn.BoundaryKind;
@@ -14499,10 +14467,9 @@ public sealed partial class PrototypeGameEngine
         var drawn = DrawCards(
             state.Player, combat, draw.RemainingCount, state.Rng,
             draw.FromHandDraw, eventDepth: draw.EventDepth,
-            controlledDrawCostSuspension: true,
-            controlledSemanticDrawSuspension: true,
-            controlledAfterShuffleInsertionSuspension: true,
-            controlledCardDrawnChoiceSuspension: true);
+            suspensionPolicy:
+                PrototypeDrawCardsSuspensionPolicyV111
+                    .SemanticDrawCards(effectDraw: true));
         var continued = ContinueControlledSemanticEffectDraw(
             state, drawn, draw, continuation);
         return ResumeAutomaticPipelineContinuation(continued);
@@ -16148,12 +16115,10 @@ public sealed partial class PrototypeGameEngine
         RngBundle rng,
         bool fromHandDraw,
         int eventDepth = 0,
-        bool controlledRecycleSuspension = false,
-        bool controlledDrawCostSuspension = false,
-        bool controlledSemanticDrawSuspension = false,
-        bool controlledAfterShuffleInsertionSuspension = false,
-        bool controlledCardDrawnChoiceSuspension = false)
+        PrototypeDrawCardsSuspensionPolicyV111? suspensionPolicy = null)
     {
+        var suspension = suspensionPolicy ??
+            PrototypeDrawCardsSuspensionPolicyV111.None;
         const int maxHandSize = 10;
         var drawnCardInstanceIds = new List<long>();
 
@@ -16196,7 +16161,7 @@ public sealed partial class PrototypeGameEngine
                     if (deferred.Mode == SemanticDeckStateV111.NatureMode)
                     {
                         if (!ControlledChanceGuardV111.Active ||
-                            !controlledSemanticDrawSuspension)
+                            !suspension.SemanticDraw)
                             throw new NotSupportedException(
                                 "UNSUPPORTED_SEMANTIC_DECK site=combat.draw.recycle " +
                                 "operation=missing_semantic_continuation");
@@ -16238,8 +16203,8 @@ public sealed partial class PrototypeGameEngine
                         if (afterShuffleInsertions.Length > 0)
                         {
                             if (!ControlledChanceGuardV111.Active ||
-                                !controlledSemanticDrawSuspension ||
-                                !controlledAfterShuffleInsertionSuspension)
+                                !suspension.SemanticDraw ||
+                                !suspension.AfterShuffleInsertion)
                                 throw new NotSupportedException(
                                     "UNSUPPORTED_SEMANTIC_DECK " +
                                     "site=combat.draw.recycle " +
@@ -16276,7 +16241,7 @@ public sealed partial class PrototypeGameEngine
                 else
                 {
                     if (ControlledChanceGuardV111.Active &&
-                        !controlledRecycleSuspension)
+                        !suspension.ControlledRecycle)
                         throw new NotSupportedException(
                             "UNSUPPORTED_CONTROLLED_CHANCE site=combat.draw.recycle " +
                             "operation=shuffle_recycle outside resumable hand-draw stage");
@@ -16320,7 +16285,7 @@ public sealed partial class PrototypeGameEngine
             if (semanticDeck is
                     { Mode: SemanticDeckStateV111.NatureMode } &&
                 (!ControlledChanceGuardV111.Active ||
-                 !controlledSemanticDrawSuspension))
+                 !suspension.SemanticDraw))
                 throw new NotSupportedException(
                     "UNSUPPORTED_SEMANTIC_DECK site=combat.draw " +
                     "operation=missing_semantic_continuation");
@@ -16375,7 +16340,7 @@ public sealed partial class PrototypeGameEngine
                     { Mode: SemanticDeckStateV111.NatureMode } &&
                      (needsRelicCost || hasSlither))
             {
-                if (!controlledSemanticDrawSuspension)
+                if (!suspension.SemanticDraw)
                     throw new NotSupportedException(
                         "UNSUPPORTED_SEMANTIC_DECK site=combat.draw.cost " +
                         "operation=missing_semantic_cost_continuation");
@@ -16392,7 +16357,7 @@ public sealed partial class PrototypeGameEngine
                 !ControlledChanceGuardV111.EngineOwnedNativeProviderActive &&
                 (needsRelicCost || hasSlither))
             {
-                if (!controlledDrawCostSuspension)
+                if (!suspension.ControlledDrawCost)
                     throw new NotSupportedException(
                         "UNSUPPORTED_CONTROLLED_CHANCE site=combat.draw_cost." +
                         "effect_draw operation=draw_card_cost");
@@ -16435,10 +16400,10 @@ public sealed partial class PrototypeGameEngine
                     FromHandDraw: fromHandDraw),
                 rng,
                 eventDepth,
-                allowSuspension: controlledCardDrawnChoiceSuspension);
+                allowSuspension: suspension.CardDrawnChoice);
             player = dispatched.Player;
             combat = dispatched.Combat;
-            if (controlledCardDrawnChoiceSuspension &&
+            if (suspension.CardDrawnChoice &&
                 combat.PendingChoice is not null)
                 return new PrototypeDrawCardsResult(
                     player, combat, drawnCardInstanceIds.ToArray(),
