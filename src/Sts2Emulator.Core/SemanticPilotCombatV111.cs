@@ -2694,22 +2694,10 @@ public static class SemanticPilotCombatEngineV111
         var pending = current.HandCostSelectionPending ??
             throw new InvalidOperationException(
                 "No random hand-card cost selection is pending.");
-        if (pending.EventId != eventId)
-            throw new InvalidOperationException(
-                "Hand-cost selection event ID is stale or mismatched.");
-        var index = Array.IndexOf(pending.CandidateCardInstanceIds,
-            cardInstanceId);
-        if (index < 0)
-            throw new InvalidOperationException(
-                "Card is outside the pending hand-cost selection support.");
-        var decision = new SemanticHandCostSelectionDecisionV111(
-            pending, index, cardInstanceId,
-            pending.CandidateCardModelIds[index]);
-        decision.Validate();
-        ValidateHandCostSelectionDecision(
-            current.HandCostSelectionPending, decision, index);
-        var result = SemanticRandomHandCostChoiceV111.Resume(
-            current.Run, pending.SiteId, index);
+        var decision = SemanticHandCostSelectionChoiceV111.Select(
+            pending, eventId, cardInstanceId);
+        var result = SemanticHandCostSelectionChoiceV111.Resume(
+            current.Run, decision);
         var next = current with
         {
             Run = result,
@@ -4154,18 +4142,6 @@ public static class SemanticPilotCombatEngineV111
                 CanonicalJson.Sha256(decision.Event))
             throw new InvalidOperationException(
                 "Semantic cost decision is stale or outside current support.");
-    }
-
-    private static void ValidateHandCostSelectionDecision(
-        SemanticHandCostSelectionEventV111? pending,
-        SemanticHandCostSelectionDecisionV111 decision, int sourceIndex)
-    {
-        decision.Validate();
-        if (pending is null || sourceIndex != decision.SelectedIndex ||
-            CanonicalJson.Sha256(pending) !=
-                CanonicalJson.Sha256(decision.Event))
-            throw new InvalidOperationException(
-                "Hand-cost selection is stale or outside current support.");
     }
 
     internal static void ValidateSemanticCombatBoundary(RunState run)

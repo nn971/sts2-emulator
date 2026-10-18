@@ -77,3 +77,67 @@ public sealed record SemanticHandCostSelectionDecisionV111(
                 "Hand-cost selection is outside its ordered source support.");
     }
 }
+
+public static class SemanticHandCostSelectionChoiceV111
+{
+    public static SemanticHandCostSelectionDecisionV111 Select(
+        SemanticHandCostSelectionEventV111 pending, string eventId,
+        long cardInstanceId)
+    {
+        ArgumentNullException.ThrowIfNull(pending);
+        pending.Validate();
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
+        if (pending.EventId != eventId)
+            throw new InvalidOperationException(
+                "Hand-cost selection event ID is stale or mismatched.");
+        var index = Array.IndexOf(
+            pending.CandidateCardInstanceIds, cardInstanceId);
+        if (index < 0)
+            throw new InvalidOperationException(
+                "Card is outside the pending hand-cost selection support.");
+        var decision = new SemanticHandCostSelectionDecisionV111(
+            pending.Fork(), index, cardInstanceId,
+            pending.CandidateCardModelIds[index]);
+        decision.Validate();
+        return decision;
+    }
+
+    /// <summary>Revalidate the live hand-card support and resume its ordinary
+    /// random-cost continuation.</summary>
+    internal static RunState Resume(
+        RunState checkpoint,
+        SemanticHandCostSelectionDecisionV111 decision)
+    {
+        ArgumentNullException.ThrowIfNull(checkpoint);
+        ArgumentNullException.ThrowIfNull(decision);
+        decision.Validate();
+        var combat = checkpoint.World?.Combat ??
+            throw new InvalidDataException(
+                "Hand-cost selection lost its source combat.");
+        var randomCost = combat.PendingChoice?.ControlledRandomCost;
+        if (randomCost is null || randomCost.Operation.Kind !=
+                PrototypeCombatEffectKind
+                    .SetRandomHandCardEnergyCostUntilTurnEndOrPlayed)
+            throw new InvalidDataException(
+                "Hand-cost selection does not match its source operation.");
+        SemanticPilotCombatEngineV111.ValidateRandomHandCostBoundary(
+            checkpoint);
+        var eventState = decision.Event;
+        var candidateIds = randomCost.EligibleCardInstanceIds;
+        var candidateModels = candidateIds.Select(id => combat.Cards.Single(
+            card => card.InstanceId == id).CardId).ToArray();
+        if (eventState.SiteId != "combat.random_hand_card.select" ||
+            eventState.StreamId != "prototype.combat" ||
+            eventState.OperationKind != "choose_hand_card_instance" ||
+            eventState.AppliedCost != Math.Max(
+                0, randomCost.Operation.Amount) ||
+            !candidateIds.SequenceEqual(
+                eventState.CandidateCardInstanceIds) ||
+            !candidateModels.SequenceEqual(
+                eventState.CandidateCardModelIds))
+            throw new InvalidDataException(
+                "Hand-cost decision no longer matches its live support.");
+        return SemanticRandomHandCostChoiceV111.Resume(
+            checkpoint, eventState.SiteId, decision.SelectedIndex);
+    }
+}
