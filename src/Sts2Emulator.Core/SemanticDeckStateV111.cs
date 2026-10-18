@@ -933,3 +933,68 @@ public static class SemanticDeckEngineV111
         return result;
     }
 }
+
+public static class SemanticDeckRevealChoiceV111
+{
+    public static SemanticDeckRevealDecisionV111 Select(
+        SemanticDeckEventV111 pending, string eventId,
+        long cardInstanceId)
+    {
+        ArgumentNullException.ThrowIfNull(pending);
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
+        if (pending.EventId != eventId)
+            throw new InvalidOperationException(
+                "Semantic deck-reveal event ID is stale or mismatched.");
+        if (pending.SiteId != "combat.draw_pile.reveal_card" ||
+            pending.Purpose is not ("peek" or "scry") ||
+            pending.OperationKind != "choose_card_instance" ||
+            pending.StreamId != "semantic.draw_pile" ||
+            pending.OwnerId != "player:draw_pile" ||
+            pending.CandidateCardInstanceIds is not { Length: > 0 } ||
+            pending.SupportFingerprint != CanonicalJson.Sha256(
+                pending.CandidateCardInstanceIds) ||
+            pending.ProbabilityStatus != "UNVERIFIED")
+            throw new InvalidDataException(
+                "Invalid semantic deck-reveal event.");
+        var index = Array.IndexOf(
+            pending.CandidateCardInstanceIds, cardInstanceId);
+        if (index < 0)
+            throw new InvalidOperationException(
+                "Card instance is outside the semantic reveal support.");
+        var decision = new SemanticDeckRevealDecisionV111(
+            pending, index, cardInstanceId);
+        decision.Validate();
+        return decision;
+    }
+
+    /// <summary>Commit a peek or scry reveal to the provider deck and
+    /// publish its matching physical-pile state together.</summary>
+    internal static RunState Resume(
+        RunState checkpoint, SemanticDeckRevealDecisionV111 decision)
+    {
+        ArgumentNullException.ThrowIfNull(checkpoint);
+        ArgumentNullException.ThrowIfNull(decision);
+        decision.Validate();
+        var world = checkpoint.World ?? throw new InvalidDataException(
+            "Semantic deck reveal lost its world state.");
+        var combat = world.Combat ?? throw new InvalidDataException(
+            "Semantic deck reveal lost its combat state.");
+        var deck = combat.SemanticDeck ?? throw new InvalidDataException(
+            "Semantic deck reveal lost its provider state.");
+        var liveEvent = SemanticDeckEngineV111.Inspect(deck);
+        if (liveEvent is null || CanonicalJson.Sha256(liveEvent) !=
+            CanonicalJson.Sha256(decision.Event))
+            throw new InvalidDataException(
+                "Semantic deck-reveal decision no longer matches its live request.");
+        var nextDeck = SemanticDeckEngineV111.Resolve(
+            deck, deck.Fingerprint, decision.SelectedIndex);
+        var nextCombat = SemanticDrawPileAdapterV111
+            .ApplyCommittedPhysicalMutation(combat, combat.DrawPile, nextDeck);
+        var resumed = checkpoint with
+        {
+            World = world with { Combat = nextCombat }
+        };
+        PrototypeStateInvariants.Validate(resumed);
+        return resumed;
+    }
+}

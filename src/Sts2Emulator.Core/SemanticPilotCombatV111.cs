@@ -3333,32 +3333,10 @@ public static class SemanticPilotCombatEngineV111
         var pending = current.DeckRevealPending ??
             throw new InvalidOperationException(
                 "No semantic peek or scry reveal is pending.");
-        if (pending.EventId != eventId)
-            throw new InvalidOperationException(
-                "Semantic deck-reveal event ID is stale or mismatched.");
-        var index = Array.IndexOf(pending.CandidateCardInstanceIds,
-            cardInstanceId);
-        if (index < 0)
-            throw new InvalidOperationException(
-                "Card instance is outside the pending reveal support.");
-        var decision = new SemanticDeckRevealDecisionV111(
-            pending, index, cardInstanceId);
-        decision.Validate();
-
-        var world = current.Run.World ?? throw new InvalidDataException(
-            "Semantic deck reveal lost its world state.");
-        var combat = world.Combat ?? throw new InvalidDataException(
-            "Semantic deck reveal lost its combat state.");
-        var deck = combat.SemanticDeck ?? throw new InvalidDataException(
-            "Semantic deck reveal lost its provider state.");
-        var nextDeck = SemanticDeckEngineV111.Resolve(
-            deck, deck.Fingerprint, index);
-        var nextCombat = SemanticDrawPileAdapterV111
-            .ApplyCommittedPhysicalMutation(combat, combat.DrawPile, nextDeck);
-        var nextRun = current.Run with
-        {
-            World = world with { Combat = nextCombat }
-        };
+        var decision = SemanticDeckRevealChoiceV111.Select(
+            pending, eventId, cardInstanceId);
+        var nextRun = SemanticDeckRevealChoiceV111.Resume(
+            current.Run, decision);
         var next = current with
         {
             Run = nextRun,
