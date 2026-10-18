@@ -35,3 +35,6 @@ JSONL operations are:
 remain `UNVERIFIED`: this controller does not query a Chance Law, advance a
 Native RNG cursor, or claim cross-provider equivalence. The session and its
 action history are privileged replay state, not player or Nature observations.
+The standard-library Python binding exposes the same lifecycle through
+`State.begin_scripted_run()` and `ScriptedRunSession`, including snapshot
+restore and handle release.

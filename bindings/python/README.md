@@ -599,3 +599,14 @@ payload and verifies that the response matches the requested session. Use
 
 All mechanics remain in C#. Search, learning and strategy belong in the parent
 AI repository. See [the versioned contract](../../docs/V111_INTERFACE.md).
+
+Whole-run scripted replay is available through
+`State.begin_scripted_run()`. At each player boundary, call `begin_action()`
+with a current legal action ID. When a typed random request is pending, pass
+its next ordered journal entry to `resolve_next(transcript_entry,
+candidate_labels=None)`. The session retains the last committed run state
+while an action is suspended and supports `status()`, `fork()`,
+`save_snapshot()`, and `release()`. Restore with
+`Session.load_scripted_run_snapshot(snapshot)`. See the
+[`ScriptedRunSessionV111` contract](../../docs/SCRIPTED_RUN_SESSION_D3.md)
+for wire fields and replay limits.

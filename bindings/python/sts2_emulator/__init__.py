@@ -361,6 +361,22 @@ class State:
             "controlled_run_action_inspect", state_handle=self.handle)
         return ControlledRunActionChoice.from_wire(self.session, result)
 
+    def begin_scripted_run(self):
+        """Begin whole-run replay with typed outcomes supplied by the caller."""
+        if self.session.capabilities.get("scriptedRunSessionSchemaId") != (
+                "sts2-v111-scripted-run-session-v1"):
+            raise EmulatorError(
+                "Emulator does not expose whole-run scripted sessions")
+        operations = self.session.capabilities.get(
+            "scriptedRunSessionOperations", [])
+        if (not isinstance(operations, list) or
+                "scripted_run_begin" not in operations):
+            raise EmulatorError(
+                "Whole-run scripted begin is not advertised")
+        result = self.session.call(
+            "scripted_run_begin", state_handle=self.handle)
+        return ScriptedRunSession.from_wire(self.session, result["result"])
+
     def begin_reference_nature_run_action(self, nature_seed: int | None = None, *,
                                           action_id: str | None = None):
         """Begin or continue atomic ReferenceNature sampling for a run action.
@@ -907,6 +923,103 @@ class ControlledRunActionChoice:
 
     def release(self):
         return self.state.release()
+
+
+@dataclass(frozen=True)
+class ScriptedRunSession:
+    """Whole-run replay over ordinary actions and typed random outcomes."""
+    session: "Session"
+    handle: str
+    fingerprint: str
+    state_handle: str
+    boundary: str
+    completed_action_count: int
+    active_action_id: str | None
+    next_sequence: int | None
+    pending: dict | None
+    decision_transcript: list
+    legal_actions: list
+
+    @classmethod
+    def from_wire(cls, session, payload):
+        if payload.get("schemaId") != (
+                "sts2-v111-scripted-run-session-v1"):
+            raise EmulatorError(
+                "Unsupported whole-run scripted session schema")
+        state_handle = payload.get("runStateHandle")
+        if not isinstance(state_handle, str) or not state_handle:
+            raise EmulatorError(
+                "Scripted run response omitted its committed run state")
+        return cls(
+            session, payload["scriptedRunHandle"], payload["fingerprint"],
+            state_handle, payload["boundary"],
+            payload["completedActionCount"], payload.get("activeActionId"),
+            payload.get("nextSequence"), payload.get("pending"),
+            payload.get("decisionTranscript", []),
+            payload.get("legalActions", []))
+
+    @property
+    def complete(self):
+        return self.boundary == "terminal"
+
+    @property
+    def state(self):
+        """Last committed run boundary, even while an action is suspended."""
+        return State(self.session, self.state_handle)
+
+    def actions(self):
+        return self.legal_actions
+
+    def begin_action(self, action_id: str):
+        if self.boundary != "player":
+            raise EmulatorError(
+                "Scripted run is not at a player action boundary")
+        if not isinstance(action_id, str) or not action_id:
+            raise ValueError("action_id must be a nonempty string")
+        if not any(action.get("actionId") == action_id
+                   for action in self.legal_actions):
+            raise ValueError("action_id is not currently legal")
+        result = self.session.call(
+            "scripted_run_begin_action", scripted_run_handle=self.handle,
+            fingerprint=self.fingerprint, action_id=action_id)
+        return ScriptedRunSession.from_wire(self.session, result["result"])
+
+    def resolve_next(self, transcript_entry: dict, candidate_labels=None):
+        if self.boundary != "scripted" or self.pending is None:
+            raise EmulatorError("Scripted run has no pending random request")
+        if not isinstance(transcript_entry, dict):
+            raise TypeError("transcript_entry must be a dictionary")
+        payload = {
+            "scripted_run_handle": self.handle,
+            "fingerprint": self.fingerprint,
+            "transcript_entry": transcript_entry,
+        }
+        if candidate_labels is not None:
+            if (not isinstance(candidate_labels, (list, tuple)) or
+                    any(not isinstance(label, str) or not label
+                        for label in candidate_labels)):
+                raise ValueError(
+                    "candidate_labels must be nonempty strings")
+            payload["candidate_labels"] = list(candidate_labels)
+        result = self.session.call("scripted_run_resolve_next", **payload)
+        return ScriptedRunSession.from_wire(self.session, result["result"])
+
+    def status(self):
+        result = self.session.call(
+            "scripted_run_status", scripted_run_handle=self.handle)
+        return ScriptedRunSession.from_wire(self.session, result["result"])
+
+    def fork(self):
+        result = self.session.call(
+            "scripted_run_fork", scripted_run_handle=self.handle)
+        return ScriptedRunSession.from_wire(self.session, result["result"])
+
+    def save_snapshot(self):
+        return self.session.call(
+            "scripted_run_save", scripted_run_handle=self.handle)["snapshot"]
+
+    def release(self):
+        return self.session.release_scripted_run_many([self])
 
 
 @dataclass(frozen=True)
@@ -2816,6 +2929,29 @@ class Session:
 
     def load_snapshot(self, snapshot):
         return State(self, self.call("load_snapshot", snapshot=snapshot)["stateHandle"])
+
+    def load_scripted_run_snapshot(self, snapshot: str):
+        if self.capabilities.get("scriptedRunSessionSchemaId") != (
+                "sts2-v111-scripted-run-session-v1"):
+            raise EmulatorError(
+                "Emulator does not expose whole-run scripted sessions")
+        operations = self.capabilities.get(
+            "scriptedRunSessionOperations", [])
+        if (not isinstance(operations, list) or
+                "scripted_run_load" not in operations):
+            raise EmulatorError(
+                "Whole-run scripted load is not advertised")
+        result = self.call("scripted_run_load", snapshot=snapshot)
+        return ScriptedRunSession.from_wire(self, result["result"])
+
+    def release_scripted_run_many(self, sessions):
+        sessions = list(sessions)
+        if any(item.session is not self for item in sessions):
+            raise ValueError(
+                "Scripted run handle belongs to another session")
+        return self.call(
+            "scripted_run_release_many",
+            scripted_run_handles=[item.handle for item in sessions])["released"]
 
     def step_batch(self, steps, *, parallelism=1):
         payload = []
