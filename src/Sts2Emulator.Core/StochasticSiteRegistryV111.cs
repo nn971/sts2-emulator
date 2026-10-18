@@ -76,6 +76,9 @@ public sealed record StochasticSessionCoverageV111(
     public string ReferenceNatureTreasureSessionSchemaId { get; init; } =
         ReferenceNatureTreasureSessionV111.CurrentSchemaId;
     public string[] ReferenceNatureTreasureSiteIds { get; init; } = [];
+    public string ReferenceNatureCombatRewardSessionSchemaId { get; init; } =
+        ReferenceNatureCombatRewardSessionV111.CurrentSchemaId;
+    public string[] ReferenceNatureCombatRewardSiteIds { get; init; } = [];
     public string ReferenceNatureMapGenerationSessionSchemaId { get; init; } =
         ReferenceNatureMapGenerationSessionV111.CurrentSchemaId;
     public string[] ReferenceNatureMapGenerationSiteIds { get; init; } = [];
@@ -120,6 +123,8 @@ public sealed record StochasticSessionCoverageV111(
                 ReferenceNatureMerchantSessionV111.CurrentSchemaId ||
             ReferenceNatureTreasureSessionSchemaId !=
                 ReferenceNatureTreasureSessionV111.CurrentSchemaId ||
+            ReferenceNatureCombatRewardSessionSchemaId !=
+                ReferenceNatureCombatRewardSessionV111.CurrentSchemaId ||
             ReferenceNatureMapGenerationSessionSchemaId !=
                 ReferenceNatureMapGenerationSessionV111.CurrentSchemaId)
             throw new InvalidDataException(
@@ -142,6 +147,7 @@ public sealed record StochasticSessionCoverageV111(
         ValidateSiteIds(ReferenceNaturePunchOffFightSiteIds);
         ValidateSiteIds(ReferenceNatureMerchantSiteIds);
         ValidateSiteIds(ReferenceNatureTreasureSiteIds);
+        ValidateSiteIds(ReferenceNatureCombatRewardSiteIds);
         ValidateSiteIds(ReferenceNatureMapGenerationSiteIds);
     }
 
@@ -297,6 +303,7 @@ public static class StochasticSiteRegistryV111
         "event.reward.card_bundle.shuffle_swap_index",
         "relic_grab_bag.queue_shuffle.swap_index",
         "relic_grab_bag.rarity.ticket",
+        PrototypeNativeRelicGrabBag.NativeTreasureModelSiteId,
         "event.potion.fill_empty_slots.model",
         "reward.card_rarity.ticket",
         "reward.card_model.index_draw",
@@ -456,6 +463,9 @@ public static class StochasticSiteRegistryV111
         "shop.merchant.card_model.index_draw",
         "shop.merchant.card_upgrade_roll.unit_float",
         "shop.colorless_card_model.index_draw",
+        "relic.acquisition.random_rare_card.model",
+        "relic.acquisition.random_potion.model",
+        "run.potion.fill_empty_slots.model",
         "potion_factory.rarity_roll.unit_float",
         "potion_factory.model_within_rarity.index_draw",
         "relic_grab_bag.rarity.unit_float",
@@ -470,6 +480,9 @@ public static class StochasticSiteRegistryV111
         "relic_grab_bag.rarity.unit_float",
         PrototypeNativeRelicGrabBag.NativeTreasureModelSiteId
     ];
+
+    private static readonly string[] NativeCombatRewardSessionSites =
+        ReferenceNatureCombatRewardSessionV111.SessionSiteIds;
 
     private static readonly string[] NativeMapGenerationSessionSites =
     [
@@ -560,6 +573,7 @@ public static class StochasticSiteRegistryV111
             .Concat(ControlledEventChoiceSites)
             .Concat(NativeMerchantSessionSites)
             .Concat(NativeTreasureSessionSites)
+            .Concat(NativeCombatRewardSessionSites)
             .Concat(NativeMapGenerationSessionSites)
             .Concat(NeowOfferSessionSites)
             .Concat(TrashHeapSessionSites)
@@ -628,6 +642,8 @@ public static class StochasticSiteRegistryV111
         (string[])NativeMerchantSessionSites.Clone();
     public static string[] NativeTreasureSessionSiteIds =>
         (string[])NativeTreasureSessionSites.Clone();
+    public static string[] NativeCombatRewardSessionSiteIds =>
+        (string[])NativeCombatRewardSessionSites.Clone();
     public static string[] NativeMapGenerationSessionSiteIds =>
         (string[])NativeMapGenerationSessionSites.Clone();
     public static string[] NeowOfferSessionSiteIds =>
@@ -732,6 +748,10 @@ public static class StochasticSiteRegistryV111
             ReferenceNatureTreasureSessionSchemaId =
                 ReferenceNatureTreasureSessionV111.CurrentSchemaId,
             ReferenceNatureTreasureSiteIds = NativeTreasureSessionSites,
+            ReferenceNatureCombatRewardSessionSchemaId =
+                ReferenceNatureCombatRewardSessionV111.CurrentSchemaId,
+            ReferenceNatureCombatRewardSiteIds =
+                NativeCombatRewardSessionSites,
             ReferenceNatureMapGenerationSessionSchemaId =
                 ReferenceNatureMapGenerationSessionV111.CurrentSchemaId,
             ReferenceNatureMapGenerationSiteIds =

@@ -55,6 +55,8 @@ public sealed record StochasticCapabilityManifestV111(
         ReferenceNatureMerchantSessionV111.CurrentSchemaId;
     public string ReferenceNatureTreasureSessionSchemaId { get; init; } =
         ReferenceNatureTreasureSessionV111.CurrentSchemaId;
+    public string ReferenceNatureCombatRewardSessionSchemaId { get; init; } =
+        ReferenceNatureCombatRewardSessionV111.CurrentSchemaId;
     public string ReferenceNatureMapGenerationSessionSchemaId { get; init; } =
         ReferenceNatureMapGenerationSessionV111.CurrentSchemaId;
     public string ScriptedRunActionSessionSchemaId { get; init; } =
@@ -75,7 +77,7 @@ public sealed record StochasticCapabilityManifestV111(
         "event_choice", "ancient_offer", "neow_offer", "trash_heap",
         "tablet_of_truth", "trial", "event_shuffle", "native_event_gold",
         "endless_conveyor",
-        "merchant", "treasure", "glory_reflections",
+        "merchant", "treasure", "combat_reward", "glory_reflections",
         "infested_automaton",
         "punch_off_reward", "punch_off_fight",
         "map_generation",
@@ -233,6 +235,13 @@ public static class StochasticCapabilitiesV111
             "reference_nature_treasure_save",
             "reference_nature_treasure_load",
             "reference_nature_treasure_release_many",
+            "reference_nature_combat_reward_begin",
+            "reference_nature_combat_reward_status",
+            "reference_nature_combat_reward_resolve_next",
+            "reference_nature_combat_reward_fork",
+            "reference_nature_combat_reward_save",
+            "reference_nature_combat_reward_load",
+            "reference_nature_combat_reward_release_many",
             "reference_nature_map_generation_begin",
             "reference_nature_map_generation_status",
             "reference_nature_map_generation_resolve_next",
@@ -279,6 +288,8 @@ public static class StochasticCapabilitiesV111
             sessions.ReferenceNatureMerchantSessionSchemaId,
         ReferenceNatureTreasureSessionSchemaId =
             sessions.ReferenceNatureTreasureSessionSchemaId,
+        ReferenceNatureCombatRewardSessionSchemaId =
+            sessions.ReferenceNatureCombatRewardSessionSchemaId,
         ReferenceNatureMapGenerationSessionSchemaId =
             sessions.ReferenceNatureMapGenerationSessionSchemaId,
         ScriptedRunActionSessionSchemaId =
@@ -3839,6 +3850,55 @@ public static partial class ChanceLawEngineV111
     }
 
     /// <summary>
+    /// Query one Native PotionFactory model index over the source-ordered
+    /// remaining support for the preceding rarity result.
+    /// </summary>
+    public static ChanceLawV111 QueryNativePotionFactoryModelIndex(
+        RandomIndexRequestV111 request, PrototypeNativePotionRarity rarity,
+        string[] excludedPotionIds)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(excludedPotionIds);
+        request.Validate();
+        if (request.SiteId != "potion_factory.model_within_rarity.index_draw" ||
+            request.StreamId != NativePlayerRngV111.RewardsStreamId ||
+            request.OperationKind != "choose_index" ||
+            !Enum.IsDefined(rarity) || request.Ordinal != excludedPotionIds.Length ||
+            excludedPotionIds.Any(string.IsNullOrWhiteSpace) ||
+            excludedPotionIds.Distinct(StringComparer.Ordinal).Count() !=
+                excludedPotionIds.Length)
+            throw new ArgumentException(
+                "Native combat PotionFactory model request is malformed.");
+
+        var candidates = PrototypeNativePotionShop.CandidatesForRarity(
+            rarity, excludedPotionIds);
+        if (candidates.Length == 0 ||
+            request.SupportCount != candidates.Length ||
+            !request.OrderedCandidates.SequenceEqual(
+                Enumerable.Range(0, candidates.Length)))
+            throw new InvalidDataException(
+                "Native combat PotionFactory support differs from its rarity and exclusion prefix.");
+        var weights = NativeNextIntGridWeights(candidates.Length);
+        var conditioning = new
+        {
+            request,
+            rarity = rarity.ToString(),
+            excludedPotionIds,
+            candidates
+        };
+        var outcomes = candidates.Select((id, index) =>
+            new ChanceLawOutcomeV111(
+                $"potion_model:{id}:index:{index}", weights[index]))
+            .ToArray();
+        return CreateNativeBoundaryLaw(
+            request.SiteId, request.OperationKind, request.OwnerId,
+            request.Ordinal, NativePotionFactoryIndexConditioningPolicyId,
+            CanonicalJson.Sha256(conditioning),
+            NativeBoundedIndexSourceVerifiedProvenance, outcomes,
+            ChanceLawV111.SourceVerifiedStatus);
+    }
+
+    /// <summary>
     /// Query the raw Native relic rarity threshold for a caller-declared
     /// Rewards-stream request. Queue identity and tier fallback are separate.
     /// </summary>
@@ -5089,6 +5149,78 @@ public static partial class ChanceLawEngineV111
             request.Ordinal, "uniform-native-treasure-relic-identity-v1",
             CanonicalJson.Sha256(conditioning),
             "native-treasure-hidden-relic-queue-identity-unverified",
+            outcomes);
+    }
+
+    /// <summary>
+    /// Query a Native combat reward's relic identity from its still-hidden
+    /// rarity queues after earlier reward pulls have been removed.
+    /// </summary>
+    public static ChanceLawV111 QueryNativeCombatRewardRelicSelection(
+        RunState run, RandomIndexRequestV111 request,
+        PrototypeRelicRarity rarity, PrototypeRelicBagState bag,
+        string[] candidateIds)
+    {
+        ArgumentNullException.ThrowIfNull(run);
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(bag);
+        ArgumentNullException.ThrowIfNull(candidateIds);
+        PrototypeStateInvariants.Validate(run);
+        request.Validate();
+        if (run.Phase != RunPhase.Combat || run.World is not { } world ||
+            run.NativeRunRng is null ||
+            !PrototypeGameEngine.UsesNativeRegionalSystems(world) ||
+            world.ActiveRoom is not (PrototypeRoomType.Combat or
+                PrototypeRoomType.Elite or PrototypeRoomType.Boss) ||
+            request.SiteId != PrototypeNativeRelicGrabBag
+                .NativeTreasureModelSiteId ||
+            request.StreamId != NativePlayerRngV111.RewardsStreamId ||
+            request.OperationKind != "choose_index" ||
+            !Enum.IsDefined(rarity) || candidateIds.Length == 0 ||
+            request.SupportCount != candidateIds.Length ||
+            !request.OrderedCandidates.SequenceEqual(
+                Enumerable.Range(0, candidateIds.Length)) ||
+            candidateIds.Any(string.IsNullOrWhiteSpace) ||
+            candidateIds.Distinct(StringComparer.Ordinal).Count() !=
+                candidateIds.Length ||
+            !candidateIds.SequenceEqual(candidateIds.OrderBy(
+                id => id, StringComparer.Ordinal), StringComparer.Ordinal))
+            throw new ArgumentException(
+                "Native combat reward relic identity request is malformed.");
+
+        var plan = PrototypeNativeRelicGrabBag.PlanPull(
+            bag, rarity, merchant: false, run.Player);
+        var expectedCandidates = plan.CandidateIds.OrderBy(
+            id => id, StringComparer.Ordinal).ToArray();
+        var ownerId = PrototypeNativeRelicGrabBag.TreasureModelOwnerId(
+            world, rarity, candidateIds);
+        if (plan.SelectedTier is null || request.OwnerId != ownerId ||
+            !candidateIds.SequenceEqual(expectedCandidates,
+                StringComparer.Ordinal))
+            throw new InvalidDataException(
+                "Native combat reward relic support differs from its conditioned hidden queue.");
+
+        var conditioning = new
+        {
+            request,
+            requestedRarity = rarity.ToString(),
+            selectedTier = plan.SelectedTier.Value.ToString(),
+            fallbackTiers = PrototypeNativeRelicGrabBag
+                .PullFallbackTiers(rarity).Select(tier => tier.ToString())
+                .ToArray(),
+            candidateIds
+        };
+        var weights = NativeNextIntGridWeights(candidateIds.Length);
+        var outcomes = candidateIds.Select((id, index) =>
+            new ChanceLawOutcomeV111(
+                $"relic_model:{id}:index:{index}",
+                weights[index]))
+            .ToArray();
+        return CreateNativeBoundaryLaw(
+            request.SiteId, request.OperationKind, request.OwnerId,
+            request.Ordinal, NativeTreasureRelicConditioningPolicyId,
+            CanonicalJson.Sha256(conditioning),
+            "native-combat-hidden-relic-queue-identity-unverified",
             outcomes);
     }
 
@@ -7294,10 +7426,14 @@ public sealed record ReferenceNatureControlledEventChoiceSessionV111(
         ArgumentNullException.ThrowIfNull(initialNatureState);
         ReferenceNatureRunCursorV111.ValidateInitial(
             source, initialNatureState, "Event-choice");
+        var origin = NeedsNatureCallingBellBag(source, choiceId)
+            ? ReferenceNatureRunProjectionV111.CreateNatureReplayOrigin(
+                source, createRelicBagWhenMissing: true)
+            : source.Fork();
         var run = ControlledEventChoiceEngineV111.Begin(
-            source.Fork(), choiceId);
+            origin.Fork(), choiceId);
         var session = new ReferenceNatureControlledEventChoiceSessionV111(
-            CurrentSchemaId, source.Fork(), choiceId, run,
+            CurrentSchemaId, origin, choiceId, run,
             initialNatureState.Fork(), initialNatureState.Fork(), []);
         if (session.Complete)
             session = session with
@@ -7307,6 +7443,23 @@ public sealed record ReferenceNatureControlledEventChoiceSessionV111(
             };
         session.Validate();
         return session;
+    }
+
+    private static bool NeedsNatureCallingBellBag(
+        RunState source, string choiceId)
+    {
+        if (source.NativeRunRng is null ||
+            source.World is not { } world || world.Event is not
+                { EventId: NativeDarvEventV111.EventId } eventState ||
+            !PrototypeGameEngine.UsesNativeRegionalSystems(world) ||
+            !PrototypeContent.Events.TryGetValue(
+                eventState.EventId, out var definition))
+            return false;
+        return definition.Choices.FirstOrDefault(choice =>
+                choice.Id == choiceId)?.Effects.Any(effect =>
+                effect.Kind == PrototypeRunEffectKind.GainRelic &&
+                effect.RelicId == NativeDarvEventV111.CallingBellId)
+            == true;
     }
 
     public ReferenceNatureControlledEventChoiceSessionV111 Fork()
@@ -7398,6 +7551,15 @@ public sealed record ReferenceNatureControlledEventChoiceSessionV111(
                 "Invalid ReferenceNature controlled event-choice envelope.");
         PrototypeStateInvariants.Validate(Origin);
         PrototypeStateInvariants.Validate(Run);
+        if (NeedsNatureCallingBellBag(Origin, ChoiceId))
+        {
+            ReferenceNatureRunProjectionV111
+                .ValidateNatureRelicBagProjection(
+                    Origin, "Native Calling Bell event-choice origin");
+            ReferenceNatureRunProjectionV111
+                .ValidateNatureRelicBagProjection(
+                    Run, "Native Calling Bell event-choice replay");
+        }
         InitialNatureState.Validate();
         NatureState.Validate();
         var decisions = DecisionTranscript;

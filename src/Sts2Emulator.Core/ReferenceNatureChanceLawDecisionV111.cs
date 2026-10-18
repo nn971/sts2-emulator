@@ -166,6 +166,50 @@ public static class ReferenceNatureChanceLawDecisionV111
                 mappedControlled.Validate();
                 return mappedControlled;
             }
+            if (indexRequest.SiteId == "reward.combat_gold.index_draw")
+            {
+                if (candidateLabels is not null ||
+                    indexRequest.OperationKind != "bounded_integer" ||
+                    !outcome.OutcomeId.StartsWith(
+                        "gold:", StringComparison.Ordinal) ||
+                    !int.TryParse(outcome.OutcomeId[5..],
+                        NumberStyles.Integer, CultureInfo.InvariantCulture,
+                        out var selectedGold))
+                    throw new InvalidDataException(
+                        "Combat gold Chance Law does not match its bounded-integer request.");
+                var ownerParts = indexRequest.OwnerId.Split(':');
+                if (ownerParts.Length != 7 || ownerParts[0] != "room" ||
+                    !Enum.TryParse<PrototypeRoomType>(ownerParts[1], out var room) ||
+                    ownerParts[2] != "ascension" ||
+                    !int.TryParse(ownerParts[3], out var ascension) ||
+                    ownerParts[4] != "bounds" ||
+                    !int.TryParse(ownerParts[5], out var minimum) ||
+                    !int.TryParse(ownerParts[6], out var maximum) ||
+                    selectedGold < minimum || selectedGold > maximum)
+                    throw new InvalidDataException(
+                        "Combat gold owner or selected amount is malformed.");
+                var expectedLaw = ChanceLawEngineV111.QueryNativeCombatGold(
+                    room, ascension,
+                    room == PrototypeRoomType.Combat ? 1f : null,
+                    indexRequest.Ordinal);
+                if (CanonicalJson.Sha256(law) !=
+                        CanonicalJson.Sha256(expectedLaw) ||
+                    indexRequest.SupportCount != maximum - minimum + 1)
+                    throw new InvalidDataException(
+                        "Combat gold Chance Law differs from its Native reward bounds.");
+                var selectedIndex = selectedGold - minimum;
+                var goldDecision = new RandomIndexDecisionV111(
+                    indexRequest with
+                    {
+                        OrderedCandidates = (int[])
+                            indexRequest.OrderedCandidates.Clone()
+                    }, selectedIndex, "controlled-v111");
+                goldDecision.Validate();
+                var controlledGold = ControlledStochasticDecisionV111
+                    .FromIndex(goldDecision);
+                controlledGold.Validate();
+                return controlledGold;
+            }
             if (law.OperationKind != indexRequest.OperationKind ||
                 law.Outcomes.Length != indexRequest.SupportCount ||
                 !OutcomeEndsInIndex(outcome.OutcomeId,
@@ -223,6 +267,7 @@ public static class ReferenceNatureChanceLawDecisionV111
 
         if (candidateLabels is not null ||
             law.OperationKind is not ("unit_float_threshold" or
+                "unit_float_inclusive_threshold" or
                 "unit_float_weighted_ticket" or
                 "unit_float_mapped_price" or "unit_float_mapped_gold" or
                 "unit_float_no_effect"))
@@ -256,23 +301,90 @@ public static class ReferenceNatureChanceLawDecisionV111
         {
             if (request.SiteId == "card_rarity.roll.unit_float")
             {
-                if (conditioningRun?.World is not { } world ||
-                    !law.OwnerId.StartsWith("type:", StringComparison.Ordinal))
+                if (conditioningRun?.World is not { } world)
                     throw new InvalidOperationException(
-                        "Merchant card rarity mapping requires its conditioned pre-entry run.");
+                        "Card rarity mapping requires its conditioned run.");
+                if (!law.OwnerId.StartsWith("type:", StringComparison.Ordinal))
+                {
+                    var parts = law.OwnerId.Split(':');
+                    if (parts.Length != 8 || parts[0] != "act" ||
+                        !int.TryParse(parts[1], out var rewardAct) ||
+                        parts[2] != "room" || parts[4] != "pick" ||
+                        !int.TryParse(parts[5], out _) ||
+                        parts[6] != "offset" ||
+                        !int.TryParse(parts[7], out var rewardOffset) ||
+                        rewardAct != world.Act)
+                        throw new InvalidDataException(
+                            "Native reward card-rarity owner is malformed.");
+                    var roomText = parts[3];
+                    var source = roomText switch
+                    {
+                        "Combat" => PrototypeNativeCardOddsSource.RegularEncounter,
+                        "Elite" => PrototypeNativeCardOddsSource.EliteEncounter,
+                        "Boss" => PrototypeNativeCardOddsSource.BossEncounter,
+                        _ => throw new InvalidDataException(
+                            "Native reward card-rarity owner has an invalid room.")
+                    };
+                    var expected = ChanceLawEngineV111.QueryNativeCardRarity(
+                        source, rewardOffset, conditioningRun.Ascension,
+                        law.OwnerId, request.Ordinal);
+                    if (CanonicalJson.Sha256(law) !=
+                        CanonicalJson.Sha256(expected))
+                        throw new InvalidDataException(
+                            "Native reward card-rarity law differs from its owner.");
+                    return PrototypeNativeCardRarityOdds
+                        .NativeRarityRepresentative(outcomeId, rewardOffset,
+                            conditioningRun.Ascension, source);
+                }
                 var offsetMarker = ":offset:";
                 var offsetStart = law.OwnerId.LastIndexOf(
                     offsetMarker, StringComparison.Ordinal);
                 if (offsetStart < 0 || !int.TryParse(
                         law.OwnerId[(offsetStart + offsetMarker.Length)..],
                         NumberStyles.Integer, CultureInfo.InvariantCulture,
-                        out var offset) ||
-                    offset != world.CardRarityOffsetBasisPoints)
+                        out var merchantOffset) ||
+                    merchantOffset != world.CardRarityOffsetBasisPoints)
                     throw new InvalidDataException(
                         "Card-rarity Chance Law and conditioning run differ.");
                 return PrototypeNativeCardRarityOdds
                     .MerchantRarityRepresentative(
-                        outcomeId, offset, conditioningRun.Ascension);
+                        outcomeId, merchantOffset, conditioningRun.Ascension);
+            }
+
+            if (request.SiteId == "reward.potion_odds.unit_float")
+            {
+                if (conditioningRun is null ||
+                    conditioningRun.Phase != RunPhase.Combat ||
+                    conditioningRun.World is not { ActiveRoom: { } room } world)
+                    throw new InvalidOperationException(
+                        "Combat potion odds mapping requires its pre-victory run.");
+                var forced = conditioningRun.Player.ActiveRelics.Any(relic =>
+                    PrototypeContent.Relic(relic.RelicId)
+                        .ForceCombatPotionReward);
+                if (forced || law.OwnerId != "run:potion_reward_odds")
+                    throw new InvalidDataException(
+                        "Combat potion odds law differs from its source hook.");
+                var expectedLaw = ChanceLawEngineV111.QueryNativePotionRewardOdds(
+                    world.PotionRewardOddsThousandths,
+                    room == PrototypeRoomType.Elite, forced,
+                    request.Ordinal);
+                if (CanonicalJson.Sha256(law) !=
+                    CanonicalJson.Sha256(expectedLaw))
+                    throw new InvalidDataException(
+                        "Combat potion odds Chance Law differs from its run.");
+                var selectedOffered = outcomeId switch
+                {
+                    "potion_reward:offered" => 1,
+                    "potion_reward:not_offered" => 0,
+                    _ => throw new InvalidDataException(
+                        "Unknown combat potion reward outcome.")
+                };
+                var threshold = (world.PotionRewardOddsThousandths +
+                    (room == PrototypeRoomType.Elite
+                        ? PrototypeNativePotionRewardOdds.EliteBonus : 0)) /
+                    1000f;
+                return FindUnitFloatRepresentative(
+                    roll => roll < threshold ? 1 : 0, selectedOffered);
             }
 
             if (request.SiteId == "potion_factory.rarity_roll.unit_float")
@@ -329,6 +441,38 @@ public static class ReferenceNatureChanceLawDecisionV111
             throw new NotSupportedException(
                 "No semantic representative is defined for unit-float site '" +
                 request.SiteId + "'.");
+        }
+
+        if (law.OperationKind == "unit_float_inclusive_threshold" &&
+            request.SiteId == "card_rarity.upgrade_roll.unit_float")
+        {
+            var owner = request.OwnerId.Split(':');
+            if (owner.Length < 6 || owner[0] != "card" ||
+                !int.TryParse(owner[^3], out var act) ||
+                owner[^4] != "act" || owner[^2] != "ascension" ||
+                !int.TryParse(owner[^1], out var ascension))
+                throw new InvalidDataException(
+                    "Native card-upgrade request owner is malformed.");
+            var cardId = string.Join(":", owner[1..^4]);
+            var expectedLaw = ChanceLawEngineV111
+                .QueryNativeEncounterCardUpgrade(
+                    cardId, act, ascension, request.Ordinal);
+            if (CanonicalJson.Sha256(law) !=
+                CanonicalJson.Sha256(expectedLaw))
+                throw new InvalidDataException(
+                    "Native card-upgrade Chance Law differs from its request.");
+            var expectedPass = outcomeId switch
+            {
+                "upgrade_check:passed" => 1,
+                "upgrade_check:not_passed" => 0,
+                _ => throw new InvalidDataException(
+                    "Unknown Native card-upgrade outcome.")
+            };
+            var threshold = PrototypeNativeCardRarityOdds
+                .EncounterCardUpgradeThresholdBasisPoints(
+                    cardId, act, ascension) / 10000f;
+            return FindUnitFloatRepresentative(
+                roll => roll <= threshold ? 1 : 0, expectedPass);
         }
 
         if (law.OperationKind == "unit_float_weighted_ticket" &&

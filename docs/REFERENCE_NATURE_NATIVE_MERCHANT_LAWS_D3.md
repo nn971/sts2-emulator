@@ -2,7 +2,8 @@
 
 This contract defines read-only Chance Law queries and an atomic
 ReferenceNature session for configured Native Shop entry, offer and price
-outcomes, and the Alchemical Coffer potion-generation effect. It uses the
+outcomes, the Alchemical Coffer potion-generation effect, and registered
+Native player reward-index draws reached from Shop purchases. It uses the
 versioned `chance_law_query` coverage and
 `ReferenceNatureMerchantSessionV111`; player observation fields stay unchanged.
 
@@ -37,11 +38,11 @@ relic queues; Treasure's existing identity-mixture law remains a separate
 query.
 
 For Shop generation, the session begins from a current legal `choose_map_node`
-action for a configured Shop. For the Alchemical Coffer effect, it begins from
-the current legal `buy_relic` action for an unsold Coffer offer. In both cases
-it reruns the ordinary action from its checkpoint under the mixed typed
-provider replay. Each suspension is conditioned on the exact source request
-and the already sampled prefix. It commits the completed action and run-scoped
+action for a configured Shop. For purchases, it begins from any current legal
+configured Shop purchase action. It reruns the ordinary action from its
+checkpoint under the mixed typed provider replay. Each suspension is
+conditioned on the exact source request and the already sampled prefix. It
+commits the completed action and run-scoped
 Nature cursor together after the source mechanics finish. Its operations are
 `reference_nature_merchant_begin`,
 `status`, `resolve_next`, `fork`, `save`, `load`, and `release_many`.
@@ -64,6 +65,15 @@ rarities and selected potion IDs through request replay, so no duplicate
 purchase-session type is needed. These transforms are `SOURCE_VERIFIED` on
 their declared source and support; candidate-pool completeness, seed
 frequencies, stream attribution, and Native cursor parity remain separate.
+
+Configured Shop purchases can also suspend at registered Native
+`player.rewards` model-index sites for random Rare-card acquisition,
+random-potion acquisition, and potion-slot filling.
+These use the declared request owner, ordinal, and support count for the exact
+Native bounded-index law. The ordinary purchase replay verifies the full
+request prefix and ordered candidate labels. This establishes the index
+transform only; pool fidelity, trigger completeness, and Native stream
+attribution remain unverified.
 
 ## Conditioned support by site
 
@@ -113,8 +123,8 @@ current Chance Law exposes only the request support conditioned on declared
 branch inputs and the saved decision prefix; this contract adds no privileged
 inspector projection.
 
-`ReferenceNatureMerchantSessionV111` resolves supported configured Native Shop
-entry and Alchemical Coffer purchase boundaries by replaying the ordinary
+`ReferenceNatureMerchantSessionV111` resolves configured Native Shop entry and
+supported purchase boundaries by replaying the ordinary
 source action from its saved state through the ordered request prefix. It
 commits the completed mechanics result and Nature cursor together. A pending
 request resumes at its current source boundary, so prior shop generation and
@@ -177,5 +187,5 @@ law also accepts `offer_ordinal`, `relic_candidate_ids`, and
 typed `owner_id`. These arguments affect only the returned law and are not
 submitted as player actions. `State.begin_reference_nature_merchant(action_id,
 nature_seed=...)` starts the session from a legal configured Shop entry or
-Alchemical Coffer purchase; its Python object exposes status, fork, save/load,
+purchase action; its Python object exposes status, fork, save/load,
 release, and the committed playable state.

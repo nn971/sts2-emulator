@@ -833,6 +833,34 @@ class State:
         return ReferenceNatureTreasureSession.from_wire(
             self.session, result["result"])
 
+    def begin_reference_nature_combat_reward(
+            self, action_id: str, nature_seed: int | None = None):
+        """Begin Nature sampling for a legal action that wins Native combat."""
+        if self.session.capabilities.get(
+                "referenceNatureCombatRewardSessionSchemaId") != (
+                "sts2-v111-reference-nature-combat-reward-session-v1"):
+            raise EmulatorError(
+                "Emulator does not expose ReferenceNature combat reward sessions")
+        if not isinstance(action_id, str) or not action_id:
+            raise ValueError(
+                "action_id must be a nonempty legal winning combat action ID")
+        if not self.session.supports_reference_nature_site(
+                "reward.potion_odds.unit_float", session="combat_reward"):
+            raise EmulatorError(
+                "No ReferenceNature combat reward session is advertised")
+        if (nature_seed is not None and
+                (not isinstance(nature_seed, int) or
+                 isinstance(nature_seed, bool) or nature_seed < 0 or
+                 nature_seed > 0xFFFFFFFFFFFFFFFF)):
+            raise ValueError("nature_seed must be an unsigned 64-bit integer")
+        payload = {"state_handle": self.handle, "action_id": action_id}
+        if nature_seed is not None:
+            payload["nature_seed"] = nature_seed
+        result = self.session.call(
+            "reference_nature_combat_reward_begin", **payload)
+        return ReferenceNatureCombatRewardSession.from_wire(
+            self.session, result["result"])
+
 
 @dataclass(frozen=True)
 class ControlledEventChoice:
@@ -2257,6 +2285,79 @@ class ReferenceNatureTreasureSession:
 
 
 @dataclass(frozen=True)
+class ReferenceNatureCombatRewardSession:
+    """Atomic Native combat reward generation and ReferenceNature cursor."""
+    session: "Session"
+    handle: str
+    fingerprint: str
+    state_handle: str | None
+    action_id: str
+    run_phase: str
+    boundary: str
+    next_ordinal: int
+    pending: dict | None
+    reward: dict | None
+    decision_transcript: list
+    nature_sample_count: int
+
+    @classmethod
+    def from_wire(cls, session, payload):
+        if payload.get("schemaId") != (
+                "sts2-v111-reference-nature-combat-reward-session-v1"):
+            raise EmulatorError(
+                "Unsupported ReferenceNature combat reward session schema")
+        return cls(
+            session, payload["referenceNatureCombatRewardHandle"],
+            payload["fingerprint"], payload.get("stateHandle"),
+            payload["actionId"], payload["runPhase"],
+            payload["boundary"], payload["nextOrdinal"],
+            payload.get("pending"), payload.get("reward"),
+            payload["decisionTranscript"], payload["natureSampleCount"])
+
+    @property
+    def complete(self):
+        return self.boundary == "committed"
+
+    @property
+    def state(self):
+        if self.state_handle is None:
+            raise EmulatorError(
+                "ReferenceNature combat reward has not committed")
+        return State(self.session, self.state_handle)
+
+    def status(self):
+        result = self.session.call(
+            "reference_nature_combat_reward_status",
+            reference_nature_combat_reward_handle=self.handle)
+        return ReferenceNatureCombatRewardSession.from_wire(
+            self.session, result["result"])
+
+    def resolve_next(self):
+        """Sample one reward Chance Law and replay the winning action."""
+        result = self.session.call(
+            "reference_nature_combat_reward_resolve_next",
+            reference_nature_combat_reward_handle=self.handle,
+            fingerprint=self.fingerprint)
+        return ReferenceNatureCombatRewardSession.from_wire(
+            self.session, result["result"])
+
+    def fork(self):
+        result = self.session.call(
+            "reference_nature_combat_reward_fork",
+            reference_nature_combat_reward_handle=self.handle)
+        return ReferenceNatureCombatRewardSession.from_wire(
+            self.session, result["result"])
+
+    def save_snapshot(self):
+        return self.session.call(
+            "reference_nature_combat_reward_save",
+            reference_nature_combat_reward_handle=self.handle)["snapshot"]
+
+    def release(self):
+        return self.session.release_reference_nature_combat_reward_many([self])
+
+
+@dataclass(frozen=True)
 class ControlledEventChoiceOutcome:
     selected_index: int
     candidate_label: str
@@ -2827,10 +2928,11 @@ class Session:
             "punch_off_fight": "referenceNaturePunchOffFightSiteIds",
             "merchant": "referenceNatureMerchantSiteIds",
             "treasure": "referenceNatureTreasureSiteIds",
+            "combat_reward": "referenceNatureCombatRewardSiteIds",
         }
         if session != "any" and session not in fields:
             raise ValueError(
-                "session must be semantic, run_action, event_choice, ancient_offer, neow_offer, trash_heap, tablet_of_truth, trial, event_shuffle, native_shuffle, native_event_gold, endless_conveyor, glory_reflections, infested_automaton, punch_off_reward, punch_off_fight, merchant, treasure, or any")
+                "session must be semantic, run_action, event_choice, ancient_offer, neow_offer, trash_heap, tablet_of_truth, trial, event_shuffle, native_shuffle, native_event_gold, endless_conveyor, glory_reflections, infested_automaton, punch_off_reward, punch_off_fight, merchant, treasure, combat_reward, or any")
         coverage = self.stochastic_session_coverage
         if not isinstance(coverage, dict) or coverage.get("schemaId") != (
                 "sts2-v111-stochastic-session-coverage-v1"):
@@ -3467,6 +3569,27 @@ class Session:
         return self.call(
             "reference_nature_treasure_release_many",
             reference_nature_treasure_handles=[
+                item.handle for item in sessions])["released"]
+
+    def load_reference_nature_combat_reward_snapshot(self, snapshot: str):
+        if self.capabilities.get(
+                "referenceNatureCombatRewardSessionSchemaId") != (
+                "sts2-v111-reference-nature-combat-reward-session-v1"):
+            raise EmulatorError(
+                "Emulator does not expose ReferenceNature combat reward sessions")
+        result = self.call(
+            "reference_nature_combat_reward_load", snapshot=snapshot)
+        return ReferenceNatureCombatRewardSession.from_wire(
+            self, result["result"])
+
+    def release_reference_nature_combat_reward_many(self, sessions):
+        sessions = list(sessions)
+        if any(item.session is not self for item in sessions):
+            raise ValueError(
+                "ReferenceNature combat reward handle belongs to another session")
+        return self.call(
+            "reference_nature_combat_reward_release_many",
+            reference_nature_combat_reward_handles=[
                 item.handle for item in sessions])["released"]
 
     def load_controlled_snapshot(self, snapshot: str):

@@ -103,6 +103,14 @@ Deck-reveal choices have their own `semanticDeckRevealChoiceSchemaId` and resolv
 deck kernel and resolver support pending peek/scry state; source gameplay callsites that create
 those requests remain outside the current playable mechanics coverage.
 
+Configured Native combat reward generation has a separate atomic
+`ReferenceNatureCombatRewardSessionV111`. Start it from a current legal combat
+action that immediately wins and enters `Reward`; resolve each pending Chance
+Law with `reference_nature_combat_reward_resolve_next`. The session exposes a
+committed state only after the complete reward has replayed with its Nature
+cursor. Its scope and source limits are recorded in the
+[combat reward session contract](REFERENCE_NATURE_COMBAT_REWARD_D3.md).
+
 The shared `nature_choice_observe` operation projects pending Chance Laws for the session kinds
 advertised by `semanticNatureChoiceViewSessionKinds`. Its v2 view recursively removes provider
 stream, seed, cursor, RNG-state, and call-count metadata while retaining semantic site identity,

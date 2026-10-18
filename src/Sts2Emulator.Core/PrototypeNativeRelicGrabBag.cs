@@ -565,17 +565,25 @@ public sealed record PrototypeRelicBagPullPlanV111(
         RngBundle? nativeRunRng = null,
         int merchantOfferOrdinal = 0)
     {
+        var nativeEventChoicePull = !merchant && nativeRunRng is not null &&
+            ControlledEventChoiceReplayV111.IsActive &&
+            ControlledEventChoiceReplayV111.IsEventChoiceSite(
+                NativeTreasureModelSiteId);
+        var naturePull = nativeRunRng is not null &&
+            (ControlledStochasticChanceReplayV111.IsActive ||
+             nativeEventChoicePull);
         var bag = world.RelicBag ?? (nativeRunRng is null
             ? Create(player, rng)
-            : CreateNative(player, nativeRunRng));
+            : naturePull
+                ? CreateNatureUnordered(player)
+                : CreateNative(player, nativeRunRng));
         if (!Enum.IsDefined(bag.OrderMode))
             throw new InvalidOperationException(
                 "Relic bag has an unknown queue order mode.");
         if (bag.OrderMode == PrototypeRelicBagOrderMode.NatureUnordered &&
-            (nativeRunRng is null ||
-             !ControlledStochasticChanceReplayV111.IsActive))
+            !naturePull)
             throw new NotSupportedException(
-                "Nature relic identity sets require a controlled Native Treasure or merchant Chance Law replay.");
+                "Nature relic identity sets require a controlled Native relic-pull Chance Law replay.");
         var rarityOwnerId = merchant
             ? $"act:{world.Act}:floor:{world.Floor}:merchant_relic:{merchantOfferOrdinal}"
             : "relic_grab_bag";
@@ -583,8 +591,7 @@ public sealed record PrototypeRelicBagPullPlanV111(
             ? RollRarity(rng, merchant)
             : RollRarityNative(nativeRunRng, merchant, rarityOwnerId));
         (PrototypeRelicBagState Bag, string? Id) pull;
-        if (!merchant && nativeRunRng is not null &&
-            ControlledStochasticChanceReplayV111.IsActive)
+        if (!merchant && nativeRunRng is not null && naturePull)
         {
             var plan = PlanPull(bag, rarity, merchant: false, player);
             if (plan.CandidateIds.Length == 0)
@@ -599,8 +606,11 @@ public sealed record PrototypeRelicBagPullPlanV111(
                 var ordinal = NativePlayerRngV111.NextOrdinal(
                     nativeRunRng, NativePlayerRngV111.RewardsStreamId);
                 int selectedIndex;
-                using (ControlledStochasticChanceReplayV111
-                    .DescribeCandidates(candidates))
+                using (nativeEventChoicePull
+                    ? ControlledEventChoiceReplayV111
+                        .DescribeCandidates(candidates)
+                    : ControlledStochasticChanceReplayV111
+                        .DescribeCandidates(candidates))
                 {
                     selectedIndex = NativeRandomChoiceV111.ChooseIndexRange(
                         nativeRunRng, NativeTreasureModelSiteId,

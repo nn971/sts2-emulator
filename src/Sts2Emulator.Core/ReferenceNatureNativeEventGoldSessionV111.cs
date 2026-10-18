@@ -156,6 +156,10 @@ public sealed record ReferenceNatureNativeEventGoldSessionV111(
         ValidateOpeningBoundary(Origin, ActionId);
         PrototypeStateInvariants.Validate(Origin);
         PrototypeStateInvariants.Validate(Run);
+        ReferenceNatureRunProjectionV111.ValidateNatureRelicBagProjection(
+            Origin, "Native event-gold session origin", allowMissing: true);
+        ReferenceNatureRunProjectionV111.ValidateNatureRelicBagProjection(
+            Run, "Native event-gold session replay", allowMissing: true);
         InitialNatureState.Validate();
         NatureState.Validate();
         ReferenceNatureRunCursorV111.ValidateInitial(

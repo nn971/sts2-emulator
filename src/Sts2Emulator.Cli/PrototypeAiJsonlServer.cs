@@ -149,6 +149,12 @@ internal static class PrototypeAiJsonlServer
         var referenceNatureTreasureRunStateHandles =
             new Dictionary<string, string>(StringComparer.Ordinal);
         long nextReferenceNatureTreasureHandle = 1;
+        var referenceNatureCombatRewardStates =
+            new Dictionary<string, ReferenceNatureCombatRewardSessionV111>(
+                StringComparer.Ordinal);
+        var referenceNatureCombatRewardRunStateHandles =
+            new Dictionary<string, string>(StringComparer.Ordinal);
+        long nextReferenceNatureCombatRewardHandle = 1;
         var referenceNatureMapGenerationStates =
             new Dictionary<string, ReferenceNatureMapGenerationSessionV111>(
                 StringComparer.Ordinal);
@@ -577,6 +583,30 @@ internal static class PrototypeAiJsonlServer
                 ? session
                 : throw new InvalidOperationException(
                     "Unknown ReferenceNature treasure session handle: " +
+                    handle);
+        }
+
+        string StoreReferenceNatureCombatReward(
+            ReferenceNatureCombatRewardSessionV111 session)
+        {
+            var handle = "w" + nextReferenceNatureCombatRewardHandle++;
+            referenceNatureCombatRewardStates.Add(handle, session.Fork());
+            if (session.Complete)
+                referenceNatureCombatRewardRunStateHandles.Add(handle,
+                    Store(session.Run.Fork()));
+            return handle;
+        }
+
+        ReferenceNatureCombatRewardSessionV111
+            RequireReferenceNatureCombatReward(JsonElement request)
+        {
+            var handle = RequiredString(request,
+                "reference_nature_combat_reward_handle");
+            return referenceNatureCombatRewardStates.TryGetValue(handle,
+                    out var session)
+                ? session
+                : throw new InvalidOperationException(
+                    "Unknown ReferenceNature combat reward session handle: " +
                     handle);
         }
 
@@ -1440,6 +1470,42 @@ internal static class PrototypeAiJsonlServer
             };
         }
 
+        object ReferenceNatureCombatRewardResult(
+            ReferenceNatureCombatRewardSessionV111 session, string handle,
+            string? parent = null)
+        {
+            var law = session.PendingLaw;
+            object? pending = law is null ? null : new
+            {
+                kind = "native_combat_reward_random_choice",
+                request = session.PendingRequest,
+                candidateLabels = session.PendingCandidateLabels,
+                chanceLaw = law,
+                probabilityStatus = law.ProbabilityStatus
+            };
+            return new
+            {
+                ok = true,
+                schemaId = ReferenceNatureCombatRewardSessionV111.CurrentSchemaId,
+                referenceNatureCombatRewardHandle = handle,
+                stateHandle = referenceNatureCombatRewardRunStateHandles
+                    .GetValueOrDefault(handle),
+                parent,
+                fingerprint = session.Fingerprint,
+                runFingerprint = CanonicalJson.Sha256(session.Run),
+                actionId = PrototypeAiEnvironment.StableActionId(session.Action),
+                runPhase = session.Run.Phase.ToString(),
+                boundary = session.Complete ? "committed" : "nature",
+                nextOrdinal = session.NextOrdinal,
+                pending,
+                reward = session.Complete ? session.Run.World?.Reward : null,
+                decisionTranscript = session.DecisionTranscript,
+                natureProvider = ReferenceNatureV111.ProviderId,
+                natureSampleCount = session.NatureState.SampleCount,
+                probabilityStatus = ChanceLawV111.UnverifiedStatus
+            };
+        }
+
         object ReferenceNatureMapGenerationResult(
             ReferenceNatureMapGenerationSessionV111 session,
             string handle, string? parent = null)
@@ -2098,6 +2164,10 @@ internal static class PrototypeAiJsonlServer
                 "treasure" when referenceNatureTreasureStates.TryGetValue(
                     handle, out var treasureSession) =>
                     ReferenceNatureTreasureResult(treasureSession, handle),
+                "combat_reward" when referenceNatureCombatRewardStates
+                    .TryGetValue(handle, out var combatRewardSession) =>
+                    ReferenceNatureCombatRewardResult(
+                        combatRewardSession, handle),
                 "map_generation" when referenceNatureMapGenerationStates
                     .TryGetValue(handle, out var mapGenerationSession) =>
                     ReferenceNatureMapGenerationResult(
@@ -2115,7 +2185,7 @@ internal static class PrototypeAiJsonlServer
                     "infested_automaton" or "punch_off_reward" or
                     "punch_off_fight" or
                     "endless_conveyor" or
-                    "treasure" or "map_generation" or
+                    "treasure" or "combat_reward" or "map_generation" or
                     "controlled_event_choice" or
                     "controlled_run_action" => throw new InvalidOperationException(
                         "Unknown Nature session handle for kind " + sessionKind +
@@ -2605,6 +2675,8 @@ internal static class PrototypeAiJsonlServer
                     {
                         var sessionCoverage =
                             StochasticSiteRegistryV111.CreateSessionCoverage();
+                        var stochasticCapabilities =
+                            StochasticCapabilitiesV111.Create(sessionCoverage);
                         Write(new
                         {
                             requestId,
@@ -2643,13 +2715,10 @@ internal static class PrototypeAiJsonlServer
                             },
                             simulationMechanicsComparisonScope =
                                 "provider-independent-mechanics-after-matched-semantic-outcomes",
-                            semanticNatureChoiceViewSessionKinds = new[]
-                            {
-                                "semantic_combat"
-                            },
-                            stochasticCapabilities =
-                                StochasticCapabilitiesV111.Create(
-                                    sessionCoverage),
+                            semanticNatureChoiceViewSessionKinds =
+                                stochasticCapabilities
+                                    .SemanticNatureChoiceViewSessionKinds,
+                            stochasticCapabilities,
                             stochasticSessionCoverage = sessionCoverage,
                             stochasticChanceLawQueryCoverage =
                                 StochasticSiteRegistryV111
@@ -8331,6 +8400,116 @@ internal static class PrototypeAiJsonlServer
                             if (referenceNatureTreasureStates.Remove(handle))
                                 released++;
                             referenceNatureTreasureRunStateHandles
+                                .Remove(handle);
+                        }
+                        Write(new { requestId, ok = true, released });
+                        break;
+                    }
+
+                    case "reference_nature_combat_reward_begin":
+                    {
+                        var source = RequireState(request);
+                        var actionId = RequiredString(request, "action_id");
+                        var action = environment.Observe(source).LegalActions
+                            .SingleOrDefault(candidate =>
+                                StringComparer.Ordinal.Equals(
+                                    candidate.ActionId, actionId))
+                            ?? throw new InvalidOperationException(
+                                "ReferenceNature combat reward begin requires a current legal winning combat action.");
+                        var seed = OptionalULong(request, "nature_seed");
+                        var nativeAction = GameAction.Create(
+                            action.Kind, action.Payload);
+                        var session = seed is { } natureSeed
+                            ? ReferenceNatureCombatRewardSessionV111.Begin(
+                                source, nativeAction, natureSeed)
+                            : ReferenceNatureCombatRewardSessionV111.Begin(
+                                source, nativeAction);
+                        var handle = StoreReferenceNatureCombatReward(session);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureCombatRewardResult(session, handle) });
+                        break;
+                    }
+
+                    case "reference_nature_combat_reward_status":
+                    {
+                        var handle = RequiredString(request,
+                            "reference_nature_combat_reward_handle");
+                        var session = RequireReferenceNatureCombatReward(request);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureCombatRewardResult(session, handle) });
+                        break;
+                    }
+
+                    case "reference_nature_combat_reward_resolve_next":
+                    {
+                        var parentHandle = RequiredString(request,
+                            "reference_nature_combat_reward_handle");
+                        var session = RequireReferenceNatureCombatReward(request);
+                        if (session.Fingerprint != RequiredString(request,
+                                "fingerprint"))
+                            throw new InvalidOperationException(
+                                "Stale ReferenceNature combat reward fingerprint.");
+                        var next = session.ResolveNext();
+                        var handle = StoreReferenceNatureCombatReward(next);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureCombatRewardResult(
+                                next, handle, parentHandle) });
+                        break;
+                    }
+
+                    case "reference_nature_combat_reward_fork":
+                    {
+                        var parentHandle = RequiredString(request,
+                            "reference_nature_combat_reward_handle");
+                        var next = RequireReferenceNatureCombatReward(request)
+                            .Fork();
+                        var handle = StoreReferenceNatureCombatReward(next);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureCombatRewardResult(
+                                next, handle, parentHandle) });
+                        break;
+                    }
+
+                    case "reference_nature_combat_reward_save":
+                    {
+                        var session = RequireReferenceNatureCombatReward(request);
+                        Write(new { requestId, ok = true,
+                            schemaId =
+                                ReferenceNatureCombatRewardSessionV111.CurrentSchemaId,
+                            snapshot = ReferenceNatureCombatRewardSessionV111
+                                .Save(session) });
+                        break;
+                    }
+
+                    case "reference_nature_combat_reward_load":
+                    {
+                        var session = ReferenceNatureCombatRewardSessionV111.Restore(
+                            RequiredString(request, "snapshot"));
+                        var handle = StoreReferenceNatureCombatReward(session);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureCombatRewardResult(session, handle) });
+                        break;
+                    }
+
+                    case "reference_nature_combat_reward_release_many":
+                    {
+                        if (!request.TryGetProperty(
+                                "reference_nature_combat_reward_handles",
+                                out var handles) ||
+                            handles.ValueKind != JsonValueKind.Array)
+                            throw new ArgumentException(
+                                "reference_nature_combat_reward_handles must be an array.");
+                        var released = 0;
+                        foreach (var element in handles.EnumerateArray())
+                        {
+                            if (element.ValueKind != JsonValueKind.String ||
+                                string.IsNullOrWhiteSpace(element.GetString()))
+                                throw new ArgumentException(
+                                    "Invalid ReferenceNature combat reward handle.");
+                            var handle = element.GetString()!;
+                            if (referenceNatureCombatRewardStates.Remove(handle))
+                                released++;
+                            referenceNatureCombatRewardRunStateHandles
                                 .Remove(handle);
                         }
                         Write(new { requestId, ok = true, released });

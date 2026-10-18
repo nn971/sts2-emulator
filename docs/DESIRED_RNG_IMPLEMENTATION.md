@@ -151,6 +151,13 @@ precedes relic population; combat-earned extra offers and Black Star relic
 draws precede Prayer Wheel's appended group. Driftwood rerolls and Dream
 Catcher rest rewards also preserve the advanced native stream. Source-shaped
 pools remain restricted, and native result/cursor parity is unverified.
+`ReferenceNatureCombatRewardSessionV111` now wraps a legal configured Native
+combat action that immediately wins and generates its reward. It samples the
+registered pity, gold, PotionFactory, card, relic, boss-offer, and Lava Rock
+requests in replay order, then commits the reward and Nature cursor together.
+Legacy reward generation and the earlier Native relic-bag queue shuffle remain
+outside this session; source-pool completeness, stream attribution, and Native
+cursor parity remain open. See the [combat reward session contract](REFERENCE_NATURE_COMBAT_REWARD_D3.md).
 Punch Off's relic and potion custom reward picks now use that player stream in
 configured regional runs; their source stream assignment remains unverified.
 War Historian Repy's two independent potion offers also use typed `player.rewards`

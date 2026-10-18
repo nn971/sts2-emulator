@@ -583,6 +583,18 @@ law and Native parity remain unverified. The site is advertised under
 `punch_off_fight`; direct queries require the action ID, ordinal, and complete
 preceding offset-index prefix.
 
+Configured Native combat rewards can be sampled with
+`State.begin_reference_nature_combat_reward(action_id, nature_seed=None)`.
+Begin from a current legal combat action that immediately wins and generates a
+complete Reward. Resolve its pending reward Chance Laws with `resolve_next()`;
+the session's `.state` becomes available after the full reward and Nature
+cursor commit. It supports `status()`, `fork()`, `save_snapshot()`, and
+`release()`, with restore through
+`Session.load_reference_nature_combat_reward_snapshot()`. The session site
+coverage is negotiated as `combat_reward`; its scope and Native source limits
+are described in the
+[`ReferenceNature combat reward contract`](../../docs/REFERENCE_NATURE_COMBAT_REWARD_D3.md).
+
 `Session.stochastic_session_coverage` reports the site IDs admitted by the
 advertised ReferenceNature session schemas.
 `Session.supports_reference_nature_site(site_id, session="any")` checks that

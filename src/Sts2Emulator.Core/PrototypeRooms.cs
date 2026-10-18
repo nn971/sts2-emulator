@@ -1381,6 +1381,7 @@ public sealed partial class PrototypeGameEngine
                 or PrototypeRunEffectKind.TransformFirstCardOfId
             || effect.Kind == PrototypeRunEffectKind.GainRelic
                 && (effect.RelicId == NativeAncientRewardsV111.ToyBoxId
+                    || effect.RelicId == NativeDarvEventV111.CallingBellId
                     || HasControlledRelicAcquisitionRandomEffect(
                         effect.RelicId))) == true;
     }
