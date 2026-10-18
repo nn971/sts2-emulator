@@ -348,8 +348,50 @@ public sealed record ChanceLawV111(
 /// </summary>
 public static partial class ChanceLawEngineV111
 {
+    private sealed record NativeBoundedIntegerLawSiteV111(
+        string StreamId, string Boundary);
+
+    private static readonly Dictionary<string,
+        NativeBoundedIntegerLawSiteV111> NativeBoundedIntegerLawSites =
+        new(StringComparer.Ordinal)
+        {
+            ["relic_grab_bag.queue_shuffle.swap_index"] = new(
+                "run.treasure_room_relics",
+                "native-relic-bag-queue-shuffle-index"),
+            ["reward.boss_relic_offer.shuffle_swap_index"] = new(
+                NativePlayerRngV111.RewardsStreamId,
+                "native-boss-relic-offer-shuffle-index"),
+            ["reward.lava_rock.relic_offer.shuffle_swap_index"] = new(
+                NativePlayerRngV111.RewardsStreamId,
+                "native-lava-rock-relic-offer-shuffle-index"),
+            [NativeFisherYatesV111.SiteId] = new(
+                NativeFisherYatesV111.StreamId,
+                "native-draw-pile-shuffle-index")
+        };
+
     private const long NativeNextDoubleGridSize =
         ChanceLawV111.NativeSourceGridSize;
+
+    public static bool IsNativeBoundedIntegerLawSite(string siteId) =>
+        NativeBoundedIntegerLawSites.ContainsKey(siteId);
+
+    /// <summary>
+    /// Query an allowlisted Native bounded-integer site using its fixed source
+    /// stream. The caller declares the current exclusive bound, owner, and
+    /// ordinal; site-specific pool and prefix checks remain outside this law.
+    /// </summary>
+    public static ChanceLawV111 QueryNativeBoundedIntegerLawSite(
+        string siteId, string ownerId, int supportCount, int ordinal)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
+        if (!NativeBoundedIntegerLawSites.TryGetValue(
+                siteId, out var site))
+            throw new NotSupportedException(
+                $"Native bounded-integer law does not support site '{siteId}'.");
+        return QueryNativeBoundedIntegerIndex(
+            siteId, site.StreamId, ownerId, supportCount, ordinal,
+            site.Boundary);
+    }
 
     public const string NativeBoundedIndexSourceVerifiedProvenance =
         "v0.111.0 Rng.NextInt(maxExclusive) multiplies the uniform 53-bit " +
@@ -1675,10 +1717,9 @@ public static partial class ChanceLawEngineV111
     public static ChanceLawV111 QueryNativeRelicBagQueueShuffleIndex(
         string ownerId, int supportCount, int ordinal)
     {
-        return QueryNativeBoundedIntegerIndex(
-            "relic_grab_bag.queue_shuffle.swap_index",
-            "run.treasure_room_relics", ownerId, supportCount, ordinal,
-            "native-relic-bag-queue-shuffle-index");
+        return QueryNativeBoundedIntegerLawSite(
+            "relic_grab_bag.queue_shuffle.swap_index", ownerId,
+            supportCount, ordinal);
     }
 
     /// <summary>
@@ -1688,11 +1729,9 @@ public static partial class ChanceLawEngineV111
     public static ChanceLawV111 QueryNativeBossRelicOfferShuffleIndex(
         string ownerId, int supportCount, int ordinal)
     {
-        return QueryNativeBoundedIntegerIndex(
-            "reward.boss_relic_offer.shuffle_swap_index",
-            NativePlayerRngV111.RewardsStreamId,
-            ownerId, supportCount, ordinal,
-            "native-boss-relic-offer-shuffle-index");
+        return QueryNativeBoundedIntegerLawSite(
+            "reward.boss_relic_offer.shuffle_swap_index", ownerId,
+            supportCount, ordinal);
     }
 
     /// <summary>
@@ -1703,11 +1742,9 @@ public static partial class ChanceLawEngineV111
     public static ChanceLawV111 QueryNativeLavaRockRelicOfferShuffleIndex(
         string ownerId, int supportCount, int ordinal)
     {
-        return QueryNativeBoundedIntegerIndex(
-            "reward.lava_rock.relic_offer.shuffle_swap_index",
-            NativePlayerRngV111.RewardsStreamId,
-            ownerId, supportCount, ordinal,
-            "native-lava-rock-relic-offer-shuffle-index");
+        return QueryNativeBoundedIntegerLawSite(
+            "reward.lava_rock.relic_offer.shuffle_swap_index", ownerId,
+            supportCount, ordinal);
     }
 
     /// <summary>
@@ -1718,10 +1755,8 @@ public static partial class ChanceLawEngineV111
     public static ChanceLawV111 QueryNativeDrawPileShuffleIndex(
         string ownerId, int supportCount, int ordinal)
     {
-        return QueryNativeBoundedIntegerIndex(
-            NativeFisherYatesV111.SiteId, NativeFisherYatesV111.StreamId,
-            ownerId, supportCount, ordinal,
-            "native-draw-pile-shuffle-index");
+        return QueryNativeBoundedIntegerLawSite(
+            NativeFisherYatesV111.SiteId, ownerId, supportCount, ordinal);
     }
 
     private static ChanceLawV111 QueryNativeBoundedIntegerIndex(

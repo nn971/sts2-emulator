@@ -2696,6 +2696,32 @@ internal static class PrototypeAiJsonlServer
                                 "Request field 'ordinal' is required.");
                         var ordinal = suppliedOrdinal ?? 0;
                         ChanceLawV111 law;
+                        if (ChanceLawEngineV111
+                                .IsNativeBoundedIntegerLawSite(siteId))
+                        {
+                            RejectChanceLawQueryParameters(
+                                request, "owner_id", "support_count");
+                            var ownerId = OptionalString(
+                                request, "owner_id") ??
+                                throw new ArgumentException(
+                                    "Native bounded-index law requires owner_id.");
+                            var supportCount = OptionalInt(
+                                request, "support_count") ??
+                                throw new ArgumentException(
+                                    "Native bounded-index law requires support_count.");
+                            law = ChanceLawEngineV111
+                                .QueryNativeBoundedIntegerLawSite(
+                                    siteId, ownerId, supportCount, ordinal);
+                            Write(new
+                            {
+                                requestId,
+                                ok = true,
+                                chanceLawSchemaId =
+                                    ChanceLawV111.CurrentSchemaId,
+                                law
+                            });
+                            break;
+                        }
                         if (siteId == NativePaelRewardsV111.LegionSkinSiteId)
                         {
                             var ownerId = OptionalString(request, "owner_id");
@@ -2860,109 +2886,6 @@ internal static class PrototypeAiJsonlServer
                                     "Encounter card-model index law requires support_count.");
                             law = ChanceLawEngineV111
                                 .QueryNativeEncounterCardModelIndex(
-                                    ownerId, supportCount, ordinal);
-                            Write(new
-                            {
-                                requestId,
-                                ok = true,
-                                chanceLawSchemaId =
-                                    ChanceLawV111.CurrentSchemaId,
-                                law
-                            });
-                            break;
-                        }
-                        if (siteId ==
-                            "relic_grab_bag.queue_shuffle.swap_index")
-                        {
-                            RejectChanceLawQueryParameters(
-                                request, "owner_id", "support_count");
-                            var ownerId = OptionalString(
-                                request, "owner_id") ??
-                                throw new ArgumentException(
-                                    "Relic queue-shuffle law requires owner_id.");
-                            var supportCount = OptionalInt(
-                                request, "support_count") ??
-                                throw new ArgumentException(
-                                    "Relic queue-shuffle law requires support_count.");
-                            law = ChanceLawEngineV111
-                                .QueryNativeRelicBagQueueShuffleIndex(
-                                    ownerId, supportCount, ordinal);
-                            Write(new
-                            {
-                                requestId,
-                                ok = true,
-                                chanceLawSchemaId =
-                                    ChanceLawV111.CurrentSchemaId,
-                                law
-                            });
-                            break;
-                        }
-                        if (siteId ==
-                            "reward.boss_relic_offer.shuffle_swap_index")
-                        {
-                            RejectChanceLawQueryParameters(
-                                request, "owner_id", "support_count");
-                            var ownerId = OptionalString(
-                                request, "owner_id") ??
-                                throw new ArgumentException(
-                                    "Boss relic-offer shuffle law requires owner_id.");
-                            var supportCount = OptionalInt(
-                                request, "support_count") ??
-                                throw new ArgumentException(
-                                    "Boss relic-offer shuffle law requires support_count.");
-                            law = ChanceLawEngineV111
-                                .QueryNativeBossRelicOfferShuffleIndex(
-                                    ownerId, supportCount, ordinal);
-                            Write(new
-                            {
-                                requestId,
-                                ok = true,
-                                chanceLawSchemaId =
-                                    ChanceLawV111.CurrentSchemaId,
-                                law
-                            });
-                            break;
-                        }
-                        if (siteId ==
-                            "reward.lava_rock.relic_offer.shuffle_swap_index")
-                        {
-                            RejectChanceLawQueryParameters(
-                                request, "owner_id", "support_count");
-                            var ownerId = OptionalString(
-                                request, "owner_id") ??
-                                throw new ArgumentException(
-                                    "Lava Rock relic-offer shuffle law requires owner_id.");
-                            var supportCount = OptionalInt(
-                                request, "support_count") ??
-                                throw new ArgumentException(
-                                    "Lava Rock relic-offer shuffle law requires support_count.");
-                            law = ChanceLawEngineV111
-                                .QueryNativeLavaRockRelicOfferShuffleIndex(
-                                    ownerId, supportCount, ordinal);
-                            Write(new
-                            {
-                                requestId,
-                                ok = true,
-                                chanceLawSchemaId =
-                                    ChanceLawV111.CurrentSchemaId,
-                                law
-                            });
-                            break;
-                        }
-                        if (siteId == NativeFisherYatesV111.SiteId)
-                        {
-                            RejectChanceLawQueryParameters(
-                                request, "owner_id", "support_count");
-                            var ownerId = OptionalString(
-                                request, "owner_id") ??
-                                throw new ArgumentException(
-                                    "Draw-pile shuffle law requires owner_id.");
-                            var supportCount = OptionalInt(
-                                request, "support_count") ??
-                                throw new ArgumentException(
-                                    "Draw-pile shuffle law requires support_count.");
-                            law = ChanceLawEngineV111
-                                .QueryNativeDrawPileShuffleIndex(
                                     ownerId, supportCount, ordinal);
                             Write(new
                             {
