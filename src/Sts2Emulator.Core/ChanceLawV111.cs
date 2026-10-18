@@ -1710,6 +1710,20 @@ public static partial class ChanceLawEngineV111
             "native-lava-rock-relic-offer-shuffle-index");
     }
 
+    /// <summary>
+    /// Query one Native draw-pile Fisher-Yates index over its declared
+    /// current bound. The ordered pile and surrounding combat continuation
+    /// are not inspected.
+    /// </summary>
+    public static ChanceLawV111 QueryNativeDrawPileShuffleIndex(
+        string ownerId, int supportCount, int ordinal)
+    {
+        return QueryNativeBoundedIntegerIndex(
+            NativeFisherYatesV111.SiteId, NativeFisherYatesV111.StreamId,
+            ownerId, supportCount, ordinal,
+            "native-draw-pile-shuffle-index");
+    }
+
     private static ChanceLawV111 QueryNativeBoundedIntegerIndex(
         string siteId, string streamId, string ownerId,
         int supportCount, int ordinal, string boundary)

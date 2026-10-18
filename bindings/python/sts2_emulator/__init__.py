@@ -73,6 +73,8 @@ class State:
         support_count; the source-ordered remaining pool is not validated.
         Relic queue-shuffle laws require owner_id and the current positive
         Fisher-Yates bound; queue eligibility and its prior prefix are open.
+        Draw-pile shuffle laws require owner_id and the current positive bound;
+        pile ordering and the combat continuation are not validated.
         PotionFactory and relic rarity laws accept a caller-declared owner_id
         + stream_id pair for cursor-blind source-threshold queries.
         Repy potion laws use ordinal 0 or 1 and prior_indices containing the
@@ -126,7 +128,8 @@ class State:
                 "card_rarity.encounter_model.index_draw",
                 "relic_grab_bag.queue_shuffle.swap_index",
                 "reward.boss_relic_offer.shuffle_swap_index",
-                "reward.lava_rock.relic_offer.shuffle_swap_index"):
+                "reward.lava_rock.relic_offer.shuffle_swap_index",
+                "combat.draw_pile.shuffle.swap"):
             if owner_id is None:
                 raise ValueError(
                     "this Chance Law requires owner_id")

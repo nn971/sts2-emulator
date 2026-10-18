@@ -88,6 +88,8 @@ Native relic-bag queue construction now exposes the exact bounded-index law for 
 
 Boss relic-offer and Lava Rock extra-relic shuffle rows now have exact Native per-swap laws on `player.rewards`. Their caller-declared bounds and owners do not establish the eligible pools or reward prefix.
 
+The ordinary draw-pile shuffle row now has a direct Native `run.shuffle` law for one caller-declared Fisher–Yates bound. Its pile order, complete continuation, and cursor parity remain open.
+
 The Doors of Light and Dark, Fragrant Mushroom, two Tinker Time, Battleworn Dummy setting 2, Fake Merchant stock, and War Hammer shuffle rows link the [Native shuffle contract](REFERENCE_NATURE_NATIVE_EVENT_SHUFFLE_D3.md). It records conditional bounded-index laws for each Fisher–Yates swap and atomic replay through the existing mechanics. Fragrant Mushroom requires survival of its HP cost; the Tinker rider shuffle requires the prior scripted type offer; Battleworn requires a legal combat action that wins immediately; Fake Merchant requires an Event-node action whose ordinary event-selection request selects Fake Merchant; War Hammer requires one active copy and an action that immediately wins an ordinary Elite fight, with no later `run.niche` draws. The shared session preserves the relevant Native cursor state and advertises all seven shuffle sites. Reflections' two without-replacement card-pick rows link the Native event-context contract's conditional laws and the `ReferenceNatureGloryReflectionsSessionV111` continuation; the session rebuilds upgrade eligibility after each downgrade, replays `touch_mirror` after the final pick, and commits mechanics with the Nature cursor while preserving the Native event cursor.
 
 

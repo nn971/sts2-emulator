@@ -250,6 +250,21 @@ lava_rock_swap_law = state.query_chance_law(
 Its exact Native index law does not check Lava Rock eligibility, the earlier
 reward prefix, or cursor parity.
 
+An individual Native draw-pile Fisher–Yates swap can be queried with the same
+bounded-index shape:
+
+```python
+draw_shuffle_law = state.query_chance_law(
+    "combat.draw_pile.shuffle.swap",
+    owner_id="player:0",
+    ordinal=0,
+    support_count=current_draw_pile_shuffle_bound,
+)
+```
+
+The law covers that `run.shuffle` bound only; it does not return the shuffled
+pile or validate the full call prefix or cursor.
+
 The fixed Act 1 boss pools have read-only law queries. Each returns
 equal-weight outcomes identified by encounter ID; legacy seed-to-index
 distributions and Native cursor parity remain `UNVERIFIED`:

@@ -138,6 +138,8 @@ the unresolved order or provider state. The draw-pile adapter applies the
 mechanics membership change and provider transition together; the ordinary
 draw resolver runs the card and hook effects once after an identity is
 committed. A controlled request at an arbitrary shuffle callsite without
-that saved continuation fails closed. Primitive swap laws remain
-**UNVERIFIED**, distinct from the deferred card-draw law, and no privileged
-per-swap transcript is part of Nature's view.
+that saved continuation fails closed. A read-only law now reports exact Native
+`NextInt` masses for one declared swap bound, owner, and ordinal; it verifies
+the bounded transform only and is distinct from the deferred card-draw law.
+The query does not provide a privileged per-swap transcript to Nature or a
+complete shuffle continuation.
