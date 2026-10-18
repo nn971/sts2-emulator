@@ -576,45 +576,13 @@ public static class SemanticEndTurnEngineV111
         if (!StringComparer.Ordinal.Equals(source.Fingerprint, fingerprint))
             throw new InvalidOperationException(
                 "Stale semantic end-turn target fingerprint.");
-        ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
         var pending = source.TargetPending ??
             throw new InvalidOperationException(
                 "No automatic-pipeline random-target event is pending.");
-        if (pending.EventId != eventId)
-            throw new InvalidOperationException(
-                "Semantic end-turn target event ID is stale or mismatched.");
-        var index = Array.IndexOf(pending.CandidateEnemyInstanceIds,
-            enemyInstanceId);
-        if (index < 0)
-            throw new InvalidOperationException(
-                "Enemy instance is outside the suspended pipeline target support.");
-        var decision = new SemanticTargetDecisionV111(
-            pending, index, enemyInstanceId);
-        decision.Validate();
-        RunState resumed;
-        using (ControlledChanceGuardV111.Enter())
-        using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
-            resumed = PrototypeGameEngine.ResumeControlledRandomTarget(
-                source.Run.Fork(), index);
-        if (resumed.Phase == RunPhase.Combat)
-        {
-            var priorCombat = source.Run.World?.Combat ??
-                throw new InvalidDataException(
-                    "Automatic target lost its source combat.");
-            var nextCombat = resumed.World?.Combat ??
-                throw new InvalidDataException(
-                    "Automatic target continuation lost combat.");
-            if (!priorCombat.DrawPile.SequenceEqual(nextCombat.DrawPile) ||
-                CanonicalJson.Sha256(priorCombat.SemanticDeck) !=
-                    CanonicalJson.Sha256(nextCombat.SemanticDeck))
-                throw new NotSupportedException(
-                    "UNSUPPORTED_SEMANTIC_DECK site=combat.random_target " +
-                    "operation=unmodeled_draw_pile_mutation");
-        }
-        else if (resumed.Phase is not (RunPhase.Reward or RunPhase.Terminal))
-            throw new NotSupportedException(
-                "UNSUPPORTED_SEMANTIC_DECK site=combat.random_target " +
-                "operation=unsupported_post_target_phase");
+        var decision = SemanticTargetChoiceV111.Select(
+            pending, eventId, enemyInstanceId);
+        var resumed = SemanticTargetChoiceV111.Resume(
+            source.Run, decision);
 
         var targetTranscript = source.TargetTranscript
             .Append(decision.Fork()).ToArray();

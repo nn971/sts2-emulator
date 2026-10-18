@@ -63,4 +63,64 @@ public sealed record SemanticTargetDecisionV111(
 public static class SemanticTargetChoiceV111
 {
     public const string SchemaId = "sts2-v111-semantic-target-choice-v1";
+
+    public static SemanticTargetDecisionV111 Select(
+        SemanticTargetEventV111 pending, string eventId,
+        int enemyInstanceId)
+    {
+        ArgumentNullException.ThrowIfNull(pending);
+        pending.Validate();
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
+        if (pending.EventId != eventId)
+            throw new InvalidOperationException(
+                "Semantic target event ID is stale or mismatched.");
+        var index = Array.IndexOf(
+            pending.CandidateEnemyInstanceIds, enemyInstanceId);
+        if (index < 0)
+            throw new InvalidOperationException(
+                "Enemy instance is outside the pending target support.");
+        var decision = new SemanticTargetDecisionV111(
+            pending, index, enemyInstanceId);
+        decision.Validate();
+        return decision;
+    }
+
+    /// <summary>
+    /// Applies one stable-identity target choice through the ordinary
+    /// controlled combat continuation and verifies that targeting did not
+    /// change hidden draw-pile state.
+    /// </summary>
+    internal static RunState Resume(
+        RunState checkpoint, SemanticTargetDecisionV111 decision)
+    {
+        ArgumentNullException.ThrowIfNull(checkpoint);
+        ArgumentNullException.ThrowIfNull(decision);
+        decision.Validate();
+
+        RunState resumed;
+        using (ControlledChanceGuardV111.Enter())
+        using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
+            resumed = PrototypeGameEngine.ResumeControlledRandomTarget(
+                checkpoint.Fork(), decision.SelectedIndex);
+        if (resumed.Phase == RunPhase.Combat)
+        {
+            var priorCombat = checkpoint.World?.Combat ??
+                throw new InvalidDataException(
+                    "Automatic target lost its source combat.");
+            var nextCombat = resumed.World?.Combat ??
+                throw new InvalidDataException(
+                    "Automatic target continuation lost combat.");
+            if (!priorCombat.DrawPile.SequenceEqual(nextCombat.DrawPile) ||
+                CanonicalJson.Sha256(priorCombat.SemanticDeck) !=
+                    CanonicalJson.Sha256(nextCombat.SemanticDeck))
+                throw new NotSupportedException(
+                    "UNSUPPORTED_SEMANTIC_DECK site=combat.random_target " +
+                    "operation=unmodeled_draw_pile_mutation");
+        }
+        else if (resumed.Phase is not (RunPhase.Reward or RunPhase.Terminal))
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_DECK site=combat.random_target " +
+                "operation=unsupported_post_target_phase");
+        return resumed;
+    }
 }

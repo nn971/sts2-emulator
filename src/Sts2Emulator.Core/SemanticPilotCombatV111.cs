@@ -2383,25 +2383,15 @@ public static class SemanticPilotCombatEngineV111
             throw new InvalidOperationException(
                 "Stale semantic target fingerprint.");
         ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
-        var pending = current.TargetPending ??
-            throw new InvalidOperationException(
-                "No semantic random-target event is pending.");
-        if (pending.EventId != eventId)
-            throw new InvalidOperationException(
-                "Semantic target event ID is stale or mismatched.");
-        var index = Array.IndexOf(pending.CandidateEnemyInstanceIds,
-            enemyInstanceId);
-        if (index < 0)
-            throw new InvalidOperationException(
-                "Enemy instance is outside the pending target support.");
-        var expected = new SemanticTargetDecisionV111(
-            pending, index, enemyInstanceId);
-        expected.Validate();
-
         if (current.PendingEndTurn is { TargetPending: not null } endTurn)
         {
             var resolvedEndTurn = SemanticEndTurnEngineV111.ResolveTarget(
                 endTurn, endTurn.Fingerprint, eventId, enemyInstanceId);
+            if (resolvedEndTurn.TargetTranscript.Length <=
+                endTurn.TargetTranscript.Length)
+                throw new InvalidDataException(
+                    "End-turn target resolution omitted its selected identity.");
+            var endTurnDecision = resolvedEndTurn.TargetTranscript[^1];
             var resolvedRun = resolvedEndTurn.Run;
             var resolvedSession = current with
             {
@@ -2413,34 +2403,23 @@ public static class SemanticPilotCombatEngineV111
                     : current.RewardAudit,
                 History = current.History.Append(
                     new SemanticPilotContinuationV111(
-                        "semantic_target", TargetDecision: expected.Fork()))
+                        "semantic_target",
+                        TargetDecision: endTurnDecision.Fork()))
                     .ToArray()
             };
             Validate(resolvedSession);
             return NormalizeNoncontrolledCosts(resolvedSession);
         }
 
-        RunState result;
-        using (ControlledChanceGuardV111.Enter())
-        using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
-            result = PrototypeGameEngine.ResumeControlledRandomTarget(
-                current.Run.Fork(), index);
+        var pending = current.TargetPending ??
+            throw new InvalidOperationException(
+                "No semantic random-target event is pending.");
+        var decision = SemanticTargetChoiceV111.Select(
+            pending, eventId, enemyInstanceId);
+        RunState result = SemanticTargetChoiceV111.Resume(
+            current.Run, decision);
         if (result.Phase == RunPhase.Combat)
-        {
             ValidateSemanticCombatBoundary(result);
-            var priorCombat = current.Run.World!.Combat!;
-            var nextCombat = result.World!.Combat!;
-            if (!priorCombat.DrawPile.SequenceEqual(nextCombat.DrawPile) ||
-                CanonicalJson.Sha256(priorCombat.SemanticDeck) !=
-                    CanonicalJson.Sha256(nextCombat.SemanticDeck))
-                throw new NotSupportedException(
-                    "UNSUPPORTED_SEMANTIC_DECK site=combat.random_target " +
-                    "operation=unmodeled_draw_pile_mutation");
-        }
-        else if (result.Phase is not (RunPhase.Reward or RunPhase.Terminal))
-            throw new NotSupportedException(
-                "UNSUPPORTED_SEMANTIC_DECK site=combat.random_target " +
-                "operation=unsupported_post_target_phase");
         var next = current with
         {
             Run = result,
@@ -2449,7 +2428,7 @@ public static class SemanticPilotCombatEngineV111
                 : current.RewardAudit,
             History = current.History.Append(
                 new SemanticPilotContinuationV111(
-                    "semantic_target", TargetDecision: expected.Fork()))
+                    "semantic_target", TargetDecision: decision.Fork()))
                 .ToArray()
         };
         return NormalizeNoncontrolledCosts(next);
