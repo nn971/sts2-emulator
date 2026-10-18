@@ -21,6 +21,25 @@ claims. The read-only Chance Law query does not inspect the saved Native event
 cursor; only session admission checks the untouched entry cursor required by
 scripted replay.
 
+## S0 projection, resolver, provenance, and unsupported boundary
+
+The card and relic rows use the source-ordered fixed pools recorded in the
+migration matrix. Pool order, player survival state, the selected event
+branch, and request identity constrain each draw. Nature receives the current
+pool law at the choice boundary; the player-facing observation retains the
+ordinary event projection and shows only the committed reward.
+
+The saved `grab` or nonlethal `dive` action is replayed through the existing
+event resolver. The selected card or relic and the ReferenceNature cursor
+commit together, without replaying a completed action twice. The Native
+bounded-index transform is `SOURCE_VERIFIED` on the declared pools; source
+filtering, event-stream attribution, seed frequencies, and cursor parity remain
+open.
+
+Only the fixed card-pool `grab` and surviving relic-pool `dive` boundaries are
+supported. Lethal dive is draw-free, and other event choices or event-triggered
+relic effects remain outside this continuation.
+
 ## JSONL operations
 
 | Operation | Inputs | Result |
@@ -56,7 +75,6 @@ release. A direct law query uses
 ## Limits
 
 The session covers only the two fixed Trash Heap reward pools. Other event
-other event choices and event-triggered relic effects remain
-outside this continuation. Native source filtering, installed-game RNG cursor
+choices and event-triggered relic effects remain outside this continuation. Native source filtering, installed-game RNG cursor
 parity, and probability calibration remain open; no reference mod or Fidelity
 Inspector work is included.

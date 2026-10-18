@@ -109,13 +109,18 @@ and source-law calibration remain unverified. The JSONL/Python contract is in
 
 ## Controlled hand-cost operations (#143)
 
+### S0 stochastic boundary: random hand-card selection and energy costs
+
 The real `ResolveOperations` kernel suspends before choosing a random
 positive-cost hand card for a temporary cost change and before each bounded
 cost roll in `RandomizeHandCardEnergyCostsUntilTurnEndOrPlayed`. All already
 applied effects, parent card/choice/event continuation and remaining queued
 operations are preserved. An all-hand reroll visits eligible card instances
 once in their original hand order. Every outstanding ticket is source-validated;
-Nature sees only explicit `choose_index` or `bounded_integer` support.
+Nature sees only explicit `choose_index` or `bounded_integer` support. The
+fair player-facing projection omits pending support and request details; it
+shows the ordinary hand and committed cost after the source operation
+resolves.
 Chance Law queries report exact Native `NextInt` masses as
 `SOURCE_VERIFIED` for both the hand-card selection and bounded-cost
 transforms on their declared supports. Source-pool completeness, stream

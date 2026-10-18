@@ -18,7 +18,10 @@ Eligibility matches the source effect: cards must not be unplayable, Curse or
 Status cards, already replayed, or enchanted with Spiral or Glam. If the
 eligible pool contains Attacks, Skills or Powers, only that preferred ordered
 subset is offered; otherwise the complete eligible pool is used. Nature picks
-one physical card instance. The engine adds the effect amount to that card's
+one physical card instance from the ordered pending support. The ordinary
+player projection remains at its current boundary until the selected
+instance is committed; the candidate list is available only through the
+Nature event. The engine adds the effect amount to that card's
 `ReplayCount` and resumes the saved operation suffix. The card remains in its
 draw-pile position, so the semantic deck order is unchanged.
 

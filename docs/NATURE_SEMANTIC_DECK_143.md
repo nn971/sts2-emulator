@@ -124,6 +124,22 @@ discard recycle remain unsupported. No current gameplay callsite initiates a
 Native source probabilities, enemy intents, full-game mechanical parity and
 the model's conditional reference distributions remain `UNVERIFIED`.
 
+## S0 stochastic boundary: deck reveal
+
+`combat.draw_pile.reveal_card` resolves a physical identity when a peek or
+scry operation needs an unknown position in a shared draw-pile pool. The
+Nature request contains the remaining legal card instances and the position
+being revealed; pool order and unresolved positions remain private. The player
+projection receives only identities made public by the completed peek or scry
+mechanic, not the remaining hidden order.
+
+The deck provider locks the chosen identity into that position and marks the
+revealed slot public. The original reveal action then resumes through its
+ordinary resolver once; requiring the same revealed position again does not
+create a second Nature choice. Mutations that split an unresolved shared pool
+remain unsupported and fail closed. This contract adds no privileged
+per-choice inspector transcript.
+
 ## S0 stochastic boundary: ordinary draw-pile shuffle
 
 The `combat.draw_pile.shuffle.swap` row records native primitive shuffle

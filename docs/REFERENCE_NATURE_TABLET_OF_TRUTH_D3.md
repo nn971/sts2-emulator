@@ -25,6 +25,26 @@ marker on progressed Tablet pages because the player may continue with
 ordinary Native choices after a Nature-resolved page. Native source filtering,
 seeded cursor parity, and probability calibration remain open.
 
+## S0 projection, resolver, provenance, and unsupported boundary
+
+The `event.tablet_of_truth.card.index_draw` support is the ordered set of
+eligible physical deck instances on the current page. Card eligibility,
+current page, and the selected index prefix are private generation state. The
+Nature view receives the current eligible-card law; ordinary player
+observations retain their existing event projection and reveal the committed
+card upgrade and page advance through normal mechanics.
+
+The session replays the ordinary `decipher` action from its saved page state,
+applying the HP cost and card upgrade once, then commits the page and
+ReferenceNature cursor together. The declared Native bounded-index transform
+is `SOURCE_VERIFIED` on its current support; installed-game source filtering,
+seed frequencies, and cursor parity remain open.
+
+Only pages 0 through 3 with nonempty eligible support suspend for a Nature
+choice. Page 4, lethal pages, and empty support are draw-free; other event
+operations remain outside this session. No native reference mod or privileged
+Fidelity Inspector projection is included.
+
 ## JSONL operations
 
 | Operation | Inputs | Result |

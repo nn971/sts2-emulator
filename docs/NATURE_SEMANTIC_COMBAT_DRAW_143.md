@@ -35,6 +35,25 @@ This slice connects the separate provider-owned
   decisions, then compares the entire resulting snapshot. Forks and
   stale/forged candidates fail closed.
 
+## S0 stochastic boundary: physical card draw
+
+`combat.draw_pile.draw_card` identifies the physical card instance consumed by
+one source `DrawCards` iteration. The remaining pool identities and hidden
+position constraints are private; a pending Nature event receives only the
+ordered legal instance support. The fair player projection reveals the card
+only after the ordinary draw mechanics commit it.
+
+The saved draw resolver suspends before moving the unknown top card, applies
+the selected physical identity once, dispatches `CardDrawn` once, and resumes
+the remaining draw count and its saved hooks. Restore replays the source
+segment from its conditioned checkpoint and validates the resulting run.
+
+This continuation is supported only at boundaries that preserve the semantic
+draw or automatic hand-draw frame. Other callers that cannot save and resume
+the shared-pool constraints remain unsupported and fail closed. This row's
+identity law remains `UNVERIFIED`; source stream parity and cursor behavior are
+separate from the resolver contract.
+
 ## Supported first slice
 
 - Consecutive ordinary draws and deterministic `CardDrawn` hooks in a

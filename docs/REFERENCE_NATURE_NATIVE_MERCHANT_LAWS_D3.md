@@ -65,6 +65,8 @@ purchase-session type is needed. These transforms are `SOURCE_VERIFIED` on
 their declared source and support; candidate-pool completeness, seed
 frequencies, stream attribution, and Native cursor parity remain separate.
 
+## Conditioned support by site
+
 | Site | Conditioned support |
 | --- | --- |
 | `shop.merchant.sale_slot.index_draw` | Five character-card slots, with exact Native bounded-index grid masses |
@@ -101,6 +103,34 @@ exact 53-bit `NextDouble` preimages. The reported integer weights sum to
 `2^53` for the declared item and price branch. Native stream assignment,
 seed frequencies, and cursor parity remain open. Read-only queries do not
 mutate the run or provider state.
+
+## S0 projection, resolver, provenance, and unsupported boundary
+
+The ordinary player projection contains the committed Shop offers, prices, and
+resulting purchase mechanics. Hidden candidate pools, relic queue order, typed
+request details, and RNG stream state remain private. At a Nature boundary, the
+current Chance Law exposes only the request support conditioned on declared
+branch inputs and the saved decision prefix; this contract adds no privileged
+inspector projection.
+
+`ReferenceNatureMerchantSessionV111` resolves supported configured Native Shop
+entry and Alchemical Coffer purchase boundaries by replaying the ordinary
+source action from its saved state through the ordered request prefix. It
+commits the completed mechanics result and Nature cursor together. A pending
+request resumes at its current source boundary, so prior shop generation and
+purchase effects are not applied twice.
+
+The declared Native bounded-index and float-grid transforms are
+`SOURCE_VERIFIED` for their listed supports. That status does not establish
+candidate-pool completeness, stream attribution, seed frequencies, or Native
+cursor parity. Legacy merchant percentage-bin requests and hidden relic queue
+identity retain their separate `UNVERIFIED` status.
+
+Native queue construction and queue shuffling, unsupported purchase effects,
+later Treasure draws, and the listed legacy merchant requests remain outside
+the atomic Native merchant session. Those paths keep their source-owned or
+existing run-action boundary; this contract does not infer a Nature law or
+continuation for them.
 
 ## Unsupported scope
 

@@ -186,7 +186,10 @@ source-triggered recycle creates a fresh unresolved pool and produces
 per-card Nature choices only as actual draws need them. This prevents
 simultaneously issuing old Fisher–Yates swap tickets and new
 `draw_card` tickets for the **same** shuffle epoch inside the new
-semantic protocol.
+semantic protocol. The fair player-facing `semantic_observe`
+projection does not expose provider-owned deck order or a pending
+Nature request; candidate support appears only at the Nature choice
+boundary.
 
 Drawn-card Snecko/Slither costs use an engine-owned provider, never a third
 Nature action. Legacy seeded fixture entry defaults to the deterministic

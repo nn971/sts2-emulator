@@ -24,6 +24,28 @@ current source-shaped default pool, unlock filters, complete installed-game
 call order, Native stream attribution, seed frequencies, and cursor parity
 remain open.
 
+## S0 projection, resolver, provenance, and unsupported boundary
+
+The default Neow candidate pools, unlock filters, pair-suppression rules,
+current positive-pool order, and earlier selected indices are generation
+constraints. While a session is pending, the Nature view exposes only the
+current offer law and legal request indices; the ordinary player projection
+remains unchanged and receives the completed offer set after generation.
+Neither view publishes the Native event cursor or privileged inspector state.
+
+The session resolves the initial Neow offer sequence by replaying its complete
+selected-index prefix through `NativeNeowEventV111.GenerateInitialOptions`.
+The generated run and ReferenceNature cursor commit together after the final
+shuffle swap, so the resolver does not publish a partial offer set.
+
+Each declared Native bounded-index transform is `SOURCE_VERIFIED` on its
+current support. Default pool completeness, installed-game unlock filtering,
+source call order, Native stream attribution, seed frequencies, and cursor
+parity remain `UNVERIFIED`. The session covers initial Neow offer generation
+from a pristine run-start state. Neow relic effects and unrelated stochastic
+operations remain outside this continuation; no source law is inferred for
+those unsupported paths.
+
 ## JSONL operations
 
 | Operation | Inputs | Result |
