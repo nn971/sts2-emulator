@@ -4592,6 +4592,40 @@ internal static class PrototypeAiJsonlServer
                             });
                             break;
                         }
+                        if (siteId == "event.potion.fill_empty_slots.model")
+                        {
+                            RejectChanceLawQueryParameters(
+                                request, "slot_index",
+                                "can_acquire_potion", "slot_empty",
+                                "support_count");
+                            var potionSlotIndex = OptionalInt(
+                                request, "slot_index") ??
+                                throw new ArgumentException(
+                                    "Event potion fill law requires slot_index.");
+                            var eventPotionCapacity = RequiredBool(
+                                request, "can_acquire_potion");
+                            var eventPotionSlotEmpty = RequiredBool(
+                                request, "slot_empty");
+                            law = ChanceLawEngineV111
+                                .QueryLegacyEventFillPotionSlot(
+                                    potionSlotIndex, eventPotionCapacity,
+                                    eventPotionSlotEmpty, ordinal);
+                            var supportCount = OptionalInt(
+                                request, "support_count");
+                            if (supportCount is not null &&
+                                supportCount != law.Outcomes.Length)
+                                throw new ArgumentException(
+                                    "Event potion fill support_count must match the ordered prototype potion pool.");
+                            Write(new
+                            {
+                                requestId,
+                                ok = true,
+                                chanceLawSchemaId =
+                                    ChanceLawV111.CurrentSchemaId,
+                                law
+                            });
+                            break;
+                        }
                         if (siteId ==
                             "event.reward.offer_potion.model.index_draw")
                         {
@@ -8583,7 +8617,7 @@ internal static class PrototypeAiJsonlServer
             "forced", "card_rarity_source",
             "current_offset_basis_points", "stream_id", "merchant",
             "can_acquire_potion", "floor", "drop_offered",
-            "card_instance_id"
+            "card_instance_id", "slot_index", "slot_empty"
         ];
         var unsupported = optionalFields.Where(field =>
             !allowed.Contains(field) && request.TryGetProperty(field, out _))

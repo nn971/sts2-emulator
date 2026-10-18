@@ -433,6 +433,11 @@ public static partial class ChanceLawEngineV111
         "event.reward.random_modifier_curse.index_draw"
     ];
 
+    private static readonly string[] LegacyEventFillPotionSlotQuerySites =
+    [
+        "event.potion.fill_empty_slots.model"
+    ];
+
     private static readonly string[] LegacyEliteRelicModelQuerySites =
     [
         "reward.elite_relic.model"
@@ -530,6 +535,9 @@ public static partial class ChanceLawEngineV111
 
     public static string[] LegacyEventModifierCurseModelQuerySiteIds =>
         (string[])LegacyEventModifierCurseModelQuerySites.Clone();
+
+    public static string[] LegacyEventFillPotionSlotQuerySiteIds =>
+        (string[])LegacyEventFillPotionSlotQuerySites.Clone();
 
     public static string[] LegacyEliteRelicModelQuerySiteIds =>
         (string[])LegacyEliteRelicModelQuerySites.Clone();
@@ -1310,6 +1318,52 @@ public static partial class ChanceLawEngineV111
             "legacy-event-modifier-curse-model-pool-v1", conditioning,
             "Equal index weights over the implemented ordered modifier-curse " +
             "pool; source event-reward audit and Native parity remain " +
+            "unverified.", outcomes, operationKind: "choose_index");
+    }
+
+    /// <summary>
+    /// Query the legacy event potion fill draw for a declared empty slot.
+    /// The source skips all slot draws when potion acquisition is unavailable.
+    /// </summary>
+    public static ChanceLawV111 QueryLegacyEventFillPotionSlot(
+        int slotIndex, bool canAcquirePotion, bool slotIsEmpty, int ordinal)
+    {
+        if (slotIndex < 0)
+            throw new ArgumentOutOfRangeException(nameof(slotIndex));
+        if (!canAcquirePotion || !slotIsEmpty)
+            throw new ArgumentException(
+                "Event potion-slot filling requires available potion capacity and a declared empty slot.");
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+
+        const string siteId = "event.potion.fill_empty_slots.model";
+        const string streamId = "event";
+        var pool = PrototypeContent.PotionPool;
+        if (pool.Length == 0)
+            throw new InvalidOperationException(
+                "The event potion fill pool is empty.");
+        var poolFingerprint = CanonicalJson.Sha256(pool);
+        var ownerId = "player:potion_slot:" + slotIndex + ":pool:" +
+            poolFingerprint;
+        var outcomes = pool.Select(potionId =>
+            new ChanceLawOutcomeV111("potion:" + potionId, 1L)).ToArray();
+        var conditioning = new
+        {
+            siteId,
+            streamId,
+            ownerId,
+            ordinal,
+            slotIndex,
+            canAcquirePotion,
+            slotIsEmpty,
+            orderedPotionPool = pool,
+            poolFingerprint
+        };
+        return CreateLegacyCategoricalLaw(
+            siteId, streamId, ownerId, ordinal,
+            "legacy-event-fill-potion-slot-pool-v1", conditioning,
+            "Equal index weights over the ordered prototype potion pool for " +
+            "an eligible empty slot; pool fidelity and Native parity remain " +
             "unverified.", outcomes, operationKind: "choose_index");
     }
 
