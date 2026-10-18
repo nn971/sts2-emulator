@@ -31,7 +31,8 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
     public static RunState ReplayControlledIndices(
         RunState origin, RandomIndexDecisionV111[] decisions,
         Func<RunState, RunState> mechanics,
-        string nativeEventRngEventId, string eventName)
+        string nativeEventRngEventId, string eventName,
+        Func<ControlledStochasticRequestV111, bool>? requestFilter = null)
     {
         ArgumentNullException.ThrowIfNull(decisions);
         var selected = decisions.Select(decision =>
@@ -40,9 +41,9 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
             .ToArray();
         return ReplayControlledPrefix(
             origin, selected, mechanics, nativeEventRngEventId, eventName,
-            candidate => requests.Any(request =>
+            requestFilter ?? (candidate => requests.Any(request =>
                 ControlledStochasticChanceReplayV111.SameRequest(
-                    candidate, request)));
+                    candidate, request))));
     }
 
     private static RunState ReplayControlledPrefix(
@@ -66,7 +67,8 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
         var replay = ControlledChanceContinuationExecutorV111.CaptureStochastic(
             origin,
             ControlledStochasticContinuationStateV111.CurrentSchemaId,
-            selected, mechanics, requestFilter);
+            selected, checkpoint => mechanics(checkpoint.Fork()),
+            requestFilter);
         if (replay.Suspended || replay.Run is not { } resolved)
             throw new InvalidDataException(
                 $"{eventName} action did not consume exactly its selected index prefix.");
@@ -136,6 +138,18 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
                 throw new InvalidOperationException(
                     "The unscripted run-stream cursor differs from its replay boundary.");
         }
+        var decisionArray = decisions.ToArray();
+        if (scriptedSiteId is null && expectedOrderedCandidateIds is null &&
+            expectedRunNicheCursor is null && preserveEventRng &&
+            expectedUnscriptedStreamId is null &&
+            expectedUnscriptedDrawCount == 0 && decisionArray.Length > 0)
+            return ReplayControlledIndices(
+                origin, decisionArray,
+                run => new PrototypeGameEngine().Step(
+                    run, action).State,
+                nativeEventRngEventId, eventName,
+                requestFilter: candidate => candidate.IndexRequest is not null);
+
         RngStreamState? expectedStream = null;
         if (expectedRunNicheCursor is null && preserveEventRng)
         {
@@ -148,7 +162,7 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
             origin.World?.Event?.NativeEventRng is not null)
             throw new InvalidOperationException(
                 "This replay boundary requires the event RNG context to remain absent.");
-        var scripted = new ScriptedRandomIndexProviderV111(decisions);
+        var scripted = new ScriptedRandomIndexProviderV111(decisionArray);
         IRandomIndexProviderV111 replayProvider = scriptedSiteId is null
             ? scripted
             : new SelectiveReplayProvider(
