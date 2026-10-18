@@ -221,6 +221,35 @@ This counts exact Native `NextInt(bound)` masses for the declared swap on
 `run.treasure_room_relics`; it does not validate relic eligibility, the prior
 shuffle prefix, full queue identity, or cursor parity.
 
+The three-item boss relic offer exposes its Native shuffle swaps as well:
+
+```python
+boss_relic_swap_law = state.query_chance_law(
+    "reward.boss_relic_offer.shuffle_swap_index",
+    owner_id="act:1:floor:15:boss_relics",
+    ordinal=0,
+    support_count=current_boss_relic_shuffle_bound,
+)
+```
+
+Each request reports exact Native bounded-index masses for the declared
+`player.rewards` bound. The query does not validate the unowned relic pool,
+earlier reward calls, or cursor parity.
+
+Lava Rock's extra relic shuffle uses the same query shape with its own owner:
+
+```python
+lava_rock_swap_law = state.query_chance_law(
+    "reward.lava_rock.relic_offer.shuffle_swap_index",
+    owner_id="run:act:1:boss:lava_rock_extra_relics",
+    ordinal=0,
+    support_count=current_lava_rock_shuffle_bound,
+)
+```
+
+Its exact Native index law does not check Lava Rock eligibility, the earlier
+reward prefix, or cursor parity.
+
 The fixed Act 1 boss pools have read-only law queries. Each returns
 equal-weight outcomes identified by encounter ID; legacy seed-to-index
 distributions and Native cursor parity remain `UNVERIFIED`:

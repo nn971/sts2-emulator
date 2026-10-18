@@ -1675,22 +1675,58 @@ public static partial class ChanceLawEngineV111
     public static ChanceLawV111 QueryNativeRelicBagQueueShuffleIndex(
         string ownerId, int supportCount, int ordinal)
     {
+        return QueryNativeBoundedIntegerIndex(
+            "relic_grab_bag.queue_shuffle.swap_index",
+            "run.treasure_room_relics", ownerId, supportCount, ordinal,
+            "native-relic-bag-queue-shuffle-index");
+    }
+
+    /// <summary>
+    /// Query one Native boss-relic offer Fisher-Yates index over its declared
+    /// current bound. The eligible pool and reward prefix are not inspected.
+    /// </summary>
+    public static ChanceLawV111 QueryNativeBossRelicOfferShuffleIndex(
+        string ownerId, int supportCount, int ordinal)
+    {
+        return QueryNativeBoundedIntegerIndex(
+            "reward.boss_relic_offer.shuffle_swap_index",
+            NativePlayerRngV111.RewardsStreamId,
+            ownerId, supportCount, ordinal,
+            "native-boss-relic-offer-shuffle-index");
+    }
+
+    /// <summary>
+    /// Query one Native Lava Rock extra-relic Fisher-Yates index over its
+    /// declared current bound. The eligible pool and reward prefix are not
+    /// inspected.
+    /// </summary>
+    public static ChanceLawV111 QueryNativeLavaRockRelicOfferShuffleIndex(
+        string ownerId, int supportCount, int ordinal)
+    {
+        return QueryNativeBoundedIntegerIndex(
+            "reward.lava_rock.relic_offer.shuffle_swap_index",
+            NativePlayerRngV111.RewardsStreamId,
+            ownerId, supportCount, ordinal,
+            "native-lava-rock-relic-offer-shuffle-index");
+    }
+
+    private static ChanceLawV111 QueryNativeBoundedIntegerIndex(
+        string siteId, string streamId, string ownerId,
+        int supportCount, int ordinal, string boundary)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(streamId);
         ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(boundary);
         if (supportCount <= 0)
             throw new ArgumentOutOfRangeException(nameof(supportCount));
         if (ordinal < 0)
             throw new ArgumentOutOfRangeException(nameof(ordinal));
 
-        const string siteId = "relic_grab_bag.queue_shuffle.swap_index";
         var request = new RandomIndexRequestV111(
-            siteId, "run.treasure_room_relics", ownerId, ordinal,
-            Array.Empty<int>(), OperationKind: "bounded_integer",
-            BoundedCount: supportCount);
-        var eventId = CanonicalJson.Sha256(new
-        {
-            boundary = "native-relic-bag-queue-shuffle-index",
-            request
-        });
+            siteId, streamId, ownerId, ordinal, Array.Empty<int>(),
+            OperationKind: "bounded_integer", BoundedCount: supportCount);
+        var eventId = CanonicalJson.Sha256(new { boundary, request });
         return QueryRandomIndex(eventId, request);
     }
 

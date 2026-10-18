@@ -124,7 +124,9 @@ class State:
             payload["support_count"] = support_count
         if site_id in (
                 "card_rarity.encounter_model.index_draw",
-                "relic_grab_bag.queue_shuffle.swap_index"):
+                "relic_grab_bag.queue_shuffle.swap_index",
+                "reward.boss_relic_offer.shuffle_swap_index",
+                "reward.lava_rock.relic_offer.shuffle_swap_index"):
             if owner_id is None:
                 raise ValueError(
                     "this Chance Law requires owner_id")
