@@ -527,8 +527,9 @@ potion. Full native potion-pool and cursor parity remain unverified.
 - Updated Sword of Stone and Fishing Rod victory callbacks to advance **each**
   owned relic instance separately. Two rods can upgrade two eligible cards
   after their third ordinary combat, while each Sword has its own five-elite
-  transformation counter. Fishing Rod still uses prototype event RNG instead
-  of the native Niche stream.
+  transformation counter. At this implementation checkpoint, Fishing Rod
+  still used prototype event RNG instead of the native Niche stream; a later
+  native-path increment is recorded in the [Fishing Rod S0 contract](reference-builds/v0.111.0-neow-generation.md).
 - Extended structural validation to the Underdocks multi-page event state
   machine, source-range persisted Treasury/Statue/Punch Off rolls, deferred
   Conveyor selections and native potion-offer slots. This narrows invalid

@@ -1,7 +1,7 @@
 # ReferenceNature Native shuffle contract
 
 This contract records source-independent ReferenceNature sessions for Native
-Fisher–Yates shuffles and admitted persistent relic index hooks. The event resolvers
+Fisher–Yates shuffles and admitted combat-victory index hooks. The event resolvers
 are the Light option in Doors of Light and Dark, Fragrant Mushroom's eligible
 card shuffle, Tinker Time's type and rider offer stages, and Battleworn
 Dummy's setting 2 upgrade shuffle. It also covers Fake Merchant's six-of-nine
@@ -10,7 +10,9 @@ selection resolves to Fake Merchant, and War Historian Repy's relic offer
 when its initial chest action is selected in configured native regional mode.
 The run-stream resolvers cover one War Hammer after an action immediately
 wins an ordinary Elite fight and Fishing Rod's triggered combat-end upgrade
-indices after an ordinary combat victory.
+indices after an ordinary combat victory. The same saved replay also covers
+Mad Science Improvement's legacy combat-stream indices after an immediate
+combat victory.
 
 ## Boundary
 
@@ -65,6 +67,12 @@ ordinary victory action, then recomputes each later request after applying
 earlier Nature-selected upgrades. Empty candidate pools remain draw-free; the
 session rejects any unexplained `run.niche` calls in the same action.
 
+Improvement accepts a legal combat action only when it wins immediately and
+the Improvement Power reaches at least one eligible-card draw. Its legacy
+`combat` support is source-ordered and shrinks after each without-replacement
+pick. The session recaptures later supports after earlier indices are applied
+and rejects other `combat`-stream draws at the same boundary.
+
 ## Laws and replay
 
 The player-visible event projection exposes the resulting page, offers, and
@@ -93,6 +101,11 @@ ordinary combat-end hook maps that index to the eligible deck card instance.
 The transform is `SOURCE_VERIFIED` for the declared support, while relic
 trigger timing, complete card eligibility, and Native owner calibration stay
 separate.
+
+Improvement's pending law is the generic uniform-index model for its saved
+legacy `combat` request and remains `UNVERIFIED`. The ordinary victory hook
+maps each index to one eligible physical card and removes that card from the
+next request's support.
 
 The Fragrant Mushroom, Tinker type, Tinker rider, and Fake Merchant stock
 shuffle sites have separate laws. A rider law is conditioned on the prior
@@ -134,6 +147,11 @@ session admits only an immediate ordinary-combat victory with no additional
 `run.niche` calls; it does not establish source candidate-pool fidelity or
 Native cursor parity.
 
+For Improvement, replay scripts each captured `combat` index request and
+leaves the legacy stream at its entry cursor. The hook's without-replacement
+support is recaptured after each prior selection; the ordinary victory action
+then applies all selected upgrades before the result and Nature cursor commit.
+
 For Repy, replay scripts the relic Fisher–Yates requests and both potion
 index requests as one typed prefix. The `player.rewards` cursor remains at its
 captured entry state, while request ordinals preserve the source call order
@@ -148,10 +166,11 @@ This does not establish source probability calibration, live-game parity, or
 Native seeded result parity. It does not add shuffle mechanics: future sites
 can use the same session only when their existing
 resolver's conditioning plan and action replay are explicitly admitted. The
-Doors, Tinker, Battleworn, Fake Merchant, and War Hammer source audits remain
-authoritative for their modeled eligibility and flow. Battleworn's session covers a
+Doors, Tinker, Battleworn, Fake Merchant, War Hammer, Fishing Rod, and
+Improvement source audits remain authoritative for their modeled eligibility
+and flow. Battleworn's session covers a
 winning combat action boundary; it does not create a multi-action combat
-continuation. Fishing Rod uses the existing ordinary victory hook and does
-not establish trigger or pool fidelity. Fake Merchant's session does not control or reinterpret the
+continuation. Fishing Rod and Improvement use their existing ordinary
+victory hooks and do not establish source trigger or pool fidelity. Fake Merchant's session does not control or reinterpret the
 ordinary weighted event-selection law; its availability depends on that
 provider's result for the selected Event node.

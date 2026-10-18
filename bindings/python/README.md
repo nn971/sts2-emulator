@@ -46,7 +46,7 @@ law = state.query_chance_law(
 
 This reports the exact Native `NextInt` index masses for that support size. It
 does not validate the Fishing Rod trigger or eligible-card pool. For an
-atomic victory replay, use the native event shuffle session described below.
+atomic victory replay, use the saved victory-hook session described below.
 
 Construction checks wire/snapshot/batch compatibility. Handles belong to one
 session; release invalidates them. Calls are serialized with a lock.
@@ -72,7 +72,7 @@ of All Time push's deck-card action before its ticket; the committed session
 exposes `.state` for ordinary play. See the
 [event-choice contract](../../docs/CONTROLLED_EVENT_CHOICE_D3.md).
 
-The event-local shuffle session is available through
+The event shuffle and combat-victory session is available through
 `State.begin_reference_nature_native_event_shuffle(nature_seed=None, action_id=None, site_id=None)`. It
 covers the Light shuffle in Doors of Light and Dark, Fragrant Mushroom's
 eligible-card shuffle, Tinker Time's type and rider offer shuffles, and
@@ -92,6 +92,16 @@ that triggers one or more Fishing Rod upgrades. Pass the legal victory
 `action_id` and `site_id="relic.persistent_combat_end.random_upgrade.index_draw"`;
 each Nature index is conditioned on the deck remaining after earlier Rod
 callbacks, and `.state` becomes available after all triggered upgrades replay.
+
+It also accepts a legal combat victory that triggers Mad Science Improvement.
+Pass `site_id="combat.glory_tinker.improvement_card.index_draw"` and the
+legal victory `action_id`. Each pick uses an `UNVERIFIED` legacy index law and
+conditions on cards left after earlier picks; `.state` becomes available after
+the ordinary victory upgrade hook replays.
+
+The Improvement law can be queried directly with the same legal victory
+action ID and a complete `prior_indices` prefix. Later pick support is rebuilt
+after those earlier selected cards are removed.
 
 For supported configured Native event-entry draws, call
 `State.begin_reference_nature_native_event_gold(action_id, nature_seed=None)`

@@ -21,6 +21,10 @@ internal sealed record NativeEventShufflePlanV111(
 {
     public bool IsFishingRodUpgrade =>
         SiteId == PrototypeGameEngine.FishingRodUpgradeSiteId;
+    public bool IsImprovementUpgrade =>
+        SiteId == PrototypeGameEngine.ImprovementCardSiteId;
+    public bool IsCombatEndIndex => IsFishingRodUpgrade ||
+        IsImprovementUpgrade;
     public int SwapCount => CandidateCount - 1;
     public bool IsRepyChestOffer => SiteId == PrototypeNativeHiveEvents
         .WarHistorianRepyRelicShuffleSiteId;
@@ -83,25 +87,36 @@ internal static class NativeEventShufflePlanBuilderV111
             origin.Player.Relics.Any(relic =>
                 relic.RelicId == PrototypeNativeOvergrowthEvents
                     .NeowRelicId("FishingRod") && !relic.IsMelted);
+        var improvementVictoryAction =
+            origin.Phase == RunPhase.Combat &&
+            (siteId is null || siteId ==
+                PrototypeGameEngine.ImprovementCardSiteId) &&
+            origin.World is { Event: null, Combat: not null } &&
+            origin.World.Combat.PlayerPowers.Any(power =>
+                power.PowerId == PrototypeNativeGloryEvents.ImprovementId &&
+                power.Stacks > 0);
         var world = origin.World;
         var activeEvent = world?.Event;
         if (string.IsNullOrWhiteSpace(origin.RunSeed) ||
-            origin.NativeRunRng is null ||
+            origin.NativeRunRng is null && !improvementVictoryAction ||
             world is null ||
             activeEvent is null && !fakeMerchantEntryAction &&
                 !warHammerEliteVictoryAction &&
-                !fishingRodVictoryAction ||
+                !fishingRodVictoryAction &&
+                !improvementVictoryAction ||
             activeEvent?.ControlledChoice is not null ||
             activeEvent?.NativeEventPotionSlot is not null ||
             origin.ControlledEventRewardChoice is not null)
             throw new InvalidOperationException(
-                "Native shuffle Nature choices require an active event, an admitted relic victory action, or Fake Merchant entry.");
+                "Native shuffle Nature choices require an active event, an admitted combat-victory hook, or Fake Merchant entry.");
         var evt = activeEvent ?? new EventState(
             fakeMerchantEntryAction
                 ? PrototypeNativeFakeMerchant.EventId
                 : fishingRodVictoryAction
                     ? "run.combat.fishing_rod"
-                    : "run.combat.elite_war_hammer");
+                    : improvementVictoryAction
+                        ? "run.combat.improvement_upgrade"
+                        : "run.combat.elite_war_hammer");
         siteId ??= evt.EventId switch
         {
             PrototypeNativeUnderdocksDoors.EventId =>
@@ -124,6 +139,8 @@ internal static class NativeEventShufflePlanBuilderV111
                 "relic.war_hammer.elite_upgrade.shuffle_swap_index",
             _ when fishingRodVictoryAction =>
                 PrototypeGameEngine.FishingRodUpgradeSiteId,
+            _ when improvementVictoryAction =>
+                PrototypeGameEngine.ImprovementCardSiteId,
             _ => throw new InvalidOperationException(
                 "No native event shuffle is pending at this event page.")
         };
@@ -141,9 +158,10 @@ internal static class NativeEventShufflePlanBuilderV111
         if (origin.Phase != RunPhase.Event && !battlewornVictoryAction &&
             !warHammerEliteVictoryAction &&
             !fishingRodVictoryAction &&
+            !improvementVictoryAction &&
             !fakeMerchantEntryAction)
             throw new InvalidOperationException(
-                "Native shuffle Nature choices require a pending event action, a relic victory action, or Fake Merchant entry.");
+                "Native shuffle Nature choices require a pending event action, an admitted combat-victory hook, or Fake Merchant entry.");
         if (origin.Phase == RunPhase.Event && evt.ChosenChoiceId is not null)
             throw new InvalidOperationException(
                 "Native event shuffle Nature choices require an uncommitted event action.");
@@ -189,6 +207,34 @@ internal static class NativeEventShufflePlanBuilderV111
                 ?? throw new InvalidOperationException(
                     "Fishing Rod upgrade requires the Native run.niche stream.");
             nativeCursorBefore = NativeRngV111.ToSnapshot(niche);
+        }
+        else if (improvementVictoryAction && siteId ==
+            PrototypeGameEngine.ImprovementCardSiteId)
+        {
+            resolvedActionId = actionId ?? throw new InvalidOperationException(
+                "Improvement upgrade requires the stable ID of its victory action.");
+            replayAction = new PrototypeGameEngine().GetLegalActions(origin)
+                .SingleOrDefault(action =>
+                    PrototypeAiEnvironment.StableActionId(action) ==
+                    resolvedActionId);
+            if (replayAction is null)
+                throw new InvalidOperationException(
+                    "Improvement upgrade action is not legal in the current combat state.");
+            var capture = CaptureImprovementRequests(
+                origin, replayAction, [], allowLegacyTail: true);
+            var requests = capture.SiteRequests;
+            if (capture.Run.Phase != RunPhase.Reward ||
+                capture.Run.World?.Combat is not null || requests.Length == 0)
+                throw new InvalidOperationException(
+                    "Improvement ReferenceNature requires a combat action that immediately wins and triggers at least one upgrade draw.");
+            var firstRequest = requests[0].Request;
+            orderedCandidateIds = firstRequest.OrderedCandidates
+                .Select(index => index.ToString(
+                    System.Globalization.CultureInfo.InvariantCulture))
+                .ToArray();
+            candidateCount = firstRequest.SupportCount;
+            ownerId = firstRequest.OwnerId;
+            nativeRngEventId = string.Empty;
         }
         else if (fakeMerchantEntryAction)
         {
@@ -503,11 +549,14 @@ internal static class NativeEventShufflePlanBuilderV111
 
         var isFishingRodUpgrade = siteId ==
             PrototypeGameEngine.FishingRodUpgradeSiteId;
+        var isImprovementUpgrade = siteId ==
+            PrototypeGameEngine.ImprovementCardSiteId;
+        var isCombatEndIndex = isFishingRodUpgrade || isImprovementUpgrade;
         var isWarHammerShuffle = siteId ==
             "relic.war_hammer.elite_upgrade.shuffle_swap_index";
         var isRepyShuffle = siteId == PrototypeNativeHiveEvents
             .WarHistorianRepyRelicShuffleSiteId;
-        NativeRngSnapshot streamSnapshot;
+        NativeRngSnapshot? streamSnapshot;
         string streamId;
         if (isWarHammerShuffle || isFishingRodUpgrade)
         {
@@ -516,6 +565,11 @@ internal static class NativeEventShufflePlanBuilderV111
                     "War Hammer shuffle plan is missing its pre-draw Native cursor.");
             streamSnapshot = nativeCursorBefore;
             streamId = "run.niche";
+        }
+        else if (isImprovementUpgrade)
+        {
+            streamSnapshot = null;
+            streamId = "combat";
         }
         else if (isRepyShuffle)
         {
@@ -598,7 +652,7 @@ internal static class NativeEventShufflePlanBuilderV111
             throw new InvalidOperationException(
                 "Fake Merchant planned candidates differ from its stock definition.");
 
-        if (candidateCount <= 1 && !isFishingRodUpgrade)
+        if (candidateCount <= 1 && !isCombatEndIndex)
             throw new InvalidOperationException(
                 "Native event shuffle has fewer than two candidates and performs no draw.");
 
@@ -606,7 +660,9 @@ internal static class NativeEventShufflePlanBuilderV111
         {
             boundary = isFishingRodUpgrade
                 ? "run.persistent_combat_end.index_choice"
-                : "native_event.fisher_yates_shuffle",
+                : isImprovementUpgrade
+                    ? "combat.improvement.power.index_choice"
+                    : "native_event.fisher_yates_shuffle",
             eventId = evt.EventId,
             page = evt.NativePageIndex,
             actionId = resolvedActionId,
@@ -618,10 +674,14 @@ internal static class NativeEventShufflePlanBuilderV111
             ownerId,
             policy = isFishingRodUpgrade
                 ? ChanceLawEngineV111.NativeRandomIndexConditioningPolicyId
-                : ChanceLawEngineV111.NativeEventShuffleConditioningPolicyId
+                : isImprovementUpgrade
+                    ? ChanceLawEngineV111.RandomIndexConditioningPolicyId
+                    : ChanceLawEngineV111.NativeEventShuffleConditioningPolicyId
         });
         return new(isWarHammerShuffle ? "run.combat.elite_war_hammer" :
-                isFishingRodUpgrade ? "run.combat.fishing_rod" : evt.EventId,
+                isFishingRodUpgrade ? "run.combat.fishing_rod" :
+                isImprovementUpgrade ? "run.combat.improvement_upgrade" :
+                evt.EventId,
             nativeRngEventId, siteId,
             resolvedActionId, replayAction, orderedCandidateIds, candidateCount,
             streamId, ownerId, fingerprint,
@@ -633,10 +693,10 @@ internal static class NativeEventShufflePlanBuilderV111
             ExpectedUnscriptedDrawCount: 0);
     }
 
-    internal sealed record FishingRodCaptureV111(
+    internal sealed record CombatEndIndexCaptureV111(
         RunState Run, RandomBoundaryEventV111[] SiteRequests);
 
-    internal static FishingRodCaptureV111 CaptureFishingRodRequests(
+    internal static CombatEndIndexCaptureV111 CaptureFishingRodRequests(
         RunState origin, GameAction action,
         IReadOnlyList<RandomIndexDecisionV111> scriptedPrefix,
         bool allowNativeTail)
@@ -651,8 +711,9 @@ internal static class NativeEventShufflePlanBuilderV111
             ?? throw new InvalidOperationException(
                 "Fishing Rod replay requires the Native run.niche stream.");
         var beforeCursor = NativeRngV111.ToSnapshot(beforeNiche);
-        var provider = new FishingRodPrefixProviderV111(
-            scriptedPrefix, allowNativeTail);
+        var provider = new CombatEndIndexPrefixProviderV111(
+            scriptedPrefix, allowNativeTail,
+            new NativeRandomIndexProviderV111());
         RunState run;
         RandomBoundaryEventV111[] entries;
         using (var journal = RandomBoundaryJournalV111.Begin())
@@ -718,28 +779,115 @@ internal static class NativeEventShufflePlanBuilderV111
             !allowNativeTail && siteRequests.Length != scriptedPrefix.Count)
             throw new InvalidDataException(
                 "Fishing Rod replay differs from the captured immediate-victory index prefix or run.niche cursor.");
-        return new FishingRodCaptureV111(run, siteRequests);
+        return new CombatEndIndexCaptureV111(run, siteRequests);
     }
 
-    private sealed class FishingRodPrefixProviderV111(
+    internal static CombatEndIndexCaptureV111 CaptureImprovementRequests(
+        RunState origin, GameAction action,
         IReadOnlyList<RandomIndexDecisionV111> scriptedPrefix,
-        bool allowNativeTail) : IRandomIndexProviderV111
+        bool allowLegacyTail)
+    {
+        ArgumentNullException.ThrowIfNull(origin);
+        ArgumentNullException.ThrowIfNull(action);
+        ArgumentNullException.ThrowIfNull(scriptedPrefix);
+        var beforeStream = origin.Rng.Streams.SingleOrDefault(stream =>
+            stream.StreamId == "combat")
+            ?? throw new InvalidOperationException(
+                "Improvement replay requires the legacy combat stream.");
+        var beforeCallCount = beforeStream.CallCount ?? 0;
+        var legacyProvider = new LegacyPrototypeRandomIndexProviderV111();
+        var provider = new CombatEndIndexPrefixProviderV111(
+            scriptedPrefix, allowLegacyTail, legacyProvider);
+        RunState run;
+        RandomBoundaryEventV111[] entries;
+        using (var journal = RandomBoundaryJournalV111.Begin())
+        using (StochasticProviderScopeV111.EnterFiltered(
+            provider, null,
+            request => request.IndexRequest?.SiteId ==
+                PrototypeGameEngine.ImprovementCardSiteId,
+            overrideExplicitProviders: true))
+        {
+            run = new PrototypeGameEngine().Step(
+                origin.Fork(), action).State;
+            entries = journal.Entries.ToArray();
+        }
+        provider.AssertComplete();
+        var siteRequests = entries.Where(entry => entry.Request.SiteId ==
+            PrototypeGameEngine.ImprovementCardSiteId).ToArray();
+        var combatEvents = entries.Where(entry =>
+            entry.Request.StreamId == "combat").ToArray();
+        var validSiteRequests = siteRequests.Select((entry, index) =>
+        {
+            var request = entry.Request;
+            var ownerPrefix = $"mad_science_improvement:pick:{index}:pool:";
+            var ownerHash = request.OwnerId.StartsWith(
+                ownerPrefix, StringComparison.Ordinal)
+                ? request.OwnerId[ownerPrefix.Length..] : string.Empty;
+            return request.StreamId == "combat" &&
+                request.Ordinal == checked((int)(beforeCallCount +
+                    (ulong)index)) &&
+                request.OperationKind == "choose_index" &&
+                request.OrderedCandidates.SequenceEqual(
+                    Enumerable.Range(0, request.SupportCount)) &&
+                request.SupportCount <= origin.Player.Deck.Length &&
+                ownerHash.Length == 64 && ownerHash.All(Uri.IsHexDigit);
+        }).All(valid => valid);
+        var expectedLegacyTail = siteRequests.Length -
+            scriptedPrefix.Count;
+        var afterStream = run.Rng.Streams.SingleOrDefault(stream =>
+            stream.StreamId == "combat");
+        var actualAdvance = afterStream is null ? ulong.MaxValue :
+            unchecked((afterStream.CallCount ?? 0) - beforeCallCount);
+        var expectedModes = siteRequests.Select((entry, index) =>
+            entry.ProviderMode == (index < scriptedPrefix.Count
+                ? "scripted-v111" : legacyProvider.Mode)).All(matches => matches);
+        if (siteRequests.Length < scriptedPrefix.Count ||
+            combatEvents.Length != siteRequests.Length ||
+            combatEvents.Any(entry => entry.Request.SiteId !=
+                PrototypeGameEngine.ImprovementCardSiteId) ||
+            !validSiteRequests || !expectedModes ||
+            actualAdvance != (ulong)expectedLegacyTail ||
+            run.Phase != RunPhase.Reward || run.World?.Combat is not null ||
+            !allowLegacyTail &&
+                siteRequests.Length != scriptedPrefix.Count)
+            throw new InvalidDataException(
+                "Improvement replay differs from the captured immediate-victory index prefix or combat cursor.");
+        return new CombatEndIndexCaptureV111(run, siteRequests);
+    }
+
+    internal static CombatEndIndexCaptureV111
+        CaptureCombatEndIndexRequests(
+            RunState origin, NativeEventShufflePlanV111 plan,
+            IReadOnlyList<RandomIndexDecisionV111> scriptedPrefix,
+            bool allowTail) =>
+        plan.IsFishingRodUpgrade
+            ? CaptureFishingRodRequests(
+                origin, plan.ReplayAction, scriptedPrefix, allowTail)
+            : plan.IsImprovementUpgrade
+                ? CaptureImprovementRequests(
+                    origin, plan.ReplayAction, scriptedPrefix, allowTail)
+                : throw new InvalidOperationException(
+                    "Combat-end capture requested for another stochastic site.");
+
+    private sealed class CombatEndIndexPrefixProviderV111(
+        IReadOnlyList<RandomIndexDecisionV111> scriptedPrefix,
+        bool allowTail,
+        IRandomIndexProviderV111 tailProvider) : IRandomIndexProviderV111
     {
         private readonly ScriptedRandomIndexProviderV111 _script =
             new(scriptedPrefix);
 
-        public string Mode => "reference-nature-fishing-rod-prefix-v111";
+        public string Mode => "reference-nature-combat-end-prefix-v111";
 
         public RandomIndexDecisionV111 Resolve(
             RandomIndexRequestV111 request, RngBundle streams)
         {
             if (_script.Remaining > 0)
                 return _script.Resolve(request, streams);
-            if (!allowNativeTail)
+            if (!allowTail)
                 throw new InvalidDataException(
-                    "Fishing Rod replay reached an unscripted upgrade draw.");
-            return new NativeRandomIndexProviderV111().Resolve(
-                request, streams);
+                    "Combat-end replay reached an unscripted index draw.");
+            return tailProvider.Resolve(request, streams);
         }
 
         public void AssertComplete() => _script.AssertComplete();
@@ -757,7 +905,7 @@ public sealed record ReferenceNatureNativeEventShuffleSessionSnapshotV111(
     ReferenceNatureDecisionV111[] DecisionTranscript);
 
 /// <summary>Atomic ReferenceNature replay of admitted Native event shuffles,
-/// relic hooks, and their ordinary mechanics actions.</summary>
+/// combat-victory hooks, and their ordinary mechanics actions.</summary>
 public sealed record ReferenceNatureNativeEventShuffleSessionV111(
     string SchemaId,
     string SiteId,
@@ -793,8 +941,8 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
         {
             var plan = NativeEventShufflePlanBuilderV111.Build(
                 Origin, SiteId, ActionId, PlannedCandidateIds);
-            return plan.IsFishingRodUpgrade
-                ? BuildFishingRodPrefix().Capture.SiteRequests.Length ==
+            return plan.IsCombatEndIndex
+                ? BuildCombatEndIndexPrefix().Capture.SiteRequests.Length ==
                     DecisionTranscript.Length
                 : DecisionTranscript.Length == plan.TotalChoiceCount;
         }
@@ -809,16 +957,15 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
                 return null;
             var plan = NativeEventShufflePlanBuilderV111.Build(
                 Origin, SiteId, ActionId, PlannedCandidateIds);
-            if (plan.IsFishingRodUpgrade)
+            if (plan.IsCombatEndIndex)
             {
-                var prefix = BuildFishingRodPrefix();
+                var prefix = BuildCombatEndIndexPrefix();
                 if (prefix.Capture.SiteRequests.Length ==
                     prefix.Decisions.Length)
                     return null;
-                return ChanceLawEngineV111
-                    .QueryNativePersistentCombatEndUpgrade(
-                        prefix.Capture.SiteRequests[
-                            prefix.Decisions.Length].Request);
+                return QueryCombatEndLaw(plan,
+                    prefix.Capture.SiteRequests[
+                        prefix.Decisions.Length].Request);
             }
             return QueryBoundaryLaw(
                 plan, Origin, NextOrdinal,
@@ -905,8 +1052,8 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
                 "ReferenceNature native event shuffle session is already complete.");
         var plan = NativeEventShufflePlanBuilderV111.Build(
             Origin, SiteId, ActionId, PlannedCandidateIds);
-        if (plan.IsFishingRodUpgrade)
-            return ResolveFishingRodNext();
+        if (plan.IsCombatEndIndex)
+            return ResolveCombatEndIndexNext();
         var priorIndices = DecisionTranscript.Select(
             decision => decision.OutcomeIndex).ToArray();
         var law = QueryBoundaryLaw(
@@ -964,9 +1111,9 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
         NatureState.Validate();
         var plan = NativeEventShufflePlanBuilderV111.Build(
             Origin, SiteId, ActionId, PlannedCandidateIds);
-        if (plan.IsFishingRodUpgrade)
+        if (plan.IsCombatEndIndex)
         {
-            ValidateFishingRod(plan);
+            ValidateCombatEndIndex(plan);
             return;
         }
         if (DecisionTranscript.Length > plan.TotalChoiceCount ||
@@ -1027,18 +1174,17 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
     }
 
     private ReferenceNatureNativeEventShuffleSessionV111
-        ResolveFishingRodNext()
+        ResolveCombatEndIndexNext()
     {
         var plan = NativeEventShufflePlanBuilderV111.Build(
             Origin, SiteId, ActionId, PlannedCandidateIds);
-        var prefix = BuildFishingRodPrefix();
+        var prefix = BuildCombatEndIndexPrefix(plan);
         if (prefix.Capture.SiteRequests.Length == prefix.Decisions.Length)
             throw new InvalidOperationException(
-                "ReferenceNature Fishing Rod session is already complete.");
+                "ReferenceNature combat-end index session is already complete.");
         var request = prefix.Capture.SiteRequests[
             prefix.Decisions.Length].Request;
-        var law = ChanceLawEngineV111
-            .QueryNativePersistentCombatEndUpgrade(request);
+        var law = QueryCombatEndLaw(plan, request);
         var selection = ReferenceNatureV111.SampleValidated(
             law, prefix.NatureState);
         var transcript = DecisionTranscript.Append(
@@ -1050,15 +1196,13 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
                 request, selection.OutcomeIndex,
                 "scripted-v111")).ToArray();
         var projected = NativeEventShufflePlanBuilderV111
-            .CaptureFishingRodRequests(
-                Origin, plan.ReplayAction, decisions,
-                allowNativeTail: true);
+            .CaptureCombatEndIndexRequests(
+                Origin, plan, decisions, allowTail: true);
         var nextRun = projected.SiteRequests.Length == decisions.Length
             ? ReferenceNatureRunCursorV111.Commit(
                 NativeEventShufflePlanBuilderV111
-                    .CaptureFishingRodRequests(
-                        Origin, plan.ReplayAction, decisions,
-                        allowNativeTail: false).Run,
+                    .CaptureCombatEndIndexRequests(
+                        Origin, plan, decisions, allowTail: false).Run,
                 selection.NextState)
             : Origin.Fork();
         var next = this with
@@ -1071,33 +1215,34 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
         return next;
     }
 
-    private sealed record FishingRodPrefixV111(
+    private sealed record CombatEndIndexPrefixV111(
         RandomIndexDecisionV111[] Decisions,
         ReferenceNatureStateV111 NatureState,
-        NativeEventShufflePlanBuilderV111.FishingRodCaptureV111 Capture);
+        NativeEventShufflePlanBuilderV111.CombatEndIndexCaptureV111 Capture);
 
-    private FishingRodPrefixV111 BuildFishingRodPrefix()
+    private CombatEndIndexPrefixV111 BuildCombatEndIndexPrefix() =>
+        BuildCombatEndIndexPrefix(NativeEventShufflePlanBuilderV111.Build(
+            Origin, SiteId, ActionId, PlannedCandidateIds));
+
+    private CombatEndIndexPrefixV111 BuildCombatEndIndexPrefix(
+        NativeEventShufflePlanV111 plan)
     {
-        var plan = NativeEventShufflePlanBuilderV111.Build(
-            Origin, SiteId, ActionId, PlannedCandidateIds);
-        if (!plan.IsFishingRodUpgrade)
+        if (!plan.IsCombatEndIndex)
             throw new InvalidOperationException(
-                "Fishing Rod prefix requested for another stochastic site.");
+                "Combat-end prefix requested for another stochastic site.");
         var decisions = new List<RandomIndexDecisionV111>();
         var nature = InitialNatureState.Fork();
         for (var ordinal = 0;
              ordinal < DecisionTranscript.Length; ordinal++)
         {
             var capture = NativeEventShufflePlanBuilderV111
-                .CaptureFishingRodRequests(
-                    Origin, plan.ReplayAction, decisions,
-                    allowNativeTail: true);
+                .CaptureCombatEndIndexRequests(
+                    Origin, plan, decisions, allowTail: true);
             if (capture.SiteRequests.Length <= ordinal)
                 throw new InvalidDataException(
-                    "Fishing Rod transcript contains more choices than the replay reaches.");
+                    "Combat-end transcript contains more choices than the replay reaches.");
             var request = capture.SiteRequests[ordinal].Request;
-            var law = ChanceLawEngineV111
-                .QueryNativePersistentCombatEndUpgrade(request);
+            var law = QueryCombatEndLaw(plan, request);
             var selection = ReferenceNatureV111.SampleValidated(law, nature);
             var expected = new ReferenceNatureDecisionV111(
                 law.LawId, law.EventId, selection.OutcomeId,
@@ -1106,22 +1251,29 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
             if (CanonicalJson.Sha256(expected) != CanonicalJson.Sha256(
                     DecisionTranscript[ordinal]))
                 throw new InvalidDataException(
-                    "ReferenceNature Fishing Rod transcript does not replay.");
+                    "ReferenceNature combat-end index transcript does not replay.");
             decisions.Add(new RandomIndexDecisionV111(
                 request, selection.OutcomeIndex, "scripted-v111"));
             nature = selection.NextState;
         }
         var finalCapture = NativeEventShufflePlanBuilderV111
-            .CaptureFishingRodRequests(
-                Origin, plan.ReplayAction, decisions,
-                allowNativeTail: true);
-        return new FishingRodPrefixV111(
+            .CaptureCombatEndIndexRequests(
+                Origin, plan, decisions, allowTail: true);
+        return new CombatEndIndexPrefixV111(
             decisions.ToArray(), nature, finalCapture);
     }
 
-    private void ValidateFishingRod(NativeEventShufflePlanV111 plan)
+    private static ChanceLawV111 QueryCombatEndLaw(
+        NativeEventShufflePlanV111 plan, RandomIndexRequestV111 request) =>
+        plan.IsFishingRodUpgrade
+            ? ChanceLawEngineV111
+                .QueryNativePersistentCombatEndUpgrade(request)
+            : ChanceLawEngineV111.QueryImprovementCombatEndUpgrade(
+                plan.ActionId, request);
+
+    private void ValidateCombatEndIndex(NativeEventShufflePlanV111 plan)
     {
-        var prefix = BuildFishingRodPrefix();
+        var prefix = BuildCombatEndIndexPrefix(plan);
         var complete = prefix.Capture.SiteRequests.Length ==
             prefix.Decisions.Length;
         if (prefix.Capture.SiteRequests.Length < prefix.Decisions.Length ||
@@ -1129,15 +1281,14 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
                 Origin, Run, InitialNatureState, NatureState,
                 DecisionTranscript.Length, complete))
             throw new InvalidDataException(
-                "ReferenceNature Fishing Rod cursor differs from its session envelope.");
+                "ReferenceNature combat-end index cursor differs from its session envelope.");
         var expectedRun = Origin.Fork();
         if (complete)
         {
             var strictReplay =
                 NativeEventShufflePlanBuilderV111
-                    .CaptureFishingRodRequests(
-                        Origin, plan.ReplayAction, prefix.Decisions,
-                        allowNativeTail: false);
+                    .CaptureCombatEndIndexRequests(
+                        Origin, plan, prefix.Decisions, allowTail: false);
             expectedRun = ReferenceNatureRunCursorV111.Commit(
                 strictReplay.Run, prefix.NatureState);
         }
@@ -1145,7 +1296,7 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
                 CanonicalJson.Sha256(NatureState) ||
             CanonicalJson.Sha256(expectedRun) != CanonicalJson.Sha256(Run))
             throw new InvalidDataException(
-                "ReferenceNature Fishing Rod replay differs from its session envelope.");
+                "ReferenceNature combat-end index replay differs from its session envelope.");
     }
 
     private static ChanceLawV111 QueryBoundaryLaw(
@@ -1260,6 +1411,7 @@ public static partial class ChanceLawEngineV111
     public static string[] NativeEventShuffleSessionSiteIds =>
     [
         "relic.persistent_combat_end.random_upgrade.index_draw",
+        "combat.glory_tinker.improvement_card.index_draw",
         "relic.war_hammer.elite_upgrade.shuffle_swap_index",
         PrototypeNativeUnderdocksDoors.ShuffleSiteId,
         PrototypeNativeGloryEvents.HungryForMushroomsShuffleSiteId,
@@ -1280,6 +1432,9 @@ public static partial class ChanceLawEngineV111
         var plan = NativeEventShufflePlanBuilderV111.Build(
             origin, siteId, actionId, plannedCandidateIds);
         priorIndices ??= [];
+        if (plan.IsCombatEndIndex)
+            return QueryCombatEndIndex(
+                origin, plan, ordinal, priorIndices);
         if (ordinal < 0 || ordinal >= plan.SwapCount ||
             priorIndices.Length != ordinal)
             throw new InvalidOperationException(
@@ -1316,6 +1471,44 @@ public static partial class ChanceLawEngineV111
             NativeBoundedIndexSourceVerifiedProvenance,
             outcomes,
             ChanceLawV111.SourceVerifiedStatus);
+    }
+
+    private static ChanceLawV111 QueryCombatEndIndex(
+        RunState origin, NativeEventShufflePlanV111 plan, int ordinal,
+        int[] priorIndices)
+    {
+        if (ordinal < 0 || priorIndices.Length != ordinal)
+            throw new InvalidOperationException(
+                "Combat-end index law requires the complete preceding index prefix.");
+        var decisions = new List<RandomIndexDecisionV111>();
+        for (var index = 0; index < priorIndices.Length; index++)
+        {
+            var capture = NativeEventShufflePlanBuilderV111
+                .CaptureCombatEndIndexRequests(
+                    origin, plan, decisions, allowTail: true);
+            if (capture.SiteRequests.Length <= index)
+                throw new InvalidOperationException(
+                    "Combat-end index prefix exceeds the requests reached by the victory action.");
+            var request = capture.SiteRequests[index].Request;
+            if (priorIndices[index] < 0 ||
+                priorIndices[index] >= request.SupportCount)
+                throw new InvalidOperationException(
+                    "Combat-end index prefix contains an unsupported index.");
+            decisions.Add(new RandomIndexDecisionV111(
+                request, priorIndices[index], "scripted-v111"));
+        }
+        var finalCapture = NativeEventShufflePlanBuilderV111
+            .CaptureCombatEndIndexRequests(
+                origin, plan, decisions, allowTail: true);
+        if (finalCapture.SiteRequests.Length <= ordinal)
+            throw new InvalidOperationException(
+                "Combat-end index law ordinal exceeds the requests reached by the victory action.");
+        var selectedRequest = finalCapture.SiteRequests[ordinal].Request;
+        return plan.IsFishingRodUpgrade
+            ? ChanceLawEngineV111
+                .QueryNativePersistentCombatEndUpgrade(selectedRequest)
+            : ChanceLawEngineV111.QueryImprovementCombatEndUpgrade(
+                plan.ActionId, selectedRequest);
     }
 
     public static ChanceLawV111 QueryNativeRepyPotionOffer(

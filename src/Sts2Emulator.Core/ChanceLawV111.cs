@@ -749,6 +749,26 @@ public static partial class ChanceLawEngineV111
         return QueryRandomIndex("relic.persistent_combat_end", request);
     }
 
+    internal static ChanceLawV111 QueryImprovementCombatEndUpgrade(
+        string actionId, RandomIndexRequestV111 request)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(actionId);
+        ArgumentNullException.ThrowIfNull(request);
+        request.Validate();
+        if (request.SiteId != PrototypeGameEngine.ImprovementCardSiteId ||
+            request.StreamId != "combat" ||
+            request.OperationKind != "choose_index")
+            throw new ArgumentException(
+                "Improvement law requires its legacy combat index request.",
+                nameof(request));
+        var eventId = CanonicalJson.Sha256(new
+        {
+            boundary = "combat.improvement.power.index_choice",
+            actionId
+        });
+        return QueryRandomIndex(eventId, request);
+    }
+
     /// <summary>
     /// Query one pre-event Ancient offer decision. Direct offer pools return
     /// stable choice identities; shuffle-based offers return the bounded

@@ -978,6 +978,8 @@ internal static class PrototypeAiJsonlServer
                     {
                         PrototypeGameEngine.FishingRodUpgradeSiteId =>
                             "fishing_rod_combat_end_upgrade_random_choice",
+                        PrototypeGameEngine.ImprovementCardSiteId =>
+                            "improvement_combat_end_upgrade_random_choice",
                         "relic.war_hammer.elite_upgrade.shuffle_swap_index" =>
                             "war_hammer_elite_shuffle_swap_random_choice",
                         "event.war_historian.repy.potion_offer.index_draw" =>
@@ -994,7 +996,10 @@ internal static class PrototypeAiJsonlServer
                 selectedChoiceId = eventState?.ChosenChoiceId,
                 nextPage = eventState?.NativePageIndex,
                 eventRandomProvider = session.SiteId ==
-                    PrototypeNativeHiveEvents.WarHistorianRepyRelicShuffleSiteId
+                    PrototypeNativeHiveEvents.WarHistorianRepyRelicShuffleSiteId ||
+                    session.SiteId is PrototypeGameEngine.FishingRodUpgradeSiteId or
+                        PrototypeGameEngine.ImprovementCardSiteId or
+                        "relic.war_hammer.elite_upgrade.shuffle_swap_index"
                         ? "not_applicable"
                         : eventState?.NativeEventRngProviderMode ??
                             (eventState is null ? null : "native-v111"),

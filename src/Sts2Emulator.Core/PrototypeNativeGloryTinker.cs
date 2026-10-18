@@ -9,6 +9,9 @@ namespace Sts2Emulator.Core;
 /// </summary>
 public sealed partial class PrototypeGameEngine
 {
+    public const string ImprovementCardSiteId =
+        "combat.glory_tinker.improvement_card.index_draw";
+
     private static readonly string[] TinkerTypes = ["attack", "skill", "power"];
 
     internal static string[] TinkerTypeOfferCandidates() =>
@@ -326,7 +329,7 @@ public sealed partial class PrototypeGameEngine
         {
             var index = LegacyRandomChoiceV111.ChooseIndexRange(
                 rng,
-                "combat.glory_tinker.improvement_card.index_draw",
+                ImprovementCardSiteId,
                 "combat",
                 $"mad_science_improvement:pick:{i}:pool:"
                     + CanonicalJson.Sha256(candidates),
