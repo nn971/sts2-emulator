@@ -383,6 +383,11 @@ public static partial class ChanceLawEngineV111
         "reward.random_potion.model"
     ];
 
+    private static readonly string[] LegacyPotionRewardOddsTicketQuerySites =
+    [
+        "reward.potion_odds.ticket"
+    ];
+
     private sealed record NativeBoundedIntegerLawSiteV111(
         string StreamId, string Boundary);
 
@@ -445,6 +450,9 @@ public static partial class ChanceLawEngineV111
 
     public static string[] LegacyRewardPotionModelQuerySiteIds =>
         (string[])LegacyRewardPotionModelQuerySites.Clone();
+
+    public static string[] LegacyPotionRewardOddsTicketQuerySiteIds =>
+        (string[])LegacyPotionRewardOddsTicketQuerySites.Clone();
 
     /// <summary>
     /// Query the retained legacy card-rarity integer ticket after the source
@@ -783,6 +791,55 @@ public static partial class ChanceLawEngineV111
             "Equal index weights over the declared ordered prototype reward " +
             "potion pool; pool fidelity and Native parity remain unverified.",
             outcomes, operationKind: "choose_index");
+    }
+
+    /// <summary>
+    /// Query the legacy 1,000-way combat-potion pity ticket. Forced rewards
+    /// bypass this draw; the configured Native float route has a separate law.
+    /// </summary>
+    public static ChanceLawV111 QueryLegacyPotionRewardOddsTicket(
+        int currentThousandths, bool elite, bool forced, int ordinal)
+    {
+        if (forced)
+            throw new ArgumentException(
+                "Forced potion rewards bypass the legacy odds ticket.",
+                nameof(forced));
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+
+        const string siteId = "reward.potion_odds.ticket";
+        const string streamId = "reward";
+        const string ownerId = "run:potion_reward_odds";
+        var threshold = checked(currentThousandths +
+            (elite ? PrototypeNativePotionRewardOdds.EliteBonus : 0));
+        var offeredWeight = Math.Clamp((long)threshold, 0L, 1000L);
+        var missedWeight = 1000L - offeredWeight;
+        var outcomes = new List<ChanceLawOutcomeV111>(2);
+        if (offeredWeight > 0)
+            outcomes.Add(new ChanceLawOutcomeV111(
+                "potion_reward:offered", offeredWeight));
+        if (missedWeight > 0)
+            outcomes.Add(new ChanceLawOutcomeV111(
+                "potion_reward:not_offered", missedWeight));
+        var conditioning = new
+        {
+            siteId,
+            streamId,
+            ownerId,
+            ordinal,
+            currentThousandths,
+            elite,
+            forced,
+            threshold,
+            ticketCount = 1000,
+            comparison = "ticket_less_than_threshold"
+        };
+        return CreateLegacyCategoricalLaw(
+            siteId, streamId, ownerId, ordinal,
+            "legacy-potion-reward-odds-ticket-v1", conditioning,
+            "Uniform 1,000-way legacy bounded ticket with the source-shaped " +
+            "pity and Elite threshold; RNG parity remains unverified.",
+            outcomes.ToArray());
     }
 
     private static (long Rare, long Uncommon, long Common)

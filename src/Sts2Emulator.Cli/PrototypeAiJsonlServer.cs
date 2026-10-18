@@ -2846,6 +2846,37 @@ internal static class PrototypeAiJsonlServer
                             });
                             break;
                         }
+                        if (siteId == "reward.potion_odds.ticket")
+                        {
+                            RejectChanceLawQueryParameters(
+                                request, "current_thousandths", "elite",
+                                "forced", "support_count");
+                            var currentThousandths = OptionalInt(
+                                request, "current_thousandths") ??
+                                throw new ArgumentException(
+                                    "Legacy potion odds law requires current_thousandths.");
+                            var elite = RequiredBool(request, "elite");
+                            var forced = RequiredBool(request, "forced");
+                            law = ChanceLawEngineV111
+                                .QueryLegacyPotionRewardOddsTicket(
+                                    currentThousandths, elite, forced,
+                                    ordinal);
+                            var supportCount = OptionalInt(
+                                request, "support_count");
+                            if (supportCount is not null &&
+                                supportCount != law.Outcomes.Length)
+                                throw new ArgumentException(
+                                    "Legacy potion odds support_count must match the declared pity, Elite, and force-hook state.");
+                            Write(new
+                            {
+                                requestId,
+                                ok = true,
+                                chanceLawSchemaId =
+                                    ChanceLawV111.CurrentSchemaId,
+                                law
+                            });
+                            break;
+                        }
                         if (siteId ==
                             "card_rarity.upgrade_roll.unit_float")
                         {
