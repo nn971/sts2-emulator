@@ -36,10 +36,14 @@ public sealed partial class PrototypeGameEngine
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.draw " +
                 "operation=nested_choice_or_automatic_pipeline");
-        var result = DrawCards(
-            run.Player, combat, count, run.Rng, fromHandDraw,
-            suspensionPolicy:
-                PrototypeDrawCardsSuspensionPolicyV111.SemanticDrawCards());
+        var suspensionPolicy =
+            PrototypeDrawCardsSuspensionPolicyV111.SemanticDrawCards();
+        var result = automatic
+            ? ResumeAutomaticHandDrawCards(
+                run, count, suspensionPolicy)
+            : DrawCards(
+                run.Player, combat, count, run.Rng, fromHandDraw,
+                suspensionPolicy: suspensionPolicy);
         return ResumeSemanticCombatDrawResult(
             run, result, fromHandDraw, eventDepth: 0,
             automaticHandDrawRequested: automatic
@@ -176,12 +180,17 @@ public sealed partial class PrototypeGameEngine
                 cost.FromHandDraw, cost.EventDepth), cost.RemainingCount);
         }
 
-        var drawn = DrawCards(
-            run.Player, combat, cost.RemainingCount, run.Rng,
-            cost.FromHandDraw, eventDepth: cost.EventDepth,
-            suspensionPolicy:
-                PrototypeDrawCardsSuspensionPolicyV111.SemanticDrawCards(
-                    effectDraw: effectDraw));
+        var suspensionPolicy =
+            PrototypeDrawCardsSuspensionPolicyV111.SemanticDrawCards(
+                effectDraw: effectDraw);
+        var drawn = automaticHandDraw
+            ? ResumeAutomaticHandDrawCards(
+                run, cost.RemainingCount, suspensionPolicy,
+                eventDepth: cost.EventDepth)
+            : DrawCards(
+                run.Player, combat, cost.RemainingCount, run.Rng,
+                cost.FromHandDraw, eventDepth: cost.EventDepth,
+                suspensionPolicy: suspensionPolicy);
         var continued = ResolveControlledSemanticDrawResult(
             run, drawn, draw, continuation, automaticHandDrawRequested,
             recycleSite, recycleOperation);

@@ -234,12 +234,11 @@ public sealed partial class PrototypeGameEngine
                 "UNSUPPORTED_CONTROLLED_CHANCE site=combat.draw_cost." +
                 "drawn_event operation=nested_choice");
 
-        var drawn = DrawCards(
-            resumedRun.Player, resumedCombat, cost.RemainingCount,
-            resumedRun.Rng, fromHandDraw: true, eventDepth: cost.EventDepth,
-            suspensionPolicy:
-                PrototypeDrawCardsSuspensionPolicyV111
-                    .ControlledLegacyAutomaticHandDraw(resumedCombat));
+        var drawn = ResumeAutomaticHandDrawCards(
+            resumedRun, cost.RemainingCount,
+            PrototypeDrawCardsSuspensionPolicyV111
+                .ControlledLegacyAutomaticHandDraw(resumedCombat),
+            eventDepth: cost.EventDepth);
         return ContinueControlledHandDraw(resumedRun, drawn);
     }
 }

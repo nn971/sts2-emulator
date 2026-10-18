@@ -115,18 +115,11 @@ public sealed partial class PrototypeGameEngine
                 "Controlled automatic hand-draw hook cursor is inconsistent.");
 
         int remaining = cursor.ControlledDrawRemaining!.Value;
-        combat = combat with
-        {
-            AutomaticPipelineContinuation =
-                cursor.WithHandDrawProgress(null)
-        };
-        var drawn = DrawCards(
-            state.Player, combat, remaining, state.Rng,
-            fromHandDraw: true,
-            suspensionPolicy:
-                PrototypeDrawCardsSuspensionPolicyV111
-                    .ControlledLegacyAutomaticHandDraw(
-                        combat, cardDrawnChoice: true));
+        var drawn = ResumeAutomaticHandDrawCards(
+            state, remaining,
+            PrototypeDrawCardsSuspensionPolicyV111
+                .ControlledLegacyAutomaticHandDraw(
+                    combat, cardDrawnChoice: true));
         return ContinueControlledHandDraw(state, drawn);
     }
 
@@ -186,16 +179,10 @@ public sealed partial class PrototypeGameEngine
                 "Saved recycle Stratagem selection is not source-reachable.");
 
         var remaining = cursor.ControlledDrawRemaining!.Value;
-        combat = combat with
-        {
-            AutomaticPipelineContinuation = cursor.WithHandDrawProgress(null)
-        };
-        var drawn = DrawCards(
-            state.Player, combat, remaining, state.Rng,
-            fromHandDraw: true,
-            suspensionPolicy:
-                PrototypeDrawCardsSuspensionPolicyV111
-                    .ControlledLegacyAutomaticHandDraw(combat));
+        var drawn = ResumeAutomaticHandDrawCards(
+            state, remaining,
+            PrototypeDrawCardsSuspensionPolicyV111
+                .ControlledLegacyAutomaticHandDraw(combat));
         return ContinueControlledHandDraw(state, drawn);
     }
 
