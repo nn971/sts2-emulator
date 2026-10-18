@@ -532,6 +532,15 @@ together. Use `resolve_next()`, `status()`, `fork()`, `save_snapshot()`,
 index draws use configured Native laws; relic identity pools remain
 `UNVERIFIED`. See the [Native Toy Box event contract](../../docs/REFERENCE_NATURE_NATIVE_EVENT_RELIC_D3.md).
 
+For a configured Native Rest Shovel dig, call
+`State.begin_reference_nature_native_shovel(nature_seed=None)`. The session
+resolves one rarity and one relic identity request, then commits the ordinary
+Reward and Nature cursor together. Use `resolve_next()`, `status()`, `fork()`,
+`save_snapshot()`, `Session.load_reference_nature_native_shovel_snapshot()`,
+and `release()` to manage it. The declared Native threshold and bounded-index
+transforms are exact; source-pool fidelity and Native cursor parity remain
+open. See the [Native Shovel contract](../../docs/REFERENCE_NATURE_NATIVE_SHOVEL_D3.md).
+
 For an Endless Conveyor weighted dish roll, call
 `State.begin_reference_nature_endless_conveyor_dish(action_id,
 nature_seed=None)` with the stable legal action ID. On map entry, the session is

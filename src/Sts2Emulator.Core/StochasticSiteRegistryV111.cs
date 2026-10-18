@@ -57,6 +57,9 @@ public sealed record StochasticSessionCoverageV111(
     public string ReferenceNatureNativeEventRelicSessionSchemaId { get; init; } =
         ReferenceNatureNativeEventRelicSessionV111.CurrentSchemaId;
     public string[] ReferenceNatureNativeEventRelicSiteIds { get; init; } = [];
+    public string ReferenceNatureNativeShovelSessionSchemaId { get; init; } =
+        ReferenceNatureNativeShovelSessionV111.CurrentSchemaId;
+    public string[] ReferenceNatureNativeShovelSiteIds { get; init; } = [];
     public string ReferenceNatureEndlessConveyorSessionSchemaId { get; init; } =
         ReferenceNatureEndlessConveyorSessionV111.CurrentSchemaId;
     public string[] ReferenceNatureEndlessConveyorSiteIds { get; init; } = [];
@@ -114,6 +117,8 @@ public sealed record StochasticSessionCoverageV111(
                 ReferenceNatureNativeEventGoldSessionV111.CurrentSchemaId ||
             ReferenceNatureNativeEventRelicSessionSchemaId !=
                 ReferenceNatureNativeEventRelicSessionV111.CurrentSchemaId ||
+            ReferenceNatureNativeShovelSessionSchemaId !=
+                ReferenceNatureNativeShovelSessionV111.CurrentSchemaId ||
             ReferenceNatureEndlessConveyorSessionSchemaId !=
                 ReferenceNatureEndlessConveyorSessionV111.CurrentSchemaId ||
             ReferenceNatureGloryReflectionsSessionSchemaId !=
@@ -146,6 +151,7 @@ public sealed record StochasticSessionCoverageV111(
         ValidateSiteIds(ReferenceNatureNativeEventShuffleSiteIds);
         ValidateSiteIds(ReferenceNatureNativeEventGoldSiteIds);
         ValidateSiteIds(ReferenceNatureNativeEventRelicSiteIds);
+        ValidateSiteIds(ReferenceNatureNativeShovelSiteIds);
         ValidateSiteIds(ReferenceNatureEndlessConveyorSiteIds);
         ValidateSiteIds(ReferenceNatureGloryReflectionsSiteIds);
         ValidateSiteIds(ReferenceNatureInfestedAutomatonSiteIds);
@@ -786,6 +792,10 @@ public static class StochasticSiteRegistryV111
                 ReferenceNatureNativeEventRelicSessionV111.CurrentSchemaId,
             ReferenceNatureNativeEventRelicSiteIds =
                 ReferenceNatureNativeEventRelicSessionV111.SessionSiteIds,
+            ReferenceNatureNativeShovelSessionSchemaId =
+                ReferenceNatureNativeShovelSessionV111.CurrentSchemaId,
+            ReferenceNatureNativeShovelSiteIds =
+                ReferenceNatureNativeShovelSessionV111.SessionSiteIds,
             ReferenceNatureEndlessConveyorSessionSchemaId =
                 ReferenceNatureEndlessConveyorSessionV111.CurrentSchemaId,
             ReferenceNatureEndlessConveyorSiteIds =

@@ -43,6 +43,8 @@ public sealed record StochasticCapabilityManifestV111(
         ReferenceNatureNativeEventGoldSessionV111.CurrentSchemaId;
     public string ReferenceNatureNativeEventRelicSessionSchemaId { get; init; } =
         ReferenceNatureNativeEventRelicSessionV111.CurrentSchemaId;
+    public string ReferenceNatureNativeShovelSessionSchemaId { get; init; } =
+        ReferenceNatureNativeShovelSessionV111.CurrentSchemaId;
     public string ReferenceNatureEndlessConveyorSessionSchemaId { get; init; } =
         ReferenceNatureEndlessConveyorSessionV111.CurrentSchemaId;
     public string ReferenceNatureGloryReflectionsSessionSchemaId { get; init; } =
@@ -79,6 +81,7 @@ public sealed record StochasticCapabilityManifestV111(
         "event_choice", "ancient_offer", "neow_offer", "trash_heap",
         "tablet_of_truth", "trial", "event_shuffle", "native_event_gold",
         "native_event_relic",
+        "native_shovel",
         "endless_conveyor",
         "merchant", "treasure", "combat_reward", "glory_reflections",
         "infested_automaton",
@@ -196,6 +199,13 @@ public static class StochasticCapabilitiesV111
             "reference_nature_native_event_relic_save",
             "reference_nature_native_event_relic_load",
             "reference_nature_native_event_relic_release_many",
+            "reference_nature_native_shovel_begin",
+            "reference_nature_native_shovel_status",
+            "reference_nature_native_shovel_resolve_next",
+            "reference_nature_native_shovel_fork",
+            "reference_nature_native_shovel_save",
+            "reference_nature_native_shovel_load",
+            "reference_nature_native_shovel_release_many",
             "reference_nature_endless_conveyor_begin",
             "reference_nature_endless_conveyor_status",
             "reference_nature_endless_conveyor_resolve_next",
@@ -286,6 +296,8 @@ public static class StochasticCapabilitiesV111
             sessions.ReferenceNatureNativeEventGoldSessionSchemaId,
         ReferenceNatureNativeEventRelicSessionSchemaId =
             sessions.ReferenceNatureNativeEventRelicSessionSchemaId,
+        ReferenceNatureNativeShovelSessionSchemaId =
+            sessions.ReferenceNatureNativeShovelSessionSchemaId,
         ReferenceNatureEndlessConveyorSessionSchemaId =
             sessions.ReferenceNatureEndlessConveyorSessionSchemaId,
         ReferenceNatureGloryReflectionsSessionSchemaId =

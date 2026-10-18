@@ -113,6 +113,12 @@ internal static class PrototypeAiJsonlServer
         var referenceNatureNativeEventRelicRunStateHandles =
             new Dictionary<string, string>(StringComparer.Ordinal);
         long nextReferenceNatureNativeEventRelicHandle = 1;
+        var referenceNatureNativeShovelStates =
+            new Dictionary<string, ReferenceNatureNativeShovelSessionV111>(
+                StringComparer.Ordinal);
+        var referenceNatureNativeShovelRunStateHandles =
+            new Dictionary<string, string>(StringComparer.Ordinal);
+        long nextReferenceNatureNativeShovelHandle = 1;
         var referenceNatureEndlessConveyorStates =
             new Dictionary<string, ReferenceNatureEndlessConveyorSessionV111>(
                 StringComparer.Ordinal);
@@ -445,6 +451,30 @@ internal static class PrototypeAiJsonlServer
                 ? session
                 : throw new InvalidOperationException(
                     "Unknown ReferenceNature native event relic session handle: " +
+                    handle);
+        }
+
+        string StoreReferenceNatureNativeShovel(
+            ReferenceNatureNativeShovelSessionV111 session)
+        {
+            var handle = "sh" + nextReferenceNatureNativeShovelHandle++;
+            referenceNatureNativeShovelStates.Add(handle, session.Fork());
+            if (session.Complete)
+                referenceNatureNativeShovelRunStateHandles.Add(handle,
+                    Store(session.Run.Fork()));
+            return handle;
+        }
+
+        ReferenceNatureNativeShovelSessionV111
+            RequireReferenceNatureNativeShovel(JsonElement request)
+        {
+            var handle = RequiredString(request,
+                "reference_nature_native_shovel_handle");
+            return referenceNatureNativeShovelStates.TryGetValue(handle,
+                    out var session)
+                ? session
+                : throw new InvalidOperationException(
+                    "Unknown ReferenceNature Native Shovel session handle: " +
                     handle);
         }
 
@@ -1222,6 +1252,42 @@ internal static class PrototypeAiJsonlServer
                 pending = law is null ? null : new
                 {
                     kind = "native_event_toy_box_relic_draw",
+                    boundaryFingerprint = law.EventId,
+                    chanceLaw = law,
+                    probabilityStatus = law.ProbabilityStatus
+                },
+                decisionTranscript = session.DecisionTranscript,
+                natureProvider = ReferenceNatureV111.ProviderId,
+                natureSampleCount = session.NatureState.SampleCount,
+                probabilityStatus = ChanceLawV111.UnverifiedStatus
+            };
+        }
+
+        object ReferenceNatureNativeShovelResult(
+            ReferenceNatureNativeShovelSessionV111 session,
+            string handle, string? parent = null)
+        {
+            var law = session.PendingLaw;
+            return new
+            {
+                ok = true,
+                schemaId = ReferenceNatureNativeShovelSessionV111.CurrentSchemaId,
+                referenceNatureNativeShovelHandle = handle,
+                stateHandle = referenceNatureNativeShovelRunStateHandles
+                    .GetValueOrDefault(handle),
+                parent,
+                fingerprint = session.Fingerprint,
+                runFingerprint = CanonicalJson.Sha256(session.Run),
+                siteId = law?.SiteId ??
+                    PrototypeNativeRelicGrabBag.NativeTreasureModelSiteId,
+                actionId = PrototypeAiEnvironment.StableActionId(session.Action),
+                boundaryId = "rest_shovel_dig",
+                runPhase = session.Run.Phase.ToString(),
+                boundary = session.Complete ? "committed" : "nature",
+                nextOrdinal = session.NextOrdinal,
+                pending = law is null ? null : new
+                {
+                    kind = "native_shovel_relic_draw",
                     boundaryFingerprint = law.EventId,
                     chanceLaw = law,
                     probabilityStatus = law.ProbabilityStatus
@@ -2211,6 +2277,10 @@ internal static class PrototypeAiJsonlServer
                     .TryGetValue(handle, out var nativeEventRelicSession) =>
                     ReferenceNatureNativeEventRelicResult(
                         nativeEventRelicSession, handle),
+                "native_shovel" when referenceNatureNativeShovelStates
+                    .TryGetValue(handle, out var nativeShovelSession) =>
+                    ReferenceNatureNativeShovelResult(
+                        nativeShovelSession, handle),
                 "endless_conveyor" when referenceNatureEndlessConveyorStates
                     .TryGetValue(handle, out var endlessConveyorSession) =>
                     ReferenceNatureEndlessConveyorResult(
@@ -2257,6 +2327,7 @@ internal static class PrototypeAiJsonlServer
                     "trial" or "event_shuffle" or "glory_reflections" or
                     "infested_automaton" or "punch_off_reward" or
                     "punch_off_fight" or
+                    "native_shovel" or
                     "endless_conveyor" or
                     "treasure" or "combat_reward" or "map_generation" or
                     "controlled_event_choice" or
@@ -2822,6 +2893,9 @@ internal static class PrototypeAiJsonlServer
                                     .CurrentSchemaId,
                             referenceNatureNativeEventRelicSessionSchemaId =
                                 ReferenceNatureNativeEventRelicSessionV111
+                                    .CurrentSchemaId,
+                            referenceNatureNativeShovelSessionSchemaId =
+                                ReferenceNatureNativeShovelSessionV111
                                     .CurrentSchemaId,
                             referenceNatureProviderId =
                                 ReferenceNatureV111.ProviderId,
@@ -7833,6 +7907,107 @@ internal static class PrototypeAiJsonlServer
                                     element.GetString()!))
                                 released++;
                             referenceNatureNativeEventRelicRunStateHandles.Remove(
+                                element.GetString()!);
+                        }
+                        Write(new { requestId, ok = true, released });
+                        break;
+                    }
+
+                    case "reference_nature_native_shovel_begin":
+                    {
+                        var source = RequireState(request);
+                        var seed = OptionalULong(request, "nature_seed");
+                        var session = seed is { } natureSeed
+                            ? ReferenceNatureNativeShovelSessionV111.Begin(
+                                source, natureSeed)
+                            : ReferenceNatureNativeShovelSessionV111.Begin(
+                                source);
+                        var handle = StoreReferenceNatureNativeShovel(session);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureNativeShovelResult(session, handle) });
+                        break;
+                    }
+
+                    case "reference_nature_native_shovel_status":
+                    {
+                        var handle = RequiredString(request,
+                            "reference_nature_native_shovel_handle");
+                        var session = RequireReferenceNatureNativeShovel(request);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureNativeShovelResult(session, handle) });
+                        break;
+                    }
+
+                    case "reference_nature_native_shovel_resolve_next":
+                    {
+                        var parentHandle = RequiredString(request,
+                            "reference_nature_native_shovel_handle");
+                        var session = RequireReferenceNatureNativeShovel(request);
+                        if (session.Fingerprint != RequiredString(request,
+                                "fingerprint"))
+                            throw new InvalidOperationException(
+                                "Stale ReferenceNature Native Shovel fingerprint.");
+                        var next = session.ResolveNext();
+                        var handle = StoreReferenceNatureNativeShovel(next);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureNativeShovelResult(
+                                next, handle, parentHandle) });
+                        break;
+                    }
+
+                    case "reference_nature_native_shovel_fork":
+                    {
+                        var parentHandle = RequiredString(request,
+                            "reference_nature_native_shovel_handle");
+                        var next = RequireReferenceNatureNativeShovel(request)
+                            .Fork();
+                        var handle = StoreReferenceNatureNativeShovel(next);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureNativeShovelResult(
+                                next, handle, parentHandle) });
+                        break;
+                    }
+
+                    case "reference_nature_native_shovel_save":
+                    {
+                        var session = RequireReferenceNatureNativeShovel(request);
+                        Write(new { requestId, ok = true,
+                            schemaId =
+                                ReferenceNatureNativeShovelSessionV111.CurrentSchemaId,
+                            snapshot = ReferenceNatureNativeShovelSessionV111.Save(
+                                session) });
+                        break;
+                    }
+
+                    case "reference_nature_native_shovel_load":
+                    {
+                        var session = ReferenceNatureNativeShovelSessionV111.Restore(
+                            RequiredString(request, "snapshot"));
+                        var handle = StoreReferenceNatureNativeShovel(session);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureNativeShovelResult(session, handle) });
+                        break;
+                    }
+
+                    case "reference_nature_native_shovel_release_many":
+                    {
+                        if (!request.TryGetProperty(
+                                "reference_nature_native_shovel_handles",
+                                out var handles) ||
+                            handles.ValueKind != JsonValueKind.Array)
+                            throw new ArgumentException(
+                                "reference_nature_native_shovel_handles must be an array.");
+                        var released = 0;
+                        foreach (var element in handles.EnumerateArray())
+                        {
+                            if (element.ValueKind != JsonValueKind.String ||
+                                string.IsNullOrWhiteSpace(element.GetString()))
+                                throw new ArgumentException(
+                                    "Invalid ReferenceNature Native Shovel handle.");
+                            if (referenceNatureNativeShovelStates.Remove(
+                                    element.GetString()!))
+                                released++;
+                            referenceNatureNativeShovelRunStateHandles.Remove(
                                 element.GetString()!);
                         }
                         Write(new { requestId, ok = true, released });
