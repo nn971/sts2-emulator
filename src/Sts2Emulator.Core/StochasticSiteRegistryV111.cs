@@ -181,8 +181,17 @@ public static class StochasticSiteRegistryV111
 {
     public const string DrawPileRandomInsertSiteId =
         "combat.draw_pile.random_insert_index";
+    public const string AfterShuffleRelicDrawPileInsertSiteId =
+        "combat.relic.after_shuffle.generated_card.random_insert_index";
     public const string UnownedRandomRelicSelectionSiteId =
         "relic.unowned_random_selection.index_draw";
+
+    public static string[] ControlledDrawInsertionSiteIds =>
+    [
+        DrawPileRandomInsertSiteId,
+        AfterShuffleRelicDrawPileInsertSiteId,
+        PrototypeControlledDrawInsertionV111.PersonalHiveDazedSiteId
+    ];
 
     private static readonly string[] SemanticReferenceNatureSites =
     [
@@ -213,7 +222,7 @@ public static class StochasticSiteRegistryV111
         "combat.draw_pile.random_rare_to_hand.shuffle_swap_index",
         "combat.draw.recycle.shuffle_swap_index",
         DrawPileRandomInsertSiteId,
-        "combat.relic.after_shuffle.generated_card.random_insert_index",
+        AfterShuffleRelicDrawPileInsertSiteId,
         "combat.card_selection.random_shortlist",
         "combat.autoplay.random_card.select",
         "combat.draw_pile.random_replay_card.select"
@@ -437,7 +446,7 @@ public static class StochasticSiteRegistryV111
         "combat.draw_pile_recycle.swap_index",
         "combat.effect.personal_hive.dazed.random_insert_index",
         DrawPileRandomInsertSiteId,
-        "combat.relic.after_shuffle.generated_card.random_insert_index",
+        AfterShuffleRelicDrawPileInsertSiteId,
         "combat.enemy.draw.random_insert_index",
         "combat.enemy.discard.random_insert_index",
         "card_rarity.encounter_model.index_draw",

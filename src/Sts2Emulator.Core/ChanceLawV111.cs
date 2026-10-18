@@ -678,7 +678,7 @@ public static partial class ChanceLawEngineV111
             [StochasticSiteRegistryV111.DrawPileRandomInsertSiteId] = new(
                 NativeFisherYatesV111.StreamId,
                 "native-draw-pile-random-insertion-index"),
-            ["combat.relic.after_shuffle.generated_card.random_insert_index"] = new(
+            [StochasticSiteRegistryV111.AfterShuffleRelicDrawPileInsertSiteId] = new(
                 NativeFisherYatesV111.StreamId,
                 "native-after-shuffle-relic-insertion-index"),
             ["combat.enemy.draw.random_insert_index"] = new(

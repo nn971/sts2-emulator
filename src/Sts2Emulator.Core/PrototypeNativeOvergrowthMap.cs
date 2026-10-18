@@ -50,6 +50,9 @@ public static class PrototypeNativeOvergrowthMap
 
         public int NextInt(int maxExclusive, string siteId, string ownerId)
         {
+            if (siteId is not (PathStartColumnSiteId))
+                throw new NotSupportedException(
+                    $"Overgrowth map index adapter does not support site '{siteId}'.");
             if (!native)
                 return LegacyRandomChoiceV111.ChooseBoundedInteger(
                     streams, siteId, streamId, ownerId, maxExclusive)
@@ -65,6 +68,10 @@ public static class PrototypeNativeOvergrowthMap
 
         public void Shuffle<T>(T[] values, string siteId, string ownerId)
         {
+            if (siteId is not (PathDeltaShuffleSiteId or
+                    RoomAssignmentShuffleSiteId))
+                throw new NotSupportedException(
+                    $"Overgrowth map shuffle adapter does not support site '{siteId}'.");
             if (!native)
             {
                 _ = LegacyFisherYatesV111.ShuffleInPlace(
@@ -82,6 +89,10 @@ public static class PrototypeNativeOvergrowthMap
             int mean, int standardDeviation, int min, int max,
             string siteId, string ownerId)
         {
+            if (siteId is not (RestCountGaussianSiteId or
+                    UnknownCountGaussianSiteId))
+                throw new NotSupportedException(
+                    $"Overgrowth map Gaussian adapter does not support site '{siteId}'.");
             if (!native)
                 return SampleTruncatedGaussian(
                     streams, mean, standardDeviation, min, max,

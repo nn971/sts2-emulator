@@ -419,6 +419,10 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
     private static RandomIndexRequestV111 BuildIndexRequest(
         RunState origin, ChanceLawV111 law)
     {
+        if (!ReferenceNatureEndlessConveyorSessionV111.SessionSiteIds.Contains(
+                law.SiteId, StringComparer.Ordinal))
+            throw new NotSupportedException(
+                $"Endless Conveyor index replay does not support site '{law.SiteId}'.");
         var stream = origin.World?.Event?.NativeEventRng
             ?? throw new InvalidDataException(
                 "Endless Conveyor index replay lost its Native event cursor.");

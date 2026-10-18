@@ -211,7 +211,7 @@ public static partial class ChanceLawEngineV111
         string siteId, string ownerId, int supportCount, int ordinal)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
-        if (!NativePunchOffRewardQuerySiteIds.Contains(
+        if (!ChanceLawEngineV111.NativePunchOffRewardQuerySiteIds.Contains(
                 siteId, StringComparer.Ordinal))
             throw new NotSupportedException(
                 $"Legacy Punch Off reward law does not support site '{siteId}'.");
