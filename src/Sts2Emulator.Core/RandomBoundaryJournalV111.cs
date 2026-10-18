@@ -117,6 +117,39 @@ public sealed class RandomBoundaryJournalV111 : IDisposable
     public IReadOnlyList<RandomBoundaryTranscriptEntryV111> OrderedTranscript =>
         _orderedTranscript.ToArray();
 
+    /// <summary>Returns a provider-specific mixed transcript in the order
+    /// recorded by the active journal. Its sequence numbers are local to the
+    /// returned trace; each payload retains its original typed event shape.</summary>
+    public RandomBoundaryTranscriptEntryV111[] EntriesForProvider(
+        string providerMode)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(providerMode);
+        return _orderedTranscript
+            .Where(entry => entry.Event.TryGetProperty(
+                    "provider_mode", out var mode) &&
+                mode.ValueKind == System.Text.Json.JsonValueKind.String &&
+                mode.GetString() == providerMode)
+            .Select((entry, index) => entry with
+            {
+                Sequence = index + 1,
+                Event = entry.Event.Clone()
+            })
+            .ToArray();
+    }
+
+    public static RandomBoundaryTranscriptEntryV111[] ConcatOrdered(
+        IEnumerable<RandomBoundaryTranscriptEntryV111> first,
+        IEnumerable<RandomBoundaryTranscriptEntryV111> second)
+    {
+        ArgumentNullException.ThrowIfNull(first);
+        ArgumentNullException.ThrowIfNull(second);
+        return first.Concat(second).Select((entry, index) => entry with
+        {
+            Sequence = index + 1,
+            Event = entry.Event.Clone()
+        }).ToArray();
+    }
+
     public static void Record(RandomIndexDecisionV111 decision)
     {
         var scope = Active.Value;

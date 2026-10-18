@@ -24,6 +24,10 @@ public sealed record SemanticPilotStochasticStateV111(
                         OrderedCandidates = (int[])decision.Request
                             .OrderedCandidates.Clone()
                     }
+                }).ToArray(),
+                ProviderTrace = audit.ProviderTrace.Select(entry => entry with
+                {
+                    Event = entry.Event.Clone()
                 }).ToArray()
             }
             : null,

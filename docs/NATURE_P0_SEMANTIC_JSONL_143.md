@@ -801,6 +801,20 @@ with two candidates; Sludge Spinner exercised two events with four
 candidates. The other three runs had no randomized Nature intent event
 under the chosen route seeds.
 
+The native-policy comparator's private `SemanticNativePolicyAuditV111` now
+also retains the complete ordered mixed provider trace from the actual random
+boundary journal: index, unit-float, ranged-float, ranged-double,
+Gaussian-integer, and Gaussian-double operations, with typed requests,
+selected values, and native cursors. The existing `Decisions` index array is
+kept as a compatibility projection and is checked against the trace. Setup,
+source-route initial-intent, and native-policy action boundaries contribute
+to that transcript; forks clone its serialized payloads. It is stored with
+the privileged session snapshot and does not enter `semantic_observe`.
+Older snapshots without the mixed trace continue to validate from their
+index array. This adds auditable provider evidence but does not claim complete
+source RNG coverage, calibrated laws, or native cursor parity. Core and CLI
+Release builds pass with no warnings or errors; no tests were added or run.
+
 **Remaining P0 acceptance:** `UNVERIFIED` route/Neow and player-information
 intent likelihoods; native reward and other non-Nature RNG parity; broader
 source-routed encounter coverage, including normal encounters; and

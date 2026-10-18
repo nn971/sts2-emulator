@@ -50,6 +50,155 @@ public sealed record SemanticNativePolicyAuditV111(
 {
     public const string NativeProviderId =
         "engine-owned-native-v111-comparator-unverified-v1";
+
+    private static readonly JsonSerializerOptions TraceJsonOptions =
+        new(JsonSerializerDefaults.Web)
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
+        };
+
+    public RandomBoundaryTranscriptEntryV111[] ProviderTrace { get; init; } = [];
+
+    public void Validate()
+    {
+        if (ProviderId != NativeProviderId ||
+            ProbabilityStatus != "UNVERIFIED" || Decisions is null ||
+            ProviderTrace is null)
+            throw new InvalidDataException(
+                "Native policy baseline has invalid provider provenance.");
+
+        for (var index = 0; index < Decisions.Length; index++)
+        {
+            var decision = Decisions[index];
+            if (decision is null || decision.Sequence != index + 1 ||
+                decision.ProviderMode != "native-v111" ||
+                decision.NativeCursorBefore is null ||
+                decision.NativeCursorAfter is null ||
+                decision.Request is null || decision.Request.Ordinal < 0 ||
+                string.IsNullOrWhiteSpace(decision.Request.StreamId))
+                throw new InvalidDataException(
+                    "Native policy index decision is invalid at " + index + ".");
+            new RandomIndexDecisionV111(decision.Request,
+                decision.SelectedIndex, decision.ProviderMode,
+                decision.NativeCursorBefore, decision.NativeCursorAfter).Validate();
+        }
+
+        var traceIndices = new List<RandomBoundaryEventV111>();
+        for (var index = 0; index < ProviderTrace.Length; index++)
+        {
+            var entry = ProviderTrace[index];
+            if (entry is null || entry.Sequence != index + 1)
+                throw new InvalidDataException(
+                    "Native policy mixed trace sequence is invalid at " + index + ".");
+            entry.Validate();
+            switch (entry.OperationKind)
+            {
+                case "index":
+                {
+                    var value = entry.Event.Deserialize<RandomBoundaryEventV111>(
+                        TraceJsonOptions) ?? throw new InvalidDataException(
+                            "Native policy index trace has no event payload.");
+                    new RandomIndexDecisionV111(value.Request,
+                        value.SelectedIndex, value.ProviderMode,
+                        value.NativeCursorBefore, value.NativeCursorAfter).Validate();
+                    if (value.ProviderMode != "native-v111" ||
+                        value.NativeCursorBefore is null ||
+                        value.NativeCursorAfter is null)
+                        throw new InvalidDataException(
+                            "Native policy index trace has non-native provenance.");
+                    traceIndices.Add(value with { Sequence = traceIndices.Count + 1 });
+                    break;
+                }
+                case "unit_float":
+                {
+                    var value = entry.Event.Deserialize<RandomUnitFloatBoundaryEventV111>(
+                        TraceJsonOptions) ?? throw new InvalidDataException(
+                            "Native policy unit-float trace has no event payload.");
+                    new RandomUnitFloatDecisionV111(value.Request,
+                        value.SelectedValue, value.ProviderMode,
+                        value.NativeCursorBefore, value.NativeCursorAfter).Validate();
+                    ValidateNativeTraceProvenance(value.ProviderMode,
+                        value.NativeCursorBefore, value.NativeCursorAfter, index);
+                    break;
+                }
+                case "ranged_float":
+                {
+                    var value = entry.Event.Deserialize<RandomRangedFloatBoundaryEventV111>(
+                        TraceJsonOptions) ?? throw new InvalidDataException(
+                            "Native policy ranged-float trace has no event payload.");
+                    new RandomRangedFloatDecisionV111(value.Request,
+                        value.SelectedValue, value.ProviderMode,
+                        value.NativeCursorBefore, value.NativeCursorAfter).Validate();
+                    ValidateNativeTraceProvenance(value.ProviderMode,
+                        value.NativeCursorBefore, value.NativeCursorAfter, index);
+                    break;
+                }
+                case "ranged_double":
+                {
+                    var value = entry.Event.Deserialize<RandomRangedDoubleBoundaryEventV111>(
+                        TraceJsonOptions) ?? throw new InvalidDataException(
+                            "Native policy ranged-double trace has no event payload.");
+                    new RandomRangedDoubleDecisionV111(value.Request,
+                        value.SelectedValue, value.ProviderMode,
+                        value.NativeCursorBefore, value.NativeCursorAfter).Validate();
+                    ValidateNativeTraceProvenance(value.ProviderMode,
+                        value.NativeCursorBefore, value.NativeCursorAfter, index);
+                    break;
+                }
+                case "gaussian_int":
+                {
+                    var value = entry.Event.Deserialize<RandomGaussianIntBoundaryEventV111>(
+                        TraceJsonOptions) ?? throw new InvalidDataException(
+                            "Native policy Gaussian-integer trace has no event payload.");
+                    new RandomGaussianIntDecisionV111(value.Request,
+                        value.SelectedValue, value.ProviderMode,
+                        value.NativeCursorBefore, value.NativeCursorAfter).Validate();
+                    ValidateNativeTraceProvenance(value.ProviderMode,
+                        value.NativeCursorBefore, value.NativeCursorAfter, index);
+                    break;
+                }
+                case "gaussian_double":
+                {
+                    var value = entry.Event.Deserialize<RandomGaussianDoubleBoundaryEventV111>(
+                        TraceJsonOptions) ?? throw new InvalidDataException(
+                            "Native policy Gaussian-double trace has no event payload.");
+                    new RandomGaussianDoubleDecisionV111(value.Request,
+                        value.SelectedValue, value.ProviderMode,
+                        value.NativeCursorBefore, value.NativeCursorAfter).Validate();
+                    ValidateNativeTraceProvenance(value.ProviderMode,
+                        value.NativeCursorBefore, value.NativeCursorAfter, index);
+                    break;
+                }
+                default:
+                    throw new InvalidDataException(
+                        "Native policy mixed trace has an unsupported operation.");
+            }
+        }
+
+        // Older snapshots have only the compatibility index list. Newer
+        // snapshots retain the full mixed trace and project its index entries.
+        if (ProviderTrace.Length > 0 && traceIndices.Count != Decisions.Length)
+            throw new InvalidDataException(
+                "Native policy index projection differs from its mixed trace.");
+        for (var index = 0; ProviderTrace.Length > 0 &&
+             index < traceIndices.Count; index++)
+        {
+            if (CanonicalJson.Sha256(traceIndices[index]) !=
+                CanonicalJson.Sha256(Decisions[index]))
+                throw new InvalidDataException(
+                    "Native policy index projection differs from its mixed trace at " +
+                    index + ".");
+        }
+    }
+
+    private static void ValidateNativeTraceProvenance(
+        string providerMode, NativeRngSnapshot? before,
+        NativeRngSnapshot? after, int index)
+    {
+        if (providerMode != "native-v111" || before is null || after is null)
+            throw new InvalidDataException(
+                "Native policy trace has non-native provenance at " + index + ".");
+    }
 }
 
 public sealed record SemanticSourceRouteAuditV111(
@@ -752,30 +901,7 @@ public sealed record SemanticPilotCombatV111(
             var nativeAudit = this.NativePolicyAudit ??
                 throw new InvalidDataException(
                     "Native policy baseline is missing provider provenance.");
-            if (nativeAudit.ProviderId !=
-                    SemanticNativePolicyAuditV111.NativeProviderId ||
-                nativeAudit.ProbabilityStatus != "UNVERIFIED" ||
-                nativeAudit.Decisions is null)
-                throw new InvalidDataException(
-                    "Native policy baseline has invalid provider identity.");
-            for (int index = 0; index < nativeAudit.Decisions.Length; index++)
-            {
-                var decision = nativeAudit.Decisions[index];
-                if (decision is null || decision.Sequence != index + 1)
-                    throw new InvalidDataException(
-                        "Native policy decision sequence is invalid at " + index + ".");
-                if (decision.ProviderMode != "native-v111")
-                    throw new InvalidDataException(
-                        "Native policy decision provider is invalid at " + index + ".");
-                if (decision.NativeCursorBefore is null ||
-                    decision.NativeCursorAfter is null)
-                    throw new InvalidDataException(
-                        "Native policy decision cursor is missing at " + index + ".");
-                if (decision.Request is null || decision.Request.Ordinal < 0 ||
-                    string.IsNullOrWhiteSpace(decision.Request.StreamId))
-                    throw new InvalidDataException(
-                        "Native policy decision request is invalid at " + index + ".");
-            }
+            nativeAudit.Validate();
             if (this.AtPlayerBoundary)
                 SemanticPilotCombatEngineV111.ValidateNativePolicyBoundary(this.Run);
             else
@@ -1080,7 +1206,8 @@ public static class SemanticPilotCombatEngineV111
             state = AttachNativePolicyBaseline(state, rng,
                 opening.Origin.Formation,
                 setupJournal.Entries.Where(decision =>
-                    decision.ProviderMode == "native-v111").ToArray());
+                    decision.ProviderMode == "native-v111").ToArray(),
+                setupJournal.EntriesForProvider("native-v111"));
         if (entry.FixtureDrawCostRelicId is { } relicId)
         {
             if (relicId != "proto.relic.snecko_eye")
@@ -1698,6 +1825,7 @@ public static class SemanticPilotCombatEngineV111
                         .OrderedCandidates.Clone()
                 }
             }).ToArray();
+        var nativePolicyTrace = setupJournal.EntriesForProvider("native-v111");
         var routeAudit = new SemanticSourceRouteAuditV111(
             SemanticSourceRouteAuditV111.SourceRouteProviderId,
             entry.RouteActOneRegion, actions.ToArray(), actualNodeId,
@@ -1734,6 +1862,7 @@ public static class SemanticPilotCombatEngineV111
         if (entry.NativePolicyBaseline)
         {
             RandomBoundaryEventV111[] committedIntentDecisions;
+            RandomBoundaryTranscriptEntryV111[] committedIntentTrace;
             using (var intentJournal = RandomBoundaryJournalV111.Begin())
             {
                 PrototypeGameEngine.NativeCommittedIntentAuditV111 committed;
@@ -1751,6 +1880,8 @@ public static class SemanticPilotCombatEngineV111
                 committedIntentDecisions = intentJournal.Entries
                     .Where(decision => decision.ProviderMode == "native-v111")
                     .ToArray();
+                committedIntentTrace = intentJournal
+                    .EntriesForProvider("native-v111");
             }
             nativePolicyDecisions = nativeDecisions
                 .Concat(committedIntentDecisions)
@@ -1763,6 +1894,8 @@ public static class SemanticPilotCombatEngineV111
                             .OrderedCandidates.Clone()
                     }
                 }).ToArray();
+            nativePolicyTrace = RandomBoundaryJournalV111.ConcatOrdered(
+                nativePolicyTrace, committedIntentTrace);
             var completedWorld = run.World ?? throw new InvalidDataException(
                 "Native source route lost its world after intent resolution.");
             var completedCombat = completedWorld.Combat ??
@@ -1840,6 +1973,9 @@ public static class SemanticPilotCombatEngineV111
                 ? new SemanticNativePolicyAuditV111(
                     SemanticNativePolicyAuditV111.NativeProviderId,
                     nativePolicyDecisions)
+                {
+                    ProviderTrace = nativePolicyTrace
+                }
                 : null
         };
         state.Validate();
@@ -1849,7 +1985,8 @@ public static class SemanticPilotCombatEngineV111
     private static SemanticPilotCombatV111 AttachNativePolicyBaseline(
         SemanticPilotCombatV111 state, RngBundle nativeStreams,
         NativeEncounterFormationV111 formation,
-        RandomBoundaryEventV111[] setupDecisions)
+        RandomBoundaryEventV111[] setupDecisions,
+        RandomBoundaryTranscriptEntryV111[] setupTrace)
     {
         ArgumentNullException.ThrowIfNull(nativeStreams);
         ArgumentNullException.ThrowIfNull(formation);
@@ -1894,6 +2031,9 @@ public static class SemanticPilotCombatEngineV111
                             .OrderedCandidates.Clone()
                     }
                 }).ToArray())
+            {
+                ProviderTrace = setupTrace
+            }
         };
     }
 
@@ -2516,6 +2656,7 @@ public static class SemanticPilotCombatEngineV111
                 OrderedCandidates = (int[])entry.Request.OrderedCandidates.Clone()
             }
             }).ToArray();
+        var recordedTrace = boundaries.EntriesForProvider("native-v111");
 
         if (result.Phase == RunPhase.Combat)
             ValidateNativePolicyBoundary(result);
@@ -2533,7 +2674,9 @@ public static class SemanticPilotCombatEngineV111
                 : current.RewardAudit,
             NativePolicyAudit = audit with
             {
-                Decisions = audit.Decisions.Concat(recorded).ToArray()
+                Decisions = audit.Decisions.Concat(recorded).ToArray(),
+                ProviderTrace = RandomBoundaryJournalV111.ConcatOrdered(
+                    audit.ProviderTrace, recordedTrace)
             },
             History = current.History.Append(
                 new SemanticPilotContinuationV111("player", actionId)).ToArray()
