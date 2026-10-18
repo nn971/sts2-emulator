@@ -404,6 +404,7 @@ internal sealed class ControlledStochasticChanceReplayV111 :
     }
 
     public string Mode => "controlled-v111";
+    public int Remaining => _decisions.Length - _cursor;
     public static bool IsActive => Active.Value is not null;
 
     public static ControlledStochasticChanceReplayV111 Begin(

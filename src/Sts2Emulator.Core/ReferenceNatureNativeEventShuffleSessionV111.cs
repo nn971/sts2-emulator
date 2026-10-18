@@ -754,6 +754,36 @@ internal static class NativeEventShufflePlanBuilderV111
     internal sealed record CombatEndIndexCaptureV111(
         RunState Run, RandomBoundaryEventV111[] SiteRequests);
 
+    private static (RunState Run, RandomBoundaryEventV111[] Entries)
+        CaptureCombatEndPrefix(
+            RunState origin, GameAction action,
+            IReadOnlyList<RandomIndexDecisionV111> scriptedPrefix,
+            string siteId,
+            IRandomIndexProviderV111? indexFallbackProvider = null)
+    {
+        var decisions = scriptedPrefix.Select(decision =>
+            ControlledStochasticDecisionV111.FromIndex(decision)).ToArray();
+        ControlledStochasticContinuationResultV111 replay;
+        RandomBoundaryEventV111[] entries;
+        using (var journal = RandomBoundaryJournalV111.Begin())
+        {
+            replay = ControlledChanceContinuationExecutorV111
+                .CaptureStochastic(
+                    origin,
+                    ControlledStochasticContinuationStateV111.CurrentSchemaId,
+                    decisions,
+                    checkpoint => new PrototypeGameEngine().Step(
+                        checkpoint.Fork(), action).State,
+                    request => request.IndexRequest?.SiteId == siteId,
+                    indexFallbackProvider);
+            entries = journal.Entries.ToArray();
+        }
+        if (replay.Suspended || replay.Run is not { } run)
+            throw new InvalidDataException(
+                "Combat-end replay reached an unscripted index draw.");
+        return (run, entries);
+    }
+
     internal static CombatEndIndexCaptureV111 CaptureFishingRodRequests(
         RunState origin, GameAction action,
         IReadOnlyList<RandomIndexDecisionV111> scriptedPrefix,
@@ -769,23 +799,10 @@ internal static class NativeEventShufflePlanBuilderV111
             ?? throw new InvalidOperationException(
                 "Fishing Rod replay requires the Native run.niche stream.");
         var beforeCursor = NativeRngV111.ToSnapshot(beforeNiche);
-        var provider = new CombatEndIndexPrefixProviderV111(
-            scriptedPrefix, allowNativeTail,
-            new NativeRandomIndexProviderV111());
-        RunState run;
-        RandomBoundaryEventV111[] entries;
-        using (var journal = RandomBoundaryJournalV111.Begin())
-        using (StochasticProviderScopeV111.EnterFiltered(
-            provider, null,
-            request => request.IndexRequest?.SiteId ==
-                PrototypeGameEngine.FishingRodUpgradeSiteId,
-            overrideExplicitProviders: true))
-        {
-            run = new PrototypeGameEngine().Step(
-                origin.Fork(), action).State;
-            entries = journal.Entries.ToArray();
-        }
-        provider.AssertComplete();
+        var (run, entries) = CaptureCombatEndPrefix(
+            origin, action, scriptedPrefix,
+            PrototypeGameEngine.FishingRodUpgradeSiteId,
+            allowNativeTail ? new NativeRandomIndexProviderV111() : null);
         var siteRequests = entries.Where(entry => entry.Request.SiteId ==
             PrototypeGameEngine.FishingRodUpgradeSiteId).ToArray();
         var runNicheEvents = entries.Where(entry =>
@@ -826,7 +843,8 @@ internal static class NativeEventShufflePlanBuilderV111
                 beforeCursor.Counter));
         var expectedModes = siteRequests.Select((entry, index) =>
             entry.ProviderMode == (index < scriptedPrefix.Count
-                ? "scripted-v111" : "native-v111")).All(matches => matches);
+                ? "controlled-v111"
+                : "native-v111")).All(matches => matches);
         if (siteRequests.Length < scriptedPrefix.Count ||
             runNicheEvents.Length != siteRequests.Length ||
             runNicheEvents.Any(entry => entry.Request.SiteId !=
@@ -854,22 +872,10 @@ internal static class NativeEventShufflePlanBuilderV111
                 "Improvement replay requires the legacy combat stream.");
         var beforeCallCount = beforeStream.CallCount ?? 0;
         var legacyProvider = new LegacyPrototypeRandomIndexProviderV111();
-        var provider = new CombatEndIndexPrefixProviderV111(
-            scriptedPrefix, allowLegacyTail, legacyProvider);
-        RunState run;
-        RandomBoundaryEventV111[] entries;
-        using (var journal = RandomBoundaryJournalV111.Begin())
-        using (StochasticProviderScopeV111.EnterFiltered(
-            provider, null,
-            request => request.IndexRequest?.SiteId ==
-                PrototypeGameEngine.ImprovementCardSiteId,
-            overrideExplicitProviders: true))
-        {
-            run = new PrototypeGameEngine().Step(
-                origin.Fork(), action).State;
-            entries = journal.Entries.ToArray();
-        }
-        provider.AssertComplete();
+        var (run, entries) = CaptureCombatEndPrefix(
+            origin, action, scriptedPrefix,
+            PrototypeGameEngine.ImprovementCardSiteId,
+            allowLegacyTail ? legacyProvider : null);
         var siteRequests = entries.Where(entry => entry.Request.SiteId ==
             PrototypeGameEngine.ImprovementCardSiteId).ToArray();
         var combatEvents = entries.Where(entry =>
@@ -898,7 +904,8 @@ internal static class NativeEventShufflePlanBuilderV111
             unchecked((afterStream.CallCount ?? 0) - beforeCallCount);
         var expectedModes = siteRequests.Select((entry, index) =>
             entry.ProviderMode == (index < scriptedPrefix.Count
-                ? "scripted-v111" : legacyProvider.Mode)).All(matches => matches);
+                ? "controlled-v111"
+                : legacyProvider.Mode)).All(matches => matches);
         if (siteRequests.Length < scriptedPrefix.Count ||
             combatEvents.Length != siteRequests.Length ||
             combatEvents.Any(entry => entry.Request.SiteId !=
@@ -936,22 +943,10 @@ internal static class NativeEventShufflePlanBuilderV111
             .Where(item => item.Saved.Length > 0)
             .ToArray();
         var legacyProvider = new LegacyPrototypeRandomIndexProviderV111();
-        var provider = new CombatEndIndexPrefixProviderV111(
-            scriptedPrefix, allowLegacyTail, legacyProvider);
-        RunState run;
-        RandomBoundaryEventV111[] entries;
-        using (var journal = RandomBoundaryJournalV111.Begin())
-        using (StochasticProviderScopeV111.EnterFiltered(
-            provider, null,
-            request => request.IndexRequest?.SiteId ==
-                PrototypeGameEngine.PaelsToothCardReturnSiteId,
-            overrideExplicitProviders: true))
-        {
-            run = new PrototypeGameEngine().Step(
-                origin.Fork(), action).State;
-            entries = journal.Entries.ToArray();
-        }
-        provider.AssertComplete();
+        var (run, entries) = CaptureCombatEndPrefix(
+            origin, action, scriptedPrefix,
+            PrototypeGameEngine.PaelsToothCardReturnSiteId,
+            allowLegacyTail ? legacyProvider : null);
         var siteRequests = entries.Where(entry => entry.Request.SiteId ==
             PrototypeGameEngine.PaelsToothCardReturnSiteId).ToArray();
         var rewardEvents = entries.Where(entry =>
@@ -990,7 +985,8 @@ internal static class NativeEventShufflePlanBuilderV111
             unchecked((afterStream.CallCount ?? 0) - beforeCallCount);
         var expectedModes = siteRequests.Select((entry, index) =>
             entry.ProviderMode == (index < scriptedPrefix.Count
-                ? "scripted-v111" : legacyProvider.Mode)).All(matches => matches);
+                ? "controlled-v111"
+                : legacyProvider.Mode)).All(matches => matches);
         if (siteRequests.Length < scriptedPrefix.Count ||
             siteRequests.Length != expectedReturns.Length ||
             !targetRequestsAreLeading || !validSiteRequests ||
@@ -1020,29 +1016,6 @@ internal static class NativeEventShufflePlanBuilderV111
                 : throw new InvalidOperationException(
                     "Combat-end capture requested for another stochastic site.");
 
-    private sealed class CombatEndIndexPrefixProviderV111(
-        IReadOnlyList<RandomIndexDecisionV111> scriptedPrefix,
-        bool allowTail,
-        IRandomIndexProviderV111 tailProvider) : IRandomIndexProviderV111
-    {
-        private readonly ScriptedRandomIndexProviderV111 _script =
-            new(scriptedPrefix);
-
-        public string Mode => "reference-nature-combat-end-prefix-v111";
-
-        public RandomIndexDecisionV111 Resolve(
-            RandomIndexRequestV111 request, RngBundle streams)
-        {
-            if (_script.Remaining > 0)
-                return _script.Resolve(request, streams);
-            if (!allowTail)
-                throw new InvalidDataException(
-                    "Combat-end replay reached an unscripted index draw.");
-            return tailProvider.Resolve(request, streams);
-        }
-
-        public void AssertComplete() => _script.AssertComplete();
-    }
 }
 
 public sealed record ReferenceNatureNativeEventShuffleSessionSnapshotV111(

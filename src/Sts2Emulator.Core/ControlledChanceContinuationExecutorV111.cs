@@ -55,10 +55,12 @@ internal static class ControlledChanceContinuationExecutorV111
         string schemaId,
         ControlledStochasticDecisionV111[] decisions,
         Func<RunState, RunState> mechanics,
-        Func<ControlledStochasticRequestV111, bool>? requestFilter = null)
+        Func<ControlledStochasticRequestV111, bool>? requestFilter = null,
+        IRandomIndexProviderV111? indexFallbackProvider = null)
     {
         var result = CaptureTyped(
-            checkpoint, schemaId, decisions, mechanics, requestFilter);
+            checkpoint, schemaId, decisions, mechanics, requestFilter,
+            indexFallbackProvider);
         return new ControlledStochasticContinuationResultV111(
             result.Value, result.Continuation);
     }
@@ -67,7 +69,9 @@ internal static class ControlledChanceContinuationExecutorV111
     /// Runs any immutable mechanics checkpoint with a saved typed outcome
     /// prefix. Run-based sessions use the compatibility wrapper above;
     /// mechanics such as standalone map generation can share the same
-    /// chronological request capture without manufacturing a RunState.
+    /// chronological request capture without manufacturing a RunState. A
+    /// filtered index fallback can resolve later matching index calls after
+    /// the saved prefix, for source-owned tail capture.
     /// </summary>
     public static ControlledStochasticTypedContinuationResultV111<TValue>
         CaptureTyped<TCheckpoint, TValue>(
@@ -75,7 +79,8 @@ internal static class ControlledChanceContinuationExecutorV111
             string schemaId,
             ControlledStochasticDecisionV111[] decisions,
             Func<TCheckpoint, TValue> mechanics,
-            Func<ControlledStochasticRequestV111, bool>? requestFilter = null)
+            Func<ControlledStochasticRequestV111, bool>? requestFilter = null,
+            IRandomIndexProviderV111? indexFallbackProvider = null)
         where TValue : class
     {
         ArgumentNullException.ThrowIfNull(checkpoint);
@@ -97,12 +102,21 @@ internal static class ControlledChanceContinuationExecutorV111
                 throw new InvalidDataException(
                     "Version 1 stochastic continuations contain only index and unit-float outcomes.");
         }
+        if (indexFallbackProvider is not null &&
+            (requestFilter is null || decisions.Any(decision =>
+                decision.IndexDecision is null)))
+            throw new InvalidDataException(
+                "Index fallback requires a filtered index-only decision prefix.");
 
         using var replay = ControlledStochasticChanceReplayV111.Begin(decisions);
-        using var providers = requestFilter is null
-            ? StochasticProviderScopeV111.EnterBoundary(replay)
-            : StochasticProviderScopeV111.EnterFilteredBoundary(
-                replay, requestFilter);
+        using var providers = indexFallbackProvider is not null
+            ? StochasticProviderScopeV111.EnterFiltered(
+                new ControlledStochasticIndexFallbackProviderV111(
+                    replay, indexFallbackProvider), null, requestFilter!)
+            : requestFilter is null
+                ? StochasticProviderScopeV111.EnterBoundary(replay)
+                : StochasticProviderScopeV111.EnterFilteredBoundary(
+                    replay, requestFilter);
         try
         {
             var value = mechanics(checkpoint) ?? throw new InvalidDataException(
@@ -255,5 +269,18 @@ internal static class ControlledChanceContinuationExecutorV111
                 "UNSUPPORTED_CONTROLLED_CHANCE site=" + request.SiteId +
                 " operation=unit_float requires a mixed typed continuation.");
         }
+    }
+
+    private sealed class ControlledStochasticIndexFallbackProviderV111(
+        ControlledStochasticChanceReplayV111 prefix,
+        IRandomIndexProviderV111 fallback) : IRandomIndexProviderV111
+    {
+        public string Mode => prefix.Mode;
+
+        public RandomIndexDecisionV111 Resolve(
+            RandomIndexRequestV111 request, RngBundle streams) =>
+            prefix.Remaining > 0
+                ? prefix.Resolve(request, streams)
+                : fallback.Resolve(request, streams);
     }
 }
