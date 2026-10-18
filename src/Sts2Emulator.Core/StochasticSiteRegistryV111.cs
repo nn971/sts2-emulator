@@ -622,6 +622,42 @@ public static class StochasticSiteRegistryV111
         ReferenceNaturePunchOffRewardSessionV111.SessionSiteIds;
     private static readonly string[] PunchOffFightSessionSites =
         ReferenceNaturePunchOffFightSessionV111.SessionSiteIds;
+    private static readonly string[] NativeEventContextIndexSites =
+    [
+        .. ChanceLawEngineV111.NativeEventEntryIndexQuerySiteIds,
+        .. ChanceLawEngineV111.NativeEventCardPickQuerySiteIds,
+        .. ChanceLawEngineV111.TrashHeapSessionSiteIds,
+        .. ChanceLawEngineV111.TabletOfTruthSessionSiteIds,
+        PrototypeNativeEndlessConveyor.UpgradeCardSiteId,
+        PrototypeNativeEndlessConveyor.ColorlessCardSiteId
+    ];
+    private static readonly string[] NativeEventContextBoundedIntegerSites =
+    [
+        ChanceLawEngineV111.NativeEventGoldIndexSiteId,
+        ChanceLawEngineV111.NativeStoneOfAllTimeLiftTicketSiteId,
+        .. ChanceLawEngineV111.TrialSessionSiteIds
+    ];
+    private static readonly string[] NativeEventContextUnitFloatSites =
+    [
+        ChanceLawEngineV111.NativeEventGoldUnitFloatSiteId,
+        PrototypeNativeEndlessConveyor.DishWeightedTicketSiteId
+    ];
+    private static readonly string[] NativeEventContextShuffleSites =
+    [
+        PrototypeNativeFakeMerchant.RelicOfferShuffleSiteId,
+        PrototypeNativeGloryEvents.BattlewornUpgradeShuffleSiteId,
+        PrototypeNativeGloryEvents.HungryForMushroomsShuffleSiteId,
+        PrototypeNativeGloryEvents.TinkerTypeOfferShuffleSiteId,
+        PrototypeNativeGloryEvents.TinkerRiderOfferShuffleSiteId,
+        PrototypeNativeUnderdocksDoors.ShuffleSiteId
+    ];
+    private static readonly string[] NativeEventContextSites =
+        NativeEventContextIndexSites
+            .Concat(NativeEventContextBoundedIntegerSites)
+            .Concat(NativeEventContextUnitFloatSites)
+            .Concat(NativeEventContextShuffleSites)
+            .Distinct(StringComparer.Ordinal)
+            .ToArray();
 
     private static readonly HashSet<string> SemanticReferenceNatureSiteSet =
         new(SemanticReferenceNatureSites, StringComparer.Ordinal);
@@ -748,6 +784,16 @@ public static class StochasticSiteRegistryV111
         (string[])TrialSessionSites.Clone();
     public static string[] NativeEventShuffleSessionSiteIds =>
         (string[])NativeEventShuffleSessionSites.Clone();
+    public static string[] NativeEventContextSiteIds =>
+        (string[])NativeEventContextSites.Clone();
+    public static string[] NativeEventContextIndexSiteIds =>
+        (string[])NativeEventContextIndexSites.Clone();
+    public static string[] NativeEventContextBoundedIntegerSiteIds =>
+        (string[])NativeEventContextBoundedIntegerSites.Clone();
+    public static string[] NativeEventContextUnitFloatSiteIds =>
+        (string[])NativeEventContextUnitFloatSites.Clone();
+    public static string[] NativeEventContextShuffleSiteIds =>
+        (string[])NativeEventContextShuffleSites.Clone();
     public static string[] EndlessConveyorSessionSiteIds =>
         (string[])EndlessConveyorSessionSites.Clone();
     public static string[] NatureChoiceSiteIds =>
