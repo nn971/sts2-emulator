@@ -242,62 +242,83 @@ public static class ControlledTurnIntentEngineV111
     public static void Validate(ControlledTurnIntentsV111 state) =>
         state.Validate();
 
-    private sealed class PendingTicket(RandomIndexRequestV111 request) : Exception
-    {
-        public RandomIndexRequestV111 Request { get; } = request;
-    }
-
     internal static ControlledTurnIntentsV111 AdvanceToBoundary(
         ControlledTurnIntentsV111 start)
     {
-        var state = start.Fork();
-        var formation = state.Combat.Enemies.Select(e => e.Fork()).ToArray();
-        int index = state.NextEnemyIndex;
-        while (index < formation.Length)
+        var checkpoint = start with
         {
-            var enemy = formation[index];
-            var prior = state.Transcript.Where(d =>
-                d.Request.OwnerId == "creature:" + enemy.InstanceId).ToArray();
-            var prefix = new ControlledRandomIndexReplayPrefixV111(prior);
-            var firstOrdinal = state.Transcript.Length - prior.Length;
-            Func<int, int> getTicket = bound =>
-            {
-                if (bound <= 0)
-                    throw new InvalidOperationException("Nonpositive turn-intent ticket bound.");
-                var request = new RandomIndexRequestV111(
-                    state.SiteId, "run.monster_ai",
-                    "creature:" + enemy.InstanceId,
-                    firstOrdinal + prefix.ConsumedCount,
-                    [], OperationKind: "bounded_integer", BoundedCount: bound);
-                if (!prefix.TryConsume(request,
-                        "Turn-intent ticket prefix diverged.",
-                        out var selectedIndex))
-                    throw new PendingTicket(request);
-                return selectedIndex;
-            };
-            try
-            {
-                var chosen = PrototypeGameEngine.EvaluateEnemyIntentChoice(
-                    formation, index, state.NativeEncounterEntry, getTicket);
-                prefix.EnsureConsumed("Unused turn-intent tickets.");
-                formation[index] = PrototypeGameEngine
-                    .ApplyEnemyIntentOutcome(
-                        enemy, chosen.MoveIndex, chosen.NextAiStateId);
-                index++;
-            }
-            catch (PendingTicket pending)
-            {
-                return state with
-                {
-                    Combat = state.Combat with { Enemies = formation },
-                    NextEnemyIndex = index, Pending = pending.Request
-                };
-            }
-        }
-        return state with
-        {
-            Combat = state.Combat with { Enemies = formation },
-            NextEnemyIndex = index, Pending = null
+            Combat = start.BaselineCombat.Fork(),
+            NextEnemyIndex = 0,
+            Pending = null
         };
+        var decisions = start.Transcript.Select(decision =>
+            ControlledStochasticDecisionV111.FromIndex(decision)).ToArray();
+        int requestOrdinal = 0;
+        // This pass only verifies and reapplies recorded outcomes. Keep its
+        // replayed provider calls out of any caller-owned transition journal.
+        using var replayJournal = RandomBoundaryJournalV111.Begin();
+        var replay = ControlledChanceContinuationExecutorV111.CaptureTyped(
+            checkpoint,
+            ControlledStochasticContinuationStateV111.CurrentSchemaId,
+            decisions,
+            mechanics =>
+            {
+                var formation = mechanics.Combat.Enemies
+                    .Select(enemy => enemy.Fork()).ToArray();
+                int index = 0;
+                while (index < formation.Length)
+                {
+                    var enemy = formation[index];
+                    Func<int, int> getTicket = bound =>
+                    {
+                        if (bound <= 0)
+                            throw new InvalidOperationException(
+                                "Nonpositive turn-intent ticket bound.");
+                        var request = new RandomIndexRequestV111(
+                            mechanics.SiteId, "run.monster_ai",
+                            "creature:" + enemy.InstanceId,
+                            requestOrdinal++, [],
+                            OperationKind: "bounded_integer",
+                            BoundedCount: bound);
+                        return StochasticProviderScopeV111
+                            .SelectIndexProvider(null)
+                            .Resolve(request, RngBundle.Empty).SelectedIndex;
+                    };
+                    try
+                    {
+                        var chosen = PrototypeGameEngine
+                            .EvaluateEnemyIntentChoice(
+                                formation, index,
+                                mechanics.NativeEncounterEntry, getTicket);
+                        formation[index] = PrototypeGameEngine
+                            .ApplyEnemyIntentOutcome(
+                                enemy, chosen.MoveIndex,
+                                chosen.NextAiStateId);
+                        index++;
+                    }
+                    catch (ControlledStochasticChanceRequiredExceptionV111
+                        pending)
+                    {
+                        var request = pending.Request.IndexRequest ??
+                            throw new InvalidDataException(
+                                "Turn-intent replay suspended on a non-index request.");
+                        return mechanics with
+                        {
+                            Combat = mechanics.Combat with
+                            { Enemies = formation },
+                            NextEnemyIndex = index,
+                            Pending = request
+                        };
+                    }
+                }
+                return mechanics with
+                {
+                    Combat = mechanics.Combat with { Enemies = formation },
+                    NextEnemyIndex = index,
+                    Pending = null
+                };
+            });
+        return replay.Value ?? throw new InvalidDataException(
+            "Intent replay suspended outside its saved pending boundary.");
     }
 }
