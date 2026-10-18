@@ -8,12 +8,7 @@ namespace Sts2Emulator.Core;
 /// choices; this provider never advances an RNG stream.
 /// </summary>
 public sealed class ScriptedRandomBoundaryProviderV111 :
-    IRandomIndexProviderV111,
-    IRandomUnitFloatProviderV111,
-    IRandomRangedFloatProviderV111,
-    IRandomRangedDoubleProviderV111,
-    IRandomGaussianIntProviderV111,
-    IRandomGaussianDoubleProviderV111
+    IRandomBoundaryProviderV111
 {
     public const string TranscriptSchemaId =
         "sts2-v111-random-boundary-transcript-v1";

@@ -122,22 +122,22 @@ Endless Conveyor's weighted dish tickets have a read-only Chance Law query and a
 
 `ReferenceNatureChanceLawDecisionV111` maps sampled one-to-one index laws to typed index outcomes and maps configured merchant, Alchemical Coffer, and Treasure rarity laws to representative source floats, plus merchant rounded-price laws to floats that produce the selected integer price. The price mapper searches the source conversion functions used by ordinary Native shop generation. `ReferenceNatureMerchantSessionV111` replays the actual Shop-node map action and the Alchemical Coffer relic-purchase action; `ReferenceNatureTreasureSessionV111` replays the actual Treasure-node map action. These sessions use the mixed typed provider, query conditional laws from the action origin and sampled prefix, and commit the completed action with the sampler cursor atomically. Representatives preserve selected mechanic results. Exact grid weights are source-verified for bounded-index laws, configured merchant and Coffer potion-factory rarity laws, granular Treasure rarity laws, and supported merchant rounded-price mappings; compact Treasure identity mixtures remain `UNVERIFIED`.
 
-The configured native merchant now runs `StartShop` inside
+The configured native merchant runs `StartShop` inside
 `StochasticProviderScopeV111`. The scope routes default `NativePlayerRngV111`
-calls and explicitly passed Native index/unit-float providers through one
-replaceable provider pair. It tracks logical per-stream request ordinals when
-a replacement provider leaves the native cursor untouched. Its local Native
-providers remain the default, while an enclosing controller scope can replace
-them. Legacy typed index choices and `NativeEventContextRngV111` index and
-unit-float choices also use this provider scope, retaining their existing
-providers as the default fallback. The controlled replay executor, configured
-Shop entry and Native-policy player actions install replacement scopes.
-Every ordinary `PrototypeGameEngine.Step` now opens a pass-through scope: it
-keeps explicit providers and gives an enclosing controller scope a single
-boundary to replace providers for the whole action. Logical stream ordinals
-are used only when an overriding provider is active, so pass-through execution
-retains existing request identities. Proving cross-provider mechanical
-equivalence remains open.
+calls and explicitly passed typed providers through one replaceable boundary.
+`IRandomBoundaryProviderV111` composes index, unit-float, ranged-float,
+ranged-double, Gaussian-integer, and Gaussian-double providers, and
+`ScriptedRandomBoundaryProviderV111` can be installed as one mixed provider.
+The Native Overgrowth and later-act map generators now route their explicit
+index and Gaussian-integer providers through this scope. Existing event-choice
+filters still apply to their versioned index/unit-float request types; an
+unfiltered boundary scope covers every primitive. The scope tracks logical
+per-stream ordinals for index/unit-float requests when a replacement provider
+leaves the native cursor untouched. Local Native providers remain the default.
+The controlled replay executor, configured Shop entry, Native-policy player
+actions, and every ordinary `PrototypeGameEngine.Step` install the shared
+scope, which lets an enclosing controller replace providers across one
+mechanics action. Proving cross-provider mechanical equivalence remains open.
 
 The semantic pilot now resumes Distilled Chaos and Mayhem top-card autoplay
 through the same saved semantic draw choice used by card-effect draws. It

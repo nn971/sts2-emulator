@@ -56,7 +56,8 @@ public static class PrototypeNativeOvergrowthMap
                     .SelectedIndex;
             if (maxExclusive <= 0)
                 throw new ArgumentOutOfRangeException(nameof(maxExclusive));
-            return _nativeIndex.Resolve(new RandomIndexRequestV111(
+            return StochasticProviderScopeV111.ResolveIndex(
+                _nativeIndex, new RandomIndexRequestV111(
                 siteId, streamId, ownerId, NextOrdinal(siteId), [],
                 OperationKind: "bounded_integer",
                 BoundedCount: maxExclusive), streams).SelectedIndex;
@@ -85,9 +86,12 @@ public static class PrototypeNativeOvergrowthMap
                 return SampleTruncatedGaussian(
                     streams, mean, standardDeviation, min, max,
                     siteId, ownerId);
-            return _nativeGaussian.Resolve(new RandomGaussianIntRequestV111(
-                siteId, streamId, ownerId, NextOrdinal(siteId),
-                mean, standardDeviation, min, max), streams).SelectedValue;
+            return StochasticProviderScopeV111.ResolveGaussianInt(
+                _nativeGaussian,
+                new RandomGaussianIntRequestV111(
+                    siteId, streamId, ownerId, NextOrdinal(siteId),
+                    mean, standardDeviation, min, max),
+                streams).SelectedValue;
         }
     }
 

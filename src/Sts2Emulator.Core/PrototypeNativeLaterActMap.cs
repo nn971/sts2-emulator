@@ -89,10 +89,12 @@ public static class PrototypeNativeLaterActMap
                     NextOrdinal(siteId)).SelectedIndex;
             if (maxExclusive <= 0)
                 throw new ArgumentOutOfRangeException(nameof(maxExclusive));
-            var decision = _nativeProvider.Resolve(new RandomIndexRequestV111(
-                siteId, streamId, ownerId, NextOrdinal(siteId),
-                Array.Empty<int>(), OperationKind: "bounded_integer",
-                BoundedCount: maxExclusive), bundle);
+            var decision = StochasticProviderScopeV111.ResolveIndex(
+                _nativeProvider,
+                new RandomIndexRequestV111(
+                    siteId, streamId, ownerId, NextOrdinal(siteId),
+                    Array.Empty<int>(), OperationKind: "bounded_integer",
+                    BoundedCount: maxExclusive), bundle);
             return decision.SelectedIndex;
         }
 
@@ -126,7 +128,8 @@ public static class PrototypeNativeLaterActMap
                     bundle, streamId, ownerId, siteId,
                     mean, standardDeviation, min, max,
                     NextOrdinal(siteId));
-            var decision = _nativeGaussianProvider.Resolve(
+            var decision = StochasticProviderScopeV111.ResolveGaussianInt(
+                _nativeGaussianProvider,
                 new RandomGaussianIntRequestV111(
                     siteId, streamId, ownerId, NextOrdinal(siteId),
                     mean, standardDeviation, min, max), bundle);
