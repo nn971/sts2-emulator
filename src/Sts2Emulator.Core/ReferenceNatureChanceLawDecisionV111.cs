@@ -112,6 +112,40 @@ public static class ReferenceNatureChanceLawDecisionV111
             return controlled;
         }
 
+        if (request.GaussianIntRequest is { } gaussianIntRequest)
+        {
+            if (candidateLabels is not null ||
+                law.OperationKind != "gaussian_int" ||
+                !ChanceLawEngineV111.MatchesNativeMapGaussianIntRequest(
+                    gaussianIntRequest))
+                throw new NotSupportedException(
+                    "Gaussian-integer Chance Law mapping currently supports only the registered Native map quota requests.");
+            var expectedLaw = ChanceLawEngineV111
+                .QueryNativeMapGaussianInt(
+                    gaussianIntRequest.SiteId,
+                    gaussianIntRequest.StreamId,
+                    gaussianIntRequest.OwnerId,
+                    gaussianIntRequest.Ordinal);
+            if (law.LawId != expectedLaw.LawId ||
+                !outcome.OutcomeId.StartsWith(
+                    "integer:", StringComparison.Ordinal) ||
+                !int.TryParse(outcome.OutcomeId[8..],
+                    NumberStyles.Integer, CultureInfo.InvariantCulture,
+                    out var selectedInteger) ||
+                selectedInteger < gaussianIntRequest.MinInclusive ||
+                selectedInteger > gaussianIntRequest.MaxInclusive)
+                throw new InvalidDataException(
+                    "Gaussian-integer Chance Law differs from its typed map request.");
+            var gaussianDecision = new RandomGaussianIntDecisionV111(
+                gaussianIntRequest with { }, selectedInteger,
+                "controlled-v111");
+            gaussianDecision.Validate();
+            var controlledGaussian = ControlledStochasticDecisionV111
+                .FromGaussianInt(gaussianDecision);
+            controlledGaussian.Validate();
+            return controlledGaussian;
+        }
+
         if (candidateLabels is not null ||
             law.OperationKind is not ("unit_float_threshold" or
                 "unit_float_weighted_ticket" or
