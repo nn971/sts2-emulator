@@ -24,6 +24,11 @@ requests have exact `NextInt` 53-bit grid masses and a `SOURCE_VERIFIED`
 bounded transform law. Legacy requests and full seeded recycle parity remain
 `UNVERIFIED`.
 
+The read-only `chance_law_query` also exposes this Native bounded transform at
+`combat.draw_pile_recycle.swap_index`. The caller declares the current bound,
+`player:0` owner, and swap ordinal; the query does not inspect the discard-pile
+order, preceding draw prefix, or Native cursor.
+
 The actual combat `DrawPlayerHand` stage now executes pre-draw hooks and prior card draws until the draw pile becomes empty while discarded cards are still eligible. It persists the current `RunState`, remaining hand-draw count, and automatic-pipeline cursor. The controller then exposes a series of ordered finite `combat.draw_pile_recycle.swap_index` tickets on `run.shuffle`.
 
 Nature selects each Fisher–Yates swap index. The engine applies the original postshuffle PerfectFit ordering and after-shuffle relic effects, draws the remaining cards, applies end-of-hand-draw effects, and continues from the **next** pipeline stage. Previous effects are preserved, including health, block, draw triggers and consumed card positions.

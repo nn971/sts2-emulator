@@ -265,6 +265,22 @@ draw_shuffle_law = state.query_chance_law(
 The law covers that `run.shuffle` bound only; it does not return the shuffled
 pile or validate the full call prefix or cursor.
 
+The supported end-turn recycle shuffle exposes its own per-swap law with the
+same bounded-index parameters:
+
+```python
+recycle_swap_law = state.query_chance_law(
+    "combat.draw_pile_recycle.swap_index",
+    owner_id="player:0",
+    ordinal=declared_recycle_swap_ordinal,
+    support_count=current_recycle_swap_bound,
+)
+```
+
+This counts exact Native `NextInt` masses for the declared `run.shuffle`
+bound. It does not check the discard-pile identity/order, earlier draw calls,
+legacy request law, or cursor parity.
+
 The fixed Act 1 boss pools have read-only law queries. Each returns
 equal-weight outcomes identified by encounter ID; legacy seed-to-index
 distributions and Native cursor parity remain `UNVERIFIED`:

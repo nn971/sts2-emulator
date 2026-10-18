@@ -366,7 +366,10 @@ public static partial class ChanceLawEngineV111
                 "native-lava-rock-relic-offer-shuffle-index"),
             [NativeFisherYatesV111.SiteId] = new(
                 NativeFisherYatesV111.StreamId,
-                "native-draw-pile-shuffle-index")
+                "native-draw-pile-shuffle-index"),
+            [ControlledRecycleShuffleEngineV111.SiteId] = new(
+                NativeFisherYatesV111.StreamId,
+                "native-recycle-shuffle-index")
         };
 
     private const long NativeNextDoubleGridSize =
@@ -1757,6 +1760,19 @@ public static partial class ChanceLawEngineV111
     {
         return QueryNativeBoundedIntegerLawSite(
             NativeFisherYatesV111.SiteId, ownerId, supportCount, ordinal);
+    }
+
+    /// <summary>
+    /// Query one Native discard-recycle Fisher-Yates index over its declared
+    /// current bound. The ordered discard pile and hand-draw continuation are
+    /// not inspected.
+    /// </summary>
+    public static ChanceLawV111 QueryNativeRecycleShuffleIndex(
+        string ownerId, int supportCount, int ordinal)
+    {
+        return QueryNativeBoundedIntegerLawSite(
+            ControlledRecycleShuffleEngineV111.SiteId, ownerId,
+            supportCount, ordinal);
     }
 
     private static ChanceLawV111 QueryNativeBoundedIntegerIndex(
