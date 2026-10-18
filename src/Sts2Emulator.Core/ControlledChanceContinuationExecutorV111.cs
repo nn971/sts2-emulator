@@ -11,6 +11,14 @@ internal sealed record ControlledChanceReplayResultV111(
     public bool Suspended => PendingChance is not null;
 }
 
+internal sealed record ControlledStochasticTypedContinuationResultV111<TValue>(
+    TValue? Value,
+    ControlledStochasticContinuationStateV111? Continuation)
+    where TValue : class
+{
+    public bool Suspended => Continuation is not null;
+}
+
 internal abstract class ControlledChanceRequiredExceptionV111(
     RandomIndexRequestV111 request,
     string[]? candidateLabels,
@@ -30,10 +38,10 @@ internal interface IControlledChanceReplayScopeV111 : IDisposable
 }
 
 /// <summary>
-/// Shared replay and suspension boundary for run-based mechanics
-/// continuations. It owns exact prefix consumption; caller-owned boundary
-/// adapters retain their checkpoint selection, supported-site policy, and
-/// serialized continuation types.
+/// Shared replay and suspension boundary for mechanics continuations. Its
+/// generic entry points accept any immutable checkpoint/result pair, while
+/// caller-owned adapters retain checkpoint selection, supported-site policy,
+/// and serialized continuation types.
 /// </summary>
 internal static class ControlledChanceContinuationExecutorV111
 {
@@ -48,6 +56,27 @@ internal static class ControlledChanceContinuationExecutorV111
         ControlledStochasticDecisionV111[] decisions,
         Func<RunState, RunState> mechanics,
         Func<ControlledStochasticRequestV111, bool>? requestFilter = null)
+    {
+        var result = CaptureTyped(
+            checkpoint, schemaId, decisions, mechanics, requestFilter);
+        return new ControlledStochasticContinuationResultV111(
+            result.Value, result.Continuation);
+    }
+
+    /// <summary>
+    /// Runs any immutable mechanics checkpoint with a saved typed outcome
+    /// prefix. Run-based sessions use the compatibility wrapper above;
+    /// mechanics such as standalone map generation can share the same
+    /// chronological request capture without manufacturing a RunState.
+    /// </summary>
+    public static ControlledStochasticTypedContinuationResultV111<TValue>
+        CaptureTyped<TCheckpoint, TValue>(
+            TCheckpoint checkpoint,
+            string schemaId,
+            ControlledStochasticDecisionV111[] decisions,
+            Func<TCheckpoint, TValue> mechanics,
+            Func<ControlledStochasticRequestV111, bool>? requestFilter = null)
+        where TValue : class
     {
         ArgumentNullException.ThrowIfNull(checkpoint);
         ArgumentException.ThrowIfNullOrWhiteSpace(schemaId);
@@ -76,10 +105,11 @@ internal static class ControlledChanceContinuationExecutorV111
                 replay, requestFilter);
         try
         {
-            var run = mechanics(checkpoint) ?? throw new InvalidDataException(
-                "Typed stochastic continuation returned a null run.");
+            var value = mechanics(checkpoint) ?? throw new InvalidDataException(
+                "Typed stochastic continuation returned a null mechanics value.");
             replay.EnsureConsumed();
-            return new ControlledStochasticContinuationResultV111(run, null);
+            return new ControlledStochasticTypedContinuationResultV111<TValue>(
+                value, null);
         }
         catch (ControlledStochasticChanceRequiredExceptionV111 pending)
         {
@@ -89,7 +119,7 @@ internal static class ControlledChanceContinuationExecutorV111
                 pending.Request,
                 pending.CandidateLabels);
             continuation.Validate();
-            return new ControlledStochasticContinuationResultV111(
+            return new ControlledStochasticTypedContinuationResultV111<TValue>(
                 null, continuation);
         }
     }
@@ -106,6 +136,28 @@ internal static class ControlledChanceContinuationExecutorV111
         Func<RunState, RunState> mechanics,
         Func<ControlledStochasticRequestV111, bool>? requestFilter = null)
     {
+        var result = ResolveTyped(
+            checkpoint, continuation, selectedOutcome, mechanics,
+            requestFilter);
+        return new ControlledStochasticContinuationResultV111(
+            result.Value, result.Continuation);
+    }
+
+    /// <summary>
+    /// Resolves the exact pending request in a typed continuation and replays
+    /// any mechanics checkpoint through its next typed request, independent
+    /// of whether that mechanics value is a RunState.
+    /// </summary>
+    public static ControlledStochasticTypedContinuationResultV111<TValue>
+        ResolveTyped<TCheckpoint, TValue>(
+            TCheckpoint checkpoint,
+            ControlledStochasticContinuationStateV111 continuation,
+            ControlledStochasticDecisionV111 selectedOutcome,
+            Func<TCheckpoint, TValue> mechanics,
+            Func<ControlledStochasticRequestV111, bool>? requestFilter = null)
+        where TValue : class
+    {
+        ArgumentNullException.ThrowIfNull(checkpoint);
         ArgumentNullException.ThrowIfNull(continuation);
         ArgumentNullException.ThrowIfNull(selectedOutcome);
         ArgumentNullException.ThrowIfNull(mechanics);
@@ -123,7 +175,7 @@ internal static class ControlledChanceContinuationExecutorV111
 
         var decisions = continuation.Decisions
             .Append(selectedOutcome.Fork()).ToArray();
-        return CaptureStochastic(
+        return CaptureTyped(
             checkpoint, continuation.SchemaId, decisions, mechanics,
             requestFilter);
     }

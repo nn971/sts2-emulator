@@ -59,7 +59,8 @@ public sealed record ReferenceNatureMapGenerationSessionV111(
         var captured = Capture(seed, act, ascension, []);
         var session = new ReferenceNatureMapGenerationSessionV111(
             CurrentSchemaId, seed, act, ascension, initial, initial,
-            [], [], captured.PendingRequest, captured.Map);
+            [], [], captured.Continuation?.PendingRequest,
+            captured.Value?.Fork());
         session.Validate();
         return session;
     }
@@ -85,24 +86,39 @@ public sealed record ReferenceNatureMapGenerationSessionV111(
         if (Complete)
             throw new InvalidOperationException(
                 "ReferenceNature map-generation session is already complete.");
+        var checkpoint = new MapGenerationCheckpointV111(
+            Seed, Act, Ascension);
+        var capturedPrefix = Capture(Seed, Act, Ascension, Decisions);
+        var continuation = capturedPrefix.Continuation ??
+            throw new InvalidDataException(
+                "Incomplete map session lost its typed continuation.");
+        if (!SameRequest(continuation.PendingRequest, PendingRequest))
+            throw new InvalidDataException(
+                "Map session request differs from the typed replay checkpoint.");
         var law = PendingLaw ?? throw new InvalidDataException(
             "Incomplete map session has no pending Chance Law.");
         var selection = ReferenceNatureV111.SampleValidated(law, NatureState);
         var typedDecision = ReferenceNatureChanceLawDecisionV111.FromSelection(
-            law, PendingRequest!, selection);
+            law, PendingRequest!, selection,
+            candidateLabels: continuation.PendingCandidateLabels);
         var decisions = Decisions.Append(typedDecision).ToArray();
         var transcript = DecisionTranscript.Append(
             new ReferenceNatureDecisionV111(
                 law.LawId, law.EventId, selection.OutcomeId,
                 selection.OutcomeIndex)).ToArray();
-        var captured = Capture(Seed, Act, Ascension, decisions);
+        var replay = ControlledChanceContinuationExecutorV111.ResolveTyped<
+            MapGenerationCheckpointV111, MapState>(
+                checkpoint, continuation, typedDecision,
+                mapCheckpoint => GenerateNative(
+                    mapCheckpoint.Seed, mapCheckpoint.Act,
+                    mapCheckpoint.Ascension));
         var next = this with
         {
             NatureState = selection.NextState,
             Decisions = decisions,
             DecisionTranscript = transcript,
-            PendingRequest = captured.PendingRequest,
-            Map = captured.Map
+            PendingRequest = replay.Continuation?.PendingRequest,
+            Map = replay.Value?.Fork()
         };
         next.Validate();
         return next;
@@ -158,10 +174,10 @@ public sealed record ReferenceNatureMapGenerationSessionV111(
                 "ReferenceNature map sampler cursor differs from its transcript.");
 
         var captured = Capture(Seed, Act, Ascension, Decisions);
-        if (!SameRequest(captured.PendingRequest, PendingRequest) ||
-            (captured.Map is null) != (Map is null) ||
-            captured.Map is not null &&
-                CanonicalJson.Sha256(captured.Map) != CanonicalJson.Sha256(Map))
+        if (!SameRequest(captured.Continuation?.PendingRequest, PendingRequest) ||
+            (captured.Value is null) != (Map is null) ||
+            captured.Value is not null &&
+                CanonicalJson.Sha256(captured.Value) != CanonicalJson.Sha256(Map))
             throw new InvalidDataException(
                 "ReferenceNature map mechanics replay differs from its saved continuation.");
     }
@@ -202,24 +218,19 @@ public sealed record ReferenceNatureMapGenerationSessionV111(
         return session;
     }
 
-    private static (ControlledStochasticRequestV111? PendingRequest,
-        MapState? Map) Capture(
+    private sealed record MapGenerationCheckpointV111(
+        string Seed, int Act, int Ascension);
+
+    private static ControlledStochasticTypedContinuationResultV111<MapState>
+        Capture(
         string seed, int act, int ascension,
         ControlledStochasticDecisionV111[] decisions)
-    {
-        using var replay = ControlledStochasticChanceReplayV111.Begin(decisions);
-        using var providerScope = StochasticProviderScopeV111.EnterBoundary(replay);
-        try
-        {
-            var map = GenerateNative(seed, act, ascension);
-            replay.EnsureConsumed();
-            return (null, map.Fork());
-        }
-        catch (ControlledStochasticChanceRequiredExceptionV111 pending)
-        {
-            return (pending.Request.Fork(), null);
-        }
-    }
+        => ControlledChanceContinuationExecutorV111.CaptureTyped(
+            new MapGenerationCheckpointV111(seed, act, ascension),
+            ControlledStochasticContinuationStateV111.MixedPrimitiveSchemaId,
+            decisions,
+            checkpoint => GenerateNative(
+                checkpoint.Seed, checkpoint.Act, checkpoint.Ascension));
 
     private static MapState GenerateNative(
         string seed, int act, int ascension) => act switch
