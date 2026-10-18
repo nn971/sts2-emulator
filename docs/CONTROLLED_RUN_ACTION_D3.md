@@ -16,6 +16,8 @@ the legacy relic pool is exhausted. The boundary uses ordinary run-state
 handles and does not change normal `step` behavior or configured Native
 regional merchant/treasure routes.
 
+## Saved state, support, and player projection
+
 The pending frame stores the exact pre-action run state, action kind, request,
 and ordered candidate labels. Event-entry and Act 1 combat-entry frames retain
 the selected map-node ID. Resolving one index replays the action from that
@@ -23,7 +25,10 @@ checkpoint and records the controlled decision in
 `RunState.ControlledRunActionHistory`. Run start commits the selected boss
 encounter; map entry commits the selected Event, Shop, Treasure, Unknown, or
 supported Act 1 Combat/Elite room through ordinary initialization; Shovel
-commits the relic as the normal reward.
+commits the relic as the normal reward. The ordered candidate labels encode
+the source-eligible support for the saved request. Player-facing
+observations hide those private constraints and Nature actions until
+mechanics commits a result.
 The pending continuation is part of ordinary run snapshots. Player-facing
 observations hide its Nature actions; the explicit controller exposes only
 `choose_controlled_run_action_outcome` actions while the frame is pending.
@@ -31,6 +36,8 @@ For supports larger than the advertised inline-action limit, the controller
 omits expanded action objects and candidate labels but retains the compact
 request bounds. The Chance Law still lists each legal request index, which
 clients resolve through `controlled_run_action_resolve`.
+
+## Probability provenance
 
 Each pending response now includes a read-only `chanceLaw`, its
 `boundaryFingerprint`, and an `eventId`. The law assigns equal weight to each
@@ -113,6 +120,8 @@ The Python binding exposes `State.begin_reference_nature_run_action(nature_seed=
 action_id=...)` and session `resolve_next()`, `fork()`, `save_snapshot()`,
 `Session.load_reference_nature_run_action_snapshot()`, `release()` and the
 committed session's `.state` property.
+
+## Unsupported routes and remaining limits
 
 Run-start map continuation covers the listed `map.legacy.*` request sites
 during initial legacy map generation. It does not cover later-act map

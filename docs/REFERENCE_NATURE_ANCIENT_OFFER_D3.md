@@ -80,6 +80,32 @@ multiple sessions with
 `Session.release_reference_nature_ancient_offer_many(sessions)`. Query coverage
 and atomic session coverage remain separate capability registries.
 
+## S0 session projection and unsupported boundary
+
+This shared contract applies to the session roots and conditioned swap sites
+named in this document and their linked source contracts. Ordered eligible
+offer pools, duplicate entries, saved event conditions, and prior swap indices
+are private generation constraints. A pending session exposes only the current
+typed law and its legal support through the Nature-choice view; it does not
+publish partial offers or pool order through the ordinary player observation.
+After completion, the existing event generator publishes its ordinary offered
+choices, which the player sees through the established event projection.
+
+The session replays the complete ordered decision prefix through the original
+event generator, then commits the generated event and ReferenceNature cursor
+together. Any later player-selected event effect remains on the ordinary event
+action path and runs once. Direct bounded-index and Fisher–Yates laws use exact Native
+`NextInt` preimage masses on their declared supports and are
+`SOURCE_VERIFIED` for that transform. Source-pool completeness, Native event
+stream attribution, seed frequencies, and cursor parity remain separate
+unverified claims; this contract provides no privileged-inspector projection.
+
+Only the named event roots and operations supported by this session can be
+resolved here. Invalid event-entry boundaries, unsupported sites, or an
+incomplete decision prefix fail before an ordinary run handle or sampler
+cursor is published. Normal event assignment, omitted source alternatives, and
+the native Fidelity Inspector remain outside this continuation.
+
 ## Limits
 
 The session's direct-choice and bounded-index laws carry source-verified

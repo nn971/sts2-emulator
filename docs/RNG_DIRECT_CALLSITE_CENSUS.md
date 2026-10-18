@@ -135,15 +135,15 @@ Migration-matrix rows absent from the active registry: **0** (informational; leg
 Matrix-only IDs for manual disposition:
 
 Reference-law column status: **59 UNVERIFIED**; **10 conditional**; **115 calibrated**; **0 unspecified**.
-S0 contract-evidence locator: **24/184 rows** have a text or linked-document match for every facet. Matches are review pointers, not evidence that a contract is complete.
+S0 contract-evidence locator: **99/184 rows** have a text or linked-document match for every facet. Matches are review pointers, not evidence that a contract is complete.
 Keyword locator for manual S0 review. Matches come from the row or a linked heading section or line tied to that site ID; generic document-wide matches are excluded. A match only identifies a place to inspect and does not prove the contract is complete.
 Rows without a text or linked-document match by S0 facet:
 
-- `audience_projection`: 134
-- `private_constraint`: 60
-- `probability_provenance`: 42
-- `resolver_continuation`: 45
-- `unsupported_handling`: 96
+- `audience_projection`: 62
+- `private_constraint`: 35
+- `probability_provenance`: 24
+- `resolver_continuation`: 36
+- `unsupported_handling`: 52
 
 Regenerate this report with `python3 tools/rng_callsite_inventory.py --check-site-matrix --check-s0-contract-links --check-no-ambient-entropy --format markdown > docs/RNG_DIRECT_CALLSITE_CENSUS.md`.
 Rows distinguish legacy prototype calls, native primitive calls, generic shuffle-helper calls, and recognized provider/fixture support. Shuffle rows include their `siteId` argument, resolved constant where available, and exact migration-matrix match for static IDs. The supplemental table traces site IDs passed through the known event, combat-pool, and map shuffle helpers. Generic provider adapters and transcript replay are infrastructure rather than stochastic sites.
