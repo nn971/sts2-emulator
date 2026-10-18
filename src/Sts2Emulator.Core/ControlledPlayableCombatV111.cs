@@ -672,7 +672,8 @@ public static class ControlledPlayableCombatEngineV111
     public const string ShuffleSite = "controlled.fixture.opening_shuffle.swap_index";
 
     public static ControlledPlayableCombatV111 Begin(
-        ControlledIntentStateV111 completed, string seed)
+        ControlledIntentStateV111 completed, string seed,
+        string? encounterId = null)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(seed);
         var verified = ControlledIntentsV111.Restore(
@@ -744,6 +745,24 @@ public static class ControlledPlayableCombatEngineV111
                 Combat = combat
             }
         };
+        if (encounterId is not null)
+        {
+            var encounter = PrototypeContent.Encounter(encounterId);
+            if (encounter.RoomType != PrototypeRoomType.Combat ||
+                act < encounter.MinAct || act > encounter.MaxAct)
+                throw new InvalidDataException(
+                    "Fixed playable encounter is ineligible for its run entry.");
+            var world = run.World ?? throw new InvalidDataException(
+                "Playable combat fixture lost its run world.");
+            run = run with
+            {
+                World = world with
+                {
+                    EncounterHistory = (world.EncounterHistory ?? [])
+                        .Append(encounterId).ToArray()
+                }
+            };
+        }
         int nextIndex = combat.DrawPile.Length - 1;
         var state = new ControlledPlayableCombatV111(
             seed, verified, run, nextIndex, [], [],

@@ -423,7 +423,11 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
             turnIntents.Validate();
             bool initialIntentStage = continuation.OpeningStage ==
                 PrototypeOpeningCombatStage.InitialEnemyIntents;
-            var baseline = turnIntents.BaselineCombat with
+            // BaselineCombat is the replay origin for the intent ticket
+            // prefix. Combat contains any intents already committed before
+            // the next ticket suspended; ControlledTurnIntents.Validate
+            // independently proves that prefix from its baseline.
+            var intentCheckpoint = turnIntents.Combat with
             {
                 AutomaticPipelineContinuation = null
             };
@@ -449,7 +453,7 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
                 ControlledRecycleStratagemPending ||
                 combat.IsPlayerTurn || combat.PendingChoice is not null ||
                 combat.PendingKnowledgeDemonChoice is not null ||
-                CanonicalJson.Sha256(baseline) !=
+                CanonicalJson.Sha256(intentCheckpoint) !=
                     CanonicalJson.Sha256(checkpoint))
                 throw new InvalidOperationException(
                     "Controlled turn-intent checkpoint disagrees with the automatic pipeline.");

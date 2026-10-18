@@ -1044,7 +1044,7 @@ public static class SemanticPilotCombatEngineV111
                 intents, intents.Fingerprint, decision.SelectedIndex);
         }
         var opening = ControlledPlayableCombatEngineV111.Begin(
-            intents, entry.Seed);
+            intents, entry.Seed, entry.EncounterId);
         while (!opening.AtPlayerBoundary)
         {
             var pending = opening.Pending ??
