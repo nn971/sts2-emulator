@@ -306,6 +306,23 @@ public static class SemanticDrawPileAdapterV111
     }
 
     /// <summary>
+    /// Attaches an initial provider realization to an existing physical draw
+    /// pile and validates their membership and Native order before publishing.
+    /// Runtime identity changes use the dedicated insertion/removal methods.
+    /// </summary>
+    internal static CombatState InitializeSemanticDrawPile(
+        CombatState combat, SemanticDeckStateV111 semanticDeck)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(semanticDeck);
+        if (combat.SemanticDeck is not null)
+            throw new InvalidOperationException(
+                "Semantic draw-pile initialization requires an unowned provider state.");
+        return ApplyCommittedPhysicalMutation(
+            combat, combat.DrawPile, semanticDeck);
+    }
+
+    /// <summary>
     /// Commits a mechanics transition that changes one or more card zones.
     /// When DrawPile changes, its provider constraint is updated before the
     /// complete zone owner is published.

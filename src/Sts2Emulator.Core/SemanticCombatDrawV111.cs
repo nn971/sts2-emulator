@@ -578,15 +578,15 @@ public static class SemanticCombatDrawEngineV111
                 "Expected an ordinary pre-draw combat without a pending choice.");
         var baseRun = source.Fork();
         var world = baseRun.World!;
+        var semanticCombat =
+            SemanticDrawPileAdapterV111.InitializeSemanticDrawPile(
+                world.Combat!, SemanticDeckEngineV111.BeginNature(
+                    world.Combat!.DrawPile));
         var attached = baseRun with
         {
             World = world with
             {
-                Combat = world.Combat! with
-                {
-                    SemanticDeck = SemanticDeckEngineV111.BeginNature(
-                        world.Combat!.DrawPile)
-                }
+                Combat = semanticCombat
             }
         };
         RunState advanced;
@@ -633,16 +633,17 @@ public static class SemanticCombatDrawEngineV111
                 "Semantic automatic hand draw needs a clean DrawPlayerHand checkpoint.");
         var origin = source.Fork();
         var world = origin.World!;
+        var originCombat = world.Combat!;
+        var semanticCombat = sourceCombat.SemanticDeck is null
+            ? SemanticDrawPileAdapterV111.InitializeSemanticDrawPile(
+                originCombat,
+                SemanticDeckEngineV111.BeginNature(originCombat.DrawPile))
+            : originCombat;
         var attached = origin with
         {
             World = world with
             {
-                Combat = world.Combat! with
-                {
-                    SemanticDeck = sourceCombat.SemanticDeck?.Fork() ??
-                        SemanticDeckEngineV111.BeginNature(
-                            world.Combat!.DrawPile)
-                }
+                Combat = semanticCombat
             }
         };
         RunState run;

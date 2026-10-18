@@ -142,6 +142,8 @@
 
 **S3 semantic resolution commit increment (2026-10-18):** Specialized pending semantic draws and generated draw insertion now publish their resolved provider deck through `SemanticDrawPileAdapterV111.ApplyCommittedPhysicalMutation`, which validates the deck against the current physical draw pile before returning the combat state. This removes three direct runtime provider assignments outside the adapter; provider initialization and fixture setup remain separate.
 
+**S3 semantic deck initialization increment (2026-10-18):** `SemanticDrawPileAdapterV111.InitializeSemanticDrawPile` now attaches initial Nature and Native provider states only after validating draw-pile membership and, for Native, exact top order. Semantic draw, pilot, source-route and Native policy setup use the adapter instead of publishing an unchecked provider assignment. Forking an existing provider state continues through the existing combat fork operation.
+
 ## S1 precise design
 
 Implement a **read-only, outcome-blind** Chance Law query in `Sts2Emulator.Core` with:

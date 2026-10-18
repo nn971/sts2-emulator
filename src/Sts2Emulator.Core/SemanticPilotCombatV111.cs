@@ -894,11 +894,14 @@ public static class SemanticPilotCombatEngineV111
         var deck = SemanticDeckEngineV111.FromCommittedOpening(
             combat.DrawPile.Reverse().ToArray());
         var run = source.Run.Fork();
+        var semanticCombat =
+            SemanticDrawPileAdapterV111.InitializeSemanticDrawPile(
+                combat.Fork(), deck);
         run = run with
         {
             World = run.World! with
             {
-                Combat = combat.Fork() with { SemanticDeck = deck }
+                Combat = semanticCombat
             }
         };
         var state = new SemanticPilotCombatV111(
@@ -1762,11 +1765,10 @@ public static class SemanticPilotCombatEngineV111
             var completedCombat = completedWorld.Combat ??
                 throw new InvalidDataException(
                     "Native source route lost combat after intent resolution.");
-            semanticCombat = completedCombat with
-            {
-                SemanticDeck = SemanticDeckEngineV111.BeginNative(
-                    completedCombat.DrawPile.Reverse().ToArray())
-            };
+            semanticCombat =
+                SemanticDrawPileAdapterV111.InitializeSemanticDrawPile(
+                    completedCombat, SemanticDeckEngineV111.BeginNative(
+                        completedCombat.DrawPile.Reverse().ToArray()));
             semanticRun = run with
             {
                 World = completedWorld with { Combat = semanticCombat }
@@ -1799,12 +1801,11 @@ public static class SemanticPilotCombatEngineV111
                 var completedCombat = completedWorld.Combat ??
                     throw new InvalidDataException(
                         "Nature source route lost combat after intent resolution.");
-                semanticCombat = completedCombat with
-                {
-                    SemanticDeck = SemanticDeckEngineV111
-                        .FromCommittedOpening(
-                            completedCombat.DrawPile.Reverse().ToArray())
-                };
+                semanticCombat =
+                    SemanticDrawPileAdapterV111.InitializeSemanticDrawPile(
+                        completedCombat,
+                        SemanticDeckEngineV111.FromCommittedOpening(
+                            completedCombat.DrawPile.Reverse().ToArray()));
                 semanticRun = semanticRun with
                 {
                     World = completedWorld with { Combat = semanticCombat }
@@ -1862,12 +1863,13 @@ public static class SemanticPilotCombatEngineV111
 
         var exactDeck = SemanticDeckEngineV111.BeginNative(
             combat.DrawPile.Reverse().ToArray());
-        var nativeCombat = combat with
-        {
-            NativeRng = new NativeCombatRngV111(
-                nativeStreams.Fork(), formation.Fork()),
-            SemanticDeck = exactDeck
-        };
+        var nativeCombat =
+            SemanticDrawPileAdapterV111.ApplyCommittedPhysicalMutation(
+                combat with
+                {
+                    NativeRng = new NativeCombatRngV111(
+                        nativeStreams.Fork(), formation.Fork())
+                }, combat.DrawPile, exactDeck);
         NativeCombatRngEntryV111.Validate(nativeCombat);
         var nativeRun = run with
         {
@@ -3068,12 +3070,11 @@ public static class SemanticPilotCombatEngineV111
                     throw new NotSupportedException(
                         "UNSUPPORTED_SEMANTIC_ROUTE site=combat.opening " +
                         "operation=unmodeled_opening_continuation");
-                var semanticCombat = completedCombat with
-                {
-                    SemanticDeck = SemanticDeckEngineV111
-                        .FromCommittedOpening(
-                            completedCombat.DrawPile.Reverse().ToArray())
-                };
+                var semanticCombat =
+                    SemanticDrawPileAdapterV111.InitializeSemanticDrawPile(
+                        completedCombat,
+                        SemanticDeckEngineV111.FromCommittedOpening(
+                            completedCombat.DrawPile.Reverse().ToArray()));
                 nextRun = nextRun with
                 {
                     World = completedWorld with { Combat = semanticCombat }
