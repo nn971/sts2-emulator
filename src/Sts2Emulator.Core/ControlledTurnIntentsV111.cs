@@ -91,7 +91,7 @@ public sealed record ControlledTurnIntentsV111(
     {
         this.Stochastic.Validate();
         if (string.IsNullOrWhiteSpace(this.NativeEncounterEntry) ||
-            string.IsNullOrWhiteSpace(this.SiteId) ||
+            !ControlledTurnIntentEngineV111.IsSupportedSiteId(this.SiteId) ||
             this.NextEnemyIndex < 0 ||
             this.NextEnemyIndex > this.BaselineCombat.Enemies.Length ||
             this.BaselineCombat.Enemies.Length != this.Combat.Enemies.Length)
@@ -138,13 +138,18 @@ public static class ControlledTurnIntentEngineV111
 {
     public const string SiteId = NativeCombatRngEntryV111.NextTurnIntentSiteId;
 
+    public static bool IsSupportedSiteId(string? siteId) =>
+        siteId is NativeCombatRngEntryV111.NextTurnIntentSiteId or
+            NativeCombatRngEntryV111.CommittedIntentSiteId;
+
     public static ControlledTurnIntentsV111 Begin(
         CombatState combat, string nativeEncounterEntry,
         string siteId = SiteId)
     {
         ArgumentNullException.ThrowIfNull(combat);
         ArgumentException.ThrowIfNullOrWhiteSpace(nativeEncounterEntry);
-        ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
+        if (!IsSupportedSiteId(siteId))
+            throw new ArgumentOutOfRangeException(nameof(siteId));
         var state = new ControlledTurnIntentsV111(
             combat.Fork(), combat.Fork(), nativeEncounterEntry, 0, [], null,
             siteId);
@@ -291,6 +296,12 @@ public static class ControlledTurnIntentEngineV111
         var formation = mechanics.Combat.Enemies
             .Select(enemy => enemy.Fork()).ToArray();
         int index = 0;
+        var siteId = mechanics.SiteId;
+        if (siteId is not (
+                NativeCombatRngEntryV111.NextTurnIntentSiteId or
+                NativeCombatRngEntryV111.CommittedIntentSiteId))
+            throw new NotSupportedException(
+                $"UNSUPPORTED_CONTROLLED_CHANCE site={siteId}");
         while (index < formation.Length)
         {
             var enemy = formation[index];
@@ -300,7 +311,7 @@ public static class ControlledTurnIntentEngineV111
                     throw new InvalidOperationException(
                         "Nonpositive turn-intent ticket bound.");
                 var request = new RandomIndexRequestV111(
-                    mechanics.SiteId, "run.monster_ai",
+                    siteId, "run.monster_ai",
                     "creature:" + enemy.InstanceId,
                     requestOrdinal++, [],
                     OperationKind: "bounded_integer",
