@@ -2426,6 +2426,16 @@ internal static class PrototypeAiJsonlServer
                             naturePlayable = false,
                             controlledChanceSchemaId = ControlledChanceSchemaId,
                             semanticChanceSchemaId = SemanticChanceSchemaId,
+                            semanticNatureChoiceViewSchemaId =
+                                SemanticNatureChoiceViewV111.CurrentSchemaId,
+                            semanticNatureChoiceViewOperations = new[]
+                            {
+                                "nature_choice_observe"
+                            },
+                            semanticNatureChoiceViewSessionKinds = new[]
+                            {
+                                "semantic_combat"
+                            },
                             stochasticCapabilities =
                                 StochasticCapabilitiesV111.Create(),
                             stochasticSessionCoverage =
