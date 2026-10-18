@@ -35,6 +35,15 @@ public sealed record SemanticIntentEventV111(
     public const string EventSchemaId = "sts2-v111-semantic-intent-event-v1";
     public string OperationKind => "weighted_choice";
 
+    public SemanticIntentEventV111 Fork() => this with
+    {
+        Support = Support with
+        {
+            Candidates = (SemanticIntentCandidateV111[])
+                Support.Candidates.Clone()
+        }
+    };
+
     public void Validate()
     {
         if (SchemaId != EventSchemaId || string.IsNullOrWhiteSpace(EventId) ||
@@ -78,6 +87,11 @@ public sealed record SemanticIntentEventV111(
 public sealed record SemanticIntentDecisionV111(
     SemanticIntentEventV111 Event, string IntentId)
 {
+    public SemanticIntentDecisionV111 Fork() => this with
+    {
+        Event = Event.Fork()
+    };
+
     public void Validate()
     {
         Event.Validate();
@@ -86,5 +100,24 @@ public sealed record SemanticIntentDecisionV111(
                 candidate.IntentId == IntentId))
             throw new InvalidDataException(
                 "Semantic intent outcome is outside its event support.");
+    }
+}
+
+public static class SemanticIntentChoiceV111
+{
+    public static (SemanticIntentDecisionV111 Decision, int SourceTicket)
+        Select(SemanticIntentEventV111 pending, string intentId)
+    {
+        ArgumentNullException.ThrowIfNull(pending);
+        pending.Validate();
+        ArgumentException.ThrowIfNullOrWhiteSpace(intentId);
+        var candidate = pending.Support.Candidates.SingleOrDefault(item =>
+            item.IntentId == intentId) ??
+            throw new InvalidOperationException(
+                "Illegal or stale semantic intent candidate ID.");
+        var decision = new SemanticIntentDecisionV111(
+            pending.Fork(), candidate.IntentId);
+        decision.Validate();
+        return (decision, candidate.TicketStart);
     }
 }

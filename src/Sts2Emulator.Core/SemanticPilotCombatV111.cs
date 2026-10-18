@@ -924,17 +924,7 @@ public sealed record SemanticPilotCombatV111(
         {
             { IntentDecision: { } decision } => transition with
             {
-                IntentDecision = decision with
-                {
-                    Event = decision.Event with
-                    {
-                        Support = decision.Event.Support with
-                        {
-                            Candidates = (SemanticIntentCandidateV111[])
-                                decision.Event.Support.Candidates.Clone()
-                        }
-                    }
-                }
+                IntentDecision = decision.Fork()
             },
             { DrawDecision: { } decision } => transition with
             {
@@ -3220,17 +3210,12 @@ public static class SemanticPilotCombatEngineV111
         var support = ControlledTurnIntentEngineV111
             .DescribePendingSemanticIntent(ticket) ??
             throw new InvalidDataException("Missing weighted intent support.");
-        var candidate = support.Candidates.SingleOrDefault(x =>
-            x.IntentId == intentId) ??
-            throw new InvalidOperationException(
-                "Illegal or stale semantic intent candidate ID.");
         var semanticEvent = MakeSemanticIntentEvent(current, ticket.Pending,
             support);
-        var decision = new SemanticIntentDecisionV111(
-            semanticEvent, candidate.IntentId);
-        decision.Validate();
-        return Resolve(current, fingerprint, candidate.TicketStart,
-            decision, null, false, null);
+        var selection = SemanticIntentChoiceV111.Select(
+            semanticEvent, intentId);
+        return Resolve(current, fingerprint, selection.SourceTicket,
+            selection.Decision, null, false, null);
     }
 
     /// <summary>
