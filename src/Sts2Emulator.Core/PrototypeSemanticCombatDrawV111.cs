@@ -187,11 +187,6 @@ public sealed partial class PrototypeGameEngine
                     World = world with { Combat = combatWithDraw }
                 }, cost.RemainingCount);
             }
-            if (automaticHandDraw)
-                return (SuspendSemanticAutomaticDrawAtHookChoice(
-                    run, run.Player, combat, cost.RemainingCount,
-                    automaticHandDrawRequested!.Value),
-                    cost.RemainingCount);
             return (SuspendStandaloneSemanticDrawAtHookChoice(
                 run, run.Player, combat, cost.RemainingCount,
                 cost.FromHandDraw, cost.EventDepth), cost.RemainingCount);
@@ -378,9 +373,9 @@ public sealed partial class PrototypeGameEngine
             PrototypeDrawCardsBoundaryKind.NestedCardDrawnChoice)
         {
             if (automatic)
-                return (SuspendSemanticAutomaticDrawAtHookChoice(
+                return (SuspendAutomaticHandDrawAtCardDrawnChoice(
                     advanced, drawn.Player, drawn.Combat,
-                    drawn.RemainingCount, automaticHandDrawRequested!.Value),
+                    drawn.RemainingCount, automaticHandDrawRequested),
                     drawn.RemainingCount);
             if (nestedEffect)
                 return (SuspendDrawCardsAtCardDrawnChoice(
@@ -687,42 +682,6 @@ public sealed partial class PrototypeGameEngine
             Player = player,
             World = run.World! with { Combat = combat }
         };
-    }
-
-    internal static RunState SuspendSemanticAutomaticDrawAtHookChoice(
-        RunState run, PlayerState player, CombatState combat,
-        int remaining, int requested)
-    {
-        var cursor = combat.AutomaticPipelineContinuation;
-        if (!ControlledChanceGuardV111.Active || remaining < 0 ||
-            requested <= 0 || combat.PendingChoice is null ||
-            combat.SemanticDeck is not
-                { Mode: SemanticDeckStateV111.NatureMode,
-                    Pending: null } ||
-            cursor?.Mechanics.IsAtStep(
-                PrototypeAutomaticStepKind.DrawPlayerHand) != true ||
-            (cursor.ControlledSemanticDrawRequested is { } savedRequested &&
-             savedRequested != requested) ||
-            cursor.ControlledSemanticBeforeHandDrawPending ||
-            cursor.ControlledDrawRemaining is not null ||
-            cursor.ControlledDrawCostRemaining is not null ||
-            cursor.OpeningStage is not null ||
-            cursor.PendingPostDispatchEventKind is not null)
-            throw new InvalidDataException(
-                "Automatic CardDrawn choice lost its hand-draw cursor.");
-        combat = combat with
-        {
-            PendingChoice = combat.PendingChoice with
-            {
-                AutomaticSemanticDrawHookChoice = true
-            }
-        };
-        var suspended = CommitAutomaticHandDrawProgress(
-            run, player, combat,
-            PrototypeAutomaticHandDrawProgressV111.SemanticDraw(
-                requested, remaining));
-        PrototypeStateInvariants.Validate(suspended);
-        return suspended;
     }
 
     /// <summary>

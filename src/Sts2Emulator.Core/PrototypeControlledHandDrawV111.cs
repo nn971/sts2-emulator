@@ -243,19 +243,9 @@ public sealed partial class PrototypeGameEngine
         if (drawBoundary ==
             PrototypeDrawCardsBoundaryKind.NestedCardDrawnChoice)
         {
-            if (!ControlledChanceGuardV111.Active ||
-                ControlledChanceGuardV111.EngineOwnedNativeProviderActive ||
-                combat.SemanticDeck is not null ||
-                combat.PendingChoice is null ||
-                combat.PendingKnowledgeDemonChoice is not null)
-                throw new InvalidDataException(
-                    "Controlled hand draw has a malformed CardDrawn hook boundary.");
-            var suspended = CommitAutomaticHandDrawProgress(
-                state, drawn.Player, combat,
-                PrototypeAutomaticHandDrawProgressV111
-                    .ControlledDrawHookChoice(drawn.RemainingCount));
-            PrototypeStateInvariants.Validate(suspended);
-            return suspended;
+            return SuspendAutomaticHandDrawAtCardDrawnChoice(
+                state, drawn.Player, combat, drawn.RemainingCount,
+                semanticRequested: null);
         }
 
         if (combat.PendingChoice is not null ||

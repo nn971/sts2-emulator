@@ -7,6 +7,65 @@ namespace Sts2Emulator.Core;
 /// </summary>
 public sealed partial class PrototypeGameEngine
 {
+    private static RunState SuspendAutomaticHandDrawAtCardDrawnChoice(
+        RunState state,
+        PlayerState player,
+        CombatState combat,
+        int remaining,
+        int? semanticRequested)
+    {
+        var cursor = combat.AutomaticPipelineContinuation;
+        if (!ControlledChanceGuardV111.Active || remaining < 0 ||
+            combat.PendingChoice is null ||
+            combat.PendingKnowledgeDemonChoice is not null ||
+            cursor is null || !cursor.Mechanics.IsAtStep(
+                PrototypeAutomaticStepKind.DrawPlayerHand) ||
+            cursor.OpeningStage is not null ||
+            cursor.PendingPostDispatchEventKind is not null ||
+            cursor.ControlledSemanticBeforeHandDrawPending ||
+            cursor.ControlledBeforeHandDrawHookChoicePending)
+            throw new InvalidDataException(
+                "Automatic CardDrawn choice lost its hand-draw cursor.");
+
+        PrototypeAutomaticHandDrawProgressV111 progress;
+        if (semanticRequested is { } requested)
+        {
+            if (requested <= 0 || combat.SemanticDeck is not
+                    { Mode: SemanticDeckStateV111.NatureMode, Pending: null } ||
+                (cursor.ControlledSemanticDrawRequested is { } savedRequested &&
+                 savedRequested != requested) ||
+                cursor.ControlledDrawRemaining is not null ||
+                cursor.ControlledDrawCostRemaining is not null)
+                throw new InvalidDataException(
+                    "Semantic automatic CardDrawn choice cursor is inconsistent.");
+            combat = combat with
+            {
+                PendingChoice = combat.PendingChoice with
+                {
+                    AutomaticSemanticDrawHookChoice = true
+                }
+            };
+            progress = PrototypeAutomaticHandDrawProgressV111.SemanticDraw(
+                requested, remaining);
+        }
+        else
+        {
+            if (ControlledChanceGuardV111.EngineOwnedNativeProviderActive ||
+                combat.SemanticDeck is not null ||
+                cursor.ControlledSemanticDrawRequested is not null ||
+                cursor.ControlledSemanticDrawRemaining is not null)
+                throw new InvalidDataException(
+                    "Controlled automatic CardDrawn choice cursor is inconsistent.");
+            progress = PrototypeAutomaticHandDrawProgressV111
+                .ControlledDrawHookChoice(remaining);
+        }
+
+        var suspended = CommitAutomaticHandDrawProgress(
+            state, player, combat, progress);
+        PrototypeStateInvariants.Validate(suspended);
+        return suspended;
+    }
+
     // The provider adapters supply their suspension policy and continue the
     // tagged result through their own saved frame.
     private static (RunState Run, PrototypeDrawCardsResult? Drawn)
