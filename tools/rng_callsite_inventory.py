@@ -21,7 +21,7 @@ from urllib.parse import unquote, urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = ROOT / "src" / "Sts2Emulator.Core"
-SCHEMA_ID = "emulator-rng-callsite-source-inventory-v16"
+SCHEMA_ID = "emulator-rng-callsite-source-inventory-v18"
 SITE_REGISTRY_PATH = SOURCE_ROOT / "StochasticSiteRegistryV111.cs"
 
 CALL_PATTERN = re.compile(
@@ -58,6 +58,18 @@ REQUEST_CONSTRUCTION_PATTERN = re.compile(
 
 STRING_CONSTANT_PATTERN = re.compile(
     r"\bconst\s+string\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*=\s*"
+    r'"(?P<value>[^"\\]*(?:\\.[^"\\]*)*)"\s*;'
+)
+
+STRING_CONSTANT_EXPRESSION_PATTERN = re.compile(
+    r"\bconst\s+string\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*=\s*"
+    r"(?P<expression>[^;]+);"
+)
+
+CLASS_STRING_CONSTANT_PATTERN = re.compile(
+    r"(?m)^[ \t]*(?:public|private|internal|protected)\s+"
+    r"(?:(?:static|new)\s+)*const\s+string\s+"
+    r"(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*=\s*"
     r'"(?P<value>[^"\\]*(?:\\.[^"\\]*)*)"\s*;'
 )
 
@@ -165,6 +177,107 @@ def _string_constants(source: str) -> dict[str, set[str]]:
             match.group("value")
         )
     return constants
+
+
+def _containing_member_bounds(source: str, offset: int) -> tuple[int, int]:
+    declarations = list(ACCESS_MEMBER_START_PATTERN.finditer(
+        source, 0, offset
+    ))
+    if not declarations:
+        return 0, len(source)
+    start = declarations[-1].start()
+    following = ACCESS_MEMBER_START_PATTERN.search(source, offset)
+    end = len(source) if following is None else following.start()
+    return start, end
+
+
+def _containing_member_source(source: str, offset: int) -> str:
+    start, end = _containing_member_bounds(source, offset)
+    return source[start:end]
+
+
+def _method_string_constants(
+    source: str,
+    offset: int,
+    global_constants: dict[str, set[str]],
+) -> dict[str, set[str]]:
+    """Resolve const strings declared in the containing member only."""
+    member_source = _containing_member_source(source, offset)
+    constants: dict[str, set[str]] = {}
+    for declaration in CLASS_STRING_CONSTANT_PATTERN.finditer(source):
+        constants.setdefault(declaration.group("name"), set()).add(
+            declaration.group("value")
+        )
+    constants.update(_string_constants(member_source))
+    declarations = list(
+        STRING_CONSTANT_EXPRESSION_PATTERN.finditer(member_source)
+    )
+    for _ in range(len(declarations) + 1):
+        changed = False
+        for declaration in declarations:
+            name = declaration.group("name")
+            values = set(_resolve_site_values(
+                declaration.group("expression"), constants,
+                global_constants,
+            ))
+            existing = constants.get(name, set())
+            if values and existing != values:
+                constants[name] = values
+                changed = True
+        if not changed:
+            break
+    return constants
+
+
+def _method_local_site_values(
+    source: str,
+    construction_start: int,
+    expression: str | None,
+    local_constants: dict[str, set[str]],
+    global_constants: dict[str, set[str]],
+    known_site_ids: set[str],
+) -> list[str]:
+    """Resolve a single, unreassigned local site expression."""
+    if expression is None:
+        return []
+    identifier = re.fullmatch(
+        r"(?:this\.)?(?P<name>[A-Za-z_][A-Za-z0-9_]*)",
+        re.sub(r"\s+", "", expression),
+    )
+    if identifier is None:
+        return []
+    member_start, member_end = _containing_member_bounds(
+        source, construction_start
+    )
+    member_source = source[member_start:member_end]
+    body_start = member_source.find("{")
+    if body_start < 0:
+        return []
+    request_offset = construction_start - member_start
+    if request_offset <= body_start:
+        return []
+    member_source = member_source[body_start + 1:request_offset]
+    name = identifier.group("name")
+    declaration_pattern = re.compile(
+        rf"\b(?:var|string)\s+{re.escape(name)}\s*=\s*(?P<value>[^;]+);"
+    )
+    declarations = list(declaration_pattern.finditer(member_source))
+    if len(declarations) != 1:
+        return []
+    declaration = declarations[0]
+    assignment_pattern = re.compile(
+        rf"\b{re.escape(name)}\s*=(?!=)"
+    )
+    if assignment_pattern.search(
+        member_source, declaration.end()
+    ):
+        return []
+    values = _resolve_site_values(
+        declaration.group("value"), local_constants, global_constants
+    )
+    if not values or any(value not in known_site_ids for value in values):
+        return []
+    return values
 
 
 def _resolve_site_value(
@@ -311,6 +424,46 @@ def _split_csharp_or_alternatives(expression: str) -> list[str]:
     return parts
 
 
+def _switch_expression_results(expression: str) -> list[str] | None:
+    match = re.search(r"\bswitch\s*\{", expression)
+    if match is None:
+        return None
+    opening = expression.find("{", match.start())
+    depth = 0
+    in_string = False
+    escaped = False
+    closing = None
+    for index in range(opening, len(expression)):
+        character = expression[index]
+        if in_string:
+            if escaped:
+                escaped = False
+            elif character == "\\":
+                escaped = True
+            elif character == '"':
+                in_string = False
+            continue
+        if character == '"':
+            in_string = True
+        elif character == "{":
+            depth += 1
+        elif character == "}":
+            depth -= 1
+            if depth == 0:
+                closing = index
+                break
+    if closing is None or expression[closing + 1:].strip():
+        return None
+    arms = _split_call_arguments(expression[opening + 1:closing])
+    results: list[str] = []
+    for arm in arms:
+        arrow = arm.find("=>")
+        if arrow < 0:
+            return None
+        results.append(arm[arrow + 2:].strip())
+    return results or None
+
+
 def _resolve_site_values(
     expression: str | None,
     local_constants: dict[str, set[str]],
@@ -319,6 +472,17 @@ def _resolve_site_values(
     """Resolve exact or statically visible alternatives in a site expression."""
     if expression is None:
         return []
+    switch_results = _switch_expression_results(expression)
+    if switch_results is not None:
+        values: set[str] = set()
+        for result in switch_results:
+            branch_values = _resolve_site_values(
+                result, local_constants, global_constants
+            )
+            if not branch_values:
+                return []
+            values.update(branch_values)
+        return sorted(values)
     branches = _conditional_site_branches(expression)
     if branches is not None:
         values: set[str] = set()
@@ -835,7 +999,9 @@ def _site_id_forwarder_calls(
                 else:
                     expression = arguments[position]
                     value = _resolve_site_value(
-                        expression, _string_constants(source),
+                        expression, _method_string_constants(
+                            source, match.start(), global_constants
+                        ),
                         global_constants,
                     )
                 line = source.count("\n", 0, match.start()) + 1
@@ -898,8 +1064,10 @@ def _typed_request_constructions(
     """Inventory explicit typed random-request construction boundaries."""
     calls: list[dict[str, Any]] = []
     for path, source in sources.items():
-        local_constants = _string_constants(source)
         for match in REQUEST_CONSTRUCTION_PATTERN.finditer(source):
+            local_constants = _method_string_constants(
+                source, match.start(), global_constants
+            )
             arguments = _call_arguments(source, match.start())
             expression = None
             for argument in arguments:
@@ -915,6 +1083,14 @@ def _typed_request_constructions(
                 expression, local_constants, global_constants
             )
             resolution_source = "expression" if values else None
+            if not values:
+                values = _method_local_site_values(
+                    source, match.start(), expression,
+                    local_constants, global_constants,
+                    registry_site_ids | matrix_site_ids,
+                )
+                if values:
+                    resolution_source = "method_local_assignment"
             if not values:
                 values = _guarded_site_values(
                     source, match.start(), expression,
@@ -1050,7 +1226,6 @@ def collect() -> dict[str, Any]:
     )
     for path, source in sources.items():
         relative = path.relative_to(ROOT).as_posix()
-        local_constants = _string_constants(source)
         source_offset = 0
         for line_number, line in enumerate(
             source.splitlines(), start=1
@@ -1087,7 +1262,12 @@ def collect() -> dict[str, Any]:
                 site_value = None
                 if site_expression is not None:
                     site_value = _resolve_site_value(
-                        site_expression, local_constants, string_constants
+                        site_expression,
+                        _method_string_constants(
+                            source, source_offset + match.start(),
+                            string_constants,
+                        ),
+                        string_constants,
                     )
                 if api == "NativeFisherYatesV111":
                     if site_expression is None:
