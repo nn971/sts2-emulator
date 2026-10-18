@@ -323,6 +323,7 @@ public static class StochasticSiteRegistryV111
         .. ChanceLawEngineV111.LegacyPotionRewardOddsTicketQuerySiteIds,
         .. ChanceLawEngineV111.LegacyUncommonPotionModelQuerySiteIds,
         .. ChanceLawEngineV111.LegacyPotionModelWithinRarityQuerySiteIds,
+        .. ChanceLawEngineV111.LegacyUniformPotionModelQuerySiteIds,
         NativeOrobasEventV111.OfferSiteId,
         NativePaelRewardsV111.OfferSiteId,
         NativeAncientRewardsV111.TezcataraOfferSiteId,
