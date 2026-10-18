@@ -287,12 +287,8 @@ public sealed record SemanticCombatDrawV111(
             (!this.AutomaticHandDraw && originCombat.SemanticDeck is not null) ||
             (this.AutomaticHandDraw &&
              originCombat.SemanticDeck is { } prior &&
-             (prior.Pending is not null ||
-              prior.Mode != SemanticDeckStateV111.NatureMode ||
-              !SemanticDeckEngineV111.AllCardInstanceIds(prior)
-                  .Order().SequenceEqual(originCombat.DrawPile.Order()) ||
-              (this.Run.World?.Combat?.SemanticDeck?.Transcript?.Length ?? 0) <
-                  (prior.Transcript?.Length ?? 0))) ||
+             (this.Run.World?.Combat?.SemanticDeck?.Transcript?.Length ?? 0) <
+                 (prior.Transcript?.Length ?? 0)) ||
             originCombat.PendingChoice is not null ||
             (!this.AutomaticHandDraw &&
              originCombat.AutomaticPipelineContinuation is not null) ||
@@ -309,7 +305,16 @@ public sealed record SemanticCombatDrawV111(
              combat.AutomaticPipelineContinuation is not null) ||
             combat.PendingKnowledgeDemonChoice is not null)
             throw new InvalidDataException("Invalid semantic combat draw stage.");
-        SemanticDeckEngineV111.Validate(deck);
+        if (this.AutomaticHandDraw && originCombat.SemanticDeck is not null)
+            SemanticDrawPileAdapterV111.ValidateNatureDeckBoundary(
+                originCombat,
+                "Invalid semantic combat draw stage.",
+                "Invalid semantic combat draw stage.");
+        SemanticDrawPileAdapterV111.ValidateNatureDeckBoundary(
+            combat,
+            "Invalid semantic combat draw stage.",
+            "Semantic provider state and physical draw-pile membership differ.",
+            allowPending: true);
         var cost = combat.PendingChoice?.ControlledDrawCost;
         var controlledSemanticDraw =
             combat.PendingChoice?.ControlledSemanticDraw;
@@ -443,11 +448,6 @@ public sealed record SemanticCombatDrawV111(
                 throw new InvalidDataException(
                     "Semantic draw-insertion cursor is inconsistent.");
         }
-        if (deck.Mode != SemanticDeckStateV111.NatureMode ||
-            !SemanticDeckEngineV111.AllCardInstanceIds(deck)
-                .Order().SequenceEqual(combat.DrawPile.Order()))
-            throw new InvalidDataException(
-                "Semantic provider state and physical draw-pile membership differ.");
     }
 
     public SemanticCombatDrawV111 Fork() => this with
@@ -493,13 +493,13 @@ public static class SemanticCombatDrawEngineV111
                   .ControlledSemanticDrawRequested != state.RequestedCount)) ||
             semanticDraw.RemainingCount != state.RemainingCount ||
             !PrototypeGameEngine.ValidateControlledDrawInsertion(
-                combat!, insertion) ||
-            combat.SemanticDeck is not
-                { Mode: SemanticDeckStateV111.NatureMode, Pending: null } deck ||
-            !SemanticDeckEngineV111.AllCardInstanceIds(deck)
-                .Order().SequenceEqual(combat.DrawPile.Order()))
+                combat!, insertion))
             throw new InvalidDataException(
                 "After-shuffle insertion is not a valid semantic draw stage.");
+        SemanticDrawPileAdapterV111.ValidateNatureDeckBoundary(
+            combat!,
+            "After-shuffle insertion is not a valid semantic draw stage.",
+            "After-shuffle insertion is not a valid semantic draw stage.");
 
         var pile = (long[])insertion.EligibleDrawPile.Clone();
         var cardModelId = insertion.SelectedCardId!;
