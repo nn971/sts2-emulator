@@ -47,6 +47,17 @@ hooks resume, and then the remaining effect queue continues.
 
 The private pending choice records the exact eligible draw-pile instance IDs, source operation, generated card ID or eligible Attack IDs, remaining repetition count in the saved queued-operation continuation, and source-card/event/card-play continuation identity. On completion, the original queue resumes without re-running earlier effects. Multiple insertions generate successive tickets and are recorded chronologically in the existing `LiveTranscript`, with independent fork outcomes and source-eligibility validation. Nature receives card models in `pending.candidateCardIds` for the model-selection stage. The ordinary fair player observation remains inaccessible during pending Nature decisions. Native insertion-position transforms are `SOURCE_VERIFIED` on canonical `run.shuffle`; legacy insertion laws remain `UNVERIFIED`. Standard Native events require a source-shaped card/effect owner, while standard legacy events retain the `prototype.combat` owner; relic and Personal Hive events retain their source-specific owner prefixes.
 
+The Personal Hive site `combat.effect.personal_hive.dazed.random_insert_index`
+has a direct read-only Native index law through `chance_law_query`. Its caller
+declares the source-specific owner, current draw-pile length plus one, and
+per-stack ordinal. The same query supports `combat.draw_pile.random_insert_index`,
+`combat.relic.after_shuffle.generated_card.random_insert_index`,
+`combat.enemy.draw.random_insert_index`, and
+`combat.enemy.discard.random_insert_index`, each with caller-declared owner,
+current pile-position count, and request ordinal. These queries are conditional
+on canonical `run.shuffle`; they do not calibrate stream assignment or inspect
+the preceding operation prefix.
+
 ## Semantic JSONL/Python fixture bridge
 
 The semantic P0 session can opt into the fixed-card position stage with

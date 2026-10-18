@@ -369,7 +369,22 @@ public static partial class ChanceLawEngineV111
                 "native-draw-pile-shuffle-index"),
             [ControlledRecycleShuffleEngineV111.SiteId] = new(
                 NativeFisherYatesV111.StreamId,
-                "native-recycle-shuffle-index")
+                "native-recycle-shuffle-index"),
+            [PrototypeControlledDrawInsertionV111.PersonalHiveDazedSiteId] = new(
+                NativeFisherYatesV111.StreamId,
+                "native-personal-hive-dazed-insertion-index"),
+            ["combat.draw_pile.random_insert_index"] = new(
+                NativeFisherYatesV111.StreamId,
+                "native-draw-pile-random-insertion-index"),
+            ["combat.relic.after_shuffle.generated_card.random_insert_index"] = new(
+                NativeFisherYatesV111.StreamId,
+                "native-after-shuffle-relic-insertion-index"),
+            ["combat.enemy.draw.random_insert_index"] = new(
+                NativeFisherYatesV111.StreamId,
+                "native-enemy-draw-insertion-index"),
+            ["combat.enemy.discard.random_insert_index"] = new(
+                NativeFisherYatesV111.StreamId,
+                "native-enemy-discard-insertion-index")
         };
 
     private const long NativeNextDoubleGridSize =
@@ -1773,6 +1788,19 @@ public static partial class ChanceLawEngineV111
         return QueryNativeBoundedIntegerLawSite(
             ControlledRecycleShuffleEngineV111.SiteId, ownerId,
             supportCount, ordinal);
+    }
+
+    /// <summary>
+    /// Query one Native Personal Hive Dazed insertion index over its declared
+    /// current bound. The source-specific owner and draw-pile support are not
+    /// inspected.
+    /// </summary>
+    public static ChanceLawV111 QueryNativePersonalHiveDazedInsertionIndex(
+        string ownerId, int supportCount, int ordinal)
+    {
+        return QueryNativeBoundedIntegerLawSite(
+            PrototypeControlledDrawInsertionV111.PersonalHiveDazedSiteId,
+            ownerId, supportCount, ordinal);
     }
 
     private static ChanceLawV111 QueryNativeBoundedIntegerIndex(

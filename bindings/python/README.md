@@ -281,6 +281,27 @@ This counts exact Native `NextInt` masses for the declared `run.shuffle`
 bound. It does not check the discard-pile identity/order, earlier draw calls,
 legacy request law, or cursor parity.
 
+Personal Hive's Dazed insertion position also has a bounded-index query. Pass
+the source-specific insertion owner, current draw-pile length plus one, and
+the stack's ordinal:
+
+```python
+personal_hive_insertion_law = state.query_chance_law(
+    "combat.effect.personal_hive.dazed.random_insert_index",
+    owner_id=declared_personal_hive_insertion_owner,
+    ordinal=personal_hive_stack_ordinal,
+    support_count=current_draw_pile_count + 1,
+)
+```
+
+The law is exact when the request uses canonical Native `run.shuffle`. It does
+not validate source stream assignment, pile identity/order, the powered-hit
+prefix, legacy insertion law, or cursor parity.
+
+The same query shape is available for standard generated-card insertion,
+after-shuffle relic insertion, and enemy draw/discard insertion at their
+respective stable site IDs.
+
 The fixed Act 1 boss pools have read-only law queries. Each returns
 equal-weight outcomes identified by encounter ID; legacy seed-to-index
 distributions and Native cursor parity remain `UNVERIFIED`:
