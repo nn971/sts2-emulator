@@ -93,16 +93,18 @@ its provider scope,
 but it does not reproduce Native source cursor advancement. To keep the
 committed Native queue order private, it stores a canonicalized Nature-owned
 projection of the existing persistent relic bag in its origin and resulting
-run; the original queue order never enters the session snapshot. This
-projection carries an optional `NatureUnordered` snapshot tag; Native bags
-omit it and retain their existing shape. A snapshot carrying the tag uses
+run; the original queue order never enters the session snapshot. If the source
+has no bag, the projection creates canonical eligible rarity sets without
+sampling Native queue order. This projection carries an optional
+`NatureUnordered` snapshot tag; Native bags omit it and retain their existing
+shape. A snapshot carrying the tag uses
 `sts2-exact-snapshot-v3-nature-relic-bag-order`, advertised separately in
 `hello`. Ordinary queue-order pulls reject a
 Nature-owned set unless a controlled Chance Law replay selects an identity.
-The boundary
-requires that bag to exist, so Native bag construction is outside this
-session. Other stochastic purchase effects, later Treasure draws, and Native
-cursor parity remain unsupported. Legacy Shop-node generation continues to use its existing
+Native bag construction and queue shuffling remain outside this session, and
+the completeness of the modeled eligible sets remains unverified. Other
+stochastic purchase effects, later Treasure draws, and Native cursor parity
+remain unsupported. Legacy Shop-node generation continues to use its existing
 run-action contract. The four legacy `shop.merchant.*` rows linked from the
 migration matrix remain separate: three price rows use discrete integer
 percentage bins that approximate the Native unit-float price sites, and the

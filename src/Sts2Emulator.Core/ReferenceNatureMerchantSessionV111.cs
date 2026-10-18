@@ -80,7 +80,8 @@ public sealed record ReferenceNatureMerchantSessionV111(
             source, initialNatureState, "Native merchant");
 
         var natureOrigin =
-            ReferenceNatureRunProjectionV111.CreateNatureReplayOrigin(source);
+            ReferenceNatureRunProjectionV111.CreateNatureReplayOrigin(
+                source, createRelicBagWhenMissing: true);
         var replay = Replay(natureOrigin, action, []);
         var run = replay.Run is { } completed
             ? ReferenceNatureRunCursorV111.Commit(
@@ -419,10 +420,9 @@ public sealed record ReferenceNatureMerchantSessionV111(
     {
         if (source.World is not { } world || source.NativeRunRng is null ||
             source.ControlledRunActionChoice is not null ||
-            !PrototypeGameEngine.UsesNativeRegionalSystems(world) ||
-            world.RelicBag is null)
+            !PrototypeGameEngine.UsesNativeRegionalSystems(world))
             throw new InvalidOperationException(
-                "ReferenceNature merchant session requires configured Native Shop state and a committed relic bag.");
+                "ReferenceNature merchant session requires configured Native Shop state.");
         var legal = new PrototypeGameEngine().GetLegalActions(source).Any(
             candidate => PrototypeAiEnvironment.StableActionId(candidate) ==
                 PrototypeAiEnvironment.StableActionId(action));

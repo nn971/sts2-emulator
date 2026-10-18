@@ -149,9 +149,8 @@ draw probabilities.
 `ReferenceNatureNativeEventGoldSessionV111` provide serialized continuations
 and use the shared law-to-source mapping. Their opening projections sort the existing
 relic bag queues so Native's committed hidden queue order is not retained in
-Nature snapshots. The merchant session still requires a constructed bag;
-the Treasure session can seed sorted eligible rarity sets if the source run
-has no bag, while Native event-entry replay preserves an absent bag. Nature-owned sets
+Nature snapshots. Merchant and Treasure sessions seed sorted eligible rarity
+sets if the source run has no bag, while Native event-entry replay preserves an absent bag. Nature-owned sets
 serialize an optional `NatureUnordered` tag in the v3 snapshot schema, while
 Native bags omit the field and keep their current snapshot shape. The merchant
 and Treasure sessions do not model Native cursor advancement; the merchant also
