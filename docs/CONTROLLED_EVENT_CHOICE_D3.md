@@ -63,6 +63,8 @@ support; the direct category law does not replace that saved continuation.
 The generic legacy `event.reward.random_potion.model` site also has a direct
 pool query keyed by `event_id` and the selected choice `action_id`; it does not
 cover Wellspring or Whispering Hollow's separate Native-shaped routes.
+The legacy `event.reward.random_rare_card.model` site has the same direct
+query inputs and returns the current prototype Rare-card reward pool.
 
 The supported event-choice sites are:
 

@@ -408,6 +408,11 @@ public static partial class ChanceLawEngineV111
         "event.reward.random_potion.model"
     ];
 
+    private static readonly string[] LegacyEventRewardRareCardModelQuerySites =
+    [
+        "event.reward.random_rare_card.model"
+    ];
+
     private sealed record NativeBoundedIntegerLawSiteV111(
         string StreamId, string Boundary);
 
@@ -485,6 +490,9 @@ public static partial class ChanceLawEngineV111
 
     public static string[] LegacyEventRewardPotionModelQuerySiteIds =>
         (string[])LegacyEventRewardPotionModelQuerySites.Clone();
+
+    public static string[] LegacyEventRewardRareCardModelQuerySiteIds =>
+        (string[])LegacyEventRewardRareCardModelQuerySites.Clone();
 
     /// <summary>
     /// Query the retained legacy card-rarity integer ticket after the source
@@ -1072,6 +1080,51 @@ public static partial class ChanceLawEngineV111
             "potion pool; Native event-specific branches and source-pool " +
             "completeness remain unverified.", outcomes,
             operationKind: "choose_index");
+    }
+
+    /// <summary>
+    /// Query the legacy random-Rare-card event effect over the current ordered
+    /// prototype reward pool filtered to Rare cards.
+    /// </summary>
+    public static ChanceLawV111 QueryLegacyEventRewardRareCardModel(
+        string eventId, string choiceId, int ordinal)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(choiceId);
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+
+        const string siteId = "event.reward.random_rare_card.model";
+        const string streamId = "reward";
+        var pool = PrototypeContent.RewardCardPool.Where(cardId =>
+            PrototypeContent.Card(cardId).Rarity ==
+            PrototypeCardRarity.Rare).ToArray();
+        if (pool.Length == 0)
+            throw new InvalidOperationException(
+                "The generic event reward Rare-card pool is empty.");
+        var poolFingerprint = CanonicalJson.Sha256(pool);
+        var ownerId = $"event:{eventId}:choice:{choiceId}:pool:" +
+            poolFingerprint;
+        var outcomes = pool.Select(cardId =>
+            new ChanceLawOutcomeV111("card:" + cardId, 1L))
+            .ToArray();
+        var conditioning = new
+        {
+            siteId,
+            streamId,
+            ownerId,
+            ordinal,
+            eventId,
+            choiceId,
+            orderedRareRewardPool = pool,
+            poolFingerprint
+        };
+        return CreateLegacyCategoricalLaw(
+            siteId, streamId, ownerId, ordinal,
+            "legacy-event-reward-rare-card-pool-v1", conditioning,
+            "Equal index weights over the ordered prototype Rare-card reward " +
+            "pool; Native character-pool fidelity and stream parity remain " +
+            "unverified.", outcomes, operationKind: "choose_index");
     }
 
     private static (long Rare, long Uncommon, long Common)
