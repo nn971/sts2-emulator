@@ -34,7 +34,8 @@ public static class NativeNeowEventV111
             var request = new RandomIndexRequestV111(
                 siteId, stream.StreamId, ownerId, 0,
                 Enumerable.Range(0, count).ToArray());
-            var decision = provider.Resolve(request, bundle);
+            var decision = StochasticProviderScopeV111.ResolveIndex(
+                provider, request, bundle);
             decision.Validate();
             decisions.Add(decision);
             return decision.SelectedIndex;

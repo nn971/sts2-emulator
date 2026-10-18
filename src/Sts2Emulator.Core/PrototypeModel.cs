@@ -1528,8 +1528,8 @@ public sealed record PrototypeEncounterDefinition(
         {
             if (maxExclusive <= 0)
                 throw new ArgumentOutOfRangeException(nameof(maxExclusive));
-            var choice = provider.Resolve(
-                new RandomIndexRequestV111(
+            var choice = StochasticProviderScopeV111.ResolveIndex(
+                provider, new RandomIndexRequestV111(
                     siteId,
                     streamId,
                     ownerId,

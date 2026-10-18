@@ -120,7 +120,8 @@ public static class NativeEncounterFormationFactoryV111
                 FormationSiteId, ownedStream.StreamId,
                 $"encounter:{nativeEncounterEntry}:floor:{totalFloor}",
                 ordinal, Enumerable.Range(0, maxExclusive).ToArray());
-            var decision = provider.Resolve(request, ownedBundle);
+            var decision = StochasticProviderScopeV111.ResolveIndex(
+                provider, request, ownedBundle);
             choices.Add(decision);
             ordinal++;
             return decision.SelectedIndex;

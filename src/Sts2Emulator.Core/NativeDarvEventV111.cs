@@ -159,10 +159,11 @@ public static class NativeDarvEventV111
         var streamId = bundle.Streams[0].StreamId;
         var ownerId = $"event:DARV:act:{world.Act}:floor:0";
         var decisions = new List<RandomIndexDecisionV111>();
-        var variant = provider.Resolve(new RandomIndexRequestV111(
-            OfferVariantSiteId, streamId, ownerId, 0,
-            Array.Empty<int>(), OperationKind: "bounded_integer",
-            BoundedCount: 2), bundle);
+        var variant = StochasticProviderScopeV111.ResolveIndex(
+            provider, new RandomIndexRequestV111(
+                OfferVariantSiteId, streamId, ownerId, 0,
+                Array.Empty<int>(), OperationKind: "bounded_integer",
+                BoundedCount: 2), bundle);
         variant.Validate();
         decisions.Add(variant);
         var offerDustyTome = variant.SelectedValue == 0;

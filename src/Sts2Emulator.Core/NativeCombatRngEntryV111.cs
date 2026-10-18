@@ -109,9 +109,11 @@ public static class NativeCombatRngEntryV111
             _ = NativeRngV111.ToSnapshot(context.Rng);
             var pool = InitialHpPool(combat, enemy, usedHp);
             // Native RNG must consume even singleton pools.
-            var choice = chooser.Resolve(new RandomIndexRequestV111(
-                InitialUniqueHpSiteId, "run.niche",
-                "creature:" + context.CombatId, index, pool), fresh.RunStreams);
+            var choice = StochasticProviderScopeV111.ResolveIndex(
+                chooser, new RandomIndexRequestV111(
+                    InitialUniqueHpSiteId, "run.niche",
+                    "creature:" + context.CombatId, index, pool),
+                fresh.RunStreams);
             decisions.Add(choice);
             var hp = choice.SelectedValue;
             enemies[index] = enemy with { Hp = hp, MaxHp = hp };
@@ -277,8 +279,8 @@ public static class NativeCombatRngEntryV111
         var hatchHpCandidates = Enumerable.Range(
             min, checked(max - min + 1)).ToArray();
         var monsterContext = native.Formation.MonsterContexts[index];
-        var hatchHpChoice = new NativeRandomIndexProviderV111().Resolve(
-            new RandomIndexRequestV111(
+        var hatchHpChoice = StochasticProviderScopeV111.ResolveIndex(
+            new NativeRandomIndexProviderV111(), new RandomIndexRequestV111(
                 ToughEggHatchHpSiteId, "run.niche",
                 "creature:" + monsterContext.CombatId, 0,
                 hatchHpCandidates), native.RunStreams);
@@ -393,8 +395,8 @@ public static class NativeCombatRngEntryV111
             : Enumerable.Range(
                 range.Min, checked(range.Max - range.Min + 1)).ToArray();
         // Even the fixed-range/singleton case advances run.niche.
-        var spawnHpChoice = new NativeRandomIndexProviderV111().Resolve(
-            new RandomIndexRequestV111(
+        var spawnHpChoice = StochasticProviderScopeV111.ResolveIndex(
+            new NativeRandomIndexProviderV111(), new RandomIndexRequestV111(
                 InitialUniqueHpSiteId, "run.niche",
                 "creature:" + spawned.InstanceId, 0, values),
             native.RunStreams);

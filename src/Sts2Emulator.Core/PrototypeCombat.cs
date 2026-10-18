@@ -3336,7 +3336,8 @@ public sealed partial class PrototypeGameEngine
                         "creature:" + enemy.InstanceId, occurrence,
                         [], OperationKind: "bounded_integer",
                         BoundedCount: maxExclusive);
-                    var result = provider.Resolve(request, ownedNative.RunStreams);
+                    var result = StochasticProviderScopeV111.ResolveIndex(
+                        provider, request, ownedNative.RunStreams);
                     audit?.Add(result);
                     occurrence++;
                     return result.SelectedIndex;
@@ -6984,8 +6985,8 @@ public sealed partial class PrototypeGameEngine
                         nativeRunStreams is null
                             ? new LegacyPrototypeRandomIndexProviderV111()
                             : new NativeRandomIndexProviderV111();
-                    var decision = provider.Resolve(
-                        new RandomIndexRequestV111(
+                    var decision = StochasticProviderScopeV111.ResolveIndex(
+                        provider, new RandomIndexRequestV111(
                             "combat.relic.jeweled_mask.random_power_draw_card",
                             streamId, "player:0", combat.Turn - 1,
                             Enumerable.Range(0, candidates.Length).ToArray()),
@@ -7748,7 +7749,10 @@ public sealed partial class PrototypeGameEngine
                             item.StreamId == streamId) ??
                             throw new InvalidOperationException(
                                 "Combat potion generation stream is missing.");
-                        var callOrdinal = stream.CallCount ?? 0;
+                        var callOrdinal = StochasticProviderScopeV111
+                            .GetNextOrdinal(streams, streamId) is { } scopedOrdinal
+                                ? (ulong)scopedOrdinal
+                                : (stream.CallCount ?? 0);
                         if (callOrdinal > int.MaxValue)
                             throw new NotSupportedException(
                                 "Combat potion generation ordinal exceeds the request range.");
@@ -7758,8 +7762,8 @@ public sealed partial class PrototypeGameEngine
                         var ownerId = "effect:" + operation.Kind + ":source:" +
                             (sourceCardInstanceId?.ToString() ?? "none") +
                             ":pool:" + CanonicalJson.Sha256(pool);
-                        var decision = provider.Resolve(
-                            new RandomIndexRequestV111(
+                        var decision = StochasticProviderScopeV111.ResolveIndex(
+                            provider, new RandomIndexRequestV111(
                                 "combat.potion_generation.random_model",
                                 streamId, ownerId, (int)callOrdinal,
                                 Enumerable.Range(0, pool.Length).ToArray()),
@@ -10357,7 +10361,10 @@ public sealed partial class PrototypeGameEngine
         var stream = streams.Streams.SingleOrDefault(item =>
             item.StreamId == streamId) ?? throw new NotSupportedException(
                 "Random draw-cost provider stream is missing.");
-        var callCount = stream.CallCount ?? 0;
+        var callCount = StochasticProviderScopeV111.GetNextOrdinal(
+            streams, streamId) is { } scopedOrdinal
+                ? (ulong)scopedOrdinal
+                : (stream.CallCount ?? 0);
         if (callCount > int.MaxValue)
             throw new NotSupportedException(
                 "Random draw-cost provider ordinal exceeds the request range.");
@@ -10373,7 +10380,8 @@ public sealed partial class PrototypeGameEngine
         IRandomIndexProviderV111 provider = native is null
             ? new LegacyPrototypeRandomIndexProviderV111()
             : new NativeRandomIndexProviderV111();
-        var decision = provider.Resolve(request, streams);
+        var decision = StochasticProviderScopeV111.ResolveIndex(
+            provider, request, streams);
         var updated = native is null
             ? combat
             : combat with
@@ -13799,9 +13807,10 @@ public sealed partial class PrototypeGameEngine
         IRandomIndexProviderV111 provider = native is null
             ? new LegacyPrototypeRandomIndexProviderV111()
             : new NativeRandomIndexProviderV111();
-        var decision = provider.Resolve(new RandomIndexRequestV111(
-            siteId, streamId, ownerId, ordinal,
-            (int[])eligibleEnemyInstanceIds.Clone()), streams);
+        var decision = StochasticProviderScopeV111.ResolveIndex(
+            provider, new RandomIndexRequestV111(
+                siteId, streamId, ownerId, ordinal,
+                (int[])eligibleEnemyInstanceIds.Clone()), streams);
         var updated = native is null
             ? combat
             : combat with
@@ -13863,7 +13872,10 @@ public sealed partial class PrototypeGameEngine
             item.StreamId == streamId) ??
             throw new InvalidOperationException(
                 "Random hand-cost provider stream is missing.");
-        var callOrdinal = stream.CallCount ?? 0;
+        var callOrdinal = StochasticProviderScopeV111.GetNextOrdinal(
+            streams, streamId) is { } scopedOrdinal
+                ? (ulong)scopedOrdinal
+                : (stream.CallCount ?? 0);
         if (callOrdinal > int.MaxValue)
             throw new NotSupportedException(
                 "Random hand-cost provider ordinal exceeds the request range.");
@@ -13884,7 +13896,8 @@ public sealed partial class PrototypeGameEngine
                 : [],
             OperationKind: selectingCard ? "choose_index" : "bounded_integer",
             BoundedCount: selectingCard ? null : boundedCount);
-        var decision = provider.Resolve(request, streams);
+        var decision = StochasticProviderScopeV111.ResolveIndex(
+            provider, request, streams);
         var updated = native is null
             ? combat
             : combat with
@@ -13928,7 +13941,10 @@ public sealed partial class PrototypeGameEngine
             item.StreamId == streamId) ??
             throw new InvalidOperationException(
                 "Random combat-card provider stream is missing.");
-        var callOrdinal = stream.CallCount ?? 0;
+        var callOrdinal = StochasticProviderScopeV111.GetNextOrdinal(
+            streams, streamId) is { } scopedOrdinal
+                ? (ulong)scopedOrdinal
+                : (stream.CallCount ?? 0);
         if (callOrdinal > int.MaxValue)
             throw new NotSupportedException(
                 "Random combat-card provider ordinal exceeds the request range.");
@@ -13963,7 +13979,8 @@ public sealed partial class PrototypeGameEngine
                 "operation=choose_index requires a saved continuation.");
         }
 
-        var decision = provider.Resolve(request, streams);
+        var decision = StochasticProviderScopeV111.ResolveIndex(
+            provider, request, streams);
         var updated = native is null
             ? combat
             : combat with
@@ -14008,7 +14025,10 @@ public sealed partial class PrototypeGameEngine
             item.StreamId == streamId) ??
             throw new InvalidOperationException(
                 "Random combat-card pool provider stream is missing.");
-        var callOrdinal = stream.CallCount ?? 0;
+        var callOrdinal = StochasticProviderScopeV111.GetNextOrdinal(
+            streams, streamId) is { } scopedOrdinal
+                ? (ulong)scopedOrdinal
+                : (stream.CallCount ?? 0);
         if (callOrdinal > int.MaxValue)
             throw new NotSupportedException(
                 "Random combat-card pool ordinal exceeds the request range.");
@@ -14064,9 +14084,11 @@ public sealed partial class PrototypeGameEngine
             ? "card_instance:" + sourceCardId
             : "effect:" + operationKind;
         ownerId += ":pool:" + CanonicalJson.Sha256(candidateCardIds);
-        var decision = provider.Resolve(new RandomIndexRequestV111(
-            siteId, streamId, ownerId, ordinal,
-            Enumerable.Range(0, candidateCardIds.Length).ToArray()), streams);
+        var decision = StochasticProviderScopeV111.ResolveIndex(
+            provider, new RandomIndexRequestV111(
+                siteId, streamId, ownerId, ordinal,
+                Enumerable.Range(0, candidateCardIds.Length).ToArray()),
+            streams);
         var updated = native is null
             ? combat
             : combat with
@@ -14138,7 +14160,8 @@ public sealed partial class PrototypeGameEngine
                 "operation=bounded_integer requires a saved pile-insertion continuation.");
         }
 
-        var decision = provider.Resolve(request, streams);
+        var decision = StochasticProviderScopeV111.ResolveIndex(
+            provider, request, streams);
         var updated = native is null
             ? combat
             : combat with

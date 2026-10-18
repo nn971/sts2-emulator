@@ -134,6 +134,14 @@ filters still apply to their versioned index/unit-float request types; an
 unfiltered boundary scope covers every primitive. The scope tracks logical
 per-stream ordinals for index/unit-float requests when a replacement provider
 leaves the native cursor untouched. Local Native providers remain the default.
+Source-side explicit index adapters in combat, Native monster HP and hatch
+hooks, encounter formation, native event offers, and semantic pilot setup now
+use the same resolver. Their current explicit providers remain the defaults;
+an enclosing boundary can replace them. Replay validators retain direct Native
+provider calls so they independently verify saved outcomes. Combat adapters
+whose request ordinal comes from the Native cursor read the scope's logical
+ordinal during counterfactual replay, so repeated scoped requests retain their
+transcript order even when the provider leaves Native state unchanged.
 The controlled replay executor, configured Shop entry, Native-policy player
 actions, and every ordinary `PrototypeGameEngine.Step` install the shared
 scope, which lets an enclosing controller replace providers across one

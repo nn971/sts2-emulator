@@ -102,10 +102,11 @@ public static class NativeOrobasEventV111
         var offers = Enumerable.Range(0, RelicPools.Length).Select(ordinal =>
         {
             var eligible = OfferCandidateIds(fork.Player, ordinal);
-            var decision = provider.Resolve(new RandomIndexRequestV111(
-                OfferSiteId, context.StreamId,
-                "event:OROBAS:act:2:floor:0", ordinal,
-                Enumerable.Range(0, eligible.Length).ToArray()), rng);
+            var decision = StochasticProviderScopeV111.ResolveIndex(
+                provider, new RandomIndexRequestV111(
+                    OfferSiteId, context.StreamId,
+                    "event:OROBAS:act:2:floor:0", ordinal,
+                    Enumerable.Range(0, eligible.Length).ToArray()), rng);
             decision.Validate();
             decisions.Add(decision);
             return eligible[decision.SelectedIndex];

@@ -1031,7 +1031,8 @@ public static class SemanticPilotCombatEngineV111
         while (!hp.Complete)
         {
             var pending = hp.Pending!;
-            var decision = nativeProvider.Resolve(pending, rng);
+            var decision = StochasticProviderScopeV111.ResolveIndex(
+                nativeProvider, pending, rng);
             hp = ControlledInitialHpV111.Resolve(
                 hp, hp.Fingerprint, decision.SelectedIndex);
         }
@@ -1039,7 +1040,8 @@ public static class SemanticPilotCombatEngineV111
         while (!intents.Complete)
         {
             var pending = intents.Pending!;
-            var decision = nativeProvider.Resolve(pending, rng);
+            var decision = StochasticProviderScopeV111.ResolveIndex(
+                nativeProvider, pending, rng);
             intents = ControlledIntentsV111.Resolve(
                 intents, intents.Fingerprint, decision.SelectedIndex);
         }
@@ -1053,10 +1055,11 @@ public static class SemanticPilotCombatEngineV111
             if (pending.SiteId != ControlledPlayableCombatEngineV111.ShuffleSite)
                 throw new NotSupportedException(
                     "UNSUPPORTED_SEMANTIC_OPENING site=" + pending.SiteId);
-            var decision = nativeProvider.Resolve(pending with
-            {
-                SiteId = NativeFisherYatesV111.SiteId
-            }, rng);
+            var decision = StochasticProviderScopeV111.ResolveIndex(
+                nativeProvider, pending with
+                {
+                    SiteId = NativeFisherYatesV111.SiteId
+                }, rng);
             opening = ControlledPlayableCombatEngineV111.Resolve(
                 opening, opening.Fingerprint, decision.SelectedIndex);
         }

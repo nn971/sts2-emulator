@@ -44,8 +44,8 @@ public static class PrototypeEncounterFormationResolver
         var ordinal = 0;
         for (var index = 0; index < count; index++)
         {
-            var decision = provider.Resolve(
-                new RandomIndexRequestV111(
+            var decision = StochasticProviderScopeV111.ResolveIndex(
+                provider, new RandomIndexRequestV111(
                     "combat.encounter.formation.index_draw",
                     "combat",
                     "encounter:" + encounter.Id,

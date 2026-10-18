@@ -276,10 +276,11 @@ public static class NativePaelRewardsV111
         var decisions = new List<RandomIndexDecisionV111>(pools.Length);
         var offers = pools.Select((pool, ordinal) =>
         {
-            var decision = provider.Resolve(new RandomIndexRequestV111(
-                OfferSiteId, stream.StreamId,
-                "event:PAEL:act:2:floor:0", ordinal,
-                Enumerable.Range(0, pool.Length).ToArray()), bundle);
+            var decision = StochasticProviderScopeV111.ResolveIndex(
+                provider, new RandomIndexRequestV111(
+                    OfferSiteId, stream.StreamId,
+                    "event:PAEL:act:2:floor:0", ordinal,
+                    Enumerable.Range(0, pool.Length).ToArray()), bundle);
             decision.Validate();
             decisions.Add(decision);
             return "take_" + pool[decision.SelectedIndex];
