@@ -3169,7 +3169,7 @@ public sealed partial class PrototypeGameEngine
                         state.Rng,
                         "shop.potion_offer.price.index_draw",
                         $"act:{world.Act}:floor:{world.Floor}:offer:{index}:potion:{potionId}",
-                        Enumerable.Range(40, 21),
+                        PrototypeLegacyShopPriceV111.PotionOutcomes,
                         streamId: "shop");
                 return new ShopOffer(
                     100 + index,
@@ -3193,7 +3193,7 @@ public sealed partial class PrototypeGameEngine
                         state.Rng,
                         "shop.relic_offer.price.index_draw",
                         $"act:{world.Act}:floor:{world.Floor}:offer:{index}:relic:{relicId}",
-                        Enumerable.Range(100, 41),
+                        PrototypeLegacyShopPriceV111.RelicOutcomes,
                         streamId: "shop");
                 return new ShopOffer(
                     200 + index,
@@ -6096,21 +6096,11 @@ public sealed partial class PrototypeGameEngine
 
     private static int ShopCardPrice(string cardId, RngBundle rng)
     {
-        var rarity = PrototypeContent.Card(cardId).Rarity;
-        var (minimum, spread) = rarity switch
-        {
-            PrototypeCardRarity.Common => (45, 16),
-            PrototypeCardRarity.Uncommon => (65, 21),
-            PrototypeCardRarity.Rare => (100, 31),
-            _ => throw new InvalidOperationException(
-                $"Basic card '{cardId}' cannot be a normal shop offer.")
-        };
-
         return ResolveLegacyRandomIndex(
             rng,
             "shop.card.price.index_draw",
             "card:" + cardId,
-            Enumerable.Range(minimum, spread),
+            PrototypeLegacyShopPriceV111.CardOutcomes(cardId),
             streamId: "shop");
     }
 

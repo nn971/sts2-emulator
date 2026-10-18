@@ -4222,6 +4222,33 @@ internal static class PrototypeAiJsonlServer
                             });
                             break;
                         }
+                        if (siteId == "shop.card.price.index_draw")
+                        {
+                            RejectChanceLawQueryParameters(
+                                request, "card_id", "support_count");
+                            var shopPriceCardId = OptionalString(
+                                request, "card_id") ??
+                                throw new ArgumentException(
+                                    "Shop card-price law requires card_id.");
+                            law = ChanceLawEngineV111
+                                .QueryLegacyShopCardPrice(
+                                    shopPriceCardId, ordinal);
+                            var supportCount = OptionalInt(
+                                request, "support_count");
+                            if (supportCount is not null &&
+                                supportCount != law.Outcomes.Length)
+                                throw new ArgumentException(
+                                    "Shop card-price support_count must match the card's rarity-specific price range.");
+                            Write(new
+                            {
+                                requestId,
+                                ok = true,
+                                chanceLawSchemaId =
+                                    ChanceLawV111.CurrentSchemaId,
+                                law
+                            });
+                            break;
+                        }
                         if (siteId == "shop.card_rarity.ticket")
                         {
                             RejectChanceLawQueryParameters(
@@ -4314,6 +4341,86 @@ internal static class PrototypeAiJsonlServer
                                 supportCount != law.Outcomes.Length)
                                 throw new ArgumentException(
                                     "Shop card-model support_count must match the Act, card type, rarity, and prior offers.");
+                            Write(new
+                            {
+                                requestId,
+                                ok = true,
+                                chanceLawSchemaId =
+                                    ChanceLawV111.CurrentSchemaId,
+                                law
+                            });
+                            break;
+                        }
+                        if (siteId == "shop.potion_offer.price.index_draw")
+                        {
+                            RejectChanceLawQueryParameters(
+                                request, "act", "floor", "offer_ordinal",
+                                "potion_id", "support_count");
+                            var shopPriceAct = OptionalInt(request, "act") ??
+                                throw new ArgumentException(
+                                    "Shop potion-price law requires act.");
+                            var shopPriceFloor = OptionalInt(request, "floor") ??
+                                throw new ArgumentException(
+                                    "Shop potion-price law requires floor.");
+                            var potionOfferOrdinal = OptionalInt(
+                                request, "offer_ordinal") ??
+                                throw new ArgumentException(
+                                    "Shop potion-price law requires offer_ordinal.");
+                            var shopPricePotionId = OptionalString(
+                                request, "potion_id") ??
+                                throw new ArgumentException(
+                                    "Shop potion-price law requires potion_id.");
+                            law = ChanceLawEngineV111
+                                .QueryLegacyShopPotionPrice(
+                                    shopPriceAct, shopPriceFloor,
+                                    potionOfferOrdinal, shopPricePotionId,
+                                    ordinal);
+                            var supportCount = OptionalInt(
+                                request, "support_count");
+                            if (supportCount is not null &&
+                                supportCount != law.Outcomes.Length)
+                                throw new ArgumentException(
+                                    "Shop potion-price support_count must be twenty-one.");
+                            Write(new
+                            {
+                                requestId,
+                                ok = true,
+                                chanceLawSchemaId =
+                                    ChanceLawV111.CurrentSchemaId,
+                                law
+                            });
+                            break;
+                        }
+                        if (siteId == "shop.relic_offer.price.index_draw")
+                        {
+                            RejectChanceLawQueryParameters(
+                                request, "act", "floor", "offer_ordinal",
+                                "relic_id", "support_count");
+                            var shopPriceAct = OptionalInt(request, "act") ??
+                                throw new ArgumentException(
+                                    "Shop relic-price law requires act.");
+                            var shopPriceFloor = OptionalInt(request, "floor") ??
+                                throw new ArgumentException(
+                                    "Shop relic-price law requires floor.");
+                            var relicOfferOrdinal = OptionalInt(
+                                request, "offer_ordinal") ??
+                                throw new ArgumentException(
+                                    "Shop relic-price law requires offer_ordinal.");
+                            var shopPriceRelicId = OptionalString(
+                                request, "relic_id") ??
+                                throw new ArgumentException(
+                                    "Shop relic-price law requires relic_id.");
+                            law = ChanceLawEngineV111
+                                .QueryLegacyShopRelicPrice(
+                                    shopPriceAct, shopPriceFloor,
+                                    relicOfferOrdinal, shopPriceRelicId,
+                                    ordinal);
+                            var supportCount = OptionalInt(
+                                request, "support_count");
+                            if (supportCount is not null &&
+                                supportCount != law.Outcomes.Length)
+                                throw new ArgumentException(
+                                    "Shop relic-price support_count must be forty-one.");
                             Write(new
                             {
                                 requestId,

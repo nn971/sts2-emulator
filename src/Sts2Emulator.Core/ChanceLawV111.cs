@@ -393,6 +393,21 @@ public static partial class ChanceLawEngineV111
         "shop.card_model.index_draw"
     ];
 
+    private static readonly string[] LegacyShopCardPriceQuerySites =
+    [
+        "shop.card.price.index_draw"
+    ];
+
+    private static readonly string[] LegacyShopPotionPriceQuerySites =
+    [
+        "shop.potion_offer.price.index_draw"
+    ];
+
+    private static readonly string[] LegacyShopRelicPriceQuerySites =
+    [
+        "shop.relic_offer.price.index_draw"
+    ];
+
     private static readonly string[] LegacyPotionDropTicketQuerySites =
     [
         "reward.random_potion.drop.ticket"
@@ -521,6 +536,15 @@ public static partial class ChanceLawEngineV111
 
     public static string[] LegacyShopCardModelQuerySiteIds =>
         (string[])LegacyShopCardModelQuerySites.Clone();
+
+    public static string[] LegacyShopCardPriceQuerySiteIds =>
+        (string[])LegacyShopCardPriceQuerySites.Clone();
+
+    public static string[] LegacyShopPotionPriceQuerySiteIds =>
+        (string[])LegacyShopPotionPriceQuerySites.Clone();
+
+    public static string[] LegacyShopRelicPriceQuerySiteIds =>
+        (string[])LegacyShopRelicPriceQuerySites.Clone();
 
     public static string[] LegacyPotionDropTicketQuerySiteIds =>
         (string[])LegacyPotionDropTicketQuerySites.Clone();
@@ -975,6 +999,143 @@ public static partial class ChanceLawEngineV111
             "Equal index weights over the remaining source-ordered prototype " +
             "Shop cards of the declared rarity and type; pool fidelity and " +
             "Native parity remain unverified.", outcomes,
+            operationKind: "choose_index");
+    }
+
+    /// <summary>
+    /// Query the retained legacy Shop card price over its rarity-specific
+    /// integer price range.
+    /// </summary>
+    public static ChanceLawV111 QueryLegacyShopCardPrice(
+        string cardId, int ordinal)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(cardId);
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+        if (!PrototypeContent.RewardCardPool.Contains(
+                cardId, StringComparer.Ordinal))
+            throw new ArgumentException(
+                "The declared card must belong to the legacy supported Shop pool.",
+                nameof(cardId));
+
+        const string siteId = "shop.card.price.index_draw";
+        const string streamId = "shop";
+        var prices = PrototypeLegacyShopPriceV111.CardOutcomes(cardId);
+        var ownerId = "card:" + cardId;
+        return CreateLegacyCategoricalLaw(
+            siteId, streamId, ownerId, ordinal,
+            "legacy-shop-card-price-range-v1",
+            new
+            {
+                siteId,
+                streamId,
+                ownerId,
+                ordinal,
+                cardId,
+                orderedPrices = prices
+            },
+            "Equal request-index weights over the rarity-specific prototype " +
+            "Shop price range; equal-index weighting remains unverified.",
+            prices.Select(price => new ChanceLawOutcomeV111(
+                "price:" + price, 1L)).ToArray(),
+            operationKind: "choose_index");
+    }
+
+    /// <summary>
+    /// Query the retained legacy Shop potion price for a declared offer.
+    /// </summary>
+    public static ChanceLawV111 QueryLegacyShopPotionPrice(
+        int act, int floor, int offerOrdinal, string potionId, int ordinal)
+    {
+        if (act < 1)
+            throw new ArgumentOutOfRangeException(nameof(act));
+        if (floor < 0)
+            throw new ArgumentOutOfRangeException(nameof(floor));
+        if (offerOrdinal is < 0 or >= 3)
+            throw new ArgumentOutOfRangeException(nameof(offerOrdinal));
+        ArgumentException.ThrowIfNullOrWhiteSpace(potionId);
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+        if (!PrototypeContent.PotionPool.Contains(
+                potionId, StringComparer.Ordinal))
+            throw new ArgumentException(
+                "The declared potion must belong to the legacy supported Shop pool.",
+                nameof(potionId));
+
+        const string siteId = "shop.potion_offer.price.index_draw";
+        const string streamId = "shop";
+        var prices = PrototypeLegacyShopPriceV111.PotionOutcomes;
+        var ownerId =
+            $"act:{act}:floor:{floor}:offer:{offerOrdinal}:potion:{potionId}";
+        return CreateLegacyCategoricalLaw(
+            siteId, streamId, ownerId, ordinal,
+            "legacy-shop-potion-price-range-v1",
+            new
+            {
+                siteId,
+                streamId,
+                ownerId,
+                ordinal,
+                act,
+                floor,
+                offerOrdinal,
+                potionId,
+                orderedPrices = prices
+            },
+            "Equal request-index weights over the inclusive 40–60 prototype " +
+            "Shop potion price range; equal-index weighting remains " +
+            "unverified.",
+            prices.Select(price => new ChanceLawOutcomeV111(
+                "price:" + price, 1L)).ToArray(),
+            operationKind: "choose_index");
+    }
+
+    /// <summary>
+    /// Query the retained legacy Shop relic price for a declared offer.
+    /// </summary>
+    public static ChanceLawV111 QueryLegacyShopRelicPrice(
+        int act, int floor, int offerOrdinal, string relicId, int ordinal)
+    {
+        if (act < 1)
+            throw new ArgumentOutOfRangeException(nameof(act));
+        if (floor < 0)
+            throw new ArgumentOutOfRangeException(nameof(floor));
+        if (offerOrdinal is < 0 or >= 3)
+            throw new ArgumentOutOfRangeException(nameof(offerOrdinal));
+        ArgumentException.ThrowIfNullOrWhiteSpace(relicId);
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+        if (!PrototypeContent.RelicPool.Contains(
+                relicId, StringComparer.Ordinal))
+            throw new ArgumentException(
+                "The declared relic must belong to the legacy supported Shop pool.",
+                nameof(relicId));
+
+        const string siteId = "shop.relic_offer.price.index_draw";
+        const string streamId = "shop";
+        var prices = PrototypeLegacyShopPriceV111.RelicOutcomes;
+        var ownerId =
+            $"act:{act}:floor:{floor}:offer:{offerOrdinal}:relic:{relicId}";
+        return CreateLegacyCategoricalLaw(
+            siteId, streamId, ownerId, ordinal,
+            "legacy-shop-relic-price-range-v1",
+            new
+            {
+                siteId,
+                streamId,
+                ownerId,
+                ordinal,
+                act,
+                floor,
+                offerOrdinal,
+                relicId,
+                orderedPrices = prices
+            },
+            "Equal request-index weights over the inclusive 100–140 prototype " +
+            "Shop relic price range; equal-index weighting remains " +
+            "unverified.",
+            prices.Select(price => new ChanceLawOutcomeV111(
+                "price:" + price, 1L)).ToArray(),
             operationKind: "choose_index");
     }
 
