@@ -2666,9 +2666,10 @@ internal static class PrototypeAiJsonlServer
                                 ("potion_factory.rarity_roll.unit_float" or
                                  "relic_grab_bag.rarity.unit_float" or
                                  "potion.rarity_roll.ticket" or
-                                 "potion.uncommon_model.index_draw"))
+                                 "potion.uncommon_model.index_draw" or
+                                 "potion.model_within_rarity.index_draw"))
                             throw new ArgumentException(
-                                "stream_id is accepted only for PotionFactory, relic, legacy potion rarity, and Uncommon-potion model laws.");
+                                "stream_id is accepted only for PotionFactory, relic, legacy potion rarity, and potion model laws.");
                         int[]? priorIndices = null;
                         if (request.TryGetProperty(
                                 "prior_indices", out var priorIndicesElement))
@@ -4334,6 +4335,51 @@ internal static class PrototypeAiJsonlServer
                                 supportCount != law.Outcomes.Length)
                                 throw new ArgumentException(
                                     "Uncommon-potion model support_count must match the implemented source-ordered pool.");
+                            Write(new
+                            {
+                                requestId,
+                                ok = true,
+                                chanceLawSchemaId =
+                                    ChanceLawV111.CurrentSchemaId,
+                                law
+                            });
+                            break;
+                        }
+                        if (siteId ==
+                            "potion.model_within_rarity.index_draw")
+                        {
+                            RejectChanceLawQueryParameters(
+                                request, "rarity", "owner_id", "stream_id",
+                                "excluded_potion_ids", "support_count");
+                            var potionRarityText = OptionalString(
+                                request, "rarity") ??
+                                throw new ArgumentException(
+                                    "Potion model law requires rarity.");
+                            if (!Enum.TryParse<PrototypeNativePotionRarity>(
+                                    potionRarityText, ignoreCase: false,
+                                    out var potionRarity) ||
+                                !Enum.IsDefined(potionRarity))
+                                throw new ArgumentException(
+                                    "rarity must be Common, Uncommon, or Rare.");
+                            var potionModelOwnerPrefix = OptionalString(
+                                request, "owner_id") ??
+                                throw new ArgumentException(
+                                    "Potion model law requires owner_id as the request owner prefix.");
+                            var potionModelStreamId = OptionalString(
+                                request, "stream_id") ??
+                                throw new ArgumentException(
+                                    "Potion model law requires stream_id.");
+                            law = ChanceLawEngineV111
+                                .QueryLegacyPotionModelWithinRarity(
+                                    potionRarity, potionModelStreamId,
+                                    potionModelOwnerPrefix,
+                                    excludedPotionIds ?? [], ordinal);
+                            var supportCount = OptionalInt(
+                                request, "support_count");
+                            if (supportCount is not null &&
+                                supportCount != law.Outcomes.Length)
+                                throw new ArgumentException(
+                                    "Potion model support_count must match the declared rarity and exclusions.");
                             Write(new
                             {
                                 requestId,

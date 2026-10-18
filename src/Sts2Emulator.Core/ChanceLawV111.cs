@@ -393,6 +393,11 @@ public static partial class ChanceLawEngineV111
         "potion.uncommon_model.index_draw"
     ];
 
+    private static readonly string[] LegacyPotionModelWithinRarityQuerySites =
+    [
+        "potion.model_within_rarity.index_draw"
+    ];
+
     private sealed record NativeBoundedIntegerLawSiteV111(
         string StreamId, string Boundary);
 
@@ -461,6 +466,9 @@ public static partial class ChanceLawEngineV111
 
     public static string[] LegacyUncommonPotionModelQuerySiteIds =>
         (string[])LegacyUncommonPotionModelQuerySites.Clone();
+
+    public static string[] LegacyPotionModelWithinRarityQuerySiteIds =>
+        (string[])LegacyPotionModelWithinRarityQuerySites.Clone();
 
     /// <summary>
     /// Query the retained legacy card-rarity integer ticket after the source
@@ -892,6 +900,73 @@ public static partial class ChanceLawEngineV111
             "Equal index weights over the ordered implemented Uncommon " +
             "potion pool; source-pool completeness and stream parity remain " +
             "unverified.", outcomes, operationKind: "choose_index");
+    }
+
+    /// <summary>
+    /// Query a legacy potion model draw within a declared rarity after prior
+    /// potion exclusions have been applied to the source-ordered pool.
+    /// </summary>
+    public static ChanceLawV111 QueryLegacyPotionModelWithinRarity(
+        PrototypeNativePotionRarity rarity, string streamId,
+        string ownerPrefix, string[] excludedPotionIds, int ordinal)
+    {
+        if (!Enum.IsDefined(rarity))
+            throw new ArgumentOutOfRangeException(nameof(rarity));
+        ArgumentException.ThrowIfNullOrWhiteSpace(streamId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(ownerPrefix);
+        ArgumentNullException.ThrowIfNull(excludedPotionIds);
+        if (streamId is not ("event" or "reward" or "shop"))
+            throw new ArgumentException(
+                "Legacy potion model requests use event, reward, or shop streams.",
+                nameof(streamId));
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+
+        var knownPotionIds = PrototypeNativePotionShop.NativePotionPoolOrder
+            .ToHashSet(StringComparer.Ordinal);
+        var excluded = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var potionId in excludedPotionIds)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(potionId);
+            if (!knownPotionIds.Contains(potionId))
+                throw new ArgumentException(
+                    "Excluded potion IDs must belong to the supported potion pool.",
+                    nameof(excludedPotionIds));
+            excluded.Add(potionId);
+        }
+
+        var candidates = PrototypeNativePotionShop.CandidatesForRarity(
+            rarity, excluded);
+        if (candidates.Length == 0)
+            throw new ArgumentException(
+                "The declared rarity and exclusions leave no potion model to draw.",
+                nameof(excludedPotionIds));
+        var poolFingerprint = CanonicalJson.Sha256(candidates);
+        var ownerId = ownerPrefix + ":rarity:" + rarity + ":pool:" +
+            poolFingerprint;
+        var outcomes = candidates.Select(potionId =>
+            new ChanceLawOutcomeV111("potion:" + potionId, 1L))
+            .ToArray();
+        var conditioning = new
+        {
+            siteId = "potion.model_within_rarity.index_draw",
+            streamId,
+            ownerId,
+            ownerPrefix,
+            ordinal,
+            rarity,
+            excludedPotionIds = excluded.Order(StringComparer.Ordinal)
+                .ToArray(),
+            orderedCandidates = candidates,
+            poolFingerprint
+        };
+        return CreateLegacyCategoricalLaw(
+            "potion.model_within_rarity.index_draw", streamId, ownerId,
+            ordinal, "legacy-potion-model-within-rarity-pool-v1",
+            conditioning,
+            "Equal index weights over the remaining source-ordered legacy " +
+            "potion rarity pool; source-pool completeness and stream parity " +
+            "remain unverified.", outcomes, operationKind: "choose_index");
     }
 
     private static (long Rare, long Uncommon, long Common)
