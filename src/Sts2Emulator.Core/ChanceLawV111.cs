@@ -55,6 +55,8 @@ public sealed record StochasticCapabilityManifestV111(
         ReferenceNatureMerchantSessionV111.CurrentSchemaId;
     public string ReferenceNatureTreasureSessionSchemaId { get; init; } =
         ReferenceNatureTreasureSessionV111.CurrentSchemaId;
+    public string ReferenceNatureMapGenerationSessionSchemaId { get; init; } =
+        ReferenceNatureMapGenerationSessionV111.CurrentSchemaId;
     public string SemanticNatureChoiceViewSchemaId { get; init; } =
         SemanticNatureChoiceViewV111.CurrentSchemaId;
     public string[] SemanticNatureChoiceViewOperations { get; init; } =
@@ -68,6 +70,7 @@ public sealed record StochasticCapabilityManifestV111(
         "merchant", "treasure", "glory_reflections",
         "infested_automaton",
         "punch_off_reward", "punch_off_fight",
+        "map_generation",
         "controlled_event_choice", "controlled_run_action"
     ];
 }
@@ -209,7 +212,14 @@ public static class StochasticCapabilitiesV111
             "reference_nature_treasure_fork",
             "reference_nature_treasure_save",
             "reference_nature_treasure_load",
-            "reference_nature_treasure_release_many"
+            "reference_nature_treasure_release_many",
+            "reference_nature_map_generation_begin",
+            "reference_nature_map_generation_status",
+            "reference_nature_map_generation_resolve_next",
+            "reference_nature_map_generation_fork",
+            "reference_nature_map_generation_save",
+            "reference_nature_map_generation_load",
+            "reference_nature_map_generation_release_many"
         ])
     {
         ProbabilityStatuses =
@@ -248,7 +258,9 @@ public static class StochasticCapabilitiesV111
         ReferenceNatureMerchantSessionSchemaId =
             ReferenceNatureMerchantSessionV111.CurrentSchemaId,
         ReferenceNatureTreasureSessionSchemaId =
-            ReferenceNatureTreasureSessionV111.CurrentSchemaId
+            ReferenceNatureTreasureSessionV111.CurrentSchemaId,
+        ReferenceNatureMapGenerationSessionSchemaId =
+            ReferenceNatureMapGenerationSessionV111.CurrentSchemaId
     };
 }
 
@@ -799,6 +811,101 @@ public static partial class ChanceLawEngineV111
             CanonicalJson.Sha256(new { streamId, ownerId, ordinal, conditioning }),
             "continuous truncated-rounded-normal approximation; Native finite-grid and source parity UNVERIFIED",
             outcomes);
+    }
+
+    /// <summary>
+    /// Query one request emitted by the source-shaped Native Overgrowth,
+    /// Hive, or Glory map generator. This dispatcher is the fail-closed law
+    /// boundary used by the atomic ReferenceNature map continuation.
+    /// </summary>
+    public static ChanceLawV111 QueryNativeMapRequest(
+        ControlledStochasticRequestV111 request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        request.Validate();
+        if (request.GaussianIntRequest is { } gaussian)
+        {
+            if (!MatchesNativeMapGaussianIntRequest(gaussian))
+                throw new NotSupportedException(
+                    $"Native map Chance Law does not support request '{gaussian.SiteId}'.");
+            return QueryNativeMapGaussianInt(
+                gaussian.SiteId, gaussian.StreamId, gaussian.OwnerId,
+                gaussian.Ordinal);
+        }
+
+        if (request.IndexRequest is not { } index ||
+            index.OperationKind != "bounded_integer" ||
+            index.OrderedCandidates.Length != 0 ||
+            index.BoundedCount is not { } supportCount)
+            throw new NotSupportedException(
+                "Native map Chance Law supports only bounded-index and Gaussian-integer requests.");
+
+        if (index.SiteId == PrototypeNativeOvergrowthMap.PathStartColumnSiteId)
+        {
+            RequireMapRequest(index, "context.act_1_map", supportCount: 7);
+            return QueryOvergrowthPathStart(index.OwnerId, index.Ordinal);
+        }
+        if (index.SiteId == PrototypeNativeLaterActMap.PathStartSiteId)
+        {
+            var act = LaterActFromOwner(index.OwnerId);
+            RequireMapRequest(index, $"context.act_{act}_map", supportCount: 7);
+            return QueryLaterActPathStart(act, index.Ordinal);
+        }
+        if (index.SiteId == PrototypeNativeOvergrowthMap.PathDeltaShuffleSiteId)
+        {
+            var expectedSupport = index.Ordinal % 2 == 0 ? 3 : 2;
+            RequireMapRequest(index, "context.act_1_map", expectedSupport);
+            return QueryOvergrowthPathDeltaSwap(index.OwnerId, index.Ordinal);
+        }
+        if (index.SiteId == PrototypeNativeLaterActMap.PathDeltaShuffleSiteId)
+        {
+            var act = LaterActFromOwner(index.OwnerId);
+            var expectedSupport = index.Ordinal % 2 == 0 ? 3 : 2;
+            RequireMapRequest(index, $"context.act_{act}_map", expectedSupport);
+            return QueryLaterActPathDeltaSwap(act, index.Ordinal);
+        }
+        if (index.SiteId == PrototypeNativeOvergrowthMap.RoomAssignmentShuffleSiteId)
+        {
+            RequireMapRequest(index, "context.act_1_map", supportCount);
+            return QueryOvergrowthRoomAssignmentSwap(
+                index.OwnerId, index.Ordinal, supportCount);
+        }
+        if (index.SiteId == PrototypeNativeLaterActMap.RoomAssignmentShuffleSiteId)
+        {
+            var act = LaterActFromOwner(index.OwnerId);
+            RequireMapRequest(index, $"context.act_{act}_map", supportCount);
+            return QueryLaterActRoomAssignmentSwap(
+                act, index.Ordinal, supportCount);
+        }
+        if (index.SiteId == PrototypeNativeLaterActMap.GloryRestCountSiteId)
+        {
+            RequireMapRequest(index, "context.act_3_map", supportCount: 2);
+            if (index.OwnerId != "map:act:3" || index.Ordinal != 0)
+                throw new InvalidDataException(
+                    "Glory rest-quota request differs from its source-shaped owner or ordinal.");
+            return QueryLaterActGloryRestCount(index.Ordinal);
+        }
+
+        throw new NotSupportedException(
+            $"Native map Chance Law does not support request '{index.SiteId}'.");
+    }
+
+    private static int LaterActFromOwner(string ownerId) => ownerId switch
+    {
+        "map:act:2" => 2,
+        "map:act:3" => 3,
+        _ => throw new InvalidDataException(
+            "Later-act map request requires owner map:act:2 or map:act:3.")
+    };
+
+    private static void RequireMapRequest(
+        RandomIndexRequestV111 request, string expectedStream,
+        int supportCount)
+    {
+        if (request.StreamId != expectedStream ||
+            request.BoundedCount != supportCount)
+            throw new InvalidDataException(
+                "Native map request differs from its declared stream or bounded support.");
     }
 
     private static double NormalCdf(double value)
@@ -6315,7 +6422,18 @@ public sealed record ReferenceNatureDecisionV111(
     {
         var indexText = OutcomeIndex.ToString(CultureInfo.InvariantCulture);
         var indexedOutcome = OutcomeId == "choice_index:" + indexText ||
-            OutcomeId == "swap_index:" + indexText;
+            OutcomeId == "swap_index:" + indexText ||
+            OutcomeId == "path_column:" + indexText;
+        var mapQuotaOutcome = OutcomeId.StartsWith(
+                "rest_quota:", StringComparison.Ordinal) &&
+            int.TryParse(OutcomeId["rest_quota:".Length..],
+                NumberStyles.None, CultureInfo.InvariantCulture,
+                out var restQuota) && restQuota is >= 0 and <= 20;
+        var mapGaussianOutcome = OutcomeId.StartsWith(
+                "integer:", StringComparison.Ordinal) &&
+            int.TryParse(OutcomeId["integer:".Length..],
+                NumberStyles.Integer, CultureInfo.InvariantCulture,
+                out var mapGaussian) && mapGaussian >= 0;
         var identifiedReward = OutcomeId is { } outcomeId &&
             (outcomeId.StartsWith("relic:", StringComparison.Ordinal) &&
                 outcomeId.Length > "relic:".Length ||
@@ -6334,8 +6452,8 @@ public sealed record ReferenceNatureDecisionV111(
         if (string.IsNullOrWhiteSpace(LawId) ||
             string.IsNullOrWhiteSpace(EventId) ||
             string.IsNullOrWhiteSpace(OutcomeId) || OutcomeIndex < 0 ||
-            !(indexedOutcome || identifiedReward || identifiedHpOffset ||
-                mappedGold))
+            !(indexedOutcome || mapQuotaOutcome || mapGaussianOutcome ||
+                identifiedReward || identifiedHpOffset || mappedGold))
             throw new InvalidDataException(
                 "Invalid ReferenceNature decision.");
     }

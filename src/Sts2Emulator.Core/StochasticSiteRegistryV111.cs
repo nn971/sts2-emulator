@@ -76,6 +76,9 @@ public sealed record StochasticSessionCoverageV111(
     public string ReferenceNatureTreasureSessionSchemaId { get; init; } =
         ReferenceNatureTreasureSessionV111.CurrentSchemaId;
     public string[] ReferenceNatureTreasureSiteIds { get; init; } = [];
+    public string ReferenceNatureMapGenerationSessionSchemaId { get; init; } =
+        ReferenceNatureMapGenerationSessionV111.CurrentSchemaId;
+    public string[] ReferenceNatureMapGenerationSiteIds { get; init; } = [];
 
     public const string CurrentSchemaId =
         "sts2-v111-stochastic-session-coverage-v1";
@@ -116,7 +119,9 @@ public sealed record StochasticSessionCoverageV111(
             ReferenceNatureMerchantSessionSchemaId !=
                 ReferenceNatureMerchantSessionV111.CurrentSchemaId ||
             ReferenceNatureTreasureSessionSchemaId !=
-                ReferenceNatureTreasureSessionV111.CurrentSchemaId)
+                ReferenceNatureTreasureSessionV111.CurrentSchemaId ||
+            ReferenceNatureMapGenerationSessionSchemaId !=
+                ReferenceNatureMapGenerationSessionV111.CurrentSchemaId)
             throw new InvalidDataException(
                 "Invalid stochastic session coverage schema.");
 
@@ -137,6 +142,7 @@ public sealed record StochasticSessionCoverageV111(
         ValidateSiteIds(ReferenceNaturePunchOffFightSiteIds);
         ValidateSiteIds(ReferenceNatureMerchantSiteIds);
         ValidateSiteIds(ReferenceNatureTreasureSiteIds);
+        ValidateSiteIds(ReferenceNatureMapGenerationSiteIds);
     }
 
     private static void ValidateSiteIds(string[] siteIds)
@@ -440,6 +446,21 @@ public static class StochasticSiteRegistryV111
         PrototypeNativeRelicGrabBag.NativeTreasureModelSiteId
     ];
 
+    private static readonly string[] NativeMapGenerationSessionSites =
+    [
+        PrototypeNativeOvergrowthMap.PathStartColumnSiteId,
+        PrototypeNativeOvergrowthMap.PathDeltaShuffleSiteId,
+        PrototypeNativeOvergrowthMap.RestCountGaussianSiteId,
+        PrototypeNativeOvergrowthMap.UnknownCountGaussianSiteId,
+        PrototypeNativeOvergrowthMap.RoomAssignmentShuffleSiteId,
+        PrototypeNativeLaterActMap.PathStartSiteId,
+        PrototypeNativeLaterActMap.PathDeltaShuffleSiteId,
+        PrototypeNativeLaterActMap.HiveRestCountGaussianSiteId,
+        PrototypeNativeLaterActMap.UnknownCountGaussianSiteId,
+        PrototypeNativeLaterActMap.GloryRestCountSiteId,
+        PrototypeNativeLaterActMap.RoomAssignmentShuffleSiteId
+    ];
+
     private static readonly string[] AncientOfferSessionSites =
     [
         NativeOrobasEventV111.OfferSiteId,
@@ -514,6 +535,7 @@ public static class StochasticSiteRegistryV111
             .Concat(ControlledEventChoiceSites)
             .Concat(NativeMerchantSessionSites)
             .Concat(NativeTreasureSessionSites)
+            .Concat(NativeMapGenerationSessionSites)
             .Concat(NeowOfferSessionSites)
             .Concat(TrashHeapSessionSites)
             .Concat(TabletOfTruthSessionSites)
@@ -579,6 +601,8 @@ public static class StochasticSiteRegistryV111
         (string[])NativeMerchantSessionSites.Clone();
     public static string[] NativeTreasureSessionSiteIds =>
         (string[])NativeTreasureSessionSites.Clone();
+    public static string[] NativeMapGenerationSessionSiteIds =>
+        (string[])NativeMapGenerationSessionSites.Clone();
     public static string[] NeowOfferSessionSiteIds =>
         (string[])NeowOfferSessionSites.Clone();
     public static string[] TrashHeapSessionSiteIds =>
@@ -681,6 +705,10 @@ public static class StochasticSiteRegistryV111
             ReferenceNatureTreasureSessionSchemaId =
                 ReferenceNatureTreasureSessionV111.CurrentSchemaId,
             ReferenceNatureTreasureSiteIds = NativeTreasureSessionSites,
+            ReferenceNatureMapGenerationSessionSchemaId =
+                ReferenceNatureMapGenerationSessionV111.CurrentSchemaId,
+            ReferenceNatureMapGenerationSiteIds =
+                NativeMapGenerationSessionSites,
             ReferenceNatureNeowOfferSessionSchemaId =
                 ReferenceNatureNeowOfferSessionV111.CurrentSchemaId,
             ReferenceNatureNeowOfferSiteIds = NeowOfferSessionSites,

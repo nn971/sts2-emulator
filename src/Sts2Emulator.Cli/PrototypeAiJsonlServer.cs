@@ -143,6 +143,10 @@ internal static class PrototypeAiJsonlServer
         var referenceNatureTreasureRunStateHandles =
             new Dictionary<string, string>(StringComparer.Ordinal);
         long nextReferenceNatureTreasureHandle = 1;
+        var referenceNatureMapGenerationStates =
+            new Dictionary<string, ReferenceNatureMapGenerationSessionV111>(
+                StringComparer.Ordinal);
+        long nextReferenceNatureMapGenerationHandle = 1;
 
         string StoreSemantic(SemanticPilotCombatV111 state)
         {
@@ -555,6 +559,27 @@ internal static class PrototypeAiJsonlServer
                 ? session
                 : throw new InvalidOperationException(
                     "Unknown ReferenceNature treasure session handle: " +
+                    handle);
+        }
+
+        string StoreReferenceNatureMapGeneration(
+            ReferenceNatureMapGenerationSessionV111 session)
+        {
+            var handle = "z" + nextReferenceNatureMapGenerationHandle++;
+            referenceNatureMapGenerationStates.Add(handle, session.Fork());
+            return handle;
+        }
+
+        ReferenceNatureMapGenerationSessionV111
+            RequireReferenceNatureMapGeneration(JsonElement request)
+        {
+            var handle = RequiredString(request,
+                "reference_nature_map_generation_handle");
+            return referenceNatureMapGenerationStates.TryGetValue(handle,
+                    out var session)
+                ? session
+                : throw new InvalidOperationException(
+                    "Unknown ReferenceNature map-generation session handle: " +
                     handle);
         }
 
@@ -1357,6 +1382,38 @@ internal static class PrototypeAiJsonlServer
             };
         }
 
+        object ReferenceNatureMapGenerationResult(
+            ReferenceNatureMapGenerationSessionV111 session,
+            string handle, string? parent = null)
+        {
+            var law = session.PendingLaw;
+            return new
+            {
+                ok = true,
+                schemaId =
+                    ReferenceNatureMapGenerationSessionV111.CurrentSchemaId,
+                referenceNatureMapGenerationHandle = handle,
+                parent,
+                fingerprint = session.Fingerprint,
+                act = session.Act,
+                ascension = session.Ascension,
+                boundary = session.Complete ? "committed" : "nature",
+                nextOrdinal = session.NextOrdinal,
+                pending = law is null ? null : new
+                {
+                    kind = "native_map_random_choice",
+                    request = session.PendingRequest,
+                    chanceLaw = law,
+                    probabilityStatus = law.ProbabilityStatus
+                },
+                map = session.Complete ? session.Map : null,
+                decisionTranscript = session.DecisionTranscript,
+                natureProvider = ReferenceNatureV111.ProviderId,
+                natureSampleCount = session.NatureState.SampleCount,
+                probabilityStatus = ChanceLawV111.UnverifiedStatus
+            };
+        }
+
         object? DescribeSemanticPending(SemanticPilotCombatV111 state)
         {
             if (state.DrawHookChoicePending is { } hookChoice)
@@ -1907,6 +1964,10 @@ internal static class PrototypeAiJsonlServer
                 "treasure" when referenceNatureTreasureStates.TryGetValue(
                     handle, out var treasureSession) =>
                     ReferenceNatureTreasureResult(treasureSession, handle),
+                "map_generation" when referenceNatureMapGenerationStates
+                    .TryGetValue(handle, out var mapGenerationSession) =>
+                    ReferenceNatureMapGenerationResult(
+                        mapGenerationSession, handle),
                 "controlled_event_choice" when states.TryGetValue(
                     handle, out var eventRun) =>
                     ControlledEventChoiceResult(eventRun, handle, null),
@@ -1920,7 +1981,8 @@ internal static class PrototypeAiJsonlServer
                     "infested_automaton" or "punch_off_reward" or
                     "punch_off_fight" or
                     "endless_conveyor" or
-                    "treasure" or "controlled_event_choice" or
+                    "treasure" or "map_generation" or
+                    "controlled_event_choice" or
                     "controlled_run_action" => throw new InvalidOperationException(
                         "Unknown Nature session handle for kind " + sessionKind +
                         ": " + handle),
@@ -7890,6 +7952,111 @@ internal static class PrototypeAiJsonlServer
                                 released++;
                             referenceNatureTreasureRunStateHandles
                                 .Remove(handle);
+                        }
+                        Write(new { requestId, ok = true, released });
+                        break;
+                    }
+
+                    case "reference_nature_map_generation_begin":
+                    {
+                        var seed = RequiredString(request, "seed");
+                        var natureSeed = OptionalULong(request, "nature_seed")
+                            ?? throw new ArgumentException(
+                                "ReferenceNature map generation requires nature_seed.");
+                        var act = OptionalInt(request, "act") ?? 1;
+                        var ascension = OptionalInt(request, "ascension") ?? 0;
+                        var session = ReferenceNatureMapGenerationSessionV111.Begin(
+                            seed, act, ascension, natureSeed);
+                        var handle = StoreReferenceNatureMapGeneration(session);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureMapGenerationResult(session, handle) });
+                        break;
+                    }
+
+                    case "reference_nature_map_generation_status":
+                    {
+                        var handle = RequiredString(request,
+                            "reference_nature_map_generation_handle");
+                        var session =
+                            RequireReferenceNatureMapGeneration(request);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureMapGenerationResult(session, handle) });
+                        break;
+                    }
+
+                    case "reference_nature_map_generation_resolve_next":
+                    {
+                        var parentHandle = RequiredString(request,
+                            "reference_nature_map_generation_handle");
+                        var session =
+                            RequireReferenceNatureMapGeneration(request);
+                        if (session.Fingerprint != RequiredString(request,
+                                "fingerprint"))
+                            throw new InvalidOperationException(
+                                "Stale ReferenceNature map-generation fingerprint.");
+                        var next = session.ResolveNext();
+                        var handle = StoreReferenceNatureMapGeneration(next);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureMapGenerationResult(
+                                next, handle, parentHandle) });
+                        break;
+                    }
+
+                    case "reference_nature_map_generation_fork":
+                    {
+                        var parentHandle = RequiredString(request,
+                            "reference_nature_map_generation_handle");
+                        var next = RequireReferenceNatureMapGeneration(request)
+                            .Fork();
+                        var handle = StoreReferenceNatureMapGeneration(next);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureMapGenerationResult(
+                                next, handle, parentHandle) });
+                        break;
+                    }
+
+                    case "reference_nature_map_generation_save":
+                    {
+                        var session =
+                            RequireReferenceNatureMapGeneration(request);
+                        Write(new { requestId, ok = true,
+                            schemaId =
+                                ReferenceNatureMapGenerationSessionV111.CurrentSchemaId,
+                            snapshot =
+                                ReferenceNatureMapGenerationSessionV111.Save(
+                                    session) });
+                        break;
+                    }
+
+                    case "reference_nature_map_generation_load":
+                    {
+                        var session =
+                            ReferenceNatureMapGenerationSessionV111.Restore(
+                                RequiredString(request, "snapshot"));
+                        var handle = StoreReferenceNatureMapGeneration(session);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureMapGenerationResult(session, handle) });
+                        break;
+                    }
+
+                    case "reference_nature_map_generation_release_many":
+                    {
+                        if (!request.TryGetProperty(
+                                "reference_nature_map_generation_handles",
+                                out var handles) ||
+                            handles.ValueKind != JsonValueKind.Array)
+                            throw new ArgumentException(
+                                "reference_nature_map_generation_handles must be an array.");
+                        var released = 0;
+                        foreach (var element in handles.EnumerateArray())
+                        {
+                            if (element.ValueKind != JsonValueKind.String ||
+                                string.IsNullOrWhiteSpace(element.GetString()))
+                                throw new ArgumentException(
+                                    "Invalid ReferenceNature map-generation handle.");
+                            if (referenceNatureMapGenerationStates.Remove(
+                                    element.GetString()!))
+                                released++;
                         }
                         Write(new { requestId, ok = true, released });
                         break;

@@ -359,8 +359,12 @@ preserving the complete offer before any player-choice boundary.
 
 ### Scope and scheduling
 
-- **Map:** the player sees the Act map. Preserve native source generation and
-  visibility; postpone externally controlled map generation.
+- **Map:** the player sees the Act map. Preserve ordinary Native source
+  generation and visibility. An opt-in `ReferenceNatureMapGenerationSessionV111`
+  now replays the source-shaped Overgrowth, Hive, and Glory generators from a
+  seed with a saved typed Nature prefix; it does not change default routing or
+  claim Native map-order/cursor parity ([session contract](REFERENCE_NATURE_MAP_GENERATION_D3.md)).
+  Other map generators remain source-owned.
 - **Rewards, shops, encounter formations:** continue ordinary audited
   source-site migrations; no special hidden-state architecture milestone.
 - **Cross-stream RNG correlations:** no new structural Nature dependency.

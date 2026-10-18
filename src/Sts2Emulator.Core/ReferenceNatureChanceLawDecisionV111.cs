@@ -36,6 +36,35 @@ public static class ReferenceNatureChanceLawDecisionV111
         var outcome = law.Outcomes[selection.OutcomeIndex];
         if (request.IndexRequest is { } indexRequest)
         {
+            if (indexRequest.SiteId ==
+                    PrototypeNativeLaterActMap.GloryRestCountSiteId)
+            {
+                var expectedLaw = ChanceLawEngineV111
+                    .QueryLaterActGloryRestCount(indexRequest.Ordinal);
+                if (candidateLabels is not null ||
+                    law.LawId != expectedLaw.LawId ||
+                    indexRequest.StreamId != "context.act_3_map" ||
+                    indexRequest.OwnerId != "map:act:3" ||
+                    indexRequest.Ordinal != 0 ||
+                    indexRequest.OperationKind != "bounded_integer" ||
+                    indexRequest.BoundedCount != 2 ||
+                    outcome.OutcomeId != "rest_quota:" +
+                        (5 + selection.OutcomeIndex).ToString(
+                            CultureInfo.InvariantCulture))
+                    throw new InvalidDataException(
+                        "Glory rest-quota law differs from its bounded-index request.");
+                var restDecision = new RandomIndexDecisionV111(
+                    indexRequest with
+                    {
+                        OrderedCandidates = (int[])
+                            indexRequest.OrderedCandidates.Clone()
+                    }, selection.OutcomeIndex, "controlled-v111");
+                restDecision.Validate();
+                var controlledRest = ControlledStochasticDecisionV111
+                    .FromIndex(restDecision);
+                controlledRest.Validate();
+                return controlledRest;
+            }
             if (law.OperationKind == "index_mapped_gold")
             {
                 if (candidateLabels is not null ||
