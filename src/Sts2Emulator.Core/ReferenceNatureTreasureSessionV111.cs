@@ -85,8 +85,8 @@ public sealed record ReferenceNatureTreasureSessionV111(
         var session = new ReferenceNatureTreasureSessionV111(
             CurrentSchemaId, natureOrigin.Fork(), CloneAction(action), run,
             initialNatureState.Fork(), initialNatureState.Fork(), [], [],
-            replay.Pending?.Request.Fork(),
-            replay.Pending?.CandidateLabels is { } labels
+            replay.Continuation?.PendingRequest.Fork(),
+            replay.Continuation?.PendingCandidateLabels is { } labels
                 ? (string[])labels.Clone() : null);
         session.Validate();
         return session;
@@ -192,10 +192,11 @@ public sealed record ReferenceNatureTreasureSessionV111(
         {
             var prefix = ProviderDecisions.Take(index).ToArray();
             var replayAtBoundary = Replay(Origin, Action, prefix);
-            var request = replayAtBoundary.Pending?.Request
+            var continuationAtBoundary = replayAtBoundary.Continuation;
+            var request = continuationAtBoundary?.PendingRequest
                 ?? throw new InvalidDataException(
                     "Treasure replay completed before its saved decision transcript.");
-            var labels = replayAtBoundary.Pending.CandidateLabels;
+            var labels = continuationAtBoundary!.PendingCandidateLabels;
             var savedDecision = ProviderDecisions[index];
             savedDecision.Validate();
             if (!SameRequest(request, AsRequest(savedDecision)) ||
@@ -220,9 +221,9 @@ public sealed record ReferenceNatureTreasureSessionV111(
         }
 
         var replay = Replay(Origin, Action, ProviderDecisions);
-        if ((replay.Pending is null) != Complete ||
-            !SameRequest(replay.Pending?.Request, PendingRequest) ||
-            !SameLabels(replay.Pending?.CandidateLabels,
+        if ((replay.Continuation is null) != Complete ||
+            !SameRequest(replay.Continuation?.PendingRequest, PendingRequest) ||
+            !SameLabels(replay.Continuation?.PendingCandidateLabels,
                 PendingCandidateLabels) ||
             CanonicalJson.Sha256(expectedNatureState) !=
                 CanonicalJson.Sha256(NatureState))
@@ -320,16 +321,15 @@ public sealed record ReferenceNatureTreasureSessionV111(
             $"ReferenceNature treasure replay does not support stochastic site '{request.SiteId}'.");
     }
 
-    private static TreasureReplayResultV111 Replay(
+    private static ControlledStochasticContinuationResultV111 Replay(
         RunState source, GameAction action,
         ControlledStochasticDecisionV111[] decisions)
-    {
-        var replay = ControlledChanceContinuationExecutorV111.ResumeStochastic(
-            CreateNatureReplayOrigin(source), decisions,
+        => ControlledChanceContinuationExecutorV111.CaptureStochastic(
+            CreateNatureReplayOrigin(source),
+            ControlledStochasticContinuationStateV111.CurrentSchemaId,
+            decisions,
             checkpoint => new PrototypeGameEngine().Step(
                 checkpoint, CloneAction(action)).State);
-        return new TreasureReplayResultV111(replay.Run, replay.PendingChance);
-    }
 
     private static RunState CreateNatureReplayOrigin(RunState source)
         => ReferenceNatureRunProjectionV111.CreateNatureReplayOrigin(
@@ -388,7 +388,4 @@ public sealed record ReferenceNatureTreasureSessionV111(
         Payload = action.Payload.Clone()
     };
 
-    private sealed record TreasureReplayResultV111(
-        RunState? Run,
-        ControlledStochasticChanceRequiredExceptionV111? Pending);
 }

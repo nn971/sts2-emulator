@@ -363,13 +363,6 @@ public sealed class ControlledStochasticChanceRequiredExceptionV111 : Exception
     public string[]? CandidateLabels { get; }
 }
 
-internal sealed record ControlledStochasticReplayResultV111(
-    RunState? Run,
-    ControlledStochasticChanceRequiredExceptionV111? PendingChance)
-{
-    public bool Suspended => PendingChance is not null;
-}
-
 /// <summary>
 /// Result of capturing or advancing a versioned mixed stochastic continuation.
 /// A suspended result carries the complete replay prefix and exact next request.

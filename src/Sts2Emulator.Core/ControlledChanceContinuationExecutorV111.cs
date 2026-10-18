@@ -37,25 +37,6 @@ internal interface IControlledChanceReplayScopeV111 : IDisposable
 /// </summary>
 internal static class ControlledChanceContinuationExecutorV111
 {
-    public static ControlledStochasticReplayResultV111 ResumeStochastic(
-        RunState checkpoint,
-        ControlledStochasticDecisionV111[] decisions,
-        Func<RunState, RunState> mechanics,
-        Func<ControlledStochasticRequestV111, bool>? requestFilter = null)
-    {
-        var captured = CaptureStochastic(
-            checkpoint,
-            ControlledStochasticContinuationStateV111.MixedPrimitiveSchemaId,
-            decisions, mechanics, requestFilter);
-        return new ControlledStochasticReplayResultV111(
-            captured.Run,
-            captured.Continuation is { } continuation
-                ? new ControlledStochasticChanceRequiredExceptionV111(
-                    continuation.PendingRequest,
-                    continuation.PendingCandidateLabels)
-                : null);
-    }
-
     /// <summary>
     /// Runs mechanics from its checkpoint with a saved outcome prefix and
     /// returns either the completed run or a versioned continuation envelope
