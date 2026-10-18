@@ -7551,13 +7551,15 @@ public sealed record ReferenceNatureControlledEventChoiceSessionV111(
                 "Invalid ReferenceNature controlled event-choice envelope.");
         PrototypeStateInvariants.Validate(Origin);
         PrototypeStateInvariants.Validate(Run);
-        if (NeedsNatureCallingBellBag(Origin, ChoiceId) &&
-            (Origin.World?.RelicBag is not
-                { OrderMode: PrototypeRelicBagOrderMode.NatureUnordered } ||
-             Run.World?.RelicBag is not
-                { OrderMode: PrototypeRelicBagOrderMode.NatureUnordered }))
-            throw new InvalidDataException(
-                "Native Calling Bell ReferenceNature state must retain canonical unordered relic sets.");
+        if (NeedsNatureCallingBellBag(Origin, ChoiceId))
+        {
+            ReferenceNatureRunProjectionV111
+                .ValidateNatureRelicBagProjection(
+                    Origin, "Native Calling Bell event-choice origin");
+            ReferenceNatureRunProjectionV111
+                .ValidateNatureRelicBagProjection(
+                    Run, "Native Calling Bell event-choice replay");
+        }
         InitialNatureState.Validate();
         NatureState.Validate();
         var decisions = DecisionTranscript;

@@ -184,6 +184,10 @@ public sealed record ReferenceNatureCombatRewardSessionV111(
         ValidateOpeningBoundary(Origin, Action);
         PrototypeStateInvariants.Validate(Origin);
         PrototypeStateInvariants.Validate(Run);
+        ReferenceNatureRunProjectionV111.ValidateNatureRelicBagProjection(
+            Origin, "Native combat reward session origin");
+        ReferenceNatureRunProjectionV111.ValidateNatureRelicBagProjection(
+            Run, "Native combat reward session replay");
         InitialNatureState.Validate();
         NatureState.Validate();
         ReferenceNatureRunCursorV111.ValidateInitial(

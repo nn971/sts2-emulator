@@ -182,6 +182,10 @@ public sealed record ReferenceNatureTreasureSessionV111(
         ValidateOpeningBoundary(Origin, Action);
         PrototypeStateInvariants.Validate(Origin);
         PrototypeStateInvariants.Validate(Run);
+        ReferenceNatureRunProjectionV111.ValidateNatureRelicBagProjection(
+            Origin, "Native Treasure session origin");
+        ReferenceNatureRunProjectionV111.ValidateNatureRelicBagProjection(
+            Run, "Native Treasure session replay");
         InitialNatureState.Validate();
         NatureState.Validate();
         ReferenceNatureRunCursorV111.ValidateInitial(
