@@ -15,7 +15,77 @@ public enum PrototypeAutomaticHandDrawProgressKindV111
 public sealed record PrototypeAutomaticHandDrawProgressV111(
     PrototypeAutomaticHandDrawProgressKindV111 Kind,
     int? RequestedCount = null,
-    int? RemainingCount = null);
+    int? RemainingCount = null)
+{
+    public static PrototypeAutomaticHandDrawProgressV111 ControlledDraw(
+        int remainingCount) => Create(
+            PrototypeAutomaticHandDrawProgressKindV111.ControlledDraw,
+            requestedCount: null, remainingCount: remainingCount);
+
+    public static PrototypeAutomaticHandDrawProgressV111 ControlledDrawCost(
+        int remainingCount) => Create(
+            PrototypeAutomaticHandDrawProgressKindV111.ControlledDrawCost,
+            requestedCount: null, remainingCount: remainingCount);
+
+    public static PrototypeAutomaticHandDrawProgressV111 SemanticBeforeHandDraw() =>
+        Create(
+            PrototypeAutomaticHandDrawProgressKindV111.SemanticBeforeHandDraw,
+            requestedCount: null, remainingCount: null);
+
+    public static PrototypeAutomaticHandDrawProgressV111 SemanticDraw(
+        int requestedCount, int remainingCount) => Create(
+            PrototypeAutomaticHandDrawProgressKindV111.SemanticDraw,
+            requestedCount, remainingCount);
+
+    public static PrototypeAutomaticHandDrawProgressV111
+        ControlledRecycleStratagem(int remainingCount) => Create(
+            PrototypeAutomaticHandDrawProgressKindV111.ControlledRecycleStratagem,
+            requestedCount: null, remainingCount: remainingCount);
+
+    public void Validate()
+    {
+        if (!Enum.IsDefined(Kind))
+            throw new InvalidOperationException(
+                "Automatic hand-draw progress has an unknown mode.");
+        switch (Kind)
+        {
+            case PrototypeAutomaticHandDrawProgressKindV111.ControlledDraw:
+            case PrototypeAutomaticHandDrawProgressKindV111.ControlledDrawCost:
+                if (RequestedCount is not null || RemainingCount is not >= 0)
+                    throw new InvalidOperationException(
+                        "Controlled automatic hand-draw progress is malformed.");
+                break;
+            case PrototypeAutomaticHandDrawProgressKindV111.SemanticBeforeHandDraw:
+                if (RequestedCount is not null || RemainingCount is not null)
+                    throw new InvalidOperationException(
+                        "Semantic BeforeHandDraw progress cannot contain draw counts.");
+                break;
+            case PrototypeAutomaticHandDrawProgressKindV111.SemanticDraw:
+                if (RequestedCount is not > 0 || RemainingCount is not >= 0)
+                    throw new InvalidOperationException(
+                        "Semantic automatic hand-draw progress is malformed.");
+                break;
+            case PrototypeAutomaticHandDrawProgressKindV111.ControlledRecycleStratagem:
+                if (RequestedCount is not null || RemainingCount is not > 0)
+                    throw new InvalidOperationException(
+                        "Controlled recycle Stratagem progress is malformed.");
+                break;
+            default:
+                throw new InvalidOperationException(
+                    "Automatic hand-draw progress has an unsupported mode.");
+        }
+    }
+
+    private static PrototypeAutomaticHandDrawProgressV111 Create(
+        PrototypeAutomaticHandDrawProgressKindV111 kind,
+        int? requestedCount, int? remainingCount)
+    {
+        var progress = new PrototypeAutomaticHandDrawProgressV111(
+            kind, requestedCount, remainingCount);
+        progress.Validate();
+        return progress;
+    }
+}
 
 /// <summary>
 /// Saved stochastic cursors and provider decisions for one automatic combat
@@ -401,41 +471,7 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
 
     private void ValidateHandDrawProgress()
     {
-        if (HandDrawProgress is not { } progress) return;
-        if (!Enum.IsDefined(progress.Kind))
-            throw new InvalidOperationException(
-                "Automatic hand-draw progress has an unknown mode.");
-        switch (progress.Kind)
-        {
-            case PrototypeAutomaticHandDrawProgressKindV111.ControlledDraw:
-            case PrototypeAutomaticHandDrawProgressKindV111.ControlledDrawCost:
-                if (progress.RequestedCount is not null ||
-                    progress.RemainingCount is not >= 0)
-                    throw new InvalidOperationException(
-                        "Controlled automatic hand-draw progress is malformed.");
-                break;
-            case PrototypeAutomaticHandDrawProgressKindV111.SemanticBeforeHandDraw:
-                if (progress.RequestedCount is not null ||
-                    progress.RemainingCount is not null)
-                    throw new InvalidOperationException(
-                        "Semantic BeforeHandDraw progress cannot contain draw counts.");
-                break;
-            case PrototypeAutomaticHandDrawProgressKindV111.SemanticDraw:
-                if (progress.RequestedCount is not > 0 ||
-                    progress.RemainingCount is not >= 0)
-                    throw new InvalidOperationException(
-                        "Semantic automatic hand-draw progress is malformed.");
-                break;
-            case PrototypeAutomaticHandDrawProgressKindV111.ControlledRecycleStratagem:
-                if (progress.RequestedCount is not null ||
-                    progress.RemainingCount is not > 0)
-                    throw new InvalidOperationException(
-                        "Controlled recycle Stratagem progress is malformed.");
-                break;
-            default:
-                throw new InvalidOperationException(
-                    "Automatic hand-draw progress has an unsupported mode.");
-        }
+        HandDrawProgress?.Validate();
     }
 
     private void ValidateSemanticHandDrawCursor(

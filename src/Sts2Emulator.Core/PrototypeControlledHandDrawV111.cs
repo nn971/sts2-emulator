@@ -72,12 +72,9 @@ public sealed partial class PrototypeGameEngine
                 "Stratagem did not create its expected draw-pile selection.");
         var suspendedCombat = prompt.Combat with
         {
-            AutomaticPipelineContinuation = cursor with
-            {
-                ControlledDrawRemaining = remaining,
-                ControlledDrawCostRemaining = null,
-                ControlledRecycleStratagemPending = true
-            }
+            AutomaticPipelineContinuation = cursor.WithHandDrawProgress(
+                PrototypeAutomaticHandDrawProgressV111
+                    .ControlledRecycleStratagem(remaining))
         };
         var suspended = state with
         {
@@ -110,11 +107,7 @@ public sealed partial class PrototypeGameEngine
         var remaining = cursor.ControlledDrawRemaining!.Value;
         combat = combat with
         {
-            AutomaticPipelineContinuation = cursor with
-            {
-                ControlledDrawRemaining = null,
-                ControlledRecycleStratagemPending = false
-            }
+            AutomaticPipelineContinuation = cursor.WithHandDrawProgress(null)
         };
         var drawn = DrawCards(
             state.Player, combat, remaining, state.Rng,
@@ -166,12 +159,11 @@ public sealed partial class PrototypeGameEngine
                 {
                     Combat = combat with
                     {
-                        AutomaticPipelineContinuation = cursor with
-                        {
-                            ControlledDrawRemaining = null,
-                            ControlledDrawCostRemaining = drawn.RemainingCount,
-                            ControlledRecycleStratagemPending = false
-                        }
+                        AutomaticPipelineContinuation =
+                            cursor.WithHandDrawProgress(
+                                PrototypeAutomaticHandDrawProgressV111
+                                    .ControlledDrawCost(
+                                        drawn.RemainingCount))
                     }
                 }
             };
@@ -191,12 +183,10 @@ public sealed partial class PrototypeGameEngine
                 {
                     Combat = combat with
                     {
-                        AutomaticPipelineContinuation = cursor with
-                        {
-                            ControlledDrawRemaining = drawn.RemainingCount,
-                            ControlledDrawCostRemaining = null,
-                            ControlledRecycleStratagemPending = false
-                        }
+                        AutomaticPipelineContinuation =
+                            cursor.WithHandDrawProgress(
+                                PrototypeAutomaticHandDrawProgressV111
+                                    .ControlledDraw(drawn.RemainingCount))
                     }
                 }
             };
@@ -249,19 +239,14 @@ public sealed partial class PrototypeGameEngine
                 "Automatic hand-draw completion is not at a clean boundary.");
 
         combat = ApplyAutomaticHandDrawPostStagePowerTiming(combat);
+        var completedCursor = cursor.WithHandDrawProgress(null) with
+        {
+            NextStepIndex = cursor.NextStepIndex + 1,
+            ControlledSemanticDrawRequested = completedSemanticDrawRequested
+        };
         combat = combat with
         {
-            AutomaticPipelineContinuation = cursor with
-            {
-                NextStepIndex = cursor.NextStepIndex + 1,
-                ControlledDrawRemaining = null,
-                ControlledDrawCostRemaining = null,
-                ControlledSemanticDrawRemaining = null,
-                ControlledSemanticDrawRequested =
-                    completedSemanticDrawRequested,
-                ControlledSemanticBeforeHandDrawPending = false,
-                ControlledRecycleStratagemPending = false
-            }
+            AutomaticPipelineContinuation = completedCursor
         };
         return state with { World = world with { Combat = combat } };
     }

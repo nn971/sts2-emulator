@@ -2699,10 +2699,8 @@ public sealed partial class PrototypeGameEngine
                     combat = combat with
                     {
                         AutomaticPipelineContinuation =
-                            combat.AutomaticPipelineContinuation! with
-                            {
-                                ControlledSemanticBeforeHandDrawPending = false
-                            }
+                            combat.AutomaticPipelineContinuation!
+                                .WithHandDrawProgress(null)
                     };
                 }
                 else
@@ -2731,9 +2729,11 @@ public sealed partial class PrototypeGameEngine
                             {
                                 Combat = combat with
                                 {
-                                    AutomaticPipelineContinuation = new(
-                                        stageIndex,
-                                        ControlledSemanticBeforeHandDrawPending: true)
+                                    AutomaticPipelineContinuation =
+                                        new PrototypeAutomaticPipelineContinuationState(
+                                            stageIndex).WithHandDrawProgress(
+                                            PrototypeAutomaticHandDrawProgressV111
+                                                .SemanticBeforeHandDraw())
                                 }
                             }
                         };
@@ -2767,9 +2767,11 @@ public sealed partial class PrototypeGameEngine
                             {
                                 AutomaticSemanticDrawHookChoice = true
                             },
-                            AutomaticPipelineContinuation = new(
-                                stageIndex,
-                                ControlledSemanticBeforeHandDrawPending: true)
+                            AutomaticPipelineContinuation =
+                                new PrototypeAutomaticPipelineContinuationState(
+                                    stageIndex).WithHandDrawProgress(
+                                    PrototypeAutomaticHandDrawProgressV111
+                                        .SemanticBeforeHandDraw())
                         };
                         return state with
                         {
@@ -2891,10 +2893,8 @@ public sealed partial class PrototypeGameEngine
                             "Deferred hand-draw completion is at an invalid pipeline boundary.");
                     combat = combat with
                     {
-                        AutomaticPipelineContinuation = cursor with
-                        {
-                            ControlledSemanticBeforeHandDrawPending = false
-                        }
+                        AutomaticPipelineContinuation =
+                            cursor.WithHandDrawProgress(null)
                     };
                     var completedInput = state with
                     {
@@ -2914,11 +2914,11 @@ public sealed partial class PrototypeGameEngine
                             "Semantic BeforeHandDraw continuation lost its cursor.");
                     combat = combat with
                     {
-                        AutomaticPipelineContinuation = cursor with
+                        AutomaticPipelineContinuation =
+                            cursor.WithHandDrawProgress(null) with
                         {
                             NextStepIndex = SemanticHandDrawStepIndex + 1,
-                            ControlledSemanticDrawRequested = requestedHandDraw,
-                            ControlledSemanticBeforeHandDrawPending = false
+                            ControlledSemanticDrawRequested = requestedHandDraw
                         }
                     };
                 }

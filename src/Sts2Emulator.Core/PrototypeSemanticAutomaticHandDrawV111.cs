@@ -129,10 +129,12 @@ public sealed partial class PrototypeGameEngine
                 {
                     Combat = combat with
                     {
-                        AutomaticPipelineContinuation = cursor with
-                        {
-                            ControlledSemanticDrawRemaining = remaining
-                        }
+                        AutomaticPipelineContinuation =
+                            cursor.WithHandDrawProgress(
+                                PrototypeAutomaticHandDrawProgressV111
+                                    .SemanticDraw(
+                                        cursor.ControlledSemanticDrawRequested!.Value,
+                                        remaining))
                     }
                 }
             }, remaining);
@@ -226,10 +228,8 @@ public sealed partial class PrototypeGameEngine
                 after.CounterState.CardsDrawnThisCombat - cardsDrawnBefore);
         after = after with
         {
-            AutomaticPipelineContinuation = completed with
-            {
-                ControlledSemanticDrawRequested = null
-            }
+            AutomaticPipelineContinuation =
+                completed.WithHandDrawProgress(null)
         };
         result = result with
         {

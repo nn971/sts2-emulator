@@ -283,13 +283,17 @@ public sealed partial class PrototypeGameEngine
         var combat = drawn.Combat;
         var boundary = drawn.BoundaryKind;
         int stageIndex = SemanticHandDrawStepIndex;
-        if (stageIndex < 0 || drawn.RemainingCount < 0 || requested < 0 ||
+        if (stageIndex < 0 || drawn.RemainingCount < 0 || requested <= 0 ||
             (boundary == PrototypeDrawCardsBoundaryKind.SemanticDraw &&
              combat.SemanticDeck?.Pending is null) ||
             (boundary == PrototypeDrawCardsBoundaryKind.ControlledDrawCost &&
              combat.PendingChoice?.ControlledDrawCost is null))
             throw new InvalidDataException(
                 "Semantic hand-draw stage lost its suspended request.");
+        var continuation = new PrototypeAutomaticPipelineContinuationState(
+            stageIndex).WithHandDrawProgress(
+                PrototypeAutomaticHandDrawProgressV111.SemanticDraw(
+                    requested, drawn.RemainingCount));
         return run with
         {
             Player = drawn.Player,
@@ -297,11 +301,7 @@ public sealed partial class PrototypeGameEngine
             {
                 Combat = combat with
                 {
-                    AutomaticPipelineContinuation = new(
-                        stageIndex,
-                        ControlledSemanticDrawRemaining:
-                            drawn.RemainingCount,
-                        ControlledSemanticDrawRequested: requested)
+                    AutomaticPipelineContinuation = continuation
                 }
             }
         };
@@ -544,11 +544,9 @@ public sealed partial class PrototypeGameEngine
                 "Automatic CardDrawn choice lost its hand-draw cursor.");
         combat = combat with
         {
-            AutomaticPipelineContinuation = cursor with
-            {
-                ControlledSemanticDrawRemaining = remaining,
-                ControlledSemanticDrawRequested = requested
-            },
+            AutomaticPipelineContinuation = cursor.WithHandDrawProgress(
+                PrototypeAutomaticHandDrawProgressV111.SemanticDraw(
+                    requested, remaining)),
             PendingChoice = combat.PendingChoice with
             {
                 AutomaticSemanticDrawHookChoice = true

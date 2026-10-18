@@ -436,6 +436,21 @@ public sealed record PrototypeAutomaticPipelineContinuationState(
         init => Simulation = Simulation with { Stochastic = value };
     }
 
+    /// <summary>
+    /// Replace the active hand-draw boundary as one validated provider-state
+    /// transition. Boundary adapters should not assemble it from flattened
+    /// counter properties, which can temporarily describe conflicting modes.
+    /// </summary>
+    public PrototypeAutomaticPipelineContinuationState WithHandDrawProgress(
+        PrototypeAutomaticHandDrawProgressV111? progress)
+    {
+        progress?.Validate();
+        return this with
+        {
+            Stochastic = Stochastic with { HandDrawProgress = progress }
+        };
+    }
+
     public int NextStepIndex
     {
         get => Mechanics.NextStepIndex;
