@@ -388,6 +388,11 @@ public static partial class ChanceLawEngineV111
         "reward.potion_odds.ticket"
     ];
 
+    private static readonly string[] LegacyUncommonPotionModelQuerySites =
+    [
+        "potion.uncommon_model.index_draw"
+    ];
+
     private sealed record NativeBoundedIntegerLawSiteV111(
         string StreamId, string Boundary);
 
@@ -453,6 +458,9 @@ public static partial class ChanceLawEngineV111
 
     public static string[] LegacyPotionRewardOddsTicketQuerySiteIds =>
         (string[])LegacyPotionRewardOddsTicketQuerySites.Clone();
+
+    public static string[] LegacyUncommonPotionModelQuerySiteIds =>
+        (string[])LegacyUncommonPotionModelQuerySites.Clone();
 
     /// <summary>
     /// Query the retained legacy card-rarity integer ticket after the source
@@ -840,6 +848,50 @@ public static partial class ChanceLawEngineV111
             "Uniform 1,000-way legacy bounded ticket with the source-shaped " +
             "pity and Elite threshold; RNG parity remains unverified.",
             outcomes.ToArray());
+    }
+
+    /// <summary>
+    /// Query the retained legacy Uncommon-potion model index over its fixed
+    /// source-ordered implemented pool.
+    /// </summary>
+    public static ChanceLawV111 QueryLegacyUncommonPotionModel(
+        string streamId, string ownerPrefix, int ordinal)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(streamId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(ownerPrefix);
+        if (streamId is not ("event" or "reward"))
+            throw new ArgumentException(
+                "Legacy Uncommon-potion model requests use event or reward streams.",
+                nameof(streamId));
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+
+        const string siteId = "potion.uncommon_model.index_draw";
+        var pool = PrototypeNativePotionCourier.ImplementedUncommonPotionPool;
+        if (pool.Length == 0)
+            throw new InvalidOperationException(
+                "The implemented Uncommon-potion pool is empty.");
+        var poolFingerprint = CanonicalJson.Sha256(pool);
+        var ownerId = ownerPrefix + ":pool:" + poolFingerprint;
+        var outcomes = pool.Select(potionId =>
+            new ChanceLawOutcomeV111("potion:" + potionId, 1L))
+            .ToArray();
+        var conditioning = new
+        {
+            siteId,
+            streamId,
+            ownerId,
+            ownerPrefix,
+            ordinal,
+            orderedImplementedUncommonPotionPool = pool,
+            poolFingerprint
+        };
+        return CreateLegacyCategoricalLaw(
+            siteId, streamId, ownerId, ordinal,
+            "legacy-uncommon-potion-model-pool-v1", conditioning,
+            "Equal index weights over the ordered implemented Uncommon " +
+            "potion pool; source-pool completeness and stream parity remain " +
+            "unverified.", outcomes, operationKind: "choose_index");
     }
 
     private static (long Rare, long Uncommon, long Common)

@@ -2665,9 +2665,10 @@ internal static class PrototypeAiJsonlServer
                             siteId is not
                                 ("potion_factory.rarity_roll.unit_float" or
                                  "relic_grab_bag.rarity.unit_float" or
-                                 "potion.rarity_roll.ticket"))
+                                 "potion.rarity_roll.ticket" or
+                                 "potion.uncommon_model.index_draw"))
                             throw new ArgumentException(
-                                "stream_id is accepted only for PotionFactory, relic, and legacy potion rarity laws.");
+                                "stream_id is accepted only for PotionFactory, relic, legacy potion rarity, and Uncommon-potion model laws.");
                         int[]? priorIndices = null;
                         if (request.TryGetProperty(
                                 "prior_indices", out var priorIndicesElement))
@@ -4301,6 +4302,38 @@ internal static class PrototypeAiJsonlServer
                                 supportCount != law.Outcomes.Length)
                                 throw new ArgumentException(
                                     "Legacy reward-potion model support_count must match the ordered prototype potion pool.");
+                            Write(new
+                            {
+                                requestId,
+                                ok = true,
+                                chanceLawSchemaId =
+                                    ChanceLawV111.CurrentSchemaId,
+                                law
+                            });
+                            break;
+                        }
+                        if (siteId == "potion.uncommon_model.index_draw")
+                        {
+                            RejectChanceLawQueryParameters(
+                                request, "owner_id", "stream_id",
+                                "support_count");
+                            var ownerPrefix = OptionalString(
+                                request, "owner_id") ??
+                                throw new ArgumentException(
+                                    "Uncommon-potion model law requires owner_id as the request owner prefix.");
+                            var streamId = OptionalString(
+                                request, "stream_id") ??
+                                throw new ArgumentException(
+                                    "Uncommon-potion model law requires stream_id.");
+                            law = ChanceLawEngineV111
+                                .QueryLegacyUncommonPotionModel(
+                                    streamId, ownerPrefix, ordinal);
+                            var supportCount = OptionalInt(
+                                request, "support_count");
+                            if (supportCount is not null &&
+                                supportCount != law.Outcomes.Length)
+                                throw new ArgumentException(
+                                    "Uncommon-potion model support_count must match the implemented source-ordered pool.");
                             Write(new
                             {
                                 requestId,
