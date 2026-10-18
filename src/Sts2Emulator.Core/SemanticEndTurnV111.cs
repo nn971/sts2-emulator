@@ -450,7 +450,11 @@ public static class SemanticEndTurnEngineV111
         if (state.EnemyActionPending is { } enemyActionRequest)
         {
             var decision = new RandomIndexDecisionV111(
-                enemyActionRequest, selectedIndex, "controlled-v111");
+                enemyActionRequest with
+                {
+                    OrderedCandidates = (int[])
+                        enemyActionRequest.OrderedCandidates.Clone()
+                }, selectedIndex, "controlled-v111");
             decision.Validate();
             RunState resumed = ControlledChanceContinuationExecutorV111
                 .ResolveSelectedIndex<SemanticEndTurnV111, RunState>(

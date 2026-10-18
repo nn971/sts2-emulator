@@ -1034,7 +1034,10 @@ public static class ControlledPlayableCombatEngineV111
             Func<RunState, int, RunState> resume)
     {
         var decision = new RandomIndexDecisionV111(
-            request, selectedIndex, "controlled-v111");
+            request with
+            {
+                OrderedCandidates = (int[])request.OrderedCandidates.Clone()
+            }, selectedIndex, "controlled-v111");
         decision.Validate();
         var result = ControlledChanceContinuationExecutorV111
             .ResolveSelectedIndex<ControlledPlayableCombatV111, RunState>(
