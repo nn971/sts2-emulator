@@ -166,11 +166,8 @@ public static class SemanticCardSelectionEngineV111
         else if (combat!.AutomaticPipelineContinuation is not null)
             throw new InvalidOperationException(
                 "Expected an ordinary semantic player-turn choice.");
-        SemanticDeckEngineV111.Validate(deck);
-        if (!SemanticDeckEngineV111.AllCardInstanceIds(deck)
-            .Order().SequenceEqual(combat.DrawPile.Order()))
-            throw new InvalidDataException(
-                "Semantic card-selection source has inconsistent physical pile.");
+        SemanticDrawPileAdapterV111.ValidateSynchronized(
+            combat, requireIdle: true);
         if (automaticStratagem)
             PrototypeStateInvariants.Validate(source);
     }
