@@ -209,6 +209,12 @@ public static class StochasticSiteRegistryV111
         "combat.card_selection.random_shortlist";
     public const string CombatFullPoolShuffleSiteId =
         "combat.generation.full_pool_shuffle.swap_index";
+    public const string RewardBossRelicOfferShuffleSiteId =
+        "reward.boss_relic_offer.shuffle_swap_index";
+    public const string RewardLavaRockRelicOfferShuffleSiteId =
+        "reward.lava_rock.relic_offer.shuffle_swap_index";
+    public const string WarHammerEliteUpgradeShuffleSiteId =
+        "relic.war_hammer.elite_upgrade.shuffle_swap_index";
 
     public static string[] ControlledDrawInsertionSiteIds =>
     [
@@ -393,7 +399,7 @@ public static class StochasticSiteRegistryV111
         "event.reward.random_potion.model",
         "event.reward.offer_potion.model.index_draw",
         "event.reward.card_bundle.shuffle_swap_index",
-        "relic_grab_bag.queue_shuffle.swap_index",
+        PrototypeNativeRelicGrabBag.QueueShuffleSiteId,
         "relic_grab_bag.rarity.ticket",
         PrototypeNativeRelicGrabBag.NativeTreasureModelSiteId,
         "event.potion.fill_empty_slots.model",
@@ -509,10 +515,10 @@ public static class StochasticSiteRegistryV111
         PrototypeNativeLaterActMap.GloryRestCountSiteId,
         "reward.combat_gold.index_draw",
         "reward.potion_odds.unit_float",
-        "reward.boss_relic_offer.shuffle_swap_index",
-        "reward.lava_rock.relic_offer.shuffle_swap_index",
+        RewardBossRelicOfferShuffleSiteId,
+        RewardLavaRockRelicOfferShuffleSiteId,
         NativeFisherYatesV111.SiteId,
-        "combat.draw_pile_recycle.swap_index",
+        ControlledRecycleShuffleV111.SiteId,
         "combat.effect.personal_hive.dazed.random_insert_index",
         DrawPileRandomInsertSiteId,
         AfterShuffleRelicDrawPileInsertSiteId,
@@ -527,7 +533,7 @@ public static class StochasticSiteRegistryV111
         "card_rarity.roll.unit_float",
         "shop.merchant.card_model.index_draw",
         "shop.colorless_card_model.index_draw",
-        "relic_grab_bag.queue_shuffle.swap_index",
+        PrototypeNativeRelicGrabBag.QueueShuffleSiteId,
         "potion_factory.rarity_roll.unit_float",
         "potion_factory.model_within_rarity.index_draw",
         "relic_grab_bag.rarity.unit_float",
@@ -658,6 +664,32 @@ public static class StochasticSiteRegistryV111
             .Concat(NativeEventContextShuffleSites)
             .Distinct(StringComparer.Ordinal)
             .ToArray();
+    private static readonly string[] NativeFisherYatesSites =
+    [
+        NativeFisherYatesV111.SiteId,
+        ControlledRecycleShuffleV111.SiteId,
+        CombatHandReturnShuffleSiteId,
+        CombatRandomRareDrawToHandShuffleSiteId,
+        CombatRandomShortlistShuffleSiteId,
+        CombatFullPoolShuffleSiteId,
+        .. StochasticSiteRegistryV111.NativeEventContextShuffleSiteIds,
+        NativeDarvEventV111.RelicShuffleSiteId,
+        NativeGloryAncientsV111.BeautifulBraceletShuffleSiteId,
+        NativeGloryAncientsV111.FurCoatShuffleSiteId,
+        PrototypeNativeOvergrowthEvents.NeowPositiveRelicShuffleSiteId,
+        NativeNonupeipeEventV111.ShuffleSiteId,
+        NativeTanxEventV111.ShuffleSiteId,
+        NativeVakuuEventV111.ShuffleSiteId,
+        PrototypeNativeHiveEvents.WarHistorianRepyRelicShuffleSiteId,
+        PrototypeNativeOvergrowthMap.PathDeltaShuffleSiteId,
+        PrototypeNativeOvergrowthMap.RoomAssignmentShuffleSiteId,
+        PrototypeNativeLaterActMap.PathDeltaShuffleSiteId,
+        PrototypeNativeLaterActMap.RoomAssignmentShuffleSiteId,
+        PrototypeNativeRelicGrabBag.QueueShuffleSiteId,
+        WarHammerEliteUpgradeShuffleSiteId,
+        RewardLavaRockRelicOfferShuffleSiteId,
+        RewardBossRelicOfferShuffleSiteId
+    ];
 
     private static readonly HashSet<string> SemanticReferenceNatureSiteSet =
         new(SemanticReferenceNatureSites, StringComparer.Ordinal);
@@ -794,6 +826,8 @@ public static class StochasticSiteRegistryV111
         (string[])NativeEventContextUnitFloatSites.Clone();
     public static string[] NativeEventContextShuffleSiteIds =>
         (string[])NativeEventContextShuffleSites.Clone();
+    public static string[] NativeFisherYatesSiteIds =>
+        (string[])NativeFisherYatesSites.Clone();
     public static string[] EndlessConveyorSessionSiteIds =>
         (string[])EndlessConveyorSessionSites.Clone();
     public static string[] NatureChoiceSiteIds =>

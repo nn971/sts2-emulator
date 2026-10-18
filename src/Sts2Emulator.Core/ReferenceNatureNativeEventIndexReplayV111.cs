@@ -120,7 +120,7 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
         ArgumentNullException.ThrowIfNull(action);
         ArgumentException.ThrowIfNullOrWhiteSpace(eventName);
         if (expectedRunNicheCursor is not null &&
-            scriptedSiteId != "relic.war_hammer.elite_upgrade.shuffle_swap_index")
+            scriptedSiteId != StochasticSiteRegistryV111.WarHammerEliteUpgradeShuffleSiteId)
             throw new ArgumentException(
                 "A run.niche cursor expectation is supported only for War Hammer replay.");
         if ((expectedUnscriptedStreamId is null) !=

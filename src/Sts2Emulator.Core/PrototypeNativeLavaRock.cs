@@ -66,7 +66,8 @@ public sealed partial class PrototypeGameEngine
                 new NativeRandomIndexProviderV111(),
                 NativePlayerRngV111.RewardsStreamId,
                 "run:act:1:boss:lava_rock_extra_relics",
-                "reward.lava_rock.relic_offer.shuffle_swap_index");
+                StochasticSiteRegistryV111
+                    .RewardLavaRockRelicOfferShuffleSiteId);
             selected = available.Take(count).ToArray();
         }
 

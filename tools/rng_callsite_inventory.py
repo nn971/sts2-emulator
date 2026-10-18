@@ -21,7 +21,7 @@ from urllib.parse import unquote, urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = ROOT / "src" / "Sts2Emulator.Core"
-SCHEMA_ID = "emulator-rng-callsite-source-inventory-v27"
+SCHEMA_ID = "emulator-rng-callsite-source-inventory-v28"
 SITE_REGISTRY_PATH = SOURCE_ROOT / "StochasticSiteRegistryV111.cs"
 
 CALL_PATTERN = re.compile(
@@ -618,9 +618,10 @@ def _guarded_site_values(
                 )):
             return []
         site_array = delegated_guard.group("sites")
-        if not site_array.startswith(
-            "StochasticSiteRegistryV111.NativeEventContext"
-        ) or not site_array.endswith("SiteIds"):
+        if not re.fullmatch(
+            r"StochasticSiteRegistryV111\.Native[A-Za-z0-9]*SiteIds",
+            site_array,
+        ):
             return []
         values, unresolved = _resolve_site_array_property(
             site_array, global_constants,

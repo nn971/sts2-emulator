@@ -458,7 +458,7 @@ public sealed record ReferenceNatureCombatRewardSessionV111(
                 source, indexRequest, rarity, bag, candidateLabels);
         }
         if (indexRequest.SiteId ==
-            "reward.boss_relic_offer.shuffle_swap_index")
+            StochasticSiteRegistryV111.RewardBossRelicOfferShuffleSiteId)
         {
             if (indexRequest.StreamId != NativePlayerRngV111.RewardsStreamId)
                 throw new InvalidDataException(
@@ -470,7 +470,7 @@ public sealed record ReferenceNatureCombatRewardSessionV111(
             return law;
         }
         if (indexRequest.SiteId ==
-            "reward.lava_rock.relic_offer.shuffle_swap_index")
+            StochasticSiteRegistryV111.RewardLavaRockRelicOfferShuffleSiteId)
         {
             if (indexRequest.StreamId != NativePlayerRngV111.RewardsStreamId)
                 throw new InvalidDataException(
@@ -509,8 +509,8 @@ public sealed record ReferenceNatureCombatRewardSessionV111(
         "card_rarity.upgrade_roll.unit_float",
         "relic_grab_bag.rarity.unit_float",
         PrototypeNativeRelicGrabBag.NativeTreasureModelSiteId,
-        "reward.boss_relic_offer.shuffle_swap_index",
-        "reward.lava_rock.relic_offer.shuffle_swap_index"
+        StochasticSiteRegistryV111.RewardBossRelicOfferShuffleSiteId,
+        StochasticSiteRegistryV111.RewardLavaRockRelicOfferShuffleSiteId
     ];
 
     public static string[] SessionSiteIds => (string[])SessionSites.Clone();
