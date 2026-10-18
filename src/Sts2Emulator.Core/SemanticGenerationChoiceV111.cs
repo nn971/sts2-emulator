@@ -76,15 +76,10 @@ public static class SemanticGenerationChoiceV111
             !PrototypeGameEngine.ValidateControlledGenerationSupport(generation))
             throw new InvalidDataException(
                 "Semantic generated-card pool is not source-reachable.");
-        var deck = combat.SemanticDeck ?? throw new InvalidDataException(
-            "Generated-card continuation lost its provider-owned deck.");
-        SemanticDeckEngineV111.Validate(deck);
-        if (deck.Mode != SemanticDeckStateV111.NatureMode ||
-            deck.Pending is not null ||
-            !SemanticDeckEngineV111.AllCardInstanceIds(deck)
-                .Order().SequenceEqual(combat.DrawPile.Order()))
-            throw new InvalidDataException(
-                "Generated-card continuation changed the hidden draw pile.");
+        SemanticDrawPileAdapterV111.ValidateNatureDeckBoundary(
+            combat,
+            "Generated-card continuation lost its provider-owned deck.",
+            "Generated-card continuation changed the hidden draw pile.");
         PrototypeStateInvariants.Validate(run);
     }
 

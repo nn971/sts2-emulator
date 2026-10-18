@@ -195,15 +195,10 @@ public static class SemanticDrawInsertionChoiceV111
                 combat, insertion))
             throw new InvalidDataException(
                 "Generated draw-pile insertion is not source-reachable.");
-        var deck = combat.SemanticDeck ?? throw new InvalidDataException(
-            "Generated draw-pile insertion lost the provider-owned deck.");
-        SemanticDeckEngineV111.Validate(deck);
-        if (deck.Mode != SemanticDeckStateV111.NatureMode ||
-            deck.Pending is not null ||
-            !SemanticDeckEngineV111.AllCardInstanceIds(deck)
-                .Order().SequenceEqual(combat.DrawPile.Order()))
-            throw new InvalidDataException(
-                "Generated draw-pile insertion changed the hidden pile early.");
+        SemanticDrawPileAdapterV111.ValidateNatureDeckBoundary(
+            combat,
+            "Generated draw-pile insertion lost the provider-owned deck.",
+            "Generated draw-pile insertion changed the hidden pile early.");
         PrototypeStateInvariants.Validate(run);
     }
 

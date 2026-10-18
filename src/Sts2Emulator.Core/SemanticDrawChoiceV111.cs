@@ -32,10 +32,12 @@ public static class SemanticDrawChoiceV111
                 Pending: not null })
             throw new InvalidDataException(
                 "Card-effect draw is not at a source-reachable Nature boundary.");
-        SemanticDeckEngineV111.Validate(deck);
-        if (!SemanticDeckEngineV111.AllCardInstanceIds(deck)
-                .Order().SequenceEqual(combat.DrawPile.Order()) ||
-            SemanticDeckEngineV111.Inspect(deck) is null)
+        SemanticDrawPileAdapterV111.ValidateNatureDeckBoundary(
+            combat,
+            "Card-effect draw is not at a source-reachable Nature boundary.",
+            "Card-effect draw diverged from its semantic pile state.",
+            allowPending: true);
+        if (SemanticDeckEngineV111.Inspect(deck) is null)
             throw new InvalidDataException(
                 "Card-effect draw diverged from its semantic pile state.");
         PrototypeStateInvariants.Validate(run);
@@ -126,11 +128,11 @@ public static class SemanticDrawChoiceV111
         ArgumentNullException.ThrowIfNull(checkpoint);
         ArgumentNullException.ThrowIfNull(decision);
         decision.Validate();
-        if (checkpoint.SemanticDeck is not
-                { Mode: SemanticDeckStateV111.NatureMode,
-                  Pending: { Purpose: "draw" } } deck ||
-            !SemanticDeckEngineV111.AllCardInstanceIds(deck)
-                .Order().SequenceEqual(checkpoint.DrawPile.Order()))
+        var deck = SemanticDrawPileAdapterV111.ValidateNatureDeckBoundary(
+            checkpoint,
+            "Semantic draw choice lost its Nature deck checkpoint.",
+            "Semantic draw choice lost its Nature deck checkpoint.",
+            requiredPendingPurpose: "draw") ??
             throw new InvalidDataException(
                 "Semantic draw choice lost its Nature deck checkpoint.");
         var current = SemanticDeckEngineV111.Inspect(deck) ??

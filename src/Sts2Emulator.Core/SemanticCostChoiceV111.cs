@@ -118,11 +118,10 @@ public static class SemanticCostChoiceV111
                 run.Player, combat, cost))
             throw new InvalidDataException(
                 "Card-effect draw cost is not at a source-reachable Nature boundary.");
-        SemanticDeckEngineV111.Validate(deck);
-        if (!SemanticDeckEngineV111.AllCardInstanceIds(deck)
-                .Order().SequenceEqual(combat.DrawPile.Order()))
-            throw new InvalidDataException(
-                "Card-effect draw cost diverged from its semantic pile state.");
+        SemanticDrawPileAdapterV111.ValidateNatureDeckBoundary(
+            combat,
+            "Card-effect draw cost is not at a source-reachable Nature boundary.",
+            "Card-effect draw cost diverged from its semantic pile state.");
         PrototypeStateInvariants.Validate(run);
     }
 
@@ -186,15 +185,10 @@ internal static class SemanticRandomHandCostChoiceV111
                 combat, randomCost))
             throw new InvalidDataException(
                 "Random hand-cost continuation is not source-reachable.");
-        var deck = combat.SemanticDeck ?? throw new InvalidDataException(
-            "Random hand-cost continuation lost the provider-owned deck.");
-        SemanticDeckEngineV111.Validate(deck);
-        if (deck.Mode != SemanticDeckStateV111.NatureMode ||
-            deck.Pending is not null ||
-            !SemanticDeckEngineV111.AllCardInstanceIds(deck)
-                .Order().SequenceEqual(combat.DrawPile.Order()))
-            throw new InvalidDataException(
-                "Random hand-cost continuation changed the hidden draw pile.");
+        SemanticDrawPileAdapterV111.ValidateNatureDeckBoundary(
+            combat,
+            "Random hand-cost continuation lost the provider-owned deck.",
+            "Random hand-cost continuation changed the hidden draw pile.");
         PrototypeStateInvariants.Validate(run);
     }
 

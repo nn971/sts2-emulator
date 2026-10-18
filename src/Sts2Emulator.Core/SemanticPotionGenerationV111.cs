@@ -71,15 +71,10 @@ public static class SemanticPotionGenerationChoiceV111
                 combat, generation, choice.SourceCardInstanceId))
             throw new InvalidDataException(
                 "Potion generation is not source-reachable.");
-        var deck = combat.SemanticDeck ?? throw new InvalidDataException(
-            "Potion generation lost the provider-owned semantic deck.");
-        SemanticDeckEngineV111.Validate(deck);
-        if (deck.Mode != SemanticDeckStateV111.NatureMode ||
-            deck.Pending is not null ||
-            !SemanticDeckEngineV111.AllCardInstanceIds(deck)
-                .Order().SequenceEqual(combat.DrawPile.Order()))
-            throw new InvalidDataException(
-                "Potion generation changed the hidden draw pile.");
+        SemanticDrawPileAdapterV111.ValidateNatureDeckBoundary(
+            combat,
+            "Potion generation lost the provider-owned semantic deck.",
+            "Potion generation changed the hidden draw pile.");
         PrototypeStateInvariants.Validate(run);
     }
 

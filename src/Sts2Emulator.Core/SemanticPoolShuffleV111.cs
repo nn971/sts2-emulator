@@ -150,15 +150,10 @@ public static class SemanticPoolShuffleChoiceV111
             PrototypeStateInvariants.Validate(run);
             return;
         }
-        var deck = combat.SemanticDeck ?? throw new InvalidDataException(
-            "Full-pool shuffle lost the provider-owned deck.");
-        SemanticDeckEngineV111.Validate(deck);
-        if (deck.Mode != SemanticDeckStateV111.NatureMode ||
-            deck.Pending is not null ||
-            !SemanticDeckEngineV111.AllCardInstanceIds(deck)
-                .Order().SequenceEqual(combat.DrawPile.Order()))
-            throw new InvalidDataException(
-                "Full-pool shuffle changed the hidden draw pile.");
+        SemanticDrawPileAdapterV111.ValidateNatureDeckBoundary(
+            combat,
+            "Full-pool shuffle lost the provider-owned deck.",
+            "Full-pool shuffle changed the hidden draw pile.");
         PrototypeStateInvariants.Validate(run);
     }
 

@@ -68,16 +68,11 @@ public static class SemanticCardTransformChoiceV111
                 combat, transform))
             throw new InvalidDataException(
                 "Card-transform pool is not source-reachable.");
-        if (combat.SemanticDeck is { } deck)
-        {
-            SemanticDeckEngineV111.Validate(deck);
-            if (deck.Mode != SemanticDeckStateV111.NatureMode ||
-                deck.Pending is not null ||
-                !SemanticDeckEngineV111.AllCardInstanceIds(deck)
-                    .Order().SequenceEqual(combat.DrawPile.Order()))
-                throw new InvalidDataException(
-                    "Card-transform continuation diverged from its semantic draw pile.");
-        }
+        SemanticDrawPileAdapterV111.ValidateNatureDeckBoundary(
+            combat,
+            "Card-transform continuation diverged from its semantic draw pile.",
+            "Card-transform continuation diverged from its semantic draw pile.",
+            allowMissing: true);
     }
 
     public static SemanticCardTransformDecisionV111 Select(

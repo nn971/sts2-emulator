@@ -31,6 +31,37 @@ public static class SemanticDrawPileAdapterV111
     }
 
     /// <summary>
+    /// Validates a Nature choice boundary against the physical draw pile.
+    /// A few legacy-compatible continuations may omit the provider deck;
+    /// their caller decides whether that is valid for the current boundary.
+    /// </summary>
+    internal static SemanticDeckStateV111? ValidateNatureDeckBoundary(
+        CombatState combat, string missingDeckMessage,
+        string invalidBoundaryMessage, bool allowMissing = false,
+        bool allowPending = false,
+        string? requiredPendingPurpose = null)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentException.ThrowIfNullOrWhiteSpace(missingDeckMessage);
+        ArgumentException.ThrowIfNullOrWhiteSpace(invalidBoundaryMessage);
+        if (combat.SemanticDeck is not { } deck)
+        {
+            if (allowMissing) return null;
+            throw new InvalidDataException(missingDeckMessage);
+        }
+
+        SemanticDeckEngineV111.Validate(deck);
+        if (deck.Mode != SemanticDeckStateV111.NatureMode ||
+            (requiredPendingPurpose is not null
+                ? deck.Pending?.Purpose != requiredPendingPurpose
+                : !allowPending && deck.Pending is not null) ||
+            !SemanticDeckEngineV111.AllCardInstanceIds(deck)
+                .Order().SequenceEqual(combat.DrawPile.Order()))
+            throw new InvalidDataException(invalidBoundaryMessage);
+        return deck;
+    }
+
+    /// <summary>
     /// Resolves the current top card from the shared provider/physical-pile
     /// contract. A Nature-owned unknown position returns its pending reveal;
     /// a known position is consumed from the provider state and returned by

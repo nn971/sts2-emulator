@@ -128,17 +128,13 @@ public static class SemanticTargetChoiceV111
                   target.AutoPlayCardInstanceId is not null))
             throw new InvalidDataException(
                 "Effect random-target event carries an auto-play card identity.");
-        if (liveCombat.SemanticDeck is { } deck)
-        {
-            SemanticDeckEngineV111.Validate(deck);
-            if (deck.Mode != SemanticDeckStateV111.NatureMode ||
-                deck.Pending is not null ||
-                !SemanticDeckEngineV111.AllCardInstanceIds(deck)
-                    .Order().SequenceEqual(liveCombat.DrawPile.Order()))
-                throw new InvalidDataException(
-                    "Semantic target continuation changed the hidden draw pile.");
-        }
-        else if (liveCombat.DrawPile.Length != 0)
+        SemanticDrawPileAdapterV111.ValidateNatureDeckBoundary(
+            liveCombat,
+            "Semantic target continuation changed the hidden draw pile.",
+            "Semantic target continuation changed the hidden draw pile.",
+            allowMissing: true);
+        if (liveCombat.SemanticDeck is null &&
+            liveCombat.DrawPile.Length != 0)
             throw new InvalidDataException(
                 "A semantic target without a provider deck must have an empty draw pile.");
     }

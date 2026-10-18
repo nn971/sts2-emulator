@@ -132,15 +132,10 @@ public static class SemanticCardShortlistChoiceV111
                 combat, shortlist))
             throw new InvalidDataException(
                 "Random card shortlist is not source-reachable.");
-        var deck = combat.SemanticDeck ?? throw new InvalidDataException(
-            "Card shortlist lost the provider-owned semantic deck.");
-        SemanticDeckEngineV111.Validate(deck);
-        if (deck.Mode != SemanticDeckStateV111.NatureMode ||
-            deck.Pending is not null ||
-            !SemanticDeckEngineV111.AllCardInstanceIds(deck)
-                .Order().SequenceEqual(combat.DrawPile.Order()))
-            throw new InvalidDataException(
-                "Card shortlist changed the hidden draw-pile state.");
+        SemanticDrawPileAdapterV111.ValidateNatureDeckBoundary(
+            combat,
+            "Card shortlist lost the provider-owned semantic deck.",
+            "Card shortlist changed the hidden draw-pile state.");
         PrototypeStateInvariants.Validate(run);
     }
 
