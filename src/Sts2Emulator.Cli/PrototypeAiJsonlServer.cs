@@ -2690,6 +2690,45 @@ internal static class PrototypeAiJsonlServer
                                 "Request field 'ordinal' is required.");
                         var ordinal = suppliedOrdinal ?? 0;
                         ChanceLawV111 law;
+                        if (siteId == NativePaelRewardsV111.LegionSkinSiteId)
+                        {
+                            var ownerId = OptionalString(request, "owner_id");
+                            var supportCount = OptionalInt(
+                                request, "support_count");
+                            if (priorIndices is not null ||
+                                priorVariantIndex is not null ||
+                                ownerId is null ||
+                                supportCount is not null && supportCount !=
+                                    NativePaelRewardsV111.LegionSkins.Length ||
+                                OptionalString(request, "action_id") is not null ||
+                                OptionalString(request, "card_type") is not null ||
+                                OptionalString(request, "rarity") is not null ||
+                                OptionalString(request, "card_id") is not null ||
+                                OptionalString(request, "potion_id") is not null ||
+                                OptionalString(request, "relic_id") is not null ||
+                                OptionalBool(request, "colorless_offer") ||
+                                OptionalBool(request, "sale_reprice") ||
+                                OptionalStringArray(request,
+                                    "excluded_potion_ids") is not null ||
+                                OptionalInt(request, "offer_ordinal") is not null ||
+                                OptionalStringArray(request,
+                                    "relic_candidate_ids") is not null ||
+                                OptionalStringArray(request,
+                                    "excluded_relic_ids") is not null)
+                                throw new ArgumentException(
+                                    "Pael's Legion queries accept state_handle, site_id, ordinal, owner_id and an optional support_count of four.");
+                            law = ChanceLawEngineV111.QueryPaelsLegionSkin(
+                                ownerId, ordinal);
+                            Write(new
+                            {
+                                requestId,
+                                ok = true,
+                                chanceLawSchemaId =
+                                    ChanceLawV111.CurrentSchemaId,
+                                law
+                            });
+                            break;
+                        }
                         if (StochasticSiteRegistryV111
                             .NeowOfferSessionSiteIds.Contains(
                                 siteId, StringComparer.Ordinal))

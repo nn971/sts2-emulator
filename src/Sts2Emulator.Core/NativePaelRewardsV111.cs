@@ -10,6 +10,8 @@ public static class NativePaelRewardsV111
 {
     public const string PaelId = "proto.native.ancient.pael";
     public const string OfferSiteId = "event.pael.relic_offer.index_draw";
+    public const string LegionSkinSiteId =
+        "relic.paels_legion.skin.index_draw";
     public const string HornId = "proto.native.ancient.paels_horn";
     public const string FleshId = "proto.native.ancient.paels_flesh";
     public const string BloodId = "proto.native.ancient.paels_blood";
@@ -118,7 +120,7 @@ public static class NativePaelRewardsV111
         var skinRng = PrototypeRng.CreateBundle(seed);
         var skin = LegionSkins[LegacyRandomChoiceV111.ChooseIndexRange(
             skinRng,
-            "relic.paels_legion.skin.index_draw",
+            LegionSkinSiteId,
             "reward",
             $"relic:paels_legion:instance:{index}",
             LegionSkins.Length).SelectedIndex];

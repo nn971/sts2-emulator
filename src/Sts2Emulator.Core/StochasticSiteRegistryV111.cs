@@ -234,6 +234,7 @@ public static class StochasticSiteRegistryV111
     [
         NativeGloryAncientsV111.BeautifulBraceletShuffleSiteId,
         NativeGloryAncientsV111.DistinguishedCapeCurseSiteId,
+        NativePaelRewardsV111.LegionSkinSiteId,
         "relic.sand_castle.acquisition_upgrade.shuffle_swap_index",
         "relic.acquisition.random_rare_card.model",
         "relic.acquisition.random_potion.model",
@@ -301,6 +302,7 @@ public static class StochasticSiteRegistryV111
         NativeGloryAncientsV111.BeautifulBraceletShuffleSiteId,
         NativeGloryAncientsV111.DistinguishedCapeCurseSiteId,
         NativeGloryAncientsV111.FurCoatShuffleSiteId,
+        NativePaelRewardsV111.LegionSkinSiteId,
         "relic.sand_castle.acquisition_upgrade.shuffle_swap_index",
         "potion.uncommon_model.index_draw",
         "relic.acquisition.random_rare_card.model",
@@ -342,6 +344,7 @@ public static class StochasticSiteRegistryV111
         "potion_factory.model_within_rarity.index_draw",
         "relic_grab_bag.rarity.unit_float",
         PrototypeNativeRelicGrabBag.NativeMerchantModelSiteId,
+        "relic.paels_legion.skin.index_draw",
         "shop.merchant.card_upgrade_roll.unit_float",
         "treasure.relic_grab_bag.draw",
         PrototypeNativeRelicGrabBag.NativeTreasureModelSiteId,

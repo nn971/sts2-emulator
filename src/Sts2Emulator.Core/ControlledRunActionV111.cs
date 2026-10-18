@@ -148,6 +148,8 @@ public sealed record ControlledRunActionTraceV111(
             request.StreamId is "event" or "player.rewards",
         "run.potion.fill_empty_slots.model" =>
             request.StreamId is "reward" or "player.rewards",
+        NativePaelRewardsV111.LegionSkinSiteId =>
+            request.StreamId == "reward",
         "reward.card_transform.replacement.index_draw" =>
             request.StreamId == "reward",
         _ => false

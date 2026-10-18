@@ -11,7 +11,7 @@ Counts by direct API family:
 - `native_shuffle_mechanics`: 24
 
 Shuffle site IDs mapped to migration-matrix rows: **18**; dynamic expressions: **6**; unmapped: **0**; missing: **0**.
-Registered stochastic site IDs mapped to migration-matrix rows: **143/143**; IDs without rows: **0**; duplicate matrix IDs: **0**; unresolved registry references: **0**.
+Registered stochastic site IDs mapped to migration-matrix rows: **144/144**; IDs without rows: **0**; duplicate matrix IDs: **0**; unresolved registry references: **0**.
 Reference-law column status: **96 UNVERIFIED**; **23 conditional**; **64 calibrated**; **0 unspecified**.
 S0 contract-evidence locator: **183/183 rows** have a text or linked-document match for every facet. Matches are review pointers, not evidence that a contract is complete.
 Rows without a text or linked-document match by S0 facet:
@@ -76,7 +76,7 @@ Known RNG helper callsites with forwarded stable site IDs:
 | [`src/Sts2Emulator.Core/PrototypeNativeOvergrowthMap.cs:74`](../src/Sts2Emulator.Core/PrototypeNativeOvergrowthMap.cs#L74) | `NativeFisherYatesV111` | `ShuffleInPlace` | `siteId` | `dynamic_expression` | `var choices = NativeFisherYatesV111.ShuffleInPlace(` | `shuffle_site_id_is_dynamic_or_unresolved` |
 | [`src/Sts2Emulator.Core/PrototypeNativeRelicGrabBag.cs:264`](../src/Sts2Emulator.Core/PrototypeNativeRelicGrabBag.cs#L264) | `NativeFisherYatesV111` | `ShuffleInPlace` | `"relic_grab_bag.queue_shuffle.swap_index"` → `relic_grab_bag.queue_shuffle.swap_index` | `mapped` | `_ = NativeFisherYatesV111.ShuffleInPlace(` | `shuffle_site_id_resolved` |
 | [`src/Sts2Emulator.Core/PrototypeNativeWarHammer.cs:46`](../src/Sts2Emulator.Core/PrototypeNativeWarHammer.cs#L46) | `NativeFisherYatesV111` | `ShuffleInPlace` | `"relic.war_hammer.elite_upgrade.shuffle_swap_index"` → `relic.war_hammer.elite_upgrade.shuffle_swap_index` | `mapped` | `_ = NativeFisherYatesV111.ShuffleInPlace(` | `shuffle_site_id_resolved` |
-| [`src/Sts2Emulator.Core/PrototypeRooms.cs:5600`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L5600) | `NativeFisherYatesV111` | `ShuffleInPlace` | `"reward.boss_relic_offer.shuffle_swap_index"` → `reward.boss_relic_offer.shuffle_swap_index` | `mapped` | `_ = NativeFisherYatesV111.ShuffleInPlace(` | `shuffle_site_id_resolved` |
+| [`src/Sts2Emulator.Core/PrototypeRooms.cs:5601`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L5601) | `NativeFisherYatesV111` | `ShuffleInPlace` | `"reward.boss_relic_offer.shuffle_swap_index"` → `reward.boss_relic_offer.shuffle_swap_index` | `mapped` | `_ = NativeFisherYatesV111.ShuffleInPlace(` | `shuffle_site_id_resolved` |
 | [`src/Sts2Emulator.Core/PrototypeSemanticDrawRecycleV111.cs:56`](../src/Sts2Emulator.Core/PrototypeSemanticDrawRecycleV111.cs#L56) | `NativeFisherYatesV111` | `Execute` | `"combat.draw_pile_recycle.swap_index"` → `combat.draw_pile_recycle.swap_index` | `mapped` | `var shuffle = NativeFisherYatesV111.Execute(` | `shuffle_site_id_resolved` |
 | [`src/Sts2Emulator.Core/RandomGaussianDoubleProvidersV111.cs:84`](../src/Sts2Emulator.Core/RandomGaussianDoubleProvidersV111.cs#L84) | `NativeRngV111` | `NextGaussianDouble` | — | `not_applicable` | `var value = NativeRngV111.NextGaussianDouble(` | `provider_or_codec_infrastructure` |
 | [`src/Sts2Emulator.Core/RandomGaussianIntProvidersV111.cs:79`](../src/Sts2Emulator.Core/RandomGaussianIntProvidersV111.cs#L79) | `NativeRngV111` | `NextGaussianInt` | — | `not_applicable` | `var value = NativeRngV111.NextGaussianInt(` | `provider_or_codec_infrastructure` |

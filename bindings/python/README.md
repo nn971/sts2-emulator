@@ -61,9 +61,10 @@ for the first ReferenceNature session on a run; after a session commits, its
 sampler cursor is saved with the run and later sessions can omit the seed. Its
 typed session supports `resolve_next()`, `fork()`, `save_snapshot()`,
 `Session.load_reference_nature_run_action_snapshot()`, `release()` and a
-playable `.state` after its Nature choice commits. It is
-limited to the run-start, legacy Event-node entry and Shovel continuations
-listed in the [run-action contract](../../docs/CONTROLLED_RUN_ACTION_D3.md).
+playable `.state` after its Nature choice commits. It covers supported run
+start, Event-node entry, Shop generation and purchases, Treasure-node,
+Shovel, and combat-entry continuations listed in the
+[run-action contract](../../docs/CONTROLLED_RUN_ACTION_D3.md).
 
 Supported event choices also have an atomic ReferenceNature session through
 `State.begin_reference_nature_event_choice(choice_id, nature_seed=None)`. It keeps
@@ -71,6 +72,24 @@ event player actions and Nature choices in one replay order, including Stone
 of All Time push's deck-card action before its ticket; the committed session
 exposes `.state` for ordinary play. See the
 [event-choice contract](../../docs/CONTROLLED_EVENT_CHOICE_D3.md).
+
+Pael's Legion skin selection is available through those existing acquisition
+boundaries: use the event-choice session for a supported event reward, or the
+run-action session with the stable legal `buy_relic` action ID in a Shop. It
+samples one of the four skins with an `UNVERIFIED` index law and saves the
+result on the acquired relic. The direct query takes its relic-instance owner
+ID:
+
+```python
+law = state.query_chance_law(
+    "relic.paels_legion.skin.index_draw",
+    owner_id="relic:paels_legion:instance:0",
+    ordinal=0,
+)
+```
+
+The emulator derives the skin RNG from the reward-stream snapshot and relic
+slot. That seed derivation remains unverified.
 
 The event shuffle and combat-victory session is available through
 `State.begin_reference_nature_native_event_shuffle(nature_seed=None, action_id=None, site_id=None)`. It

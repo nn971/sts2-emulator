@@ -1392,6 +1392,7 @@ public sealed partial class PrototypeGameEngine
         && (relicId is PrototypeNativeOrobasRelics.SandCastleId
                 or NativeGloryAncientsV111.BeautifulBraceletId
                 or NativeGloryAncientsV111.DistinguishedCapeId
+                or NativePaelRewardsV111.LegionId
                 or NativeGloryAncientsV111.FurCoatId
             || (relic.RunTriggers
             ?? Array.Empty<PrototypeRelicRunTriggerSpec>())
