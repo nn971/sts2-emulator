@@ -5498,6 +5498,11 @@ public static partial class ChanceLawEngineV111
         AncientOfferShuffleRequests(string siteId, string[][] pools)
     {
         ArgumentNullException.ThrowIfNull(pools);
+        if (siteId is not (NativeNonupeipeEventV111.ShuffleSiteId or
+                NativeTanxEventV111.ShuffleSiteId or
+                NativeVakuuEventV111.ShuffleSiteId))
+            throw new NotSupportedException(
+                $"Ancient offer query does not support shuffle site '{siteId}'.");
         var streamId = siteId switch
         {
             NativeNonupeipeEventV111.ShuffleSiteId =>
@@ -7162,6 +7167,16 @@ public sealed record ReferenceNatureAncientOfferSessionV111(
         RunState origin, string siteId,
         ReferenceNatureDecisionV111[] transcript)
     {
+        if (siteId is not (
+                NativeOrobasEventV111.OfferSiteId or
+                NativePaelRewardsV111.OfferSiteId or
+                NativeAncientRewardsV111.TezcataraOfferSiteId or
+                NativeNonupeipeEventV111.ShuffleSiteId or
+                NativeTanxEventV111.ShuffleSiteId or
+                NativeVakuuEventV111.ShuffleSiteId or
+                NativeDarvEventV111.OfferVariantSiteId))
+            throw new NotSupportedException(
+                $"Ancient offer replay does not support site '{siteId}'.");
         if (siteId == NativeDarvEventV111.OfferVariantSiteId)
             return BuildDarvReplayChoices(origin, transcript);
         var isShuffle = ChanceLawEngineV111.IsShuffleAncientOfferSite(siteId);

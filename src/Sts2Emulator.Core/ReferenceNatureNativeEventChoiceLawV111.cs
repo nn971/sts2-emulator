@@ -320,7 +320,10 @@ public static partial class ChanceLawEngineV111
         ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
         ArgumentException.ThrowIfNullOrWhiteSpace(actionId);
         ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
-        if (siteId != NativeStoneOfAllTimePotionSlotSiteId || ordinal < 0 ||
+        if (siteId is not (NativeStoneOfAllTimePotionSlotSiteId))
+            throw new NotSupportedException(
+                $"Stone of All Time potion-slot law does not support site '{siteId}'.");
+        if (ordinal < 0 ||
             eventId != PrototypeNativeStoneOfAllTime.EventId ||
             origin.Phase != RunPhase.MapChoice ||
             origin.World is not { Event: null } world)
@@ -448,7 +451,10 @@ public static partial class ChanceLawEngineV111
         ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
         ArgumentException.ThrowIfNullOrWhiteSpace(actionId);
         ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
-        if (siteId != NativeFutureOfPotionsCardTypeSiteId || ordinal < 0 ||
+        if (siteId is not (NativeFutureOfPotionsCardTypeSiteId))
+            throw new NotSupportedException(
+                $"Future of Potions card-type law does not support site '{siteId}'.");
+        if (ordinal < 0 ||
             eventId != PrototypeNativeFutureOfPotions.EventId ||
             origin.Phase != RunPhase.MapChoice ||
             origin.World is not { Event: null } world ||
@@ -665,7 +671,10 @@ public static partial class ChanceLawEngineV111
         ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
         ArgumentException.ThrowIfNullOrWhiteSpace(actionId);
         ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
-        if (siteId != NativeEventGoldUnitFloatSiteId || ordinal < 0 ||
+        if (siteId is not (NativeEventGoldUnitFloatSiteId))
+            throw new NotSupportedException(
+                $"Native event gold unit-float law does not support site '{siteId}'.");
+        if (ordinal < 0 ||
             origin.Phase != RunPhase.MapChoice ||
             origin.World is not { Event: null } world ||
             !PrototypeGameEngine.UsesNativeRegionalSystems(world))
@@ -748,7 +757,10 @@ public static partial class ChanceLawEngineV111
         ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
         ArgumentException.ThrowIfNullOrWhiteSpace(actionId);
         ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
-        if (siteId != NativeEventGoldIndexSiteId || ordinal < 0 ||
+        if (siteId is not (NativeEventGoldIndexSiteId))
+            throw new NotSupportedException(
+                $"Native event gold index law does not support site '{siteId}'.");
+        if (ordinal < 0 ||
             origin.Phase != RunPhase.MapChoice ||
             origin.World is not { Event: null } world ||
             !PrototypeGameEngine.UsesNativeRegionalSystems(world))

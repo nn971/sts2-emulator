@@ -42,6 +42,10 @@ internal static class NeowOfferDecisionPlanBuilderV111
             int? boundedCount = null,
             int requestOrdinal = 0)
         {
+            if (!ChanceLawEngineV111.NeowOfferSessionSiteIds.Contains(
+                    siteId, StringComparer.Ordinal))
+                throw new NotSupportedException(
+                    $"Neow offer decision does not support site '{siteId}'.");
             RandomIndexRequestV111 request = boundedCount is { } count
                 ? new RandomIndexRequestV111(
                     siteId, streamId, ownerId, requestOrdinal, [],
