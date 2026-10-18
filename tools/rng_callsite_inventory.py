@@ -21,7 +21,7 @@ from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = ROOT / "src" / "Sts2Emulator.Core"
-SCHEMA_ID = "emulator-rng-callsite-source-inventory-v11"
+SCHEMA_ID = "emulator-rng-callsite-source-inventory-v12"
 SITE_REGISTRY_PATH = SOURCE_ROOT / "StochasticSiteRegistryV111.cs"
 
 CALL_PATTERN = re.compile(
@@ -34,6 +34,10 @@ CALL_PATTERN = re.compile(
 AMBIENT_ENTROPY_PATTERNS = (
     ("system_random_constructor", re.compile(
         r"\bnew\s+(?:(?:global::)?System\.)?Random\s*\("
+    )),
+    ("system_random_target_typed_constructor", re.compile(
+        r"\b(?:(?:global::)?System\.)?Random\??\s+"
+        r"[A-Za-z_][A-Za-z0-9_]*\s*=\s*new\s*\("
     )),
     ("system_random_shared", re.compile(
         r"\b(?:(?:global::)?System\.)?Random\s*\.\s*Shared\b"
@@ -555,7 +559,10 @@ def _ambient_entropy_calls(
                 line_number = source.count("\n", 0, match.start()) + 1
                 arguments = _call_arguments(source, match.start())
                 finding = api
-                if api == "system_random_constructor":
+                if api in {
+                    "system_random_constructor",
+                    "system_random_target_typed_constructor",
+                }:
                     finding = (
                         "system_random_unseeded_constructor"
                         if not arguments else
@@ -718,7 +725,8 @@ def collect() -> dict[str, Any]:
             "NativeFisherYatesV111 in Sts2Emulator.Core. This does not include "
             "indirect delegates, random provider interfaces, third-party/native "
             "source callsites, or prove that every source operation is mapped. "
-            "A separate direct-API scan reports ad hoc System.Random and "
+            "A separate direct-API scan reports typed and target-typed "
+            "System.Random construction, shared-instance use, and "
             "RandomNumberGenerator use; it cannot prove the absence of indirect "
             "or aliased entropy sources. "
             "The site-matrix report shows registry-to-ledger and ledger-to-registry "
@@ -803,7 +811,7 @@ def render_markdown(report: dict[str, Any]) -> str:
         "",
         "Direct ad hoc entropy API expressions in Core: "
         f"**{len(report['ambient_entropy_calls'])}**. The scan covers direct "
-        "System.Random construction/shared-instance use and "
+        "System.Random typed or target-typed construction/shared-instance use and "
         "RandomNumberGenerator APIs; it does not prove the absence of indirect "
         "or aliased entropy sources.",
         *[

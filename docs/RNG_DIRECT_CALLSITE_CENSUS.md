@@ -1,6 +1,6 @@
-# RNG direct-call source inventory (emulator-rng-callsite-source-inventory-v11)
+# RNG direct-call source inventory (emulator-rng-callsite-source-inventory-v12)
 
-Direct qualified calls to PrototypeRng, NativeRngV111, and NativeFisherYatesV111 in Sts2Emulator.Core. This does not include indirect delegates, random provider interfaces, third-party/native source callsites, or prove that every source operation is mapped. A separate direct-API scan reports ad hoc System.Random and RandomNumberGenerator use; it cannot prove the absence of indirect or aliased entropy sources. The site-matrix report shows registry-to-ledger and ledger-to-registry differences, unique ledger IDs, and explicit reference-law status. Unregistered ledger rows are informational because legacy and conditional sites may remain outside the active registry. The S0 locator reports text or linked-document matches for private constraints, audience projections, resolvers/continuations, probability provenance, and unsupported handling; these matches require manual review and do not prove source completeness.
+Direct qualified calls to PrototypeRng, NativeRngV111, and NativeFisherYatesV111 in Sts2Emulator.Core. This does not include indirect delegates, random provider interfaces, third-party/native source callsites, or prove that every source operation is mapped. A separate direct-API scan reports typed and target-typed System.Random construction, shared-instance use, and RandomNumberGenerator use; it cannot prove the absence of indirect or aliased entropy sources. The site-matrix report shows registry-to-ledger and ledger-to-registry differences, unique ledger IDs, and explicit reference-law status. Unregistered ledger rows are informational because legacy and conditional sites may remain outside the active registry. The S0 locator reports text or linked-document matches for private constraints, audience projections, resolvers/continuations, probability provenance, and unsupported handling; these matches require manual review and do not prove source completeness.
 
 Direct call expressions: **35**.
 
@@ -10,7 +10,7 @@ Counts by direct API family:
 - `native_primitive_api`: 8
 - `native_shuffle_mechanics`: 24
 
-Direct ad hoc entropy API expressions in Core: **0**. The scan covers direct System.Random construction/shared-instance use and RandomNumberGenerator APIs; it does not prove the absence of indirect or aliased entropy sources.
+Direct ad hoc entropy API expressions in Core: **0**. The scan covers direct System.Random typed or target-typed construction/shared-instance use and RandomNumberGenerator APIs; it does not prove the absence of indirect or aliased entropy sources.
 
 Shuffle site IDs mapped to migration-matrix rows: **18**; dynamic expressions: **6**; unmapped: **0**; missing: **0**.
 Registered stochastic site IDs mapped to migration-matrix rows: **183/183**; IDs without rows: **0**; duplicate matrix IDs: **0**; unresolved registry references: **0**.
