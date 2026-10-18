@@ -523,12 +523,15 @@ Event selection and other requests keep their current providers. See the
 [Native event-entry contract](../../docs/REFERENCE_NATURE_NATIVE_EVENT_GOLD_D3.md).
 
 For a supported configured Native event choice with random relic effects or
-Toy Box acquisition, call
+Toy Box acquisition, or Round Tea Party's `continue_fight` or Trial's
+`merchant_guilty` relic reward, call
 `State.begin_reference_nature_native_event_relic(choice_id, nature_seed=None)`
-with its legal choice ID. The session resolves each random relic rarity and
-identity pair plus the five Wax relic draws triggered by each Toy Box, then
-publishes the event result and Nature cursor together. Choices with another
-fixed relic effect or an unrelated stochastic site remain unsupported. Use
+with its legal choice ID. The session resolves each random relic rarity
+request and eligible identity request, plus the five Wax relic draws triggered
+by each Toy Box, then publishes the event result and Nature cursor together. A relic with no eligible
+bag identity consumes its rarity request and then follows the source's no-relic
+result. Choices with another fixed relic effect or an unrelated stochastic
+site remain unsupported. Use
 `resolve_next()`, `status()`, `fork()`, `save_snapshot()`,
 `Session.load_reference_nature_native_event_relic_snapshot()`, and
 `release()` to manage the continuation. The rarity thresholds and bounded
@@ -548,6 +551,13 @@ with the current legal combat action that wins the fight. Replay must reach the
 setting-three relic draw; unrelated stochastic requests make the action
 ineligible. The action, reward, event result, and Nature cursor commit
 together.
+
+For Pael's Wing, call
+`State.begin_reference_nature_native_pael_wing_relic_reward(action_id, nature_seed=None)`
+with the current legal `sacrifice_reward_card` or
+`sacrifice_reward_card_group` action that triggers its every-other-sacrifice
+relic draw. The session commits the sacrifice, relic acquisition, and Nature
+cursor together.
 
 For a configured Native Rest Shovel dig, call
 `State.begin_reference_nature_native_shovel(nature_seed=None)`. The session

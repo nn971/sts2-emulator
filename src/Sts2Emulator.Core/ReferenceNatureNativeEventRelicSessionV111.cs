@@ -26,9 +26,10 @@ public sealed record ReferenceNatureNativeEventRelicSessionSnapshotV111(
     string[]? PendingCandidateLabels);
 
 /// <summary>
-/// Atomic configured Native event relic continuation. Direct random-relic
-/// effects, supported Neow relic-pickup triggers, Battleworn's setting-three
-/// relic reward, and Toy Box pulls share one typed ReferenceNature transcript.
+/// Atomic configured Native relic-grant continuation. Supported event
+/// random-relic effects, Neow pickup triggers, event-specific relic rewards,
+/// Battleworn's setting-three reward, Pael's Wing, and Toy Box pulls share one
+/// typed ReferenceNature transcript.
 /// </summary>
 public sealed record ReferenceNatureNativeEventRelicSessionV111(
     string SchemaId, RunState Origin, GameAction Action, RunState Run,
@@ -89,7 +90,7 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
         var replay = Replay(origin, action, []);
         if (replay.Continuation is null)
             throw new NotSupportedException(
-                "Native event relic action did not reach a supported relic draw.");
+                "Native relic action did not reach a supported relic draw.");
         var session = new ReferenceNatureNativeEventRelicSessionV111(
             CurrentSchemaId, origin.Fork(), CloneAction(action), origin.Fork(),
             initialNatureState.Fork(), initialNatureState.Fork(), [], [],
@@ -386,6 +387,13 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
                         actionId = PrototypeAiEnvironment.StableActionId(action),
                         request = indexRequest
                     })
+                    : IsPaelWingRelicReward(source, action)
+                    ? CanonicalJson.Sha256(new
+                    {
+                        boundary = "native-pael-wing-relic-reward",
+                        actionId = PrototypeAiEnvironment.StableActionId(action),
+                        request = indexRequest
+                    })
                     : CanonicalJson.Sha256(new
                     {
                         boundary = "native-neow-relic-pickup",
@@ -483,20 +491,28 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
         var world = source.World;
         var eventState = world?.Event;
         var choiceId = EventChoiceId(action);
-        var eventRelicChoice = source.Phase == RunPhase.Event &&
-            action.Kind == "event_choice" &&
-            eventState is not null && choiceId is not null &&
+        var nativeDirectEventRelicDrawCount =
+            NativeDirectEventRelicDrawCount(source, action);
+        var controlledEventRelicChoice = eventState is not null &&
+            choiceId is not null &&
             PrototypeGameEngine.IsControlledEventChoice(
                 eventState.EventId, choiceId) &&
             ExpectedEventRelicDrawCount(source, action) > 0 &&
             !HasUnsupportedFixedRelicEffect(eventState.EventId, choiceId);
+        var eventRelicChoice = source.Phase == RunPhase.Event &&
+            action.Kind == "event_choice" &&
+            eventState is not null && choiceId is not null &&
+            (nativeDirectEventRelicDrawCount > 0 ||
+                controlledEventRelicChoice);
         var neowRelicPickup = NeowRelicPickupDrawCount(source, action) > 0;
         var battlewornRelicVictory =
             IsBattlewornSettingThreeCombat(source);
+        var paelWingRelicReward = IsPaelWingRelicReward(source, action);
         var supportedBoundary =
             (eventRelicChoice && eventState is
                 { ControlledChoice: null, ChosenChoiceId: null }) ||
-            neowRelicPickup || battlewornRelicVictory;
+            neowRelicPickup || battlewornRelicVictory ||
+            paelWingRelicReward;
         if (world is null || source.NativeRunRng is null ||
             source.ControlledRunActionChoice is not null ||
             !PrototypeGameEngine.UsesNativeRegionalSystems(world) ||
@@ -505,16 +521,19 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
                 PrototypeAiEnvironment.StableActionId(candidate) ==
                 PrototypeAiEnvironment.StableActionId(action)))
             throw new InvalidOperationException(
-                "Native event relic session requires a current legal configured Native event choice, Neow relic pickup, or Battleworn relic-reward action.");
+                "Native relic session requires a current legal configured Native event choice, Neow pickup, Battleworn victory action, or Pael's Wing reward sacrifice.");
         PrototypeStateInvariants.Validate(source);
     }
 
     private static int ExpectedDrawCount(RunState source, GameAction action)
     {
         if (action.Kind != "event_choice")
-            return IsBattlewornSettingThreeCombat(source)
-                ? 1
-                : NeowRelicPickupDrawCount(source, action);
+        {
+            if (IsBattlewornSettingThreeCombat(source))
+                return 1;
+            return NeowRelicPickupDrawCount(source, action) +
+                PaelWingRelicDrawCount(source, action);
+        }
         return ExpectedEventRelicDrawCount(source, action);
     }
 
@@ -523,6 +542,10 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
     {
         var eventState = source.World?.Event;
         var choiceId = EventChoiceId(action);
+        var directDrawCount = NativeDirectEventRelicDrawCount(
+            source, action);
+        if (directDrawCount > 0)
+            return directDrawCount;
         if (eventState is null || choiceId is null ||
             !PrototypeContent.Events.TryGetValue(
                 eventState.EventId, out var definition))
@@ -544,6 +567,22 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
                 "Event:", StringComparison.Ordinal))
             toyBoxAcquisitions = 0;
         return randomRelicDraws + toyBoxAcquisitions * ToyBoxDrawCount;
+    }
+
+    private static int NativeDirectEventRelicDrawCount(
+        RunState source, GameAction action)
+    {
+        if (source.Phase != RunPhase.Event || action.Kind != "event_choice" ||
+            source.World?.Event is not { } eventState ||
+            EventChoiceId(action) is not { } choiceId)
+            return 0;
+        if (eventState.EventId == PrototypeNativeGloryEvents.RoundTeaPartyId &&
+            eventState.NativePageIndex == 1 && choiceId == "continue_fight")
+            return 1;
+        if (eventState.EventId == PrototypeNativeGloryEvents.TrialId &&
+            eventState.NativePageIndex == 2 && choiceId == "merchant_guilty")
+            return 2;
+        return 0;
     }
 
     private static int NeowRelicPickupDrawCount(
@@ -586,6 +625,30 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
         return effects.Count(effect =>
             effect.Kind == PrototypeRunEffectKind.GainRandomRelic);
     }
+
+    private static int PaelWingRelicDrawCount(
+        RunState source, GameAction action)
+    {
+        var world = source.World;
+        if (source.Phase != RunPhase.Reward || world is null ||
+            world.Reward is null ||
+            !PrototypeGameEngine.UsesNativeRegionalSystems(world) ||
+            action.Kind is not ("sacrifice_reward_card" or
+                "sacrifice_reward_card_group"))
+            return 0;
+        var wing = source.Player.Relics.FirstOrDefault(relic =>
+            relic.RelicId == NativePaelRewardsV111.WingId &&
+            !relic.IsMelted);
+        if (wing is null)
+            return 0;
+        var nextSacrificeCount = checked(
+            NativePaelRewardsV111.RewardsSacrificed(wing) + 1);
+        return nextSacrificeCount % 2 == 0 ? 1 : 0;
+    }
+
+    private static bool IsPaelWingRelicReward(
+        RunState source, GameAction action) =>
+        PaelWingRelicDrawCount(source, action) > 0;
 
     private static bool IsBattlewornSettingThreeCombat(RunState source)
     {
