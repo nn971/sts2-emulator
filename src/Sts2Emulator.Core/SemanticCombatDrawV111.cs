@@ -841,35 +841,13 @@ public static class SemanticCombatDrawEngineV111
         var pending = state.StratagemSelectionPending ??
             throw new InvalidOperationException(
                 "No semantic Stratagem selection is pending.");
-        if (!pending.Candidates.Any(candidate =>
-                candidate.ActionId == actionId))
-            throw new InvalidOperationException(
-                "Action is outside the pending Stratagem selection support.");
-
         int drawnBefore = state.Run.World!.Combat!
             .CounterState.CardsDrawnThisCombat;
-        var selection = SemanticCardSelectionEngineV111.Step(
-            state.Run.Fork(), actionId);
-        var decision = selection.Decision ??
-            throw new InvalidDataException(
-                "Stratagem selection omitted its source decision.");
-        if (CanonicalJson.Sha256(decision.Event) !=
-            CanonicalJson.Sha256(pending))
-            throw new InvalidDataException(
-                "Stratagem selection event changed during resolution.");
-        RunState resumedRun = selection.Run;
-        int remaining;
-        if (state.AutomaticHandDraw)
-        {
-            using (ControlledChanceGuardV111.Enter())
-                (resumedRun, remaining) =
-                    PrototypeGameEngine.BeginSemanticCombatDraw(
-                        resumedRun, state.RemainingCount,
-                        fromHandDraw: true);
-        }
-        else
-            remaining = PrototypeGameEngine.GetSemanticDrawRemainingCount(
-                selection.Run, state.RemainingCount, drawnBefore);
+        var (resumedRun, remaining, decision) =
+            PrototypeGameEngine.ResumeSemanticStratagemSelection(
+                state.Run.Fork(), pending, actionId,
+                state.RemainingCount, state.AutomaticHandDraw,
+                drawnBefore);
         var next = state with
         {
             Run = resumedRun,

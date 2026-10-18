@@ -263,6 +263,55 @@ public sealed partial class PrototypeGameEngine
         return (run, requested, remaining, decision);
     }
 
+    internal static (RunState Run, int Remaining,
+        SemanticCardSelectionDecisionV111 Decision)
+        ResumeSemanticStratagemSelection(
+            RunState checkpoint,
+            SemanticCardSelectionEventV111 pending,
+            string actionId,
+            int remaining,
+            bool automaticHandDraw,
+            int drawnBefore)
+    {
+        ArgumentNullException.ThrowIfNull(checkpoint);
+        ArgumentNullException.ThrowIfNull(pending);
+        pending.Validate();
+        ArgumentException.ThrowIfNullOrWhiteSpace(actionId);
+        if (remaining < 0 || drawnBefore < 0)
+            throw new InvalidDataException(
+                "Semantic Stratagem draw progress is invalid.");
+        if (!pending.Candidates.Any(candidate =>
+                candidate.ActionId == actionId))
+            throw new InvalidOperationException(
+                "Action is outside the pending Stratagem selection support.");
+
+        var selection = SemanticCardSelectionEngineV111.Step(
+            checkpoint, actionId);
+        var decision = selection.Decision ??
+            throw new InvalidDataException(
+                "Stratagem selection omitted its source decision.");
+        if (CanonicalJson.Sha256(decision.Event) !=
+            CanonicalJson.Sha256(pending))
+            throw new InvalidDataException(
+                "Stratagem selection event changed during resolution.");
+
+        if (!automaticHandDraw)
+            return (selection.Run, GetSemanticDrawRemainingCount(
+                selection.Run, remaining, drawnBefore), decision);
+
+        if (!IsSemanticAutomaticHandDraw(
+                selection.Run.World?.Combat ?? throw new InvalidDataException(
+                    "Automatic Stratagem selection removed combat.")))
+            throw new InvalidDataException(
+                "Automatic Stratagem selection lost its pipeline cursor.");
+        RunState resumedRun;
+        int resumedRemaining;
+        using (ControlledChanceGuardV111.Enter())
+            (resumedRun, resumedRemaining) = BeginSemanticCombatDraw(
+                selection.Run, remaining, fromHandDraw: true);
+        return (resumedRun, resumedRemaining, decision);
+    }
+
     private static PrototypeControlledSemanticDrawV111
         CreateSemanticDrawResultFrame(
             int remainingCount, bool fromHandDraw, int eventDepth,
