@@ -1,6 +1,6 @@
 # Stochastic site and state ownership inventory
 
-**Snapshot:** 2026-10-18, `feature/nature-143-native-policy-comparator`. **Status:** assembled index and ownership crosswalk; row-level acceptance audit remains in progress. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md) and [implementation roadmap](STOCHASTIC_ARCHITECTURE_ROADMAP.md).
+**Snapshot:** 2026-10-19, `feature/nature-143-native-policy-comparator`. **Status:** assembled index and ownership crosswalk; row-level acceptance audit remains in progress. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md) and [implementation roadmap](STOCHASTIC_ARCHITECTURE_ROADMAP.md).
 
 This document joins existing inventories instead of copying their site rows. The detailed stable-site ledger stays in [Desired RNG migration status](DESIRED_RNG_MIGRATION_STATUS.md); the static direct-call report stays in [RNG direct-call census](RNG_DIRECT_CALLSITE_CENSUS.md). Semantic protocol and reference-build documents linked from those rows retain the mechanism-specific evidence.
 
@@ -17,6 +17,18 @@ This document joins existing inventories instead of copying their site rows. The
 The census and matrix have different units. Census rows are source expressions; migration rows are semantic sampling sites. One site can have many call expressions, and one generic provider expression can serve many semantic sites. Neither count should be used as the other's completion denominator. The census also scans Core for direct typed or target-typed System.Random construction, shared-instance use, and RandomNumberGenerator calls, so ad hoc entropy sources can be surfaced alongside provider-backed RNG expressions. It lists explicit typed random-request constructions with their positional or named `SiteId` resolution against the registry and matrix; dynamic or aliased request arguments remain review items. Its S0 evidence locator counts only row text or linked context tied to a site ID, not keyword hits anywhere in a linked document. It does not detect indirect or aliased entropy sources.
 
 Stone of All Time's pre-entry potion-slot query covers Native and retained legacy routes. Native uses the exact bounded-index transform; the legacy route uses an equal-support ReferenceNature model marked `UNVERIFIED`, with its request ordinal following the Event-selection ticket.
+
+## Scoped manual source review
+
+The locator counts reviewed pointers, not acceptance evidence. The following
+S1 sites have also received a scoped manual review of their contracts against
+the current implementation paths. This does not complete the row-by-row S0
+audit or establish Native source parity.
+
+| Site | Verified implementation path | Remaining limit |
+| --- | --- | --- |
+| `combat.committed_intent.index_draw`, `combat.next_turn_intent.index_draw` | `ControlledTurnIntentEngineV111.DescribePendingSemanticIntent` replays the saved per-enemy ticket prefix through the pure `PrototypeGameEngine.EvaluateEnemyIntentChoice` selector and captures its support before the pending ticket is drawn. Intent event validation requires positive weights, contiguous ticket intervals, and a total equal to the pending bounded support. `ChanceLawEngineV111.QueryIntent` maps those intervals over the exact Native `NextInt` grid. Native and controlled results share `ApplyEnemyIntentOutcome`; the semantic resolver maps a stable intent ID back to its source ticket. See the [intent bridge contract](DESIRED_RNG_D3_INTENT_BRIDGE.md), [selector](../src/Sts2Emulator.Core/ControlledTurnIntentsV111.cs), [shared mechanics commit](../src/Sts2Emulator.Core/PrototypeCombat.cs), and [Chance Law](../src/Sts2Emulator.Core/ChanceLawV111.cs). | This verifies the current source-shaped emulator path and declared bounded transform. It does not verify full source move eligibility, stream/cursor parity, or original-game conditional probabilities; intent provenance remains `UNVERIFIED` where the information model is not independently established. |
+| `combat.draw_pile.draw_card` | `SemanticDeckEngineV111.Require` returns known positions without a Nature ticket and suspends only for an unknown Nature-owned position. `SemanticDrawPileAdapterV111.ResolveTopCard` consumes the stable physical identity; `CommitTopCardResolutions` validates and publishes provider and zone changes together. `PrototypeGameEngine.DrawCards` then applies the card and dispatches `CardDrawn` once before continuing the saved draw count. See the [physical draw contract](NATURE_SEMANTIC_COMBAT_DRAW_143.md#s0-stochastic-boundary-physical-card-draw), [deck kernel](../src/Sts2Emulator.Core/SemanticDeckStateV111.cs), [draw-pile adapter](../src/Sts2Emulator.Core/SemanticDrawPileAdapterV111.cs), and [DrawCards path](../src/Sts2Emulator.Core/PrototypeCombat.cs). | The deferred identity law remains `UNVERIFIED`; actual peek/scry gameplay callsites are not integrated, and callers without a saved semantic/automatic draw continuation fail closed. Native hidden order is committed at shuffle time, so resolving a known Native top card does not add a per-draw RNG call. |
 
 ## State ownership crosswalk
 
