@@ -50,7 +50,8 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
         RunState origin, ControlledStochasticDecisionV111[] selected,
         Func<RunState, RunState> mechanics,
         string nativeEventRngEventId, string eventName,
-        Func<ControlledStochasticRequestV111, bool>? requestFilter = null)
+        Func<ControlledStochasticRequestV111, bool>? requestFilter = null,
+        bool validateNativeEventCursor = true)
     {
         ArgumentNullException.ThrowIfNull(origin);
         ArgumentNullException.ThrowIfNull(selected);
@@ -58,9 +59,9 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
         ArgumentException.ThrowIfNullOrWhiteSpace(nativeEventRngEventId);
         ArgumentException.ThrowIfNullOrWhiteSpace(eventName);
         if (selected.Length == 0 || selected.Any(decision =>
-                decision?.IndexDecision is null))
+                decision is null || !decision.IsIndexOrUnitFloat()))
             throw new InvalidDataException(
-                $"{eventName} replay requires a nonempty index prefix.");
+                $"{eventName} replay requires a nonempty index/unit-float prefix.");
         var expectedStream = origin.World?.Event?.NativeEventRng ??
             NativeRngV111Contexts.ForEvent(
                 origin.RunSeed, nativeEventRngEventId);
@@ -72,9 +73,10 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
         if (replay.Suspended || replay.Run is not { } resolved)
             throw new InvalidDataException(
                 $"{eventName} action did not consume exactly its selected index prefix.");
-        if (CanonicalJson.Sha256(
+        if (validateNativeEventCursor &&
+            CanonicalJson.Sha256(
                 resolved.World?.Event?.NativeEventRng) !=
-            CanonicalJson.Sha256(expectedStream))
+                CanonicalJson.Sha256(expectedStream))
             throw new InvalidDataException(
                 $"Scripted {eventName} resolution advanced its Native event cursor.");
         var world = resolved.World ?? throw new InvalidDataException(
@@ -328,17 +330,27 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
             throw new InvalidOperationException(
                 "Scripted event unit-float replay requires its configured native run and exact site.");
 
-        var indexScript = new ScriptedRandomIndexProviderV111([]);
-        var unitFloatScript = new ScriptedRandomUnitFloatProviderV111(
-            [decision with { ProviderMode = "scripted-v111" }]);
+        var selected = ControlledStochasticDecisionV111.FromUnitFloat(
+            decision with { ProviderMode = "scripted-v111" });
         using var probe = NativeEventRandomProbeV111.Begin();
-        using var providerScope = StochasticProviderScopeV111.Enter(
-            new SelectiveReplayProvider([scriptedSiteId], indexScript),
-            new SelectiveUnitFloatReplayProvider(
-                scriptedSiteId, unitFloatScript),
+        using var indexFallbackScope = StochasticProviderScopeV111.Enter(
+            new SelectiveReplayProvider([],
+                new ScriptedRandomIndexProviderV111([])),
             overrideExplicitProviders: true);
-        var run = new PrototypeGameEngine().Step(
-            origin.Fork(), action).State;
+        using var unitFloatFallbackScope = StochasticProviderScopeV111.Enter(
+            unitFloatProvider: new SelectiveUnitFloatReplayProvider(
+                string.Empty, new ScriptedRandomUnitFloatProviderV111([])),
+            overrideExplicitProviders: true);
+        var run = ReplayControlledPrefix(
+            origin, [selected],
+            checkpoint => new PrototypeGameEngine().Step(checkpoint, action).State,
+            nativeEventRngEventId, expectedEventId,
+            candidate =>
+                (candidate.IndexRequest is { } index &&
+                    index.SiteId == scriptedSiteId) ||
+                (candidate.UnitFloatRequest is { } unitFloat &&
+                    unitFloat.SiteId == scriptedSiteId),
+            validateNativeEventCursor: false);
         var matchingCaptures = probe.UnitFloatCaptures.Where(capture =>
             capture.Request.SiteId == scriptedSiteId).ToArray();
         var capture = matchingCaptures.Length == 1
@@ -380,8 +392,6 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
             throw new InvalidDataException(
                 "Scripted event unit-float request differs from the replay plan.");
         var expectedPostPrefixCursor = NativeRngV111.ToSnapshot(preDrawStream);
-        indexScript.AssertComplete();
-        unitFloatScript.AssertComplete();
         if (run.World?.Event?.NativeEventRng is not { } replayStream ||
             NativeRngV111.ToSnapshot(replayStream) != expectedPostPrefixCursor)
             throw new InvalidDataException(
@@ -435,21 +445,35 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
             throw new InvalidOperationException(
                 "Mixed Endless Conveyor replay requires consecutive index and unit-float requests on its current event stream.");
 
-        var indexScript = new ScriptedRandomIndexProviderV111(
-            [indexDecision with { ProviderMode = "scripted-v111" }]);
-        var unitFloatScript = new ScriptedRandomUnitFloatProviderV111(
-            [unitFloatDecision with { ProviderMode = "scripted-v111" }]);
+        var selected = new[]
+        {
+            ControlledStochasticDecisionV111.FromIndex(
+                indexDecision with { ProviderMode = "scripted-v111" }),
+            ControlledStochasticDecisionV111.FromUnitFloat(
+                unitFloatDecision with { ProviderMode = "scripted-v111" })
+        };
         IReadOnlyList<NativeEventUnitFloatCaptureV111> captures;
         RunState run;
         using (var probe = NativeEventRandomProbeV111.Begin())
-        using (var providerScope = StochasticProviderScopeV111.Enter(
-            new SelectiveReplayProvider([scriptedIndexSiteId], indexScript),
-            new SelectiveUnitFloatReplayProvider(
-                scriptedUnitFloatSiteId, unitFloatScript),
+        using (StochasticProviderScopeV111.Enter(
+            new SelectiveReplayProvider([],
+                new ScriptedRandomIndexProviderV111([])),
+            overrideExplicitProviders: true))
+        using (StochasticProviderScopeV111.Enter(
+            unitFloatProvider: new SelectiveUnitFloatReplayProvider(
+                string.Empty, new ScriptedRandomUnitFloatProviderV111([])),
             overrideExplicitProviders: true))
         {
-            run = new PrototypeGameEngine().Step(
-                origin.Fork(), action).State;
+            run = ReplayControlledPrefix(
+                origin, selected,
+                checkpoint => new PrototypeGameEngine().Step(
+                    checkpoint, action).State,
+                nativeEventRngEventId, expectedEventId,
+                candidate =>
+                    (candidate.IndexRequest is { } index &&
+                        index.SiteId == scriptedIndexSiteId) ||
+                    (candidate.UnitFloatRequest is { } unitFloat &&
+                        unitFloat.SiteId == scriptedUnitFloatSiteId));
             captures = probe.UnitFloatCaptures;
         }
         var matching = captures.Where(capture =>
@@ -464,8 +488,6 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
                 NativeRngV111.ToSnapshot(originStream))
             throw new InvalidDataException(
                 "Mixed Endless Conveyor replay did not reach the scripted ticket after its counterfactual index.");
-        indexScript.AssertComplete();
-        unitFloatScript.AssertComplete();
         if (run.World?.Event is not { } eventState ||
             eventState.EventId != expectedEventId ||
             eventState.NativeEventRng is not { } replayStream ||
