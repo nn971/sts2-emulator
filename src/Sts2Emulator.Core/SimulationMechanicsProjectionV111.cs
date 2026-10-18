@@ -10,7 +10,7 @@ public sealed record SimulationMechanicsComparisonV111(
     bool DifferencesTruncated)
 {
     public const string SchemaId =
-        "sts2-v111-simulation-mechanics-comparison-v2";
+        "sts2-v111-simulation-mechanics-comparison-v3";
 
     public bool Equivalent => StringComparer.Ordinal.Equals(
         LeftFingerprint, RightFingerprint);
@@ -27,7 +27,21 @@ public sealed record SimulationMechanicsProjectionV111(
     RunWorldMechanicsStateV111? World,
     CombatMechanicsStateV111? Combat,
     EventMechanicsStateV111? Event,
-    PrototypeControlledSemanticDrawV111? PendingDrawContinuation = null);
+    SimulationDrawContinuationProjectionV111? PendingDrawContinuation = null);
+
+/// <summary>Provider-independent progress for one suspended draw operation.
+/// Candidate supports and selected provider outcomes remain outside the view.
+/// </summary>
+public sealed record SimulationDrawContinuationProjectionV111(
+    PrototypeControlledSemanticDrawV111? SemanticDraw,
+    SimulationDrawCostContinuationProjectionV111? DrawCost);
+
+/// <summary>Mechanics progress for a card already drawn and awaiting a cost
+/// choice. The cost bound and provider support are intentionally omitted.
+/// </summary>
+public sealed record SimulationDrawCostContinuationProjectionV111(
+    long CardInstanceId, int RemainingCount, bool FromHandDraw,
+    int EventDepth, string Stage);
 
 /// <summary>
 /// Builds stable provider-independent mechanics projections for replay and
@@ -45,7 +59,7 @@ public static class SimulationMechanicsProjectionEngineV111
         var snapshot = run.Fork();
         var world = snapshot.World;
         var combat = world?.Combat?.Mechanics;
-        PrototypeControlledSemanticDrawV111? pendingDrawContinuation = null;
+        SimulationDrawContinuationProjectionV111? pendingDrawContinuation = null;
         if (combat is not null)
         {
             var pendingChoice = combat.PendingChoice;
@@ -55,7 +69,18 @@ public static class SimulationMechanicsProjectionEngineV111
             if (choiceDraw is not null && insertionDraw is not null)
                 throw new InvalidDataException(
                     "A pending combat choice has overlapping semantic draw continuations.");
-            pendingDrawContinuation = (choiceDraw ?? insertionDraw)?.Fork();
+            var semanticDraw = (choiceDraw ?? insertionDraw)?.Fork();
+            var drawCost = pendingChoice?.ControlledDrawCost;
+            var costProgress = drawCost is null
+                ? null
+                : new SimulationDrawCostContinuationProjectionV111(
+                    drawCost.CardInstanceId, drawCost.RemainingCount,
+                    drawCost.FromHandDraw, drawCost.EventDepth,
+                    drawCost.Stage);
+            if (semanticDraw is not null || costProgress is not null)
+                pendingDrawContinuation =
+                    new SimulationDrawContinuationProjectionV111(
+                        semanticDraw, costProgress);
 
             var pipeline = combat.AutomaticPipelineContinuation;
             if (pipeline is not null)
