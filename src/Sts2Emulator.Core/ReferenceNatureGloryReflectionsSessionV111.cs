@@ -131,12 +131,14 @@ public sealed record ReferenceNatureGloryReflectionsSessionV111(
         if (complete)
         {
             var decisions = BuildNativeDecisions(Origin, transcript);
-            var replay = ReferenceNatureNativeEventIndexReplayV111.Replay(
-                Origin, decisions,
-                GameAction.Create("event_choice",
-                    new EventChoicePayload("touch_mirror")),
-                PrototypeNativeGloryEvents.ReflectionsNativeRngEventId,
-                PrototypeNativeGloryEvents.ReflectionsId);
+            var replay = ReferenceNatureNativeEventIndexReplayV111
+                .ReplayControlledIndices(
+                    Origin, decisions,
+                    run => new PrototypeGameEngine().Step(
+                        run, GameAction.Create("event_choice",
+                            new EventChoicePayload("touch_mirror"))).State,
+                    PrototypeNativeGloryEvents.ReflectionsNativeRngEventId,
+                    "Glory Reflections");
             nextRun = ReferenceNatureRunCursorV111.Commit(
                 replay, nextNature);
         }
@@ -194,12 +196,15 @@ public sealed record ReferenceNatureGloryReflectionsSessionV111(
         var expectedRun = Origin.Fork();
         if (complete)
         {
-            expectedRun = ReferenceNatureNativeEventIndexReplayV111.Replay(
-                Origin, BuildNativeDecisions(Origin, DecisionTranscript),
-                GameAction.Create("event_choice",
-                    new EventChoicePayload("touch_mirror")),
-                PrototypeNativeGloryEvents.ReflectionsNativeRngEventId,
-                PrototypeNativeGloryEvents.ReflectionsId);
+            expectedRun = ReferenceNatureNativeEventIndexReplayV111
+                .ReplayControlledIndices(
+                    Origin,
+                    BuildNativeDecisions(Origin, DecisionTranscript),
+                    run => new PrototypeGameEngine().Step(
+                        run, GameAction.Create("event_choice",
+                            new EventChoicePayload("touch_mirror"))).State,
+                    PrototypeNativeGloryEvents.ReflectionsNativeRngEventId,
+                    "Glory Reflections");
             expectedRun = ReferenceNatureRunCursorV111.Commit(
                 expectedRun, expectedNature);
         }

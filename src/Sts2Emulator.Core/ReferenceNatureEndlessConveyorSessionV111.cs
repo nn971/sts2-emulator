@@ -401,11 +401,17 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
         ReferenceNatureSelectionV111 selection)
     {
         var request = BuildIndexRequest(origin, law);
-        var run = ReferenceNatureNativeEventIndexReplayV111.Replay(
-            origin, request, selection.OutcomeIndex,
-            RequireAction(origin, actionId),
-            PrototypeNativeEndlessConveyor.NativeRngEventId,
-            PrototypeNativeEndlessConveyor.EventId);
+        var selected = ReferenceNatureChanceLawDecisionV111.FromSelection(
+            law, ControlledStochasticRequestV111.FromIndex(request),
+            selection);
+        var action = RequireAction(origin, actionId);
+        var run = ReferenceNatureNativeEventIndexReplayV111
+            .ReplayControlledIndex(
+                origin, request, selected,
+                checkpoint => new PrototypeGameEngine().Step(
+                    checkpoint, action).State,
+                PrototypeNativeEndlessConveyor.NativeRngEventId,
+                PrototypeNativeEndlessConveyor.EventId);
         ValidateSelectedEffect(origin, run, law, selection);
         return run;
     }

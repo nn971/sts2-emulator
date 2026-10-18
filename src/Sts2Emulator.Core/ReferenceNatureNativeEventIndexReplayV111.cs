@@ -16,25 +16,60 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
         ArgumentNullException.ThrowIfNull(mechanics);
         ArgumentException.ThrowIfNullOrWhiteSpace(nativeEventRngEventId);
         ArgumentException.ThrowIfNullOrWhiteSpace(eventName);
+        selected.Validate();
         var typedRequest = ControlledStochasticRequestV111.FromIndex(request);
         if (!ControlledStochasticChanceReplayV111.SameRequest(
                 selected.ToRequest(), typedRequest))
             throw new InvalidDataException(
                 $"Selected {eventName} outcome differs from its index request.");
-        selected.Validate();
+        return ReplayControlledPrefix(
+            origin, [selected], mechanics, nativeEventRngEventId, eventName,
+            candidate => ControlledStochasticChanceReplayV111.SameRequest(
+                candidate, typedRequest));
+    }
+
+    public static RunState ReplayControlledIndices(
+        RunState origin, RandomIndexDecisionV111[] decisions,
+        Func<RunState, RunState> mechanics,
+        string nativeEventRngEventId, string eventName)
+    {
+        ArgumentNullException.ThrowIfNull(decisions);
+        var selected = decisions.Select(decision =>
+            ControlledStochasticDecisionV111.FromIndex(decision)).ToArray();
+        var requests = selected.Select(decision => decision.ToRequest())
+            .ToArray();
+        return ReplayControlledPrefix(
+            origin, selected, mechanics, nativeEventRngEventId, eventName,
+            candidate => requests.Any(request =>
+                ControlledStochasticChanceReplayV111.SameRequest(
+                    candidate, request)));
+    }
+
+    private static RunState ReplayControlledPrefix(
+        RunState origin, ControlledStochasticDecisionV111[] selected,
+        Func<RunState, RunState> mechanics,
+        string nativeEventRngEventId, string eventName,
+        Func<ControlledStochasticRequestV111, bool>? requestFilter = null)
+    {
+        ArgumentNullException.ThrowIfNull(origin);
+        ArgumentNullException.ThrowIfNull(selected);
+        ArgumentNullException.ThrowIfNull(mechanics);
+        ArgumentException.ThrowIfNullOrWhiteSpace(nativeEventRngEventId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventName);
+        if (selected.Length == 0 || selected.Any(decision =>
+                decision?.IndexDecision is null))
+            throw new InvalidDataException(
+                $"{eventName} replay requires a nonempty index prefix.");
         var expectedStream = origin.World?.Event?.NativeEventRng ??
             NativeRngV111Contexts.ForEvent(
                 origin.RunSeed, nativeEventRngEventId);
         var replay = ControlledChanceContinuationExecutorV111.CaptureStochastic(
             origin,
             ControlledStochasticContinuationStateV111.CurrentSchemaId,
-            [selected], mechanics,
-            requestFilter: candidate =>
-                ControlledStochasticChanceReplayV111.SameRequest(
-                    candidate, typedRequest));
+            selected, mechanics, requestFilter);
         if (replay.Suspended || replay.Run is not { } resolved)
             throw new InvalidDataException(
-                $"{eventName} action did not consume exactly its selected index request.");
+                $"{eventName} action did not consume exactly its selected index prefix.");
         if (CanonicalJson.Sha256(
                 resolved.World?.Event?.NativeEventRng) !=
             CanonicalJson.Sha256(expectedStream))
