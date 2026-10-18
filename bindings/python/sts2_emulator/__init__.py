@@ -43,7 +43,9 @@ class State:
                          event_id=None, support_count=None,
                          first_boss=None, ascension=None, act=None,
                          include_darv=None, hive_receives_darv=None,
-                         room=None, gold_proportion=None):
+                         room=None, gold_proportion=None,
+                         current_thousandths=None, elite=None,
+                         forced=None):
         """Read a pre-outcome law; native event queries may need action_id.
 
         Reflections card-pick laws use action_id="touch_mirror" and the
@@ -59,6 +61,8 @@ class State:
         assignment laws require hive_receives_darv.
         Combat-gold laws require room, ascension and the source gold_proportion;
         Elite and Boss queries use fixed room bounds and need no proportion.
+        Combat potion-odds laws require current_thousandths, elite, and forced;
+        a forced reward has no odds draw and is rejected.
         Repy potion laws use ordinal 0 or 1 and prior_indices containing the
         complete relic-shuffle prefix plus any earlier potion index.
         """
@@ -149,6 +153,24 @@ class State:
             if not 0.0 <= proportion <= 1.0:
                 raise ValueError("gold_proportion must be a number in [0, 1]")
             payload["gold_proportion"] = proportion
+        if site_id == "reward.potion_odds.unit_float":
+            if type(current_thousandths) is not int or \
+                    current_thousandths % 100 != 0:
+                raise ValueError(
+                    "current_thousandths must be an integer multiple of 100")
+            if type(elite) is not bool or type(forced) is not bool:
+                raise ValueError(
+                    "elite and forced must be declared booleans")
+            if forced:
+                raise ValueError(
+                    "forced potion rewards bypass the odds draw")
+            payload["current_thousandths"] = current_thousandths
+            payload["elite"] = elite
+            payload["forced"] = forced
+        elif any(value is not None for value in (
+                current_thousandths, elite, forced)):
+            raise ValueError(
+                "potion odds parameters apply only to reward.potion_odds.unit_float")
         if offer_ordinal is not None:
             if type(offer_ordinal) is not int or offer_ordinal < 0:
                 raise ValueError(

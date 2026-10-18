@@ -1380,6 +1380,59 @@ public static partial class ChanceLawEngineV111
             ChanceLawV111.SourceVerifiedStatus);
     }
 
+    /// <summary>
+    /// Query the exact Native unit-float threshold law for combat potion
+    /// reward presence. The caller declares the persistent pity value, Elite
+    /// bonus, and that the force hook did not bypass this draw.
+    /// </summary>
+    public static ChanceLawV111 QueryNativePotionRewardOdds(
+        int currentThousandths, bool elite, bool forced, int ordinal)
+    {
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+        if (currentThousandths % 100 != 0)
+            throw new ArgumentOutOfRangeException(nameof(currentThousandths),
+                "Potion reward odds must be on the persisted 100-thousandth increment.");
+        if (forced)
+            throw new ArgumentException(
+                "Forced potion rewards bypass the odds draw.", nameof(forced));
+
+        const string siteId = "reward.potion_odds.unit_float";
+        const string ownerId = "run:potion_reward_odds";
+        var thresholdThousandths = checked(currentThousandths +
+            (elite ? PrototypeNativePotionRewardOdds.EliteBonus : 0));
+        var threshold = thresholdThousandths / 1000f;
+        var offeredWeight = NativeNextFloatGridCountBelow(threshold);
+        var missedWeight = checked(NativeNextDoubleGridSize - offeredWeight);
+        var outcomes = new List<ChanceLawOutcomeV111>(2);
+        if (offeredWeight > 0)
+            outcomes.Add(new ChanceLawOutcomeV111(
+                "potion_reward:offered", offeredWeight));
+        if (missedWeight > 0)
+            outcomes.Add(new ChanceLawOutcomeV111(
+                "potion_reward:not_offered", missedWeight));
+
+        var conditioning = new
+        {
+            siteId,
+            streamId = NativePlayerRngV111.RewardsStreamId,
+            ownerId,
+            ordinal,
+            currentThousandths,
+            elite,
+            forced,
+            thresholdThousandths,
+            threshold,
+            comparison = "source_float_strictly_less_than_threshold"
+        };
+        return CreateNativeBoundaryLaw(
+            siteId, "unit_float_threshold", ownerId, ordinal,
+            "native-combat-potion-odds-float-threshold-v1",
+            CanonicalJson.Sha256(conditioning),
+            NativeUnitFloatThresholdSourceVerifiedProvenance,
+            outcomes.ToArray(), ChanceLawV111.SourceVerifiedStatus);
+    }
+
     private static ChanceLawV111 CreateDeclaredUnverifiedIndexLaw(
         string siteId, string ownerId, int ordinal,
         string conditioningPolicyId, object conditioning,

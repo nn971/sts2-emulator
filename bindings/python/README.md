@@ -108,6 +108,23 @@ Ascension-adjusted fixed bounds. A zero Combat proportion means no draw occurs.
 The law's exact Native bounded-index masses are `SOURCE_VERIFIED`; the query
 does not validate earlier reward-generation calls or stream parity.
 
+Configured combat potion presence has a read-only Native threshold law:
+
+```python
+law = state.query_chance_law(
+    "reward.potion_odds.unit_float",
+    ordinal=declared_rewards_stream_ordinal,
+    current_thousandths=400,
+    elite=False,
+    forced=False,
+)
+```
+
+The query conditions on the declared persistent pity value, Elite bonus, and
+non-forced branch. It counts exact source-rounded `NextFloat()` grid inputs
+below the source threshold. White Beast Statue forced rewards bypass this draw;
+stream-prefix validation and cursor parity remain open.
+
 The fixed Act 1 boss pools have read-only law queries. Each returns
 equal-weight outcomes identified by encounter ID; legacy seed-to-index
 distributions and Native cursor parity remain `UNVERIFIED`:

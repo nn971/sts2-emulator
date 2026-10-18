@@ -2772,6 +2772,37 @@ internal static class PrototypeAiJsonlServer
                             });
                             break;
                         }
+                        if (siteId == "reward.potion_odds.unit_float")
+                        {
+                            RejectChanceLawQueryParameters(
+                                request, "current_thousandths", "elite",
+                                "forced", "support_count");
+                            var currentThousandths = OptionalInt(
+                                request, "current_thousandths") ??
+                                throw new ArgumentException(
+                                    "Potion odds law requires current_thousandths.");
+                            var elite = RequiredBool(request, "elite");
+                            var forced = RequiredBool(request, "forced");
+                            law = ChanceLawEngineV111
+                                .QueryNativePotionRewardOdds(
+                                    currentThousandths, elite, forced,
+                                    ordinal);
+                            var supportCount = OptionalInt(
+                                request, "support_count");
+                            if (supportCount is not null &&
+                                supportCount != law.Outcomes.Length)
+                                throw new ArgumentException(
+                                    "Potion odds support_count must match the declared pity, Elite, and force-hook state.");
+                            Write(new
+                            {
+                                requestId,
+                                ok = true,
+                                chanceLawSchemaId =
+                                    ChanceLawV111.CurrentSchemaId,
+                                law
+                            });
+                            break;
+                        }
                         if (siteId == ExperimentalSilentThreeActRouteV111
                                 .SecondBossIndexSiteId)
                         {
@@ -7661,7 +7692,8 @@ internal static class PrototypeAiJsonlServer
             "owner_id", "excluded_potion_ids", "offer_ordinal",
             "relic_candidate_ids", "excluded_relic_ids", "first_boss",
             "ascension", "act", "include_darv", "hive_receives_darv",
-            "room", "gold_proportion"
+            "room", "gold_proportion", "current_thousandths", "elite",
+            "forced"
         ];
         var unsupported = optionalFields.Where(field =>
             !allowed.Contains(field) && request.TryGetProperty(field, out _))
