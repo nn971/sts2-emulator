@@ -61,8 +61,13 @@ cursor. The granular rarity law uses exact preimage counts for the rounded
 Native `NextFloat()` and source thresholds and is `SOURCE_VERIFIED` under the
 uniform 53-bit `NextDouble` model. The compact relic-draw law remains
 `UNVERIFIED` because it combines nominal rarity partitions with equal identity
-support over the hidden shuffled queue. Native queue-shuffle distribution,
-float seed frequencies, and cursor behavior remain open.
+support over the hidden shuffled queue. A direct
+`relic_grab_bag.queue_shuffle.swap_index` query reports exact Native
+`NextInt(bound)` masses for one caller-declared swap on
+`run.treasure_room_relics`; the current bound, rarity-queue owner, and local
+swap ordinal are inputs. This verifies only the bounded transform. Queue
+eligibility, prior swaps, complete queue identity, float seed frequencies,
+stream-prefix validation, and cursor behavior remain open.
 
 Constructing the sorted Nature pools does not replay Native's run-start queue
 shuffles. Sequential conditional identity sampling represents each supported

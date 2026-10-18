@@ -1667,6 +1667,33 @@ public static partial class ChanceLawEngineV111
         return QueryRandomIndex(eventId, request);
     }
 
+    /// <summary>
+    /// Query one Native relic-bag Fisher-Yates index over its caller-declared
+    /// current bound. Queue eligibility and the preceding shuffle prefix are
+    /// not inspected.
+    /// </summary>
+    public static ChanceLawV111 QueryNativeRelicBagQueueShuffleIndex(
+        string ownerId, int supportCount, int ordinal)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
+        if (supportCount <= 0)
+            throw new ArgumentOutOfRangeException(nameof(supportCount));
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+
+        const string siteId = "relic_grab_bag.queue_shuffle.swap_index";
+        var request = new RandomIndexRequestV111(
+            siteId, "run.treasure_room_relics", ownerId, ordinal,
+            Array.Empty<int>(), OperationKind: "bounded_integer",
+            BoundedCount: supportCount);
+        var eventId = CanonicalJson.Sha256(new
+        {
+            boundary = "native-relic-bag-queue-shuffle-index",
+            request
+        });
+        return QueryRandomIndex(eventId, request);
+    }
+
     private static ChanceLawV111 CreateDeclaredUnverifiedIndexLaw(
         string siteId, string ownerId, int ordinal,
         string conditioningPolicyId, object conditioning,

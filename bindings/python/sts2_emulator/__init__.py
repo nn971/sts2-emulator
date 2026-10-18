@@ -71,6 +71,8 @@ class State:
         are the raw inclusive comparison result before card mutation.
         Encounter card-model index laws require owner_id and a positive
         support_count; the source-ordered remaining pool is not validated.
+        Relic queue-shuffle laws require owner_id and the current positive
+        Fisher-Yates bound; queue eligibility and its prior prefix are open.
         PotionFactory and relic rarity laws accept a caller-declared owner_id
         + stream_id pair for cursor-blind source-threshold queries.
         Repy potion laws use ordinal 0 or 1 and prior_indices containing the
@@ -120,13 +122,15 @@ class State:
             if type(support_count) is not int or support_count <= 0:
                 raise ValueError("support_count must be a positive integer")
             payload["support_count"] = support_count
-        if site_id == "card_rarity.encounter_model.index_draw":
+        if site_id in (
+                "card_rarity.encounter_model.index_draw",
+                "relic_grab_bag.queue_shuffle.swap_index"):
             if owner_id is None:
                 raise ValueError(
-                    "encounter card-model index laws require owner_id")
+                    "this Chance Law requires owner_id")
             if support_count is None:
                 raise ValueError(
-                    "encounter card-model index laws require support_count")
+                    "this Chance Law requires support_count")
         if first_boss is not None:
             if not isinstance(first_boss, str) or not first_boss:
                 raise ValueError("first_boss must be a nonempty encounter ID")

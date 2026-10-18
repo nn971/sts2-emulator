@@ -205,6 +205,22 @@ The law gives exact Native index masses over that declared support. It does
 not verify the source-derived card pool or reward prefix, stream assignment,
 or cursor parity.
 
+Native relic-bag construction also exposes each Fisher–Yates swap law. Pass
+the current exclusive bound, rarity-queue owner, and swap ordinal:
+
+```python
+queue_swap_law = state.query_chance_law(
+    "relic_grab_bag.queue_shuffle.swap_index",
+    owner_id="player:0:relic_grab_bag:Common",
+    ordinal=0,
+    support_count=current_queue_shuffle_bound,
+)
+```
+
+This counts exact Native `NextInt(bound)` masses for the declared swap on
+`run.treasure_room_relics`; it does not validate relic eligibility, the prior
+shuffle prefix, full queue identity, or cursor parity.
+
 The fixed Act 1 boss pools have read-only law queries. Each returns
 equal-weight outcomes identified by encounter ID; legacy seed-to-index
 distributions and Native cursor parity remain `UNVERIFIED`:

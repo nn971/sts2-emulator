@@ -358,6 +358,7 @@ public static class StochasticSiteRegistryV111
         "card_rarity.roll.unit_float",
         "shop.merchant.card_model.index_draw",
         "shop.colorless_card_model.index_draw",
+        "relic_grab_bag.queue_shuffle.swap_index",
         "potion_factory.rarity_roll.unit_float",
         "potion_factory.model_within_rarity.index_draw",
         "relic_grab_bag.rarity.unit_float",
