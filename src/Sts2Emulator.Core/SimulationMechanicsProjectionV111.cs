@@ -10,7 +10,7 @@ public sealed record SimulationMechanicsComparisonV111(
     bool DifferencesTruncated)
 {
     public const string SchemaId =
-        "sts2-v111-simulation-mechanics-comparison-v7";
+        "sts2-v111-simulation-mechanics-comparison-v8";
 
     public bool Equivalent => StringComparer.Ordinal.Equals(
         LeftFingerprint, RightFingerprint);
@@ -194,6 +194,10 @@ public static class SimulationMechanicsProjectionEngineV111
 
             combat = combat with
             {
+                // DrawPile is mechanics-owned membership paired with a
+                // provider-owned hidden order. Keep the identities in the
+                // zone while removing Native order from this comparison.
+                DrawPile = combat.DrawPile.Order().ToArray(),
                 PendingChoice = WithoutProviderPayload(
                     combat.PendingChoice),
                 AutomaticPipelineContinuation = pipeline
