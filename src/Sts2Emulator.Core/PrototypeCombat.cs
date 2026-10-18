@@ -16092,8 +16092,8 @@ public sealed partial class PrototypeGameEngine
             if (topCardResolutions.Count != 0)
                 throw new InvalidDataException(
                     "Legacy top autoplay cannot carry semantic top-card resolutions.");
-            return SemanticDrawPileAdapterV111.ApplyCommittedZoneTransition(
-                combat, nextZones, null);
+            return SemanticDrawPileAdapterV111.ApplyDrawPileRemoval(
+                combat, newlyStagedCardInstanceIds, nextZones);
         }
 
         return SemanticDrawPileAdapterV111.CommitResolvedTopCards(
@@ -16317,8 +16317,9 @@ public sealed partial class PrototypeGameEngine
                 var index = draw.Count - 1;
                 cardInstanceId = draw[index];
                 draw.RemoveAt(index);
-                combat = SemanticDrawPileAdapterV111.ApplyCommittedZoneTransition(
+                combat = SemanticDrawPileAdapterV111.ApplyDrawPileRemoval(
                     combat,
+                    [cardInstanceId],
                     combat.Mechanics.CardZones.WithZoneChanges(
                         new Dictionary<PrototypeCardZone, long[]>
                         {
@@ -16326,8 +16327,7 @@ public sealed partial class PrototypeGameEngine
                             [PrototypeCardZone.Hand] = combat.Hand
                                 .Append(cardInstanceId).ToArray(),
                             [PrototypeCardZone.DiscardPile] = discard.ToArray()
-                        }),
-                    combat.SemanticDeck);
+                        }));
             }
             drawnCardInstanceIds.Add(cardInstanceId);
 
