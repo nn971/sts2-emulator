@@ -69,8 +69,8 @@ class State:
         Ascension, and owner_id; outcomes are raw rarities before pool fallback.
         Combat card-upgrade laws require card_id, Act, and Ascension; outcomes
         are the raw inclusive comparison result before card mutation.
-        PotionFactory rarity laws accept an optional owner_id + stream_id pair
-        for a cursor-blind source-threshold query.
+        PotionFactory and relic rarity laws accept a caller-declared owner_id
+        + stream_id pair for cursor-blind source-threshold queries.
         Repy potion laws use ordinal 0 or 1 and prior_indices containing the
         complete relic-shuffle prefix plus any earlier potion index.
         """
@@ -210,14 +210,22 @@ class State:
         if stream_id is not None:
             if not isinstance(stream_id, str) or not stream_id:
                 raise ValueError("stream_id must be a nonempty string")
-            if site_id != "potion_factory.rarity_roll.unit_float":
+            if site_id not in (
+                    "potion_factory.rarity_roll.unit_float",
+                    "relic_grab_bag.rarity.unit_float"):
                 raise ValueError(
-                    "stream_id applies only to potion_factory.rarity_roll.unit_float")
+                    "stream_id applies only to Native PotionFactory or relic rarity laws")
         if site_id == "potion_factory.rarity_roll.unit_float" and (
                 owner_id is not None or stream_id is not None):
             if owner_id is None or stream_id is None:
                 raise ValueError(
                     "PotionFactory rarity laws require owner_id and stream_id together")
+            payload["stream_id"] = stream_id
+        if site_id == "relic_grab_bag.rarity.unit_float" and \
+                stream_id is not None:
+            if owner_id is None:
+                raise ValueError(
+                    "Native relic rarity laws require owner_id with stream_id")
             payload["stream_id"] = stream_id
         if site_id == "card_rarity.upgrade_roll.unit_float" and (
                 card_id is None or act is None or ascension is None):

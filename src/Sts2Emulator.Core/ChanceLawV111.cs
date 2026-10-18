@@ -1596,6 +1596,52 @@ public static partial class ChanceLawEngineV111
             outcomes, ChanceLawV111.SourceVerifiedStatus);
     }
 
+    /// <summary>
+    /// Query the raw Native relic rarity threshold for a caller-declared
+    /// Rewards-stream request. Queue identity and tier fallback are separate.
+    /// </summary>
+    public static ChanceLawV111 QueryNativeRelicRarity(
+        RandomUnitFloatRequestV111 request)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        request.Validate();
+        const string siteId = "relic_grab_bag.rarity.unit_float";
+        if (request.SiteId != siteId ||
+            request.StreamId != NativePlayerRngV111.RewardsStreamId)
+            throw new ArgumentException(
+                "Native relic rarity requests require the player.rewards stream.",
+                nameof(request));
+
+        var (common, uncommon, rare) = NativeRelicRarityGridWeights();
+        var outcomes = new[]
+            {
+                new ChanceLawOutcomeV111("rarity:common", common),
+                new ChanceLawOutcomeV111("rarity:uncommon", uncommon),
+                new ChanceLawOutcomeV111("rarity:rare", rare)
+            }
+            .Where(outcome => outcome.Weight > 0).ToArray();
+        var conditioning = new
+        {
+            request,
+            commonThreshold = PrototypeNativeRelicGrabBag
+                .CommonRarityWeight /
+                (float)PrototypeNativeRelicGrabBag.RarityWeightScale,
+            uncommonThreshold = (PrototypeNativeRelicGrabBag
+                .CommonRarityWeight +
+                PrototypeNativeRelicGrabBag.UncommonRarityWeight) /
+                (float)PrototypeNativeRelicGrabBag.RarityWeightScale,
+            common,
+            uncommon,
+            rare
+        };
+        return CreateNativeBoundaryLaw(
+            siteId, "unit_float_threshold", request.OwnerId,
+            request.Ordinal, "native-relic-rarity-float-threshold-v1",
+            CanonicalJson.Sha256(conditioning),
+            NativeUnitFloatThresholdSourceVerifiedProvenance,
+            outcomes, ChanceLawV111.SourceVerifiedStatus);
+    }
+
     private static ChanceLawV111 CreateDeclaredUnverifiedIndexLaw(
         string siteId, string ownerId, int ordinal,
         string conditioningPolicyId, object conditioning,

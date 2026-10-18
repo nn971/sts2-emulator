@@ -175,6 +175,20 @@ The law returns exact rounded-grid masses for Rare at `NextFloat() <= 0.1`,
 Uncommon through `NextFloat() <= 0.35`, and Common otherwise. The source call
 prefix and Native cursor parity remain open.
 
+Relic rarity has a separate raw-threshold query on `player.rewards`:
+
+```python
+relic_rarity_law = state.query_chance_law(
+    "relic_grab_bag.rarity.unit_float",
+    ordinal=declared_rewards_stream_ordinal,
+    owner_id=declared_relic_rarity_owner,
+    stream_id="player.rewards",
+)
+```
+
+It counts the strict source thresholds at 0.50 and 0.83 without exposing
+remaining relic queues. The Treasure identity-mixture query is separate.
+
 The fixed Act 1 boss pools have read-only law queries. Each returns
 equal-weight outcomes identified by encounter ID; legacy seed-to-index
 distributions and Native cursor parity remain `UNVERIFIED`:

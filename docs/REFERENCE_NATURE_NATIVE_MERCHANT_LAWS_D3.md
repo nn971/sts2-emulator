@@ -30,6 +30,12 @@ the supported Native streams (`run.combat_potion_generation`,
 `player.rewards`, or `player.shops`) and uses the same exact inclusive
 threshold masses as the merchant and Coffer paths.
 
+`relic_grab_bag.rarity.unit_float` has a standalone raw-rarity query for a
+caller-declared `player.rewards` request. It counts exact source-rounded
+`NextFloat()` inputs at the strict 0.50 and 0.83 thresholds without reading the
+relic queues; Treasure's existing identity-mixture law remains a separate
+query.
+
 For Shop generation, the session begins from a current legal `choose_map_node`
 action for a configured Shop. For the Alchemical Coffer effect, it begins from
 the current legal `buy_relic` action for an unsold Coffer offer. In both cases

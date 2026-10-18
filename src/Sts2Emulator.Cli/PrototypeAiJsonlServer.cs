@@ -2652,10 +2652,11 @@ internal static class PrototypeAiJsonlServer
                             throw new NotSupportedException(
                                 $"Chance Law query does not support site '{siteId}'.");
                         if (OptionalString(request, "stream_id") is not null &&
-                            siteId !=
-                                "potion_factory.rarity_roll.unit_float")
+                            siteId is not
+                                ("potion_factory.rarity_roll.unit_float" or
+                                 "relic_grab_bag.rarity.unit_float"))
                             throw new ArgumentException(
-                                "stream_id is accepted only for PotionFactory rarity laws.");
+                                "stream_id is accepted only for PotionFactory and relic rarity laws.");
                         int[]? priorIndices = null;
                         if (request.TryGetProperty(
                                 "prior_indices", out var priorIndicesElement))
@@ -2871,6 +2872,42 @@ internal static class PrototypeAiJsonlServer
                                 supportCount != law.Outcomes.Length)
                                 throw new ArgumentException(
                                     "PotionFactory rarity support_count must match its declared source request.");
+                            Write(new
+                            {
+                                requestId,
+                                ok = true,
+                                chanceLawSchemaId =
+                                    ChanceLawV111.CurrentSchemaId,
+                                law
+                            });
+                            break;
+                        }
+                        if (siteId ==
+                                "relic_grab_bag.rarity.unit_float" &&
+                            OptionalString(request, "stream_id") is not null)
+                        {
+                            RejectChanceLawQueryParameters(
+                                request, "owner_id", "stream_id",
+                                "support_count");
+                            var relicRarityOwner = OptionalString(
+                                request, "owner_id") ??
+                                throw new ArgumentException(
+                                    "Native relic rarity law requires owner_id.");
+                            var relicRarityStream = OptionalString(
+                                request, "stream_id") ??
+                                throw new ArgumentException(
+                                    "Native relic rarity law requires stream_id.");
+                            var typedRequest = new RandomUnitFloatRequestV111(
+                                siteId, relicRarityStream,
+                                relicRarityOwner, ordinal);
+                            law = ChanceLawEngineV111
+                                .QueryNativeRelicRarity(typedRequest);
+                            var supportCount = OptionalInt(
+                                request, "support_count");
+                            if (supportCount is not null &&
+                                supportCount != law.Outcomes.Length)
+                                throw new ArgumentException(
+                                    "Relic rarity support_count must match the declared source request.");
                             Write(new
                             {
                                 requestId,
