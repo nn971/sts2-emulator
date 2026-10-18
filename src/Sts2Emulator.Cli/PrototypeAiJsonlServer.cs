@@ -2536,6 +2536,9 @@ internal static class PrototypeAiJsonlServer
                 switch (operation)
                 {
                     case "hello":
+                    {
+                        var sessionCoverage =
+                            StochasticSiteRegistryV111.CreateSessionCoverage();
                         Write(new
                         {
                             requestId,
@@ -2567,9 +2570,9 @@ internal static class PrototypeAiJsonlServer
                                 "semantic_combat"
                             },
                             stochasticCapabilities =
-                                StochasticCapabilitiesV111.Create(),
-                            stochasticSessionCoverage =
-                                StochasticSiteRegistryV111.CreateSessionCoverage(),
+                                StochasticCapabilitiesV111.Create(
+                                    sessionCoverage),
+                            stochasticSessionCoverage = sessionCoverage,
                             stochasticChanceLawQueryCoverage =
                                 StochasticSiteRegistryV111
                                     .CreateChanceLawQueryCoverage(),
@@ -2778,6 +2781,7 @@ internal static class PrototypeAiJsonlServer
                             v111FidelityId = "v111-mechanics-prototype-rng-v1"
                         });
                         break;
+                    }
 
                     case "manifest":
                         Write(new

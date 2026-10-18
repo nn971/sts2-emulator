@@ -88,7 +88,15 @@ public static class StochasticCapabilitiesV111
     public static StochasticCapabilityManifestV111 Create() =>
         Create(StochasticSiteRegistryV111.CreateSessionCoverage());
 
-    private static StochasticCapabilityManifestV111 Create(
+    public static StochasticCapabilityManifestV111 Create(
+        StochasticSessionCoverageV111 sessions)
+    {
+        ArgumentNullException.ThrowIfNull(sessions);
+        sessions.Validate();
+        return CreateValidated(sessions);
+    }
+
+    private static StochasticCapabilityManifestV111 CreateValidated(
         StochasticSessionCoverageV111 sessions) => new(
         SchemaId,
         ChanceLawV111.CurrentSchemaId,
