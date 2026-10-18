@@ -6254,7 +6254,9 @@ public sealed partial class PrototypeGameEngine
                         controlledAfterShuffleInsertionSuspension:
                             semanticDrawSuspension,
                         controlledCardDrawnChoiceSuspension:
-                            semanticDrawSuspension);
+                            ControlledChanceGuardV111.Active &&
+                            !ControlledChanceGuardV111
+                                .EngineOwnedNativeProviderActive);
                     player = drawn.Player;
                     combat = drawn.Combat;
                     var drawBoundary = drawn.BoundaryKind;
@@ -16401,8 +16403,6 @@ public sealed partial class PrototypeGameEngine
             player = dispatched.Player;
             combat = dispatched.Combat;
             if (controlledCardDrawnChoiceSuspension &&
-                combat.SemanticDeck is
-                    { Mode: SemanticDeckStateV111.NatureMode } &&
                 combat.PendingChoice is not null)
                 return new PrototypeDrawCardsResult(
                     player, combat, drawnCardInstanceIds.ToArray(),
