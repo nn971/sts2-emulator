@@ -828,6 +828,66 @@ public static partial class ChanceLawEngineV111
         QueryActOneBossEncounter(
             PrototypeNativeUnderdocks.BossEncounterIndexSiteId, ordinal);
 
+    /// <summary>
+    /// Query the Glory Ascension 10 second-boss choice conditional on the
+    /// already-selected first boss. This exposes only the declared remaining
+    /// pool and does not inspect an initialized run's hidden encounter bag.
+    /// </summary>
+    public static ChanceLawV111 QueryLaterActSecondBoss(
+        string firstBossId, int ascension, int ordinal)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(firstBossId);
+        if (ascension < 10)
+            throw new ArgumentOutOfRangeException(
+                nameof(ascension),
+                "A second boss is assigned only at Glory Ascension 10 or higher.");
+        if (ordinal != 0)
+            throw new ArgumentOutOfRangeException(
+                nameof(ordinal),
+                "Second-boss assignment has exactly one draw at ordinal zero.");
+
+        var bossPool = ExperimentalSilentThreeActRouteV111.Pool(
+            3, PrototypeRoomType.Boss, weak: false);
+        if (!bossPool.Contains(firstBossId, StringComparer.Ordinal))
+            throw new ArgumentException(
+                "The declared first boss is not in the Glory boss pool.",
+                nameof(firstBossId));
+        var alternatives = bossPool.Where(id => id != firstBossId).ToArray();
+        var siteId = ExperimentalSilentThreeActRouteV111
+            .SecondBossIndexSiteId;
+        var ownerId = $"act:3:first_boss:{firstBossId}:alternatives:"
+            + CanonicalJson.Sha256(alternatives);
+        var outcomes = alternatives.Select(encounterId =>
+            new ChanceLawOutcomeV111(
+                "encounter:" + encounterId, 1L)).ToArray();
+        var eventId = CanonicalJson.Sha256(new
+        {
+            boundary = siteId,
+            ownerId,
+            ordinal
+        });
+        var conditioningFingerprint = CanonicalJson.Sha256(new
+        {
+            siteId,
+            act = 3,
+            ascension,
+            firstBossId,
+            ownerId,
+            orderedEncounterIds = alternatives
+        });
+
+        return Create(
+            eventId,
+            siteId,
+            "choose_index",
+            ownerId,
+            ordinal,
+            "uniform-source-ordered-second-boss-index-unverified",
+            conditioningFingerprint,
+            "equal-index-mass-over-remaining-glory-bosses-unverified",
+            outcomes);
+    }
+
     private static ChanceLawV111 QueryActOneBossEncounter(
         string siteId, int ordinal)
     {

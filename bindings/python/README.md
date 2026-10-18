@@ -111,6 +111,24 @@ law = state.query_chance_law(
 The Overgrowth law complements its existing legacy run-start continuation.
 The Underdocks query does not make configured run creation resumable.
 
+Glory Ascension 10+ second-boss assignment has a conditional query. Declare
+the first boss selected for this run; the law returns the two other bosses in
+source pool order:
+
+```python
+law = state.query_chance_law(
+    "combat.encounter.later_act.second_boss.index_draw",
+    ordinal=0,
+    first_boss="proto.native.glory.encounter.queen_boss",
+    ascension=10,
+    support_count=2,
+)
+```
+
+The second-boss draw still occurs during configured run initialization and
+remains outside the ReferenceNature run-action session. Its declared
+equal-index model is `UNVERIFIED` for the legacy seed-to-index distribution.
+
 The event shuffle and combat-victory session is available through
 `State.begin_reference_nature_native_event_shuffle(nature_seed=None, action_id=None, site_id=None)`. It
 covers the Light shuffle in Doors of Light and Dark, Fragrant Mushroom's

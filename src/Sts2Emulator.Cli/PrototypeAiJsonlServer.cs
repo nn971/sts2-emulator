@@ -2729,6 +2729,52 @@ internal static class PrototypeAiJsonlServer
                             });
                             break;
                         }
+                        if (siteId == ExperimentalSilentThreeActRouteV111
+                                .SecondBossIndexSiteId)
+                        {
+                            var firstBoss = OptionalString(
+                                request, "first_boss") ??
+                                throw new ArgumentException(
+                                    "Glory second-boss law requires first_boss.");
+                            var ascension = OptionalInt(request, "ascension") ??
+                                throw new ArgumentException(
+                                    "Glory second-boss law requires ascension.");
+                            if (priorIndices is not null ||
+                                priorVariantIndex is not null ||
+                                OptionalInt(request, "support_count") is { } supportCount &&
+                                    supportCount != 2 ||
+                                OptionalString(request, "action_id") is not null ||
+                                OptionalString(request, "event_id") is not null ||
+                                OptionalString(request, "card_type") is not null ||
+                                OptionalString(request, "rarity") is not null ||
+                                OptionalString(request, "owner_id") is not null ||
+                                OptionalString(request, "card_id") is not null ||
+                                OptionalString(request, "potion_id") is not null ||
+                                OptionalString(request, "relic_id") is not null ||
+                                OptionalBool(request, "colorless_offer") ||
+                                OptionalBool(request, "sale_reprice") ||
+                                OptionalStringArray(request,
+                                    "excluded_potion_ids") is not null ||
+                                OptionalInt(request, "offer_ordinal") is not null ||
+                                OptionalStringArray(request,
+                                    "relic_candidate_ids") is not null ||
+                                OptionalStringArray(request,
+                                    "excluded_relic_ids") is not null)
+                                throw new ArgumentException(
+                                    "Glory second-boss queries accept state_handle, site_id, ordinal, first_boss, ascension and optional support_count two.");
+                            law = ChanceLawEngineV111
+                                .QueryLaterActSecondBoss(
+                                    firstBoss, ascension, ordinal);
+                            Write(new
+                            {
+                                requestId,
+                                ok = true,
+                                chanceLawSchemaId =
+                                    ChanceLawV111.CurrentSchemaId,
+                                law
+                            });
+                            break;
+                        }
                         if (siteId is "run.encounter.overgrowth_boss.index_draw"
                             or PrototypeNativeUnderdocks.BossEncounterIndexSiteId)
                         {
@@ -2745,6 +2791,8 @@ internal static class PrototypeAiJsonlServer
                                     bossCount ||
                                 OptionalString(request, "action_id") is not null ||
                                 OptionalString(request, "event_id") is not null ||
+                                OptionalString(request, "first_boss") is not null ||
+                                OptionalInt(request, "ascension") is not null ||
                                 OptionalString(request, "card_type") is not null ||
                                 OptionalString(request, "rarity") is not null ||
                                 OptionalString(request, "owner_id") is not null ||

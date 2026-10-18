@@ -335,6 +335,7 @@ public static class StochasticSiteRegistryV111
         .. ChanceLawEngineV111.NativePunchOffFightQuerySiteIds,
         "run.encounter.overgrowth_boss.index_draw",
         PrototypeNativeUnderdocks.BossEncounterIndexSiteId,
+        ExperimentalSilentThreeActRouteV111.SecondBossIndexSiteId,
         "event.endless_conveyor.dish_weighted_ticket",
         "event.endless_conveyor.random_upgrade.card_instance",
         "event.endless_conveyor.colorless_card.index_draw",

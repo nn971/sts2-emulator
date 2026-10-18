@@ -8,6 +8,9 @@ namespace Sts2Emulator.Core;
 /// </summary>
 public static class ExperimentalSilentThreeActRouteV111
 {
+    public const string SecondBossIndexSiteId =
+        "combat.encounter.later_act.second_boss.index_draw";
+
     public static readonly string[] HiveWeak =
     [
         "proto.native.hive.encounter.bowlbugs_weak",
@@ -267,7 +270,7 @@ public static class ExperimentalSilentThreeActRouteV111
             var alternatives = bosses.Where(id => id != boss).ToArray();
             secondBoss = alternatives[LegacyRandomChoiceV111.ChooseIndexRange(
                 rng,
-                "combat.encounter.later_act.second_boss.index_draw",
+                SecondBossIndexSiteId,
                 "combat",
                 $"act:{act}:first_boss:{boss}:alternatives:"
                     + CanonicalJson.Sha256(alternatives),

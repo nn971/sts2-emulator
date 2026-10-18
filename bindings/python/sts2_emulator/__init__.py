@@ -40,7 +40,8 @@ class State:
                          owner_id=None, offer_ordinal=None,
                          relic_candidate_ids=None, excluded_relic_ids=None,
                          action_id=None, prior_variant_index=None,
-                         event_id=None, support_count=None):
+                         event_id=None, support_count=None,
+                         first_boss=None, ascension=None):
         """Read a pre-outcome law; native event queries may need action_id.
 
         Reflections card-pick laws use action_id="touch_mirror" and the
@@ -49,6 +50,7 @@ class State:
         condition, plus the pending Event-node action_id and stage ordinal.
         Darv relic-shuffle laws accept prior_variant_index to bind the earlier
         offer-variant decision to the query fingerprint.
+        Glory second-boss laws require first_boss and ascension.
         Repy potion laws use ordinal 0 or 1 and prior_indices containing the
         complete relic-shuffle prefix plus any earlier potion index.
         """
@@ -96,6 +98,14 @@ class State:
             if type(support_count) is not int or support_count <= 0:
                 raise ValueError("support_count must be a positive integer")
             payload["support_count"] = support_count
+        if first_boss is not None:
+            if not isinstance(first_boss, str) or not first_boss:
+                raise ValueError("first_boss must be a nonempty encounter ID")
+            payload["first_boss"] = first_boss
+        if ascension is not None:
+            if type(ascension) is not int or ascension < 0:
+                raise ValueError("ascension must be a nonnegative integer")
+            payload["ascension"] = ascension
         if offer_ordinal is not None:
             if type(offer_ordinal) is not int or offer_ordinal < 0:
                 raise ValueError(
