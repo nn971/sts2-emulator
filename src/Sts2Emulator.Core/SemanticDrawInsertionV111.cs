@@ -81,7 +81,7 @@ public sealed record SemanticDrawInsertionEventV111(
         var supportedSite = standardSite &&
                 standardOwnerMatchesStream ||
             Request.SiteId ==
-                "combat.relic.after_shuffle.generated_card.random_insert_index" &&
+                StochasticSiteRegistryV111.AfterShuffleRelicDrawPileInsertSiteId &&
                 Request.OwnerId.StartsWith("relic:", StringComparison.Ordinal) &&
                 Request.OwnerId.Contains(":application:",
                     StringComparison.Ordinal) &&

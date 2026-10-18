@@ -8957,13 +8957,15 @@ public sealed partial class PrototypeGameEngine
                 !ControlledChanceGuardV111.EngineOwnedNativeProviderActive)
                 throw new NotSupportedException(
                     "UNSUPPORTED_CONTROLLED_CHANCE " +
-                    "site=combat.relic.after_shuffle.generated_card.random_insert_index " +
+                    "site=" + StochasticSiteRegistryV111
+                        .AfterShuffleRelicDrawPileInsertSiteId + " " +
                     "operation=bounded_integer requires a saved insertion continuation.");
             var insertion = ResolveRandomPilePosition(
                 combat, rng, combat.DrawPile, cardId,
                 PrototypeCombatEffectKind.CreateGeneratedCardsAtRandomDrawPositions,
                 sourceCardInstanceId: null, ordinal: insertionOrdinal++,
-                siteId: "combat.relic.after_shuffle.generated_card.random_insert_index",
+                siteId: StochasticSiteRegistryV111
+                    .AfterShuffleRelicDrawPileInsertSiteId,
                 requestOwnerPrefix:
                     "relic:" + relic.RelicId + ":application:" + relic.ApplicationOrder);
             combat = insertion.Combat;

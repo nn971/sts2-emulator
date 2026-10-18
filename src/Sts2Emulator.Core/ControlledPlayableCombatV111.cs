@@ -338,8 +338,13 @@ public sealed record ControlledPlayableCombatV111(
                     DrawInsertionTranscript.Length,
                     Enumerable.Range(0, choice.CandidateCardIds.Length).ToArray(),
                     OperationKind: "choose_index");
+            var requestSiteId = choice.RequestSiteId;
+            if (!StochasticSiteRegistryV111.ControlledDrawInsertionSiteIds.Contains(
+                    requestSiteId, StringComparer.Ordinal))
+                throw new NotSupportedException(
+                    $"Controlled draw insertion does not support site '{requestSiteId}'.");
             return new RandomIndexRequestV111(
-                choice.RequestSiteId, "prototype.combat",
+                requestSiteId, "prototype.combat",
                 choice.PersonalHiveDamageContinuation is not null ||
                     choice.AfterShuffleRelic is not null
                     ? choice.RequestOwnerId + ":card:" + choice.SelectedCardId +

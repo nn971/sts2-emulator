@@ -21,7 +21,7 @@ from urllib.parse import unquote, urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = ROOT / "src" / "Sts2Emulator.Core"
-SCHEMA_ID = "emulator-rng-callsite-source-inventory-v22"
+SCHEMA_ID = "emulator-rng-callsite-source-inventory-v26"
 SITE_REGISTRY_PATH = SOURCE_ROOT / "StochasticSiteRegistryV111.cs"
 
 CALL_PATTERN = re.compile(
@@ -562,7 +562,8 @@ def _guarded_site_values(
     if expression is None:
         return []
     identifier = re.fullmatch(
-        r"(?:this\.)?(?P<name>[A-Za-z_][A-Za-z0-9_]*)",
+        r"(?P<name>[A-Za-z_][A-Za-z0-9_]*"
+        r"(?:\.[A-Za-z_][A-Za-z0-9_]*)?)",
         re.sub(r"\s+", "", expression),
     )
     if identifier is None:
@@ -692,7 +693,9 @@ def _resolve_site_array_property(
     class_source = None
     for candidate in candidate_files:
         source = candidate.read_text(encoding="utf-8")
-        if not re.search(rf"\bclass\s+{re.escape(class_name)}\b", source):
+        if not re.search(
+                rf"\b(?:class|record|struct)\s+"
+                rf"{re.escape(class_name)}\b", source):
             continue
         property_body = next((item.group("body")
             for item in SITE_ARRAY_PROPERTY_PATTERN.finditer(source)
@@ -1316,8 +1319,9 @@ def collect() -> dict[str, Any]:
                     api, match.group("operation"), arguments
                 )
                 site_value = None
+                site_values: list[str] = []
                 if site_expression is not None:
-                    site_value = _resolve_site_value(
+                    site_values = _resolve_site_values(
                         site_expression,
                         _method_string_constants(
                             source, source_offset + match.start(),
@@ -1325,18 +1329,33 @@ def collect() -> dict[str, Any]:
                         ),
                         string_constants,
                     )
+                    if not site_values:
+                        site_values = _guarded_site_values(
+                            source, source_offset + match.start(),
+                            site_expression,
+                            _method_string_constants(
+                                source, source_offset + match.start(),
+                                string_constants,
+                            ),
+                            string_constants,
+                        )
+                    site_value = (
+                        site_values[0] if len(site_values) == 1 else None
+                    )
                 if api == "NativeFisherYatesV111":
                     if site_expression is None:
                         review_status = "shuffle_site_id_argument_missing"
-                    elif site_value is not None:
+                    elif site_values:
                         review_status = "shuffle_site_id_resolved"
                     else:
                         review_status = "shuffle_site_id_is_dynamic_or_unresolved"
                     matrix_status = (
                         "mapped"
-                        if site_value in matrix_site_ids
+                        if site_values and all(
+                            value in matrix_site_ids for value in site_values
+                        )
                         else "unmapped"
-                        if site_value is not None
+                        if site_values
                         else "dynamic_expression"
                         if site_expression is not None
                         else "missing"
@@ -1353,6 +1372,7 @@ def collect() -> dict[str, Any]:
                         "review_status": review_status,
                         "site_id_argument": site_expression,
                         "site_id_value": site_value,
+                        "site_id_values": site_values,
                         "matrix_row_status": matrix_status,
                         "source_excerpt": line.strip(),
                     }
@@ -1584,10 +1604,10 @@ def render_markdown(report: dict[str, Any]) -> str:
         matrix_status = entry["matrix_row_status"]
         site_expression = entry["site_id_argument"] or "—"
         site_expression = site_expression.replace("|", "\\|")
-        if entry["site_id_value"] is not None:
+        if entry["site_id_values"]:
+            resolved_values = ", ".join(entry["site_id_values"])
             site_expression = (
-                "`" + site_expression + "` → `"
-                + entry["site_id_value"] + "`"
+                "`" + site_expression + "` → `" + resolved_values + "`"
             )
         elif site_expression != "—":
             site_expression = "`" + site_expression + "`"

@@ -93,7 +93,7 @@ public sealed partial class PrototypeGameEngine
                             .Select(item => item with { }).ToArray(),
                     RequestSiteId: requestSiteId ?? (afterShuffleRelic is null
                         ? StochasticSiteRegistryV111.DrawPileRandomInsertSiteId
-                        : "combat.relic.after_shuffle.generated_card.random_insert_index"),
+                        : StochasticSiteRegistryV111.AfterShuffleRelicDrawPileInsertSiteId),
                     RequestOwnerId: requestOwnerId ?? (afterShuffleRelic is null
                         ? "prototype.combat"
                         : "relic:" + afterShuffleRelic.RelicId +
@@ -201,7 +201,7 @@ public sealed partial class PrototypeGameEngine
                         .Concat(afterShuffleRemaining)
                         .SequenceEqual(expected) &&
                     choice.RequestSiteId ==
-                        "combat.relic.after_shuffle.generated_card.random_insert_index" &&
+                        StochasticSiteRegistryV111.AfterShuffleRelicDrawPileInsertSiteId &&
                     choice.RequestOwnerId == "relic:" + insertion.RelicId +
                         ":application:" + insertion.RelicApplicationOrder &&
                     choice.RequestOrdinal >= 0;
@@ -242,7 +242,7 @@ public sealed partial class PrototypeGameEngine
                     ValidateAfterShuffleRelicInsertion(combat, item)) &&
                 savedInsertions.SequenceEqual(expectedInsertions) &&
                 choice.RequestSiteId ==
-                    "combat.relic.after_shuffle.generated_card.random_insert_index" &&
+                    StochasticSiteRegistryV111.AfterShuffleRelicDrawPileInsertSiteId &&
                 choice.RequestOwnerId == "relic:" + afterShuffle.RelicId +
                     ":application:" + afterShuffle.RelicApplicationOrder &&
                 choice.RequestOrdinal >= 0;

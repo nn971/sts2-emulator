@@ -79,6 +79,9 @@ public static class PrototypeNativeLaterActMap
 
         public int NextInt(int maxExclusive, string siteId)
         {
+            if (siteId is not (PathStartSiteId or GloryRestCountSiteId))
+                throw new NotSupportedException(
+                    $"Later-act map index adapter does not support site '{siteId}'.");
             if (!native)
                 return LegacyRandomChoiceV111.ChooseBoundedInteger(
                     bundle,
@@ -100,6 +103,10 @@ public static class PrototypeNativeLaterActMap
 
         public void Shuffle<T>(T[] values, string siteId)
         {
+            if (siteId is not (PathDeltaShuffleSiteId or
+                    RoomAssignmentShuffleSiteId))
+                throw new NotSupportedException(
+                    $"Later-act map shuffle adapter does not support site '{siteId}'.");
             if (!native)
             {
                 var legacyOrdinal = _ordinals.GetValueOrDefault(siteId);
@@ -123,6 +130,10 @@ public static class PrototypeNativeLaterActMap
         public int NextGaussianInt(
             int mean, int standardDeviation, int min, int max, string siteId)
         {
+            if (siteId is not (HiveRestCountGaussianSiteId or
+                    UnknownCountGaussianSiteId))
+                throw new NotSupportedException(
+                    $"Later-act map Gaussian adapter does not support site '{siteId}'.");
             if (!native)
                 return SampleTruncatedGaussian(
                     bundle, streamId, ownerId, siteId,
