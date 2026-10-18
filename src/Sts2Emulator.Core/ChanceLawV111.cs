@@ -423,6 +423,11 @@ public static partial class ChanceLawEngineV111
         "event.reward.offer_potion.model.index_draw"
     ];
 
+    private static readonly string[] LegacyEventModifierCurseModelQuerySites =
+    [
+        "event.reward.random_modifier_curse.index_draw"
+    ];
+
     private static readonly string[] LegacyEliteRelicModelQuerySites =
     [
         "reward.elite_relic.model"
@@ -514,6 +519,9 @@ public static partial class ChanceLawEngineV111
 
     public static string[] LegacyEventOfferPotionModelQuerySiteIds =>
         (string[])LegacyEventOfferPotionModelQuerySites.Clone();
+
+    public static string[] LegacyEventModifierCurseModelQuerySiteIds =>
+        (string[])LegacyEventModifierCurseModelQuerySites.Clone();
 
     public static string[] LegacyEliteRelicModelQuerySiteIds =>
         (string[])LegacyEliteRelicModelQuerySites.Clone();
@@ -1209,6 +1217,46 @@ public static partial class ChanceLawEngineV111
             "legacy-event-reward-rare-card-pool-v1", conditioning,
             "Equal index weights over the ordered prototype Rare-card reward " +
             "pool; Native character-pool fidelity and stream parity remain " +
+            "unverified.", outcomes, operationKind: "choose_index");
+    }
+
+    /// <summary>
+    /// Query the legacy custom event reward's modifier-generated curse draw.
+    /// Native event reward ownership and source-pool completeness remain open.
+    /// </summary>
+    public static ChanceLawV111 QueryLegacyEventModifierCurseModel(
+        string eventId, int ordinal)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+
+        const string siteId =
+            "event.reward.random_modifier_curse.index_draw";
+        const string streamId = "reward";
+        var pool = NativeGloryAncientsV111.ModifierGeneratedCurseIds;
+        if (pool.Length == 0)
+            throw new InvalidOperationException(
+                "The modifier-generated event curse pool is empty.");
+        var poolFingerprint = CanonicalJson.Sha256(pool);
+        var ownerId = $"event:{eventId}:pool:" + poolFingerprint;
+        var outcomes = pool.Select(cardId =>
+            new ChanceLawOutcomeV111("card:" + cardId, 1L)).ToArray();
+        var conditioning = new
+        {
+            siteId,
+            streamId,
+            ownerId,
+            ordinal,
+            eventId,
+            orderedModifierCursePool = pool,
+            poolFingerprint
+        };
+        return CreateLegacyCategoricalLaw(
+            siteId, streamId, ownerId, ordinal,
+            "legacy-event-modifier-curse-model-pool-v1", conditioning,
+            "Equal index weights over the implemented ordered modifier-curse " +
+            "pool; source event-reward audit and Native parity remain " +
             "unverified.", outcomes, operationKind: "choose_index");
     }
 

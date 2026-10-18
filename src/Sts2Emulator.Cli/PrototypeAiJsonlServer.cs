@@ -4533,6 +4533,34 @@ internal static class PrototypeAiJsonlServer
                             break;
                         }
                         if (siteId ==
+                            "event.reward.random_modifier_curse.index_draw")
+                        {
+                            RejectChanceLawQueryParameters(
+                                request, "event_id", "support_count");
+                            var modifierCurseEventId = OptionalString(
+                                request, "event_id") ??
+                                throw new ArgumentException(
+                                    "Event modifier-curse model law requires event_id.");
+                            law = ChanceLawEngineV111
+                                .QueryLegacyEventModifierCurseModel(
+                                    modifierCurseEventId, ordinal);
+                            var supportCount = OptionalInt(
+                                request, "support_count");
+                            if (supportCount is not null &&
+                                supportCount != law.Outcomes.Length)
+                                throw new ArgumentException(
+                                    "Event modifier-curse support_count must match the implemented ordered pool.");
+                            Write(new
+                            {
+                                requestId,
+                                ok = true,
+                                chanceLawSchemaId =
+                                    ChanceLawV111.CurrentSchemaId,
+                                law
+                            });
+                            break;
+                        }
+                        if (siteId ==
                             "event.reward.offer_potion.model.index_draw")
                         {
                             RejectChanceLawQueryParameters(
