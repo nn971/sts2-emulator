@@ -449,13 +449,21 @@ public static class SemanticEndTurnEngineV111
         var state = source.Fork();
         if (state.EnemyActionPending is { } enemyActionRequest)
         {
-            var decision = new ControlledRandomIndexProviderV111(selectedIndex)
-                .Resolve(enemyActionRequest, state.Run.Rng);
-            RunState resumed;
-            using (ControlledChanceGuardV111.Enter())
-            using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
-                resumed = PrototypeGameEngine.ResumeControlledEnemyAction(
-                    state.Run.Fork(), selectedIndex);
+            var decision = new RandomIndexDecisionV111(
+                enemyActionRequest, selectedIndex, "controlled-v111");
+            decision.Validate();
+            RunState resumed = ControlledChanceContinuationExecutorV111
+                .ResolveSelectedIndex<SemanticEndTurnV111, RunState>(
+                    state, enemyActionRequest, selectedIndex,
+                    (checkpoint, replayedIndex) =>
+                    {
+                        using (ControlledChanceGuardV111.Enter())
+                        using (ControlledChanceGuardV111
+                            .AllowEngineOwnedPrototypeReward())
+                            return PrototypeGameEngine
+                                .ResumeControlledEnemyAction(
+                                    checkpoint.Run.Fork(), replayedIndex);
+                    });
             var transcript = state.EnemyActionTranscript.Append(decision).ToArray();
             var boundaries = EnsureBoundaryTranscript(state).Append(
                 new SemanticEndTurnBoundaryChoiceV111(
