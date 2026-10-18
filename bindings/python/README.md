@@ -538,9 +538,16 @@ index draws use configured Native laws; relic identity pools remain
 For a Large Capsule offered by Native Neow's Bones, call
 `State.begin_reference_nature_native_neow_relic_pickup(action_id, nature_seed=None)`
 with the current legal relic-pickup action ID. The session resolves the two
-random relic rarity and identity pairs triggered by Large Capsule, then commits
-the pickup and Nature cursor together. Other Neow relic-pickup effects remain
-outside this boundary.
+random relic rarity requests and their eligible identity requests triggered by
+Large Capsule, then commits the pickup and Nature cursor together. Other Neow
+relic-pickup effects remain outside this boundary.
+
+For Battleworn Dummy's setting-three reward, call
+`State.begin_reference_nature_native_battleworn_relic_reward(action_id, nature_seed=None)`
+with the current legal combat action that wins the fight. Replay must reach the
+setting-three relic draw; unrelated stochastic requests make the action
+ineligible. The action, reward, event result, and Nature cursor commit
+together.
 
 For a configured Native Rest Shovel dig, call
 `State.begin_reference_nature_native_shovel(nature_seed=None)`. The session
