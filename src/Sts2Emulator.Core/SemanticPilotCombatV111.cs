@@ -2451,43 +2451,10 @@ public static class SemanticPilotCombatEngineV111
         var pending = current.GeneratedCardPending ??
             throw new InvalidOperationException(
                 "No semantic generated-card event is pending.");
-        if (pending.EventId != eventId)
-            throw new InvalidOperationException(
-                "Generated-card event ID is stale or mismatched.");
-        var index = Array.IndexOf(pending.CandidateCardIds, cardId);
-        if (index < 0)
-            throw new InvalidOperationException(
-                "Card model is outside the pending generated-card support.");
-        var expected = new SemanticGeneratedCardDecisionV111(
-            pending, index, cardId);
-        expected.Validate();
-
-        var drawInsertionPending = current.Run.World?.Combat?.PendingChoice?
-            .ControlledDrawInsertion is { Stage: "card_model" };
-        RunState result;
-        using (ControlledChanceGuardV111.Enter())
-        using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
-            result = drawInsertionPending
-                ? PrototypeGameEngine.ResumeControlledDrawInsertion(
-                    current.Run.Fork(), index)
-                : PrototypeGameEngine.ResumeControlledGeneratedCard(
-                    current.Run.Fork(), index);
-        if (result.Phase == RunPhase.Combat)
-        {
-            ValidateSemanticCombatBoundary(result);
-            var priorCombat = current.Run.World!.Combat!;
-            var nextCombat = result.World!.Combat!;
-            if (!priorCombat.DrawPile.SequenceEqual(nextCombat.DrawPile) ||
-                CanonicalJson.Sha256(priorCombat.SemanticDeck) !=
-                    CanonicalJson.Sha256(nextCombat.SemanticDeck))
-                throw new NotSupportedException(
-                    "UNSUPPORTED_SEMANTIC_DECK site=combat.generated_card " +
-                    "operation=unmodeled_draw_pile_mutation");
-        }
-        else if (result.Phase is not (RunPhase.Reward or RunPhase.Terminal))
-            throw new NotSupportedException(
-                "UNSUPPORTED_SEMANTIC_DECK site=combat.generated_card " +
-                "operation=unsupported_post_generation_phase");
+        var expected = SemanticGenerationChoiceV111.Select(
+            pending, eventId, cardId);
+        var result = SemanticGenerationChoiceV111.Resume(
+            current.Run, expected);
         var next = current with
         {
             Run = result,
@@ -4497,7 +4464,7 @@ public static class SemanticPilotCombatEngineV111
         PrototypeStateInvariants.Validate(run);
     }
 
-    private static void ValidateGeneratedCardBoundary(RunState run)
+    internal static void ValidateGeneratedCardBoundary(RunState run)
     {
         var combat = run.World?.Combat;
         var choice = combat?.PendingChoice;

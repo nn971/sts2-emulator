@@ -52,7 +52,7 @@ The specialized `SemanticCombatDrawV111.Simulation` pairs `SemanticCombatDrawMec
 
 `SemanticDrawChoiceV111` owns validation and commit of a deferred draw-card identity for both standalone semantic draw sessions and nested card-effect draws. It rechecks the current semantic request against the saved typed decision, resolves the provider deck, and publishes the corresponding physical draw-pile state through `SemanticDrawPileAdapterV111`; callers retain their own subsequent draw, hook, and effect continuation policies.
 
-`SemanticDrawInsertionChoiceV111` owns selection validation and guarded resumption of the ordinary draw-insertion continuation for both semantic draw sessions and the semantic pilot. The facades retain their different insertion-stage audits and transcript histories.
+`SemanticDrawInsertionChoiceV111` owns selection validation and guarded resumption of the ordinary draw-insertion continuation for both semantic draw sessions and the semantic pilot. The facades retain their different insertion-stage audits and transcript histories. `SemanticGenerationChoiceV111` similarly owns ordered card-model selection and guarded engine resumption for direct generation and the card-model stage of random draw-Attack insertion; the pilot retains its event history and reward audit.
 
 For suspended initial or next-turn intents, `ControlledTurnIntentsV111.Validate` replays the resolved prefix from `BaselineCombat`; the automatic-pipeline owner checks its live checkpoint against the resulting `Combat` state. This preserves already committed enemy intent mechanics while the next source ticket is pending.
 

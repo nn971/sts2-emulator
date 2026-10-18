@@ -8,6 +8,11 @@ public sealed record SemanticGeneratedCardEventV111(
     string ProbabilityStatus = "UNVERIFIED")
     : ISemanticChanceEventV111
 {
+    public SemanticGeneratedCardEventV111 Fork() => this with
+    {
+        CandidateCardIds = (string[])CandidateCardIds.Clone()
+    };
+
     public void Validate()
     {
         if (SchemaId != SemanticGenerationChoiceV111.SchemaId ||
@@ -55,4 +60,96 @@ public sealed record SemanticGeneratedCardDecisionV111(
 public static class SemanticGenerationChoiceV111
 {
     public const string SchemaId = "sts2-v111-semantic-generation-choice-v1";
+
+    public static SemanticGeneratedCardDecisionV111 Select(
+        SemanticGeneratedCardEventV111 pending, string eventId,
+        string cardId)
+    {
+        ArgumentNullException.ThrowIfNull(pending);
+        pending.Validate();
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(cardId);
+        if (pending.EventId != eventId)
+            throw new InvalidOperationException(
+                "Generated-card event ID is stale or mismatched.");
+        var index = Array.IndexOf(pending.CandidateCardIds, cardId);
+        if (index < 0)
+            throw new InvalidOperationException(
+                "Card model is outside the pending generated-card support.");
+        var decision = new SemanticGeneratedCardDecisionV111(
+            pending.Fork(), index, cardId);
+        decision.Validate();
+        return decision;
+    }
+
+    /// <summary>
+    /// Revalidates the source pool and resumes either ordinary card
+    /// generation or the card-model stage of draw-pile insertion.
+    /// </summary>
+    internal static RunState Resume(
+        RunState checkpoint, SemanticGeneratedCardDecisionV111 decision)
+    {
+        ArgumentNullException.ThrowIfNull(checkpoint);
+        ArgumentNullException.ThrowIfNull(decision);
+        decision.Validate();
+
+        var combat = checkpoint.World?.Combat ??
+            throw new InvalidDataException(
+                "Generated-card choice lost its source combat.");
+        var choice = combat.PendingChoice;
+        var insertion = choice?.ControlledDrawInsertion;
+        bool drawInsertionModelChoice = decision.Event.SiteId ==
+            "combat.random_draw_attack.card_model";
+        if (drawInsertionModelChoice)
+        {
+            if (choice is not { ChoiceId: "controlled_draw_insertion" } ||
+                insertion is not { Stage: "card_model" } insertionChoice ||
+                !insertionChoice.CandidateCardIds.SequenceEqual(
+                    decision.Event.CandidateCardIds))
+                throw new InvalidDataException(
+                    "Generated-card decision no longer matches its insertion pool.");
+            SemanticPilotCombatEngineV111.ValidateDrawInsertionBoundary(
+                checkpoint);
+        }
+        else
+        {
+            if (decision.Event.SiteId != "combat.generated_card.select" ||
+                choice is not { ChoiceId: "controlled_generated_card" } ||
+                choice.ControlledGeneration is not { } generation ||
+                !generation.CandidateCardIds.SequenceEqual(
+                    decision.Event.CandidateCardIds))
+                throw new InvalidDataException(
+                    "Generated-card decision no longer matches its source pool.");
+            SemanticPilotCombatEngineV111.ValidateGeneratedCardBoundary(
+                checkpoint);
+        }
+
+        RunState resumed;
+        using (ControlledChanceGuardV111.Enter())
+        using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
+            resumed = drawInsertionModelChoice
+                ? PrototypeGameEngine.ResumeControlledDrawInsertion(
+                    checkpoint.Fork(), decision.SelectedIndex)
+                : PrototypeGameEngine.ResumeControlledGeneratedCard(
+                    checkpoint.Fork(), decision.SelectedIndex);
+        if (resumed.Phase == RunPhase.Combat)
+        {
+            SemanticPilotCombatEngineV111.ValidateSemanticCombatBoundary(
+                resumed);
+            var nextCombat = resumed.World?.Combat ??
+                throw new InvalidDataException(
+                    "Generated-card continuation lost its resulting combat.");
+            if (!combat.DrawPile.SequenceEqual(nextCombat.DrawPile) ||
+                CanonicalJson.Sha256(combat.SemanticDeck) !=
+                    CanonicalJson.Sha256(nextCombat.SemanticDeck))
+                throw new NotSupportedException(
+                    "UNSUPPORTED_SEMANTIC_DECK site=combat.generated_card " +
+                    "operation=unmodeled_draw_pile_mutation");
+        }
+        else if (resumed.Phase is not (RunPhase.Reward or RunPhase.Terminal))
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_DECK site=combat.generated_card " +
+                "operation=unsupported_post_generation_phase");
+        return resumed;
+    }
 }
