@@ -10,7 +10,7 @@ public sealed record SimulationMechanicsComparisonV111(
     bool DifferencesTruncated)
 {
     public const string SchemaId =
-        "sts2-v111-simulation-mechanics-comparison-v8";
+        "sts2-v111-simulation-mechanics-comparison-v9";
 
     public bool Equivalent => StringComparer.Ordinal.Equals(
         LeftFingerprint, RightFingerprint);
@@ -32,7 +32,17 @@ public sealed record SimulationMechanicsProjectionV111(
         PendingPoolShuffleContinuation = null,
     SimulationPendingChoiceMechanicsProjectionV111?
         PendingChoiceMechanics = null,
-    SemanticDeckPublicViewV111? PublicDrawPileKnowledge = null);
+    SemanticDeckPublicViewV111? PublicDrawPileKnowledge = null,
+    SimulationPendingDeckOperationProjectionV111?
+        PendingDeckOperation = null);
+
+/// <summary>
+/// Provider-independent cursor for a pending semantic deck request. The
+/// operation and position identify mechanics progress; candidate identities,
+/// pool membership, and the selected outcome remain provider data.
+/// </summary>
+public sealed record SimulationPendingDeckOperationProjectionV111(
+    string Purpose, int TopOffset);
 
 /// <summary>Provider-independent progress for one suspended draw operation.
 /// Candidate supports and selected provider outcomes remain outside the view.
@@ -228,6 +238,10 @@ public static class SimulationMechanicsProjectionEngineV111
             pendingChoiceMechanics,
             combatState?.SemanticDeck is { } semanticDeck
                 ? SemanticDeckEngineV111.Observe(semanticDeck)
+                : null,
+            combatState?.SemanticDeck?.Pending is { } pendingDeck
+                ? new SimulationPendingDeckOperationProjectionV111(
+                    pendingDeck.Purpose, pendingDeck.TopOffset)
                 : null);
     }
 
