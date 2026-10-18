@@ -101,18 +101,7 @@ public sealed record ReferenceNatureInfestedAutomatonSessionV111(
                 law.LawId, law.EventId, selection.OutcomeId,
                 selection.OutcomeIndex)
         };
-        var replay = ReferenceNatureNativeEventIndexReplayV111.Replay(
-            Origin,
-            NativeEventInfestedAutomatonCardPickPlanBuilderV111.Build(
-                Origin,
-                PrototypeNativeHiveEvents
-                    .InfestedAutomatonCardOfferSiteId,
-                0, ChoiceId).Request,
-            selection.OutcomeIndex,
-            GameAction.Create("event_choice",
-                new EventChoicePayload(ChoiceId)),
-            PrototypeNativeHiveEvents.InfestedAutomatonNativeRngEventId,
-            PrototypeNativeHiveEvents.InfestedAutomatonId);
+        var replay = ReplaySelection(Origin, ChoiceId, law, selection);
         var next = this with
         {
             Run = ReferenceNatureRunCursorV111.Commit(
@@ -122,6 +111,54 @@ public sealed record ReferenceNatureInfestedAutomatonSessionV111(
         };
         next.Validate();
         return next;
+    }
+
+    private static RunState ReplaySelection(
+        RunState origin, string choiceId, ChanceLawV111 law,
+        ReferenceNatureSelectionV111 selection)
+    {
+        var plan = NativeEventInfestedAutomatonCardPickPlanBuilderV111.Build(
+            origin, PrototypeNativeHiveEvents.InfestedAutomatonCardOfferSiteId,
+            0, choiceId);
+        var request = ControlledStochasticRequestV111.FromIndex(plan.Request);
+        var selected = ReferenceNatureChanceLawDecisionV111.FromSelection(
+            law, request, selection);
+        var expectedNativeEventStream = origin.World?.Event?.NativeEventRng ??
+            NativeRngV111Contexts.ForEvent(
+                origin.RunSeed,
+                PrototypeNativeHiveEvents.InfestedAutomatonNativeRngEventId);
+        var replay = ControlledChanceContinuationExecutorV111.CaptureStochastic(
+            origin,
+            ControlledStochasticContinuationStateV111.CurrentSchemaId,
+            [selected],
+            run => new PrototypeGameEngine().Step(
+                run, GameAction.Create("event_choice",
+                    new EventChoicePayload(choiceId))).State,
+            requestFilter: candidate =>
+                ControlledStochasticChanceReplayV111.SameRequest(
+                    candidate, request));
+        if (replay.Suspended || replay.Run is not { } resolved)
+            throw new InvalidDataException(
+                "Infested Automaton action did not consume exactly its selected card request.");
+        if (CanonicalJson.Sha256(
+                resolved.World?.Event?.NativeEventRng) !=
+            CanonicalJson.Sha256(expectedNativeEventStream))
+            throw new InvalidDataException(
+                "Scripted Infested Automaton resolution advanced its Native event cursor.");
+        var world = resolved.World ?? throw new InvalidDataException(
+            "Infested Automaton replay lost its event world.");
+        var eventState = world.Event ?? throw new InvalidDataException(
+            "Infested Automaton replay lost its event state.");
+        return resolved with
+        {
+            World = world with
+            {
+                Event = eventState with
+                {
+                    NativeEventRngProviderMode = "scripted-v111"
+                }
+            }
+        };
     }
 
     public void Validate()
@@ -159,19 +196,8 @@ public sealed record ReferenceNatureInfestedAutomatonSessionV111(
                 throw new InvalidDataException(
                     "Infested Automaton Nature transcript does not match its offer law.");
             expectedNature = selection.NextState;
-            expectedRun = ReferenceNatureNativeEventIndexReplayV111.Replay(
-                Origin,
-                NativeEventInfestedAutomatonCardPickPlanBuilderV111.Build(
-                    Origin,
-                    PrototypeNativeHiveEvents
-                        .InfestedAutomatonCardOfferSiteId,
-                    0, ChoiceId).Request,
-                selection.OutcomeIndex,
-                GameAction.Create("event_choice",
-                    new EventChoicePayload(ChoiceId)),
-                PrototypeNativeHiveEvents
-                    .InfestedAutomatonNativeRngEventId,
-                PrototypeNativeHiveEvents.InfestedAutomatonId);
+            expectedRun = ReplaySelection(
+                Origin, ChoiceId, law, selection);
             expectedRun = ReferenceNatureRunCursorV111.Commit(
                 expectedRun, expectedNature);
         }
