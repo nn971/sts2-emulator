@@ -899,6 +899,13 @@ public static class SemanticCombatDrawEngineV111
         ArgumentException.ThrowIfNullOrWhiteSpace(json);
         var stored = JsonSerializer.Deserialize<SemanticCombatDrawV111>(json)
             ?? throw new InvalidDataException("Null semantic combat draw.");
+        return Replay(stored);
+    }
+
+    internal static SemanticCombatDrawV111 Replay(
+        SemanticCombatDrawV111 stored)
+    {
+        ArgumentNullException.ThrowIfNull(stored);
         Validate(stored);
         var reconstructed = stored.AutomaticHandDraw
             ? BeginAutomaticHandDraw(stored.Origin)

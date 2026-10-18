@@ -850,118 +850,30 @@ public static class SemanticEndTurnEngineV111
         }
         if (saved.HandDraw is { } savedHand)
         {
-            int card = 0, cost = 0, pileCard = 0, insertion = 0,
-                stratagem = 0, hookChoice = 0;
-            while (card < savedHand.Transcript.Length ||
-                   cost < savedHand.CostTranscript.Length ||
-                   pileCard < savedHand.RandomPileCardTranscript.Length ||
-                   insertion < savedHand.DrawInsertionTranscript.Length ||
-                   stratagem <
-                       savedHand.StratagemSelectionTranscript.Length ||
-                   hookChoice <
-                       savedHand.DrawHookChoiceTranscript.Length)
+            var replayedHand = SemanticCombatDrawEngineV111.Replay(savedHand);
+            var boundaryHand = reproduced.HandDraw ??
+                throw new InvalidDataException(
+                    "Semantic end-turn replay lost its hand-draw boundary.");
+            if (CanonicalJson.Sha256(boundaryHand.Origin) !=
+                CanonicalJson.Sha256(replayedHand.Origin))
+                throw new InvalidDataException(
+                    "Semantic end-turn hand-draw origin changed during replay.");
+            if (reproduced.Complete)
             {
-                if (reproduced.DrawHookChoicePending is { } hookEvent)
+                if (CanonicalJson.Sha256(boundaryHand) !=
+                    CanonicalJson.Sha256(replayedHand))
+                    throw new InvalidDataException(
+                        "Completed semantic end-turn hand draw diverged.");
+            }
+            else
+            {
+                reproduced = reproduced with
                 {
-                    if (hookChoice >=
-                        savedHand.DrawHookChoiceTranscript.Length)
-                        throw new InvalidDataException(
-                            "Missing semantic end-turn CardDrawn hook action.");
-                    var decision =
-                        savedHand.DrawHookChoiceTranscript[hookChoice++];
-                    decision.Validate();
-                    if (CanonicalJson.Sha256(decision.Event) !=
-                        CanonicalJson.Sha256(hookEvent))
-                        throw new InvalidDataException(
-                            "Semantic end-turn CardDrawn hook support changed.");
-                    reproduced = ResolveDrawHookChoice(
-                        reproduced, reproduced.Fingerprint,
-                        decision.ActionId);
-                }
-                else if (reproduced.RandomPileCardPending is { } pileCardEvent)
-                {
-                    if (pileCard >=
-                        savedHand.RandomPileCardTranscript.Length)
-                        throw new InvalidDataException(
-                            "Missing semantic end-turn random pile-card choice.");
-                    var decision =
-                        savedHand.RandomPileCardTranscript[pileCard++];
-                    decision.Validate();
-                    if (CanonicalJson.Sha256(decision.Event) !=
-                        CanonicalJson.Sha256(pileCardEvent))
-                        throw new InvalidDataException(
-                            "Semantic end-turn random pile-card support changed.");
-                    reproduced = Resolve(
-                        reproduced, reproduced.Fingerprint,
-                        decision.SelectedIndex);
-                }
-                else if (reproduced.DrawInsertionPending is { } insertionEvent)
-                {
-                    if (insertion >=
-                        savedHand.DrawInsertionTranscript.Length)
-                        throw new InvalidDataException(
-                            "Missing semantic end-turn insertion decision.");
-                    var decision =
-                        savedHand.DrawInsertionTranscript[insertion++];
-                    decision.Validate();
-                    if (CanonicalJson.Sha256(decision.Event) !=
-                        CanonicalJson.Sha256(insertionEvent))
-                        throw new InvalidDataException(
-                            "Semantic end-turn insertion support changed.");
-                    reproduced = Resolve(
-                        reproduced, reproduced.Fingerprint,
-                        decision.SelectedPosition);
-                }
-                else if (reproduced.StratagemSelectionPending is
-                         { } stratagemEvent)
-                {
-                    if (stratagem >=
-                        savedHand.StratagemSelectionTranscript.Length)
-                        throw new InvalidDataException(
-                            "Missing semantic end-turn Stratagem selection.");
-                    var decision =
-                        savedHand.StratagemSelectionTranscript[stratagem++];
-                    decision.Validate();
-                    if (CanonicalJson.Sha256(decision.Event) !=
-                        CanonicalJson.Sha256(stratagemEvent))
-                        throw new InvalidDataException(
-                            "Semantic end-turn Stratagem support changed.");
-                    reproduced = ResolveStratagemSelection(
-                        reproduced, reproduced.Fingerprint,
-                        decision.ActionId);
-                }
-                else if (reproduced.CostPending is { } costRequest)
-                {
-                    if (cost >= savedHand.CostTranscript.Length)
-                        throw new InvalidDataException(
-                            "Missing semantic end-turn drawn-cost ticket.");
-                    var decision = savedHand.CostTranscript[cost++];
-                    decision.Validate();
-                    if (decision.ProviderMode != "semantic-controlled-v1" ||
-                        CanonicalJson.Sha256(decision.Request) !=
-                            CanonicalJson.Sha256(costRequest))
-                        throw new InvalidDataException(
-                            "Semantic end-turn drawn cost eligibility changed.");
-                    reproduced = Resolve(
-                        reproduced, reproduced.Fingerprint, decision.SelectedIndex);
-                }
-                else if (reproduced.DrawPending is { } cardRequest)
-                {
-                    if (card >= savedHand.Transcript.Length)
-                        throw new InvalidDataException(
-                            "Missing semantic end-turn card identity.");
-                    var decision = savedHand.Transcript[card++];
-                    if (decision.EventId != cardRequest.EventId ||
-                        decision.Ordinal != cardRequest.Ordinal ||
-                        !decision.CandidateCardInstanceIds.SequenceEqual(
-                            cardRequest.CandidateCardInstanceIds))
-                        throw new InvalidDataException(
-                            "Semantic end-turn card identity eligibility changed.");
-                    reproduced = Resolve(
-                        reproduced, reproduced.Fingerprint, decision.SelectedIndex);
-                }
-                else throw new InvalidDataException(
-                    "Semantic end-turn Nature replay ended too early.");
+                    Run = replayedHand.Run,
+                    HandDraw = replayedHand
+                };
+                if (replayedHand.AtBoundary)
+                    reproduced = CompleteHandDraw(reproduced);
             }
         }
         if (CanonicalJson.Sha256(reproduced) != CanonicalJson.Sha256(saved))
