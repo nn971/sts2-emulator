@@ -1,4 +1,4 @@
-# RNG direct-call source inventory (emulator-rng-callsite-source-inventory-v9)
+# RNG direct-call source inventory (emulator-rng-callsite-source-inventory-v10)
 
 Direct qualified calls to PrototypeRng, NativeRngV111, and NativeFisherYatesV111 in Sts2Emulator.Core. This does not include indirect delegates, random provider interfaces, third-party/native source callsites, or prove that every source operation is mapped. The site-matrix report shows registry-to-ledger and ledger-to-registry differences, unique ledger IDs, and explicit reference-law status. Unregistered ledger rows are informational because legacy and conditional sites may remain outside the active registry. The S0 locator reports text or linked-document matches for private constraints, audience projections, resolvers/continuations, probability provenance, and unsupported handling; these matches require manual review and do not prove source completeness.
 
@@ -11,29 +11,11 @@ Counts by direct API family:
 - `native_shuffle_mechanics`: 24
 
 Shuffle site IDs mapped to migration-matrix rows: **18**; dynamic expressions: **6**; unmapped: **0**; missing: **0**.
-Registered stochastic site IDs mapped to migration-matrix rows: **165/165**; IDs without rows: **0**; duplicate matrix IDs: **0**; unresolved registry references: **0**.
-Migration-matrix rows absent from the active registry: **18** (informational; legacy and conditional rows may remain unregistered). Their law-status counts are UNVERIFIED 18, conditional 0, calibrated 0, unspecified 0.
+Registered stochastic site IDs mapped to migration-matrix rows: **183/183**; IDs without rows: **0**; duplicate matrix IDs: **0**; unresolved registry references: **0**.
+Migration-matrix rows absent from the active registry: **0** (informational; legacy and conditional rows may remain unregistered). Their law-status counts are UNVERIFIED 0, conditional 0, calibrated 0, unspecified 0.
 Matrix-only IDs for manual disposition:
 
-- `card_rarity.roll.ticket`
-- `card_rarity.upgrade_roll.ticket`
-- `combat.encounter.later_act.elite.index_draw`
-- `combat.encounter.later_act.normal.index_draw`
-- `combat.encounter.later_act.weak.index_draw`
-- `map.later_act.hive_rest_count.gaussian_int`
-- `map.later_act.unknown_count.gaussian_int`
-- `map.overgrowth.rest_count.gaussian_component`
-- `map.overgrowth.unknown_count.gaussian_component`
-- `potion.uniform_model.index_draw`
-- `reward.elite_relic.model`
-- `reward.potion_odds.ticket`
-- `reward.random_potion.drop.ticket`
-- `reward.random_potion.model`
-- `shop.merchant.card_price_modifier.index_draw`
-- `shop.merchant.card_upgrade_roll.ticket`
-- `shop.merchant.potion_price_modifier.index_draw`
-- `shop.merchant.relic_price_modifier.index_draw`
-Reference-law column status: **81 UNVERIFIED**; **14 conditional**; **88 calibrated**; **0 unspecified**.
+Reference-law column status: **58 UNVERIFIED**; **10 conditional**; **115 calibrated**; **0 unspecified**.
 S0 contract-evidence locator: **183/183 rows** have a text or linked-document match for every facet. Matches are review pointers, not evidence that a contract is complete.
 Rows without a text or linked-document match by S0 facet:
 
@@ -52,32 +34,32 @@ Known RNG helper callsites with forwarded stable site IDs:
 
 | Helper callsite | Stable site ID expression | Resolved site | Registry | Matrix |
 | --- | --- | --- | --- | --- |
-| [`src/Sts2Emulator.Core/PrototypeCombat.cs:6496`](../src/Sts2Emulator.Core/PrototypeCombat.cs#L6496) `PrototypeGameEngine.ShuffleCombatCardPool` | `"combat.hand_return.draw_pile.shuffle_swap_index"` | `combat.hand_return.draw_pile.shuffle_swap_index` | `mapped` | `mapped` |
-| [`src/Sts2Emulator.Core/PrototypeCombat.cs:6908`](../src/Sts2Emulator.Core/PrototypeCombat.cs#L6908) `PrototypeGameEngine.ShuffleCombatCardPool` | `"combat.draw_pile.random_rare_to_hand.shuffle_swap_index"` | `combat.draw_pile.random_rare_to_hand.shuffle_swap_index` | `mapped` | `mapped` |
-| [`src/Sts2Emulator.Core/PrototypeCombat.cs:7085`](../src/Sts2Emulator.Core/PrototypeCombat.cs#L7085) `PrototypeGameEngine.ShuffleCombatCardPool` | `"combat.card_selection.random_shortlist"` | `combat.card_selection.random_shortlist` | `mapped` | `mapped` |
-| [`src/Sts2Emulator.Core/PrototypeCombat.cs:7718`](../src/Sts2Emulator.Core/PrototypeCombat.cs#L7718) `PrototypeGameEngine.ShuffleCombatCardPool` | `"combat.generation.full_pool_shuffle.swap_index"` | `combat.generation.full_pool_shuffle.swap_index` | `mapped` | `mapped` |
-| [`src/Sts2Emulator.Core/PrototypeCombat.cs:9067`](../src/Sts2Emulator.Core/PrototypeCombat.cs#L9067) `PrototypeGameEngine.ShuffleCombatCardPool` | `"combat.generation.full_pool_shuffle.swap_index"` | `combat.generation.full_pool_shuffle.swap_index` | `mapped` | `mapped` |
-| [`src/Sts2Emulator.Core/PrototypeCombat.cs:9139`](../src/Sts2Emulator.Core/PrototypeCombat.cs#L9139) `PrototypeGameEngine.ShuffleCombatCardPool` | `"combat.generation.full_pool_shuffle.swap_index"` | `combat.generation.full_pool_shuffle.swap_index` | `mapped` | `mapped` |
+| [`src/Sts2Emulator.Core/PrototypeCombat.cs:6503`](../src/Sts2Emulator.Core/PrototypeCombat.cs#L6503) `PrototypeGameEngine.ShuffleCombatCardPool` | `"combat.hand_return.draw_pile.shuffle_swap_index"` | `combat.hand_return.draw_pile.shuffle_swap_index` | `mapped` | `mapped` |
+| [`src/Sts2Emulator.Core/PrototypeCombat.cs:6915`](../src/Sts2Emulator.Core/PrototypeCombat.cs#L6915) `PrototypeGameEngine.ShuffleCombatCardPool` | `"combat.draw_pile.random_rare_to_hand.shuffle_swap_index"` | `combat.draw_pile.random_rare_to_hand.shuffle_swap_index` | `mapped` | `mapped` |
+| [`src/Sts2Emulator.Core/PrototypeCombat.cs:7092`](../src/Sts2Emulator.Core/PrototypeCombat.cs#L7092) `PrototypeGameEngine.ShuffleCombatCardPool` | `"combat.card_selection.random_shortlist"` | `combat.card_selection.random_shortlist` | `mapped` | `mapped` |
+| [`src/Sts2Emulator.Core/PrototypeCombat.cs:7725`](../src/Sts2Emulator.Core/PrototypeCombat.cs#L7725) `PrototypeGameEngine.ShuffleCombatCardPool` | `"combat.generation.full_pool_shuffle.swap_index"` | `combat.generation.full_pool_shuffle.swap_index` | `mapped` | `mapped` |
+| [`src/Sts2Emulator.Core/PrototypeCombat.cs:9066`](../src/Sts2Emulator.Core/PrototypeCombat.cs#L9066) `PrototypeGameEngine.ShuffleCombatCardPool` | `"combat.generation.full_pool_shuffle.swap_index"` | `combat.generation.full_pool_shuffle.swap_index` | `mapped` | `mapped` |
+| [`src/Sts2Emulator.Core/PrototypeCombat.cs:9138`](../src/Sts2Emulator.Core/PrototypeCombat.cs#L9138) `PrototypeGameEngine.ShuffleCombatCardPool` | `"combat.generation.full_pool_shuffle.swap_index"` | `combat.generation.full_pool_shuffle.swap_index` | `mapped` | `mapped` |
 | [`src/Sts2Emulator.Core/PrototypeNativeFakeMerchant.cs:228`](../src/Sts2Emulator.Core/PrototypeNativeFakeMerchant.cs#L228) `NativeEventContextRngV111.ShuffleInPlace` | `RelicOfferShuffleSiteId` | `event.fake_merchant.relic_offer.shuffle_swap_index` | `mapped` | `mapped` |
 | [`src/Sts2Emulator.Core/PrototypeNativeGloryBattleworn.cs:112`](../src/Sts2Emulator.Core/PrototypeNativeGloryBattleworn.cs#L112) `NativeEventContextRngV111.ShuffleInPlace` | `"event.battleworn.upgrade.shuffle_swap_index"` | `event.battleworn.upgrade.shuffle_swap_index` | `mapped` | `mapped` |
 | [`src/Sts2Emulator.Core/PrototypeNativeGloryEvents.cs:332`](../src/Sts2Emulator.Core/PrototypeNativeGloryEvents.cs#L332) `NativeEventContextRngV111.ShuffleInPlace` | `PrototypeNativeGloryEvents
                     .HungryForMushroomsShuffleSiteId` | `event.glory.random_upgrade.shuffle_swap_index` | `mapped` | `mapped` |
 | [`src/Sts2Emulator.Core/PrototypeNativeGloryTinker.cs:116`](../src/Sts2Emulator.Core/PrototypeNativeGloryTinker.cs#L116) `NativeEventContextRngV111.ShuffleInPlace` | `PrototypeNativeGloryEvents.TinkerTypeOfferShuffleSiteId` | `event.glory_tinker.type_offer.shuffle_swap_index` | `mapped` | `mapped` |
 | [`src/Sts2Emulator.Core/PrototypeNativeGloryTinker.cs:141`](../src/Sts2Emulator.Core/PrototypeNativeGloryTinker.cs#L141) `NativeEventContextRngV111.ShuffleInPlace` | `PrototypeNativeGloryEvents.TinkerRiderOfferShuffleSiteId` | `event.glory_tinker.rider_offer.shuffle_swap_index` | `mapped` | `mapped` |
-| [`src/Sts2Emulator.Core/PrototypeNativeLaterActMap.cs:223`](../src/Sts2Emulator.Core/PrototypeNativeLaterActMap.cs#L223) `NativeMapRandom.Shuffle` | `PathDeltaShuffleSiteId` | `map.later_act.path_delta.shuffle_swap_index` | `mapped` | `mapped` |
-| [`src/Sts2Emulator.Core/PrototypeNativeLaterActMap.cs:321`](../src/Sts2Emulator.Core/PrototypeNativeLaterActMap.cs#L321) `NativeMapRandom.Shuffle` | `RoomAssignmentShuffleSiteId` | `map.later_act.room_assignment.shuffle_swap_index` | `mapped` | `mapped` |
-| [`src/Sts2Emulator.Core/PrototypeNativeOvergrowthMap.cs:175`](../src/Sts2Emulator.Core/PrototypeNativeOvergrowthMap.cs#L175) `NativeMapRandom.Shuffle` | `PathDeltaShuffleSiteId` | `map.overgrowth.path_delta.shuffle_swap_index` | `mapped` | `mapped` |
-| [`src/Sts2Emulator.Core/PrototypeNativeOvergrowthMap.cs:268`](../src/Sts2Emulator.Core/PrototypeNativeOvergrowthMap.cs#L268) `NativeMapRandom.Shuffle` | `RoomAssignmentShuffleSiteId` | `map.overgrowth.room_assignment.shuffle_swap_index` | `mapped` | `mapped` |
+| [`src/Sts2Emulator.Core/PrototypeNativeLaterActMap.cs:226`](../src/Sts2Emulator.Core/PrototypeNativeLaterActMap.cs#L226) `NativeMapRandom.Shuffle` | `PathDeltaShuffleSiteId` | `map.later_act.path_delta.shuffle_swap_index` | `mapped` | `mapped` |
+| [`src/Sts2Emulator.Core/PrototypeNativeLaterActMap.cs:324`](../src/Sts2Emulator.Core/PrototypeNativeLaterActMap.cs#L324) `NativeMapRandom.Shuffle` | `RoomAssignmentShuffleSiteId` | `map.later_act.room_assignment.shuffle_swap_index` | `mapped` | `mapped` |
+| [`src/Sts2Emulator.Core/PrototypeNativeOvergrowthMap.cs:179`](../src/Sts2Emulator.Core/PrototypeNativeOvergrowthMap.cs#L179) `NativeMapRandom.Shuffle` | `PathDeltaShuffleSiteId` | `map.overgrowth.path_delta.shuffle_swap_index` | `mapped` | `mapped` |
+| [`src/Sts2Emulator.Core/PrototypeNativeOvergrowthMap.cs:272`](../src/Sts2Emulator.Core/PrototypeNativeOvergrowthMap.cs#L272) `NativeMapRandom.Shuffle` | `RoomAssignmentShuffleSiteId` | `map.overgrowth.room_assignment.shuffle_swap_index` | `mapped` | `mapped` |
 | [`src/Sts2Emulator.Core/PrototypeNativeUnderdocksDoors.cs:43`](../src/Sts2Emulator.Core/PrototypeNativeUnderdocksDoors.cs#L43) `NativeEventContextRngV111.ShuffleInPlace` | `PrototypeNativeUnderdocksDoors.ShuffleSiteId` | `event.doors_light.shuffle_swap_index` | `mapped` | `mapped` |
 
 | File:line | API | Operation | Stable site ID argument | Matrix row | Source expression | Review status |
 | --- | --- | --- | --- | --- | --- | --- |
-| [`src/Sts2Emulator.Core/NativeDarvEventV111.cs:170`](../src/Sts2Emulator.Core/NativeDarvEventV111.cs#L170) | `NativeFisherYatesV111` | `ShuffleInPlace` | `RelicShuffleSiteId` → `event.darv.relic_offer.shuffle_swap_index` | `mapped` | `decisions.AddRange(NativeFisherYatesV111.ShuffleInPlace(` | `shuffle_site_id_resolved` |
-| [`src/Sts2Emulator.Core/NativeDarvEventV111.cs:260`](../src/Sts2Emulator.Core/NativeDarvEventV111.cs#L260) | `NativeFisherYatesV111` | `ShuffleInPlace` | `RelicShuffleSiteId` → `event.darv.relic_offer.shuffle_swap_index` | `mapped` | `_ = NativeFisherYatesV111.ShuffleInPlace(` | `shuffle_site_id_resolved` |
+| [`src/Sts2Emulator.Core/NativeDarvEventV111.cs:171`](../src/Sts2Emulator.Core/NativeDarvEventV111.cs#L171) | `NativeFisherYatesV111` | `ShuffleInPlace` | `RelicShuffleSiteId` → `event.darv.relic_offer.shuffle_swap_index` | `mapped` | `decisions.AddRange(NativeFisherYatesV111.ShuffleInPlace(` | `shuffle_site_id_resolved` |
+| [`src/Sts2Emulator.Core/NativeDarvEventV111.cs:261`](../src/Sts2Emulator.Core/NativeDarvEventV111.cs#L261) | `NativeFisherYatesV111` | `ShuffleInPlace` | `RelicShuffleSiteId` → `event.darv.relic_offer.shuffle_swap_index` | `mapped` | `_ = NativeFisherYatesV111.ShuffleInPlace(` | `shuffle_site_id_resolved` |
 | [`src/Sts2Emulator.Core/NativeEventContextRngV111.cs:236`](../src/Sts2Emulator.Core/NativeEventContextRngV111.cs#L236) | `NativeFisherYatesV111` | `ShuffleInPlace` | `siteId` | `dynamic_expression` | `_ = NativeFisherYatesV111.ShuffleInPlace(` | `shuffle_site_id_is_dynamic_or_unresolved` |
 | [`src/Sts2Emulator.Core/NativeGloryAncientsV111.cs:266`](../src/Sts2Emulator.Core/NativeGloryAncientsV111.cs#L266) | `NativeFisherYatesV111` | `ShuffleInPlace` | `BeautifulBraceletShuffleSiteId` → `run.relic.beautiful_bracelet.deck_shuffle.swap_index` | `mapped` | `_ = NativeFisherYatesV111.ShuffleInPlace(` | `shuffle_site_id_resolved` |
 | [`src/Sts2Emulator.Core/NativeGloryAncientsV111.cs:316`](../src/Sts2Emulator.Core/NativeGloryAncientsV111.cs#L316) | `NativeFisherYatesV111` | `ShuffleInPlace` | `FurCoatShuffleSiteId` → `run.relic.fur_coat.map_node_shuffle.swap_index` | `mapped` | `_ = NativeFisherYatesV111.ShuffleInPlace(` | `shuffle_site_id_resolved` |
-| [`src/Sts2Emulator.Core/NativeNeowEventV111.cs:45`](../src/Sts2Emulator.Core/NativeNeowEventV111.cs#L45) | `NativeFisherYatesV111` | `ShuffleInPlace` | `PrototypeNativeOvergrowthEvents.NeowPositiveRelicShuffleSiteId` → `event.neow.positive_relic.shuffle_swap_index` | `mapped` | `decisions.AddRange(NativeFisherYatesV111.ShuffleInPlace(` | `shuffle_site_id_resolved` |
+| [`src/Sts2Emulator.Core/NativeNeowEventV111.cs:46`](../src/Sts2Emulator.Core/NativeNeowEventV111.cs#L46) | `NativeFisherYatesV111` | `ShuffleInPlace` | `PrototypeNativeOvergrowthEvents.NeowPositiveRelicShuffleSiteId` → `event.neow.positive_relic.shuffle_swap_index` | `mapped` | `decisions.AddRange(NativeFisherYatesV111.ShuffleInPlace(` | `shuffle_site_id_resolved` |
 | [`src/Sts2Emulator.Core/NativeNonupeipeEventV111.cs:96`](../src/Sts2Emulator.Core/NativeNonupeipeEventV111.cs#L96) | `NativeFisherYatesV111` | `ShuffleInPlace` | `ShuffleSiteId` → `event.nonupeipe.relic_offer.shuffle_swap_index` | `mapped` | `var choices = NativeFisherYatesV111.ShuffleInPlace(` | `shuffle_site_id_resolved` |
 | [`src/Sts2Emulator.Core/NativeNonupeipeEventV111.cs:158`](../src/Sts2Emulator.Core/NativeNonupeipeEventV111.cs#L158) | `NativeFisherYatesV111` | `ShuffleInPlace` | `ShuffleSiteId` → `event.nonupeipe.relic_offer.shuffle_swap_index` | `mapped` | `_ = NativeFisherYatesV111.ShuffleInPlace(` | `shuffle_site_id_resolved` |
 | [`src/Sts2Emulator.Core/NativeRunRngV111.cs:92`](../src/Sts2Emulator.Core/NativeRunRngV111.cs#L92) | `NativeRngV111` | `NextInt` | — | `not_applicable` | `value = NativeRngV111.NextInt(advanced, streamId, maxExclusive);` | `provider_or_codec_infrastructure` |
@@ -90,11 +72,11 @@ Known RNG helper callsites with forwarded stable site IDs:
 | [`src/Sts2Emulator.Core/NativeVakuuEventV111.cs:102`](../src/Sts2Emulator.Core/NativeVakuuEventV111.cs#L102) | `NativeFisherYatesV111` | `ShuffleInPlace` | `ShuffleSiteId` → `event.vakuu.relic_offer.shuffle_swap_index` | `mapped` | `choices.AddRange(NativeFisherYatesV111.ShuffleInPlace(` | `shuffle_site_id_resolved` |
 | [`src/Sts2Emulator.Core/NativeVakuuEventV111.cs:172`](../src/Sts2Emulator.Core/NativeVakuuEventV111.cs#L172) | `NativeFisherYatesV111` | `ShuffleInPlace` | `ShuffleSiteId` → `event.vakuu.relic_offer.shuffle_swap_index` | `mapped` | `var choices = NativeFisherYatesV111.ShuffleInPlace(` | `shuffle_site_id_resolved` |
 | [`src/Sts2Emulator.Core/PrototypeCombat.cs:384`](../src/Sts2Emulator.Core/PrototypeCombat.cs#L384) | `NativeFisherYatesV111` | `ShuffleInPlace` | `NativeFisherYatesV111.SiteId` → `combat.draw_pile.shuffle.swap` | `mapped` | `_ = NativeFisherYatesV111.ShuffleInPlace(` | `shuffle_site_id_resolved` |
-| [`src/Sts2Emulator.Core/PrototypeCombat.cs:14031`](../src/Sts2Emulator.Core/PrototypeCombat.cs#L14031) | `NativeFisherYatesV111` | `ShuffleInPlace` | `siteId` | `dynamic_expression` | `_ = NativeFisherYatesV111.ShuffleInPlace(` | `shuffle_site_id_is_dynamic_or_unresolved` |
+| [`src/Sts2Emulator.Core/PrototypeCombat.cs:14046`](../src/Sts2Emulator.Core/PrototypeCombat.cs#L14046) | `NativeFisherYatesV111` | `ShuffleInPlace` | `siteId` | `dynamic_expression` | `_ = NativeFisherYatesV111.ShuffleInPlace(` | `shuffle_site_id_is_dynamic_or_unresolved` |
 | [`src/Sts2Emulator.Core/PrototypeNativeGloryRepy.cs:154`](../src/Sts2Emulator.Core/PrototypeNativeGloryRepy.cs#L154) | `NativeFisherYatesV111` | `ShuffleInPlace` | `"event.war_historian.repy.relic_offer.shuffle_swap_index"` → `event.war_historian.repy.relic_offer.shuffle_swap_index` | `mapped` | `_ = NativeFisherYatesV111.ShuffleInPlace(` | `shuffle_site_id_resolved` |
-| [`src/Sts2Emulator.Core/PrototypeNativeLaterActMap.cs:115`](../src/Sts2Emulator.Core/PrototypeNativeLaterActMap.cs#L115) | `NativeFisherYatesV111` | `ShuffleInPlace` | `siteId` | `dynamic_expression` | `var choices = NativeFisherYatesV111.ShuffleInPlace(` | `shuffle_site_id_is_dynamic_or_unresolved` |
+| [`src/Sts2Emulator.Core/PrototypeNativeLaterActMap.cs:117`](../src/Sts2Emulator.Core/PrototypeNativeLaterActMap.cs#L117) | `NativeFisherYatesV111` | `ShuffleInPlace` | `siteId` | `dynamic_expression` | `var choices = NativeFisherYatesV111.ShuffleInPlace(` | `shuffle_site_id_is_dynamic_or_unresolved` |
 | [`src/Sts2Emulator.Core/PrototypeNativeLavaRock.cs:63`](../src/Sts2Emulator.Core/PrototypeNativeLavaRock.cs#L63) | `NativeFisherYatesV111` | `ShuffleInPlace` | `"reward.lava_rock.relic_offer.shuffle_swap_index"` → `reward.lava_rock.relic_offer.shuffle_swap_index` | `mapped` | `_ = NativeFisherYatesV111.ShuffleInPlace(` | `shuffle_site_id_resolved` |
-| [`src/Sts2Emulator.Core/PrototypeNativeOvergrowthMap.cs:74`](../src/Sts2Emulator.Core/PrototypeNativeOvergrowthMap.cs#L74) | `NativeFisherYatesV111` | `ShuffleInPlace` | `siteId` | `dynamic_expression` | `var choices = NativeFisherYatesV111.ShuffleInPlace(` | `shuffle_site_id_is_dynamic_or_unresolved` |
+| [`src/Sts2Emulator.Core/PrototypeNativeOvergrowthMap.cs:75`](../src/Sts2Emulator.Core/PrototypeNativeOvergrowthMap.cs#L75) | `NativeFisherYatesV111` | `ShuffleInPlace` | `siteId` | `dynamic_expression` | `var choices = NativeFisherYatesV111.ShuffleInPlace(` | `shuffle_site_id_is_dynamic_or_unresolved` |
 | [`src/Sts2Emulator.Core/PrototypeNativeRelicGrabBag.cs:264`](../src/Sts2Emulator.Core/PrototypeNativeRelicGrabBag.cs#L264) | `NativeFisherYatesV111` | `ShuffleInPlace` | `"relic_grab_bag.queue_shuffle.swap_index"` → `relic_grab_bag.queue_shuffle.swap_index` | `mapped` | `_ = NativeFisherYatesV111.ShuffleInPlace(` | `shuffle_site_id_resolved` |
 | [`src/Sts2Emulator.Core/PrototypeNativeWarHammer.cs:46`](../src/Sts2Emulator.Core/PrototypeNativeWarHammer.cs#L46) | `NativeFisherYatesV111` | `ShuffleInPlace` | `"relic.war_hammer.elite_upgrade.shuffle_swap_index"` → `relic.war_hammer.elite_upgrade.shuffle_swap_index` | `mapped` | `_ = NativeFisherYatesV111.ShuffleInPlace(` | `shuffle_site_id_resolved` |
 | [`src/Sts2Emulator.Core/PrototypeRooms.cs:5601`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L5601) | `NativeFisherYatesV111` | `ShuffleInPlace` | `"reward.boss_relic_offer.shuffle_swap_index"` → `reward.boss_relic_offer.shuffle_swap_index` | `mapped` | `_ = NativeFisherYatesV111.ShuffleInPlace(` | `shuffle_site_id_resolved` |

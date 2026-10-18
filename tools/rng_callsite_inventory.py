@@ -21,7 +21,7 @@ from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = ROOT / "src" / "Sts2Emulator.Core"
-SCHEMA_ID = "emulator-rng-callsite-source-inventory-v9"
+SCHEMA_ID = "emulator-rng-callsite-source-inventory-v10"
 SITE_REGISTRY_PATH = SOURCE_ROOT / "StochasticSiteRegistryV111.cs"
 
 CALL_PATTERN = re.compile(
@@ -37,13 +37,14 @@ STRING_CONSTANT_PATTERN = re.compile(
 )
 
 SITE_ARRAY_PATTERN = re.compile(
-    r"\bstring\[\]\s+[A-Za-z_][A-Za-z0-9_]*\s*=\s*\[(?P<body>.*?)\];",
+    r"\bstring\[\]\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*=\s*"
+    r"\[(?P<body>.*?)\];",
     re.DOTALL,
 )
 
 SITE_ARRAY_PROPERTY_PATTERN = re.compile(
     r"\bstring\[\]\s+(?P<name>[A-Za-z_][A-Za-z0-9_]*)\s*=>\s*"
-    r"\[(?P<body>.*?)\];",
+    r"(?P<body>[^;]+);",
     re.DOTALL,
 )
 
@@ -153,10 +154,18 @@ def _resolve_site_value(
     candidates: set[str] = set()
     if class_name is not None:
         class_file = SOURCE_ROOT / (class_name.rsplit(".", 1)[-1] + ".cs")
-        if class_file.is_file():
-            candidates = _string_constants(
-                class_file.read_text(encoding="utf-8")
-            ).get(name, set())
+        candidate_files = ([class_file] if class_file.is_file() else []) + [
+            path for path in sorted(SOURCE_ROOT.rglob("*.cs"))
+            if path != class_file
+        ]
+        for candidate in candidate_files:
+            source = candidate.read_text(encoding="utf-8")
+            if not re.search(
+                rf"\bclass\s+{re.escape(class_name.rsplit('.', 1)[-1])}\b",
+                source,
+            ):
+                continue
+            candidates.update(_string_constants(source).get(name, set()))
     else:
         candidates = local_constants.get(name, set())
         if not candidates:
@@ -195,6 +204,7 @@ def _resolve_site_array_property(
         else sorted(SOURCE_ROOT.rglob("*.cs"))
     )
     property_body = None
+    class_source = None
     for candidate in candidate_files:
         source = candidate.read_text(encoding="utf-8")
         if not re.search(rf"\bclass\s+{re.escape(class_name)}\b", source):
@@ -203,13 +213,55 @@ def _resolve_site_array_property(
             for item in SITE_ARRAY_PROPERTY_PATTERN.finditer(source)
             if item.group("name") == property_name), None)
         if property_body is not None:
+            class_source = source
             break
-    if property_body is None:
+    if property_body is None or class_source is None:
         return [], [expression.strip()]
+
+    next_active = active | {identity}
+    property_expression = re.sub(r"\s+", "", property_body)
+    if property_expression.startswith("[") and property_expression.endswith("]"):
+        property_body = property_body.strip()[1:-1]
+        property_expression = re.sub(r"\s+", "", property_body)
+    clone = re.fullmatch(
+        r"\(string\[\]\)(?P<name>[A-Za-z_][A-Za-z0-9_]*)\.Clone\(\)",
+        property_expression,
+    )
+    if clone is not None:
+        array_name = clone.group("name")
+        array = next((item for item in SITE_ARRAY_PATTERN.finditer(class_source)
+                      if item.group("name") == array_name), None)
+        if array is None:
+            return [], [expression.strip()]
+        property_body = array.group("body")
+    else:
+        dictionary_keys = re.fullmatch(
+            r"(?P<name>[A-Za-z_][A-Za-z0-9_]*)\.Keys"
+            r"\.Order\(StringComparer\.Ordinal\)\.ToArray\(\)",
+            property_expression,
+        )
+        if dictionary_keys is not None:
+            dictionary_name = dictionary_keys.group("name")
+            assignment = re.search(
+                rf"\b{re.escape(dictionary_name)}\s*=\s*new\b",
+                class_source,
+            )
+            opening = -1 if assignment is None else class_source.find(
+                "{", assignment.end()
+            )
+            closing = -1 if opening < 0 else class_source.find("};", opening)
+            if closing < 0:
+                return [], [expression.strip()]
+            dictionary_body = class_source[opening:closing]
+            keys = [match.group("key").strip() for match in re.finditer(
+                r"\[\s*(?P<key>[^\]]+?)\s*\]\s*=", dictionary_body
+            )]
+            if not keys:
+                return [], [expression.strip()]
+            property_body = ",".join(keys)
 
     values: list[str] = []
     unresolved: list[str] = []
-    next_active = active | {identity}
     for item in _split_call_arguments(property_body):
         if item.startswith(".."):
             nested, missing = _resolve_site_array_property(
