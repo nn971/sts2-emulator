@@ -6,6 +6,41 @@ namespace Sts2Emulator.Core;
 /// </summary>
 public static class SemanticDrawChoiceV111
 {
+    internal static void ValidateBoundary(RunState run)
+    {
+        var combat = run.World?.Combat;
+        var choice = combat?.PendingChoice;
+        var draw = choice?.ControlledSemanticDraw;
+        var deck = combat?.SemanticDeck;
+        if (run.Phase != RunPhase.Combat ||
+            combat is not { IsPlayerTurn: true,
+                PendingKnowledgeDemonChoice: null } ||
+            (combat.AutomaticPipelineContinuation is not null &&
+             (choice is null ||
+              !PrototypeGameEngine.IsMayhemSemanticDrawContinuation(
+                  combat, choice))) ||
+            choice is not { ChoiceId: "controlled_semantic_draw",
+                ControlledSemanticDraw: not null,
+                OuterChoiceContinuation: not null,
+                ControlledTarget: null, ControlledGeneration: null,
+                ControlledDrawInsertion: null, ControlledPoolShuffle: null,
+                ControlledRandomCost: null, ControlledDrawCost: null,
+                ControlledCardShortlist: null,
+                ControlledRandomPileCard: null } ||
+            draw is null || draw.RemainingCount <= 0 || draw.EventDepth < 0 ||
+            deck is not { Mode: SemanticDeckStateV111.NatureMode,
+                Pending: not null })
+            throw new InvalidDataException(
+                "Card-effect draw is not at a source-reachable Nature boundary.");
+        SemanticDeckEngineV111.Validate(deck);
+        if (!SemanticDeckEngineV111.AllCardInstanceIds(deck)
+                .Order().SequenceEqual(combat.DrawPile.Order()) ||
+            SemanticDeckEngineV111.Inspect(deck) is null)
+            throw new InvalidDataException(
+                "Card-effect draw diverged from its semantic pile state.");
+        PrototypeStateInvariants.Validate(run);
+    }
+
     public static SemanticDrawDecisionV111 Select(
         SemanticDeckEventV111 pending, int selectedIndex)
     {

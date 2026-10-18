@@ -85,6 +85,47 @@ public sealed record SemanticCostDecisionV111(
 
 public static class SemanticCostChoiceV111
 {
+    internal static void ValidateDrawBoundary(RunState run)
+    {
+        var combat = run.World?.Combat;
+        var choice = combat?.PendingChoice;
+        var draw = choice?.ControlledSemanticDraw;
+        var cost = choice?.ControlledDrawCost;
+        var deck = combat?.SemanticDeck;
+        if (run.Phase != RunPhase.Combat ||
+            combat is not { IsPlayerTurn: true,
+                PendingKnowledgeDemonChoice: null } ||
+            (combat.AutomaticPipelineContinuation is not null &&
+             (choice is null ||
+              !PrototypeGameEngine.IsMayhemSemanticDrawContinuation(
+                  combat, choice))) ||
+            choice is not { ChoiceId: "controlled_draw_cost",
+                ControlledSemanticDraw: not null,
+                ControlledDrawCost: not null,
+                OuterChoiceContinuation: not null,
+                ControlledTarget: null, ControlledGeneration: null,
+                ControlledDrawInsertion: null, ControlledPoolShuffle: null,
+                ControlledRandomCost: null, ControlledCardShortlist: null,
+                ControlledRandomPileCard: null } ||
+            draw is null || cost is null || draw.RemainingCount < 0 ||
+            draw.EventDepth < 0 ||
+            draw.RemainingCount != cost.RemainingCount ||
+            draw.FromHandDraw != cost.FromHandDraw ||
+            draw.EventDepth != cost.EventDepth ||
+            deck is not { Mode: SemanticDeckStateV111.NatureMode,
+                Pending: null } ||
+            !PrototypeGameEngine.ValidateControlledDrawCost(
+                run.Player, combat, cost))
+            throw new InvalidDataException(
+                "Card-effect draw cost is not at a source-reachable Nature boundary.");
+        SemanticDeckEngineV111.Validate(deck);
+        if (!SemanticDeckEngineV111.AllCardInstanceIds(deck)
+                .Order().SequenceEqual(combat.DrawPile.Order()))
+            throw new InvalidDataException(
+                "Card-effect draw cost diverged from its semantic pile state.");
+        PrototypeStateInvariants.Validate(run);
+    }
+
     public static SemanticCostDecisionV111 Select(
         SemanticCostEventV111 pending, string eventId, int selectedCost)
     {
