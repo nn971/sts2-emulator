@@ -91,6 +91,10 @@ The supported event-choice sites are:
 - `relic_grab_bag.queue_shuffle.swap_index` and
   `relic_grab_bag.rarity.ticket` while acquiring Toy Box through a supported
   controlled event choice
+- `treasure.relic_grab_bag.model.index_draw` for Native Darv's Calling Bell
+  acquisition; it samples the three forced Common, Uncommon, and Rare relic
+  identities through the canonicalized Nature bag, preserving each request in
+  the event-choice prefix
 - `event.potion.fill_empty_slots.model`
 - `potion.uncommon_model.index_draw` for the Potion Courier event choice
 - `relic.acquisition.random_rare_card.model`,
@@ -118,7 +122,9 @@ Any other random site reached by the event option continues to fail closed.
 Other Native regional potion routes, post-reward random generation outside the
 modifier-curse site, other custom event reward effects,
 source-pool differences, native stream ownership and reference probabilities
-remain outside this boundary. The post-reward modifier-curse draw has a
+remain outside this boundary. The Calling Bell identity uses an exact Native
+bounded-index transform, while hidden-queue identity, source-pool completeness,
+and Native cursor parity remain open. The post-reward modifier-curse draw has a
 separate saved reward frame. It preserves completed player reward choices and
 extends the original event-choice transcript when resumed. For supported
 multi-draw event effects, the frame re-enters only the current effect from its

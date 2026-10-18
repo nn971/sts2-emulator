@@ -303,6 +303,7 @@ public static class StochasticSiteRegistryV111
         "event.reward.card_bundle.shuffle_swap_index",
         "relic_grab_bag.queue_shuffle.swap_index",
         "relic_grab_bag.rarity.ticket",
+        PrototypeNativeRelicGrabBag.NativeTreasureModelSiteId,
         "event.potion.fill_empty_slots.model",
         "reward.card_rarity.ticket",
         "reward.card_model.index_draw",

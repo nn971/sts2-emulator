@@ -7426,10 +7426,14 @@ public sealed record ReferenceNatureControlledEventChoiceSessionV111(
         ArgumentNullException.ThrowIfNull(initialNatureState);
         ReferenceNatureRunCursorV111.ValidateInitial(
             source, initialNatureState, "Event-choice");
+        var origin = NeedsNatureCallingBellBag(source, choiceId)
+            ? ReferenceNatureRunProjectionV111.CreateNatureReplayOrigin(
+                source, createRelicBagWhenMissing: true)
+            : source.Fork();
         var run = ControlledEventChoiceEngineV111.Begin(
-            source.Fork(), choiceId);
+            origin.Fork(), choiceId);
         var session = new ReferenceNatureControlledEventChoiceSessionV111(
-            CurrentSchemaId, source.Fork(), choiceId, run,
+            CurrentSchemaId, origin, choiceId, run,
             initialNatureState.Fork(), initialNatureState.Fork(), []);
         if (session.Complete)
             session = session with
@@ -7439,6 +7443,23 @@ public sealed record ReferenceNatureControlledEventChoiceSessionV111(
             };
         session.Validate();
         return session;
+    }
+
+    private static bool NeedsNatureCallingBellBag(
+        RunState source, string choiceId)
+    {
+        if (source.NativeRunRng is null ||
+            source.World is not { } world || world.Event is not
+                { EventId: NativeDarvEventV111.EventId } eventState ||
+            !PrototypeGameEngine.UsesNativeRegionalSystems(world) ||
+            !PrototypeContent.Events.TryGetValue(
+                eventState.EventId, out var definition))
+            return false;
+        return definition.Choices.FirstOrDefault(choice =>
+                choice.Id == choiceId)?.Effects.Any(effect =>
+                effect.Kind == PrototypeRunEffectKind.GainRelic &&
+                effect.RelicId == NativeDarvEventV111.CallingBellId)
+            == true;
     }
 
     public ReferenceNatureControlledEventChoiceSessionV111 Fork()
