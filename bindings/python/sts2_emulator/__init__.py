@@ -639,6 +639,37 @@ class State:
         return ReferenceNatureNativeEventGoldSession.from_wire(
             self.session, result["result"])
 
+    def begin_reference_nature_native_event_relic(
+            self, choice_id: str, nature_seed: int | None = None):
+        """Control Tezcatara's five Toy Box relic draws as one Native event choice."""
+        if self.session.capabilities.get(
+                "referenceNatureNativeEventRelicSessionSchemaId") != (
+                "sts2-v111-reference-nature-native-event-relic-session-v1"):
+            raise EmulatorError(
+                "Emulator does not expose ReferenceNature Native event relic sessions")
+        if not isinstance(choice_id, str) or not choice_id:
+            raise ValueError("choice_id must be a nonempty string")
+        site_ids = (
+            "relic_grab_bag.rarity.unit_float",
+            "treasure.relic_grab_bag.model.index_draw")
+        if not all(self.session.supports_reference_nature_site(
+                site_id, session="native_event_relic")
+                for site_id in site_ids):
+            raise EmulatorError(
+                "No ReferenceNature Native event relic session is advertised")
+        if (nature_seed is not None and
+                (not isinstance(nature_seed, int) or
+                 isinstance(nature_seed, bool) or nature_seed < 0 or
+                 nature_seed > 0xFFFFFFFFFFFFFFFF)):
+            raise ValueError("nature_seed must be an unsigned 64-bit integer")
+        payload = {"state_handle": self.handle, "choice_id": choice_id}
+        if nature_seed is not None:
+            payload["nature_seed"] = nature_seed
+        result = self.session.call(
+            "reference_nature_native_event_relic_begin", **payload)
+        return ReferenceNatureNativeEventRelicSession.from_wire(
+            self.session, result["result"])
+
     def begin_reference_nature_endless_conveyor_dish(
             self, action_id: str, nature_seed: int | None = None):
         """Begin Nature control of one weighted Conveyor roll-producing action."""
@@ -1733,6 +1764,80 @@ class ReferenceNatureNativeEventGoldSession:
 
     def release(self):
         return self.session.release_reference_nature_native_event_gold_many(
+            [self])
+
+
+@dataclass(frozen=True)
+class ReferenceNatureNativeEventRelicSession:
+    """Atomic Tezcatara Toy Box reward and ReferenceNature sampler cursor."""
+    session: "Session"
+    handle: str
+    fingerprint: str
+    state_handle: str | None
+    event_id: str
+    choice_id: str
+    site_id: str
+    run_phase: str
+    boundary: str
+    next_ordinal: int
+    pending: dict | None
+    decision_transcript: list
+    nature_sample_count: int
+
+    @classmethod
+    def from_wire(cls, session, payload):
+        if payload.get("schemaId") != (
+                "sts2-v111-reference-nature-native-event-relic-session-v1"):
+            raise EmulatorError(
+                "Unsupported ReferenceNature Native event relic session schema")
+        return cls(
+            session, payload["referenceNatureNativeEventRelicHandle"],
+            payload["fingerprint"], payload["stateHandle"],
+            payload["eventId"], payload["choiceId"], payload["siteId"],
+            payload["runPhase"], payload["boundary"],
+            payload["nextOrdinal"], payload["pending"],
+            payload["decisionTranscript"], payload["natureSampleCount"])
+
+    @property
+    def complete(self):
+        return self.boundary == "committed"
+
+    @property
+    def state(self):
+        if self.state_handle is None:
+            raise EmulatorError("Native event relic has not committed")
+        return State(self.session, self.state_handle)
+
+    def status(self):
+        result = self.session.call(
+            "reference_nature_native_event_relic_status",
+            reference_nature_native_event_relic_handle=self.handle)
+        return ReferenceNatureNativeEventRelicSession.from_wire(
+            self.session, result["result"])
+
+    def resolve_next(self):
+        """Sample one relic rarity or identity and commit after all five draws."""
+        result = self.session.call(
+            "reference_nature_native_event_relic_resolve_next",
+            reference_nature_native_event_relic_handle=self.handle,
+            fingerprint=self.fingerprint)
+        return ReferenceNatureNativeEventRelicSession.from_wire(
+            self.session, result["result"])
+
+    def fork(self):
+        result = self.session.call(
+            "reference_nature_native_event_relic_fork",
+            reference_nature_native_event_relic_handle=self.handle)
+        return ReferenceNatureNativeEventRelicSession.from_wire(
+            self.session, result["result"])
+
+    def save_snapshot(self):
+        return self.session.call(
+            "reference_nature_native_event_relic_save",
+            reference_nature_native_event_relic_handle=self.handle)["snapshot"]
+
+    def release(self):
+        return self.session.release_reference_nature_native_event_relic_many(
             [self])
 
 
@@ -2921,6 +3026,7 @@ class Session:
             "event_shuffle": "referenceNatureNativeEventShuffleSiteIds",
             "native_shuffle": "referenceNatureNativeEventShuffleSiteIds",
             "native_event_gold": "referenceNatureNativeEventGoldSiteIds",
+            "native_event_relic": "referenceNatureNativeEventRelicSiteIds",
             "endless_conveyor": "referenceNatureEndlessConveyorSiteIds",
             "glory_reflections": "referenceNatureGloryReflectionsSiteIds",
             "infested_automaton": "referenceNatureInfestedAutomatonSiteIds",
@@ -2932,7 +3038,7 @@ class Session:
         }
         if session != "any" and session not in fields:
             raise ValueError(
-                "session must be semantic, run_action, event_choice, ancient_offer, neow_offer, trash_heap, tablet_of_truth, trial, event_shuffle, native_shuffle, native_event_gold, endless_conveyor, glory_reflections, infested_automaton, punch_off_reward, punch_off_fight, merchant, treasure, combat_reward, or any")
+                "session must be semantic, run_action, event_choice, ancient_offer, neow_offer, trash_heap, tablet_of_truth, trial, event_shuffle, native_shuffle, native_event_gold, native_event_relic, endless_conveyor, glory_reflections, infested_automaton, punch_off_reward, punch_off_fight, merchant, treasure, combat_reward, or any")
         coverage = self.stochastic_session_coverage
         if not isinstance(coverage, dict) or coverage.get("schemaId") != (
                 "sts2-v111-stochastic-session-coverage-v1"):
@@ -3411,6 +3517,17 @@ class Session:
         return ReferenceNatureNativeEventGoldSession.from_wire(
             self, result["result"])
 
+    def load_reference_nature_native_event_relic_snapshot(self, snapshot: str):
+        if self.capabilities.get(
+                "referenceNatureNativeEventRelicSessionSchemaId") != (
+                "sts2-v111-reference-nature-native-event-relic-session-v1"):
+            raise EmulatorError(
+                "Emulator does not expose ReferenceNature Native event relic sessions")
+        result = self.call(
+            "reference_nature_native_event_relic_load", snapshot=snapshot)
+        return ReferenceNatureNativeEventRelicSession.from_wire(
+            self, result["result"])
+
     def release_reference_nature_native_event_gold_many(self, sessions):
         sessions = list(sessions)
         if any(item.session is not self for item in sessions):
@@ -3419,6 +3536,16 @@ class Session:
         return self.call(
             "reference_nature_native_event_gold_release_many",
             reference_nature_native_event_gold_handles=[
+                item.handle for item in sessions])["released"]
+
+    def release_reference_nature_native_event_relic_many(self, sessions):
+        sessions = list(sessions)
+        if any(item.session is not self for item in sessions):
+            raise ValueError(
+                "ReferenceNature Native event relic handle belongs to another session")
+        return self.call(
+            "reference_nature_native_event_relic_release_many",
+            reference_nature_native_event_relic_handles=[
                 item.handle for item in sessions])["released"]
 
     def load_reference_nature_endless_conveyor_snapshot(self, snapshot: str):

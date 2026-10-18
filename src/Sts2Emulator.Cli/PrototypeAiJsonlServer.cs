@@ -107,6 +107,12 @@ internal static class PrototypeAiJsonlServer
         var referenceNatureNativeEventGoldRunStateHandles =
             new Dictionary<string, string>(StringComparer.Ordinal);
         long nextReferenceNatureNativeEventGoldHandle = 1;
+        var referenceNatureNativeEventRelicStates =
+            new Dictionary<string, ReferenceNatureNativeEventRelicSessionV111>(
+                StringComparer.Ordinal);
+        var referenceNatureNativeEventRelicRunStateHandles =
+            new Dictionary<string, string>(StringComparer.Ordinal);
+        long nextReferenceNatureNativeEventRelicHandle = 1;
         var referenceNatureEndlessConveyorStates =
             new Dictionary<string, ReferenceNatureEndlessConveyorSessionV111>(
                 StringComparer.Ordinal);
@@ -415,6 +421,30 @@ internal static class PrototypeAiJsonlServer
                 ? session
                 : throw new InvalidOperationException(
                     "Unknown ReferenceNature native event gold session handle: " +
+                    handle);
+        }
+
+        string StoreReferenceNatureNativeEventRelic(
+            ReferenceNatureNativeEventRelicSessionV111 session)
+        {
+            var handle = "er" + nextReferenceNatureNativeEventRelicHandle++;
+            referenceNatureNativeEventRelicStates.Add(handle, session.Fork());
+            if (session.Complete)
+                referenceNatureNativeEventRelicRunStateHandles.Add(handle,
+                    Store(session.Run.Fork()));
+            return handle;
+        }
+
+        ReferenceNatureNativeEventRelicSessionV111
+            RequireReferenceNatureNativeEventRelic(JsonElement request)
+        {
+            var handle = RequiredString(request,
+                "reference_nature_native_event_relic_handle");
+            return referenceNatureNativeEventRelicStates.TryGetValue(handle,
+                    out var session)
+                ? session
+                : throw new InvalidOperationException(
+                    "Unknown ReferenceNature native event relic session handle: " +
                     handle);
         }
 
@@ -1153,6 +1183,45 @@ internal static class PrototypeAiJsonlServer
                 pending = law is null ? null : new
                 {
                     kind = "native_event_generated_gold_random_choice",
+                    boundaryFingerprint = law.EventId,
+                    chanceLaw = law,
+                    probabilityStatus = law.ProbabilityStatus
+                },
+                decisionTranscript = session.DecisionTranscript,
+                natureProvider = ReferenceNatureV111.ProviderId,
+                natureSampleCount = session.NatureState.SampleCount,
+                probabilityStatus = ChanceLawV111.UnverifiedStatus
+            };
+        }
+
+        object ReferenceNatureNativeEventRelicResult(
+            ReferenceNatureNativeEventRelicSessionV111 session,
+            string handle, string? parent = null)
+        {
+            var law = session.PendingLaw;
+            var choiceId = session.Action.ReadPayload<EventChoicePayload>()
+                .ChoiceId;
+            return new
+            {
+                ok = true,
+                schemaId =
+                    ReferenceNatureNativeEventRelicSessionV111.CurrentSchemaId,
+                referenceNatureNativeEventRelicHandle = handle,
+                stateHandle = referenceNatureNativeEventRelicRunStateHandles
+                    .GetValueOrDefault(handle),
+                parent,
+                fingerprint = session.Fingerprint,
+                runFingerprint = CanonicalJson.Sha256(session.Run),
+                siteId = law?.SiteId ??
+                    PrototypeNativeRelicGrabBag.NativeTreasureModelSiteId,
+                eventId = NativeAncientRewardsV111.TezcataraId,
+                choiceId,
+                runPhase = session.Run.Phase.ToString(),
+                boundary = session.Complete ? "committed" : "nature",
+                nextOrdinal = session.NextOrdinal,
+                pending = law is null ? null : new
+                {
+                    kind = "native_event_toy_box_relic_draw",
                     boundaryFingerprint = law.EventId,
                     chanceLaw = law,
                     probabilityStatus = law.ProbabilityStatus
@@ -2138,6 +2207,10 @@ internal static class PrototypeAiJsonlServer
                     .TryGetValue(handle, out var nativeEventGoldSession) =>
                     ReferenceNatureNativeEventGoldResult(
                         nativeEventGoldSession, handle),
+                "native_event_relic" when referenceNatureNativeEventRelicStates
+                    .TryGetValue(handle, out var nativeEventRelicSession) =>
+                    ReferenceNatureNativeEventRelicResult(
+                        nativeEventRelicSession, handle),
                 "endless_conveyor" when referenceNatureEndlessConveyorStates
                     .TryGetValue(handle, out var endlessConveyorSession) =>
                     ReferenceNatureEndlessConveyorResult(
@@ -2746,6 +2819,9 @@ internal static class PrototypeAiJsonlServer
                                     .CurrentSchemaId,
                             referenceNatureNativeEventGoldSessionSchemaId =
                                 ReferenceNatureNativeEventGoldSessionV111
+                                    .CurrentSchemaId,
+                            referenceNatureNativeEventRelicSessionSchemaId =
+                                ReferenceNatureNativeEventRelicSessionV111
                                     .CurrentSchemaId,
                             referenceNatureProviderId =
                                 ReferenceNatureV111.ProviderId,
@@ -7648,6 +7724,115 @@ internal static class PrototypeAiJsonlServer
                                     element.GetString()!))
                                 released++;
                             referenceNatureNativeEventGoldRunStateHandles.Remove(
+                                element.GetString()!);
+                        }
+                        Write(new { requestId, ok = true, released });
+                        break;
+                    }
+
+                    case "reference_nature_native_event_relic_begin":
+                    {
+                        var source = RequireState(request);
+                        var choiceId = RequiredString(request, "choice_id");
+                        var action = GameAction.Create("event_choice",
+                            new EventChoicePayload(choiceId));
+                        var seed = OptionalULong(request, "nature_seed");
+                        var session = seed is { } natureSeed
+                            ? ReferenceNatureNativeEventRelicSessionV111.Begin(
+                                source, action, natureSeed)
+                            : ReferenceNatureNativeEventRelicSessionV111.Begin(
+                                source, action);
+                        var handle = StoreReferenceNatureNativeEventRelic(session);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureNativeEventRelicResult(
+                                session, handle) });
+                        break;
+                    }
+
+                    case "reference_nature_native_event_relic_status":
+                    {
+                        var handle = RequiredString(request,
+                            "reference_nature_native_event_relic_handle");
+                        var session = RequireReferenceNatureNativeEventRelic(request);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureNativeEventRelicResult(
+                                session, handle) });
+                        break;
+                    }
+
+                    case "reference_nature_native_event_relic_resolve_next":
+                    {
+                        var parentHandle = RequiredString(request,
+                            "reference_nature_native_event_relic_handle");
+                        var session = RequireReferenceNatureNativeEventRelic(request);
+                        if (session.Fingerprint != RequiredString(request,
+                                "fingerprint"))
+                            throw new InvalidOperationException(
+                                "Stale ReferenceNature native event relic fingerprint.");
+                        var next = session.ResolveNext();
+                        var handle = StoreReferenceNatureNativeEventRelic(next);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureNativeEventRelicResult(
+                                next, handle, parentHandle) });
+                        break;
+                    }
+
+                    case "reference_nature_native_event_relic_fork":
+                    {
+                        var parentHandle = RequiredString(request,
+                            "reference_nature_native_event_relic_handle");
+                        var next = RequireReferenceNatureNativeEventRelic(request)
+                            .Fork();
+                        var handle = StoreReferenceNatureNativeEventRelic(next);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureNativeEventRelicResult(
+                                next, handle, parentHandle) });
+                        break;
+                    }
+
+                    case "reference_nature_native_event_relic_save":
+                    {
+                        var session = RequireReferenceNatureNativeEventRelic(request);
+                        Write(new { requestId, ok = true,
+                            schemaId =
+                                ReferenceNatureNativeEventRelicSessionV111.CurrentSchemaId,
+                            snapshot =
+                                ReferenceNatureNativeEventRelicSessionV111.Save(
+                                    session) });
+                        break;
+                    }
+
+                    case "reference_nature_native_event_relic_load":
+                    {
+                        var session =
+                            ReferenceNatureNativeEventRelicSessionV111.Restore(
+                                RequiredString(request, "snapshot"));
+                        var handle = StoreReferenceNatureNativeEventRelic(session);
+                        Write(new { requestId, ok = true, result =
+                            ReferenceNatureNativeEventRelicResult(
+                                session, handle) });
+                        break;
+                    }
+
+                    case "reference_nature_native_event_relic_release_many":
+                    {
+                        if (!request.TryGetProperty(
+                                "reference_nature_native_event_relic_handles",
+                                out var handles) ||
+                            handles.ValueKind != JsonValueKind.Array)
+                            throw new ArgumentException(
+                                "reference_nature_native_event_relic_handles must be an array.");
+                        var released = 0;
+                        foreach (var element in handles.EnumerateArray())
+                        {
+                            if (element.ValueKind != JsonValueKind.String ||
+                                string.IsNullOrWhiteSpace(element.GetString()))
+                                throw new ArgumentException(
+                                    "Invalid ReferenceNature native event relic handle.");
+                            if (referenceNatureNativeEventRelicStates.Remove(
+                                    element.GetString()!))
+                                released++;
+                            referenceNatureNativeEventRelicRunStateHandles.Remove(
                                 element.GetString()!);
                         }
                         Write(new { requestId, ok = true, released });

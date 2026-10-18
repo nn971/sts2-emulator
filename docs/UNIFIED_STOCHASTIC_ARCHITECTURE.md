@@ -140,6 +140,8 @@ Pael's Legion acquisition uses the existing ReferenceNature run-action and event
 
 `ReferenceNatureNativeEventGoldSessionV111` is the existing atomic configured Native Event-node replay for generated gold, Stone of All Time's potion-slot choice, and The Future of Potions' ordered card-type offers. It controls only those declared request sites; event selection and other requests keep their existing providers, and unsupported branches fail closed. Sunken Treasury and Jungle Maze consume primary and secondary gold laws in order; Future of Potions consumes one law per owned potion in slot order; every other supported branch consumes one. The session commits the event-entry result with the Nature cursor after replay completes. Exact Native grid mappings are `SOURCE_VERIFIED` for the declared formulas; legacy fallbacks, event-pool completeness, stream attribution, seed frequencies and Native cursor parity remain open. See the [Native event-entry session contract](REFERENCE_NATURE_NATIVE_EVENT_GOLD_D3.md).
 
+`ReferenceNatureNativeEventRelicSessionV111` controls the five rarity and identity pulls when a legal configured Native Tezcatara choice grants Toy Box. It replays the ordinary event-choice action, validates each sorted relic support against the canonical remaining bag, and commits the Wax relic Reward with the Nature cursor after all ten typed requests resolve. Rarity threshold and bounded-index transforms are `SOURCE_VERIFIED` on their declared requests; hidden queue identity probabilities, source-pool completeness, and Native cursor parity remain open. Legacy Toy Box rewards remain on the existing event-choice continuation. See the [Native Toy Box event contract](REFERENCE_NATURE_NATIVE_EVENT_RELIC_D3.md).
+
 Unconfigured legacy regional Unknown-node entry is also an atomic ReferenceNature run-action boundary when the run has no `NativeRunRng`. It reuses the saved typed 1000-way emulator ticket and ordinary room resolver, including the forced-Event draw and the evolving odds update. This equal ticket law approximates the pinned Native unit-float behavior and remains `UNVERIFIED`; configured Native streams and cursor parity remain outside the session.
 
 Infested Automaton’s `study` and `touch_core` choices each expose a choice-conditioned card-index law and one-draw ReferenceNature session. The session replays the ordinary event action and commits its mechanics and sampler cursor together while preserving the Native event cursor. Its bounded-index transform is `SOURCE_VERIFIED` on the declared support, which is the implemented Silent reward pool; source pool fidelity, seed frequencies, and seeded result/cursor parity remain open.
@@ -192,12 +194,13 @@ the Mayhem pipeline advances. This integration does not claim source-calibrated
 draw probabilities.
 `ReferenceNatureMerchantSessionV111`,
 `ReferenceNatureTreasureSessionV111`,
-`ReferenceNatureCombatRewardSessionV111`, and
-`ReferenceNatureNativeEventGoldSessionV111` provide serialized continuations
+`ReferenceNatureCombatRewardSessionV111`,
+`ReferenceNatureNativeEventGoldSessionV111`, and
+`ReferenceNatureNativeEventRelicSessionV111` provide serialized continuations
 and use the shared law-to-source mapping. Their opening projections sort the existing
 relic bag queues so Native's committed hidden queue order is not retained in
 Nature snapshots. Merchant and Treasure sessions seed sorted eligible rarity
-sets if the source run has no bag, while Native event-entry replay preserves an absent bag. Nature-owned sets
+sets if the source run has no bag, while the Native event-gold entry replay preserves an absent bag and the Toy Box event-relic replay creates a canonical bag when needed. Nature-owned sets
 serialize an optional `NatureUnordered` tag in the v3 snapshot schema, while
 Native bags omit the field and keep their current snapshot shape. The merchant,
 Treasure, and combat reward sessions do not model Native cursor advancement;
