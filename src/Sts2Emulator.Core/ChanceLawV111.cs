@@ -4077,6 +4077,9 @@ public static partial class ChanceLawEngineV111
         ArgumentException.ThrowIfNullOrWhiteSpace(streamId);
         ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
         ArgumentException.ThrowIfNullOrWhiteSpace(boundary);
+        if (!NativeBoundedIntegerLawSites.ContainsKey(siteId))
+            throw new NotSupportedException(
+                $"Native bounded-integer law does not support site '{siteId}'.");
         if (supportCount <= 0)
             throw new ArgumentOutOfRangeException(nameof(supportCount));
         if (ordinal < 0)
