@@ -936,6 +936,55 @@ public static partial class ChanceLawEngineV111
             outcomes);
     }
 
+    /// <summary>
+    /// Query the Glory map's single Native bounded draw for a rest-room quota.
+    /// The exact NextInt(2) transform is source-verified independently of map
+    /// generation order, seed derivation, and cursor parity.
+    /// </summary>
+    public static ChanceLawV111 QueryLaterActGloryRestCount(int ordinal)
+    {
+        if (ordinal != 0)
+            throw new ArgumentOutOfRangeException(
+                nameof(ordinal),
+                "Glory rest-quota selection has one site-local draw at ordinal zero.");
+
+        const int act = 3;
+        const int restCountOffset = 5;
+        const int supportCount = 2;
+        const string ownerId = "map:act:3";
+        var siteId = PrototypeNativeLaterActMap.GloryRestCountSiteId;
+        var indexWeights = NativeNextIntGridWeights(supportCount);
+        var outcomes = indexWeights.Select((weight, index) =>
+            new ChanceLawOutcomeV111(
+                $"rest_quota:{restCountOffset + index}", weight)).ToArray();
+        var eventId = CanonicalJson.Sha256(new
+        {
+            boundary = siteId,
+            ownerId,
+            ordinal
+        });
+        var conditioningFingerprint = CanonicalJson.Sha256(new
+        {
+            siteId,
+            act,
+            ownerId,
+            supportCount,
+            orderedRestCounts = new[] { 5, 6 }
+        });
+
+        return Create(
+            eventId,
+            siteId,
+            "bounded_integer",
+            ownerId,
+            ordinal,
+            NativeRandomIndexConditioningPolicyId,
+            conditioningFingerprint,
+            NativeBoundedIndexSourceVerifiedProvenance,
+            outcomes,
+            ChanceLawV111.SourceVerifiedStatus);
+    }
+
     public static ChanceLawV111 QueryLaterActDarvHiveAssignment(int ordinal)
     {
         var siteId = ExperimentalSilentThreeActRouteV111

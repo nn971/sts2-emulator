@@ -147,6 +147,21 @@ This law describes the raw pool index before the first-undiscovered-boss
 preference may replace the selected boss. The equal-index model is
 `UNVERIFIED`, and later-act encounter preparation remains source-owned.
 
+Glory's later-act map rest-count draw has a separate read-only Native law:
+
+```python
+law = state.query_chance_law(
+    "map.later_act.glory_rest_count.index_draw",
+    ordinal=0,
+    support_count=2,
+)
+```
+
+The exact Native `NextInt(2)` law returns rest quotas 5 and 6 and is
+`SOURCE_VERIFIED` under the uniform 53-bit input-grid model. The query does
+not read the map state, seed, or cursor, and does not make map generation
+resumable.
+
 Later-act Ancient assignment has read-only conditional laws for the local
 Ancient choice and shared Darv partition. Supply each call's declared ordinal
 on the legacy `event` stream and declare every earlier condition. These

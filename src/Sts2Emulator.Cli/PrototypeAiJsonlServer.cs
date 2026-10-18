@@ -2892,6 +2892,28 @@ internal static class PrototypeAiJsonlServer
                             });
                             break;
                         }
+                        if (siteId == PrototypeNativeLaterActMap
+                                .GloryRestCountSiteId)
+                        {
+                            RejectChanceLawQueryParameters(
+                                request, "support_count");
+                            var supportCount = OptionalInt(
+                                request, "support_count");
+                            if (supportCount is not null && supportCount != 2)
+                                throw new ArgumentException(
+                                    "Glory rest-count support_count must be two.");
+                            law = ChanceLawEngineV111
+                                .QueryLaterActGloryRestCount(ordinal);
+                            Write(new
+                            {
+                                requestId,
+                                ok = true,
+                                chanceLawSchemaId =
+                                    ChanceLawV111.CurrentSchemaId,
+                                law
+                            });
+                            break;
+                        }
                         if (siteId is "run.encounter.overgrowth_boss.index_draw"
                             or PrototypeNativeUnderdocks.BossEncounterIndexSiteId)
                         {
