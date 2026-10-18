@@ -1642,6 +1642,31 @@ public static partial class ChanceLawEngineV111
             outcomes, ChanceLawV111.SourceVerifiedStatus);
     }
 
+    /// <summary>
+    /// Query a Native encounter card-model index over the caller-declared
+    /// remaining pool size. The pool and reward prefix are not inspected.
+    /// </summary>
+    public static ChanceLawV111 QueryNativeEncounterCardModelIndex(
+        string ownerId, int supportCount, int ordinal)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
+        if (supportCount <= 0)
+            throw new ArgumentOutOfRangeException(nameof(supportCount));
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+
+        const string siteId = "card_rarity.encounter_model.index_draw";
+        var request = new RandomIndexRequestV111(
+            siteId, NativePlayerRngV111.RewardsStreamId, ownerId, ordinal,
+            Enumerable.Range(0, supportCount).ToArray());
+        var eventId = CanonicalJson.Sha256(new
+        {
+            boundary = "native-encounter-card-model-index",
+            request
+        });
+        return QueryRandomIndex(eventId, request);
+    }
+
     private static ChanceLawV111 CreateDeclaredUnverifiedIndexLaw(
         string siteId, string ownerId, int ordinal,
         string conditioningPolicyId, object conditioning,

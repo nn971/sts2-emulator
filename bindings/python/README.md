@@ -189,6 +189,22 @@ relic_rarity_law = state.query_chance_law(
 It counts the strict source thresholds at 0.50 and 0.83 without exposing
 remaining relic queues. The Treasure identity-mixture query is separate.
 
+Encounter card-model selection also has a direct bounded-index law. Declare
+the remaining support size, owner, and `player.rewards` ordinal:
+
+```python
+card_model_law = state.query_chance_law(
+    "card_rarity.encounter_model.index_draw",
+    owner_id="act:1:room:Combat:pick:0:rarity:Common",
+    ordinal=declared_rewards_stream_ordinal,
+    support_count=remaining_card_model_count,
+)
+```
+
+The law gives exact Native index masses over that declared support. It does
+not verify the source-derived card pool or reward prefix, stream assignment,
+or cursor parity.
+
 The fixed Act 1 boss pools have read-only law queries. Each returns
 equal-weight outcomes identified by encounter ID; legacy seed-to-index
 distributions and Native cursor parity remain `UNVERIFIED`:

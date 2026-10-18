@@ -2846,6 +2846,32 @@ internal static class PrototypeAiJsonlServer
                             break;
                         }
                         if (siteId ==
+                            "card_rarity.encounter_model.index_draw")
+                        {
+                            RejectChanceLawQueryParameters(
+                                request, "owner_id", "support_count");
+                            var ownerId = OptionalString(
+                                request, "owner_id") ??
+                                throw new ArgumentException(
+                                    "Encounter card-model index law requires owner_id.");
+                            var supportCount = OptionalInt(
+                                request, "support_count") ??
+                                throw new ArgumentException(
+                                    "Encounter card-model index law requires support_count.");
+                            law = ChanceLawEngineV111
+                                .QueryNativeEncounterCardModelIndex(
+                                    ownerId, supportCount, ordinal);
+                            Write(new
+                            {
+                                requestId,
+                                ok = true,
+                                chanceLawSchemaId =
+                                    ChanceLawV111.CurrentSchemaId,
+                                law
+                            });
+                            break;
+                        }
+                        if (siteId ==
                                 "potion_factory.rarity_roll.unit_float" &&
                             (OptionalString(request, "owner_id") is not null ||
                              OptionalString(request, "stream_id") is not null))
