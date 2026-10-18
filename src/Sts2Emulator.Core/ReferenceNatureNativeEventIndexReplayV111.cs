@@ -208,11 +208,10 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
                             return true;
                         return isRepyRelicShuffle &&
                             request.SiteId ==
-                                "event.war_historian_repy.potion_offer.index_draw" &&
-                            request.OwnerId is
-                                "event:war_historian_repy:potion_offer:0" or
-                                "event:war_historian_repy:potion_offer:1";
-                    });
+                                "event.war_historian_repy.potion_offer.index_draw";
+                    },
+                    indexFallbackProvider: isRepyRelicShuffle
+                        ? new NativeRandomIndexProviderV111() : null);
             if (replay.Suspended || replay.Run is not { } completed)
                 throw new InvalidDataException(
                     "Scripted Native event shuffle action did not consume its complete typed index prefix.");
