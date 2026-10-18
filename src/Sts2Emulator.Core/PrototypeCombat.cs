@@ -16458,6 +16458,14 @@ public sealed partial class PrototypeGameEngine
                 throw new NotSupportedException(
                     "UNSUPPORTED_SEMANTIC_DECK site=combat.draw.CardDrawn " +
                     "operation=nested_choice_continuation");
+
+            // CardDrawn mechanics may update either physical pile. Continue
+            // from the committed zone owner rather than retaining a second
+            // pre-hook copy in these local working lists.
+            SemanticDrawPileAdapterV111.ValidateSynchronized(
+                combat, requireIdle: true);
+            draw = combat.DrawPile.ToList();
+            discard = combat.DiscardPile.ToList();
         }
 
         return new PrototypeDrawCardsResult(
