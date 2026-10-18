@@ -136,6 +136,8 @@
 
 **S6 Atomic Ancient-offer session increment (2026-10-17):** `ReferenceNatureAncientOfferSessionV111` now samples direct choices for Orobas, Pael and Tezcatara and conditioned Fisher-Yates swaps for Nonupeipe, Tanx and Vakuu in one atomic ReferenceNature continuation. It holds intermediate outcomes and the sampler cursor within the session, then replays the completed transcript through the existing event-specific provider and publishes the run and cursor together. Fork, save, restore, JSONL capability/session coverage and the Python binding use the versioned session schema `sts2-v111-reference-nature-ancient-offer-session-v1`. The native event cursor remains unchanged under `scripted-v111`; probability provenance remains `UNVERIFIED`, and no native reference mod or Fidelity Inspector work is included.
 
+**S3 hand-return shuffle paired-commit increment (2026-10-18):** `SemanticDrawPileAdapterV111.CommitHandReturnShuffle` now validates that returned identities match the committed hand, applies the resolved shuffle order to the Native or Nature semantic deck, and publishes the new draw pile and empty hand together. Ordinary combat effects and the controlled pool-shuffle continuation share this operation; their duplicate provider-update and zone-commit steps are removed. The caller still owns shuffle resolution and after-shuffle effects. Broader provider/zone migration and cross-provider equivalence remain open.
+
 ## S1 precise design
 
 Implement a **read-only, outcome-blind** Chance Law query in `Sts2Emulator.Core` with:

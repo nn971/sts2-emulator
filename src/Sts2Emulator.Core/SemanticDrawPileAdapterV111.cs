@@ -556,6 +556,41 @@ public static class SemanticDrawPileAdapterV111
     }
 
     /// <summary>
+    /// Commits a hand-return shuffle as one provider and zone transition.
+    /// The supplied physical order is already resolved by the caller; this
+    /// boundary validates that the incoming identities are exactly the
+    /// current hand, commits the matching provider order, and empties Hand.
+    /// </summary>
+    internal static CombatState CommitHandReturnShuffle(
+        CombatState combat,
+        IReadOnlyList<long> shuffledPhysicalDrawPile,
+        IReadOnlyCollection<long> returnedHandCardInstanceIds)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(shuffledPhysicalDrawPile);
+        ArgumentNullException.ThrowIfNull(returnedHandCardInstanceIds);
+        ValidateSynchronized(combat, requireIdle: true);
+
+        var shuffled = shuffledPhysicalDrawPile.ToArray();
+        var returned = returnedHandCardInstanceIds.ToArray();
+        if (!returned.SequenceEqual(combat.Hand) ||
+            returned.Distinct().Count() != returned.Length)
+            throw new InvalidDataException(
+                "Hand-return shuffle identities differ from the committed hand.");
+
+        var semantic = CommitHandReturnSemanticShuffle(
+            combat.SemanticDeck, shuffled, returned);
+        var nextZones = combat.Mechanics.CardZones.WithZoneChanges(
+            new Dictionary<PrototypeCardZone, long[]>
+            {
+                [PrototypeCardZone.DrawPile] = shuffled,
+                [PrototypeCardZone.Hand] = []
+            });
+        return ApplyDrawPileShuffle(
+            combat, shuffled, returned, nextZones, semantic);
+    }
+
+    /// <summary>
     /// Publishes a physical mutation whose provider-side transition was
     /// already committed by a typed semantic operation. Correspondence is
     /// validated before the combined state is returned.
@@ -774,28 +809,40 @@ public static class SemanticDrawPileAdapterV111
             replacementCardInstanceId, publiclyKnown: false);
     }
 
-    internal static SemanticDeckStateV111? CommitSemanticDrawPileShuffle(
-        CombatState combat, IReadOnlyCollection<long> shuffledPhysicalDrawPile,
-        IReadOnlyCollection<long> cardsMovedIntoDrawPile)
+    private static SemanticDeckStateV111? CommitHandReturnSemanticShuffle(
+        SemanticDeckStateV111? semantic,
+        IReadOnlyList<long> shuffledPhysicalDrawPile,
+        IReadOnlyCollection<long> returnedHandCardInstanceIds)
     {
-        var semantic = combat.SemanticDeck;
         if (semantic is null) return null;
-        ValidateSynchronized(combat, requireIdle: true);
-        if (semantic.Mode != SemanticDeckStateV111.NativeMode)
+        if (semantic.Mode is not (SemanticDeckStateV111.NativeMode or
+            SemanticDeckStateV111.NatureMode))
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.hand_return.draw_shuffle " +
-                "operation=requires_native_exact_deck");
-        var added = cardsMovedIntoDrawPile.ToArray();
-        if (added.Distinct().Count() != added.Length ||
-            added.Any(id => SemanticDeckEngineV111.AllCardInstanceIds(semantic)
+                "operation=unsupported_provider_mode");
+        var existing = SemanticDeckEngineV111.AllCardInstanceIds(semantic)
+            .ToHashSet();
+        var returned = returnedHandCardInstanceIds.ToArray();
+        if (returned.Distinct().Count() != returned.Length ||
+            returned.Any(id => existing
                 .Contains(id)))
             throw new InvalidDataException(
-                "Native draw-pile shuffle received duplicate incoming cards.");
-        foreach (var id in added)
+                "Hand-return shuffle received duplicate incoming identities.");
+        foreach (var id in returned)
             semantic = SemanticDeckEngineV111.PlaceBottom(
                 semantic, id, publiclyKnown: false);
-        return SemanticDeckEngineV111.CommitNativeShuffle(
-            semantic, shuffledPhysicalDrawPile.Reverse().ToArray());
+        var topFirst = shuffledPhysicalDrawPile.Reverse().ToArray();
+        return semantic.Mode switch
+        {
+            SemanticDeckStateV111.NativeMode =>
+                SemanticDeckEngineV111.CommitNativeShuffle(
+                    semantic, topFirst),
+            SemanticDeckStateV111.NatureMode =>
+                SemanticDeckEngineV111.CommitControlledNatureShuffle(
+                    semantic, topFirst),
+            _ => throw new InvalidDataException(
+                "Hand-return shuffle provider mode changed during commit.")
+        };
     }
 
     internal static bool IsOrderedSubsequence(

@@ -125,26 +125,6 @@ public sealed partial class PrototypeGameEngine
         return Math.Min(Math.Max(0, count), poolCount);
     }
 
-    private static SemanticDeckStateV111? CommitSemanticHandReturnShuffle(
-        CombatState combat, long[] shuffledPhysicalDrawPile,
-        long[] returnedHandIds)
-    {
-        var semantic = combat.SemanticDeck;
-        if (semantic is null) return null;
-        SemanticDeckEngineV111.Validate(semantic);
-        if (semantic.Mode == SemanticDeckStateV111.NativeMode)
-            return SemanticDrawPileAdapterV111.CommitSemanticDrawPileShuffle(
-                combat, shuffledPhysicalDrawPile, returnedHandIds);
-        if (semantic.Mode != SemanticDeckStateV111.NatureMode)
-            throw new InvalidDataException(
-                "Unsupported semantic deck mode for hand-return shuffle.");
-        foreach (var cardId in returnedHandIds)
-            semantic = SemanticDeckEngineV111.PlaceBottom(
-                semantic, cardId, publiclyKnown: false);
-        return SemanticDeckEngineV111.CommitControlledNatureShuffle(
-            semantic, shuffledPhysicalDrawPile.Reverse().ToArray());
-    }
-
     private static bool TryMakeControlledPoolShuffleChoice(
         CombatState combat, PrototypeQueuedOperation operation,
         long? sourceCardInstanceId,
@@ -481,17 +461,8 @@ public sealed partial class PrototypeGameEngine
             combat = combat with { PendingChoice = null };
             var shuffledDrawPile = ApplyPerfectFitShuffleOrder(
                 combat, shuffled);
-            var semanticDeck = CommitSemanticHandReturnShuffle(
+            combat = SemanticDrawPileAdapterV111.CommitHandReturnShuffle(
                 combat, shuffledDrawPile, returnedHandIds);
-            var nextZones = combat.Mechanics.CardZones.WithZoneChanges(
-                new Dictionary<PrototypeCardZone, long[]>
-                {
-                    [PrototypeCardZone.DrawPile] = shuffledDrawPile,
-                    [PrototypeCardZone.Hand] = []
-                });
-            combat = SemanticDrawPileAdapterV111.ApplyDrawPileShuffle(
-                combat, shuffledDrawPile, returnedHandIds,
-                nextZones, semanticDeck);
             var afterShuffleInsertions =
                 ControlledAfterShuffleRelicInsertions(combat);
             if (afterShuffleInsertions.Length > 0 &&
