@@ -12,9 +12,9 @@ Counts by direct API family:
 
 Direct ad hoc entropy API expressions in Core: **0**. The scan covers direct System.Random typed or target-typed construction/shared-instance use and RandomNumberGenerator APIs; it does not prove the absence of indirect or aliased entropy sources.
 
-Explicit typed random-request constructions: **100**; site IDs resolved to registry: **60**; dynamic or missing IDs: **40**; static IDs absent from registry: **0**.
+Explicit typed random-request constructions: **100**; site IDs resolved to registry: **61**; dynamic or missing IDs: **39**; static IDs absent from registry: **0**.
 
-Expression-origin classes: `finite_site_id_alternatives` **7**, `guarded_finite_site_id_alternatives` **6**, `identifier_forwarded_or_local` **36**, `member_forwarded` **4**, `static_site_id` **47**. Forwarded identifiers and members remain manual trace items; these labels do not claim their caller chain is resolved.
+Expression-origin classes: `finite_site_id_alternatives` **7**, `guarded_finite_site_id_alternatives` **7**, `identifier_forwarded_or_local` **36**, `member_forwarded` **3**, `static_site_id` **47**. Forwarded identifiers and members remain manual trace items; these labels do not claim their caller chain is resolved.
 
 | File:line | Request type | Site ID expression | Origin | Resolution | Resolved site ID | Registry | Matrix |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -53,7 +53,7 @@ Expression-origin classes: `finite_site_id_alternatives` **7**, `guarded_finite_
 | [src/Sts2Emulator.Core/ControlledPlayableCombatV111.cs:431](../src/Sts2Emulator.Core/ControlledPlayableCombatV111.cs#L431) | RandomIndexRequestV111 | siteId | identifier_forwarded_or_local | — | — | dynamic_expression | dynamic_expression |
 | [src/Sts2Emulator.Core/ControlledPlayableCombatV111.cs:1270](../src/Sts2Emulator.Core/ControlledPlayableCombatV111.cs#L1270) | RandomIndexRequestV111 | ShuffleSite | static_site_id | expression | controlled.fixture.opening_shuffle.swap_index | mapped | mapped |
 | [src/Sts2Emulator.Core/ControlledRecycleShuffleV111.cs:125](../src/Sts2Emulator.Core/ControlledRecycleShuffleV111.cs#L125) | RandomIndexRequestV111 | SiteId | static_site_id | expression | combat.draw_pile_recycle.swap_index | mapped | mapped |
-| [src/Sts2Emulator.Core/ControlledTurnIntentsV111.cs:302](../src/Sts2Emulator.Core/ControlledTurnIntentsV111.cs#L302) | RandomIndexRequestV111 | mechanics.SiteId | member_forwarded | — | — | dynamic_expression | dynamic_expression |
+| [src/Sts2Emulator.Core/ControlledTurnIntentsV111.cs:313](../src/Sts2Emulator.Core/ControlledTurnIntentsV111.cs#L313) | RandomIndexRequestV111 | siteId | guarded_finite_site_id_alternatives | method_fail_closed_validation | combat.committed_intent.index_draw, combat.next_turn_intent.index_draw | conditional | conditional |
 | [src/Sts2Emulator.Core/NativeAncientRewardsV111.cs:221](../src/Sts2Emulator.Core/NativeAncientRewardsV111.cs#L221) | RandomIndexRequestV111 | TezcataraOfferSiteId | static_site_id | expression | event.tezcatara.relic_offer.index_draw | mapped | mapped |
 | [src/Sts2Emulator.Core/NativeAncientRewardsV111.cs:270](../src/Sts2Emulator.Core/NativeAncientRewardsV111.cs#L270) | RandomIndexRequestV111 | TezcataraOfferSiteId | static_site_id | expression | event.tezcatara.relic_offer.index_draw | mapped | mapped |
 | [src/Sts2Emulator.Core/NativeCombatRngEntryV111.cs:113](../src/Sts2Emulator.Core/NativeCombatRngEntryV111.cs#L113) | RandomIndexRequestV111 | InitialUniqueHpSiteId | static_site_id | expression | combat.initial_unique_hp | mapped | mapped |
