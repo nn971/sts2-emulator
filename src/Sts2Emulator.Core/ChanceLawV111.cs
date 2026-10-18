@@ -675,7 +675,7 @@ public static partial class ChanceLawEngineV111
             [PrototypeControlledDrawInsertionV111.PersonalHiveDazedSiteId] = new(
                 NativeFisherYatesV111.StreamId,
                 "native-personal-hive-dazed-insertion-index"),
-            ["combat.draw_pile.random_insert_index"] = new(
+            [StochasticSiteRegistryV111.DrawPileRandomInsertSiteId] = new(
                 NativeFisherYatesV111.StreamId,
                 "native-draw-pile-random-insertion-index"),
             ["combat.relic.after_shuffle.generated_card.random_insert_index"] = new(

@@ -2078,7 +2078,7 @@ public sealed record PrototypeControlledDrawInsertionV111(
     PrototypeAfterShuffleRelicInsertionV111? AfterShuffleRelic = null,
     PrototypeAfterShuffleRelicInsertionV111[]? CompletedAfterShuffleRelics = null,
     PrototypeAfterShuffleRelicInsertionV111[]? RemainingAfterShuffleRelics = null,
-    string RequestSiteId = "combat.draw_pile.random_insert_index",
+    string RequestSiteId = StochasticSiteRegistryV111.DrawPileRandomInsertSiteId,
     string RequestOwnerId = "prototype.combat",
     int RequestOrdinal = 0,
     PrototypePersonalHiveDamageContinuationV111?

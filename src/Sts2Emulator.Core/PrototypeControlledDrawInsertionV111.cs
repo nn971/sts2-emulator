@@ -92,7 +92,7 @@ public sealed partial class PrototypeGameEngine
                         ? null : remainingAfterShuffleRelics
                             .Select(item => item with { }).ToArray(),
                     RequestSiteId: requestSiteId ?? (afterShuffleRelic is null
-                        ? "combat.draw_pile.random_insert_index"
+                        ? StochasticSiteRegistryV111.DrawPileRandomInsertSiteId
                         : "combat.relic.after_shuffle.generated_card.random_insert_index"),
                     RequestOwnerId: requestOwnerId ?? (afterShuffleRelic is null
                         ? "prototype.combat"
@@ -178,7 +178,7 @@ public sealed partial class PrototypeGameEngine
                         return ValidateControlledPersonalHiveInsertion(
                             combat, choice);
                     return choice.RequestSiteId ==
-                            "combat.draw_pile.random_insert_index" &&
+                            StochasticSiteRegistryV111.DrawPileRandomInsertSiteId &&
                         choice.RequestOwnerId == "prototype.combat" &&
                         choice.RequestOrdinal == 0;
                 }
@@ -250,6 +250,10 @@ public sealed partial class PrototypeGameEngine
         if (choice.Operation.Kind !=
             PrototypeCombatEffectKind.CreateRandomFreeAttacksInDrawPile ||
             choice.PersonalHiveDamageContinuation is not null ||
+            choice.RequestSiteId !=
+                StochasticSiteRegistryV111.DrawPileRandomInsertSiteId ||
+            choice.RequestOwnerId != "prototype.combat" ||
+            choice.RequestOrdinal < 0 ||
             !choice.CandidateCardIds.SequenceEqual(ControlledRandomDrawAttackPool()))
             return false;
         return choice.Stage switch

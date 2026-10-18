@@ -112,7 +112,7 @@ public sealed partial class PrototypeGameEngine
                 State: PrototypeJson.EmptyObject()));
             var position = LegacyRandomChoiceV111.ChooseIndexRange(
                 rng,
-                "combat.draw_pile.random_insert_index",
+                StochasticSiteRegistryV111.DrawPileRandomInsertSiteId,
                 "combat",
                 $"relic:tea_of_discourtesy:insert:{i}:count:{updatedDrawPile.Count}",
                 updatedDrawPile.Count + 1).SelectedIndex;

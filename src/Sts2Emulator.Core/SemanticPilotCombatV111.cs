@@ -2778,7 +2778,8 @@ public static class SemanticPilotCombatEngineV111
                 resultCombat!.PendingChoice?.ControlledDrawInsertion is not null &&
                 !resultCombat.DrawPile.SequenceEqual(expectedPile)))
             throw new NotSupportedException(
-                "UNSUPPORTED_SEMANTIC_DECK site=combat.draw_pile.random_insert_index " +
+                "UNSUPPORTED_SEMANTIC_DECK site=" +
+                StochasticSiteRegistryV111.DrawPileRandomInsertSiteId + " " +
                 "operation=unmodeled_post_insertion_continuation");
 
         if (result.Phase == RunPhase.Combat && resumesSemanticDraw)

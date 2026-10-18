@@ -21,7 +21,7 @@ from urllib.parse import unquote, urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = ROOT / "src" / "Sts2Emulator.Core"
-SCHEMA_ID = "emulator-rng-callsite-source-inventory-v15"
+SCHEMA_ID = "emulator-rng-callsite-source-inventory-v16"
 SITE_REGISTRY_PATH = SOURCE_ROOT / "StochasticSiteRegistryV111.cs"
 
 CALL_PATTERN = re.compile(
@@ -63,6 +63,10 @@ STRING_CONSTANT_PATTERN = re.compile(
 
 STRING_LITERAL_PATTERN = re.compile(
     r'"(?P<value>[^"\\]*(?:\\.[^"\\]*)*)"'
+)
+
+ACCESS_MEMBER_START_PATTERN = re.compile(
+    r"(?m)^[ \t]*(?:public|private|internal|protected)\s+"
 )
 
 SITE_ARRAY_PATTERN = re.compile(
@@ -267,6 +271,46 @@ def _conditional_site_branches(expression: str) -> tuple[str, str] | None:
     return None
 
 
+def _split_csharp_or_alternatives(expression: str) -> list[str]:
+    """Split C# `or` pattern alternatives outside strings and nesting."""
+    parts: list[str] = []
+    start = 0
+    depth = 0
+    in_string = False
+    escaped = False
+    index = 0
+    while index < len(expression):
+        character = expression[index]
+        if in_string:
+            if escaped:
+                escaped = False
+            elif character == "\\":
+                escaped = True
+            elif character == '"':
+                in_string = False
+            index += 1
+            continue
+        if character == '"':
+            in_string = True
+        elif character == "(":
+            depth += 1
+        elif character == ")":
+            depth -= 1
+        elif (depth == 0 and expression.startswith("or", index) and
+              (index == 0 or expression[index - 1].isspace()) and
+              (index + 2 == len(expression) or
+               expression[index + 2].isspace())):
+            parts.append(expression[start:index].strip())
+            start = index + 2
+            index += 2
+            continue
+        index += 1
+    parts.append(expression[start:].strip())
+    if len(parts) == 1:
+        return []
+    return parts
+
+
 def _resolve_site_values(
     expression: str | None,
     local_constants: dict[str, set[str]],
@@ -303,6 +347,94 @@ def _resolve_site_values(
         )
         if value is not None:
             values.add(value)
+    return sorted(values)
+
+
+def _guarded_site_values(
+    source: str,
+    construction_start: int,
+    expression: str | None,
+    local_constants: dict[str, set[str]],
+    global_constants: dict[str, set[str]],
+) -> list[str]:
+    """Resolve identifier SiteIds bounded by a fail-closed method check.
+
+    Negative pattern guards and explicit supported-site branches are followed
+    only when the method rejects unsupported IDs with a NotSupportedException
+    naming the same identifier. This avoids guessing from nearby literals or
+    following arbitrary caller data.
+    """
+    if expression is None:
+        return []
+    identifier = re.fullmatch(
+        r"(?:this\.)?(?P<name>[A-Za-z_][A-Za-z0-9_]*)",
+        re.sub(r"\s+", "", expression),
+    )
+    if identifier is None:
+        return []
+    declarations = list(ACCESS_MEMBER_START_PATTERN.finditer(
+        source, 0, construction_start
+    ))
+    if not declarations:
+        return []
+    member_start = declarations[-1].start()
+    next_declaration = ACCESS_MEMBER_START_PATTERN.search(
+        source, construction_start
+    )
+    member_end = (len(source) if next_declaration is None
+                  else next_declaration.start())
+    member_source = source[member_start:member_end]
+    name = identifier.group("name")
+    if ("NotSupportedException" not in member_source or
+            not re.search(rf"\{{\s*{re.escape(name)}\s*\}}|"
+                          rf"nameof\(\s*{re.escape(name)}\s*\)",
+                          member_source)):
+        return []
+    guard_pattern = re.compile(
+        rf"\b{re.escape(name)}\s+is\s+not\s*\((?P<alternatives>[^()]*)\)"
+    )
+    guards = list(guard_pattern.finditer(member_source))
+    if guards:
+        alternatives = _split_csharp_or_alternatives(
+            guards[-1].group("alternatives")
+        )
+        return sorted({
+            value
+            for alternative in alternatives
+            for value in _resolve_site_values(
+                alternative, local_constants, global_constants
+            )
+        })
+
+    # A chain of explicit site comparisons followed by a fail-closed
+    # NotSupportedException also bounds the accepted IDs. Only use this
+    # pattern when the exception message names the same identifier.
+    values: set[str] = set()
+    site_token = r'(?:"[^"\\]*(?:\\.[^"\\]*)*"|' \
+        r"[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*)"
+    alternatives = re.compile(
+        rf"\b{re.escape(name)}\s+is\s+(?!not\b)(?P<alternatives>"
+        rf"\([^()]*\)|{site_token}(?:\s+or\s+{site_token})*)"
+    )
+    for match in alternatives.finditer(member_source):
+        expression = match.group("alternatives").strip()
+        if expression.startswith("(") and expression.endswith(")"):
+            expression = expression[1:-1]
+        parts = _split_csharp_or_alternatives(expression)
+        values.update(
+            value for part in (parts or [expression])
+            for value in _resolve_site_values(
+                part, local_constants, global_constants
+            )
+        )
+    equality = re.compile(
+        rf"\b{re.escape(name)}\s*==\s*(?P<value>\"[^\"]+\"|"
+        r"[A-Za-z_][A-Za-z0-9_]*(?:\.[A-Za-z_][A-Za-z0-9_]*)*)"
+    )
+    for match in equality.finditer(member_source):
+        values.update(_resolve_site_values(
+            match.group("value"), local_constants, global_constants
+        ))
     return sorted(values)
 
 
@@ -782,6 +914,14 @@ def _typed_request_constructions(
             values = _resolve_site_values(
                 expression, local_constants, global_constants
             )
+            resolution_source = "expression" if values else None
+            if not values:
+                values = _guarded_site_values(
+                    source, match.start(), expression,
+                    local_constants, global_constants,
+                )
+                if values:
+                    resolution_source = "method_fail_closed_validation"
             value = values[0] if len(values) == 1 else None
             registry_misses = [
                 item for item in values if item not in registry_site_ids
@@ -808,7 +948,9 @@ def _typed_request_constructions(
             normalized_expression = re.sub(r"\s+", "", expression or "")
             if values:
                 origin_kind = (
-                    "static_site_id" if len(values) == 1
+                    "guarded_finite_site_id_alternatives"
+                    if resolution_source == "method_fail_closed_validation"
+                    else "static_site_id" if len(values) == 1
                     else "finite_site_id_alternatives"
                 )
             elif expression is None:
@@ -835,6 +977,7 @@ def _typed_request_constructions(
                 "site_id_value": value,
                 "site_id_values": values,
                 "site_id_origin_kind": origin_kind,
+                "site_id_resolution_source": resolution_source,
                 "registry_status": registry_status,
                 "matrix_status": matrix_status,
                 "source_excerpt": source.splitlines()[
@@ -1104,12 +1247,13 @@ def render_markdown(report: dict[str, Any]) -> str:
             ).items())
         ) + ". Forwarded identifiers and members remain manual trace items; these labels do not claim their caller chain is resolved.",
         "",
-        "| File:line | Request type | Site ID expression | Origin | Resolved site ID | Registry | Matrix |",
-        "| --- | --- | --- | --- | --- | --- | --- |",
+        "| File:line | Request type | Site ID expression | Origin | Resolution | Resolved site ID | Registry | Matrix |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- |",
         *[
             f"| [{call['path']}:{call['line']}](../{call['path']}#L{call['line']}) "
             f"| {call['request_type']} | {call['site_id_expression'] or '—'} | "
             f"{call['site_id_origin_kind']} | "
+            f"{call['site_id_resolution_source'] or '—'} | "
             f"{', '.join(call['site_id_values']) or '—'} | {call['registry_status']} | "
             f"{call['matrix_status']} |"
             for call in report["typed_request_constructions"]
