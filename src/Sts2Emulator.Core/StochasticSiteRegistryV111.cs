@@ -319,6 +319,7 @@ public static class StochasticSiteRegistryV111
         .. ChanceLawEngineV111.LegacyCardUpgradeTicketQuerySiteIds,
         .. ChanceLawEngineV111.LegacyRewardCardRarityTicketQuerySiteIds,
         .. ChanceLawEngineV111.LegacyRewardCardModelQuerySiteIds,
+        .. ChanceLawEngineV111.LegacyRewardCardTransformQuerySiteIds,
         .. ChanceLawEngineV111.LegacyPotionDropTicketQuerySiteIds,
         .. ChanceLawEngineV111.LegacyRewardPotionModelQuerySiteIds,
         .. ChanceLawEngineV111.LegacyPotionRewardOddsTicketQuerySiteIds,

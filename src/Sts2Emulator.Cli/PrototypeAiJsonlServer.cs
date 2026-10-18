@@ -4268,6 +4268,38 @@ internal static class PrototypeAiJsonlServer
                             });
                             break;
                         }
+                        if (siteId ==
+                            "reward.card_transform.replacement.index_draw")
+                        {
+                            RejectChanceLawQueryParameters(
+                                request, "card_instance_id", "card_id",
+                                "support_count");
+                            var transformCardInstanceId = RequiredLong(
+                                request, "card_instance_id");
+                            var transformOriginalCardId = OptionalString(
+                                request, "card_id") ??
+                                throw new ArgumentException(
+                                    "Reward card-transform law requires card_id as the original model.");
+                            law = ChanceLawEngineV111
+                                .QueryLegacyRewardCardTransform(
+                                    transformCardInstanceId,
+                                    transformOriginalCardId, ordinal);
+                            var supportCount = OptionalInt(
+                                request, "support_count");
+                            if (supportCount is not null &&
+                                supportCount != law.Outcomes.Length)
+                                throw new ArgumentException(
+                                    "Reward card-transform support_count must match the reward pool excluding the original model.");
+                            Write(new
+                            {
+                                requestId,
+                                ok = true,
+                                chanceLawSchemaId =
+                                    ChanceLawV111.CurrentSchemaId,
+                                law
+                            });
+                            break;
+                        }
                         if (siteId == "reward.random_potion.drop.ticket")
                         {
                             RejectChanceLawQueryParameters(
@@ -8550,7 +8582,8 @@ internal static class PrototypeAiJsonlServer
             "room", "gold_proportion", "current_thousandths", "elite",
             "forced", "card_rarity_source",
             "current_offset_basis_points", "stream_id", "merchant",
-            "can_acquire_potion", "floor", "drop_offered"
+            "can_acquire_potion", "floor", "drop_offered",
+            "card_instance_id"
         ];
         var unsupported = optionalFields.Where(field =>
             !allowed.Contains(field) && request.TryGetProperty(field, out _))
