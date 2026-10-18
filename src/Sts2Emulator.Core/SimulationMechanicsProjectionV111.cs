@@ -27,7 +27,9 @@ public sealed record SimulationMechanicsProjectionV111(
     RunWorldMechanicsStateV111? World,
     CombatMechanicsStateV111? Combat,
     EventMechanicsStateV111? Event,
-    SimulationDrawContinuationProjectionV111? PendingDrawContinuation = null);
+    SimulationDrawContinuationProjectionV111? PendingDrawContinuation = null,
+    SimulationPoolShuffleContinuationProjectionV111?
+        PendingPoolShuffleContinuation = null);
 
 /// <summary>Provider-independent progress for one suspended draw operation.
 /// Candidate supports and selected provider outcomes remain outside the view.
@@ -49,6 +51,13 @@ public sealed record SimulationDrawInsertionContinuationProjectionV111(
     PrototypeAfterShuffleRelicInsertionV111[] RemainingAfterShuffleRelics,
     PrototypePersonalHiveDamageContinuationV111? PersonalHiveDamage,
     int? AutomaticHandDrawRemaining);
+
+/// <summary>Provider-independent progress for one pending full-pool shuffle.
+/// The eligible pool and partial permutation remain provider data.</summary>
+public sealed record SimulationPoolShuffleContinuationProjectionV111(
+    PrototypeQueuedOperation Operation,
+    int CompletedSwapCount,
+    int SelectedCount);
 
 /// <summary>Mechanics progress for a card already drawn and awaiting a cost
 /// choice. The cost bound and provider support are intentionally omitted.
@@ -74,6 +83,8 @@ public static class SimulationMechanicsProjectionEngineV111
         var world = snapshot.World;
         var combat = world?.Combat?.Mechanics;
         SimulationDrawContinuationProjectionV111? pendingDrawContinuation = null;
+        SimulationPoolShuffleContinuationProjectionV111?
+            pendingPoolShuffleContinuation = null;
         if (combat is not null)
         {
             var pendingChoice = combat.PendingChoice;
@@ -106,6 +117,26 @@ public static class SimulationMechanicsProjectionEngineV111
                     drawCost.CardInstanceId, drawCost.RemainingCount,
                     drawCost.FromHandDraw, drawCost.EventDepth,
                     drawCost.Stage);
+            if (pendingChoice?.ControlledPoolShuffle is { } poolShuffle)
+            {
+                if (poolShuffle.OriginalCardIds is null ||
+                    poolShuffle.CurrentCardIds is null ||
+                    poolShuffle.OriginalCardIds.Length <= 1 ||
+                    poolShuffle.CurrentCardIds.Length !=
+                        poolShuffle.OriginalCardIds.Length ||
+                    poolShuffle.NextSwapIndex < 1 ||
+                    poolShuffle.NextSwapIndex >=
+                        poolShuffle.OriginalCardIds.Length ||
+                    poolShuffle.SelectedCount <= 0)
+                    throw new InvalidDataException(
+                        "Pending pool-shuffle mechanics progress is malformed.");
+                int completedSwapCount = poolShuffle.OriginalCardIds.Length -
+                    poolShuffle.NextSwapIndex - 1;
+                pendingPoolShuffleContinuation =
+                    new SimulationPoolShuffleContinuationProjectionV111(
+                        MechanicsOperation(poolShuffle.Operation),
+                        completedSwapCount, poolShuffle.SelectedCount);
+            }
             if (semanticDraw is not null || costProgress is not null ||
                 insertionProgress is not null)
                 pendingDrawContinuation =
@@ -150,7 +181,8 @@ public static class SimulationMechanicsProjectionEngineV111
             worldMechanics,
             combat,
             world?.Event?.Mechanics,
-            pendingDrawContinuation);
+            pendingDrawContinuation,
+            pendingPoolShuffleContinuation);
     }
 
     public static string Fingerprint(RunState run) =>
