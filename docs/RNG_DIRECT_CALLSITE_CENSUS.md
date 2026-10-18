@@ -12,9 +12,9 @@ Counts by direct API family:
 
 Direct ad hoc entropy API expressions in Core: **0**. The scan covers direct System.Random typed or target-typed construction/shared-instance use and RandomNumberGenerator APIs; it does not prove the absence of indirect or aliased entropy sources.
 
-Explicit typed random-request constructions: **100**; site IDs resolved to registry: **61**; dynamic or missing IDs: **39**; static IDs absent from registry: **0**.
+Explicit typed random-request constructions: **100**; site IDs resolved to registry: **62**; dynamic or missing IDs: **38**; static IDs absent from registry: **0**.
 
-Expression-origin classes: `finite_site_id_alternatives` **7**, `guarded_finite_site_id_alternatives` **7**, `identifier_forwarded_or_local` **36**, `member_forwarded` **3**, `static_site_id` **47**. Forwarded identifiers and members remain manual trace items; these labels do not claim their caller chain is resolved.
+Expression-origin classes: `finite_site_id_alternatives` **7**, `guarded_finite_site_id_alternatives` **7**, `identifier_forwarded_or_local` **36**, `member_forwarded` **2**, `static_site_id` **48**. Forwarded identifiers and members remain manual trace items; these labels do not claim their caller chain is resolved.
 
 | File:line | Request type | Site ID expression | Origin | Resolution | Resolved site ID | Registry | Matrix |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -75,7 +75,7 @@ Expression-origin classes: `finite_site_id_alternatives` **7**, `guarded_finite_
 | [src/Sts2Emulator.Core/NativeRandomChoiceV111.cs:23](../src/Sts2Emulator.Core/NativeRandomChoiceV111.cs#L23) | RandomIndexRequestV111 | siteId | identifier_forwarded_or_local | — | — | dynamic_expression | dynamic_expression |
 | [src/Sts2Emulator.Core/NativeRandomChoiceV111.cs:42](../src/Sts2Emulator.Core/NativeRandomChoiceV111.cs#L42) | RandomIndexRequestV111 | siteId | identifier_forwarded_or_local | — | — | dynamic_expression | dynamic_expression |
 | [src/Sts2Emulator.Core/NativeRandomChoiceV111.cs:58](../src/Sts2Emulator.Core/NativeRandomChoiceV111.cs#L58) | RandomUnitFloatRequestV111 | siteId | identifier_forwarded_or_local | — | — | dynamic_expression | dynamic_expression |
-| [src/Sts2Emulator.Core/NativeShuffleStepReplayV111.cs:167](../src/Sts2Emulator.Core/NativeShuffleStepReplayV111.cs#L167) | RandomIndexRequestV111 | expected.SiteId | member_forwarded | — | — | dynamic_expression | dynamic_expression |
+| [src/Sts2Emulator.Core/NativeShuffleStepReplayV111.cs:167](../src/Sts2Emulator.Core/NativeShuffleStepReplayV111.cs#L167) | RandomIndexRequestV111 | NativeFisherYatesV111.SiteId | static_site_id | expression | combat.draw_pile.shuffle.swap | mapped | mapped |
 | [src/Sts2Emulator.Core/PrototypeCombat.cs:3349](../src/Sts2Emulator.Core/PrototypeCombat.cs#L3349) | RandomIndexRequestV111 | siteId | identifier_forwarded_or_local | — | — | dynamic_expression | dynamic_expression |
 | [src/Sts2Emulator.Core/PrototypeCombat.cs:6985](../src/Sts2Emulator.Core/PrototypeCombat.cs#L6985) | RandomIndexRequestV111 | "combat.relic.jeweled_mask.random_power_draw_card" | static_site_id | expression | combat.relic.jeweled_mask.random_power_draw_card | mapped | mapped |
 | [src/Sts2Emulator.Core/PrototypeCombat.cs:7763](../src/Sts2Emulator.Core/PrototypeCombat.cs#L7763) | RandomIndexRequestV111 | "combat.potion_generation.random_model" | static_site_id | expression | combat.potion_generation.random_model | mapped | mapped |
@@ -131,7 +131,7 @@ Expression-origin classes: `finite_site_id_alternatives` **7**, `guarded_finite_
 | [src/Sts2Emulator.Core/SemanticPilotCombatV111.cs:3401](../src/Sts2Emulator.Core/SemanticPilotCombatV111.cs#L3401) | RandomIndexRequestV111 | "combat.random_hand_card.energy_cost" | static_site_id | expression | combat.random_hand_card.energy_cost | mapped | mapped |
 | [src/Sts2Emulator.Core/SemanticPilotCombatV111.cs:3649](../src/Sts2Emulator.Core/SemanticPilotCombatV111.cs#L3649) | RandomIndexRequestV111 | siteId | static_site_id | expression | combat.random_hand_card.select | mapped | mapped |
 
-Shuffle site IDs mapped to migration-matrix rows: **18**; dynamic expressions: **6**; unmapped: **0**; missing: **0**.
+Shuffle site IDs mapped to migration-matrix rows: **19**; dynamic expressions: **5**; unmapped: **0**; missing: **0**.
 Registered stochastic site IDs mapped to migration-matrix rows: **184/184**; IDs without rows: **0**; duplicate matrix IDs: **0**; unresolved registry references: **0**.
 Migration-matrix rows absent from the active registry: **0** (informational; legacy and conditional rows may remain unregistered). Their law-status counts are UNVERIFIED 0, conditional 0, calibrated 0, unspecified 0.
 Matrix-only IDs for manual disposition:
@@ -188,7 +188,7 @@ Known RNG helper callsites with forwarded stable site IDs:
 | [`src/Sts2Emulator.Core/NativeShuffleSourceImportV111.cs:165`](../src/Sts2Emulator.Core/NativeShuffleSourceImportV111.cs#L165) | `NativeRngV111` | `NextInt` | — | `not_applicable` | `int expected = NativeRngV111.NextInt(rng, "run.shuffle", bound);` | `provider_or_codec_infrastructure` |
 | [`src/Sts2Emulator.Core/NativeShuffleStepReplayV111.cs:141`](../src/Sts2Emulator.Core/NativeShuffleStepReplayV111.cs#L141) | `PrototypeRng` | `Shuffle` | — | `not_applicable` | `PrototypeRng.Shuffle(engineRng, "combat", output);` | `fixture_or_replay_support` |
 | [`src/Sts2Emulator.Core/NativeShuffleStepReplayV111.cs:148`](../src/Sts2Emulator.Core/NativeShuffleStepReplayV111.cs#L148) | `PrototypeRng` | `Shuffle` | — | `not_applicable` | `PrototypeRng.Shuffle(engineRng, "combat", unchanged);` | `fixture_or_replay_support` |
-| [`src/Sts2Emulator.Core/NativeShuffleStepReplayV111.cs:173`](../src/Sts2Emulator.Core/NativeShuffleStepReplayV111.cs#L173) | `NativeFisherYatesV111` | `Execute` | `expected.SiteId` | `dynamic_expression` | `var computed = NativeFisherYatesV111.Execute(` | `shuffle_site_id_is_dynamic_or_unresolved` |
+| [`src/Sts2Emulator.Core/NativeShuffleStepReplayV111.cs:174`](../src/Sts2Emulator.Core/NativeShuffleStepReplayV111.cs#L174) | `NativeFisherYatesV111` | `Execute` | `NativeFisherYatesV111.SiteId` → `combat.draw_pile.shuffle.swap` | `mapped` | `var computed = NativeFisherYatesV111.Execute(` | `shuffle_site_id_resolved` |
 | [`src/Sts2Emulator.Core/NativeTanxEventV111.cs:111`](../src/Sts2Emulator.Core/NativeTanxEventV111.cs#L111) | `NativeFisherYatesV111` | `ShuffleInPlace` | `ShuffleSiteId` → `event.tanx.relic_offer.shuffle_swap_index` | `mapped` | `var choices = NativeFisherYatesV111.ShuffleInPlace(` | `shuffle_site_id_resolved` |
 | [`src/Sts2Emulator.Core/NativeTanxEventV111.cs:176`](../src/Sts2Emulator.Core/NativeTanxEventV111.cs#L176) | `NativeFisherYatesV111` | `ShuffleInPlace` | `ShuffleSiteId` → `event.tanx.relic_offer.shuffle_swap_index` | `mapped` | `_ = NativeFisherYatesV111.ShuffleInPlace(` | `shuffle_site_id_resolved` |
 | [`src/Sts2Emulator.Core/NativeVakuuEventV111.cs:102`](../src/Sts2Emulator.Core/NativeVakuuEventV111.cs#L102) | `NativeFisherYatesV111` | `ShuffleInPlace` | `ShuffleSiteId` → `event.vakuu.relic_offer.shuffle_swap_index` | `mapped` | `choices.AddRange(NativeFisherYatesV111.ShuffleInPlace(` | `shuffle_site_id_resolved` |
