@@ -1104,6 +1104,80 @@ public static partial class ChanceLawEngineV111
             ChanceLawV111.SourceVerifiedStatus);
     }
 
+    /// <summary>
+    /// Query a Hive/Glory room-placement Fisher-Yates swap using its current
+    /// caller-declared bounded support.
+    /// </summary>
+    public static ChanceLawV111 QueryLaterActRoomAssignmentSwap(
+        int act, int ordinal, int supportCount)
+    {
+        if (act is not (2 or 3))
+            throw new ArgumentOutOfRangeException(
+                nameof(act), "Later-act room placement supports Hive or Glory.");
+        var ownerId = $"map:act:{act}";
+        return QueryMapRoomAssignmentSwap(
+            PrototypeNativeLaterActMap.RoomAssignmentShuffleSiteId,
+            ownerId, ordinal, supportCount);
+    }
+
+    /// <summary>
+    /// Query one Overgrowth room-placement Fisher-Yates swap. The owner binds
+    /// the room type, attempt, and ordered-pool fingerprint.
+    /// </summary>
+    public static ChanceLawV111 QueryOvergrowthRoomAssignmentSwap(
+        string ownerId, int ordinal, int supportCount)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
+        if (!IsOvergrowthRoomAssignmentOwner(ownerId))
+            throw new ArgumentException(
+                "Owner ID must identify an Act 1 room type, placement attempt, and pool fingerprint.",
+                nameof(ownerId));
+        return QueryMapRoomAssignmentSwap(
+            PrototypeNativeOvergrowthMap.RoomAssignmentShuffleSiteId,
+            ownerId, ordinal, supportCount);
+    }
+
+    private static ChanceLawV111 QueryMapRoomAssignmentSwap(
+        string siteId, string ownerId, int ordinal, int supportCount)
+    {
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+        if (supportCount < 2)
+            throw new ArgumentOutOfRangeException(
+                nameof(supportCount),
+                "A Fisher-Yates swap requires a bounded support of at least two.");
+
+        var indexWeights = NativeNextIntGridWeights(supportCount);
+        var outcomes = indexWeights.Select((weight, index) =>
+            new ChanceLawOutcomeV111($"swap_index:{index}", weight))
+            .ToArray();
+        var eventId = CanonicalJson.Sha256(new
+        {
+            boundary = siteId,
+            ownerId,
+            ordinal
+        });
+        var conditioningFingerprint = CanonicalJson.Sha256(new
+        {
+            siteId,
+            ownerId,
+            ordinal,
+            supportCount
+        });
+
+        return Create(
+            eventId,
+            siteId,
+            "bounded_integer",
+            ownerId,
+            ordinal,
+            NativeRandomIndexConditioningPolicyId,
+            conditioningFingerprint,
+            NativeBoundedIndexSourceVerifiedProvenance,
+            outcomes,
+            ChanceLawV111.SourceVerifiedStatus);
+    }
+
     private static ChanceLawV111 QueryMapPathStart(
         string siteId, string ownerId, int act, int ordinal)
     {
@@ -1165,6 +1239,19 @@ public static partial class ChanceLawEngineV111
                 CultureInfo.InvariantCulture, out var floorOrdinal) &&
             floorOrdinal is >= 1 and < PrototypeNativeOvergrowthMap.RoomRows &&
             parts[6] == "deltas";
+    }
+
+    private static bool IsOvergrowthRoomAssignmentOwner(string ownerId)
+    {
+        var parts = ownerId.Split(':');
+        return parts.Length == 8 && parts[0] == "act" && parts[1] == "1" &&
+            parts[2] == "room" &&
+            parts[3] is "Rest" or "Shop" or "Elite" or "Unknown" &&
+            parts[4] == "attempt" &&
+            int.TryParse(parts[5], NumberStyles.None,
+                CultureInfo.InvariantCulture, out var attempt) &&
+            attempt is >= 0 and < 3 && parts[6] == "pool" &&
+            parts[7].Length == 64 && parts[7].All(Uri.IsHexDigit);
     }
 
     public static ChanceLawV111 QueryLaterActDarvHiveAssignment(int ordinal)

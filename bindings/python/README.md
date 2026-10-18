@@ -195,6 +195,22 @@ For Act 1 Overgrowth, declare the path/floor owner, for example
 `owner_id="act:1:path:0:floor:1:deltas"`. These laws describe the swap
 indices; they do not validate or return the final shuffled path deltas.
 
+Room-assignment shuffle queries require the current `support_count` for the
+swap. Act 1 also requires its source owner ID, which fingerprints the room,
+attempt, and ordered pool; later-act ownership is selected by `act`:
+
+```python
+law = state.query_chance_law(
+    "map.later_act.room_assignment.shuffle_swap_index",
+    ordinal=room_assignment_swap_ordinal,
+    act=2,
+    support_count=current_swap_bound,
+)
+```
+
+The query returns exact Native `NextInt(current_swap_bound)` grid masses for
+the raw index. It does not read or validate the current room pool or map state.
+
 Glory's later-act map rest-count draw has a separate read-only Native law:
 
 ```python

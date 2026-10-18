@@ -2920,6 +2920,57 @@ internal static class PrototypeAiJsonlServer
                             });
                             break;
                         }
+                        if (siteId == PrototypeNativeOvergrowthMap
+                                .RoomAssignmentShuffleSiteId)
+                        {
+                            RejectChanceLawQueryParameters(
+                                request, "owner_id", "support_count");
+                            var ownerId = OptionalString(
+                                request, "owner_id") ??
+                                throw new ArgumentException(
+                                    "Overgrowth room-assignment law requires owner_id.");
+                            var supportCount = OptionalInt(
+                                request, "support_count") ??
+                                throw new ArgumentException(
+                                    "Overgrowth room-assignment law requires support_count.");
+                            law = ChanceLawEngineV111
+                                .QueryOvergrowthRoomAssignmentSwap(
+                                    ownerId, ordinal, supportCount);
+                            Write(new
+                            {
+                                requestId,
+                                ok = true,
+                                chanceLawSchemaId =
+                                    ChanceLawV111.CurrentSchemaId,
+                                law
+                            });
+                            break;
+                        }
+                        if (siteId == PrototypeNativeLaterActMap
+                                .RoomAssignmentShuffleSiteId)
+                        {
+                            RejectChanceLawQueryParameters(
+                                request, "act", "support_count");
+                            var act = OptionalInt(request, "act") ??
+                                throw new ArgumentException(
+                                    "Later-act room-assignment law requires act 2 or 3.");
+                            var supportCount = OptionalInt(
+                                request, "support_count") ??
+                                throw new ArgumentException(
+                                    "Later-act room-assignment law requires support_count.");
+                            law = ChanceLawEngineV111
+                                .QueryLaterActRoomAssignmentSwap(
+                                    act, ordinal, supportCount);
+                            Write(new
+                            {
+                                requestId,
+                                ok = true,
+                                chanceLawSchemaId =
+                                    ChanceLawV111.CurrentSchemaId,
+                                law
+                            });
+                            break;
+                        }
                         if (siteId == PrototypeNativeLaterActMap
                                 .PathDeltaShuffleSiteId)
                         {
