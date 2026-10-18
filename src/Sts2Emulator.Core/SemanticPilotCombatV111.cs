@@ -2735,72 +2735,16 @@ public static class SemanticPilotCombatEngineV111
         var pending = current.CardShortlistPending ??
             throw new InvalidOperationException(
                 "No random card-pile shortlist is pending.");
-        if (pending.EventId != eventId)
-            throw new InvalidOperationException(
-                "Card-shortlist event ID is stale or mismatched.");
-        var index = Array.IndexOf(pending.CandidateCardInstanceIds,
-            cardInstanceId);
-        if (index < 0)
-            throw new InvalidOperationException(
-                "Card is outside the pending shortlist support.");
-        var decision = new SemanticCardShortlistDecisionV111(
-            pending, index, cardInstanceId,
-            pending.CandidateCardModelIds[index]);
-        decision.Validate();
-        ValidateCardShortlistDecision(
-            current.CardShortlistPending, decision, index);
-        ValidateCardShortlistBoundary(current.Run);
-        var priorCombat = current.Run.World!.Combat!;
-        bool randomAutoplay = priorCombat.PendingChoice!
-            .ControlledCardShortlist!.Operation.Kind ==
-            PrototypeCombatEffectKind.AutoPlayRandomCardsFromZone;
-        RunState result;
-        using (ControlledChanceGuardV111.Enter())
-            result = PrototypeGameEngine.ResumeControlledCardShortlist(
-                current.Run.Fork(), index);
-        if (randomAutoplay && result.Phase is
-            (RunPhase.Reward or RunPhase.Terminal))
-        {
-            PrototypeStateInvariants.Validate(result);
-            var terminal = current with
-            {
-                Run = result,
-                RewardAudit = result.Phase == RunPhase.Reward
-                    ? RecordRewardAudit(current.Run, result)
-                    : current.RewardAudit,
-                History = current.History.Append(
-                    new SemanticPilotContinuationV111(
-                        "semantic_card_shortlist",
-                        CardShortlistDecision: decision.Fork())).ToArray()
-            };
-            Validate(terminal);
-            return terminal;
-        }
-        var nextCombat = result.World?.Combat;
-        if (result.Phase != RunPhase.Combat || nextCombat is null)
-            throw new NotSupportedException(
-                "UNSUPPORTED_SEMANTIC_SHORTLIST " +
-                "site=combat.card_selection.random_shortlist " +
-                "operation=unsupported_post_shortlist_phase");
-        if (nextCombat.PendingChoice?.ControlledCardShortlist is not null)
-            ValidateCardShortlistBoundary(result);
-        else if (nextCombat.PendingChoice?.ChoiceId == "select_cards")
-            SemanticCardSelectionEngineV111.ValidatePendingBoundary(result);
-        else
-            ValidateSemanticCombatBoundary(result);
-        if (!randomAutoplay &&
-            (!priorCombat.DrawPile.SequenceEqual(nextCombat.DrawPile) ||
-             CanonicalJson.Sha256(priorCombat.SemanticDeck) !=
-                 CanonicalJson.Sha256(nextCombat.SemanticDeck)))
-            throw new NotSupportedException(
-                "UNSUPPORTED_SEMANTIC_DECK " +
-                "site=combat.card_selection.random_shortlist " +
-                "operation=unmodeled_draw_pile_mutation");
-        if (randomAutoplay)
-            PrototypeStateInvariants.Validate(result);
+        var decision = SemanticCardShortlistChoiceV111.Select(
+            pending, eventId, cardInstanceId);
+        var result = SemanticCardShortlistChoiceV111.Resume(
+            current.Run, decision);
         var next = current with
         {
             Run = result,
+            RewardAudit = result.Phase == RunPhase.Reward
+                ? RecordRewardAudit(current.Run, result)
+                : current.RewardAudit,
             History = current.History.Append(
                 new SemanticPilotContinuationV111(
                     "semantic_card_shortlist",
@@ -4222,18 +4166,6 @@ public static class SemanticPilotCombatEngineV111
                 CanonicalJson.Sha256(decision.Event))
             throw new InvalidOperationException(
                 "Hand-cost selection is stale or outside current support.");
-    }
-
-    private static void ValidateCardShortlistDecision(
-        SemanticCardShortlistEventV111? pending,
-        SemanticCardShortlistDecisionV111 decision, int sourceIndex)
-    {
-        decision.Validate();
-        if (pending is null || sourceIndex != decision.SelectedIndex ||
-            CanonicalJson.Sha256(pending) !=
-                CanonicalJson.Sha256(decision.Event))
-            throw new InvalidOperationException(
-                "Card-shortlist decision is stale or outside current support.");
     }
 
     internal static void ValidateSemanticCombatBoundary(RunState run)

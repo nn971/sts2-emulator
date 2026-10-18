@@ -113,3 +113,120 @@ public sealed record SemanticCardShortlistDecisionV111(
                 "Card-shortlist decision is outside its ordered support.");
     }
 }
+
+public static class SemanticCardShortlistChoiceV111
+{
+    public static SemanticCardShortlistDecisionV111 Select(
+        SemanticCardShortlistEventV111 pending, string eventId,
+        long cardInstanceId)
+    {
+        ArgumentNullException.ThrowIfNull(pending);
+        pending.Validate();
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
+        if (pending.EventId != eventId)
+            throw new InvalidOperationException(
+                "Card-shortlist event ID is stale or mismatched.");
+        var index = Array.IndexOf(
+            pending.CandidateCardInstanceIds, cardInstanceId);
+        if (index < 0)
+            throw new InvalidOperationException(
+                "Card is outside the pending shortlist support.");
+        var decision = new SemanticCardShortlistDecisionV111(
+            pending.Fork(), index, cardInstanceId,
+            pending.CandidateCardModelIds[index]);
+        decision.Validate();
+        return decision;
+    }
+
+    /// <summary>Revalidate the live ordered shortlist and resume the saved
+    /// selection, replay, or autoplay operation.</summary>
+    internal static RunState Resume(
+        RunState checkpoint, SemanticCardShortlistDecisionV111 decision)
+    {
+        ArgumentNullException.ThrowIfNull(checkpoint);
+        ArgumentNullException.ThrowIfNull(decision);
+        decision.Validate();
+        var combat = checkpoint.World?.Combat ??
+            throw new InvalidDataException(
+                "Card shortlist lost its source combat.");
+        var choice = combat.PendingChoice;
+        var shortlist = choice?.ControlledCardShortlist;
+        if (shortlist is null ||
+            !PrototypeGameEngine.ValidateControlledCardShortlist(
+                combat, shortlist))
+            throw new InvalidDataException(
+                "Card shortlist is not source-reachable.");
+        SemanticPilotCombatEngineV111.ValidateCardShortlistBoundary(
+            checkpoint);
+        ValidateLiveSupport(combat, shortlist, decision.Event);
+        var randomAutoplay = shortlist.Operation.Kind ==
+            PrototypeCombatEffectKind.AutoPlayRandomCardsFromZone;
+
+        RunState resumed;
+        using (ControlledChanceGuardV111.Enter())
+            resumed = PrototypeGameEngine.ResumeControlledCardShortlist(
+                checkpoint.Fork(), decision.SelectedIndex);
+        if (randomAutoplay && resumed.Phase is
+            (RunPhase.Reward or RunPhase.Terminal))
+        {
+            PrototypeStateInvariants.Validate(resumed);
+            return resumed;
+        }
+        var nextCombat = resumed.World?.Combat;
+        if (resumed.Phase != RunPhase.Combat || nextCombat is null)
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_SHORTLIST " +
+                "site=combat.card_selection.random_shortlist " +
+                "operation=unsupported_post_shortlist_phase");
+        if (nextCombat.PendingChoice?.ControlledCardShortlist is not null)
+            SemanticPilotCombatEngineV111.ValidateCardShortlistBoundary(
+                resumed);
+        else if (nextCombat.PendingChoice?.ChoiceId == "select_cards")
+            SemanticCardSelectionEngineV111.ValidatePendingBoundary(resumed);
+        else
+            SemanticPilotCombatEngineV111.ValidateSemanticCombatBoundary(
+                resumed);
+        if (!randomAutoplay &&
+            (!combat.DrawPile.SequenceEqual(nextCombat.DrawPile) ||
+             CanonicalJson.Sha256(combat.SemanticDeck) !=
+                 CanonicalJson.Sha256(nextCombat.SemanticDeck)))
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_DECK " +
+                "site=combat.card_selection.random_shortlist " +
+                "operation=unmodeled_draw_pile_mutation");
+        if (randomAutoplay)
+            PrototypeStateInvariants.Validate(resumed);
+        return resumed;
+    }
+
+    private static void ValidateLiveSupport(
+        CombatState combat,
+        PrototypeControlledCardShortlistV111 shortlist,
+        SemanticCardShortlistEventV111 pending)
+    {
+        var eligibleIds = shortlist.OriginalCandidateCardInstanceIds;
+        var candidateIds = shortlist.RemainingCandidateCardInstanceIds;
+        var selectedIds = shortlist.SelectedCandidateCardInstanceIds;
+        var eligibleModels = eligibleIds.Select(id => combat.Cards.Single(
+            card => card.InstanceId == id).CardId).ToArray();
+        var candidateModels = candidateIds.Select(id => combat.Cards.Single(
+            card => card.InstanceId == id).CardId).ToArray();
+        var siteId = shortlist.Operation.Kind switch
+        {
+            PrototypeCombatEffectKind.AutoPlayRandomCardsFromZone =>
+                "combat.autoplay.random_card.select",
+            PrototypeCombatEffectKind.EmpowerRandomDrawCardReplay =>
+                "combat.draw_pile.random_replay_card.select",
+            _ => "combat.card_selection.random_shortlist"
+        };
+        if (pending.SiteId != siteId ||
+            pending.RequiredCount != shortlist.RequiredCount ||
+            !eligibleIds.SequenceEqual(pending.EligibleCardInstanceIds) ||
+            !eligibleModels.SequenceEqual(pending.EligibleCardModelIds) ||
+            !selectedIds.SequenceEqual(pending.SelectedCardInstanceIds) ||
+            !candidateIds.SequenceEqual(pending.CandidateCardInstanceIds) ||
+            !candidateModels.SequenceEqual(pending.CandidateCardModelIds))
+            throw new InvalidDataException(
+                "Card-shortlist decision no longer matches its live support.");
+    }
+}
