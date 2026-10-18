@@ -45,8 +45,8 @@ law = state.query_chance_law(
 ```
 
 This reports the exact Native `NextInt` index masses for that support size. It
-does not validate the Fishing Rod trigger or eligible-card pool, and no saved
-ReferenceNature victory continuation is exposed yet.
+does not validate the Fishing Rod trigger or eligible-card pool. For an
+atomic victory replay, use the native event shuffle session described below.
 
 Construction checks wire/snapshot/batch compatibility. Handles belong to one
 session; release invalidates them. Calls are serialized with a lock.
@@ -86,6 +86,12 @@ publishes `.state` after the full shuffle replays. It supports `fork()`, `save_s
 `Session.load_reference_nature_native_event_shuffle_snapshot()`, and
 `release()`. See the
 [native event shuffle contract](../../docs/REFERENCE_NATURE_NATIVE_EVENT_SHUFFLE_D3.md).
+
+The same saved replay session accepts a configured ordinary combat victory
+that triggers one or more Fishing Rod upgrades. Pass the legal victory
+`action_id` and `site_id="relic.persistent_combat_end.random_upgrade.index_draw"`;
+each Nature index is conditioned on the deck remaining after earlier Rod
+callbacks, and `.state` becomes available after all triggered upgrades replay.
 
 For supported configured Native event-entry draws, call
 `State.begin_reference_nature_native_event_gold(action_id, nature_seed=None)`

@@ -976,6 +976,8 @@ internal static class PrototypeAiJsonlServer
                 {
                     kind = law.SiteId switch
                     {
+                        PrototypeGameEngine.FishingRodUpgradeSiteId =>
+                            "fishing_rod_combat_end_upgrade_random_choice",
                         "relic.war_hammer.elite_upgrade.shuffle_swap_index" =>
                             "war_hammer_elite_shuffle_swap_random_choice",
                         "event.war_historian.repy.potion_offer.index_draw" =>
@@ -2980,33 +2982,99 @@ internal static class PrototypeAiJsonlServer
                             .NativeEventShuffleSessionSiteIds.Contains(
                                 siteId, StringComparer.Ordinal))
                         {
-                            if (OptionalString(request, "card_type") is not null ||
-                                OptionalString(request, "rarity") is not null ||
-                                OptionalString(request, "card_id") is not null ||
-                                OptionalString(request, "potion_id") is not null ||
-                                OptionalString(request, "relic_id") is not null ||
-                                OptionalBool(request, "colorless_offer") ||
-                                OptionalBool(request, "sale_reprice") ||
-                                OptionalString(request, "owner_id") is not null ||
-                                OptionalStringArray(request,
-                                    "excluded_potion_ids") is not null ||
-                                OptionalInt(request, "offer_ordinal") is not null ||
-                                OptionalStringArray(request,
-                                    "relic_candidate_ids") is not null ||
-                                OptionalStringArray(request,
-                                    "excluded_relic_ids") is not null)
-                                throw new ArgumentException(
-                                    "Native event shuffle queries accept only state_handle, site_id, ordinal, prior_indices and action_id.");
-                            var actionId = OptionalString(request, "action_id");
-                            law = siteId ==
-                                "event.war_historian.repy.potion_offer.index_draw"
-                                ? ChanceLawEngineV111
-                                    .QueryNativeRepyPotionOffer(
-                                        RequireState(request), ordinal,
-                                        priorIndices, actionId)
-                                : ChanceLawEngineV111.QueryNativeEventShuffle(
-                                    RequireState(request), siteId, ordinal,
-                                    priorIndices, actionId);
+                            if (siteId == PrototypeGameEngine
+                                .FishingRodUpgradeSiteId)
+                            {
+                                var supportCount = OptionalInt(
+                                    request, "support_count");
+                                var ownerId = OptionalString(
+                                    request, "owner_id");
+                                var fishingRun = RequireState(request);
+                                var rodRelicId =
+                                    PrototypeNativeOvergrowthEvents
+                                        .NeowRelicId("FishingRod");
+                                var ownerPrefix = $"relic:{rodRelicId}:slot:";
+                                var slotText = ownerId is not null &&
+                                    ownerId.StartsWith(ownerPrefix,
+                                        StringComparison.Ordinal)
+                                    ? ownerId[ownerPrefix.Length..]
+                                    : string.Empty;
+                                var streams = fishingRun.World?.Combat?.NativeRng?
+                                    .RunStreams ?? fishingRun.NativeRunRng;
+                                if (priorIndices is not null ||
+                                    priorVariantIndex is not null ||
+                                    OptionalString(request, "action_id") is not null ||
+                                    OptionalString(request, "card_type") is not null ||
+                                    OptionalString(request, "rarity") is not null ||
+                                    OptionalString(request, "card_id") is not null ||
+                                    OptionalString(request, "potion_id") is not null ||
+                                    OptionalString(request, "relic_id") is not null ||
+                                    OptionalBool(request, "colorless_offer") ||
+                                    OptionalBool(request, "sale_reprice") ||
+                                    OptionalStringArray(request,
+                                        "excluded_potion_ids") is not null ||
+                                    OptionalInt(request,
+                                        "offer_ordinal") is not null ||
+                                    OptionalStringArray(request,
+                                        "relic_candidate_ids") is not null ||
+                                    OptionalStringArray(request,
+                                        "excluded_relic_ids") is not null ||
+                                    supportCount is null or <= 0 ||
+                                    supportCount.Value > fishingRun.Player.Deck.Length ||
+                                    ownerId is null ||
+                                    !int.TryParse(slotText,
+                                        System.Globalization.NumberStyles.None,
+                                        System.Globalization.CultureInfo.InvariantCulture,
+                                        out var relicSlot) ||
+                                    relicSlot >= fishingRun.Player.Relics.Length ||
+                                    fishingRun.Player.Relics[relicSlot].RelicId !=
+                                        rodRelicId ||
+                                    fishingRun.Player.Relics[relicSlot].IsMelted ||
+                                    fishingRun.Phase != RunPhase.Combat ||
+                                    fishingRun.World?.ActiveRoom !=
+                                        PrototypeRoomType.Combat ||
+                                    fishingRun.World?.Combat is null ||
+                                    streams is null || streams.Streams.Count(
+                                        stream => stream.StreamId == "run.niche") != 1)
+                                    throw new ArgumentException(
+                                        "Fishing Rod law requires an active ordinary combat, a live Fishing Rod slot, a Native run.niche stream, and a support_count within the current deck size.");
+                                law = ChanceLawEngineV111
+                                    .QueryNativePersistentCombatEndUpgrade(
+                                        new RandomIndexRequestV111(
+                                            siteId, "run.niche", ownerId!,
+                                            ordinal, Enumerable.Range(0,
+                                                supportCount.Value).ToArray()));
+                            }
+                            else
+                            {
+                                if (OptionalString(request, "card_type") is not null ||
+                                    OptionalString(request, "rarity") is not null ||
+                                    OptionalString(request, "card_id") is not null ||
+                                    OptionalString(request, "potion_id") is not null ||
+                                    OptionalString(request, "relic_id") is not null ||
+                                    OptionalBool(request, "colorless_offer") ||
+                                    OptionalBool(request, "sale_reprice") ||
+                                    OptionalString(request, "owner_id") is not null ||
+                                    OptionalStringArray(request,
+                                        "excluded_potion_ids") is not null ||
+                                    OptionalInt(request, "offer_ordinal") is not null ||
+                                    OptionalStringArray(request,
+                                        "relic_candidate_ids") is not null ||
+                                    OptionalStringArray(request,
+                                        "excluded_relic_ids") is not null)
+                                    throw new ArgumentException(
+                                        "Native event shuffle queries accept only state_handle, site_id, ordinal, prior_indices and action_id.");
+                                var actionId = OptionalString(request, "action_id");
+                                law = siteId ==
+                                    "event.war_historian.repy.potion_offer.index_draw"
+                                    ? ChanceLawEngineV111
+                                        .QueryNativeRepyPotionOffer(
+                                            RequireState(request), ordinal,
+                                            priorIndices, actionId)
+                                    : ChanceLawEngineV111.QueryNativeEventShuffle(
+                                        RequireState(request), siteId, ordinal,
+                                        priorIndices, actionId);
+                            }
                             if (law.SiteId != siteId ||
                                 siteId !=
                                     "event.war_historian.repy.potion_offer.index_draw" &&
@@ -3224,60 +3292,7 @@ internal static class PrototypeAiJsonlServer
                             request, "relic_candidate_ids");
                         var excludedRelicIds = OptionalStringArray(
                             request, "excluded_relic_ids");
-                        if (siteId == PrototypeGameEngine
-                                .FishingRodUpgradeSiteId)
-                        {
-                            var supportCount = OptionalInt(
-                                request, "support_count");
-                            var ownerId = ownerIdParameter ??
-                                throw new ArgumentException(
-                                    "Fishing Rod index law requires owner_id.");
-                            var rodRelicId = PrototypeNativeOvergrowthEvents
-                                .NeowRelicId("FishingRod");
-                            var ownerPrefix = $"relic:{rodRelicId}:slot:";
-                            var slotText = ownerId.StartsWith(ownerPrefix,
-                                StringComparison.Ordinal)
-                                ? ownerId[ownerPrefix.Length..] : string.Empty;
-                            if (!int.TryParse(slotText,
-                                    System.Globalization.NumberStyles.None,
-                                    System.Globalization.CultureInfo.InvariantCulture,
-                                    out var relicSlot) ||
-                                relicSlot >= run.Player.Relics.Length ||
-                                run.Player.Relics[relicSlot].RelicId !=
-                                    rodRelicId ||
-                                run.Player.Relics[relicSlot].IsMelted)
-                                throw new ArgumentException(
-                                    "Fishing Rod owner_id must identify an active Fishing Rod relic slot.");
-                            var streams = run.World?.Combat?.NativeRng?
-                                .RunStreams ?? run.NativeRunRng;
-                            if (priorIndices is not null ||
-                                priorVariantIndex is not null ||
-                                cardType is not null || rarity is not null ||
-                                cardId is not null || potionId is not null ||
-                                relicId is not null || colorlessOffer ||
-                                saleReprice || excludedPotionIds is not null ||
-                                offerOrdinal is not null ||
-                                relicCandidateIds is not null ||
-                                excludedRelicIds is not null ||
-                                supportCount is null or <= 0 ||
-                                supportCount > run.Player.Deck.Length ||
-                                run.Phase != RunPhase.Combat ||
-                                run.World?.ActiveRoom !=
-                                    PrototypeRoomType.Combat ||
-                                run.World?.Combat is null ||
-                                streams is null || streams.Streams.Count(stream =>
-                                    stream.StreamId == "run.niche") != 1)
-                                throw new ArgumentException(
-                                    "Fishing Rod law requires a Native run.niche owner and support_count within the current deck size.");
-                            var typedRequest = new RandomIndexRequestV111(
-                                siteId, "run.niche", ownerId, ordinal,
-                                Enumerable.Range(0, supportCount.Value)
-                                    .ToArray());
-                            law = ChanceLawEngineV111
-                                .QueryNativePersistentCombatEndUpgrade(
-                                    typedRequest);
-                        }
-                        else if (ChanceLawEngineV111
+                        if (ChanceLawEngineV111
                             .IsSupportedAncientOfferQuerySite(siteId))
                         {
                             if (cardType is not null || rarity is not null ||

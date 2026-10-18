@@ -19,6 +19,8 @@ internal sealed record NativeEventShufflePlanV111(
     string? ExpectedUnscriptedStreamId = null,
     int ExpectedUnscriptedDrawCount = 0)
 {
+    public bool IsFishingRodUpgrade =>
+        SiteId == PrototypeGameEngine.FishingRodUpgradeSiteId;
     public int SwapCount => CandidateCount - 1;
     public bool IsRepyChestOffer => SiteId == PrototypeNativeHiveEvents
         .WarHistorianRepyRelicShuffleSiteId;
@@ -72,22 +74,34 @@ internal static class NativeEventShufflePlanBuilderV111
                 Event: null, Combat: not null } &&
             origin.Player.ActiveRelics.Any(relic =>
                 relic.RelicId == NativeGloryAncientsV111.WarHammerId);
+        var fishingRodVictoryAction =
+            origin.Phase == RunPhase.Combat &&
+            (siteId is null || siteId ==
+                PrototypeGameEngine.FishingRodUpgradeSiteId) &&
+            origin.World is { ActiveRoom: PrototypeRoomType.Combat,
+                Event: null, Combat: not null } &&
+            origin.Player.Relics.Any(relic =>
+                relic.RelicId == PrototypeNativeOvergrowthEvents
+                    .NeowRelicId("FishingRod") && !relic.IsMelted);
         var world = origin.World;
         var activeEvent = world?.Event;
         if (string.IsNullOrWhiteSpace(origin.RunSeed) ||
             origin.NativeRunRng is null ||
             world is null ||
             activeEvent is null && !fakeMerchantEntryAction &&
-                !warHammerEliteVictoryAction ||
+                !warHammerEliteVictoryAction &&
+                !fishingRodVictoryAction ||
             activeEvent?.ControlledChoice is not null ||
             activeEvent?.NativeEventPotionSlot is not null ||
             origin.ControlledEventRewardChoice is not null)
             throw new InvalidOperationException(
-                "Native shuffle Nature choices require an active event, a War Hammer elite victory, or Fake Merchant entry.");
+                "Native shuffle Nature choices require an active event, an admitted relic victory action, or Fake Merchant entry.");
         var evt = activeEvent ?? new EventState(
             fakeMerchantEntryAction
                 ? PrototypeNativeFakeMerchant.EventId
-                : "run.combat.elite_war_hammer");
+                : fishingRodVictoryAction
+                    ? "run.combat.fishing_rod"
+                    : "run.combat.elite_war_hammer");
         siteId ??= evt.EventId switch
         {
             PrototypeNativeUnderdocksDoors.EventId =>
@@ -108,6 +122,8 @@ internal static class NativeEventShufflePlanBuilderV111
                         .WarHistorianRepyRelicShuffleSiteId,
             _ when warHammerEliteVictoryAction =>
                 "relic.war_hammer.elite_upgrade.shuffle_swap_index",
+            _ when fishingRodVictoryAction =>
+                PrototypeGameEngine.FishingRodUpgradeSiteId,
             _ => throw new InvalidOperationException(
                 "No native event shuffle is pending at this event page.")
         };
@@ -124,9 +140,10 @@ internal static class NativeEventShufflePlanBuilderV111
             evt.ChosenChoiceId == "setting_2";
         if (origin.Phase != RunPhase.Event && !battlewornVictoryAction &&
             !warHammerEliteVictoryAction &&
+            !fishingRodVictoryAction &&
             !fakeMerchantEntryAction)
             throw new InvalidOperationException(
-                "Native shuffle Nature choices require a pending event action, a War Hammer elite victory action, or Fake Merchant entry.");
+                "Native shuffle Nature choices require a pending event action, a relic victory action, or Fake Merchant entry.");
         if (origin.Phase == RunPhase.Event && evt.ChosenChoiceId is not null)
             throw new InvalidOperationException(
                 "Native event shuffle Nature choices require an uncommitted event action.");
@@ -138,7 +155,42 @@ internal static class NativeEventShufflePlanBuilderV111
         int candidateCount;
         string ownerId;
         NativeRngSnapshot? nativeCursorBefore = null;
-        if (fakeMerchantEntryAction)
+        if (fishingRodVictoryAction && siteId ==
+            PrototypeGameEngine.FishingRodUpgradeSiteId)
+        {
+            resolvedActionId = actionId ?? throw new InvalidOperationException(
+                "Fishing Rod upgrade requires the stable ID of its victory action.");
+            replayAction = new PrototypeGameEngine().GetLegalActions(origin)
+                .SingleOrDefault(action =>
+                    PrototypeAiEnvironment.StableActionId(action) ==
+                    resolvedActionId);
+            if (replayAction is null)
+                throw new InvalidOperationException(
+                    "Fishing Rod upgrade action is not legal in the current combat state.");
+            var capture = CaptureFishingRodRequests(
+                origin, replayAction, [], allowNativeTail: true);
+            var requests = capture.SiteRequests;
+            if (capture.Run.Phase != RunPhase.Reward ||
+                capture.Run.World?.Combat is not null || requests.Length == 0)
+                throw new InvalidOperationException(
+                    "Fishing Rod ReferenceNature requires a combat action that immediately wins and triggers at least one upgrade draw.");
+            var firstRequest = requests[0].Request;
+            orderedCandidateIds = firstRequest.OrderedCandidates
+                .Select(index => index.ToString(
+                    System.Globalization.CultureInfo.InvariantCulture))
+                .ToArray();
+            candidateCount = firstRequest.SupportCount;
+            ownerId = firstRequest.OwnerId;
+            nativeRngEventId = string.Empty;
+            var nativeStreams = origin.World?.Combat?.NativeRng?.RunStreams
+                ?? origin.NativeRunRng;
+            var niche = nativeStreams?.Streams.SingleOrDefault(stream =>
+                stream.StreamId == "run.niche")
+                ?? throw new InvalidOperationException(
+                    "Fishing Rod upgrade requires the Native run.niche stream.");
+            nativeCursorBefore = NativeRngV111.ToSnapshot(niche);
+        }
+        else if (fakeMerchantEntryAction)
         {
             resolvedActionId = actionId ?? throw new InvalidOperationException(
                 "Fake Merchant shuffle requires the stable ID of its legal Event-node action.");
@@ -449,13 +501,15 @@ internal static class NativeEventShufflePlanBuilderV111
             throw new InvalidOperationException(
                 "Native event shuffle action is not legal in the current state.");
 
+        var isFishingRodUpgrade = siteId ==
+            PrototypeGameEngine.FishingRodUpgradeSiteId;
         var isWarHammerShuffle = siteId ==
             "relic.war_hammer.elite_upgrade.shuffle_swap_index";
         var isRepyShuffle = siteId == PrototypeNativeHiveEvents
             .WarHistorianRepyRelicShuffleSiteId;
         NativeRngSnapshot streamSnapshot;
         string streamId;
-        if (isWarHammerShuffle)
+        if (isWarHammerShuffle || isFishingRodUpgrade)
         {
             if (nativeCursorBefore is null)
                 throw new InvalidOperationException(
@@ -544,13 +598,15 @@ internal static class NativeEventShufflePlanBuilderV111
             throw new InvalidOperationException(
                 "Fake Merchant planned candidates differ from its stock definition.");
 
-        if (candidateCount <= 1)
+        if (candidateCount <= 1 && !isFishingRodUpgrade)
             throw new InvalidOperationException(
                 "Native event shuffle has fewer than two candidates and performs no draw.");
 
         var fingerprint = CanonicalJson.Sha256(new
         {
-            boundary = "native_event.fisher_yates_shuffle",
+            boundary = isFishingRodUpgrade
+                ? "run.persistent_combat_end.index_choice"
+                : "native_event.fisher_yates_shuffle",
             eventId = evt.EventId,
             page = evt.NativePageIndex,
             actionId = resolvedActionId,
@@ -560,18 +616,133 @@ internal static class NativeEventShufflePlanBuilderV111
             stream = streamSnapshot,
             siteId,
             ownerId,
-            policy = ChanceLawEngineV111.NativeEventShuffleConditioningPolicyId
+            policy = isFishingRodUpgrade
+                ? ChanceLawEngineV111.NativeRandomIndexConditioningPolicyId
+                : ChanceLawEngineV111.NativeEventShuffleConditioningPolicyId
         });
-        return new(isWarHammerShuffle ? "run.combat.elite_war_hammer" : evt.EventId,
+        return new(isWarHammerShuffle ? "run.combat.elite_war_hammer" :
+                isFishingRodUpgrade ? "run.combat.fishing_rod" : evt.EventId,
             nativeRngEventId, siteId,
             resolvedActionId, replayAction, orderedCandidateIds, candidateCount,
             streamId, ownerId, fingerprint,
-            isWarHammerShuffle || isRepyShuffle
+            isWarHammerShuffle || isFishingRodUpgrade || isRepyShuffle
                 ? nativeCursorBefore : null,
             PreserveEventRng: !isRepyShuffle,
             ExpectedUnscriptedStreamId: isRepyShuffle
                 ? NativePlayerRngV111.RewardsStreamId : null,
             ExpectedUnscriptedDrawCount: 0);
+    }
+
+    internal sealed record FishingRodCaptureV111(
+        RunState Run, RandomBoundaryEventV111[] SiteRequests);
+
+    internal static FishingRodCaptureV111 CaptureFishingRodRequests(
+        RunState origin, GameAction action,
+        IReadOnlyList<RandomIndexDecisionV111> scriptedPrefix,
+        bool allowNativeTail)
+    {
+        ArgumentNullException.ThrowIfNull(origin);
+        ArgumentNullException.ThrowIfNull(action);
+        ArgumentNullException.ThrowIfNull(scriptedPrefix);
+        var beforeStreams = origin.World?.Combat?.NativeRng?.RunStreams
+            ?? origin.NativeRunRng;
+        var beforeNiche = beforeStreams?.Streams.SingleOrDefault(stream =>
+            stream.StreamId == "run.niche")
+            ?? throw new InvalidOperationException(
+                "Fishing Rod replay requires the Native run.niche stream.");
+        var beforeCursor = NativeRngV111.ToSnapshot(beforeNiche);
+        var provider = new FishingRodPrefixProviderV111(
+            scriptedPrefix, allowNativeTail);
+        RunState run;
+        RandomBoundaryEventV111[] entries;
+        using (var journal = RandomBoundaryJournalV111.Begin())
+        using (StochasticProviderScopeV111.EnterFiltered(
+            provider, null,
+            request => request.IndexRequest?.SiteId ==
+                PrototypeGameEngine.FishingRodUpgradeSiteId,
+            overrideExplicitProviders: true))
+        {
+            run = new PrototypeGameEngine().Step(
+                origin.Fork(), action).State;
+            entries = journal.Entries.ToArray();
+        }
+        provider.AssertComplete();
+        var siteRequests = entries.Where(entry => entry.Request.SiteId ==
+            PrototypeGameEngine.FishingRodUpgradeSiteId).ToArray();
+        var runNicheEvents = entries.Where(entry =>
+            entry.Request.StreamId == "run.niche").ToArray();
+        var rodId = PrototypeNativeOvergrowthEvents.NeowRelicId(
+            "FishingRod");
+        var validSiteRequests = siteRequests.All(entry =>
+        {
+            var request = entry.Request;
+            const string ownerPrefix = "relic:";
+            var slotMarker = $":slot:";
+            var markerIndex = request.OwnerId.IndexOf(
+                slotMarker, StringComparison.Ordinal);
+            var slotText = markerIndex >= 0
+                ? request.OwnerId[(markerIndex + slotMarker.Length)..]
+                : string.Empty;
+            return request.StreamId == "run.niche" &&
+                request.OperationKind == "choose_index" &&
+                request.OrderedCandidates.SequenceEqual(
+                    Enumerable.Range(0, request.SupportCount)) &&
+                request.OwnerId.StartsWith(
+                    ownerPrefix + rodId + slotMarker,
+                    StringComparison.Ordinal) &&
+                int.TryParse(slotText,
+                    System.Globalization.NumberStyles.None,
+                    System.Globalization.CultureInfo.InvariantCulture,
+                    out var slot) &&
+                slot < origin.Player.Relics.Length &&
+                origin.Player.Relics[slot].RelicId == rodId &&
+                !origin.Player.Relics[slot].IsMelted;
+        });
+        var expectedNativeTail = siteRequests.Length -
+            scriptedPrefix.Count;
+        var niche = run.NativeRunRng?.Streams.SingleOrDefault(stream =>
+            stream.StreamId == "run.niche");
+        var actualAdvance = niche is null ? ulong.MaxValue : unchecked(
+            (uint)(NativeRngV111.ToSnapshot(niche).Counter -
+                beforeCursor.Counter));
+        var expectedModes = siteRequests.Select((entry, index) =>
+            entry.ProviderMode == (index < scriptedPrefix.Count
+                ? "scripted-v111" : "native-v111")).All(matches => matches);
+        if (siteRequests.Length < scriptedPrefix.Count ||
+            runNicheEvents.Length != siteRequests.Length ||
+            runNicheEvents.Any(entry => entry.Request.SiteId !=
+                PrototypeGameEngine.FishingRodUpgradeSiteId) ||
+            !validSiteRequests || !expectedModes ||
+            actualAdvance != (ulong)expectedNativeTail ||
+            run.Phase != RunPhase.Reward || run.World?.Combat is not null ||
+            !allowNativeTail && siteRequests.Length != scriptedPrefix.Count)
+            throw new InvalidDataException(
+                "Fishing Rod replay differs from the captured immediate-victory index prefix or run.niche cursor.");
+        return new FishingRodCaptureV111(run, siteRequests);
+    }
+
+    private sealed class FishingRodPrefixProviderV111(
+        IReadOnlyList<RandomIndexDecisionV111> scriptedPrefix,
+        bool allowNativeTail) : IRandomIndexProviderV111
+    {
+        private readonly ScriptedRandomIndexProviderV111 _script =
+            new(scriptedPrefix);
+
+        public string Mode => "reference-nature-fishing-rod-prefix-v111";
+
+        public RandomIndexDecisionV111 Resolve(
+            RandomIndexRequestV111 request, RngBundle streams)
+        {
+            if (_script.Remaining > 0)
+                return _script.Resolve(request, streams);
+            if (!allowNativeTail)
+                throw new InvalidDataException(
+                    "Fishing Rod replay reached an unscripted upgrade draw.");
+            return new NativeRandomIndexProviderV111().Resolve(
+                request, streams);
+        }
+
+        public void AssertComplete() => _script.AssertComplete();
     }
 }
 
@@ -585,8 +756,8 @@ public sealed record ReferenceNatureNativeEventShuffleSessionSnapshotV111(
     ReferenceNatureStateV111 NatureState,
     ReferenceNatureDecisionV111[] DecisionTranscript);
 
-/// <summary>Atomic ReferenceNature replay of an admitted Native
-/// Fisher–Yates shuffle and its ordinary mechanics action.</summary>
+/// <summary>Atomic ReferenceNature replay of admitted Native event shuffles,
+/// relic hooks, and their ordinary mechanics actions.</summary>
 public sealed record ReferenceNatureNativeEventShuffleSessionV111(
     string SchemaId,
     string SiteId,
@@ -602,6 +773,9 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
 
     internal string[] PlannedCandidateIds { get; init; } = [];
 
+    private bool IsFishingRodUpgrade =>
+        SiteId == PrototypeGameEngine.FishingRodUpgradeSiteId;
+
     [JsonIgnore]
     public string Fingerprint => CanonicalJson.Sha256(new
     {
@@ -613,9 +787,18 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
     public int NextOrdinal => DecisionTranscript.Length;
 
     [JsonIgnore]
-    public bool Complete => DecisionTranscript.Length ==
-        NativeEventShufflePlanBuilderV111.Build(
-            Origin, SiteId, ActionId, PlannedCandidateIds).TotalChoiceCount;
+    public bool Complete
+    {
+        get
+        {
+            var plan = NativeEventShufflePlanBuilderV111.Build(
+                Origin, SiteId, ActionId, PlannedCandidateIds);
+            return plan.IsFishingRodUpgrade
+                ? BuildFishingRodPrefix().Capture.SiteRequests.Length ==
+                    DecisionTranscript.Length
+                : DecisionTranscript.Length == plan.TotalChoiceCount;
+        }
+    }
 
     [JsonIgnore]
     public ChanceLawV111? PendingLaw
@@ -626,6 +809,17 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
                 return null;
             var plan = NativeEventShufflePlanBuilderV111.Build(
                 Origin, SiteId, ActionId, PlannedCandidateIds);
+            if (plan.IsFishingRodUpgrade)
+            {
+                var prefix = BuildFishingRodPrefix();
+                if (prefix.Capture.SiteRequests.Length ==
+                    prefix.Decisions.Length)
+                    return null;
+                return ChanceLawEngineV111
+                    .QueryNativePersistentCombatEndUpgrade(
+                        prefix.Capture.SiteRequests[
+                            prefix.Decisions.Length].Request);
+            }
             return QueryBoundaryLaw(
                 plan, Origin, NextOrdinal,
                 DecisionTranscript.Select(decision => decision.OutcomeIndex)
@@ -711,6 +905,8 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
                 "ReferenceNature native event shuffle session is already complete.");
         var plan = NativeEventShufflePlanBuilderV111.Build(
             Origin, SiteId, ActionId, PlannedCandidateIds);
+        if (plan.IsFishingRodUpgrade)
+            return ResolveFishingRodNext();
         var priorIndices = DecisionTranscript.Select(
             decision => decision.OutcomeIndex).ToArray();
         var law = QueryBoundaryLaw(
@@ -768,6 +964,11 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
         NatureState.Validate();
         var plan = NativeEventShufflePlanBuilderV111.Build(
             Origin, SiteId, ActionId, PlannedCandidateIds);
+        if (plan.IsFishingRodUpgrade)
+        {
+            ValidateFishingRod(plan);
+            return;
+        }
         if (DecisionTranscript.Length > plan.TotalChoiceCount ||
             !ReferenceNatureRunCursorV111.MatchesRunSession(
                 Origin, Run, InitialNatureState, NatureState,
@@ -823,6 +1024,128 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
             CanonicalJson.Sha256(expectedRun) != CanonicalJson.Sha256(Run))
             throw new InvalidDataException(
                 "ReferenceNature native event shuffle replay differs from its session envelope.");
+    }
+
+    private ReferenceNatureNativeEventShuffleSessionV111
+        ResolveFishingRodNext()
+    {
+        var plan = NativeEventShufflePlanBuilderV111.Build(
+            Origin, SiteId, ActionId, PlannedCandidateIds);
+        var prefix = BuildFishingRodPrefix();
+        if (prefix.Capture.SiteRequests.Length == prefix.Decisions.Length)
+            throw new InvalidOperationException(
+                "ReferenceNature Fishing Rod session is already complete.");
+        var request = prefix.Capture.SiteRequests[
+            prefix.Decisions.Length].Request;
+        var law = ChanceLawEngineV111
+            .QueryNativePersistentCombatEndUpgrade(request);
+        var selection = ReferenceNatureV111.SampleValidated(
+            law, prefix.NatureState);
+        var transcript = DecisionTranscript.Append(
+            new ReferenceNatureDecisionV111(
+                law.LawId, law.EventId, selection.OutcomeId,
+                selection.OutcomeIndex)).ToArray();
+        var decisions = prefix.Decisions.Append(
+            new RandomIndexDecisionV111(
+                request, selection.OutcomeIndex,
+                "scripted-v111")).ToArray();
+        var projected = NativeEventShufflePlanBuilderV111
+            .CaptureFishingRodRequests(
+                Origin, plan.ReplayAction, decisions,
+                allowNativeTail: true);
+        var nextRun = projected.SiteRequests.Length == decisions.Length
+            ? ReferenceNatureRunCursorV111.Commit(
+                NativeEventShufflePlanBuilderV111
+                    .CaptureFishingRodRequests(
+                        Origin, plan.ReplayAction, decisions,
+                        allowNativeTail: false).Run,
+                selection.NextState)
+            : Origin.Fork();
+        var next = this with
+        {
+            Run = nextRun,
+            NatureState = selection.NextState,
+            DecisionTranscript = transcript
+        };
+        next.Validate();
+        return next;
+    }
+
+    private sealed record FishingRodPrefixV111(
+        RandomIndexDecisionV111[] Decisions,
+        ReferenceNatureStateV111 NatureState,
+        NativeEventShufflePlanBuilderV111.FishingRodCaptureV111 Capture);
+
+    private FishingRodPrefixV111 BuildFishingRodPrefix()
+    {
+        var plan = NativeEventShufflePlanBuilderV111.Build(
+            Origin, SiteId, ActionId, PlannedCandidateIds);
+        if (!plan.IsFishingRodUpgrade)
+            throw new InvalidOperationException(
+                "Fishing Rod prefix requested for another stochastic site.");
+        var decisions = new List<RandomIndexDecisionV111>();
+        var nature = InitialNatureState.Fork();
+        for (var ordinal = 0;
+             ordinal < DecisionTranscript.Length; ordinal++)
+        {
+            var capture = NativeEventShufflePlanBuilderV111
+                .CaptureFishingRodRequests(
+                    Origin, plan.ReplayAction, decisions,
+                    allowNativeTail: true);
+            if (capture.SiteRequests.Length <= ordinal)
+                throw new InvalidDataException(
+                    "Fishing Rod transcript contains more choices than the replay reaches.");
+            var request = capture.SiteRequests[ordinal].Request;
+            var law = ChanceLawEngineV111
+                .QueryNativePersistentCombatEndUpgrade(request);
+            var selection = ReferenceNatureV111.SampleValidated(law, nature);
+            var expected = new ReferenceNatureDecisionV111(
+                law.LawId, law.EventId, selection.OutcomeId,
+                selection.OutcomeIndex);
+            DecisionTranscript[ordinal].Validate();
+            if (CanonicalJson.Sha256(expected) != CanonicalJson.Sha256(
+                    DecisionTranscript[ordinal]))
+                throw new InvalidDataException(
+                    "ReferenceNature Fishing Rod transcript does not replay.");
+            decisions.Add(new RandomIndexDecisionV111(
+                request, selection.OutcomeIndex, "scripted-v111"));
+            nature = selection.NextState;
+        }
+        var finalCapture = NativeEventShufflePlanBuilderV111
+            .CaptureFishingRodRequests(
+                Origin, plan.ReplayAction, decisions,
+                allowNativeTail: true);
+        return new FishingRodPrefixV111(
+            decisions.ToArray(), nature, finalCapture);
+    }
+
+    private void ValidateFishingRod(NativeEventShufflePlanV111 plan)
+    {
+        var prefix = BuildFishingRodPrefix();
+        var complete = prefix.Capture.SiteRequests.Length ==
+            prefix.Decisions.Length;
+        if (prefix.Capture.SiteRequests.Length < prefix.Decisions.Length ||
+            !ReferenceNatureRunCursorV111.MatchesRunSession(
+                Origin, Run, InitialNatureState, NatureState,
+                DecisionTranscript.Length, complete))
+            throw new InvalidDataException(
+                "ReferenceNature Fishing Rod cursor differs from its session envelope.");
+        var expectedRun = Origin.Fork();
+        if (complete)
+        {
+            var strictReplay =
+                NativeEventShufflePlanBuilderV111
+                    .CaptureFishingRodRequests(
+                        Origin, plan.ReplayAction, prefix.Decisions,
+                        allowNativeTail: false);
+            expectedRun = ReferenceNatureRunCursorV111.Commit(
+                strictReplay.Run, prefix.NatureState);
+        }
+        if (CanonicalJson.Sha256(prefix.NatureState) !=
+                CanonicalJson.Sha256(NatureState) ||
+            CanonicalJson.Sha256(expectedRun) != CanonicalJson.Sha256(Run))
+            throw new InvalidDataException(
+                "ReferenceNature Fishing Rod replay differs from its session envelope.");
     }
 
     private static ChanceLawV111 QueryBoundaryLaw(
@@ -936,6 +1259,7 @@ public static partial class ChanceLawEngineV111
 
     public static string[] NativeEventShuffleSessionSiteIds =>
     [
+        "relic.persistent_combat_end.random_upgrade.index_draw",
         "relic.war_hammer.elite_upgrade.shuffle_swap_index",
         PrototypeNativeUnderdocksDoors.ShuffleSiteId,
         PrototypeNativeGloryEvents.HungryForMushroomsShuffleSiteId,

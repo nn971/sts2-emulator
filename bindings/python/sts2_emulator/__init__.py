@@ -388,7 +388,7 @@ class State:
             self, nature_seed: int | None = None,
             action_id: str | None = None,
             site_id: str | None = None):
-        """Begin a conditional event, relic, or run-stream shuffle replay."""
+        """Begin a conditional Native event or victory-hook replay."""
         if self.session.capabilities.get(
                 "referenceNatureNativeEventShuffleSessionSchemaId") != (
                 "sts2-v111-reference-nature-native-event-shuffle-session-v1"):

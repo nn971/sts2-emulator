@@ -1,15 +1,16 @@
 # ReferenceNature Native shuffle contract
 
-This contract records source-independent ReferenceNature sessions for a full
-Native Fisher–Yates shuffle. The event resolvers
+This contract records source-independent ReferenceNature sessions for Native
+Fisher–Yates shuffles and admitted persistent relic index hooks. The event resolvers
 are the Light option in Doors of Light and Dark, Fragrant Mushroom's eligible
 card shuffle, Tinker Time's type and rider offer stages, and Battleworn
 Dummy's setting 2 upgrade shuffle. It also covers Fake Merchant's six-of-nine
 relic stock shuffle when a configured Event-node action's ordinary event
 selection resolves to Fake Merchant, and War Historian Repy's relic offer
 when its initial chest action is selected in configured native regional mode.
-The run-stream resolver covers one War Hammer after an action immediately
-wins an ordinary Elite fight.
+The run-stream resolvers cover one War Hammer after an action immediately
+wins an ordinary Elite fight and Fishing Rod's triggered combat-end upgrade
+indices after an ordinary combat victory.
 
 ## Boundary
 
@@ -57,6 +58,13 @@ relic-swap prefix and any earlier potion index. The player-stream assignment
 remains a source hypothesis, and the event has no Native event RNG context at
 this boundary.
 
+Fishing Rod accepts a configured ordinary Combat-room action only when it
+wins immediately and at least one non-melted Rod reaches its every-third-
+combat upgrade draw. The session captures the typed request sequence from the
+ordinary victory action, then recomputes each later request after applying
+earlier Nature-selected upgrades. Empty candidate pools remain draw-free; the
+session rejects any unexplained `run.niche` calls in the same action.
+
 ## Laws and replay
 
 The player-visible event projection exposes the resulting page, offers, and
@@ -78,6 +86,13 @@ indices into the configured potion pool, use stable potion-and-index
 identities, and include the full preceding shuffle and potion prefix. Their
 bounded-index transform is `SOURCE_VERIFIED` on that declared support; the
 `player.rewards` stream assignment remains a hypothesis.
+
+Fishing Rod's pending law is the exact Native `NextInt` mass over the current
+captured request's index support. Its outcome identifies an index; the
+ordinary combat-end hook maps that index to the eligible deck card instance.
+The transform is `SOURCE_VERIFIED` for the declared support, while relic
+trigger timing, complete card eligibility, and Native owner calibration stay
+separate.
 
 The Fragrant Mushroom, Tinker type, Tinker rider, and Fake Merchant stock
 shuffle sites have separate laws. A rider law is conditioned on the prior
@@ -112,6 +127,13 @@ retain their Native providers. War Hammer uses the emulator's current
 CardId-plus-instance-ID ordering proxy; the source ModelId ordering is not
 established by this law or session.
 
+For Fishing Rod, replay scripts each captured `run.niche` index request and
+leaves that stream at its captured entry cursor. Earlier upgrades are applied
+by the ordinary victory hook before later Rod supports are recaptured. The
+session admits only an immediate ordinary-combat victory with no additional
+`run.niche` calls; it does not establish source candidate-pool fidelity or
+Native cursor parity.
+
 For Repy, replay scripts the relic Fisher–Yates requests and both potion
 index requests as one typed prefix. The `player.rewards` cursor remains at its
 captured entry state, while request ordinals preserve the source call order
@@ -129,6 +151,7 @@ resolver's conditioning plan and action replay are explicitly admitted. The
 Doors, Tinker, Battleworn, Fake Merchant, and War Hammer source audits remain
 authoritative for their modeled eligibility and flow. Battleworn's session covers a
 winning combat action boundary; it does not create a multi-action combat
-continuation. Fake Merchant's session does not control or reinterpret the
+continuation. Fishing Rod uses the existing ordinary victory hook and does
+not establish trigger or pool fidelity. Fake Merchant's session does not control or reinterpret the
 ordinary weighted event-selection law; its availability depends on that
 provider's result for the selected Event node.
