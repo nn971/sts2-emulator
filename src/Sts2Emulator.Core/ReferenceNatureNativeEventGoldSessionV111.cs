@@ -123,12 +123,15 @@ public sealed record ReferenceNatureNativeEventGoldSessionV111(
         var selection = ReferenceNatureV111.SampleValidated(law, NatureState);
         var providerDecision = ReferenceNatureChanceLawDecisionV111.FromSelection(
             law, pending.Request, selection, Origin);
-        var providerDecisions = prefix.Append(providerDecision).ToArray();
+        var continuation = new ControlledStochasticContinuationStateV111(
+            ControlledStochasticContinuationStateV111.CurrentSchemaId,
+            prefix, pending.Request, pending.CandidateLabels);
         var transcript = DecisionTranscript.Append(
             new ReferenceNatureDecisionV111(
                 law.LawId, law.EventId, selection.OutcomeId,
                 selection.OutcomeIndex)).ToArray();
-        var replay = Replay(Origin, ActionId, providerDecisions);
+        var replay = Resolve(Origin, ActionId, continuation,
+            providerDecision);
         var next = this with
         {
             Run = replay.Run is { } completed
@@ -467,22 +470,49 @@ public sealed record ReferenceNatureNativeEventGoldSessionV111(
                 GoldUnitFloatSiteId or GoldIndexSiteId or
                 ChanceLawEngineV111.NativeStoneOfAllTimePotionSlotSiteId or
                 ChanceLawEngineV111.NativeFutureOfPotionsCardTypeSiteId);
-        if (replay.Run is not { } completed)
-            return replay;
+        return replay.Run is { } completed
+            ? replay with { Run = MarkCompletedReplay(completed) }
+            : replay;
+    }
+
+    private static ControlledStochasticContinuationResultV111 Resolve(
+        RunState source, string actionId,
+        ControlledStochasticContinuationStateV111 continuation,
+        ControlledStochasticDecisionV111 selectedOutcome)
+    {
+        var action = new PrototypeGameEngine().GetLegalActions(source)
+            .SingleOrDefault(candidate =>
+                PrototypeAiEnvironment.StableActionId(candidate) == actionId)
+            ?? throw new InvalidOperationException(
+                "Native event gold action is no longer legal at its origin.");
+        var replay = ControlledChanceContinuationExecutorV111.ResolveStochastic(
+            ReferenceNatureRunProjectionV111.CreateNatureReplayOrigin(
+                source, allowMissingRelicBag: true),
+            continuation, selectedOutcome,
+            checkpoint => new PrototypeGameEngine().Step(
+                checkpoint, action with { Payload = action.Payload.Clone() }).State,
+            request => request.SiteId is
+                GoldUnitFloatSiteId or GoldIndexSiteId or
+                ChanceLawEngineV111.NativeStoneOfAllTimePotionSlotSiteId or
+                ChanceLawEngineV111.NativeFutureOfPotionsCardTypeSiteId);
+        return replay.Run is { } completed
+            ? replay with { Run = MarkCompletedReplay(completed) }
+            : replay;
+    }
+
+    private static RunState MarkCompletedReplay(RunState completed)
+    {
         var world = completed.World ?? throw new InvalidDataException(
             "Native event gold replay completed without its run world.");
         var eventState = world.Event ?? throw new InvalidDataException(
             "Native event gold replay completed without its event state.");
-        return replay with
+        return completed with
         {
-            Run = completed with
+            World = world with
             {
-                World = world with
+                Event = eventState with
                 {
-                    Event = eventState with
-                    {
-                        NativeEventRngProviderMode = "scripted-v111"
-                    }
+                    NativeEventRngProviderMode = "scripted-v111"
                 }
             }
         };
