@@ -269,21 +269,12 @@ public static class LegacyRandomChoiceV111
                 controlledDecision.Validate();
                 return controlledDecision;
             }
-            if (ControlledEnemyActionReplayV111.IsActive &&
-                PrototypeControlledEnemyActionContinuationV111
-                    .IsEnemyActionSite(siteId))
-            {
-                if (StochasticProviderScopeV111.HasProviderOverride)
-                    return StochasticProviderScopeV111.ResolveIndex(
-                        new LegacyPrototypeRandomIndexProviderV111(),
-                        request, streams);
-                var controlledDecision = new RandomIndexDecisionV111(
-                    request,
-                    ControlledEnemyActionReplayV111.Resolve(request),
-                    "controlled-v111");
-                controlledDecision.Validate();
-                return controlledDecision;
-            }
+            if (PrototypeControlledEnemyActionContinuationV111
+                    .IsEnemyActionSite(siteId) &&
+                StochasticProviderScopeV111.HasProviderOverride)
+                return StochasticProviderScopeV111.ResolveIndex(
+                    new LegacyPrototypeRandomIndexProviderV111(),
+                    request, streams);
             throw new NotSupportedException(
                 $"UNSUPPORTED_CONTROLLED_CHANCE site={siteId} " +
                 $"operation={operationKind} requires a saved continuation.");

@@ -214,12 +214,51 @@ internal static class ControlledChanceContinuationExecutorV111
         RunState checkpoint,
         RandomIndexDecisionV111[] decisions,
         Func<RunState, RunState> mechanics)
-        => ResumeCore(
+    {
+        var typedDecisions = decisions.Select(decision =>
+            ControlledStochasticDecisionV111.FromIndex(decision)).ToArray();
+        using var replayJournal = RandomBoundaryJournalV111.Begin();
+        var replay = CaptureTyped(
             checkpoint,
-            decisions,
+            ControlledStochasticContinuationStateV111.CurrentSchemaId,
+            typedDecisions,
             mechanics,
-            () => ControlledEnemyActionReplayV111.Begin(decisions),
-            new ControlledEnemyActionRandomIndexProviderV111());
+            requestFilter: request =>
+            {
+                if (request.IndexRequest is { } indexRequest &&
+                    PrototypeControlledEnemyActionContinuationV111
+                        .IsEnemyActionSite(indexRequest.SiteId))
+                    return true;
+                throw new NotSupportedException(
+                    "UNSUPPORTED_CONTROLLED_CHANCE site=" + request.SiteId +
+                    " operation=" + OperationLabel(request) +
+                    " requires a saved enemy-action continuation.");
+            });
+        if (replay.Continuation is { } pending)
+        {
+            var request = pending.PendingRequest.IndexRequest ??
+                throw new NotSupportedException(
+                    "UNSUPPORTED_CONTROLLED_CHANCE site=" +
+                    pending.PendingRequest.SiteId +
+                    " operation=non_index requires a mixed enemy-action continuation.");
+            return new ControlledChanceReplayResultV111(
+                null, new ControlledEnemyActionChanceRequiredException(request));
+        }
+        return new ControlledChanceReplayResultV111(
+            replay.Value ?? throw new InvalidDataException(
+                "Enemy-action replay returned neither a run nor a pending request."),
+            null);
+    }
+
+    private static string OperationLabel(
+        ControlledStochasticRequestV111 request) =>
+        request.IndexRequest?.OperationKind ??
+        (request.UnitFloatRequest is not null ? "unit_float" :
+        request.RangedFloatRequest is not null ? "ranged_float" :
+        request.RangedDoubleRequest is not null ? "ranged_double" :
+        request.GaussianIntRequest is not null ? "gaussian_int" :
+        request.GaussianDoubleRequest is not null ? "gaussian_double" :
+        "unknown");
 
     private static ControlledChanceReplayResultV111 ResumeCore(
         RunState checkpoint,

@@ -13979,7 +13979,8 @@ public sealed partial class PrototypeGameEngine
             if (PrototypeControlledEnemyActionContinuationV111
                     .IsEnemyActionSite(siteId))
                 return (combat,
-                    ControlledEnemyActionReplayV111.Resolve(request));
+                    StochasticProviderScopeV111.ResolveIndex(
+                        provider, request, streams).SelectedIndex);
             throw new NotSupportedException(
                 $"UNSUPPORTED_CONTROLLED_CHANCE site={siteId} " +
                 "operation=choose_index requires a saved continuation.");
@@ -14160,7 +14161,8 @@ public sealed partial class PrototypeGameEngine
             if (PrototypeControlledEnemyActionContinuationV111
                     .IsEnemyActionSite(siteId))
                 return (combat,
-                    ControlledEnemyActionReplayV111.Resolve(request));
+                    StochasticProviderScopeV111.ResolveIndex(
+                        provider, request, streams).SelectedIndex);
             throw new NotSupportedException(
                 $"UNSUPPORTED_CONTROLLED_CHANCE site={siteId} " +
                 "operation=bounded_integer requires a saved pile-insertion continuation.");
