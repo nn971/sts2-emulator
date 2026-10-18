@@ -165,14 +165,15 @@ public sealed class NativeShuffleStepReplayV111 : IDisposable
         var scripted = expected.SourceSelectedIndices.Select((index, i) =>
             new RandomIndexDecisionV111(
                 new RandomIndexRequestV111(
-                    expected.SiteId, NativeFisherYatesV111.StreamId,
+                    NativeFisherYatesV111.SiteId,
+                    NativeFisherYatesV111.StreamId,
                     "player:0", i, [], OperationKind: "bounded_integer",
                     BoundedCount: input.Length - i),
                 index, "source-transcript-v111")).ToArray();
         var provider = new ScriptedRandomIndexProviderV111(scripted);
         var computed = NativeFisherYatesV111.Execute(
             expected.OrderedSourceInput, scope._replayStreams, provider,
-            siteId: expected.SiteId);
+            siteId: NativeFisherYatesV111.SiteId);
         provider.AssertComplete();
         int sequence = ++scope._cursor;
         scope._pendingPostHook = true;
