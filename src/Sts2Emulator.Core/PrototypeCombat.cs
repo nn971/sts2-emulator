@@ -14444,14 +14444,10 @@ public sealed partial class PrototypeGameEngine
         var request = SemanticDeckEngineV111.Inspect(deck) ??
             throw new InvalidDataException(
                 "Semantic card-effect draw lost its pending event.");
-        if (selectedIndex < 0 ||
-            selectedIndex >= request.CandidateCardInstanceIds.Length)
-            throw new ArgumentOutOfRangeException(nameof(selectedIndex));
-        var resolvedDeck = SemanticDeckEngineV111.Resolve(
-            deck, deck.Fingerprint, selectedIndex);
-        combat = SemanticDrawPileAdapterV111.ApplyCommittedPhysicalMutation(
-            combat with { PendingChoice = null },
-            combat.DrawPile, resolvedDeck);
+        var decision = SemanticDrawChoiceV111.Select(
+            request, selectedIndex);
+        combat = SemanticDrawChoiceV111.Commit(
+            combat with { PendingChoice = null }, decision);
         if (continuation.Operations.FirstOrDefault()?.Kind ==
             PrototypeCombatEffectKind.AutoPlayTopDrawCards)
         {

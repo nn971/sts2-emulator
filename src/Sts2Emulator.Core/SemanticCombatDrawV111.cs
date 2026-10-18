@@ -803,14 +803,15 @@ public static class SemanticCombatDrawEngineV111
             return drawNext;
         }
 
-        var deck = combat.SemanticDeck!;
-        if (deck.Pending is null || state.RemainingCount <= 0)
+        if (combat.SemanticDeck?.Pending is null ||
+            state.RemainingCount <= 0)
             throw new InvalidOperationException("No semantic draw card pending.");
-        var resolvedDeck = SemanticDeckEngineV111.Resolve(
-            deck, deck.Fingerprint, selectedIndex);
-        var resolvedCombat =
-            SemanticDrawPileAdapterV111.ApplyCommittedPhysicalMutation(
-                combat, combat.DrawPile, resolvedDeck);
+        var cardDecision = SemanticDrawChoiceV111.Select(
+            state.Pending ?? throw new InvalidDataException(
+                "Semantic draw frame lost its pending request."),
+            selectedIndex);
+        var resolvedCombat = SemanticDrawChoiceV111.Commit(
+            combat, cardDecision);
         run = run with
         {
             World = world with
