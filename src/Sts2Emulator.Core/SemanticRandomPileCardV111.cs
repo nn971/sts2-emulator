@@ -138,4 +138,22 @@ public static class SemanticRandomPileCardEngineV111
         decision.Validate();
         return decision;
     }
+
+    public static SemanticRandomPileCardDecisionV111 Select(
+        SemanticRandomPileCardEventV111 pending, string eventId,
+        long cardInstanceId)
+    {
+        ArgumentNullException.ThrowIfNull(pending);
+        pending.Validate();
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
+        if (pending.EventId != eventId)
+            throw new InvalidOperationException(
+                "Random pile-card event ID is stale or mismatched.");
+        var index = Array.IndexOf(
+            pending.CandidateCardInstanceIds, cardInstanceId);
+        if (index < 0)
+            throw new InvalidOperationException(
+                "Card instance is outside the random pile-card support.");
+        return Resolve(pending, index);
+    }
 }

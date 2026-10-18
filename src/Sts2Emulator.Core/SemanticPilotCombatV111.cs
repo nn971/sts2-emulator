@@ -2613,17 +2613,9 @@ public static class SemanticPilotCombatEngineV111
         var pending = current.RandomPileCardPending ??
             throw new InvalidOperationException(
                 "No random pile-card Nature event is pending.");
-        if (pending.EventId != eventId)
-            throw new InvalidOperationException(
-                "Random pile-card event ID is stale or mismatched.");
-        var selectedIndex = Array.IndexOf(
-            pending.CandidateCardInstanceIds, cardInstanceId);
-        if (selectedIndex < 0)
-            throw new InvalidOperationException(
-                "Card instance is outside the random pile-card support.");
-        var decision = SemanticRandomPileCardEngineV111.Resolve(
-            pending, selectedIndex);
-        return Resolve(current, fingerprint, selectedIndex,
+        var decision = SemanticRandomPileCardEngineV111.Select(
+            pending, eventId, cardInstanceId);
+        return Resolve(current, fingerprint, decision.SelectedIndex,
             null, null, false, null, decision);
     }
 
