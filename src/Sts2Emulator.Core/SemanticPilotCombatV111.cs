@@ -1913,25 +1913,8 @@ public static class SemanticPilotCombatEngineV111
                 semanticCombat, actualNativeEntry,
                 siteId: NativeCombatRngEntryV111.CommittedIntentSiteId);
             if (pendingInitialIntents.Complete)
-            {
-                using (ControlledChanceGuardV111.Enter())
-                    semanticRun = PrototypeGameEngine
-                        .ResumeSemanticInitialCombatEntry(
-                            semanticRun, pendingInitialIntents.Combat);
-                var completedWorld = semanticRun.World ??
-                    throw new InvalidDataException(
-                        "Nature source route lost its world after intent resolution.");
-                var completedCombat = completedWorld.Combat ??
-                    throw new InvalidDataException(
-                        "Nature source route lost combat after intent resolution.");
-                semanticCombat =
-                    SemanticDrawPileAdapterV111
-                        .InitializeFromCommittedOpening(completedCombat);
-                semanticRun = semanticRun with
-                {
-                    World = completedWorld with { Combat = semanticCombat }
-                };
-            }
+                semanticRun = CompleteNatureInitialCombatEntry(
+                    semanticRun, pendingInitialIntents);
             else
             {
                 semanticCombat = pendingInitialIntents.BaselineCombat.Fork();
@@ -2922,32 +2905,8 @@ public static class SemanticPilotCombatEngineV111
             ControlledTurnIntentsV111? pendingInitial = resolvedInitial.Complete
                 ? null : resolvedInitial;
             if (resolvedInitial.Complete)
-            {
-                using (ControlledChanceGuardV111.Enter())
-                    nextRun = PrototypeGameEngine
-                        .ResumeSemanticInitialCombatEntry(
-                            nextRun, resolvedInitial.Combat);
-                var completedWorld = nextRun.World ??
-                    throw new InvalidDataException(
-                        "Initial intent completion lost the source route world.");
-                var completedCombat = completedWorld.Combat ??
-                    throw new InvalidDataException(
-                        "Initial intent completion lost combat.");
-                if (nextRun.Phase != RunPhase.Combat ||
-                    !completedCombat.IsPlayerTurn ||
-                    completedCombat.PendingChoice is not null ||
-                    completedCombat.AutomaticPipelineContinuation is not null)
-                    throw new NotSupportedException(
-                        "UNSUPPORTED_SEMANTIC_ROUTE site=combat.opening " +
-                        "operation=unmodeled_opening_continuation");
-                var semanticCombat =
-                    SemanticDrawPileAdapterV111
-                        .InitializeFromCommittedOpening(completedCombat);
-                nextRun = nextRun with
-                {
-                    World = completedWorld with { Combat = semanticCombat }
-                };
-            }
+                nextRun = CompleteNatureInitialCombatEntry(
+                    nextRun, resolvedInitial);
             var initialState = current with
             {
                 Run = nextRun,
@@ -3886,6 +3845,42 @@ public static class SemanticPilotCombatEngineV111
                     DrawDecision: deckDecision.Fork())
                 : new SemanticPilotContinuationV111("nature",
                     SelectedIndex: selectedIndex);
+
+    private static RunState CompleteNatureInitialCombatEntry(
+        RunState checkpoint, ControlledTurnIntentsV111 intents)
+    {
+        ArgumentNullException.ThrowIfNull(checkpoint);
+        ArgumentNullException.ThrowIfNull(intents);
+        if (!intents.Complete)
+            throw new InvalidOperationException(
+                "Initial combat intents are still pending.");
+        intents.Validate();
+        RunState resumed;
+        using (ControlledChanceGuardV111.Enter())
+            resumed = PrototypeGameEngine.ResumeSemanticInitialCombatEntry(
+                checkpoint, intents.Combat);
+
+        var world = resumed.World ?? throw new InvalidDataException(
+            "Initial intent completion lost the source route world.");
+        var combat = world.Combat ?? throw new InvalidDataException(
+            "Initial intent completion lost combat.");
+        if (resumed.Phase != RunPhase.Combat ||
+            combat is not { IsPlayerTurn: true, PendingChoice: null,
+                PendingKnowledgeDemonChoice: null,
+                AutomaticPipelineContinuation: null })
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_ROUTE site=combat.opening " +
+                "operation=unmodeled_opening_continuation");
+
+        var semanticCombat = SemanticDrawPileAdapterV111
+            .InitializeFromCommittedOpening(combat);
+        var result = resumed with
+        {
+            World = world with { Combat = semanticCombat }
+        };
+        PrototypeStateInvariants.Validate(result);
+        return result;
+    }
 
     /// <summary>
     /// The initial two-site pilot does not optimize drawn-card costs.
