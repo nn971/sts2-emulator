@@ -17,6 +17,19 @@ internal readonly record struct DrawPileTopCardResolutionV111(
 /// </summary>
 public static class SemanticDrawPileAdapterV111
 {
+    /// <summary>
+    /// Transfers the engine's already-committed opening pile into a
+    /// Nature-mode semantic deck without rerandomizing its order.
+    /// </summary>
+    public static CombatState InitializeFromCommittedOpening(
+        CombatState combat)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        var deck = SemanticDeckEngineV111.FromCommittedOpening(
+            combat.DrawPile.Reverse().ToArray());
+        return InitializeSemanticDrawPile(combat, deck);
+    }
+
     /// <summary>Checks membership correspondence and, for native exact decks,
     /// the top-first order correspondence. Pending Nature reveals are valid
     /// snapshots and are accepted unless the caller requires an idle deck.

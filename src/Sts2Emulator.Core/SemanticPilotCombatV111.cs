@@ -1006,12 +1006,10 @@ public static class SemanticPilotCombatEngineV111
             combat.PendingChoice is not null)
             throw new InvalidOperationException(
                 "Semantic playable entry requires a completely committed opening fixture.");
-        var deck = SemanticDeckEngineV111.FromCommittedOpening(
-            combat.DrawPile.Reverse().ToArray());
         var run = source.Run.Fork();
         var semanticCombat =
-            SemanticDrawPileAdapterV111.InitializeSemanticDrawPile(
-                combat.Fork(), deck);
+            SemanticDrawPileAdapterV111.InitializeFromCommittedOpening(
+                combat.Fork());
         run = run with
         {
             World = run.World! with
@@ -1927,10 +1925,8 @@ public static class SemanticPilotCombatEngineV111
                     throw new InvalidDataException(
                         "Nature source route lost combat after intent resolution.");
                 semanticCombat =
-                    SemanticDrawPileAdapterV111.InitializeSemanticDrawPile(
-                        completedCombat,
-                        SemanticDeckEngineV111.FromCommittedOpening(
-                            completedCombat.DrawPile.Reverse().ToArray()));
+                    SemanticDrawPileAdapterV111
+                        .InitializeFromCommittedOpening(completedCombat);
                 semanticRun = semanticRun with
                 {
                     World = completedWorld with { Combat = semanticCombat }
@@ -2945,10 +2941,8 @@ public static class SemanticPilotCombatEngineV111
                         "UNSUPPORTED_SEMANTIC_ROUTE site=combat.opening " +
                         "operation=unmodeled_opening_continuation");
                 var semanticCombat =
-                    SemanticDrawPileAdapterV111.InitializeSemanticDrawPile(
-                        completedCombat,
-                        SemanticDeckEngineV111.FromCommittedOpening(
-                            completedCombat.DrawPile.Reverse().ToArray()));
+                    SemanticDrawPileAdapterV111
+                        .InitializeFromCommittedOpening(completedCombat);
                 nextRun = nextRun with
                 {
                     World = completedWorld with { Combat = semanticCombat }
