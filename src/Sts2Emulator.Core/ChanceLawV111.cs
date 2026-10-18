@@ -547,6 +547,11 @@ public static partial class ChanceLawEngineV111
         "relic.acquisition.random_potion.model"
     ];
 
+    private static readonly string[] LegacyRunPotionFillSlotQuerySites =
+    [
+        "run.potion.fill_empty_slots.model"
+    ];
+
     private sealed record NativeBoundedIntegerLawSiteV111(
         string StreamId, string Boundary);
 
@@ -676,6 +681,9 @@ public static partial class ChanceLawEngineV111
 
     public static string[] LegacyRelicAcquisitionPotionQuerySiteIds =>
         (string[])LegacyRelicAcquisitionPotionQuerySites.Clone();
+
+    public static string[] LegacyRunPotionFillSlotQuerySiteIds =>
+        (string[])LegacyRunPotionFillSlotQuerySites.Clone();
 
     /// <summary>
     /// Query the retained legacy card-rarity integer ticket after the source
@@ -1686,7 +1694,7 @@ public static partial class ChanceLawEngineV111
     /// <summary>
     /// Query the legacy random-Rare-card relic acquisition model draw. The
     /// configured Native route can query its declared player-stream bound
-    /// separately through <see cref="QueryNativeRelicAcquisitionModel"/>.
+    /// separately through <see cref="QueryNativePlayerModelIndex"/>.
     /// </summary>
     public static ChanceLawV111 QueryLegacyRelicAcquisitionRareCardModel(
         int ordinal)
@@ -1766,17 +1774,66 @@ public static partial class ChanceLawEngineV111
     }
 
     /// <summary>
-    /// Query an acquisition model's declared Native player-stream bounded
-    /// index. This verifies the NextInt transform, not owner or pool fidelity.
+    /// Query the legacy Run-effect potion fill draw for one caller-declared
+    /// empty slot. The effect skips all draws when potion acquisition is not
+    /// allowed and draws only for currently empty slots.
     /// </summary>
-    public static ChanceLawV111 QueryNativeRelicAcquisitionModel(
+    public static ChanceLawV111 QueryLegacyRunPotionFillSlotModel(
+        int slotIndex, bool canAcquirePotion, bool slotIsEmpty, int ordinal)
+    {
+        if (slotIndex < 0)
+            throw new ArgumentOutOfRangeException(nameof(slotIndex));
+        if (!canAcquirePotion || !slotIsEmpty)
+            throw new ArgumentException(
+                "Run potion-slot filling requires available potion capacity and a declared empty slot.");
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+
+        const string siteId = "run.potion.fill_empty_slots.model";
+        const string streamId = "reward";
+        var pool = PrototypeContent.PotionPool;
+        if (pool.Length == 0)
+            throw new InvalidOperationException(
+                "The Run potion fill pool is empty.");
+        var poolFingerprint = CanonicalJson.Sha256(pool);
+        var ownerId = $"player:potion_slot:{slotIndex}:pool:" +
+            poolFingerprint;
+        var outcomes = pool.Select(potionId =>
+            new ChanceLawOutcomeV111("potion:" + potionId, 1L)).ToArray();
+        var conditioning = new
+        {
+            siteId,
+            streamId,
+            ownerId,
+            ordinal,
+            slotIndex,
+            canAcquirePotion,
+            slotIsEmpty,
+            orderedPotionPool = pool,
+            poolFingerprint
+        };
+        return CreateLegacyCategoricalLaw(
+            siteId, streamId, ownerId, ordinal,
+            "legacy-run-potion-fill-pool-v1", conditioning,
+            "Equal index weights over the ordered prototype potion pool for " +
+            "the caller-declared empty slot; source-pool fidelity and Native " +
+            "stream attribution remain unverified.", outcomes,
+            operationKind: "choose_index");
+    }
+
+    /// <summary>
+    /// Query a declared Native player-stream bounded index for a model draw.
+    /// This verifies the NextInt transform, not owner or pool fidelity.
+    /// </summary>
+    public static ChanceLawV111 QueryNativePlayerModelIndex(
         string siteId, string ownerId, int supportCount, int ordinal)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
         if (siteId is not ("relic.acquisition.random_rare_card.model" or
-            "relic.acquisition.random_potion.model"))
+            "relic.acquisition.random_potion.model" or
+            "run.potion.fill_empty_slots.model"))
             throw new NotSupportedException(
-                $"Native relic-acquisition model law does not support site '{siteId}'.");
+                $"Native player model law does not support site '{siteId}'.");
         if (supportCount < 1)
             throw new ArgumentOutOfRangeException(nameof(supportCount));
         if (ordinal < 0)
