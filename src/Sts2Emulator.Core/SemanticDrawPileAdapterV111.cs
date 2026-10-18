@@ -163,6 +163,76 @@ public static class SemanticDrawPileAdapterV111
             combat, nextPhysical, recycled, nextZones, nextDeck);
     }
 
+    /// <summary>
+    /// Commits an already-resolved legacy recycle using the committed discard
+    /// zone as its source. Callers own shuffle sampling and source hooks.
+    /// </summary>
+    internal static CombatState CommitLegacyRecycle(
+        CombatState combat,
+        IReadOnlyList<long> shuffledPhysicalDrawPile)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(shuffledPhysicalDrawPile);
+        ValidateSynchronized(combat, requireIdle: true);
+        if (combat.SemanticDeck is not null ||
+            combat.DrawPile.Length != 0 || combat.DiscardPile.Length == 0 ||
+            combat.DiscardPile.Distinct().Count() != combat.DiscardPile.Length)
+            throw new InvalidDataException(
+                "Legacy recycle requires an exhausted draw pile with unique discards.");
+
+        var recycled = (long[])combat.DiscardPile.Clone();
+        var shuffled = shuffledPhysicalDrawPile.ToArray();
+        if (shuffled.Distinct().Count() != shuffled.Length ||
+            !shuffled.Order().SequenceEqual(recycled.Order()))
+            throw new InvalidDataException(
+                "Legacy recycle shuffle changed or duplicated discard identities.");
+        var nextZones = combat.Mechanics.CardZones.WithZoneChanges(
+            new Dictionary<PrototypeCardZone, long[]>
+            {
+                [PrototypeCardZone.DrawPile] = shuffled,
+                [PrototypeCardZone.DiscardPile] = []
+            });
+        return ApplyDrawPileShuffle(
+            combat, shuffled, recycled, nextZones, committedSemanticDeck: null);
+    }
+
+    /// <summary>
+    /// Commits an already-resolved Native recycle using the committed discard
+    /// zone as its source and the supplied post-hook physical order.
+    /// </summary>
+    internal static CombatState CommitNativeRecycle(
+        CombatState combat,
+        IReadOnlyList<long> shuffledPhysicalDrawPile)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(shuffledPhysicalDrawPile);
+        ValidateSynchronized(combat, requireIdle: true);
+        if (combat.SemanticDeck is not { } semantic ||
+            semantic.Mode != SemanticDeckStateV111.NativeMode ||
+            semantic.Count != 0 ||
+            combat.DrawPile.Length != 0 || combat.DiscardPile.Length == 0 ||
+            combat.DiscardPile.Distinct().Count() != combat.DiscardPile.Length)
+            throw new InvalidDataException(
+                "Native recycle requires an exhausted exact deck and unique discards.");
+
+        var recycled = (long[])combat.DiscardPile.Clone();
+        var shuffled = shuffledPhysicalDrawPile.ToArray();
+        if (shuffled.Distinct().Count() != shuffled.Length ||
+            !shuffled.Order().SequenceEqual(recycled.Order()))
+            throw new InvalidDataException(
+                "Native recycle shuffle changed or duplicated discard identities.");
+        var nextDeck = SemanticDeckEngineV111.RecycleNative(
+            semantic, recycled, shuffled.Reverse().ToArray());
+        var nextZones = combat.Mechanics.CardZones.WithZoneChanges(
+            new Dictionary<PrototypeCardZone, long[]>
+            {
+                [PrototypeCardZone.DrawPile] = shuffled,
+                [PrototypeCardZone.DiscardPile] = []
+            });
+        return ApplyDrawPileShuffle(
+            combat, shuffled, recycled, nextZones, nextDeck);
+    }
+
     private static void ValidateProviderCorrespondence(
         SemanticDeckStateV111? semantic,
         IReadOnlyList<long> physicalDrawPile)

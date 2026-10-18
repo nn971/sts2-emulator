@@ -399,15 +399,8 @@ public sealed partial class PrototypeGameEngine
                     "Legacy controlled recycle changed its discard identity set.");
             var postHook = NativeShuffleStepReplayV111.CheckPostHook(
                 ApplyPerfectFitShuffleOrder(combat, shuffled));
-            var nextZones = combat.Mechanics.CardZones.WithZoneChanges(
-                new Dictionary<PrototypeCardZone, long[]>
-                {
-                    [PrototypeCardZone.DrawPile] = postHook,
-                    [PrototypeCardZone.DiscardPile] = []
-                });
-            combat = SemanticDrawPileAdapterV111.ApplyDrawPileShuffle(
-                combat, postHook, recycled, nextZones,
-                committedSemanticDeck: null);
+            combat = SemanticDrawPileAdapterV111.CommitLegacyRecycle(
+                combat, postHook);
             var afterShuffleInsertions =
                 ControlledAfterShuffleRelicInsertions(combat);
             if (afterShuffleInsertions.Length > 0 &&

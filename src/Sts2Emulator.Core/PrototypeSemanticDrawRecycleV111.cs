@@ -23,15 +23,8 @@ public sealed partial class PrototypeGameEngine
             recycled, rng);
         var postHook = NativeShuffleStepReplayV111.CheckPostHook(
             ApplyPerfectFitShuffleOrder(combat, shuffled));
-        var nextZones = combat.Mechanics.CardZones.WithZoneChanges(
-            new Dictionary<PrototypeCardZone, long[]>
-            {
-                [PrototypeCardZone.DrawPile] = postHook,
-                [PrototypeCardZone.DiscardPile] = []
-            });
-        return SemanticDrawPileAdapterV111.ApplyDrawPileShuffle(
-            combat, postHook, recycled, nextZones,
-            committedSemanticDeck: null);
+        return SemanticDrawPileAdapterV111.CommitLegacyRecycle(
+            combat, postHook);
     }
 
     /// <summary>
@@ -67,19 +60,11 @@ public sealed partial class PrototypeGameEngine
             siteId: "combat.draw_pile_recycle.swap_index");
         var postHook = NativeShuffleStepReplayV111.CheckPostHook(
             ApplyPerfectFitShuffleOrder(combat, shuffle.PreHookOutput));
-        var nextDeck = SemanticDeckEngineV111.RecycleNative(
-            semantic, recycled, postHook.Reverse().ToArray());
         var advanced = combat with
         {
             NativeRng = native with { RunStreams = nativeStreams }
         };
-        var nextZones = advanced.Mechanics.CardZones.WithZoneChanges(
-            new Dictionary<PrototypeCardZone, long[]>
-            {
-                [PrototypeCardZone.DrawPile] = postHook,
-                [PrototypeCardZone.DiscardPile] = []
-            });
-        return SemanticDrawPileAdapterV111.ApplyDrawPileShuffle(
-            advanced, postHook, recycled, nextZones, nextDeck);
+        return SemanticDrawPileAdapterV111.CommitNativeRecycle(
+            advanced, postHook);
     }
 }

@@ -138,6 +138,8 @@
 
 **S3 hand-return shuffle paired-commit increment (2026-10-18):** `SemanticDrawPileAdapterV111.CommitHandReturnShuffle` now validates that returned identities match the committed hand, applies the resolved shuffle order to the Native or Nature semantic deck, and publishes the new draw pile and empty hand together. Ordinary combat effects and the controlled pool-shuffle continuation share this operation; their duplicate provider-update and zone-commit steps are removed. The caller still owns shuffle resolution and after-shuffle effects. Broader provider/zone migration and cross-provider equivalence remain open.
 
+**S3 recycle provider/zone commit increment (2026-10-18):** `SemanticDrawPileAdapterV111.CommitNativeRecycle` and `CommitLegacyRecycle` now derive recycled identities from the committed discard zone, validate the resolved order, and publish the destination draw/discard zones with the provider epoch where applicable. Ordinary draw, top-autoplay and controlled recycle callers retain shuffle sampling and source hooks but no longer assemble separate discard-to-draw transitions. Nature recycle was already committed through the adapter. Broader provider/zone migration and cross-provider equivalence remain open.
+
 ## S1 precise design
 
 Implement a **read-only, outcome-blind** Chance Law query in `Sts2Emulator.Core` with:

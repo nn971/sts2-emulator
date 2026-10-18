@@ -1928,14 +1928,8 @@ public sealed partial class PrototypeGameEngine
                 combat, postHook, perfectFit);
         }
         else
-            combat = SemanticDrawPileAdapterV111.ApplyDrawPileShuffle(
-                combat, postHook, eligible,
-                combat.Mechanics.CardZones.WithZoneChanges(
-                    new Dictionary<PrototypeCardZone, long[]>
-                    {
-                        [PrototypeCardZone.DrawPile] = postHook,
-                        [PrototypeCardZone.DiscardPile] = []
-                    }), committedSemanticDeck: null);
+            combat = SemanticDrawPileAdapterV111.CommitLegacyRecycle(
+                combat, postHook);
         var remainingHandDraw = continuation.ControlledDrawRemaining.Value;
         var afterShuffleInsertions = ControlledAfterShuffleRelicInsertions(
             combat);
@@ -6323,17 +6317,8 @@ public sealed partial class PrototypeGameEngine
                         var recycled = (long[])combat.DiscardPile.Clone();
                         var postHook = NativeShuffleStepReplayV111.CheckPostHook(
                             ApplyPerfectFitShuffleOrder(combat, recycled));
-                        var nextZones = combat.Mechanics.CardZones
-                            .WithZoneChanges(
-                                new Dictionary<PrototypeCardZone, long[]>
-                                {
-                                    [PrototypeCardZone.DrawPile] = postHook,
-                                    [PrototypeCardZone.DiscardPile] = []
-                                });
-                        combat = SemanticDrawPileAdapterV111
-                            .ApplyDrawPileShuffle(
-                                combat, postHook, recycled, nextZones,
-                                committedSemanticDeck: null);
+                        combat = SemanticDrawPileAdapterV111.CommitLegacyRecycle(
+                            combat, postHook);
                         var afterShuffleInsertions =
                             ControlledAfterShuffleRelicInsertions(combat);
                         if (afterShuffleInsertions.Length > 0)
