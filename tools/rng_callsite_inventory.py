@@ -21,7 +21,7 @@ from urllib.parse import unquote, urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = ROOT / "src" / "Sts2Emulator.Core"
-SCHEMA_ID = "emulator-rng-callsite-source-inventory-v14"
+SCHEMA_ID = "emulator-rng-callsite-source-inventory-v15"
 SITE_REGISTRY_PATH = SOURCE_ROOT / "StochasticSiteRegistryV111.cs"
 
 CALL_PATTERN = re.compile(
@@ -805,6 +805,27 @@ def _typed_request_constructions(
                 else "unmapped" if len(matrix_misses) == len(values)
                 else "partially_unmapped"
             )
+            normalized_expression = re.sub(r"\s+", "", expression or "")
+            if values:
+                origin_kind = (
+                    "static_site_id" if len(values) == 1
+                    else "finite_site_id_alternatives"
+                )
+            elif expression is None:
+                origin_kind = "missing_site_id"
+            elif re.fullmatch(
+                r"(?:this\.)?[A-Za-z_][A-Za-z0-9_]*",
+                normalized_expression,
+            ):
+                origin_kind = "identifier_forwarded_or_local"
+            elif re.fullmatch(
+                r"(?:this\.)?[A-Za-z_][A-Za-z0-9_]*"
+                r"(?:\.[A-Za-z_][A-Za-z0-9_]*)+",
+                normalized_expression,
+            ):
+                origin_kind = "member_forwarded"
+            else:
+                origin_kind = "computed_expression"
             line_number = source.count("\n", 0, match.start()) + 1
             calls.append({
                 "path": path.relative_to(ROOT).as_posix(),
@@ -813,6 +834,7 @@ def _typed_request_constructions(
                 "site_id_expression": expression,
                 "site_id_value": value,
                 "site_id_values": values,
+                "site_id_origin_kind": origin_kind,
                 "registry_status": registry_status,
                 "matrix_status": matrix_status,
                 "source_excerpt": source.splitlines()[
@@ -1074,11 +1096,20 @@ def render_markdown(report: dict[str, Any]) -> str:
         f"dynamic or missing IDs: **{sum(call['registry_status'] in ('dynamic_expression', 'missing') for call in report['typed_request_constructions'])}**; "
         f"static IDs absent from registry: **{sum(call['registry_status'] in ('not_registered', 'partially_unregistered') for call in report['typed_request_constructions'])}**.",
         "",
-        "| File:line | Request type | Site ID expression | Resolved site ID | Registry | Matrix |",
-        "| --- | --- | --- | --- | --- | --- |",
+        "Expression-origin classes: " + ", ".join(
+            f"`{kind}` **{count}**"
+            for kind, count in sorted(Counter(
+                call["site_id_origin_kind"]
+                for call in report["typed_request_constructions"]
+            ).items())
+        ) + ". Forwarded identifiers and members remain manual trace items; these labels do not claim their caller chain is resolved.",
+        "",
+        "| File:line | Request type | Site ID expression | Origin | Resolved site ID | Registry | Matrix |",
+        "| --- | --- | --- | --- | --- | --- | --- |",
         *[
             f"| [{call['path']}:{call['line']}](../{call['path']}#L{call['line']}) "
             f"| {call['request_type']} | {call['site_id_expression'] or '—'} | "
+            f"{call['site_id_origin_kind']} | "
             f"{', '.join(call['site_id_values']) or '—'} | {call['registry_status']} | "
             f"{call['matrix_status']} |"
             for call in report["typed_request_constructions"]
