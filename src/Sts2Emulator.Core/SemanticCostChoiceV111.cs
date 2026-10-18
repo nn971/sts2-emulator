@@ -124,6 +124,39 @@ public static class SemanticCostChoiceV111
 /// </summary>
 internal static class SemanticRandomHandCostChoiceV111
 {
+    internal static void ValidateBoundary(RunState run)
+    {
+        var combat = run.World?.Combat;
+        var choice = combat?.PendingChoice;
+        var randomCost = choice?.ControlledRandomCost;
+        if (run.Phase != RunPhase.Combat ||
+            combat is not { PendingKnowledgeDemonChoice: null } ||
+            (combat.AutomaticPipelineContinuation is null &&
+             !combat.IsPlayerTurn) ||
+            choice is not { ChoiceId: "controlled_random_hand_cost",
+                OuterChoiceContinuation: not null } ||
+            randomCost is null ||
+            randomCost.Operation.Kind is not (
+                PrototypeCombatEffectKind
+                    .RandomizeHandCardEnergyCostsUntilTurnEndOrPlayed or
+                PrototypeCombatEffectKind
+                    .SetRandomHandCardEnergyCostUntilTurnEndOrPlayed) ||
+            !PrototypeGameEngine.ValidateControlledRandomCost(
+                combat, randomCost))
+            throw new InvalidDataException(
+                "Random hand-cost continuation is not source-reachable.");
+        var deck = combat.SemanticDeck ?? throw new InvalidDataException(
+            "Random hand-cost continuation lost the provider-owned deck.");
+        SemanticDeckEngineV111.Validate(deck);
+        if (deck.Mode != SemanticDeckStateV111.NatureMode ||
+            deck.Pending is not null ||
+            !SemanticDeckEngineV111.AllCardInstanceIds(deck)
+                .Order().SequenceEqual(combat.DrawPile.Order()))
+            throw new InvalidDataException(
+                "Random hand-cost continuation changed the hidden draw pile.");
+        PrototypeStateInvariants.Validate(run);
+    }
+
     internal static RunState Resume(
         RunState checkpoint, string siteId, int selectedIndex)
     {
@@ -146,8 +179,7 @@ internal static class SemanticRandomHandCostChoiceV111
                 { } pending || pending.Operation.Kind != expectedOperation)
             throw new InvalidDataException(
                 "Random hand-cost choice does not match its source operation.");
-        SemanticPilotCombatEngineV111.ValidateRandomHandCostBoundary(
-            checkpoint);
+        ValidateBoundary(checkpoint);
 
         RunState resumed;
         using (ControlledChanceGuardV111.Enter())
@@ -159,8 +191,7 @@ internal static class SemanticRandomHandCostChoiceV111
                 "UNSUPPORTED_SEMANTIC_COST site=" + siteId +
                 " operation=unsupported_post_cost_phase");
         if (nextCombat.PendingChoice?.ControlledRandomCost is not null)
-            SemanticPilotCombatEngineV111.ValidateRandomHandCostBoundary(
-                resumed);
+            ValidateBoundary(resumed);
         else
             SemanticPilotCombatEngineV111.ValidateSemanticCombatBoundary(
                 resumed);

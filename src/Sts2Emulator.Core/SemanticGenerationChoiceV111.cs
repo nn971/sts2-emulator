@@ -61,6 +61,33 @@ public static class SemanticGenerationChoiceV111
 {
     public const string SchemaId = "sts2-v111-semantic-generation-choice-v1";
 
+    internal static void ValidateBoundary(RunState run)
+    {
+        var combat = run.World?.Combat;
+        var choice = combat?.PendingChoice;
+        var generation = choice?.ControlledGeneration;
+        if (run.Phase != RunPhase.Combat ||
+            combat is not { PendingKnowledgeDemonChoice: null } ||
+            (combat.AutomaticPipelineContinuation is null &&
+             !combat.IsPlayerTurn) ||
+            choice is not { ChoiceId: "controlled_generated_card",
+                OuterChoiceContinuation: not null } ||
+            generation is null ||
+            !PrototypeGameEngine.ValidateControlledGenerationSupport(generation))
+            throw new InvalidDataException(
+                "Semantic generated-card pool is not source-reachable.");
+        var deck = combat.SemanticDeck ?? throw new InvalidDataException(
+            "Generated-card continuation lost its provider-owned deck.");
+        SemanticDeckEngineV111.Validate(deck);
+        if (deck.Mode != SemanticDeckStateV111.NatureMode ||
+            deck.Pending is not null ||
+            !SemanticDeckEngineV111.AllCardInstanceIds(deck)
+                .Order().SequenceEqual(combat.DrawPile.Order()))
+            throw new InvalidDataException(
+                "Generated-card continuation changed the hidden draw pile.");
+        PrototypeStateInvariants.Validate(run);
+    }
+
     public static SemanticGeneratedCardDecisionV111 Select(
         SemanticGeneratedCardEventV111 pending, string eventId,
         string cardId)
@@ -108,8 +135,7 @@ public static class SemanticGenerationChoiceV111
                     decision.Event.CandidateCardIds))
                 throw new InvalidDataException(
                     "Generated-card decision no longer matches its insertion pool.");
-            SemanticPilotCombatEngineV111.ValidateDrawInsertionBoundary(
-                checkpoint);
+            SemanticDrawInsertionChoiceV111.ValidateBoundary(checkpoint);
         }
         else
         {
@@ -120,8 +146,7 @@ public static class SemanticGenerationChoiceV111
                     decision.Event.CandidateCardIds))
                 throw new InvalidDataException(
                     "Generated-card decision no longer matches its source pool.");
-            SemanticPilotCombatEngineV111.ValidateGeneratedCardBoundary(
-                checkpoint);
+            ValidateBoundary(checkpoint);
         }
 
         RunState resumed;

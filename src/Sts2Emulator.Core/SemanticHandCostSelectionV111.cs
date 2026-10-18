@@ -120,7 +120,7 @@ public static class SemanticHandCostSelectionChoiceV111
                     .SetRandomHandCardEnergyCostUntilTurnEndOrPlayed)
             throw new InvalidDataException(
                 "Hand-cost selection does not match its source operation.");
-        SemanticPilotCombatEngineV111.ValidateRandomHandCostBoundary(
+        SemanticRandomHandCostChoiceV111.ValidateBoundary(
             checkpoint);
         var eventState = decision.Event;
         var candidateIds = randomCost.EligibleCardInstanceIds;

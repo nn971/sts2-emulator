@@ -57,6 +57,29 @@ public sealed record SemanticCardTransformDecisionV111(
 
 public static class SemanticCardTransformChoiceV111
 {
+    internal static void ValidateBoundary(
+        RunState run, PrototypeControlledCardTransformV111 transform)
+    {
+        var combat = run.World?.Combat;
+        if (run.Phase != RunPhase.Combat || combat is null ||
+            combat.PendingChoice is not
+                { ChoiceId: "controlled_card_transform" } ||
+            !PrototypeGameEngine.ValidateControlledCardTransform(
+                combat, transform))
+            throw new InvalidDataException(
+                "Card-transform pool is not source-reachable.");
+        if (combat.SemanticDeck is { } deck)
+        {
+            SemanticDeckEngineV111.Validate(deck);
+            if (deck.Mode != SemanticDeckStateV111.NatureMode ||
+                deck.Pending is not null ||
+                !SemanticDeckEngineV111.AllCardInstanceIds(deck)
+                    .Order().SequenceEqual(combat.DrawPile.Order()))
+                throw new InvalidDataException(
+                    "Card-transform continuation diverged from its semantic draw pile.");
+        }
+    }
+
     public static SemanticCardTransformDecisionV111 Select(
         SemanticCardTransformEventV111 pending, string eventId,
         string cardId)
@@ -92,8 +115,7 @@ public static class SemanticCardTransformChoiceV111
         var transform = combat.PendingChoice?.ControlledCardTransform ??
             throw new InvalidDataException(
                 "Card-transform choice lost its suspended operation.");
-        SemanticPilotCombatEngineV111.ValidateCardTransformBoundary(
-            checkpoint, transform);
+        ValidateBoundary(checkpoint, transform);
         var sourceCardInstanceId = transform.SelectedCardInstanceIds[
             transform.NextTransformIndex];
         var sourceCard = combat.Cards.Single(card =>

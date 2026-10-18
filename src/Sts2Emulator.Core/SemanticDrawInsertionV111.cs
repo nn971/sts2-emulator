@@ -160,6 +160,53 @@ public sealed record SemanticDrawInsertionDecisionV111(
 
 public static class SemanticDrawInsertionChoiceV111
 {
+    internal static void ValidateBoundary(RunState run)
+    {
+        var combat = run.World?.Combat;
+        var choice = combat?.PendingChoice;
+        var insertion = choice?.ControlledDrawInsertion;
+        var supportedStage = insertion is
+            {
+                Stage: "position",
+                Operation.Kind:
+                    PrototypeCombatEffectKind.CreateGeneratedCardsAtRandomDrawPositions,
+                SelectedCardId: not null
+            } or
+            {
+                Stage: "card_model",
+                Operation.Kind:
+                    PrototypeCombatEffectKind.CreateRandomFreeAttacksInDrawPile,
+                SelectedCardId: null
+            } or
+            {
+                Stage: "position",
+                Operation.Kind:
+                    PrototypeCombatEffectKind.CreateRandomFreeAttacksInDrawPile,
+                SelectedCardId: not null
+            };
+        if (run.Phase != RunPhase.Combat ||
+            combat is not { PendingKnowledgeDemonChoice: null } ||
+            (combat.AutomaticPipelineContinuation is null &&
+             !combat.IsPlayerTurn) ||
+            choice is not { ChoiceId: "controlled_draw_insertion",
+                OuterChoiceContinuation: not null } ||
+            insertion is null || !supportedStage ||
+            !PrototypeGameEngine.ValidateControlledDrawInsertion(
+                combat, insertion))
+            throw new InvalidDataException(
+                "Generated draw-pile insertion is not source-reachable.");
+        var deck = combat.SemanticDeck ?? throw new InvalidDataException(
+            "Generated draw-pile insertion lost the provider-owned deck.");
+        SemanticDeckEngineV111.Validate(deck);
+        if (deck.Mode != SemanticDeckStateV111.NatureMode ||
+            deck.Pending is not null ||
+            !SemanticDeckEngineV111.AllCardInstanceIds(deck)
+                .Order().SequenceEqual(combat.DrawPile.Order()))
+            throw new InvalidDataException(
+                "Generated draw-pile insertion changed the hidden pile early.");
+        PrototypeStateInvariants.Validate(run);
+    }
+
     public static SemanticDrawInsertionDecisionV111 Select(
         SemanticDrawInsertionEventV111 pending,
         string eventId,

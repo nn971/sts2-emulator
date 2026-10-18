@@ -116,6 +116,34 @@ public sealed record SemanticCardShortlistDecisionV111(
 
 public static class SemanticCardShortlistChoiceV111
 {
+    internal static void ValidateBoundary(RunState run)
+    {
+        var combat = run.World?.Combat;
+        var choice = combat?.PendingChoice;
+        var shortlist = choice?.ControlledCardShortlist;
+        if (run.Phase != RunPhase.Combat ||
+            combat is not { PendingKnowledgeDemonChoice: null } ||
+            (combat.AutomaticPipelineContinuation is null &&
+             !combat.IsPlayerTurn) ||
+            choice is not { ChoiceId: "controlled_card_shortlist",
+                OuterChoiceContinuation: not null } ||
+            shortlist is null ||
+            !PrototypeGameEngine.ValidateControlledCardShortlist(
+                combat, shortlist))
+            throw new InvalidDataException(
+                "Random card shortlist is not source-reachable.");
+        var deck = combat.SemanticDeck ?? throw new InvalidDataException(
+            "Card shortlist lost the provider-owned semantic deck.");
+        SemanticDeckEngineV111.Validate(deck);
+        if (deck.Mode != SemanticDeckStateV111.NatureMode ||
+            deck.Pending is not null ||
+            !SemanticDeckEngineV111.AllCardInstanceIds(deck)
+                .Order().SequenceEqual(combat.DrawPile.Order()))
+            throw new InvalidDataException(
+                "Card shortlist changed the hidden draw-pile state.");
+        PrototypeStateInvariants.Validate(run);
+    }
+
     public static SemanticCardShortlistDecisionV111 Select(
         SemanticCardShortlistEventV111 pending, string eventId,
         long cardInstanceId)
@@ -156,8 +184,7 @@ public static class SemanticCardShortlistChoiceV111
                 combat, shortlist))
             throw new InvalidDataException(
                 "Card shortlist is not source-reachable.");
-        SemanticPilotCombatEngineV111.ValidateCardShortlistBoundary(
-            checkpoint);
+        ValidateBoundary(checkpoint);
         ValidateLiveSupport(combat, shortlist, decision.Event);
         var randomAutoplay = shortlist.Operation.Kind ==
             PrototypeCombatEffectKind.AutoPlayRandomCardsFromZone;
@@ -179,8 +206,7 @@ public static class SemanticCardShortlistChoiceV111
                 "site=combat.card_selection.random_shortlist " +
                 "operation=unsupported_post_shortlist_phase");
         if (nextCombat.PendingChoice?.ControlledCardShortlist is not null)
-            SemanticPilotCombatEngineV111.ValidateCardShortlistBoundary(
-                resumed);
+            ValidateBoundary(resumed);
         else if (nextCombat.PendingChoice?.ChoiceId == "select_cards")
             SemanticCardSelectionEngineV111.ValidatePendingBoundary(resumed);
         else

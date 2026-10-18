@@ -654,7 +654,7 @@ public sealed record SemanticPilotCombatV111(
         if (this.PotionGenerationPending is { } potionGenerationPending)
         {
             potionGenerationPending.Validate();
-            SemanticPilotCombatEngineV111.ValidatePotionGenerationBoundary(this.Run);
+            SemanticPotionGenerationChoiceV111.ValidateBoundary(this.Run);
             if (this.TargetPending is not null ||
                 this.GeneratedCardPending is not null ||
                 this.IntentPending is not null ||
@@ -679,7 +679,7 @@ public sealed record SemanticPilotCombatV111(
         if (this.CardTransformPending is { } cardTransformPending)
         {
             cardTransformPending.Validate();
-            SemanticPilotCombatEngineV111.ValidateCardTransformBoundary(this.Run,
+            SemanticCardTransformChoiceV111.ValidateBoundary(this.Run,
                 this.Run.World!.Combat!.PendingChoice!
                     .ControlledCardTransform!);
             if (this.TargetPending is not null ||
@@ -747,7 +747,7 @@ public sealed record SemanticPilotCombatV111(
         if (this.PoolShufflePending is { } poolShufflePending)
         {
             poolShufflePending.Validate();
-            SemanticPilotCombatEngineV111.ValidatePoolShuffleBoundary(this.Run);
+            SemanticPoolShuffleChoiceV111.ValidateBoundary(this.Run);
             var combat = this.Run.World?.Combat;
             var mayhemRecycle = combat?.PendingChoice is { } pendingChoice &&
                 PrototypeGameEngine.IsMayhemLegacyRecycleContinuation(
@@ -766,7 +766,7 @@ public sealed record SemanticPilotCombatV111(
         if (this.DrawInsertionPending is { } drawInsertionPending)
         {
             drawInsertionPending.Validate();
-            SemanticPilotCombatEngineV111.ValidateDrawInsertionBoundary(this.Run);
+            SemanticDrawInsertionChoiceV111.ValidateBoundary(this.Run);
             if (this.PendingEndTurn is not null ||
                 this.PendingInitialIntents is not null ||
                 this.IntentPending is not null || this.DrawPending is not null ||
@@ -782,7 +782,7 @@ public sealed record SemanticPilotCombatV111(
         if (this.CardShortlistPending is { } cardShortlistPending)
         {
             cardShortlistPending.Validate();
-            SemanticPilotCombatEngineV111.ValidateCardShortlistBoundary(this.Run);
+            SemanticCardShortlistChoiceV111.ValidateBoundary(this.Run);
             if (this.PendingEndTurn is not null ||
                 this.PendingInitialIntents is not null ||
                 this.IntentPending is not null || this.DrawPending is not null ||
@@ -800,7 +800,7 @@ public sealed record SemanticPilotCombatV111(
         if (this.HandCostSelectionPending is { } handCostSelectionPending)
         {
             handCostSelectionPending.Validate();
-            SemanticPilotCombatEngineV111.ValidateRandomHandCostBoundary(this.Run);
+            SemanticRandomHandCostChoiceV111.ValidateBoundary(this.Run);
             if (this.PendingEndTurn is not null ||
                 this.PendingInitialIntents is not null ||
                 this.IntentPending is not null || this.DrawPending is not null ||
@@ -825,7 +825,7 @@ public sealed record SemanticPilotCombatV111(
             if (effectDrawCost)
                 SemanticPilotCombatEngineV111.ValidateSemanticActionDrawCostBoundary(this.Run);
             else if (handCost)
-                SemanticPilotCombatEngineV111.ValidateRandomHandCostBoundary(this.Run);
+                SemanticRandomHandCostChoiceV111.ValidateBoundary(this.Run);
             if (this.IntentPending is not null || this.DrawPending is not null ||
                 this.CardSelectionPending is not null ||
                 this.TargetPending is not null ||
@@ -1271,7 +1271,7 @@ public static class SemanticPilotCombatEngineV111
         using (ControlledChanceGuardV111.Enter())
             result = PrototypeGameEngine.BeginControlledDrawInsertionFixture(
                 state.Run.Fork(), operation);
-        ValidateDrawInsertionBoundary(result);
+        SemanticDrawInsertionChoiceV111.ValidateBoundary(result);
         return state with { Run = result };
     }
 
@@ -1285,7 +1285,7 @@ public static class SemanticPilotCombatEngineV111
         using (ControlledChanceGuardV111.Enter())
             result = PrototypeGameEngine.BeginControlledDrawInsertionFixture(
                 state.Run.Fork(), operation);
-        ValidateDrawInsertionBoundary(result);
+        SemanticDrawInsertionChoiceV111.ValidateBoundary(result);
         return state with { Run = result };
     }
 
@@ -1299,7 +1299,7 @@ public static class SemanticPilotCombatEngineV111
         using (ControlledChanceGuardV111.Enter())
             result = PrototypeGameEngine.BeginControlledRandomCostFixture(
                 state.Run.Fork(), operation);
-        ValidateRandomHandCostBoundary(result);
+        SemanticRandomHandCostChoiceV111.ValidateBoundary(result);
         return state with { Run = result };
     }
 
@@ -1313,7 +1313,7 @@ public static class SemanticPilotCombatEngineV111
         using (ControlledChanceGuardV111.Enter())
             result = PrototypeGameEngine.BeginControlledRandomCostFixture(
                 state.Run.Fork(), operation);
-        ValidateRandomHandCostBoundary(result);
+        SemanticRandomHandCostChoiceV111.ValidateBoundary(result);
         return state with { Run = result };
     }
 
@@ -2172,14 +2172,14 @@ public static class SemanticPilotCombatEngineV111
                     ValidateSemanticActionDrawBoundary(result);
                 else if (result.World?.Combat?.PendingChoice?
                         .ControlledCardShortlist is not null)
-                    ValidateCardShortlistBoundary(result);
+                    SemanticCardShortlistChoiceV111.ValidateBoundary(result);
                 else if (result.World?.Combat?.PendingChoice?.ChoiceId ==
                     "select_cards")
                     SemanticCardSelectionEngineV111
                         .ValidatePendingBoundary(result);
                 else if (result.World?.Combat?.PendingChoice?
                     .ControlledPoolShuffle is not null)
-                    ValidatePoolShuffleBoundary(result);
+                    SemanticPoolShuffleChoiceV111.ValidateBoundary(result);
                 else
                     ValidateSemanticCombatBoundary(result);
             }
@@ -2248,10 +2248,10 @@ public static class SemanticPilotCombatEngineV111
             if (result.Phase == RunPhase.Combat)
             {
                 if (result.World?.Combat?.PendingChoice?.ControlledPoolShuffle is not null)
-                    ValidatePoolShuffleBoundary(result);
+                    SemanticPoolShuffleChoiceV111.ValidateBoundary(result);
                 else if (result.World?.Combat?.PendingChoice?
                              .ControlledDrawInsertion is not null)
-                    ValidateDrawInsertionBoundary(result);
+                    SemanticDrawInsertionChoiceV111.ValidateBoundary(result);
                 else if (result.World?.Combat?.PendingChoice?
                              .ControlledSemanticDraw is not null)
                     ValidateSemanticActionDrawBoundary(result);
@@ -2824,7 +2824,7 @@ public static class SemanticPilotCombatEngineV111
                         "operation=stale_after_shuffle_continuation");
                 if (resultCombat.PendingChoice?.ControlledDrawInsertion is
                         { AfterShuffleRelic: not null })
-                    ValidateDrawInsertionBoundary(result);
+                    SemanticDrawInsertionChoiceV111.ValidateBoundary(result);
                 else if (resultCombat.PendingChoice?.ControlledSemanticDraw is not null)
                     ValidateSemanticActionDrawBoundary(result);
                 else if (resultCombat.PendingChoice is
@@ -3321,7 +3321,7 @@ public static class SemanticPilotCombatEngineV111
         var choice = combat?.PendingChoice;
         var target = choice?.ControlledTarget;
         if (target is null) return null;
-        ValidateTargetBoundary(run);
+        SemanticTargetChoiceV111.ValidateBoundary(run);
         var candidates = (int[])target.EligibleEnemyInstanceIds.Clone();
         var siteId = target.Kind switch
         {
@@ -3373,10 +3373,10 @@ public static class SemanticPilotCombatEngineV111
                 combat?.AutomaticPipelineContinuation is null)
                 throw new InvalidDataException(
                     "Random draw-Attack model choice lacks a supported source boundary.");
-            ValidateDrawInsertionBoundary(current.Run);
+            SemanticDrawInsertionChoiceV111.ValidateBoundary(current.Run);
         }
         else
-            ValidateGeneratedCardBoundary(current.Run);
+            SemanticGenerationChoiceV111.ValidateBoundary(current.Run);
         var candidates = (string[])(generation?.CandidateCardIds ??
             drawInsertion!.CandidateCardIds).Clone();
         var siteId = isDrawInsertionModelChoice
@@ -3419,7 +3419,7 @@ public static class SemanticPilotCombatEngineV111
                 "proto.colorless.alchemize")
             throw new InvalidDataException(
                 "Potion generation lacks semantic fixture provenance.");
-        ValidatePotionGenerationBoundary(current.Run);
+        SemanticPotionGenerationChoiceV111.ValidateBoundary(current.Run);
         var candidates = (string[])generation.CandidatePotionIds.Clone();
         var siteId = "combat.potion_generation.random_model";
         var ownerId = "effect:" + generation.Operation.Kind + ":source:" +
@@ -3458,7 +3458,8 @@ public static class SemanticPilotCombatEngineV111
             current.UsesNativePolicyBaseline || current.CombatTerminal)
             throw new InvalidDataException(
                 "Card-transform choice conflicts with another semantic boundary.");
-        ValidateCardTransformBoundary(current.Run, transform);
+        SemanticCardTransformChoiceV111.ValidateBoundary(
+            current.Run, transform);
         var sourceId = transform.SelectedCardInstanceIds[
             transform.NextTransformIndex];
         var originalCardId = combat!.Cards.Single(card =>
@@ -3519,7 +3520,7 @@ public static class SemanticPilotCombatEngineV111
                 randomCost.Operation.Kind == PrototypeCombatEffectKind
                     .RandomizeHandCardEnergyCostsUntilTurnEndOrPlayed)
         {
-            ValidateRandomHandCostBoundary(current.Run);
+            SemanticRandomHandCostChoiceV111.ValidateBoundary(current.Run);
             if (current.SeededEntry?.FixtureRandomizeHandCostsMaxExclusive is
                     { } fixtureMaxExclusive &&
                 randomCost.Operation.Amount != fixtureMaxExclusive)
@@ -3605,7 +3606,7 @@ public static class SemanticPilotCombatEngineV111
             randomCost.Operation.Kind != PrototypeCombatEffectKind
                 .SetRandomHandCardEnergyCostUntilTurnEndOrPlayed)
             return null;
-        ValidateRandomHandCostBoundary(current.Run);
+        SemanticRandomHandCostChoiceV111.ValidateBoundary(current.Run);
         if ((current.SeededEntry?.FixtureSetRandomHandCardCost is
                 { } fixtureCost &&
              randomCost.Operation.Amount != fixtureCost) ||
@@ -3654,7 +3655,7 @@ public static class SemanticPilotCombatEngineV111
         var choice = combat?.PendingChoice;
         var shortlist = choice?.ControlledCardShortlist;
         if (shortlist is null) return null;
-        ValidateCardShortlistBoundary(current.Run);
+        SemanticCardShortlistChoiceV111.ValidateBoundary(current.Run);
         var eligibleIds =
             (long[])shortlist.OriginalCandidateCardInstanceIds.Clone();
         var eligibleModels = eligibleIds.Select(id => combat!.Cards.Single(
@@ -3755,7 +3756,7 @@ public static class SemanticPilotCombatEngineV111
             current.UsesNativePolicyBaseline || current.CombatTerminal)
             throw new InvalidDataException(
                 "Full-pool shuffle conflicts with another semantic boundary.");
-        ValidatePoolShuffleBoundary(current.Run);
+        SemanticPoolShuffleChoiceV111.ValidateBoundary(current.Run);
         var original = (string[])shuffle.OriginalCardIds.Clone();
         var currentPool = (string[])shuffle.CurrentCardIds.Clone();
         var shortlistCardIds = randomShortlist
@@ -3819,49 +3820,6 @@ public static class SemanticPilotCombatEngineV111
         return semanticEvent;
     }
 
-    internal static void ValidatePoolShuffleBoundary(RunState run)
-    {
-        var combat = run.World?.Combat;
-        var choice = combat?.PendingChoice;
-        var shuffle = choice?.ControlledPoolShuffle;
-        if (run.Phase != RunPhase.Combat ||
-            combat is not { PendingKnowledgeDemonChoice: null } ||
-            (combat.AutomaticPipelineContinuation is null &&
-             !combat.IsPlayerTurn) ||
-            choice is not { ChoiceId: "controlled_pool_shuffle",
-                OuterChoiceContinuation: not null } ||
-            shuffle is null ||
-            !PrototypeGameEngine.ValidateControlledPoolShuffle(
-                combat, shuffle, choice.SourceCardInstanceId))
-            throw new InvalidDataException(
-                "Full-pool shuffle is not source-reachable.");
-        if (shuffle.Operation.Kind ==
-            PrototypeCombatEffectKind.RecycleDrawPileForEffectDraw)
-        {
-            if (combat!.SemanticDeck is not null ||
-                combat.DrawPile.Length != 0 || combat.DiscardPile.Length <= 1 ||
-                choice!.OuterChoiceContinuation!.Operations.FirstOrDefault() is not
-                    { Kind: PrototypeCombatEffectKind.DrawCards, Amount: > 0 } ||
-                (combat.AutomaticPipelineContinuation is not null &&
-                 !PrototypeGameEngine.IsMayhemLegacyRecycleContinuation(
-                     combat, choice)))
-                throw new InvalidDataException(
-                    "Legacy recycle shuffle lost its saved draw continuation.");
-            PrototypeStateInvariants.Validate(run);
-            return;
-        }
-        var deck = combat.SemanticDeck ?? throw new InvalidDataException(
-            "Full-pool shuffle lost the provider-owned deck.");
-        SemanticDeckEngineV111.Validate(deck);
-        if (deck.Mode != SemanticDeckStateV111.NatureMode ||
-            deck.Pending is not null ||
-            !SemanticDeckEngineV111.AllCardInstanceIds(deck)
-                .Order().SequenceEqual(combat.DrawPile.Order()))
-            throw new InvalidDataException(
-                "Full-pool shuffle changed the hidden draw pile.");
-        PrototypeStateInvariants.Validate(run);
-    }
-
     public static SemanticDrawInsertionEventV111?
         DescribePendingDrawInsertionEvent(SemanticPilotCombatV111 current)
     {
@@ -3908,7 +3866,7 @@ public static class SemanticPilotCombatEngineV111
             current.UsesNativePolicyBaseline || current.CombatTerminal)
             throw new InvalidDataException(
                 "Draw insertion conflicts with another semantic boundary.");
-        ValidateDrawInsertionBoundary(current.Run);
+        SemanticDrawInsertionChoiceV111.ValidateBoundary(current.Run);
         var pile = (long[])insertion.EligibleDrawPile.Clone();
         var requestOrdinal = afterShuffleRelicMatches || personalHiveInsertion
             ? insertion.RequestOrdinal
@@ -3933,120 +3891,13 @@ public static class SemanticPilotCombatEngineV111
             current.Fingerprint, request, insertion.SelectedCardId!, pile);
     }
 
-    internal static void ValidateDrawInsertionBoundary(RunState run)
-    {
-        var combat = run.World?.Combat;
-        var choice = combat?.PendingChoice;
-        var insertion = choice?.ControlledDrawInsertion;
-        var supportedStage = insertion is
-            {
-                Stage: "position",
-                Operation.Kind:
-                    PrototypeCombatEffectKind.CreateGeneratedCardsAtRandomDrawPositions,
-                SelectedCardId: not null
-            } or
-            {
-                Stage: "card_model",
-                Operation.Kind:
-                    PrototypeCombatEffectKind.CreateRandomFreeAttacksInDrawPile,
-                SelectedCardId: null
-            } or
-            {
-                Stage: "position",
-                Operation.Kind:
-                    PrototypeCombatEffectKind.CreateRandomFreeAttacksInDrawPile,
-                SelectedCardId: not null
-            };
-        if (run.Phase != RunPhase.Combat ||
-            combat is not { PendingKnowledgeDemonChoice: null } ||
-            (combat.AutomaticPipelineContinuation is null &&
-             !combat.IsPlayerTurn) ||
-            choice is not { ChoiceId: "controlled_draw_insertion",
-                OuterChoiceContinuation: not null } ||
-            insertion is null || !supportedStage ||
-            !PrototypeGameEngine.ValidateControlledDrawInsertion(
-                combat, insertion))
-            throw new InvalidDataException(
-                "Generated draw-pile insertion is not source-reachable.");
-        var deck = combat.SemanticDeck ?? throw new InvalidDataException(
-            "Generated draw-pile insertion lost the provider-owned deck.");
-        SemanticDeckEngineV111.Validate(deck);
-        if (deck.Mode != SemanticDeckStateV111.NatureMode ||
-            deck.Pending is not null ||
-            !SemanticDeckEngineV111.AllCardInstanceIds(deck)
-                .Order().SequenceEqual(combat.DrawPile.Order()))
-            throw new InvalidDataException(
-                "Generated draw-pile insertion changed the hidden pile early.");
-        PrototypeStateInvariants.Validate(run);
-    }
-
-    internal static void ValidateRandomHandCostBoundary(RunState run)
-    {
-        var combat = run.World?.Combat;
-        var choice = combat?.PendingChoice;
-        var randomCost = choice?.ControlledRandomCost;
-        if (run.Phase != RunPhase.Combat ||
-            combat is not { PendingKnowledgeDemonChoice: null } ||
-            (combat.AutomaticPipelineContinuation is null &&
-             !combat.IsPlayerTurn) ||
-            choice is not { ChoiceId: "controlled_random_hand_cost",
-                OuterChoiceContinuation: not null } ||
-            randomCost is null ||
-            randomCost.Operation.Kind is not (
-                PrototypeCombatEffectKind
-                    .RandomizeHandCardEnergyCostsUntilTurnEndOrPlayed or
-                PrototypeCombatEffectKind
-                    .SetRandomHandCardEnergyCostUntilTurnEndOrPlayed) ||
-            !PrototypeGameEngine.ValidateControlledRandomCost(
-                combat, randomCost))
-            throw new InvalidDataException(
-                "Random hand-cost continuation is not source-reachable.");
-        var deck = combat.SemanticDeck ?? throw new InvalidDataException(
-            "Random hand-cost continuation lost the provider-owned deck.");
-        SemanticDeckEngineV111.Validate(deck);
-        if (deck.Mode != SemanticDeckStateV111.NatureMode ||
-            deck.Pending is not null ||
-            !SemanticDeckEngineV111.AllCardInstanceIds(deck)
-                .Order().SequenceEqual(combat.DrawPile.Order()))
-            throw new InvalidDataException(
-                "Random hand-cost continuation changed the hidden draw pile.");
-        PrototypeStateInvariants.Validate(run);
-    }
-
-    internal static void ValidateCardShortlistBoundary(RunState run)
-    {
-        var combat = run.World?.Combat;
-        var choice = combat?.PendingChoice;
-        var shortlist = choice?.ControlledCardShortlist;
-        if (run.Phase != RunPhase.Combat ||
-            combat is not { PendingKnowledgeDemonChoice: null } ||
-            (combat.AutomaticPipelineContinuation is null &&
-             !combat.IsPlayerTurn) ||
-            choice is not { ChoiceId: "controlled_card_shortlist",
-                OuterChoiceContinuation: not null } ||
-            shortlist is null ||
-            !PrototypeGameEngine.ValidateControlledCardShortlist(
-                combat, shortlist))
-            throw new InvalidDataException(
-                "Random card shortlist is not source-reachable.");
-        var deck = combat.SemanticDeck ?? throw new InvalidDataException(
-            "Card shortlist lost the provider-owned semantic deck.");
-        SemanticDeckEngineV111.Validate(deck);
-        if (deck.Mode != SemanticDeckStateV111.NatureMode ||
-            deck.Pending is not null ||
-            !SemanticDeckEngineV111.AllCardInstanceIds(deck)
-                .Order().SequenceEqual(combat.DrawPile.Order()))
-            throw new InvalidDataException(
-                "Card shortlist changed the hidden draw-pile state.");
-        PrototypeStateInvariants.Validate(run);
-    }
-
     internal static void ValidateSemanticCombatBoundary(RunState run)
     {
         var choice = run.World?.Combat?.PendingChoice;
         if (choice?.ControlledCardTransform is { } cardTransform)
         {
-            ValidateCardTransformBoundary(run, cardTransform);
+            SemanticCardTransformChoiceV111.ValidateBoundary(
+                run, cardTransform);
             return;
         }
         if (choice?.ChoiceId == "select_cards")
@@ -4069,86 +3920,35 @@ public static class SemanticPilotCombatEngineV111
         }
         if (choice?.ControlledTarget is not null)
         {
-            ValidateTargetBoundary(run);
+            SemanticTargetChoiceV111.ValidateBoundary(run);
             return;
         }
         if (choice?.ControlledGeneration is not null)
         {
-            ValidateGeneratedCardBoundary(run);
+            SemanticGenerationChoiceV111.ValidateBoundary(run);
             return;
         }
         if (choice?.ControlledPotionGeneration is not null)
         {
-            ValidatePotionGenerationBoundary(run);
+            SemanticPotionGenerationChoiceV111.ValidateBoundary(run);
             return;
         }
         if (choice?.ControlledDrawInsertion is not null)
         {
-            ValidateDrawInsertionBoundary(run);
+            SemanticDrawInsertionChoiceV111.ValidateBoundary(run);
             return;
         }
         if (choice?.ControlledRandomCost is not null)
         {
-            ValidateRandomHandCostBoundary(run);
+            SemanticRandomHandCostChoiceV111.ValidateBoundary(run);
             return;
         }
         if (choice?.ControlledCardShortlist is not null)
         {
-            ValidateCardShortlistBoundary(run);
+            SemanticCardShortlistChoiceV111.ValidateBoundary(run);
             return;
         }
         SemanticPlayerActionEngineV111.ValidateBoundary(run);
-    }
-
-    internal static void ValidatePotionGenerationBoundary(RunState run)
-    {
-        var combat = run.World?.Combat;
-        var choice = combat?.PendingChoice;
-        var generation = choice?.ControlledPotionGeneration;
-        if (run.Phase != RunPhase.Combat ||
-            combat is not { PendingKnowledgeDemonChoice: null } ||
-            (combat.AutomaticPipelineContinuation is null &&
-             !combat.IsPlayerTurn) ||
-            choice is not { ChoiceId: "controlled_potion_generation",
-                OuterChoiceContinuation: not null } ||
-            generation is null ||
-            !PrototypeGameEngine.ValidateControlledPotionGeneration(
-                combat, generation, choice.SourceCardInstanceId))
-            throw new InvalidDataException(
-                "Potion generation is not source-reachable.");
-        var deck = combat.SemanticDeck ?? throw new InvalidDataException(
-            "Potion generation lost the provider-owned semantic deck.");
-        SemanticDeckEngineV111.Validate(deck);
-        if (deck.Mode != SemanticDeckStateV111.NatureMode ||
-            deck.Pending is not null ||
-            !SemanticDeckEngineV111.AllCardInstanceIds(deck)
-                .Order().SequenceEqual(combat.DrawPile.Order()))
-            throw new InvalidDataException(
-                "Potion generation changed the hidden draw pile.");
-        PrototypeStateInvariants.Validate(run);
-    }
-
-    internal static void ValidateCardTransformBoundary(
-        RunState run, PrototypeControlledCardTransformV111 transform)
-    {
-        var combat = run.World?.Combat;
-        if (run.Phase != RunPhase.Combat || combat is null ||
-            combat.PendingChoice is not
-                { ChoiceId: "controlled_card_transform" } ||
-            !PrototypeGameEngine.ValidateControlledCardTransform(
-                combat, transform))
-            throw new InvalidDataException(
-                "Card-transform pool is not source-reachable.");
-        if (combat.SemanticDeck is { } deck)
-        {
-            SemanticDeckEngineV111.Validate(deck);
-            if (deck.Mode != SemanticDeckStateV111.NatureMode ||
-                deck.Pending is not null ||
-                !SemanticDeckEngineV111.AllCardInstanceIds(deck)
-                    .Order().SequenceEqual(combat.DrawPile.Order()))
-                throw new InvalidDataException(
-                    "Card-transform continuation diverged from its semantic draw pile.");
-        }
     }
 
     internal static void ValidateSemanticActionDrawBoundary(RunState run)
@@ -4226,112 +4026,6 @@ public static class SemanticPilotCombatEngineV111
             throw new InvalidDataException(
                 "Card-effect draw cost diverged from its semantic pile state.");
         PrototypeStateInvariants.Validate(run);
-    }
-
-    internal static void ValidateGeneratedCardBoundary(RunState run)
-    {
-        var combat = run.World?.Combat;
-        var choice = combat?.PendingChoice;
-        var generation = choice?.ControlledGeneration;
-        if (run.Phase != RunPhase.Combat ||
-            combat is not { PendingKnowledgeDemonChoice: null } ||
-            (combat.AutomaticPipelineContinuation is null &&
-             !combat.IsPlayerTurn) ||
-            choice is not { ChoiceId: "controlled_generated_card",
-                OuterChoiceContinuation: not null } ||
-            generation is null ||
-            !PrototypeGameEngine.ValidateControlledGenerationSupport(generation))
-            throw new InvalidDataException(
-                "Semantic generated-card pool is not source-reachable.");
-        var deck = combat.SemanticDeck ?? throw new InvalidDataException(
-            "Generated-card continuation lost its provider-owned deck.");
-        SemanticDeckEngineV111.Validate(deck);
-        if (deck.Mode != SemanticDeckStateV111.NatureMode ||
-            deck.Pending is not null ||
-            !SemanticDeckEngineV111.AllCardInstanceIds(deck)
-                .Order().SequenceEqual(combat.DrawPile.Order()))
-            throw new InvalidDataException(
-                "Generated-card continuation changed the hidden draw pile.");
-        PrototypeStateInvariants.Validate(run);
-    }
-
-    private static void ValidateTargetBoundary(RunState run)
-    {
-        var combat = run.World?.Combat;
-        var choice = combat?.PendingChoice;
-        var target = choice?.ControlledTarget;
-        var automatic = combat?.AutomaticPipelineContinuation;
-        var playerActionBoundary = combat is
-            { IsPlayerTurn: true, AutomaticPipelineContinuation: null };
-        var automaticPipelineBoundary = combat is { IsPlayerTurn: false } &&
-            automatic is
-            {
-                OpeningStage: null,
-                PendingPostDispatchEventKind: null,
-                ControlledDrawRemaining: null,
-                ControlledDrawCostRemaining: null,
-                ControlledSemanticDrawRemaining: null,
-                ControlledSemanticDrawRequested: null,
-                ControlledEnemyAction: null
-            } && automatic.NextStepIndex >= 0 &&
-            automatic.NextStepIndex <
-                PrototypeContent.Rules.EndTurnPipeline.Length;
-        if (run.Phase != RunPhase.Combat ||
-            (!playerActionBoundary && !automaticPipelineBoundary) ||
-            choice is not { ChoiceId: "controlled_random_target",
-                OuterChoiceContinuation: not null } ||
-            target is null ||
-            target.Kind is not ("effect_random_enemy" or "sly_auto_play" or
-                "autoplay_random_enemy"))
-            throw new InvalidDataException(
-                "Semantic target continuation is not at a supported player or automatic pipeline boundary.");
-        var liveCombat = combat ?? throw new InvalidDataException(
-            "Semantic target continuation is missing its combat state.");
-        var eligible = liveCombat.Enemies.Where(enemy => enemy.Hp > 0 &&
-                (target.Kind != "sly_auto_play" || !enemy.Escaped))
-            .Select(enemy => enemy.InstanceId).ToArray();
-        if (eligible.Length == 0 ||
-            !eligible.SequenceEqual(target.EligibleEnemyInstanceIds))
-            throw new InvalidDataException(
-                "Semantic target support disagrees with live enemy eligibility.");
-        if (target.Kind == "sly_auto_play" &&
-            (target.SlyCardInstanceId is not { } slyCardId ||
-             !liveCombat.DiscardPile.Contains(slyCardId) ||
-             target.AutoPlayCardInstanceId is not null))
-            throw new InvalidDataException(
-                "Sly auto-play target lost its discarded source card.");
-        if (target.Kind == "autoplay_random_enemy")
-        {
-            if (target.AutoPlayCardInstanceId is not { } autoPlayCardId ||
-                !liveCombat.PlayCardIds.Contains(autoPlayCardId) ||
-                target.SlyCardInstanceId is not null ||
-                choice?.OuterChoiceContinuation?.Operations is not
-                    { Length: > 0 } operations ||
-                operations[0].Kind !=
-                    PrototypeCombatEffectKind.AutoPlayCombatCard ||
-                operations[0].CardInstanceId != autoPlayCardId ||
-                operations[0].TargetEnemyId is not null)
-                throw new InvalidDataException(
-                    "Auto-play target lost its suspended card operation.");
-        }
-        else if (target.Kind == "effect_random_enemy" &&
-                 (target.SlyCardInstanceId is not null ||
-                  target.AutoPlayCardInstanceId is not null))
-            throw new InvalidDataException(
-                "Effect random-target event carries an auto-play card identity.");
-        if (liveCombat.SemanticDeck is { } deck)
-        {
-            SemanticDeckEngineV111.Validate(deck);
-            if (deck.Mode != SemanticDeckStateV111.NatureMode ||
-                deck.Pending is not null ||
-                !SemanticDeckEngineV111.AllCardInstanceIds(deck)
-                    .Order().SequenceEqual(liveCombat.DrawPile.Order()))
-                throw new InvalidDataException(
-                    "Semantic target continuation changed the hidden draw pile.");
-        }
-        else if (liveCombat.DrawPile.Length != 0)
-            throw new InvalidDataException(
-                "A semantic target without a provider deck must have an empty draw pile.");
     }
 
     private static SemanticIntentEventV111 MakeSemanticIntentEvent(

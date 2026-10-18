@@ -119,6 +119,49 @@ public sealed record SemanticPoolShuffleDecisionV111(
 
 public static class SemanticPoolShuffleChoiceV111
 {
+    internal static void ValidateBoundary(RunState run)
+    {
+        var combat = run.World?.Combat;
+        var choice = combat?.PendingChoice;
+        var shuffle = choice?.ControlledPoolShuffle;
+        if (run.Phase != RunPhase.Combat ||
+            combat is not { PendingKnowledgeDemonChoice: null } ||
+            (combat.AutomaticPipelineContinuation is null &&
+             !combat.IsPlayerTurn) ||
+            choice is not { ChoiceId: "controlled_pool_shuffle",
+                OuterChoiceContinuation: not null } ||
+            shuffle is null ||
+            !PrototypeGameEngine.ValidateControlledPoolShuffle(
+                combat, shuffle, choice.SourceCardInstanceId))
+            throw new InvalidDataException(
+                "Full-pool shuffle is not source-reachable.");
+        if (shuffle.Operation.Kind ==
+            PrototypeCombatEffectKind.RecycleDrawPileForEffectDraw)
+        {
+            if (combat!.SemanticDeck is not null ||
+                combat.DrawPile.Length != 0 || combat.DiscardPile.Length <= 1 ||
+                choice!.OuterChoiceContinuation!.Operations.FirstOrDefault() is not
+                    { Kind: PrototypeCombatEffectKind.DrawCards, Amount: > 0 } ||
+                (combat.AutomaticPipelineContinuation is not null &&
+                 !PrototypeGameEngine.IsMayhemLegacyRecycleContinuation(
+                     combat, choice)))
+                throw new InvalidDataException(
+                    "Legacy recycle shuffle lost its saved draw continuation.");
+            PrototypeStateInvariants.Validate(run);
+            return;
+        }
+        var deck = combat.SemanticDeck ?? throw new InvalidDataException(
+            "Full-pool shuffle lost the provider-owned deck.");
+        SemanticDeckEngineV111.Validate(deck);
+        if (deck.Mode != SemanticDeckStateV111.NatureMode ||
+            deck.Pending is not null ||
+            !SemanticDeckEngineV111.AllCardInstanceIds(deck)
+                .Order().SequenceEqual(combat.DrawPile.Order()))
+            throw new InvalidDataException(
+                "Full-pool shuffle changed the hidden draw pile.");
+        PrototypeStateInvariants.Validate(run);
+    }
+
     public static SemanticPoolShuffleDecisionV111 Select(
         SemanticPoolShuffleEventV111 pending, string eventId, int swapIndex)
     {
@@ -150,7 +193,7 @@ public static class SemanticPoolShuffleChoiceV111
         if (shuffle is null)
             throw new InvalidDataException(
                 "Full-pool shuffle is missing its source operation.");
-        SemanticPilotCombatEngineV111.ValidatePoolShuffleBoundary(checkpoint);
+        ValidateBoundary(checkpoint);
         ValidateLiveSupport(combat, choice!, shuffle, decision.Event);
 
         RunState result;
@@ -165,9 +208,9 @@ public static class SemanticPoolShuffleChoiceV111
             throw new InvalidDataException(
                 "Full-pool shuffle continuation lost combat.");
         if (resultCombat.PendingChoice?.ControlledPoolShuffle is not null)
-            SemanticPilotCombatEngineV111.ValidatePoolShuffleBoundary(result);
+            ValidateBoundary(result);
         else if (resultCombat.PendingChoice?.ControlledDrawInsertion is not null)
-            SemanticPilotCombatEngineV111.ValidateDrawInsertionBoundary(result);
+            SemanticDrawInsertionChoiceV111.ValidateBoundary(result);
         else if (resultCombat.PendingChoice?.ChoiceId == "select_cards")
         {
             SemanticCardSelectionEngineV111.ValidatePendingBoundary(result);

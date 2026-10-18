@@ -55,6 +55,34 @@ public static class SemanticPotionGenerationChoiceV111
 {
     public const string SchemaId = "sts2-v111-semantic-potion-generation-v1";
 
+    internal static void ValidateBoundary(RunState run)
+    {
+        var combat = run.World?.Combat;
+        var choice = combat?.PendingChoice;
+        var generation = choice?.ControlledPotionGeneration;
+        if (run.Phase != RunPhase.Combat ||
+            combat is not { PendingKnowledgeDemonChoice: null } ||
+            (combat.AutomaticPipelineContinuation is null &&
+             !combat.IsPlayerTurn) ||
+            choice is not { ChoiceId: "controlled_potion_generation",
+                OuterChoiceContinuation: not null } ||
+            generation is null ||
+            !PrototypeGameEngine.ValidateControlledPotionGeneration(
+                combat, generation, choice.SourceCardInstanceId))
+            throw new InvalidDataException(
+                "Potion generation is not source-reachable.");
+        var deck = combat.SemanticDeck ?? throw new InvalidDataException(
+            "Potion generation lost the provider-owned semantic deck.");
+        SemanticDeckEngineV111.Validate(deck);
+        if (deck.Mode != SemanticDeckStateV111.NatureMode ||
+            deck.Pending is not null ||
+            !SemanticDeckEngineV111.AllCardInstanceIds(deck)
+                .Order().SequenceEqual(combat.DrawPile.Order()))
+            throw new InvalidDataException(
+                "Potion generation changed the hidden draw pile.");
+        PrototypeStateInvariants.Validate(run);
+    }
+
     public static SemanticPotionGenerationDecisionV111 Select(
         SemanticPotionGenerationEventV111 pending, string eventId,
         string potionId)
@@ -94,8 +122,7 @@ public static class SemanticPotionGenerationChoiceV111
                 decision.Event.CandidatePotionIds))
             throw new InvalidDataException(
                 "Potion-generation decision no longer matches its source pool.");
-        SemanticPilotCombatEngineV111.ValidatePotionGenerationBoundary(
-            checkpoint);
+        ValidateBoundary(checkpoint);
 
         RunState resumed;
         using (ControlledChanceGuardV111.Enter())

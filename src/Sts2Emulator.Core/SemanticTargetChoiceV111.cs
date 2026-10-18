@@ -64,6 +64,85 @@ public static class SemanticTargetChoiceV111
 {
     public const string SchemaId = "sts2-v111-semantic-target-choice-v1";
 
+    internal static void ValidateBoundary(RunState run)
+    {
+        var combat = run.World?.Combat;
+        var choice = combat?.PendingChoice;
+        var target = choice?.ControlledTarget;
+        var automatic = combat?.AutomaticPipelineContinuation;
+        var playerActionBoundary = combat is
+            { IsPlayerTurn: true, AutomaticPipelineContinuation: null };
+        var automaticPipelineBoundary = combat is { IsPlayerTurn: false } &&
+            automatic is
+            {
+                OpeningStage: null,
+                PendingPostDispatchEventKind: null,
+                ControlledDrawRemaining: null,
+                ControlledDrawCostRemaining: null,
+                ControlledSemanticDrawRemaining: null,
+                ControlledSemanticDrawRequested: null,
+                ControlledEnemyAction: null
+            } && automatic.NextStepIndex >= 0 &&
+            automatic.NextStepIndex <
+                PrototypeContent.Rules.EndTurnPipeline.Length;
+        if (run.Phase != RunPhase.Combat ||
+            (!playerActionBoundary && !automaticPipelineBoundary) ||
+            choice is not { ChoiceId: "controlled_random_target",
+                OuterChoiceContinuation: not null } ||
+            target is null ||
+            target.Kind is not ("effect_random_enemy" or "sly_auto_play" or
+                "autoplay_random_enemy"))
+            throw new InvalidDataException(
+                "Semantic target continuation is not at a supported player or automatic pipeline boundary.");
+        var liveCombat = combat ?? throw new InvalidDataException(
+            "Semantic target continuation is missing its combat state.");
+        var eligible = liveCombat.Enemies.Where(enemy => enemy.Hp > 0 &&
+                (target.Kind != "sly_auto_play" || !enemy.Escaped))
+            .Select(enemy => enemy.InstanceId).ToArray();
+        if (eligible.Length == 0 ||
+            !eligible.SequenceEqual(target.EligibleEnemyInstanceIds))
+            throw new InvalidDataException(
+                "Semantic target support disagrees with live enemy eligibility.");
+        if (target.Kind == "sly_auto_play" &&
+            (target.SlyCardInstanceId is not { } slyCardId ||
+             !liveCombat.DiscardPile.Contains(slyCardId) ||
+             target.AutoPlayCardInstanceId is not null))
+            throw new InvalidDataException(
+                "Sly auto-play target lost its discarded source card.");
+        if (target.Kind == "autoplay_random_enemy")
+        {
+            if (target.AutoPlayCardInstanceId is not { } autoPlayCardId ||
+                !liveCombat.PlayCardIds.Contains(autoPlayCardId) ||
+                target.SlyCardInstanceId is not null ||
+                choice?.OuterChoiceContinuation?.Operations is not
+                    { Length: > 0 } operations ||
+                operations[0].Kind !=
+                    PrototypeCombatEffectKind.AutoPlayCombatCard ||
+                operations[0].CardInstanceId != autoPlayCardId ||
+                operations[0].TargetEnemyId is not null)
+                throw new InvalidDataException(
+                    "Auto-play target lost its suspended card operation.");
+        }
+        else if (target.Kind == "effect_random_enemy" &&
+                 (target.SlyCardInstanceId is not null ||
+                  target.AutoPlayCardInstanceId is not null))
+            throw new InvalidDataException(
+                "Effect random-target event carries an auto-play card identity.");
+        if (liveCombat.SemanticDeck is { } deck)
+        {
+            SemanticDeckEngineV111.Validate(deck);
+            if (deck.Mode != SemanticDeckStateV111.NatureMode ||
+                deck.Pending is not null ||
+                !SemanticDeckEngineV111.AllCardInstanceIds(deck)
+                    .Order().SequenceEqual(liveCombat.DrawPile.Order()))
+                throw new InvalidDataException(
+                    "Semantic target continuation changed the hidden draw pile.");
+        }
+        else if (liveCombat.DrawPile.Length != 0)
+            throw new InvalidDataException(
+                "A semantic target without a provider deck must have an empty draw pile.");
+    }
+
     public static SemanticTargetDecisionV111 Select(
         SemanticTargetEventV111 pending, string eventId,
         int enemyInstanceId)
@@ -96,6 +175,7 @@ public static class SemanticTargetChoiceV111
         ArgumentNullException.ThrowIfNull(checkpoint);
         ArgumentNullException.ThrowIfNull(decision);
         decision.Validate();
+        ValidateBoundary(checkpoint);
 
         RunState resumed;
         using (ControlledChanceGuardV111.Enter())
