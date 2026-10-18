@@ -363,6 +363,11 @@ public static partial class ChanceLawEngineV111
         "relic_grab_bag.rarity.ticket"
     ];
 
+    private static readonly string[] LegacyCardUpgradeTicketQuerySites =
+    [
+        "card_rarity.upgrade_roll.ticket"
+    ];
+
     private sealed record NativeBoundedIntegerLawSiteV111(
         string StreamId, string Boundary);
 
@@ -413,6 +418,9 @@ public static partial class ChanceLawEngineV111
 
     public static string[] LegacyRarityTicketQuerySiteIds =>
         (string[])LegacyRarityTicketQuerySites.Clone();
+
+    public static string[] LegacyCardUpgradeTicketQuerySiteIds =>
+        (string[])LegacyCardUpgradeTicketQuerySites.Clone();
 
     /// <summary>
     /// Query the retained legacy card-rarity integer ticket after the source
@@ -521,6 +529,54 @@ public static partial class ChanceLawEngineV111
             "uniform 100-way legacy bounded-ticket model with source-shaped " +
             "50/33/17 rarity bins; probabilities remain unverified against " +
             "the native game RNG.", outcomes);
+    }
+
+    /// <summary>
+    /// Query the legacy card-upgrade threshold ticket. Its bounded integer
+    /// mapping is source-shaped but remains unverified against Native RNG.
+    /// </summary>
+    public static ChanceLawV111 QueryLegacyCardUpgradeTicket(
+        string cardId, int act, int ascension, int ordinal)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(cardId);
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+
+        var thresholdBasisPoints =
+            PrototypeNativeCardRarityOdds
+                .EncounterCardUpgradeThresholdBasisPoints(
+                    cardId, act, ascension);
+        const string siteId = "card_rarity.upgrade_roll.ticket";
+        const string streamId = "reward";
+        var ownerId = $"card:{cardId}:act:{act}:ascension:{ascension}";
+        const int ticketCount = 10000;
+        var outcomes = new List<ChanceLawOutcomeV111>(2);
+        if (thresholdBasisPoints > 0)
+            outcomes.Add(new ChanceLawOutcomeV111(
+                "upgrade_check:passed", thresholdBasisPoints));
+        if (thresholdBasisPoints < ticketCount)
+            outcomes.Add(new ChanceLawOutcomeV111(
+                "upgrade_check:not_passed",
+                ticketCount - thresholdBasisPoints));
+        var conditioning = new
+        {
+            siteId,
+            streamId,
+            ownerId,
+            ordinal,
+            cardId,
+            act,
+            ascension,
+            thresholdBasisPoints,
+            ticketCount,
+            comparison = "ticket_less_than_threshold"
+        };
+        return CreateLegacyCategoricalTicketLaw(
+            siteId, streamId, ownerId, ordinal,
+            "legacy-card-upgrade-threshold-ticket-v1", conditioning,
+            "uniform 10,000-way legacy bounded-ticket model; source-shaped " +
+            "upgrade threshold remains unverified against the native game RNG.",
+            outcomes.ToArray());
     }
 
     private static (long Rare, long Uncommon, long Common)

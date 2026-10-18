@@ -4117,6 +4117,41 @@ internal static class PrototypeAiJsonlServer
                             });
                             break;
                         }
+                        if (siteId == "card_rarity.upgrade_roll.ticket")
+                        {
+                            RejectChanceLawQueryParameters(
+                                request, "card_id", "act", "ascension",
+                                "support_count");
+                            var upgradeTicketCardId = OptionalString(
+                                request, "card_id") ??
+                                throw new ArgumentException(
+                                    "Legacy card-upgrade ticket law requires card_id.");
+                            var act = OptionalInt(request, "act") ??
+                                throw new ArgumentException(
+                                    "Legacy card-upgrade ticket law requires act.");
+                            var ascension = OptionalInt(request, "ascension") ??
+                                throw new ArgumentException(
+                                    "Legacy card-upgrade ticket law requires ascension.");
+                            law = ChanceLawEngineV111
+                                .QueryLegacyCardUpgradeTicket(
+                                    upgradeTicketCardId, act, ascension,
+                                    ordinal);
+                            var supportCount = OptionalInt(
+                                request, "support_count");
+                            if (supportCount is not null &&
+                                supportCount != law.Outcomes.Length)
+                                throw new ArgumentException(
+                                    "Card-upgrade ticket support_count must match the declared card, Act, and Ascension.");
+                            Write(new
+                            {
+                                requestId,
+                                ok = true,
+                                chanceLawSchemaId =
+                                    ChanceLawV111.CurrentSchemaId,
+                                law
+                            });
+                            break;
+                        }
                         if (ChanceLawEngineV111
                             .IsSupportedAncientOfferQuerySite(siteId))
                         {

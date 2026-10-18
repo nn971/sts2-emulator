@@ -316,6 +316,7 @@ public static class StochasticSiteRegistryV111
     [
         .. ChanceLawEngineV111.LegacyMerchantIndexQuerySiteIds,
         .. ChanceLawEngineV111.LegacyRarityTicketQuerySiteIds,
+        .. ChanceLawEngineV111.LegacyCardUpgradeTicketQuerySiteIds,
         NativeOrobasEventV111.OfferSiteId,
         NativePaelRewardsV111.OfferSiteId,
         NativeAncientRewardsV111.TezcataraOfferSiteId,
