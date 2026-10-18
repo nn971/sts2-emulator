@@ -985,6 +985,55 @@ public static partial class ChanceLawEngineV111
             ChanceLawV111.SourceVerifiedStatus);
     }
 
+    /// <summary>
+    /// Query one raw Native path-start column draw before any path-start retry
+    /// constraint is applied. The caller declares its site-local ordinal.
+    /// </summary>
+    public static ChanceLawV111 QueryLaterActPathStart(int act, int ordinal)
+    {
+        if (act is not (2 or 3))
+            throw new ArgumentOutOfRangeException(
+                nameof(act), "Later-act path starts support Hive or Glory.");
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(
+                nameof(ordinal),
+                "Later-act path-start queries require a nonnegative site-local ordinal.");
+
+        const int supportCount = PrototypeNativeLaterActMap.MapWidth;
+        var siteId = PrototypeNativeLaterActMap.PathStartSiteId;
+        var ownerId = $"map:act:{act}";
+        var indexWeights = NativeNextIntGridWeights(supportCount);
+        var outcomes = indexWeights.Select((weight, index) =>
+            new ChanceLawOutcomeV111(
+                $"path_column:{index}", weight)).ToArray();
+        var eventId = CanonicalJson.Sha256(new
+        {
+            boundary = siteId,
+            ownerId,
+            ordinal
+        });
+        var conditioningFingerprint = CanonicalJson.Sha256(new
+        {
+            siteId,
+            act,
+            ownerId,
+            supportCount,
+            orderedColumns = Enumerable.Range(0, supportCount).ToArray()
+        });
+
+        return Create(
+            eventId,
+            siteId,
+            "bounded_integer",
+            ownerId,
+            ordinal,
+            NativeRandomIndexConditioningPolicyId,
+            conditioningFingerprint,
+            NativeBoundedIndexSourceVerifiedProvenance,
+            outcomes,
+            ChanceLawV111.SourceVerifiedStatus);
+    }
+
     public static ChanceLawV111 QueryLaterActDarvHiveAssignment(int ordinal)
     {
         var siteId = ExperimentalSilentThreeActRouteV111

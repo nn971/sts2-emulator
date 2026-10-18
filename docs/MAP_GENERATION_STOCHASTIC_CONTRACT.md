@@ -61,10 +61,12 @@ The player-facing result is the committed map: nodes, floors, room types,
 entry nodes, and outgoing connections. The generation seed, stream cursor,
 partial path graph, candidate ordering, and room-placement retries are not
 part of that projection. There is currently no Nature-view observation or
-controlled continuation for these sites. A read-only `chance_law_query` is
-available for `map.later_act.glory_rest_count.index_draw`; it returns the exact
-Native `NextInt(2)` grid masses for rest quotas 5 and 6 at site-local ordinal
-zero. The query does not read map state, seed, or cursor. The explicit
+controlled continuation for these sites. Read-only `chance_law_query` laws
+cover the raw Hive/Glory `map.later_act.path_start_column.index_draw` before
+any path-start retry, and the `map.later_act.glory_rest_count.index_draw` at
+site-local ordinal zero. Path-start queries require the declared act and
+site-local ordinal; both laws return exact Native bounded-index grid masses.
+The queries do not read map state, seed, or cursor. The explicit
 `GenerateNativeWithAudit` helpers can return the final native map stream
 snapshot for source investigation; ordinary map generation does not publish
 it, and no per-decision privileged-inspector transcript exists.
@@ -81,12 +83,14 @@ order is still open, as recorded by the generator source comments.
 The native stream construction is pinned to the v0.111.0 source revision
 `706ef1c9fa2219220065849fd5265328607ece20`; see
 [`NativeRngV111Contexts.ForActMap`](../src/Sts2Emulator.Core/NativeRngV111Contexts.cs).
-The Glory rest-count `NextInt(2)` transform is `SOURCE_VERIFIED` under the
-uniform 53-bit input-grid model. This does not establish seed frequencies,
-stream derivation, or per-call cursor parity. Other map operation laws remain
-**UNVERIFIED**. Seed derivation and typed bounded, shuffle, and Gaussian
-providers do not establish distribution calibration or per-call cursor
-parity.
+The Glory rest-count `NextInt(2)` and Hive/Glory path-start `NextInt(7)`
+transforms are `SOURCE_VERIFIED` under the uniform 53-bit input-grid model.
+The path-start law describes each raw column draw before the Act 2/3 retry
+condition and does not model its full accepted start. These laws do not
+establish seed frequencies, stream derivation, or per-call cursor parity.
+Other map operation laws remain **UNVERIFIED**. Seed derivation and typed
+bounded, shuffle, and Gaussian providers do not establish distribution
+calibration or per-call cursor parity.
 
 No controlled ReferenceNature operation is supported for these sites, so a
 Nature request must remain unavailable rather than inventing a law or

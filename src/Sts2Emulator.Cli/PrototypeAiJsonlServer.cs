@@ -2892,6 +2892,31 @@ internal static class PrototypeAiJsonlServer
                             });
                             break;
                         }
+                        if (siteId == PrototypeNativeLaterActMap.PathStartSiteId)
+                        {
+                            RejectChanceLawQueryParameters(
+                                request, "act", "support_count");
+                            var act = OptionalInt(request, "act") ??
+                                throw new ArgumentException(
+                                    "Later-act path-start law requires act 2 or 3.");
+                            var supportCount = OptionalInt(
+                                request, "support_count");
+                            if (supportCount is not null &&
+                                supportCount != PrototypeNativeLaterActMap.MapWidth)
+                                throw new ArgumentException(
+                                    "Later-act path-start support_count must be seven.");
+                            law = ChanceLawEngineV111
+                                .QueryLaterActPathStart(act, ordinal);
+                            Write(new
+                            {
+                                requestId,
+                                ok = true,
+                                chanceLawSchemaId =
+                                    ChanceLawV111.CurrentSchemaId,
+                                law
+                            });
+                            break;
+                        }
                         if (siteId == PrototypeNativeLaterActMap
                                 .GloryRestCountSiteId)
                         {

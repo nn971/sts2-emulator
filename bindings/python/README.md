@@ -147,6 +147,22 @@ This law describes the raw pool index before the first-undiscovered-boss
 preference may replace the selected boss. The equal-index model is
 `UNVERIFIED`, and later-act encounter preparation remains source-owned.
 
+Hive and Glory map path-start calls have a read-only Native law. Supply the
+act and the site's actual call ordinal; the query describes the raw column
+draw before the source retry constraint on the second path:
+
+```python
+law = state.query_chance_law(
+    "map.later_act.path_start_column.index_draw",
+    ordinal=path_start_site_ordinal,
+    act=2,
+    support_count=7,
+)
+```
+
+Each query returns exact Native `NextInt(7)` weights for columns 0 through 6.
+It does not validate earlier path starts or the complete map-generation prefix.
+
 Glory's later-act map rest-count draw has a separate read-only Native law:
 
 ```python
