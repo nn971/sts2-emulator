@@ -524,8 +524,11 @@ public static class SemanticCombatDrawEngineV111
         bool standaloneSelection = !state.AutomaticHandDraw &&
             choice?.SemanticStratagemDrawSelection == true;
         if (combat is not { SemanticDeck:
-                    { Mode: SemanticDeckStateV111.NatureMode,
-                    Pending: null } } ||
+                { Mode: SemanticDeckStateV111.NatureMode, Pending: null } })
+            return null;
+        int expectedSelections =
+            PrototypeGameEngine.ExpectedStratagemSelectionCount(combat);
+        if (
             (standaloneSelection && !combat.IsPlayerTurn) ||
             choice is not { ChoiceId: "select_cards" } ||
             choice.Selection.SourceZone != PrototypeCardZone.DrawPile ||
@@ -544,15 +547,11 @@ public static class SemanticCombatDrawEngineV111
             (standaloneSelection &&
              (combat!.AutomaticPipelineContinuation is not null ||
               !HasStandaloneSemanticDrawOperation(choice!))) ||
-            !combat.PlayerPowers.Any(power =>
-                power.PowerId == "proto.power.stratagem" &&
-                power.Stacks > 0 && combat.Hand.Length < 10))
+            expectedSelections <= 0)
             return null;
 
         var decision = SemanticCardSelectionEngineV111.DescribePending(
             run, CanonicalJson.Sha256(run));
-        int expectedSelections =
-            PrototypeGameEngine.ExpectedStratagemSelectionCount(combat);
         if (decision.MaximumSelections != expectedSelections ||
             decision.MinimumSelections != expectedSelections)
             throw new InvalidDataException(

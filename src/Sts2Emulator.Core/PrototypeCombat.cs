@@ -1979,9 +1979,7 @@ public sealed partial class PrototypeGameEngine
             return suspended;
         }
         combat = ApplyRelicAfterShuffleCards(combat, state.Rng);
-        if (combat.PlayerPowers.Any(power =>
-                power.PowerId == "proto.power.stratagem" && power.Stacks > 0) &&
-            combat.Hand.Length < 10)
+        if (ExpectedStratagemSelectionCount(combat) > 0)
             return BeginControlledRecycleStratagemSelection(
                 state, state.Player, combat,
                 remainingHandDraw);
@@ -6414,10 +6412,7 @@ public sealed partial class PrototypeGameEngine
                                     drawBoundary ==
                                         PrototypeDrawCardsBoundaryKind
                                             .AfterShuffleInsertions &&
-                                    combat.PlayerPowers.Any(power =>
-                                        power.PowerId == "proto.power.stratagem" &&
-                                        power.Stacks > 0) &&
-                                    combat.Hand.Length < 10,
+                                    ExpectedStratagemSelectionCount(combat) > 0,
                                 StandaloneSemanticDrawSegment:
                                     operation.StandaloneSemanticDrawSegment);
                         if (drawBoundary ==
@@ -16201,10 +16196,7 @@ public sealed partial class PrototypeGameEngine
                                         afterShuffleInsertions));
                         }
                     }
-                    var stratagemCount = combat.PlayerPowers.Sum(power =>
-                        power.PowerId == "proto.power.stratagem"
-                            ? Math.Max(0, power.Stacks) : 0);
-                    if (stratagemCount > 0 && combat.Hand.Length < maxHandSize)
+                    if (ExpectedStratagemSelectionCount(combat) > 0)
                     {
                         combat = SemanticDrawPileAdapterV111.ApplyZoneTransition(
                             combat,
@@ -16241,10 +16233,7 @@ public sealed partial class PrototypeGameEngine
                     combat = ApplyRelicAfterShuffleCards(combat, rng);
                     draw = combat.DrawPile.ToList();
                     discard = combat.DiscardPile.ToList();
-                    var stratagem = combat.PlayerPowers.Sum(power =>
-                        power.PowerId == "proto.power.stratagem"
-                            ? Math.Max(0, power.Stacks) : 0);
-                    if (stratagem > 0 && combat.Hand.Length < maxHandSize)
+                    if (ExpectedStratagemSelectionCount(combat) > 0)
                     {
                         // Persist the recycled draw pile before prompting.
                         // The suspended draw resumes after this choice.

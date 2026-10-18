@@ -134,9 +134,7 @@ public sealed partial class PrototypeGameEngine
             combat.AutomaticPipelineContinuation is not { } cursor ||
             cursor.Mechanics.CurrentStepKind !=
                 PrototypeAutomaticStepKind.DrawPlayerHand ||
-            !combat.PlayerPowers.Any(power =>
-                power.PowerId == "proto.power.stratagem" && power.Stacks > 0) ||
-            combat.Hand.Length >= 10 || combat.DrawPile.Length == 0 ||
+            ExpectedStratagemSelectionCount(combat) <= 0 ||
             combat.PendingChoice is not null)
             throw new InvalidDataException(
                 "Controlled recycle Stratagem checkpoint is inconsistent.");
@@ -203,9 +201,7 @@ public sealed partial class PrototypeGameEngine
         {
             if (drawn.RemainingCount <= 0 ||
                 combat.PendingChoice is not null ||
-                !combat.PlayerPowers.Any(power =>
-                    power.PowerId == "proto.power.stratagem" &&
-                    power.Stacks > 0) || combat.Hand.Length >= 10)
+                ExpectedStratagemSelectionCount(combat) <= 0)
                 throw new InvalidDataException(
                     "Controlled hand draw has a malformed Stratagem boundary.");
             return BeginControlledRecycleStratagemSelection(

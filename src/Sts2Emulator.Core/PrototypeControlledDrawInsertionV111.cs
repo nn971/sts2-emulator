@@ -223,9 +223,7 @@ public sealed partial class PrototypeGameEngine
                 semanticDraw.DeferredKeywordCardInstanceIds?.Distinct().Count() ==
                     semanticDraw.DeferredKeywordCardInstanceIds?.Length &&
                 (!semanticDraw.StratagemSelectionPending ||
-                 (combat.Hand.Length < 10 && combat.PlayerPowers.Any(power =>
-                     power.PowerId == "proto.power.stratagem" &&
-                     power.Stacks > 0))) &&
+                 ExpectedStratagemSelectionCount(combat) > 0) &&
                 (!semanticDraw.StandaloneSemanticDrawSegment ||
                  semanticDraw.EventDepth == 0) &&
                 !(semanticDraw.StandaloneSemanticDrawSegment &&

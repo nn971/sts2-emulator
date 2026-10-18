@@ -501,9 +501,7 @@ public sealed partial class PrototypeGameEngine
 
         bool stratagemSelectionPending =
             semanticDraw.StratagemSelectionPending ||
-            (drawn.Combat.PlayerPowers.Any(power =>
-                power.PowerId == "proto.power.stratagem" &&
-                power.Stacks > 0) && drawn.Combat.Hand.Length < 10);
+            ExpectedStratagemSelectionCount(drawn.Combat) > 0;
         semanticDraw = AdvanceControlledSemanticDrawFrame(
             semanticDraw, drawn.RemainingCount,
             drawn.DrawnCardInstanceIds, accumulateDrawnCardIds,
@@ -547,9 +545,7 @@ public sealed partial class PrototypeGameEngine
         if (drawn.BoundaryKind !=
                 PrototypeDrawCardsBoundaryKind.ShuffleSelection ||
             drawn.RemainingCount <= 0 ||
-            !drawn.Combat.PlayerPowers.Any(power =>
-                power.PowerId == "proto.power.stratagem" &&
-                power.Stacks > 0 && drawn.Combat.Hand.Length < 10))
+            ExpectedStratagemSelectionCount(drawn.Combat) <= 0)
             throw new InvalidDataException(
                 "Stratagem draw checkpoint is inconsistent.");
 
