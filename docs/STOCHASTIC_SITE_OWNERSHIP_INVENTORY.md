@@ -76,6 +76,8 @@ The end-turn recycle row now exposes its direct Native bounded-index law on `run
 
 The Native insertion-index query family covers ordinary generated-card, after-shuffle relic, enemy draw/discard, and Personal Hive Dazed positions on declared `run.shuffle` requests; source stream calibration, operation-prefix fidelity, legacy laws, and cursor parity remain open.
 
+The regenerated direct-call census now reports registry-to-ledger gaps and ledger rows absent from the active registry separately. The latter are review leads rather than automatic registration requirements because legacy and conditional rows remain in the canonical matrix.
+
 The configured combat-potion presence row now has a read-only exact Native float-threshold law for the declared pity and Elite state. It rejects White Beast Statue forced rewards because they bypass the draw; the reward-generation prefix, stream attribution and cursor parity remain open.
 
 `card_rarity.roll.unit_float` now has an explicit-source read-only law for encounter and merchant thresholds. It describes the raw rarity before the available-pool fallback, with exact Native float-grid masses; candidate-pool fidelity, reward-prefix validation, stream assignment and cursor parity remain open.

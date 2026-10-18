@@ -21,7 +21,7 @@ from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = ROOT / "src" / "Sts2Emulator.Core"
-SCHEMA_ID = "emulator-rng-callsite-source-inventory-v8"
+SCHEMA_ID = "emulator-rng-callsite-source-inventory-v9"
 SITE_REGISTRY_PATH = SOURCE_ROOT / "StochasticSiteRegistryV111.cs"
 
 CALL_PATTERN = re.compile(
@@ -513,6 +513,17 @@ def collect() -> dict[str, Any]:
     registry_site_ids_without_matrix_rows = sorted(
         registry_site_ids - matrix_site_ids
     )
+    matrix_site_ids_without_registry = sorted(
+        matrix_site_ids - registry_site_ids
+    )
+    matrix_site_ids_without_registry_set = set(
+        matrix_site_ids_without_registry
+    )
+    matrix_rows_without_registry_by_law_status: Counter[str] = Counter(
+        _law_status_kind(row["reference_law_status"])
+        for row in matrix_site_rows
+        if row["site_id"] in matrix_site_ids_without_registry_set
+    )
     site_id_forwarder_calls = _site_id_forwarder_calls(
         sources, string_constants, registry_site_ids, matrix_site_ids
     )
@@ -611,8 +622,10 @@ def collect() -> dict[str, Any]:
             "NativeFisherYatesV111 in Sts2Emulator.Core. This does not include "
             "indirect delegates, random provider interfaces, third-party/native "
             "source callsites, or prove that every source operation is mapped. "
-            "The site-matrix checks verify registry coverage, unique ledger IDs "
-            "and explicit reference-law status. The S0 locator reports text or "
+            "The site-matrix report shows registry-to-ledger and ledger-to-registry "
+            "differences, unique ledger IDs, and explicit reference-law status. "
+            "Unregistered ledger rows are informational because legacy and conditional "
+            "sites may remain outside the active registry. The S0 locator reports text or "
             "linked-document matches for private constraints, audience projections, "
             "resolvers/continuations, probability provenance, and unsupported handling; "
             "these matches require manual review and do not prove source completeness."
@@ -634,6 +647,18 @@ def collect() -> dict[str, Any]:
             "mapped_site_count": len(registry_site_ids & matrix_site_ids),
             "site_ids_without_matrix_rows":
                 registry_site_ids_without_matrix_rows,
+            "matrix_site_ids_without_registry":
+                matrix_site_ids_without_registry,
+            "matrix_rows_without_registry_by_law_status": {
+                "unverified": matrix_rows_without_registry_by_law_status[
+                    "unverified"],
+                "conditional": matrix_rows_without_registry_by_law_status[
+                    "conditional"],
+                "calibrated": matrix_rows_without_registry_by_law_status[
+                    "calibrated"],
+                "unspecified": matrix_rows_without_registry_by_law_status[
+                    "unspecified"],
+            },
             "duplicate_matrix_site_ids": duplicate_matrix_site_ids,
             "unresolved_registry_references":
                 unresolved_registry_references,
@@ -687,6 +712,22 @@ def render_markdown(report: dict[str, Any]) -> str:
         f"IDs without rows: **{len(report['registry_matrix_coverage']['site_ids_without_matrix_rows'])}**; "
         f"duplicate matrix IDs: **{len(report['registry_matrix_coverage']['duplicate_matrix_site_ids'])}**; "
         f"unresolved registry references: **{len(report['registry_matrix_coverage']['unresolved_registry_references'])}**.",
+        "Migration-matrix rows absent from the active registry: "
+        f"**{len(report['registry_matrix_coverage']['matrix_site_ids_without_registry'])}** "
+        "(informational; legacy and conditional rows may remain unregistered). "
+        "Their law-status counts are "
+        f"UNVERIFIED {report['registry_matrix_coverage']['matrix_rows_without_registry_by_law_status']['unverified']}, "
+        f"conditional {report['registry_matrix_coverage']['matrix_rows_without_registry_by_law_status']['conditional']}, "
+        f"calibrated {report['registry_matrix_coverage']['matrix_rows_without_registry_by_law_status']['calibrated']}, "
+        f"unspecified {report['registry_matrix_coverage']['matrix_rows_without_registry_by_law_status']['unspecified']}.",
+        "Matrix-only IDs for manual disposition:",
+        "",
+        *[
+            f"- `{site_id}`"
+            for site_id in report['registry_matrix_coverage'][
+                'matrix_site_ids_without_registry'
+            ]
+        ],
         "Reference-law column status: "
         f"**{report['registry_matrix_coverage']['reference_law_status']['unverified_rows']} UNVERIFIED**; "
         f"**{report['registry_matrix_coverage']['reference_law_status']['conditional_rows']} conditional**; "

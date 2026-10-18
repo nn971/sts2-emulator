@@ -1,6 +1,6 @@
-# RNG direct-call source inventory (emulator-rng-callsite-source-inventory-v8)
+# RNG direct-call source inventory (emulator-rng-callsite-source-inventory-v9)
 
-Direct qualified calls to PrototypeRng, NativeRngV111, and NativeFisherYatesV111 in Sts2Emulator.Core. This does not include indirect delegates, random provider interfaces, third-party/native source callsites, or prove that every source operation is mapped. The site-matrix checks verify registry coverage, unique ledger IDs and explicit reference-law status. The S0 locator reports text or linked-document matches for private constraints, audience projections, resolvers/continuations, probability provenance, and unsupported handling; these matches require manual review and do not prove source completeness.
+Direct qualified calls to PrototypeRng, NativeRngV111, and NativeFisherYatesV111 in Sts2Emulator.Core. This does not include indirect delegates, random provider interfaces, third-party/native source callsites, or prove that every source operation is mapped. The site-matrix report shows registry-to-ledger and ledger-to-registry differences, unique ledger IDs, and explicit reference-law status. Unregistered ledger rows are informational because legacy and conditional sites may remain outside the active registry. The S0 locator reports text or linked-document matches for private constraints, audience projections, resolvers/continuations, probability provenance, and unsupported handling; these matches require manual review and do not prove source completeness.
 
 Direct call expressions: **35**.
 
@@ -12,6 +12,27 @@ Counts by direct API family:
 
 Shuffle site IDs mapped to migration-matrix rows: **18**; dynamic expressions: **6**; unmapped: **0**; missing: **0**.
 Registered stochastic site IDs mapped to migration-matrix rows: **165/165**; IDs without rows: **0**; duplicate matrix IDs: **0**; unresolved registry references: **0**.
+Migration-matrix rows absent from the active registry: **18** (informational; legacy and conditional rows may remain unregistered). Their law-status counts are UNVERIFIED 18, conditional 0, calibrated 0, unspecified 0.
+Matrix-only IDs for manual disposition:
+
+- `card_rarity.roll.ticket`
+- `card_rarity.upgrade_roll.ticket`
+- `combat.encounter.later_act.elite.index_draw`
+- `combat.encounter.later_act.normal.index_draw`
+- `combat.encounter.later_act.weak.index_draw`
+- `map.later_act.hive_rest_count.gaussian_int`
+- `map.later_act.unknown_count.gaussian_int`
+- `map.overgrowth.rest_count.gaussian_component`
+- `map.overgrowth.unknown_count.gaussian_component`
+- `potion.uniform_model.index_draw`
+- `reward.elite_relic.model`
+- `reward.potion_odds.ticket`
+- `reward.random_potion.drop.ticket`
+- `reward.random_potion.model`
+- `shop.merchant.card_price_modifier.index_draw`
+- `shop.merchant.card_upgrade_roll.ticket`
+- `shop.merchant.potion_price_modifier.index_draw`
+- `shop.merchant.relic_price_modifier.index_draw`
 Reference-law column status: **81 UNVERIFIED**; **14 conditional**; **88 calibrated**; **0 unspecified**.
 S0 contract-evidence locator: **183/183 rows** have a text or linked-document match for every facet. Matches are review pointers, not evidence that a contract is complete.
 Rows without a text or linked-document match by S0 facet:
