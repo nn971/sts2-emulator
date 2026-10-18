@@ -10,7 +10,7 @@ public sealed record SimulationMechanicsComparisonV111(
     bool DifferencesTruncated)
 {
     public const string SchemaId =
-        "sts2-v111-simulation-mechanics-comparison-v4";
+        "sts2-v111-simulation-mechanics-comparison-v6";
 
     public bool Equivalent => StringComparer.Ordinal.Equals(
         LeftFingerprint, RightFingerprint);
@@ -29,7 +29,9 @@ public sealed record SimulationMechanicsProjectionV111(
     EventMechanicsStateV111? Event,
     SimulationDrawContinuationProjectionV111? PendingDrawContinuation = null,
     SimulationPoolShuffleContinuationProjectionV111?
-        PendingPoolShuffleContinuation = null);
+        PendingPoolShuffleContinuation = null,
+    SimulationPendingChoiceMechanicsProjectionV111?
+        PendingChoiceMechanics = null);
 
 /// <summary>Provider-independent progress for one suspended draw operation.
 /// Candidate supports and selected provider outcomes remain outside the view.
@@ -59,6 +61,35 @@ public sealed record SimulationPoolShuffleContinuationProjectionV111(
     int CompletedSwapCount,
     int SelectedCount);
 
+/// <summary>Mechanics-owned details for pending choices whose active
+/// operation would otherwise be lost when provider payloads are removed.</summary>
+public sealed record SimulationPendingChoiceMechanicsProjectionV111(
+    SimulationRandomTargetMechanicsProgressV111? RandomTarget,
+    PrototypeQueuedOperation? GeneratedCardOperation,
+    PrototypeQueuedOperation? PotionGenerationOperation,
+    SimulationCardTransformMechanicsProgressV111? CardTransform,
+    SimulationRandomCostMechanicsProgressV111? RandomCost,
+    SimulationCardShortlistMechanicsProgressV111? CardShortlist);
+
+public sealed record SimulationRandomTargetMechanicsProgressV111(
+    string Kind,
+    long? SlyCardInstanceId,
+    long? AutoPlayCardInstanceId);
+
+public sealed record SimulationCardTransformMechanicsProgressV111(
+    PrototypeCardSelectionSpec Selection,
+    long[] SelectedCardInstanceIds,
+    int NextTransformIndex);
+
+public sealed record SimulationRandomCostMechanicsProgressV111(
+    PrototypeQueuedOperation Operation,
+    int NextCardIndex);
+
+public sealed record SimulationCardShortlistMechanicsProgressV111(
+    PrototypeQueuedOperation Operation,
+    int RequiredCount,
+    int SelectedCount);
+
 /// <summary>Mechanics progress for a card already drawn and awaiting a cost
 /// choice. The cost bound and provider support are intentionally omitted.
 /// </summary>
@@ -85,6 +116,8 @@ public static class SimulationMechanicsProjectionEngineV111
         SimulationDrawContinuationProjectionV111? pendingDrawContinuation = null;
         SimulationPoolShuffleContinuationProjectionV111?
             pendingPoolShuffleContinuation = null;
+        SimulationPendingChoiceMechanicsProjectionV111?
+            pendingChoiceMechanics = null;
         if (combat is not null)
         {
             var pendingChoice = combat.PendingChoice;
@@ -137,6 +170,9 @@ public static class SimulationMechanicsProjectionEngineV111
                         MechanicsOperation(poolShuffle.Operation),
                         completedSwapCount, poolShuffle.SelectedCount);
             }
+            if (pendingChoice is not null)
+                pendingChoiceMechanics = ProjectPendingChoiceMechanics(
+                    pendingChoice);
             if (semanticDraw is not null || costProgress is not null ||
                 insertionProgress is not null)
                 pendingDrawContinuation =
@@ -182,7 +218,8 @@ public static class SimulationMechanicsProjectionEngineV111
             combat,
             world?.Event?.Mechanics,
             pendingDrawContinuation,
-            pendingPoolShuffleContinuation);
+            pendingPoolShuffleContinuation,
+            pendingChoiceMechanics);
     }
 
     public static string Fingerprint(RunState run) =>
@@ -375,6 +412,42 @@ public static class SimulationMechanicsProjectionEngineV111
         DeferredDrawnCardInstanceIds = operation.DeferredDrawnCardInstanceIds
             is null ? null : (long[])operation.DeferredDrawnCardInstanceIds.Clone()
     };
+
+    private static SimulationPendingChoiceMechanicsProjectionV111?
+        ProjectPendingChoiceMechanics(PendingCombatChoiceState choice)
+    {
+        var target = choice.ControlledTarget;
+        var generation = choice.ControlledGeneration;
+        var potionGeneration = choice.ControlledPotionGeneration;
+        var transform = choice.ControlledCardTransform;
+        var randomCost = choice.ControlledRandomCost;
+        var shortlist = choice.ControlledCardShortlist;
+        if (target is null && generation is null && potionGeneration is null &&
+            transform is null && randomCost is null && shortlist is null)
+            return null;
+
+        return new SimulationPendingChoiceMechanicsProjectionV111(
+            target is null ? null : new SimulationRandomTargetMechanicsProgressV111(
+                target.Kind, target.SlyCardInstanceId,
+                target.AutoPlayCardInstanceId),
+            generation is null ? null : MechanicsOperation(generation.Operation),
+            potionGeneration is null
+                ? null : MechanicsOperation(potionGeneration.Operation),
+            transform is null ? null :
+                new SimulationCardTransformMechanicsProgressV111(
+                    transform.OriginalChoice.Selection with { },
+                    (long[])transform.SelectedCardInstanceIds.Clone(),
+                    transform.NextTransformIndex),
+            randomCost is null ? null :
+                new SimulationRandomCostMechanicsProgressV111(
+                    MechanicsOperation(randomCost.Operation),
+                    randomCost.NextCardIndex),
+            shortlist is null ? null :
+                new SimulationCardShortlistMechanicsProgressV111(
+                    MechanicsOperation(shortlist.Operation),
+                    shortlist.RequiredCount,
+                    shortlist.SelectedCandidateCardInstanceIds.Length));
+    }
 
     private static PrototypePersonalHiveDamageContinuationV111?
         MechanicsHiveDamage(
