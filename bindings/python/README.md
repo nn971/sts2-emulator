@@ -112,13 +112,15 @@ The Overgrowth law complements its existing legacy run-start continuation.
 The Underdocks query does not make configured run creation resumable.
 
 Glory Ascension 10+ second-boss assignment has a conditional query. Declare
-the first boss selected for this run; the law returns the two other bosses in
-source pool order:
+the first boss selected for this run and the call's ordinal on the legacy
+`combat` stream. That ordinal includes the earlier queue draws from later-act
+run initialization; the read-only query does not validate the complete prefix.
+The law returns the two other bosses in source pool order:
 
 ```python
 law = state.query_chance_law(
     "combat.encounter.later_act.second_boss.index_draw",
-    ordinal=0,
+    ordinal=second_boss_combat_stream_ordinal,
     first_boss="proto.native.glory.encounter.queen_boss",
     ascension=10,
     support_count=2,
@@ -128,6 +130,53 @@ law = state.query_chance_law(
 The second-boss draw still occurs during configured run initialization and
 remains outside the ReferenceNature run-action session. Its declared
 equal-index model is `UNVERIFIED` for the legacy seed-to-index distribution.
+
+The initial Hive/Glory boss-pool index can also be queried by act. Supply its
+declared ordinal on the legacy `combat` stream after queue preparation:
+
+```python
+law = state.query_chance_law(
+    "combat.encounter.later_act.boss.index_draw",
+    ordinal=initial_boss_combat_stream_ordinal,
+    act=2,
+    support_count=3,
+)
+```
+
+This law describes the raw pool index before the first-undiscovered-boss
+preference may replace the selected boss. The equal-index model is
+`UNVERIFIED`, and later-act encounter preparation remains source-owned.
+
+Later-act Ancient assignment has read-only conditional laws for the local
+Ancient choice and shared Darv partition. Supply each call's declared ordinal
+on the legacy `event` stream and declare every earlier condition. These
+ordinals depend on the complete run-start prefix and are not inferred or
+validated by the query:
+
+```python
+hive_darv = state.query_chance_law(
+    "event.later_act.darv_assignment.hive.index_draw",
+    ordinal=hive_darv_event_stream_ordinal,
+    support_count=2,
+)
+glory_darv = state.query_chance_law(
+    "event.later_act.darv_assignment.glory.index_draw",
+    ordinal=glory_darv_event_stream_ordinal,
+    hive_receives_darv=False,
+    support_count=2,
+)
+ancient = state.query_chance_law(
+    "event.later_act.ancient.index_draw",
+    ordinal=hive_ancient_event_stream_ordinal,
+    act=2,
+    include_darv=False,
+    support_count=3,
+)
+```
+
+These laws expose the declared ordered pools and bounded assignments, but
+remain `UNVERIFIED`. They do not provide an atomic run-initialization
+continuation or validate the caller-supplied assignment prefix.
 
 The event shuffle and combat-victory session is available through
 `State.begin_reference_nature_native_event_shuffle(nature_seed=None, action_id=None, site_id=None)`. It

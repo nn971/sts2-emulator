@@ -8,6 +8,14 @@ namespace Sts2Emulator.Core;
 /// </summary>
 public static class ExperimentalSilentThreeActRouteV111
 {
+    public const string DarvHiveAssignmentSiteId =
+        "event.later_act.darv_assignment.hive.index_draw";
+    public const string DarvGloryAssignmentSiteId =
+        "event.later_act.darv_assignment.glory.index_draw";
+    public const string AncientAssignmentSiteId =
+        "event.later_act.ancient.index_draw";
+    public const string BossIndexSiteId =
+        "combat.encounter.later_act.boss.index_draw";
     public const string SecondBossIndexSiteId =
         "combat.encounter.later_act.second_boss.index_draw";
 
@@ -249,7 +257,7 @@ public static class ExperimentalSilentThreeActRouteV111
         var bosses = Pool(act, PrototypeRoomType.Boss, false);
         var boss = bosses[LegacyRandomChoiceV111.ChooseIndexRange(
             rng,
-            "combat.encounter.later_act.boss.index_draw",
+            BossIndexSiteId,
             "combat",
             $"act:{act}:boss_pool:{CanonicalJson.Sha256(bosses)}",
             bosses.Length).SelectedIndex];
@@ -320,7 +328,7 @@ public static class ExperimentalSilentThreeActRouteV111
         // the native UpFront schedule is a later RNG pass.
         var hiveReceivesDarv = LegacyRandomChoiceV111.ChooseBoundedInteger(
             rng,
-            "event.later_act.darv_assignment.hive.index_draw",
+            DarvHiveAssignmentSiteId,
             "event",
             "run:darv_assignment:hive",
             2).SelectedIndex == 1;
@@ -328,7 +336,7 @@ public static class ExperimentalSilentThreeActRouteV111
         // shared Ancient; that call is a bound-one draw in that case.
         var gloryReceivesDarv = LegacyRandomChoiceV111.ChooseBoundedInteger(
             rng,
-            "event.later_act.darv_assignment.glory.index_draw",
+            DarvGloryAssignmentSiteId,
             "event",
             "run:darv_assignment:glory",
             hiveReceivesDarv ? 1 : 2).SelectedIndex == 1;
@@ -344,7 +352,7 @@ public static class ExperimentalSilentThreeActRouteV111
         var pool = AncientPool(act, includeDarv);
         return pool[LegacyRandomChoiceV111.ChooseIndexRange(
             rng,
-            "event.later_act.ancient.index_draw",
+            AncientAssignmentSiteId,
             "event",
             $"act:{act}:include_darv:{includeDarv}:pool:"
                 + CanonicalJson.Sha256(pool),

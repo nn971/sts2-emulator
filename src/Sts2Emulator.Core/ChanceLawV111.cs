@@ -841,10 +841,10 @@ public static partial class ChanceLawEngineV111
             throw new ArgumentOutOfRangeException(
                 nameof(ascension),
                 "A second boss is assigned only at Glory Ascension 10 or higher.");
-        if (ordinal != 0)
+        if (ordinal < 0)
             throw new ArgumentOutOfRangeException(
                 nameof(ordinal),
-                "Second-boss assignment has exactly one draw at ordinal zero.");
+                "Second-boss assignment requires a nonnegative declared stream ordinal.");
 
         var bossPool = ExperimentalSilentThreeActRouteV111.Pool(
             3, PrototypeRoomType.Boss, weak: false);
@@ -885,6 +885,145 @@ public static partial class ChanceLawEngineV111
             "uniform-source-ordered-second-boss-index-unverified",
             conditioningFingerprint,
             "equal-index-mass-over-remaining-glory-bosses-unverified",
+            outcomes);
+    }
+
+    /// <summary>
+    /// Query the raw Hive or Glory boss-pool index before the deterministic
+    /// first-undiscovered-boss preference is applied.
+    /// </summary>
+    public static ChanceLawV111 QueryLaterActBossPool(int act, int ordinal)
+    {
+        if (act is not (2 or 3))
+            throw new ArgumentOutOfRangeException(
+                nameof(act), "Later-act boss selection supports Hive or Glory.");
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(
+                nameof(ordinal),
+                "Later-act boss selection requires a nonnegative declared stream ordinal.");
+
+        var siteId = ExperimentalSilentThreeActRouteV111.BossIndexSiteId;
+        var bossPool = ExperimentalSilentThreeActRouteV111.Pool(
+            act, PrototypeRoomType.Boss, weak: false);
+        var ownerId = $"act:{act}:boss_pool:"
+            + CanonicalJson.Sha256(bossPool);
+        var outcomes = bossPool.Select(encounterId =>
+            new ChanceLawOutcomeV111(
+                "encounter:" + encounterId, 1L)).ToArray();
+        var eventId = CanonicalJson.Sha256(new
+        {
+            boundary = siteId,
+            ownerId,
+            ordinal
+        });
+        var conditioningFingerprint = CanonicalJson.Sha256(new
+        {
+            siteId,
+            act,
+            ownerId,
+            orderedEncounterIds = bossPool
+        });
+
+        return Create(
+            eventId,
+            siteId,
+            "choose_index",
+            ownerId,
+            ordinal,
+            "uniform-source-ordered-later-act-boss-index-unverified",
+            conditioningFingerprint,
+            "equal-index-mass-over-ordered-later-act-boss-pool-unverified",
+            outcomes);
+    }
+
+    public static ChanceLawV111 QueryLaterActDarvHiveAssignment(int ordinal)
+    {
+        var siteId = ExperimentalSilentThreeActRouteV111
+            .DarvHiveAssignmentSiteId;
+        const string ownerId = "run:darv_assignment:hive";
+        var outcomes = new[]
+        {
+            new ChanceLawOutcomeV111("darv_assignment:none", 1L),
+            new ChanceLawOutcomeV111("darv_assignment:hive", 1L)
+        };
+        return CreateDeclaredUnverifiedIndexLaw(
+            siteId, ownerId, ordinal,
+            "uniform-two-way-darv-assignment-unverified",
+            new { siteId, ownerId, ordinal },
+            "equal-index-mass-over-two-way-darv-assignment-unverified",
+            outcomes, operationKind: "bounded_integer");
+    }
+
+    public static ChanceLawV111 QueryLaterActDarvGloryAssignment(
+        bool hiveReceivesDarv, int ordinal)
+    {
+        var siteId = ExperimentalSilentThreeActRouteV111
+            .DarvGloryAssignmentSiteId;
+        const string ownerId = "run:darv_assignment:glory";
+        ChanceLawOutcomeV111[] outcomes = hiveReceivesDarv
+            ? [new ChanceLawOutcomeV111("darv_assignment:none", 1L)]
+            : [
+                new ChanceLawOutcomeV111("darv_assignment:none", 1L),
+                new ChanceLawOutcomeV111("darv_assignment:glory", 1L)
+            ];
+        return CreateDeclaredUnverifiedIndexLaw(
+            siteId, ownerId, ordinal,
+            "uniform-remaining-darv-assignment-unverified",
+            new { siteId, ownerId, ordinal, hiveReceivesDarv },
+            "equal-index-mass-over-remaining-darv-assignment-unverified",
+            outcomes, operationKind: "bounded_integer");
+    }
+
+    public static ChanceLawV111 QueryLaterActAncientAssignment(
+        int act, bool includeDarv, int ordinal)
+    {
+        var choices = ExperimentalSilentThreeActRouteV111.AncientPool(
+            act, includeDarv);
+        var siteId = ExperimentalSilentThreeActRouteV111
+            .AncientAssignmentSiteId;
+        var ownerId = $"act:{act}:include_darv:{includeDarv}:pool:"
+            + CanonicalJson.Sha256(choices);
+        var outcomes = choices.Select(choiceId =>
+            new ChanceLawOutcomeV111("ancient_event:" + choiceId, 1L))
+            .ToArray();
+        return CreateDeclaredUnverifiedIndexLaw(
+            siteId, ownerId, ordinal,
+            "uniform-source-ordered-later-act-ancient-unverified",
+            new { siteId, act, includeDarv, ownerId, orderedChoiceIds = choices },
+            "equal-index-mass-over-declared-later-act-ancient-pool-unverified",
+            outcomes);
+    }
+
+    private static ChanceLawV111 CreateDeclaredUnverifiedIndexLaw(
+        string siteId, string ownerId, int ordinal,
+        string conditioningPolicyId, object conditioning,
+        string probabilityProvenance, ChanceLawOutcomeV111[] outcomes,
+        string operationKind = "choose_index")
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(conditioningPolicyId);
+        ArgumentNullException.ThrowIfNull(conditioning);
+        ArgumentException.ThrowIfNullOrWhiteSpace(probabilityProvenance);
+        ArgumentNullException.ThrowIfNull(outcomes);
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+        var conditioningFingerprint = CanonicalJson.Sha256(conditioning);
+        var eventId = CanonicalJson.Sha256(new
+        {
+            boundary = siteId,
+            ownerId,
+            ordinal
+        });
+        return Create(
+            eventId,
+            siteId,
+            operationKind,
+            ownerId,
+            ordinal,
+            conditioningPolicyId,
+            conditioningFingerprint,
+            probabilityProvenance,
             outcomes);
     }
 

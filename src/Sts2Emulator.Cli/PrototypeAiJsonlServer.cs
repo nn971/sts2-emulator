@@ -2745,6 +2745,7 @@ internal static class PrototypeAiJsonlServer
                                     supportCount != 2 ||
                                 OptionalString(request, "action_id") is not null ||
                                 OptionalString(request, "event_id") is not null ||
+                                OptionalInt(request, "act") is not null ||
                                 OptionalString(request, "card_type") is not null ||
                                 OptionalString(request, "rarity") is not null ||
                                 OptionalString(request, "owner_id") is not null ||
@@ -2775,6 +2776,122 @@ internal static class PrototypeAiJsonlServer
                             });
                             break;
                         }
+                        if (siteId is
+                            ExperimentalSilentThreeActRouteV111.DarvHiveAssignmentSiteId or
+                            ExperimentalSilentThreeActRouteV111.DarvGloryAssignmentSiteId or
+                            ExperimentalSilentThreeActRouteV111.AncientAssignmentSiteId)
+                        {
+                            if (siteId == ExperimentalSilentThreeActRouteV111
+                                    .DarvHiveAssignmentSiteId)
+                            {
+                                RejectChanceLawQueryParameters(
+                                    request, "support_count");
+                                var supportCount = OptionalInt(
+                                    request, "support_count");
+                                if (supportCount is not null && supportCount != 2)
+                                    throw new ArgumentException(
+                                        "Hive Darv assignment support_count must be two.");
+                                law = ChanceLawEngineV111
+                                    .QueryLaterActDarvHiveAssignment(ordinal);
+                            }
+                            else if (siteId == ExperimentalSilentThreeActRouteV111
+                                         .DarvGloryAssignmentSiteId)
+                            {
+                                RejectChanceLawQueryParameters(
+                                    request, "support_count",
+                                    "hive_receives_darv");
+                                var hiveReceivesDarv = RequiredBool(
+                                    request, "hive_receives_darv");
+                                var expectedSupport = hiveReceivesDarv ? 1 : 2;
+                                var supportCount = OptionalInt(
+                                    request, "support_count");
+                                if (supportCount is not null &&
+                                    supportCount != expectedSupport)
+                                    throw new ArgumentException(
+                                        $"Glory Darv assignment support_count must be {expectedSupport} for the declared Hive assignment.");
+                                law = ChanceLawEngineV111
+                                    .QueryLaterActDarvGloryAssignment(
+                                        hiveReceivesDarv, ordinal);
+                            }
+                            else
+                            {
+                                RejectChanceLawQueryParameters(
+                                    request, "support_count", "act",
+                                    "include_darv");
+                                var act = OptionalInt(request, "act") ??
+                                    throw new ArgumentException(
+                                        "Later-act Ancient law requires act 2 or 3.");
+                                var includeDarv = RequiredBool(
+                                    request, "include_darv");
+                                var candidateIds =
+                                    ExperimentalSilentThreeActRouteV111
+                                        .AncientPool(act, includeDarv);
+                                var supportCount = OptionalInt(
+                                    request, "support_count");
+                                if (supportCount is not null &&
+                                    supportCount != candidateIds.Length)
+                                    throw new ArgumentException(
+                                        "Later-act Ancient support_count must match the declared act and Darv condition.");
+                                law = ChanceLawEngineV111
+                                    .QueryLaterActAncientAssignment(
+                                        act, includeDarv, ordinal);
+                            }
+                            Write(new
+                            {
+                                requestId,
+                                ok = true,
+                                chanceLawSchemaId =
+                                    ChanceLawV111.CurrentSchemaId,
+                                law
+                            });
+                            break;
+                        }
+                        if (siteId == ExperimentalSilentThreeActRouteV111
+                                .BossIndexSiteId)
+                        {
+                            var act = OptionalInt(request, "act") ??
+                                throw new ArgumentException(
+                                    "Later-act boss law requires act 2 or 3.");
+                            var bossCount = ExperimentalSilentThreeActRouteV111
+                                .Pool(act, PrototypeRoomType.Boss, weak: false)
+                                .Length;
+                            if (priorIndices is not null ||
+                                priorVariantIndex is not null ||
+                                OptionalInt(request, "support_count") is { } supportCount &&
+                                    supportCount != bossCount ||
+                                OptionalString(request, "action_id") is not null ||
+                                OptionalString(request, "event_id") is not null ||
+                                OptionalString(request, "first_boss") is not null ||
+                                OptionalInt(request, "ascension") is not null ||
+                                OptionalString(request, "card_type") is not null ||
+                                OptionalString(request, "rarity") is not null ||
+                                OptionalString(request, "owner_id") is not null ||
+                                OptionalString(request, "card_id") is not null ||
+                                OptionalString(request, "potion_id") is not null ||
+                                OptionalString(request, "relic_id") is not null ||
+                                OptionalBool(request, "colorless_offer") ||
+                                OptionalBool(request, "sale_reprice") ||
+                                OptionalStringArray(request,
+                                    "excluded_potion_ids") is not null ||
+                                OptionalInt(request, "offer_ordinal") is not null ||
+                                OptionalStringArray(request,
+                                    "relic_candidate_ids") is not null ||
+                                OptionalStringArray(request,
+                                    "excluded_relic_ids") is not null)
+                                throw new ArgumentException(
+                                    "Later-act boss queries accept state_handle, site_id, ordinal, act and optional support_count matching that act's boss pool.");
+                            law = ChanceLawEngineV111
+                                .QueryLaterActBossPool(act, ordinal);
+                            Write(new
+                            {
+                                requestId,
+                                ok = true,
+                                chanceLawSchemaId =
+                                    ChanceLawV111.CurrentSchemaId,
+                                law
+                            });
+                            break;
+                        }
                         if (siteId is "run.encounter.overgrowth_boss.index_draw"
                             or PrototypeNativeUnderdocks.BossEncounterIndexSiteId)
                         {
@@ -2793,6 +2910,7 @@ internal static class PrototypeAiJsonlServer
                                 OptionalString(request, "event_id") is not null ||
                                 OptionalString(request, "first_boss") is not null ||
                                 OptionalInt(request, "ascension") is not null ||
+                                OptionalInt(request, "act") is not null ||
                                 OptionalString(request, "card_type") is not null ||
                                 OptionalString(request, "rarity") is not null ||
                                 OptionalString(request, "owner_id") is not null ||
@@ -7296,6 +7414,38 @@ internal static class PrototypeAiJsonlServer
             throw new InvalidOperationException(
                 $"Request field '{name}' must be a non-negative integer.");
         return result;
+    }
+
+    private static bool RequiredBool(JsonElement request, string name)
+    {
+        if (!request.TryGetProperty(name, out var value) ||
+            value.ValueKind is not (JsonValueKind.True or JsonValueKind.False))
+            throw new ArgumentException(
+                $"Request field '{name}' must be a boolean.");
+        return value.GetBoolean();
+    }
+
+    private static void RejectChanceLawQueryParameters(
+        JsonElement request, params string[] allowedFields)
+    {
+        var allowed = new HashSet<string>(allowedFields,
+            StringComparer.Ordinal);
+        string[] optionalFields =
+        [
+            "prior_indices", "prior_variant_index", "support_count",
+            "action_id", "event_id", "card_type", "rarity", "card_id",
+            "potion_id", "relic_id", "colorless_offer", "sale_reprice",
+            "owner_id", "excluded_potion_ids", "offer_ordinal",
+            "relic_candidate_ids", "excluded_relic_ids", "first_boss",
+            "ascension", "act", "include_darv", "hive_receives_darv"
+        ];
+        var unsupported = optionalFields.Where(field =>
+            !allowed.Contains(field) && request.TryGetProperty(field, out _))
+            .ToArray();
+        if (unsupported.Length > 0)
+            throw new ArgumentException(
+                "This Chance Law query does not accept parameter(s): "
+                + string.Join(", ", unsupported) + ".");
     }
 
     private static bool OptionalBool(JsonElement request, string name)

@@ -41,7 +41,8 @@ class State:
                          relic_candidate_ids=None, excluded_relic_ids=None,
                          action_id=None, prior_variant_index=None,
                          event_id=None, support_count=None,
-                         first_boss=None, ascension=None):
+                         first_boss=None, ascension=None, act=None,
+                         include_darv=None, hive_receives_darv=None):
         """Read a pre-outcome law; native event queries may need action_id.
 
         Reflections card-pick laws use action_id="touch_mirror" and the
@@ -51,6 +52,10 @@ class State:
         Darv relic-shuffle laws accept prior_variant_index to bind the earlier
         offer-variant decision to the query fingerprint.
         Glory second-boss laws require first_boss and ascension.
+        Later-act boss-pool laws require act=2 or act=3 and describe the raw
+        pool index before the first-undiscovered-boss override.
+        Later-act Ancient laws require act and include_darv; Glory Darv
+        assignment laws require hive_receives_darv.
         Repy potion laws use ordinal 0 or 1 and prior_indices containing the
         complete relic-shuffle prefix plus any earlier potion index.
         """
@@ -106,6 +111,18 @@ class State:
             if type(ascension) is not int or ascension < 0:
                 raise ValueError("ascension must be a nonnegative integer")
             payload["ascension"] = ascension
+        if act is not None:
+            if type(act) is not int or act not in (2, 3):
+                raise ValueError("act must be 2 or 3 for later-act boss queries")
+            payload["act"] = act
+        if include_darv is not None:
+            if type(include_darv) is not bool:
+                raise ValueError("include_darv must be a boolean")
+            payload["include_darv"] = include_darv
+        if hive_receives_darv is not None:
+            if type(hive_receives_darv) is not bool:
+                raise ValueError("hive_receives_darv must be a boolean")
+            payload["hive_receives_darv"] = hive_receives_darv
         if offer_ordinal is not None:
             if type(offer_ordinal) is not int or offer_ordinal < 0:
                 raise ValueError(
