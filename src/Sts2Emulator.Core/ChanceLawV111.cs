@@ -373,6 +373,11 @@ public static partial class ChanceLawEngineV111
         "reward.card_rarity.ticket"
     ];
 
+    private static readonly string[] LegacyRewardCardModelQuerySites =
+    [
+        "reward.card_model.index_draw"
+    ];
+
     private static readonly string[] LegacyPotionDropTicketQuerySites =
     [
         "reward.random_potion.drop.ticket"
@@ -479,6 +484,9 @@ public static partial class ChanceLawEngineV111
 
     public static string[] LegacyRewardCardRarityTicketQuerySiteIds =>
         (string[])LegacyRewardCardRarityTicketQuerySites.Clone();
+
+    public static string[] LegacyRewardCardModelQuerySiteIds =>
+        (string[])LegacyRewardCardModelQuerySites.Clone();
 
     public static string[] LegacyPotionDropTicketQuerySiteIds =>
         (string[])LegacyPotionDropTicketQuerySites.Clone();
@@ -678,24 +686,10 @@ public static partial class ChanceLawEngineV111
         if (act < 1)
             throw new ArgumentOutOfRangeException(nameof(act));
         ArgumentException.ThrowIfNullOrWhiteSpace(groupOwnerId);
-        ArgumentNullException.ThrowIfNull(priorCardIds);
         if (ordinal < 0)
             throw new ArgumentOutOfRangeException(nameof(ordinal));
 
-        var pool = PrototypeContent.RewardCardPool;
-        var poolSet = pool.ToHashSet(StringComparer.Ordinal);
-        var selected = new HashSet<string>(StringComparer.Ordinal);
-        foreach (var cardId in priorCardIds)
-        {
-            ArgumentException.ThrowIfNullOrWhiteSpace(cardId);
-            if (!poolSet.Contains(cardId) || !selected.Add(cardId))
-                throw new ArgumentException(
-                    "Prior reward card IDs must be unique members of the reward card pool.",
-                    nameof(priorCardIds));
-        }
-
-        var available = pool.Where(cardId => !selected.Contains(cardId))
-            .ToArray();
+        var available = RemainingRewardCardPool(priorCardIds);
         var rarityWeights = PrototypeContent.RewardRarityWeights(act)
             .Where(item => item.Weight > 0 && available.Any(cardId =>
                 PrototypeContent.Card(cardId).Rarity == item.Rarity))
@@ -737,6 +731,81 @@ public static partial class ChanceLawEngineV111
             "Uniform ticket-index weights over the source-shaped prototype " +
             "rarity weights after empty tiers are removed; reward pool and " +
             "Native parity remain unverified.", outcomes);
+    }
+
+    /// <summary>
+    /// Query the legacy reward card identity draw within its selected rarity,
+    /// after removing card identities already selected in the same group.
+    /// </summary>
+    public static ChanceLawV111 QueryLegacyRewardCardModel(
+        int act, string groupOwnerId, PrototypeCardRarity rarity,
+        string[] priorCardIds, int ordinal)
+    {
+        if (act < 1)
+            throw new ArgumentOutOfRangeException(nameof(act));
+        ArgumentException.ThrowIfNullOrWhiteSpace(groupOwnerId);
+        if (!Enum.IsDefined(rarity))
+            throw new ArgumentOutOfRangeException(nameof(rarity));
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+        if (!PrototypeContent.RewardRarityWeights(act).Any(item =>
+                item.Rarity == rarity && item.Weight > 0))
+            throw new ArgumentException(
+                "The declared rarity is not selectable by the reward rarity ticket for this Act.",
+                nameof(rarity));
+
+        var available = RemainingRewardCardPool(priorCardIds);
+        var candidates = available.Where(cardId =>
+            PrototypeContent.Card(cardId).Rarity == rarity).ToArray();
+        if (candidates.Length == 0)
+            throw new ArgumentException(
+                "The declared rarity and prior selections leave no reward card to draw.",
+                nameof(priorCardIds));
+
+        const string siteId = "reward.card_model.index_draw";
+        const string streamId = "reward";
+        var poolFingerprint = CanonicalJson.Sha256(candidates);
+        var ownerId = groupOwnerId + ":card:" + priorCardIds.Length +
+            ":rarity:" + rarity + ":pool:" + poolFingerprint;
+        var outcomes = candidates.Select(cardId =>
+            new ChanceLawOutcomeV111("card:" + cardId, 1L)).ToArray();
+        var conditioning = new
+        {
+            siteId,
+            streamId,
+            ownerId,
+            groupOwnerId,
+            ordinal,
+            act,
+            rarity,
+            priorCardIds,
+            orderedCandidates = candidates,
+            poolFingerprint
+        };
+        return CreateLegacyCategoricalLaw(
+            siteId, streamId, ownerId, ordinal,
+            "legacy-reward-card-model-pool-v1", conditioning,
+            "Equal index weights over the remaining source-ordered prototype " +
+            "cards of the declared rarity; pool fidelity and Native parity " +
+            "remain unverified.", outcomes, operationKind: "choose_index");
+    }
+
+    private static string[] RemainingRewardCardPool(string[] priorCardIds)
+    {
+        ArgumentNullException.ThrowIfNull(priorCardIds);
+        var pool = PrototypeContent.RewardCardPool;
+        var poolSet = pool.ToHashSet(StringComparer.Ordinal);
+        var selected = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var cardId in priorCardIds)
+        {
+            ArgumentException.ThrowIfNullOrWhiteSpace(cardId);
+            if (!poolSet.Contains(cardId) || !selected.Add(cardId))
+                throw new ArgumentException(
+                    "Prior reward card IDs must be unique members of the reward card pool.",
+                    nameof(priorCardIds));
+        }
+
+        return pool.Where(cardId => !selected.Contains(cardId)).ToArray();
     }
 
     /// <summary>

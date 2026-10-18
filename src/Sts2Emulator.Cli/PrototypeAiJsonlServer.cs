@@ -4222,6 +4222,52 @@ internal static class PrototypeAiJsonlServer
                             });
                             break;
                         }
+                        if (siteId == "reward.card_model.index_draw")
+                        {
+                            RejectChanceLawQueryParameters(
+                                request, "owner_id", "act", "rarity",
+                                "prior_card_ids", "support_count");
+                            var cardModelOwnerId = OptionalString(
+                                request, "owner_id") ??
+                                throw new ArgumentException(
+                                    "Reward card-model law requires owner_id as the reward-group owner prefix.");
+                            var cardModelAct = OptionalInt(request, "act") ??
+                                throw new ArgumentException(
+                                    "Reward card-model law requires act.");
+                            var cardModelRarityText = OptionalString(
+                                request, "rarity") ??
+                                throw new ArgumentException(
+                                    "Reward card-model law requires rarity.");
+                            if (!Enum.TryParse<PrototypeCardRarity>(
+                                    cardModelRarityText, ignoreCase: false,
+                                    out var cardModelRarity) ||
+                                !Enum.IsDefined(cardModelRarity))
+                                throw new ArgumentException(
+                                    "rarity must be Common, Uncommon, or Rare.");
+                            var priorCardIds = OptionalStringArray(
+                                request, "prior_card_ids") ??
+                                throw new ArgumentException(
+                                    "Reward card-model law requires prior_card_ids (an empty array for the first pick).");
+                            law = ChanceLawEngineV111
+                                .QueryLegacyRewardCardModel(
+                                    cardModelAct, cardModelOwnerId,
+                                    cardModelRarity, priorCardIds, ordinal);
+                            var supportCount = OptionalInt(
+                                request, "support_count");
+                            if (supportCount is not null &&
+                                supportCount != law.Outcomes.Length)
+                                throw new ArgumentException(
+                                    "Reward card-model support_count must match the declared rarity and prior selections.");
+                            Write(new
+                            {
+                                requestId,
+                                ok = true,
+                                chanceLawSchemaId =
+                                    ChanceLawV111.CurrentSchemaId,
+                                law
+                            });
+                            break;
+                        }
                         if (siteId == "reward.random_potion.drop.ticket")
                         {
                             RejectChanceLawQueryParameters(
