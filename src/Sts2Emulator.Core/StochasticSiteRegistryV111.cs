@@ -179,6 +179,8 @@ public sealed record StochasticSessionCoverageV111(
 /// </summary>
 public static class StochasticSiteRegistryV111
 {
+    public const string DrawPileRandomInsertSiteId =
+        "combat.draw_pile.random_insert_index";
     public const string UnownedRandomRelicSelectionSiteId =
         "relic.unowned_random_selection.index_draw";
 
@@ -210,7 +212,7 @@ public static class StochasticSiteRegistryV111
         "combat.generation.full_pool_shuffle.swap_index",
         "combat.draw_pile.random_rare_to_hand.shuffle_swap_index",
         "combat.draw.recycle.shuffle_swap_index",
-        "combat.draw_pile.random_insert_index",
+        DrawPileRandomInsertSiteId,
         "combat.relic.after_shuffle.generated_card.random_insert_index",
         "combat.card_selection.random_shortlist",
         "combat.autoplay.random_card.select",
@@ -351,7 +353,7 @@ public static class StochasticSiteRegistryV111
         "combat.potion_generation.random_model",
         "combat.card_transform.replacement.index_draw",
         "combat.random_draw_attack.card_model",
-        "combat.draw_pile.random_insert_index",
+        DrawPileRandomInsertSiteId,
         PrototypeControlledDrawInsertionV111.PersonalHiveDazedSiteId,
         "combat.enemy.theft_card.select",
         "combat.enemy.summon_pool.select",
@@ -434,7 +436,7 @@ public static class StochasticSiteRegistryV111
         NativeFisherYatesV111.SiteId,
         "combat.draw_pile_recycle.swap_index",
         "combat.effect.personal_hive.dazed.random_insert_index",
-        "combat.draw_pile.random_insert_index",
+        DrawPileRandomInsertSiteId,
         "combat.relic.after_shuffle.generated_card.random_insert_index",
         "combat.enemy.draw.random_insert_index",
         "combat.enemy.discard.random_insert_index",

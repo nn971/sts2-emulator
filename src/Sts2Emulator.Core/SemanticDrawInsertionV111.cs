@@ -73,7 +73,7 @@ public sealed record SemanticDrawInsertionEventV111(
     {
         Request.Validate();
         var standardSite = Request.SiteId ==
-            "combat.draw_pile.random_insert_index";
+            StochasticSiteRegistryV111.DrawPileRandomInsertSiteId;
         var standardOwnerMatchesStream =
             Request.StreamId == "prototype.combat"
                 ? Request.OwnerId == "prototype.combat"

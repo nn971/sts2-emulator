@@ -14097,7 +14097,7 @@ public sealed partial class PrototypeGameEngine
             PrototypeCombatEffectKind? operationKind,
             long? sourceCardInstanceId,
             int ordinal,
-            string siteId = "combat.draw_pile.random_insert_index",
+            string siteId = StochasticSiteRegistryV111.DrawPileRandomInsertSiteId,
             string? requestOwnerPrefix = null,
             string pileName = "draw")
     {
