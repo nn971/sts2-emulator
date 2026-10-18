@@ -52,11 +52,15 @@ public sealed record SemanticNatureChoiceViewV111(
         string? boundaryFingerprint =
             OptionalString(pendingEvent, "boundaryFingerprint");
 
+        bool rawRunStateEnvelope = LooksLikeRawRunState(pendingEvent);
         var metadata = new Dictionary<string, JsonElement>(
             StringComparer.Ordinal);
         foreach (var property in pendingEvent.EnumerateObject())
         {
-            if (property.Name is "chanceLaw")
+            if (property.Name is "chanceLaw" ||
+                IsForbiddenMetadataName(property.Name) ||
+                rawRunStateEnvelope &&
+                !IsNatureEnvelopeMetadataName(property.Name))
                 continue;
             // ChanceLaw owns probability provenance; event metadata can keep
             // a conservative compatibility status from an older snapshot.
@@ -65,7 +69,7 @@ public sealed record SemanticNatureChoiceViewV111(
                 property.Value.GetString() != law.ProbabilityStatus)
                 continue;
 
-            var sanitized = StripProviderMetadata(property.Value);
+            var sanitized = StripForbiddenMetadata(property.Value);
             if (sanitized is { } value)
                 metadata.Add(property.Name, value);
         }
@@ -108,7 +112,7 @@ public sealed record SemanticNatureChoiceViewV111(
             ConditioningFingerprint != ChanceLaw.ConditioningFingerprint ||
             EventMetadata.ValueKind != JsonValueKind.Object ||
             EventMetadata.TryGetProperty("chanceLaw", out _) ||
-            ContainsPrivateProviderMetadata(EventMetadata) ||
+            ContainsForbiddenMetadata(EventMetadata) ||
             OptionalString(EventMetadata, "kind") is { } metadataKind &&
                 metadataKind != EventKind ||
             OptionalString(EventMetadata, "eventId") is { } metadataEventId &&
@@ -131,17 +135,19 @@ public sealed record SemanticNatureChoiceViewV111(
                 "Invalid semantic Nature-choice view envelope.");
     }
 
-    private static JsonElement? StripProviderMetadata(JsonElement value)
+    private static JsonElement? StripForbiddenMetadata(JsonElement value)
     {
         if (value.ValueKind == JsonValueKind.Object)
         {
+            if (LooksLikeRawRunState(value))
+                return null;
             var properties = new Dictionary<string, JsonElement>(
                 StringComparer.Ordinal);
             foreach (var property in value.EnumerateObject())
             {
-                if (IsPrivateProviderMetadataName(property.Name))
+                if (IsForbiddenMetadataName(property.Name))
                     continue;
-                var sanitized = StripProviderMetadata(property.Value);
+                var sanitized = StripForbiddenMetadata(property.Value);
                 if (sanitized is { } child)
                     properties.Add(property.Name, child);
             }
@@ -154,7 +160,7 @@ public sealed record SemanticNatureChoiceViewV111(
             var items = new List<JsonElement>();
             foreach (var item in value.EnumerateArray())
             {
-                var sanitized = StripProviderMetadata(item);
+                var sanitized = StripForbiddenMetadata(item);
                 if (sanitized is { } child)
                     items.Add(child);
             }
@@ -164,28 +170,60 @@ public sealed record SemanticNatureChoiceViewV111(
         return value.Clone();
     }
 
-    private static bool ContainsPrivateProviderMetadata(JsonElement value)
+    private static bool ContainsForbiddenMetadata(JsonElement value)
     {
+        if (LooksLikeRawRunState(value)) return true;
         if (value.ValueKind == JsonValueKind.Object)
             return value.EnumerateObject().Any(property =>
-                IsPrivateProviderMetadataName(property.Name) ||
-                ContainsPrivateProviderMetadata(property.Value));
+                IsForbiddenMetadataName(property.Name) ||
+                LooksLikeRawRunState(property.Value) ||
+                ContainsForbiddenMetadata(property.Value));
         return value.ValueKind == JsonValueKind.Array &&
-            value.EnumerateArray().Any(ContainsPrivateProviderMetadata);
+            value.EnumerateArray().Any(ContainsForbiddenMetadata);
     }
 
-    private static bool IsPrivateProviderMetadataName(string name)
+    private static bool IsForbiddenMetadataName(string name)
     {
         var normalized = new string(name.Where(char.IsLetterOrDigit)
             .Select(char.ToLowerInvariant).ToArray());
-        return normalized.Contains("stream", StringComparison.Ordinal) ||
+        return IsPrivateProviderMetadataName(normalized) ||
+            normalized is "run" or "snapshot" or "rawstate" or
+                "checkpoint" or "originrun" or "currentrun" or
+                "partialrun" or "partialstate" or "runcheckpoint" or
+                "selectedoutcome" or "selectedoutcomeindex" or
+                "selectedindex" or "selectedcardinstanceid" or
+                "selectedenemyinstanceid" or "selectedactionid" or
+                "selectedposition" or "selectedcost" or "selectedcase" or
+                "selectedticket" or "selectedmodelid" ||
+            normalized.Contains("runstate", StringComparison.Ordinal) ||
+            normalized.Contains("runsnapshot", StringComparison.Ordinal);
+    }
+
+    private static bool IsPrivateProviderMetadataName(string normalized) =>
+        normalized.Contains("stream", StringComparison.Ordinal) ||
             normalized.Contains("seed", StringComparison.Ordinal) ||
             normalized.Contains("cursor", StringComparison.Ordinal) ||
             normalized.Contains("rng", StringComparison.Ordinal) ||
             normalized.Contains("randomstate", StringComparison.Ordinal) ||
             normalized.Contains("providerstate", StringComparison.Ordinal) ||
             normalized.Contains("callcount", StringComparison.Ordinal);
+
+    private static bool LooksLikeRawRunState(JsonElement value)
+    {
+        if (value.ValueKind != JsonValueKind.Object) return false;
+        var names = value.EnumerateObject().Select(property =>
+            new string(property.Name.Where(char.IsLetterOrDigit)
+                .Select(char.ToLowerInvariant).ToArray())).ToHashSet(
+                    StringComparer.Ordinal);
+        return names.Contains("player") && names.Contains("world") &&
+            (names.Contains("phase") || names.Contains("runid") ||
+             names.Contains("runseed"));
     }
+
+    private static bool IsNatureEnvelopeMetadataName(string name) =>
+        name is "kind" or "eventId" or "siteId" or "operationKind" or
+            "supportFingerprint" or "boundaryFingerprint" or
+            "probabilityStatus";
 
     private static string RequiredString(
         JsonElement element, string propertyName) =>
