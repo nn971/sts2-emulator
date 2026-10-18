@@ -523,14 +523,22 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
             throw new InvalidOperationException(
                 "Invalid suspended initial-enemy-intent stage.");
 
+        var pendingChoice = combat.PendingChoice;
+        int expectedStratagemSelections =
+            PrototypeGameEngine.ExpectedStratagemSelectionCount(combat);
         if (ControlledRecycleStratagemPending &&
             (!continuation.Mechanics.IsAtStep(
                  PrototypeAutomaticStepKind.DrawPlayerHand) ||
              ControlledDrawRemaining is not > 0 ||
              ControlledDrawCostRemaining is not null ||
-             combat.PendingChoice is not
+             pendingChoice is not
                 { ChoiceId: "select_cards",
                   Selection.SourceZone: PrototypeCardZone.DrawPile } ||
+             expectedStratagemSelections <= 0 ||
+             pendingChoice!.Selection.MinSelections !=
+                 expectedStratagemSelections ||
+             pendingChoice.Selection.MaxSelections !=
+                 expectedStratagemSelections ||
              combat.SemanticDeck is not null))
             throw new InvalidOperationException(
                 "Controlled recycle Stratagem selection is malformed.");

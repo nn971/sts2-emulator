@@ -737,37 +737,30 @@ public sealed partial record CombatState
                         hasStandaloneDraw = true;
                         break;
                     }
-                int stratagemPicks = combat.PlayerPowers.Where(power =>
-                        power.PowerId == "proto.power.stratagem")
-                    .Sum(power => Math.Max(0, power.Stacks));
-                int expectedStratagemPicks = Math.Min(stratagemPicks,
-                    Math.Min(combat.DrawPile.Length,
-                        Math.Max(0, 10 - combat.Hand.Length)));
+                int expectedStratagemPicks =
+                    PrototypeGameEngine.ExpectedStratagemSelectionCount(
+                        combat);
                 if (pending.ChoiceId != "select_cards" ||
                     pending.Selection.SourceZone !=
                         PrototypeCardZone.DrawPile ||
                     pending.Selection.MinSelections != expectedStratagemPicks ||
                     pending.Selection.MaxSelections != expectedStratagemPicks ||
-                    !hasStandaloneDraw || stratagemPicks <= 0 ||
-                    combat.Hand.Length >= 10)
+                    !hasStandaloneDraw || expectedStratagemPicks <= 0)
                     throw new InvalidOperationException(
                         "Standalone Stratagem selection is malformed.");
             }
             if (pending.AutomaticSemanticStratagemDrawSelection)
             {
-                int stratagemPicks = combat.PlayerPowers.Where(power =>
-                        power.PowerId == "proto.power.stratagem")
-                    .Sum(power => Math.Max(0, power.Stacks));
-                int expectedStratagemPicks = Math.Min(stratagemPicks,
-                    Math.Min(combat.DrawPile.Length,
-                        Math.Max(0, 10 - combat.Hand.Length)));
+                int expectedStratagemPicks =
+                    PrototypeGameEngine.ExpectedStratagemSelectionCount(
+                        combat);
                 if (pending.SemanticStratagemDrawSelection ||
                     pending.ChoiceId != "select_cards" ||
                     pending.Selection.SourceZone !=
                         PrototypeCardZone.DrawPile ||
                     pending.Selection.MinSelections != expectedStratagemPicks ||
                     pending.Selection.MaxSelections != expectedStratagemPicks ||
-                    stratagemPicks <= 0 || combat.Hand.Length >= 10 ||
+                    expectedStratagemPicks <= 0 ||
                     combat.SemanticDeck is not
                         { Mode: SemanticDeckStateV111.NatureMode,
                             Pending: null } ||
