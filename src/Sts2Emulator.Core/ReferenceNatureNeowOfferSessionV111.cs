@@ -262,26 +262,8 @@ public sealed record ReferenceNatureNeowOfferSessionV111(
             Origin.RunSeed, Origin.Ascension,
             transcript.Select(decision => decision.OutcomeIndex).ToArray());
         if (plan.Complete)
-        {
-            var scriptedDecisions = plan.Steps.Select(step =>
-                new RandomIndexDecisionV111(
-                    step.Request, step.SelectedIndex!.Value,
-                    "scripted-v111")).ToArray();
-            var scripted = new ScriptedRandomIndexProviderV111(
-                scriptedDecisions);
-            var generated = PrototypeNativeOvergrowthRunFactory
-                .CreateWithAudit(Origin.RunSeed, Origin.Ascension, scripted);
-            scripted.AssertComplete();
-            if (CanonicalJson.Sha256(generated.NeowOffers.Choices.Select(
-                    decision => new RandomIndexDecisionV111(
-                        decision.Request, decision.SelectedIndex,
-                        "scripted-v111")).ToArray()) !=
-                CanonicalJson.Sha256(scriptedDecisions))
-                throw new InvalidDataException(
-                    "Native Neow generation diverged from the saved offer prefix.");
             nextRun = ReferenceNatureRunCursorV111.Commit(
-                generated.State, nextNatureState);
-        }
+                Replay(Origin, plan), nextNatureState);
 
         var next = this with
         {
@@ -338,19 +320,8 @@ public sealed record ReferenceNatureNeowOfferSessionV111(
 
         RunState expectedRun;
         if (plan.Complete)
-        {
-            var scriptedDecisions = plan.Steps.Select(step =>
-                new RandomIndexDecisionV111(
-                    step.Request, step.SelectedIndex!.Value,
-                    "scripted-v111")).ToArray();
-            var scripted = new ScriptedRandomIndexProviderV111(
-                scriptedDecisions);
-            expectedRun = PrototypeNativeOvergrowthRunFactory
-                .CreateWithAudit(Origin.RunSeed, Origin.Ascension, scripted).State;
-            scripted.AssertComplete();
             expectedRun = ReferenceNatureRunCursorV111.Commit(
-                expectedRun, expectedNatureState);
-        }
+                Replay(Origin, plan), expectedNatureState);
         else
         {
             expectedRun = Origin.Fork();
@@ -361,6 +332,69 @@ public sealed record ReferenceNatureNeowOfferSessionV111(
             CanonicalJson.Sha256(expectedRun) != CanonicalJson.Sha256(Run))
             throw new InvalidDataException(
                 "ReferenceNature Neow-offer replay differs from its session envelope.");
+    }
+
+    private sealed record NeowOfferRunReplayV111(
+        RunState Run, NativeNeowOfferAuditV111 Audit);
+
+    private static RunState Replay(
+        RunState origin, NeowOfferDecisionPlanV111 plan)
+    {
+        var scriptedDecisions = plan.Steps.Select(step =>
+            new RandomIndexDecisionV111(
+                step.Request, step.SelectedIndex!.Value,
+                "scripted-v111")).ToArray();
+        var selected = scriptedDecisions.Select(decision =>
+            ControlledStochasticDecisionV111.FromIndex(decision)).ToArray();
+        var captured = ControlledChanceContinuationExecutorV111.CaptureTyped(
+            origin.RunSeed,
+            ControlledStochasticContinuationStateV111.CurrentSchemaId,
+            selected,
+            seed =>
+            {
+                var generated = PrototypeNativeOvergrowthRunFactory
+                    .CreateWithAudit(seed, origin.Ascension);
+                return new NeowOfferRunReplayV111(
+                    generated.State, generated.NeowOffers);
+            },
+            requestFilter: candidate => candidate.IndexRequest is { } request &&
+                ChanceLawEngineV111.NeowOfferSessionSiteIds.Contains(
+                    request.SiteId, StringComparer.Ordinal));
+        if (captured.Suspended || captured.Value is not { } replay)
+            throw new InvalidDataException(
+                "Native Neow generator did not consume its complete selected offer prefix.");
+        if (CanonicalJson.Sha256(replay.Audit.Choices.Select(decision =>
+                new RandomIndexDecisionV111(
+                    decision.Request, decision.SelectedIndex,
+                    "scripted-v111")).ToArray()) !=
+            CanonicalJson.Sha256(scriptedDecisions))
+            throw new InvalidDataException(
+                "Native Neow generation diverged from the saved offer prefix.");
+        var world = replay.Run.World ?? throw new InvalidDataException(
+            "Native Neow generation lost its run world.");
+        var eventState = world.Event ?? throw new InvalidDataException(
+            "Native Neow generation lost its event state.");
+        var expectedEventStream = NativeRngV111Contexts.ForEvent(
+            origin.RunSeed,
+            PrototypeNativeOvergrowthEvents.NeowRngEventEntry);
+        if (eventState.EventId != PrototypeNativeOvergrowthEvents.NeowEventId ||
+            eventState.NativeEventRng is not { } eventStream ||
+            NativeRngV111.ToSnapshot(eventStream) !=
+                NativeRngV111.ToSnapshot(expectedEventStream) ||
+            NativeRngV111.ToSnapshot(eventStream) !=
+                NativeRngV111.ToSnapshot(replay.Audit.NativeEventRng))
+            throw new InvalidDataException(
+                "Native Neow generation changed its audited event stream.");
+        return replay.Run with
+        {
+            World = world with
+            {
+                Event = eventState with
+                {
+                    NativeEventRngProviderMode = "scripted-v111"
+                }
+            }
+        };
     }
 
     public static string Save(ReferenceNatureNeowOfferSessionV111 session)
