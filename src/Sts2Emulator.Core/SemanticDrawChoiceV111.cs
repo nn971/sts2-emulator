@@ -10,6 +10,42 @@ public static class SemanticDrawChoiceV111
         SemanticDeckEventV111 pending, int selectedIndex)
     {
         ArgumentNullException.ThrowIfNull(pending);
+        ValidatePending(pending);
+        if (selectedIndex < 0 ||
+            selectedIndex >= pending.CandidateCardInstanceIds.Length)
+            throw new ArgumentOutOfRangeException(nameof(selectedIndex));
+
+        var decision = new SemanticDrawDecisionV111(
+            pending with
+            {
+                CandidateCardInstanceIds =
+                    (long[])pending.CandidateCardInstanceIds.Clone()
+            }, selectedIndex,
+            pending.CandidateCardInstanceIds[selectedIndex]);
+        decision.Validate();
+        return decision;
+    }
+
+    public static SemanticDrawDecisionV111 Select(
+        SemanticDeckEventV111 pending, string eventId,
+        long cardInstanceId)
+    {
+        ArgumentNullException.ThrowIfNull(pending);
+        ValidatePending(pending);
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
+        if (pending.EventId != eventId)
+            throw new InvalidOperationException(
+                "Semantic draw event ID is stale or mismatched.");
+        var index = Array.IndexOf(
+            pending.CandidateCardInstanceIds, cardInstanceId);
+        if (index < 0)
+            throw new InvalidOperationException(
+                "Card instance is outside the semantic draw support.");
+        return Select(pending, index);
+    }
+
+    private static void ValidatePending(SemanticDeckEventV111 pending)
+    {
         if (pending.SchemaId != SemanticDeckStateV111.SchemaId ||
             string.IsNullOrWhiteSpace(pending.EventId) ||
             pending.SiteId != "combat.draw_pile.draw_card" ||
@@ -24,19 +60,6 @@ public static class SemanticDrawChoiceV111
             pending.ProbabilityStatus != "UNVERIFIED")
             throw new InvalidDataException(
                 "Invalid semantic draw-card request.");
-        if (selectedIndex < 0 ||
-            selectedIndex >= pending.CandidateCardInstanceIds.Length)
-            throw new ArgumentOutOfRangeException(nameof(selectedIndex));
-
-        var decision = new SemanticDrawDecisionV111(
-            pending with
-            {
-                CandidateCardInstanceIds =
-                    (long[])pending.CandidateCardInstanceIds.Clone()
-            }, selectedIndex,
-            pending.CandidateCardInstanceIds[selectedIndex]);
-        decision.Validate();
-        return decision;
     }
 
     /// <summary>

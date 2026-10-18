@@ -3257,18 +3257,10 @@ public static class SemanticPilotCombatEngineV111
         var pending = current.DrawPending ??
             throw new InvalidOperationException(
                 "Only a pending semantic draw supports card-instance resolution.");
-        if (pending.EventId != eventId)
-            throw new InvalidOperationException(
-                "Semantic draw event ID is stale or mismatched.");
-        var index = Array.IndexOf(pending.CandidateCardInstanceIds,
-            cardInstanceId);
-        if (index < 0)
-            throw new InvalidOperationException(
-                "Card instance is outside the pending semantic draw support.");
-        var expected = new SemanticDrawDecisionV111(pending, index,
-            cardInstanceId);
-        expected.Validate();
-        return Resolve(current, fingerprint, index, null, expected, true, null);
+        var decision = SemanticDrawChoiceV111.Select(
+            pending, eventId, cardInstanceId);
+        return Resolve(current, fingerprint, decision.SelectedIndex,
+            null, decision, true, null);
     }
 
     /// <summary>
