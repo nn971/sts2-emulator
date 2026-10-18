@@ -803,27 +803,36 @@ public static class ControlledPlayableCombatEngineV111
             return ResolveRecycle(state, selectedIndex);
         if (state.TurnIntents is not null)
             return ResolveTurnIntents(state, selectedIndex);
-        var fresh = state.Fork();
-        var request = fresh.Pending!;
-        var decision = new ControlledRandomIndexProviderV111(selectedIndex)
-            .Resolve(request, fresh.Origin.ReferenceStreams);
-        var combat = fresh.Run.World!.Combat!;
-        var drawPile = (long[])combat.DrawPile.Clone();
-        (drawPile[fresh.NextShuffleIndex], drawPile[selectedIndex]) =
-            (drawPile[selectedIndex], drawPile[fresh.NextShuffleIndex]);
-        var nextIndex = fresh.NextShuffleIndex - 1;
-        combat = SemanticDrawPileAdapterV111.ApplyDrawPileOrderCommit(
-            combat, drawPile);
-        var next = fresh with
-        {
-            Run = fresh.Run with
-            {
-                World = fresh.Run.World with { Combat = combat }
-            },
-            NextShuffleIndex = nextIndex,
-            ShuffleTranscript = fresh.ShuffleTranscript.Append(decision).ToArray(),
-            Pending = MakePending(nextIndex, fresh.ShuffleTranscript.Length + 1)
-        };
+        var request = state.Pending!;
+        var next = ControlledChanceContinuationExecutorV111
+            .ResolveSelectedIndex<ControlledPlayableCombatV111,
+                ControlledPlayableCombatV111>(
+                state, request, selectedIndex, (checkpoint, replayedIndex) =>
+                {
+                    var fresh = checkpoint.Fork();
+                    var combat = fresh.Run.World!.Combat!;
+                    var drawPile = (long[])combat.DrawPile.Clone();
+                    (drawPile[fresh.NextShuffleIndex], drawPile[replayedIndex]) =
+                        (drawPile[replayedIndex], drawPile[fresh.NextShuffleIndex]);
+                    var nextIndex = fresh.NextShuffleIndex - 1;
+                    combat = SemanticDrawPileAdapterV111
+                        .ApplyDrawPileOrderCommit(combat, drawPile);
+                    var decision = new RandomIndexDecisionV111(
+                        request, replayedIndex, "controlled-v111");
+                    decision.Validate();
+                    return fresh with
+                    {
+                        Run = fresh.Run with
+                        {
+                            World = fresh.Run.World with { Combat = combat }
+                        },
+                        NextShuffleIndex = nextIndex,
+                        ShuffleTranscript = fresh.ShuffleTranscript
+                            .Append(decision).ToArray(),
+                        Pending = MakePending(
+                            nextIndex, fresh.ShuffleTranscript.Length + 1)
+                    };
+                });
         return next.Pending is null ? CompleteOpeningHand(next) : next;
     }
 
@@ -860,17 +869,9 @@ public static class ControlledPlayableCombatEngineV111
     {
         var request = state.DrawCostPending ??
             throw new InvalidOperationException("Missing drawn-card cost ticket.");
-        var decision = new RandomIndexDecisionV111(
-            request, selectedIndex, "controlled-v111");
-        decision.Validate();
-        RunState result = ControlledChanceContinuationExecutorV111
-            .ResolveSelectedIndex<ControlledPlayableCombatV111, RunState>(
-                state, request, selectedIndex, (checkpoint, replayedIndex) =>
-                {
-                    using (ControlledChanceGuardV111.Enter())
-                        return PrototypeGameEngine.ResumeControlledDrawCost(
-                            checkpoint.Run.Fork(), replayedIndex);
-                });
+        var (result, decision) = ResolveIndexAndRun(
+            state, request, selectedIndex,
+            PrototypeGameEngine.ResumeControlledDrawCost);
         var next = state.Fork() with
         {
             Run = result,
@@ -886,17 +887,9 @@ public static class ControlledPlayableCombatEngineV111
     {
         var request = state.RandomCostPending ??
             throw new InvalidOperationException("Missing random-cost ticket.");
-        var decision = new RandomIndexDecisionV111(
-            request, selectedIndex, "controlled-v111");
-        decision.Validate();
-        RunState result = ControlledChanceContinuationExecutorV111
-            .ResolveSelectedIndex<ControlledPlayableCombatV111, RunState>(
-                state, request, selectedIndex, (checkpoint, replayedIndex) =>
-                {
-                    using (ControlledChanceGuardV111.Enter())
-                        return PrototypeGameEngine.ResumeControlledRandomCost(
-                            checkpoint.Run.Fork(), replayedIndex);
-                });
+        var (result, decision) = ResolveIndexAndRun(
+            state, request, selectedIndex,
+            PrototypeGameEngine.ResumeControlledRandomCost);
         var next = state.Fork() with
         {
             Run = result,
@@ -912,12 +905,9 @@ public static class ControlledPlayableCombatEngineV111
     {
         var request = state.PoolShufflePending ??
             throw new InvalidOperationException("Missing pool-shuffle ticket.");
-        var choice = new ControlledRandomIndexProviderV111(selectedIndex)
-            .Resolve(request, state.Origin.ReferenceStreams);
-        RunState result;
-        using (ControlledChanceGuardV111.Enter())
-            result = PrototypeGameEngine.ResumeControlledPoolShuffle(
-                state.Run.Fork(), selectedIndex);
+        var (result, choice) = ResolveIndexAndRun(
+            state, request, selectedIndex,
+            PrototypeGameEngine.ResumeControlledPoolShuffle);
         var next = state.Fork() with
         {
             Run = result,
@@ -933,12 +923,9 @@ public static class ControlledPlayableCombatEngineV111
     {
         var request = state.DrawInsertionPending ??
             throw new InvalidOperationException("Missing draw insertion ticket.");
-        var choice = new ControlledRandomIndexProviderV111(selectedIndex)
-            .Resolve(request, state.Origin.ReferenceStreams);
-        RunState result;
-        using (ControlledChanceGuardV111.Enter())
-            result = PrototypeGameEngine.ResumeControlledDrawInsertion(
-                state.Run.Fork(), selectedIndex);
+        var (result, choice) = ResolveIndexAndRun(
+            state, request, selectedIndex,
+            PrototypeGameEngine.ResumeControlledDrawInsertion);
         var next = state.Fork() with
         {
             Run = result,
@@ -955,12 +942,9 @@ public static class ControlledPlayableCombatEngineV111
         var request = state.EnemyActionPending ??
             throw new InvalidOperationException(
                 "Missing controlled enemy-action ticket.");
-        var decision = new ControlledRandomIndexProviderV111(selectedIndex)
-            .Resolve(request, state.Origin.ReferenceStreams);
-        RunState result;
-        using (ControlledChanceGuardV111.Enter())
-            result = PrototypeGameEngine.ResumeControlledEnemyAction(
-                state.Run.Fork(), selectedIndex);
+        var (result, decision) = ResolveIndexAndRun(
+            state, request, selectedIndex,
+            PrototypeGameEngine.ResumeControlledEnemyAction);
         var next = state.Fork() with
         {
             Run = result,
@@ -974,12 +958,9 @@ public static class ControlledPlayableCombatEngineV111
     {
         var request = state.GeneratedCardPending ??
             throw new InvalidOperationException("Missing generated-card Nature ticket.");
-        var choice = new ControlledRandomIndexProviderV111(selectedIndex)
-            .Resolve(request, state.Origin.ReferenceStreams);
-        RunState result;
-        using (ControlledChanceGuardV111.Enter())
-            result = PrototypeGameEngine.ResumeControlledGeneratedCard(
-                state.Run.Fork(), selectedIndex);
+        var (result, choice) = ResolveIndexAndRun(
+            state, request, selectedIndex,
+            PrototypeGameEngine.ResumeControlledGeneratedCard);
         var next = state.Fork() with
         {
             Run = result,
@@ -996,12 +977,9 @@ public static class ControlledPlayableCombatEngineV111
         var request = state.PotionGenerationPending ??
             throw new InvalidOperationException(
                 "Missing random-potion Nature ticket.");
-        var choice = new ControlledRandomIndexProviderV111(selectedIndex)
-            .Resolve(request, state.Origin.ReferenceStreams);
-        RunState result;
-        using (ControlledChanceGuardV111.Enter())
-            result = PrototypeGameEngine.ResumeControlledPotionGeneration(
-                state.Run.Fork(), selectedIndex);
+        var (result, choice) = ResolveIndexAndRun(
+            state, request, selectedIndex,
+            PrototypeGameEngine.ResumeControlledPotionGeneration);
         var next = state.Fork() with
         {
             Run = result,
@@ -1018,12 +996,9 @@ public static class ControlledPlayableCombatEngineV111
         var request = state.CardTransformPending ??
             throw new InvalidOperationException(
                 "Missing random card-transform Nature ticket.");
-        var choice = new ControlledRandomIndexProviderV111(selectedIndex)
-            .Resolve(request, state.Origin.ReferenceStreams);
-        RunState result;
-        using (ControlledChanceGuardV111.Enter())
-            result = PrototypeGameEngine.ResumeControlledCardTransform(
-                state.Run.Fork(), selectedIndex);
+        var (result, choice) = ResolveIndexAndRun(
+            state, request, selectedIndex,
+            PrototypeGameEngine.ResumeControlledCardTransform);
         var next = state.Fork() with
         {
             Run = result,
@@ -1039,12 +1014,9 @@ public static class ControlledPlayableCombatEngineV111
     {
         var request = state.TargetPending ??
             throw new InvalidOperationException("No controlled target ticket.");
-        var choice = new ControlledRandomIndexProviderV111(selectedIndex)
-            .Resolve(request, state.Origin.ReferenceStreams);
-        RunState result;
-        using (ControlledChanceGuardV111.Enter())
-            result = PrototypeGameEngine.ResumeControlledRandomTarget(
-                state.Run.Fork(), selectedIndex);
+        var (result, choice) = ResolveIndexAndRun(
+            state, request, selectedIndex,
+            PrototypeGameEngine.ResumeControlledRandomTarget);
         var next = state.Fork() with
         {
             Run = result,
@@ -1052,6 +1024,26 @@ public static class ControlledPlayableCombatEngineV111
             LiveTranscript = state.LiveTranscript.Append(choice).ToArray()
         };
         return StartPendingTurn(next);
+    }
+
+    private static (RunState Result, RandomIndexDecisionV111 Decision)
+        ResolveIndexAndRun(
+            ControlledPlayableCombatV111 state,
+            RandomIndexRequestV111 request,
+            int selectedIndex,
+            Func<RunState, int, RunState> resume)
+    {
+        var decision = new RandomIndexDecisionV111(
+            request, selectedIndex, "controlled-v111");
+        decision.Validate();
+        var result = ControlledChanceContinuationExecutorV111
+            .ResolveSelectedIndex<ControlledPlayableCombatV111, RunState>(
+                state, request, selectedIndex, (checkpoint, replayedIndex) =>
+                {
+                    using (ControlledChanceGuardV111.Enter())
+                        return resume(checkpoint.Run.Fork(), replayedIndex);
+                });
+        return (result, decision);
     }
 
     private static ControlledPlayableCombatV111 StartPendingTurn(

@@ -54,23 +54,35 @@ public static class ControlledRecycleShuffleEngineV111
     public static ControlledRecycleShuffleV111 Resolve(
         ControlledRecycleShuffleV111 stage, int selectedIndex, RngBundle streams)
     {
+        ArgumentNullException.ThrowIfNull(streams);
         Validate(stage);
         if (stage.Pending is null)
             throw new InvalidOperationException("Recycle has no pending swap.");
         var working = stage.Fork();
-        var decision = new ControlledRandomIndexProviderV111(selectedIndex)
-            .Resolve(working.Pending!, streams);
-        var values = (long[])working.Shuffled.Clone();
-        (values[working.NextSwapIndex], values[selectedIndex]) =
-            (values[selectedIndex], values[working.NextSwapIndex]);
-        var next = working with
-        {
-            Shuffled = values,
-            NextSwapIndex = working.NextSwapIndex - 1,
-            Transcript = working.Transcript.Append(decision).ToArray(),
-            Pending = null
-        };
-        return next with { Pending = MakePending(next) };
+        var request = working.Pending ??
+            throw new InvalidOperationException("Recycle has no pending swap.");
+        return ControlledChanceContinuationExecutorV111
+            .ResolveSelectedIndex<ControlledRecycleShuffleV111,
+                ControlledRecycleShuffleV111>(
+                working, request, selectedIndex, (checkpoint, replayedIndex) =>
+                {
+                    var values = (long[])checkpoint.Shuffled.Clone();
+                    (values[checkpoint.NextSwapIndex], values[replayedIndex]) =
+                        (values[replayedIndex],
+                            values[checkpoint.NextSwapIndex]);
+                    var decision = new RandomIndexDecisionV111(
+                        request, replayedIndex, "controlled-v111");
+                    decision.Validate();
+                    var next = checkpoint with
+                    {
+                        Shuffled = values,
+                        NextSwapIndex = checkpoint.NextSwapIndex - 1,
+                        Transcript = checkpoint.Transcript
+                            .Append(decision).ToArray(),
+                        Pending = null
+                    };
+                    return next with { Pending = MakePending(next) };
+                });
     }
 
     public static void Validate(ControlledRecycleShuffleV111 stage)
