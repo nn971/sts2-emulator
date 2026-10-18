@@ -340,6 +340,7 @@ public static class StochasticSiteRegistryV111
         PrototypeNativeUnderdocks.BossEncounterIndexSiteId,
         ExperimentalSilentThreeActRouteV111.BossIndexSiteId,
         ExperimentalSilentThreeActRouteV111.SecondBossIndexSiteId,
+        PrototypeNativeOvergrowthMap.PathStartColumnSiteId,
         PrototypeNativeLaterActMap.PathStartSiteId,
         PrototypeNativeLaterActMap.GloryRestCountSiteId,
         "event.endless_conveyor.dish_weighted_ticket",

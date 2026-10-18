@@ -162,6 +162,16 @@ law = state.query_chance_law(
 
 Each query returns exact Native `NextInt(7)` weights for columns 0 through 6.
 It does not validate earlier path starts or the complete map-generation prefix.
+For Act 1 Overgrowth, declare the path/retry owner ID instead:
+
+```python
+law = state.query_chance_law(
+    "map.overgrowth.path_start_column.index_draw",
+    owner_id="act:1:path:0:start",
+    ordinal=0,
+    support_count=7,
+)
+```
 
 Glory's later-act map rest-count draw has a separate read-only Native law:
 

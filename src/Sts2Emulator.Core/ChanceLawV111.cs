@@ -999,9 +999,37 @@ public static partial class ChanceLawEngineV111
                 nameof(ordinal),
                 "Later-act path-start queries require a nonnegative site-local ordinal.");
 
+        return QueryMapPathStart(
+            PrototypeNativeLaterActMap.PathStartSiteId,
+            $"map:act:{act}", act, ordinal);
+    }
+
+    /// <summary>
+    /// Query one raw Native Overgrowth path-start draw. The source owner
+    /// distinguishes each path and the second-path collision retries.
+    /// </summary>
+    public static ChanceLawV111 QueryOvergrowthPathStart(
+        string ownerId, int ordinal)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
+        if (!IsOvergrowthPathStartOwner(ownerId))
+            throw new ArgumentException(
+                "Owner ID must identify an Act 1 path start or path-two retry.",
+                nameof(ownerId));
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(
+                nameof(ordinal),
+                "Overgrowth path-start queries require a nonnegative site-local ordinal.");
+
+        return QueryMapPathStart(
+            PrototypeNativeOvergrowthMap.PathStartColumnSiteId,
+            ownerId, 1, ordinal);
+    }
+
+    private static ChanceLawV111 QueryMapPathStart(
+        string siteId, string ownerId, int act, int ordinal)
+    {
         const int supportCount = PrototypeNativeLaterActMap.MapWidth;
-        var siteId = PrototypeNativeLaterActMap.PathStartSiteId;
-        var ownerId = $"map:act:{act}";
         var indexWeights = NativeNextIntGridWeights(supportCount);
         var outcomes = indexWeights.Select((weight, index) =>
             new ChanceLawOutcomeV111(
@@ -1032,6 +1060,19 @@ public static partial class ChanceLawEngineV111
             NativeBoundedIndexSourceVerifiedProvenance,
             outcomes,
             ChanceLawV111.SourceVerifiedStatus);
+    }
+
+    private static bool IsOvergrowthPathStartOwner(string ownerId)
+    {
+        var parts = ownerId.Split(':');
+        if (parts.Length != 5 || parts[0] != "act" || parts[1] != "1" ||
+            parts[2] != "path" ||
+            !int.TryParse(parts[3], NumberStyles.None,
+                CultureInfo.InvariantCulture, out var pathOrdinal) ||
+            pathOrdinal is < 0 or > 6)
+            return false;
+        return parts[4] == "start" ||
+            pathOrdinal == 1 && parts[4] == "start_retry";
     }
 
     public static ChanceLawV111 QueryLaterActDarvHiveAssignment(int ordinal)

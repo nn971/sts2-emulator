@@ -2892,6 +2892,33 @@ internal static class PrototypeAiJsonlServer
                             });
                             break;
                         }
+                        if (siteId == PrototypeNativeOvergrowthMap
+                                .PathStartColumnSiteId)
+                        {
+                            RejectChanceLawQueryParameters(
+                                request, "owner_id", "support_count");
+                            var ownerId = OptionalString(
+                                request, "owner_id") ??
+                                throw new ArgumentException(
+                                    "Overgrowth path-start law requires owner_id.");
+                            var supportCount = OptionalInt(
+                                request, "support_count");
+                            if (supportCount is not null &&
+                                supportCount != PrototypeNativeOvergrowthMap.MapWidth)
+                                throw new ArgumentException(
+                                    "Overgrowth path-start support_count must be seven.");
+                            law = ChanceLawEngineV111
+                                .QueryOvergrowthPathStart(ownerId, ordinal);
+                            Write(new
+                            {
+                                requestId,
+                                ok = true,
+                                chanceLawSchemaId =
+                                    ChanceLawV111.CurrentSchemaId,
+                                law
+                            });
+                            break;
+                        }
                         if (siteId == PrototypeNativeLaterActMap.PathStartSiteId)
                         {
                             RejectChanceLawQueryParameters(
