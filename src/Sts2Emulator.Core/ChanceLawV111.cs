@@ -85,11 +85,15 @@ public static class StochasticCapabilitiesV111
     public const string ExternalSelectionProviderId =
         "external-semantic-selection-v1";
 
-    public static StochasticCapabilityManifestV111 Create() => new(
+    public static StochasticCapabilityManifestV111 Create() =>
+        Create(StochasticSiteRegistryV111.CreateSessionCoverage());
+
+    private static StochasticCapabilityManifestV111 Create(
+        StochasticSessionCoverageV111 sessions) => new(
         SchemaId,
         ChanceLawV111.CurrentSchemaId,
         ReferenceNatureV111.ProviderId,
-        ReferenceNatureSessionV111.CurrentSchemaId,
+        sessions.SemanticReferenceNatureSessionSchemaId,
         ChanceLawV111.UnverifiedStatus,
         StochasticSiteRegistryV111.NatureChoiceSiteIds,
         PrototypeAiEnvironment.SchemaId,
@@ -232,39 +236,39 @@ public static class StochasticCapabilitiesV111
             ChanceLawV111.SourceVerifiedStatus
         ],
         ReferenceNatureRunActionSessionSchemaId =
-            ReferenceNatureRunActionSessionV111.CurrentSchemaId,
+            sessions.ReferenceNatureRunActionSessionSchemaId,
         ReferenceNatureEventChoiceSessionSchemaId =
-            ReferenceNatureControlledEventChoiceSessionV111.CurrentSchemaId,
+            sessions.ReferenceNatureEventChoiceSessionSchemaId,
         ReferenceNatureAncientOfferSessionSchemaId =
-            ReferenceNatureAncientOfferSessionV111.CurrentSchemaId,
+            sessions.ReferenceNatureAncientOfferSessionSchemaId,
         ReferenceNatureNeowOfferSessionSchemaId =
-            ReferenceNatureNeowOfferSessionV111.CurrentSchemaId,
+            sessions.ReferenceNatureNeowOfferSessionSchemaId,
         ReferenceNatureTrashHeapSessionSchemaId =
-            ReferenceNatureTrashHeapSessionV111.CurrentSchemaId,
+            sessions.ReferenceNatureTrashHeapSessionSchemaId,
         ReferenceNatureTabletOfTruthSessionSchemaId =
-            ReferenceNatureTabletOfTruthSessionV111.CurrentSchemaId,
+            sessions.ReferenceNatureTabletOfTruthSessionSchemaId,
         ReferenceNatureTrialSessionSchemaId =
-            ReferenceNatureTrialSessionV111.CurrentSchemaId,
+            sessions.ReferenceNatureTrialSessionSchemaId,
         ReferenceNatureNativeEventShuffleSessionSchemaId =
-            ReferenceNatureNativeEventShuffleSessionV111.CurrentSchemaId,
+            sessions.ReferenceNatureNativeEventShuffleSessionSchemaId,
         ReferenceNatureNativeEventGoldSessionSchemaId =
-            ReferenceNatureNativeEventGoldSessionV111.CurrentSchemaId,
+            sessions.ReferenceNatureNativeEventGoldSessionSchemaId,
         ReferenceNatureEndlessConveyorSessionSchemaId =
-            ReferenceNatureEndlessConveyorSessionV111.CurrentSchemaId,
+            sessions.ReferenceNatureEndlessConveyorSessionSchemaId,
         ReferenceNatureGloryReflectionsSessionSchemaId =
-            ReferenceNatureGloryReflectionsSessionV111.CurrentSchemaId,
+            sessions.ReferenceNatureGloryReflectionsSessionSchemaId,
         ReferenceNatureInfestedAutomatonSessionSchemaId =
-            ReferenceNatureInfestedAutomatonSessionV111.CurrentSchemaId,
+            sessions.ReferenceNatureInfestedAutomatonSessionSchemaId,
         ReferenceNaturePunchOffRewardSessionSchemaId =
-            ReferenceNaturePunchOffRewardSessionV111.CurrentSchemaId,
+            sessions.ReferenceNaturePunchOffRewardSessionSchemaId,
         ReferenceNaturePunchOffFightSessionSchemaId =
-            ReferenceNaturePunchOffFightSessionV111.CurrentSchemaId,
+            sessions.ReferenceNaturePunchOffFightSessionSchemaId,
         ReferenceNatureMerchantSessionSchemaId =
-            ReferenceNatureMerchantSessionV111.CurrentSchemaId,
+            sessions.ReferenceNatureMerchantSessionSchemaId,
         ReferenceNatureTreasureSessionSchemaId =
-            ReferenceNatureTreasureSessionV111.CurrentSchemaId,
+            sessions.ReferenceNatureTreasureSessionSchemaId,
         ReferenceNatureMapGenerationSessionSchemaId =
-            ReferenceNatureMapGenerationSessionV111.CurrentSchemaId,
+            sessions.ReferenceNatureMapGenerationSessionSchemaId,
         ScriptedRunActionSessionSchemaId =
             ScriptedRunActionSessionV111.CurrentSchemaId,
         ScriptedRunActionOperations =
