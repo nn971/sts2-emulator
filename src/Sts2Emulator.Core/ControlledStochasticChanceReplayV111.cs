@@ -371,6 +371,17 @@ internal sealed record ControlledStochasticReplayResultV111(
 }
 
 /// <summary>
+/// Result of capturing or advancing a versioned mixed stochastic continuation.
+/// A suspended result carries the complete replay prefix and exact next request.
+/// </summary>
+internal sealed record ControlledStochasticContinuationResultV111(
+    RunState? Run,
+    ControlledStochasticContinuationStateV111? Continuation)
+{
+    public bool Suspended => Continuation is not null;
+}
+
+/// <summary>
 /// Replays one chronological prefix across every typed provider interface.
 /// It deliberately owns no law, boundary allowlist, or mechanics.
 /// </summary>
@@ -619,7 +630,7 @@ internal sealed class ControlledStochasticChanceReplayV111 :
         public void Dispose() { }
     }
 
-    private static bool SameRequest(
+    internal static bool SameRequest(
         ControlledStochasticRequestV111 left,
         ControlledStochasticRequestV111 right)
     {

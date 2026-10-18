@@ -130,13 +130,20 @@ public sealed record ReferenceNatureMerchantSessionV111(
         var providerDecision = ReferenceNatureChanceLawDecisionV111.FromSelection(
             law, PendingRequest!, selection, Origin,
             PendingCandidateLabels);
-        var providerDecisions = ProviderDecisions
-            .Append(providerDecision).ToArray();
+        var continuation = new ControlledStochasticContinuationStateV111(
+            ControlledStochasticContinuationStateV111.CurrentSchemaId,
+            ProviderDecisions, PendingRequest!, PendingCandidateLabels);
+        var replay = ControlledChanceContinuationExecutorV111.ResolveStochastic(
+            ReferenceNatureRunProjectionV111.CreateNatureReplayOrigin(Origin),
+            continuation, providerDecision,
+            checkpoint => new PrototypeGameEngine().Step(
+                checkpoint, CloneAction(Action)).State);
+        var providerDecisions = replay.Continuation?.Decisions ??
+            ProviderDecisions.Append(providerDecision.Fork()).ToArray();
         var transcript = DecisionTranscript.Append(
             new ReferenceNatureMerchantLawDecisionV111(
                 law.LawId, law.EventId, selection.OutcomeId,
                 selection.OutcomeIndex)).ToArray();
-        var replay = Replay(Origin, Action, providerDecisions);
         var run = replay.Run is { } completed
             ? ReferenceNatureRunCursorV111.Commit(
                 completed, selection.NextState)
@@ -147,8 +154,8 @@ public sealed record ReferenceNatureMerchantSessionV111(
             NatureState = selection.NextState,
             ProviderDecisions = providerDecisions,
             DecisionTranscript = transcript,
-            PendingRequest = replay.Pending?.Request.Fork(),
-            PendingCandidateLabels = replay.Pending?.CandidateLabels is { } labels
+            PendingRequest = replay.Continuation?.PendingRequest.Fork(),
+            PendingCandidateLabels = replay.Continuation?.PendingCandidateLabels is { } labels
                 ? (string[])labels.Clone() : null
         };
         next.Validate();
