@@ -383,6 +383,16 @@ public static partial class ChanceLawEngineV111
         "reward.card_transform.replacement.index_draw"
     ];
 
+    private static readonly string[] LegacyShopCardRarityQuerySites =
+    [
+        "shop.card_rarity.ticket"
+    ];
+
+    private static readonly string[] LegacyShopCardModelQuerySites =
+    [
+        "shop.card_model.index_draw"
+    ];
+
     private static readonly string[] LegacyPotionDropTicketQuerySites =
     [
         "reward.random_potion.drop.ticket"
@@ -505,6 +515,12 @@ public static partial class ChanceLawEngineV111
 
     public static string[] LegacyRewardCardTransformQuerySiteIds =>
         (string[])LegacyRewardCardTransformQuerySites.Clone();
+
+    public static string[] LegacyShopCardRarityQuerySiteIds =>
+        (string[])LegacyShopCardRarityQuerySites.Clone();
+
+    public static string[] LegacyShopCardModelQuerySiteIds =>
+        (string[])LegacyShopCardModelQuerySites.Clone();
 
     public static string[] LegacyPotionDropTicketQuerySiteIds =>
         (string[])LegacyPotionDropTicketQuerySites.Clone();
@@ -814,10 +830,14 @@ public static partial class ChanceLawEngineV111
             "remain unverified.", outcomes, operationKind: "choose_index");
     }
 
-    private static string[] RemainingRewardCardPool(string[] priorCardIds)
+    private static string[] RemainingRewardCardPool(
+        string[] priorCardIds, PrototypeCardType? requiredType = null)
     {
         ArgumentNullException.ThrowIfNull(priorCardIds);
-        var pool = PrototypeContent.RewardCardPool;
+        var pool = PrototypeContent.RewardCardPool.Where(cardId =>
+                requiredType is null ||
+                PrototypeContent.Card(cardId).Type == requiredType.Value)
+            .ToArray();
         var poolSet = pool.ToHashSet(StringComparer.Ordinal);
         var selected = new HashSet<string>(StringComparer.Ordinal);
         foreach (var cardId in priorCardIds)
@@ -825,11 +845,137 @@ public static partial class ChanceLawEngineV111
             ArgumentException.ThrowIfNullOrWhiteSpace(cardId);
             if (!poolSet.Contains(cardId) || !selected.Add(cardId))
                 throw new ArgumentException(
-                    "Prior reward card IDs must be unique members of the reward card pool.",
+                    "Prior card IDs must be unique members of the declared source card pool.",
                     nameof(priorCardIds));
         }
 
         return pool.Where(cardId => !selected.Contains(cardId)).ToArray();
+    }
+
+    private static void ValidateLegacyShopCardType(
+        PrototypeCardType requiredType)
+    {
+        if (requiredType is not (PrototypeCardType.Attack or
+            PrototypeCardType.Skill or PrototypeCardType.Power))
+            throw new ArgumentOutOfRangeException(nameof(requiredType));
+    }
+
+    /// <summary>
+    /// Query the legacy Shop rarity ticket after caller-declared offers have
+    /// been removed from the requested card-type pool.
+    /// </summary>
+    public static ChanceLawV111 QueryLegacyShopCardRarityTicket(
+        int act, PrototypeCardType requiredType, string[] priorCardIds,
+        int ordinal)
+    {
+        if (act < 1)
+            throw new ArgumentOutOfRangeException(nameof(act));
+        ValidateLegacyShopCardType(requiredType);
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+
+        var available = RemainingRewardCardPool(priorCardIds, requiredType);
+        var rarityWeights = PrototypeContent.ShopRarityWeights(act)
+            .Where(item => item.Weight > 0 && available.Any(cardId =>
+                PrototypeContent.Card(cardId).Rarity == item.Rarity))
+            .ToArray();
+        if (rarityWeights.Length == 0)
+            throw new ArgumentException(
+                "The remaining Shop card pool has no drawable rarity.",
+                nameof(priorCardIds));
+
+        var raritySupport = rarityWeights.Select(item => new
+        {
+            item.Rarity,
+            item.Weight
+        }).ToArray();
+        var ownerId = $"act:{act}:type:{requiredType}:offer:" +
+            priorCardIds.Length + ":weights:" +
+            CanonicalJson.Sha256(raritySupport);
+        var outcomes = rarityWeights.Select(item =>
+            new ChanceLawOutcomeV111(
+                "rarity:" + item.Rarity.ToString().ToLowerInvariant(),
+                item.Weight)).ToArray();
+        const string siteId = "shop.card_rarity.ticket";
+        const string streamId = "shop";
+        var conditioning = new
+        {
+            siteId,
+            streamId,
+            ownerId,
+            ordinal,
+            act,
+            requiredType,
+            priorCardIds,
+            availableCardPoolFingerprint = CanonicalJson.Sha256(available),
+            raritySupport,
+            totalWeight = rarityWeights.Sum(item => item.Weight)
+        };
+        return CreateLegacyCategoricalLaw(
+            siteId, streamId, ownerId, ordinal,
+            "legacy-shop-card-rarity-ticket-v1", conditioning,
+            "Uniform ticket-index weights over source-shaped Shop rarity " +
+            "weights after empty tiers are removed; card-pool fidelity and " +
+            "Native parity remain unverified.", outcomes);
+    }
+
+    /// <summary>
+    /// Query the legacy Shop card-model draw within its selected rarity and
+    /// card type after caller-declared prior offers are removed.
+    /// </summary>
+    public static ChanceLawV111 QueryLegacyShopCardModel(
+        int act, PrototypeCardType requiredType, PrototypeCardRarity rarity,
+        string[] priorCardIds, int ordinal)
+    {
+        if (act < 1)
+            throw new ArgumentOutOfRangeException(nameof(act));
+        ValidateLegacyShopCardType(requiredType);
+        if (!Enum.IsDefined(rarity))
+            throw new ArgumentOutOfRangeException(nameof(rarity));
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+        if (!PrototypeContent.ShopRarityWeights(act).Any(item =>
+                item.Rarity == rarity && item.Weight > 0))
+            throw new ArgumentException(
+                "The declared rarity is not selectable by the Shop rarity ticket for this Act.",
+                nameof(rarity));
+
+        var available = RemainingRewardCardPool(priorCardIds, requiredType);
+        var candidates = available.Where(cardId =>
+            PrototypeContent.Card(cardId).Rarity == rarity).ToArray();
+        if (candidates.Length == 0)
+            throw new ArgumentException(
+                "The declared rarity and prior offers leave no Shop card to draw.",
+                nameof(priorCardIds));
+
+        const string siteId = "shop.card_model.index_draw";
+        const string streamId = "shop";
+        var poolFingerprint = CanonicalJson.Sha256(candidates);
+        var ownerId = $"act:{act}:type:{requiredType}:offer:" +
+            priorCardIds.Length + ":rarity:" + rarity + ":pool:" +
+            poolFingerprint;
+        var outcomes = candidates.Select(cardId =>
+            new ChanceLawOutcomeV111("card:" + cardId, 1L)).ToArray();
+        var conditioning = new
+        {
+            siteId,
+            streamId,
+            ownerId,
+            ordinal,
+            act,
+            requiredType,
+            rarity,
+            priorCardIds,
+            orderedCandidates = candidates,
+            poolFingerprint
+        };
+        return CreateLegacyCategoricalLaw(
+            siteId, streamId, ownerId, ordinal,
+            "legacy-shop-card-model-pool-v1", conditioning,
+            "Equal index weights over the remaining source-ordered prototype " +
+            "Shop cards of the declared rarity and type; pool fidelity and " +
+            "Native parity remain unverified.", outcomes,
+            operationKind: "choose_index");
     }
 
     /// <summary>

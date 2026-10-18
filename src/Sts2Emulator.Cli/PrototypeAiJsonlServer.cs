@@ -4222,6 +4222,108 @@ internal static class PrototypeAiJsonlServer
                             });
                             break;
                         }
+                        if (siteId == "shop.card_rarity.ticket")
+                        {
+                            RejectChanceLawQueryParameters(
+                                request, "act", "card_type",
+                                "prior_card_ids", "support_count");
+                            var shopCardAct = OptionalInt(request, "act") ??
+                                throw new ArgumentException(
+                                    "Shop card-rarity law requires act.");
+                            var shopCardTypeText = OptionalString(
+                                request, "card_type") ??
+                                throw new ArgumentException(
+                                    "Shop card-rarity law requires card_type.");
+                            if (!Enum.TryParse<PrototypeCardType>(
+                                    shopCardTypeText, ignoreCase: false,
+                                    out var shopCardType) ||
+                                !Enum.IsDefined(shopCardType) ||
+                                shopCardType is not (
+                                    PrototypeCardType.Attack or
+                                    PrototypeCardType.Skill or
+                                    PrototypeCardType.Power))
+                                throw new ArgumentException(
+                                    "card_type must be Attack, Skill, or Power.");
+                            var priorShopCardIds = OptionalStringArray(
+                                request, "prior_card_ids") ??
+                                throw new ArgumentException(
+                                    "Shop card-rarity law requires prior_card_ids (an empty array for the first offer).");
+                            law = ChanceLawEngineV111
+                                .QueryLegacyShopCardRarityTicket(
+                                    shopCardAct, shopCardType,
+                                    priorShopCardIds, ordinal);
+                            var supportCount = OptionalInt(
+                                request, "support_count");
+                            if (supportCount is not null &&
+                                supportCount != law.Outcomes.Length)
+                                throw new ArgumentException(
+                                    "Shop card-rarity support_count must match the Act, card type, and prior offers.");
+                            Write(new
+                            {
+                                requestId,
+                                ok = true,
+                                chanceLawSchemaId =
+                                    ChanceLawV111.CurrentSchemaId,
+                                law
+                            });
+                            break;
+                        }
+                        if (siteId == "shop.card_model.index_draw")
+                        {
+                            RejectChanceLawQueryParameters(
+                                request, "act", "card_type", "rarity",
+                                "prior_card_ids", "support_count");
+                            var shopCardAct = OptionalInt(request, "act") ??
+                                throw new ArgumentException(
+                                    "Shop card-model law requires act.");
+                            var shopCardTypeText = OptionalString(
+                                request, "card_type") ??
+                                throw new ArgumentException(
+                                    "Shop card-model law requires card_type.");
+                            if (!Enum.TryParse<PrototypeCardType>(
+                                    shopCardTypeText, ignoreCase: false,
+                                    out var shopCardType) ||
+                                !Enum.IsDefined(shopCardType) ||
+                                shopCardType is not (
+                                    PrototypeCardType.Attack or
+                                    PrototypeCardType.Skill or
+                                    PrototypeCardType.Power))
+                                throw new ArgumentException(
+                                    "card_type must be Attack, Skill, or Power.");
+                            var shopCardRarityText = OptionalString(
+                                request, "rarity") ??
+                                throw new ArgumentException(
+                                    "Shop card-model law requires rarity.");
+                            if (!Enum.TryParse<PrototypeCardRarity>(
+                                    shopCardRarityText, ignoreCase: false,
+                                    out var shopCardRarity) ||
+                                !Enum.IsDefined(shopCardRarity))
+                                throw new ArgumentException(
+                                    "rarity must be Common, Uncommon, or Rare.");
+                            var priorShopCardIds = OptionalStringArray(
+                                request, "prior_card_ids") ??
+                                throw new ArgumentException(
+                                    "Shop card-model law requires prior_card_ids (an empty array for the first offer).");
+                            law = ChanceLawEngineV111
+                                .QueryLegacyShopCardModel(
+                                    shopCardAct, shopCardType,
+                                    shopCardRarity, priorShopCardIds, ordinal);
+                            var supportCount = OptionalInt(
+                                request, "support_count");
+                            if (supportCount is not null &&
+                                supportCount != law.Outcomes.Length)
+                                throw new ArgumentException(
+                                    "Shop card-model support_count must match the Act, card type, rarity, and prior offers.");
+                            Write(new
+                            {
+                                requestId,
+                                ok = true,
+                                chanceLawSchemaId =
+                                    ChanceLawV111.CurrentSchemaId,
+                                law
+                            });
+                            break;
+                        }
                         if (siteId == "reward.card_model.index_draw")
                         {
                             RejectChanceLawQueryParameters(
