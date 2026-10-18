@@ -140,6 +140,8 @@
 
 **S3 recycle provider/zone commit increment (2026-10-18):** `SemanticDrawPileAdapterV111.CommitNativeRecycle` and `CommitLegacyRecycle` now derive recycled identities from the committed discard zone, validate the resolved order, and publish the destination draw/discard zones with the provider epoch where applicable. Ordinary draw, top-autoplay and controlled recycle callers retain shuffle sampling and source hooks but no longer assemble separate discard-to-draw transitions. Nature recycle was already committed through the adapter. Broader provider/zone migration and cross-provider equivalence remain open.
 
+**S3 semantic resolution commit increment (2026-10-18):** Specialized pending semantic draws and generated draw insertion now publish their resolved provider deck through `SemanticDrawPileAdapterV111.ApplyCommittedPhysicalMutation`, which validates the deck against the current physical draw pile before returning the combat state. This removes three direct runtime provider assignments outside the adapter; provider initialization and fixture setup remain separate.
+
 ## S1 precise design
 
 Implement a **read-only, outcome-blind** Chance Law query in `Sts2Emulator.Core` with:

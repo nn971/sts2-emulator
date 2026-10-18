@@ -2968,11 +2968,14 @@ public static class SemanticPilotCombatEngineV111
                 var deck = SemanticDeckEngineV111.InsertKnown(
                     priorCombat.SemanticDeck!, topOffset, insertedInstanceId,
                     publiclyKnown: false);
+                var committedCombat =
+                    SemanticDrawPileAdapterV111.ApplyCommittedPhysicalMutation(
+                        resultCombat!, resultCombat!.DrawPile, deck);
                 result = result with
                 {
                     World = result.World! with
                     {
-                        Combat = resultCombat with { SemanticDeck = deck }
+                        Combat = committedCombat
                     }
                 };
                 ValidateSemanticCombatBoundary(result);

@@ -794,11 +794,14 @@ public static class SemanticCombatDrawEngineV111
             throw new InvalidOperationException("No semantic draw card pending.");
         var resolvedDeck = SemanticDeckEngineV111.Resolve(
             deck, deck.Fingerprint, selectedIndex);
+        var resolvedCombat =
+            SemanticDrawPileAdapterV111.ApplyCommittedPhysicalMutation(
+                combat, combat.DrawPile, resolvedDeck);
         run = run with
         {
             World = world with
             {
-                Combat = combat with { SemanticDeck = resolvedDeck }
+                Combat = resolvedCombat
             }
         };
         RunState advanced;

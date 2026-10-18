@@ -14429,11 +14429,9 @@ public sealed partial class PrototypeGameEngine
             throw new ArgumentOutOfRangeException(nameof(selectedIndex));
         var resolvedDeck = SemanticDeckEngineV111.Resolve(
             deck, deck.Fingerprint, selectedIndex);
-        combat = combat with
-        {
-            PendingChoice = null,
-            SemanticDeck = resolvedDeck
-        };
+        combat = SemanticDrawPileAdapterV111.ApplyCommittedPhysicalMutation(
+            combat with { PendingChoice = null },
+            combat.DrawPile, resolvedDeck);
         if (continuation.Operations.FirstOrDefault()?.Kind ==
             PrototypeCombatEffectKind.AutoPlayTopDrawCards)
         {
