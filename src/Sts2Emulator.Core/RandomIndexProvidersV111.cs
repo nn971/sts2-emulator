@@ -105,6 +105,9 @@ public sealed class NativeRandomIndexProviderV111 : IRandomIndexProviderV111
         var matches = streams.Streams.Where(s => s.StreamId == request.StreamId).ToArray();
         if (matches.Length != 1)
             throw new InvalidOperationException("Native random stream ownership is ambiguous.");
+        using var nativeBoundary =
+            ControlledChanceGuardV111.AuthorizeEngineOwnedNativeBoundary(
+                request.SiteId, request.StreamId, request.OperationKind);
         var before = NativeRngV111.ToSnapshot(matches[0]);
         int index = NativeRngV111.NextInt(streams, request.StreamId, request.SupportCount);
         var after = NativeRngV111.ToSnapshot(streams.Streams.Single(s =>

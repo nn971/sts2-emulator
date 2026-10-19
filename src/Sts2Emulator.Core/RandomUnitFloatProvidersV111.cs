@@ -77,6 +77,9 @@ public sealed class NativeRandomUnitFloatProviderV111
         if (matches.Length != 1)
             throw new InvalidOperationException(
                 "Native random stream ownership is ambiguous.");
+        using var nativeBoundary =
+            ControlledChanceGuardV111.AuthorizeEngineOwnedNativeBoundary(
+                request.SiteId, request.StreamId, "unit_float");
         var before = NativeRngV111.ToSnapshot(matches[0]);
         var value = NativeRngV111.NextFloat(streams, request.StreamId);
         var after = NativeRngV111.ToSnapshot(streams.Streams.Single(

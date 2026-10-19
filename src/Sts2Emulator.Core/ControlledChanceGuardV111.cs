@@ -9,6 +9,9 @@ namespace Sts2Emulator.Core;
 /// </summary>
 public static class ControlledChanceGuardV111
 {
+    private sealed record NativeBoundaryAuthorization(
+        string SiteId, string StreamId, string OperationKind);
+
     private static readonly Dictionary<string, string> EngineOwnedRewardSites = new(
         StringComparer.Ordinal)
     {
@@ -20,6 +23,9 @@ public static class ControlledChanceGuardV111
     private static readonly AsyncLocal<int> Depth = new();
     private static readonly AsyncLocal<int> EngineOwnedRewardDepth = new();
     private static readonly AsyncLocal<int> EngineOwnedNativeDepth = new();
+    private static readonly AsyncLocal<NativeBoundaryAuthorization?>
+        NativeBoundary = new();
+    private static readonly IDisposable NoopScope = new NoopExitScope();
     public static bool Active => Depth.Value > 0;
     internal static bool EngineOwnedNativeProviderActive =>
         EngineOwnedNativeDepth.Value > 0;
@@ -59,6 +65,33 @@ public static class ControlledChanceGuardV111
         return new NativeExitScope();
     }
 
+    /// <summary>
+    /// Authorize one typed, finite native boundary while the guarded native
+    /// control provider is active. The authorization covers the sampler's
+    /// internal primitive draws on its named stream and is removed when the
+    /// typed request returns.
+    /// </summary>
+    internal static IDisposable AuthorizeEngineOwnedNativeBoundary(
+        string siteId, string streamId, string operationKind)
+    {
+        if (!Active || EngineOwnedNativeDepth.Value <= 0)
+            return NoopScope;
+
+        if (!IsEngineOwnedNativeStream(streamId) ||
+            !StochasticSiteRegistryV111.SupportsEngineOwnedNativeBoundary(
+                siteId, operationKind))
+            throw new NotSupportedException(
+                "UNSUPPORTED_CONTROLLED_CHANCE site=" + siteId +
+                " stream=" + streamId + " operation=" + operationKind +
+                " : native provider boundary is not registered.");
+
+        var previous = NativeBoundary.Value;
+        var authorization = new NativeBoundaryAuthorization(
+            siteId, streamId, operationKind);
+        NativeBoundary.Value = authorization;
+        return new NativeBoundaryExitScope(authorization, previous);
+    }
+
     private sealed class RewardExitScope : IDisposable
     {
         private bool _exited;
@@ -79,14 +112,9 @@ public static class ControlledChanceGuardV111
     public static void RequireMigrated(string site, string operation)
     {
         if (Active && EngineOwnedNativeDepth.Value > 0 &&
-            (site is "native_rng.run.monster_ai" or
-                "native_rng.run.shuffle" or
-                "native_rng.run.combat_energy_costs" or
-                "native_rng.run.combat_targets" or
-                "native_rng.run.combat_card_selection" or
-                "native_rng.run.combat_card_generation" or
-                "native_rng.run.combat_potion_generation") &&
-            operation == "next_uint64")
+            operation == "next_uint64" &&
+            NativeBoundary.Value is { } authorization &&
+            site == "native_rng." + authorization.StreamId)
             return;
         if (Active && !(EngineOwnedRewardDepth.Value > 0 &&
                 site == "prototype_rng.reward" && operation == "next_int"))
@@ -94,6 +122,38 @@ public static class ControlledChanceGuardV111
                 "UNSUPPORTED_CONTROLLED_CHANCE site=" + site +
                 " operation=" + operation +
                 " : gameplay RNG site lacks resumable Nature ownership.");
+    }
+
+    private static bool IsEngineOwnedNativeStream(string streamId) =>
+        streamId is "run.monster_ai" or
+            "run.shuffle" or
+            "run.combat_energy_costs" or
+            "run.combat_targets" or
+            "run.combat_card_selection" or
+            "run.combat_card_generation" or
+            "run.combat_potion_generation";
+
+    private sealed class NativeBoundaryExitScope(
+        NativeBoundaryAuthorization authorization,
+        NativeBoundaryAuthorization? previous) : IDisposable
+    {
+        private bool _exited;
+
+        public void Dispose()
+        {
+            if (_exited)
+                return;
+            if (!ReferenceEquals(NativeBoundary.Value, authorization))
+                throw new InvalidOperationException(
+                    "Native boundary authorizations must be disposed in stack order.");
+            NativeBoundary.Value = previous;
+            _exited = true;
+        }
+    }
+
+    private sealed class NoopExitScope : IDisposable
+    {
+        public void Dispose() { }
     }
 
     private sealed class NativeExitScope : IDisposable
