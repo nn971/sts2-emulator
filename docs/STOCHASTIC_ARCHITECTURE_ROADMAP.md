@@ -4,6 +4,8 @@
 
 **Tracking:** [S1 Chance Law and ReferenceNature issue #174](https://github.com/nn971/sts2-emulator/issues/174); [Nature pilot #143](https://github.com/nn971/sts2-emulator/issues/143); [native inspector #122](https://github.com/nn971/sts2-emulator/issues/122). The existing site ledger and this architecture's ownership crosswalk are joined in the [site and state inventory](STOCHASTIC_SITE_OWNERSHIP_INVENTORY.md); that file deliberately does not duplicate per-site rows.
 
+**S1 deferred-draw identity binding increment (2026-10-20):** `ReferenceNatureV111.ResolvePending` now verifies that the sampled law outcome's physical card-instance identity matches the same indexed identity in the pending mechanics draw before calling the draw resolver. A stale or misaligned law therefore fails closed instead of committing a different card than the one sampled. Independent constrained-deck and continuation acceptance remains open; no tests or builds were run.
+
 **Implementation scope:** `sts2-emulator`, STS2 v0.111.0, single-player. The first vertical slice is two-site Silent combat. Keep the four-Act Silent gameplay and active native inspector developments on separate tracks. Existing versioned `controlled_*`, `nature_*`, `semantic_*` and ordinary AI protocols remain supported; no historic snapshot/probability reinterpretation.
 
 ## Priorities and milestones

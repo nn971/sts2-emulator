@@ -7927,7 +7927,11 @@ public static class ReferenceNatureV111
             var selection = SampleValidated(law, state);
             if (selection.EventId != drawEvent.EventId ||
                 selection.OutcomeIndex < 0 ||
-                selection.OutcomeIndex >= drawEvent.CandidateCardInstanceIds.Length)
+                selection.OutcomeIndex >= drawEvent.CandidateCardInstanceIds.Length ||
+                selection.OutcomeId != "card_instance:" +
+                    drawEvent.CandidateCardInstanceIds[
+                        selection.OutcomeIndex].ToString(
+                            CultureInfo.InvariantCulture))
                 throw new InvalidDataException(
                     "ReferenceNature law no longer matches the pending draw event.");
             var cardInstanceId =
