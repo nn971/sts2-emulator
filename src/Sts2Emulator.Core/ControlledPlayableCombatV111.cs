@@ -361,7 +361,8 @@ public sealed record ControlledPlayableCombatV111(
                     .ToString() ?? "none") + ":pool:" +
                 CanonicalJson.Sha256(generation.CandidatePotionIds);
             return new RandomIndexRequestV111(
-                "combat.potion_generation.random_model", "prototype.combat",
+                SemanticPotionGenerationChoiceV111.SiteId,
+                "prototype.combat",
                 owner, PotionGenerationTranscript.Length,
                 Enumerable.Range(0, generation.CandidatePotionIds.Length)
                     .ToArray(), OperationKind: "choose_index");

@@ -16,7 +16,7 @@ public sealed record SemanticPotionGenerationEventV111(
     {
         if (SchemaId != SemanticPotionGenerationChoiceV111.SchemaId ||
             string.IsNullOrWhiteSpace(EventId) ||
-            SiteId != "combat.potion_generation.random_model" ||
+            SiteId != SemanticPotionGenerationChoiceV111.SiteId ||
             StreamId != "prototype.combat" ||
             string.IsNullOrWhiteSpace(OwnerId) || Ordinal < 0 ||
             OperationKind != "choose_potion_model" ||
@@ -54,6 +54,34 @@ public sealed record SemanticPotionGenerationDecisionV111(
 public static class SemanticPotionGenerationChoiceV111
 {
     public const string SchemaId = "sts2-v111-semantic-potion-generation-v1";
+    public const string SiteId = "combat.potion_generation.random_model";
+
+    internal static SemanticPotionGenerationEventV111 CreateEvent(
+        string boundaryFingerprint, string ownerId, int ordinal,
+        string[] candidatePotionIds)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(boundaryFingerprint);
+        ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
+        ArgumentNullException.ThrowIfNull(candidatePotionIds);
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+        var candidates = (string[])candidatePotionIds.Clone();
+        var supportFingerprint = CanonicalJson.Sha256(candidates);
+        var eventId = CanonicalJson.Sha256(new
+        {
+            SchemaId,
+            BoundaryFingerprint = boundaryFingerprint,
+            SiteId,
+            OwnerId = ownerId,
+            Ordinal = ordinal,
+            SupportFingerprint = supportFingerprint
+        });
+        var semanticEvent = new SemanticPotionGenerationEventV111(
+            SchemaId, eventId, SiteId, "prototype.combat", ownerId,
+            ordinal, "choose_potion_model", candidates, supportFingerprint);
+        semanticEvent.Validate();
+        return semanticEvent;
+    }
 
     internal static void ValidateBoundary(RunState run)
     {
