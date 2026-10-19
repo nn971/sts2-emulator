@@ -699,11 +699,17 @@ public static class SemanticEndTurnEngineV111
         if (PrototypeGameEngine
                 .IsAtCombatRewardOrTerminalBoundary(result))
             return state with { Run = result, Complete = true };
-        if (!PrototypeGameEngine.IsAtCombatPlayerDecisionBoundary(result) ||
-            result.World?.Combat?.SemanticDeck is not { Pending: null })
+        if (!PrototypeGameEngine.IsAtCombatPlayerDecisionBoundary(result))
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.semantic_end_turn " +
                 "operation=not_at_next_player_boundary");
+        if (result.World?.Combat is not { } combat)
+            throw new InvalidDataException(
+                "Completed semantic end-turn lost its combat state.");
+        SemanticDrawPileAdapterV111.ValidateNatureDeckBoundary(
+            combat,
+            "Completed semantic end-turn has no Nature deck.",
+            "Completed semantic end-turn has an invalid Nature deck boundary.");
         var actions = new PrototypeAiEnvironment().Observe(result).LegalActions;
         if (!actions.Any())
             throw new InvalidOperationException(
