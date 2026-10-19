@@ -269,6 +269,8 @@ identity requests for one legal configured Native Rest `dig` action, validates
 the selected support against the canonical bag, and commits the Reward with its
 Nature cursor after replay completes.
 
+`SemanticDrawPileAdapterV111.ApplyNewDrawPileInsertion` now publishes a newly created `CombatCardInstance`, its draw-pile membership, the next instance ID, and the provider constraint in one committed transition. Runtime enemy, Personal Hive, generated-card, controlled insertion, and Tea of Discourtesy paths use this operation; insertion of an existing card continues through the identity-preserving insertion path. The shared insertion boundary rejects unknown card identities, so callers cannot publish a zone entry without its combat-card record. Broader draw-resume consolidation and cross-provider equivalence remain open.
+
 ## Semantic lifecycle and provider interchangeability
 
 The **same game mechanics** issues semantic stochastic operations and applies their resolved outcomes regardless of provider:

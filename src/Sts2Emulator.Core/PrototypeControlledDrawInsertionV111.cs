@@ -358,6 +358,7 @@ public sealed partial class PrototypeGameEngine
             choice.SelectedCardId is not { } cardId)
             throw new ArgumentOutOfRangeException(nameof(chosen));
         var instanceId = combat.NextCardInstanceId;
+        CombatCardInstance? newCard = null;
         if (choice.AfterShuffleRelic is not null)
         {
             combat = AddGeneratedCardsToDiscard(combat, cardId, 1);
@@ -367,7 +368,7 @@ public sealed partial class PrototypeGameEngine
         }
         else
         {
-            var card = new CombatCardInstance(
+            newCard = new CombatCardInstance(
                 instanceId, null, cardId, 0, true,
                 PrototypeJson.EmptyObject(),
                 TemporaryEnergyCost: choice.Operation.Kind ==
@@ -375,11 +376,6 @@ public sealed partial class PrototypeGameEngine
                     ? new PrototypeTemporaryCardCost(
                         0, PrototypeTemporaryCardCostExpiry.None)
                     : null);
-            combat = combat with
-            {
-                NextCardInstanceId = instanceId + 1,
-                Cards = combat.Cards.Append(card).ToArray()
-            };
         }
         var draw = combat.DrawPile.ToList();
         draw.Insert(chosen, instanceId);
@@ -390,14 +386,14 @@ public sealed partial class PrototypeGameEngine
         if (choice.AfterShuffleRelic is not null)
             zoneChanges[PrototypeCardZone.DiscardPile] =
                 combat.DiscardPile.Where(id => id != instanceId).ToArray();
-        combat = SemanticDrawPileAdapterV111.ApplyDrawPileInsertion(
-            combat,
-            chosen,
-            instanceId,
-            combat.Mechanics.CardZones.WithZoneChanges(zoneChanges)) with
-        {
-            PendingChoice = null
-        };
+        var nextCardZones = combat.Mechanics.CardZones
+            .WithZoneChanges(zoneChanges);
+        combat = newCard is null
+            ? SemanticDrawPileAdapterV111.ApplyDrawPileInsertion(
+                combat, chosen, instanceId, nextCardZones)
+            : SemanticDrawPileAdapterV111.ApplyNewDrawPileInsertion(
+                combat, chosen, newCard, nextCardZones);
+        combat = combat with { PendingChoice = null };
 
         var remainingAfterShuffleRelics =
             choice.RemainingAfterShuffleRelics ?? [];

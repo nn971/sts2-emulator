@@ -4675,13 +4675,9 @@ public sealed partial class PrototypeGameEngine
                                         ":effect:" + effect.Kind);
                                 combat = insertion.Combat;
                                 combat = SemanticDrawPileAdapterV111
-                                    .ApplyDrawPileInsertion(
+                                    .ApplyNewDrawPileInsertion(
                                         combat, insertion.SelectedIndex,
-                                        instance.InstanceId) with
-                                {
-                                    Cards = combat.Cards.Append(instance).ToArray(),
-                                    NextCardInstanceId = combat.NextCardInstanceId + 1
-                                };
+                                        instance);
                             }
                             break;
 
@@ -5867,13 +5863,8 @@ public sealed partial class PrototypeGameEngine
                             combat = insertion.Combat;
                             var slot = insertion.SelectedIndex;
                             combat = SemanticDrawPileAdapterV111
-                                .ApplyDrawPileInsertion(
-                                    combat, slot, instance.InstanceId) with
-                            {
-                                Cards = combat.Cards.Append(instance).ToArray(),
-                                NextCardInstanceId =
-                                    combat.NextCardInstanceId + 1
-                            };
+                                .ApplyNewDrawPileInsertion(
+                                    combat, slot, instance);
                         }
                     }
                     var damageContinuation =
@@ -7571,20 +7562,16 @@ public sealed partial class PrototypeGameEngine
                             operation.Kind, sourceCardInstanceId,
                             drawInsertionOrdinal++);
                         combat = insertion.Combat;
+                        var cardInstance = new CombatCardInstance(
+                            id, null, selected, 0, true,
+                            PrototypeJson.EmptyObject(),
+                            TemporaryEnergyCost:
+                                new PrototypeTemporaryCardCost(0,
+                                    PrototypeTemporaryCardCostExpiry.None));
                         combat = SemanticDrawPileAdapterV111
-                            .ApplyDrawPileInsertion(
-                                combat, insertion.SelectedIndex, id) with
-                        {
-                            NextCardInstanceId = id + 1,
-                            Cards = combat.Cards.Append(
-                                new CombatCardInstance(
-                                    id, null, selected, 0, true,
-                                    PrototypeJson.EmptyObject(),
-                                    TemporaryEnergyCost:
-                                        new PrototypeTemporaryCardCost(0,
-                                            PrototypeTemporaryCardCostExpiry.None)))
-                                .ToArray(),
-                        };
+                            .ApplyNewDrawPileInsertion(
+                                combat, insertion.SelectedIndex,
+                                cardInstance);
                     }
                     break;
                 }
@@ -7606,17 +7593,13 @@ public sealed partial class PrototypeGameEngine
                             operation.Kind, sourceCardInstanceId,
                             drawInsertionOrdinal++);
                         combat = insertion.Combat;
+                        var cardInstance = new CombatCardInstance(
+                            id, null, operation.CardId, 0, true,
+                            PrototypeJson.EmptyObject());
                         combat = SemanticDrawPileAdapterV111
-                            .ApplyDrawPileInsertion(
-                                combat, insertion.SelectedIndex, id) with
-                        {
-                            NextCardInstanceId = id + 1,
-                            Cards = combat.Cards.Append(
-                                new CombatCardInstance(
-                                    id, null, operation.CardId, 0, true,
-                                    PrototypeJson.EmptyObject()))
-                                .ToArray(),
-                        };
+                            .ApplyNewDrawPileInsertion(
+                                combat, insertion.SelectedIndex,
+                                cardInstance);
                     }
                     break;
                 }
