@@ -509,6 +509,30 @@ public static class SemanticDrawPileAdapterV111
             publiclyKnown);
 
     /// <summary>
+    /// Commits creation of a combat card together with its draw-pile
+    /// membership and provider constraint as one mechanics transition.
+    /// </summary>
+    public static CombatState ApplyNewDrawPileInsertion(
+        CombatState combat,
+        int physicalIndex,
+        CombatCardInstance newCard,
+        CombatCardZonesV111? nextCardZones = null,
+        bool publiclyKnown = false)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(newCard);
+        if (newCard.InstanceId != combat.NextCardInstanceId ||
+            combat.Cards.Any(card =>
+                card.InstanceId == newCard.InstanceId))
+            throw new InvalidDataException(
+                "New draw-pile card does not use the next available combat identity.");
+
+        return ApplyDrawPileInsertionSequence(
+            combat, physicalIndex, [newCard.InstanceId], nextCardZones,
+            publiclyKnown, addedCombatCards: [newCard]);
+    }
+
+    /// <summary>
     /// Commits a source-ordered run of known card identities at one physical
     /// draw-pile index. The resulting membership, order, provider constraints,
     /// and source-zone removals are published together.
@@ -519,7 +543,8 @@ public static class SemanticDrawPileAdapterV111
         IReadOnlyList<long> insertedCardInstanceIds,
         CombatCardZonesV111? nextCardZones = null,
         bool publiclyKnown = false,
-        IReadOnlyCollection<long>? removedCardInstanceIds = null)
+        IReadOnlyCollection<long>? removedCardInstanceIds = null,
+        IReadOnlyList<CombatCardInstance>? addedCombatCards = null)
     {
         ArgumentNullException.ThrowIfNull(combat);
         ArgumentNullException.ThrowIfNull(insertedCardInstanceIds);
@@ -533,6 +558,32 @@ public static class SemanticDrawPileAdapterV111
             inserted.Any(combat.DrawPile.Contains))
             throw new InvalidDataException(
                 "Draw-pile insertion sequence contains duplicate identities.");
+        var addedCards = addedCombatCards?.ToArray() ?? [];
+        if (addedCards.Any(card => card is null))
+            throw new InvalidDataException(
+                "New draw-pile card list contains a null card.");
+        var addedCardIds = addedCards.Select(card => card.InstanceId)
+            .ToArray();
+        if (!inserted.SequenceEqual(addedCardIds) &&
+            addedCards.Length > 0)
+            throw new InvalidDataException(
+                "New combat cards do not match the draw-pile insertion sequence.");
+        if (addedCardIds.Distinct().Count() != addedCardIds.Length ||
+            addedCards.Any(card => combat.Cards.Any(existing =>
+                existing.InstanceId == card.InstanceId)) ||
+            (addedCards.Length > 0 &&
+             (addedCards[0].InstanceId != combat.NextCardInstanceId ||
+              addedCards.Where((card, index) =>
+                      card.InstanceId != checked(
+                          combat.NextCardInstanceId + index))
+                  .Any())))
+            throw new InvalidDataException(
+                "New draw-pile card identities are not the next combat identities.");
+        var knownCardIds = combat.Cards.Select(card => card.InstanceId)
+            .Concat(addedCardIds).ToHashSet();
+        if (inserted.Any(id => !knownCardIds.Contains(id)))
+            throw new InvalidDataException(
+                "Draw-pile insertion references an unregistered combat card.");
         expectedDrawPile.InsertRange(physicalIndex, inserted);
         var zones = nextCardZones ?? combat.Mechanics.CardZones.WithCardsIn(
             PrototypeCardZone.DrawPile, expectedDrawPile.ToArray());
@@ -570,7 +621,8 @@ public static class SemanticDrawPileAdapterV111
                 semantic = SemanticDeckEngineV111.InsertKnown(
                     semantic, topOffset, cardInstanceId, publiclyKnown);
         }
-        return CommitZoneTransition(combat, zones, semantic);
+        return CommitZoneTransition(
+            combat, zones, semantic, addedCombatCards: addedCards);
     }
 
     /// <summary>
@@ -833,7 +885,8 @@ public static class SemanticDrawPileAdapterV111
     private static CombatState CommitZoneTransition(
         CombatState combat,
         CombatCardZonesV111 nextCardZones,
-        SemanticDeckStateV111? committedSemanticDeck)
+        SemanticDeckStateV111? committedSemanticDeck,
+        IReadOnlyList<CombatCardInstance>? addedCombatCards = null)
     {
         var zoneLocations = Enum.GetValues<PrototypeCardZone>()
             .SelectMany(zone => nextCardZones.CardsIn(zone))
@@ -842,13 +895,20 @@ public static class SemanticDrawPileAdapterV111
             throw new InvalidDataException(
                 "Card-zone transition duplicates a physical card instance.");
 
+        var addedCards = addedCombatCards?.ToArray() ?? [];
         var next = combat with
         {
             Mechanics = combat.Mechanics with
             {
                 CardZones = nextCardZones
             },
-            SemanticDeck = committedSemanticDeck
+            SemanticDeck = committedSemanticDeck,
+            Cards = addedCards.Length == 0
+                ? combat.Cards
+                : combat.Cards.Concat(addedCards).ToArray(),
+            NextCardInstanceId = addedCards.Length == 0
+                ? combat.NextCardInstanceId
+                : checked(addedCards[^1].InstanceId + 1)
         };
         ValidateSynchronized(next);
         return next;

@@ -111,12 +111,8 @@ public sealed partial class PrototypeGameEngine
                 "combat",
                 $"relic:tea_of_discourtesy:insert:{i}:count:{combat.DrawPile.Length}",
                 combat.DrawPile.Length + 1).SelectedIndex;
-            combat = SemanticDrawPileAdapterV111.ApplyDrawPileInsertion(
-                combat, position, instanceId) with
-            {
-                Cards = combat.Cards.Append(card).ToArray(),
-                NextCardInstanceId = instanceId + 1
-            };
+            combat = SemanticDrawPileAdapterV111
+                .ApplyNewDrawPileInsertion(combat, position, card);
         }
 
         return (
