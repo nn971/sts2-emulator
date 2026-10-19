@@ -420,7 +420,21 @@ public static class SemanticDrawPileAdapterV111
         IReadOnlyCollection<long> addedCardInstanceIds,
         IReadOnlyCollection<long> removedCardInstanceIds,
         IReadOnlyList<CombatCardInstance>? addedCombatCards = null,
-        IReadOnlyCollection<long>? removedCombatCardInstanceIds = null)
+        IReadOnlyCollection<long>? removedCombatCardInstanceIds = null) =>
+        ApplyZoneIdentityDeltaCore(
+            combat, nextCardZones, addedCardInstanceIds,
+            removedCardInstanceIds, addedCombatCards,
+            removedCombatCardInstanceIds);
+
+    private static CombatState ApplyZoneIdentityDeltaCore(
+        CombatState combat,
+        CombatCardZonesV111 nextCardZones,
+        IReadOnlyCollection<long> addedCardInstanceIds,
+        IReadOnlyCollection<long> removedCardInstanceIds,
+        IReadOnlyList<CombatCardInstance>? addedCombatCards,
+        IReadOnlyCollection<long>? removedCombatCardInstanceIds,
+        long? transformedPersistentCardInstanceId = null,
+        bool recordPersistentCardTransform = false)
     {
         ArgumentNullException.ThrowIfNull(combat);
         ArgumentNullException.ThrowIfNull(nextCardZones);
@@ -467,7 +481,10 @@ public static class SemanticDrawPileAdapterV111
         return CommitZoneTransition(
             combat, nextCardZones, combat.SemanticDeck,
             addedCombatCards: addedCards,
-            removedCombatCardInstanceIds: removedCombatCards);
+            removedCombatCardInstanceIds: removedCombatCards,
+            transformedPersistentCardInstanceId:
+                transformedPersistentCardInstanceId,
+            recordPersistentCardTransform: recordPersistentCardTransform);
     }
 
     /// <summary>
@@ -479,7 +496,9 @@ public static class SemanticDrawPileAdapterV111
         CombatCardZonesV111 nextCardZones,
         long replacedCardInstanceId,
         long replacementCardInstanceId,
-        CombatCardInstance? replacementCard = null)
+        CombatCardInstance? replacementCard = null,
+        long? transformedPersistentCardInstanceId = null,
+        bool recordPersistentCardTransform = false)
     {
         ArgumentNullException.ThrowIfNull(combat);
         ArgumentNullException.ThrowIfNull(nextCardZones);
@@ -489,6 +508,10 @@ public static class SemanticDrawPileAdapterV111
             currentIds.Contains(replacementCardInstanceId))
             throw new InvalidDataException(
                 "Card-zone replacement has an invalid source or destination identity.");
+        ValidateTransformProvenance(
+            combat, replacedCardInstanceId,
+            transformedPersistentCardInstanceId,
+            recordPersistentCardTransform);
 
         foreach (var zone in Enum.GetValues<PrototypeCardZone>())
         {
@@ -499,11 +522,13 @@ public static class SemanticDrawPileAdapterV111
                 throw new InvalidDataException(
                     "Card-zone replacement changed an unrelated zone identity or order.");
         }
-        return ApplyZoneIdentityDelta(
+        return ApplyZoneIdentityDeltaCore(
             combat, nextCardZones, [replacementCardInstanceId],
             [replacedCardInstanceId],
             replacementCard is null ? null : [replacementCard],
-            [replacedCardInstanceId]);
+            [replacedCardInstanceId],
+            transformedPersistentCardInstanceId,
+            recordPersistentCardTransform);
     }
 
     private static HashSet<long> CardZoneIdentitySet(
@@ -744,7 +769,9 @@ public static class SemanticDrawPileAdapterV111
         long replacedCardInstanceId,
         long replacementCardInstanceId,
         CombatCardZonesV111 nextCardZones,
-        CombatCardInstance? replacementCard = null)
+        CombatCardInstance? replacementCard = null,
+        long? transformedPersistentCardInstanceId = null,
+        bool recordPersistentCardTransform = false)
     {
         ArgumentNullException.ThrowIfNull(combat);
         ArgumentNullException.ThrowIfNull(nextCardZones);
@@ -755,6 +782,10 @@ public static class SemanticDrawPileAdapterV111
         if (replacedCardInstanceId == replacementCardInstanceId)
             throw new InvalidDataException(
                 "Draw-pile replacement must use a different identity.");
+        ValidateTransformProvenance(
+            combat, replacedCardInstanceId,
+            transformedPersistentCardInstanceId,
+            recordPersistentCardTransform);
 
         var expectedDrawPile = (long[])combat.DrawPile.Clone();
         expectedDrawPile[physicalIndex] = replacementCardInstanceId;
@@ -790,7 +821,10 @@ public static class SemanticDrawPileAdapterV111
         return CommitZoneTransition(
             combat, nextCardZones, semantic,
             addedCombatCards: addedCards,
-            removedCombatCardInstanceIds: [replacedCardInstanceId]);
+            removedCombatCardInstanceIds: [replacedCardInstanceId],
+            transformedPersistentCardInstanceId:
+                transformedPersistentCardInstanceId,
+            recordPersistentCardTransform: recordPersistentCardTransform);
     }
 
     /// <summary>
@@ -958,7 +992,9 @@ public static class SemanticDrawPileAdapterV111
         CombatCardZonesV111 nextCardZones,
         SemanticDeckStateV111? committedSemanticDeck,
         IReadOnlyList<CombatCardInstance>? addedCombatCards = null,
-        IReadOnlyCollection<long>? removedCombatCardInstanceIds = null)
+        IReadOnlyCollection<long>? removedCombatCardInstanceIds = null,
+        long? transformedPersistentCardInstanceId = null,
+        bool recordPersistentCardTransform = false)
     {
         var zoneLocations = Enum.GetValues<PrototypeCardZone>()
             .SelectMany(zone => nextCardZones.CardsIn(zone))
@@ -990,10 +1026,63 @@ public static class SemanticDrawPileAdapterV111
                     .Concat(addedCards).ToArray(),
             NextCardInstanceId = addedCards.Length == 0
                 ? combat.NextCardInstanceId
-                : checked(addedCards[^1].InstanceId + 1)
+                : checked(addedCards[^1].InstanceId + 1),
+            TransformedPersistentCardIds =
+                ResolveTransformedPersistentCardInstanceIds(
+                    combat.TransformedPersistentCardIds,
+                    transformedPersistentCardInstanceId,
+                    recordPersistentCardTransform)
         };
         ValidateSynchronized(next);
         return next;
+    }
+
+    private static long[] AppendTransformedPersistentCardInstanceId(
+        long[]? transformedPersistentCardInstanceIds,
+        long persistentCardInstanceId)
+    {
+        if (persistentCardInstanceId <= 0)
+            throw new InvalidDataException(
+                "Transformed persistent card identity must be positive.");
+        var existing = transformedPersistentCardInstanceIds ?? [];
+        if (existing.Contains(persistentCardInstanceId))
+            throw new InvalidDataException(
+                "Persistent card identity was already marked transformed.");
+        return existing.Append(persistentCardInstanceId).ToArray();
+    }
+
+    private static void ValidateTransformProvenance(
+        CombatState combat,
+        long replacedCardInstanceId,
+        long? transformedPersistentCardInstanceId,
+        bool recordPersistentCardTransform)
+    {
+        if (!recordPersistentCardTransform)
+        {
+            if (transformedPersistentCardInstanceId is not null)
+                throw new InvalidDataException(
+                    "Transform provenance requires a transform replacement transition.");
+            return;
+        }
+        var sourceCards = combat.Cards.Where(card =>
+            card.InstanceId == replacedCardInstanceId).ToArray();
+        if (sourceCards.Length != 1 ||
+            sourceCards[0].PersistentCardInstanceId !=
+                transformedPersistentCardInstanceId)
+            throw new InvalidDataException(
+                "Card replacement transform provenance differs from its source card.");
+    }
+
+    private static long[]? ResolveTransformedPersistentCardInstanceIds(
+        long[]? currentIds,
+        long? transformedPersistentCardInstanceId,
+        bool recordPersistentCardTransform)
+    {
+        if (!recordPersistentCardTransform)
+            return currentIds;
+        return transformedPersistentCardInstanceId is { } persistentId
+            ? AppendTransformedPersistentCardInstanceId(currentIds, persistentId)
+            : currentIds ?? [];
     }
 
     internal static SemanticDeckStateV111? SynchronizeSemanticDrawPileAfterMutation(
