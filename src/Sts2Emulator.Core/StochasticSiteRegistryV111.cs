@@ -172,6 +172,12 @@ public sealed record StochasticSessionCoverageV111(
     }
 }
 
+/// <summary>Legacy caller-bound index query metadata shared by Chance Law and
+/// typed request validation.</summary>
+internal sealed record LegacyCallerBoundIndexQuerySiteV111(
+    string StreamId, string OperationKind, int MinimumSupportCount,
+    int? ExactSupportCount = null);
+
 /// <summary>
 /// Authoritative stable site lists shared by capability negotiation and the
 /// controlled replay allowlists. Session coverage remains separate from the
@@ -215,6 +221,100 @@ public static class StochasticSiteRegistryV111
         "reward.lava_rock.relic_offer.shuffle_swap_index";
     public const string WarHammerEliteUpgradeShuffleSiteId =
         "relic.war_hammer.elite_upgrade.shuffle_swap_index";
+
+    private static readonly Dictionary<string,
+        LegacyCallerBoundIndexQuerySiteV111>
+        LegacyCallerBoundIndexQuerySites = new(StringComparer.Ordinal)
+        {
+            ["event.unknown_room.odds.ticket"] = new(
+                "event", "bounded_integer", 1000, 1000),
+            ["event.selection.weighted_ticket"] = new(
+                "event", "bounded_integer", 1),
+            ["event.random_upgrade.card_instance"] = new(
+                "event", "choose_index", 1),
+            [PrototypeGameEngine.PaelsToothCardReturnSiteId] = new(
+                "reward", "choose_index", 1),
+            ["combat.encounter.formation.index_draw"] = new(
+                "combat", "choose_index", 1),
+            ["combat.encounter.overgrowth_elite.index_draw"] = new(
+                "combat", "choose_index", 1),
+            ["combat.encounter.overgrowth_weak.index_draw"] = new(
+                "combat", "choose_index", 1),
+            ["combat.encounter.overgrowth_normal.index_draw"] = new(
+                "combat", "choose_index", 1),
+            ["combat.encounter.weighted_selection.ticket"] = new(
+                "combat", "bounded_integer", 1),
+            ["combat.encounter.underdocks.elite.index_draw"] = new(
+                "combat", "choose_index", 1),
+            ["combat.encounter.underdocks.weak.index_draw"] = new(
+                "combat", "choose_index", 1),
+            ["combat.encounter.underdocks.normal.index_draw"] = new(
+                "combat", "choose_index", 1),
+            ["combat.encounter.later_act.weak.index_draw"] = new(
+                "combat", "choose_index", 1),
+            ["combat.encounter.later_act.normal.index_draw"] = new(
+                "combat", "choose_index", 1),
+            ["combat.encounter.later_act.elite.index_draw"] = new(
+                "combat", "choose_index", 1),
+            ["combat.enemy.summon_pool.select"] = new(
+                "combat", "choose_index", 1),
+            [PrototypeGameEngine.ImprovementCardSiteId] = new(
+                "combat", "choose_index", 1),
+            ["map.legacy.floor_width.index_draw"] = new(
+                "map", "choose_index", 2),
+            ["map.legacy.edge_source.index_draw"] = new(
+                "map", "choose_index", 1),
+            ["map.legacy.orphan_target.index_draw"] = new(
+                "map", "choose_index", 1),
+            ["map.legacy.edge_extra_chance.ticket"] = new(
+                "map", "bounded_integer", 100, 100),
+            ["map.legacy.second_edge_source.index_draw"] = new(
+                "map", "choose_index", 1),
+            ["map.legacy.convergence.order_key"] = new(
+                "map", "bounded_integer", int.MaxValue, int.MaxValue),
+            ["map.legacy.convergence.source.index_draw"] = new(
+                "map", "choose_index", 1),
+            ["map.legacy.second_edge_target.index_draw"] = new(
+                "map", "choose_index", 1),
+            ["map.legacy.required_room.node.index_draw"] = new(
+                "map", "choose_index", 1),
+            ["map.legacy.room_assignment.index_draw"] = new(
+                "map", "choose_index", 1),
+            ["event.reward.card_bundle.shuffle_swap_index"] = new(
+                "reward", "bounded_integer", 2),
+            ["relic.sand_castle.acquisition_upgrade.shuffle_swap_index"] =
+                new("event", "bounded_integer", 2),
+            ["run.random_pool_distinct.shuffle_swap_index"] = new(
+                "reward", "bounded_integer", 2),
+            ["shop.potion_offer.shuffle_swap_index"] = new(
+                "shop", "bounded_integer", 2),
+            ["shop.relic_offer.shuffle_swap_index"] = new(
+                "shop", "bounded_integer", 2)
+        };
+
+    public static string[] LegacyCallerBoundIndexQuerySiteIds =>
+        LegacyCallerBoundIndexQuerySites.Keys
+            .Order(StringComparer.Ordinal).ToArray();
+
+    public static bool IsLegacyCallerBoundIndexQuerySite(string siteId) =>
+        LegacyCallerBoundIndexQuerySites.ContainsKey(siteId);
+
+    internal static bool TryGetLegacyCallerBoundIndexQuerySite(
+        string siteId, out LegacyCallerBoundIndexQuerySiteV111 site) =>
+        LegacyCallerBoundIndexQuerySites.TryGetValue(siteId, out site!);
+
+    internal static bool TryGetRequiredRandomIndexOperationKind(
+        string siteId, out string operationKind)
+    {
+        if (LegacyCallerBoundIndexQuerySites.TryGetValue(siteId, out var site))
+        {
+            operationKind = site.OperationKind;
+            return true;
+        }
+
+        operationKind = string.Empty;
+        return false;
+    }
 
     public static string[] ControlledDrawInsertionSiteIds =>
     [
@@ -461,7 +561,7 @@ public static class StochasticSiteRegistryV111
         .. ChanceLawEngineV111.LegacyShopCardPriceQuerySiteIds,
         .. ChanceLawEngineV111.LegacyShopPotionPriceQuerySiteIds,
         .. ChanceLawEngineV111.LegacyShopRelicPriceQuerySiteIds,
-        .. ChanceLawEngineV111.LegacyCallerBoundIndexQuerySiteIds,
+        .. LegacyCallerBoundIndexQuerySiteIds,
         .. ChanceLawEngineV111.NativeMapGaussianIntQuerySiteIds,
         .. ChanceLawEngineV111.LegacyPotionDropTicketQuerySiteIds,
         .. ChanceLawEngineV111.LegacyRewardPotionModelQuerySiteIds,

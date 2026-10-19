@@ -21,7 +21,7 @@ from urllib.parse import unquote, urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = ROOT / "src" / "Sts2Emulator.Core"
-SCHEMA_ID = "emulator-rng-callsite-source-inventory-v32"
+SCHEMA_ID = "emulator-rng-callsite-source-inventory-v33"
 SITE_REGISTRY_PATH = SOURCE_ROOT / "StochasticSiteRegistryV111.cs"
 
 CALL_PATTERN = re.compile(
@@ -932,6 +932,22 @@ def _resolve_site_array_property(
                     active | {identity}, class_context,
                     class_name_context,
                 )
+            property_body = next((item.group("body")
+                for item in SITE_ARRAY_PROPERTY_PATTERN.finditer(
+                    class_context
+                ) if item.group("name") == array_name), None)
+            if property_body is not None:
+                keys = re.search(
+                    r"\b(?P<dictionary>[A-Za-z_][A-Za-z0-9_]*)\.Keys\b",
+                    property_body,
+                )
+                if keys is not None:
+                    values = _dictionary_site_values(
+                        class_context, keys.group("dictionary"),
+                        _string_constants(class_context), global_constants,
+                    )
+                    if values:
+                        return values, []
         return [], [expression.strip()]
     class_name = match.group("class").rsplit(".", 1)[-1]
     property_name = match.group("name")
@@ -1391,6 +1407,11 @@ def _typed_request_constructions(
 ) -> list[dict[str, Any]]:
     """Inventory explicit typed random-request construction boundaries."""
     calls: list[dict[str, Any]] = []
+    registry_source = sources.get(SITE_REGISTRY_PATH, "")
+    legacy_caller_bound_operations = _dictionary_member_site_values(
+        registry_source, "LegacyCallerBoundIndexQuerySites", 1,
+        {}, global_constants,
+    )
     for path, source in sources.items():
         for match in REQUEST_CONSTRUCTION_PATTERN.finditer(source):
             local_constants = _method_string_constants(
@@ -1444,6 +1465,25 @@ def _typed_request_constructions(
                 if values:
                     resolution_source = "method_local_assignment"
             if not values:
+                member_source = _containing_member_source(
+                    source, match.start()
+                )
+                normalized_member_source = re.sub(
+                    r"\s+", "", member_source
+                )
+                normalized_site_expression = re.sub(
+                    r"\s+", "", expression or ""
+                )
+                if (normalized_site_expression and
+                        f"TryGetLegacyCallerBoundIndexQuerySite("
+                        f"{normalized_site_expression}," in
+                        normalized_member_source and
+                        "thrownewNotSupportedException" in
+                        normalized_member_source):
+                    values = sorted(legacy_caller_bound_operations)
+                    if values:
+                        resolution_source = "registry_dictionary_guard"
+            if not values:
                 values = _guarded_site_values(
                     source, match.start(), expression,
                     local_constants, global_constants,
@@ -1486,7 +1526,10 @@ def _typed_request_constructions(
                     "guarded_legacy_random_choice_site_set"
                     if resolution_source == "legacy_random_choice_site_guard"
                     else "guarded_finite_site_id_alternatives"
-                    if resolution_source == "method_fail_closed_validation"
+                    if resolution_source in (
+                        "method_fail_closed_validation",
+                        "registry_dictionary_guard",
+                    )
                     else "static_site_id" if len(values) == 1
                     else "finite_site_id_alternatives"
                 )
@@ -1531,17 +1574,13 @@ def _typed_request_constructions(
             )
             member_source = _containing_member_source(source, match.start())
             if (normalized_operation == "site.OperationKind" and
-                    "LegacyCallerBoundIndexQuerySites.TryGetValue" in member_source):
-                dictionary_operations = _dictionary_member_site_values(
-                    source, "LegacyCallerBoundIndexQuerySites", 1,
-                    local_constants, global_constants,
-                )
+                    "TryGetLegacyCallerBoundIndexQuerySite" in member_source):
                 operation_by_site = {
-                    site_id: dictionary_operations[site_id]
+                    site_id: legacy_caller_bound_operations[site_id]
                     for site_id in values
-                    if site_id in dictionary_operations
+                    if site_id in legacy_caller_bound_operations
                 }
-                if len(operation_by_site) == len(values):
+                if values and len(operation_by_site) == len(values):
                     call["operation_kind_by_site"] = operation_by_site
                     call["operation_kind_values"] = sorted({
                         operation
@@ -1728,9 +1767,11 @@ def collect() -> dict[str, Any]:
             "RandomNumberGenerator use; it cannot prove the absence of indirect "
             "or aliased entropy sources. Explicit typed random-request "
             "constructions are listed with their site ID, index operation-kind "
-            "expression, and registry/matrix resolution status. The operation "
-            "locator resolves visible literals and finite alternatives but does "
-            "not validate forwarded caller values. "
+            "expression, and registry/matrix resolution status. The static "
+            "operation locator does not resolve forwarded caller values on its "
+            "own. Runtime request validation checks operation kinds against the "
+            "registry metadata for the declared legacy caller-bound subset; "
+            "generic forwarded values outside that subset remain unresolved. "
             "The site-matrix report shows registry-to-ledger and ledger-to-registry "
             "differences, unique ledger IDs, and explicit reference-law status. "
             "Unregistered ledger rows are informational because legacy and conditional "
@@ -1845,7 +1886,7 @@ def render_markdown(report: dict[str, Any]) -> str:
                 for call in report["typed_request_constructions"]
                 if call["request_type"] == "RandomIndexRequestV111"
             ).items())
-        ) + ". The table reports constructor expressions, defaults, and site-keyed dictionary mappings where traceable; it does not validate forwarded caller values.",
+        ) + ". The table reports constructor expressions, defaults, and site-keyed dictionary mappings where traceable; generic forwarded operation values remain manual trace items.",
         "",
         "Expression-origin classes: " + ", ".join(
             f"`{kind}` **{count}**"
