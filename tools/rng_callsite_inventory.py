@@ -21,7 +21,7 @@ from urllib.parse import unquote, urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = ROOT / "src" / "Sts2Emulator.Core"
-SCHEMA_ID = "emulator-rng-callsite-source-inventory-v35"
+SCHEMA_ID = "emulator-rng-callsite-source-inventory-v36"
 SITE_REGISTRY_PATH = SOURCE_ROOT / "StochasticSiteRegistryV111.cs"
 
 CALL_PATTERN = re.compile(
@@ -278,16 +278,85 @@ def _method_local_site_values(
     )
     if not values or any(value not in known_site_ids for value in values):
         values = _static_site_mapping_values(
-            expression, global_constants
+            expression, global_constants,
+            _nearest_type_name(source, construction_start),
         )
     if not values or any(value not in known_site_ids for value in values):
         return []
     return values
 
 
+def _nearest_type_name(source: str, offset: int) -> str | None:
+    """Return the innermost declared type enclosing a source expression.
+
+    This scopes unqualified SiteIdFor* calls to their owning type so
+    same-named mapping helpers in other types do not make a finite local
+    mapping appear dynamic.
+    """
+    declarations = list(re.finditer(
+        r"(?m)^[ \t]*(?:public|private|internal|protected)\s+"
+        r"(?:(?:static|sealed|partial|abstract|readonly|new)\s+)*"
+        r"(?:class|struct|record)\s+"
+        r"(?P<name>[A-Za-z_][A-Za-z0-9_]*)\b",
+        source[:offset],
+    ))
+    for declaration in reversed(declarations):
+        opening = source.find("{", declaration.end(), offset)
+        semicolon = source.find(";", declaration.end(), offset)
+        if opening < 0 or (semicolon >= 0 and semicolon < opening):
+            continue
+        depth = _brace_depth(source, opening, offset)
+        if depth > 0:
+            return declaration.group("name")
+    return None
+
+
+def _brace_depth(source: str, opening: int, end: int) -> int:
+    """Count block braces while skipping comments and quoted literals."""
+    depth = 0
+    index = opening
+    while index < end:
+        character = source[index]
+        following = source[index + 1] if index + 1 < end else ""
+        if character == "/" and following == "/":
+            newline = source.find("\n", index + 2, end)
+            index = end if newline < 0 else newline + 1
+            continue
+        if character == "/" and following == "*":
+            close = source.find("*/", index + 2, end)
+            index = end if close < 0 else close + 2
+            continue
+        if character in ('"', "'"):
+            quote = character
+            verbatim = quote == '"' and index > 0 and (
+                source[index - 1] == "@" or
+                (index > 1 and source[index - 2:index] == "@$")
+            )
+            index += 1
+            while index < end:
+                if verbatim and source[index] == '"' and \
+                        index + 1 < end and source[index + 1] == '"':
+                    index += 2
+                elif source[index] == "\\" and not verbatim:
+                    index += 2
+                elif source[index] == quote:
+                    index += 1
+                    break
+                else:
+                    index += 1
+            continue
+        if character == "{":
+            depth += 1
+        elif character == "}":
+            depth -= 1
+        index += 1
+    return depth
+
+
 def _static_site_mapping_values(
     expression: str,
     global_constants: dict[str, set[str]],
+    context_class_name: str | None = None,
 ) -> list[str]:
     """Resolve a local through a pure SiteIdFor* string switch."""
     normalized = re.sub(r"\s+", "", expression)
@@ -316,7 +385,7 @@ def _static_site_mapping_values(
     if suffix and not fail_closed:
         return []
 
-    class_name = call.group("class")
+    class_name = call.group("class") or context_class_name
     method_name = call.group("method")
     paths = sorted(SOURCE_ROOT.rglob("*.cs"))
     if class_name is not None:
