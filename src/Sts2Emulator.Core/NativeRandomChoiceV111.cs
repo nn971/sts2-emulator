@@ -3,9 +3,9 @@ namespace Sts2Emulator.Core;
 /// <summary>
 /// Small request-construction helpers for source-pinned native run sites.
 /// They preserve the existing provider interfaces and keep mechanics
-/// responsible for candidate order and occurrence identity. SiteIds must be
-/// registered Chance Law query sites; callers retain responsibility for the
-/// operation, support, stream, owner, and source occurrence.
+/// responsible for candidate order and occurrence identity. Each helper
+/// accepts only registered Chance Law query sites for its request family;
+/// callers retain responsibility for support, stream, owner, and occurrence.
 /// </summary>
 public static class NativeRandomChoiceV111
 {
@@ -70,7 +70,14 @@ public static class NativeRandomChoiceV111
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
         ArgumentException.ThrowIfNullOrWhiteSpace(operation);
-        if (!StochasticSiteRegistryV111.IsChanceLawQuerySite(siteId))
+        var supported = operation is "index" or "bounded-integer"
+            ? StochasticSiteRegistryV111.IsChanceLawQuerySite(siteId)
+                && StochasticSiteRegistryV111
+                    .IsNativeRandomIndexSite(siteId)
+            : operation == "unit-float"
+                && StochasticSiteRegistryV111.IsChanceLawQuerySite(siteId)
+                && StochasticSiteRegistryV111.IsNativeUnitFloatSite(siteId);
+        if (!supported)
             throw new NotSupportedException(
                 $"Native random choice does not support {operation} site " +
                 $"'{siteId}'.");
