@@ -2628,6 +2628,38 @@ public static partial class ChanceLawEngineV111
             site.Boundary);
     }
 
+    /// <summary>
+    /// Query one source-shaped Native encounter-formation index. The query
+    /// binds the declared model entry and floor to the encounter-local
+    /// context stream, while leaving the candidate formation and preceding
+    /// GenerateMonsters prefix with the caller.
+    /// </summary>
+    public static ChanceLawV111 QueryNativeEncounterFormationIndex(
+        string encounterEntry, int totalFloor, int supportCount, int ordinal)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(encounterEntry);
+        if (totalFloor < 0)
+            throw new ArgumentOutOfRangeException(nameof(totalFloor));
+        if (supportCount <= 0)
+            throw new ArgumentOutOfRangeException(nameof(supportCount));
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+
+        var siteId = NativeEncounterFormationFactoryV111.FormationSiteId;
+        var streamId = NativeRngV111Contexts.EncounterFormationStreamId(
+            encounterEntry, totalFloor);
+        var ownerId = $"encounter:{encounterEntry}:floor:{totalFloor}";
+        var request = new RandomIndexRequestV111(
+            siteId, streamId, ownerId, ordinal,
+            Enumerable.Range(0, supportCount).ToArray());
+        var eventId = CanonicalJson.Sha256(new
+        {
+            boundary = "native-encounter-formation-index",
+            request
+        });
+        return QueryRandomIndex(eventId, request);
+    }
+
     public const string NativeBoundedIndexSourceVerifiedProvenance =
         "v0.111.0 Rng.NextInt(maxExclusive) multiplies the uniform 53-bit " +
         "NextDouble grid and truncates. Exact source bin masses include " +
