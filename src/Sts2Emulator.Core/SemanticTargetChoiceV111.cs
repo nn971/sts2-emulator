@@ -232,8 +232,7 @@ public static class SemanticTargetChoiceV111
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.random_target " +
                 "operation=unmodeled_draw_pile_mutation");
         }
-        else if (!PrototypeGameEngine
-                     .IsAtCombatRewardOrTerminalBoundary(resumed))
+        else if (!PrototypeGameEngine.IsAtCombatActionResultBoundary(resumed))
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.random_target " +
                 "operation=unsupported_post_target_phase");

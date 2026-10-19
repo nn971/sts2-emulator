@@ -200,8 +200,7 @@ public static class SemanticDrawChoiceV111
             ValidateRecordedChoice(
                 run, pending, selectedIndex);
         }
-        else if (!PrototypeGameEngine
-                     .IsAtCombatRewardOrTerminalBoundary(run))
+        else if (!PrototypeGameEngine.IsAtCombatActionResultBoundary(run))
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.card_effect.draw " +
                 "operation=unsupported_post_draw_phase");

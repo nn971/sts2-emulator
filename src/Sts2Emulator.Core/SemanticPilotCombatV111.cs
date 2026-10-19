@@ -2701,15 +2701,16 @@ public static class SemanticPilotCombatEngineV111
         var resultCombat = result.World?.Combat;
         var expectedPile = priorCombat.DrawPile.ToList();
         expectedPile.Insert(position, insertedInstanceId);
-        if (resultCombat?.Cards.SingleOrDefault(card =>
+        if ((result.Phase == RunPhase.Combat &&
+             resultCombat?.Cards.SingleOrDefault(card =>
                 card.InstanceId == insertedInstanceId)?.CardId !=
-                pending.GeneratedCardModelId ||
+                pending.GeneratedCardModelId) ||
             (result.Phase == RunPhase.Combat && resultCombat is not
                 { IsPlayerTurn: true, AutomaticPipelineContinuation: null }) ||
             (result.Phase != RunPhase.Combat &&
                 (!resumesSemanticDraw && !resumesAfterShuffleRelic ||
-                 !PrototypeGameEngine
-                    .IsAtCombatRewardOrTerminalBoundary(result))) ||
+                 !PrototypeGameEngine.IsAtCombatActionResultBoundary(
+                    result))) ||
             (result.Phase == RunPhase.Combat && !resumesSemanticDraw &&
                 !resumesAfterShuffleRelic &&
                 (resultCombat!.NextCardInstanceId != insertedInstanceId + 1 ||
@@ -2749,22 +2750,13 @@ public static class SemanticPilotCombatEngineV111
                 else
                     ValidateSemanticCombatBoundary(result);
             }
-            else
-            {
-                // ResumeControlledDrawInsertion committed the selected
-                // provider position with the physical insertion. Keep this
-                // facade on validation and transcript ownership; replaying
-                // the provider write here could overwrite later continuation
-                // progress from the same engine resume.
-                ValidateSemanticCombatBoundary(result);
-            }
         }
         var next = PublishRunContinuation(
             current, result, null,
             new SemanticPilotContinuationV111(
                 "semantic_draw_insertion",
                 DrawInsertionDecision: decision.Fork()),
-            preservePendingEndTurn: true);
+            preservePendingEndTurn: result.Phase == RunPhase.Combat);
         Validate(next);
         return next;
     }
