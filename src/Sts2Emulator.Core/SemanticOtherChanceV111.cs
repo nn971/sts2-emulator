@@ -108,14 +108,14 @@ public static class SemanticOtherChanceEngineV111
     {
         ArgumentNullException.ThrowIfNull(state);
         if (state.ProviderId != ProviderId || state.Streams is null ||
-            state.Decisions is null ||
-            state.Streams.Streams.Count(stream =>
-                stream.StreamId == CostStreamId) != 1)
+            state.Decisions is null)
             throw new InvalidDataException(
                 "Invalid engine-owned non-Nature cost stream ownership.");
-        var ids = state.Streams.Streams.Select(x => x.StreamId).ToArray();
-        if (ids.Distinct(StringComparer.Ordinal).Count() != ids.Length)
-            throw new InvalidDataException("Duplicate private RNG stream owners.");
+        NativeRunRngV111.ValidateBundle(state.Streams);
+        if (state.Streams.Streams.Count(stream =>
+                stream.StreamId == CostStreamId) != 1)
+            throw new InvalidDataException(
+                "Engine-owned cost provider must retain one named cost stream.");
         var expectedCallCount = checked(
             state.InitialCallCount + (ulong)state.Decisions.Length);
         if (WorkingCostStreamCallCount(state) != expectedCallCount)
