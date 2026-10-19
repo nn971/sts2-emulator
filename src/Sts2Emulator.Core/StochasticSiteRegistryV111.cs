@@ -1035,6 +1035,10 @@ public static class StochasticSiteRegistryV111
         && !IsNativeUnitFloatSite(siteId)
         && !IsNativeGaussianIntSite(siteId);
 
+    internal static bool IsRegisteredRandomIndexRequestSite(string siteId) =>
+        IsLegacyRandomChoiceSite(siteId) ||
+        IsNativeRandomIndexSite(siteId);
+
     public static bool IsNativeUnitFloatSite(string siteId) =>
         NativeUnitFloatSites.Contains(siteId, StringComparer.Ordinal);
 

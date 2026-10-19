@@ -33,6 +33,12 @@ public sealed record RandomIndexRequestV111(
                 (OrderedCandidates.Length != 0 || BoundedCount is null or <= 0)))
             throw new ArgumentException("Invalid source-pinned random-choice request.");
 
+        if (!StochasticSiteRegistryV111
+                .IsRegisteredRandomIndexRequestSite(SiteId))
+            throw new ArgumentException(
+                $"Random-choice site '{SiteId}' is not registered.",
+                nameof(SiteId));
+
         if (StochasticSiteRegistryV111
                 .TryGetRequiredRandomIndexOperationKind(
                     SiteId, out var requiredOperationKind) &&
