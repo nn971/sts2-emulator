@@ -3094,10 +3094,6 @@ public static class SemanticPilotCombatEngineV111
         var target = choice?.ControlledTarget;
         if (target is null) return null;
         SemanticTargetChoiceV111.ValidateBoundary(run);
-        var candidates = (int[])target.EligibleEnemyInstanceIds.Clone();
-        var siteId = SemanticTargetChoiceV111.SiteIdForTargetKind(
-            target.Kind) ?? throw new InvalidDataException(
-                "Semantic target lost its supported site identity.");
         var ownerId = target.AutoPlayCardInstanceId is { } autoPlayCardId
             ? "card_instance:" + autoPlayCardId
             : target.SlyCardInstanceId is { } slyCardId
@@ -3105,24 +3101,9 @@ public static class SemanticPilotCombatEngineV111
             : choice!.SourceCardInstanceId is { } sourceCardId
                 ? "card_instance:" + sourceCardId
                 : "effect_operation";
-        var supportFingerprint = CanonicalJson.Sha256(candidates);
-        var eventId = CanonicalJson.Sha256(new
-        {
-            SchemaId = SemanticTargetChoiceV111.SchemaId,
-            BoundaryFingerprint = boundaryFingerprint,
-            SiteId = siteId,
-            OwnerId = ownerId,
-            Ordinal = ordinal,
-            SupportFingerprint = supportFingerprint,
-            TargetKind = target.Kind
-        });
-        var semanticEvent = new SemanticTargetEventV111(
-            SemanticTargetChoiceV111.SchemaId, eventId, siteId,
-            "run.combat_targets", ownerId, ordinal,
-            "choose_enemy_instance", candidates, supportFingerprint,
-            TargetKind: target.Kind);
-        semanticEvent.Validate();
-        return semanticEvent;
+        return SemanticTargetChoiceV111.CreateEvent(
+            boundaryFingerprint, target.Kind, ownerId, ordinal,
+            target.EligibleEnemyInstanceIds);
     }
 
     public static SemanticGeneratedCardEventV111?

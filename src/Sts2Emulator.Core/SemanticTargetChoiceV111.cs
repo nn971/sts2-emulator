@@ -72,6 +72,39 @@ public static class SemanticTargetChoiceV111
             _ => null
         };
 
+    internal static SemanticTargetEventV111 CreateEvent(
+        string boundaryFingerprint, string targetKind, string ownerId,
+        int ordinal, int[] candidateEnemyInstanceIds)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(boundaryFingerprint);
+        ArgumentException.ThrowIfNullOrWhiteSpace(targetKind);
+        ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
+        ArgumentNullException.ThrowIfNull(candidateEnemyInstanceIds);
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+        var siteId = SiteIdForTargetKind(targetKind) ??
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_TARGET kind=" + targetKind);
+        var candidates = (int[])candidateEnemyInstanceIds.Clone();
+        var supportFingerprint = CanonicalJson.Sha256(candidates);
+        var eventId = CanonicalJson.Sha256(new
+        {
+            SchemaId,
+            BoundaryFingerprint = boundaryFingerprint,
+            SiteId = siteId,
+            OwnerId = ownerId,
+            Ordinal = ordinal,
+            SupportFingerprint = supportFingerprint,
+            TargetKind = targetKind
+        });
+        var semanticEvent = new SemanticTargetEventV111(
+            SchemaId, eventId, siteId, "run.combat_targets", ownerId,
+            ordinal, "choose_enemy_instance", candidates,
+            supportFingerprint, TargetKind: targetKind);
+        semanticEvent.Validate();
+        return semanticEvent;
+    }
+
     internal static void ValidateBoundary(RunState run)
     {
         var combat = run.World?.Combat;
