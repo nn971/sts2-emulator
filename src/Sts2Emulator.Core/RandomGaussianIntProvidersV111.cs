@@ -79,6 +79,9 @@ public sealed class NativeRandomGaussianIntProviderV111
         if (matches.Length != 1)
             throw new InvalidOperationException(
                 "Native random stream ownership is ambiguous.");
+        using var nativeBoundary =
+            ControlledChanceGuardV111.AuthorizeEngineOwnedNativeBoundary(
+                request.SiteId, request.StreamId, "gaussian_int");
         var before = NativeRngV111.ToSnapshot(matches[0]);
         var value = NativeRngV111.NextGaussianInt(
             streams, request.StreamId, request.Mean,

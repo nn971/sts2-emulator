@@ -1041,6 +1041,33 @@ public static class StochasticSiteRegistryV111
     public static bool IsNativeGaussianIntSite(string siteId) =>
         ChanceLawEngineV111.IsNativeMapGaussianIntQuerySite(siteId);
 
+    internal static bool SupportsEngineOwnedNativeBoundary(
+        string siteId, string operationKind)
+    {
+        if (string.IsNullOrWhiteSpace(siteId) ||
+            string.IsNullOrWhiteSpace(operationKind))
+            return false;
+
+        if (operationKind is "choose_index" or "bounded_integer")
+        {
+            if (!IsNativeRandomIndexSite(siteId))
+                return false;
+            return !TryGetRequiredRandomIndexOperationKind(
+                    siteId, out var requiredOperationKind) ||
+                operationKind == requiredOperationKind;
+        }
+
+        return operationKind switch
+        {
+            "unit_float" => IsNativeUnitFloatSite(siteId),
+            "gaussian_int" => IsNativeGaussianIntSite(siteId),
+            // These boundary kinds have no registered native gameplay sites
+            // yet. Add an audited finite site set before enabling fallback.
+            "ranged_float" or "ranged_double" or "gaussian_double" => false,
+            _ => false
+        };
+    }
+
     public static bool IsNativeBoundedIntegerSite(string siteId) =>
         NativeBoundedIntegerSites.Contains(siteId, StringComparer.Ordinal);
 
