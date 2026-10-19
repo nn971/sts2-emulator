@@ -379,7 +379,7 @@ public sealed record ControlledPlayableCombatV111(
             var instanceId = transform.SelectedCardInstanceIds[
                 transform.NextTransformIndex];
             return new RandomIndexRequestV111(
-                "combat.card_transform.replacement.index_draw",
+                SemanticCardTransformChoiceV111.SiteId,
                 "prototype.combat",
                 "card_instance:" + instanceId + ":pool:" +
                     CanonicalJson.Sha256(transform.CandidateCardIds),

@@ -8,8 +8,7 @@ public sealed record SemanticCardTransformEventV111(
     string[] CandidateCardIds, string SupportFingerprint,
     string ProbabilityStatus = "UNVERIFIED") : ISemanticChanceEventV111
 {
-    public const string EventSchemaId =
-        "sts2-v111-semantic-card-transform-v1";
+    public const string EventSchemaId = SemanticCardTransformChoiceV111.SchemaId;
 
     public SemanticCardTransformEventV111 Fork() => this with
     {
@@ -19,8 +18,8 @@ public sealed record SemanticCardTransformEventV111(
     public void Validate()
     {
         if (SchemaId != EventSchemaId || string.IsNullOrWhiteSpace(EventId) ||
-            SiteId != "combat.card_transform.replacement.index_draw" ||
-            StreamId != "prototype.combat" ||
+            SiteId != SemanticCardTransformChoiceV111.SiteId ||
+            StreamId != SemanticCardTransformChoiceV111.StreamId ||
             string.IsNullOrWhiteSpace(OwnerId) || Ordinal < 0 ||
             OperationKind != "choose_card_model" ||
             SourceCardInstanceId <= 0 || string.IsNullOrWhiteSpace(OriginalCardId) ||
@@ -57,6 +56,43 @@ public sealed record SemanticCardTransformDecisionV111(
 
 public static class SemanticCardTransformChoiceV111
 {
+    public const string SchemaId = "sts2-v111-semantic-card-transform-v1";
+    public const string SiteId = "combat.card_transform.replacement.index_draw";
+    internal const string StreamId = "prototype.combat";
+
+    internal static SemanticCardTransformEventV111 CreateEvent(
+        string boundaryFingerprint, int ordinal, long sourceCardInstanceId,
+        string originalCardId, string[] candidateCardIds)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(boundaryFingerprint);
+        ArgumentException.ThrowIfNullOrWhiteSpace(originalCardId);
+        ArgumentNullException.ThrowIfNull(candidateCardIds);
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+        if (sourceCardInstanceId <= 0)
+            throw new ArgumentOutOfRangeException(nameof(sourceCardInstanceId));
+
+        var candidates = (string[])candidateCardIds.Clone();
+        var supportFingerprint = CanonicalJson.Sha256(candidates);
+        var ownerId = "card_instance:" + sourceCardInstanceId + ":model:" +
+            originalCardId + ":pool:" + supportFingerprint;
+        var eventId = CanonicalJson.Sha256(new
+        {
+            SchemaId,
+            BoundaryFingerprint = boundaryFingerprint,
+            SiteId,
+            OwnerId = ownerId,
+            Ordinal = ordinal,
+            SupportFingerprint = supportFingerprint
+        });
+        var semanticEvent = new SemanticCardTransformEventV111(
+            SchemaId, eventId, SiteId, StreamId, ownerId, ordinal,
+            "choose_card_model", sourceCardInstanceId, originalCardId,
+            candidates, supportFingerprint);
+        semanticEvent.Validate();
+        return semanticEvent;
+    }
+
     internal static void ValidateBoundary(
         RunState run, PrototypeControlledCardTransformV111 transform)
     {
