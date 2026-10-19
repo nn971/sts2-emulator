@@ -3295,74 +3295,10 @@ public static class SemanticPilotCombatEngineV111
         DescribePendingCardShortlistEvent(SemanticPilotCombatV111 current)
     {
         ArgumentNullException.ThrowIfNull(current);
-        var combat = current.Run.World?.Combat;
-        var choice = combat?.PendingChoice;
-        var shortlist = choice?.ControlledCardShortlist;
-        if (shortlist is null) return null;
-        SemanticCardShortlistChoiceV111.ValidateBoundary(current.Run);
-        var eligibleIds =
-            (long[])shortlist.OriginalCandidateCardInstanceIds.Clone();
-        var eligibleModels = eligibleIds.Select(id => combat!.Cards.Single(
-            card => card.InstanceId == id).CardId).ToArray();
-        var candidateIds =
-            (long[])shortlist.RemainingCandidateCardInstanceIds.Clone();
-        var candidateModels = candidateIds.Select(id => combat!.Cards.Single(
-            card => card.InstanceId == id).CardId).ToArray();
-        var selectedIds =
-            (long[])shortlist.SelectedCandidateCardInstanceIds.Clone();
-        bool randomAutoplay = shortlist.Operation.Kind ==
-            PrototypeCombatEffectKind.AutoPlayRandomCardsFromZone;
-        bool randomReplayCard = shortlist.Operation.Kind ==
-            PrototypeCombatEffectKind.EmpowerRandomDrawCardReplay;
-        var selection = shortlist.Operation.Selection;
-        if (!randomAutoplay && !randomReplayCard && selection is null)
-            throw new InvalidDataException(
-                "Card shortlist lost its source selection specification.");
-        var supportFingerprint = CanonicalJson.Sha256(new
-        {
-            eligibleCardInstanceIds = eligibleIds,
-            eligibleCardModelIds = eligibleModels,
-            selectedCardInstanceIds = selectedIds,
-            candidateCardInstanceIds = candidateIds,
-            candidateCardModelIds = candidateModels,
-            requiredCount = shortlist.RequiredCount
-        });
-        var siteId = randomAutoplay
-            ? "combat.autoplay.random_card.select"
-            : randomReplayCard
-                ? "combat.draw_pile.random_replay_card.select"
-                : "combat.card_selection.random_shortlist";
-        const string streamId = "prototype.combat";
-        var operationKind = randomReplayCard
-            ? "choose_card_instance"
-            : "choose_card_instance_without_replacement";
-        var ownerId = randomAutoplay
-            ? "effect:" + shortlist.Operation.Kind + ":source:" +
-              (choice!.SourceCardInstanceId?.ToString() ?? "none") +
-              ":zone:" + shortlist.Operation.AutoPlaySourceZone +
-              ":pool:" + CanonicalJson.Sha256(eligibleIds)
-            : randomReplayCard
-                ? "effect:" + shortlist.Operation.Kind + ":source:" +
-                  (choice!.SourceCardInstanceId?.ToString() ?? "none") +
-                  ":pool:" + CanonicalJson.Sha256(eligibleIds)
-                : "selection:" + selection!.SourceZone + ":pool:" +
-                  CanonicalJson.Sha256(eligibleIds);
         var ordinal = current.History.Count(transition =>
             transition.Kind == "semantic_card_shortlist");
-        var eventId = CanonicalJson.Sha256(new
-        {
-            SchemaId = SemanticCardShortlistEventV111.EventSchemaId,
-            BoundaryFingerprint = current.Fingerprint,
-            SupportFingerprint = supportFingerprint
-        });
-        var semanticEvent = new SemanticCardShortlistEventV111(
-            SemanticCardShortlistEventV111.EventSchemaId,
-            eventId, current.Fingerprint, supportFingerprint,
-            siteId, streamId, ownerId, ordinal, operationKind,
-            eligibleIds, eligibleModels, selectedIds, candidateIds,
-            candidateModels, shortlist.RequiredCount);
-        semanticEvent.Validate();
-        return semanticEvent;
+        return SemanticCardShortlistChoiceV111.DescribePending(
+            current.Run, current.Fingerprint, ordinal);
     }
 
     public static SemanticPoolShuffleEventV111?
