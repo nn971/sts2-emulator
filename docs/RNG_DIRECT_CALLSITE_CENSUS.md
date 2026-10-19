@@ -124,7 +124,7 @@ Expression-origin classes: `finite_site_id_alternatives` **7**, `guarded_finite_
                   : "combat.card_draw.slither_energy_cost" | finite_site_id_alternatives | expression | combat.card_draw.relic_energy_cost, combat.card_draw.slither_energy_cost | conditional | conditional |
 | [src/Sts2Emulator.Core/SemanticDrawInsertionV111.cs:38](../src/Sts2Emulator.Core/SemanticDrawInsertionV111.cs#L38) | RandomIndexRequestV111 | siteId | guarded_finite_site_id_alternatives | method_fail_closed_validation | combat.draw_pile.random_insert_index, combat.effect.personal_hive.dazed.random_insert_index, combat.relic.after_shuffle.generated_card.random_insert_index | conditional | conditional |
 | [src/Sts2Emulator.Core/SemanticPilotCombatV111.cs:3239](../src/Sts2Emulator.Core/SemanticPilotCombatV111.cs#L3239) | RandomIndexRequestV111 | "combat.random_hand_card.energy_cost" | static_site_id | expression | combat.random_hand_card.energy_cost | mapped | mapped |
-| [src/Sts2Emulator.Core/SemanticPoolShuffleV111.cs:171](../src/Sts2Emulator.Core/SemanticPoolShuffleV111.cs#L171) | RandomIndexRequestV111 | siteId | identifier_forwarded_or_local | — | — | dynamic_expression | dynamic_expression |
+| [src/Sts2Emulator.Core/SemanticPoolShuffleV111.cs:225](../src/Sts2Emulator.Core/SemanticPoolShuffleV111.cs#L225) | RandomIndexRequestV111 | siteId | identifier_forwarded_or_local | — | — | dynamic_expression | dynamic_expression |
 
 Shuffle site IDs mapped to migration-matrix rows: **23**; dynamic expressions: **1**; unmapped: **0**; missing: **0**.
 Registered stochastic site IDs mapped to migration-matrix rows: **184/184**; IDs without rows: **0**; duplicate matrix IDs: **0**; unresolved registry references: **0**.

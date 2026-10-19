@@ -13,7 +13,7 @@ public sealed record SemanticPoolShuffleEventV111(
     : ISemanticChanceEventV111
 {
     public const string EventSchemaId =
-        "sts2-v111-semantic-pool-shuffle-v1";
+        SemanticPoolShuffleChoiceV111.SchemaId;
     public string SiteId => Request.SiteId;
     public string StreamId => Request.StreamId;
     public string OwnerId => Request.OwnerId;
@@ -39,11 +39,11 @@ public sealed record SemanticPoolShuffleEventV111(
             string.IsNullOrWhiteSpace(BoundaryFingerprint) ||
             string.IsNullOrWhiteSpace(SupportFingerprint) ||
             Request.SiteId is not (
-                "combat.hand_return.draw_pile.shuffle_swap_index" or
-                "combat.generation.full_pool_shuffle.swap_index" or
-                "combat.draw_pile.random_rare_to_hand.shuffle_swap_index" or
-                "combat.draw.recycle.shuffle_swap_index" or
-                "combat.card_selection.random_shortlist") ||
+                SemanticPoolShuffleChoiceV111.HandReturnSiteId or
+                SemanticPoolShuffleChoiceV111.GenerationSiteId or
+                SemanticPoolShuffleChoiceV111.RandomRareToHandSiteId or
+                SemanticPoolShuffleChoiceV111.RecycleSiteId or
+                SemanticPoolShuffleChoiceV111.RandomShortlistSiteId) ||
             Request.SiteId != expectedSite ||
             Request.OperationKind != "bounded_integer" ||
             OriginalCardIds is not { Length: > 1 } ||
@@ -109,19 +109,73 @@ public sealed record SemanticPoolShuffleDecisionV111(
 
 public static class SemanticPoolShuffleChoiceV111
 {
+    public const string SchemaId = "sts2-v111-semantic-pool-shuffle-v1";
+    internal const string HandReturnSiteId =
+        "combat.hand_return.draw_pile.shuffle_swap_index";
+    internal const string GenerationSiteId =
+        "combat.generation.full_pool_shuffle.swap_index";
+    internal const string RandomRareToHandSiteId =
+        "combat.draw_pile.random_rare_to_hand.shuffle_swap_index";
+    internal const string RecycleSiteId =
+        "combat.draw.recycle.shuffle_swap_index";
+    internal const string RandomShortlistSiteId =
+        "combat.card_selection.random_shortlist";
+
     internal static string SiteIdForOperation(string sourceOperationKind) =>
         sourceOperationKind switch
         {
             nameof(PrototypeCombatEffectKind.ReturnHandToDrawAndShuffle) =>
-                "combat.hand_return.draw_pile.shuffle_swap_index",
+                HandReturnSiteId,
             nameof(PrototypeCombatEffectKind.MoveRandomRareDrawCardsToHand) =>
-                "combat.draw_pile.random_rare_to_hand.shuffle_swap_index",
+                RandomRareToHandSiteId,
             nameof(PrototypeCombatEffectKind.RecycleDrawPileForEffectDraw) =>
-                "combat.draw.recycle.shuffle_swap_index",
+                RecycleSiteId,
             nameof(PrototypeCombatEffectKind.ChooseCards) =>
-                "combat.card_selection.random_shortlist",
-            _ => "combat.generation.full_pool_shuffle.swap_index"
+                RandomShortlistSiteId,
+            _ => GenerationSiteId
         };
+
+    internal static SemanticPoolShuffleEventV111? DescribePending(
+        RunState run, string boundaryFingerprint, int ordinal)
+    {
+        ArgumentNullException.ThrowIfNull(run);
+        ArgumentException.ThrowIfNullOrWhiteSpace(boundaryFingerprint);
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+        var combat = run.World?.Combat;
+        var choice = combat?.PendingChoice;
+        var shuffle = choice?.ControlledPoolShuffle;
+        if (shuffle is null) return null;
+        ValidateBoundary(run);
+
+        var original = (string[])shuffle.OriginalCardIds.Clone();
+        var current = (string[])shuffle.CurrentCardIds.Clone();
+        var sourceCardId = choice!.SourceCardInstanceId;
+        var request = CreateRequest(combat!, ordinal);
+        var supportFingerprint = CanonicalJson.Sha256(new
+        {
+            request,
+            Original = original,
+            Current = current,
+            shuffle.NextSwapIndex,
+            shuffle.SelectedCount,
+            Operation = shuffle.Operation.Kind.ToString(),
+            sourceCardId
+        });
+        var eventId = CanonicalJson.Sha256(new
+        {
+            SchemaId,
+            BoundaryFingerprint = boundaryFingerprint,
+            SupportFingerprint = supportFingerprint
+        });
+        var semanticEvent = new SemanticPoolShuffleEventV111(
+            SchemaId, eventId, boundaryFingerprint, supportFingerprint,
+            request, original, current, shuffle.NextSwapIndex,
+            shuffle.SelectedCount, shuffle.Operation.Kind.ToString(),
+            sourceCardId);
+        semanticEvent.Validate();
+        return semanticEvent;
+    }
 
     internal static RandomIndexRequestV111 CreateRequest(
         CombatState combat, int ordinal)
