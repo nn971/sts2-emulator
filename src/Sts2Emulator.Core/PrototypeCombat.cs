@@ -4246,11 +4246,10 @@ public sealed partial class PrototypeGameEngine
                                 : SemanticDrawPileAdapterV111
                                     .ApplyZoneIdentityDelta(
                                         combat, nextZones, [],
-                                        [chosen.InstanceId])) with
+                                        [chosen.InstanceId],
+                                        removedCombatCardInstanceIds:
+                                            [chosen.InstanceId])) with
                             {
-                                Cards = combat.Cards.Where(card =>
-                                    card.InstanceId != chosen.InstanceId)
-                                    .ToArray(),
                                 NextPowerApplicationOrder =
                                     combat.NextPowerApplicationOrder + 1
                             };
@@ -4634,17 +4633,12 @@ public sealed partial class PrototypeGameEngine
                                         ":effect:" + effect.Kind,
                                     pileName: "discard");
                                 combat = insertion.Combat;
-                                var pile = combat.DiscardPile.ToList();
-                                pile.Insert(insertion.SelectedIndex,
-                                    instance.InstanceId);
-                                combat = SetZone(
-                                    combat, PrototypeCardZone.DiscardPile,
-                                    pile.ToArray()) with
-                                {
-                                    Cards = combat.Cards.Append(instance).ToArray(),
-                                    NextCardInstanceId =
-                                        combat.NextCardInstanceId + 1
-                                };
+                                combat = SemanticDrawPileAdapterV111
+                                    .ApplyNewCardZoneInsertion(
+                                        combat,
+                                        PrototypeCardZone.DiscardPile,
+                                        insertion.SelectedIndex,
+                                        instance);
                             }
                             break;
                         }
@@ -8885,14 +8879,10 @@ public sealed partial class PrototypeGameEngine
             var destination = fits
                 ? PrototypeCardZone.Hand
                 : PrototypeCardZone.DiscardPile;
-            combat = SetZone(
-                combat, destination,
-                GetZone(combat, destination).Append(instance.InstanceId)
-                    .ToArray()) with
-            {
-                NextCardInstanceId = combat.NextCardInstanceId + 1,
-                Cards = combat.Cards.Append(instance).ToArray()
-            };
+            combat = SemanticDrawPileAdapterV111
+                .ApplyNewCardZoneInsertion(
+                    combat, destination, GetZone(combat, destination).Length,
+                    instance);
         }
 
         return combat;
@@ -8965,13 +8955,10 @@ public sealed partial class PrototypeGameEngine
                 combat,
                 instance);
 
-            combat = SetZone(
-                combat, PrototypeCardZone.DiscardPile,
-                combat.DiscardPile.Append(instance.InstanceId).ToArray()) with
-            {
-                NextCardInstanceId = combat.NextCardInstanceId + 1,
-                Cards = combat.Cards.Append(instance).ToArray()
-            };
+            combat = SemanticDrawPileAdapterV111
+                .ApplyNewCardZoneInsertion(
+                    combat, PrototypeCardZone.DiscardPile,
+                    combat.DiscardPile.Length, instance);
         }
 
         return combat;
@@ -9023,13 +9010,10 @@ public sealed partial class PrototypeGameEngine
                 State: PrototypeJson.EmptyObject());
             instance = ApplyActiveSourceBoundAfflictionToCard(
                 combat, instance);
-            combat = SetZone(
-                combat, PrototypeCardZone.Hand,
-                combat.Hand.Append(instance.InstanceId).ToArray()) with
-            {
-                NextCardInstanceId = combat.NextCardInstanceId + 1,
-                Cards = combat.Cards.Append(instance).ToArray()
-            };
+            combat = SemanticDrawPileAdapterV111
+                .ApplyNewCardZoneInsertion(
+                    combat, PrototypeCardZone.Hand, combat.Hand.Length,
+                    instance);
         }
 
         return combat;
@@ -9113,14 +9097,10 @@ public sealed partial class PrototypeGameEngine
                 instance);
 
             generatedIds.Add(instance.InstanceId);
-            combat = SetZone(
-                combat, PrototypeCardZone.ChoicePool,
-                combat.ChoiceCardIds.Append(instance.InstanceId).ToArray()) with
-            {
-                NextCardInstanceId =
-                    combat.NextCardInstanceId + 1,
-                Cards = combat.Cards.Append(instance).ToArray()
-            };
+            combat = SemanticDrawPileAdapterV111
+                .ApplyNewCardZoneInsertion(
+                    combat, PrototypeCardZone.ChoicePool,
+                    combat.ChoiceCardIds.Length, instance);
         }
 
         return new PrototypeGeneratedChoiceResult(combat, generatedIds.ToArray());
@@ -9166,14 +9146,10 @@ public sealed partial class PrototypeGameEngine
             var destination = addToHand
                 ? PrototypeCardZone.Hand
                 : PrototypeCardZone.DiscardPile;
-            combat = SetZone(
-                combat, destination,
-                GetZone(combat, destination).Append(instance.InstanceId)
-                    .ToArray()) with
-            {
-                NextCardInstanceId = combat.NextCardInstanceId + 1,
-                Cards = combat.Cards.Append(instance).ToArray()
-            };
+            combat = SemanticDrawPileAdapterV111
+                .ApplyNewCardZoneInsertion(
+                    combat, destination, GetZone(combat, destination).Length,
+                    instance);
         }
 
         return combat;
@@ -14675,29 +14651,27 @@ public sealed partial class PrototypeGameEngine
                     ChoicePool = combat.ChoiceCardIds.Select(id =>
                         id == instanceId ? replacementId : id).ToArray()
                 };
+                var replacementCard = new CombatCardInstance(
+                    replacementId,
+                    PersistentCardInstanceId: null,
+                    CardId: replacement,
+                    UpgradeLevel: 0,
+                    IsTemporary: true,
+                    State: PrototypeJson.EmptyObject());
 
                 // Transform creates a new physical card; it does not
                 // mutate the original card's persistent deck identity.
                 // Track that absence explicitly for run invariants.
-                combat = (drawPileIndex >= 0
+                combat = drawPileIndex >= 0
                     ? SemanticDrawPileAdapterV111.ApplyDrawPileReplacement(
                         combat, drawPileIndex, instanceId, replacementId,
-                        nextCardZones)
+                        nextCardZones, replacementCard)
                     : SemanticDrawPileAdapterV111
                         .ApplyZoneIdentityReplacement(
-                            combat, nextCardZones, instanceId, replacementId)) with
+                            combat, nextCardZones, instanceId, replacementId,
+                            replacementCard);
+                combat = combat with
                 {
-                    Cards = combat.Cards
-                        .Where(card => card.InstanceId != instanceId)
-                        .Append(new CombatCardInstance(
-                            replacementId,
-                            PersistentCardInstanceId: null,
-                            CardId: replacement,
-                            UpgradeLevel: 0,
-                            IsTemporary: true,
-                            State: PrototypeJson.EmptyObject()))
-                        .ToArray(),
-                    NextCardInstanceId = replacementId + 1,
                     TransformedPersistentCardIds =
                         oldPersistentId is { } persistentId
                             ? transformed.Append(persistentId).ToArray()
@@ -14812,25 +14786,14 @@ public sealed partial class PrototypeGameEngine
         else if (selection.RemoveUnselectedFromSource)
         {
             combat = SemanticDrawPileAdapterV111.ApplyZoneIdentityDelta(
-                combat, selectionZones, [], unselected);
+                combat, selectionZones, [], unselected,
+                removedCombatCardInstanceIds: unselected);
         }
         else
         {
             combat = SemanticDrawPileAdapterV111.ApplyZoneTransition(
                 combat, selectionZones);
         }
-        if (selection.RemoveUnselectedFromSource)
-        {
-            var unselectedSet = unselected.ToHashSet();
-            combat = combat with
-            {
-                Cards = combat.Cards
-                    .Where(card =>
-                        !unselectedSet.Contains(card.InstanceId))
-                    .ToArray()
-            };
-        }
-
         return combat;
     }
 
