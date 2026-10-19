@@ -84,46 +84,44 @@ public sealed partial class PrototypeGameEngine
             state with { Player = player }, choice);
     }
 
-    private static (PlayerState Player, CombatCardInstance[] Cards,
-        long[] DrawPile, long NextCardInstanceId)
+    private static (PlayerState Player, CombatState Combat)
         ApplyTeaOfDiscourtesyBeforeCombat(
             PlayerState player,
-            CombatCardInstance[] cards,
-            long[] drawPile,
-            long nextCardInstanceId,
+            CombatState combat,
             RngBundle rng)
     {
         var relicIndex = FindChargedTeaRelic(
             player, PrototypeNativeGloryEvents.TeaOfDiscourtesyId);
         if (relicIndex < 0)
-            return (player, cards, drawPile, nextCardInstanceId);
+            return (player, combat);
 
-        var updatedCards = cards.ToList();
-        var updatedDrawPile = drawPile.ToList();
         for (var i = 0; i < 2; i++)
         {
-            var instanceId = nextCardInstanceId++;
-            updatedCards.Add(new CombatCardInstance(
+            var instanceId = combat.NextCardInstanceId;
+            var card = new CombatCardInstance(
                 InstanceId: instanceId,
                 PersistentCardInstanceId: null,
                 CardId: "proto.status.dazed",
                 UpgradeLevel: 0,
                 IsTemporary: true,
-                State: PrototypeJson.EmptyObject()));
+                State: PrototypeJson.EmptyObject());
             var position = LegacyRandomChoiceV111.ChooseIndexRange(
                 rng,
                 StochasticSiteRegistryV111.DrawPileRandomInsertSiteId,
                 "combat",
-                $"relic:tea_of_discourtesy:insert:{i}:count:{updatedDrawPile.Count}",
-                updatedDrawPile.Count + 1).SelectedIndex;
-            updatedDrawPile.Insert(position, instanceId);
+                $"relic:tea_of_discourtesy:insert:{i}:count:{combat.DrawPile.Length}",
+                combat.DrawPile.Length + 1).SelectedIndex;
+            combat = SemanticDrawPileAdapterV111.ApplyDrawPileInsertion(
+                combat, position, instanceId) with
+            {
+                Cards = combat.Cards.Append(card).ToArray(),
+                NextCardInstanceId = instanceId + 1
+            };
         }
 
         return (
             ConsumeTeaCharge(player, relicIndex),
-            updatedCards.ToArray(),
-            updatedDrawPile.ToArray(),
-            nextCardInstanceId);
+            combat);
     }
 
     private static PlayerState RemoveExpiredTeaRelics(PlayerState player) =>
