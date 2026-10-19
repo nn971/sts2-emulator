@@ -371,13 +371,12 @@ public static class SemanticCardSelectionEngineV111
             operation.Kind == PrototypeCombatEffectKind.DrawCards);
         if (!reward && resumesDraw)
         {
-            var resultDeck = to!.SemanticDeck ?? throw new InvalidDataException(
-                "Resumed card draw lost the provider-owned deck.");
-            SemanticDeckEngineV111.Validate(resultDeck);
-            if (!SemanticDeckEngineV111.AllCardInstanceIds(resultDeck)
-                    .Order().SequenceEqual(to.DrawPile.Order()))
+            var resultCombat = to ?? throw new InvalidDataException(
+                "Resumed card draw lost its combat state.");
+            if (resultCombat.SemanticDeck is null)
                 throw new InvalidDataException(
-                    "Resumed card draw diverged from the provider-owned deck.");
+                    "Resumed card draw lost the provider-owned deck.");
+            SemanticDrawPileAdapterV111.ValidateSynchronized(resultCombat);
             RunState replayed;
             using (ControlledChanceGuardV111.Enter())
             using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
@@ -388,11 +387,14 @@ public static class SemanticCardSelectionEngineV111
                 throw new InvalidDataException(
                     "Saved draw continuation disagrees with source-choice replay.");
         }
-        else if (!reward && (expected.Fingerprint != to!.SemanticDeck!.Fingerprint ||
-            !SemanticDeckEngineV111.AllCardInstanceIds(expected)
-                .Order().SequenceEqual(to.DrawPile.Order())))
-            throw new InvalidDataException(
-                "Source choice mutated the hidden deck inconsistently.");
+        else if (!reward)
+        {
+            if (expected.Fingerprint != to!.SemanticDeck!.Fingerprint)
+                throw new InvalidDataException(
+                    "Source choice mutated the hidden deck inconsistently.");
+            SemanticDrawPileAdapterV111.ValidateProviderCorrespondence(
+                expected, to.DrawPile);
+        }
     }
 
     private static void ValidateSupportedChoice(PendingCombatChoiceState choice)

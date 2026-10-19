@@ -8037,13 +8037,9 @@ public sealed partial class PrototypeGameEngine
                             "site=combat.autoplay.top_draw " +
                             "operation=automatic_pipeline_continuation_unavailable");
                     if (semanticDeck is
-                        { Mode: SemanticDeckStateV111.NativeMode } nativeDeck &&
-                        (nativeDeck.Pending is not null ||
-                         !nativeDeck.Slots.Select(slot =>
-                                 slot.KnownCardInstanceId!.Value)
-                             .SequenceEqual(combat.DrawPile.Reverse())))
-                        throw new InvalidDataException(
-                            "Native semantic deck is stale before top-draw autoplay.");
+                        { Mode: SemanticDeckStateV111.NativeMode })
+                        SemanticDrawPileAdapterV111.ValidateSynchronized(
+                            combat, requireIdle: true);
                     var count = Math.Max(
                         0,
                         operation.Amount);

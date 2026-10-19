@@ -867,10 +867,18 @@ public static class SemanticEndTurnEngineV111
             return combat.DrawPile.Length == 0 &&
                 combat.DiscardPile.Length > 0;
         SemanticDeckEngineV111.Validate(deck);
-        return deck.Mode == SemanticDeckStateV111.NatureMode &&
-            deck.Pending is null &&
-            SemanticDeckEngineV111.AllCardInstanceIds(deck)
-                .Order().SequenceEqual(combat.DrawPile.Order());
+        try
+        {
+            SemanticDrawPileAdapterV111.ValidateNatureDeckBoundary(
+                combat,
+                "Unsupported semantic end-turn source deck.",
+                "Unsupported semantic end-turn source deck.");
+            return true;
+        }
+        catch (InvalidDataException)
+        {
+            return false;
+        }
     }
 
     internal static void ValidateOrigin(RunState run)

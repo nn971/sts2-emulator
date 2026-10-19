@@ -298,7 +298,11 @@ public static class SemanticDrawPileAdapterV111
             combat, shuffled, recycled, nextZones, nextDeck);
     }
 
-    private static void ValidateProviderCorrespondence(
+    /// <summary>
+    /// Validates a candidate provider deck against a physical draw pile,
+    /// including transitions that have not yet attached the candidate deck.
+    /// </summary>
+    internal static void ValidateProviderCorrespondence(
         SemanticDeckStateV111? semantic,
         IReadOnlyList<long> physicalDrawPile)
     {

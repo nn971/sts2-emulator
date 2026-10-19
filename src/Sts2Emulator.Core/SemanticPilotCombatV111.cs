@@ -2783,24 +2783,16 @@ public static class SemanticPilotCombatEngineV111
 
         if (result.Phase == RunPhase.Combat && resumesSemanticDraw)
         {
-            if (resultCombat!.SemanticDeck is not { } continuedDeck ||
-                !SemanticDeckEngineV111.AllCardInstanceIds(continuedDeck)
-                    .Order().SequenceEqual(resultCombat.DrawPile.Order()))
-                throw new NotSupportedException(
-                    "UNSUPPORTED_SEMANTIC_DECK site=combat.relic.after_shuffle " +
-                    "operation=stale_semantic_draw_continuation");
+            ValidateNatureDeckContinuationBoundary(
+                resultCombat!, "stale_semantic_draw_continuation");
             ValidateSemanticCombatBoundary(result);
         }
         else if (result.Phase == RunPhase.Combat)
         {
             if (resumesAfterShuffleRelic)
             {
-                if (resultCombat!.SemanticDeck is not { } deck ||
-                    !SemanticDeckEngineV111.AllCardInstanceIds(deck)
-                        .Order().SequenceEqual(resultCombat.DrawPile.Order()))
-                    throw new NotSupportedException(
-                        "UNSUPPORTED_SEMANTIC_DECK site=combat.relic.after_shuffle " +
-                        "operation=stale_after_shuffle_continuation");
+                ValidateNatureDeckContinuationBoundary(
+                    resultCombat!, "stale_after_shuffle_continuation");
                 if (resultCombat.PendingChoice?.ControlledDrawInsertion is
                         { AfterShuffleRelic: not null })
                     SemanticDrawInsertionChoiceV111.ValidateBoundary(result);
@@ -3802,6 +3794,22 @@ public static class SemanticPilotCombatEngineV111
         SemanticPlayerActionEngineV111.ValidateBoundary(run);
     }
 
+    private static void ValidateNatureDeckContinuationBoundary(
+        CombatState combat, string operation)
+    {
+        var message = "UNSUPPORTED_SEMANTIC_DECK " +
+            "site=combat.relic.after_shuffle operation=" + operation;
+        try
+        {
+            SemanticDrawPileAdapterV111.ValidateNatureDeckBoundary(
+                combat, message, message, allowPending: true);
+        }
+        catch (InvalidDataException exception)
+        {
+            throw new NotSupportedException(message, exception);
+        }
+    }
+
     private static SemanticIntentEventV111 MakeSemanticIntentEvent(
         SemanticPilotCombatV111 current, RandomIndexRequestV111 request,
         SemanticIntentSupportV111 support)
@@ -4051,10 +4059,6 @@ public static class SemanticPilotCombatEngineV111
             deck.Pending is not null)
             throw new InvalidDataException(
                 "Native policy combat lost its exact semantic deck state.");
-        if (!SemanticDeckEngineV111.AllCardInstanceIds(deck)
-                .Order().SequenceEqual(combat.DrawPile.Order()))
-            throw new InvalidDataException(
-                "Native policy exact deck does not match the physical draw pile.");
-        SemanticDeckEngineV111.Validate(deck);
+        SemanticDrawPileAdapterV111.ValidateSynchronized(combat);
     }
 }
