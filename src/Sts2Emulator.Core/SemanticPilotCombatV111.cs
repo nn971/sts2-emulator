@@ -2325,15 +2325,11 @@ public static class SemanticPilotCombatEngineV111
             decision.ActionId != actionId)
             throw new InvalidDataException(
                 "Draw-hook action transcript diverged from its event.");
-        var next = current with
-        {
-            Run = nextEndTurn.Run,
-            PendingEndTurn = nextEndTurn.Complete ? null : nextEndTurn,
-            History = current.History.Append(
-                new SemanticPilotContinuationV111(
-                    "semantic_draw_hook_choice",
-                    DrawHookChoiceDecision: decision.Fork())).ToArray()
-        };
+        var next = ContinueEndTurn(
+            current, nextEndTurn,
+            new SemanticPilotContinuationV111(
+                "semantic_draw_hook_choice",
+                DrawHookChoiceDecision: decision.Fork()));
         return NormalizeNoncontrolledCosts(next);
     }
 
@@ -2359,21 +2355,11 @@ public static class SemanticPilotCombatEngineV111
                 throw new InvalidDataException(
                     "End-turn target resolution omitted its selected identity.");
             var endTurnDecision = resolvedEndTurn.TargetTranscript[^1];
-            var resolvedRun = resolvedEndTurn.Run;
-            var resolvedSession = current with
-            {
-                Run = resolvedRun,
-                PendingEndTurn = resolvedEndTurn.Complete
-                    ? null : resolvedEndTurn,
-                RewardAudit = resolvedRun.Phase == RunPhase.Reward
-                    ? RecordRewardAudit(current.Run, resolvedRun)
-                    : current.RewardAudit,
-                History = current.History.Append(
-                    new SemanticPilotContinuationV111(
-                        "semantic_target",
-                        TargetDecision: endTurnDecision.Fork()))
-                    .ToArray()
-            };
+            var resolvedSession = ContinueEndTurn(
+                current, resolvedEndTurn,
+                new SemanticPilotContinuationV111(
+                    "semantic_target",
+                    TargetDecision: endTurnDecision.Fork()));
             Validate(resolvedSession);
             return NormalizeNoncontrolledCosts(resolvedSession);
         }
@@ -3041,15 +3027,12 @@ public static class SemanticPilotCombatEngineV111
                 CanonicalJson.Sha256(randomPileCardDecision))
             throw new InvalidOperationException(
                 "Semantic random pile-card decision differs from replay.");
-        return NormalizeNoncontrolledCosts(current with
-        {
-            Run = resolved.Run,
-            PendingEndTurn = resolved.Complete ? null : resolved,
-            History = current.History.Append(NatureContinuation(
+        return NormalizeNoncontrolledCosts(ContinueEndTurn(
+            current, resolved,
+            NatureContinuation(
                 selectedIndex, semanticIntent,
                 recordSemanticDraw ? deckDecision : null,
-                costDecision, randomPileCardDecision)).ToArray()
-        });
+                costDecision, randomPileCardDecision)));
     }
 
     /// <summary>
@@ -3924,15 +3907,35 @@ public static class SemanticPilotCombatEngineV111
             }
             var resolved = SemanticEndTurnEngineV111.Resolve(
                 endTurn, endTurn.Fingerprint, index);
-            current = current with
-            {
-                Run = resolved.Run,
-                PendingEndTurn = resolved.Complete ? null : resolved,
-                OtherChance = nextOther ?? current.OtherChance
-            };
+            current = ContinueEndTurn(
+                current, resolved, otherChance: nextOther);
         }
         current.Validate();
         return current;
+    }
+
+    private static SemanticPilotCombatV111 ContinueEndTurn(
+        SemanticPilotCombatV111 current,
+        SemanticEndTurnV111 resumed,
+        SemanticPilotContinuationV111? historyEntry = null,
+        SemanticOtherChanceStateV111? otherChance = null)
+    {
+        var run = resumed.Run;
+        var next = current with
+        {
+            Run = run,
+            PendingEndTurn = resumed.Complete ? null : resumed,
+            RewardAudit = run.Phase == RunPhase.Reward
+                ? RecordRewardAudit(current.Run, run)
+                : current.RewardAudit,
+            OtherChance = otherChance ?? current.OtherChance
+        };
+        return historyEntry is null
+            ? next
+            : next with
+            {
+                History = next.History.Append(historyEntry).ToArray()
+            };
     }
 
     public static void Validate(SemanticPilotCombatV111 state) =>
