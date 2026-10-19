@@ -30,6 +30,8 @@
 
 **S0 random hand-cost ownership review (2026-10-20):** The inventory now distinguishes the single-card identity choice from per-card bounded cost draws, documents their separate ordered supports and Native streams, and traces `NextCardIndex` through saved continuation replay and draw-pile/provider validation. Legacy law, Native-to-source stream attribution, source-pool fidelity, and cursor evidence remain open. No tests or builds were run.
 
+**S0 legacy index operation-kind trace increment (2026-10-20):** `LegacyRandomChoiceV111` now constructs explicit `choose_index` and `bounded_integer` requests at their respective entry paths; the shared resolver retains ordinal, guard, and provider handling and rejects mismatched support shapes. The permitted census now resolves all explicit request operation-kind expressions; registry/site ownership and broader row-level review remain open. `git diff --check` passed; no tests or builds were run.
+
 **Implementation scope:** `sts2-emulator`, STS2 v0.111.0, single-player. The first vertical slice is two-site Silent combat. Keep the four-Act Silent gameplay and active native inspector developments on separate tracks. Existing versioned `controlled_*`, `nature_*`, `semantic_*` and ordinary AI protocols remain supported; no historic snapshot/probability reinterpretation.
 
 ## Priorities and milestones
