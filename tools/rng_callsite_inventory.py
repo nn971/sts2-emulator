@@ -21,7 +21,7 @@ from urllib.parse import unquote, urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = ROOT / "src" / "Sts2Emulator.Core"
-SCHEMA_ID = "emulator-rng-callsite-source-inventory-v33"
+SCHEMA_ID = "emulator-rng-callsite-source-inventory-v34"
 SITE_REGISTRY_PATH = SOURCE_ROOT / "StochasticSiteRegistryV111.cs"
 
 CALL_PATTERN = re.compile(
@@ -1770,8 +1770,9 @@ def collect() -> dict[str, Any]:
             "expression, and registry/matrix resolution status. The static "
             "operation locator does not resolve forwarded caller values on its "
             "own. Runtime request validation checks operation kinds against the "
-            "registry metadata for the declared legacy caller-bound subset; "
-            "generic forwarded values outside that subset remain unresolved. "
+            "32 legacy caller-bound declarations and the registry's Native "
+            "bounded-index and Fisher-Yates site sets; generic forwarded "
+            "values outside those declarations remain unresolved. "
             "The site-matrix report shows registry-to-ledger and ledger-to-registry "
             "differences, unique ledger IDs, and explicit reference-law status. "
             "Unregistered ledger rows are informational because legacy and conditional "
