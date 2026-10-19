@@ -2891,20 +2891,6 @@ public sealed partial class PrototypeGameEngine
                     combat.PendingKnowledgeDemonChoice is null &&
                     combat.SemanticDeck?.Pending is null)
                 {
-                    var cursor = combat.AutomaticPipelineContinuation ??
-                        throw new InvalidDataException(
-                            "Deferred hand-draw completion lost its cursor.");
-                    if (!cursor.Mechanics.IsAtStep(
-                            PrototypeAutomaticStepKind.DrawPlayerHand) ||
-                        cursor.OpeningStage is not null ||
-                        cursor.PendingPostDispatchEventKind is not null)
-                        throw new InvalidDataException(
-                            "Deferred hand-draw completion is at an invalid pipeline boundary.");
-                    combat = combat with
-                    {
-                        AutomaticPipelineContinuation =
-                            cursor.WithHandDrawProgress(null)
-                    };
                     var completedInput = state with
                     {
                         Player = player,
