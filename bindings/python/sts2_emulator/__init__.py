@@ -47,7 +47,8 @@ class State:
                          current_thousandths=None, elite=None,
                          forced=None, card_rarity_source=None,
                          current_offset_basis_points=None,
-                         stream_id=None):
+                         stream_id=None, native_encounter_entry=None,
+                         total_floor=None):
         """Read a pre-outcome law; native event queries may need action_id.
 
         Reflections card-pick laws use action_id="touch_mirror" and the
@@ -75,6 +76,10 @@ class State:
         Fisher-Yates bound; queue eligibility and its prior prefix are open.
         Draw-pile shuffle laws require owner_id and the current positive bound;
         pile ordering and the combat continuation are not validated.
+        Native encounter-formation index laws take native_encounter_entry,
+        total_floor, support_count, and ordinal. They describe the exact
+        bounded transform for one declared index, not the formation pool or
+        preceding GenerateMonsters call prefix.
         PotionFactory and relic rarity laws accept a caller-declared owner_id
         + stream_id pair for cursor-blind source-threshold queries.
         Repy potion laws use ordinal 0 or 1 and prior_indices containing the
@@ -124,6 +129,27 @@ class State:
             if type(support_count) is not int or support_count <= 0:
                 raise ValueError("support_count must be a positive integer")
             payload["support_count"] = support_count
+        if native_encounter_entry is not None:
+            if not isinstance(native_encounter_entry, str) or \
+                    not native_encounter_entry.strip():
+                raise ValueError(
+                    "native_encounter_entry must be a nonempty string")
+        if total_floor is not None and (
+                type(total_floor) is not int or total_floor < 0):
+            raise ValueError("total_floor must be a nonnegative integer")
+        if site_id == "combat.encounter.formation.index_draw" and (
+                native_encounter_entry is not None or total_floor is not None):
+            if native_encounter_entry is None or total_floor is None:
+                raise ValueError(
+                    "Native encounter-formation laws require native_encounter_entry and total_floor together")
+            if support_count is None:
+                raise ValueError(
+                    "Native encounter-formation laws require support_count")
+            payload["native_encounter_entry"] = native_encounter_entry
+            payload["total_floor"] = total_floor
+        elif native_encounter_entry is not None or total_floor is not None:
+            raise ValueError(
+                "native_encounter_entry and total_floor apply only to combat.encounter.formation.index_draw")
         if site_id in (
                 "card_rarity.encounter_model.index_draw",
                 "relic_grab_bag.queue_shuffle.swap_index",

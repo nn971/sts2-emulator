@@ -3083,6 +3083,14 @@ internal static class PrototypeAiJsonlServer
                                 .IsChanceLawQuerySite(siteId))
                             throw new NotSupportedException(
                                 $"Chance Law query does not support site '{siteId}'.");
+                        if (siteId != NativeEncounterFormationFactoryV111
+                                .FormationSiteId &&
+                            (request.TryGetProperty(
+                                 "native_encounter_entry", out _) ||
+                             request.TryGetProperty(
+                                 "total_floor", out _)))
+                            throw new ArgumentException(
+                                "native_encounter_entry and total_floor apply only to Native encounter-formation laws.");
                         if (OptionalString(request, "stream_id") is not null &&
                             siteId is not
                                 ("potion_factory.rarity_roll.unit_float" or
@@ -3164,6 +3172,42 @@ internal static class PrototypeAiJsonlServer
                             law = ChanceLawEngineV111
                                 .QueryNativeMapGaussianInt(
                                     siteId, streamId, ownerId, ordinal);
+                            Write(new
+                            {
+                                requestId,
+                                ok = true,
+                                chanceLawSchemaId =
+                                    ChanceLawV111.CurrentSchemaId,
+                                law
+                            });
+                            break;
+                        }
+                        if (siteId == NativeEncounterFormationFactoryV111
+                                .FormationSiteId &&
+                            (request.TryGetProperty(
+                                 "native_encounter_entry", out _) ||
+                             request.TryGetProperty(
+                                 "total_floor", out _)))
+                        {
+                            RejectChanceLawQueryParameters(
+                                request, "native_encounter_entry",
+                                "total_floor", "support_count");
+                            var encounterEntry = OptionalString(
+                                request, "native_encounter_entry") ??
+                                throw new ArgumentException(
+                                    "Native formation law requires native_encounter_entry.");
+                            var totalFloor = OptionalInt(
+                                request, "total_floor") ??
+                                throw new ArgumentException(
+                                    "Native formation law requires total_floor.");
+                            var supportCount = OptionalInt(
+                                request, "support_count") ??
+                                throw new ArgumentException(
+                                    "Native formation law requires support_count.");
+                            law = ChanceLawEngineV111
+                                .QueryNativeEncounterFormationIndex(
+                                    encounterEntry, totalFloor,
+                                    supportCount, ordinal);
                             Write(new
                             {
                                 requestId,
@@ -10363,6 +10407,7 @@ internal static class PrototypeAiJsonlServer
             "room", "gold_proportion", "current_thousandths", "elite",
             "forced", "card_rarity_source",
             "current_offset_basis_points", "stream_id", "merchant",
+            "native_encounter_entry", "total_floor",
             "can_acquire_potion", "floor", "drop_offered",
             "card_instance_id", "slot_index", "slot_empty"
         ];

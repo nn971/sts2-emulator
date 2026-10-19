@@ -47,12 +47,24 @@ public static class NativeRngV111Contexts
     public static RngStreamState ForEncounterFormation(
         string seed, string encounterEntry, int totalFloor)
     {
+        var streamId = EncounterFormationStreamId(
+            encounterEntry, totalFloor);
+        return NativeRngV111.CreateContentStream(
+            streamId,
+            NativeRngV111.RunSeed(seed), encounterEntry, (ulong)totalFloor);
+    }
+
+    /// <summary>
+    /// Return the source-owned identity of the encounter-local formation
+    /// stream without deriving or inspecting its seed or cursor.
+    /// </summary>
+    public static string EncounterFormationStreamId(
+        string encounterEntry, int totalFloor)
+    {
         ArgumentException.ThrowIfNullOrWhiteSpace(encounterEntry);
         if (totalFloor < 0)
             throw new ArgumentOutOfRangeException(nameof(totalFloor));
-        return NativeRngV111.CreateContentStream(
-            $"context.encounter.{encounterEntry}.floor_{totalFloor}",
-            NativeRngV111.RunSeed(seed), encounterEntry, (ulong)totalFloor);
+        return $"context.encounter.{encounterEntry}.floor_{totalFloor}";
     }
 
     /// <summary>
