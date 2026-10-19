@@ -14630,8 +14630,6 @@ public sealed partial class PrototypeGameEngine
                 transformOrdinal++;
                 var replacementId = combat.NextCardInstanceId;
                 var oldPersistentId = original.PersistentCardInstanceId;
-                var transformed = combat.TransformedPersistentCardIds
-                    ?? Array.Empty<long>();
                 var transformedDrawPile = combat.DrawPile.Select(id =>
                     id == instanceId ? replacementId : id).ToArray();
                 var drawPileIndex = Array.IndexOf(
@@ -14665,18 +14663,17 @@ public sealed partial class PrototypeGameEngine
                 combat = drawPileIndex >= 0
                     ? SemanticDrawPileAdapterV111.ApplyDrawPileReplacement(
                         combat, drawPileIndex, instanceId, replacementId,
-                        nextCardZones, replacementCard)
+                        nextCardZones, replacementCard,
+                        transformedPersistentCardInstanceId:
+                            oldPersistentId,
+                        recordPersistentCardTransform: true)
                     : SemanticDrawPileAdapterV111
                         .ApplyZoneIdentityReplacement(
                             combat, nextCardZones, instanceId, replacementId,
-                            replacementCard);
-                combat = combat with
-                {
-                    TransformedPersistentCardIds =
-                        oldPersistentId is { } persistentId
-                            ? transformed.Append(persistentId).ToArray()
-                            : transformed
-                };
+                            replacementCard,
+                            transformedPersistentCardInstanceId:
+                                oldPersistentId,
+                            recordPersistentCardTransform: true);
             }
             return combat;
         }
