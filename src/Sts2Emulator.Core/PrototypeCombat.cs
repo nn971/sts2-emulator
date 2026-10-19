@@ -8051,12 +8051,10 @@ public sealed partial class PrototypeGameEngine
                         combat.DrawPile.ToList();
                     var discard =
                         combat.DiscardPile.ToList();
-                    if (natureAutoplay &&
-                        semanticDeck is { } natureDeck &&
-                        (natureDeck.Pending is not null ||
-                         !SemanticDeckEngineV111.AllCardInstanceIds(natureDeck)
-                             .Order().SequenceEqual(draw.Order())))
-                        throw new InvalidDataException(
+                    if (natureAutoplay)
+                        SemanticDrawPileAdapterV111.ValidateNatureDeckBoundary(
+                            combat,
+                            "Nature semantic deck is missing before top-draw autoplay.",
                             "Nature semantic deck is stale before top-draw autoplay.");
                     var staged = natureAutoplay
                         ? (operation.DeferredDrawnCardInstanceIds ?? []).ToList()
@@ -14205,11 +14203,14 @@ public sealed partial class PrototypeGameEngine
             combat.PendingChoice is not null ||
             draw.RemainingCount <= 0 || draw.EventDepth < 0 ||
             deck is not { Mode: SemanticDeckStateV111.NatureMode,
-                Pending: not null } ||
-            !SemanticDeckEngineV111.AllCardInstanceIds(deck)
-                .Order().SequenceEqual(combat.DrawPile.Order()))
+                Pending: not null })
             throw new InvalidOperationException(
                 "Semantic card-effect draw suspension requires a pending Nature card.");
+        SemanticDrawPileAdapterV111.ValidateNatureDeckBoundary(
+            combat,
+            "Semantic card-effect draw suspension requires a pending Nature card.",
+            "Semantic card-effect draw suspension requires a pending Nature card.",
+            allowPending: true);
         return combat with
         {
             PendingChoice = new PendingCombatChoiceState(
@@ -14243,11 +14244,13 @@ public sealed partial class PrototypeGameEngine
             cost.FromHandDraw != draw.FromHandDraw ||
             cost.EventDepth != draw.EventDepth ||
             deck is not { Mode: SemanticDeckStateV111.NatureMode,
-                Pending: null } ||
-            !SemanticDeckEngineV111.AllCardInstanceIds(deck)
-                .Order().SequenceEqual(combat.DrawPile.Order()))
+                Pending: null })
             throw new InvalidOperationException(
                 "Semantic effect draw cost requires a matching saved draw frame.");
+        SemanticDrawPileAdapterV111.ValidateNatureDeckBoundary(
+            combat,
+            "Semantic effect draw cost requires a matching saved draw frame.",
+            "Semantic effect draw cost requires a matching saved draw frame.");
         return combat with
         {
             PendingChoice = pending with
@@ -14423,11 +14426,14 @@ public sealed partial class PrototypeGameEngine
             pending is not { ChoiceId: "controlled_semantic_draw" } ||
             draw is null || continuation is null ||
             deck is not { Mode: SemanticDeckStateV111.NatureMode,
-                Pending: not null } ||
-            !SemanticDeckEngineV111.AllCardInstanceIds(deck)
-                .Order().SequenceEqual(combat.DrawPile.Order()))
+                Pending: not null })
             throw new InvalidDataException(
                 "Semantic card-effect draw checkpoint is inconsistent.");
+        SemanticDrawPileAdapterV111.ValidateNatureDeckBoundary(
+            combat,
+            "Semantic card-effect draw checkpoint is inconsistent.",
+            "Semantic card-effect draw checkpoint is inconsistent.",
+            allowPending: true);
         var request = SemanticDeckEngineV111.Inspect(deck) ??
             throw new InvalidDataException(
                 "Semantic card-effect draw lost its pending event.");
