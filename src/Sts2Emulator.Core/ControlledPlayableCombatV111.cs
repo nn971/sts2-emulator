@@ -288,36 +288,10 @@ public sealed record ControlledPlayableCombatV111(
         get
         {
             var combat = Run.World?.Combat;
-            var shuffle = combat?.PendingChoice?.ControlledPoolShuffle;
-            if (shuffle is null) return null;
-            var handReturn = shuffle.Operation.Kind ==
-                PrototypeCombatEffectKind.ReturnHandToDrawAndShuffle;
-            var recycle = shuffle.Operation.Kind ==
-                PrototypeCombatEffectKind.RecycleDrawPileForEffectDraw;
-            var sourceCardId = combat!.PendingChoice!.SourceCardInstanceId;
-            var ownerId = handReturn || recycle
-                ? "effect:" + shuffle.Operation.Kind + ":source:" +
-                    (sourceCardId?.ToString() ?? "none") + ":pool:" +
-                    CanonicalJson.Sha256(shuffle.OriginalCardIds)
-                : "card:" + (sourceCardId?.ToString() ?? "effect") +
-                    ":operation:" + shuffle.Operation.Kind +
-                    ":pool:" + CanonicalJson.Sha256(shuffle.OriginalCardIds);
-            return new RandomIndexRequestV111(
-                handReturn
-                    ? "combat.hand_return.draw_pile.shuffle_swap_index"
-                    : recycle
-                        ? "combat.draw.recycle.shuffle_swap_index"
-                        : "combat.generation.full_pool_shuffle.swap_index",
-                handReturn || recycle
-                    ? combat.NativeRng is not null
-                        ? "run.shuffle" : "prototype.combat"
-                    : shuffle.Operation.GeneratedChoiceUsesNativeCardGenerationRng &&
-                    combat!.NativeRng?.RunStreams is not null
-                    ? "run.combat_card_generation" : "prototype.combat",
-                ownerId,
-                PoolShuffleTranscript.Length, [],
-                OperationKind: "bounded_integer",
-                BoundedCount: shuffle.NextSwapIndex + 1);
+            if (combat?.PendingChoice?.ControlledPoolShuffle is null)
+                return null;
+            return SemanticPoolShuffleChoiceV111.CreateRequest(
+                combat, PoolShuffleTranscript.Length);
         }
     }
 

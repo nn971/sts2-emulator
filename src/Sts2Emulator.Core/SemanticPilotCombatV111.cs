@@ -3517,46 +3517,11 @@ public static class SemanticPilotCombatEngineV111
         SemanticPoolShuffleChoiceV111.ValidateBoundary(current.Run);
         var original = (string[])shuffle.OriginalCardIds.Clone();
         var currentPool = (string[])shuffle.CurrentCardIds.Clone();
-        var shortlistCardIds = randomShortlist
-            ? PrototypeGameEngine.ControlledCardShortlistCandidates(
-                combat!, shuffle.Operation) ?? throw new InvalidDataException(
-                    "Random shortlist lost its source card pool.")
-            : [];
         var sourceCardId = choice!.SourceCardInstanceId;
-        var owner = handReturn || recycle
-            ? "effect:" + shuffle.Operation.Kind + ":source:" +
-                (sourceCardId?.ToString() ?? "none") + ":pool:" +
-                CanonicalJson.Sha256(original)
-            : randomShortlist
-                ? "selection:" + shuffle.Operation.Selection!.SourceZone +
-                    ":pool:" + CanonicalJson.Sha256(shortlistCardIds)
-                : "card:" + (sourceCardId?.ToString() ?? "effect") +
-                ":operation:" + shuffle.Operation.Kind +
-                ":pool:" + CanonicalJson.Sha256(original);
         var ordinal = current.History.Count(transition =>
             transition.Kind == "semantic_pool_shuffle");
-        var streamId = handReturn || recycle
-            ? combat!.NativeRng is not null
-                ? "run.shuffle" : "prototype.combat"
-            : randomShortlist && combat!.NativeRng?.RunStreams is not null
-                ? "run.combat_card_selection"
-            : shuffle.Operation.GeneratedChoiceUsesNativeCardGenerationRng &&
-              combat!.NativeRng?.RunStreams is not null
-                ? "run.combat_card_generation" : "prototype.combat";
-        var siteId = handReturn
-            ? "combat.hand_return.draw_pile.shuffle_swap_index"
-            : recycle
-                ? "combat.draw.recycle.shuffle_swap_index"
-                : randomRareToHand
-                    ? "combat.draw_pile.random_rare_to_hand.shuffle_swap_index"
-                    : randomShortlist
-                        ? "combat.card_selection.random_shortlist"
-                        : "combat.generation.full_pool_shuffle.swap_index";
-        var request = new RandomIndexRequestV111(
-            siteId, streamId,
-            owner, ordinal, [], OperationKind: "bounded_integer",
-            BoundedCount: shuffle.NextSwapIndex + 1);
-        request.Validate();
+        var request = SemanticPoolShuffleChoiceV111.CreateRequest(
+            combat!, ordinal);
         var supportFingerprint = CanonicalJson.Sha256(new
         {
             request, Original = original, Current = currentPool,

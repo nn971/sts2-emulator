@@ -33,18 +33,8 @@ public sealed record SemanticPoolShuffleEventV111(
     public void Validate()
     {
         Request.Validate();
-        var expectedSite = SourceOperationKind switch
-        {
-            nameof(PrototypeCombatEffectKind.ReturnHandToDrawAndShuffle) =>
-                "combat.hand_return.draw_pile.shuffle_swap_index",
-            nameof(PrototypeCombatEffectKind.MoveRandomRareDrawCardsToHand) =>
-                "combat.draw_pile.random_rare_to_hand.shuffle_swap_index",
-            nameof(PrototypeCombatEffectKind.RecycleDrawPileForEffectDraw) =>
-                "combat.draw.recycle.shuffle_swap_index",
-            nameof(PrototypeCombatEffectKind.ChooseCards) =>
-                "combat.card_selection.random_shortlist",
-            _ => "combat.generation.full_pool_shuffle.swap_index"
-        };
+        var expectedSite = SemanticPoolShuffleChoiceV111.SiteIdForOperation(
+            SourceOperationKind);
         if (SchemaId != EventSchemaId || string.IsNullOrWhiteSpace(EventId) ||
             string.IsNullOrWhiteSpace(BoundaryFingerprint) ||
             string.IsNullOrWhiteSpace(SupportFingerprint) ||
@@ -119,6 +109,73 @@ public sealed record SemanticPoolShuffleDecisionV111(
 
 public static class SemanticPoolShuffleChoiceV111
 {
+    internal static string SiteIdForOperation(string sourceOperationKind) =>
+        sourceOperationKind switch
+        {
+            nameof(PrototypeCombatEffectKind.ReturnHandToDrawAndShuffle) =>
+                "combat.hand_return.draw_pile.shuffle_swap_index",
+            nameof(PrototypeCombatEffectKind.MoveRandomRareDrawCardsToHand) =>
+                "combat.draw_pile.random_rare_to_hand.shuffle_swap_index",
+            nameof(PrototypeCombatEffectKind.RecycleDrawPileForEffectDraw) =>
+                "combat.draw.recycle.shuffle_swap_index",
+            nameof(PrototypeCombatEffectKind.ChooseCards) =>
+                "combat.card_selection.random_shortlist",
+            _ => "combat.generation.full_pool_shuffle.swap_index"
+        };
+
+    internal static RandomIndexRequestV111 CreateRequest(
+        CombatState combat, int ordinal)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+        var choice = combat.PendingChoice;
+        var shuffle = choice?.ControlledPoolShuffle ??
+            throw new InvalidDataException(
+                "Full-pool shuffle is missing its source operation.");
+        bool handReturn = shuffle.Operation.Kind ==
+            PrototypeCombatEffectKind.ReturnHandToDrawAndShuffle;
+        bool recycle = shuffle.Operation.Kind ==
+            PrototypeCombatEffectKind.RecycleDrawPileForEffectDraw;
+        bool randomRareToHand = shuffle.Operation.Kind ==
+            PrototypeCombatEffectKind.MoveRandomRareDrawCardsToHand;
+        bool randomShortlist = shuffle.Operation.Kind ==
+            PrototypeCombatEffectKind.ChooseCards;
+        var siteId = SiteIdForOperation(shuffle.Operation.Kind.ToString());
+        var streamId = handReturn || recycle
+            ? combat.NativeRng is not null
+                ? "run.shuffle" : "prototype.combat"
+            : randomShortlist && combat.NativeRng?.RunStreams is not null
+                ? "run.combat_card_selection"
+                : shuffle.Operation.GeneratedChoiceUsesNativeCardGenerationRng &&
+                  combat.NativeRng?.RunStreams is not null
+                    ? "run.combat_card_generation" : "prototype.combat";
+        var sourceCardId = choice!.SourceCardInstanceId;
+        var shortlistCardIds = randomShortlist
+            ? PrototypeGameEngine.ControlledCardShortlistCandidates(
+                combat, shuffle.Operation) ?? throw new InvalidDataException(
+                    "Random shortlist lost its source card pool.")
+            : [];
+        var ownerId = handReturn || recycle
+            ? "effect:" + shuffle.Operation.Kind + ":source:" +
+                (sourceCardId?.ToString() ?? "none") + ":pool:" +
+                CanonicalJson.Sha256(shuffle.OriginalCardIds)
+            : randomShortlist
+                ? "selection:" + (shuffle.Operation.Selection?.SourceZone ??
+                    throw new InvalidDataException(
+                        "Random shortlist lost its source zone.")) + ":pool:" +
+                    CanonicalJson.Sha256(shortlistCardIds)
+                : "card:" + (sourceCardId?.ToString() ?? "effect") +
+                    ":operation:" + shuffle.Operation.Kind + ":pool:" +
+                    CanonicalJson.Sha256(shuffle.OriginalCardIds);
+        var request = new RandomIndexRequestV111(
+            siteId, streamId, ownerId, ordinal, [],
+            OperationKind: "bounded_integer",
+            BoundedCount: shuffle.NextSwapIndex + 1);
+        request.Validate();
+        return request;
+    }
+
     internal static void ValidateBoundary(RunState run)
     {
         var combat = run.World?.Combat;
@@ -238,57 +295,16 @@ public static class SemanticPoolShuffleChoiceV111
         PrototypeControlledPoolShuffleV111 shuffle,
         SemanticPoolShuffleEventV111 pending)
     {
-        bool handReturn = shuffle.Operation.Kind ==
-            PrototypeCombatEffectKind.ReturnHandToDrawAndShuffle;
-        bool recycle = shuffle.Operation.Kind ==
-            PrototypeCombatEffectKind.RecycleDrawPileForEffectDraw;
-        bool randomRareToHand = shuffle.Operation.Kind ==
-            PrototypeCombatEffectKind.MoveRandomRareDrawCardsToHand;
-        bool randomShortlist = shuffle.Operation.Kind ==
-            PrototypeCombatEffectKind.ChooseCards;
-        var expectedSite = handReturn
-            ? "combat.hand_return.draw_pile.shuffle_swap_index"
-            : recycle
-                ? "combat.draw.recycle.shuffle_swap_index"
-                : randomRareToHand
-                    ? "combat.draw_pile.random_rare_to_hand.shuffle_swap_index"
-                    : randomShortlist
-                        ? "combat.card_selection.random_shortlist"
-                        : "combat.generation.full_pool_shuffle.swap_index";
-        var expectedStream = handReturn || recycle
-            ? combat.NativeRng is not null
-                ? "run.shuffle" : "prototype.combat"
-            : randomShortlist && combat.NativeRng?.RunStreams is not null
-                ? "run.combat_card_selection"
-                : shuffle.Operation.GeneratedChoiceUsesNativeCardGenerationRng &&
-                  combat.NativeRng?.RunStreams is not null
-                    ? "run.combat_card_generation" : "prototype.combat";
         var sourceCardId = choice.SourceCardInstanceId;
-        var shortlistCardIds = randomShortlist
-            ? PrototypeGameEngine.ControlledCardShortlistCandidates(
-                combat, shuffle.Operation) ?? throw new InvalidDataException(
-                    "Random shortlist lost its source card pool.")
-            : [];
-        var expectedOwner = handReturn || recycle
-            ? "effect:" + shuffle.Operation.Kind + ":source:" +
-                (sourceCardId?.ToString() ?? "none") + ":pool:" +
-                CanonicalJson.Sha256(shuffle.OriginalCardIds)
-            : randomShortlist
-                ? "selection:" + shuffle.Operation.Selection!.SourceZone +
-                    ":pool:" + CanonicalJson.Sha256(shortlistCardIds)
-                : "card:" + (sourceCardId?.ToString() ?? "effect") +
-                    ":operation:" + shuffle.Operation.Kind + ":pool:" +
-                    CanonicalJson.Sha256(shuffle.OriginalCardIds);
+        var expectedRequest = CreateRequest(combat, pending.Ordinal);
         if (!pending.OriginalCardIds.SequenceEqual(shuffle.OriginalCardIds) ||
             !pending.CurrentCardIds.SequenceEqual(shuffle.CurrentCardIds) ||
             pending.NextSwapIndex != shuffle.NextSwapIndex ||
             pending.SelectedCount != shuffle.SelectedCount ||
             pending.SourceOperationKind != shuffle.Operation.Kind.ToString() ||
             pending.SourceCardInstanceId != sourceCardId ||
-            pending.SiteId != expectedSite ||
-            pending.StreamId != expectedStream ||
-            pending.OwnerId != expectedOwner ||
-            pending.Request.BoundedCount != shuffle.NextSwapIndex + 1)
+            CanonicalJson.Sha256(pending.Request) !=
+                CanonicalJson.Sha256(expectedRequest))
             throw new InvalidDataException(
                 "Pool-shuffle decision no longer matches its live support.");
     }
