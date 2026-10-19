@@ -60,6 +60,23 @@ public static class SemanticCardTransformChoiceV111
     public const string SiteId = "combat.card_transform.replacement.index_draw";
     internal const string StreamId = "prototype.combat";
 
+    internal static RandomIndexRequestV111 CreateRequest(
+        string ownerId, int ordinal, int supportCount)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+        if (supportCount <= 0)
+            throw new ArgumentOutOfRangeException(nameof(supportCount));
+
+        var request = new RandomIndexRequestV111(
+            SiteId, StreamId, ownerId, ordinal,
+            Enumerable.Range(0, supportCount).ToArray(),
+            OperationKind: "choose_index");
+        request.Validate();
+        return request;
+    }
+
     internal static SemanticCardTransformEventV111 CreateEvent(
         string boundaryFingerprint, int ordinal, long sourceCardInstanceId,
         string originalCardId, string[] candidateCardIds)
@@ -76,17 +93,19 @@ public static class SemanticCardTransformChoiceV111
         var supportFingerprint = CanonicalJson.Sha256(candidates);
         var ownerId = "card_instance:" + sourceCardInstanceId + ":model:" +
             originalCardId + ":pool:" + supportFingerprint;
+        var request = CreateRequest(ownerId, ordinal, candidates.Length);
         var eventId = CanonicalJson.Sha256(new
         {
             SchemaId,
             BoundaryFingerprint = boundaryFingerprint,
-            SiteId,
-            OwnerId = ownerId,
-            Ordinal = ordinal,
+            SiteId = request.SiteId,
+            OwnerId = request.OwnerId,
+            Ordinal = request.Ordinal,
             SupportFingerprint = supportFingerprint
         });
         var semanticEvent = new SemanticCardTransformEventV111(
-            SchemaId, eventId, SiteId, StreamId, ownerId, ordinal,
+            SchemaId, eventId, request.SiteId, request.StreamId,
+            request.OwnerId, request.Ordinal,
             "choose_card_model", sourceCardInstanceId, originalCardId,
             candidates, supportFingerprint);
         semanticEvent.Validate();

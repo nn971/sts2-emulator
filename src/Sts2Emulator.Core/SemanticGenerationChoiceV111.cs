@@ -61,6 +61,29 @@ public static class SemanticGenerationChoiceV111
 {
     public const string SchemaId = "sts2-v111-semantic-generation-choice-v1";
 
+    internal static RandomIndexRequestV111 CreateRequest(
+        string siteId, string ownerId, int ordinal, int supportCount)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
+        if (siteId is not ("combat.generated_card.select" or
+            "combat.random_draw_attack.card_model"))
+            throw new NotSupportedException(
+                "UNSUPPORTED_RANDOM_SITE site=" + siteId +
+                " operation=generated_card_model.");
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+        if (supportCount <= 0)
+            throw new ArgumentOutOfRangeException(nameof(supportCount));
+
+        var request = new RandomIndexRequestV111(
+            siteId, "prototype.combat", ownerId, ordinal,
+            Enumerable.Range(0, supportCount).ToArray(),
+            OperationKind: "choose_index");
+        request.Validate();
+        return request;
+    }
+
     internal static SemanticGeneratedCardEventV111 CreateEvent(
         string boundaryFingerprint, string siteId, string ownerId,
         int ordinal, string[] candidateCardIds)
@@ -72,19 +95,22 @@ public static class SemanticGenerationChoiceV111
         if (ordinal < 0)
             throw new ArgumentOutOfRangeException(nameof(ordinal));
         var candidates = (string[])candidateCardIds.Clone();
+        var request = CreateRequest(
+            siteId, ownerId, ordinal, candidates.Length);
         var supportFingerprint = CanonicalJson.Sha256(candidates);
         var eventId = CanonicalJson.Sha256(new
         {
             SchemaId,
             BoundaryFingerprint = boundaryFingerprint,
-            SiteId = siteId,
-            OwnerId = ownerId,
-            Ordinal = ordinal,
+            SiteId = request.SiteId,
+            OwnerId = request.OwnerId,
+            Ordinal = request.Ordinal,
             SupportFingerprint = supportFingerprint
         });
         var semanticEvent = new SemanticGeneratedCardEventV111(
-            SchemaId, eventId, siteId, "prototype.combat", ownerId,
-            ordinal, "choose_card_model", candidates, supportFingerprint);
+            SchemaId, eventId, request.SiteId, request.StreamId,
+            request.OwnerId, request.Ordinal, "choose_card_model",
+            candidates, supportFingerprint);
         semanticEvent.Validate();
         return semanticEvent;
     }
