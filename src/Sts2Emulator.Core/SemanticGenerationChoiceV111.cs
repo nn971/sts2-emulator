@@ -61,6 +61,34 @@ public static class SemanticGenerationChoiceV111
 {
     public const string SchemaId = "sts2-v111-semantic-generation-choice-v1";
 
+    internal static SemanticGeneratedCardEventV111 CreateEvent(
+        string boundaryFingerprint, string siteId, string ownerId,
+        int ordinal, string[] candidateCardIds)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(boundaryFingerprint);
+        ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
+        ArgumentNullException.ThrowIfNull(candidateCardIds);
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+        var candidates = (string[])candidateCardIds.Clone();
+        var supportFingerprint = CanonicalJson.Sha256(candidates);
+        var eventId = CanonicalJson.Sha256(new
+        {
+            SchemaId,
+            BoundaryFingerprint = boundaryFingerprint,
+            SiteId = siteId,
+            OwnerId = ownerId,
+            Ordinal = ordinal,
+            SupportFingerprint = supportFingerprint
+        });
+        var semanticEvent = new SemanticGeneratedCardEventV111(
+            SchemaId, eventId, siteId, "prototype.combat", ownerId,
+            ordinal, "choose_card_model", candidates, supportFingerprint);
+        semanticEvent.Validate();
+        return semanticEvent;
+    }
+
     internal static void ValidateBoundary(RunState run)
     {
         var combat = run.World?.Combat;
