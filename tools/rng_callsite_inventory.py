@@ -591,6 +591,12 @@ def _guarded_site_values(
             member_source,
         )
         if registered_query_guard is not None:
+            operation = re.search(
+                r"ValidateSiteId\s*\(\s*"
+                rf"{re.escape(name)}\s*,\s*"
+                r"\"(?P<operation>index|bounded-integer|unit-float)\"\s*\)",
+                member_source,
+            )
             validator = re.search(
                 r"private\s+static\s+void\s+ValidateSiteId\s*\(\s*"
                 r"string\s+(?P<parameter>[A-Za-z_][A-Za-z0-9_]*)\s*,\s*"
@@ -603,20 +609,57 @@ def _guarded_site_values(
                 return []
             parameter = validator.group("parameter")
             body = validator.group("body")
-            if ("NotSupportedException" not in body or
-                    not re.search(
-                        rf"StochasticSiteRegistryV111\."
-                        rf"IsChanceLawQuerySite\s*\(\s*"
-                        rf"{re.escape(parameter)}\s*\)", body) or
+            if (operation is None or "NotSupportedException" not in body or
                     not re.search(
                         rf"\{{[^{{}}]*\b{re.escape(parameter)}\b"
                         rf"[^{{}}]*\}}", body)):
                 return []
-            values, unresolved = _resolve_site_array_property(
+            query_values, query_unresolved = _resolve_site_array_property(
                 "StochasticSiteRegistryV111.ChanceLawQuerySiteIds",
                 global_constants,
             )
-            return sorted(set(values)) if values and not unresolved else []
+            if not query_values or query_unresolved:
+                return []
+            query_guard = re.search(
+                rf"StochasticSiteRegistryV111\."
+                rf"IsChanceLawQuerySite\s*\(\s*"
+                rf"{re.escape(parameter)}\s*\)", body,
+            )
+            family = operation.group("operation")
+            if family in {"index", "bounded-integer"}:
+                family_guard = re.search(
+                    rf"StochasticSiteRegistryV111\s*\.\s*"
+                    rf"IsNativeRandomIndexSite\s*\(\s*"
+                    rf"{re.escape(parameter)}\s*\)", body,
+                )
+                float_values, float_unresolved = _resolve_site_array_property(
+                    "StochasticSiteRegistryV111.NativeUnitFloatSiteIds",
+                    global_constants,
+                )
+                gaussian_values, gaussian_unresolved = (
+                    _resolve_site_array_property(
+                        "ChanceLawEngineV111.NativeMapGaussianIntQuerySiteIds",
+                        global_constants,
+                    )
+                )
+                if (query_guard is None or family_guard is None or
+                        float_unresolved or gaussian_unresolved):
+                    return []
+                rejected = set(float_values) | set(gaussian_values)
+                return sorted(set(query_values) - rejected)
+            family_guard = re.search(
+                rf"StochasticSiteRegistryV111\."
+                rf"IsNativeUnitFloatSite\s*\(\s*"
+                rf"{re.escape(parameter)}\s*\)", body,
+            )
+            float_values, float_unresolved = _resolve_site_array_property(
+                "StochasticSiteRegistryV111.NativeUnitFloatSiteIds",
+                global_constants,
+            )
+            if (query_guard is None or family_guard is None or
+                    not float_values or float_unresolved):
+                return []
+            return sorted(set(query_values) & set(float_values))
 
         delegated_guard = re.search(
             rf"\bValidateSiteId\s*\(\s*{re.escape(name)}\s*,\s*"
@@ -737,11 +780,14 @@ def _resolve_site_array_property(
     expression: str,
     global_constants: dict[str, set[str]],
     active: frozenset[str] = frozenset(),
+    class_context: str | None = None,
+    class_name_context: str | None = None,
 ) -> tuple[list[str], list[str]]:
-    """Resolve a spread of a source-owned string-array property.
+    """Resolve spreads of source-owned properties and local string arrays.
 
-    The registry can compose its existing site lists without copying their
-    stable IDs. Follow those property references for the census as well.
+    Registry properties can compose existing public site lists or private
+    arrays without copying their stable IDs. Follow those references for the
+    census as well.
     """
     reference = expression.strip()
     if reference.startswith(".."):
@@ -752,6 +798,22 @@ def _resolve_site_array_property(
         reference,
     )
     if match is None:
+        local = re.fullmatch(r"[A-Za-z_][A-Za-z0-9_]*", reference)
+        if local is not None and class_context is not None \
+                and class_name_context is not None:
+            array_name = local.group(0)
+            identity = f"{class_name_context}.{array_name}"
+            if identity in active:
+                return [], [expression.strip()]
+            array = next((item for item in SITE_ARRAY_PATTERN.finditer(
+                class_context
+            ) if item.group("name") == array_name), None)
+            if array is not None:
+                return _resolve_site_array_items(
+                    array.group("body"), global_constants,
+                    active | {identity}, class_context,
+                    class_name_context,
+                )
         return [], [expression.strip()]
     class_name = match.group("class").rsplit(".", 1)[-1]
     property_name = match.group("name")
@@ -822,12 +884,25 @@ def _resolve_site_array_property(
                 return [], [expression.strip()]
             property_body = ",".join(keys)
 
+    return _resolve_site_array_items(
+        property_body, global_constants, next_active,
+        class_source, class_name,
+    )
+
+
+def _resolve_site_array_items(
+    body: str,
+    global_constants: dict[str, set[str]],
+    active: frozenset[str],
+    class_source: str,
+    class_name: str,
+) -> tuple[list[str], list[str]]:
     values: list[str] = []
     unresolved: list[str] = []
-    for item in _split_call_arguments(property_body):
+    for item in _split_call_arguments(body):
         if item.startswith(".."):
             nested, missing = _resolve_site_array_property(
-                item, global_constants, next_active
+                item, global_constants, active, class_source, class_name
             )
             values.extend(nested)
             unresolved.extend(missing)
@@ -1064,7 +1139,9 @@ def _registry_site_ids(
         for expression in _split_call_arguments(array.group("body")):
             if expression.startswith(".."):
                 values, missing = _resolve_site_array_property(
-                    expression, global_constants
+                    expression, global_constants,
+                    class_context=registry_source,
+                    class_name_context="StochasticSiteRegistryV111",
                 )
                 site_ids.update(values)
                 unresolved.extend(missing)

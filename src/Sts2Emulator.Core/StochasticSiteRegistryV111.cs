@@ -648,6 +648,17 @@ public static class StochasticSiteRegistryV111
         ChanceLawEngineV111.NativeEventGoldUnitFloatSiteId,
         PrototypeNativeEndlessConveyor.DishWeightedTicketSiteId
     ];
+    private static readonly string[] NativeUnitFloatSites =
+    [
+        "reward.potion_odds.unit_float",
+        "card_rarity.upgrade_roll.unit_float",
+        "card_rarity.roll.unit_float",
+        "potion_factory.rarity_roll.unit_float",
+        "relic_grab_bag.rarity.unit_float",
+        "shop.merchant.card_upgrade_roll.unit_float",
+        .. NativeMerchantPriceSites,
+        .. NativeEventContextUnitFloatSites
+    ];
     private static readonly string[] NativeEventContextShuffleSites =
     [
         PrototypeNativeFakeMerchant.RelicOfferShuffleSiteId,
@@ -796,6 +807,8 @@ public static class StochasticSiteRegistryV111
         (string[])ControlledPlayableSites.Clone();
     public static string[] ChanceLawQuerySiteIds =>
         (string[])ChanceLawQuerySites.Clone();
+    public static string[] NativeUnitFloatSiteIds =>
+        (string[])NativeUnitFloatSites.Clone();
     public static string[] NativeMerchantPriceSiteIds =>
         (string[])NativeMerchantPriceSites.Clone();
     public static string[] AncientOfferSessionSiteIds =>
@@ -898,15 +911,18 @@ public static class StochasticSiteRegistryV111
             or "map.later_act.unknown_count.gaussian_int.component";
 
     public static bool IsNativeRandomIndexSite(string siteId) =>
-        IsChanceLawQuerySite(siteId)
-        || NatureChoiceSites.Contains(siteId, StringComparer.Ordinal)
-        || NativeFisherYatesSites.Contains(siteId, StringComparer.Ordinal)
-        || siteId == "diagnostic.monster_local.index_sample";
+        (IsChanceLawQuerySite(siteId)
+            || NatureChoiceSites.Contains(siteId, StringComparer.Ordinal)
+            || NativeFisherYatesSites.Contains(siteId, StringComparer.Ordinal)
+            || siteId == "diagnostic.monster_local.index_sample")
+        && !IsNativeUnitFloatSite(siteId)
+        && !IsNativeGaussianIntSite(siteId);
 
     public static bool IsNativeUnitFloatSite(string siteId) =>
-        IsChanceLawQuerySite(siteId)
-        || NativeEventContextUnitFloatSites.Contains(
-            siteId, StringComparer.Ordinal);
+        NativeUnitFloatSites.Contains(siteId, StringComparer.Ordinal);
+
+    public static bool IsNativeGaussianIntSite(string siteId) =>
+        ChanceLawEngineV111.IsNativeMapGaussianIntQuerySite(siteId);
 
     public static bool IsNativeMerchantPriceSite(string siteId) =>
         NativeMerchantPriceSites.Contains(siteId, StringComparer.Ordinal);
