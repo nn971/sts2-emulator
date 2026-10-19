@@ -1129,6 +1129,7 @@ public static class StochasticSiteRegistryV111
             {
                 StochasticSiteRegistryV111.WarHammerEliteUpgradeShuffleSiteId =>
                     operationKind == "bounded_integer",
+                NativeCombatRngEntryV111.InitialUniqueHpSiteId or
                 NativeCombatRngEntryV111.ToughEggHatchHpSiteId =>
                     operationKind == "choose_index",
                 PrototypeGameEngine.FishingRodUpgradeSiteId =>
