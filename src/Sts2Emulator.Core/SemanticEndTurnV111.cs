@@ -242,10 +242,8 @@ public sealed record SemanticEndTurnV111(
             if (this.Complete || this.Intents is not null ||
                 this.HandDraw is not null ||
                 this.PlayerActionSource is not { } playerSource ||
-                playerSource.Phase != RunPhase.Combat ||
-                playerSource.World?.Combat is not { IsPlayerTurn: true,
-                    PendingChoice: null,
-                    AutomaticPipelineContinuation: null })
+                !PrototypeGameEngine
+                    .IsAtCombatPlayerDecisionBoundary(playerSource))
                 throw new InvalidDataException(
                     "Invalid pending semantic enemy-action stage.");
             var cursor = this.Run.World!.Combat!
@@ -382,10 +380,10 @@ public static class SemanticEndTurnEngineV111
         RunState playerBoundary, string nativeEncounterEntry)
     {
         ArgumentNullException.ThrowIfNull(playerBoundary);
-        if (playerBoundary.Phase != RunPhase.Combat ||
-            playerBoundary.World?.Combat is not { IsPlayerTurn: true,
-                AutomaticPipelineContinuation: null, PendingChoice: null } starting ||
-            starting.PendingKnowledgeDemonChoice is not null ||
+        var starting = playerBoundary.World?.Combat;
+        if (!PrototypeGameEngine
+                .IsAtCombatPlayerDecisionBoundary(playerBoundary) ||
+            starting is null ||
             !IsSupportedSemanticSourceDeck(starting))
             throw new InvalidOperationException(
                 "Expected a real player-choice combat boundary.");

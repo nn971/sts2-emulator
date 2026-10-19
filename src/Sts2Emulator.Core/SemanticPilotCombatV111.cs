@@ -3863,10 +3863,8 @@ public static class SemanticPilotCombatEngineV111
             "Initial intent completion lost the source route world.");
         var combat = world.Combat ?? throw new InvalidDataException(
             "Initial intent completion lost combat.");
-        if (resumed.Phase != RunPhase.Combat ||
-            combat is not { IsPlayerTurn: true, PendingChoice: null,
-                PendingKnowledgeDemonChoice: null,
-                AutomaticPipelineContinuation: null })
+        if (!PrototypeGameEngine
+                .IsAtCombatPlayerDecisionBoundary(resumed))
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_ROUTE site=combat.opening " +
                 "operation=unmodeled_opening_continuation");

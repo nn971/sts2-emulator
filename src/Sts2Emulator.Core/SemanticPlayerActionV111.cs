@@ -146,10 +146,8 @@ public static class SemanticPlayerActionEngineV111
         // power, draw hook or enemy mechanic. Assert the hidden deck is
         // untouched before accepting the advanced player boundary.
         var afterCombat = run.World?.Combat;
-        if (run.Phase != RunPhase.Combat || afterCombat is not
-                { IsPlayerTurn: true, PendingChoice: null,
-                    PendingKnowledgeDemonChoice: null,
-                    AutomaticPipelineContinuation: null })
+        if (!PrototypeGameEngine
+                .IsAtCombatPlayerDecisionBoundary(run) || afterCombat is null)
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
                 "operation=action_crossed_chance_or_turn_boundary");
@@ -203,11 +201,9 @@ public static class SemanticPlayerActionEngineV111
 
     public static void ValidateBoundary(RunState run)
     {
-        if (run.Phase != RunPhase.Combat ||
-            run.World?.Combat is not { IsPlayerTurn: true,
-                AutomaticPipelineContinuation: null, PendingChoice: null,
-                PendingKnowledgeDemonChoice: null } combat ||
-            combat.SemanticDeck is null)
+        if (!PrototypeGameEngine
+                .IsAtCombatPlayerDecisionBoundary(run) ||
+            run.World?.Combat is not { SemanticDeck: not null } combat)
             throw new InvalidOperationException(
                 "Expected an idle semantic Nature player combat boundary.");
         SemanticDrawPileAdapterV111.ValidateNatureDeckBoundary(
