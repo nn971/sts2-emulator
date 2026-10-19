@@ -2263,19 +2263,9 @@ public static class SemanticPilotCombatEngineV111
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action operation=" +
                 action.Kind);
-        var nextState = current with
-        {
-            Run = result,
-            RewardAudit = result.Phase == RunPhase.Reward
-                ? RecordRewardAudit(source, result)
-                : current.RewardAudit,
-            // A genuine fully deterministic end-turn continuation can
-            // finish without exposing an intent or draw Nature ticket.
-            // The next player decision must be immediately available.
-            PendingEndTurn = endTurn is { Complete: true } ? null : endTurn,
-            History = current.History.Append(
-                new SemanticPilotContinuationV111("player", actionId)).ToArray()
-        };
+        var nextState = PublishRunContinuation(
+            current, result, endTurn,
+            new SemanticPilotContinuationV111("player", actionId));
         return NormalizeNoncontrolledCosts(nextState);
     }
 
@@ -2325,8 +2315,8 @@ public static class SemanticPilotCombatEngineV111
             decision.ActionId != actionId)
             throw new InvalidDataException(
                 "Draw-hook action transcript diverged from its event.");
-        var next = ContinueEndTurn(
-            current, nextEndTurn,
+        var next = PublishRunContinuation(
+            current, nextEndTurn.Run, nextEndTurn,
             new SemanticPilotContinuationV111(
                 "semantic_draw_hook_choice",
                 DrawHookChoiceDecision: decision.Fork()));
@@ -2355,8 +2345,8 @@ public static class SemanticPilotCombatEngineV111
                 throw new InvalidDataException(
                     "End-turn target resolution omitted its selected identity.");
             var endTurnDecision = resolvedEndTurn.TargetTranscript[^1];
-            var resolvedSession = ContinueEndTurn(
-                current, resolvedEndTurn,
+            var resolvedSession = PublishRunContinuation(
+                current, resolvedEndTurn.Run, resolvedEndTurn,
                 new SemanticPilotContinuationV111(
                     "semantic_target",
                     TargetDecision: endTurnDecision.Fork()));
@@ -3027,8 +3017,8 @@ public static class SemanticPilotCombatEngineV111
                 CanonicalJson.Sha256(randomPileCardDecision))
             throw new InvalidOperationException(
                 "Semantic random pile-card decision differs from replay.");
-        return NormalizeNoncontrolledCosts(ContinueEndTurn(
-            current, resolved,
+        return NormalizeNoncontrolledCosts(PublishRunContinuation(
+            current, resolved.Run, resolved,
             NatureContinuation(
                 selectedIndex, semanticIntent,
                 recordSemanticDraw ? deckDecision : null,
@@ -3907,24 +3897,26 @@ public static class SemanticPilotCombatEngineV111
             }
             var resolved = SemanticEndTurnEngineV111.Resolve(
                 endTurn, endTurn.Fingerprint, index);
-            current = ContinueEndTurn(
-                current, resolved, otherChance: nextOther);
+            current = PublishRunContinuation(
+                current, resolved.Run, resolved, otherChance: nextOther);
         }
         current.Validate();
         return current;
     }
 
-    private static SemanticPilotCombatV111 ContinueEndTurn(
+    private static SemanticPilotCombatV111 PublishRunContinuation(
         SemanticPilotCombatV111 current,
-        SemanticEndTurnV111 resumed,
+        RunState run,
+        SemanticEndTurnV111? pendingEndTurn,
         SemanticPilotContinuationV111? historyEntry = null,
         SemanticOtherChanceStateV111? otherChance = null)
     {
-        var run = resumed.Run;
         var next = current with
         {
             Run = run,
-            PendingEndTurn = resumed.Complete ? null : resumed,
+            PendingEndTurn = pendingEndTurn is { Complete: false }
+                ? pendingEndTurn
+                : null,
             RewardAudit = run.Phase == RunPhase.Reward
                 ? RecordRewardAudit(current.Run, run)
                 : current.RewardAudit,
