@@ -10,12 +10,11 @@ public sealed record SemanticTargetEventV111(
 {
     public void Validate()
     {
+        var expectedSiteId =
+            SemanticTargetChoiceV111.SiteIdForTargetKind(TargetKind);
         if (SchemaId != SemanticTargetChoiceV111.SchemaId ||
             string.IsNullOrWhiteSpace(EventId) ||
-            SiteId is not (
-                StochasticSiteRegistryV111.CombatEffectRandomTargetSiteId or
-                StochasticSiteRegistryV111.CombatSlyAutoplayRandomTargetSiteId or
-                StochasticSiteRegistryV111.CombatAutoplayRandomTargetSiteId) ||
+            expectedSiteId is null || SiteId != expectedSiteId ||
             StreamId != "run.combat_targets" ||
             string.IsNullOrWhiteSpace(OwnerId) || Ordinal < 0 ||
             OperationKind != "choose_enemy_instance" ||
@@ -26,13 +25,7 @@ public sealed record SemanticTargetEventV111(
                 CandidateEnemyInstanceIds) ||
             ProbabilityStatus != "UNVERIFIED" ||
             TargetKind is not ("effect_random_enemy" or "sly_auto_play" or
-                "autoplay_random_enemy") ||
-            (TargetKind == "sly_auto_play") !=
-                (SiteId ==
-                    StochasticSiteRegistryV111.CombatSlyAutoplayRandomTargetSiteId) ||
-            (TargetKind == "autoplay_random_enemy") !=
-                (SiteId ==
-                    StochasticSiteRegistryV111.CombatAutoplayRandomTargetSiteId))
+                "autoplay_random_enemy"))
             throw new InvalidDataException("Invalid semantic target event.");
     }
 }
@@ -66,6 +59,18 @@ public sealed record SemanticTargetDecisionV111(
 public static class SemanticTargetChoiceV111
 {
     public const string SchemaId = "sts2-v111-semantic-target-choice-v1";
+
+    internal static string? SiteIdForTargetKind(string? targetKind) =>
+        targetKind switch
+        {
+            "effect_random_enemy" =>
+                StochasticSiteRegistryV111.CombatEffectRandomTargetSiteId,
+            "sly_auto_play" =>
+                StochasticSiteRegistryV111.CombatSlyAutoplayRandomTargetSiteId,
+            "autoplay_random_enemy" =>
+                StochasticSiteRegistryV111.CombatAutoplayRandomTargetSiteId,
+            _ => null
+        };
 
     internal static void ValidateBoundary(RunState run)
     {

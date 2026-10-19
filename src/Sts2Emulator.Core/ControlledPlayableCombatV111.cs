@@ -394,12 +394,10 @@ public sealed record ControlledPlayableCombatV111(
         {
             var context = Run.World?.Combat?.PendingChoice?.ControlledTarget;
             if (context is null) return null;
-            var siteId = context.Kind switch
-            {
-                "sly_auto_play" => "combat.sly_autoplay.random_enemy",
-                "autoplay_random_enemy" => "combat.autoplay.random_enemy",
-                _ => "combat.effect.random_enemy"
-            };
+            var siteId = SemanticTargetChoiceV111.SiteIdForTargetKind(
+                context.Kind) ?? throw new NotSupportedException(
+                    "Controlled target does not support kind '" +
+                    context.Kind + "'.");
             var ownerId = context.SlyCardInstanceId is { } slyCardId
                 ? "card:" + slyCardId
                 : context.AutoPlayCardInstanceId is { } autoPlayCardId

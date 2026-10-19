@@ -12,9 +12,9 @@ Counts by direct API family:
 
 Direct ad hoc entropy API expressions in Core: **0**. The scan covers direct System.Random typed or target-typed construction/shared-instance use and RandomNumberGenerator APIs; it does not prove the absence of indirect or aliased entropy sources.
 
-Explicit typed random-request constructions: **99**; site IDs resolved to registry: **97**; dynamic or missing IDs: **1**; static IDs absent from registry: **1**.
+Explicit typed random-request constructions: **99**; site IDs resolved to registry: **96**; dynamic or missing IDs: **2**; static IDs absent from registry: **1**.
 
-Expression-origin classes: `finite_site_id_alternatives` **8**, `guarded_finite_site_id_alternatives` **39**, `guarded_legacy_random_choice_site_set` **1**, `identifier_forwarded_or_local` **1**, `static_site_id` **50**. Forwarded identifiers and members remain manual trace items; these labels do not claim their caller chain is resolved.
+Expression-origin classes: `finite_site_id_alternatives` **7**, `guarded_finite_site_id_alternatives` **39**, `guarded_legacy_random_choice_site_set` **1**, `identifier_forwarded_or_local` **2**, `static_site_id` **50**. Forwarded identifiers and members remain manual trace items; these labels do not claim their caller chain is resolved.
 
 | File:line | Request type | Site ID expression | Origin | Resolution | Resolved site ID | Registry | Matrix |
 | --- | --- | --- | --- | --- | --- | --- | --- |
@@ -45,8 +45,8 @@ Expression-origin classes: `finite_site_id_alternatives` **8**, `guarded_finite_
 | [src/Sts2Emulator.Core/ControlledPlayableCombatV111.cs:342](../src/Sts2Emulator.Core/ControlledPlayableCombatV111.cs#L342) | RandomIndexRequestV111 | "combat.generated_card.select" | static_site_id | expression | combat.generated_card.select | mapped | mapped |
 | [src/Sts2Emulator.Core/ControlledPlayableCombatV111.cs:363](../src/Sts2Emulator.Core/ControlledPlayableCombatV111.cs#L363) | RandomIndexRequestV111 | "combat.potion_generation.random_model" | static_site_id | expression | combat.potion_generation.random_model | mapped | mapped |
 | [src/Sts2Emulator.Core/ControlledPlayableCombatV111.cs:380](../src/Sts2Emulator.Core/ControlledPlayableCombatV111.cs#L380) | RandomIndexRequestV111 | "combat.card_transform.replacement.index_draw" | static_site_id | expression | combat.card_transform.replacement.index_draw | mapped | mapped |
-| [src/Sts2Emulator.Core/ControlledPlayableCombatV111.cs:407](../src/Sts2Emulator.Core/ControlledPlayableCombatV111.cs#L407) | RandomIndexRequestV111 | siteId | finite_site_id_alternatives | method_local_assignment | combat.autoplay.random_enemy, combat.effect.random_enemy, combat.sly_autoplay.random_enemy | conditional | conditional |
-| [src/Sts2Emulator.Core/ControlledPlayableCombatV111.cs:1246](../src/Sts2Emulator.Core/ControlledPlayableCombatV111.cs#L1246) | RandomIndexRequestV111 | ShuffleSite | static_site_id | expression | controlled.fixture.opening_shuffle.swap_index | mapped | mapped |
+| [src/Sts2Emulator.Core/ControlledPlayableCombatV111.cs:405](../src/Sts2Emulator.Core/ControlledPlayableCombatV111.cs#L405) | RandomIndexRequestV111 | siteId | identifier_forwarded_or_local | — | — | dynamic_expression | dynamic_expression |
+| [src/Sts2Emulator.Core/ControlledPlayableCombatV111.cs:1244](../src/Sts2Emulator.Core/ControlledPlayableCombatV111.cs#L1244) | RandomIndexRequestV111 | ShuffleSite | static_site_id | expression | controlled.fixture.opening_shuffle.swap_index | mapped | mapped |
 | [src/Sts2Emulator.Core/ControlledRecycleShuffleV111.cs:125](../src/Sts2Emulator.Core/ControlledRecycleShuffleV111.cs#L125) | RandomIndexRequestV111 | SiteId | static_site_id | expression | combat.draw_pile_recycle.swap_index | mapped | mapped |
 | [src/Sts2Emulator.Core/ControlledTurnIntentsV111.cs:313](../src/Sts2Emulator.Core/ControlledTurnIntentsV111.cs#L313) | RandomIndexRequestV111 | siteId | guarded_finite_site_id_alternatives | method_fail_closed_validation | combat.committed_intent.index_draw, combat.next_turn_intent.index_draw | conditional | conditional |
 | [src/Sts2Emulator.Core/NativeAncientRewardsV111.cs:221](../src/Sts2Emulator.Core/NativeAncientRewardsV111.cs#L221) | RandomIndexRequestV111 | TezcataraOfferSiteId | static_site_id | expression | event.tezcatara.relic_offer.index_draw | mapped | mapped |
@@ -123,7 +123,7 @@ Expression-origin classes: `finite_site_id_alternatives` **8**, `guarded_finite_
 | [src/Sts2Emulator.Core/SemanticCostChoiceV111.cs:143](../src/Sts2Emulator.Core/SemanticCostChoiceV111.cs#L143) | RandomIndexRequestV111 | relic ? "combat.card_draw.relic_energy_cost"
                   : "combat.card_draw.slither_energy_cost" | finite_site_id_alternatives | expression | combat.card_draw.relic_energy_cost, combat.card_draw.slither_energy_cost | conditional | conditional |
 | [src/Sts2Emulator.Core/SemanticDrawInsertionV111.cs:38](../src/Sts2Emulator.Core/SemanticDrawInsertionV111.cs#L38) | RandomIndexRequestV111 | siteId | guarded_finite_site_id_alternatives | method_fail_closed_validation | combat.draw_pile.random_insert_index, combat.effect.personal_hive.dazed.random_insert_index, combat.relic.after_shuffle.generated_card.random_insert_index | conditional | conditional |
-| [src/Sts2Emulator.Core/SemanticPilotCombatV111.cs:3307](../src/Sts2Emulator.Core/SemanticPilotCombatV111.cs#L3307) | RandomIndexRequestV111 | "combat.random_hand_card.energy_cost" | static_site_id | expression | combat.random_hand_card.energy_cost | mapped | mapped |
+| [src/Sts2Emulator.Core/SemanticPilotCombatV111.cs:3304](../src/Sts2Emulator.Core/SemanticPilotCombatV111.cs#L3304) | RandomIndexRequestV111 | "combat.random_hand_card.energy_cost" | static_site_id | expression | combat.random_hand_card.energy_cost | mapped | mapped |
 | [src/Sts2Emulator.Core/SemanticPoolShuffleV111.cs:171](../src/Sts2Emulator.Core/SemanticPoolShuffleV111.cs#L171) | RandomIndexRequestV111 | siteId | identifier_forwarded_or_local | — | — | dynamic_expression | dynamic_expression |
 
 Shuffle site IDs mapped to migration-matrix rows: **23**; dynamic expressions: **1**; unmapped: **0**; missing: **0**.
