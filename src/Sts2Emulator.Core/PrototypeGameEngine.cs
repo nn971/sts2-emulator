@@ -12,6 +12,9 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             PendingChoice: null, PendingKnowledgeDemonChoice: null,
             AutomaticPipelineContinuation: null };
 
+    internal static bool IsAtCombatRewardOrTerminalBoundary(RunState run) =>
+        run.Phase is RunPhase.Reward or RunPhase.Terminal;
+
     public IReadOnlyList<GameAction> GetLegalActions(RunState state)
     {
         RunConfiguration.ValidateState(state);

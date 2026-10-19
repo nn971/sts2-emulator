@@ -270,7 +270,8 @@ public sealed record SemanticEndTurnV111(
                     "Automatic-pipeline target ordinal differs from its transcript.");
         }
         else if (!this.Complete ||
-                 this.Run.Phase is not (RunPhase.Terminal or RunPhase.Reward))
+                 !PrototypeGameEngine
+                    .IsAtCombatRewardOrTerminalBoundary(this.Run))
         {
             SemanticEndTurnEngineV111.ValidateOrigin(this.Origin);
         }
@@ -282,7 +283,8 @@ public sealed record SemanticEndTurnV111(
             this.BoundaryTranscript is null ||
             (this.PlayerActionSource is null) != (this.PlayerActionId is null) ||
             (this.Complete && (this.Intents is not null ||
-                (this.Run.Phase is RunPhase.Terminal or RunPhase.Reward
+                (PrototypeGameEngine
+                    .IsAtCombatRewardOrTerminalBoundary(this.Run)
                     ? this.HandDraw is { AtBoundary: false }
                     : this.HandDraw is not { AtBoundary: true }))) ||
             (!this.Complete && this.Intents is null &&
@@ -311,7 +313,8 @@ public sealed record SemanticEndTurnV111(
                 throw new InvalidDataException(
                     "Completed end-turn result is not a player decision.");
             if (this.Complete &&
-                (this.Run.Phase is RunPhase.Terminal or RunPhase.Reward) &&
+                PrototypeGameEngine
+                    .IsAtCombatRewardOrTerminalBoundary(this.Run) &&
                 !hand.AtBoundary)
                 throw new InvalidDataException(
                     "Terminal end-turn retained an incomplete hand draw.");
@@ -398,7 +401,8 @@ public static class SemanticEndTurnEngineV111
         using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
             advanced = environment.Step(
                 playerBoundary.Fork(), actions[0].ActionId).State;
-        if (advanced.Phase is RunPhase.Terminal or RunPhase.Reward)
+        if (PrototypeGameEngine
+                .IsAtCombatRewardOrTerminalBoundary(advanced))
             return (null, advanced);
         if (advanced.World?.Combat?.AutomaticPipelineContinuation?
                 .ControlledEnemyAction is not null)
@@ -564,7 +568,8 @@ public static class SemanticEndTurnEngineV111
             TargetTranscript = targetTranscript,
             BoundaryTranscript = boundaryTranscript
         };
-        if (resumed.Phase is RunPhase.Reward or RunPhase.Terminal)
+        if (PrototypeGameEngine
+                .IsAtCombatRewardOrTerminalBoundary(resumed))
             return next with
             {
                 Intents = null,
@@ -691,7 +696,8 @@ public static class SemanticEndTurnEngineV111
         using (ControlledChanceGuardV111.Enter())
             result = PrototypeGameEngine.ResumeAutomaticPipelineContinuation(
                 draw.Run.Fork());
-        if (result.Phase is RunPhase.Terminal or RunPhase.Reward)
+        if (PrototypeGameEngine
+                .IsAtCombatRewardOrTerminalBoundary(result))
             return state with { Run = result, Complete = true };
         if (!PrototypeGameEngine.IsAtCombatPlayerDecisionBoundary(result) ||
             result.World?.Combat?.SemanticDeck is not { Pending: null })
