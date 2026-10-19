@@ -143,6 +143,15 @@ public sealed class LegacyPrototypeRandomIndexProviderV111
                 request.SiteId))
             throw new NotSupportedException(
                 $"Legacy random choice does not support site '{request.SiteId}'.");
+        if (ControlledChanceGuardV111.Active &&
+            ControlledChanceGuardV111.EngineOwnedNativeProviderActive &&
+            !ControlledChanceGuardV111.IsEngineOwnedPrototypeRewardRequest(
+                request.SiteId, request.StreamId, request.OperationKind))
+            throw new NotSupportedException(
+                "UNSUPPORTED_CONTROLLED_CHANCE site=" + request.SiteId +
+                " stream=" + request.StreamId +
+                " operation=" + request.OperationKind +
+                " : Native control cannot fall back to prototype RNG.");
         var matches = streams.Streams
             .Where(stream => stream.StreamId == request.StreamId).ToArray();
         if (matches.Length != 1 ||

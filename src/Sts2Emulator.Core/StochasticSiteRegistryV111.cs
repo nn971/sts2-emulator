@@ -1125,6 +1125,14 @@ public static class StochasticSiteRegistryV111
                     operationKind == "unit_float",
                 _ => false
             },
+            "run.niche" => siteId switch
+            {
+                StochasticSiteRegistryV111.WarHammerEliteUpgradeShuffleSiteId =>
+                    operationKind == "bounded_integer",
+                PrototypeGameEngine.FishingRodUpgradeSiteId =>
+                    operationKind == "choose_index",
+                _ => false
+            },
             "run.treasure_room_relics" =>
                 siteId == PrototypeNativeRelicGrabBag.QueueShuffleSiteId &&
                 operationKind == "bounded_integer",

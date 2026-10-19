@@ -18,7 +18,8 @@ public static class ControlledChanceGuardV111
         ["reward.card_rarity.ticket"] = "bounded_integer",
         ["reward.card_model.index_draw"] = "choose_index",
         ["reward.random_potion.drop.ticket"] = "bounded_integer",
-        ["reward.random_potion.model"] = "choose_index"
+        ["reward.random_potion.model"] = "choose_index",
+        [PrototypeGameEngine.PaelsToothCardReturnSiteId] = "choose_index"
     };
     private static readonly AsyncLocal<int> Depth = new();
     private static readonly AsyncLocal<int> EngineOwnedRewardDepth = new();
@@ -38,8 +39,8 @@ public static class ControlledChanceGuardV111
     /// <summary>
     /// An explicit, narrowly scoped engine-owned reward fallback. It permits
     /// the prototype reward stream and the exact allowlisted legacy reward
-    /// sites used to populate a terminal reward after a legal action. It does
-    /// not authorize other reward sites or combat/targeting/deck/monster RNG.
+    /// sites used by a victory tail or terminal reward after a legal action.
+    /// It does not authorize other reward sites or combat/targeting/deck/monster RNG.
     /// </summary>
     public static IDisposable AllowEngineOwnedPrototypeReward()
     {
@@ -132,6 +133,7 @@ public static class ControlledChanceGuardV111
             "run.combat_card_selection" or
             "run.combat_card_generation" or
             "run.combat_potion_generation" or
+            "run.niche" or
             "run.treasure_room_relics" or
             NativePlayerRngV111.RewardsStreamId;
 
