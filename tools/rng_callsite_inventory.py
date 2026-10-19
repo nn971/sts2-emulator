@@ -21,7 +21,7 @@ from urllib.parse import unquote, urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = ROOT / "src" / "Sts2Emulator.Core"
-SCHEMA_ID = "emulator-rng-callsite-source-inventory-v36"
+SCHEMA_ID = "emulator-rng-callsite-source-inventory-v37"
 SITE_REGISTRY_PATH = SOURCE_ROOT / "StochasticSiteRegistryV111.cs"
 
 CALL_PATTERN = re.compile(
@@ -168,6 +168,44 @@ def _site_id_argument(api: str, operation: str,
     if position is None or len(arguments) <= position:
         return None
     return arguments[position]
+
+
+def _validated_native_shuffle_site_values(
+    sources: dict[Path, str],
+    expression: str | None,
+    global_constants: dict[str, set[str]],
+) -> list[str]:
+    """Resolve a forwarded Native shuffle SiteId through the primitive guard."""
+    if expression is None or not re.fullmatch(
+        r"[A-Za-z_][A-Za-z0-9_]*", re.sub(r"\s+", "", expression)
+    ):
+        return []
+    source = sources.get(SOURCE_ROOT / "NativeFisherYatesV111.cs")
+    if source is None or re.search(
+        r"\bValidateSiteId\s*\(\s*siteId\s*,\s*"
+        r"StochasticSiteRegistryV111\s*\.\s*"
+        r"NativeFisherYatesSiteIds\s*,\s*\"shuffle\"\s*\)",
+        source,
+    ) is None:
+        return []
+    validator = re.search(
+        r"private\s+static\s+void\s+ValidateSiteId\s*\([^)]*\)\s*"
+        r"\{(?P<body>.*?)\n\s*\}",
+        source,
+        re.DOTALL,
+    )
+    if validator is None or re.search(
+        r"if\s*\(\s*!supportedSiteIds\s*\.\s*Contains\s*\(\s*"
+        r"siteId\s*,\s*StringComparer\s*\.\s*Ordinal\s*\)\s*\)\s*"
+        r"throw\s+new\s+NotSupportedException",
+        validator.group("body"),
+    ) is None:
+        return []
+    values, unresolved = _resolve_site_array_property(
+        "StochasticSiteRegistryV111.NativeFisherYatesSiteIds",
+        global_constants,
+    )
+    return sorted(values) if values and not unresolved else []
 
 
 def _string_constants(source: str) -> dict[str, set[str]]:
@@ -1850,6 +1888,7 @@ def collect() -> dict[str, Any]:
                 )
                 site_value = None
                 site_values: list[str] = []
+                guarded_shuffle_site_set = False
                 if site_expression is not None:
                     site_values = _resolve_site_values(
                         site_expression,
@@ -1869,6 +1908,11 @@ def collect() -> dict[str, Any]:
                             ),
                             string_constants,
                         )
+                    if api == "NativeFisherYatesV111" and not site_values:
+                        site_values = _validated_native_shuffle_site_values(
+                            sources, site_expression, string_constants,
+                        )
+                        guarded_shuffle_site_set = bool(site_values)
                     site_value = (
                         site_values[0] if len(site_values) == 1 else None
                     )
@@ -1876,7 +1920,11 @@ def collect() -> dict[str, Any]:
                     if site_expression is None:
                         review_status = "shuffle_site_id_argument_missing"
                     elif site_values:
-                        review_status = "shuffle_site_id_resolved"
+                        review_status = (
+                            "shuffle_site_id_guarded_by_finite_registry_set"
+                            if guarded_shuffle_site_set else
+                            "shuffle_site_id_resolved"
+                        )
                     else:
                         review_status = "shuffle_site_id_is_dynamic_or_unresolved"
                     matrix_status = (
@@ -1930,8 +1978,9 @@ def collect() -> dict[str, Any]:
             "operation locator does not resolve forwarded caller values on its "
             "own. Runtime request validation checks operation kinds against the "
             "32 legacy caller-bound declarations and the registry's Native "
-            "bounded-index and Fisher-Yates site sets; generic forwarded "
-            "values outside those declarations remain unresolved. "
+            "bounded-index and Fisher-Yates site sets; the low-level Native "
+            "shuffle call is resolved through its fail-closed registry set, "
+            "while generic forwarded values outside those declarations remain unresolved. "
             "The site-matrix report shows registry-to-ledger and ledger-to-registry "
             "differences, unique ledger IDs, and explicit reference-law status. "
             "Unregistered ledger rows are informational because legacy and conditional "

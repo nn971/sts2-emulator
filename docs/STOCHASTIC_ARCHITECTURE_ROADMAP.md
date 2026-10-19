@@ -10,6 +10,8 @@
 
 **S0 finite pool-shuffle SiteId trace increment (2026-10-20):** Census v36 scopes an unqualified `SiteIdForOperation` switch to its containing type, resolving the semantic pool-shuffle request's finite mapping instead of leaving it dynamic because another type has a same-named helper. The 99 typed constructors now have 98 registry/conditional resolutions, zero dynamic or missing identifiers, and one intentional Native diagnostic request outside the gameplay matrix. This remains source-expression evidence; the legacy caller-forwarded boundary and row-by-row S0 review remain open. The permitted census and `git diff --check` passed; no tests or builds were run.
 
+**S0 Fisher–Yates wrapper guard trace increment (2026-10-20):** Census v37 follows the low-level `NativeFisherYatesV111.ShuffleInPlace` parameter through its fail-closed `ValidateSiteId` call and resolves the 28 supported IDs from the existing `StochasticSiteRegistryV111.NativeFisherYatesSiteIds` property. All 24 direct Native Fisher–Yates expressions now map to migration rows with no dynamic, unmapped, or missing expressions. This recognizes the shared primitive's declared support; caller reachability and the S0 row-by-row review remain open. The permitted census and `git diff --check` passed; no tests or builds were run.
+
 **Implementation scope:** `sts2-emulator`, STS2 v0.111.0, single-player. The first vertical slice is two-site Silent combat. Keep the four-Act Silent gameplay and active native inspector developments on separate tracks. Existing versioned `controlled_*`, `nature_*`, `semantic_*` and ordinary AI protocols remain supported; no historic snapshot/probability reinterpretation.
 
 ## Priorities and milestones
