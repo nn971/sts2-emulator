@@ -4,6 +4,8 @@
 
 This document joins existing inventories instead of copying their site rows. The detailed stable-site ledger stays in [Desired RNG migration status](DESIRED_RNG_MIGRATION_STATUS.md); the static direct-call report stays in [RNG direct-call census](RNG_DIRECT_CALLSITE_CENSUS.md). Semantic protocol and reference-build documents linked from those rows retain the mechanism-specific evidence.
 
+The guarded Native-policy fallback authorizes exact SiteId/stream/operation triples in addition to the concrete adapters' finite site sets. Combat mappings follow their typed request constructors; immediate win rewards admit their source-listed `player.rewards` sites and elite relic queue shuffles admit only `relic_grab_bag.queue_shuffle.swap_index` on `run.treasure_room_relics`. A registered site cannot use another registered stream. This is an emulator control-boundary allowlist, not evidence of Native source parity.
+
 ## Inventory sources and limits
 
 | Source | What it covers | Current limit |

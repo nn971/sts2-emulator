@@ -1068,6 +1068,87 @@ public static class StochasticSiteRegistryV111
         };
     }
 
+    internal static bool SupportsEngineOwnedNativeBoundary(
+        string siteId, string streamId, string operationKind)
+    {
+        if (!SupportsEngineOwnedNativeBoundary(siteId, operationKind))
+            return false;
+
+        return streamId switch
+        {
+            "run.monster_ai" => operationKind == "bounded_integer" &&
+                CombatIntentSiteIds.Contains(siteId, StringComparer.Ordinal),
+            "run.shuffle" =>
+                operationKind == "bounded_integer" &&
+                (siteId == NativeFisherYatesV111.SiteId ||
+                 siteId == ControlledRecycleShuffleV111.SiteId ||
+                 siteId == CombatHandReturnShuffleSiteId ||
+                 CombatRandomPilePositionSiteIds.Contains(
+                     siteId, StringComparer.Ordinal)),
+            "run.combat_energy_costs" =>
+                operationKind == "bounded_integer" &&
+                (siteId is "combat.random_hand_card.energy_cost" or
+                    "combat.card_draw.relic_energy_cost" or
+                    "combat.card_draw.slither_energy_cost"),
+            "run.combat_targets" => operationKind == "choose_index" &&
+                CombatRandomTargetSiteIds.Contains(
+                    siteId, StringComparer.Ordinal),
+            "run.combat_card_selection" => siteId switch
+            {
+                "combat.random_hand_card.select" or
+                "combat.relic.jeweled_mask.random_power_draw_card" or
+                "combat.draw_pile.random_replay_card.select" or
+                "combat.autoplay.random_card.select" =>
+                    operationKind == "choose_index",
+                "combat.draw_pile.random_rare_to_hand.shuffle_swap_index" or
+                "combat.card_selection.random_shortlist" =>
+                    operationKind == "bounded_integer",
+                _ => false
+            },
+            "run.combat_card_generation" => siteId switch
+            {
+                "combat.generated_card.select" or
+                "combat.random_draw_attack.card_model" or
+                "combat.card_transform.replacement.index_draw" or
+                "combat.enemy.theft_card.select" =>
+                    operationKind == "choose_index",
+                "combat.generation.full_pool_shuffle.swap_index" =>
+                    operationKind == "bounded_integer",
+                _ => false
+            },
+            "run.combat_potion_generation" => siteId switch
+            {
+                "combat.potion_generation.random_model" or
+                "potion_factory.model_within_rarity.index_draw" =>
+                    operationKind == "choose_index",
+                "potion_factory.rarity_roll.unit_float" =>
+                    operationKind == "unit_float",
+                _ => false
+            },
+            "run.treasure_room_relics" =>
+                siteId == PrototypeNativeRelicGrabBag.QueueShuffleSiteId &&
+                operationKind == "bounded_integer",
+            NativePlayerRngV111.RewardsStreamId => siteId switch
+            {
+                "reward.potion_odds.unit_float" or
+                "potion_factory.rarity_roll.unit_float" or
+                "card_rarity.roll.unit_float" or
+                "card_rarity.upgrade_roll.unit_float" or
+                "relic_grab_bag.rarity.unit_float" =>
+                    operationKind == "unit_float",
+                "reward.combat_gold.index_draw" or
+                "reward.boss_relic_offer.shuffle_swap_index" or
+                "reward.lava_rock.relic_offer.shuffle_swap_index" =>
+                    operationKind == "bounded_integer",
+                "potion_factory.model_within_rarity.index_draw" or
+                "card_rarity.encounter_model.index_draw" =>
+                    operationKind == "choose_index",
+                _ => false
+            },
+            _ => false
+        };
+    }
+
     public static bool IsNativeBoundedIntegerSite(string siteId) =>
         NativeBoundedIntegerSites.Contains(siteId, StringComparer.Ordinal);
 
