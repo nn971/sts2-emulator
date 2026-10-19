@@ -197,7 +197,7 @@ public static class LegacyRandomChoiceV111
                 nameof(orderedCandidates));
         return Resolve(
             streams, siteId, streamId, ownerId, orderedCandidates,
-            "choose_index", null, ordinal);
+            boundedCount: null, ordinal: ordinal);
     }
 
     public static RandomIndexDecisionV111 ChooseIndexRange(
@@ -227,7 +227,7 @@ public static class LegacyRandomChoiceV111
             throw new ArgumentOutOfRangeException(nameof(boundedCount));
         return Resolve(
             streams, siteId, streamId, ownerId, [],
-            "bounded_integer", boundedCount, ordinal);
+            boundedCount: boundedCount, ordinal: ordinal);
     }
 
     private static RandomIndexDecisionV111 Resolve(
@@ -236,7 +236,6 @@ public static class LegacyRandomChoiceV111
         string streamId,
         string ownerId,
         int[] orderedCandidates,
-        string operationKind,
         int? boundedCount,
         int? ordinal)
     {
@@ -244,6 +243,12 @@ public static class LegacyRandomChoiceV111
         ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
         ArgumentException.ThrowIfNullOrWhiteSpace(streamId);
         ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
+        ArgumentNullException.ThrowIfNull(orderedCandidates);
+        if ((boundedCount is null && orderedCandidates.Length == 0) ||
+            (boundedCount is { } invalidBound &&
+             (invalidBound <= 0 || orderedCandidates.Length != 0)))
+            throw new ArgumentException(
+                "Legacy random-choice support does not match its operation.");
         if (!StochasticSiteRegistryV111.IsLegacyRandomChoiceSite(siteId))
             throw new NotSupportedException(
                 $"Legacy random choice does not support site '{siteId}'.");
@@ -273,14 +278,15 @@ public static class LegacyRandomChoiceV111
         if (streamOrdinal < 0)
             throw new NotSupportedException(
                 "Legacy random-choice provider ordinal exceeds the request range.");
-        var request = new RandomIndexRequestV111(
-            siteId,
-            streamId,
-            ownerId,
-            streamOrdinal,
-            (int[])orderedCandidates.Clone(),
-            OperationKind: operationKind,
-            BoundedCount: boundedCount);
+        var request = boundedCount is { } bound
+            ? new RandomIndexRequestV111(
+                siteId, streamId, ownerId, streamOrdinal, [],
+                OperationKind: "bounded_integer", BoundedCount: bound)
+            : new RandomIndexRequestV111(
+                siteId, streamId, ownerId, streamOrdinal,
+                (int[])orderedCandidates.Clone(),
+                OperationKind: "choose_index");
+        var operationKind = request.OperationKind;
         if (ControlledChanceGuardV111.Active
             && !ControlledChanceGuardV111.EngineOwnedNativeProviderActive
             && !ControlledChanceGuardV111.IsEngineOwnedPrototypeRewardRequest(
