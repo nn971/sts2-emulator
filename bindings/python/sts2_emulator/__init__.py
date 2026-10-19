@@ -79,7 +79,8 @@ class State:
         Native encounter-formation index laws take native_encounter_entry,
         total_floor, support_count, and ordinal. They describe the exact
         bounded transform for one declared index, not the formation pool or
-        preceding GenerateMonsters call prefix.
+        preceding GenerateMonsters call prefix. The owner and context stream
+        are derived from the declared entry and floor.
         PotionFactory and relic rarity laws accept a caller-declared owner_id
         + stream_id pair for cursor-blind source-threshold queries.
         Repy potion laws use ordinal 0 or 1 and prior_indices containing the
@@ -145,6 +146,9 @@ class State:
             if support_count is None:
                 raise ValueError(
                     "Native encounter-formation laws require support_count")
+            if owner_id is not None or stream_id is not None:
+                raise ValueError(
+                    "Native encounter-formation laws derive owner_id and stream_id from native_encounter_entry and total_floor")
             payload["native_encounter_entry"] = native_encounter_entry
             payload["total_floor"] = total_floor
         elif native_encounter_entry is not None or total_floor is not None:
