@@ -8,7 +8,7 @@ public sealed record SemanticCostEventV111(
     long? TargetCardInstanceId = null, string? TargetCardModelId = null)
     : ISemanticChanceEventV111
 {
-    public const string EventSchemaId = "sts2-v111-semantic-cost-choice-v1";
+    public const string EventSchemaId = SemanticCostChoiceV111.SchemaId;
     public string SiteId => Request.SiteId;
     public string OperationKind => Request.OperationKind;
     public string StreamId => Request.StreamId;
@@ -85,6 +85,50 @@ public sealed record SemanticCostDecisionV111(
 
 public static class SemanticCostChoiceV111
 {
+    public const string SchemaId = "sts2-v111-semantic-cost-choice-v1";
+
+    internal static SemanticCostEventV111 CreateEvent(
+        string boundaryFingerprint, RandomIndexRequestV111 request,
+        long? targetCardInstanceId = null, string? targetCardModelId = null)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(boundaryFingerprint);
+        ArgumentNullException.ThrowIfNull(request);
+        if ((targetCardInstanceId is null) != (targetCardModelId is null))
+            throw new ArgumentException(
+                "Semantic cost target identity must be fully specified.");
+        request.Validate();
+        if (request.SupportCount < 1 ||
+            request.OperationKind != "bounded_integer")
+            throw new InvalidDataException(
+                "Semantic cost event has invalid bounded support.");
+
+        var costs = Enumerable.Range(0, request.SupportCount).ToArray();
+        var supportFingerprint = targetCardInstanceId is null
+            ? CanonicalJson.Sha256(new { request, costs })
+            : CanonicalJson.Sha256(new
+            {
+                request,
+                costs,
+                targetCardInstanceId,
+                targetCardModelId
+            });
+        var eventId = CanonicalJson.Sha256(new
+        {
+            SchemaId,
+            BoundaryFingerprint = boundaryFingerprint,
+            SupportFingerprint = supportFingerprint
+        });
+        var semanticEvent = new SemanticCostEventV111(
+            SchemaId, eventId, boundaryFingerprint, supportFingerprint,
+            request with
+            {
+                OrderedCandidates = (int[])request.OrderedCandidates.Clone()
+            }, costs, TargetCardInstanceId: targetCardInstanceId,
+            TargetCardModelId: targetCardModelId);
+        semanticEvent.Validate();
+        return semanticEvent;
+    }
+
     internal static void ValidateDrawBoundary(RunState run)
     {
         var combat = run.World?.Combat;
@@ -147,28 +191,8 @@ public static class SemanticCostChoiceV111
                 ":model:" + card.CardId + ":stage:" + drawCost.Stage,
             ordinal, [], OperationKind: "bounded_integer",
             BoundedCount: relic ? drawCost.RelicMaxExclusive : 4);
-        request.Validate();
-        var costs = Enumerable.Range(0, request.SupportCount).ToArray();
-        var supportFingerprint = CanonicalJson.Sha256(new
-        {
-            request,
-            costs,
-            targetCardInstanceId = drawCost.CardInstanceId,
-            targetCardModelId = card.CardId
-        });
-        var eventId = CanonicalJson.Sha256(new
-        {
-            SchemaId = SemanticCostEventV111.EventSchemaId,
-            BoundaryFingerprint = boundaryFingerprint,
-            SupportFingerprint = supportFingerprint
-        });
-        var semanticEvent = new SemanticCostEventV111(
-            SemanticCostEventV111.EventSchemaId, eventId,
-            boundaryFingerprint, supportFingerprint, request, costs,
-            TargetCardInstanceId: drawCost.CardInstanceId,
-            TargetCardModelId: card.CardId);
-        semanticEvent.Validate();
-        return semanticEvent;
+        return CreateEvent(boundaryFingerprint, request,
+            drawCost.CardInstanceId, card.CardId);
     }
 
     public static SemanticCostDecisionV111 Select(
