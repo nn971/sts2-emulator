@@ -468,6 +468,18 @@ public static class SemanticCombatDrawEngineV111
     private sealed record SemanticDrawCostResumeV111(
         RunState Run, int Remaining);
 
+    private static SemanticCombatDrawV111 PublishDrawProgress(
+        SemanticCombatDrawV111 state, RunState run,
+        int? requestedCount = null, int? remainingCount = null)
+    {
+        var next = state with { Run = run };
+        if (requestedCount is { } requested)
+            next = next with { RequestedCount = requested };
+        if (remainingCount is { } remaining)
+            next = next with { RemainingCount = remaining };
+        return next;
+    }
+
     internal static SemanticDrawInsertionEventV111?
         DescribePendingDrawInsertion(SemanticCombatDrawV111 state)
     {
@@ -712,11 +724,9 @@ public static class SemanticCombatDrawEngineV111
                 (resumed, requested, pileCardRemaining) =
                     PrototypeGameEngine.ResumeSemanticRandomPileCardChoice(
                         run, decision);
-            var nextPileChoice = state with
+            var nextPileChoice = PublishDrawProgress(
+                state, resumed, requested, pileCardRemaining) with
             {
-                Run = resumed,
-                RequestedCount = requested,
-                RemainingCount = pileCardRemaining,
                 RandomPileCardTranscript = state.RandomPileCardTranscript
                     .Append(decision.Fork()).ToArray()
             };
@@ -734,10 +744,9 @@ public static class SemanticCombatDrawEngineV111
             var insertionRemaining =
                 PrototypeGameEngine.GetSemanticDrawRemainingCount(
                     resumed, state.RemainingCount, drawnBefore);
-            var nextInsertion = state with
+            var nextInsertion = PublishDrawProgress(
+                state, resumed, remainingCount: insertionRemaining) with
             {
-                Run = resumed,
-                RemainingCount = insertionRemaining,
                 DrawInsertionTranscript = state.DrawInsertionTranscript
                     .Append(decision.Fork()).ToArray()
             };
@@ -786,10 +795,10 @@ public static class SemanticCombatDrawEngineV111
                             advanced, remaining);
                     }
                 });
-            var costNext = state with
+            var costNext = PublishDrawProgress(
+                state, resumedCost.Run,
+                remainingCount: resumedCost.Remaining) with
             {
-                Run = resumedCost.Run,
-                RemainingCount = resumedCost.Remaining,
                 CostTranscript = state.CostTranscript.Append(decision).ToArray()
             };
             Validate(costNext);
@@ -807,14 +816,11 @@ public static class SemanticCombatDrawEngineV111
                 .ResumeControlledEffectDraw(
                     run, effectDrawDecision,
                     allowEngineOwnedPrototypeReward: false);
-            var drawNext = state with
-            {
-                Run = resumedDraw,
-                RemainingCount =
-                    PrototypeGameEngine.GetSemanticDrawRemainingCount(
-                        resumedDraw, state.RemainingCount,
-                        combat.CounterState.CardsDrawnThisCombat)
-            };
+            var drawNext = PublishDrawProgress(
+                state, resumedDraw,
+                remainingCount: PrototypeGameEngine.GetSemanticDrawRemainingCount(
+                    resumedDraw, state.RemainingCount,
+                    combat.CounterState.CardsDrawnThisCombat));
             Validate(drawNext);
             return drawNext;
         }
@@ -843,7 +849,8 @@ public static class SemanticCombatDrawEngineV111
                     run, state.RemainingCount, state.FromHandDraw);
         SemanticDrawChoiceV111.ValidateRecordedChoice(
             advanced, cardDecision.Event, cardDecision.SelectedIndex);
-        var next = state with { Run = advanced, RemainingCount = remaining };
+        var next = PublishDrawProgress(
+            state, advanced, remainingCount: remaining);
         Validate(next);
         return next;
     }
@@ -866,10 +873,9 @@ public static class SemanticCombatDrawEngineV111
                 state.Run.Fork(), pending, actionId,
                 state.RemainingCount, state.AutomaticHandDraw,
                 drawnBefore);
-        var next = state with
+        var next = PublishDrawProgress(
+            state, resumedRun, remainingCount: remaining) with
         {
-            Run = resumedRun,
-            RemainingCount = remaining,
             StratagemSelectionTranscript =
                 state.StratagemSelectionTranscript
                     .Append(decision.Fork()).ToArray()
@@ -894,11 +900,9 @@ public static class SemanticCombatDrawEngineV111
             PrototypeGameEngine.ResumeSemanticDrawHookChoice(
                 state.Run.Fork(), pending, actionId,
                 state.RequestedCount, state.RemainingCount, drawnBefore);
-        var next = state with
+        var next = PublishDrawProgress(
+            state, run, requested, remaining) with
         {
-            Run = run,
-            RequestedCount = requested,
-            RemainingCount = remaining,
             DrawHookChoiceTranscript = state.DrawHookChoiceTranscript
                 .Append(decision.Fork()).ToArray()
         };
