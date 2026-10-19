@@ -10,7 +10,7 @@ public sealed record SimulationMechanicsComparisonV111(
     bool DifferencesTruncated)
 {
     public const string SchemaId =
-        "sts2-v111-simulation-mechanics-comparison-v9";
+        "sts2-v111-simulation-mechanics-comparison-v10";
 
     public bool Equivalent => StringComparer.Ordinal.Equals(
         LeftFingerprint, RightFingerprint);
@@ -34,7 +34,9 @@ public sealed record SimulationMechanicsProjectionV111(
         PendingChoiceMechanics = null,
     SemanticDeckPublicViewV111? PublicDrawPileKnowledge = null,
     SimulationPendingDeckOperationProjectionV111?
-        PendingDeckOperation = null);
+        PendingDeckOperation = null,
+    SimulationAutomaticHandDrawProgressProjectionV111?
+        AutomaticHandDrawProgress = null);
 
 /// <summary>
 /// Provider-independent cursor for a pending semantic deck request. The
@@ -51,6 +53,12 @@ public sealed record SimulationDrawContinuationProjectionV111(
     PrototypeControlledSemanticDrawV111? SemanticDraw,
     SimulationDrawCostContinuationProjectionV111? DrawCost,
     SimulationDrawInsertionContinuationProjectionV111? DrawInsertion);
+
+/// <summary>Provider-independent remaining-card progress for an active
+/// automatic hand draw. Provider mode and semantic requested-count metadata
+/// are excluded; the active pipeline cursor supplies the stage.</summary>
+public sealed record SimulationAutomaticHandDrawProgressProjectionV111(
+    int RemainingCount);
 
 /// <summary>Provider-independent mechanics cursor for a deferred draw-pile
 /// insertion. The eligible pile, candidate support and random request identity
@@ -126,6 +134,8 @@ public static class SimulationMechanicsProjectionEngineV111
         var combatState = world?.Combat;
         var combat = combatState?.Mechanics;
         SimulationDrawContinuationProjectionV111? pendingDrawContinuation = null;
+        SimulationAutomaticHandDrawProgressProjectionV111?
+            automaticHandDrawProgress = null;
         SimulationPoolShuffleContinuationProjectionV111?
             pendingPoolShuffleContinuation = null;
         SimulationPendingChoiceMechanicsProjectionV111?
@@ -195,10 +205,17 @@ public static class SimulationMechanicsProjectionEngineV111
             if (pipeline is not null)
             {
                 var stochastic = pipeline.Stochastic;
+                if (stochastic.HandDrawProgress is { } drawProgress)
+                {
+                    drawProgress.Validate();
+                    if (drawProgress.RemainingCount is { } remaining)
+                        automaticHandDrawProgress =
+                            new SimulationAutomaticHandDrawProgressProjectionV111(
+                                remaining);
+                }
                 pipeline = pipeline with
                 {
-                    Stochastic = new PrototypeAutomaticPipelineStochasticStateV111(
-                        HandDrawProgress: stochastic.HandDrawProgress)
+                    Stochastic = new PrototypeAutomaticPipelineStochasticStateV111()
                 };
             }
 
@@ -242,7 +259,8 @@ public static class SimulationMechanicsProjectionEngineV111
             combatState?.SemanticDeck?.Pending is { } pendingDeck
                 ? new SimulationPendingDeckOperationProjectionV111(
                     pendingDeck.Purpose, pendingDeck.TopOffset)
-                : null);
+                : null,
+            automaticHandDrawProgress);
     }
 
     public static string Fingerprint(RunState run) =>
