@@ -3282,35 +3282,13 @@ public static class SemanticPilotCombatEngineV111
             current.CombatTerminal)
             throw new InvalidDataException(
                 "Random hand-card selection conflicts with another boundary.");
-        var cardIds = (long[])randomCost.EligibleCardInstanceIds.Clone();
-        var modelIds = cardIds.Select(id => combat!.Cards.Single(card =>
+        var modelIds = randomCost.EligibleCardInstanceIds.Select(id =>
+            combat!.Cards.Single(card =>
             card.InstanceId == id).CardId).ToArray();
-        var supportFingerprint = CanonicalJson.Sha256(new
-        {
-            candidateCardInstanceIds = cardIds,
-            candidateCardModelIds = modelIds,
-            appliedCost = Math.Max(0, randomCost.Operation.Amount)
-        });
-        const string siteId = "combat.random_hand_card.select";
-        const string streamId = "prototype.combat";
-        const string operationKind = "choose_hand_card_instance";
-        var ownerId = "effect:" + randomCost.Operation.Kind + ":hand:" +
-            CanonicalJson.Sha256(randomCost.EligibleCardInstanceIds);
         var ordinal = current.History.Count(transition =>
             transition.Kind == "semantic_hand_cost_selection");
-        var eventId = CanonicalJson.Sha256(new
-        {
-            SchemaId = SemanticHandCostSelectionEventV111.EventSchemaId,
-            BoundaryFingerprint = current.Fingerprint,
-            SupportFingerprint = supportFingerprint
-        });
-        var semanticEvent = new SemanticHandCostSelectionEventV111(
-            SemanticHandCostSelectionEventV111.EventSchemaId,
-            eventId, current.Fingerprint, supportFingerprint,
-            siteId, streamId, ownerId, ordinal, operationKind,
-            cardIds, modelIds, Math.Max(0, randomCost.Operation.Amount));
-        semanticEvent.Validate();
-        return semanticEvent;
+        return SemanticHandCostSelectionChoiceV111.CreateEvent(
+            current.Fingerprint, randomCost, modelIds, ordinal);
     }
 
     public static SemanticCardShortlistEventV111?
