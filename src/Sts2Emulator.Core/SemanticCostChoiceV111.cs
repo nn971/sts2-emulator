@@ -248,7 +248,8 @@ public static class SemanticCostChoiceV111
                 .ValidateSemanticCombatBoundary(run);
             PrototypeStateInvariants.Validate(run);
         }
-        else if (run.Phase is not (RunPhase.Reward or RunPhase.Terminal))
+        else if (!PrototypeGameEngine
+                     .IsAtCombatRewardOrTerminalBoundary(run))
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.card_draw.cost " +
                 "operation=unsupported_post_cost_phase");

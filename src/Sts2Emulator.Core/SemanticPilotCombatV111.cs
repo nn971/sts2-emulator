@@ -433,7 +433,7 @@ public sealed record SemanticPilotCombatV111(
         DeckRevealPending is null &&
         PrototypeGameEngine.IsAtCombatPlayerDecisionBoundary(Run);
     [JsonIgnore] public bool CombatTerminal =>
-        Run.Phase is RunPhase.Reward or RunPhase.Terminal;
+        PrototypeGameEngine.IsAtCombatRewardOrTerminalBoundary(Run);
     [JsonIgnore] public bool AtPlayerChoiceBoundary =>
         !CombatTerminal &&
         ((PendingEndTurn is null && PendingInitialIntents is null &&
@@ -2531,7 +2531,8 @@ public static class SemanticPilotCombatEngineV111
 
         if (result.Phase == RunPhase.Combat)
             ValidateNativePolicyBoundary(result);
-        else if (result.Phase is not (RunPhase.Reward or RunPhase.Terminal))
+        else if (!PrototypeGameEngine
+                     .IsAtCombatRewardOrTerminalBoundary(result))
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_NATIVE site=combat.player_action " +
                 "operation=unsupported_post_action_phase");
@@ -2763,8 +2764,8 @@ public static class SemanticPilotCombatEngineV111
                 { IsPlayerTurn: true, AutomaticPipelineContinuation: null }) ||
             (result.Phase != RunPhase.Combat &&
                 (!resumesSemanticDraw && !resumesAfterShuffleRelic ||
-                 result.Phase is not
-                    (RunPhase.Reward or RunPhase.Terminal))) ||
+                 !PrototypeGameEngine
+                    .IsAtCombatRewardOrTerminalBoundary(result))) ||
             (result.Phase == RunPhase.Combat && !resumesSemanticDraw &&
                 !resumesAfterShuffleRelic &&
                 (resultCombat!.NextCardInstanceId != insertedInstanceId + 1 ||

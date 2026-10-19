@@ -129,7 +129,8 @@ public static class SemanticCardTransformChoiceV111
         if (resumed.Phase == RunPhase.Combat)
             SemanticPilotCombatEngineV111.ValidateSemanticCombatBoundary(
                 resumed);
-        else if (resumed.Phase is not (RunPhase.Reward or RunPhase.Terminal))
+        else if (!PrototypeGameEngine
+                     .IsAtCombatRewardOrTerminalBoundary(resumed))
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_TRANSFORM " +
                 "site=combat.card_transform " +
