@@ -561,25 +561,20 @@ public static class SemanticEndTurnEngineV111
     {
         var next = source with
         {
-            Run = resumed,
             EnemyActionTranscript = enemyActionTranscript,
             TargetTranscript = targetTranscript,
             BoundaryTranscript = boundaryTranscript
         };
         if (PrototypeGameEngine
                 .IsAtCombatRewardOrTerminalBoundary(resumed))
-            return next with
-            {
-                Intents = null,
-                HandDraw = null,
-                Complete = true
-            };
+            return CompleteAtBoundary(
+                next, resumed, discardSuspendedFrames: true);
 
         var combat = resumed.World?.Combat;
         if (combat?.PendingChoice?.ControlledTarget is not null ||
             combat?.AutomaticPipelineContinuation?
                 .ControlledEnemyAction is not null)
-            return next;
+            return next with { Run = resumed };
 
         if (combat?.AutomaticPipelineContinuation?.Mechanics.IsAtStep(
                 PrototypeAutomaticStepKind.AdvanceTurn) == true)
@@ -699,7 +694,8 @@ public static class SemanticEndTurnEngineV111
                 draw.Run.Fork());
         if (PrototypeGameEngine
                 .IsAtCombatRewardOrTerminalBoundary(result))
-            return state with { Run = result, Complete = true };
+            return CompleteAtBoundary(
+                state, result, discardSuspendedFrames: false);
         if (!PrototypeGameEngine.IsAtCombatPlayerDecisionBoundary(result))
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.semantic_end_turn " +
@@ -715,7 +711,22 @@ public static class SemanticEndTurnEngineV111
         if (!actions.Any())
             throw new InvalidOperationException(
                 "The next player boundary has no available legal actions.");
-        return state with { Run = result, Complete = true };
+        return CompleteAtBoundary(
+            state, result, discardSuspendedFrames: false);
+    }
+
+    private static SemanticEndTurnV111 CompleteAtBoundary(
+        SemanticEndTurnV111 source, RunState run,
+        bool discardSuspendedFrames)
+    {
+        var completed = source with { Run = run };
+        if (discardSuspendedFrames)
+            completed = completed with
+            {
+                Intents = null,
+                HandDraw = null
+            };
+        return completed with { Complete = true };
     }
 
     public static string Save(SemanticEndTurnV111 state)
