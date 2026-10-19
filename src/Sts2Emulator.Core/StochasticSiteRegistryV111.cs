@@ -736,37 +736,38 @@ public static class StochasticSiteRegistryV111
         .Concat(RunActionCombatEntryPotionSites)
         .Distinct(StringComparer.Ordinal)
         .ToArray();
+    private static readonly string[] NatureChoiceSiteCandidates =
+    [
+        .. SemanticReferenceNatureSites,
+        .. RunActionSites,
+        .. RunActionEventEntrySites,
+        .. RunActionShopSites,
+        .. RunActionShopPurchaseSites,
+        .. RunActionTreasureSites,
+        .. RunActionOvergrowthCombatEncounterSites,
+        .. RunActionCombatSites,
+        .. RunActionUnderdocksCombatSites,
+        .. RunActionCombatEntryPotionSites,
+        .. ControlledEventChoiceSites,
+        .. NativeMerchantSessionSites,
+        .. NativeTreasureSessionSites,
+        .. ReferenceNatureCombatRewardSessionV111.SessionSiteIds,
+        .. NativeMapGenerationSessionSites,
+        .. ChanceLawEngineV111.NeowOfferSessionSiteIds,
+        .. ChanceLawEngineV111.TrashHeapSessionSiteIds,
+        .. ChanceLawEngineV111.TabletOfTruthSessionSiteIds,
+        .. ChanceLawEngineV111.TrialSessionSiteIds,
+        .. ChanceLawEngineV111.NativeEventShuffleSessionSiteIds,
+        .. ReferenceNatureEndlessConveyorSessionV111.SessionSiteIds,
+        .. ReferenceNatureInfestedAutomatonSessionV111.SessionSiteIds,
+    ];
+
     private static readonly string[] NatureChoiceSites =
-        SemanticReferenceNatureSites
-            .Concat(RunActionSites)
-            .Concat(RunActionEventEntrySites)
-            .Concat(RunActionShopSites)
-            .Concat(RunActionShopPurchaseSites)
-            .Concat(RunActionTreasureSites)
-            .Concat(RunActionOvergrowthCombatEncounterSites)
-            .Concat(RunActionCombatSites)
-            .Concat(RunActionUnderdocksCombatSites)
-            .Concat(RunActionCombatEntryPotionSites)
-            .Concat(ControlledEventChoiceSites)
-            .Concat(NativeMerchantSessionSites)
-            .Concat(NativeTreasureSessionSites)
-            .Concat(NativeCombatRewardSessionSites)
-            .Concat(NativeMapGenerationSessionSites)
-            .Concat(NeowOfferSessionSites)
-            .Concat(TrashHeapSessionSites)
-            .Concat(TabletOfTruthSessionSites)
-            .Concat(TrialSessionSites)
-            .Concat(NativeEventShuffleSessionSites)
-            .Concat(EndlessConveyorSessionSites)
-            .Concat(GloryReflectionsSessionSites)
-            .Concat(InfestedAutomatonSessionSites)
-            .Concat(PunchOffRewardSessionSites)
-            .Concat(PunchOffFightSessionSites)
+        NatureChoiceSiteCandidates
             .Concat(ChanceLawEngineV111.NativeEventCardPickQuerySiteIds)
             .Concat(ChanceLawEngineV111.NativePunchOffRewardQuerySiteIds)
             .Concat(ChanceLawEngineV111.NativePunchOffFightQuerySiteIds)
-            .Distinct(StringComparer.Ordinal)
-            .ToArray();
+            .Distinct(StringComparer.Ordinal).ToArray();
 
     public static string[] SemanticReferenceNatureSiteIds =>
         (string[])SemanticReferenceNatureSites.Clone();
@@ -910,7 +911,7 @@ public static class StochasticSiteRegistryV111
 
     public static bool IsLegacyRandomChoiceSite(string siteId) =>
         IsChanceLawQuerySite(siteId)
-        || NatureChoiceSites.Contains(siteId, StringComparer.Ordinal)
+        || NatureChoiceSiteCandidates.Contains(siteId, StringComparer.Ordinal)
         || siteId is "map.overgrowth.rest_count.gaussian_component.component"
             or "map.overgrowth.unknown_count.gaussian_component.component"
             or "map.later_act.hive_rest_count.gaussian_int.component"

@@ -21,7 +21,7 @@ from urllib.parse import unquote, urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = ROOT / "src" / "Sts2Emulator.Core"
-SCHEMA_ID = "emulator-rng-callsite-source-inventory-v29"
+SCHEMA_ID = "emulator-rng-callsite-source-inventory-v30"
 SITE_REGISTRY_PATH = SOURCE_ROOT / "StochasticSiteRegistryV111.cs"
 
 CALL_PATTERN = re.compile(
@@ -719,6 +719,71 @@ def _guarded_site_values(
             site_array, global_constants,
         )
         return sorted(set(values)) if values and not unresolved else []
+    legacy_choice_guard = re.search(
+        rf"if\s*\(\s*!\s*StochasticSiteRegistryV111\s*\.\s*"
+        rf"IsLegacyRandomChoiceSite\s*\(\s*{re.escape(name)}\s*\)\s*"
+        r"\)\s*throw\s+new\s+NotSupportedException",
+        member_source,
+    )
+    if legacy_choice_guard:
+        registry_source = SITE_REGISTRY_PATH.read_text(encoding="utf-8")
+        registry_method = re.search(
+            r"public\s+static\s+bool\s+IsLegacyRandomChoiceSite\s*\(\s*"
+            r"string\s+(?P<parameter>[A-Za-z_][A-Za-z0-9_]*)\s*\)\s*"
+            r"=>\s*(?P<body>.*?);",
+            registry_source,
+            re.DOTALL,
+        )
+        if registry_method is None:
+            return []
+        parameter = registry_method.group("parameter")
+        method_body = re.sub(r"\s+", "", registry_method.group("body"))
+        method_prefix = (
+            f"IsChanceLawQuerySite({parameter})||"
+            f"NatureChoiceSiteCandidates.Contains({parameter},"
+            f"StringComparer.Ordinal)||{parameter}is"
+        )
+        if not method_body.startswith(method_prefix):
+            return []
+        component_alternatives = method_body[len(method_prefix):]
+        if re.fullmatch(
+                r'"[^"\\]+"(?:or"[^"\\]+")*',
+                component_alternatives) is None:
+            return []
+        component_values = [
+            literal.group("value")
+            for literal in STRING_LITERAL_PATTERN.finditer(
+                component_alternatives
+            )
+        ]
+        if len(component_values) != 4 or any(
+                not value.endswith(".component")
+                for value in component_values):
+            return []
+        component_parent_sites = [
+            value.removesuffix(".component") for value in component_values
+        ]
+        query_values, query_unresolved = _resolve_site_array_property(
+            "StochasticSiteRegistryV111.ChanceLawQuerySiteIds",
+            global_constants,
+        )
+        if not query_values or query_unresolved:
+            return []
+        site_array = next((array for array in
+            SITE_ARRAY_PATTERN.finditer(registry_source)
+            if array.group("name") == "NatureChoiceSiteCandidates"), None)
+        if site_array is None:
+            return []
+        values, unresolved = _resolve_site_array_items(
+            site_array.group("body"), global_constants,
+            frozenset({
+                "StochasticSiteRegistryV111.NatureChoiceSiteCandidates"
+            }),
+            registry_source, "StochasticSiteRegistryV111",
+        )
+        return (sorted(set(query_values) | set(values) |
+                       set(component_parent_sites))
+                if values and not unresolved else [])
     dictionary_lookup = re.search(
         rf"\b(?P<dictionary>[A-Za-z_][A-Za-z0-9_]*)\."
         rf"(?:TryGetValue\s*\(\s*{re.escape(name)}\s*,|"
@@ -1323,7 +1388,14 @@ def _typed_request_constructions(
                     local_constants, global_constants,
                 )
                 if values:
-                    resolution_source = "method_fail_closed_validation"
+                    member_source = _containing_member_source(
+                        source, match.start()
+                    )
+                    resolution_source = (
+                        "legacy_random_choice_site_guard"
+                        if "IsLegacyRandomChoiceSite" in member_source
+                        else "method_fail_closed_validation"
+                    )
             value = values[0] if len(values) == 1 else None
             registry_misses = [
                 item for item in values if item not in registry_site_ids
@@ -1350,7 +1422,9 @@ def _typed_request_constructions(
             normalized_expression = re.sub(r"\s+", "", expression or "")
             if values:
                 origin_kind = (
-                    "guarded_finite_site_id_alternatives"
+                    "guarded_legacy_random_choice_site_set"
+                    if resolution_source == "legacy_random_choice_site_guard"
+                    else "guarded_finite_site_id_alternatives"
                     if resolution_source == "method_fail_closed_validation"
                     else "static_site_id" if len(values) == 1
                     else "finite_site_id_alternatives"
@@ -1571,7 +1645,9 @@ def collect() -> dict[str, Any]:
             "row-local or site-tied linked contexts for private constraints, audience "
             "projections, resolvers/continuations, probability provenance, and "
             "unsupported handling; these matches require manual review and do not "
-            "prove source completeness."
+            "prove source completeness. The legacy random-choice forwarding row "
+            "follows the source-owned provider allowlist; its four internal "
+            "Gaussian `.component` requests map to their parent Gaussian site rows."
         ),
         "total_direct_calls": len(entries),
         "ambient_entropy_calls": ambient_entropy_calls,

@@ -54,6 +54,8 @@ The current S3 migration centralizes runtime draw-pile writes in `SemanticDrawPi
 
 `PrototypeGameEngine.IsAtCombatRewardOrTerminalBoundary` owns the shared run-phase classification for completed combat continuations. Semantic draw, cost, generated-card, transform, target, player-action, pilot, and end-turn adapters use it when accepting a reward or terminal result; each adapter keeps its own suspended-choice validation and reward-specific handling.
 
+`StochasticSiteRegistryV111.NatureChoiceSiteCandidates` is the shared source for the deduplicated Nature-choice view and the non-query SiteIds admitted by legacy random-choice forwarding. The provider guard adds the existing Chance Law query set and four internal Gaussian component subrequests; the inventory maps those subrequests to their parent Gaussian migration rows.
+
 `SemanticDrawPileAdapterV111.InitializeFromCommittedOpening` centralizes transfer of an already-resolved physical opening pile into a Nature-mode deck. It owns the bottom-first physical to top-first semantic order mapping and preserves the committed permutation without creating a second shuffle or Nature request.
 
 Nature draw recycling now uses one engine helper to derive Perfect Fit's known top identities from the current discard zone before the draw-pile adapter commits the recycle epoch. Ordinary draws, top-draw autoplay, and controlled hand-draw recycle keep their own suspension and continuation rules while sharing that mechanics rule and atomic pile/provider update.
