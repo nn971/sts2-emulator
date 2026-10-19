@@ -32,6 +32,8 @@
 
 **S0 legacy index operation-kind trace increment (2026-10-20):** `LegacyRandomChoiceV111` now constructs explicit `choose_index` and `bounded_integer` requests at their respective entry paths; the shared resolver retains ordinal, guard, and provider handling and rejects mismatched support shapes. The permitted census now resolves all explicit request operation-kind expressions; registry/site ownership and broader row-level review remain open. `git diff --check` passed; no tests or builds were run.
 
+**S2 typed index SiteId validation increment (2026-10-20):** `RandomIndexRequestV111.Validate` now rejects SiteIds outside the union of the existing legacy random-choice and Native index registries before provider resolution. Provider-specific stream and mode checks remain with their existing adapters. The permitted direct-call census and `git diff --check` passed; no tests or builds were run.
+
 **Implementation scope:** `sts2-emulator`, STS2 v0.111.0, single-player. The first vertical slice is two-site Silent combat. Keep the four-Act Silent gameplay and active native inspector developments on separate tracks. Existing versioned `controlled_*`, `nature_*`, `semantic_*` and ordinary AI protocols remain supported; no historic snapshot/probability reinterpretation.
 
 ## Priorities and milestones
