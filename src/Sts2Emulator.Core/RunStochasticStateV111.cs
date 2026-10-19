@@ -36,6 +36,9 @@ public sealed record RunStochasticStateV111(
     public void Validate(RunState owner)
     {
         ArgumentNullException.ThrowIfNull(owner);
+        global::Sts2Emulator.Core.PrototypeRng.ValidateBundle(
+            PrototypeRng,
+            allowEmpty: owner.Phase == RunPhase.RunStart);
         if (ControlledEventChoiceHistory is { } controlledEventHistory)
         {
             if (controlledEventHistory.Any(trace => trace is null))

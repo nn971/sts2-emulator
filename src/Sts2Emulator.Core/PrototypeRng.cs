@@ -8,20 +8,15 @@ namespace Sts2Emulator.Core;
 public static class PrototypeRng
 {
     public const string Codec = "prototype-splitmix64-v0";
+    private static readonly string[] StreamIds =
+    [
+        "map", "combat", "combat_targets", "reward", "shop", "event"
+    ];
 
     public static RngBundle CreateBundle(string seed)
     {
-        var streamIds = new[]
-        {
-            "map",
-            "combat",
-            "combat_targets",
-            "reward",
-            "shop",
-            "event"
-        };
         return new RngBundle(
-            streamIds
+            StreamIds
                 .Select(streamId => new RngStreamState(
                     streamId,
                     Codec,
@@ -43,22 +38,18 @@ public static class PrototypeRng
             throw new ArgumentNullException(nameof(initialStateHex));
         }
 
-        var expected = new[]
-        {
-            "map", "combat", "combat_targets", "reward", "shop", "event"
-        };
-        if (initialStateHex.Count != expected.Length
-            || expected.Any(id => !initialStateHex.ContainsKey(id)))
+        if (initialStateHex.Count != StreamIds.Length
+            || StreamIds.Any(id => !initialStateHex.ContainsKey(id)))
         {
             throw new ArgumentException(
                 "A factorized prior requires exactly six named RNG streams.",
                 nameof(initialStateHex));
         }
 
-        var streams = new RngStreamState[expected.Length];
-        for (var i = 0; i < expected.Length; i++)
+        var streams = new RngStreamState[StreamIds.Length];
+        for (var i = 0; i < StreamIds.Length; i++)
         {
-            var hex = initialStateHex[expected[i]];
+            var hex = initialStateHex[StreamIds[i]];
             if (hex is null || hex.Length != 16
                 || !ulong.TryParse(hex, NumberStyles.HexNumber,
                     CultureInfo.InvariantCulture, out var raw))
@@ -72,6 +63,33 @@ public static class PrototypeRng
             streams[i] = new RngStreamState(expected[i], Codec, bytes, 0);
         }
         return new RngBundle(streams);
+    }
+
+    internal static void ValidateBundle(
+        RngBundle bundle, bool allowEmpty = false)
+    {
+        ArgumentNullException.ThrowIfNull(bundle);
+        if (bundle.Streams is null)
+            throw new InvalidDataException(
+                "Prototype RNG bundle has no stream collection.");
+        if (allowEmpty && bundle.Streams.Length == 0)
+            return;
+
+        var expected = StreamIds.Order(StringComparer.Ordinal).ToArray();
+        var actual = bundle.Streams.Select(stream =>
+                stream?.StreamId ?? "")
+            .Order(StringComparer.Ordinal).ToArray();
+        if (!actual.SequenceEqual(expected, StringComparer.Ordinal))
+            throw new InvalidDataException(
+                "Prototype RNG must own exactly its six named streams.");
+        foreach (var stream in bundle.Streams)
+        {
+            if (stream is null || stream.Codec != Codec ||
+                stream.StateBytes is null ||
+                stream.StateBytes.Length != sizeof(ulong))
+                throw new InvalidDataException(
+                    "Prototype RNG stream has an incompatible codec or state.");
+        }
     }
 
     public static int NextInt(RngBundle bundle, string streamId, int maxExclusive)
