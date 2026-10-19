@@ -68,6 +68,10 @@ public sealed class NativeRandomUnitFloatProviderV111
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(streams);
         request.Validate();
+        if (!StochasticSiteRegistryV111.IsNativeUnitFloatSite(
+                request.SiteId))
+            throw new NotSupportedException(
+                $"Native unit-float sampling does not support site '{request.SiteId}'.");
         var matches = streams.Streams
             .Where(stream => stream.StreamId == request.StreamId).ToArray();
         if (matches.Length != 1)
