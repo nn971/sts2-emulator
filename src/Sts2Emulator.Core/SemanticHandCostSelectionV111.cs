@@ -11,7 +11,7 @@ public sealed record SemanticHandCostSelectionEventV111(
     : ISemanticChanceEventV111
 {
     public const string EventSchemaId =
-        "sts2-v111-semantic-hand-cost-selection-v1";
+        SemanticHandCostSelectionChoiceV111.SchemaId;
 
     public SemanticHandCostSelectionEventV111 Fork() => this with
     {
@@ -32,10 +32,10 @@ public sealed record SemanticHandCostSelectionEventV111(
             string.IsNullOrWhiteSpace(EventId) ||
             string.IsNullOrWhiteSpace(BoundaryFingerprint) ||
             string.IsNullOrWhiteSpace(SupportFingerprint) ||
-            SiteId != "combat.random_hand_card.select" ||
-            StreamId != "prototype.combat" ||
+            SiteId != SemanticHandCostSelectionChoiceV111.SiteId ||
+            StreamId != SemanticHandCostSelectionChoiceV111.StreamId ||
             string.IsNullOrWhiteSpace(OwnerId) || Ordinal < 0 ||
-            OperationKind != "choose_hand_card_instance" ||
+            OperationKind != SemanticHandCostSelectionChoiceV111.OperationKind ||
             CandidateCardInstanceIds is not { Length: > 0 } ||
             CandidateCardModelIds is null ||
             CandidateCardModelIds.Length != CandidateCardInstanceIds.Length ||
@@ -80,6 +80,55 @@ public sealed record SemanticHandCostSelectionDecisionV111(
 
 public static class SemanticHandCostSelectionChoiceV111
 {
+    public const string SchemaId =
+        "sts2-v111-semantic-hand-cost-selection-v1";
+    public const string SiteId = "combat.random_hand_card.select";
+    internal const string StreamId = "prototype.combat";
+    internal const string OperationKind = "choose_hand_card_instance";
+
+    internal static SemanticHandCostSelectionEventV111 CreateEvent(
+        string boundaryFingerprint,
+        PrototypeControlledRandomCostV111 randomCost,
+        string[] candidateCardModelIds, int ordinal)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(boundaryFingerprint);
+        ArgumentNullException.ThrowIfNull(randomCost);
+        ArgumentNullException.ThrowIfNull(candidateCardModelIds);
+        if (randomCost.Operation.Kind != PrototypeCombatEffectKind
+                .SetRandomHandCardEnergyCostUntilTurnEndOrPlayed ||
+            randomCost.EligibleCardInstanceIds is not { Length: > 0 } ||
+            candidateCardModelIds.Length !=
+                randomCost.EligibleCardInstanceIds.Length)
+            throw new InvalidDataException(
+                "Hand-cost selection source pool is invalid.");
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+
+        var cardIds = (long[])randomCost.EligibleCardInstanceIds.Clone();
+        var modelIds = (string[])candidateCardModelIds.Clone();
+        var appliedCost = Math.Max(0, randomCost.Operation.Amount);
+        var supportFingerprint = CanonicalJson.Sha256(new
+        {
+            candidateCardInstanceIds = cardIds,
+            candidateCardModelIds = modelIds,
+            appliedCost
+        });
+        var ownerId = "effect:" + randomCost.Operation.Kind + ":hand:" +
+            CanonicalJson.Sha256(cardIds);
+        var eventId = CanonicalJson.Sha256(new
+        {
+            SchemaId,
+            BoundaryFingerprint = boundaryFingerprint,
+            SupportFingerprint = supportFingerprint
+        });
+        var semanticEvent = new SemanticHandCostSelectionEventV111(
+            SchemaId, eventId, boundaryFingerprint, supportFingerprint,
+            SiteId, StreamId, ownerId, ordinal, OperationKind, cardIds,
+            modelIds, appliedCost);
+        semanticEvent.Validate();
+        return semanticEvent;
+    }
+
     public static SemanticHandCostSelectionDecisionV111 Select(
         SemanticHandCostSelectionEventV111 pending, string eventId,
         long cardInstanceId)
@@ -126,9 +175,9 @@ public static class SemanticHandCostSelectionChoiceV111
         var candidateIds = randomCost.EligibleCardInstanceIds;
         var candidateModels = candidateIds.Select(id => combat.Cards.Single(
             card => card.InstanceId == id).CardId).ToArray();
-        if (eventState.SiteId != "combat.random_hand_card.select" ||
-            eventState.StreamId != "prototype.combat" ||
-            eventState.OperationKind != "choose_hand_card_instance" ||
+        if (eventState.SiteId != SiteId ||
+            eventState.StreamId != StreamId ||
+            eventState.OperationKind != OperationKind ||
             eventState.AppliedCost != Math.Max(
                 0, randomCost.Operation.Amount) ||
             !candidateIds.SequenceEqual(
