@@ -312,6 +312,16 @@ public static class StochasticSiteRegistryV111
             return true;
         }
 
+        if (NativeBoundedIntegerSites.Contains(
+                siteId, StringComparer.Ordinal) ||
+            NativeEventContextBoundedIntegerSites.Contains(
+                siteId, StringComparer.Ordinal) ||
+            NativeFisherYatesSites.Contains(siteId, StringComparer.Ordinal))
+        {
+            operationKind = "bounded_integer";
+            return true;
+        }
+
         operationKind = string.Empty;
         return false;
     }
