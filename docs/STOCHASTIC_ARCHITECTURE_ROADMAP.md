@@ -28,6 +28,8 @@
 
 **S0 generated-choice and enemy-insertion ownership review (2026-10-20):** The site inventory now manually traces generated-card selection and enemy draw/discard insertion through event support, source-boundary revalidation, ordinary continuation replay, and provider-aware mechanics publication. Source-pool fidelity, legacy probability models, and provider/cursor regression evidence remain open as recorded per row. No tests or builds were run.
 
+**S0 random hand-cost ownership review (2026-10-20):** The inventory now distinguishes the single-card identity choice from per-card bounded cost draws, documents their separate ordered supports and Native streams, and traces `NextCardIndex` through saved continuation replay and draw-pile/provider validation. Legacy law, Native-to-source stream attribution, source-pool fidelity, and cursor evidence remain open. No tests or builds were run.
+
 **Implementation scope:** `sts2-emulator`, STS2 v0.111.0, single-player. The first vertical slice is two-site Silent combat. Keep the four-Act Silent gameplay and active native inspector developments on separate tracks. Existing versioned `controlled_*`, `nature_*`, `semantic_*` and ordinary AI protocols remain supported; no historic snapshot/probability reinterpretation.
 
 ## Priorities and milestones
