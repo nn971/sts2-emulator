@@ -57,8 +57,7 @@ public sealed partial class PrototypeGameEngine
             recycled, nativeStreams,
             new NativeRandomIndexProviderV111(),
             ownerId: "player:0",
-            siteId: StochasticSiteRegistryV111
-                .CombatDrawPileRecycleShuffleSiteId);
+            siteId: ControlledRecycleShuffleEngineV111.SiteId);
         var postHook = NativeShuffleStepReplayV111.CheckPostHook(
             ApplyPerfectFitShuffleOrder(combat, shuffle.PreHookOutput));
         var advanced = combat with

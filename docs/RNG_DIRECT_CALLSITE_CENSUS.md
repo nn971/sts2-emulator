@@ -132,7 +132,7 @@ Expression-origin classes: `finite_site_id_alternatives` **10**, `guarded_finite
 | [src/Sts2Emulator.Core/SemanticPilotCombatV111.cs:3400](../src/Sts2Emulator.Core/SemanticPilotCombatV111.cs#L3400) | RandomIndexRequestV111 | "combat.random_hand_card.energy_cost" | static_site_id | expression | combat.random_hand_card.energy_cost | mapped | mapped |
 | [src/Sts2Emulator.Core/SemanticPilotCombatV111.cs:3648](../src/Sts2Emulator.Core/SemanticPilotCombatV111.cs#L3648) | RandomIndexRequestV111 | siteId | finite_site_id_alternatives | method_local_assignment | combat.card_selection.random_shortlist, combat.draw.recycle.shuffle_swap_index, combat.draw_pile.random_rare_to_hand.shuffle_swap_index, combat.generation.full_pool_shuffle.swap_index, combat.hand_return.draw_pile.shuffle_swap_index | conditional | conditional |
 
-Shuffle site IDs mapped to migration-matrix rows: **22**; dynamic expressions: **2**; unmapped: **0**; missing: **0**.
+Shuffle site IDs mapped to migration-matrix rows: **23**; dynamic expressions: **1**; unmapped: **0**; missing: **0**.
 Registered stochastic site IDs mapped to migration-matrix rows: **184/184**; IDs without rows: **0**; duplicate matrix IDs: **0**; unresolved registry references: **0**.
 Migration-matrix rows absent from the active registry: **0** (informational; legacy and conditional rows may remain unregistered). Their law-status counts are UNVERIFIED 0, conditional 0, calibrated 0, unspecified 0.
 Matrix-only IDs for manual disposition:
@@ -206,8 +206,7 @@ Known RNG helper callsites with forwarded stable site IDs:
                         .WarHammerEliteUpgradeShuffleSiteId` → `relic.war_hammer.elite_upgrade.shuffle_swap_index` | `mapped` | `_ = NativeFisherYatesV111.ShuffleInPlace(` | `shuffle_site_id_resolved` |
 | [`src/Sts2Emulator.Core/PrototypeRooms.cs:5603`](../src/Sts2Emulator.Core/PrototypeRooms.cs#L5603) | `NativeFisherYatesV111` | `ShuffleInPlace` | `StochasticSiteRegistryV111
                         .RewardBossRelicOfferShuffleSiteId` → `reward.boss_relic_offer.shuffle_swap_index` | `mapped` | `_ = NativeFisherYatesV111.ShuffleInPlace(` | `shuffle_site_id_resolved` |
-| [`src/Sts2Emulator.Core/PrototypeSemanticDrawRecycleV111.cs:56`](../src/Sts2Emulator.Core/PrototypeSemanticDrawRecycleV111.cs#L56) | `NativeFisherYatesV111` | `Execute` | `StochasticSiteRegistryV111
-                .CombatDrawPileRecycleShuffleSiteId` | `dynamic_expression` | `var shuffle = NativeFisherYatesV111.Execute(` | `shuffle_site_id_is_dynamic_or_unresolved` |
+| [`src/Sts2Emulator.Core/PrototypeSemanticDrawRecycleV111.cs:56`](../src/Sts2Emulator.Core/PrototypeSemanticDrawRecycleV111.cs#L56) | `NativeFisherYatesV111` | `Execute` | `ControlledRecycleShuffleEngineV111.SiteId` → `combat.draw_pile_recycle.swap_index` | `mapped` | `var shuffle = NativeFisherYatesV111.Execute(` | `shuffle_site_id_resolved` |
 | [`src/Sts2Emulator.Core/RandomGaussianDoubleProvidersV111.cs:84`](../src/Sts2Emulator.Core/RandomGaussianDoubleProvidersV111.cs#L84) | `NativeRngV111` | `NextGaussianDouble` | — | `not_applicable` | `var value = NativeRngV111.NextGaussianDouble(` | `provider_or_codec_infrastructure` |
 | [`src/Sts2Emulator.Core/RandomGaussianIntProvidersV111.cs:83`](../src/Sts2Emulator.Core/RandomGaussianIntProvidersV111.cs#L83) | `NativeRngV111` | `NextGaussianInt` | — | `not_applicable` | `var value = NativeRngV111.NextGaussianInt(` | `provider_or_codec_infrastructure` |
 | [`src/Sts2Emulator.Core/RandomIndexProvidersV111.cs:101`](../src/Sts2Emulator.Core/RandomIndexProvidersV111.cs#L101) | `NativeRngV111` | `NextInt` | — | `not_applicable` | `int index = NativeRngV111.NextInt(streams, request.StreamId, request.SupportCount);` | `provider_or_codec_infrastructure` |
