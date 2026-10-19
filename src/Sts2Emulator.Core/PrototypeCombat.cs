@@ -2914,23 +2914,18 @@ public sealed partial class PrototypeGameEngine
                         completedInput, requestedHandDraw);
                 }
 
-                combat = ApplyAutomaticHandDrawPostStagePowerTiming(
-                    combat);
                 if (resumedAfterSemanticHook)
                 {
-                    var cursor = combat.AutomaticPipelineContinuation ??
-                        throw new InvalidDataException(
-                            "Semantic BeforeHandDraw continuation lost its cursor.");
-                    combat = combat with
+                    var completed = state with
                     {
-                        AutomaticPipelineContinuation =
-                            cursor.WithHandDrawProgress(null) with
-                        {
-                            NextStepIndex = SemanticHandDrawStepIndex + 1,
-                            ControlledSemanticDrawRequested = requestedHandDraw
-                        }
+                        Player = player,
+                        World = world with { Combat = combat }
                     };
+                    return CompleteAutomaticHandDrawStage(
+                        completed, requestedHandDraw);
                 }
+                combat = ApplyAutomaticHandDrawPostStagePowerTiming(
+                    combat);
                 break;
             }
 
