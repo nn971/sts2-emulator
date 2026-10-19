@@ -32,7 +32,7 @@ public sealed record SemanticIntentEventV111(
     string ProbabilityProvenance = "source-shaped-unverified",
     bool WeightsVerified = false) : ISemanticChanceEventV111
 {
-    public const string EventSchemaId = "sts2-v111-semantic-intent-event-v1";
+    public const string EventSchemaId = SemanticIntentChoiceV111.SchemaId;
     public string OperationKind => "weighted_choice";
 
     public SemanticIntentEventV111 Fork() => this with
@@ -105,6 +105,35 @@ public sealed record SemanticIntentDecisionV111(
 
 public static class SemanticIntentChoiceV111
 {
+    public const string SchemaId = "sts2-v111-semantic-intent-event-v1";
+
+    internal static SemanticIntentEventV111 CreateEvent(
+        string boundaryFingerprint, RandomIndexRequestV111 request,
+        SemanticIntentSupportV111 support)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(boundaryFingerprint);
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(support);
+        var detachedSupport = support with
+        {
+            Candidates =
+                (SemanticIntentCandidateV111[])support.Candidates.Clone()
+        };
+        var supportFingerprint = CanonicalJson.Sha256(support);
+        var eventId = CanonicalJson.Sha256(new
+        {
+            SchemaId,
+            BoundaryFingerprint = boundaryFingerprint,
+            SupportFingerprint = supportFingerprint
+        });
+        var semanticEvent = new SemanticIntentEventV111(
+            SchemaId, eventId, boundaryFingerprint, supportFingerprint,
+            request.SiteId, request.StreamId, request.OwnerId,
+            request.Ordinal, detachedSupport);
+        semanticEvent.Validate();
+        return semanticEvent;
+    }
+
     public static (SemanticIntentDecisionV111 Decision, int SourceTicket)
         Select(SemanticIntentEventV111 pending, string intentId)
     {

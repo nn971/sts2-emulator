@@ -2794,8 +2794,8 @@ public static class SemanticPilotCombatEngineV111
                 .DescribePendingSemanticIntent(ticket) ??
                 throw new InvalidDataException(
                     "Missing weighted intent support.");
-            var semanticEvent = MakeSemanticIntentEvent(
-                current, request, support);
+            var semanticEvent = SemanticIntentChoiceV111.CreateEvent(
+                current.Fingerprint, request, support);
             SemanticIntentChoiceV111.ValidateDecision(
                 semanticEvent, semanticIntent, selectedIndex);
         }
@@ -2990,8 +2990,8 @@ public static class SemanticPilotCombatEngineV111
         var support = ControlledTurnIntentEngineV111
             .DescribePendingSemanticIntent(ticket) ??
             throw new InvalidDataException("Missing weighted intent support.");
-        var semanticEvent = MakeSemanticIntentEvent(current, ticket.Pending,
-            support);
+        var semanticEvent = SemanticIntentChoiceV111.CreateEvent(
+            current.Fingerprint, ticket.Pending, support);
         var selection = SemanticIntentChoiceV111.Select(
             semanticEvent, intentId);
         return Resolve(current, fingerprint, selection.SourceTicket,
@@ -3068,7 +3068,8 @@ public static class SemanticPilotCombatEngineV111
         var support = ControlledTurnIntentEngineV111
             .DescribePendingSemanticIntent(ticket) ??
             throw new InvalidDataException("Missing weighted intent support.");
-        return MakeSemanticIntentEvent(current, request, support);
+        return SemanticIntentChoiceV111.CreateEvent(
+            current.Fingerprint, request, support);
     }
 
     public static SemanticTargetEventV111? DescribePendingTargetEvent(
@@ -3487,30 +3488,6 @@ public static class SemanticPilotCombatEngineV111
         {
             throw new NotSupportedException(message, exception);
         }
-    }
-
-    private static SemanticIntentEventV111 MakeSemanticIntentEvent(
-        SemanticPilotCombatV111 current, RandomIndexRequestV111 request,
-        SemanticIntentSupportV111 support)
-    {
-        var detachedSupport = support with
-        {
-            Candidates = (SemanticIntentCandidateV111[])support.Candidates.Clone()
-        };
-        var supportFingerprint = CanonicalJson.Sha256(support);
-        var eventId = CanonicalJson.Sha256(new
-        {
-            SchemaId = SemanticIntentEventV111.EventSchemaId,
-            BoundaryFingerprint = current.Fingerprint,
-            SupportFingerprint = supportFingerprint
-        });
-        var semanticEvent = new SemanticIntentEventV111(
-            SemanticIntentEventV111.EventSchemaId,
-            eventId, current.Fingerprint, supportFingerprint,
-            request.SiteId, request.StreamId, request.OwnerId,
-            request.Ordinal, detachedSupport);
-        semanticEvent.Validate();
-        return semanticEvent;
     }
 
     private static SemanticPilotContinuationV111 NatureContinuation(
