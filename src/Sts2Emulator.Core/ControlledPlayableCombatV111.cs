@@ -312,26 +312,23 @@ public sealed record ControlledPlayableCombatV111(
                     DrawInsertionTranscript.Length,
                     Enumerable.Range(0, choice.CandidateCardIds.Length).ToArray(),
                     OperationKind: "choose_index");
-            var requestSiteId = choice.RequestSiteId;
-            if (!StochasticSiteRegistryV111.ControlledDrawInsertionSiteIds.Contains(
-                    requestSiteId, StringComparer.Ordinal))
-                throw new NotSupportedException(
-                    $"Controlled draw insertion does not support site '{requestSiteId}'.");
-            return new RandomIndexRequestV111(
-                requestSiteId, "prototype.combat",
+            bool sourceTimedInsertion =
                 choice.PersonalHiveDamageContinuation is not null ||
-                    choice.AfterShuffleRelic is not null
-                    ? choice.RequestOwnerId + ":card:" + choice.SelectedCardId +
-                        ":draw_pile:" +
-                        CanonicalJson.Sha256(choice.EligibleDrawPile)
-                    : owner + ":model:" + choice.SelectedCardId +
-                        ":pile:" + CanonicalJson.Sha256(choice.EligibleDrawPile),
-                choice.PersonalHiveDamageContinuation is not null ||
-                    choice.AfterShuffleRelic is not null
-                    ? choice.RequestOrdinal
-                    : DrawInsertionTranscript.Length, [],
-                OperationKind: "bounded_integer",
-                BoundedCount: choice.EligibleDrawPile.Length + 1);
+                choice.AfterShuffleRelic is not null;
+            var requestOwnerId = sourceTimedInsertion
+                ? choice.RequestOwnerId + ":card:" + choice.SelectedCardId +
+                    ":draw_pile:" +
+                    CanonicalJson.Sha256(choice.EligibleDrawPile)
+                : owner + ":model:" + choice.SelectedCardId + ":pile:" +
+                    CanonicalJson.Sha256(choice.EligibleDrawPile);
+            var requestOrdinal = sourceTimedInsertion
+                ? choice.RequestOrdinal : DrawInsertionTranscript.Length;
+            return SemanticDrawInsertionEventV111.CreateRequest(
+                choice.RequestSiteId, nativeStreamAvailable: false,
+                legacyOwnerId: requestOwnerId,
+                nativeOwnerId: requestOwnerId,
+                ordinal: requestOrdinal,
+                supportCount: choice.EligibleDrawPile.Length + 1);
         }
     }
     [System.Text.Json.Serialization.JsonIgnore]
