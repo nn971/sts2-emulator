@@ -252,6 +252,21 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
         ControlledTurnIntents = ControlledTurnIntents?.Fork()
     };
 
+    public PrototypeAutomaticPipelineStochasticStateV111
+        WithCompletedSemanticHandDrawReceipt(int? requestedCount)
+    {
+        if (requestedCount is < 0)
+            throw new ArgumentOutOfRangeException(nameof(requestedCount));
+        if (HandDrawProgress is not null)
+            throw new InvalidOperationException(
+                "A completed semantic draw receipt cannot replace active hand-draw progress.");
+        return this with
+        {
+            CompletedSemanticHandDrawRequested =
+                requestedCount is > 0 ? requestedCount : null
+        };
+    }
+
     public static PrototypeAutomaticPipelineStochasticStateV111
         FromFlattenedProgress(
             int? controlledDrawRemaining,
@@ -545,17 +560,17 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
         ArgumentNullException.ThrowIfNull(combat);
         ArgumentNullException.ThrowIfNull(continuation);
 
-        if (CompletedSemanticHandDrawRequested is < 0 ||
-            CompletedSemanticHandDrawRequested is not null &&
-                (CompletedSemanticHandDrawRequested is not > 0 ||
-                 continuation.NextStepIndex !=
-                    PrototypeGameEngine.SemanticHandDrawStepIndex + 1 ||
-                 HandDrawProgress is not null ||
-                 ControlledEnemyAction is not null ||
-                 ControlledTurnIntents is not null ||
-                 combat.PendingChoice is not null ||
-                 combat.PendingKnowledgeDemonChoice is not null ||
-                 combat.SemanticDeck?.Pending is not null))
+        if (CompletedSemanticHandDrawRequested is not null &&
+            (CompletedSemanticHandDrawRequested is not > 0 ||
+             continuation.NextStepIndex !=
+                PrototypeGameEngine.SemanticHandDrawStepIndex + 1 ||
+             HandDrawProgress is not null ||
+             ControlledEnemyAction is not null ||
+             ControlledTurnIntents is not null ||
+             combat.PendingChoice is not null ||
+             combat.PendingKnowledgeDemonChoice is not null ||
+             combat.SemanticDeck is not
+                { Mode: SemanticDeckStateV111.NatureMode, Pending: null }))
             throw new InvalidOperationException(
                 "Completed semantic hand-draw receipt disagrees with the pipeline cursor.");
 
