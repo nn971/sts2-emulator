@@ -12,6 +12,8 @@
 
 **S0 Fisher–Yates wrapper guard trace increment (2026-10-20):** Census v37 follows the low-level `NativeFisherYatesV111.ShuffleInPlace` parameter through its fail-closed `ValidateSiteId` call and resolves the 28 supported IDs from the existing `StochasticSiteRegistryV111.NativeFisherYatesSiteIds` property. All 24 direct Native Fisher–Yates expressions now map to migration rows with no dynamic, unmapped, or missing expressions. This recognizes the shared primitive's declared support; caller reachability and the S0 row-by-row review remain open. The permitted census and `git diff --check` passed; no tests or builds were run.
 
+**S0 deferred-draw source review update (2026-10-20):** The existing `combat.draw_pile.draw_card` review now records that ReferenceNature validates the sampled physical identity against the mechanics event and that bounded full-order enumeration checks exact count, uniqueness, fixed positions, and shared-pool membership. This confirms implementation invariants only; the equal shared-pool probability model remains `UNVERIFIED`, peek/scry gameplay callsites remain absent, and the broader row-by-row review remains open. No tests or builds were run.
+
 **Implementation scope:** `sts2-emulator`, STS2 v0.111.0, single-player. The first vertical slice is two-site Silent combat. Keep the four-Act Silent gameplay and active native inspector developments on separate tracks. Existing versioned `controlled_*`, `nature_*`, `semantic_*` and ordinary AI protocols remain supported; no historic snapshot/probability reinterpretation.
 
 ## Priorities and milestones
