@@ -3185,28 +3185,11 @@ public static class SemanticPilotCombatEngineV111
             transform.NextTransformIndex];
         var originalCardId = combat!.Cards.Single(card =>
             card.InstanceId == sourceId).CardId;
-        var candidates = (string[])transform.CandidateCardIds.Clone();
-        var supportFingerprint = CanonicalJson.Sha256(candidates);
-        var siteId = "combat.card_transform.replacement.index_draw";
-        var ownerId = "card_instance:" + sourceId + ":model:" +
-            originalCardId + ":pool:" + supportFingerprint;
         var ordinal = current.History.Count(transition =>
             transition.Kind == "semantic_card_transform");
-        var eventId = CanonicalJson.Sha256(new
-        {
-            SchemaId = SemanticCardTransformEventV111.EventSchemaId,
-            BoundaryFingerprint = current.Fingerprint,
-            SiteId = siteId,
-            OwnerId = ownerId,
-            Ordinal = ordinal,
-            SupportFingerprint = supportFingerprint
-        });
-        var semanticEvent = new SemanticCardTransformEventV111(
-            SemanticCardTransformEventV111.EventSchemaId, eventId, siteId,
-            "prototype.combat", ownerId, ordinal, "choose_card_model",
-            sourceId, originalCardId, candidates, supportFingerprint);
-        semanticEvent.Validate();
-        return semanticEvent;
+        return SemanticCardTransformChoiceV111.CreateEvent(
+            current.Fingerprint, ordinal, sourceId, originalCardId,
+            transform.CandidateCardIds);
     }
 
     public static SemanticCardSelectionEventV111?
