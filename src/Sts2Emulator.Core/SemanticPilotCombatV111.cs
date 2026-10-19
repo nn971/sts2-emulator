@@ -2281,17 +2281,12 @@ public static class SemanticPilotCombatEngineV111
             CanonicalJson.Sha256(DescribePendingCardSelectionEvent(current)))
             throw new InvalidDataException(
                 "Source card-selection event changed before resolution.");
-        var next = current with
-        {
-            Run = selection.Run,
-            RewardAudit = selection.Run.Phase == RunPhase.Reward
-                ? RecordRewardAudit(current.Run, selection.Run)
-                : current.RewardAudit,
-            History = current.History.Append(
-                new SemanticPilotContinuationV111(
-                    "semantic_card_selection",
-                    CardSelectionDecision: decision.Fork())).ToArray()
-        };
+        var next = PublishRunContinuation(
+            current, selection.Run, null,
+            new SemanticPilotContinuationV111(
+                "semantic_card_selection",
+                CardSelectionDecision: decision.Fork()),
+            preservePendingEndTurn: true);
         Validate(next);
         return next;
     }
@@ -2363,17 +2358,11 @@ public static class SemanticPilotCombatEngineV111
             current.Run, decision);
         if (result.Phase == RunPhase.Combat)
             ValidateSemanticCombatBoundary(result);
-        var next = current with
-        {
-            Run = result,
-            RewardAudit = result.Phase == RunPhase.Reward
-                ? RecordRewardAudit(current.Run, result)
-                : current.RewardAudit,
-            History = current.History.Append(
-                new SemanticPilotContinuationV111(
-                    "semantic_target", TargetDecision: decision.Fork()))
-                .ToArray()
-        };
+        var next = PublishRunContinuation(
+            current, result, null,
+            new SemanticPilotContinuationV111(
+                "semantic_target", TargetDecision: decision.Fork()),
+            preservePendingEndTurn: true);
         return NormalizeNoncontrolledCosts(next);
     }
 
@@ -2398,17 +2387,12 @@ public static class SemanticPilotCombatEngineV111
             pending, eventId, cardId);
         var result = SemanticGenerationChoiceV111.Resume(
             current.Run, expected);
-        var next = current with
-        {
-            Run = result,
-            RewardAudit = result.Phase == RunPhase.Reward
-                ? RecordRewardAudit(current.Run, result)
-                : current.RewardAudit,
-            History = current.History.Append(
-                new SemanticPilotContinuationV111(
-                    "semantic_generated_card",
-                    GeneratedCardDecision: expected.Fork())).ToArray()
-        };
+        var next = PublishRunContinuation(
+            current, result, null,
+            new SemanticPilotContinuationV111(
+                "semantic_generated_card",
+                GeneratedCardDecision: expected.Fork()),
+            preservePendingEndTurn: true);
         return NormalizeNoncontrolledCosts(next);
     }
 
@@ -2429,14 +2413,12 @@ public static class SemanticPilotCombatEngineV111
             pending, eventId, potionId);
         var result = SemanticPotionGenerationChoiceV111.Resume(
             current.Run, expected);
-        return NormalizeNoncontrolledCosts(current with
-        {
-            Run = result,
-            History = current.History.Append(
-                new SemanticPilotContinuationV111(
-                    "semantic_potion_generation",
-                    PotionGenerationDecision: expected.Fork())).ToArray()
-        });
+        return NormalizeNoncontrolledCosts(PublishRunContinuation(
+            current, result, null,
+            new SemanticPilotContinuationV111(
+                "semantic_potion_generation",
+                PotionGenerationDecision: expected.Fork()),
+            preservePendingEndTurn: true));
     }
 
     public static SemanticPilotCombatV111 ResolveCardTransform(
@@ -2457,17 +2439,12 @@ public static class SemanticPilotCombatEngineV111
         var result = SemanticCardTransformChoiceV111.Resume(
             current.Run, expected);
 
-        return NormalizeNoncontrolledCosts(current with
-        {
-            Run = result,
-            RewardAudit = result.Phase == RunPhase.Reward
-                ? RecordRewardAudit(current.Run, result)
-                : current.RewardAudit,
-            History = current.History.Append(
-                new SemanticPilotContinuationV111(
-                    "semantic_card_transform",
-                    CardTransformDecision: expected.Fork())).ToArray()
-        });
+        return NormalizeNoncontrolledCosts(PublishRunContinuation(
+            current, result, null,
+            new SemanticPilotContinuationV111(
+                "semantic_card_transform",
+                CardTransformDecision: expected.Fork()),
+            preservePendingEndTurn: true));
     }
 
     private static SemanticPilotCombatV111 StepNativePolicyBaseline(
@@ -2513,21 +2490,16 @@ public static class SemanticPilotCombatEngineV111
                 "UNSUPPORTED_SEMANTIC_NATIVE site=combat.player_action " +
                 "operation=unsupported_post_action_phase");
 
-        var next = current with
+        var next = PublishRunContinuation(
+            current, result, null,
+            new SemanticPilotContinuationV111("player", actionId)) with
         {
-            Run = result,
-            PendingEndTurn = null,
-            RewardAudit = result.Phase == RunPhase.Reward
-                ? RecordRewardAudit(current.Run, result)
-                : current.RewardAudit,
             NativePolicyAudit = audit with
             {
                 Decisions = audit.Decisions.Concat(recorded).ToArray(),
                 ProviderTrace = RandomBoundaryJournalV111.ConcatOrdered(
                     audit.ProviderTrace, recordedTrace)
-            },
-            History = current.History.Append(
-                new SemanticPilotContinuationV111("player", actionId)).ToArray()
+            }
         };
         Validate(next);
         return next;
@@ -2598,14 +2570,11 @@ public static class SemanticPilotCombatEngineV111
                 current.CostPending, decision, index);
             var result = SemanticRandomHandCostChoiceV111.Resume(
                 current.Run, pending.SiteId, index);
-            var next = current with
-            {
-                Run = result,
-                History = current.History.Append(
-                    new SemanticPilotContinuationV111(
-                        "semantic_cost", CostDecision: decision.Fork()))
-                    .ToArray()
-            };
+            var next = PublishRunContinuation(
+                current, result, null,
+                new SemanticPilotContinuationV111(
+                    "semantic_cost", CostDecision: decision.Fork()),
+                preservePendingEndTurn: true);
             Validate(next);
             return next;
         }
@@ -2628,15 +2597,12 @@ public static class SemanticPilotCombatEngineV111
             pending, eventId, cardInstanceId);
         var result = SemanticHandCostSelectionChoiceV111.Resume(
             current.Run, decision);
-        var next = current with
-        {
-            Run = result,
-            History = current.History.Append(
-                new SemanticPilotContinuationV111(
-                    "semantic_hand_cost_selection",
-                    HandCostSelectionDecision: decision.Fork()))
-                .ToArray()
-        };
+        var next = PublishRunContinuation(
+            current, result, null,
+            new SemanticPilotContinuationV111(
+                "semantic_hand_cost_selection",
+                HandCostSelectionDecision: decision.Fork()),
+            preservePendingEndTurn: true);
         Validate(next);
         return next;
     }
@@ -2657,18 +2623,12 @@ public static class SemanticPilotCombatEngineV111
             pending, eventId, cardInstanceId);
         var result = SemanticCardShortlistChoiceV111.Resume(
             current.Run, decision);
-        var next = current with
-        {
-            Run = result,
-            RewardAudit = result.Phase == RunPhase.Reward
-                ? RecordRewardAudit(current.Run, result)
-                : current.RewardAudit,
-            History = current.History.Append(
-                new SemanticPilotContinuationV111(
-                    "semantic_card_shortlist",
-                    CardShortlistDecision: decision.Fork()))
-                .ToArray()
-        };
+        var next = PublishRunContinuation(
+            current, result, null,
+            new SemanticPilotContinuationV111(
+                "semantic_card_shortlist",
+                CardShortlistDecision: decision.Fork()),
+            preservePendingEndTurn: true);
         Validate(next);
         return next;
     }
@@ -2689,14 +2649,12 @@ public static class SemanticPilotCombatEngineV111
             pending, eventId, swapIndex);
         var result = SemanticPoolShuffleChoiceV111.Resume(
             current.Run, decision);
-        var next = current with
-        {
-            Run = result,
-            History = current.History.Append(
-                new SemanticPilotContinuationV111(
-                    "semantic_pool_shuffle",
-                    PoolShuffleDecision: decision.Fork())).ToArray()
-        };
+        var next = PublishRunContinuation(
+            current, result, null,
+            new SemanticPilotContinuationV111(
+                "semantic_pool_shuffle",
+                PoolShuffleDecision: decision.Fork()),
+            preservePendingEndTurn: true);
         Validate(next);
         return next;
     }
@@ -2791,17 +2749,12 @@ public static class SemanticPilotCombatEngineV111
                 ValidateSemanticCombatBoundary(result);
             }
         }
-        var next = current with
-        {
-            Run = result,
-            RewardAudit = result.Phase == RunPhase.Reward
-                ? RecordRewardAudit(current.Run, result)
-                : current.RewardAudit,
-            History = current.History.Append(
-                new SemanticPilotContinuationV111(
-                    "semantic_draw_insertion",
-                    DrawInsertionDecision: decision.Fork())).ToArray()
-        };
+        var next = PublishRunContinuation(
+            current, result, null,
+            new SemanticPilotContinuationV111(
+                "semantic_draw_insertion",
+                DrawInsertionDecision: decision.Fork()),
+            preservePendingEndTurn: true);
         Validate(next);
         return next;
     }
@@ -2904,17 +2857,12 @@ public static class SemanticPilotCombatEngineV111
                 .ResumeEffectDrawCost(
                     current.Run.Fork(), effectCostDecision.SelectedCost,
                     allowEngineOwnedPrototypeReward: true);
-            var effectCostState = current with
-            {
-                Run = effectCostResult,
-                RewardAudit = effectCostResult.Phase == RunPhase.Reward
-                    ? RecordRewardAudit(current.Run, effectCostResult)
-                    : current.RewardAudit,
-                History = current.History.Append(
-                    new SemanticPilotContinuationV111(
-                        "semantic_cost",
-                        CostDecision: effectCostDecision.Fork())).ToArray()
-            };
+            var effectCostState = PublishRunContinuation(
+                current, effectCostResult, null,
+                new SemanticPilotContinuationV111(
+                    "semantic_cost",
+                    CostDecision: effectCostDecision.Fork()),
+                preservePendingEndTurn: true);
             Validate(effectCostState);
             return effectCostState;
         }
@@ -2942,17 +2890,12 @@ public static class SemanticPilotCombatEngineV111
                 .ResumeControlledEffectDraw(
                     current.Run.Fork(), effectDrawDecision,
                     allowEngineOwnedPrototypeReward: true);
-            var effectDrawState = current with
-            {
-                Run = effectDrawResult,
-                RewardAudit = effectDrawResult.Phase == RunPhase.Reward
-                    ? RecordRewardAudit(current.Run, effectDrawResult)
-                    : current.RewardAudit,
-                History = current.History.Append(
-                    new SemanticPilotContinuationV111(
-                        "semantic_draw",
-                        DrawDecision: effectDrawDecision.Fork())).ToArray()
-            };
+            var effectDrawState = PublishRunContinuation(
+                current, effectDrawResult, null,
+                new SemanticPilotContinuationV111(
+                    "semantic_draw",
+                    DrawDecision: effectDrawDecision.Fork()),
+                preservePendingEndTurn: true);
             Validate(effectDrawState);
             return effectDrawState;
         }
@@ -3909,19 +3852,24 @@ public static class SemanticPilotCombatEngineV111
         RunState run,
         SemanticEndTurnV111? pendingEndTurn,
         SemanticPilotContinuationV111? historyEntry = null,
-        SemanticOtherChanceStateV111? otherChance = null)
+        SemanticOtherChanceStateV111? otherChance = null,
+        bool preservePendingEndTurn = false)
     {
         var next = current with
         {
             Run = run,
-            PendingEndTurn = pendingEndTurn is { Complete: false }
-                ? pendingEndTurn
-                : null,
             RewardAudit = run.Phase == RunPhase.Reward
                 ? RecordRewardAudit(current.Run, run)
                 : current.RewardAudit,
             OtherChance = otherChance ?? current.OtherChance
         };
+        if (!preservePendingEndTurn)
+            next = next with
+            {
+                PendingEndTurn = pendingEndTurn is { Complete: false }
+                    ? pendingEndTurn
+                    : null
+            };
         return historyEntry is null
             ? next
             : next with
