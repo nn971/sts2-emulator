@@ -111,7 +111,8 @@ public sealed record PrototypeAutomaticHandDrawProgressV111(
 public sealed record PrototypeAutomaticPipelineStochasticStateV111(
     PrototypeAutomaticHandDrawProgressV111? HandDrawProgress = null,
     PrototypeControlledEnemyActionContinuationV111? ControlledEnemyAction = null,
-    ControlledTurnIntentsV111? ControlledTurnIntents = null)
+    ControlledTurnIntentsV111? ControlledTurnIntents = null,
+    int? CompletedSemanticHandDrawRequested = null)
 {
     public int? ControlledDrawRemaining
     {
@@ -162,9 +163,25 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
     {
         get => HandDrawProgress?.Kind ==
             PrototypeAutomaticHandDrawProgressKindV111.SemanticDraw
-                ? HandDrawProgress.RequestedCount : null;
-        init => HandDrawProgress = SetSemanticDrawRequested(
-            HandDrawProgress, value);
+                ? HandDrawProgress.RequestedCount
+                : CompletedSemanticHandDrawRequested;
+        init
+        {
+            if (HandDrawProgress?.Kind ==
+                    PrototypeAutomaticHandDrawProgressKindV111.SemanticDraw &&
+                HandDrawProgress.RemainingCount is not null)
+            {
+                if (value is not > 0)
+                    throw new InvalidOperationException(
+                        "Active semantic draw progress requires a positive requested count.");
+                HandDrawProgress = SetSemanticDrawRequested(
+                    HandDrawProgress, value);
+                CompletedSemanticHandDrawRequested = null;
+            }
+            else
+                CompletedSemanticHandDrawRequested =
+                    value is > 0 ? value : null;
+        }
     }
 
     public bool ControlledSemanticBeforeHandDrawPending
@@ -296,13 +313,12 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
                 PrototypeAutomaticHandDrawProgressKindV111
                     .ControlledBeforeHandDrawHookChoice);
         }
-        else if (controlledSemanticDrawRemaining is not null ||
-                 controlledSemanticDrawRequested is not null)
+        else if (controlledSemanticDrawRemaining is { } semanticRemaining)
         {
             progress = new(
                 PrototypeAutomaticHandDrawProgressKindV111.SemanticDraw,
                 controlledSemanticDrawRequested,
-                controlledSemanticDrawRemaining);
+                semanticRemaining);
         }
         else if (controlledRecycleStratagemPending)
         {
@@ -311,7 +327,10 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
                     .ControlledRecycleStratagem);
         }
 
-        return new(progress, controlledEnemyAction, controlledTurnIntents);
+        return new(
+            progress, controlledEnemyAction, controlledTurnIntents,
+            controlledSemanticDrawRemaining is null
+                ? controlledSemanticDrawRequested : null);
     }
 
     private static void ValidateFlattenedProgress(
@@ -326,11 +345,15 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
     {
         int activeModes = (controlledDrawRemaining is not null ? 1 : 0) +
             (controlledDrawCostRemaining is not null ? 1 : 0) +
-            (controlledSemanticDrawRemaining is not null ||
-             controlledSemanticDrawRequested is not null ? 1 : 0) +
+            (controlledSemanticDrawRemaining is not null ? 1 : 0) +
             (controlledSemanticBeforeHandDrawPending ? 1 : 0) +
             (controlledBeforeHandDrawHookChoicePending ? 1 : 0);
+        bool completedSemanticDrawReceipt =
+            controlledSemanticDrawRequested is > 0 &&
+            controlledSemanticDrawRemaining is null;
         if (activeModes > 1 ||
+            controlledSemanticDrawRequested is < 0 ||
+            completedSemanticDrawReceipt && activeModes > 0 ||
             (controlledRecycleStratagemPending &&
              controlledDrawCostRemaining is not null) ||
             (controlledRecycleStratagemPending &&
@@ -522,6 +545,20 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
         ArgumentNullException.ThrowIfNull(combat);
         ArgumentNullException.ThrowIfNull(continuation);
 
+        if (CompletedSemanticHandDrawRequested is < 0 ||
+            CompletedSemanticHandDrawRequested is not null &&
+                (CompletedSemanticHandDrawRequested is not > 0 ||
+                 continuation.NextStepIndex !=
+                    PrototypeGameEngine.SemanticHandDrawStepIndex + 1 ||
+                 HandDrawProgress is not null ||
+                 ControlledEnemyAction is not null ||
+                 ControlledTurnIntents is not null ||
+                 combat.PendingChoice is not null ||
+                 combat.PendingKnowledgeDemonChoice is not null ||
+                 combat.SemanticDeck?.Pending is not null))
+            throw new InvalidOperationException(
+                "Completed semantic hand-draw receipt disagrees with the pipeline cursor.");
+
         ValidateHandDrawProgress();
 
         if (continuation.OpeningStage ==
@@ -650,7 +687,6 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
         PrototypeAutomaticPipelineContinuationState continuation)
     {
         bool hasCursor = ControlledSemanticDrawRemaining is not null ||
-            ControlledSemanticDrawRequested is not null ||
             ControlledSemanticBeforeHandDrawPending;
         if (!hasCursor) return;
 

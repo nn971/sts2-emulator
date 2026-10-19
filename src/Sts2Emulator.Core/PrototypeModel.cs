@@ -451,7 +451,11 @@ public sealed record PrototypeAutomaticPipelineContinuationState(
         progress?.Validate();
         return this with
         {
-            Stochastic = Stochastic with { HandDrawProgress = progress }
+            Stochastic = Stochastic with
+            {
+                HandDrawProgress = progress,
+                CompletedSemanticHandDrawRequested = null
+            }
         };
     }
 
