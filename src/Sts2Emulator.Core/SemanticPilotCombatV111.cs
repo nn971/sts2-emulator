@@ -2139,7 +2139,7 @@ public static class SemanticPilotCombatEngineV111
             using (ControlledChanceGuardV111.Enter())
             using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
                 result = environment.Step(source, actionId).State;
-            if (result.Phase is not (RunPhase.Combat or RunPhase.Reward))
+            if (!PrototypeGameEngine.IsAtCombatActionResultBoundary(result))
                 throw new NotSupportedException(
                     "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
                     "operation=unsupported_post_card_phase");
@@ -2173,6 +2173,15 @@ public static class SemanticPilotCombatEngineV111
                     result.World.Combat is not null)
                     throw new InvalidDataException(
                         "Victory did not enter a genuine combat reward boundary.");
+            }
+            else if (result.Phase == RunPhase.Terminal)
+            {
+                // A lethal self-damage or combat hook closes the run without
+                // leaving a combat or a provider-owned deck to resume.
+                if (result.World is not
+                    { Combat: null, Reward: null, TerminalOutcome: "defeat" })
+                    throw new InvalidDataException(
+                        "Combat defeat did not close its active mechanics state.");
             }
             else if (next is null ||
                      !previous.DrawPile.SequenceEqual(next.DrawPile) ||
@@ -2219,7 +2228,8 @@ public static class SemanticPilotCombatEngineV111
             using (ControlledChanceGuardV111.Enter())
                 result = environment.Step(source, actionId).State;
             if (result.Phase != RunPhase.Combat &&
-                !(isDistilledChaos && result.Phase == RunPhase.Reward))
+                !(isDistilledChaos &&
+                  PrototypeGameEngine.IsAtCombatActionResultBoundary(result)))
                 throw new NotSupportedException(
                     "UNSUPPORTED_SEMANTIC_DECK site=combat.player_action " +
                     "operation=unsupported_post_potion_phase");
@@ -2243,8 +2253,9 @@ public static class SemanticPilotCombatEngineV111
                 else
                     ValidateSemanticCombatBoundary(result);
             }
-            else if (result.World?.Reward is null ||
-                     result.World.Combat is not null)
+            else if (result.Phase == RunPhase.Reward &&
+                     (result.World?.Reward is null ||
+                      result.World.Combat is not null))
                 throw new InvalidDataException(
                     "Distilled Chaos victory did not enter a combat reward boundary.");
             var previous = current.Run.World!.Combat!;
@@ -2484,8 +2495,7 @@ public static class SemanticPilotCombatEngineV111
 
         if (result.Phase == RunPhase.Combat)
             ValidateNativePolicyBoundary(result);
-        else if (!PrototypeGameEngine
-                     .IsAtCombatRewardOrTerminalBoundary(result))
+        else if (!PrototypeGameEngine.IsAtCombatActionResultBoundary(result))
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_NATIVE site=combat.player_action " +
                 "operation=unsupported_post_action_phase");

@@ -15,6 +15,21 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
     internal static bool IsAtCombatRewardOrTerminalBoundary(RunState run) =>
         run.Phase is RunPhase.Reward or RunPhase.Terminal;
 
+    /// <summary>
+    /// Identifies a complete result of one ordinary combat action: the next
+    /// combat phase, an initialized combat reward, or a closed player defeat.
+    /// </summary>
+    internal static bool IsAtCombatActionResultBoundary(RunState run) =>
+        run.Phase switch
+        {
+            RunPhase.Combat => true,
+            RunPhase.Reward => run.World is
+                { Combat: null, Reward: not null },
+            RunPhase.Terminal => run.World is
+                { Combat: null, Reward: null, TerminalOutcome: "defeat" },
+            _ => false
+        };
+
     public IReadOnlyList<GameAction> GetLegalActions(RunState state)
     {
         RunConfiguration.ValidateState(state);
