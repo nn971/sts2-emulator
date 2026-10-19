@@ -1033,8 +1033,27 @@ public static class SemanticDrawPileAdapterV111
                     transformedPersistentCardInstanceId,
                     recordPersistentCardTransform)
         };
+        ValidateCardZoneRegistry(next, zoneLocations);
         ValidateSynchronized(next);
         return next;
+    }
+
+    private static void ValidateCardZoneRegistry(
+        CombatState combat, IReadOnlyCollection<long> zoneCardInstanceIds)
+    {
+        var registeredIds = combat.Cards.Select(card =>
+            card.InstanceId).ToArray();
+        if (registeredIds.Distinct().Count() != registeredIds.Length)
+            throw new InvalidDataException(
+                "Card-zone transition produced duplicate combat-card records.");
+        var registeredSet = registeredIds.ToHashSet();
+        if (zoneCardInstanceIds.Any(id => !registeredSet.Contains(id)))
+            throw new InvalidDataException(
+                "Card-zone transition references an unregistered combat-card identity.");
+        if (combat.NextCardInstanceId <=
+            registeredIds.DefaultIfEmpty(0).Max())
+            throw new InvalidDataException(
+                "Card-zone transition did not preserve a fresh next combat-card identity.");
     }
 
     private static long[] AppendTransformedPersistentCardInstanceId(
