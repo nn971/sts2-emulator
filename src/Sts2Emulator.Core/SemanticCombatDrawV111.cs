@@ -267,10 +267,16 @@ public sealed record SemanticCombatDrawV111(
         var completedHookCursor =
             this.Run.World?.Combat?.AutomaticPipelineContinuation;
         var drawHookChoicePending = this.DrawHookChoicePending;
-        bool completedAfterHook = this.AutomaticHandDraw &&
-            this.RandomPileCardTranscript is { Length: > 0 } &&
-            completedHookCursor?.NextStepIndex ==
-                PrototypeGameEngine.SemanticHandDrawStepIndex + 1;
+        bool completedAutomaticHandDraw = this.AutomaticHandDraw &&
+            this.RequestedCount == 0 && this.RemainingCount == 0 &&
+            completedHookCursor is { } completedCursor &&
+            completedCursor.NextStepIndex ==
+                PrototypeGameEngine.SemanticHandDrawStepIndex + 1 &&
+            completedCursor.Stochastic.HandDrawProgress is null &&
+            this.Run.World?.Combat is
+                { PendingChoice: null,
+                  PendingKnowledgeDemonChoice: null,
+                  SemanticDeck: { Pending: null } };
         if (this.RequestedCount < 0 ||
             this.RemainingCount < 0 ||
             this.RemainingCount > this.RequestedCount ||
@@ -281,7 +287,7 @@ public sealed record SemanticCombatDrawV111(
             (this.RequestedCount == 0 && randomPileCardPending is null &&
              drawInsertionPending is null &&
              drawHookChoicePending?.BeforeHandDraw != true &&
-             !completedAfterHook) ||
+             !completedAutomaticHandDraw) ||
             this.Origin.Phase != RunPhase.Combat ||
             this.Origin.World?.Combat is not { } originCombat ||
             (!this.AutomaticHandDraw && originCombat.SemanticDeck is not null) ||
