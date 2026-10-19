@@ -659,6 +659,10 @@ public static class StochasticSiteRegistryV111
         .. NativeMerchantPriceSites,
         .. NativeEventContextUnitFloatSites
     ];
+    private static readonly string[] NativeBoundedIntegerSites =
+    [
+        "reward.combat_gold.index_draw"
+    ];
     private static readonly string[] NativeEventContextShuffleSites =
     [
         PrototypeNativeFakeMerchant.RelicOfferShuffleSiteId,
@@ -809,6 +813,8 @@ public static class StochasticSiteRegistryV111
         (string[])ChanceLawQuerySites.Clone();
     public static string[] NativeUnitFloatSiteIds =>
         (string[])NativeUnitFloatSites.Clone();
+    public static string[] NativeBoundedIntegerSiteIds =>
+        (string[])NativeBoundedIntegerSites.Clone();
     public static string[] NativeMerchantPriceSiteIds =>
         (string[])NativeMerchantPriceSites.Clone();
     public static string[] AncientOfferSessionSiteIds =>
@@ -923,6 +929,9 @@ public static class StochasticSiteRegistryV111
 
     public static bool IsNativeGaussianIntSite(string siteId) =>
         ChanceLawEngineV111.IsNativeMapGaussianIntQuerySite(siteId);
+
+    public static bool IsNativeBoundedIntegerSite(string siteId) =>
+        NativeBoundedIntegerSites.Contains(siteId, StringComparer.Ordinal);
 
     public static bool IsNativeMerchantPriceSite(string siteId) =>
         NativeMerchantPriceSites.Contains(siteId, StringComparer.Ordinal);

@@ -632,6 +632,17 @@ def _guarded_site_values(
                     rf"IsNativeRandomIndexSite\s*\(\s*"
                     rf"{re.escape(parameter)}\s*\)", body,
                 )
+                bounded_values, bounded_unresolved = (
+                    _resolve_site_array_property(
+                        "StochasticSiteRegistryV111.NativeBoundedIntegerSiteIds",
+                        global_constants,
+                    )
+                )
+                bounded_guard = re.search(
+                    rf"StochasticSiteRegistryV111\s*\.\s*"
+                    rf"IsNativeBoundedIntegerSite\s*\(\s*"
+                    rf"{re.escape(parameter)}\s*\)", body,
+                )
                 float_values, float_unresolved = _resolve_site_array_property(
                     "StochasticSiteRegistryV111.NativeUnitFloatSiteIds",
                     global_constants,
@@ -643,12 +654,17 @@ def _guarded_site_values(
                     )
                 )
                 if (query_guard is None or family_guard is None or
+                        bounded_guard is None or bounded_unresolved or
                         float_unresolved or gaussian_unresolved):
                     return []
                 rejected = set(float_values) | set(gaussian_values)
-                return sorted(set(query_values) - rejected)
+                if family == "index":
+                    return sorted(
+                        set(query_values) - rejected - set(bounded_values)
+                    )
+                return sorted(set(query_values) & set(bounded_values))
             family_guard = re.search(
-                rf"StochasticSiteRegistryV111\."
+                rf"StochasticSiteRegistryV111\s*\.\s*"
                 rf"IsNativeUnitFloatSite\s*\(\s*"
                 rf"{re.escape(parameter)}\s*\)", body,
             )

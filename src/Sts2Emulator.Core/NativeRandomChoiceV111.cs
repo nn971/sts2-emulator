@@ -70,13 +70,22 @@ public static class NativeRandomChoiceV111
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
         ArgumentException.ThrowIfNullOrWhiteSpace(operation);
-        var supported = operation is "index" or "bounded-integer"
-            ? StochasticSiteRegistryV111.IsChanceLawQuerySite(siteId)
-                && StochasticSiteRegistryV111
-                    .IsNativeRandomIndexSite(siteId)
-            : operation == "unit-float"
-                && StochasticSiteRegistryV111.IsChanceLawQuerySite(siteId)
-                && StochasticSiteRegistryV111.IsNativeUnitFloatSite(siteId);
+        var indexSite = StochasticSiteRegistryV111.IsChanceLawQuerySite(siteId)
+            && StochasticSiteRegistryV111
+                .IsNativeRandomIndexSite(siteId);
+        var supported = operation == "index"
+            ? indexSite
+                && !StochasticSiteRegistryV111
+                    .IsNativeBoundedIntegerSite(siteId)
+            : operation == "bounded-integer"
+                ? indexSite
+                    && StochasticSiteRegistryV111
+                        .IsNativeBoundedIntegerSite(siteId)
+                : operation == "unit-float"
+                    && StochasticSiteRegistryV111
+                        .IsChanceLawQuerySite(siteId)
+                    && StochasticSiteRegistryV111
+                        .IsNativeUnitFloatSite(siteId);
         if (!supported)
             throw new NotSupportedException(
                 $"Native random choice does not support {operation} site " +
