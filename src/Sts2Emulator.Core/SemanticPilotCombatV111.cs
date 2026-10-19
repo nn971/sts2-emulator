@@ -2062,7 +2062,8 @@ public static class SemanticPilotCombatEngineV111
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_OPENING site=combat.opening.DrawCards " +
                 "operation=unmodeled_initial_draw_hook");
-        return state with { Run = drawn };
+        return PublishRunContinuation(
+            state, drawn, null, preservePendingEndTurn: true);
     }
 
     public static SemanticPilotCombatV111 Step(
@@ -2828,12 +2829,12 @@ public static class SemanticPilotCombatEngineV111
             if (resolvedInitial.Complete)
                 nextRun = CompleteNatureInitialCombatEntry(
                     nextRun, resolvedInitial);
-            var initialState = current with
+            var initialState = PublishRunContinuation(
+                current, nextRun, null,
+                NatureContinuation(selectedIndex, semanticIntent, null),
+                preservePendingEndTurn: true) with
             {
-                Run = nextRun,
-                PendingInitialIntents = pendingInitial,
-                History = current.History.Append(NatureContinuation(
-                    selectedIndex, semanticIntent, null)).ToArray()
+                PendingInitialIntents = pendingInitial
             };
             Validate(initialState);
             return initialState;
@@ -3041,14 +3042,12 @@ public static class SemanticPilotCombatEngineV111
             pending, eventId, cardInstanceId);
         var nextRun = SemanticDeckRevealChoiceV111.Resume(
             current.Run, decision);
-        var next = current with
-        {
-            Run = nextRun,
-            History = current.History.Append(
-                new SemanticPilotContinuationV111(
-                    "semantic_deck_reveal",
-                    DeckRevealDecision: decision.Fork())).ToArray()
-        };
+        var next = PublishRunContinuation(
+            current, nextRun, null,
+            new SemanticPilotContinuationV111(
+                "semantic_deck_reveal",
+                DeckRevealDecision: decision.Fork()),
+            preservePendingEndTurn: true);
         Validate(next);
         return next;
     }
