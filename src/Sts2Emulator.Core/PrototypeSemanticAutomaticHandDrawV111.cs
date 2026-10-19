@@ -58,10 +58,18 @@ public sealed partial class PrototypeGameEngine
                     .ControlledSemanticBeforeHandDrawPending == true &&
                 (after.PendingChoice?.ControlledRandomPileCard is not null ||
                  after.PendingChoice?.AutomaticSemanticDrawHookChoice == true);
-            // A source-committed opening order may supply the complete
-            // requested hand without a Nature ticket. This is valid only
-            // when the ordinary stage actually drew cards.
-            if (!awaitingPreDrawChoice)
+            bool completedWithoutPendingDraw =
+                after.AutomaticPipelineContinuation is { } completed &&
+                completed.NextStepIndex == SemanticHandDrawStepIndex + 1 &&
+                completed.ControlledSemanticDrawRemaining is null &&
+                completed.ControlledSemanticDrawRequested is null &&
+                after.PendingChoice is null &&
+                after.PendingKnowledgeDemonChoice is null &&
+                after.SemanticDeck?.Pending is null;
+            // The ordinary stage may finish without a Nature ticket when
+            // the hand has no remaining capacity or a committed order drew
+            // the cards. A suspended BeforeHandDraw choice remains pending.
+            if (!awaitingPreDrawChoice && !completedWithoutPendingDraw)
                 throw new NotSupportedException(
                     "UNSUPPORTED_SEMANTIC_DECK site=combat.DrawPlayerHand " +
                     "operation=zero_card_uninterrupted_stage");
@@ -180,16 +188,16 @@ public sealed partial class PrototypeGameEngine
             after.PendingKnowledgeDemonChoice is null &&
             after.SemanticDeck is { Pending: null })
         {
-            // A source-committed opening order can complete this stage
-            // without a semantic card ticket. Interpret that result here
-            // alongside all other resumed automatic-draw outcomes.
+            // A source-committed opening order or an empty-capacity draw
+            // can complete this stage without a semantic card ticket.
+            // Interpret either result through the shared stage owner.
             int drawn = after.CounterState.CardsDrawnThisCombat -
                 cardsDrawnBefore;
-            if (drawn <= 0)
-                throw new NotSupportedException(
-                    "UNSUPPORTED_SEMANTIC_DECK site=combat.DrawPlayerHand " +
-                    "operation=" + unsupportedOperation);
-            result = CompleteAutomaticHandDrawStage(result, drawn);
+            if (drawn < 0)
+                throw new InvalidDataException(
+                    "Automatic hand draw reduced the combat draw count.");
+            result = CompleteAutomaticHandDrawStage(
+                result, drawn > 0 ? drawn : null);
             return (result, drawn, 0);
         }
         if (after.PendingChoice is not null ||
