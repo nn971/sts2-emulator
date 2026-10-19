@@ -752,6 +752,39 @@ public static class SemanticDeckEngineV111
 
         var outcomes = new List<SemanticDeckOrderV111>((int)completionCount);
         AssignPool(0);
+        if (outcomes.Count != checked((int)completionCount))
+            throw new InvalidDataException(
+                "Constrained deck enumeration did not produce its exact completion count.");
+
+        var uniqueOrderKeys = new HashSet<string>(StringComparer.Ordinal);
+        foreach (var outcome in outcomes)
+        {
+            var cardIds = outcome.CardInstanceIds;
+            var orderKey = string.Join(",", cardIds.Select(cardId =>
+                cardId.ToString(CultureInfo.InvariantCulture)));
+            if (cardIds.Length != state.Count ||
+                !uniqueOrderKeys.Add(orderKey))
+                throw new InvalidDataException(
+                    "Constrained deck enumeration produced a malformed or duplicate order.");
+
+            foreach (var (slot, index) in state.Slots
+                         .Select((slot, index) => (slot, index)))
+                if (slot.KnownCardInstanceId is long knownCardId &&
+                    cardIds[index] != knownCardId)
+                    throw new InvalidDataException(
+                        "Constrained deck enumeration changed a known card position.");
+
+            foreach (var group in groups)
+            {
+                var assignedCardIds = group.Positions
+                    .Select(index => cardIds[index]).Order().ToArray();
+                if (!assignedCardIds.SequenceEqual(
+                        group.Pool.RemainingCardInstanceIds.Order()))
+                    throw new InvalidDataException(
+                        "Constrained deck enumeration changed a shared-pool identity set.");
+            }
+        }
+
         var outcomeFingerprint = CanonicalJson.Sha256(
             outcomes.Select(outcome => outcome.CardInstanceIds).ToArray());
         return new SemanticDeckEnumerationV111(
