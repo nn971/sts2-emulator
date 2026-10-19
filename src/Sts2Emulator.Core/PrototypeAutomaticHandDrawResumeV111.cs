@@ -200,12 +200,11 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidDataException(
                 "Automatic hand-draw resume boundary is inconsistent.");
 
-        combat = combat with
-        {
-            AutomaticPipelineContinuation = cursor.WithHandDrawProgress(null)
-        };
+        var cleared = CommitAutomaticHandDrawProgress(
+            checkpoint, checkpoint.Player, combat, progress: null);
         return DrawCards(
-            checkpoint.Player, combat, remaining, checkpoint.Rng,
+            cleared.Player, RequireWorld(cleared).Combat!, remaining,
+            cleared.Rng,
             fromHandDraw: true, eventDepth: eventDepth,
             suspensionPolicy: suspensionPolicy);
     }
