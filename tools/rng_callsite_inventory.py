@@ -21,7 +21,7 @@ from urllib.parse import unquote, urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = ROOT / "src" / "Sts2Emulator.Core"
-SCHEMA_ID = "emulator-rng-callsite-source-inventory-v31"
+SCHEMA_ID = "emulator-rng-callsite-source-inventory-v32"
 SITE_REGISTRY_PATH = SOURCE_ROOT / "StochasticSiteRegistryV111.cs"
 
 CALL_PATTERN = re.compile(
@@ -543,6 +543,43 @@ def _dictionary_site_values(
             return []
         values.append(value)
     return sorted(set(values))
+
+
+def _dictionary_member_site_values(
+    source: str,
+    dictionary_name: str,
+    member_index: int,
+    local_constants: dict[str, set[str]],
+    global_constants: dict[str, set[str]],
+) -> dict[str, list[str]]:
+    """Resolve a string member of each string-keyed constructor entry."""
+    declaration = re.search(
+        rf"\b{re.escape(dictionary_name)}\s*=\s*new\s*"
+        r"(?:\([^)]*\))?\s*\{(?P<body>.*?)\n\s*\};",
+        source,
+        re.DOTALL,
+    )
+    if declaration is None:
+        return {}
+    body = declaration.group("body")
+    entries = list(re.finditer(
+        r"\[(?P<key>[^\]]+)\]\s*=\s*new\s*\(", body
+    ))
+    resolved: dict[str, list[str]] = {}
+    for entry in entries:
+        site_id = _resolve_site_value(
+            entry.group("key"), local_constants, global_constants
+        )
+        arguments = _call_arguments(body, entry.start())
+        if site_id is None or len(arguments) <= member_index:
+            return {}
+        member_values = _resolve_site_values(
+            arguments[member_index], local_constants, global_constants
+        )
+        if not member_values:
+            return {}
+        resolved[site_id] = member_values
+    return resolved
 
 
 def _guarded_site_values(
@@ -1483,10 +1520,37 @@ def _typed_request_constructions(
                 "site_id_resolution_source": resolution_source,
                 "registry_status": registry_status,
                 "matrix_status": matrix_status,
+                "operation_kind_by_site": {},
                 "source_excerpt": source.splitlines()[
                     line_number - 1
                 ].strip(),
             })
+            call = calls[-1]
+            normalized_operation = re.sub(
+                r"\s+", "", operation_expression or ""
+            )
+            member_source = _containing_member_source(source, match.start())
+            if (normalized_operation == "site.OperationKind" and
+                    "LegacyCallerBoundIndexQuerySites.TryGetValue" in member_source):
+                dictionary_operations = _dictionary_member_site_values(
+                    source, "LegacyCallerBoundIndexQuerySites", 1,
+                    local_constants, global_constants,
+                )
+                operation_by_site = {
+                    site_id: dictionary_operations[site_id]
+                    for site_id in values
+                    if site_id in dictionary_operations
+                }
+                if len(operation_by_site) == len(values):
+                    call["operation_kind_by_site"] = operation_by_site
+                    call["operation_kind_values"] = sorted({
+                        operation
+                        for operations in operation_by_site.values()
+                        for operation in operations
+                    })
+                    call["operation_kind_resolution"] = (
+                        "site_keyed_dictionary"
+                    )
     return sorted(calls, key=lambda call: (call["path"], call["line"]))
 
 
@@ -1770,12 +1834,18 @@ def render_markdown(report: dict[str, Any]) -> str:
         "Index request operation-kind locators: " + ", ".join(
             f"`{kind}` **{count}**"
             for kind, count in sorted(Counter(
-                value
+                "site_keyed_dictionary"
+                if call["operation_kind_resolution"] ==
+                    "site_keyed_dictionary"
+                else "unresolved"
+                if not call["operation_kind_values"]
+                else "finite_alternatives"
+                if len(call["operation_kind_values"]) > 1
+                else call["operation_kind_values"][0]
                 for call in report["typed_request_constructions"]
                 if call["request_type"] == "RandomIndexRequestV111"
-                for value in (call["operation_kind_values"] or ["unresolved"])
             ).items())
-        ) + ". The table reports constructor expressions and statically resolved literal alternatives; it does not validate forwarded caller values.",
+        ) + ". The table reports constructor expressions, defaults, and site-keyed dictionary mappings where traceable; it does not validate forwarded caller values.",
         "",
         "Expression-origin classes: " + ", ".join(
             f"`{kind}` **{count}**"
@@ -1798,6 +1868,20 @@ def render_markdown(report: dict[str, Any]) -> str:
             f"{', '.join(call['site_id_values']) or '—'} | {call['registry_status']} | "
             f"{call['matrix_status']} |"
             for call in report["typed_request_constructions"]
+        ],
+        "",
+        "Site-keyed index operation kinds resolved from constructor dictionaries:",
+        "",
+        "| Site ID | Operation kind |",
+        "| --- | --- |",
+        *[
+            f"| `{site_id}` | `{', '.join(operation_kinds)}` |"
+            for site_id, operation_kinds in sorted({
+                site_id: operation_kinds
+                for call in report["typed_request_constructions"]
+                for site_id, operation_kinds in
+                    call["operation_kind_by_site"].items()
+            }.items())
         ],
         "",
         "Shuffle site IDs mapped to migration-matrix rows: "
