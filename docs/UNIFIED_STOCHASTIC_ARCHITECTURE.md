@@ -72,6 +72,8 @@ The specialized `SemanticCombatDrawV111.Simulation` pairs `SemanticCombatDrawMec
 
 Card transformation commits the replacement zone identity, combat-card record, next instance ID, draw-provider constraint, and transformed persistent-card provenance in the same adapter transition. Temporary-card transforms preserve the established empty provenance projection when no persistent identity is involved.
 
+`SemanticDrawPileAdapterV111.CommitZoneTransition` validates that every physical zone identity resolves to one registered combat-card record and that `NextCardInstanceId` remains fresh before publishing the transition. Cards held by a suspended choice may remain registered outside zones under their continuation owner; the run validator checks that full representation boundary.
+
 For suspended initial or next-turn intents, `ControlledTurnIntentsV111.Validate` replays the resolved prefix from `BaselineCombat`; the automatic-pipeline owner checks its live checkpoint against the resulting `Combat` state. `SemanticIntentChoiceV111` constructs the weighted intent event, maps a stable intent ID through its support to the source ticket, validates the selected ticket against the live event, and owns a deep-fork of that typed decision. This preserves already committed enemy intent mechanics while the next source ticket is pending.
 
 Choices nested inside the automatic semantic hand-draw stage and card-effect draw suffixes now return to their saved draw/effect continuation before terminal reward settlement. `ResumeAutomaticPipelineContinuation` advances or settles only at a clean boundary with no pending combat choice, Knowledge Demon choice, semantic deck reveal, or active pipeline hand-draw, enemy-action, or intent-provider payload.
