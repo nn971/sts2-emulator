@@ -6,6 +6,8 @@
 
 **S1 deferred-draw identity binding increment (2026-10-20):** `ReferenceNatureV111.ResolvePending` now verifies that the sampled law outcome's physical card-instance identity matches the same indexed identity in the pending mechanics draw before calling the draw resolver. A stale or misaligned law therefore fails closed instead of committing a different card than the one sampled. Independent constrained-deck and continuation acceptance remains open; no tests or builds were run.
 
+**S1 constrained-deck enumeration invariant increment (2026-10-20):** `SemanticDeckEngineV111.EnumeratePossibleOrders` now checks its generated count against the exact factorial completion count, rejects duplicate physical orders, and validates every result against fixed known positions and each shared pool's remaining identity set before returning the enumeration. This makes the bounded exact-model primitive fail closed on omissions or malformed completions; the independent distribution suite and source-law calibration remain open. No tests or builds were run.
+
 **Implementation scope:** `sts2-emulator`, STS2 v0.111.0, single-player. The first vertical slice is two-site Silent combat. Keep the four-Act Silent gameplay and active native inspector developments on separate tracks. Existing versioned `controlled_*`, `nature_*`, `semantic_*` and ordinary AI protocols remain supported; no historic snapshot/probability reinterpretation.
 
 ## Priorities and milestones
