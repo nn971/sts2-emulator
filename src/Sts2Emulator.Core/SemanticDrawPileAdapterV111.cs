@@ -773,6 +773,39 @@ public static class SemanticDrawPileAdapterV111
     }
 
     /// <summary>
+    /// Resolves one saved Nature draw-pile event and publishes its provider
+    /// transition with the matching physical pile state.
+    /// </summary>
+    internal static CombatState ResolveNatureDeckEvent(
+        CombatState checkpoint, SemanticDeckEventV111 expectedEvent,
+        int selectedIndex, string missingDeckMessage,
+        string staleEventMessage)
+    {
+        ArgumentNullException.ThrowIfNull(checkpoint);
+        ArgumentNullException.ThrowIfNull(expectedEvent);
+        ArgumentException.ThrowIfNullOrWhiteSpace(missingDeckMessage);
+        ArgumentException.ThrowIfNullOrWhiteSpace(staleEventMessage);
+        expectedEvent.Validate();
+        if (selectedIndex < 0 ||
+            selectedIndex >= expectedEvent.CandidateCardInstanceIds.Length)
+            throw new ArgumentOutOfRangeException(nameof(selectedIndex));
+
+        var deck = ValidateNatureDeckBoundary(
+            checkpoint, missingDeckMessage, staleEventMessage,
+            requiredPendingPurpose: expectedEvent.Purpose) ??
+            throw new InvalidDataException(missingDeckMessage);
+        var liveEvent = SemanticDeckEngineV111.Inspect(deck);
+        if (liveEvent is null || CanonicalJson.Sha256(liveEvent) !=
+            CanonicalJson.Sha256(expectedEvent))
+            throw new InvalidDataException(staleEventMessage);
+
+        var resolvedDeck = SemanticDeckEngineV111.Resolve(
+            deck, deck.Fingerprint, selectedIndex);
+        return ApplyCommittedPhysicalMutation(
+            checkpoint, checkpoint.DrawPile, resolvedDeck);
+    }
+
+    /// <summary>
     /// Publishes a complete identity-preserving zone transition whose
     /// provider-side draw-pile operation has already been committed by a
     /// typed operation. Identity additions, removals, and replacements use

@@ -89,7 +89,28 @@ public sealed record SemanticDeckEventV111(
     int TopOffset, int Ordinal, string OperationKind,
     string StreamId, string OwnerId, long[] CandidateCardInstanceIds,
     string SupportFingerprint, string ProbabilityStatus = "UNVERIFIED")
-    : ISemanticChanceEventV111;
+    : ISemanticChanceEventV111
+{
+    public void Validate()
+    {
+        if (SchemaId != SemanticDeckStateV111.SchemaId ||
+            string.IsNullOrWhiteSpace(EventId) ||
+            Purpose is not ("draw" or "peek" or "scry") ||
+            SiteId != (Purpose == "draw"
+                ? "combat.draw_pile.draw_card"
+                : "combat.draw_pile.reveal_card") ||
+            TopOffset < 0 || (Purpose == "draw" && TopOffset != 0) ||
+            Ordinal < 0 || OperationKind != "choose_card_instance" ||
+            StreamId != "semantic.draw_pile" ||
+            OwnerId != "player:draw_pile" ||
+            CandidateCardInstanceIds is not { Length: > 0 } ||
+            SupportFingerprint != CanonicalJson.Sha256(
+                CandidateCardInstanceIds) ||
+            ProbabilityStatus != "UNVERIFIED")
+            throw new InvalidDataException(
+                "Invalid semantic deck event envelope.");
+    }
+}
 
 /// <summary>Typed result for one semantic draw-pile event.</summary>
 public sealed record SemanticDrawDecisionV111(
@@ -98,15 +119,9 @@ public sealed record SemanticDrawDecisionV111(
 {
     public void Validate()
     {
-        if (Event.SchemaId != SemanticDeckStateV111.SchemaId ||
-            string.IsNullOrWhiteSpace(Event.EventId) ||
-            Event.OperationKind != "choose_card_instance" ||
-            Event.StreamId != "semantic.draw_pile" ||
-            Event.OwnerId != "player:draw_pile" ||
-            Event.CandidateCardInstanceIds is not { Length: > 0 } ||
-            Event.SupportFingerprint != CanonicalJson.Sha256(
-                Event.CandidateCardInstanceIds) ||
-            Event.ProbabilityStatus != "UNVERIFIED" ||
+        ArgumentNullException.ThrowIfNull(Event);
+        Event.Validate();
+        if (Event.Purpose != "draw" ||
             SelectedIndex < 0 ||
             SelectedIndex >= Event.CandidateCardInstanceIds.Length ||
             Event.CandidateCardInstanceIds[SelectedIndex] !=
@@ -135,17 +150,9 @@ public sealed record SemanticDeckRevealDecisionV111(
 
     public void Validate()
     {
-        if (Event.SchemaId != SemanticDeckStateV111.SchemaId ||
-            string.IsNullOrWhiteSpace(Event.EventId) ||
-            Event.SiteId != "combat.draw_pile.reveal_card" ||
-            Event.Purpose is not ("peek" or "scry") ||
-            Event.OperationKind != "choose_card_instance" ||
-            Event.StreamId != "semantic.draw_pile" ||
-            Event.OwnerId != "player:draw_pile" ||
-            Event.CandidateCardInstanceIds is not { Length: > 0 } ||
-            Event.SupportFingerprint != CanonicalJson.Sha256(
-                Event.CandidateCardInstanceIds) ||
-            Event.ProbabilityStatus != "UNVERIFIED" ||
+        ArgumentNullException.ThrowIfNull(Event);
+        Event.Validate();
+        if (Event.Purpose is not ("peek" or "scry") ||
             SelectedIndex < 0 ||
             SelectedIndex >= Event.CandidateCardInstanceIds.Length ||
             Event.CandidateCardInstanceIds[SelectedIndex] !=
@@ -945,15 +952,8 @@ public static class SemanticDeckRevealChoiceV111
         if (pending.EventId != eventId)
             throw new InvalidOperationException(
                 "Semantic deck-reveal event ID is stale or mismatched.");
-        if (pending.SiteId != "combat.draw_pile.reveal_card" ||
-            pending.Purpose is not ("peek" or "scry") ||
-            pending.OperationKind != "choose_card_instance" ||
-            pending.StreamId != "semantic.draw_pile" ||
-            pending.OwnerId != "player:draw_pile" ||
-            pending.CandidateCardInstanceIds is not { Length: > 0 } ||
-            pending.SupportFingerprint != CanonicalJson.Sha256(
-                pending.CandidateCardInstanceIds) ||
-            pending.ProbabilityStatus != "UNVERIFIED")
+        pending.Validate();
+        if (pending.Purpose is not ("peek" or "scry"))
             throw new InvalidDataException(
                 "Invalid semantic deck-reveal event.");
         var index = Array.IndexOf(
@@ -979,17 +979,10 @@ public static class SemanticDeckRevealChoiceV111
             "Semantic deck reveal lost its world state.");
         var combat = world.Combat ?? throw new InvalidDataException(
             "Semantic deck reveal lost its combat state.");
-        var deck = combat.SemanticDeck ?? throw new InvalidDataException(
-            "Semantic deck reveal lost its provider state.");
-        var liveEvent = SemanticDeckEngineV111.Inspect(deck);
-        if (liveEvent is null || CanonicalJson.Sha256(liveEvent) !=
-            CanonicalJson.Sha256(decision.Event))
-            throw new InvalidDataException(
-                "Semantic deck-reveal decision no longer matches its live request.");
-        var nextDeck = SemanticDeckEngineV111.Resolve(
-            deck, deck.Fingerprint, decision.SelectedIndex);
-        var nextCombat = SemanticDrawPileAdapterV111
-            .ApplyCommittedPhysicalMutation(combat, combat.DrawPile, nextDeck);
+        var nextCombat = SemanticDrawPileAdapterV111.ResolveNatureDeckEvent(
+            combat, decision.Event, decision.SelectedIndex,
+            "Semantic deck reveal lost its provider state.",
+            "Semantic deck-reveal decision no longer matches its live request.");
         var resumed = checkpoint with
         {
             World = world with { Combat = nextCombat }

@@ -83,18 +83,8 @@ public static class SemanticDrawChoiceV111
 
     private static void ValidatePending(SemanticDeckEventV111 pending)
     {
-        if (pending.SchemaId != SemanticDeckStateV111.SchemaId ||
-            string.IsNullOrWhiteSpace(pending.EventId) ||
-            pending.SiteId != "combat.draw_pile.draw_card" ||
-            pending.Purpose != "draw" || pending.TopOffset != 0 ||
-            pending.Ordinal < 0 ||
-            pending.OperationKind != "choose_card_instance" ||
-            pending.StreamId != "semantic.draw_pile" ||
-            pending.OwnerId != "player:draw_pile" ||
-            pending.CandidateCardInstanceIds is not { Length: > 0 } ||
-            pending.SupportFingerprint != CanonicalJson.Sha256(
-                pending.CandidateCardInstanceIds) ||
-            pending.ProbabilityStatus != "UNVERIFIED")
+        pending.Validate();
+        if (pending.Purpose != "draw")
             throw new InvalidDataException(
                 "Invalid semantic draw-card request.");
     }
@@ -227,24 +217,9 @@ public static class SemanticDrawChoiceV111
         ArgumentNullException.ThrowIfNull(checkpoint);
         ArgumentNullException.ThrowIfNull(decision);
         decision.Validate();
-        var deck = SemanticDrawPileAdapterV111.ValidateNatureDeckBoundary(
-            checkpoint,
+        return SemanticDrawPileAdapterV111.ResolveNatureDeckEvent(
+            checkpoint, decision.Event, decision.SelectedIndex,
             "Semantic draw choice lost its Nature deck checkpoint.",
-            "Semantic draw choice lost its Nature deck checkpoint.",
-            requiredPendingPurpose: "draw") ??
-            throw new InvalidDataException(
-                "Semantic draw choice lost its Nature deck checkpoint.");
-        var current = SemanticDeckEngineV111.Inspect(deck) ??
-            throw new InvalidDataException(
-                "Semantic draw choice lost its pending request.");
-        if (CanonicalJson.Sha256(current) !=
-            CanonicalJson.Sha256(decision.Event))
-            throw new InvalidDataException(
-                "Semantic draw choice request changed before commit.");
-
-        var resolvedDeck = SemanticDeckEngineV111.Resolve(
-            deck, deck.Fingerprint, decision.SelectedIndex);
-        return SemanticDrawPileAdapterV111.ApplyCommittedPhysicalMutation(
-            checkpoint, checkpoint.DrawPile, resolvedDeck);
+            "Semantic draw choice request changed before commit.");
     }
 }
