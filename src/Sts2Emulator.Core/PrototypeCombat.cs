@@ -2712,12 +2712,11 @@ public sealed partial class PrototypeGameEngine
                         .ControlledBeforeHandDrawHookChoicePending == true;
                 if (resumedAfterSemanticHook || resumedAfterControlledHook)
                 {
-                    combat = combat with
-                    {
-                        AutomaticPipelineContinuation =
-                            combat.AutomaticPipelineContinuation!
-                                .WithHandDrawProgress(null)
-                    };
+                    state = CommitAutomaticHandDrawProgress(
+                        state, player, combat, progress: null);
+                    world = RequireWorld(state);
+                    player = state.Player;
+                    combat = world.Combat!;
                 }
                 else
                 {
