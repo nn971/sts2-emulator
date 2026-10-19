@@ -216,6 +216,9 @@ public static class LegacyRandomChoiceV111
         ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
         ArgumentException.ThrowIfNullOrWhiteSpace(streamId);
         ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
+        if (!StochasticSiteRegistryV111.IsLegacyRandomChoiceSite(siteId))
+            throw new NotSupportedException(
+                $"Legacy random choice does not support site '{siteId}'.");
         var matchingStreams = streams.Streams.Where(stream =>
             stream.StreamId == streamId).ToArray();
         if (matchingStreams.Length != 1)

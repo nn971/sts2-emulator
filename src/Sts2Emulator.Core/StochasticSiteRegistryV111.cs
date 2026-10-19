@@ -889,6 +889,14 @@ public static class StochasticSiteRegistryV111
     public static bool IsChanceLawQuerySite(string siteId) =>
         ChanceLawQuerySiteSet.Contains(siteId);
 
+    public static bool IsLegacyRandomChoiceSite(string siteId) =>
+        IsChanceLawQuerySite(siteId)
+        || NatureChoiceSites.Contains(siteId, StringComparer.Ordinal)
+        || siteId is "map.overgrowth.rest_count.gaussian_component.component"
+            or "map.overgrowth.unknown_count.gaussian_component.component"
+            or "map.later_act.hive_rest_count.gaussian_int.component"
+            or "map.later_act.unknown_count.gaussian_int.component";
+
     public static bool IsNativeMerchantPriceSite(string siteId) =>
         NativeMerchantPriceSites.Contains(siteId, StringComparer.Ordinal);
 
