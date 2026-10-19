@@ -3156,29 +3156,14 @@ public static class SemanticPilotCombatEngineV111
             throw new InvalidDataException(
                 "Potion generation lacks semantic fixture provenance.");
         SemanticPotionGenerationChoiceV111.ValidateBoundary(current.Run);
-        var candidates = (string[])generation.CandidatePotionIds.Clone();
-        var siteId = "combat.potion_generation.random_model";
         var ownerId = "effect:" + generation.Operation.Kind + ":source:" +
             (choice!.SourceCardInstanceId?.ToString() ?? "none") + ":pool:" +
-            CanonicalJson.Sha256(candidates);
+            CanonicalJson.Sha256(generation.CandidatePotionIds);
         var ordinal = current.History.Count(transition =>
             transition.Kind == "semantic_potion_generation");
-        var supportFingerprint = CanonicalJson.Sha256(candidates);
-        var eventId = CanonicalJson.Sha256(new
-        {
-            SchemaId = SemanticPotionGenerationChoiceV111.SchemaId,
-            BoundaryFingerprint = current.Fingerprint,
-            SiteId = siteId,
-            OwnerId = ownerId,
-            Ordinal = ordinal,
-            SupportFingerprint = supportFingerprint
-        });
-        var semanticEvent = new SemanticPotionGenerationEventV111(
-            SemanticPotionGenerationChoiceV111.SchemaId, eventId, siteId,
-            "prototype.combat", ownerId, ordinal, "choose_potion_model",
-            candidates, supportFingerprint);
-        semanticEvent.Validate();
-        return semanticEvent;
+        return SemanticPotionGenerationChoiceV111.CreateEvent(
+            current.Fingerprint, ownerId, ordinal,
+            generation.CandidatePotionIds);
     }
 
     public static SemanticCardTransformEventV111?
