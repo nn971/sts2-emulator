@@ -121,7 +121,7 @@ public static class SemanticPoolShuffleChoiceV111
     internal const string RandomShortlistSiteId =
         "combat.card_selection.random_shortlist";
 
-    internal static string SiteIdForOperation(string sourceOperationKind) =>
+    internal static string? SiteIdForOperation(string sourceOperationKind) =>
         sourceOperationKind switch
         {
             nameof(PrototypeCombatEffectKind.ReturnHandToDrawAndShuffle) =>
@@ -132,7 +132,12 @@ public static class SemanticPoolShuffleChoiceV111
                 RecycleSiteId,
             nameof(PrototypeCombatEffectKind.ChooseCards) =>
                 RandomShortlistSiteId,
-            _ => GenerationSiteId
+            nameof(PrototypeCombatEffectKind.CreateDistinctCharacterCommonCardsInHand) or
+            nameof(PrototypeCombatEffectKind.CreateDistinctColorlessCardsInHand) or
+            nameof(PrototypeCombatEffectKind.ChooseGeneratedCards) or
+            nameof(PrototypeCombatEffectKind.ChooseGeneratedColorlessCards) =>
+                GenerationSiteId,
+            _ => null
         };
 
     internal static SemanticPoolShuffleEventV111? DescribePending(
@@ -195,7 +200,11 @@ public static class SemanticPoolShuffleChoiceV111
             PrototypeCombatEffectKind.MoveRandomRareDrawCardsToHand;
         bool randomShortlist = shuffle.Operation.Kind ==
             PrototypeCombatEffectKind.ChooseCards;
-        var siteId = SiteIdForOperation(shuffle.Operation.Kind.ToString());
+        var siteId = SiteIdForOperation(
+            shuffle.Operation.Kind.ToString()) ??
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_POOL operation=" +
+                shuffle.Operation.Kind);
         var streamId = handReturn || recycle
             ? combat.NativeRng is not null
                 ? "run.shuffle" : "prototype.combat"

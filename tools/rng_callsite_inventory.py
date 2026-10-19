@@ -21,7 +21,7 @@ from urllib.parse import unquote, urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = ROOT / "src" / "Sts2Emulator.Core"
-SCHEMA_ID = "emulator-rng-callsite-source-inventory-v34"
+SCHEMA_ID = "emulator-rng-callsite-source-inventory-v35"
 SITE_REGISTRY_PATH = SOURCE_ROOT / "StochasticSiteRegistryV111.cs"
 
 CALL_PATTERN = re.compile(
@@ -272,12 +272,102 @@ def _method_local_site_values(
         member_source, declaration.end()
     ):
         return []
+    expression = declaration.group("value")
     values = _resolve_site_values(
-        declaration.group("value"), local_constants, global_constants
+        expression, local_constants, global_constants
     )
+    if not values or any(value not in known_site_ids for value in values):
+        values = _static_site_mapping_values(
+            expression, global_constants
+        )
     if not values or any(value not in known_site_ids for value in values):
         return []
     return values
+
+
+def _static_site_mapping_values(
+    expression: str,
+    global_constants: dict[str, set[str]],
+) -> list[str]:
+    """Resolve a local through a pure SiteIdFor* string switch."""
+    normalized = re.sub(r"\s+", "", expression)
+    call = re.match(
+        r"(?:(?P<class>[A-Za-z_][A-Za-z0-9_]*)\.)?"
+        r"(?P<method>SiteIdFor[A-Za-z0-9_]*)\(",
+        normalized,
+    )
+    if call is None:
+        return []
+    opening = normalized.find("(", call.start())
+    depth = 0
+    closing = None
+    for index in range(opening, len(normalized)):
+        if normalized[index] == "(":
+            depth += 1
+        elif normalized[index] == ")":
+            depth -= 1
+            if depth == 0:
+                closing = index
+                break
+    if closing is None:
+        return []
+    suffix = normalized[closing + 1:]
+    fail_closed = suffix.startswith("??thrownewNotSupportedException(")
+    if suffix and not fail_closed:
+        return []
+
+    class_name = call.group("class")
+    method_name = call.group("method")
+    paths = sorted(SOURCE_ROOT.rglob("*.cs"))
+    if class_name is not None:
+        preferred = SOURCE_ROOT / f"{class_name}.cs"
+        paths = ([preferred] if preferred.is_file() else []) + [
+            path for path in paths if path != preferred
+        ]
+    declaration_pattern = re.compile(
+        r"\b(?:public|internal|private|protected)\s+static\s+"
+        r"string\??\s+" + re.escape(method_name) +
+        r"\s*\([^)]*\)\s*=>\s*(?P<expression>.*?);",
+        re.DOTALL,
+    )
+    candidates: list[tuple[str, re.Match[str]]] = []
+    for path in paths:
+        source = path.read_text(encoding="utf-8")
+        if class_name is not None and not re.search(
+            r"\b(?:class|record|struct)\s+" +
+            re.escape(class_name) + r"\b", source
+        ):
+            continue
+        candidates.extend(
+            (source, declaration)
+            for declaration in declaration_pattern.finditer(source)
+        )
+    if len(candidates) != 1:
+        return []
+    source, declaration = candidates[0]
+    results = _switch_expression_results(
+        declaration.group("expression")
+    )
+    if results is None:
+        return []
+    mapping_constants = _method_string_constants(
+        source, declaration.start(), global_constants
+    )
+    values: set[str] = set()
+    saw_null = False
+    for result in results:
+        if result.strip() == "null":
+            saw_null = True
+            continue
+        resolved = _resolve_site_values(
+            result, mapping_constants, global_constants
+        )
+        if not resolved:
+            return []
+        values.update(resolved)
+    if saw_null and not fail_closed:
+        return []
+    return sorted(values)
 
 
 def _resolve_site_value(
