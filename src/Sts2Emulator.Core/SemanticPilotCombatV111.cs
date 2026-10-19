@@ -3158,22 +3158,8 @@ public static class SemanticPilotCombatEngineV111
             : "effect:" + operation;
         var ordinal = current.History.Count(transition =>
             transition.Kind == "semantic_generated_card");
-        var supportFingerprint = CanonicalJson.Sha256(candidates);
-        var eventId = CanonicalJson.Sha256(new
-        {
-            SchemaId = SemanticGenerationChoiceV111.SchemaId,
-            BoundaryFingerprint = current.Fingerprint,
-            SiteId = siteId,
-            OwnerId = ownerId,
-            Ordinal = ordinal,
-            SupportFingerprint = supportFingerprint
-        });
-        var semanticEvent = new SemanticGeneratedCardEventV111(
-            SemanticGenerationChoiceV111.SchemaId, eventId,
-            siteId, "prototype.combat", ownerId,
-            ordinal, "choose_card_model", candidates, supportFingerprint);
-        semanticEvent.Validate();
-        return semanticEvent;
+        return SemanticGenerationChoiceV111.CreateEvent(
+            current.Fingerprint, siteId, ownerId, ordinal, candidates);
     }
 
     public static SemanticPotionGenerationEventV111?
