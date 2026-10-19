@@ -68,6 +68,9 @@
 
 **S4 nested combat outcome publication increment (2026-10-20):** Semantic draw, target, generated-card, and draw-cost resumes now use the same validated combat-action result boundary. Draw insertion checks its inserted card only while combat remains active, applies the exact engine-owned reward fallback to the resumed suffix, and clears a saved end-turn frame when the mechanics reaches reward or closed defeat. The permitted direct-call census and `git diff --check` passed; no tests or builds were run.
 
+**S4 closed combat-result boundary increment (2026-10-20):** `IsAtCombatRewardOrTerminalBoundary` now accepts only an initialized reward or a closed defeat with no live combat or reward. Existing transform and end-turn continuations therefore reject malformed completed outcomes through the shared predicate. The permitted direct-call census and `git diff --check` passed; no tests or builds were run.
+
+
 **S2 explicit-provider source-audit increment (2026-10-18):** The direct-call census now reports typed and target-typed System.Random construction, shared-instance use, and RandomNumberGenerator calls in Core; --check-no-ambient-entropy fails when those APIs appear. The current source scan finds zero such expressions. The scan cannot establish the absence of indirect or aliased entropy sources, which still require call-site tracing; no tests were added or run.
 
 **S0 typed-request census increment (2026-10-18):** The direct-call inventory now lists explicit constructions of all six typed stochastic request families and resolves positional or named SiteId arguments against the existing registry and migration matrix where possible. Dynamic and aliased request arguments remain review items; no site definitions were duplicated and no tests were added or run.

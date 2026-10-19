@@ -13,7 +13,8 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             AutomaticPipelineContinuation: null };
 
     internal static bool IsAtCombatRewardOrTerminalBoundary(RunState run) =>
-        run.Phase is RunPhase.Reward or RunPhase.Terminal;
+        (run.Phase is RunPhase.Reward or RunPhase.Terminal) &&
+        IsAtCombatActionResultBoundary(run);
 
     /// <summary>
     /// Identifies a complete result of one ordinary combat action: the next
