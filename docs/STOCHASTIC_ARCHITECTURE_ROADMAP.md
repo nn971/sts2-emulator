@@ -26,6 +26,8 @@
 
 **S0 deferred-draw source review update (2026-10-20):** The existing `combat.draw_pile.draw_card` review now records that ReferenceNature validates the sampled physical identity against the mechanics event and that bounded full-order enumeration checks exact count, uniqueness, fixed positions, and shared-pool membership. This confirms implementation invariants only; the equal shared-pool probability model remains `UNVERIFIED`, peek/scry gameplay callsites remain absent, and the broader row-by-row review remains open. No tests or builds were run.
 
+**S0 generated-choice and enemy-insertion ownership review (2026-10-20):** The site inventory now manually traces generated-card selection and enemy draw/discard insertion through event support, source-boundary revalidation, ordinary continuation replay, and provider-aware mechanics publication. Source-pool fidelity, legacy probability models, and provider/cursor regression evidence remain open as recorded per row. No tests or builds were run.
+
 **Implementation scope:** `sts2-emulator`, STS2 v0.111.0, single-player. The first vertical slice is two-site Silent combat. Keep the four-Act Silent gameplay and active native inspector developments on separate tracks. Existing versioned `controlled_*`, `nature_*`, `semantic_*` and ordinary AI protocols remain supported; no historic snapshot/probability reinterpretation.
 
 ## Priorities and milestones
