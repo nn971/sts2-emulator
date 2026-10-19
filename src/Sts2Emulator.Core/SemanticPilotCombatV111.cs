@@ -3257,33 +3257,9 @@ public static class SemanticPilotCombatEngineV111
                     transition.Kind == "semantic_cost"));
         else
             return null;
-        request.Validate();
-        if (request.SupportCount < 1 || request.OperationKind != "bounded_integer")
-            throw new InvalidDataException(
-                "Semantic cost event has invalid bounded support.");
-        var costs = Enumerable.Range(0, request.SupportCount).ToArray();
-        var supportFingerprint = targetCardInstanceId is null
-            ? CanonicalJson.Sha256(new { request, costs })
-            : CanonicalJson.Sha256(new
-            {
-                request, costs, targetCardInstanceId, targetCardModelId
-            });
-        var eventId = CanonicalJson.Sha256(new
-        {
-            SchemaId = SemanticCostEventV111.EventSchemaId,
-            BoundaryFingerprint = current.Fingerprint,
-            SupportFingerprint = supportFingerprint
-        });
-        var semanticEvent = new SemanticCostEventV111(
-            SemanticCostEventV111.EventSchemaId, eventId,
-            current.Fingerprint, supportFingerprint,
-            request with
-            {
-                OrderedCandidates = (int[])request.OrderedCandidates.Clone()
-            }, costs, TargetCardInstanceId: targetCardInstanceId,
-            TargetCardModelId: targetCardModelId);
-        semanticEvent.Validate();
-        return semanticEvent;
+        return SemanticCostChoiceV111.CreateEvent(
+            current.Fingerprint, request, targetCardInstanceId,
+            targetCardModelId);
     }
 
     public static SemanticHandCostSelectionEventV111?
