@@ -124,6 +124,10 @@ public sealed class LegacyPrototypeRandomIndexProviderV111
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(streams);
         request.Validate();
+        if (!StochasticSiteRegistryV111.IsLegacyRandomChoiceSite(
+                request.SiteId))
+            throw new NotSupportedException(
+                $"Legacy random choice does not support site '{request.SiteId}'.");
         var matches = streams.Streams
             .Where(stream => stream.StreamId == request.StreamId).ToArray();
         if (matches.Length != 1 ||
