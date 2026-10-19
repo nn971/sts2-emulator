@@ -903,6 +903,11 @@ public static class StochasticSiteRegistryV111
         || NativeFisherYatesSites.Contains(siteId, StringComparer.Ordinal)
         || siteId == "diagnostic.monster_local.index_sample";
 
+    public static bool IsNativeUnitFloatSite(string siteId) =>
+        IsChanceLawQuerySite(siteId)
+        || NativeEventContextUnitFloatSites.Contains(
+            siteId, StringComparer.Ordinal);
+
     public static bool IsNativeMerchantPriceSite(string siteId) =>
         NativeMerchantPriceSites.Contains(siteId, StringComparer.Ordinal);
 
