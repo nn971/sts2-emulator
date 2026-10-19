@@ -56,6 +56,23 @@ public static class SemanticPotionGenerationChoiceV111
     public const string SchemaId = "sts2-v111-semantic-potion-generation-v1";
     public const string SiteId = "combat.potion_generation.random_model";
 
+    internal static RandomIndexRequestV111 CreateRequest(
+        string ownerId, int ordinal, int supportCount)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+        if (supportCount <= 0)
+            throw new ArgumentOutOfRangeException(nameof(supportCount));
+
+        var request = new RandomIndexRequestV111(
+            SiteId, "prototype.combat", ownerId, ordinal,
+            Enumerable.Range(0, supportCount).ToArray(),
+            OperationKind: "choose_index");
+        request.Validate();
+        return request;
+    }
+
     internal static SemanticPotionGenerationEventV111 CreateEvent(
         string boundaryFingerprint, string ownerId, int ordinal,
         string[] candidatePotionIds)
@@ -66,19 +83,21 @@ public static class SemanticPotionGenerationChoiceV111
         if (ordinal < 0)
             throw new ArgumentOutOfRangeException(nameof(ordinal));
         var candidates = (string[])candidatePotionIds.Clone();
+        var request = CreateRequest(ownerId, ordinal, candidates.Length);
         var supportFingerprint = CanonicalJson.Sha256(candidates);
         var eventId = CanonicalJson.Sha256(new
         {
             SchemaId,
             BoundaryFingerprint = boundaryFingerprint,
-            SiteId,
-            OwnerId = ownerId,
-            Ordinal = ordinal,
+            SiteId = request.SiteId,
+            OwnerId = request.OwnerId,
+            Ordinal = request.Ordinal,
             SupportFingerprint = supportFingerprint
         });
         var semanticEvent = new SemanticPotionGenerationEventV111(
-            SchemaId, eventId, SiteId, "prototype.combat", ownerId,
-            ordinal, "choose_potion_model", candidates, supportFingerprint);
+            SchemaId, eventId, request.SiteId, request.StreamId,
+            request.OwnerId, request.Ordinal, "choose_potion_model",
+            candidates, supportFingerprint);
         semanticEvent.Validate();
         return semanticEvent;
     }

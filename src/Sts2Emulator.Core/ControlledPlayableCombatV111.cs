@@ -339,13 +339,13 @@ public sealed record ControlledPlayableCombatV111(
             var choice = Run.World?.Combat?.PendingChoice?.ControlledGeneration;
             if (choice is null) return null;
             var pool = choice.CandidateCardIds;
-            return new RandomIndexRequestV111(
-                "combat.generated_card.select", "prototype.combat",
-                "card:" + (Run.World!.Combat!.PendingChoice!.SourceCardInstanceId?.ToString()
-                    ?? "effect") + ":pool:" + CanonicalJson.Sha256(pool),
-                GeneratedCardTranscript.Length,
-                Enumerable.Range(0, pool.Length).ToArray(),
-                OperationKind: "choose_index");
+            var ownerId = "card:" +
+                (Run.World!.Combat!.PendingChoice!.SourceCardInstanceId?
+                    .ToString() ?? "effect") + ":pool:" +
+                CanonicalJson.Sha256(pool);
+            return SemanticGenerationChoiceV111.CreateRequest(
+                "combat.generated_card.select", ownerId,
+                GeneratedCardTranscript.Length, pool.Length);
         }
     }
     [System.Text.Json.Serialization.JsonIgnore]
@@ -360,12 +360,9 @@ public sealed record ControlledPlayableCombatV111(
                 ":source:" + (combat!.PendingChoice!.SourceCardInstanceId?
                     .ToString() ?? "none") + ":pool:" +
                 CanonicalJson.Sha256(generation.CandidatePotionIds);
-            return new RandomIndexRequestV111(
-                SemanticPotionGenerationChoiceV111.SiteId,
-                "prototype.combat",
+            return SemanticPotionGenerationChoiceV111.CreateRequest(
                 owner, PotionGenerationTranscript.Length,
-                Enumerable.Range(0, generation.CandidatePotionIds.Length)
-                    .ToArray(), OperationKind: "choose_index");
+                generation.CandidatePotionIds.Length);
         }
     }
     [System.Text.Json.Serialization.JsonIgnore]
@@ -378,14 +375,11 @@ public sealed record ControlledPlayableCombatV111(
             if (transform is null) return null;
             var instanceId = transform.SelectedCardInstanceIds[
                 transform.NextTransformIndex];
-            return new RandomIndexRequestV111(
-                SemanticCardTransformChoiceV111.SiteId,
-                "prototype.combat",
-                "card_instance:" + instanceId + ":pool:" +
-                    CanonicalJson.Sha256(transform.CandidateCardIds),
-                CardTransformTranscript.Length,
-                Enumerable.Range(0, transform.CandidateCardIds.Length)
-                    .ToArray(), OperationKind: "choose_index");
+            var ownerId = "card_instance:" + instanceId + ":pool:" +
+                CanonicalJson.Sha256(transform.CandidateCardIds);
+            return SemanticCardTransformChoiceV111.CreateRequest(
+                ownerId, CardTransformTranscript.Length,
+                transform.CandidateCardIds.Length);
         }
     }
     [System.Text.Json.Serialization.JsonIgnore]
