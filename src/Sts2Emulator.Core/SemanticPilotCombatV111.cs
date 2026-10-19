@@ -431,9 +431,7 @@ public sealed record SemanticPilotCombatV111(
         PendingInitialIntents is null &&
         PendingEndTurn is null &&
         DeckRevealPending is null &&
-        Run.Phase == RunPhase.Combat &&
-        Run.World?.Combat is { IsPlayerTurn: true,
-            PendingChoice: null, AutomaticPipelineContinuation: null };
+        PrototypeGameEngine.IsAtCombatPlayerDecisionBoundary(Run);
     [JsonIgnore] public bool CombatTerminal =>
         Run.Phase is RunPhase.Reward or RunPhase.Terminal;
     [JsonIgnore] public bool AtPlayerChoiceBoundary =>

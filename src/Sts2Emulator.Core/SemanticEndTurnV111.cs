@@ -229,10 +229,8 @@ public sealed record SemanticEndTurnV111(
     [JsonIgnore] public RandomIndexRequestV111? CostPending =>
         Complete ? null : HandDraw?.CostPending;
     [JsonIgnore] public bool AtPlayerBoundary =>
-        Complete && Run.Phase == RunPhase.Combat &&
-        Run.World?.Combat is { IsPlayerTurn: true,
-            AutomaticPipelineContinuation: null, PendingChoice: null,
-            PendingKnowledgeDemonChoice: null };
+        Complete &&
+        PrototypeGameEngine.IsAtCombatPlayerDecisionBoundary(Run);
 
     public void Validate()
     {
@@ -697,11 +695,8 @@ public static class SemanticEndTurnEngineV111
                 draw.Run.Fork());
         if (result.Phase is RunPhase.Terminal or RunPhase.Reward)
             return state with { Run = result, Complete = true };
-        if (result.Phase != RunPhase.Combat ||
-            result.World?.Combat is not { IsPlayerTurn: true,
-                AutomaticPipelineContinuation: null, PendingChoice: null,
-                PendingKnowledgeDemonChoice: null,
-                SemanticDeck: { Pending: null } })
+        if (!PrototypeGameEngine.IsAtCombatPlayerDecisionBoundary(result) ||
+            result.World?.Combat?.SemanticDeck is not { Pending: null })
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.semantic_end_turn " +
                 "operation=not_at_next_player_boundary");

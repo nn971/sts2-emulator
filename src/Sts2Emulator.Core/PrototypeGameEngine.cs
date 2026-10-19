@@ -2,6 +2,16 @@ namespace Sts2Emulator.Core;
 
 public sealed partial class PrototypeGameEngine : IDeterministicEngine
 {
+    /// <summary>
+    /// Identifies the ordinary combat player-decision boundary shared by
+    /// semantic action and continuation facades.
+    /// </summary>
+    internal static bool IsAtCombatPlayerDecisionBoundary(RunState run) =>
+        run.Phase == RunPhase.Combat &&
+        run.World?.Combat is { IsPlayerTurn: true,
+            PendingChoice: null, PendingKnowledgeDemonChoice: null,
+            AutomaticPipelineContinuation: null };
+
     public IReadOnlyList<GameAction> GetLegalActions(RunState state)
     {
         RunConfiguration.ValidateState(state);

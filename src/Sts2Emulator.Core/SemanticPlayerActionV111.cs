@@ -15,10 +15,7 @@ public sealed record SemanticPlayerActionV111(
     public const string SchemaId = "sts2-v111-semantic-player-action-v1";
     [JsonIgnore] public string Fingerprint => CanonicalJson.Sha256(this);
     [JsonIgnore] public bool AtPlayerBoundary =>
-        Run.Phase == RunPhase.Combat &&
-        Run.World?.Combat is { IsPlayerTurn: true,
-            PendingChoice: null, PendingKnowledgeDemonChoice: null,
-            AutomaticPipelineContinuation: null };
+        PrototypeGameEngine.IsAtCombatPlayerDecisionBoundary(Run);
 
     public SemanticPlayerActionV111 Fork() => this with
     {
