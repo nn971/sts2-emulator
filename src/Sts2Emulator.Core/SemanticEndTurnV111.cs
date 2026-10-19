@@ -513,9 +513,7 @@ public static class SemanticEndTurnEngineV111
                     "Resolve the pending source Stratagem selection by action ID.");
             var next = SemanticCombatDrawEngineV111.Resolve(
                 hand, hand.Fingerprint, selectedIndex);
-            state = state with { HandDraw = next, Run = next.Run };
-            if (next.AtBoundary)
-                state = CompleteHandDraw(state);
+            state = ContinueHandDraw(state, next);
         }
         else
             throw new InvalidOperationException("No pending semantic end-turn choice.");
@@ -614,9 +612,7 @@ public static class SemanticEndTurnEngineV111
                 "No automatic CardDrawn hook action is pending.");
         var nextHand = SemanticCombatDrawEngineV111.ResolveDrawHookChoice(
             hand, hand.Fingerprint, actionId);
-        var state = source with { HandDraw = nextHand, Run = nextHand.Run };
-        if (nextHand.AtBoundary)
-            state = CompleteHandDraw(state);
+        var state = ContinueHandDraw(source, nextHand);
         Validate(state);
         return state;
     }
@@ -634,9 +630,7 @@ public static class SemanticEndTurnEngineV111
                 "No automatic Stratagem selection is pending.");
         var nextHand = SemanticCombatDrawEngineV111.ResolveStratagemSelection(
             hand, hand.Fingerprint, actionId);
-        var state = source with { HandDraw = nextHand, Run = nextHand.Run };
-        if (nextHand.AtBoundary)
-            state = CompleteHandDraw(state);
+        var state = ContinueHandDraw(source, nextHand);
         Validate(state);
         return state;
     }
@@ -680,11 +674,18 @@ public static class SemanticEndTurnEngineV111
                 "operation=hand_draw_checkpoint_requires_empty_draw_pile");
         var draw = SemanticCombatDrawEngineV111.BeginAutomaticHandDraw(
             handCheckpoint);
-        var next = state with
+        return ContinueHandDraw(state with { Intents = null }, draw);
+    }
+
+    private static SemanticEndTurnV111 ContinueHandDraw(
+        SemanticEndTurnV111 source, SemanticCombatDrawV111 handDraw)
+    {
+        var next = source with
         {
-            Run = draw.Run, Intents = null, HandDraw = draw
+            Run = handDraw.Run,
+            HandDraw = handDraw
         };
-        return draw.AtBoundary ? CompleteHandDraw(next) : next;
+        return handDraw.AtBoundary ? CompleteHandDraw(next) : next;
     }
 
     private static SemanticEndTurnV111 CompleteHandDraw(SemanticEndTurnV111 state)
@@ -837,15 +838,7 @@ public static class SemanticEndTurnEngineV111
                         "Completed semantic end-turn hand draw diverged.");
             }
             else
-            {
-                reproduced = reproduced with
-                {
-                    Run = replayedHand.Run,
-                    HandDraw = replayedHand
-                };
-                if (replayedHand.AtBoundary)
-                    reproduced = CompleteHandDraw(reproduced);
-            }
+                reproduced = ContinueHandDraw(reproduced, replayedHand);
         }
         if (CanonicalJson.Sha256(reproduced) != CanonicalJson.Sha256(saved))
             throw new InvalidDataException(
