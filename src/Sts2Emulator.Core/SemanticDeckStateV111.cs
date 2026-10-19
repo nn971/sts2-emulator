@@ -300,12 +300,14 @@ public static class SemanticDeckEngineV111
         Validate(state);
         var pending = state.Pending;
         if (pending is null) return null;
-        return new SemanticDeckEventV111(
+        var semanticEvent = new SemanticDeckEventV111(
             SemanticDeckStateV111.SchemaId, EventId(state), pending.SiteId,
             pending.Purpose, pending.TopOffset, pending.Ordinal, "choose_card_instance",
             "semantic.draw_pile", "player:draw_pile",
             (long[])pending.CandidateCardInstanceIds.Clone(),
             CanonicalJson.Sha256(pending.CandidateCardInstanceIds));
+        semanticEvent.Validate();
+        return semanticEvent;
     }
 
     public static SemanticDeckStateV111 Resolve(
