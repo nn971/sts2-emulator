@@ -897,6 +897,12 @@ public static class StochasticSiteRegistryV111
             or "map.later_act.hive_rest_count.gaussian_int.component"
             or "map.later_act.unknown_count.gaussian_int.component";
 
+    public static bool IsNativeRandomIndexSite(string siteId) =>
+        IsChanceLawQuerySite(siteId)
+        || NatureChoiceSites.Contains(siteId, StringComparer.Ordinal)
+        || NativeFisherYatesSites.Contains(siteId, StringComparer.Ordinal)
+        || siteId == "diagnostic.monster_local.index_sample";
+
     public static bool IsNativeMerchantPriceSite(string siteId) =>
         NativeMerchantPriceSites.Contains(siteId, StringComparer.Ordinal);
 

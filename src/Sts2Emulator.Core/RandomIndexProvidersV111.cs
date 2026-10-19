@@ -90,6 +90,10 @@ public sealed class NativeRandomIndexProviderV111 : IRandomIndexProviderV111
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(streams);
         request.Validate();
+        if (!StochasticSiteRegistryV111.IsNativeRandomIndexSite(
+                request.SiteId))
+            throw new NotSupportedException(
+                $"Native random choice does not support site '{request.SiteId}'.");
         var matches = streams.Streams.Where(s => s.StreamId == request.StreamId).ToArray();
         if (matches.Length != 1)
             throw new InvalidOperationException("Native random stream ownership is ambiguous.");
