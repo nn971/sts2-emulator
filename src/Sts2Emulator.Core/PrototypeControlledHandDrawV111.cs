@@ -291,7 +291,10 @@ public sealed partial class PrototypeGameEngine
         var completedCursor = cursor.WithHandDrawProgress(null) with
         {
             NextStepIndex = cursor.NextStepIndex + 1,
-            ControlledSemanticDrawRequested = completedSemanticDrawRequested
+            ControlledSemanticDrawRequested =
+                completedSemanticDrawRequested is > 0
+                    ? completedSemanticDrawRequested
+                    : null
         };
         combat = combat with
         {

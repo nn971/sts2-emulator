@@ -248,6 +248,13 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
             PrototypeControlledEnemyActionContinuationV111? controlledEnemyAction,
             ControlledTurnIntentsV111? controlledTurnIntents)
     {
+        // Older flattened snapshots could store zero as the completed
+        // semantic draw-count receipt. Zero is not active draw progress;
+        // normalize it before validating the tagged provider state.
+        if (controlledSemanticDrawRequested == 0 &&
+            controlledSemanticDrawRemaining is null)
+            controlledSemanticDrawRequested = null;
+
         ValidateFlattenedProgress(
             controlledDrawRemaining,
             controlledDrawCostRemaining,
