@@ -66,6 +66,9 @@ public static class NativeRunRngV111
         if (bundle.Streams is null)
             throw new InvalidOperationException(
                 "Native RNG bundle has no stream collection.");
+        if (bundle.Streams.Any(stream => stream is null))
+            throw new InvalidOperationException(
+                "Native RNG bundle contains a missing stream owner.");
         var actual = bundle.Streams.Select(stream => stream.StreamId)
             .Order(StringComparer.Ordinal).ToArray();
         if (!actual.SequenceEqual(RequiredStreams, StringComparer.Ordinal))
