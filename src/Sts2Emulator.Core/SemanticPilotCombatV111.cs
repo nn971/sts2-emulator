@@ -3095,12 +3095,9 @@ public static class SemanticPilotCombatEngineV111
         if (target is null) return null;
         SemanticTargetChoiceV111.ValidateBoundary(run);
         var candidates = (int[])target.EligibleEnemyInstanceIds.Clone();
-        var siteId = target.Kind switch
-        {
-            "sly_auto_play" => "combat.sly_autoplay.random_enemy",
-            "autoplay_random_enemy" => "combat.autoplay.random_enemy",
-            _ => "combat.effect.random_enemy"
-        };
+        var siteId = SemanticTargetChoiceV111.SiteIdForTargetKind(
+            target.Kind) ?? throw new InvalidDataException(
+                "Semantic target lost its supported site identity.");
         var ownerId = target.AutoPlayCardInstanceId is { } autoPlayCardId
             ? "card_instance:" + autoPlayCardId
             : target.SlyCardInstanceId is { } slyCardId
