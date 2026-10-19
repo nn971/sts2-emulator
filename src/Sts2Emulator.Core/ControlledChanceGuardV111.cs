@@ -79,7 +79,7 @@ public static class ControlledChanceGuardV111
 
         if (!IsEngineOwnedNativeStream(streamId) ||
             !StochasticSiteRegistryV111.SupportsEngineOwnedNativeBoundary(
-                siteId, operationKind))
+                siteId, streamId, operationKind))
             throw new NotSupportedException(
                 "UNSUPPORTED_CONTROLLED_CHANCE site=" + siteId +
                 " stream=" + streamId + " operation=" + operationKind +
@@ -131,7 +131,9 @@ public static class ControlledChanceGuardV111
             "run.combat_targets" or
             "run.combat_card_selection" or
             "run.combat_card_generation" or
-            "run.combat_potion_generation";
+            "run.combat_potion_generation" or
+            "run.treasure_room_relics" or
+            NativePlayerRngV111.RewardsStreamId;
 
     private sealed class NativeBoundaryExitScope(
         NativeBoundaryAuthorization authorization,
