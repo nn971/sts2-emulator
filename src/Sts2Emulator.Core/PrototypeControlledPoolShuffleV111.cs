@@ -279,13 +279,10 @@ public sealed partial class PrototypeGameEngine
                         : null);
                 card = ApplyActiveSourceBoundAfflictionToCard(combat, card);
                 ids.Add(card.InstanceId);
-                combat = SetZone(
-                    combat, PrototypeCardZone.ChoicePool,
-                    combat.ChoiceCardIds.Append(card.InstanceId).ToArray()) with
-                {
-                    NextCardInstanceId = combat.NextCardInstanceId + 1,
-                    Cards = combat.Cards.Append(card).ToArray()
-                };
+                combat = SemanticDrawPileAdapterV111
+                    .ApplyNewCardZoneInsertion(
+                        combat, PrototypeCardZone.ChoicePool,
+                        combat.ChoiceCardIds.Length, card);
             }
             combat = combat with
             {
@@ -489,13 +486,10 @@ public sealed partial class PrototypeGameEngine
                         combat.NextCardInstanceId, null, cardId, 0, true,
                         PrototypeJson.EmptyObject());
                     card = ApplyActiveSourceBoundAfflictionToCard(combat, card);
-                    combat = SetZone(
-                        combat, PrototypeCardZone.Hand,
-                        combat.Hand.Append(card.InstanceId).ToArray()) with
-                    {
-                        NextCardInstanceId = combat.NextCardInstanceId + 1,
-                        Cards = combat.Cards.Append(card).ToArray()
-                    };
+                    combat = SemanticDrawPileAdapterV111
+                        .ApplyNewCardZoneInsertion(
+                            combat, PrototypeCardZone.Hand,
+                            combat.Hand.Length, card);
                 }
                 else
                     combat = AddGeneratedCardCopies(combat,

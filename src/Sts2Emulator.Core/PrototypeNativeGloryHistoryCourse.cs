@@ -67,13 +67,10 @@ public sealed partial class PrototypeGameEngine
             SuppressedUpgradeLevels: lastAttack.SuppressedUpgradeLevels,
             WitherFakeUpgradeLevel: lastAttack.WitherFakeUpgradeLevel,
             IsHistoryCourseDupe: true);
-        combat = SetZone(
-            combat, PrototypeCardZone.PlayPile,
-            combat.PlayCardIds.Append(duplicate.InstanceId).ToArray()) with
-        {
-            NextCardInstanceId = combat.NextCardInstanceId + 1,
-            Cards = combat.Cards.Append(duplicate).ToArray()
-        };
+        combat = SemanticDrawPileAdapterV111
+            .ApplyNewCardZoneInsertion(
+                combat, PrototypeCardZone.PlayPile,
+                combat.PlayCardIds.Length, duplicate);
 
         // AutoPlayCombatCard already implements the native CardCmd:
         // zero energy spent, a random hittable target drawn from
