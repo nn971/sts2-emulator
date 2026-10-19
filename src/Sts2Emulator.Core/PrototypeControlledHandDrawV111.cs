@@ -288,13 +288,12 @@ public sealed partial class PrototypeGameEngine
                 "Automatic hand-draw completion is not at a clean boundary.");
 
         combat = ApplyAutomaticHandDrawPostStagePowerTiming(combat);
-        var completedCursor = cursor.WithHandDrawProgress(null) with
+        var completedCursor = cursor.WithHandDrawProgress(null)
+            .WithCompletedSemanticHandDrawReceipt(
+                completedSemanticDrawRequested);
+        completedCursor = completedCursor with
         {
-            NextStepIndex = cursor.NextStepIndex + 1,
-            ControlledSemanticDrawRequested =
-                completedSemanticDrawRequested is > 0
-                    ? completedSemanticDrawRequested
-                    : null
+            NextStepIndex = cursor.NextStepIndex + 1
         };
         combat = combat with
         {

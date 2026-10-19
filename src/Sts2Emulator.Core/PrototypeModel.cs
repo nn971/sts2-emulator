@@ -459,6 +459,13 @@ public sealed record PrototypeAutomaticPipelineContinuationState(
         };
     }
 
+    public PrototypeAutomaticPipelineContinuationState
+        WithCompletedSemanticHandDrawReceipt(int? requestedCount) => this with
+    {
+        Stochastic = Stochastic.WithCompletedSemanticHandDrawReceipt(
+            requestedCount)
+    };
+
     public int NextStepIndex
     {
         get => Mechanics.NextStepIndex;
