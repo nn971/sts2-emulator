@@ -623,11 +623,6 @@ public static class SemanticCombatDrawEngineV111
         if (source.Phase != RunPhase.Combat ||
             sourceCombat is null ||
             sourceCombat.PendingChoice is not null ||
-            (sourceCombat.SemanticDeck is { } existing &&
-             (existing.Pending is not null ||
-              existing.Mode != SemanticDeckStateV111.NatureMode ||
-              !SemanticDeckEngineV111.AllCardInstanceIds(existing)
-                  .Order().SequenceEqual(sourceCombat.DrawPile.Order()))) ||
             sourceCombat.PendingKnowledgeDemonChoice is not null ||
             sourceCombat.AutomaticPipelineContinuation is not { } cursor ||
             !cursor.Mechanics.IsAtStep(
@@ -639,6 +634,22 @@ public static class SemanticCombatDrawEngineV111
             cursor.PendingPostDispatchEventKind is not null)
             throw new InvalidOperationException(
                 "Semantic automatic hand draw needs a clean DrawPlayerHand checkpoint.");
+        if (sourceCombat.SemanticDeck is not null)
+        {
+            try
+            {
+                SemanticDrawPileAdapterV111.ValidateNatureDeckBoundary(
+                    sourceCombat,
+                    "Semantic automatic hand draw needs a clean DrawPlayerHand checkpoint.",
+                    "Semantic automatic hand draw needs a clean DrawPlayerHand checkpoint.");
+            }
+            catch (InvalidDataException exception)
+            {
+                throw new InvalidOperationException(
+                    "Semantic automatic hand draw needs a clean DrawPlayerHand checkpoint.",
+                    exception);
+            }
+        }
         var origin = source.Fork();
         var world = origin.World!;
         var originCombat = world.Combat!;
