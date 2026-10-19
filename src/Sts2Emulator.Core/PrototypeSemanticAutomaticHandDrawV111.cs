@@ -214,10 +214,12 @@ public sealed partial class PrototypeGameEngine
         var requested = completed.ControlledSemanticDrawRequested ??
             Math.Max(0,
                 after.CounterState.CardsDrawnThisCombat - cardsDrawnBefore);
+        var completedCursor = completed.WithHandDrawProgress(null)
+            .WithCompletedSemanticHandDrawReceipt(requested);
         after = after with
         {
             AutomaticPipelineContinuation =
-                completed.WithHandDrawProgress(null)
+                completedCursor
         };
         result = result with
         {
