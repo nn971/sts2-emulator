@@ -32,6 +32,14 @@ public sealed record RandomIndexRequestV111(
             || (OperationKind == "bounded_integer" &&
                 (OrderedCandidates.Length != 0 || BoundedCount is null or <= 0)))
             throw new ArgumentException("Invalid source-pinned random-choice request.");
+
+        if (StochasticSiteRegistryV111
+                .TryGetRequiredRandomIndexOperationKind(
+                    SiteId, out var requiredOperationKind) &&
+            OperationKind != requiredOperationKind)
+            throw new ArgumentException(
+                $"Operation kind '{OperationKind}' does not match the registered kind '{requiredOperationKind}' for site '{SiteId}'.",
+                nameof(OperationKind));
     }
 }
 
