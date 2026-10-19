@@ -3336,33 +3336,10 @@ public static class SemanticPilotCombatEngineV111
             current.UsesNativePolicyBaseline || current.CombatTerminal)
             throw new InvalidDataException(
                 "Full-pool shuffle conflicts with another semantic boundary.");
-        SemanticPoolShuffleChoiceV111.ValidateBoundary(current.Run);
-        var original = (string[])shuffle.OriginalCardIds.Clone();
-        var currentPool = (string[])shuffle.CurrentCardIds.Clone();
-        var sourceCardId = choice!.SourceCardInstanceId;
         var ordinal = current.History.Count(transition =>
             transition.Kind == "semantic_pool_shuffle");
-        var request = SemanticPoolShuffleChoiceV111.CreateRequest(
-            combat!, ordinal);
-        var supportFingerprint = CanonicalJson.Sha256(new
-        {
-            request, Original = original, Current = currentPool,
-            shuffle.NextSwapIndex, shuffle.SelectedCount,
-            Operation = shuffle.Operation.Kind.ToString(), sourceCardId
-        });
-        var eventId = CanonicalJson.Sha256(new
-        {
-            SchemaId = SemanticPoolShuffleEventV111.EventSchemaId,
-            BoundaryFingerprint = current.Fingerprint,
-            SupportFingerprint = supportFingerprint
-        });
-        var semanticEvent = new SemanticPoolShuffleEventV111(
-            SemanticPoolShuffleEventV111.EventSchemaId, eventId,
-            current.Fingerprint, supportFingerprint, request, original,
-            currentPool, shuffle.NextSwapIndex, shuffle.SelectedCount,
-            shuffle.Operation.Kind.ToString(), sourceCardId);
-        semanticEvent.Validate();
-        return semanticEvent;
+        return SemanticPoolShuffleChoiceV111.DescribePending(
+            current.Run, current.Fingerprint, ordinal);
     }
 
     public static SemanticDrawInsertionEventV111?
