@@ -387,17 +387,6 @@ public sealed partial class PrototypeGameEngine
             "player:0", NativeFisherYatesV111.SiteId);
         if (nativeShuffleStreams is not null)
             state = state with { NativeRunRng = nativeShuffleStreams };
-        var teaOfDiscourtesy = ApplyTeaOfDiscourtesyBeforeCombat(
-            state.Player,
-            combatCards,
-            drawPile,
-            nextCombatCardId,
-            state.Rng);
-        state = state with { Player = teaOfDiscourtesy.Player };
-        combatCards = teaOfDiscourtesy.Cards;
-        drawPile = teaOfDiscourtesy.DrawPile;
-        nextCombatCardId = teaOfDiscourtesy.NextCardInstanceId;
-
         var boomingConchAtElite = roomType == PrototypeRoomType.Elite
             && state.Player.ActiveRelics.Any(relic =>
                 relic.RelicId ==
@@ -424,6 +413,11 @@ public sealed partial class PrototypeGameEngine
             Ascension: state.Ascension,
             Pets: NativePaelRewardsV111.CreateCombatPets(state.Player),
             CurrentMapNodeId: world.Map.CurrentNodeId);
+
+        var teaOfDiscourtesy = ApplyTeaOfDiscourtesyBeforeCombat(
+            state.Player, combat, state.Rng);
+        state = state with { Player = teaOfDiscourtesy.Player };
+        combat = teaOfDiscourtesy.Combat;
 
         if (emberTeaActive)
         {
