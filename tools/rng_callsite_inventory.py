@@ -21,7 +21,7 @@ from urllib.parse import unquote, urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = ROOT / "src" / "Sts2Emulator.Core"
-SCHEMA_ID = "emulator-rng-callsite-source-inventory-v30"
+SCHEMA_ID = "emulator-rng-callsite-source-inventory-v31"
 SITE_REGISTRY_PATH = SOURCE_ROOT / "StochasticSiteRegistryV111.cs"
 
 CALL_PATTERN = re.compile(
@@ -1360,6 +1360,30 @@ def _typed_request_constructions(
                 source, match.start(), global_constants
             )
             arguments = _call_arguments(source, match.start())
+            operation_expression = None
+            for argument in arguments:
+                named_operation = re.match(
+                    r"OperationKind\s*:\s*(.+)$", argument, re.DOTALL
+                )
+                if named_operation:
+                    operation_expression = named_operation.group(1).strip()
+                    break
+            if (match.group("request_type") == "RandomIndexRequestV111" and
+                    operation_expression is None):
+                operation_values = ["choose_index"]
+                operation_resolution = "implicit_default"
+            elif operation_expression is None:
+                operation_values = []
+                operation_resolution = "not_applicable"
+            else:
+                operation_values = _resolve_site_values(
+                    operation_expression, local_constants, global_constants
+                )
+                operation_resolution = (
+                    "unresolved" if not operation_values else
+                    "expression" if len(operation_values) == 1 else
+                    "finite_alternatives"
+                )
             expression = None
             for argument in arguments:
                 named_site = re.match(
@@ -1449,6 +1473,9 @@ def _typed_request_constructions(
                 "path": path.relative_to(ROOT).as_posix(),
                 "line": line_number,
                 "request_type": match.group("request_type"),
+                "operation_kind_expression": operation_expression,
+                "operation_kind_values": operation_values,
+                "operation_kind_resolution": operation_resolution,
                 "site_id_expression": expression,
                 "site_id_value": value,
                 "site_id_values": values,
@@ -1636,8 +1663,10 @@ def collect() -> dict[str, Any]:
             "System.Random construction, shared-instance use, and "
             "RandomNumberGenerator use; it cannot prove the absence of indirect "
             "or aliased entropy sources. Explicit typed random-request "
-            "constructions are listed with their site ID and registry/matrix "
-            "resolution status. "
+            "constructions are listed with their site ID, index operation-kind "
+            "expression, and registry/matrix resolution status. The operation "
+            "locator resolves visible literals and finite alternatives but does "
+            "not validate forwarded caller values. "
             "The site-matrix report shows registry-to-ledger and ledger-to-registry "
             "differences, unique ledger IDs, and explicit reference-law status. "
             "Unregistered ledger rows are informational because legacy and conditional "
@@ -1738,6 +1767,16 @@ def render_markdown(report: dict[str, Any]) -> str:
         f"dynamic or missing IDs: **{sum(call['registry_status'] in ('dynamic_expression', 'missing') for call in report['typed_request_constructions'])}**; "
         f"static IDs absent from registry: **{sum(call['registry_status'] in ('not_registered', 'partially_unregistered') for call in report['typed_request_constructions'])}**.",
         "",
+        "Index request operation-kind locators: " + ", ".join(
+            f"`{kind}` **{count}**"
+            for kind, count in sorted(Counter(
+                value
+                for call in report["typed_request_constructions"]
+                if call["request_type"] == "RandomIndexRequestV111"
+                for value in (call["operation_kind_values"] or ["unresolved"])
+            ).items())
+        ) + ". The table reports constructor expressions and statically resolved literal alternatives; it does not validate forwarded caller values.",
+        "",
         "Expression-origin classes: " + ", ".join(
             f"`{kind}` **{count}**"
             for kind, count in sorted(Counter(
@@ -1746,11 +1785,14 @@ def render_markdown(report: dict[str, Any]) -> str:
             ).items())
         ) + ". Forwarded identifiers and members remain manual trace items; these labels do not claim their caller chain is resolved.",
         "",
-        "| File:line | Request type | Site ID expression | Origin | Resolution | Resolved site ID | Registry | Matrix |",
-        "| --- | --- | --- | --- | --- | --- | --- | --- |",
+        "| File:line | Request type | Operation kind | Site ID expression | Origin | Resolution | Resolved site ID | Registry | Matrix |",
+        "| --- | --- | --- | --- | --- | --- | --- | --- | --- |",
         *[
             f"| [{call['path']}:{call['line']}](../{call['path']}#L{call['line']}) "
-            f"| {call['request_type']} | {call['site_id_expression'] or '—'} | "
+            f"| {call['request_type']} | "
+            f"{call['operation_kind_expression'] or ('default choose_index' if call['request_type'] == 'RandomIndexRequestV111' else '—')} "
+            f"→ {', '.join(call['operation_kind_values']) or call['operation_kind_resolution']} | "
+            f"{call['site_id_expression'] or '—'} | "
             f"{call['site_id_origin_kind']} | "
             f"{call['site_id_resolution_source'] or '—'} | "
             f"{', '.join(call['site_id_values']) or '—'} | {call['registry_status']} | "
