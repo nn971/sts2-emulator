@@ -37,6 +37,8 @@ Native ReferenceNature sessions that project persistent relic bags now validate 
 
 The seeded comparator's engine-owned drawn-card-cost provider and its terminal-reward cursor audit are stored in `RunStochasticStateV111` with the other run-scoped providers. The semantic pilot's established `OtherChance` and `RewardAudit` fields remain compatibility projections to that run owner, so provider state is forked and validated with its run and is not duplicated in the pilot stochastic envelope.
 
+`SemanticOtherChanceStateV111` keeps only its named `run.combat_energy_costs` stream after validating the complete source Native run bundle. Older snapshots that carried the full fifteen-stream bundle remain readable and compact to the owned cost stream after the next resolution.
+
 The opt-in native-policy comparator retains a provider-private, chronological mixed transcript of native-v111 index, unit-float, ranged-float, ranged-double, Gaussian-integer, and Gaussian-double boundaries. Each typed entry preserves its request, selected result, and before/after native cursor; the existing index-decision array remains a validated compatibility projection. The transcript is captured from setup, source-route intent entry, and native-policy actions, is deep-forked with the pilot state, and is never included in the fair player observation. `SemanticPilotStochasticStateV111` validates this audit alongside its other provider state. Older snapshots with only the index projection remain readable. Its probability status stays `UNVERIFIED`; this audit data does not establish source call-site coverage or native parity.
 
 `RunSnapshot` preserves the existing v1 Native and v2 cursor-only envelopes.

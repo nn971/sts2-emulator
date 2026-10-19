@@ -32,16 +32,18 @@ public static class SemanticOtherChanceEngineV111
     public const string CostStreamId = "run.combat_energy_costs";
 
     /// <summary>
-    /// Caller supplies the source-owned run stream bundle after entry setup.
-    /// This keeps cost sampling private and disjoint from Nature's unresolved
-    /// draw-card decisions while preserving the native cost cursor.
+    /// Caller supplies the complete source-owned run bundle after entry
+    /// setup. This owner retains only the cost stream, keeping cost sampling
+    /// private and disjoint from Nature's unresolved draw-card decisions.
     /// </summary>
     public static SemanticOtherChanceStateV111 Begin(RngBundle afterOpening)
     {
         ArgumentNullException.ThrowIfNull(afterOpening);
-        var streams = afterOpening.Fork();
-        var initialCallCount = streams.Streams.SingleOrDefault(stream =>
-            stream.StreamId == CostStreamId)?.CallCount ??
+        NativeRunRngV111.ValidateBundle(afterOpening);
+        var costStream = afterOpening.Streams.Single(stream =>
+            stream.StreamId == CostStreamId);
+        var streams = new RngBundle([costStream.Fork()]);
+        var initialCallCount = costStream.CallCount ??
             throw new InvalidDataException(
                 "Native cost stream is missing its call counter.");
         var state = new SemanticOtherChanceStateV111(
@@ -87,6 +89,15 @@ public static class SemanticOtherChanceEngineV111
             OrderedCandidates = []
         };
         var working = previous.Fork();
+        if (working.Streams.Streams.Length != 1)
+        {
+            var costStream = working.Streams.Streams.Single(stream =>
+                stream.StreamId == CostStreamId);
+            working = working with
+            {
+                Streams = new RngBundle([costStream.Fork()])
+            };
+        }
         var decision = new NativeRandomIndexProviderV111()
             .Resolve(sourceRequest, working.Streams);
         var next = working with
@@ -111,11 +122,23 @@ public static class SemanticOtherChanceEngineV111
             state.Decisions is null)
             throw new InvalidDataException(
                 "Invalid engine-owned non-Nature cost stream ownership.");
-        NativeRunRngV111.ValidateBundle(state.Streams);
-        if (state.Streams.Streams.Count(stream =>
-                stream.StreamId == CostStreamId) != 1)
+        if (state.Streams.Streams is null)
             throw new InvalidDataException(
-                "Engine-owned cost provider must retain one named cost stream.");
+                "Engine-owned cost provider has no stream collection.");
+        if (state.Streams.Streams.Length == 1)
+        {
+            var costStream = state.Streams.Streams[0];
+            if (costStream is null || costStream.StreamId != CostStreamId)
+                throw new InvalidDataException(
+                    "Engine-owned cost provider must own only its named cost stream.");
+            _ = NativeRngV111.ToSnapshot(costStream);
+        }
+        else
+        {
+            // Older snapshots stored a full Native run bundle here. Continue
+            // to accept that shape and compact it on the next cost resolution.
+            NativeRunRngV111.ValidateBundle(state.Streams);
+        }
         var expectedCallCount = checked(
             state.InitialCallCount + (ulong)state.Decisions.Length);
         if (WorkingCostStreamCallCount(state) != expectedCallCount)
