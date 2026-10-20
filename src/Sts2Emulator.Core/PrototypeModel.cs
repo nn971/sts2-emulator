@@ -257,16 +257,34 @@ public sealed record PrototypeCombatCardSnapshot(
     int SuppressedUpgradeLevels = 0,
     int WitherFakeUpgradeLevel = 0)
 {
+    private JsonElement _state = State.Clone();
+    private PrototypeCardKeywordOverride[]? _keywordOverrides =
+        CloneKeywordOverrides(KeywordOverrides);
+
+    public JsonElement State
+    {
+        get => _state.Clone();
+        init => _state = value.Clone();
+    }
+
+    public PrototypeCardKeywordOverride[]? KeywordOverrides
+    {
+        get => CloneKeywordOverrides(_keywordOverrides);
+        init => _keywordOverrides = CloneKeywordOverrides(value);
+    }
+
     public PrototypeCombatCardSnapshot Fork() => this with
     {
-        State = State.Clone(),
+        State = _state,
         TemporaryEnergyCost = TemporaryEnergyCost is null
             ? null
             : TemporaryEnergyCost with { },
-        KeywordOverrides = KeywordOverrides is null
-            ? null
-            : KeywordOverrides.Select(item => item with { }).ToArray()
+        KeywordOverrides = _keywordOverrides
     };
+
+    private static PrototypeCardKeywordOverride[]? CloneKeywordOverrides(
+        PrototypeCardKeywordOverride[]? values) => values?.Select(item =>
+            item is null ? null! : item with { }).ToArray();
 }
 
 public enum PrototypeCardZone
@@ -699,10 +717,21 @@ public sealed record PrototypeKnowledgeDemonChoiceState(
     int EnemyInstanceId, int EnemyTurn, int CurseIndex,
     string[] OptionCardIds)
 {
+    private string[]? _optionCardIds = CloneOptionCardIds(OptionCardIds);
+
+    public string[] OptionCardIds
+    {
+        get => CloneOptionCardIds(_optionCardIds)!;
+        init => _optionCardIds = CloneOptionCardIds(value);
+    }
+
     public PrototypeKnowledgeDemonChoiceState Fork() => this with
     {
-        OptionCardIds = (string[])OptionCardIds.Clone()
+        OptionCardIds = _optionCardIds!
     };
+
+    private static string[]? CloneOptionCardIds(string[]? values) =>
+        values is null ? null : (string[])values.Clone();
 }
 
 public enum PrototypeAutomaticStepKind
