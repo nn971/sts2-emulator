@@ -1,5 +1,15 @@
 namespace Sts2Emulator.Core;
 
+public enum ControlledEnemyActionMechanicsOperationV111
+{
+    DrawPileInsertion,
+    DiscardPileInsertion,
+    TheftCardSelection,
+    SummonPoolSelection,
+    InitialUniqueHp,
+    ToughEggHatchlingHp
+}
+
 /// <summary>
 /// Replay checkpoint for guarded random choices during the enemy action
 /// pipeline. The checkpoint is captured before ResolveEnemyActions and has
@@ -100,13 +110,44 @@ public sealed record PrototypeControlledEnemyActionContinuationV111(
         PrototypeStateInvariants.Validate(Checkpoint);
     }
 
-    public static bool IsEnemyActionSite(string siteId) => siteId is
-        "combat.enemy.discard.random_insert_index" or
-        "combat.enemy.draw.random_insert_index" or
-        "combat.enemy.theft_card.select" or
-        "combat.enemy.summon_pool.select" or
-        NativeCombatRngEntryV111.InitialUniqueHpSiteId or
-        NativeCombatRngEntryV111.ToughEggHatchHpSiteId;
+    public static bool IsEnemyActionSite(string siteId) =>
+        TryGetMechanicsOperation(siteId, out _);
+
+    public static bool TryGetMechanicsOperation(
+        string siteId,
+        out ControlledEnemyActionMechanicsOperationV111 operation)
+    {
+        switch (siteId)
+        {
+            case "combat.enemy.draw.random_insert_index":
+                operation = ControlledEnemyActionMechanicsOperationV111
+                    .DrawPileInsertion;
+                return true;
+            case "combat.enemy.discard.random_insert_index":
+                operation = ControlledEnemyActionMechanicsOperationV111
+                    .DiscardPileInsertion;
+                return true;
+            case "combat.enemy.theft_card.select":
+                operation = ControlledEnemyActionMechanicsOperationV111
+                    .TheftCardSelection;
+                return true;
+            case "combat.enemy.summon_pool.select":
+                operation = ControlledEnemyActionMechanicsOperationV111
+                    .SummonPoolSelection;
+                return true;
+            case NativeCombatRngEntryV111.InitialUniqueHpSiteId:
+                operation = ControlledEnemyActionMechanicsOperationV111
+                    .InitialUniqueHp;
+                return true;
+            case NativeCombatRngEntryV111.ToughEggHatchHpSiteId:
+                operation = ControlledEnemyActionMechanicsOperationV111
+                    .ToughEggHatchlingHp;
+                return true;
+            default:
+                operation = default;
+                return false;
+        }
+    }
 }
 
 internal sealed class ControlledEnemyActionChanceRequiredException(

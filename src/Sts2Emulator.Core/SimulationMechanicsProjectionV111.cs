@@ -10,7 +10,7 @@ public sealed record SimulationMechanicsComparisonV111(
     bool DifferencesTruncated)
 {
     public const string SchemaId =
-        "sts2-v111-simulation-mechanics-comparison-v11";
+        "sts2-v111-simulation-mechanics-comparison-v12";
 
     public bool Equivalent => StringComparer.Ordinal.Equals(
         LeftFingerprint, RightFingerprint);
@@ -38,7 +38,9 @@ public sealed record SimulationMechanicsProjectionV111(
     SimulationAutomaticHandDrawProgressProjectionV111?
         AutomaticHandDrawProgress = null,
     SimulationControlledTurnIntentProgressProjectionV111?
-        ControlledTurnIntentProgress = null);
+        ControlledTurnIntentProgress = null,
+    SimulationControlledEnemyActionProgressProjectionV111?
+        ControlledEnemyActionProgress = null);
 
 /// <summary>
 /// Provider-independent cursor for a pending semantic deck request. The
@@ -67,6 +69,13 @@ public sealed record SimulationAutomaticHandDrawProgressProjectionV111(
 /// mechanics; provider requests and transcript details are omitted.</summary>
 public sealed record SimulationControlledTurnIntentProgressProjectionV111(
     int NextEnemyIndex);
+
+/// <summary>Provider-independent operation and completed-request count for a
+/// suspended enemy-action pipeline. Request identity, support and outcomes
+/// remain provider data.</summary>
+public sealed record SimulationControlledEnemyActionProgressProjectionV111(
+    ControlledEnemyActionMechanicsOperationV111 Operation,
+    int CompletedChoiceCount);
 
 /// <summary>Provider-independent mechanics cursor for a deferred draw-pile
 /// insertion. The eligible pile, candidate support and random request identity
@@ -150,6 +159,8 @@ public static class SimulationMechanicsProjectionEngineV111
             pendingChoiceMechanics = null;
         SimulationControlledTurnIntentProgressProjectionV111?
             controlledTurnIntentProgress = null;
+        SimulationControlledEnemyActionProgressProjectionV111?
+            controlledEnemyActionProgress = null;
         if (combat is not null)
         {
             var pendingChoice = combat.PendingChoice;
@@ -219,6 +230,19 @@ public static class SimulationMechanicsProjectionEngineV111
                     controlledTurnIntentProgress =
                         new SimulationControlledTurnIntentProgressProjectionV111(
                             turnIntents.NextEnemyIndex);
+                if (stochastic.ControlledEnemyAction is { } enemyAction)
+                {
+                    if (!ControlledEnemyActionReplayV111
+                            .TryGetMechanicsOperation(
+                                enemyAction.PendingRequest.SiteId,
+                                out var operation))
+                        throw new InvalidDataException(
+                            "Unsupported controlled enemy-action mechanics operation.");
+                    controlledEnemyActionProgress =
+                        new SimulationControlledEnemyActionProgressProjectionV111(
+                            operation,
+                            enemyAction.Decisions.Length);
+                }
                 if (stochastic.HandDrawProgress is { } drawProgress)
                 {
                     drawProgress.Validate();
@@ -275,7 +299,8 @@ public static class SimulationMechanicsProjectionEngineV111
                     pendingDeck.Purpose, pendingDeck.TopOffset)
                 : null,
             automaticHandDrawProgress,
-            controlledTurnIntentProgress);
+            controlledTurnIntentProgress,
+            controlledEnemyActionProgress);
     }
 
     public static string Fingerprint(RunState run) =>
