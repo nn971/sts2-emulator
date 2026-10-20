@@ -10,7 +10,7 @@ public sealed record SimulationMechanicsComparisonV111(
     bool DifferencesTruncated)
 {
     public const string SchemaId =
-        "sts2-v111-simulation-mechanics-comparison-v13";
+        "sts2-v111-simulation-mechanics-comparison-v14";
 
     public bool Equivalent => StringComparer.Ordinal.Equals(
         LeftFingerprint, RightFingerprint);
@@ -480,22 +480,74 @@ public static class SimulationMechanicsProjectionEngineV111
     }
 
     private static PendingCombatChoiceState? WithoutProviderPayload(
-        PendingCombatChoiceState? pending) => pending is null
+        PendingCombatChoiceState? pending)
+    {
+        if (pending is null) return null;
+        return pending with
+        {
+            Continuation = pending.Continuation
+                .Select(MechanicsOperation).ToArray(),
+            EventDispatchContinuation = MechanicsEventDispatch(
+                pending.EventDispatchContinuation),
+            OuterChoiceContinuation = MechanicsChoiceContinuation(
+                pending.OuterChoiceContinuation),
+            ControlledTarget = null,
+            ControlledGeneration = null,
+            ControlledPotionGeneration = null,
+            ControlledCardTransform = null,
+            ControlledDrawInsertion = null,
+            ControlledPoolShuffle = null,
+            ControlledRandomCost = null,
+            ControlledDrawCost = null,
+            ControlledCardShortlist = null,
+            ControlledRandomPileCard = null,
+            ControlledSemanticDraw = null,
+            SemanticStratagemDrawSelection = false,
+            AutomaticSemanticStratagemDrawSelection = false,
+            StandaloneSemanticDrawHookChoice = false,
+            AutomaticSemanticDrawHookChoice = false
+        };
+    }
+
+    private static PrototypeChoiceResolutionContinuationState?
+        MechanicsChoiceContinuation(
+            PrototypeChoiceResolutionContinuationState? continuation) =>
+        continuation is null
             ? null
-            : pending with
+            : continuation with
             {
-                ControlledTarget = null,
-                ControlledGeneration = null,
-                ControlledPotionGeneration = null,
-                ControlledCardTransform = null,
-                ControlledDrawInsertion = null,
-                ControlledPoolShuffle = null,
-                ControlledRandomCost = null,
-                ControlledDrawCost = null,
-                ControlledCardShortlist = null,
-                ControlledRandomPileCard = null,
-                ControlledSemanticDraw = null
+                Operations = continuation.Operations
+                    .Select(MechanicsOperation).ToArray(),
+                EventDispatchContinuation = MechanicsEventDispatch(
+                    continuation.EventDispatchContinuation),
+                Parent = MechanicsChoiceContinuation(continuation.Parent)
             };
+
+    private static PrototypeEventDispatchContinuationState?
+        MechanicsEventDispatch(
+            PrototypeEventDispatchContinuationState? continuation) =>
+        continuation is null
+            ? null
+            : continuation with
+            {
+                CurrentSubscriber = MechanicsSubscriber(
+                    continuation.CurrentSubscriber),
+                RemainingSubscribers = continuation.RemainingSubscribers
+                    .Select(MechanicsSubscriber).ToArray()
+            };
+
+    private static PrototypeEventSubscriberState MechanicsSubscriber(
+        PrototypeEventSubscriberState subscriber)
+    {
+        var forked = subscriber.Fork();
+        return forked with
+        {
+            Effects = forked.Effects.Select(effect => effect with
+            {
+                GeneratedChoiceUsesNativeCardGenerationRng = false
+            }).ToArray()
+        };
+    }
 
     private static PrototypeQueuedOperation MechanicsOperation(
         PrototypeQueuedOperation operation) => operation with
@@ -503,6 +555,9 @@ public static class SimulationMechanicsProjectionEngineV111
         // The resolver mode is provider policy; the operation and selected
         // mechanics parameters remain part of the comparison.
         GeneratedChoiceUsesNativeCardGenerationRng = false,
+        StandaloneSemanticDrawSegment = false,
+        SemanticStratagemDrawSelection = false,
+        AutomaticSemanticStratagemDrawSelection = false,
         DeferredDrawnCardInstanceIds = operation.DeferredDrawnCardInstanceIds
             is null ? null : (long[])operation.DeferredDrawnCardInstanceIds.Clone()
     };
