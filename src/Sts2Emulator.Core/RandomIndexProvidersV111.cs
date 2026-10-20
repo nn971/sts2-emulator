@@ -14,10 +14,20 @@ public sealed record RandomIndexRequestV111(
     string OperationKind = "choose_index",
     int? BoundedCount = null)
 {
+    private int[] _orderedCandidates =
+        CloneRequired(OrderedCandidates, nameof(OrderedCandidates));
+
+    public int[] OrderedCandidates
+    {
+        get => (int[])_orderedCandidates.Clone();
+        init => _orderedCandidates = CloneRequired(
+            value, nameof(OrderedCandidates));
+    }
+
     // A bounded integer ticket is compact even for very large ranges.
     [JsonIgnore]
     public int SupportCount => OperationKind == "bounded_integer"
-        ? BoundedCount ?? 0 : OrderedCandidates.Length;
+        ? BoundedCount ?? 0 : _orderedCandidates.Length;
 
     public void Validate()
     {
@@ -26,11 +36,11 @@ public sealed record RandomIndexRequestV111(
             || string.IsNullOrWhiteSpace(OwnerId)
             || SourceVersion != "v0.111.0"
             || OperationKind is not ("choose_index" or "bounded_integer")
-            || Ordinal < 0 || OrderedCandidates is null
+            || Ordinal < 0
             || (OperationKind == "choose_index" &&
-                (OrderedCandidates.Length == 0 || BoundedCount is not null))
+                (_orderedCandidates.Length == 0 || BoundedCount is not null))
             || (OperationKind == "bounded_integer" &&
-                (OrderedCandidates.Length != 0 || BoundedCount is null or <= 0)))
+                (_orderedCandidates.Length != 0 || BoundedCount is null or <= 0)))
             throw new ArgumentException("Invalid source-pinned random-choice request.");
 
         if (!StochasticSiteRegistryV111
@@ -82,6 +92,12 @@ public sealed record RandomIndexRequestV111(
             throw new ArgumentException(
                 $"Legacy site '{SiteId}' requires a bounded-integer request.",
                 nameof(OperationKind));
+    }
+
+    private static int[] CloneRequired(int[] values, string parameterName)
+    {
+        ArgumentNullException.ThrowIfNull(values, parameterName);
+        return (int[])values.Clone();
     }
 }
 
@@ -384,6 +400,9 @@ public static class LegacyFisherYatesV111
         ArgumentException.ThrowIfNullOrWhiteSpace(streamId);
         ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
         ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
+        if (!StochasticSiteRegistryV111.IsLegacyFisherYatesSite(siteId))
+            throw new NotSupportedException(
+                $"Legacy Fisher-Yates does not support site '{siteId}'.");
         var controlledEventChoice =
             ControlledChanceGuardV111.Active
             && !ControlledChanceGuardV111.EngineOwnedNativeProviderActive
@@ -411,7 +430,7 @@ public static class LegacyFisherYatesV111
         IRandomIndexProviderV111 provider = controlledEventChoice
             ? new ControlledEventChoiceRandomIndexProviderV111()
             : new LegacyPrototypeRandomIndexProviderV111();
-        return NativeFisherYatesV111.ShuffleInPlace(
+        return NativeFisherYatesV111.ShuffleInPlaceCore(
             values,
             streams,
             provider,

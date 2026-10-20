@@ -1,7 +1,56 @@
 namespace Sts2Emulator.Core;
 
-public sealed record NativeTanxEventAuditV111(
-    RunState State, RandomIndexDecisionV111[] Choices, string ProviderMode);
+public sealed record NativeTanxEventAuditV111
+{
+    private RunState? _state;
+    private RandomIndexDecisionV111[]? _choices;
+
+    [System.Text.Json.Serialization.JsonConstructor]
+    public NativeTanxEventAuditV111(
+        RunState State, RandomIndexDecisionV111[] Choices, string ProviderMode)
+    {
+        _state = State.Fork();
+        _choices = CloneDecisions(Choices);
+        this.ProviderMode = ProviderMode;
+    }
+
+    public RunState State
+    {
+        get => (_state ?? throw new InvalidDataException(
+            "Tanx event audit has no run state.")).Fork();
+        init => _state = value.Fork();
+    }
+
+    public RandomIndexDecisionV111[] Choices
+    {
+        get => CloneDecisions(_choices)!;
+        init => _choices = CloneDecisions(value);
+    }
+
+    public string ProviderMode { get; init; }
+
+    public NativeTanxEventAuditV111 Fork() => this with
+    {
+        State = _state ?? throw new InvalidDataException(
+            "Tanx event audit has no run state."),
+        Choices = _choices!
+    };
+
+    public void Deconstruct(
+        out RunState State, out RandomIndexDecisionV111[] Choices,
+        out string ProviderMode)
+    {
+        State = this.State;
+        Choices = this.Choices;
+        ProviderMode = this.ProviderMode;
+    }
+
+    private static RandomIndexDecisionV111[]? CloneDecisions(
+        RandomIndexDecisionV111[]? values) => values?.Select(decision =>
+            decision is null ? null! :
+                PrototypeControlledEventChoiceContinuationV111
+                    .CloneDecision(decision)).ToArray();
+}
 
 /// <summary>
 /// Source-backed Tanx Ancient offer generation and its named Act 3 entry
@@ -28,7 +77,11 @@ public static class NativeTanxEventV111
         NativeGloryAncientsV111.WarHammerId
     ];
 
-    public static PrototypeEventDefinition Definition { get; } = new(
+    public static PrototypeEventDefinition Definition =>
+        PrototypeDefinitionCopiesV111.CloneEventDefinition(
+            DefinitionValue);
+
+    private static readonly PrototypeEventDefinition DefinitionValue = new(
         EventId,
         "Tanx",
         BaseRelicIds.Append(NativeGloryAncientsV111.TriBoomerangId)

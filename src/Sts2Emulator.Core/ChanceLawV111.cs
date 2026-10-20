@@ -19,10 +19,56 @@ public sealed record StochasticCapabilityManifestV111(
     string[] ProviderModes,
     string[] ReferenceNatureOperations)
 {
+    private string[]? _natureChoiceSiteIds = Clone(NatureChoiceSiteIds);
+    private string[]? _providerModes = Clone(ProviderModes);
+    private string[]? _referenceNatureOperations =
+        Clone(ReferenceNatureOperations);
+    private string[]? _probabilityStatuses =
+        [ChanceLawV111.UnverifiedStatus];
+    private string[]? _scriptedRunActionOperations =
+        Clone(ScriptedRunActionSessionV111.Operations);
+    private string[]? _scriptedRunSessionOperations =
+        Clone(ScriptedRunSessionV111.Operations);
+    private string[]? _semanticNatureChoiceViewOperations =
+        ["nature_choice_observe", "semantic_nature_observe"];
+    private string[]? _semanticNatureChoiceViewSessionKinds =
+    [
+        "semantic_combat", "reference_combat", "run_action",
+        "event_choice", "ancient_offer", "neow_offer", "trash_heap",
+        "tablet_of_truth", "trial", "event_shuffle", "native_event_gold",
+        "native_event_relic",
+        "native_shovel",
+        "endless_conveyor",
+        "merchant", "treasure", "combat_reward", "glory_reflections",
+        "infested_automaton",
+        "punch_off_reward", "punch_off_fight",
+        "map_generation",
+        "controlled_event_choice", "controlled_run_action"
+    ];
+
+    public string[] NatureChoiceSiteIds
+    {
+        get => Clone(_natureChoiceSiteIds)!;
+        init => _natureChoiceSiteIds = Clone(value);
+    }
+    public string[] ProviderModes
+    {
+        get => Clone(_providerModes)!;
+        init => _providerModes = Clone(value);
+    }
+    public string[] ReferenceNatureOperations
+    {
+        get => Clone(_referenceNatureOperations)!;
+        init => _referenceNatureOperations = Clone(value);
+    }
+
     /// <summary>Individual Chance Laws carry one of these statuses. The
     /// legacy ProbabilityStatus field remains the conservative default.</summary>
-    public string[] ProbabilityStatuses { get; init; } =
-        [ChanceLawV111.UnverifiedStatus];
+    public string[] ProbabilityStatuses
+    {
+        get => Clone(_probabilityStatuses)!;
+        init => _probabilityStatuses = Clone(value);
+    }
     public string ReferenceNatureRunActionSessionSchemaId { get; init; } =
         ReferenceNatureRunActionSessionV111.CurrentSchemaId;
     public string ReferenceNatureEventChoiceSessionSchemaId { get; init; } =
@@ -65,30 +111,33 @@ public sealed record StochasticCapabilityManifestV111(
         ReferenceNatureMapGenerationSessionV111.CurrentSchemaId;
     public string ScriptedRunActionSessionSchemaId { get; init; } =
         ScriptedRunActionSessionV111.CurrentSchemaId;
-    public string[] ScriptedRunActionOperations { get; init; } =
-        ScriptedRunActionSessionV111.Operations;
+    public string[] ScriptedRunActionOperations
+    {
+        get => Clone(_scriptedRunActionOperations)!;
+        init => _scriptedRunActionOperations = Clone(value);
+    }
     public string ScriptedRunSessionSchemaId { get; init; } =
         ScriptedRunSessionV111.CurrentSchemaId;
-    public string[] ScriptedRunSessionOperations { get; init; } =
-        ScriptedRunSessionV111.Operations;
+    public string[] ScriptedRunSessionOperations
+    {
+        get => Clone(_scriptedRunSessionOperations)!;
+        init => _scriptedRunSessionOperations = Clone(value);
+    }
     public string SemanticNatureChoiceViewSchemaId { get; init; } =
         SemanticNatureChoiceViewV111.CurrentSchemaId;
-    public string[] SemanticNatureChoiceViewOperations { get; init; } =
-        ["nature_choice_observe", "semantic_nature_observe"];
-    public string[] SemanticNatureChoiceViewSessionKinds { get; init; } =
-    [
-        "semantic_combat", "reference_combat", "run_action",
-        "event_choice", "ancient_offer", "neow_offer", "trash_heap",
-        "tablet_of_truth", "trial", "event_shuffle", "native_event_gold",
-        "native_event_relic",
-        "native_shovel",
-        "endless_conveyor",
-        "merchant", "treasure", "combat_reward", "glory_reflections",
-        "infested_automaton",
-        "punch_off_reward", "punch_off_fight",
-        "map_generation",
-        "controlled_event_choice", "controlled_run_action"
-    ];
+    public string[] SemanticNatureChoiceViewOperations
+    {
+        get => Clone(_semanticNatureChoiceViewOperations)!;
+        init => _semanticNatureChoiceViewOperations = Clone(value);
+    }
+    public string[] SemanticNatureChoiceViewSessionKinds
+    {
+        get => Clone(_semanticNatureChoiceViewSessionKinds)!;
+        init => _semanticNatureChoiceViewSessionKinds = Clone(value);
+    }
+
+    private static string[]? Clone(string[]? values) =>
+        values is null ? null : (string[])values.Clone();
 }
 
 public static class StochasticCapabilitiesV111
@@ -350,10 +399,23 @@ public sealed record ChanceLawV111(
     ChanceLawOutcomeV111[] Outcomes,
     long TotalWeight)
 {
+    private ChanceLawOutcomeV111[]? _outcomes = Clone(Outcomes);
+
+    public ChanceLawOutcomeV111[] Outcomes
+    {
+        get => Clone(_outcomes)!;
+        init => _outcomes = Clone(value);
+    }
+
     public const string CurrentSchemaId = "sts2-v111-chance-law-v1";
     public const string UnverifiedStatus = "UNVERIFIED";
     public const string SourceVerifiedStatus = "SOURCE_VERIFIED";
     public const long NativeSourceGridSize = 1L << 53;
+
+    private static ChanceLawOutcomeV111[]? Clone(
+        ChanceLawOutcomeV111[]? outcomes) => outcomes is null
+        ? null
+        : (ChanceLawOutcomeV111[])outcomes.Clone();
 
     public ChanceLawV111 Fork() => this with
     {
@@ -362,6 +424,7 @@ public sealed record ChanceLawV111(
 
     public void Validate()
     {
+        var outcomes = Outcomes;
         if (SchemaId != CurrentSchemaId ||
             string.IsNullOrWhiteSpace(LawId) ||
             string.IsNullOrWhiteSpace(EventId) ||
@@ -373,12 +436,12 @@ public sealed record ChanceLawV111(
             string.IsNullOrWhiteSpace(ConditioningFingerprint) ||
             ProbabilityStatus is not (UnverifiedStatus or SourceVerifiedStatus) ||
             string.IsNullOrWhiteSpace(ProbabilityProvenance) ||
-            Outcomes is not { Length: > 0 } || TotalWeight <= 0)
+            outcomes is not { Length: > 0 } || TotalWeight <= 0)
             throw new InvalidDataException("Invalid Chance Law envelope.");
 
         var ids = new HashSet<string>(StringComparer.Ordinal);
         long total = 0;
-        foreach (var outcome in Outcomes)
+        foreach (var outcome in outcomes)
         {
             if (outcome is null || string.IsNullOrWhiteSpace(outcome.OutcomeId) ||
                 outcome.Weight <= 0 || !ids.Add(outcome.OutcomeId))
@@ -387,11 +450,11 @@ public sealed record ChanceLawV111(
         }
 
         if (total != TotalWeight ||
-            SupportFingerprint != CanonicalJson.Sha256(Outcomes))
+            SupportFingerprint != CanonicalJson.Sha256(outcomes))
             throw new InvalidDataException(
                 "Chance Law support fingerprint or total weight is inconsistent.");
-        var canonicalDeterministicOutcome = Outcomes.Length == 1 &&
-            Outcomes[0].Weight == 1L;
+        var canonicalDeterministicOutcome = outcomes.Length == 1 &&
+            outcomes[0].Weight == 1L;
         if (ProbabilityStatus == SourceVerifiedStatus &&
             TotalWeight != NativeSourceGridSize &&
             !canonicalDeterministicOutcome)
@@ -6612,7 +6675,22 @@ public sealed record ReferenceNatureRunActionSessionSnapshotV111(
     string SchemaId, string OriginSnapshotJson, GameAction Action,
     string RunSnapshotJson, ReferenceNatureStateV111 InitialNatureState,
     ReferenceNatureStateV111 NatureState,
-    ReferenceNatureDecisionV111[] DecisionTranscript);
+    ReferenceNatureDecisionV111[] DecisionTranscript)
+{
+    private ReferenceNatureDecisionV111[]? _decisionTranscript =
+        Clone(DecisionTranscript);
+
+    public ReferenceNatureDecisionV111[] DecisionTranscript
+    {
+        get => Clone(_decisionTranscript)!;
+        init => _decisionTranscript = Clone(value);
+    }
+
+    private static ReferenceNatureDecisionV111[]? Clone(
+        ReferenceNatureDecisionV111[]? transcript) => transcript is null
+        ? null
+        : (ReferenceNatureDecisionV111[])transcript.Clone();
+}
 
 /// <summary>
 /// Atomic ReferenceNature envelope for existing controlled run-action
@@ -6625,8 +6703,22 @@ public sealed record ReferenceNatureRunActionSessionV111(
     ReferenceNatureStateV111 NatureState,
     ReferenceNatureDecisionV111[] DecisionTranscript)
 {
+    private ReferenceNatureDecisionV111[]? _decisionTranscript =
+        Clone(DecisionTranscript);
+
+    public ReferenceNatureDecisionV111[] DecisionTranscript
+    {
+        get => Clone(_decisionTranscript)!;
+        init => _decisionTranscript = Clone(value);
+    }
+
     public const string CurrentSchemaId =
         "sts2-v111-reference-nature-run-action-session-v1";
+
+    private static ReferenceNatureDecisionV111[]? Clone(
+        ReferenceNatureDecisionV111[]? transcript) => transcript is null
+        ? null
+        : (ReferenceNatureDecisionV111[])transcript.Clone();
 
     [JsonIgnore]
     public string Fingerprint => CanonicalJson.Sha256(this);
@@ -6871,7 +6963,22 @@ public sealed record ReferenceNatureAncientOfferSessionSnapshotV111(
     string SchemaId, string SiteId, string OriginSnapshotJson,
     string RunSnapshotJson, ReferenceNatureStateV111 InitialNatureState,
     ReferenceNatureStateV111 NatureState,
-    ReferenceNatureDecisionV111[] DecisionTranscript);
+    ReferenceNatureDecisionV111[] DecisionTranscript)
+{
+    private ReferenceNatureDecisionV111[]? _decisionTranscript =
+        Clone(DecisionTranscript);
+
+    public ReferenceNatureDecisionV111[] DecisionTranscript
+    {
+        get => Clone(_decisionTranscript)!;
+        init => _decisionTranscript = Clone(value);
+    }
+
+    private static ReferenceNatureDecisionV111[]? Clone(
+        ReferenceNatureDecisionV111[]? transcript) => transcript is null
+        ? null
+        : (ReferenceNatureDecisionV111[])transcript.Clone();
+}
 
 /// <summary>
 /// Atomic ReferenceNature envelope for Ancient offer generation. Individual
@@ -6884,8 +6991,22 @@ public sealed record ReferenceNatureAncientOfferSessionV111(
     ReferenceNatureStateV111 NatureState,
     ReferenceNatureDecisionV111[] DecisionTranscript)
 {
+    private ReferenceNatureDecisionV111[]? _decisionTranscript =
+        Clone(DecisionTranscript);
+
+    public ReferenceNatureDecisionV111[] DecisionTranscript
+    {
+        get => Clone(_decisionTranscript)!;
+        init => _decisionTranscript = Clone(value);
+    }
+
     public const string CurrentSchemaId =
         "sts2-v111-reference-nature-ancient-offer-session-v1";
+
+    private static ReferenceNatureDecisionV111[]? Clone(
+        ReferenceNatureDecisionV111[]? transcript) => transcript is null
+        ? null
+        : (ReferenceNatureDecisionV111[])transcript.Clone();
 
     private const string EventOfferOutcomePrefix = "event_choice:";
 
@@ -7354,7 +7475,22 @@ public sealed record ReferenceNatureControlledEventChoiceSnapshotV111(
     string SchemaId, string OriginSnapshotJson, string ChoiceId,
     string RunSnapshotJson, ReferenceNatureStateV111 InitialNatureState,
     ReferenceNatureStateV111 NatureState,
-    ReferenceNatureControlledEventChoiceStepV111[] Steps);
+    ReferenceNatureControlledEventChoiceStepV111[] Steps)
+{
+    private ReferenceNatureControlledEventChoiceStepV111[]? _steps =
+        Clone(Steps);
+
+    public ReferenceNatureControlledEventChoiceStepV111[] Steps
+    {
+        get => Clone(_steps)!;
+        init => _steps = Clone(value);
+    }
+
+    private static ReferenceNatureControlledEventChoiceStepV111[]? Clone(
+        ReferenceNatureControlledEventChoiceStepV111[]? steps) => steps is null
+        ? null
+        : steps.Select(step => step.Fork()).ToArray();
+}
 
 /// <summary>
 /// Atomic ReferenceNature envelope for controlled event-effect and
@@ -7367,8 +7503,22 @@ public sealed record ReferenceNatureControlledEventChoiceSessionV111(
     ReferenceNatureStateV111 NatureState,
     ReferenceNatureControlledEventChoiceStepV111[] Steps)
 {
+    private ReferenceNatureControlledEventChoiceStepV111[]? _steps =
+        Clone(Steps);
+
+    public ReferenceNatureControlledEventChoiceStepV111[] Steps
+    {
+        get => Clone(_steps)!;
+        init => _steps = Clone(value);
+    }
+
     public const string CurrentSchemaId =
         "sts2-v111-reference-nature-event-choice-session-v1";
+
+    private static ReferenceNatureControlledEventChoiceStepV111[]? Clone(
+        ReferenceNatureControlledEventChoiceStepV111[]? steps) => steps is null
+        ? null
+        : steps.Select(step => step.Fork()).ToArray();
 
     [JsonIgnore]
     public string Fingerprint => CanonicalJson.Sha256(this);

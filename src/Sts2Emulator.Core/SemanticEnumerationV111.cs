@@ -3,11 +3,38 @@ using System.Globalization;
 namespace Sts2Emulator.Core;
 
 public sealed record SemanticEnumeratedOutcomeV111(
-    string OutcomeId, SemanticPilotCombatV111 Child);
+    string OutcomeId, SemanticPilotCombatV111 Child)
+{
+    public SemanticEnumeratedOutcomeV111 Fork() => this with
+    {
+        Child = Child.Fork()
+    };
+}
 
 public sealed record SemanticEnumerationResultV111(
     string SchemaId, string EventKind, string EventId,
-    SemanticEnumeratedOutcomeV111[] Outcomes);
+    SemanticEnumeratedOutcomeV111[] Outcomes)
+{
+    private SemanticEnumeratedOutcomeV111[]? _outcomes =
+        CloneOutcomes(Outcomes);
+
+    public SemanticEnumeratedOutcomeV111[] Outcomes
+    {
+        get => CloneOutcomes(_outcomes)!;
+        init => _outcomes = CloneOutcomes(value);
+    }
+
+    public SemanticEnumerationResultV111 Fork() => this with
+    {
+        Outcomes = _outcomes?.Select(outcome => outcome is null
+            ? null!
+            : outcome.Fork()).ToArray()!
+    };
+
+    private static SemanticEnumeratedOutcomeV111[]? CloneOutcomes(
+        SemanticEnumeratedOutcomeV111[]? outcomes) => outcomes?.Select(
+            outcome => outcome is null ? null! : outcome with { }).ToArray();
+}
 
 /// <summary>
 /// Enumerates one small semantic chance support by resolving each legal

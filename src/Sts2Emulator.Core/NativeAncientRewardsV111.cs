@@ -3,7 +3,37 @@ using System.Text.Json;
 namespace Sts2Emulator.Core;
 
 public sealed record NativeTezcataraOfferAuditV111(
-    RunState State, RandomIndexDecisionV111[] Choices, string ProviderMode);
+    RunState State, RandomIndexDecisionV111[] Choices, string ProviderMode)
+{
+    private RunState? _state = State.Fork();
+    private RandomIndexDecisionV111[]? _choices = CloneDecisions(Choices);
+
+    public RunState State
+    {
+        get => (_state ?? throw new InvalidDataException(
+            "Tezcatara offer audit has no run state.")).Fork();
+        init => _state = value.Fork();
+    }
+
+    public RandomIndexDecisionV111[] Choices
+    {
+        get => CloneDecisions(_choices)!;
+        init => _choices = CloneDecisions(value);
+    }
+
+    public NativeTezcataraOfferAuditV111 Fork() => this with
+    {
+        State = _state ?? throw new InvalidDataException(
+            "Tezcatara offer audit has no run state."),
+        Choices = _choices!
+    };
+
+    private static RandomIndexDecisionV111[]? CloneDecisions(
+        RandomIndexDecisionV111[]? values) => values?.Select(decision =>
+            decision is null ? null! :
+                PrototypeControlledEventChoiceContinuationV111
+                    .CloneDecision(decision)).ToArray();
+}
 
 /// <summary>
 /// Source-backed Tezcatara reward dependencies. Named reward fixtures reuse
@@ -29,7 +59,7 @@ public static class NativeAncientRewardsV111
     public const string GoldenCompassId = "proto.native.ancient.golden_compass";
     public const string ToyBoxId = "proto.native.ancient.toy_box";
 
-    public static PrototypeCardDefinition[] Cards { get; } =
+    private static readonly PrototypeCardDefinition[] CardDefinitions =
     [
         new(BrightestFlameId, "Brightest Flame", 0, PrototypeCardTarget.None,
         [
@@ -44,6 +74,10 @@ public static class NativeAncientRewardsV111
             RewardEligible: false, CanBeGeneratedInCombat: false)
     ];
 
+    public static PrototypeCardDefinition[] Cards => CardDefinitions
+        .Select(PrototypeDefinitionCopiesV111.CloneCardDefinition)
+        .ToArray();
+
     private static PrototypeCombatEffectSpec[] MittensEffects =>
     [
         new(PrototypeCombatEffectKind.ChooseCards, 0,
@@ -53,7 +87,7 @@ public static class NativeAncientRewardsV111
             PowerId: "proto.power.strength")
     ];
 
-    public static PrototypeRelicDefinition[] Relics { get; } =
+    private static readonly PrototypeRelicDefinition[] RelicDefinitions =
     [
         new(VeryHotCocoaId, "Very Hot Cocoa", Triggers:
         [
@@ -84,12 +118,21 @@ public static class NativeAncientRewardsV111
         new(ToyBoxId, "Toy Box")
     ];
 
-    public static PrototypeEventDefinition TezcataraRewardDefinition { get; } =
+    public static PrototypeRelicDefinition[] Relics => RelicDefinitions
+        .Select(PrototypeDefinitionCopiesV111.CloneRelicDefinition)
+        .ToArray();
+
+    private static readonly PrototypeEventDefinition
+        TezcataraRewardDefinitionValue =
         new(TezcataraId, "Tezcatara",
-            Relics.Select(relic => new PrototypeEventChoiceDefinition(
+            RelicDefinitions.Select(relic => new PrototypeEventChoiceDefinition(
                 "take_" + relic.Id, relic.Name,
                 [new(PrototypeRunEffectKind.GainRelic, RelicId: relic.Id)])).ToArray(),
             MinAct: 2, MaxAct: 2, Weight: 0);
+
+    public static PrototypeEventDefinition TezcataraRewardDefinition =>
+        PrototypeDefinitionCopiesV111.CloneEventDefinition(
+            TezcataraRewardDefinitionValue);
 
     public static bool IsOpeningEvent(RunWorldState world) =>
         world.Act == 2 && world.Floor == 0 && world.Map.CurrentNodeId is null

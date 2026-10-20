@@ -74,11 +74,11 @@ public static class PrototypePristineRewardProposal
         var candidate = source.Fork();
         var bytes = new byte[sizeof(ulong)];
         BinaryPrimitives.WriteUInt64LittleEndian(bytes, newInitialState);
-        candidate.Rng.Streams[index] = existing with
+        candidate.Rng.ReplaceStreamAt(index, existing with
         {
             StateBytes = bytes,
             CallCount = 0
-        };
+        });
 
         var result = environment.Step(candidate, publicActionId).State;
         if (result.Phase != RunPhase.Reward)

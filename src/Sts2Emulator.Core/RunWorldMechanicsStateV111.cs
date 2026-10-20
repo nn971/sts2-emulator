@@ -31,4 +31,31 @@ public sealed record RunWorldMechanicsStateV111(
     ActIdentity? ActIdentity = null,
     bool FreedRepy = false,
     long? LastCombatEndDecisionIndex = null,
-    PrototypeCustomRewardReturnState? CustomRewardReturn = null);
+    PrototypeCustomRewardReturnState? CustomRewardReturn = null)
+{
+    private string[]? _encounterHistory = Clone(EncounterHistory);
+    private string[]? _eventHistory = Clone(EventHistory);
+    private PrototypeCompletedRoomRecord[]? _completedRoomHistory =
+        Clone(CompletedRoomHistory);
+
+    public string[]? EncounterHistory
+    {
+        get => Clone(_encounterHistory);
+        init => _encounterHistory = Clone(value);
+    }
+
+    public string[]? EventHistory
+    {
+        get => Clone(_eventHistory);
+        init => _eventHistory = Clone(value);
+    }
+
+    public PrototypeCompletedRoomRecord[]? CompletedRoomHistory
+    {
+        get => Clone(_completedRoomHistory);
+        init => _completedRoomHistory = Clone(value);
+    }
+
+    private static T[]? Clone<T>(T[]? values) =>
+        values is null ? null : (T[])values.Clone();
+}

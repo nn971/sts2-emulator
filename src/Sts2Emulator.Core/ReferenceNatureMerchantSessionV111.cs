@@ -24,7 +24,48 @@ public sealed record ReferenceNatureMerchantSessionSnapshotV111(
     ControlledStochasticDecisionV111[] ProviderDecisions,
     ReferenceNatureMerchantLawDecisionV111[] DecisionTranscript,
     ControlledStochasticRequestV111? PendingRequest,
-    string[]? PendingCandidateLabels);
+    string[]? PendingCandidateLabels)
+{
+    private ControlledStochasticDecisionV111[]? _providerDecisions =
+        ReferenceNatureSessionValueCopiesV111.CopyProviderDecisions(
+            ProviderDecisions);
+    private ReferenceNatureMerchantLawDecisionV111[]? _decisionTranscript =
+        ReferenceNatureSessionValueCopiesV111.CopyArray(DecisionTranscript);
+    private ControlledStochasticRequestV111? _pendingRequest =
+        ReferenceNatureSessionValueCopiesV111.CopyRequest(PendingRequest);
+    private string[]? _pendingCandidateLabels =
+        ReferenceNatureSessionValueCopiesV111.CopyArray(
+            PendingCandidateLabels);
+
+    public ControlledStochasticDecisionV111[] ProviderDecisions
+    {
+        get => ReferenceNatureSessionValueCopiesV111
+            .CopyProviderDecisions(_providerDecisions)!;
+        init => _providerDecisions = ReferenceNatureSessionValueCopiesV111
+            .CopyProviderDecisions(value);
+    }
+    public ReferenceNatureMerchantLawDecisionV111[] DecisionTranscript
+    {
+        get => ReferenceNatureSessionValueCopiesV111
+            .CopyArray(_decisionTranscript)!;
+        init => _decisionTranscript = ReferenceNatureSessionValueCopiesV111
+            .CopyArray(value);
+    }
+    public ControlledStochasticRequestV111? PendingRequest
+    {
+        get => ReferenceNatureSessionValueCopiesV111.CopyRequest(
+            _pendingRequest);
+        init => _pendingRequest =
+            ReferenceNatureSessionValueCopiesV111.CopyRequest(value);
+    }
+    public string[]? PendingCandidateLabels
+    {
+        get => ReferenceNatureSessionValueCopiesV111
+            .CopyArray(_pendingCandidateLabels);
+        init => _pendingCandidateLabels = ReferenceNatureSessionValueCopiesV111
+            .CopyArray(value);
+    }
+}
 
 /// <summary>
 /// Atomic configured Native Shop entry and supported purchase boundaries
@@ -41,6 +82,46 @@ public sealed record ReferenceNatureMerchantSessionV111(
     ControlledStochasticRequestV111? PendingRequest,
     string[]? PendingCandidateLabels)
 {
+    private ControlledStochasticDecisionV111[]? _providerDecisions =
+        ReferenceNatureSessionValueCopiesV111.CopyProviderDecisions(
+            ProviderDecisions);
+    private ReferenceNatureMerchantLawDecisionV111[]? _decisionTranscript =
+        ReferenceNatureSessionValueCopiesV111.CopyArray(DecisionTranscript);
+    private ControlledStochasticRequestV111? _pendingRequest =
+        ReferenceNatureSessionValueCopiesV111.CopyRequest(PendingRequest);
+    private string[]? _pendingCandidateLabels =
+        ReferenceNatureSessionValueCopiesV111.CopyArray(
+            PendingCandidateLabels);
+
+    public ControlledStochasticDecisionV111[] ProviderDecisions
+    {
+        get => ReferenceNatureSessionValueCopiesV111
+            .CopyProviderDecisions(_providerDecisions)!;
+        init => _providerDecisions = ReferenceNatureSessionValueCopiesV111
+            .CopyProviderDecisions(value);
+    }
+    public ReferenceNatureMerchantLawDecisionV111[] DecisionTranscript
+    {
+        get => ReferenceNatureSessionValueCopiesV111
+            .CopyArray(_decisionTranscript)!;
+        init => _decisionTranscript = ReferenceNatureSessionValueCopiesV111
+            .CopyArray(value);
+    }
+    public ControlledStochasticRequestV111? PendingRequest
+    {
+        get => ReferenceNatureSessionValueCopiesV111.CopyRequest(
+            _pendingRequest);
+        init => _pendingRequest =
+            ReferenceNatureSessionValueCopiesV111.CopyRequest(value);
+    }
+    public string[]? PendingCandidateLabels
+    {
+        get => ReferenceNatureSessionValueCopiesV111
+            .CopyArray(_pendingCandidateLabels);
+        init => _pendingCandidateLabels = ReferenceNatureSessionValueCopiesV111
+            .CopyArray(value);
+    }
+
     public const string CurrentSchemaId =
         "sts2-v111-reference-nature-merchant-session-v1";
 
@@ -181,6 +262,10 @@ public sealed record ReferenceNatureMerchantSessionV111(
                  pendingLabels.Any(string.IsNullOrWhiteSpace)))
                 throw new InvalidDataException(
                     "Invalid ReferenceNature merchant pending candidate labels.");
+            if (StochasticSiteRegistryV111.IsRunActionShopPurchaseSite(
+                    pendingRequest.SiteId))
+                ValidateRegisteredPurchaseIndexSupport(
+                    pendingRequest, PendingCandidateLabels);
         }
         else if (PendingCandidateLabels is not null)
         {
@@ -426,8 +511,47 @@ public sealed record ReferenceNatureMerchantSessionV111(
             return ChanceLawEngineV111.QueryNativeMerchantNoEffectUnitFloat(
                 source, request.UnitFloatRequest!);
 
+        if (StochasticSiteRegistryV111.IsRunActionShopPurchaseSite(siteId) &&
+            request.IndexRequest is { } purchaseIndexRequest)
+        {
+            var purchaseCandidateLabels =
+                ValidateRegisteredPurchaseIndexSupport(
+                    request, candidateLabels);
+
+            var eventId = CanonicalJson.Sha256(new
+            {
+                SchemaId = CurrentSchemaId,
+                MechanicsBoundary = SimulationMechanicsProjectionEngineV111
+                    .Fingerprint(source),
+                ActionFingerprint = PrototypeAiEnvironment.StableActionId(action),
+                RequestFingerprint = CanonicalJson.Sha256(
+                    purchaseIndexRequest),
+                CandidateLabels = purchaseCandidateLabels,
+                PriorPrefix = prefix.Select(decision =>
+                    CanonicalJson.Sha256(decision)).ToArray()
+            });
+            return ChanceLawEngineV111.QueryRandomIndex(
+                eventId, purchaseIndexRequest);
+        }
+
         throw new NotSupportedException(
             $"ReferenceNature merchant replay does not support stochastic site '{siteId}'.");
+    }
+
+    private static string[] ValidateRegisteredPurchaseIndexSupport(
+        ControlledStochasticRequestV111 request, string[]? candidateLabels)
+    {
+        if (!StochasticSiteRegistryV111.IsRunActionShopPurchaseSite(
+                request.SiteId) || request.IndexRequest is not { } indexRequest ||
+            !ControlledRunActionEngineV111.IsSupportedShopPurchaseStream(
+                indexRequest) ||
+            candidateLabels is not { } labels ||
+            labels.Length != indexRequest.SupportCount ||
+            labels.Any(string.IsNullOrWhiteSpace) ||
+            labels.Distinct(StringComparer.Ordinal).Count() != labels.Length)
+            throw new InvalidDataException(
+                "Registered Shop-purchase index request lost its distinct ordered support labels.");
+        return labels;
     }
 
     private static ControlledStochasticContinuationResultV111 Replay(

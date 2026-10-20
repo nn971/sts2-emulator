@@ -7,7 +7,7 @@ namespace Sts2Emulator.Core;
 /// </summary>
 public static class PrototypeNativeUnderdocksEvents
 {
-    public static string[] NativeRegionEventIds { get; } =
+    private static readonly string[] NativeRegionEventIdValues =
     [
         PrototypeNativeBrainLeech.EventId,
         PrototypeNativeSelfHelpBook.EventId,
@@ -24,7 +24,7 @@ public static class PrototypeNativeUnderdocksEvents
         PrototypeNativeSharedEvents.ThisOrThatId
     ];
 
-    public static string[] SupportedRegionEventIds { get; } =
+    private static readonly string[] SupportedRegionEventIdValues =
     [
         PrototypeNativeBrainLeech.EventId,
         PrototypeNativeSelfHelpBook.EventId,
@@ -40,6 +40,12 @@ public static class PrototypeNativeUnderdocksEvents
         "proto.native.underdocks.sunken_statue",
         PrototypeNativeSharedEvents.ThisOrThatId
     ];
+
+    public static string[] NativeRegionEventIds =>
+        (string[])NativeRegionEventIdValues.Clone();
+
+    public static string[] SupportedRegionEventIds =>
+        (string[])SupportedRegionEventIdValues.Clone();
 
     /// <summary>
     /// Each native event supplies its own eligibility when it has
@@ -71,7 +77,11 @@ public static class PrototypeNativeUnderdocksEvents
         StringComparer.Ordinal.Equals(
             eventId, "proto.native.underdocks.waterlogged_scriptorium");
 
-    public static PrototypeEventDefinition[] Definitions { get; } =
+    public static PrototypeEventDefinition[] Definitions => EventDefinitions
+        .Select(PrototypeDefinitionCopiesV111.CloneEventDefinition)
+        .ToArray();
+
+    private static readonly PrototypeEventDefinition[] EventDefinitions =
     [
         // Specialized handlers resolve the native staged choices and
         // source-ordered weighted/random items.

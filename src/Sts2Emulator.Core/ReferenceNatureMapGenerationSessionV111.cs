@@ -13,7 +13,43 @@ public sealed record ReferenceNatureMapGenerationSessionSnapshotV111(
     ControlledStochasticDecisionV111[] Decisions,
     ReferenceNatureDecisionV111[] DecisionTranscript,
     ControlledStochasticRequestV111? PendingRequest,
-    MapState? Map);
+    MapState? Map)
+{
+    private ControlledStochasticDecisionV111[]? _decisions =
+        ReferenceNatureSessionValueCopiesV111.CopyProviderDecisions(Decisions);
+    private ReferenceNatureDecisionV111[]? _decisionTranscript =
+        ReferenceNatureSessionValueCopiesV111.CopyArray(DecisionTranscript);
+    private ControlledStochasticRequestV111? _pendingRequest =
+        ReferenceNatureSessionValueCopiesV111.CopyRequest(PendingRequest);
+    private MapState? _map = Map?.Fork();
+
+    public ControlledStochasticDecisionV111[] Decisions
+    {
+        get => ReferenceNatureSessionValueCopiesV111
+            .CopyProviderDecisions(_decisions)!;
+        init => _decisions = ReferenceNatureSessionValueCopiesV111
+            .CopyProviderDecisions(value);
+    }
+    public ReferenceNatureDecisionV111[] DecisionTranscript
+    {
+        get => ReferenceNatureSessionValueCopiesV111
+            .CopyArray(_decisionTranscript)!;
+        init => _decisionTranscript = ReferenceNatureSessionValueCopiesV111
+            .CopyArray(value);
+    }
+    public ControlledStochasticRequestV111? PendingRequest
+    {
+        get => ReferenceNatureSessionValueCopiesV111.CopyRequest(
+            _pendingRequest);
+        init => _pendingRequest =
+            ReferenceNatureSessionValueCopiesV111.CopyRequest(value);
+    }
+    public MapState? Map
+    {
+        get => _map?.Fork();
+        init => _map = value?.Fork();
+    }
+}
 
 /// <summary>
 /// Optional atomic ReferenceNature map-generation continuation for the
@@ -32,6 +68,41 @@ public sealed record ReferenceNatureMapGenerationSessionV111(
     ControlledStochasticRequestV111? PendingRequest,
     MapState? Map)
 {
+    private ControlledStochasticDecisionV111[]? _decisions =
+        ReferenceNatureSessionValueCopiesV111.CopyProviderDecisions(Decisions);
+    private ReferenceNatureDecisionV111[]? _decisionTranscript =
+        ReferenceNatureSessionValueCopiesV111.CopyArray(DecisionTranscript);
+    private ControlledStochasticRequestV111? _pendingRequest =
+        ReferenceNatureSessionValueCopiesV111.CopyRequest(PendingRequest);
+    private MapState? _map = Map?.Fork();
+
+    public ControlledStochasticDecisionV111[] Decisions
+    {
+        get => ReferenceNatureSessionValueCopiesV111
+            .CopyProviderDecisions(_decisions)!;
+        init => _decisions = ReferenceNatureSessionValueCopiesV111
+            .CopyProviderDecisions(value);
+    }
+    public ReferenceNatureDecisionV111[] DecisionTranscript
+    {
+        get => ReferenceNatureSessionValueCopiesV111
+            .CopyArray(_decisionTranscript)!;
+        init => _decisionTranscript = ReferenceNatureSessionValueCopiesV111
+            .CopyArray(value);
+    }
+    public ControlledStochasticRequestV111? PendingRequest
+    {
+        get => ReferenceNatureSessionValueCopiesV111.CopyRequest(
+            _pendingRequest);
+        init => _pendingRequest =
+            ReferenceNatureSessionValueCopiesV111.CopyRequest(value);
+    }
+    public MapState? Map
+    {
+        get => _map?.Fork();
+        init => _map = value?.Fork();
+    }
+
     public const string CurrentSchemaId =
         "sts2-v111-reference-nature-map-generation-session-v1";
 

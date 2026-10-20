@@ -15,7 +15,11 @@ public static class PrototypeNativeGloryWeak
     public const string TurretOperatorId =
         "proto.native.glory.turret_operator";
 
-    public static PrototypePowerDefinition[] Powers { get; } =
+    public static PrototypePowerDefinition[] Powers => PowerDefinitions
+        .Select(PrototypeDefinitionCopiesV111.ClonePowerDefinition)
+        .ToArray();
+
+    private static readonly PrototypePowerDefinition[] PowerDefinitions =
     [
         // Native RampartPower.AfterSideTurnStart on PLAYER side:
         // grant 25 unpowered Block to each living Turret Operator.
@@ -25,7 +29,11 @@ public static class PrototypeNativeGloryWeak
             AllyBlockTargetEnemyId: TurretOperatorId)
     ];
 
-    public static PrototypeEnemyDefinition[] Enemies { get; } =
+    public static PrototypeEnemyDefinition[] Enemies => EnemyDefinitions
+        .Select(PrototypeDefinitionCopiesV111.CloneEnemyDefinition)
+        .ToArray();
+
+    private static readonly PrototypeEnemyDefinition[] EnemyDefinitions =
     [
         // LivingShield.cs: opener Shield Slam. While a living ally
         // remains, keep slamming; once alone, Smash forever and gain
@@ -63,7 +71,12 @@ public static class PrototypeNativeGloryWeak
         ]))
     ];
 
-    public static PrototypeEncounterDefinition[] Encounters { get; } =
+    public static PrototypeEncounterDefinition[] Encounters =>
+        EncounterDefinitions
+            .Select(PrototypeDefinitionCopiesV111.CloneEncounterDefinition)
+            .ToArray();
+
+    private static readonly PrototypeEncounterDefinition[] EncounterDefinitions =
     [
         new(TurretOperatorWeakId, PrototypeRoomType.Combat,
             [LivingShieldId, TurretOperatorId],

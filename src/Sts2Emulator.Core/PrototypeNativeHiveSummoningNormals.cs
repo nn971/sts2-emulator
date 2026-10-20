@@ -22,7 +22,11 @@ public static class PrototypeNativeHiveSummoningNormals
     private static readonly string[] EggSlots =
         ["egg1", "egg2", "egg3", "egg4", "egg5"];
 
-    public static PrototypePowerDefinition[] Powers { get; } =
+    public static PrototypePowerDefinition[] Powers => PowerDefinitions
+        .Select(PrototypeDefinitionCopiesV111.ClonePowerDefinition)
+        .ToArray();
+
+    private static readonly PrototypePowerDefinition[] PowerDefinitions =
     [
         // Eggs laid during the enemy turn have 2 Hatch on spawn.
         // The summoning side-turn end decrements to 1 before next intent.
@@ -30,7 +34,11 @@ public static class PrototypeNativeHiveSummoningNormals
             EnemyStacksDecayAtSideTurnEnd: 1)
     ];
 
-    public static PrototypeEnemyDefinition[] Enemies { get; } =
+    public static PrototypeEnemyDefinition[] Enemies => EnemyDefinitions
+        .Select(PrototypeDefinitionCopiesV111.CloneEnemyDefinition)
+        .ToArray();
+
+    private static readonly PrototypeEnemyDefinition[] EnemyDefinitions =
     [
         // Ovicopter.cs: Lay 3 -> Smash -> Tenderizer ->
         // (Lay if <=3 living teammates, otherwise Paste) -> Smash.
@@ -172,7 +180,12 @@ public static class PrototypeNativeHiveSummoningNormals
             RevivesOnEnemyTurn: true)
     ];
 
-    public static PrototypeEncounterDefinition[] Encounters { get; } =
+    public static PrototypeEncounterDefinition[] Encounters =>
+        EncounterDefinitions
+            .Select(PrototypeDefinitionCopiesV111.CloneEncounterDefinition)
+            .ToArray();
+
+    private static readonly PrototypeEncounterDefinition[] EncounterDefinitions =
     [
         new(OvicopterNormalId, PrototypeRoomType.Combat,
             [OvicopterId], MinAct: 2, MaxAct: 2, Weight: 0,

@@ -38,7 +38,10 @@ public static class PrototypeNativeFakeMerchant
     public const string ThrowPotionAction = "throw_foul_potion_at_fake_merchant";
     public const int RelicCost = 50;
 
-    public static string[] StockRelicIds { get; } =
+    public static string[] StockRelicIds =>
+        (string[])StockRelicIdValues.Clone();
+
+    private static readonly string[] StockRelicIdValues =
     [
         FakeAnchorId,
         FakeBloodVialId,
@@ -51,10 +54,14 @@ public static class PrototypeNativeFakeMerchant
         FakeTeaSetId
     ];
 
-    public static PrototypeEventDefinition Definition { get; } = new(
+    public static PrototypeEventDefinition Definition =>
+        PrototypeDefinitionCopiesV111.CloneEventDefinition(
+            EventDefinitionValue);
+
+    private static readonly PrototypeEventDefinition EventDefinitionValue = new(
         EventId,
         "Fake Merchant",
-        StockRelicIds.Select(id => new PrototypeEventChoiceDefinition(
+        StockRelicIdValues.Select(id => new PrototypeEventChoiceDefinition(
             ChoiceId(id),
             "Buy " + RelicDisplayName(id),
             [
@@ -66,7 +73,11 @@ public static class PrototypeNativeFakeMerchant
         MaxAct: 3,
         Weight: 0);
 
-    public static PrototypeRelicDefinition[] Relics { get; } =
+    public static PrototypeRelicDefinition[] Relics => RelicDefinitions
+        .Select(PrototypeDefinitionCopiesV111.CloneRelicDefinition)
+        .ToArray();
+
+    private static readonly PrototypeRelicDefinition[] RelicDefinitions =
     [
         new(FakeAnchorId, "Fake Anchor", Triggers:
         [
@@ -114,14 +125,22 @@ public static class PrototypeNativeFakeMerchant
         new(RugId, "Fake Merchant's Rug")
     ];
 
-    public static PrototypePowerDefinition[] Powers { get; } =
+    public static PrototypePowerDefinition[] Powers => PowerDefinitions
+        .Select(PrototypeDefinitionCopiesV111.ClonePowerDefinition)
+        .ToArray();
+
+    private static readonly PrototypePowerDefinition[] PowerDefinitions =
     [
         new(FakeStrikeDummyPowerId, "Strike Dummy", 0, [],
             AttackDamageBonusRequiredCardTag: "Strike",
             AttackDamageBonusPerStack: 1)
     ];
 
-    public static PrototypeEnemyDefinition[] Enemies { get; } =
+    public static PrototypeEnemyDefinition[] Enemies => EnemyDefinitions
+        .Select(PrototypeDefinitionCopiesV111.CloneEnemyDefinition)
+        .ToArray();
+
+    private static readonly PrototypeEnemyDefinition[] EnemyDefinitions =
     [
         new(MonsterId, "Fake Merchant", 165, 0,
         [
@@ -176,7 +195,11 @@ public static class PrototypeNativeFakeMerchant
         ]))
     ];
 
-    public static PrototypeEncounterDefinition Encounter { get; } = new(
+    public static PrototypeEncounterDefinition Encounter =>
+        PrototypeDefinitionCopiesV111.CloneEncounterDefinition(
+            EncounterDefinitionValue);
+
+    private static readonly PrototypeEncounterDefinition EncounterDefinitionValue = new(
         EncounterId,
         PrototypeRoomType.Combat,
         [MonsterId],
@@ -185,8 +208,11 @@ public static class PrototypeNativeFakeMerchant
         Weight: 0,
         Formation: [new(MonsterId, 0, "merchant")]);
 
-    public static PrototypeEncounterDefinition[] Encounters { get; } =
-        [Encounter];
+    public static PrototypeEncounterDefinition[] Encounters =>
+    [
+        PrototypeDefinitionCopiesV111.CloneEncounterDefinition(
+            EncounterDefinitionValue)
+    ];
 
     public static string ChoiceId(string relicId) => "buy_" + relicId;
 

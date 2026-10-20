@@ -101,7 +101,11 @@ public static class PrototypeNativeGloryEvents
                     PrototypeCardEnchantmentKind.SoulsPower, false)));
 
 
-    public static PrototypeCardDefinition[] Cards { get; } =
+    public static PrototypeCardDefinition[] Cards => CardDefinitions
+        .Select(PrototypeDefinitionCopiesV111.CloneCardDefinition)
+        .ToArray();
+
+    private static readonly PrototypeCardDefinition[] CardDefinitions =
     [
         // The single native MadScience model persists its selected
         // Type/Rider inside CardInstance.PersistentState. Runtime card
@@ -133,7 +137,11 @@ public static class PrototypeNativeGloryEvents
             EndTurnDamageIfInHand: 13, EndTurnDamageUnblockable: true)
     ];
 
-    public static PrototypeRelicDefinition[] Relics { get; } =
+    public static PrototypeRelicDefinition[] Relics => RelicDefinitions
+        .Select(PrototypeDefinitionCopiesV111.CloneRelicDefinition)
+        .ToArray();
+
+    private static readonly PrototypeRelicDefinition[] RelicDefinitions =
     [
         // BigMushroom.AfterObtained grants 20 Max HP (also heals
         // 20), then ModifyHandDraw subtracts two on turn one only.
@@ -152,7 +160,11 @@ public static class PrototypeNativeGloryEvents
         new(TeaOfDiscourtesyId, "Tea of Discourtesy")
     ];
 
-    public static PrototypeEventDefinition[] Events { get; } =
+    public static PrototypeEventDefinition[] Events => EventDefinitions
+        .Select(PrototypeDefinitionCopiesV111.CloneEventDefinition)
+        .ToArray();
+
+    private static readonly PrototypeEventDefinition[] EventDefinitions =
     [
         NativeTanxEventV111.Definition,
         NativeVakuuEventV111.Definition,
@@ -238,7 +250,11 @@ public static class PrototypeNativeGloryEvents
 
     // Native Battleworn Time Limit counts down after the enemy side
     // ends, starting at three. Expiry escapes and yields no prizes.
-    public static PrototypePowerDefinition[] Powers { get; } =
+    public static PrototypePowerDefinition[] Powers => PowerDefinitions
+        .Select(PrototypeDefinitionCopiesV111.ClonePowerDefinition)
+        .ToArray();
+
+    private static readonly PrototypePowerDefinition[] PowerDefinitions =
     [
         new(BattlewornTimeLimitId, "Battleworn Dummy Time Limit",
             0, [], EnemyStacksDecayAtSideTurnEnd: 1),
@@ -246,7 +262,11 @@ public static class PrototypeNativeGloryEvents
         new(ImprovementId, "Improvement", 0, []) 
     ];
 
-    public static PrototypeEnemyDefinition[] Enemies { get; } =
+    public static PrototypeEnemyDefinition[] Enemies => EnemyDefinitions
+        .Select(PrototypeDefinitionCopiesV111.CloneEnemyDefinition)
+        .ToArray();
+
+    private static readonly PrototypeEnemyDefinition[] EnemyDefinitions =
     [
         Dummy(BattleFriendV1Id, "Battle Friend V1", 75),
         Dummy(BattleFriendV2Id, "Battle Friend V2", 150),
@@ -258,7 +278,12 @@ public static class PrototypeNativeGloryEvents
         [new("nothing", [])],
         StartingPowers: [new(BattlewornTimeLimitId, 3)]);
 
-    public static PrototypeEncounterDefinition[] Encounters { get; } =
+    public static PrototypeEncounterDefinition[] Encounters =>
+        EncounterDefinitions
+            .Select(PrototypeDefinitionCopiesV111.CloneEncounterDefinition)
+            .ToArray();
+
+    private static readonly PrototypeEncounterDefinition[] EncounterDefinitions =
     [
         new(BattlewornV1EncounterId, PrototypeRoomType.Combat,
             [BattleFriendV1Id], MinAct: 3, MaxAct: 3, Weight: 0),

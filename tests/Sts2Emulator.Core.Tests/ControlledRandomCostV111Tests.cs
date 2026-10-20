@@ -105,8 +105,32 @@ public sealed class ControlledRandomCostV111Tests
         var state = Start("nature-cost-tamper",
             PrototypeCombatEffectKind.RandomizeHandCardEnergyCostsUntilTurnEndOrPlayed, 3);
         var altered = state.Fork();
-        altered.Run.World!.Combat!.PendingChoice!.ControlledRandomCost!
-            .EligibleCardInstanceIds[0] = -99;
+        var alteredRun = altered.Run;
+        var alteredWorld = alteredRun.World!;
+        var alteredCombat = alteredWorld.Combat!;
+        var alteredPending = alteredCombat.PendingChoice!;
+        var alteredCost = alteredPending.ControlledRandomCost!;
+        var alteredEligible = alteredCost.EligibleCardInstanceIds;
+        alteredEligible[0] = -99;
+        altered = altered with
+        {
+            Run = alteredRun with
+            {
+                World = alteredWorld with
+                {
+                    Combat = alteredCombat with
+                    {
+                        PendingChoice = alteredPending with
+                        {
+                            ControlledRandomCost = alteredCost with
+                            {
+                                EligibleCardInstanceIds = alteredEligible
+                            }
+                        }
+                    }
+                }
+            }
+        };
         Assert.Throws<InvalidDataException>(() =>
             ControlledPlayableCombatEngineV111.VerifyStage(altered));
         var badCursor = state.Fork();

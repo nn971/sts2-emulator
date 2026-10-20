@@ -13,7 +13,47 @@ public sealed record NativePotionModelSelectionAuditV111(
     RandomIndexDecisionV111[] Choices,
     RandomUnitFloatDecisionV111[] RarityRolls,
     string IndexProviderMode,
-    string FloatProviderMode);
+    string FloatProviderMode)
+{
+    private string[]? _potionIds = Clone(PotionIds);
+    private RandomIndexDecisionV111[]? _choices = CloneDecisions(Choices);
+    private RandomUnitFloatDecisionV111[]? _rarityRolls = Clone(RarityRolls);
+
+    public string[] PotionIds
+    {
+        get => Clone(_potionIds)!;
+        init => _potionIds = Clone(value);
+    }
+
+    public RandomIndexDecisionV111[] Choices
+    {
+        get => CloneDecisions(_choices)!;
+        init => _choices = CloneDecisions(value);
+    }
+
+    public RandomUnitFloatDecisionV111[] RarityRolls
+    {
+        get => Clone(_rarityRolls)!;
+        init => _rarityRolls = Clone(value);
+    }
+
+    public NativePotionModelSelectionAuditV111 Fork() => this with
+    {
+        PotionIds = _potionIds!,
+        Choices = _choices!,
+        RarityRolls = _rarityRolls!
+    };
+
+    private static T[]? Clone<T>(T[]? values) => values is null
+        ? null
+        : (T[])values.Clone();
+
+    private static RandomIndexDecisionV111[]? CloneDecisions(
+        RandomIndexDecisionV111[]? values) => values?.Select(decision =>
+            decision is null ? null! :
+                PrototypeControlledEventChoiceContinuationV111
+                    .CloneDecision(decision)).ToArray();
+}
 
 /// <summary>
 /// Pinned v0.111.0 rarity and merchant price rules for the supported
@@ -299,8 +339,10 @@ public static class PrototypeNativePotionShop
             selected.Add(potionId);
             remaining.Remove(potionId);
         }
-        for (var streamIndex = 0; streamIndex < rng.Streams.Length; streamIndex++)
-            rng.Streams[streamIndex] = workingRng.Streams[streamIndex].Fork();
+        var initialStreams = rng.Streams;
+        var workingStreams = workingRng.Streams;
+        for (var streamIndex = 0; streamIndex < initialStreams.Length; streamIndex++)
+            rng.ReplaceStreamAt(streamIndex, workingStreams[streamIndex].Fork());
         return new NativePotionModelSelectionAuditV111(
             selected.ToArray(), choices.ToArray(), rarityRolls.ToArray(),
             effectiveIndexProvider.Mode, effectiveFloatProvider.Mode);

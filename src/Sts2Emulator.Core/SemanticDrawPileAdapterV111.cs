@@ -447,6 +447,41 @@ public static class SemanticDrawPileAdapterV111
     }
 
     /// <summary>
+    /// Moves existing physical card identities between combat zones and
+    /// commits any draw-pile constraint change with the zone transition.
+    /// The optional destination index uses the destination zone's physical
+    /// ordering; for DrawPile it is bottom-first. The moved identity order is
+    /// preserved at that position.
+    /// </summary>
+    public static CombatState ApplyCardZoneMove(
+        CombatState combat,
+        PrototypeCardZone sourceZone,
+        PrototypeCardZone destinationZone,
+        IReadOnlyCollection<long> cardInstanceIds,
+        int? destinationIndex = null,
+        bool publiclyKnown = false)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(cardInstanceIds);
+        var moved = cardInstanceIds.ToArray();
+        var nextCardZones = combat.Mechanics.CardZones.MoveCards(
+            sourceZone, destinationZone, moved, destinationIndex);
+
+        if (destinationZone == PrototypeCardZone.DrawPile)
+            return ApplyDrawPileInsertionSequence(
+                combat,
+                destinationIndex ?? combat.DrawPile.Length,
+                moved,
+                nextCardZones,
+                publiclyKnown);
+
+        if (sourceZone == PrototypeCardZone.DrawPile)
+            return ApplyDrawPileRemoval(combat, moved, nextCardZones);
+
+        return ApplyZoneTransition(combat, nextCardZones);
+    }
+
+    /// <summary>
     /// Commits a non-draw-pile transition with explicitly declared physical
     /// card additions and removals. All other identities must remain present
     /// exactly once across the six combat card zones.
@@ -1049,13 +1084,9 @@ public static class SemanticDrawPileAdapterV111
                 card.InstanceId == id)))
             throw new InvalidDataException(
                 "Card-zone commit has an invalid combat-card identity transition.");
-        var next = combat with
+        var next = combat.CommitSemanticDrawPileTransition(
+            nextCardZones, committedSemanticDeck) with
         {
-            Mechanics = combat.Mechanics with
-            {
-                CardZones = nextCardZones
-            },
-            SemanticDeck = committedSemanticDeck,
             Cards = removedCardIds.Count == 0 && addedCards.Length == 0
                 ? combat.Cards
                 : combat.Cards.Where(card =>

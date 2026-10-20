@@ -35,7 +35,11 @@ public static class PrototypeNativeHiveKnowledgeDemonChoice
                 "Curse of Knowledge has precisely three selectable sets.")
         };
 
-    public static PrototypeCardDefinition[] Cards { get; } =
+    public static PrototypeCardDefinition[] Cards => CardDefinitions
+        .Select(PrototypeDefinitionCopiesV111.CloneCardDefinition)
+        .ToArray();
+
+    private static readonly PrototypeCardDefinition[] CardDefinitions =
     [
         new(DisintegrationCardId, "Disintegration", -1,
             PrototypeCardTarget.None, [], Rarity: PrototypeCardRarity.Status,
@@ -59,7 +63,11 @@ public static class PrototypeNativeHiveKnowledgeDemonChoice
             MaxUpgradeLevel: 0)
     ];
 
-    public static PrototypePowerDefinition[] Powers { get; } =
+    public static PrototypePowerDefinition[] Powers => PowerDefinitions
+        .Select(PrototypeDefinitionCopiesV111.ClonePowerDefinition)
+        .ToArray();
+
+    private static readonly PrototypePowerDefinition[] PowerDefinitions =
     [
         new(DisintegrationPowerId, "Disintegration", 0, [], IsDebuff: true),
         new(MindRotPowerId, "Mind Rot", 0, [], IsDebuff: true,

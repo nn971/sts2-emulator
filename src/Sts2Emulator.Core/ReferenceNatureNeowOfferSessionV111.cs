@@ -174,7 +174,19 @@ public sealed record ReferenceNatureNeowOfferSessionSnapshotV111(
     string RunSnapshotJson,
     ReferenceNatureStateV111 InitialNatureState,
     ReferenceNatureStateV111 NatureState,
-    ReferenceNatureDecisionV111[] DecisionTranscript);
+    ReferenceNatureDecisionV111[] DecisionTranscript)
+{
+    private ReferenceNatureDecisionV111[]? _decisionTranscript =
+        ReferenceNatureSessionValueCopiesV111.CopyArray(DecisionTranscript);
+
+    public ReferenceNatureDecisionV111[] DecisionTranscript
+    {
+        get => ReferenceNatureSessionValueCopiesV111
+            .CopyArray(_decisionTranscript)!;
+        init => _decisionTranscript = ReferenceNatureSessionValueCopiesV111
+            .CopyArray(value);
+    }
+}
 
 /// <summary>Atomic ReferenceNature continuation for the existing Act 1 Neow
 /// offer generator. The ordinary run and sampler cursor publish together only
@@ -187,6 +199,17 @@ public sealed record ReferenceNatureNeowOfferSessionV111(
     ReferenceNatureStateV111 NatureState,
     ReferenceNatureDecisionV111[] DecisionTranscript)
 {
+    private ReferenceNatureDecisionV111[]? _decisionTranscript =
+        ReferenceNatureSessionValueCopiesV111.CopyArray(DecisionTranscript);
+
+    public ReferenceNatureDecisionV111[] DecisionTranscript
+    {
+        get => ReferenceNatureSessionValueCopiesV111
+            .CopyArray(_decisionTranscript)!;
+        init => _decisionTranscript = ReferenceNatureSessionValueCopiesV111
+            .CopyArray(value);
+    }
+
     public const string CurrentSchemaId =
         "sts2-v111-reference-nature-neow-offer-session-v1";
 

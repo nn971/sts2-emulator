@@ -25,7 +25,11 @@ public static class PrototypeNativeHiveBosses
     public const string SandpitId = "proto.native.hive.sandpit";
     public const string FranticEscapeId = "proto.native.hive.frantic_escape";
 
-    public static PrototypePowerDefinition[] Powers { get; } =
+    public static PrototypePowerDefinition[] Powers => PowerDefinitions
+        .Select(PrototypeDefinitionCopiesV111.ClonePowerDefinition)
+        .ToArray();
+
+    private static readonly PrototypePowerDefinition[] PowerDefinitions =
     [
         new(BackLeftId, "Back Attack Left", 0, [], DoesNotStack: true),
         new(BackRightId, "Back Attack Right", 0, [], DoesNotStack: true),
@@ -41,7 +45,11 @@ public static class PrototypeNativeHiveBosses
             EnemyStacksDecayAtSideTurnStartAfterFirst: 1)
     ];
 
-    public static PrototypeCardDefinition[] Cards { get; } =
+    public static PrototypeCardDefinition[] Cards => CardDefinitions
+        .Select(PrototypeDefinitionCopiesV111.CloneCardDefinition)
+        .ToArray();
+
+    private static readonly PrototypeCardDefinition[] CardDefinitions =
     [
         new(FranticEscapeId, "Frantic Escape", 1,
             PrototypeCardTarget.None, [],
@@ -49,7 +57,11 @@ public static class PrototypeNativeHiveBosses
             RewardEligible: false, MaxUpgradeLevel: 0)
     ];
 
-    public static PrototypeEnemyDefinition[] Enemies { get; } =
+    public static PrototypeEnemyDefinition[] Enemies => EnemyDefinitions
+        .Select(PrototypeDefinitionCopiesV111.CloneEnemyDefinition)
+        .ToArray();
+
+    private static readonly PrototypeEnemyDefinition[] EnemyDefinitions =
     [
         // Crusher: Thrash -> Enlarging Strike -> Bug Sting ->
         // Adapt -> Guarded Strike -> repeat. Crab Rage fires once when
@@ -179,7 +191,12 @@ public static class PrototypeNativeHiveBosses
         HpAscensionDeltas: [new(8, 20)])
     ];
 
-    public static PrototypeEncounterDefinition[] Encounters { get; } =
+    public static PrototypeEncounterDefinition[] Encounters =>
+        EncounterDefinitions
+            .Select(PrototypeDefinitionCopiesV111.CloneEncounterDefinition)
+            .ToArray();
+
+    private static readonly PrototypeEncounterDefinition[] EncounterDefinitions =
     [
         new(KaiserEncounterId, PrototypeRoomType.Boss,
             [CrusherId, RocketId], MinAct: 2, MaxAct: 2, Weight: 0,

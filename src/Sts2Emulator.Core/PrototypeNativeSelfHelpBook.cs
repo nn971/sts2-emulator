@@ -13,7 +13,11 @@ public static class PrototypeNativeSelfHelpBook
     public const string SwiftChoiceId = "read_entire_book";
     public const string NoOptionsChoiceId = "no_options";
 
-    public static PrototypeEventDefinition Definition { get; } = new(
+    public static PrototypeEventDefinition Definition =>
+        PrototypeDefinitionCopiesV111.CloneEventDefinition(
+            DefinitionValue);
+
+    private static readonly PrototypeEventDefinition DefinitionValue = new(
         EventId,
         "Self-Help Book",
         [

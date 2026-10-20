@@ -18,6 +18,22 @@ public sealed record ControlledInitialHpStateV111(
     RandomIndexRequestV111? Pending,
     string Mode = "controlled-v111-initial-hp-v1")
 {
+    private RandomIndexDecisionV111[] _transcript =
+        CloneTranscript(Transcript);
+    private RandomIndexRequestV111? _pending = CloneRequest(Pending);
+
+    public RandomIndexDecisionV111[] Transcript
+    {
+        get => CloneTranscript(_transcript);
+        init => _transcript = CloneTranscript(value);
+    }
+
+    public RandomIndexRequestV111? Pending
+    {
+        get => CloneRequest(_pending);
+        init => _pending = CloneRequest(value);
+    }
+
     [JsonIgnore]
     public bool Complete => Pending is null;
 
@@ -26,21 +42,32 @@ public sealed record ControlledInitialHpStateV111(
         Combat = Combat.Fork(),
         Formation = Formation.Fork(),
         ReferenceStreams = ReferenceStreams.Fork(),
-        Transcript = Transcript.Select(d => d with
-        {
-            Request = d.Request with
-            {
-                OrderedCandidates = (int[])d.Request.OrderedCandidates.Clone()
-            }
-        }).ToArray(),
-        Pending = Pending is null ? null : Pending with
-        {
-            OrderedCandidates = (int[])Pending.OrderedCandidates.Clone()
-        }
+        Transcript = _transcript,
+        Pending = _pending
     };
 
     [JsonIgnore]
     public string Fingerprint => CanonicalJson.Sha256(this);
+
+    private static RandomIndexDecisionV111[] CloneTranscript(
+        RandomIndexDecisionV111[] decisions)
+    {
+        ArgumentNullException.ThrowIfNull(decisions);
+        return decisions.Select(decision => decision with
+        {
+            Request = CloneRequest(decision.Request)!
+        }).ToArray();
+    }
+
+    private static RandomIndexRequestV111? CloneRequest(
+        RandomIndexRequestV111? request) =>
+        request is null
+            ? null
+            : request with
+            {
+                OrderedCandidates =
+                    (int[])request.OrderedCandidates.Clone()
+            };
 }
 
 public static class ControlledInitialHpV111

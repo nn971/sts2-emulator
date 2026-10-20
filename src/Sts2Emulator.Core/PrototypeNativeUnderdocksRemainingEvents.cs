@@ -17,7 +17,11 @@ public static class PrototypeNativeEndlessConveyor
         "event.endless_conveyor.colorless_card.index_draw";
     public const string FeedingFrenzyId = "proto.native.underdocks.feeding_frenzy";
 
-    public static PrototypeCardDefinition[] EventCards { get; } =
+    public static PrototypeCardDefinition[] EventCards => EventCardDefinitions
+        .Select(PrototypeDefinitionCopiesV111.CloneCardDefinition)
+        .ToArray();
+
+    private static readonly PrototypeCardDefinition[] EventCardDefinitions =
     [
         new(
             FeedingFrenzyId,
@@ -231,7 +235,11 @@ public static class PrototypeNativePunchOff
     public const string PotionRewardSiteId =
         "event.punch_off.potion_reward.index_draw";
 
-    public static PrototypeEncounterDefinition Encounter { get; } = new(
+    public static PrototypeEncounterDefinition Encounter =>
+        PrototypeDefinitionCopiesV111.CloneEncounterDefinition(
+            EncounterDefinitionValue);
+
+    private static readonly PrototypeEncounterDefinition EncounterDefinitionValue = new(
         EncounterId,
         PrototypeRoomType.Combat,
         ["proto.enemy.punch_construct", "proto.enemy.punch_construct"],

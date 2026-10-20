@@ -8,7 +8,19 @@ public sealed record ReferenceNatureNativeEventGoldSessionSnapshotV111(
     string OriginSnapshotJson, string RunSnapshotJson,
     ReferenceNatureStateV111 InitialNatureState,
     ReferenceNatureStateV111 NatureState,
-    ReferenceNatureDecisionV111[] DecisionTranscript);
+    ReferenceNatureDecisionV111[] DecisionTranscript)
+{
+    private ReferenceNatureDecisionV111[]? _decisionTranscript =
+        ReferenceNatureSessionValueCopiesV111.CopyArray(DecisionTranscript);
+
+    public ReferenceNatureDecisionV111[] DecisionTranscript
+    {
+        get => ReferenceNatureSessionValueCopiesV111
+            .CopyArray(_decisionTranscript)!;
+        init => _decisionTranscript = ReferenceNatureSessionValueCopiesV111
+            .CopyArray(value);
+    }
+}
 
 /// <summary>
 /// Atomic ReferenceNature replay for supported Native Event-node entry draws.
@@ -20,6 +32,17 @@ public sealed record ReferenceNatureNativeEventGoldSessionV111(
     ReferenceNatureStateV111 NatureState,
     ReferenceNatureDecisionV111[] DecisionTranscript)
 {
+    private ReferenceNatureDecisionV111[]? _decisionTranscript =
+        ReferenceNatureSessionValueCopiesV111.CopyArray(DecisionTranscript);
+
+    public ReferenceNatureDecisionV111[] DecisionTranscript
+    {
+        get => ReferenceNatureSessionValueCopiesV111
+            .CopyArray(_decisionTranscript)!;
+        init => _decisionTranscript = ReferenceNatureSessionValueCopiesV111
+            .CopyArray(value);
+    }
+
     public const string CurrentSchemaId =
         "sts2-v111-reference-nature-native-event-gold-session-v1";
     private const string GoldUnitFloatSiteId =

@@ -21,6 +21,30 @@ public sealed record ControlledIntentStateV111(
     string Mode = "controlled-v111-committed-intent-v1",
     RandomIndexDecisionV111[]? PriorHpTranscript = null)
 {
+    private RandomIndexDecisionV111[] _transcript =
+        CloneTranscript(Transcript);
+    private RandomIndexRequestV111? _pending = CloneRequest(Pending);
+    private RandomIndexDecisionV111[]? _priorHpTranscript =
+        CloneOptionalTranscript(PriorHpTranscript);
+
+    public RandomIndexDecisionV111[] Transcript
+    {
+        get => CloneTranscript(_transcript);
+        init => _transcript = CloneTranscript(value);
+    }
+
+    public RandomIndexRequestV111? Pending
+    {
+        get => CloneRequest(_pending);
+        init => _pending = CloneRequest(value);
+    }
+
+    public RandomIndexDecisionV111[]? PriorHpTranscript
+    {
+        get => CloneOptionalTranscript(_priorHpTranscript);
+        init => _priorHpTranscript = CloneOptionalTranscript(value);
+    }
+
     [JsonIgnore]
     public bool Complete => Pending is null;
 
@@ -33,25 +57,34 @@ public sealed record ControlledIntentStateV111(
         Combat = Combat.Fork(),
         Formation = Formation.Fork(),
         ReferenceStreams = ReferenceStreams.Fork(),
-        PriorHpTranscript = PriorHpTranscript?.Select(d => d with
-        {
-            Request = d.Request with
-            {
-                OrderedCandidates = (int[])d.Request.OrderedCandidates.Clone()
-            }
-        }).ToArray(),
-        Transcript = Transcript.Select(d => d with
-        {
-            Request = d.Request with
-            {
-                OrderedCandidates = (int[])d.Request.OrderedCandidates.Clone()
-            }
-        }).ToArray(),
-        Pending = Pending is null ? null : Pending with
-        {
-            OrderedCandidates = (int[])Pending.OrderedCandidates.Clone()
-        }
+        PriorHpTranscript = _priorHpTranscript,
+        Transcript = _transcript,
+        Pending = _pending
     };
+
+    private static RandomIndexDecisionV111[] CloneTranscript(
+        RandomIndexDecisionV111[] decisions)
+    {
+        ArgumentNullException.ThrowIfNull(decisions);
+        return decisions.Select(decision => decision with
+        {
+            Request = CloneRequest(decision.Request)!
+        }).ToArray();
+    }
+
+    private static RandomIndexDecisionV111[]? CloneOptionalTranscript(
+        RandomIndexDecisionV111[]? decisions) =>
+        decisions is null ? null : CloneTranscript(decisions);
+
+    private static RandomIndexRequestV111? CloneRequest(
+        RandomIndexRequestV111? request) =>
+        request is null
+            ? null
+            : request with
+            {
+                OrderedCandidates =
+                    (int[])request.OrderedCandidates.Clone()
+            };
 }
 
 public static class ControlledIntentsV111

@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Sts2Emulator.Core;
 
 /// <summary>
@@ -17,12 +19,44 @@ public enum PrototypeRelicBagOrderMode
     NatureUnordered
 }
 
-public sealed record PrototypeRelicBagState(
-    string[] Common,
-    string[] Uncommon,
-    string[] Rare,
-    string[] Shop)
+public sealed record PrototypeRelicBagState
 {
+    private string[] _common;
+    private string[] _uncommon;
+    private string[] _rare;
+    private string[] _shop;
+
+    [JsonConstructor]
+    public PrototypeRelicBagState(
+        string[] Common, string[] Uncommon, string[] Rare, string[] Shop)
+    {
+        _common = CloneRequired(Common, nameof(Common));
+        _uncommon = CloneRequired(Uncommon, nameof(Uncommon));
+        _rare = CloneRequired(Rare, nameof(Rare));
+        _shop = CloneRequired(Shop, nameof(Shop));
+    }
+
+    public string[] Common
+    {
+        get => (string[])_common.Clone();
+        init => _common = CloneRequired(value, nameof(Common));
+    }
+    public string[] Uncommon
+    {
+        get => (string[])_uncommon.Clone();
+        init => _uncommon = CloneRequired(value, nameof(Uncommon));
+    }
+    public string[] Rare
+    {
+        get => (string[])_rare.Clone();
+        init => _rare = CloneRequired(value, nameof(Rare));
+    }
+    public string[] Shop
+    {
+        get => (string[])_shop.Clone();
+        init => _shop = CloneRequired(value, nameof(Shop));
+    }
+
     // Native snapshots retain their existing shape. Nature snapshots carry
     // this optional discriminator so sorted identity sets cannot be mistaken
     // for committed queue order after a restore.
@@ -32,14 +66,30 @@ public sealed record PrototypeRelicBagState(
 
     public PrototypeRelicBagState Fork() => this with
     {
-        Common = (string[])Common.Clone(),
-        Uncommon = (string[])Uncommon.Clone(),
-        Rare = (string[])Rare.Clone(),
-        Shop = (string[])Shop.Clone()
+        Common = _common,
+        Uncommon = _uncommon,
+        Rare = _rare,
+        Shop = _shop
     };
+
+    public void Deconstruct(
+        out string[] Common, out string[] Uncommon,
+        out string[] Rare, out string[] Shop)
+    {
+        Common = this.Common;
+        Uncommon = this.Uncommon;
+        Rare = this.Rare;
+        Shop = this.Shop;
+    }
 
     public string[] Remaining =>
         Common.Concat(Uncommon).Concat(Rare).Concat(Shop).ToArray();
+
+    private static string[] CloneRequired(string[] values, string parameterName)
+    {
+        ArgumentNullException.ThrowIfNull(values, parameterName);
+        return (string[])values.Clone();
+    }
 }
 
 public static class PrototypeNativeRelicGrabBag
@@ -304,10 +354,51 @@ public static class PrototypeNativeRelicGrabBag
 
 /// <summary>Source fallback result before the queue's hidden identity order is
 /// resolved. CandidateIds preserve the committed queue order for Native.</summary>
-public sealed record PrototypeRelicBagPullPlanV111(
-    PrototypeRelicRarity RequestedRarity,
-    PrototypeRelicRarity? SelectedTier,
-    string[] CandidateIds);
+public sealed record PrototypeRelicBagPullPlanV111
+{
+    private string[] _candidateIds;
+
+    [System.Text.Json.Serialization.JsonConstructor]
+    public PrototypeRelicBagPullPlanV111(
+        PrototypeRelicRarity RequestedRarity,
+        PrototypeRelicRarity? SelectedTier,
+        string[] CandidateIds)
+    {
+        this.RequestedRarity = RequestedRarity;
+        this.SelectedTier = SelectedTier;
+        _candidateIds = CloneRequired(CandidateIds);
+    }
+
+    public PrototypeRelicRarity RequestedRarity { get; init; }
+    public PrototypeRelicRarity? SelectedTier { get; init; }
+
+    public string[] CandidateIds
+    {
+        get => (string[])_candidateIds.Clone();
+        init => _candidateIds = CloneRequired(value);
+    }
+
+    public PrototypeRelicBagPullPlanV111 Fork() => this with
+    {
+        CandidateIds = _candidateIds
+    };
+
+    public void Deconstruct(
+        out PrototypeRelicRarity RequestedRarity,
+        out PrototypeRelicRarity? SelectedTier,
+        out string[] CandidateIds)
+    {
+        RequestedRarity = this.RequestedRarity;
+        SelectedTier = this.SelectedTier;
+        CandidateIds = this.CandidateIds;
+    }
+
+    private static string[] CloneRequired(string[] values)
+    {
+        ArgumentNullException.ThrowIfNull(values);
+        return (string[])values.Clone();
+    }
+}
 
     /// <summary>
     /// MerchantRelicEntry.CalcCost uses Shops.NextFloat(0.85, 1.15)

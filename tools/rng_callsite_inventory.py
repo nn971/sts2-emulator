@@ -21,7 +21,7 @@ from urllib.parse import unquote, urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 SOURCE_ROOT = ROOT / "src" / "Sts2Emulator.Core"
-SCHEMA_ID = "emulator-rng-callsite-source-inventory-v37"
+SCHEMA_ID = "emulator-rng-callsite-source-inventory-v38"
 SITE_REGISTRY_PATH = SOURCE_ROOT / "StochasticSiteRegistryV111.cs"
 
 CALL_PATTERN = re.compile(
@@ -206,6 +206,93 @@ def _validated_native_shuffle_site_values(
         global_constants,
     )
     return sorted(values) if values and not unresolved else []
+
+
+def _validated_shared_shuffle_core_site_values(
+    path: Path,
+    source: str,
+    construction_start: int,
+    expression: str | None,
+    sources: dict[Path, str],
+    global_constants: dict[str, set[str]],
+) -> list[str]:
+    """Resolve the shared swap request through both finite wrapper guards."""
+    if (path.name != "NativeFisherYatesV111.cs" or
+            re.sub(r"\s+", "", expression or "") != "siteId" or
+            re.search(
+                r"\binternal\s+static\s+RandomIndexDecisionV111\[\]\s+"
+                r"ShuffleInPlaceCore\s*<",
+                _containing_member_source(source, construction_start),
+            ) is None):
+        return []
+
+    native_path = SOURCE_ROOT / "NativeFisherYatesV111.cs"
+    legacy_path = SOURCE_ROOT / "RandomIndexProvidersV111.cs"
+    native_source = sources.get(native_path, "")
+    legacy_source = sources.get(legacy_path, "")
+    core_calls: dict[Path, list[re.Match[str]]] = {}
+    for candidate_path, candidate_source in sources.items():
+        for match in re.finditer(r"\bShuffleInPlaceCore\s*\(",
+                                 candidate_source):
+            arguments = _call_arguments(candidate_source, match.start())
+            if (len(arguments) > 5 and
+                    re.sub(r"\s+", "", arguments[5]) == "siteId"):
+                core_calls.setdefault(candidate_path, []).append(match)
+    if (set(core_calls) != {native_path, legacy_path} or
+            len(core_calls[native_path]) != 1 or
+            len(core_calls[legacy_path]) != 1):
+        return []
+
+    native_caller = _containing_member_source(
+        native_source, core_calls[native_path][0].start()
+    )
+    if re.search(
+        r"ValidateSiteId\s*\(\s*siteId\s*,\s*"
+        r"StochasticSiteRegistryV111\s*\.\s*"
+        r"NativeFisherYatesSiteIds\s*,\s*\"shuffle\"\s*\)",
+        native_caller,
+    ) is None:
+        return []
+
+    legacy_caller = _containing_member_source(
+        legacy_source, core_calls[legacy_path][0].start()
+    )
+    if re.search(
+        r"if\s*\(\s*!\s*StochasticSiteRegistryV111\s*\.\s*"
+        r"IsLegacyFisherYatesSite\s*\(\s*siteId\s*\)\s*\)\s*"
+        r"throw\s+new\s+NotSupportedException",
+        legacy_caller,
+    ) is None:
+        return []
+
+    registry_source = sources.get(SITE_REGISTRY_PATH, "")
+    legacy_set = re.search(
+        r"private\s+static\s+readonly\s+string\[\]\s+"
+        r"LegacyFisherYatesSites\s*=\s*"
+        r"NativeFisherYatesSites\s*\.\s*Concat\s*\(\s*new\[\]\s*"
+        r"\{(?P<legacy_only>.*?)\}\s*\)\s*\.\s*Distinct\s*\(\s*"
+        r"StringComparer\s*\.\s*Ordinal\s*\)\s*\.\s*ToArray\s*\(\s*\)",
+        registry_source,
+        re.DOTALL,
+    )
+    legacy_property = re.search(
+        r"public\s+static\s+string\[\]\s+LegacyFisherYatesSiteIds\s*"
+        r"=>\s*\(string\[\]\)LegacyFisherYatesSites\.Clone\(\)",
+        registry_source,
+    )
+    native_values = _validated_native_shuffle_site_values(
+        sources, "siteId", global_constants
+    )
+    if legacy_set is None or legacy_property is None or not native_values:
+        return []
+    legacy_only_values = {
+        match.group("value")
+        for match in STRING_LITERAL_PATTERN.finditer(
+            legacy_set.group("legacy_only")
+        )
+    }
+    values = set(native_values) | legacy_only_values
+    return sorted(values) if set(native_values).issubset(values) else []
 
 
 def _string_constants(source: str) -> dict[str, set[str]]:
@@ -1694,6 +1781,15 @@ def _typed_request_constructions(
                         if "IsLegacyRandomChoiceSite" in member_source
                         else "method_fail_closed_validation"
                     )
+            if not values:
+                values = _validated_shared_shuffle_core_site_values(
+                    path, source, match.start(), expression,
+                    sources, global_constants,
+                )
+                if values:
+                    resolution_source = (
+                        "shared_shuffle_core_finite_registry"
+                    )
             value = values[0] if len(values) == 1 else None
             registry_misses = [
                 item for item in values if item not in registry_site_ids
@@ -1726,6 +1822,7 @@ def _typed_request_constructions(
                     if resolution_source in (
                         "method_fail_closed_validation",
                         "registry_dictionary_guard",
+                        "shared_shuffle_core_finite_registry",
                     )
                     else "static_site_id" if len(values) == 1
                     else "finite_site_id_alternatives"
@@ -1977,10 +2074,13 @@ def collect() -> dict[str, Any]:
             "expression, and registry/matrix resolution status. The static "
             "operation locator does not resolve forwarded caller values on its "
             "own. Runtime request validation checks operation kinds against the "
-            "32 legacy caller-bound declarations and the registry's Native "
+            "32 legacy caller-bound declarations, the registry's finite legacy "
+            "Fisher-Yates site set, and its Native "
             "bounded-index and Fisher-Yates site sets; the low-level Native "
             "shuffle call is resolved through its fail-closed registry set, "
-            "while generic forwarded values outside those declarations remain unresolved. "
+            "and the shared Native/legacy Fisher-Yates core request resolves "
+            "only when both wrapper guards and core callers are present; "
+            "generic forwarded values outside those declarations remain unresolved. "
             "The site-matrix report shows registry-to-ledger and ledger-to-registry "
             "differences, unique ledger IDs, and explicit reference-law status. "
             "Unregistered ledger rows are informational because legacy and conditional "

@@ -266,7 +266,19 @@ public sealed record ReferenceNaturePunchOffRewardSessionSnapshotV111(
     string SchemaId, string OriginSnapshotJson, string ActionId,
     string RunSnapshotJson, ReferenceNatureStateV111 InitialNatureState,
     ReferenceNatureStateV111 NatureState,
-    ReferenceNatureDecisionV111[] DecisionTranscript);
+    ReferenceNatureDecisionV111[] DecisionTranscript)
+{
+    private ReferenceNatureDecisionV111[]? _decisionTranscript =
+        ReferenceNatureSessionValueCopiesV111.CopyArray(DecisionTranscript);
+
+    public ReferenceNatureDecisionV111[] DecisionTranscript
+    {
+        get => ReferenceNatureSessionValueCopiesV111
+            .CopyArray(_decisionTranscript)!;
+        init => _decisionTranscript = ReferenceNatureSessionValueCopiesV111
+            .CopyArray(value);
+    }
+}
 
 /// <summary>Atomic Nature sampling for the two independent Punch Off fight
 /// rewards, resolved by one immediate winning combat action.</summary>
@@ -276,6 +288,17 @@ public sealed record ReferenceNaturePunchOffRewardSessionV111(
     ReferenceNatureStateV111 NatureState,
     ReferenceNatureDecisionV111[] DecisionTranscript)
 {
+    private ReferenceNatureDecisionV111[]? _decisionTranscript =
+        ReferenceNatureSessionValueCopiesV111.CopyArray(DecisionTranscript);
+
+    public ReferenceNatureDecisionV111[] DecisionTranscript
+    {
+        get => ReferenceNatureSessionValueCopiesV111
+            .CopyArray(_decisionTranscript)!;
+        init => _decisionTranscript = ReferenceNatureSessionValueCopiesV111
+            .CopyArray(value);
+    }
+
     public const string CurrentSchemaId =
         "sts2-v111-reference-nature-punch-off-reward-session-v1";
 

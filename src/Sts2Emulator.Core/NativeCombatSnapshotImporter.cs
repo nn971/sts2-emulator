@@ -34,7 +34,10 @@ public sealed record NativeCombatImportResult(
 /// </summary>
 public static class NativeCombatSnapshotImporter
 {
-    public static readonly string[] RequiredVisibleFields =
+    public static string[] RequiredVisibleFields =>
+        (string[])RequiredVisibleFieldValues.Clone();
+
+    private static readonly string[] RequiredVisibleFieldValues =
     [
         "$.player.hp", "$.player.max_hp", "$.player.block", "$.player.powers",
         "$.combat.energy", "$.combat.max_energy", "$.combat.turn",
@@ -42,7 +45,10 @@ public static class NativeCombatSnapshotImporter
         "$.combat.discard_pile", "$.combat.exhaust_pile"
     ];
 
-    public static readonly string[] RequiredContinuationFields =
+    public static string[] RequiredContinuationFields =>
+        (string[])RequiredContinuationFieldValues.Clone();
+
+    private static readonly string[] RequiredContinuationFieldValues =
     [
         "$.combat.pending_effects", "$.combat.move_history",
         "$.combat.hidden_card_state", "$.combat.relic_continuation",
@@ -52,6 +58,8 @@ public static class NativeCombatSnapshotImporter
     public static NativeCombatImportResult Import(
         JsonElement state, IReadOnlyCollection<string>? declaredVerifiedFields = null)
     {
+        var requiredVisibleFields = RequiredVisibleFieldValues;
+        var requiredContinuationFields = RequiredContinuationFieldValues;
         var diagnostics = new List<string>();
         var missing = new List<string>();
         HashSet<string> verified = declaredVerifiedFields is null
@@ -60,15 +68,15 @@ public static class NativeCombatSnapshotImporter
 
         // A present field is only structurally parsed. It becomes verified
         // after an independent native and emulator adapter audit.
-        foreach (string path in RequiredVisibleFields)
+        foreach (string path in requiredVisibleFields)
             if (!PathPresent(state, path))
                 missing.Add(path);
 
         if (missing.Count > 0)
             return new NativeCombatImportResult("UNSUPPORTED", null, missing.ToArray(),
                 ["Required canonical scalar/zone fields are absent"],
-                RequiredVisibleFields.Where(verified.Contains).ToArray(),
-                RequiredContinuationFields, false);
+                requiredVisibleFields.Where(verified.Contains).ToArray(),
+                (string[])requiredContinuationFields.Clone(), false);
 
         try
         {
@@ -100,23 +108,23 @@ public static class NativeCombatSnapshotImporter
 
             if (diagnostics.Count > 0)
                 return new NativeCombatImportResult("UNSUPPORTED", null, [],
-                    diagnostics.ToArray(), RequiredVisibleFields.Where(verified.Contains).ToArray(),
-                    RequiredContinuationFields, false);
+                    diagnostics.ToArray(), requiredVisibleFields.Where(verified.Contains).ToArray(),
+                    (string[])requiredContinuationFields.Clone(), false);
 
             var snapshot = new NativeCombatSnapshot(
                 hp, maxHp, block, energy, maxEnergy, turn,
                 creatures, hand, draw, discard, exhaust,
                 player.GetProperty("powers").Clone(), state.Clone());
-            string[] continuationMissing = RequiredContinuationFields
+            string[] continuationMissing = requiredContinuationFields
                 .Where(path => !PathPresent(state, path) || !verified.Contains(path))
                 .ToArray();
-            string[] unverified = RequiredVisibleFields.Where(path => !verified.Contains(path)).ToArray();
+            string[] unverified = requiredVisibleFields.Where(path => !verified.Contains(path)).ToArray();
 
             return new NativeCombatImportResult("PARTIAL", snapshot, [],
                 unverified.Length > 0
                     ? ["Visible state structurally imported; native field coverage remains unaudited"]
                     : ["Visible state structurally imported; deterministic continuation remains unverified"],
-                RequiredVisibleFields.Where(verified.Contains).ToArray(),
+                requiredVisibleFields.Where(verified.Contains).ToArray(),
                 continuationMissing, false);
         }
         catch (Exception e) when (e is JsonException or FormatException
@@ -125,8 +133,8 @@ public static class NativeCombatSnapshotImporter
         {
             return new NativeCombatImportResult("UNSUPPORTED", null, [],
                 ["Malformed canonical native snapshot: " + e.GetType().Name],
-                RequiredVisibleFields.Where(verified.Contains).ToArray(),
-                RequiredContinuationFields, false);
+                requiredVisibleFields.Where(verified.Contains).ToArray(),
+                (string[])requiredContinuationFields.Clone(), false);
         }
     }
 

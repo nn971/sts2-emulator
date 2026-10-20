@@ -225,13 +225,46 @@ public sealed class SemanticPersistentPlayerActionV111Tests
                     .LegalActions.Single(a => a.Kind == "end_turn").ActionId));
         Assert.Equal(old, CanonicalJson.Sha256(run));
         var tampered = run.Fork();
-        tampered.World!.Combat!.DrawPile[0] = -1000;
+        var tamperedWorld = tampered.World!;
+        var tamperedCombat = tamperedWorld.Combat!;
+        var tamperedDrawPile = tamperedCombat.DrawPile;
+        tamperedDrawPile[0] = -1000;
+        tampered = tampered with
+        {
+            World = tamperedWorld with
+            {
+                Combat = tamperedCombat with
+                {
+                    DrawPile = tamperedDrawPile
+                }
+            }
+        };
         Assert.Throws<InvalidDataException>(() =>
             SemanticPlayerActionEngineV111.ValidateBoundary(tampered));
         var modified = SemanticPlayerActionEngineV111.Step(run, actionId);
         var forged = modified.Fork();
-        forged.Run.World!.Combat!.SemanticDeck!.Slots[0] =
-            SemanticDeckSlotV111.Known(-1234);
+        var forgedRun = forged.Run;
+        var forgedWorld = forgedRun.World!;
+        var forgedCombat = forgedWorld.Combat!;
+        var forgedDeck = forgedCombat.SemanticDeck!;
+        var forgedSlots = forgedDeck.Slots;
+        forgedSlots[0] = SemanticDeckSlotV111.Known(-1234);
+        forged = forged with
+        {
+            Run = forgedRun with
+            {
+                World = forgedWorld with
+                {
+                    Combat = forgedCombat with
+                    {
+                        SemanticDeck = forgedDeck with
+                        {
+                            Slots = forgedSlots
+                        }
+                    }
+                }
+            }
+        };
         Assert.Throws<InvalidDataException>(() =>
             SemanticPlayerActionEngineV111.Restore(
                 JsonSerializer.Serialize(forged)));

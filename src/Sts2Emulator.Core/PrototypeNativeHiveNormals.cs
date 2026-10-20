@@ -28,7 +28,11 @@ public static class PrototypeNativeHiveNormals
         "proto.native.hive.slumbering_beetle";
     public const string ToxicCardId = "proto.native.hive.toxic";
 
-    public static PrototypeCardDefinition[] Cards { get; } =
+    public static PrototypeCardDefinition[] Cards => CardDefinitions
+        .Select(PrototypeDefinitionCopiesV111.CloneCardDefinition)
+        .ToArray();
+
+    private static readonly PrototypeCardDefinition[] CardDefinitions =
     [
         // Toxic.cs: cost 1 playable Status, Exhaust on use,
         // 5 damage while held at the end of the owner's turn.
@@ -45,7 +49,11 @@ public static class PrototypeNativeHiveNormals
     // the counter expires. Companion Plating is removed on either
     // wake route. This is NOT the Underdocks Asleep power:
     // their post-wake first moves have different identifiers.
-    public static PrototypePowerDefinition[] Powers { get; } =
+    public static PrototypePowerDefinition[] Powers => PowerDefinitions
+        .Select(PrototypeDefinitionCopiesV111.ClonePowerDefinition)
+        .ToArray();
+
+    private static readonly PrototypePowerDefinition[] PowerDefinitions =
     [
         new("proto.native.hive.slumber", "Slumber", 0, [],
             EnemyStacksDecayAtSideTurnEnd: 1,
@@ -58,7 +66,11 @@ public static class PrototypeNativeHiveNormals
             RemoveOwnerPowersOnPowerExpiry: ["proto.power.plating"])
     ];
 
-    public static PrototypeEnemyDefinition[] Enemies { get; } =
+    public static PrototypeEnemyDefinition[] Enemies => EnemyDefinitions
+        .Select(PrototypeDefinitionCopiesV111.CloneEnemyDefinition)
+        .ToArray();
+
+    private static readonly PrototypeEnemyDefinition[] EnemyDefinitions =
     [
         // SpinyToad.cs: Protruding Spikes grants 5 Thorns,
         // Spike Explosion hits BEFORE removing those 5 stacks,
@@ -200,7 +212,12 @@ public static class PrototypeNativeHiveNormals
             ]))
     ];
 
-    public static PrototypeEncounterDefinition[] Encounters { get; } =
+    public static PrototypeEncounterDefinition[] Encounters =>
+        EncounterDefinitions
+            .Select(PrototypeDefinitionCopiesV111.CloneEncounterDefinition)
+            .ToArray();
+
+    private static readonly PrototypeEncounterDefinition[] EncounterDefinitions =
     [
         // SpinyToadNormal.cs: a single isolated Spiny Toad.
         new(SpinyToadNormalId, PrototypeRoomType.Combat,

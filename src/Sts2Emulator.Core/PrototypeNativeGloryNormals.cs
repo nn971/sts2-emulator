@@ -15,7 +15,11 @@ public static class PrototypeNativeGloryNormals
     public const string SlimedBerserkerEncounterId =
         "proto.native.glory.encounter.slimed_berserker_normal";
 
-    public static PrototypeEnemyDefinition[] Enemies { get; } =
+    public static PrototypeEnemyDefinition[] Enemies => EnemyDefinitions
+        .Select(PrototypeDefinitionCopiesV111.CloneEnemyDefinition)
+        .ToArray();
+
+    private static readonly PrototypeEnemyDefinition[] EnemyDefinitions =
     [
         // Tongue Lash -> Strike Down Evil -> For the Queen ->
         // Tongue Lash, except for one Beetle Charge below half HP.
@@ -88,7 +92,12 @@ public static class PrototypeNativeGloryNormals
         HpAscensionDeltas: [new(8, 20)])
     ];
 
-    public static PrototypeEncounterDefinition[] Encounters { get; } =
+    public static PrototypeEncounterDefinition[] Encounters =>
+        EncounterDefinitions
+            .Select(PrototypeDefinitionCopiesV111.CloneEncounterDefinition)
+            .ToArray();
+
+    private static readonly PrototypeEncounterDefinition[] EncounterDefinitions =
     [
         new(FrogKnightEncounterId, PrototypeRoomType.Combat,
             [FrogKnightId], MinAct: 3, MaxAct: 3, Weight: 0),

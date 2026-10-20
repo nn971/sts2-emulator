@@ -8,13 +8,22 @@ public sealed record SemanticGeneratedCardEventV111(
     string ProbabilityStatus = "UNVERIFIED")
     : ISemanticChanceEventV111
 {
+    private string[]? _candidateCardIds = CloneOptional(CandidateCardIds);
+
+    public string[] CandidateCardIds
+    {
+        get => CloneOptional(_candidateCardIds)!;
+        init => _candidateCardIds = CloneOptional(value);
+    }
+
     public SemanticGeneratedCardEventV111 Fork() => this with
     {
-        CandidateCardIds = (string[])CandidateCardIds.Clone()
+        CandidateCardIds = _candidateCardIds!
     };
 
     public void Validate()
     {
+        var candidateCardIds = _candidateCardIds;
         if (SchemaId != SemanticGenerationChoiceV111.SchemaId ||
             string.IsNullOrWhiteSpace(EventId) ||
             SiteId is not ("combat.generated_card.select" or
@@ -22,15 +31,19 @@ public sealed record SemanticGeneratedCardEventV111(
             StreamId != "prototype.combat" ||
             string.IsNullOrWhiteSpace(OwnerId) || Ordinal < 0 ||
             OperationKind != "choose_card_model" ||
-            CandidateCardIds is not { Length: > 0 } ||
-            CandidateCardIds.Any(string.IsNullOrWhiteSpace) ||
-            CandidateCardIds.Distinct(StringComparer.Ordinal).Count() !=
-                CandidateCardIds.Length ||
-            SupportFingerprint != CanonicalJson.Sha256(CandidateCardIds) ||
+            candidateCardIds is not { Length: > 0 } ||
+            candidateCardIds.Any(string.IsNullOrWhiteSpace) ||
+            candidateCardIds.Distinct(StringComparer.Ordinal).Count() !=
+                candidateCardIds.Length ||
+            SupportFingerprint != CanonicalJson.Sha256(candidateCardIds) ||
             ProbabilityStatus != "UNVERIFIED")
             throw new InvalidDataException(
                 "Invalid semantic generated-card event.");
     }
+
+    private static string[]? CloneOptional(string[]? values) => values is null
+        ? null
+        : (string[])values.Clone();
 }
 
 /// <summary>Typed result for one without-replacement generated-card pick.</summary>
@@ -211,6 +224,10 @@ public static class SemanticGenerationChoiceV111
         var insertion = choice?.ControlledDrawInsertion;
         bool drawInsertionModelChoice = decision.Event.SiteId ==
             "combat.random_draw_attack.card_model";
+        bool crossbowTurnStartHandoff = !drawInsertionModelChoice &&
+            choice is not null &&
+            PrototypeGameEngine.IsCrossbowTurnStartGenerationContinuation(
+                combat, choice);
         if (drawInsertionModelChoice)
         {
             if (choice is not { ChoiceId: "controlled_draw_insertion" } ||
@@ -239,8 +256,12 @@ public static class SemanticGenerationChoiceV111
             resumed = drawInsertionModelChoice
                 ? PrototypeGameEngine.ResumeControlledDrawInsertion(
                     checkpoint.Fork(), decision.SelectedIndex)
-                : PrototypeGameEngine.ResumeControlledGeneratedCard(
-                    checkpoint.Fork(), decision.SelectedIndex);
+                : crossbowTurnStartHandoff
+                    ? PrototypeGameEngine
+                        .ResumeControlledGeneratedCardForSemanticHandoff(
+                            checkpoint.Fork(), decision.SelectedIndex)
+                    : PrototypeGameEngine.ResumeControlledGeneratedCard(
+                        checkpoint.Fork(), decision.SelectedIndex);
         if (resumed.Phase == RunPhase.Combat)
         {
             SemanticPilotCombatEngineV111.ValidateSemanticCombatBoundary(

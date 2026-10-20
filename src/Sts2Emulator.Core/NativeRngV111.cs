@@ -112,8 +112,8 @@ public static class NativeRngV111
         var a = current.State0 ^ d;
         c ^= temporary;
         d = BitOperations.RotateLeft(d, 45);
-        bundle.Streams[index] = FromSnapshot(streamId,
-            new(unchecked(current.Counter + 1), a, b, c, d));
+        bundle.ReplaceStreamAt(index, FromSnapshot(streamId,
+            new(unchecked(current.Counter + 1), a, b, c, d)));
         return result;
     }
 

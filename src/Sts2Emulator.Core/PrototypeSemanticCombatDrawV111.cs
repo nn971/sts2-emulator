@@ -244,8 +244,10 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidDataException(
                 "Semantic draw-hook resume progress is invalid.");
 
-        var (run, decision) = SemanticDrawHookChoiceEngineV111.Resolve(
+        var decision = SemanticDrawHookChoiceEngineV111.Select(
             checkpoint, pending, actionId);
+        var (run, _) = SemanticChoiceResumeV111.Resume(
+            checkpoint, decision);
         if (!pending.AutomaticHandDraw)
             return (run, requested,
                 GetSemanticDrawRemainingCount(run, remaining, drawnBefore),
@@ -298,27 +300,17 @@ public sealed partial class PrototypeGameEngine
         if (remaining < 0 || drawnBefore < 0)
             throw new InvalidDataException(
                 "Semantic Stratagem draw progress is invalid.");
-        if (!pending.Candidates.Any(candidate =>
-                candidate.ActionId == actionId))
-            throw new InvalidOperationException(
-                "Action is outside the pending Stratagem selection support.");
-
-        var selection = SemanticCardSelectionEngineV111.Step(
-            checkpoint, actionId);
-        var decision = selection.Decision ??
-            throw new InvalidDataException(
-                "Stratagem selection omitted its source decision.");
-        if (CanonicalJson.Sha256(decision.Event) !=
-            CanonicalJson.Sha256(pending))
-            throw new InvalidDataException(
-                "Stratagem selection event changed during resolution.");
+        var decision = SemanticCardSelectionEngineV111.Select(
+            pending, pending.EventId, actionId);
+        var (selectedRun, _) = SemanticChoiceResumeV111.Resume(
+            checkpoint, decision);
 
         if (!automaticHandDraw)
-            return (selection.Run, GetSemanticDrawRemainingCount(
-                selection.Run, remaining, drawnBefore), decision);
+            return (selectedRun, GetSemanticDrawRemainingCount(
+                selectedRun, remaining, drawnBefore), decision);
 
         if (!IsSemanticAutomaticHandDraw(
-                selection.Run.World?.Combat ?? throw new InvalidDataException(
+                selectedRun.World?.Combat ?? throw new InvalidDataException(
                     "Automatic Stratagem selection removed combat.")))
             throw new InvalidDataException(
                 "Automatic Stratagem selection lost its pipeline cursor.");
@@ -326,7 +318,7 @@ public sealed partial class PrototypeGameEngine
         int resumedRemaining;
         using (ControlledChanceGuardV111.Enter())
             (resumedRun, resumedRemaining) = BeginSemanticCombatDraw(
-                selection.Run, remaining, fromHandDraw: true);
+                selectedRun, remaining, fromHandDraw: true);
         return (resumedRun, resumedRemaining, decision);
     }
 

@@ -2761,7 +2761,9 @@ public sealed partial class PrototypeGameEngine
                             pending.ControlledDrawInsertion is not null ||
                             pending.ControlledRandomCost is not null ||
                             pending.ControlledCardShortlist is not null ||
-                            pending.ControlledPoolShuffle is not null ||
+                            (pending.ControlledPoolShuffle is not null &&
+                             !IsAutomaticPipelineSemanticPoolShuffleContinuation(
+                                 combat, pending)) ||
                             pending.ControlledRandomPileCard is not null ||
                             pending.SemanticStratagemDrawSelection ||
                             pending.AutomaticSemanticStratagemDrawSelection)
@@ -14825,15 +14827,8 @@ public sealed partial class PrototypeGameEngine
         PrototypeCardZone sourceZone,
         PrototypeCardZone destinationZone,
         IReadOnlyCollection<long> cardInstanceIds)
-    {
-        var nextZones = combat.Mechanics.CardZones.MoveCards(
-            sourceZone, destinationZone, cardInstanceIds);
-        if (sourceZone == PrototypeCardZone.DrawPile)
-            return SemanticDrawPileAdapterV111.ApplyDrawPileRemoval(
-                combat, cardInstanceIds, nextZones);
-        return SemanticDrawPileAdapterV111.ApplyZoneTransition(
-            combat, nextZones);
-    }
+        => SemanticDrawPileAdapterV111.ApplyCardZoneMove(
+            combat, sourceZone, destinationZone, cardInstanceIds);
 
     private static void RequireSemanticNativeStreamOwner(
         CombatState combat, string siteId)

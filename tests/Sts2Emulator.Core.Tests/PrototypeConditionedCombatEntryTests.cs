@@ -33,7 +33,7 @@ public sealed class PrototypeConditionedCombatEntryTests
         var index = Array.FindIndex(
             state.Rng.Streams, stream => stream.StreamId == "combat");
         Assert.True(index >= 0);
-        state.Rng.Streams[index] = combat;
+        state.Rng.ReplaceStreamAt(index, combat);
         return environment.Step(state, actionId).State;
     }
 

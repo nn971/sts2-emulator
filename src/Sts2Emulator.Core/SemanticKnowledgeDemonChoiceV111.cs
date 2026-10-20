@@ -13,43 +13,59 @@ public sealed record SemanticKnowledgeDemonChoiceEventV111(
     int CurseIndex, string[] OfferedCardIds,
     SemanticKnowledgeDemonChoiceCandidateV111[] Candidates)
 {
+    private string[]? _offeredCardIds = CloneOptional(OfferedCardIds);
+    private SemanticKnowledgeDemonChoiceCandidateV111[]? _candidates =
+        CloneCandidates(Candidates);
+
+    public string[] OfferedCardIds
+    {
+        get => CloneOptional(_offeredCardIds)!;
+        init => _offeredCardIds = CloneOptional(value);
+    }
+    public SemanticKnowledgeDemonChoiceCandidateV111[] Candidates
+    {
+        get => CloneCandidates(_candidates)!;
+        init => _candidates = CloneCandidates(value);
+    }
+
     public const string CurrentSchemaId =
         "sts2-v111-semantic-knowledge-demon-choice-v1";
 
     public SemanticKnowledgeDemonChoiceEventV111 Fork() => this with
     {
-        OfferedCardIds = (string[])OfferedCardIds.Clone(),
-        Candidates = (SemanticKnowledgeDemonChoiceCandidateV111[])
-            Candidates.Clone()
+        OfferedCardIds = _offeredCardIds!,
+        Candidates = _candidates!
     };
 
     public void Validate()
     {
+        var offeredCardIds = _offeredCardIds;
+        var candidates = _candidates;
         if (SchemaId != CurrentSchemaId ||
             string.IsNullOrWhiteSpace(EventId) ||
             string.IsNullOrWhiteSpace(BoundaryFingerprint) ||
             string.IsNullOrWhiteSpace(SupportFingerprint) ||
             EnemyInstanceId < 0 || EnemyTurn < 1 || CurseIndex is < 0 or > 2 ||
-            OfferedCardIds is not { Length: 2 } ||
-            !OfferedCardIds.SequenceEqual(
+            offeredCardIds is not { Length: 2 } ||
+            !offeredCardIds.SequenceEqual(
                 PrototypeNativeHiveKnowledgeDemonChoice.Options(CurseIndex)) ||
-            Candidates is not { Length: 2 } ||
-            Candidates.Any(candidate => candidate is null ||
+            candidates is not { Length: 2 } ||
+            candidates.Any(candidate => candidate is null ||
                 string.IsNullOrWhiteSpace(candidate.ActionId) ||
                 string.IsNullOrWhiteSpace(candidate.CardId) ||
                 string.IsNullOrWhiteSpace(candidate.Kind) ||
                 string.IsNullOrWhiteSpace(candidate.PayloadFingerprint)) ||
-            !Candidates.Select(candidate => candidate.CardId)
-                .SequenceEqual(OfferedCardIds) ||
-            Candidates.Select(candidate => candidate.ActionId).Distinct()
-                .Count() != Candidates.Length ||
+            !candidates.Select(candidate => candidate.CardId)
+                .SequenceEqual(offeredCardIds) ||
+            candidates.Select(candidate => candidate.ActionId).Distinct()
+                .Count() != candidates.Length ||
             SupportFingerprint != CanonicalJson.Sha256(new
             {
                 EnemyInstanceId,
                 EnemyTurn,
                 CurseIndex,
-                OfferedCardIds,
-                Candidates
+                OfferedCardIds = offeredCardIds,
+                Candidates = candidates
             }) ||
             EventId != CanonicalJson.Sha256(new
             {
@@ -60,6 +76,16 @@ public sealed record SemanticKnowledgeDemonChoiceEventV111(
             throw new InvalidDataException(
                 "Invalid semantic Knowledge Demon choice event.");
     }
+
+    private static string[]? CloneOptional(string[]? values) => values is null
+        ? null
+        : (string[])values.Clone();
+
+    private static SemanticKnowledgeDemonChoiceCandidateV111[]?
+        CloneCandidates(SemanticKnowledgeDemonChoiceCandidateV111[]? values) =>
+            values?.Select(candidate => candidate is null
+                ? null!
+                : candidate with { }).ToArray();
 }
 
 public sealed record SemanticKnowledgeDemonChoiceDecisionV111(
@@ -161,8 +187,7 @@ public static class SemanticKnowledgeDemonChoiceEngineV111
         return result;
     }
 
-    public static (RunState Run,
-        SemanticKnowledgeDemonChoiceDecisionV111 Decision) Resolve(
+    public static SemanticKnowledgeDemonChoiceDecisionV111 Select(
         RunState source, SemanticKnowledgeDemonChoiceEventV111 pending,
         string actionId)
     {
@@ -175,6 +200,57 @@ public static class SemanticKnowledgeDemonChoiceEngineV111
                 CanonicalJson.Sha256(pending))
             throw new InvalidDataException(
                 "Stale semantic Knowledge Demon choice event.");
+        var candidate = ValidateCurrentAction(source, pending, actionId);
+
+        var decision = new SemanticKnowledgeDemonChoiceDecisionV111(
+            pending.Fork(), actionId, candidate.CardId);
+        decision.Validate();
+        return decision;
+    }
+
+    public static (RunState Run,
+        SemanticKnowledgeDemonChoiceDecisionV111 Decision) Resolve(
+        RunState source, SemanticKnowledgeDemonChoiceEventV111 pending,
+        string actionId)
+    {
+        var decision = Select(source, pending, actionId);
+        return (Resume(source, decision), decision);
+    }
+
+    public static RunState Resume(
+        RunState source, SemanticKnowledgeDemonChoiceDecisionV111 decision)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(decision);
+        decision.Validate();
+        var ownedDecision = decision.Fork();
+        var current = DescribePending(source);
+        if (current is null || CanonicalJson.Sha256(current) !=
+                CanonicalJson.Sha256(ownedDecision.Event))
+            throw new InvalidDataException(
+                "Stale semantic Knowledge Demon choice decision.");
+        _ = ValidateCurrentAction(source, current, ownedDecision.ActionId,
+            ownedDecision.SelectedCardId);
+
+        RunState resumed;
+        using (ControlledChanceGuardV111.Enter())
+        using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
+            resumed = new PrototypeAiEnvironment().Step(
+                source.Fork(), ownedDecision.ActionId).State;
+        if (resumed.Phase is not (
+                RunPhase.Combat or RunPhase.Reward or RunPhase.Terminal) ||
+            resumed.World?.Combat?.PendingKnowledgeDemonChoice is not null)
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_ACTION site=knowledge_demon.choice " +
+                "operation=unexpected_resume_result");
+        return resumed;
+    }
+
+    private static SemanticKnowledgeDemonChoiceCandidateV111
+        ValidateCurrentAction(
+            RunState source, SemanticKnowledgeDemonChoiceEventV111 pending,
+            string actionId, string? selectedCardId = null)
+    {
         var candidate = pending.Candidates.SingleOrDefault(item =>
             item.ActionId == actionId) ?? throw new InvalidOperationException(
                 "Action is outside the Knowledge Demon choice support.");
@@ -184,24 +260,11 @@ public static class SemanticKnowledgeDemonChoiceEngineV111
                 "Knowledge Demon action is no longer legal.");
         if (action.Kind != candidate.Kind ||
             CanonicalJson.Sha256(action.Payload) !=
-                candidate.PayloadFingerprint)
+                candidate.PayloadFingerprint ||
+            (selectedCardId is not null &&
+                candidate.CardId != selectedCardId))
             throw new InvalidDataException(
                 "Knowledge Demon action payload changed during resolution.");
-
-        RunState resumed;
-        using (ControlledChanceGuardV111.Enter())
-        using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
-            resumed = new PrototypeAiEnvironment().Step(
-                source.Fork(), actionId).State;
-        if (resumed.Phase is not (
-                RunPhase.Combat or RunPhase.Reward or RunPhase.Terminal) ||
-            resumed.World?.Combat?.PendingKnowledgeDemonChoice is not null)
-            throw new NotSupportedException(
-                "UNSUPPORTED_SEMANTIC_ACTION site=knowledge_demon.choice " +
-                "operation=unexpected_resume_result");
-        var decision = new SemanticKnowledgeDemonChoiceDecisionV111(
-            pending.Fork(), actionId, candidate.CardId);
-        decision.Validate();
-        return (resumed, decision);
+        return candidate;
     }
 }

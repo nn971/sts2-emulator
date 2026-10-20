@@ -200,7 +200,7 @@ public static class PrototypeNativeLaterActFixture
             stream => stream.StreamId == "map");
         var cleanIndex = Array.FindIndex(clean.Streams,
             stream => stream.StreamId == "map");
-        rng.Streams[index] = clean.Streams[cleanIndex].Fork();
+        rng.ReplaceStreamAt(index, clean.Streams[cleanIndex].Fork());
 
         var map = PrototypeNativeLaterActMap.GenerateNative(seed, act, ascension);
         var keyId = PrototypeNativeHiveEvents.LanternKeyCardId;

@@ -197,11 +197,28 @@ public sealed class SemanticDeckStateV111Tests
         Assert.Throws<ArgumentOutOfRangeException>(() =>
             SemanticDeckEngineV111.Resolve(pending, stable, 4));
         var forged = pending.Fork();
-        forged.Pending!.CandidateCardInstanceIds[0] = 999;
+        var forgedPending = forged.Pending!;
+        var forgedCandidates = forgedPending.CandidateCardInstanceIds;
+        forgedCandidates[0] = 999;
+        forged = forged with
+        {
+            Pending = forgedPending with
+            {
+                CandidateCardInstanceIds = forgedCandidates
+            }
+        };
         Assert.Throws<InvalidDataException>(() =>
             SemanticDeckEngineV111.Validate(forged));
         var mutated = pending.Fork();
-        mutated.Pools[0].RemainingCardInstanceIds[0] = 777;
+        var mutatedPools = mutated.Pools;
+        var mutatedPool = mutatedPools[0];
+        var mutatedRemaining = mutatedPool.RemainingCardInstanceIds;
+        mutatedRemaining[0] = 777;
+        mutatedPools[0] = mutatedPool with
+        {
+            RemainingCardInstanceIds = mutatedRemaining
+        };
+        mutated = mutated with { Pools = mutatedPools };
         Assert.Throws<InvalidDataException>(() =>
             SemanticDeckEngineV111.Validate(mutated));
         Assert.Equal(stable, pending.Fingerprint);

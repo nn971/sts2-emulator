@@ -14,7 +14,7 @@ public static class PrototypeNativeUnderdocksTrashHeap
     public const string RelicRewardSiteId =
         "event.trash_heap.relic_reward.index_draw";
 
-    public static string[] RelicIds { get; } =
+    private static readonly string[] RelicIdValues =
     [
         "proto.relic.darkstone_periapt",
         "proto.native.trash_heap.dream_catcher",
@@ -23,7 +23,7 @@ public static class PrototypeNativeUnderdocksTrashHeap
         "proto.native.trash_heap.the_boot"
     ];
 
-    public static string[] CardIds { get; } =
+    private static readonly string[] CardIdValues =
     [
         "proto.native.trash_heap.caltrops",
         "proto.native.trash_heap.clash",
@@ -37,8 +37,18 @@ public static class PrototypeNativeUnderdocksTrashHeap
         "proto.native.trash_heap.stack"
     ];
 
+    public static string[] RelicIds =>
+        (string[])RelicIdValues.Clone();
+
+    public static string[] CardIds =>
+        (string[])CardIdValues.Clone();
+
     // Event-only relics remain excluded from ordinary relic bags.
-    public static PrototypeRelicDefinition[] Relics { get; } =
+    public static PrototypeRelicDefinition[] Relics => RelicDefinitions
+        .Select(PrototypeDefinitionCopiesV111.CloneRelicDefinition)
+        .ToArray();
+
+    private static readonly PrototypeRelicDefinition[] RelicDefinitions =
     [
         new("proto.native.trash_heap.dream_catcher", "Dream Catcher",
             RestHealCardRewardCount: 3),
@@ -52,7 +62,11 @@ public static class PrototypeNativeUnderdocksTrashHeap
 
     // Cross-character event acquisitions use the same typed combat kernel.
     // Event acquisitions stay outside ordinary rewards and combat generation.
-    public static PrototypeCardDefinition[] Cards { get; } =
+    public static PrototypeCardDefinition[] Cards => CardDefinitions
+        .Select(PrototypeDefinitionCopiesV111.CloneCardDefinition)
+        .ToArray();
+
+    private static readonly PrototypeCardDefinition[] CardDefinitions =
     [
         new(
             CardIds[0], "Caltrops", 1, PrototypeCardTarget.None,
@@ -119,7 +133,11 @@ public static class PrototypeNativeUnderdocksTrashHeap
             Type: PrototypeCardType.Skill)
     ];
 
-    public static PrototypePowerDefinition[] Powers { get; } =
+    public static PrototypePowerDefinition[] Powers => PowerDefinitions
+        .Select(PrototypeDefinitionCopiesV111.ClonePowerDefinition)
+        .ToArray();
+
+    private static readonly PrototypePowerDefinition[] PowerDefinitions =
     [
         new("proto.power.hello_world", "Hello World", 0,
             [new(PrototypeCombatEventKind.BeforeHandDraw,

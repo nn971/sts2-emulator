@@ -200,10 +200,12 @@ public sealed class SemanticEndTurnV111Tests
             SemanticEndTurnEngineV111.Restore(
                 SemanticEndTurnEngineV111.Save(first)).Fingerprint);
         var changed = first.Fork();
-        changed.IntentTranscript[0] = changed.IntentTranscript[0] with
+        var changedTranscript = changed.IntentTranscript;
+        changedTranscript[0] = changedTranscript[0] with
         {
             SelectedIndex = 999
         };
+        changed = changed with { IntentTranscript = changedTranscript };
         Assert.ThrowsAny<Exception>(() =>
             SemanticEndTurnEngineV111.Restore(
                 System.Text.Json.JsonSerializer.Serialize(changed)));

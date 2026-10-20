@@ -9,11 +9,29 @@ public sealed record SemanticRandomPileCardEventV111(
     long[] CandidateCardInstanceIds, string[] CandidateCardModelIds,
     string ProbabilityStatus = "UNVERIFIED") : ISemanticChanceEventV111
 {
+    private long[]? _candidateCardInstanceIds =
+        CloneOptional(CandidateCardInstanceIds);
+    private string[]? _candidateCardModelIds =
+        CloneOptional(CandidateCardModelIds);
+
+    public long[] CandidateCardInstanceIds
+    {
+        get => CloneOptional(_candidateCardInstanceIds)!;
+        init => _candidateCardInstanceIds = CloneOptional(value);
+    }
+    public string[] CandidateCardModelIds
+    {
+        get => CloneOptional(_candidateCardModelIds)!;
+        init => _candidateCardModelIds = CloneOptional(value);
+    }
+
     public const string EventSchemaId =
         "sts2-v111-semantic-random-pile-card-v1";
 
     public void Validate()
     {
+        var candidateCardInstanceIds = _candidateCardInstanceIds;
+        var candidateCardModelIds = _candidateCardModelIds;
         if (SchemaId != EventSchemaId ||
             string.IsNullOrWhiteSpace(EventId) ||
             string.IsNullOrWhiteSpace(BoundaryFingerprint) ||
@@ -21,17 +39,17 @@ public sealed record SemanticRandomPileCardEventV111(
             StreamId != "semantic.draw_pile" ||
             OwnerId != "player:draw_pile" || Ordinal < 0 ||
             OperationKind != "choose_card_instance" ||
-            CandidateCardInstanceIds is not { Length: > 0 } ||
-            CandidateCardModelIds is null ||
-            CandidateCardModelIds.Length != CandidateCardInstanceIds.Length ||
-            CandidateCardInstanceIds.Any(id => id <= 0) ||
-            CandidateCardInstanceIds.Distinct().Count() !=
-                CandidateCardInstanceIds.Length ||
-            CandidateCardModelIds.Any(string.IsNullOrWhiteSpace) ||
+            candidateCardInstanceIds is not { Length: > 0 } ||
+            candidateCardModelIds is null ||
+            candidateCardModelIds.Length != candidateCardInstanceIds.Length ||
+            candidateCardInstanceIds.Any(id => id <= 0) ||
+            candidateCardInstanceIds.Distinct().Count() !=
+                candidateCardInstanceIds.Length ||
+            candidateCardModelIds.Any(string.IsNullOrWhiteSpace) ||
             SupportFingerprint != CanonicalJson.Sha256(new
             {
-                candidateCardInstanceIds = CandidateCardInstanceIds,
-                candidateCardModelIds = CandidateCardModelIds
+                candidateCardInstanceIds,
+                candidateCardModelIds
             }) ||
             EventId != CanonicalJson.Sha256(new
             {
@@ -46,11 +64,17 @@ public sealed record SemanticRandomPileCardEventV111(
 
     public SemanticRandomPileCardEventV111 Fork() => this with
     {
-        CandidateCardInstanceIds =
-            (long[])CandidateCardInstanceIds.Clone(),
-        CandidateCardModelIds =
-            (string[])CandidateCardModelIds.Clone()
+        CandidateCardInstanceIds = _candidateCardInstanceIds!,
+        CandidateCardModelIds = _candidateCardModelIds!
     };
+
+    private static long[]? CloneOptional(long[]? values) => values is null
+        ? null
+        : (long[])values.Clone();
+
+    private static string[]? CloneOptional(string[]? values) => values is null
+        ? null
+        : (string[])values.Clone();
 }
 
 public sealed record SemanticRandomPileCardDecisionV111(
@@ -78,6 +102,8 @@ public sealed record SemanticRandomPileCardDecisionV111(
 
 public static class SemanticRandomPileCardEngineV111
 {
+    public const string MechanicsOperationId = "random_draw_pile_card";
+
     public static SemanticRandomPileCardEventV111? DescribePending(
         RunState run)
     {

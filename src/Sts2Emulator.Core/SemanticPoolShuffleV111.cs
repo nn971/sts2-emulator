@@ -12,6 +12,20 @@ public sealed record SemanticPoolShuffleEventV111(
     long? SourceCardInstanceId, string ProbabilityStatus = "UNVERIFIED")
     : ISemanticChanceEventV111
 {
+    private string[]? _originalCardIds = CloneOptional(OriginalCardIds);
+    private string[]? _currentCardIds = CloneOptional(CurrentCardIds);
+
+    public string[] OriginalCardIds
+    {
+        get => CloneOptional(_originalCardIds)!;
+        init => _originalCardIds = CloneOptional(value);
+    }
+    public string[] CurrentCardIds
+    {
+        get => CloneOptional(_currentCardIds)!;
+        init => _currentCardIds = CloneOptional(value);
+    }
+
     public const string EventSchemaId =
         SemanticPoolShuffleChoiceV111.SchemaId;
     public string SiteId => Request.SiteId;
@@ -26,13 +40,15 @@ public sealed record SemanticPoolShuffleEventV111(
         {
             OrderedCandidates = (int[])Request.OrderedCandidates.Clone()
         },
-        OriginalCardIds = (string[])OriginalCardIds.Clone(),
-        CurrentCardIds = (string[])CurrentCardIds.Clone()
+        OriginalCardIds = _originalCardIds!,
+        CurrentCardIds = _currentCardIds!
     };
 
     public void Validate()
     {
         Request.Validate();
+        var originalCardIds = _originalCardIds;
+        var currentCardIds = _currentCardIds;
         var expectedSite = SemanticPoolShuffleChoiceV111.SiteIdForOperation(
             SourceOperationKind);
         if (SchemaId != EventSchemaId || string.IsNullOrWhiteSpace(EventId) ||
@@ -46,20 +62,20 @@ public sealed record SemanticPoolShuffleEventV111(
                 SemanticPoolShuffleChoiceV111.RandomShortlistSiteId) ||
             Request.SiteId != expectedSite ||
             Request.OperationKind != "bounded_integer" ||
-            OriginalCardIds is not { Length: > 1 } ||
-            CurrentCardIds is null ||
-            CurrentCardIds.Length != OriginalCardIds.Length ||
-            OriginalCardIds.Any(string.IsNullOrWhiteSpace) ||
-            OriginalCardIds.Distinct(StringComparer.Ordinal).Count() !=
-                OriginalCardIds.Length ||
-            !CurrentCardIds.Order(StringComparer.Ordinal).SequenceEqual(
-                OriginalCardIds.Order(StringComparer.Ordinal)) ||
-            NextSwapIndex < 1 || NextSwapIndex >= OriginalCardIds.Length ||
+            originalCardIds is not { Length: > 1 } ||
+            currentCardIds is null ||
+            currentCardIds.Length != originalCardIds.Length ||
+            originalCardIds.Any(string.IsNullOrWhiteSpace) ||
+            originalCardIds.Distinct(StringComparer.Ordinal).Count() !=
+                originalCardIds.Length ||
+            !currentCardIds.Order(StringComparer.Ordinal).SequenceEqual(
+                originalCardIds.Order(StringComparer.Ordinal)) ||
+            NextSwapIndex < 1 || NextSwapIndex >= originalCardIds.Length ||
             Request.SupportCount != NextSwapIndex + 1 ||
-            SelectedCount <= 0 || SelectedCount > OriginalCardIds.Length ||
+            SelectedCount <= 0 || SelectedCount > originalCardIds.Length ||
             (SourceOperationKind ==
                 nameof(PrototypeCombatEffectKind.ChooseCards) &&
-             SelectedCount >= OriginalCardIds.Length) ||
+             SelectedCount >= originalCardIds.Length) ||
             string.IsNullOrWhiteSpace(SourceOperationKind) ||
             ProbabilityStatus != "UNVERIFIED")
             throw new InvalidDataException(
@@ -67,8 +83,8 @@ public sealed record SemanticPoolShuffleEventV111(
         var expectedSupportFingerprint = CanonicalJson.Sha256(new
         {
             Request,
-            Original = OriginalCardIds,
-            Current = CurrentCardIds,
+            Original = originalCardIds,
+            Current = currentCardIds,
             NextSwapIndex,
             SelectedCount,
             Operation = SourceOperationKind,
@@ -87,6 +103,10 @@ public sealed record SemanticPoolShuffleEventV111(
             throw new InvalidDataException(
                 "Full-pool shuffle event ID is inconsistent.");
     }
+
+    private static string[]? CloneOptional(string[]? values) => values is null
+        ? null
+        : (string[])values.Clone();
 }
 
 public sealed record SemanticPoolShuffleDecisionV111(
@@ -210,7 +230,10 @@ public static class SemanticPoolShuffleChoiceV111
                 ? "run.shuffle" : "prototype.combat"
             : randomShortlist && combat.NativeRng?.RunStreams is not null
                 ? "run.combat_card_selection"
-                : shuffle.Operation.GeneratedChoiceUsesNativeCardGenerationRng &&
+                : (shuffle.Operation.GeneratedChoiceUsesNativeCardGenerationRng ||
+                   shuffle.Operation.Kind ==
+                       PrototypeCombatEffectKind
+                           .CreateDistinctCharacterCommonCardsInHand) &&
                   combat.NativeRng?.RunStreams is not null
                     ? "run.combat_card_generation" : "prototype.combat";
         var sourceCardId = choice!.SourceCardInstanceId;
@@ -323,6 +346,9 @@ public static class SemanticPoolShuffleChoiceV111
                 "Full-pool shuffle is missing its source operation.");
         ValidateBoundary(checkpoint);
         ValidateLiveSupport(combat, choice!, shuffle, decision.Event);
+        bool helloWorldAutomaticBeforeHandDraw =
+            PrototypeGameEngine.IsHelloWorldAutomaticBeforeHandDrawPoolShuffle(
+                combat, choice!, shuffle, choice!.OuterChoiceContinuation!);
 
         RunState result;
         using (ControlledChanceGuardV111.Enter())
@@ -345,6 +371,19 @@ public static class SemanticPoolShuffleChoiceV111
             ValidateBoundary(result);
         else if (resultCombat.PendingChoice?.ControlledDrawInsertion is not null)
             SemanticDrawInsertionChoiceV111.ValidateBoundary(result);
+        else if (resultCombat.PendingChoice?.ControlledRandomPileCard is not null)
+        {
+            if (SemanticRandomPileCardEngineV111.DescribePending(result) is null)
+                throw new InvalidDataException(
+                    "Resumed hand draw lost its random pile-card event.");
+        }
+        else if (resultCombat.PendingChoice?
+                     .AutomaticSemanticDrawHookChoice == true)
+        {
+            if (SemanticDrawHookChoiceEngineV111.DescribePending(result) is null)
+                throw new InvalidDataException(
+                    "Resumed hand draw lost its draw-hook action event.");
+        }
         else if (resultCombat.PendingChoice?.ChoiceId == "select_cards")
         {
             SemanticCardSelectionEngineV111.ValidatePendingBoundary(result);
@@ -361,6 +400,7 @@ public static class SemanticPoolShuffleChoiceV111
         bool recycle = shuffle.Operation.Kind ==
             PrototypeCombatEffectKind.RecycleDrawPileForEffectDraw;
         if (!randomRareToHand && !handReturn && !recycle &&
+            !helloWorldAutomaticBeforeHandDraw &&
             (!combat.DrawPile.SequenceEqual(resultCombat.DrawPile) ||
              CanonicalJson.Sha256(combat.SemanticDeck) !=
                  CanonicalJson.Sha256(resultCombat.SemanticDeck)))

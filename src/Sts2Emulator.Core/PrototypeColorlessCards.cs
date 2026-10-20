@@ -9,7 +9,10 @@ public static class PrototypeColorlessCards
 {
     // Exact ColorlessCardPool.GenerateAllCards ordering from the pinned
     // v0.111.0 source. Multiplayer and epoch gates are not applied here.
-    public static string[] NativePoolIds { get; } =
+    public static string[] NativePoolIds =>
+        (string[])NativePoolIdValues.Clone();
+
+    private static readonly string[] NativePoolIdValues =
     [
         "proto.colorless.alchemize",
         "proto.colorless.anointed",
@@ -81,7 +84,12 @@ public static class PrototypeColorlessCards
     // Source-backed playable batches, deliberately NOT added to the ordinary
     // Silent combat reward pool. Native merchants expose separate colorless
     // Uncommon and Rare slots; the remaining models require future work.
-    public static PrototypeCardDefinition[] Implemented { get; } =
+    public static PrototypeCardDefinition[] Implemented =>
+        ImplementedDefinitions
+            .Select(PrototypeDefinitionCopiesV111.CloneCardDefinition)
+            .ToArray();
+
+    private static readonly PrototypeCardDefinition[] ImplementedDefinitions =
     [
         new(
             "proto.colorless.finesse",
@@ -705,7 +713,13 @@ public static class PrototypeColorlessCards
     // CardMultiplayerConstraint.MultiplayerOnly in the pinned source.
     // They are catalogued as unsupported, not silently absent or
     // treated as single-player playables.
-    public static PrototypeCardDefinition[] UnsupportedMultiplayer { get; } =
+    public static PrototypeCardDefinition[] UnsupportedMultiplayer =>
+        UnsupportedMultiplayerDefinitions
+            .Select(PrototypeDefinitionCopiesV111.CloneCardDefinition)
+            .ToArray();
+
+    private static readonly PrototypeCardDefinition[]
+        UnsupportedMultiplayerDefinitions =
     [
         MultiplayerOnly("beacon_of_hope", "Beacon of Hope", 2,
             PrototypeCardRarity.Rare, PrototypeCardType.Power),
@@ -744,18 +758,27 @@ public static class PrototypeColorlessCards
             MechanicsImplemented: false, MultiplayerOnly: true,
             CanBeGeneratedInCombat: false, RewardEligible: false);
 
-    public static string[] UnsupportedMultiplayerIds { get; } =
-        UnsupportedMultiplayer.Select(card => card.Id).ToArray();
+    public static string[] UnsupportedMultiplayerIds =>
+        (string[])UnsupportedMultiplayerIdValues.Clone();
 
-    public static string[] ImplementedShopPool { get; } =
-        Implemented.Select(c => c.Id).ToArray();
+    private static readonly string[] UnsupportedMultiplayerIdValues =
+        UnsupportedMultiplayerDefinitions.Select(card => card.Id).ToArray();
+
+    public static string[] ImplementedShopPool =>
+        (string[])ImplementedShopPoolValues.Clone();
+
+    private static readonly string[] ImplementedShopPoolValues =
+        ImplementedDefinitions.Select(c => c.Id).ToArray();
 
     // Card-reward offers use the implemented, solo-eligible reward pool.
     // This is broader than ImplementedCombatGenerationPool: epoch-gated
     // cards can appear in rewards even though synthetic combat generation
     // still excludes them until unlock state is modeled.
-    public static string[] ImplementedRewardPool { get; } =
-        NativePoolIds.Where(id => Implemented.Any(card =>
+    public static string[] ImplementedRewardPool =>
+        (string[])ImplementedRewardPoolValues.Clone();
+
+    private static readonly string[] ImplementedRewardPoolValues =
+        NativePoolIdValues.Where(id => ImplementedDefinitions.Any(card =>
             card.Id == id
             && card.MechanicsImplemented
             && !card.MultiplayerOnly
@@ -769,7 +792,10 @@ public static class PrototypeColorlessCards
     // Until unlock state is available, combat generation deliberately
     // uses the conservative base-pool subset. This does not reproduce a
     // fully-unlocked game and should not be used for RNG parity tests.
-    public static string[] EpochGatedIds { get; } =
+    public static string[] EpochGatedIds =>
+        (string[])EpochGatedIdValues.Clone();
+
+    private static readonly string[] EpochGatedIdValues =
     [
         "proto.colorless.automation",
         "proto.colorless.entropy",
@@ -788,15 +814,18 @@ public static class PrototypeColorlessCards
         "proto.colorless.calamity"
     ];
 
-    public static string[] ImplementedCombatGenerationPool { get; } =
-        NativePoolIds.Where(id =>
-            Implemented.Any(card => card.Id == id
+    public static string[] ImplementedCombatGenerationPool =>
+        (string[])ImplementedCombatGenerationPoolValues.Clone();
+
+    private static readonly string[] ImplementedCombatGenerationPoolValues =
+        NativePoolIdValues.Where(id =>
+            ImplementedDefinitions.Any(card => card.Id == id
                 && card.CanBeGeneratedInCombat
                 && card.MechanicsImplemented
                 && !card.MultiplayerOnly
                 && card.Rarity is
                     PrototypeCardRarity.Uncommon or PrototypeCardRarity.Rare)
-            && !EpochGatedIds.Contains(id, StringComparer.Ordinal))
+            && !EpochGatedIdValues.Contains(id, StringComparer.Ordinal))
         .ToArray();
 
     public static string PickMerchantCard(

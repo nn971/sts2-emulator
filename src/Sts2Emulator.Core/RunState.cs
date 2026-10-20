@@ -49,26 +49,90 @@ public sealed record PotionInstance(
     string PotionId,
     JsonElement PersistentState);
 
-public sealed record PlayerState(
-    int Hp,
-    int MaxHp,
-    int Gold,
-    CardInstance[] Deck,
-    RelicInstance[] Relics,
-    PotionInstance?[] PotionSlots,
-    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
-    CharacterResourceState? Resources = null)
+public sealed record PlayerState
 {
+    private CardInstance[]? _deck;
+    private RelicInstance[]? _relics;
+    private PotionInstance?[]? _potionSlots;
+    private CharacterResourceState? _resources;
+
+    [System.Text.Json.Serialization.JsonConstructor]
+    public PlayerState(
+        int Hp,
+        int MaxHp,
+        int Gold,
+        CardInstance[] Deck,
+        RelicInstance[] Relics,
+        PotionInstance?[] PotionSlots,
+        CharacterResourceState? Resources = null)
+    {
+        this.Hp = Hp;
+        this.MaxHp = MaxHp;
+        this.Gold = Gold;
+        this.Deck = Deck;
+        this.Relics = Relics;
+        this.PotionSlots = PotionSlots;
+        this.Resources = Resources;
+    }
+
+    public int Hp { get; init; }
+    public int MaxHp { get; init; }
+    public int Gold { get; init; }
+    public CardInstance[] Deck
+    {
+        get => _deck is null ? null! : (CardInstance[])_deck.Clone();
+        init => _deck = Clone(value);
+    }
+    public RelicInstance[] Relics
+    {
+        get => _relics is null ? null! : (RelicInstance[])_relics.Clone();
+        init => _relics = Clone(value);
+    }
+    public PotionInstance?[] PotionSlots
+    {
+        get => _potionSlots is null ? null! : (PotionInstance?[])_potionSlots.Clone();
+        init => _potionSlots = Clone(value);
+    }
+    [System.Text.Json.Serialization.JsonIgnore(Condition =
+        System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public CharacterResourceState? Resources
+    {
+        get => _resources;
+        init => _resources = value?.Fork();
+    }
+
     [System.Text.Json.Serialization.JsonIgnore]
     public IEnumerable<RelicInstance> ActiveRelics => Relics.Where(relic => !relic.IsMelted);
 
-    public PlayerState Fork() => this with
+    public PlayerState Fork() => new(
+        Hp,
+        MaxHp,
+        Gold,
+        _deck!,
+        _relics!,
+        _potionSlots!,
+        _resources);
+
+    public void Deconstruct(
+        out int Hp,
+        out int MaxHp,
+        out int Gold,
+        out CardInstance[] Deck,
+        out RelicInstance[] Relics,
+        out PotionInstance?[] PotionSlots,
+        out CharacterResourceState? Resources)
     {
-        Deck = (CardInstance[])Deck.Clone(),
-        Relics = (RelicInstance[])Relics.Clone(),
-        PotionSlots = (PotionInstance?[])PotionSlots.Clone(),
-        Resources = Resources?.Fork()
-    };
+        Hp = this.Hp;
+        MaxHp = this.MaxHp;
+        Gold = this.Gold;
+        Deck = this.Deck;
+        Relics = this.Relics;
+        PotionSlots = this.PotionSlots;
+        Resources = this.Resources;
+    }
+
+    private static T[]? Clone<T>(T[]? values) =>
+        values is null ? null : (T[])values.Clone();
 }
 
 /// <summary>

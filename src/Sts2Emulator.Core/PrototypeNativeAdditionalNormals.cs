@@ -14,7 +14,12 @@ public static class PrototypeNativeAdditionalNormals
     public const string ConstructMenagerieNormalId =
         "proto.native.glory.encounter.construct_menagerie_normal";
 
-    public static PrototypeEncounterDefinition[] Encounters { get; } =
+    public static PrototypeEncounterDefinition[] Encounters =>
+        EncounterDefinitions
+            .Select(PrototypeDefinitionCopiesV111.CloneEncounterDefinition)
+            .ToArray();
+
+    private static readonly PrototypeEncounterDefinition[] EncounterDefinitions =
     [
         // TunnelerNormal.GenerateMonsters: a Chomper that screams first,
         // then a Tunneler. The "screech-first" slot is the same initial

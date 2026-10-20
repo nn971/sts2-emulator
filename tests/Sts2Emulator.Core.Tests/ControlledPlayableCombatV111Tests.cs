@@ -117,7 +117,24 @@ public sealed class ControlledPlayableCombatV111Tests
         var start = ControlledPlayableCombatEngineV111.Begin(Completed(seed), seed);
         var original = start.Fingerprint;
         var altered = start.Fork();
-        altered.Run.World!.Combat!.DrawPile[0] = 123456789;
+        var alteredRun = altered.Run;
+        var alteredWorld = alteredRun.World!;
+        var alteredCombat = alteredWorld.Combat!;
+        var alteredDrawPile = alteredCombat.DrawPile;
+        alteredDrawPile[0] = 123456789;
+        altered = altered with
+        {
+            Run = alteredRun with
+            {
+                World = alteredWorld with
+                {
+                    Combat = alteredCombat with
+                    {
+                        DrawPile = alteredDrawPile
+                    }
+                }
+            }
+        };
         Assert.Throws<InvalidDataException>(() =>
             ControlledPlayableCombatEngineV111.Restore(JsonSerializer.Serialize(altered)));
         Assert.Equal(original, start.Fingerprint);
@@ -146,5 +163,27 @@ public sealed class ControlledPlayableCombatV111Tests
         var concurrent = new string[15];
         Parallel.For(0, 15, i => concurrent[i] = Run(i));
         Assert.Equal(serial, concurrent);
+    }
+}
+
+internal static class ControlledPlayableTestSupport
+{
+    public static ControlledPlayableCombatV111 WithPendingChoice(
+        ControlledPlayableCombatV111 state,
+        PendingCombatChoiceState pendingChoice)
+    {
+        var run = state.Run;
+        var world = run.World!;
+        var combat = world.Combat!;
+        return state with
+        {
+            Run = run with
+            {
+                World = world with
+                {
+                    Combat = combat with { PendingChoice = pendingChoice }
+                }
+            }
+        };
     }
 }

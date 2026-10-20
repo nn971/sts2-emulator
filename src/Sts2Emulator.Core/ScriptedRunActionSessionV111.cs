@@ -12,11 +12,18 @@ public sealed record ScriptedRunActionOutcomeV111(
     RandomBoundaryTranscriptEntryV111 Entry,
     string[]? CandidateLabels = null)
 {
+    private string[]? _candidateLabels = Clone(CandidateLabels);
+
+    public string[]? CandidateLabels
+    {
+        get => Clone(_candidateLabels);
+        init => _candidateLabels = Clone(value);
+    }
+
     public ScriptedRunActionOutcomeV111 Fork() => this with
     {
         Entry = Entry with { Event = Entry.Event.Clone() },
-        CandidateLabels = CandidateLabels is null ? null :
-            (string[])CandidateLabels.Clone()
+        CandidateLabels = _candidateLabels
     };
 
     public void Validate()
@@ -78,6 +85,10 @@ public sealed record ScriptedRunActionOutcomeV111(
                 (string[])CandidateLabels.Clone());
     }
 
+    private static string[]? Clone(string[]? labels) => labels is null
+        ? null
+        : (string[])labels.Clone();
+
     private ControlledStochasticDecisionV111 UnitFloatDecision()
     {
         var item = ReadEvent<RandomUnitFloatBoundaryEventV111>("unit_float");
@@ -135,7 +146,40 @@ public sealed record ScriptedRunActionSessionSnapshotV111(
     GameAction Action,
     string? RunSnapshotJson,
     ControlledStochasticDecisionV111[] Decisions,
-    ControlledStochasticContinuationStateV111? Continuation);
+    ControlledStochasticContinuationStateV111? Continuation)
+{
+    private GameAction? _action = Action is null
+        ? null
+        : CloneAction(Action);
+    private ControlledStochasticDecisionV111[]? _decisions =
+        CloneDecisions(Decisions);
+
+    public GameAction Action
+    {
+        get => _action is null ? null! : CloneAction(_action);
+        init => _action = value is null ? null : CloneAction(value);
+    }
+
+    public ControlledStochasticDecisionV111[] Decisions
+    {
+        get => _decisions is null
+            ? null!
+            : (ControlledStochasticDecisionV111[])_decisions.Clone();
+        init => _decisions = CloneDecisions(value);
+    }
+
+    private static GameAction? CloneAction(GameAction? action) =>
+        action is null ? null : action with
+        {
+            Payload = action.Payload.Clone()
+        };
+
+    private static ControlledStochasticDecisionV111[]? CloneDecisions(
+        ControlledStochasticDecisionV111[]? decisions) =>
+        decisions?.Select(decision => decision is null
+            ? null!
+            : decision.Fork()).ToArray();
+}
 
 /// <summary>
 /// Serializable scripted controller for one legal ordinary run action. It
@@ -150,6 +194,26 @@ public sealed record ScriptedRunActionSessionV111(
     ControlledStochasticDecisionV111[] Decisions,
     ControlledStochasticContinuationStateV111? Continuation)
 {
+    private GameAction? _action = Action is null
+        ? null
+        : CloneAction(Action);
+    private ControlledStochasticDecisionV111[]? _decisions =
+        CloneDecisions(Decisions);
+
+    public GameAction Action
+    {
+        get => _action is null ? null! : CloneAction(_action);
+        init => _action = value is null ? null : CloneAction(value);
+    }
+
+    public ControlledStochasticDecisionV111[] Decisions
+    {
+        get => _decisions is null
+            ? null!
+            : (ControlledStochasticDecisionV111[])_decisions.Clone();
+        init => _decisions = CloneDecisions(value);
+    }
+
     public const string CurrentSchemaId =
         "sts2-v111-scripted-run-action-session-v1";
 
@@ -363,4 +427,10 @@ public sealed record ScriptedRunActionSessionV111(
     {
         Payload = action.Payload.Clone()
     };
+
+    private static ControlledStochasticDecisionV111[]? CloneDecisions(
+        ControlledStochasticDecisionV111[]? decisions) =>
+        decisions?.Select(decision => decision is null
+            ? null!
+            : decision.Fork()).ToArray();
 }

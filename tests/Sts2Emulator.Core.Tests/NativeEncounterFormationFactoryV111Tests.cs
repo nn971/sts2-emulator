@@ -120,8 +120,22 @@ public sealed class NativeEncounterFormationFactoryV111Tests
         Assert.Equal(hash, CanonicalJson.Sha256(original));
         Assert.Equal(hash, CanonicalJson.Sha256(restored));
 
-        fork.Enemies[0] = fork.Enemies[0] with { EnemyId = "mutated" };
-        fork.MonsterContexts[0].Rng.StateBytes[0] ^= 0xff;
+        var forkEnemies = fork.Enemies;
+        forkEnemies[0] = forkEnemies[0] with { EnemyId = "mutated" };
+        var forkContexts = fork.MonsterContexts;
+        var forkContext = forkContexts[0];
+        var forkRng = forkContext.Rng;
+        var forkBytes = forkRng.StateBytes;
+        forkBytes[0] ^= 0xff;
+        forkContexts[0] = forkContext with
+        {
+            Rng = forkRng with { StateBytes = forkBytes }
+        };
+        fork = fork with
+        {
+            Enemies = forkEnemies,
+            MonsterContexts = forkContexts
+        };
         Assert.Equal(hash, CanonicalJson.Sha256(original));
         Assert.NotEqual(hash, CanonicalJson.Sha256(fork));
     }

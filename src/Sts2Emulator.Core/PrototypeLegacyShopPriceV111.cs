@@ -6,11 +6,17 @@ namespace Sts2Emulator.Core;
 /// </summary>
 internal static class PrototypeLegacyShopPriceV111
 {
-    public static int[] PotionOutcomes { get; } =
+    private static readonly int[] PotionOutcomeValues =
         Enumerable.Range(40, 21).ToArray();
 
-    public static int[] RelicOutcomes { get; } =
+    private static readonly int[] RelicOutcomeValues =
         Enumerable.Range(100, 41).ToArray();
+
+    public static int[] PotionOutcomes =>
+        (int[])PotionOutcomeValues.Clone();
+
+    public static int[] RelicOutcomes =>
+        (int[])RelicOutcomeValues.Clone();
 
     public static int[] CardOutcomes(string cardId)
     {

@@ -10,18 +10,35 @@ public sealed record SemanticHandCostSelectionEventV111(
     int AppliedCost, string ProbabilityStatus = "UNVERIFIED")
     : ISemanticChanceEventV111
 {
+    private long[]? _candidateCardInstanceIds =
+        CloneOptional(CandidateCardInstanceIds);
+    private string[]? _candidateCardModelIds =
+        CloneOptional(CandidateCardModelIds);
+
+    public long[] CandidateCardInstanceIds
+    {
+        get => CloneOptional(_candidateCardInstanceIds)!;
+        init => _candidateCardInstanceIds = CloneOptional(value);
+    }
+    public string[] CandidateCardModelIds
+    {
+        get => CloneOptional(_candidateCardModelIds)!;
+        init => _candidateCardModelIds = CloneOptional(value);
+    }
+
     public const string EventSchemaId =
         SemanticHandCostSelectionChoiceV111.SchemaId;
 
     public SemanticHandCostSelectionEventV111 Fork() => this with
     {
-        CandidateCardInstanceIds =
-            (long[])CandidateCardInstanceIds.Clone(),
-        CandidateCardModelIds = (string[])CandidateCardModelIds.Clone()
+        CandidateCardInstanceIds = _candidateCardInstanceIds!,
+        CandidateCardModelIds = _candidateCardModelIds!
     };
 
     public void Validate()
     {
+        var candidateCardInstanceIds = _candidateCardInstanceIds;
+        var candidateCardModelIds = _candidateCardModelIds;
         var expectedEventId = CanonicalJson.Sha256(new
         {
             SchemaId,
@@ -36,24 +53,32 @@ public sealed record SemanticHandCostSelectionEventV111(
             StreamId != SemanticHandCostSelectionChoiceV111.StreamId ||
             string.IsNullOrWhiteSpace(OwnerId) || Ordinal < 0 ||
             OperationKind != SemanticHandCostSelectionChoiceV111.OperationKind ||
-            CandidateCardInstanceIds is not { Length: > 0 } ||
-            CandidateCardModelIds is null ||
-            CandidateCardModelIds.Length != CandidateCardInstanceIds.Length ||
-            CandidateCardInstanceIds.Any(id => id <= 0) ||
-            CandidateCardInstanceIds.Distinct().Count() !=
-                CandidateCardInstanceIds.Length ||
-            CandidateCardModelIds.Any(string.IsNullOrWhiteSpace) ||
+            candidateCardInstanceIds is not { Length: > 0 } ||
+            candidateCardModelIds is null ||
+            candidateCardModelIds.Length != candidateCardInstanceIds.Length ||
+            candidateCardInstanceIds.Any(id => id <= 0) ||
+            candidateCardInstanceIds.Distinct().Count() !=
+                candidateCardInstanceIds.Length ||
+            candidateCardModelIds.Any(string.IsNullOrWhiteSpace) ||
             AppliedCost < 0 || ProbabilityStatus != "UNVERIFIED" ||
             EventId != expectedEventId ||
             SupportFingerprint != CanonicalJson.Sha256(new
             {
-                candidateCardInstanceIds = CandidateCardInstanceIds,
-                candidateCardModelIds = CandidateCardModelIds,
+                candidateCardInstanceIds,
+                candidateCardModelIds,
                 appliedCost = AppliedCost
             }))
             throw new InvalidDataException(
                 "Invalid semantic hand-cost selection event.");
     }
+
+    private static long[]? CloneOptional(long[]? values) => values is null
+        ? null
+        : (long[])values.Clone();
+
+    private static string[]? CloneOptional(string[]? values) => values is null
+        ? null
+        : (string[])values.Clone();
 }
 
 public sealed record SemanticHandCostSelectionDecisionV111(

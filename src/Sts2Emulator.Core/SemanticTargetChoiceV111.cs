@@ -8,8 +8,23 @@ public sealed record SemanticTargetEventV111(
     string ProbabilityStatus = "UNVERIFIED", string TargetKind = "effect_random_enemy")
     : ISemanticChanceEventV111
 {
+    private int[]? _candidateEnemyInstanceIds =
+        CloneOptional(CandidateEnemyInstanceIds);
+
+    public int[] CandidateEnemyInstanceIds
+    {
+        get => CloneOptional(_candidateEnemyInstanceIds)!;
+        init => _candidateEnemyInstanceIds = CloneOptional(value);
+    }
+
+    public SemanticTargetEventV111 Fork() => this with
+    {
+        CandidateEnemyInstanceIds = _candidateEnemyInstanceIds!
+    };
+
     public void Validate()
     {
+        var candidateEnemyInstanceIds = _candidateEnemyInstanceIds;
         var expectedSiteId =
             SemanticTargetChoiceV111.SiteIdForTargetKind(TargetKind);
         if (SchemaId != SemanticTargetChoiceV111.SchemaId ||
@@ -18,16 +33,20 @@ public sealed record SemanticTargetEventV111(
             StreamId != "run.combat_targets" ||
             string.IsNullOrWhiteSpace(OwnerId) || Ordinal < 0 ||
             OperationKind != "choose_enemy_instance" ||
-            CandidateEnemyInstanceIds is not { Length: > 0 } ||
-            CandidateEnemyInstanceIds.Distinct().Count() !=
-                CandidateEnemyInstanceIds.Length ||
+            candidateEnemyInstanceIds is not { Length: > 0 } ||
+            candidateEnemyInstanceIds.Distinct().Count() !=
+                candidateEnemyInstanceIds.Length ||
             SupportFingerprint != CanonicalJson.Sha256(
-                CandidateEnemyInstanceIds) ||
+                candidateEnemyInstanceIds) ||
             ProbabilityStatus != "UNVERIFIED" ||
             TargetKind is not ("effect_random_enemy" or "sly_auto_play" or
                 "autoplay_random_enemy"))
             throw new InvalidDataException("Invalid semantic target event.");
     }
+
+    private static int[]? CloneOptional(int[]? values) => values is null
+        ? null
+        : (int[])values.Clone();
 }
 
 /// <summary>Typed result for one random target selection.</summary>
@@ -48,11 +67,7 @@ public sealed record SemanticTargetDecisionV111(
 
     public SemanticTargetDecisionV111 Fork() => this with
     {
-        Event = Event with
-        {
-            CandidateEnemyInstanceIds =
-                (int[])Event.CandidateEnemyInstanceIds.Clone()
-        }
+        Event = Event.Fork()
     };
 }
 

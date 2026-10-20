@@ -1,17 +1,75 @@
+using System.Text.Json.Serialization;
+
 namespace Sts2Emulator.Core;
 
 /// <summary>
 /// Single mechanics owner for combat card-zone membership. CombatState keeps
-/// its historical flattened fields as projections of this value.
+/// its historical flattened fields as defensive array projections. Zone arrays
+/// are copied on construction and replacement, and getters never expose the
+/// arrays stored by this owner.
 /// </summary>
-public sealed record CombatCardZonesV111(
-    long[] Hand,
-    long[] DrawPile,
-    long[] DiscardPile,
-    long[] ExhaustPile,
-    long[]? PlayPile = null,
-    long[]? ChoicePool = null)
+public sealed record CombatCardZonesV111
 {
+    private long[] _hand;
+    private long[] _drawPile;
+    private long[] _discardPile;
+    private long[] _exhaustPile;
+    private long[]? _playPile;
+    private long[]? _choicePool;
+
+    [JsonConstructor]
+    public CombatCardZonesV111(
+        long[] Hand,
+        long[] DrawPile,
+        long[] DiscardPile,
+        long[] ExhaustPile,
+        long[]? PlayPile = null,
+        long[]? ChoicePool = null)
+    {
+        _hand = CloneRequired(Hand, nameof(Hand));
+        _drawPile = CloneRequired(DrawPile, nameof(DrawPile));
+        _discardPile = CloneRequired(DiscardPile, nameof(DiscardPile));
+        _exhaustPile = CloneRequired(ExhaustPile, nameof(ExhaustPile));
+        _playPile = CloneOptional(PlayPile);
+        _choicePool = CloneOptional(ChoicePool);
+    }
+
+    public long[] Hand
+    {
+        get => (long[])_hand.Clone();
+        init => _hand = CloneRequired(value, nameof(Hand));
+    }
+
+    public long[] DrawPile
+    {
+        get => (long[])_drawPile.Clone();
+        init => _drawPile = CloneRequired(value, nameof(DrawPile));
+    }
+
+    public long[] DiscardPile
+    {
+        get => (long[])_discardPile.Clone();
+        init => _discardPile = CloneRequired(value, nameof(DiscardPile));
+    }
+
+    public long[] ExhaustPile
+    {
+        get => (long[])_exhaustPile.Clone();
+        init => _exhaustPile = CloneRequired(value, nameof(ExhaustPile));
+    }
+
+    public long[]? PlayPile
+    {
+        get => CloneOptional(_playPile);
+        init => _playPile = CloneOptional(value);
+    }
+
+    public long[]? ChoicePool
+    {
+        get => CloneOptional(_choicePool);
+        init => _choicePool = CloneOptional(value);
+    }
+
     public long[] CardsIn(PrototypeCardZone zone) => zone switch
     {
         PrototypeCardZone.Hand => Hand,
@@ -55,7 +113,8 @@ public sealed record CombatCardZonesV111(
     public CombatCardZonesV111 MoveCards(
         PrototypeCardZone sourceZone,
         PrototypeCardZone destinationZone,
-        IReadOnlyCollection<long> cardInstanceIds)
+        IReadOnlyCollection<long> cardInstanceIds,
+        int? destinationIndex = null)
     {
         ArgumentNullException.ThrowIfNull(cardInstanceIds);
         if (sourceZone == destinationZone)
@@ -78,19 +137,47 @@ public sealed record CombatCardZonesV111(
         if (moved.Any(destinationSet.Contains))
             throw new InvalidDataException(
                 "Card movement would duplicate an identity in its destination zone.");
+        var insertionIndex = destinationIndex ?? destination.Length;
+        if (insertionIndex < 0 || insertionIndex > destination.Length)
+            throw new ArgumentOutOfRangeException(nameof(destinationIndex));
+        var nextDestination = new long[
+            checked(destination.Length + moved.Length)];
+        Array.Copy(destination, 0, nextDestination, 0, insertionIndex);
+        Array.Copy(moved, 0, nextDestination, insertionIndex, moved.Length);
+        Array.Copy(destination, insertionIndex, nextDestination,
+            insertionIndex + moved.Length,
+            destination.Length - insertionIndex);
 
         return WithCardsIn(sourceZone,
                 source.Where(id => !moved.Contains(id)).ToArray())
-            .WithCardsIn(destinationZone, destination.Concat(moved).ToArray());
+            .WithCardsIn(destinationZone, nextDestination);
     }
 
-    public CombatCardZonesV111 Fork() => this with
+    public CombatCardZonesV111 Fork() => new(
+        _hand, _drawPile, _discardPile, _exhaustPile, _playPile, _choicePool);
+
+    public void Deconstruct(
+        out long[] Hand,
+        out long[] DrawPile,
+        out long[] DiscardPile,
+        out long[] ExhaustPile,
+        out long[]? PlayPile,
+        out long[]? ChoicePool)
     {
-        Hand = (long[])Hand.Clone(),
-        DrawPile = (long[])DrawPile.Clone(),
-        DiscardPile = (long[])DiscardPile.Clone(),
-        ExhaustPile = (long[])ExhaustPile.Clone(),
-        PlayPile = PlayPile is null ? null : (long[])PlayPile.Clone(),
-        ChoicePool = ChoicePool is null ? null : (long[])ChoicePool.Clone()
-    };
+        Hand = this.Hand;
+        DrawPile = this.DrawPile;
+        DiscardPile = this.DiscardPile;
+        ExhaustPile = this.ExhaustPile;
+        PlayPile = this.PlayPile;
+        ChoicePool = this.ChoicePool;
+    }
+
+    private static long[] CloneRequired(long[] cards, string parameterName)
+    {
+        ArgumentNullException.ThrowIfNull(cards, parameterName);
+        return (long[])cards.Clone();
+    }
+
+    private static long[]? CloneOptional(long[]? cards) =>
+        cards is null ? null : (long[])cards.Clone();
 }

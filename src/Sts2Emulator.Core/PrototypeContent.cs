@@ -7,7 +7,7 @@ public static class PrototypeContent
     public const string MapGenerationProfileId =
         "prototype-strategic-map-v1";
 
-    public static PrototypeRuleset Rules { get; } = new(
+    private static readonly PrototypeRuleset RulesDefinition = new(
         Id: RulesetId,
         Acts: 3,
         FloorsPerAct: 6,
@@ -133,7 +133,24 @@ public static class PrototypeContent
             new(PrototypeAutomaticStepKind.ResolveLateRelicAutoplay)
         ]);
 
-    public static IReadOnlyDictionary<string, PrototypeCardDefinition> Cards { get; } =
+    public static PrototypeRuleset Rules => CopyRuleset(RulesDefinition);
+
+    private static PrototypeRuleset CopyRuleset(PrototypeRuleset rules) =>
+        rules with
+        {
+            MapFloorRules = rules.MapFloorRules.Select(rule => rule with
+            {
+                RoomPool = (PrototypeRoomType[])rule.RoomPool.Clone(),
+                RequiredRoomTypes = rule.RequiredRoomTypes is null
+                    ? null
+                    : (PrototypeRoomType[])rule.RequiredRoomTypes.Clone()
+            }).ToArray(),
+            EndTurnPipeline =
+                (PrototypeAutomaticStep[])rules.EndTurnPipeline.Clone()
+        };
+
+    private static readonly Dictionary<string, PrototypeCardDefinition>
+        CardDefinitions =
         new[]
         {
             // Native v0.111.0 common starter card, outside SilentCardPool.
@@ -1963,10 +1980,15 @@ public static class PrototypeContent
             .Concat(NativeDarvEventV111.Cards)
             .ToDictionary(card => card.Id, StringComparer.Ordinal);
 
+    public static IReadOnlyDictionary<string, PrototypeCardDefinition> Cards { get; } =
+        new DefensiveReadOnlyDictionary<string, PrototypeCardDefinition>(
+            CardDefinitions,
+            PrototypeDefinitionCopiesV111.CloneCardDefinition);
+
 
     // Exact SilentCardPool.GenerateAllCards() inventory from the pinned
     // v0.111.0 reference build. Source order is preserved intentionally.
-    public static string[] NativeSilentCardPool { get; } =
+    private static readonly string[] NativeSilentCardPoolValues =
     [
         "proto.silent.abrasive",
         "proto.silent.accelerant",
@@ -2060,11 +2082,15 @@ public static class PrototypeContent
         "proto.silent.well_laid_plans",
         "proto.silent.wraith_form",    ];
 
+    public static string[] NativeSilentCardPool =>
+        (string[])NativeSilentCardPoolValues.Clone();
+
     private static HashSet<string> NativeSilentCardIdSet { get; } =
-        new(NativeSilentCardPool, StringComparer.Ordinal);
+        new(NativeSilentCardPoolValues, StringComparer.Ordinal);
 
 
-    public static IReadOnlyDictionary<string, PrototypePotionDefinition> Potions { get; } =
+    private static readonly Dictionary<string, PrototypePotionDefinition>
+        PotionDefinitions =
         new[]
         {
             // Neow's Sacrifice grants this event-only potion. Its combat
@@ -2597,7 +2623,13 @@ public static class PrototypeContent
                 ])
         }.ToDictionary(potion => potion.Id, StringComparer.Ordinal);
 
-    public static IReadOnlyDictionary<string, PrototypeRelicDefinition> Relics { get; } =
+    public static IReadOnlyDictionary<string, PrototypePotionDefinition> Potions { get; } =
+        new DefensiveReadOnlyDictionary<string, PrototypePotionDefinition>(
+            PotionDefinitions,
+            PrototypeDefinitionCopiesV111.ClonePotionDefinition);
+
+    private static readonly Dictionary<string, PrototypeRelicDefinition>
+        RelicDefinitions =
         new[]
         {
             new PrototypeRelicDefinition(
@@ -3287,7 +3319,13 @@ public static class PrototypeContent
             .Concat(NativeDarvEventV111.Relics)
             .ToDictionary(relic => relic.Id, StringComparer.Ordinal);
 
-    public static IReadOnlyDictionary<string, PrototypePowerDefinition> Powers { get; } =
+    public static IReadOnlyDictionary<string, PrototypeRelicDefinition> Relics { get; } =
+        new DefensiveReadOnlyDictionary<string, PrototypeRelicDefinition>(
+            RelicDefinitions,
+            PrototypeDefinitionCopiesV111.CloneRelicDefinition);
+
+    private static readonly Dictionary<string, PrototypePowerDefinition>
+        PowerDefinitions =
         new[]
         {
             new PrototypePowerDefinition(
@@ -4096,7 +4134,13 @@ public static class PrototypeContent
             .Concat(PrototypeNativeFakeMerchant.Powers)
             .ToDictionary(power => power.Id, StringComparer.Ordinal);
 
-    public static IReadOnlyDictionary<string, PrototypeEnemyDefinition> Enemies { get; } =
+    public static IReadOnlyDictionary<string, PrototypePowerDefinition> Powers { get; } =
+        new DefensiveReadOnlyDictionary<string, PrototypePowerDefinition>(
+            PowerDefinitions,
+            PrototypeDefinitionCopiesV111.ClonePowerDefinition);
+
+    private static readonly Dictionary<string, PrototypeEnemyDefinition>
+        EnemyDefinitions =
         new[]
         {
             new PrototypeEnemyDefinition(
@@ -6429,7 +6473,13 @@ public static class PrototypeContent
             .Concat(PrototypeNativeFakeMerchant.Enemies)
             .ToDictionary(enemy => enemy.Id, StringComparer.Ordinal);
 
-    public static IReadOnlyDictionary<string, PrototypeStatusDefinition> Statuses { get; } =
+    public static IReadOnlyDictionary<string, PrototypeEnemyDefinition> Enemies { get; } =
+        new DefensiveReadOnlyDictionary<string, PrototypeEnemyDefinition>(
+            EnemyDefinitions,
+            PrototypeDefinitionCopiesV111.CloneEnemyDefinition);
+
+    private static readonly Dictionary<string, PrototypeStatusDefinition>
+        StatusDefinitions =
         new[]
         {
             new PrototypeStatusDefinition(
@@ -6454,7 +6504,12 @@ public static class PrototypeContent
                 IncomingAttackDamageDenominator: 2)
         }.ToDictionary(status => status.Id, StringComparer.Ordinal);
 
-    public static IReadOnlyDictionary<string, PrototypeEventDefinition> Events { get; } =
+    public static IReadOnlyDictionary<string, PrototypeStatusDefinition> Statuses { get; } =
+        new DefensiveReadOnlyDictionary<string, PrototypeStatusDefinition>(
+            StatusDefinitions, status => status with { });
+
+    private static readonly Dictionary<string, PrototypeEventDefinition>
+        EventDefinitions =
         new[]
         {
             new PrototypeEventDefinition(
@@ -6794,7 +6849,12 @@ public static class PrototypeContent
             .Append(NativeDarvEventV111.Definition)
             .ToDictionary(evt => evt.Id, StringComparer.Ordinal);
 
-    public static string[] OvergrowthWeakEncounterPool { get; } =
+    public static IReadOnlyDictionary<string, PrototypeEventDefinition> Events { get; } =
+        new DefensiveReadOnlyDictionary<string, PrototypeEventDefinition>(
+            EventDefinitions,
+            PrototypeDefinitionCopiesV111.CloneEventDefinition);
+
+    private static readonly string[] OvergrowthWeakEncounterPoolValues =
     [
         "proto.encounter.nibbits_weak",
         "proto.encounter.slimes_weak",
@@ -6802,7 +6862,7 @@ public static class PrototypeContent
         "proto.encounter.shrinker_beetle_weak"
     ];
 
-    public static string[] OvergrowthNormalEncounterPool { get; } =
+    private static readonly string[] OvergrowthNormalEncounterPoolValues =
     [
         "proto.encounter.cubex_construct_normal",
         "proto.encounter.flyconid_normal",
@@ -6818,21 +6878,34 @@ public static class PrototypeContent
         "proto.encounter.vine_shambler_normal"
     ];
 
-    public static string[] OvergrowthEliteEncounterPool { get; } =
+    private static readonly string[] OvergrowthEliteEncounterPoolValues =
     [
         "proto.encounter.bygone_effigy_elite",
         "proto.encounter.byrdonis_elite",
         "proto.encounter.phrog_parasite_elite"
     ];
 
-    public static string[] OvergrowthBossEncounterPool { get; } =
+    private static readonly string[] OvergrowthBossEncounterPoolValues =
     [
         "proto.encounter.ceremonial_beast_boss",
         "proto.encounter.the_kin_boss",
         "proto.encounter.vantom_boss"
     ];
 
-    public static PrototypeEncounterDefinition[] Encounters { get; } =
+    public static string[] OvergrowthWeakEncounterPool =>
+        (string[])OvergrowthWeakEncounterPoolValues.Clone();
+
+    public static string[] OvergrowthNormalEncounterPool =>
+        (string[])OvergrowthNormalEncounterPoolValues.Clone();
+
+    public static string[] OvergrowthEliteEncounterPool =>
+        (string[])OvergrowthEliteEncounterPoolValues.Clone();
+
+    public static string[] OvergrowthBossEncounterPool =>
+        (string[])OvergrowthBossEncounterPoolValues.Clone();
+
+    private static readonly PrototypeEncounterDefinition[] EncounterDefinitions =
+        CopyEncounterDefinitions(
     [
         // Punch Off starts this event-only fight directly. Keep its native
         // encounter discoverable without making it an ordinary room offer.
@@ -7415,9 +7488,18 @@ public static class PrototypeContent
         ..PrototypeNativeGloryEvents.Encounters,
         ..PrototypeNativeHiveEvents.Encounters,
         ..PrototypeNativeFakeMerchant.Encounters
-    ];
+    ]);
 
-    public static string[] StartingDeck { get; } =
+    public static PrototypeEncounterDefinition[] Encounters =>
+        CopyEncounterDefinitions(EncounterDefinitions);
+
+    private static PrototypeEncounterDefinition[] CopyEncounterDefinitions(
+        PrototypeEncounterDefinition[] definitions) =>
+        definitions
+            .Select(PrototypeDefinitionCopiesV111.CloneEncounterDefinition)
+            .ToArray();
+
+    private static readonly string[] StartingDeckValues =
     [
         "proto.silent.strike",
         "proto.silent.strike",
@@ -7433,12 +7515,12 @@ public static class PrototypeContent
         "proto.silent.survivor"
     ];
 
-    public static string[] StartingRelics { get; } =
+    private static readonly string[] StartingRelicsValues =
     [
         "proto.relic.silent_ring"
     ];
 
-    public static string[] RewardCardPool { get; } = Cards.Values
+    private static readonly string[] RewardCardPoolValues = Cards.Values
         .Where(card =>
             NativeSilentCardIdSet.Contains(card.Id)
             && card.MechanicsImplemented
@@ -7452,10 +7534,19 @@ public static class PrototypeContent
         .Order(StringComparer.Ordinal)
         .ToArray();
 
+    public static string[] StartingDeck =>
+        (string[])StartingDeckValues.Clone();
+
+    public static string[] StartingRelics =>
+        (string[])StartingRelicsValues.Clone();
+
+    public static string[] RewardCardPool =>
+        (string[])RewardCardPoolValues.Clone();
+
     // Source-ordered equivalent for native-shaped CardFactory generation.
     // Keep RewardCardPool sorted for the legacy prototype compatibility path.
-    public static string[] NativeSilentRewardCardPool { get; } =
-        NativeSilentCardPool
+    private static readonly string[] NativeSilentRewardCardPoolValues =
+        NativeSilentCardPoolValues
             .Where(id =>
             {
                 var card = Cards[id];
@@ -7467,6 +7558,9 @@ public static class PrototypeContent
                         or PrototypeCardRarity.Rare;
             })
             .ToArray();
+
+    public static string[] NativeSilentRewardCardPool =>
+        (string[])NativeSilentRewardCardPoolValues.Clone();
 
     public static (PrototypeCardRarity Rarity, int Weight)[] RewardRarityWeights(int act) =>
         act switch
@@ -7511,14 +7605,14 @@ public static class PrototypeContent
     // This is the restricted Silent ordinary pool: Blood Potion belongs to
     // Ironclad and the legacy Explosive Potion is absent from the pinned
     // Silent/shared pool. Unsupported source potions stay out.
-    public static string[] PotionPool { get; } = Potions.Keys
+    private static readonly string[] PotionPoolValues = Potions.Keys
         .Where(id => id != "proto.native.neow.ambergris"
             && id != "proto.native.underdocks.glowwater_potion"
             && id != PrototypeNativePotionCourier.FoulPotionId
             && id != "proto.potion.blood"
             && id != "proto.potion.explosive")
         .Order(StringComparer.Ordinal).ToArray();
-    public static string[] RelicPool { get; } =
+    private static readonly string[] RelicPoolValues =
     [
         "proto.relic.lantern",
         "proto.relic.ink_bottle",
@@ -7580,7 +7674,7 @@ public static class PrototypeContent
         PrototypeNativeRestSiteRelics.GiryaId
     ];
 
-    public static string[] BossRelicPool { get; } =
+    private static readonly string[] BossRelicPoolValues =
     [
         "proto.relic.sozu",
         "proto.relic.empty_cage",
@@ -7592,6 +7686,15 @@ public static class PrototypeContent
         "proto.relic.runic_dome",
         "proto.relic.snecko_eye"
     ];
+
+    public static string[] PotionPool =>
+        (string[])PotionPoolValues.Clone();
+
+    public static string[] RelicPool =>
+        (string[])RelicPoolValues.Clone();
+
+    public static string[] BossRelicPool =>
+        (string[])BossRelicPoolValues.Clone();
 
     public static PrototypeCardDefinition Card(string id) =>
         Cards.TryGetValue(id, out var value)

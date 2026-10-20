@@ -156,8 +156,18 @@ public sealed class ControlledRandomTargetV111Tests
         Assert.NotNull(pending.TargetPending);
         var save = JsonSerializer.Serialize(pending);
         var copied = JsonSerializer.Deserialize<ControlledPlayableCombatV111>(save)!;
-        var target = copied.Run.World!.Combat!.PendingChoice!.ControlledTarget!;
-        target.EligibleEnemyInstanceIds[0] = int.MaxValue;
+        var copiedChoice = copied.Run.World!.Combat!.PendingChoice!;
+        var target = copiedChoice.ControlledTarget!;
+        var eligible = target.EligibleEnemyInstanceIds;
+        eligible[0] = int.MaxValue;
+        copied = ControlledPlayableTestSupport.WithPendingChoice(
+            copied, copiedChoice with
+            {
+                ControlledTarget = target with
+                {
+                    EligibleEnemyInstanceIds = eligible
+                }
+            });
         Assert.Throws<InvalidDataException>(() =>
             ControlledPlayableCombatEngineV111.VerifyStage(copied));
         Assert.NotNull(NatureBoundaryMetadataV111.Describe(pending).Pending);

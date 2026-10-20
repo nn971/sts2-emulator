@@ -215,13 +215,33 @@ public sealed class ControlledPoolShuffleV111Tests
     {
         var state = BeginPotion("nature-pool-malformed", "proto.potion.attack");
         var corrupted = state.Fork();
-        corrupted.Run.World!.Combat!.PendingChoice!.ControlledPoolShuffle!
-            .OriginalCardIds[0] = "forged.card.model";
+        var corruptedChoice = corrupted.Run.World!.Combat!.PendingChoice!;
+        var corruptedShuffle = corruptedChoice.ControlledPoolShuffle!;
+        var corruptedOriginal = corruptedShuffle.OriginalCardIds;
+        corruptedOriginal[0] = "forged.card.model";
+        corrupted = ControlledPlayableTestSupport.WithPendingChoice(
+            corrupted, corruptedChoice with
+            {
+                ControlledPoolShuffle = corruptedShuffle with
+                {
+                    OriginalCardIds = corruptedOriginal
+                }
+            });
         Assert.Throws<InvalidDataException>(() =>
             ControlledPlayableCombatEngineV111.VerifyStage(corrupted));
         var changed = state.Fork();
-        changed.Run.World!.Combat!.PendingChoice!.ControlledPoolShuffle!
-            .CurrentCardIds[0] = "missing";
+        var changedChoice = changed.Run.World!.Combat!.PendingChoice!;
+        var changedShuffle = changedChoice.ControlledPoolShuffle!;
+        var changedCurrent = changedShuffle.CurrentCardIds;
+        changedCurrent[0] = "missing";
+        changed = ControlledPlayableTestSupport.WithPendingChoice(
+            changed, changedChoice with
+            {
+                ControlledPoolShuffle = changedShuffle with
+                {
+                    CurrentCardIds = changedCurrent
+                }
+            });
         Assert.Throws<InvalidDataException>(() =>
             ControlledPlayableCombatEngineV111.VerifyStage(changed));
         // Even a valid permutation of the same source cards is forged
@@ -229,9 +249,18 @@ public sealed class ControlledPoolShuffleV111Tests
         var progressed = ControlledPlayableCombatEngineV111.Resolve(
             state, state.Fingerprint, 0);
         var forgedPrefix = progressed.Fork();
-        var partial = forgedPrefix.Run.World!.Combat!.PendingChoice!
-            .ControlledPoolShuffle!.CurrentCardIds;
+        var partialChoice = forgedPrefix.Run.World!.Combat!.PendingChoice!;
+        var partialShuffle = partialChoice.ControlledPoolShuffle!;
+        var partial = partialShuffle.CurrentCardIds;
         (partial[0], partial[1]) = (partial[1], partial[0]);
+        forgedPrefix = ControlledPlayableTestSupport.WithPendingChoice(
+            forgedPrefix, partialChoice with
+            {
+                ControlledPoolShuffle = partialShuffle with
+                {
+                    CurrentCardIds = partial
+                }
+            });
         Assert.Throws<InvalidDataException>(() =>
             ControlledPlayableCombatEngineV111.VerifyStage(forgedPrefix));
         var view = NatureBoundaryMetadataV111.Describe(state);

@@ -7,16 +7,41 @@ public sealed record ScriptedRunActionRecordV111(
     GameAction Action,
     ControlledStochasticDecisionV111[] Decisions)
 {
+    private GameAction? _action = CloneAction(Action);
+    private ControlledStochasticDecisionV111[]? _decisions =
+        CloneDecisions(Decisions);
+
+    public GameAction Action
+    {
+        get => _action is null ? null! : CloneAction(_action);
+        init => _action = CloneAction(value);
+    }
+
+    public ControlledStochasticDecisionV111[] Decisions
+    {
+        get => _decisions is null
+            ? null!
+            : (ControlledStochasticDecisionV111[])_decisions.Clone();
+        init => _decisions = CloneDecisions(value);
+    }
+
     public ScriptedRunActionRecordV111 Fork() => this with
     {
-        Action = CloneAction(Action),
-        Decisions = Decisions.Select(decision => decision.Fork()).ToArray()
+        Action = _action!,
+        Decisions = _decisions!
     };
 
-    private static GameAction CloneAction(GameAction action) => action with
-    {
-        Payload = action.Payload.Clone()
-    };
+    private static GameAction? CloneAction(GameAction? action) =>
+        action is null ? null : action with
+        {
+            Payload = action.Payload.Clone()
+        };
+
+    private static ControlledStochasticDecisionV111[]? CloneDecisions(
+        ControlledStochasticDecisionV111[]? decisions) =>
+        decisions?.Select(decision => decision is null
+            ? null!
+            : decision.Fork()).ToArray();
 }
 
 public sealed record ScriptedRunSessionSnapshotV111(
@@ -24,7 +49,22 @@ public sealed record ScriptedRunSessionSnapshotV111(
     string OriginSnapshotJson,
     string RunSnapshotJson,
     ScriptedRunActionRecordV111[] CompletedActions,
-    string? ActiveActionSnapshotJson);
+    string? ActiveActionSnapshotJson)
+{
+    private ScriptedRunActionRecordV111[]? _completedActions =
+        Clone(CompletedActions);
+
+    public ScriptedRunActionRecordV111[] CompletedActions
+    {
+        get => Clone(_completedActions)!;
+        init => _completedActions = Clone(value);
+    }
+
+    private static ScriptedRunActionRecordV111[]? Clone(
+        ScriptedRunActionRecordV111[]? actions) => actions is null
+            ? null
+            : (ScriptedRunActionRecordV111[])actions.Clone();
+}
 
 /// <summary>
 /// Serializable whole-run scripted replay. It composes the ordinary
@@ -39,6 +79,15 @@ public sealed record ScriptedRunSessionV111(
     ScriptedRunActionRecordV111[] CompletedActions,
     ScriptedRunActionSessionV111? ActiveAction)
 {
+    private ScriptedRunActionRecordV111[]? _completedActions =
+        Clone(CompletedActions);
+
+    public ScriptedRunActionRecordV111[] CompletedActions
+    {
+        get => Clone(_completedActions)!;
+        init => _completedActions = Clone(value);
+    }
+
     public const string CurrentSchemaId =
         "sts2-v111-scripted-run-session-v1";
 
@@ -128,7 +177,7 @@ public sealed record ScriptedRunSessionV111(
         {
             Origin = Origin.Fork(),
             Run = Run.Fork(),
-            CompletedActions = CompletedActions
+            CompletedActions = _completedActions!
                 .Select(action => action.Fork()).ToArray(),
             ActiveAction = ActiveAction?.Fork()
         };
@@ -136,21 +185,23 @@ public sealed record ScriptedRunSessionV111(
 
     public void Validate()
     {
+        var completedActions = _completedActions;
         if (SchemaId != CurrentSchemaId || Origin is null || Run is null ||
-            CompletedActions is null)
+            completedActions is null)
             throw new InvalidDataException(
                 "Invalid scripted run-session envelope.");
         RunConfiguration.ValidateState(Origin);
         PrototypeStateInvariants.Validate(Origin);
 
         var replayedRun = Origin.Fork();
-        foreach (var action in CompletedActions)
+        foreach (var action in completedActions)
         {
-            if (action is null || action.Action is null ||
-                action.Decisions is null)
+            var actionValue = action?.Action;
+            var decisions = action?.Decisions;
+            if (action is null || actionValue is null || decisions is null)
                 throw new InvalidDataException(
                     "Scripted run history contains an invalid action record.");
-            foreach (var decision in action.Decisions)
+            foreach (var decision in decisions)
             {
                 if (decision is null)
                     throw new InvalidDataException(
@@ -159,7 +210,7 @@ public sealed record ScriptedRunSessionV111(
             }
 
             var completed = ScriptedRunActionSessionV111.ReplayCompleted(
-                replayedRun, action.Action, action.Decisions);
+                replayedRun, actionValue, decisions);
             replayedRun = completed.Run!.Fork();
         }
 
@@ -186,7 +237,8 @@ public sealed record ScriptedRunSessionV111(
         var snapshot = new ScriptedRunSessionSnapshotV111(
             CurrentSchemaId, RunSnapshot.Save(session.Origin),
             RunSnapshot.Save(session.Run),
-            session.CompletedActions.Select(action => action.Fork()).ToArray(),
+            session._completedActions!
+                .Select(action => action.Fork()).ToArray(),
             session.ActiveAction is null
                 ? null
                 : ScriptedRunActionSessionV111.Save(session.ActiveAction));
@@ -200,11 +252,12 @@ public sealed record ScriptedRunSessionV111(
                 ScriptedRunSessionSnapshotV111>(json)
             ?? throw new InvalidDataException(
                 "Null scripted run-session snapshot.");
+        var completedActions = snapshot.CompletedActions;
         if (snapshot.SchemaId != CurrentSchemaId ||
             string.IsNullOrWhiteSpace(snapshot.OriginSnapshotJson) ||
             string.IsNullOrWhiteSpace(snapshot.RunSnapshotJson) ||
-            snapshot.CompletedActions is null ||
-            snapshot.CompletedActions.Any(action => action is null ||
+            completedActions is null ||
+            completedActions.Any(action => action is null ||
                 action.Action is null || action.Decisions is null) ||
             snapshot.ActiveActionSnapshotJson is not null &&
                 string.IsNullOrWhiteSpace(
@@ -215,7 +268,7 @@ public sealed record ScriptedRunSessionV111(
         var session = new ScriptedRunSessionV111(
             CurrentSchemaId, RunSnapshot.Load(snapshot.OriginSnapshotJson),
             RunSnapshot.Load(snapshot.RunSnapshotJson),
-            snapshot.CompletedActions.Select(action => action.Fork()).ToArray(),
+            completedActions.Select(action => action.Fork()).ToArray(),
             snapshot.ActiveActionSnapshotJson is null
                 ? null
                 : ScriptedRunActionSessionV111.Restore(
@@ -238,7 +291,7 @@ public sealed record ScriptedRunSessionV111(
         return session with
         {
             Run = actionSession.Run.Fork(),
-            CompletedActions = session.CompletedActions
+            CompletedActions = session._completedActions!
                 .Append(record).ToArray(),
             ActiveAction = null
         };
@@ -248,4 +301,9 @@ public sealed record ScriptedRunSessionV111(
     {
         Payload = action.Payload.Clone()
     };
+
+    private static ScriptedRunActionRecordV111[]? Clone(
+        ScriptedRunActionRecordV111[]? actions) => actions is null
+            ? null
+            : (ScriptedRunActionRecordV111[])actions.Clone();
 }

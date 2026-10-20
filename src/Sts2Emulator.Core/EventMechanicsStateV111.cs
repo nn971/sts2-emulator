@@ -21,16 +21,43 @@ public sealed record EventMechanicsStateV111(
     bool? NativeTanxTriEligible = null,
     bool? NativeNonupeipeBraceletEligible = null)
 {
+    private string[]? _queuedPotionIds = Clone(QueuedPotionIds);
+    private PrototypePendingEventDeckChoiceState[]? _queuedDeckChoices =
+        Clone(QueuedDeckChoices);
+    private string[]? _offeredChoiceIds = Clone(OfferedChoiceIds);
+
+    public string[]? QueuedPotionIds
+    {
+        get => Clone(_queuedPotionIds);
+        init => _queuedPotionIds = Clone(value);
+    }
+
+    public PrototypePendingEventDeckChoiceState[]? QueuedDeckChoices
+    {
+        get => Clone(_queuedDeckChoices);
+        init => _queuedDeckChoices = Clone(value);
+    }
+
+    public string[]? OfferedChoiceIds
+    {
+        get => Clone(_offeredChoiceIds);
+        init => _offeredChoiceIds = Clone(value);
+    }
+
     public EventMechanicsStateV111 Fork() => this with
     {
         PendingDeckChoice = PendingDeckChoice?.Fork(),
         PendingPotionReplacement = PendingPotionReplacement?.Fork(),
-        QueuedPotionIds = QueuedPotionIds is null
-            ? null : (string[])QueuedPotionIds.Clone(),
-        QueuedDeckChoices = QueuedDeckChoices is null
-            ? null : QueuedDeckChoices.Select(choice => choice.Fork()).ToArray(),
-        OfferedChoiceIds = OfferedChoiceIds is null
-            ? null : (string[])OfferedChoiceIds.Clone(),
+        QueuedPotionIds = _queuedPotionIds,
+        QueuedDeckChoices = _queuedDeckChoices,
+        OfferedChoiceIds = _offeredChoiceIds,
         PendingReward = PendingReward?.Fork()
     };
+
+    private static string[]? Clone(string[]? values) =>
+        values is null ? null : (string[])values.Clone();
+
+    private static PrototypePendingEventDeckChoiceState[]? Clone(
+        PrototypePendingEventDeckChoiceState[]? values) =>
+        values?.Select(choice => choice.Fork()).ToArray();
 }

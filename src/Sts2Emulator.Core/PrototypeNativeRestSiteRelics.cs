@@ -13,11 +13,15 @@ public static class PrototypeNativeRestSiteRelics
 
     private sealed record GiryaState(int LiftCount);
 
-    public static PrototypeRelicDefinition[] Relics { get; } =
+    private static readonly PrototypeRelicDefinition[] RelicDefinitions =
     [
         new(ShovelId, "Shovel"),
         new(GiryaId, "Girya")
     ];
+
+    public static PrototypeRelicDefinition[] Relics => RelicDefinitions
+        .Select(PrototypeDefinitionCopiesV111.CloneRelicDefinition)
+        .ToArray();
 
     public static bool CanDig(PlayerState player) =>
         player.ActiveRelics.Any(relic => relic.RelicId == ShovelId);

@@ -22,7 +22,11 @@ public static class PrototypeNativeHiveElites
     public const string ReattachId = "proto.native.hive.reattach";
     public const string TaintedPowerId = "proto.native.hive.tainted";
 
-    public static PrototypePowerDefinition[] Powers { get; } =
+    public static PrototypePowerDefinition[] Powers => PowerDefinitions
+        .Select(PrototypeDefinitionCopiesV111.ClonePowerDefinition)
+        .ToArray();
+
+    private static readonly PrototypePowerDefinition[] PowerDefinitions =
     [
         new(PersonalHiveId, "Personal Hive", 0, []),
         new(VitalSparkId, "Vital Spark", 0, []),
@@ -76,7 +80,11 @@ public static class PrototypeNativeHiveElites
                 ])
         ]));
 
-    public static PrototypeEnemyDefinition[] Enemies { get; } =
+    public static PrototypeEnemyDefinition[] Enemies => EnemyDefinitions
+        .Select(PrototypeDefinitionCopiesV111.CloneEnemyDefinition)
+        .ToArray();
+
+    private static readonly PrototypeEnemyDefinition[] EnemyDefinitions =
     [
         // Initial BEES, then SPEAR, PHEROMONE_SPIT, looping.
         new(EntomancerId, "Entomancer", 145, 0,
@@ -146,7 +154,12 @@ public static class PrototypeNativeHiveElites
         Segment(BackId)
     ];
 
-    public static PrototypeEncounterDefinition[] Encounters { get; } =
+    public static PrototypeEncounterDefinition[] Encounters =>
+        EncounterDefinitions
+            .Select(PrototypeDefinitionCopiesV111.CloneEncounterDefinition)
+            .ToArray();
+
+    private static readonly PrototypeEncounterDefinition[] EncounterDefinitions =
     [
         new(EntomancerEncounterId, PrototypeRoomType.Elite,
             [EntomancerId], MinAct: 2, MaxAct: 2, Weight: 0),

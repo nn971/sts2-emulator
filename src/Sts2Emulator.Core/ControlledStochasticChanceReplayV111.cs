@@ -11,6 +11,18 @@ public sealed record ControlledStochasticDecisionV111(
     RandomUnitFloatDecisionV111? UnitFloatDecision = null,
     string[]? CandidateLabels = null)
 {
+    private string[]? _candidateLabels = Clone(CandidateLabels);
+
+    public string[]? CandidateLabels
+    {
+        get => Clone(_candidateLabels);
+        init => _candidateLabels = Clone(value);
+    }
+
+    private static string[]? Clone(string[]? labels) => labels is null
+        ? null
+        : (string[])labels.Clone();
+
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
     public RandomRangedFloatDecisionV111? RangedFloatDecision { get; init; }
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
@@ -290,6 +302,22 @@ public sealed record ControlledStochasticContinuationStateV111(
     ControlledStochasticRequestV111 PendingRequest,
     string[]? PendingCandidateLabels = null)
 {
+    private ControlledStochasticDecisionV111[]? _decisions =
+        CloneDecisions(Decisions);
+    private string[]? _pendingCandidateLabels =
+        CloneLabels(PendingCandidateLabels);
+
+    public ControlledStochasticDecisionV111[] Decisions
+    {
+        get => CloneDecisions(_decisions)!;
+        init => _decisions = CloneDecisions(value);
+    }
+    public string[]? PendingCandidateLabels
+    {
+        get => CloneLabels(_pendingCandidateLabels);
+        init => _pendingCandidateLabels = CloneLabels(value);
+    }
+
     public const string CurrentSchemaId =
         "sts2-v111-controlled-stochastic-continuation-v1";
     public const string MixedPrimitiveSchemaId =
@@ -297,25 +325,26 @@ public sealed record ControlledStochasticContinuationStateV111(
 
     public ControlledStochasticContinuationStateV111 Fork() => this with
     {
-        Decisions = Decisions.Select(decision => decision.Fork()).ToArray(),
+        Decisions = _decisions!,
         PendingRequest = PendingRequest.Fork(),
-        PendingCandidateLabels = PendingCandidateLabels is null ? null :
-            (string[])PendingCandidateLabels.Clone()
+        PendingCandidateLabels = _pendingCandidateLabels
     };
 
     public void Validate()
     {
+        var decisions = _decisions;
+        var pendingCandidateLabels = _pendingCandidateLabels;
         if (SchemaId is not (CurrentSchemaId or MixedPrimitiveSchemaId) ||
-            Decisions is null ||
-            PendingRequest is null || PendingCandidateLabels is not null &&
+            decisions is null ||
+            PendingRequest is null || pendingCandidateLabels is not null &&
                 (PendingRequest.IndexRequest is null ||
-                 PendingCandidateLabels.Length !=
+                 pendingCandidateLabels.Length !=
                     PendingRequest.IndexRequest.SupportCount ||
-                 PendingCandidateLabels.Any(string.IsNullOrWhiteSpace)))
+                 pendingCandidateLabels.Any(string.IsNullOrWhiteSpace)))
             throw new InvalidDataException(
                 "Malformed mixed controlled stochastic continuation.");
         PendingRequest.Validate();
-        foreach (var decision in Decisions)
+        foreach (var decision in decisions)
         {
             if (decision is null)
                 throw new InvalidDataException(
@@ -332,6 +361,14 @@ public sealed record ControlledStochasticContinuationStateV111(
             throw new InvalidDataException(
                 "Version 1 stochastic continuations contain only index and unit-float requests.");
     }
+
+    private static ControlledStochasticDecisionV111[]? CloneDecisions(
+        ControlledStochasticDecisionV111[]? decisions) => decisions?.Select(
+            decision => decision is null ? null! : decision.Fork()).ToArray();
+
+    private static string[]? CloneLabels(string[]? labels) => labels is null
+        ? null
+        : (string[])labels.Clone();
 }
 
 /// <summary>
@@ -340,6 +377,8 @@ public sealed record ControlledStochasticContinuationStateV111(
 /// </summary>
 public sealed class ControlledStochasticChanceRequiredExceptionV111 : Exception
 {
+    private readonly string[]? _candidateLabels;
+
     public ControlledStochasticChanceRequiredExceptionV111(
         ControlledStochasticRequestV111 request,
         string[]? candidateLabels = null)
@@ -347,20 +386,23 @@ public sealed class ControlledStochasticChanceRequiredExceptionV111 : Exception
     {
         ArgumentNullException.ThrowIfNull(request);
         Request = request.Fork();
-        CandidateLabels = candidateLabels is null ? null :
+        _candidateLabels = candidateLabels is null ? null :
             (string[])candidateLabels.Clone();
         Request.Validate();
-        if (CandidateLabels is not null &&
+        var savedCandidateLabels = _candidateLabels;
+        if (savedCandidateLabels is not null &&
             (Request.IndexRequest is null ||
-             CandidateLabels.Length != Request.IndexRequest.SupportCount ||
-             CandidateLabels.Any(string.IsNullOrWhiteSpace)))
+             savedCandidateLabels.Length !=
+                Request.IndexRequest.SupportCount ||
+             savedCandidateLabels.Any(string.IsNullOrWhiteSpace)))
             throw new ArgumentException(
                 "Candidate labels must match an index request support.",
                 nameof(candidateLabels));
     }
 
     public ControlledStochasticRequestV111 Request { get; }
-    public string[]? CandidateLabels { get; }
+    public string[]? CandidateLabels => _candidateLabels is null ? null :
+        (string[])_candidateLabels.Clone();
 }
 
 /// <summary>

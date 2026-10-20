@@ -21,7 +21,9 @@ public sealed partial class PrototypeGameEngine
     /// <summary>
     /// Opening side/draw/player-start stages reuse the ordinary dispatch and
     /// choice kernel. Their saved cursor does not change end-turn indices.
-    /// Legacy CombatStarted subscribers still need a complete source-stage audit.
+    /// Current modeled CombatStarted subscribers have fixed effects; their
+    /// scoped review is recorded in the stochastic ownership inventory.
+    /// Revisit this stage whenever its subscriber set changes.
     /// </summary>
     private static RunState ResumeOpeningCombat(RunState state, PrototypeOpeningCombatStage start)
     {

@@ -10,7 +10,11 @@ public static class PrototypeNativePotionCourier
     public const string GrabPotionsChoiceId = "grab_potions";
     public const string RansackChoiceId = "ransack";
 
-    public static PrototypeEventDefinition Definition { get; } = new(
+    public static PrototypeEventDefinition Definition =>
+        PrototypeDefinitionCopiesV111.CloneEventDefinition(
+            DefinitionValue);
+
+    private static readonly PrototypeEventDefinition DefinitionValue = new(
         EventId,
         "Potion Courier",
         [
@@ -33,7 +37,12 @@ public static class PrototypeNativePotionCourier
         MinAct: 2,
         MaxAct: 3);
 
-    public static PrototypePotionDefinition FoulPotion { get; } = new(
+    public static PrototypePotionDefinition FoulPotion =>
+        PrototypeDefinitionCopiesV111.ClonePotionDefinition(
+            FoulPotionDefinitionValue);
+
+    private static readonly PrototypePotionDefinition
+        FoulPotionDefinitionValue = new(
         FoulPotionId,
         "Foul Potion",
         PrototypeCardTarget.None,

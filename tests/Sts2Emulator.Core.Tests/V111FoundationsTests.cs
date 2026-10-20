@@ -103,15 +103,41 @@ public sealed class V111FoundationsTests
         var configuration = RunConfiguration.Create(profile: profile);
         var state = V111RunFactory.Create("fork-config", configuration);
         var fork = state.Fork();
-        fork.Configuration!.Acts[0] = ActIdentity.Underdocks;
-        fork.Configuration.Profile.RevealedEpochs[0] = "SECOND";
+        var forkConfiguration = fork.Configuration!;
+        fork = fork with
+        {
+            Configuration = forkConfiguration with
+            {
+                Acts = [ActIdentity.Underdocks, ActIdentity.Hive, ActIdentity.Glory],
+                Profile = forkConfiguration.Profile with
+                {
+                    RevealedEpochs = ["SECOND"]
+                }
+            }
+        };
+        var committedConfiguration = fork.Configuration!;
+        var exposedActs = committedConfiguration.Acts;
+        exposedActs[0] = ActIdentity.Overgrowth;
+        var exposedEpochs = committedConfiguration.Profile.RevealedEpochs;
+        exposedEpochs[0] = "THIRD";
+        Assert.Equal(ActIdentity.Underdocks, committedConfiguration.Acts[0]);
+        Assert.Equal("SECOND", committedConfiguration.Profile.RevealedEpochs[0]);
         Assert.Equal(ActIdentity.Overgrowth, state.Configuration!.Acts[0]);
         Assert.Equal("FIRST", state.Configuration.Profile.RevealedEpochs[0]);
         Assert.Equal("FIRST", profile.RevealedEpochs[0]);
         var resources = new CharacterResourceState(Stars: 3, OrbSlots: 3, Orbs: [new("DARK_ORB", 6)]);
         var player = state.Player with { Resources = resources };
         var playerFork = player.Fork();
-        playerFork.Resources!.Orbs![0] = new("FROST_ORB");
+        playerFork = playerFork with
+        {
+            Resources = playerFork.Resources! with
+            {
+                Orbs = [new("FROST_ORB")]
+            }
+        };
+        var exposedOrbs = playerFork.Resources!.Orbs!;
+        exposedOrbs[0] = new("DARK_ORB");
+        Assert.Equal("FROST_ORB", playerFork.Resources!.Orbs![0].Kind);
         Assert.Equal("DARK_ORB", player.Resources!.Orbs![0].Kind);
     }
 

@@ -14,7 +14,10 @@ public sealed class ForkTests
         });
 
         var fork = bundle.Fork();
-        fork.Streams[0].StateBytes[0] = 99;
+        fork.ReplaceStreamAt(0,
+            fork.Streams[0] with { StateBytes = new byte[] { 99, 2, 3 } });
+        var exposedBytes = fork.Streams[0].StateBytes;
+        exposedBytes[0] = 77;
 
         Assert.Equal(1, bundle.Streams[0].StateBytes[0]);
         Assert.Equal(99, fork.Streams[0].StateBytes[0]);
@@ -45,6 +48,5 @@ public sealed class ForkTests
         var fork = state.Fork();
 
         Assert.Equal(CanonicalJson.Sha256(state), CanonicalJson.Sha256(fork));
-        Assert.NotSame(state.Rng.Streams[0].StateBytes, fork.Rng.Streams[0].StateBytes);
     }
 }

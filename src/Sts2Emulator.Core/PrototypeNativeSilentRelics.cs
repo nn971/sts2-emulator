@@ -13,7 +13,7 @@ public static class PrototypeNativeSilentRelics
     public const string SneckoSkullId = "proto.relic.snecko_skull";
     public const string TwistedFunnelId = "proto.relic.twisted_funnel";
 
-    public static PrototypeRelicDefinition[] Relics { get; } =
+    private static readonly PrototypeRelicDefinition[] RelicDefinitions =
     [
         // Native AfterCardPlayed adds Temporary Dexterity for each Shiv.
         new(HelicalDartId, "Helical Dart",
@@ -54,4 +54,8 @@ public static class PrototypeNativeSilentRelics
                         Target: PrototypeEffectTarget.AllEnemies)])
             ])
     ];
+
+    public static PrototypeRelicDefinition[] Relics => RelicDefinitions
+        .Select(PrototypeDefinitionCopiesV111.CloneRelicDefinition)
+        .ToArray();
 }

@@ -7,8 +7,19 @@ namespace Sts2Emulator.Core;
 /// </summary>
 public sealed record ControlledPlayableCombatMechanicsStateV111
 {
+    private ControlledIntentStateV111 _origin = null!;
+    private string[] _playerActions = [];
+
     public string Seed { get; init; }
-    public ControlledIntentStateV111 Origin { get; init; }
+    public ControlledIntentStateV111 Origin
+    {
+        get => _origin.Fork();
+        init
+        {
+            ArgumentNullException.ThrowIfNull(value);
+            _origin = value.Fork();
+        }
+    }
     public PrototypeMechanicsContinuationStateV111 Continuation { get; init; }
 
     public RunState Run
@@ -17,7 +28,15 @@ public sealed record ControlledPlayableCombatMechanicsStateV111
         init => Continuation = Continuation with { Current = value };
     }
 
-    public string[] PlayerActions { get; init; }
+    public string[] PlayerActions
+    {
+        get => (string[])_playerActions.Clone();
+        init
+        {
+            ArgumentNullException.ThrowIfNull(value);
+            _playerActions = (string[])value.Clone();
+        }
+    }
     public string Mode { get; init; }
 
     public ControlledPlayableCombatMechanicsStateV111(

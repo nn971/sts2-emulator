@@ -78,7 +78,7 @@ public static class PrototypeConditionedCombatEntry
             {
                 throw new InvalidOperationException("Combat RNG stream is missing.");
             }
-            candidate.Rng.Streams[index] = combatStream;
+            candidate.Rng.ReplaceStreamAt(index, combatStream);
 
             var result = environment.Step(candidate, actionId).State;
             if (result.Phase != RunPhase.Combat)

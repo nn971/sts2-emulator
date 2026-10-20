@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Sts2Emulator.Core;
 
 /// <summary>
@@ -19,14 +21,14 @@ public static class ExperimentalSilentThreeActRouteV111
     public const string SecondBossIndexSiteId =
         "combat.encounter.later_act.second_boss.index_draw";
 
-    public static readonly string[] HiveWeak =
+    private static readonly string[] HiveWeakValues =
     [
         "proto.native.hive.encounter.bowlbugs_weak",
         "proto.native.hive.encounter.exoskeletons_weak",
         "proto.native.hive.encounter.thieving_hopper_weak",
         "proto.native.hive.encounter.tunneler_weak"
     ];
-    public static readonly string[] HiveNormal =
+    private static readonly string[] HiveNormalValues =
     [
         PrototypeNativeHiveNormals.BowlbugsNormalId,
         PrototypeNativeHiveNormals.ChompersNormalId,
@@ -39,13 +41,13 @@ public static class ExperimentalSilentThreeActRouteV111
         PrototypeNativeHiveNormals.SpinyToadNormalId,
         PrototypeNativeHiveSummoningNormals.ObscuraNormalId
     ];
-    public static readonly string[] HiveElites =
+    private static readonly string[] HiveElitesValues =
     [
         PrototypeNativeHiveElites.DecimillipedeEncounterId,
         PrototypeNativeHiveElites.EntomancerEncounterId,
         PrototypeNativeHiveElites.PrismEncounterId,
     ];
-    public static readonly string[] HiveBosses =
+    private static readonly string[] HiveBossesValues =
     [
         PrototypeNativeHiveBosses.KaiserEncounterId,
         PrototypeNativeHiveBosses.KnowledgeEncounterId,
@@ -54,19 +56,19 @@ public static class ExperimentalSilentThreeActRouteV111
     // ActModel.BossDiscoveryOrder is independent of GenerateAllEncounters()
     // pool order. The source replaces the randomly preselected boss with the
     // first entry in this sequence the profile has not discovered yet.
-    public static readonly string[] HiveBossDiscoveryOrder =
+    private static readonly string[] HiveBossDiscoveryOrderValues =
     [
         PrototypeNativeHiveBosses.InsatiableEncounterId,
         PrototypeNativeHiveBosses.KnowledgeEncounterId,
         PrototypeNativeHiveBosses.KaiserEncounterId
     ];
-    public static readonly string[] GloryWeak =
+    private static readonly string[] GloryWeakValues =
     [
         PrototypeNativeLaterActs.GlorySculptorWeakId,
         PrototypeNativeGloryScrolls.WeakEncounterId,
         PrototypeNativeGloryWeak.TurretOperatorWeakId
     ];
-    public static readonly string[] GloryNormal =
+    private static readonly string[] GloryNormalValues =
     [
         PrototypeNativeGloryNewNormals.AxebotsEncounterId,
         "proto.native.glory.encounter.construct_menagerie_normal",
@@ -78,19 +80,19 @@ public static class ExperimentalSilentThreeActRouteV111
         PrototypeNativeGloryNormals.SlimedBerserkerEncounterId,
         PrototypeNativeGloryNewNormals.LostAndForgottenEncounterId
     ];
-    public static readonly string[] GloryElites =
+    private static readonly string[] GloryElitesValues =
     [
         PrototypeNativeGloryBosses.KnightsEncounterId,
         PrototypeNativeGloryElites.MechaKnightEncounterId,
         PrototypeNativeGloryElites.SoulNexusEncounterId
     ];
-    public static readonly string[] GloryBosses =
+    private static readonly string[] GloryBossesValues =
     [
         PrototypeNativeGloryBosses.AeonglassEncounterId,
         PrototypeNativeGloryBosses.QueenEncounterId,
         PrototypeNativeGloryBosses.TestSubjectEncounterId
     ];
-    public static readonly string[] GloryBossDiscoveryOrder =
+    private static readonly string[] GloryBossDiscoveryOrderValues =
     [
         PrototypeNativeGloryBosses.QueenEncounterId,
         PrototypeNativeGloryBosses.TestSubjectEncounterId,
@@ -99,7 +101,7 @@ public static class ExperimentalSilentThreeActRouteV111
 
     // Colorful Philosophers is still unimplemented, so it is not
     // misrepresented as an executable event despite its native ID.
-    public static readonly string[] HiveEvents =
+    private static readonly string[] HiveEventsValues =
     [
         PrototypeNativeBrainLeech.EventId,
         PrototypeNativeSelfHelpBook.EventId,
@@ -118,7 +120,7 @@ public static class ExperimentalSilentThreeActRouteV111
         PrototypeNativeSharedEvents.ThisOrThatId,
         PrototypeNativeFutureOfPotions.EventId
     ];
-    public static readonly string[] GloryEvents =
+    private static readonly string[] GloryEventsValues =
     [
         PrototypeNativeSelfHelpBook.EventId,
         PrototypeNativePotionCourier.EventId,
@@ -134,6 +136,31 @@ public static class ExperimentalSilentThreeActRouteV111
         PrototypeNativeSharedEvents.ThisOrThatId,
         PrototypeNativeFutureOfPotions.EventId
     ];
+
+    public static string[] HiveWeak =>
+        (string[])HiveWeakValues.Clone();
+    public static string[] HiveNormal =>
+        (string[])HiveNormalValues.Clone();
+    public static string[] HiveElites =>
+        (string[])HiveElitesValues.Clone();
+    public static string[] HiveBosses =>
+        (string[])HiveBossesValues.Clone();
+    public static string[] HiveBossDiscoveryOrder =>
+        (string[])HiveBossDiscoveryOrderValues.Clone();
+    public static string[] GloryWeak =>
+        (string[])GloryWeakValues.Clone();
+    public static string[] GloryNormal =>
+        (string[])GloryNormalValues.Clone();
+    public static string[] GloryElites =>
+        (string[])GloryElitesValues.Clone();
+    public static string[] GloryBosses =>
+        (string[])GloryBossesValues.Clone();
+    public static string[] GloryBossDiscoveryOrder =>
+        (string[])GloryBossDiscoveryOrderValues.Clone();
+    public static string[] HiveEvents =>
+        (string[])HiveEventsValues.Clone();
+    public static string[] GloryEvents =>
+        (string[])GloryEventsValues.Clone();
 
     public static string[] Pool(int act, PrototypeRoomType room, bool weak)
         => (act, room, weak) switch
@@ -491,20 +518,82 @@ public static class ExperimentalSilentThreeActRouteV111
 
 }
 
-public sealed record PrototypeLaterActEncounterBagV111(
-    int Act,
-    int OrdinaryCombatsStarted,
-    string[] RemainingWeak,
-    string[] RemainingNormal,
-    string[] RemainingElite,
-    string BossEncounterId,
-    string? SecondBossEncounterId = null,
-    string? AssignedAncientId = null)
+public sealed record PrototypeLaterActEncounterBagV111
 {
+    private string[] _remainingWeak;
+    private string[] _remainingNormal;
+    private string[] _remainingElite;
+
+    [JsonConstructor]
+    public PrototypeLaterActEncounterBagV111(
+        int Act,
+        int OrdinaryCombatsStarted,
+        string[] RemainingWeak,
+        string[] RemainingNormal,
+        string[] RemainingElite,
+        string BossEncounterId,
+        string? SecondBossEncounterId = null,
+        string? AssignedAncientId = null)
+    {
+        this.Act = Act;
+        this.OrdinaryCombatsStarted = OrdinaryCombatsStarted;
+        _remainingWeak = CloneRequired(RemainingWeak, nameof(RemainingWeak));
+        _remainingNormal = CloneRequired(
+            RemainingNormal, nameof(RemainingNormal));
+        _remainingElite = CloneRequired(RemainingElite, nameof(RemainingElite));
+        this.BossEncounterId = BossEncounterId;
+        this.SecondBossEncounterId = SecondBossEncounterId;
+        this.AssignedAncientId = AssignedAncientId;
+    }
+
+    public int Act { get; init; }
+    public int OrdinaryCombatsStarted { get; init; }
+    public string[] RemainingWeak
+    {
+        get => (string[])_remainingWeak.Clone();
+        init => _remainingWeak = CloneRequired(value, nameof(RemainingWeak));
+    }
+    public string[] RemainingNormal
+    {
+        get => (string[])_remainingNormal.Clone();
+        init => _remainingNormal = CloneRequired(
+            value, nameof(RemainingNormal));
+    }
+    public string[] RemainingElite
+    {
+        get => (string[])_remainingElite.Clone();
+        init => _remainingElite = CloneRequired(value, nameof(RemainingElite));
+    }
+    public string BossEncounterId { get; init; }
+    public string? SecondBossEncounterId { get; init; }
+    public string? AssignedAncientId { get; init; }
+
     public PrototypeLaterActEncounterBagV111 Fork() => this with
     {
-        RemainingWeak = (string[])RemainingWeak.Clone(),
-        RemainingNormal = (string[])RemainingNormal.Clone(),
-        RemainingElite = (string[])RemainingElite.Clone()
+        RemainingWeak = _remainingWeak,
+        RemainingNormal = _remainingNormal,
+        RemainingElite = _remainingElite
     };
+
+    public void Deconstruct(
+        out int Act, out int OrdinaryCombatsStarted,
+        out string[] RemainingWeak, out string[] RemainingNormal,
+        out string[] RemainingElite, out string BossEncounterId,
+        out string? SecondBossEncounterId, out string? AssignedAncientId)
+    {
+        Act = this.Act;
+        OrdinaryCombatsStarted = this.OrdinaryCombatsStarted;
+        RemainingWeak = this.RemainingWeak;
+        RemainingNormal = this.RemainingNormal;
+        RemainingElite = this.RemainingElite;
+        BossEncounterId = this.BossEncounterId;
+        SecondBossEncounterId = this.SecondBossEncounterId;
+        AssignedAncientId = this.AssignedAncientId;
+    }
+
+    private static string[] CloneRequired(string[] values, string parameterName)
+    {
+        ArgumentNullException.ThrowIfNull(values, parameterName);
+        return (string[])values.Clone();
+    }
 }

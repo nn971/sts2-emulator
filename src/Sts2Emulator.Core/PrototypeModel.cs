@@ -21,27 +21,83 @@ public enum PrototypeActOneRegion
     Underdocks
 }
 
-public sealed record PrototypeActOneEncounterPoolState(
-    PrototypeActOneRegion Region,
-    int OrdinaryCombatsStarted,
-    string[] RemainingWeakEncounterIds,
-    string[]? RemainingNormalEncounterIds = null,
-    string[]? RemainingEliteEncounterIds = null,
-    string? BossEncounterId = null)
+public sealed record PrototypeActOneEncounterPoolState
 {
+    private string[] _remainingWeakEncounterIds;
+    private string[]? _remainingNormalEncounterIds;
+    private string[]? _remainingEliteEncounterIds;
+
+    [JsonConstructor]
+    public PrototypeActOneEncounterPoolState(
+        PrototypeActOneRegion Region,
+        int OrdinaryCombatsStarted,
+        string[] RemainingWeakEncounterIds,
+        string[]? RemainingNormalEncounterIds = null,
+        string[]? RemainingEliteEncounterIds = null,
+        string? BossEncounterId = null)
+    {
+        this.Region = Region;
+        this.OrdinaryCombatsStarted = OrdinaryCombatsStarted;
+        _remainingWeakEncounterIds = CloneRequired(
+            RemainingWeakEncounterIds, nameof(RemainingWeakEncounterIds));
+        _remainingNormalEncounterIds = CloneOptional(
+            RemainingNormalEncounterIds);
+        _remainingEliteEncounterIds = CloneOptional(
+            RemainingEliteEncounterIds);
+        this.BossEncounterId = BossEncounterId;
+    }
+
+    public PrototypeActOneRegion Region { get; init; }
+    public int OrdinaryCombatsStarted { get; init; }
+    public string[] RemainingWeakEncounterIds
+    {
+        get => (string[])_remainingWeakEncounterIds.Clone();
+        init => _remainingWeakEncounterIds = CloneRequired(
+            value, nameof(RemainingWeakEncounterIds));
+    }
+    public string[]? RemainingNormalEncounterIds
+    {
+        get => CloneOptional(_remainingNormalEncounterIds);
+        init => _remainingNormalEncounterIds = CloneOptional(value);
+    }
+    public string[]? RemainingEliteEncounterIds
+    {
+        get => CloneOptional(_remainingEliteEncounterIds);
+        init => _remainingEliteEncounterIds = CloneOptional(value);
+    }
+    public string? BossEncounterId { get; init; }
+
     public PrototypeActOneEncounterPoolState Fork() => this with
     {
-        RemainingWeakEncounterIds =
-            (string[])RemainingWeakEncounterIds.Clone(),
-        RemainingNormalEncounterIds =
-            RemainingNormalEncounterIds is null
-                ? null
-                : (string[])RemainingNormalEncounterIds.Clone(),
-        RemainingEliteEncounterIds =
-            RemainingEliteEncounterIds is null
-                ? null
-                : (string[])RemainingEliteEncounterIds.Clone()
+        RemainingWeakEncounterIds = _remainingWeakEncounterIds,
+        RemainingNormalEncounterIds = _remainingNormalEncounterIds,
+        RemainingEliteEncounterIds = _remainingEliteEncounterIds
     };
+
+    public void Deconstruct(
+        out PrototypeActOneRegion Region,
+        out int OrdinaryCombatsStarted,
+        out string[] RemainingWeakEncounterIds,
+        out string[]? RemainingNormalEncounterIds,
+        out string[]? RemainingEliteEncounterIds,
+        out string? BossEncounterId)
+    {
+        Region = this.Region;
+        OrdinaryCombatsStarted = this.OrdinaryCombatsStarted;
+        RemainingWeakEncounterIds = this.RemainingWeakEncounterIds;
+        RemainingNormalEncounterIds = this.RemainingNormalEncounterIds;
+        RemainingEliteEncounterIds = this.RemainingEliteEncounterIds;
+        BossEncounterId = this.BossEncounterId;
+    }
+
+    private static string[] CloneRequired(string[] values, string parameterName)
+    {
+        ArgumentNullException.ThrowIfNull(values, parameterName);
+        return (string[])values.Clone();
+    }
+
+    private static string[]? CloneOptional(string[]? values) =>
+        values is null ? null : (string[])values.Clone();
 }
 
 public enum PrototypeCardRarity
@@ -340,11 +396,32 @@ public sealed record PrototypeEventSubscriberState(
     bool CountdownBeforeTrigger = false,
     int SourcePowerStoredValue = 0)
 {
+    private PrototypeCombatEffectSpec[]? _effects = CloneEffects(Effects);
+    private PrototypeCombatCardSnapshot? _powerCardPayload =
+        PowerCardPayload?.Fork();
+
+    public PrototypeCombatEffectSpec[] Effects
+    {
+        get => CloneEffects(_effects)!;
+        init => _effects = CloneEffects(value);
+    }
+
+    public PrototypeCombatCardSnapshot? PowerCardPayload
+    {
+        get => _powerCardPayload?.Fork();
+        init => _powerCardPayload = value?.Fork();
+    }
+
     public PrototypeEventSubscriberState Fork() => this with
     {
-        Effects = (PrototypeCombatEffectSpec[])Effects.Clone(),
-        PowerCardPayload = PowerCardPayload?.Fork()
+        Effects = _effects!,
+        PowerCardPayload = _powerCardPayload
     };
+
+    private static PrototypeCombatEffectSpec[]? CloneEffects(
+        PrototypeCombatEffectSpec[]? effects) => effects is null
+        ? null
+        : (PrototypeCombatEffectSpec[])effects.Clone();
 }
 
 public sealed record PrototypeEventDispatchContinuationState(
@@ -353,14 +430,43 @@ public sealed record PrototypeEventDispatchContinuationState(
     PrototypeEventSubscriberState[] RemainingSubscribers,
     int EventDepth)
 {
+    private PrototypeCombatEvent? _combatEvent = CombatEvent is null
+        ? null
+        : CombatEvent with { };
+    private PrototypeEventSubscriberState? _currentSubscriber =
+        CurrentSubscriber?.Fork();
+    private PrototypeEventSubscriberState[]? _remainingSubscribers =
+        CloneSubscribers(RemainingSubscribers);
+
+    public PrototypeCombatEvent CombatEvent
+    {
+        get => _combatEvent is null ? null! : _combatEvent with { };
+        init => _combatEvent = value is null ? null : value with { };
+    }
+
+    public PrototypeEventSubscriberState CurrentSubscriber
+    {
+        get => _currentSubscriber?.Fork()!;
+        init => _currentSubscriber = value?.Fork();
+    }
+
+    public PrototypeEventSubscriberState[] RemainingSubscribers
+    {
+        get => CloneSubscribers(_remainingSubscribers)!;
+        init => _remainingSubscribers = CloneSubscribers(value);
+    }
+
     public PrototypeEventDispatchContinuationState Fork() => this with
     {
-        CombatEvent = CombatEvent with { },
-        CurrentSubscriber = CurrentSubscriber.Fork(),
-        RemainingSubscribers = RemainingSubscribers
-            .Select(item => item.Fork())
-            .ToArray()
+        CombatEvent = _combatEvent!,
+        CurrentSubscriber = _currentSubscriber!,
+        RemainingSubscribers = _remainingSubscribers!
     };
+
+    private static PrototypeEventSubscriberState[]? CloneSubscribers(
+        PrototypeEventSubscriberState[]? subscribers) => subscribers?.Select(
+            subscriber => subscriber is null ? null! : subscriber.Fork())
+            .ToArray();
 }
 
 public enum PrototypeOpeningCombatStage
@@ -1771,47 +1877,128 @@ public sealed record PrototypeRuleset(
         Math.Max(0, MaxHandSize - currentHandSize);
 }
 
-public sealed record MapNodeState(
-    string NodeId,
-    int Act,
-    int Floor,
-    PrototypeRoomType RoomType,
-    string[]? NextNodeIds = null)
+public sealed record MapNodeState
 {
+    private string[]? _nextNodeIds;
+
+    [JsonConstructor]
+    public MapNodeState(
+        string NodeId,
+        int Act,
+        int Floor,
+        PrototypeRoomType RoomType,
+        string[]? NextNodeIds = null)
+    {
+        this.NodeId = NodeId;
+        this.Act = Act;
+        this.Floor = Floor;
+        this.RoomType = RoomType;
+        this.NextNodeIds = NextNodeIds;
+    }
+
+    public string NodeId { get; init; }
+    public int Act { get; init; }
+    public int Floor { get; init; }
+    public PrototypeRoomType RoomType { get; init; }
+    public string[]? NextNodeIds
+    {
+        get => _nextNodeIds is null
+            ? null : (string[])_nextNodeIds.Clone();
+        init => _nextNodeIds = Clone(value);
+    }
+
     public MapNodeState Fork() => this with
     {
-        NextNodeIds = NextNodeIds is null ? null : (string[])NextNodeIds.Clone()
+        _nextNodeIds = Clone(_nextNodeIds)
     };
+
+    public void Deconstruct(
+        out string NodeId,
+        out int Act,
+        out int Floor,
+        out PrototypeRoomType RoomType,
+        out string[]? NextNodeIds)
+    {
+        NodeId = this.NodeId;
+        Act = this.Act;
+        Floor = this.Floor;
+        RoomType = this.RoomType;
+        NextNodeIds = this.NextNodeIds;
+    }
+
+    private static string[]? Clone(string[]? values) =>
+        values is null ? null : (string[])values.Clone();
 }
 
-public sealed record MapState(
-    MapNodeState[] Nodes,
-    string? CurrentNodeId = null,
-    string[]? EntryNodeIds = null,
-    string? GenerationProfileId = null)
+public sealed record MapState
 {
+    private MapNodeState[]? _nodes;
+    private string[]? _entryNodeIds;
+
+    [JsonConstructor]
+    public MapState(
+        MapNodeState[] Nodes,
+        string? CurrentNodeId = null,
+        string[]? EntryNodeIds = null,
+        string? GenerationProfileId = null)
+    {
+        this.Nodes = Nodes;
+        this.CurrentNodeId = CurrentNodeId;
+        this.EntryNodeIds = EntryNodeIds;
+        this.GenerationProfileId = GenerationProfileId;
+    }
+
+    public MapNodeState[] Nodes
+    {
+        get => _nodes is null ? null! : (MapNodeState[])_nodes.Clone();
+        init => _nodes = Clone(value);
+    }
+    public string? CurrentNodeId { get; init; }
+    public string[]? EntryNodeIds
+    {
+        get => _entryNodeIds is null ? null : (string[])_entryNodeIds.Clone();
+        init => _entryNodeIds = Clone(value);
+    }
+    public string? GenerationProfileId { get; init; }
+
     public MapState Fork() => this with
     {
-        Nodes = Nodes.Select(node => node.Fork()).ToArray(),
-        EntryNodeIds = EntryNodeIds is null ? null : (string[])EntryNodeIds.Clone()
+        _nodes = _nodes!.Select(node => node.Fork()).ToArray(),
+        _entryNodeIds = Clone(_entryNodeIds)
     };
+
+    public void Deconstruct(
+        out MapNodeState[] Nodes,
+        out string? CurrentNodeId,
+        out string[]? EntryNodeIds,
+        out string? GenerationProfileId)
+    {
+        Nodes = this.Nodes;
+        CurrentNodeId = this.CurrentNodeId;
+        EntryNodeIds = this.EntryNodeIds;
+        GenerationProfileId = this.GenerationProfileId;
+    }
 
     public MapNodeState[] AvailableNodes()
     {
         IEnumerable<string> ids;
         if (CurrentNodeId is null)
         {
-            ids = EntryNodeIds ?? Array.Empty<string>();
+            ids = _entryNodeIds ?? Array.Empty<string>();
         }
         else
         {
-            var current = Nodes.FirstOrDefault(node =>
+            var nodes = _nodes ?? throw new InvalidOperationException(
+                "Map has no node collection.");
+            var current = nodes.FirstOrDefault(node =>
                 StringComparer.Ordinal.Equals(node.NodeId, CurrentNodeId))
                 ?? throw new InvalidOperationException($"Map current node '{CurrentNodeId}' is missing.");
             ids = current.NextNodeIds ?? Array.Empty<string>();
         }
 
-        var byId = Nodes.ToDictionary(node => node.NodeId, StringComparer.Ordinal);
+        var byId = (_nodes ?? throw new InvalidOperationException(
+            "Map has no node collection.")).ToDictionary(
+                node => node.NodeId, StringComparer.Ordinal);
         return ids
             .Select(id => byId.TryGetValue(id, out var node)
                 ? node
@@ -1821,6 +2008,12 @@ public sealed record MapState(
 
     // Compatibility/readability alias for code that only needs the currently legal map choices.
     public MapNodeState[] Options => AvailableNodes();
+
+    private static MapNodeState[]? Clone(MapNodeState[]? values) =>
+        values is null ? null : (MapNodeState[])values.Clone();
+
+    private static string[]? Clone(string[]? values) =>
+        values is null ? null : (string[])values.Clone();
 }
 
 public sealed record EnemyCombatState(
@@ -2420,9 +2613,8 @@ public sealed partial record CombatState(
     /// Atomic mechanics/provider envelope for this combat. Existing snapshot
     /// fields remain flattened projections.
     /// </summary>
-    [System.Text.Json.Serialization.JsonIgnore]
-    public SimulationStateV111<CombatMechanicsStateV111,
-        CombatStochasticStateV111> Simulation { get; init; } = new(
+    private SimulationStateV111<CombatMechanicsStateV111,
+        CombatStochasticStateV111> _simulation = new(
             new CombatMechanicsStateV111(
                 Turn, Energy, PlayerBlock,
                 new CombatCardZonesV111(
@@ -2440,10 +2632,37 @@ public sealed partial record CombatState(
             new CombatStochasticStateV111(NativeRng, SemanticDeck));
 
     [System.Text.Json.Serialization.JsonIgnore]
+    public SimulationStateV111<CombatMechanicsStateV111,
+        CombatStochasticStateV111> Simulation
+    {
+        get => _simulation;
+        init
+        {
+            ArgumentNullException.ThrowIfNull(value);
+            if ((_simulation.Stochastic.SemanticDeck is not null ||
+                 value.Stochastic.SemanticDeck is not null) &&
+                !_simulation.Mechanics.DrawPile.SequenceEqual(
+                    value.Mechanics.DrawPile))
+                throw new InvalidOperationException(
+                    "Provider-owned draw-pile changes require " +
+                    "SemanticDrawPileAdapterV111.");
+            _simulation = value;
+        }
+    }
+
+    [System.Text.Json.Serialization.JsonIgnore]
     public CombatMechanicsStateV111 Mechanics
     {
         get => Simulation.Mechanics;
-        init => Simulation = Simulation with { Mechanics = value };
+        init
+        {
+            if (Stochastic.SemanticDeck is not null &&
+                !Mechanics.DrawPile.SequenceEqual(value.DrawPile))
+                throw new InvalidOperationException(
+                    "Semantic-deck draw-pile changes require " +
+                    "SemanticDrawPileAdapterV111.");
+            Simulation = Simulation with { Mechanics = value };
+        }
     }
 
     [System.Text.Json.Serialization.JsonIgnore]
@@ -2451,6 +2670,33 @@ public sealed partial record CombatState(
     {
         get => Simulation.Stochastic;
         init => Simulation = Simulation with { Stochastic = value };
+    }
+
+    /// <summary>
+    /// Atomically publishes a draw-pile mechanics/provider transition. The
+    /// adapter validates the candidate correspondence before using this
+    /// internal path around the compatibility envelope setter guard.
+    /// </summary>
+    internal CombatState CommitSemanticDrawPileTransition(
+        CombatCardZonesV111 cardZones,
+        SemanticDeckStateV111? semanticDeck)
+    {
+        ArgumentNullException.ThrowIfNull(cardZones);
+        SemanticDrawPileAdapterV111.ValidateProviderCorrespondence(
+            semanticDeck, cardZones.DrawPile);
+        var next = this with { };
+        next._simulation = _simulation with
+        {
+            Mechanics = _simulation.Mechanics with
+            {
+                CardZones = cardZones
+            },
+            Stochastic = _simulation.Stochastic with
+            {
+                SemanticDeck = semanticDeck
+            }
+        };
+        return next;
     }
 
     public int Turn
@@ -2689,36 +2935,8 @@ public sealed partial record CombatState(
 
     public CombatState Fork() => this with
     {
-        Mechanics = Mechanics with
-        {
-            CardZones = Mechanics.CardZones.Fork()
-        },
-        Enemies = Enemies.Select(enemy => enemy.Fork()).ToArray(),
-        Stochastic = Stochastic.Fork(),
-        Cards = Cards.Select(card => card.Fork()).ToArray(),
-        PlayerPowers = PlayerPowers.Select(power => power.Fork()).ToArray(),
-        Relics = Relics is null
-            ? null
-            : Relics.Select(relic => relic.Fork()).ToArray(),
-        Potions = Potions is null
-            ? null
-            : Potions.Select(potion => potion.Fork()).ToArray(),
-        ToricShields = ToricShields is null
-            ? null
-            : (PrototypeToricShield[])ToricShields.Clone(),
-        TransformedPersistentCardIds = TransformedPersistentCardIds is null
-            ? null
-            : (long[])TransformedPersistentCardIds.Clone(),
-        PendingChoice = PendingChoice?.Fork(),
-        PendingKnowledgeDemonChoice = PendingKnowledgeDemonChoice?.Fork(),
-        AutoPlayTargetRolls = AutoPlayTargetRolls is null
-            ? null : (PrototypeAutoPlayTargetRoll[])AutoPlayTargetRolls.Clone(),
-        Pets = Pets is null ? null : (PrototypeCombatPetState[])Pets.Clone(),
-        Counters = Counters?.Fork(),
-        AutomaticPipelineContinuation =
-            AutomaticPipelineContinuation is null
-                ? null
-                : AutomaticPipelineContinuation.Fork()
+        Mechanics = Mechanics.Fork(),
+        Stochastic = Stochastic.Fork()
     };
 
     public CombatRelicState[] RelicStates =>
@@ -2744,6 +2962,17 @@ public sealed record PrototypePendingDeckChoiceState(
     long[] CandidateCardInstanceIds,
     bool UpgradeTransformedCards = false)
 {
+    private long[] _candidateCardInstanceIds =
+        CloneRequired(CandidateCardInstanceIds,
+            nameof(CandidateCardInstanceIds));
+
+    public long[] CandidateCardInstanceIds
+    {
+        get => (long[])_candidateCardInstanceIds.Clone();
+        init => _candidateCardInstanceIds = CloneRequired(
+            value, nameof(CandidateCardInstanceIds));
+    }
+
     public int MinimumSelectionsRemaining { get; init; } = RemainingSelections;
     public string? CardIdAfterChoices { get; init; }
     public int HpLossAfterChoices { get; init; }
@@ -2751,8 +2980,15 @@ public sealed record PrototypePendingDeckChoiceState(
     public PrototypePendingDeckChoiceState Fork() => this with
     {
         CandidateCardInstanceIds =
-            (long[])CandidateCardInstanceIds.Clone()
+            _candidateCardInstanceIds
     };
+
+    private static long[] CloneRequired(
+        long[] values, string parameterName)
+    {
+        ArgumentNullException.ThrowIfNull(values, parameterName);
+        return (long[])values.Clone();
+    }
 }
 
 public sealed record RewardState(
@@ -2781,31 +3017,178 @@ public sealed record RewardState(
     bool IndependentSelection = false,
     bool[]? ExtraCardGroupsResolved = null,
     bool[]? ExtraRelicGroupsResolved = null,
-    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     int[]? ExtraGoldOptions = null,
-    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     bool[]? ExtraGoldGroupsResolved = null,
     // Native Swipe.BeforeDeath restores the deck version and adds a
     // special card reward; the card is already in the deck and must
     // not be duplicated when this reward is inspected.
-    [property: System.Text.Json.Serialization.JsonIgnore(
-        Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     CardInstance[]? ReturnedStolenCards = null,
-    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     bool[]? ExtraRelicWaxFlags = null,
-    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     PrototypeCardRewardGenerator?[]? CardRewardGenerators = null,
-    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     string[]? ExtraPotionOptions = null,
-    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     bool[]? ExtraPotionGroupsResolved = null,
-    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     PrototypeCardEnchantment?[]? CardOptionEnchantments = null,
-    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     PrototypeCardEnchantment?[][]? ExtraCardOptionEnchantments = null,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
     bool AddRandomCurseAfterReward = false)
 {
+    private string[]? _cardOptions = Clone(CardOptions);
+    private string[][]? _extraCardOptions = CloneNested(ExtraCardOptions);
+    private string[]? _relicOptions = Clone(RelicOptions);
+    private bool[]? _extraCardOptionsUpgraded = Clone(ExtraCardOptionsUpgraded);
+    private string[][]? _cardBundles = CloneNested(CardBundles);
+    private string[]? _extraRelicRewardIds = Clone(ExtraRelicRewardIds);
+    private bool[]? _cardOptionUpgradeFlags = Clone(CardOptionUpgradeFlags);
+    private bool[][]? _extraCardOptionUpgradeFlags =
+        CloneNested(ExtraCardOptionUpgradeFlags);
+    private bool[]? _extraCardGroupsResolved = Clone(ExtraCardGroupsResolved);
+    private bool[]? _extraRelicGroupsResolved = Clone(ExtraRelicGroupsResolved);
+    private int[]? _extraGoldOptions = Clone(ExtraGoldOptions);
+    private bool[]? _extraGoldGroupsResolved = Clone(ExtraGoldGroupsResolved);
+    private CardInstance[]? _returnedStolenCards = CloneCards(ReturnedStolenCards);
+    private bool[]? _extraRelicWaxFlags = Clone(ExtraRelicWaxFlags);
+    private PrototypeCardRewardGenerator?[]? _cardRewardGenerators =
+        Clone(CardRewardGenerators);
+    private string[]? _extraPotionOptions = Clone(ExtraPotionOptions);
+    private bool[]? _extraPotionGroupsResolved = Clone(ExtraPotionGroupsResolved);
+    private PrototypeCardEnchantment?[]? _cardOptionEnchantments =
+        CloneEnchantments(CardOptionEnchantments);
+    private PrototypeCardEnchantment?[][]? _extraCardOptionEnchantments =
+        CloneNestedEnchantments(ExtraCardOptionEnchantments);
+
+    public string[] CardOptions
+    {
+        get => _cardOptions is null ? null! : (string[])_cardOptions.Clone();
+        init => _cardOptions = Clone(value);
+    }
+
+    public string[][]? ExtraCardOptions
+    {
+        get => CloneNested(_extraCardOptions);
+        init => _extraCardOptions = CloneNested(value);
+    }
+
+    public string[]? RelicOptions
+    {
+        get => Clone(_relicOptions);
+        init => _relicOptions = Clone(value);
+    }
+
+    public bool[]? ExtraCardOptionsUpgraded
+    {
+        get => Clone(_extraCardOptionsUpgraded);
+        init => _extraCardOptionsUpgraded = Clone(value);
+    }
+
+    public string[][]? CardBundles
+    {
+        get => CloneNested(_cardBundles);
+        init => _cardBundles = CloneNested(value);
+    }
+
+    public string[]? ExtraRelicRewardIds
+    {
+        get => Clone(_extraRelicRewardIds);
+        init => _extraRelicRewardIds = Clone(value);
+    }
+
+    public bool[]? CardOptionUpgradeFlags
+    {
+        get => Clone(_cardOptionUpgradeFlags);
+        init => _cardOptionUpgradeFlags = Clone(value);
+    }
+
+    public bool[][]? ExtraCardOptionUpgradeFlags
+    {
+        get => CloneNested(_extraCardOptionUpgradeFlags);
+        init => _extraCardOptionUpgradeFlags = CloneNested(value);
+    }
+
+    public bool[]? ExtraCardGroupsResolved
+    {
+        get => Clone(_extraCardGroupsResolved);
+        init => _extraCardGroupsResolved = Clone(value);
+    }
+
+    public bool[]? ExtraRelicGroupsResolved
+    {
+        get => Clone(_extraRelicGroupsResolved);
+        init => _extraRelicGroupsResolved = Clone(value);
+    }
+
+    [System.Text.Json.Serialization.JsonIgnore(Condition =
+        System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public int[]? ExtraGoldOptions
+    {
+        get => Clone(_extraGoldOptions);
+        init => _extraGoldOptions = Clone(value);
+    }
+
+    [System.Text.Json.Serialization.JsonIgnore(Condition =
+        System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public bool[]? ExtraGoldGroupsResolved
+    {
+        get => Clone(_extraGoldGroupsResolved);
+        init => _extraGoldGroupsResolved = Clone(value);
+    }
+
+    [System.Text.Json.Serialization.JsonIgnore(Condition =
+        System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public CardInstance[]? ReturnedStolenCards
+    {
+        get => CloneCards(_returnedStolenCards);
+        init => _returnedStolenCards = CloneCards(value);
+    }
+
+    [System.Text.Json.Serialization.JsonIgnore(Condition =
+        System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public bool[]? ExtraRelicWaxFlags
+    {
+        get => Clone(_extraRelicWaxFlags);
+        init => _extraRelicWaxFlags = Clone(value);
+    }
+
+    [System.Text.Json.Serialization.JsonIgnore(Condition =
+        System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public PrototypeCardRewardGenerator?[]? CardRewardGenerators
+    {
+        get => Clone(_cardRewardGenerators);
+        init => _cardRewardGenerators = Clone(value);
+    }
+
+    [System.Text.Json.Serialization.JsonIgnore(Condition =
+        System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public string[]? ExtraPotionOptions
+    {
+        get => Clone(_extraPotionOptions);
+        init => _extraPotionOptions = Clone(value);
+    }
+
+    [System.Text.Json.Serialization.JsonIgnore(Condition =
+        System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public bool[]? ExtraPotionGroupsResolved
+    {
+        get => Clone(_extraPotionGroupsResolved);
+        init => _extraPotionGroupsResolved = Clone(value);
+    }
+
+    [System.Text.Json.Serialization.JsonIgnore(Condition =
+        System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public PrototypeCardEnchantment?[]? CardOptionEnchantments
+    {
+        get => CloneEnchantments(_cardOptionEnchantments);
+        init => _cardOptionEnchantments = CloneEnchantments(value);
+    }
+
+    [System.Text.Json.Serialization.JsonIgnore(Condition =
+        System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public PrototypeCardEnchantment?[][]? ExtraCardOptionEnchantments
+    {
+        get => CloneNestedEnchantments(_extraCardOptionEnchantments);
+        init => _extraCardOptionEnchantments =
+            CloneNestedEnchantments(value);
+    }
+
     [System.Text.Json.Serialization.JsonIgnore(
         Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public bool? ExtraRelicGroupsSkippable { get; init; }
@@ -2989,64 +3372,74 @@ public sealed record RewardState(
 
     public RewardState Fork() => this with
     {
-        CardOptions = (string[])CardOptions.Clone(),
-        ExtraCardOptions = ExtraCardOptions is null
-            ? null
-            : ExtraCardOptions
-                .Select(group => (string[])group.Clone())
-                .ToArray(),
-        RelicOptions = RelicOptions is null
-            ? null
-            : (string[])RelicOptions.Clone(),
-        ExtraCardOptionsUpgraded = ExtraCardOptionsUpgraded is null
-            ? null
-            : (bool[])ExtraCardOptionsUpgraded.Clone(),
-        CardOptionUpgradeFlags = CardOptionUpgradeFlags is null
-            ? null
-            : (bool[])CardOptionUpgradeFlags.Clone(),
-        ExtraCardOptionUpgradeFlags = ExtraCardOptionUpgradeFlags is null
-            ? null
-            : ExtraCardOptionUpgradeFlags
-                .Select(group => (bool[])group.Clone())
-                .ToArray(),
-        CardBundles = CardBundles is null
-            ? null
-            : CardBundles.Select(bundle => (string[])bundle.Clone()).ToArray(),
-        ExtraRelicRewardIds = ExtraRelicRewardIds is null
-            ? null
-            : (string[])ExtraRelicRewardIds.Clone(),
-        ExtraCardGroupsResolved = ExtraCardGroupsResolved is null
-            ? null
-            : (bool[])ExtraCardGroupsResolved.Clone(),
-        ExtraRelicGroupsResolved = ExtraRelicGroupsResolved is null
-            ? null
-            : (bool[])ExtraRelicGroupsResolved.Clone(),
-        ExtraRelicWaxFlags = ExtraRelicWaxFlags is null ? null : (bool[])ExtraRelicWaxFlags.Clone(),
-        CardRewardGenerators = CardRewardGenerators is null ? null
-            : CardRewardGenerators.Select(generator => generator is null
-                ? null : generator with { }).ToArray(),
-        ExtraGoldOptions = ExtraGoldOptions is null ? null : (int[])ExtraGoldOptions.Clone(),
-        ExtraGoldGroupsResolved = ExtraGoldGroupsResolved is null ? null : (bool[])ExtraGoldGroupsResolved.Clone(),
-        ExtraPotionOptions = ExtraPotionOptions is null ? null : (string[])ExtraPotionOptions.Clone(),
-        ExtraPotionGroupsResolved = ExtraPotionGroupsResolved is null ? null : (bool[])ExtraPotionGroupsResolved.Clone(),
-        CardOptionEnchantments = CardOptionEnchantments is null
-            ? null
-            : CardOptionEnchantments.Select(enchantment =>
-                enchantment is null ? null : enchantment with { }).ToArray(),
-        ExtraCardOptionEnchantments = ExtraCardOptionEnchantments is null
-            ? null
-            : ExtraCardOptionEnchantments.Select(group => group.Select(
-                enchantment => enchantment is null
-                    ? null
-                    : enchantment with { }).ToArray()).ToArray(),
+        _cardOptions = Clone(_cardOptions),
+        _extraCardOptions = CloneNested(_extraCardOptions),
+        _relicOptions = Clone(_relicOptions),
+        _extraCardOptionsUpgraded = Clone(_extraCardOptionsUpgraded),
+        _cardOptionUpgradeFlags = Clone(_cardOptionUpgradeFlags),
+        _extraCardOptionUpgradeFlags =
+            CloneNested(_extraCardOptionUpgradeFlags),
+        _cardBundles = CloneNested(_cardBundles),
+        _extraRelicRewardIds = Clone(_extraRelicRewardIds),
+        _extraCardGroupsResolved = Clone(_extraCardGroupsResolved),
+        _extraRelicGroupsResolved = Clone(_extraRelicGroupsResolved),
+        _extraRelicWaxFlags = Clone(_extraRelicWaxFlags),
+        _cardRewardGenerators = CloneGenerators(_cardRewardGenerators),
+        _extraGoldOptions = Clone(_extraGoldOptions),
+        _extraGoldGroupsResolved = Clone(_extraGoldGroupsResolved),
+        _extraPotionOptions = Clone(_extraPotionOptions),
+        _extraPotionGroupsResolved = Clone(_extraPotionGroupsResolved),
+        _cardOptionEnchantments = CloneEnchantments(
+            _cardOptionEnchantments),
+        _extraCardOptionEnchantments = CloneNestedEnchantments(
+            _extraCardOptionEnchantments),
         PendingDeckChoice = PendingDeckChoice?.Fork(),
-        ReturnedStolenCards = ReturnedStolenCards is null
-            ? null
-            : ReturnedStolenCards.Select(card => card with
-            {
-                PersistentState = card.PersistentState.Clone()
-            }).ToArray()
+        _returnedStolenCards = CloneCards(_returnedStolenCards)
     };
+
+    private static T[]? Clone<T>(T[]? values) =>
+        values is null ? null : (T[])values.Clone();
+
+    private static T[][]? CloneNested<T>(T[][]? groups) =>
+        groups is null
+            ? null
+            : groups.Select(group => group is null
+                ? null!
+                : (T[])group.Clone()).ToArray();
+
+    private static CardInstance[]? CloneCards(CardInstance[]? cards) =>
+        cards is null
+            ? null
+            : cards.Select(card => card is null
+                ? null!
+                : card with
+                {
+                    PersistentState = card.PersistentState.Clone()
+                }).ToArray();
+
+    private static PrototypeCardEnchantment?[]? CloneEnchantments(
+        PrototypeCardEnchantment?[]? enchantments) =>
+        enchantments is null
+            ? null
+            : enchantments.Select(enchantment => enchantment is null
+                ? null
+                : enchantment with { }).ToArray();
+
+    private static PrototypeCardEnchantment?[][]? CloneNestedEnchantments(
+        PrototypeCardEnchantment?[][]? groups) =>
+        groups is null
+            ? null
+            : groups.Select(group => group is null
+                ? null!
+                : CloneEnchantments(group)!).ToArray();
+
+    private static PrototypeCardRewardGenerator?[]? CloneGenerators(
+        PrototypeCardRewardGenerator?[]? generators) =>
+        generators is null
+            ? null
+            : generators.Select(generator => generator is null
+                ? null
+                : generator with { }).ToArray();
 }
 
 public enum PrototypeCardRewardGeneratorKind
@@ -3077,21 +3470,69 @@ public sealed record ShopOffer(
     public int UndiscountedPrice => BasePrice ?? Price;
 }
 
-public sealed record ShopState(
-    ShopOffer[] CardOffers,
-    ShopOffer? PotionOffer,
-    ShopOffer? RelicOffer,
-    int RemovalPrice = 75,
-    bool RemovalUsed = false,
-    int? BaseRemovalPrice = null,
-    ShopOffer[]? AdditionalPotionOffers = null,
-    ShopOffer[]? AdditionalRelicOffers = null,
-    PrototypePendingDeckChoiceState? PendingDeckChoice = null,
-    bool LordsParasolPurchaseFlowActive = false,
-    int? LordsParasolPendingPotionOfferId = null,
-    bool LordsParasolRemovalChoicePending = false,
-    bool LordsParasolPotionOffersSkipped = false)
+public sealed record ShopState
 {
+    private ShopOffer[]? _cardOffers;
+    private ShopOffer[]? _additionalPotionOffers;
+    private ShopOffer[]? _additionalRelicOffers;
+
+    [JsonConstructor]
+    public ShopState(
+        ShopOffer[] CardOffers,
+        ShopOffer? PotionOffer,
+        ShopOffer? RelicOffer,
+        int RemovalPrice = 75,
+        bool RemovalUsed = false,
+        int? BaseRemovalPrice = null,
+        ShopOffer[]? AdditionalPotionOffers = null,
+        ShopOffer[]? AdditionalRelicOffers = null,
+        PrototypePendingDeckChoiceState? PendingDeckChoice = null,
+        bool LordsParasolPurchaseFlowActive = false,
+        int? LordsParasolPendingPotionOfferId = null,
+        bool LordsParasolRemovalChoicePending = false,
+        bool LordsParasolPotionOffersSkipped = false)
+    {
+        this.CardOffers = CardOffers;
+        this.PotionOffer = PotionOffer;
+        this.RelicOffer = RelicOffer;
+        this.RemovalPrice = RemovalPrice;
+        this.RemovalUsed = RemovalUsed;
+        this.BaseRemovalPrice = BaseRemovalPrice;
+        this.AdditionalPotionOffers = AdditionalPotionOffers;
+        this.AdditionalRelicOffers = AdditionalRelicOffers;
+        this.PendingDeckChoice = PendingDeckChoice;
+        this.LordsParasolPurchaseFlowActive = LordsParasolPurchaseFlowActive;
+        this.LordsParasolPendingPotionOfferId = LordsParasolPendingPotionOfferId;
+        this.LordsParasolRemovalChoicePending = LordsParasolRemovalChoicePending;
+        this.LordsParasolPotionOffersSkipped = LordsParasolPotionOffersSkipped;
+    }
+
+    public ShopOffer[] CardOffers
+    {
+        get => _cardOffers is null ? null! : (ShopOffer[])_cardOffers.Clone();
+        init => _cardOffers = Clone(value);
+    }
+    public ShopOffer? PotionOffer { get; init; }
+    public ShopOffer? RelicOffer { get; init; }
+    public int RemovalPrice { get; init; }
+    public bool RemovalUsed { get; init; }
+    public int? BaseRemovalPrice { get; init; }
+    public ShopOffer[]? AdditionalPotionOffers
+    {
+        get => Clone(_additionalPotionOffers);
+        init => _additionalPotionOffers = Clone(value);
+    }
+    public ShopOffer[]? AdditionalRelicOffers
+    {
+        get => Clone(_additionalRelicOffers);
+        init => _additionalRelicOffers = Clone(value);
+    }
+    public PrototypePendingDeckChoiceState? PendingDeckChoice { get; init; }
+    public bool LordsParasolPurchaseFlowActive { get; init; }
+    public int? LordsParasolPendingPotionOfferId { get; init; }
+    public bool LordsParasolRemovalChoicePending { get; init; }
+    public bool LordsParasolPotionOffersSkipped { get; init; }
+
     public int UndiscountedRemovalPrice =>
         BaseRemovalPrice ?? RemovalPrice;
 
@@ -3113,21 +3554,53 @@ public sealed record ShopState(
             ?? Array.Empty<ShopOffer>())
         .ToArray();
 
-    public ShopState Fork() => this with
+    public ShopState Fork() => new(
+        _cardOffers!,
+        PotionOffer is null ? null : PotionOffer with { },
+        RelicOffer is null ? null : RelicOffer with { },
+        RemovalPrice,
+        RemovalUsed,
+        BaseRemovalPrice,
+        _additionalPotionOffers,
+        _additionalRelicOffers,
+        PendingDeckChoice?.Fork(),
+        LordsParasolPurchaseFlowActive,
+        LordsParasolPendingPotionOfferId,
+        LordsParasolRemovalChoicePending,
+        LordsParasolPotionOffersSkipped);
+
+    public void Deconstruct(
+        out ShopOffer[] CardOffers,
+        out ShopOffer? PotionOffer,
+        out ShopOffer? RelicOffer,
+        out int RemovalPrice,
+        out bool RemovalUsed,
+        out int? BaseRemovalPrice,
+        out ShopOffer[]? AdditionalPotionOffers,
+        out ShopOffer[]? AdditionalRelicOffers,
+        out PrototypePendingDeckChoiceState? PendingDeckChoice,
+        out bool LordsParasolPurchaseFlowActive,
+        out int? LordsParasolPendingPotionOfferId,
+        out bool LordsParasolRemovalChoicePending,
+        out bool LordsParasolPotionOffersSkipped)
     {
-        CardOffers = (ShopOffer[])CardOffers.Clone(),
-        PotionOffer = PotionOffer is null ? null : PotionOffer with { },
-        RelicOffer = RelicOffer is null ? null : RelicOffer with { },
-        AdditionalPotionOffers =
-            AdditionalPotionOffers is null
-                ? null
-                : (ShopOffer[])AdditionalPotionOffers.Clone(),
-        AdditionalRelicOffers =
-            AdditionalRelicOffers is null
-                ? null
-                : (ShopOffer[])AdditionalRelicOffers.Clone(),
-        PendingDeckChoice = PendingDeckChoice?.Fork()
-    };
+        CardOffers = this.CardOffers;
+        PotionOffer = this.PotionOffer;
+        RelicOffer = this.RelicOffer;
+        RemovalPrice = this.RemovalPrice;
+        RemovalUsed = this.RemovalUsed;
+        BaseRemovalPrice = this.BaseRemovalPrice;
+        AdditionalPotionOffers = this.AdditionalPotionOffers;
+        AdditionalRelicOffers = this.AdditionalRelicOffers;
+        PendingDeckChoice = this.PendingDeckChoice;
+        LordsParasolPurchaseFlowActive = this.LordsParasolPurchaseFlowActive;
+        LordsParasolPendingPotionOfferId = this.LordsParasolPendingPotionOfferId;
+        LordsParasolRemovalChoicePending = this.LordsParasolRemovalChoicePending;
+        LordsParasolPotionOffersSkipped = this.LordsParasolPotionOffersSkipped;
+    }
+
+    private static ShopOffer[]? Clone(ShopOffer[]? offers) =>
+        offers is null ? null : (ShopOffer[])offers.Clone();
 }
 
 public sealed record PrototypePendingEventDeckChoiceState(
@@ -3148,11 +3621,29 @@ public sealed record PrototypePendingEventDeckChoiceState(
     bool PreserveEnchantmentOnTransformation = false,
     int? MinimumSelectionsRemaining = null)
 {
+    private long[] _candidateCardInstanceIds =
+        CloneRequired(CandidateCardInstanceIds,
+            nameof(CandidateCardInstanceIds));
+
+    public long[] CandidateCardInstanceIds
+    {
+        get => (long[])_candidateCardInstanceIds.Clone();
+        init => _candidateCardInstanceIds = CloneRequired(
+            value, nameof(CandidateCardInstanceIds));
+    }
+
     public PrototypePendingEventDeckChoiceState Fork() => this with
     {
         CandidateCardInstanceIds =
-            (long[])CandidateCardInstanceIds.Clone()
+            _candidateCardInstanceIds
     };
+
+    private static long[] CloneRequired(
+        long[] values, string parameterName)
+    {
+        ArgumentNullException.ThrowIfNull(values, parameterName);
+        return (long[])values.Clone();
+    }
 }
 
 public sealed record PrototypePendingEventPotionReplacementState(
@@ -3160,10 +3651,25 @@ public sealed record PrototypePendingEventPotionReplacementState(
     string PotionId,
     int[] CandidateSlots)
 {
+    private int[] _candidateSlots =
+        CloneRequired(CandidateSlots, nameof(CandidateSlots));
+
+    public int[] CandidateSlots
+    {
+        get => (int[])_candidateSlots.Clone();
+        init => _candidateSlots = CloneRequired(value, nameof(CandidateSlots));
+    }
+
     public PrototypePendingEventPotionReplacementState Fork() => this with
     {
-        CandidateSlots = (int[])CandidateSlots.Clone()
+        CandidateSlots = _candidateSlots
     };
+
+    private static int[] CloneRequired(int[] values, string parameterName)
+    {
+        ArgumentNullException.ThrowIfNull(values, parameterName);
+        return (int[])values.Clone();
+    }
 }
 
 public sealed partial record EventState(
@@ -3823,7 +4329,30 @@ public sealed record ChooseEventDeckCardPayload(long CardInstanceId);
 public sealed record ReplaceEventPotionPayload(int Slot);
 public sealed record UpgradeCardPayload(long CardInstanceId);
 public sealed record RemoveCardPayload(long CardInstanceId);
-public sealed record SelectCardsPayload(long[] CardInstanceIds);
+public sealed record SelectCardsPayload
+{
+    private long[] _cardInstanceIds;
+
+    [JsonConstructor]
+    public SelectCardsPayload(long[] CardInstanceIds)
+    {
+        ArgumentNullException.ThrowIfNull(CardInstanceIds);
+        _cardInstanceIds = (long[])CardInstanceIds.Clone();
+    }
+
+    public long[] CardInstanceIds
+    {
+        get => (long[])_cardInstanceIds.Clone();
+        init
+        {
+            ArgumentNullException.ThrowIfNull(value);
+            _cardInstanceIds = (long[])value.Clone();
+        }
+    }
+
+    public void Deconstruct(out long[] CardInstanceIds) =>
+        CardInstanceIds = this.CardInstanceIds;
+}
 public sealed record ChooseKnowledgeCursePayload(string CardId);
 
 public static class PrototypeJson

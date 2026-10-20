@@ -16,7 +16,16 @@ public sealed record RandomBoundaryEventV111(
     int SelectedValue,
     string ProviderMode,
     NativeRngSnapshot? NativeCursorBefore,
-    NativeRngSnapshot? NativeCursorAfter);
+    NativeRngSnapshot? NativeCursorAfter)
+{
+    public RandomBoundaryEventV111 Fork() => this with
+    {
+        Request = Request with
+        {
+            OrderedCandidates = Request.OrderedCandidates
+        }
+    };
+}
 
 public sealed record RandomUnitFloatBoundaryEventV111(
     int Sequence,
@@ -69,6 +78,11 @@ public sealed record RandomBoundaryTranscriptEntryV111(
         {
             PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
         };
+
+    public RandomBoundaryTranscriptEntryV111 Fork() => this with
+    {
+        Event = Event.Clone()
+    };
 
     public void Validate()
     {

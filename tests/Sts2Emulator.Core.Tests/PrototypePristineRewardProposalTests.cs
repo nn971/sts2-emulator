@@ -85,7 +85,8 @@ public sealed class PrototypePristineRewardProposalTests
 
         var consumed = before.Fork();
         var index = Array.FindIndex(consumed.Rng.Streams, s => s.StreamId == "reward");
-        consumed.Rng.Streams[index] = consumed.Rng.Streams[index] with { CallCount = 1 };
+        consumed.Rng.ReplaceStreamAt(index,
+            consumed.Rng.Streams[index] with { CallCount = 1 });
         Assert.Throws<InvalidOperationException>(() =>
             PrototypePristineRewardProposal.Branch(
                 consumed, chosen, "0000000000000001"));

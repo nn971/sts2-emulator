@@ -13,24 +13,71 @@ public sealed record ControlledRecycleShuffleV111(
     RandomIndexDecisionV111[] Transcript,
     RandomIndexRequestV111? Pending)
 {
+    private long[] _baseline = CloneRequired(Baseline, nameof(Baseline));
+    private long[] _shuffled = CloneRequired(Shuffled, nameof(Shuffled));
+    private RandomIndexDecisionV111[] _transcript =
+        CloneTranscript(Transcript);
+    private RandomIndexRequestV111? _pending = CloneRequest(Pending);
+
+    public long[] Baseline
+    {
+        get => (long[])_baseline.Clone();
+        init => _baseline = CloneRequired(value, nameof(Baseline));
+    }
+
+    public long[] Shuffled
+    {
+        get => (long[])_shuffled.Clone();
+        init => _shuffled = CloneRequired(value, nameof(Shuffled));
+    }
+
+    public RandomIndexDecisionV111[] Transcript
+    {
+        get => CloneTranscript(_transcript);
+        init => _transcript = CloneTranscript(value);
+    }
+
+    public RandomIndexRequestV111? Pending
+    {
+        get => CloneRequest(_pending);
+        init => _pending = CloneRequest(value);
+    }
+
     public bool Complete => Pending is null;
 
     public ControlledRecycleShuffleV111 Fork() => this with
     {
-        Baseline = (long[])Baseline.Clone(),
-        Shuffled = (long[])Shuffled.Clone(),
-        Transcript = Transcript.Select(choice => choice with
-        {
-            Request = choice.Request with
-            {
-                OrderedCandidates = (int[])choice.Request.OrderedCandidates.Clone()
-            }
-        }).ToArray(),
-        Pending = Pending is null ? null : Pending with
-        {
-            OrderedCandidates = (int[])Pending.OrderedCandidates.Clone()
-        }
+        Baseline = _baseline,
+        Shuffled = _shuffled,
+        Transcript = _transcript,
+        Pending = _pending
     };
+
+    private static long[] CloneRequired(long[] values, string parameterName)
+    {
+        ArgumentNullException.ThrowIfNull(values, parameterName);
+        return (long[])values.Clone();
+    }
+
+    private static RandomIndexDecisionV111[] CloneTranscript(
+        RandomIndexDecisionV111[] decisions)
+    {
+        ArgumentNullException.ThrowIfNull(decisions);
+        return decisions.Select(decision => decision with
+        {
+            Request = CloneRequest(decision.Request)!
+        }).ToArray();
+    }
+
+    private static RandomIndexRequestV111? CloneRequest(
+        RandomIndexRequestV111? request) =>
+        request is null
+            ? null
+            : request with
+            {
+                OrderedCandidates =
+                    (int[])request.OrderedCandidates.Clone()
+            };
 }
 
 public static class ControlledRecycleShuffleEngineV111

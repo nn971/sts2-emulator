@@ -224,11 +224,16 @@ selection resumes the same saved draw across the source `select_cards` choice.
 Automatic Stratagem selection resumes the same draw and composes with
 after-shuffle insertion and draw-cost stages. Legacy controlled end-turn
 recycling also pauses for the ordinary Stratagem card selection and resumes
-the saved hand-draw cursor through later cost and recycle boundaries. Ordinary source action choices
-from standalone and automatic `CardDrawn` hooks now preserve and resume their
-draw frames. Controlled nested chance boundaries in standalone and automatic
-frames, and other recycle contexts remain unsupported
-under controlled Nature pending serializable frames. Personal Hive's Dazed
+the saved hand-draw cursor through later cost and recycle boundaries. Ordinary
+source action choices from standalone and automatic `CardDrawn` hooks now
+preserve and resume their draw frames. A guarded legacy card-effect draw
+without a semantic deck now also saves its
+`RecycleDrawPileForEffectDraw` continuation: discard swaps resolve
+through the existing pool-shuffle choice, a singleton discard recycles without
+a chance ticket, after-shuffle insertions remain in the saved effect suffix,
+and the original draw resumes after the shuffle. Controlled Nature's nested
+standalone and automatic chance boundaries, plus other recycle contexts, remain
+unsupported pending their matching serializable frames. Personal Hive's Dazed
 insertions after a powered hit now suspend in the saved card-operation queue,
 then resume the remaining hit hooks before the original queue continues.
 Ordinary source action

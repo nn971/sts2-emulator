@@ -40,11 +40,21 @@ public static class PrototypeNativeGloryNewNormals
     public const string HighVoltageId = "proto.native.glory.high_voltage";
 
     // Order matches FabricatorNormal.Slots excluding its central position.
-    public static readonly string[] FabricatorBotSlots =
-        ["bot1", "bot2", "bot3", "bot4"];
-    public static readonly int[] FabricatorBotPositions = [0, 1, 3, 4];
+    public static string[] FabricatorBotSlots =>
+        (string[])FabricatorBotSlotValues.Clone();
 
-    public static PrototypePowerDefinition[] Powers { get; } =
+    private static readonly string[] FabricatorBotSlotValues =
+        ["bot1", "bot2", "bot3", "bot4"];
+    public static int[] FabricatorBotPositions =>
+        (int[])FabricatorBotPositionValues.Clone();
+
+    private static readonly int[] FabricatorBotPositionValues = [0, 1, 3, 4];
+
+    public static PrototypePowerDefinition[] Powers => PowerDefinitions
+        .Select(PrototypeDefinitionCopiesV111.ClonePowerDefinition)
+        .ToArray();
+
+    private static readonly PrototypePowerDefinition[] PowerDefinitions =
     [
         // SoarPower multiplies powered attack damage dealt to its
         // owner by 0.5. Poison and non-attack loss are unaffected.
@@ -121,11 +131,15 @@ public static class PrototypeNativeGloryNewNormals
             SummonEnemyPool: defensive
                 ? [GuardbotId, NoisebotId]
                 : [ZapbotId, StabbotId],
-            SummonSlotNames: FabricatorBotSlots,
+            SummonSlotNames: FabricatorBotSlotValues,
             SelectFirstAvailableSummonSlot: true,
-            SummonSlotFormationPositions: FabricatorBotPositions);
+            SummonSlotFormationPositions: FabricatorBotPositionValues);
 
-    public static PrototypeEnemyDefinition[] Enemies { get; } =
+    public static PrototypeEnemyDefinition[] Enemies => EnemyDefinitions
+        .Select(PrototypeDefinitionCopiesV111.CloneEnemyDefinition)
+        .ToArray();
+
+    private static readonly PrototypeEnemyDefinition[] EnemyDefinitions =
     [
         // FabricatorNormal: one central Fabricator, then up to four
         // independently targetable Minion bots in named positions.
@@ -300,7 +314,12 @@ public static class PrototypeNativeGloryNewNormals
             AscensionDeltas: [new(9, 2)])])
     ];
 
-    public static PrototypeEncounterDefinition[] Encounters { get; } =
+    public static PrototypeEncounterDefinition[] Encounters =>
+        EncounterDefinitions
+            .Select(PrototypeDefinitionCopiesV111.CloneEncounterDefinition)
+            .ToArray();
+
+    private static readonly PrototypeEncounterDefinition[] EncounterDefinitions =
     [
         new(OwlEncounterId, PrototypeRoomType.Combat,
             [OwlId], MinAct: 3, MaxAct: 3, Weight: 0),

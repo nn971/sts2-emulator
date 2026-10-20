@@ -26,10 +26,70 @@ public sealed record NativeCombatRngV111(
 /// encounter's local formation RNG and each MonsterModel's own Rng.
 /// </summary>
 public sealed record NativeInitialHpAuditV111(
-    CombatState Combat, RandomIndexDecisionV111[] Choices, string ProviderMode);
+    CombatState Combat, RandomIndexDecisionV111[] Choices, string ProviderMode)
+{
+    private CombatState? _combat = Combat.Fork();
+    private RandomIndexDecisionV111[]? _choices = CloneDecisions(Choices);
+
+    public CombatState Combat
+    {
+        get => (_combat ?? throw new InvalidDataException(
+            "Native initial-HP audit has no combat state.")).Fork();
+        init => _combat = value.Fork();
+    }
+
+    public RandomIndexDecisionV111[] Choices
+    {
+        get => CloneDecisions(_choices)!;
+        init => _choices = CloneDecisions(value);
+    }
+
+    public NativeInitialHpAuditV111 Fork() => this with
+    {
+        Combat = _combat ?? throw new InvalidDataException(
+            "Native initial-HP audit has no combat state."),
+        Choices = _choices!
+    };
+
+    private static RandomIndexDecisionV111[]? CloneDecisions(
+        RandomIndexDecisionV111[]? values) => values?.Select(decision =>
+            decision is null ? null! :
+                PrototypeControlledEventChoiceContinuationV111
+                    .CloneDecision(decision)).ToArray();
+}
 
 public sealed record NativeIntentAuditV111(
-    CombatState Combat, RandomIndexDecisionV111[] Choices, string ProviderMode);
+    CombatState Combat, RandomIndexDecisionV111[] Choices, string ProviderMode)
+{
+    private CombatState? _combat = Combat.Fork();
+    private RandomIndexDecisionV111[]? _choices = CloneDecisions(Choices);
+
+    public CombatState Combat
+    {
+        get => (_combat ?? throw new InvalidDataException(
+            "Native intent audit has no combat state.")).Fork();
+        init => _combat = value.Fork();
+    }
+
+    public RandomIndexDecisionV111[] Choices
+    {
+        get => CloneDecisions(_choices)!;
+        init => _choices = CloneDecisions(value);
+    }
+
+    public NativeIntentAuditV111 Fork() => this with
+    {
+        Combat = _combat ?? throw new InvalidDataException(
+            "Native intent audit has no combat state."),
+        Choices = _choices!
+    };
+
+    private static RandomIndexDecisionV111[]? CloneDecisions(
+        RandomIndexDecisionV111[]? values) => values?.Select(decision =>
+            decision is null ? null! :
+                PrototypeControlledEventChoiceContinuationV111
+                    .CloneDecision(decision)).ToArray();
+}
 
 public static class NativeCombatRngEntryV111
 {
@@ -573,9 +633,15 @@ public static class NativeCombatRngEntryV111
                 BoundedCount: maxExclusive),
             bundle);
         sampled = decision.SelectedValue;
-        native.Formation.MonsterContexts[index] = owned with
+        var formation = native.Formation;
+        var contexts = formation.MonsterContexts;
+        contexts[index] = owned with
         {
             Rng = bundle.Streams[0]
+        };
+        native = native with
+        {
+            Formation = formation with { MonsterContexts = contexts }
         };
         var advanced = combat with { NativeRng = native };
         Validate(advanced);

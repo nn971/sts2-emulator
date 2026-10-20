@@ -83,7 +83,10 @@ public sealed class V111RegionalEncounterBagsTests
         Assert.Equal(initial.RemainingWeak.Length,
             initial.Fork().RemainingWeak.Length);
         var copy = first.Bag.Fork();
-        copy.RemainingWeak[0] = "tampered";
+        var changedWeak = copy.RemainingWeak;
+        changedWeak[0] = "tampered";
+        copy = copy with { RemainingWeak = changedWeak };
+        Assert.Contains("tampered", copy.RemainingWeak);
         Assert.DoesNotContain("tampered", first.Bag.RemainingWeak);
 
         var bag = first.Bag;

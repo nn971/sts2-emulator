@@ -73,6 +73,213 @@ public sealed partial class PrototypeGameEngine
         expected.Length > 0 &&
         choice.CandidateCardIds.SequenceEqual(expected);
 
+    internal static bool IsCrossbowTurnStartGenerationContinuation(
+        CombatState combat, PendingCombatChoiceState pending)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(pending);
+        if (combat is not
+                { Turn: >= 2, IsPlayerTurn: true,
+                  IsPlayerSideActive: true,
+                  PendingKnowledgeDemonChoice: null,
+                  SemanticDeck:
+                    { Mode: SemanticDeckStateV111.NatureMode,
+                      Pending: null } } ||
+            pending.ControlledGeneration is not { } generation ||
+            pending.OuterChoiceContinuation is not { } continuation ||
+            !ValidateControlledGenerationSupport(generation))
+            return false;
+
+        var pipeline = combat.AutomaticPipelineContinuation;
+        if (pipeline is not
+                { PendingPostDispatchEventKind: null,
+                  OpeningStage: null,
+                  ControlledDrawRemaining: null,
+                  ControlledDrawCostRemaining: null,
+                  ControlledSemanticDrawRemaining: null,
+                  ControlledSemanticDrawRequested: null,
+                  ControlledSemanticBeforeHandDrawPending: false,
+                  ControlledRecycleStratagemPending: false,
+                  ControlledDrawHookChoicePending: false,
+                  ControlledBeforeHandDrawHookChoicePending: false,
+                  ControlledEnemyAction: null,
+                  ControlledTurnIntents: null } ||
+            !pipeline.Mechanics.IsAtStep(
+                PrototypeAutomaticStepKind.DrawPlayerHand) ||
+            pipeline.Stochastic is not
+                { HandDrawProgress: null,
+                  ControlledEnemyAction: null,
+                  ControlledTurnIntents: null,
+                  CompletedSemanticHandDrawRequested: null } ||
+            continuation.EventDispatchContinuation is not
+                { EventDepth: 0,
+                  RemainingSubscribers: { } remainingSubscribers }
+                eventDispatch ||
+            eventDispatch.CombatEvent != new PrototypeCombatEvent(
+                PrototypeCombatEventKind.PlayerSideTurnStarted) ||
+            eventDispatch.CurrentSubscriber is not
+                { SourceKind: PrototypeEffectSourceKind.Relic,
+                  RelicStateIndex: { } relicIndex,
+                  RelicTriggerIndex: 0 } subscriber ||
+            (uint)relicIndex >= (uint)combat.RelicStates.Length)
+            return false;
+
+        var relic = combat.RelicStates[relicIndex];
+        if (relic is not
+                { RelicId: NativeGloryAncientsV111.CrossbowId,
+                  IsMelted: false } ||
+            relic.PersistentIndex != relicIndex ||
+            relic.ApplicationOrder != subscriber.ApplicationOrder)
+            return false;
+
+        var triggers = PrototypeContent.Relic(relic.RelicId).Triggers ?? [];
+        var expectedTrigger = new PrototypeRelicTriggerSpec(
+            PrototypeCombatEventKind.PlayerSideTurnStarted,
+            [new PrototypeCombatEffectSpec(
+                PrototypeCombatEffectKind
+                    .CreateRandomCharacterAttackCardsInHand,
+                1, GeneratedCharacterCardsFreeThisTurn: true)]);
+        if (triggers.Length != 1 ||
+            CanonicalJson.Sha256(triggers[0]) !=
+                CanonicalJson.Sha256(expectedTrigger))
+            return false;
+
+        var expectedSubscriber = new PrototypeEventSubscriberState(
+            relic.ApplicationOrder, triggers[0].Effects, PowerStacks: 0,
+            PrototypeEffectSourceKind.Relic,
+            RelicStateIndex: relicIndex,
+            RelicTriggerIndex: 0,
+            EveryNth: triggers[0].EveryNth,
+            MaxTriggersPerCounterWindow:
+                triggers[0].MaxTriggersPerCounterWindow);
+        if (CanonicalJson.Sha256(expectedSubscriber) !=
+                CanonicalJson.Sha256(subscriber) ||
+            !AreSupportedCrossbowRemainderSubscribers(
+                combat, remainingSubscribers))
+            return false;
+
+        var expectedOperation = new PrototypeQueuedOperation(
+            PrototypeCombatEffectKind.CreateRandomCharacterAttackCardsInHand,
+            1, SourceKind: PrototypeEffectSourceKind.Relic,
+            GeneratedCharacterCardsFreeThisTurn: true);
+        if (CanonicalJson.Sha256(generation.Operation) !=
+            CanonicalJson.Sha256(expectedOperation))
+            return false;
+
+        var expectedContinuation =
+            new PrototypeChoiceResolutionContinuationState(
+                SourceCardInstanceId: null,
+                SourceCardDestination: PrototypeCardZone.DiscardPile,
+                Operations: [],
+                PendingDiscardEvents: [],
+                PendingSlyCardInstanceIds: [],
+                CompletionEvents: [],
+                EventDispatchContinuation: eventDispatch.Fork());
+        var expectedPending = new PendingCombatChoiceState(
+            ChoiceId: "controlled_generated_card",
+            SourceCardInstanceId: null,
+            SourceCardDestination: PrototypeCardZone.DiscardPile,
+            Selection: new PrototypeCardSelectionSpec(
+                PrototypeCardZone.Hand, 0, 0,
+                PrototypeCardSelectionResolutionKind.MoveToDiscard),
+            CandidateCardInstanceIds: [],
+            Continuation: [],
+            CompletionEvents: [],
+            OuterChoiceContinuation: expectedContinuation,
+            ControlledGeneration:
+                new PrototypeControlledGeneratedCardV111(
+                    generation.Operation with { },
+                    (string[])generation.CandidateCardIds.Clone()));
+        return CanonicalJson.Sha256(expectedPending) ==
+            CanonicalJson.Sha256(pending);
+    }
+
+    private static bool AreSupportedCrossbowRemainderSubscribers(
+        CombatState combat,
+        PrototypeEventSubscriberState[] subscribers) =>
+        subscribers.All(subscriber =>
+        {
+            if (subscriber is not
+                    { SourceKind: PrototypeEffectSourceKind.Relic,
+                      RelicStateIndex: { } relicIndex,
+                      RelicTriggerIndex: { } triggerIndex } ||
+                (uint)relicIndex >= (uint)combat.RelicStates.Length)
+                return false;
+            var relic = combat.RelicStates[relicIndex];
+            if (relic.IsMelted || relic.PersistentIndex != relicIndex ||
+                relic.ApplicationOrder != subscriber.ApplicationOrder)
+                return false;
+            var triggers = PrototypeContent.Relic(relic.RelicId).Triggers ?? [];
+            if ((uint)triggerIndex >= (uint)triggers.Length)
+                return false;
+            var trigger = triggers[triggerIndex];
+            if (trigger.EventKind !=
+                    PrototypeCombatEventKind.PlayerSideTurnStarted ||
+                trigger.Effects.Length == 0 ||
+                !trigger.Effects.All(
+                    IsSupportedCrossbowRemainderEffect))
+                return false;
+            var expectedSubscriber = new PrototypeEventSubscriberState(
+                relic.ApplicationOrder, trigger.Effects, PowerStacks: 0,
+                PrototypeEffectSourceKind.Relic,
+                RelicStateIndex: relicIndex,
+                RelicTriggerIndex: triggerIndex,
+                EveryNth: trigger.EveryNth,
+                MaxTriggersPerCounterWindow:
+                    trigger.MaxTriggersPerCounterWindow);
+            return CanonicalJson.Sha256(expectedSubscriber) ==
+                CanonicalJson.Sha256(subscriber);
+        });
+
+    private static bool IsSupportedCrossbowRemainderEffect(
+        PrototypeCombatEffectSpec effect)
+    {
+        PrototypeCombatEffectSpec? expected = effect.Kind switch
+        {
+            PrototypeCombatEffectKind.GainEnergy =>
+                new(effect.Kind, effect.Amount),
+            PrototypeCombatEffectKind.GainEnergyForGold =>
+                new(effect.Kind, effect.Amount,
+                    PlayerGoldCost: effect.PlayerGoldCost),
+            PrototypeCombatEffectKind.GainPlayerBlock =>
+                new(effect.Kind, effect.Amount),
+            PrototypeCombatEffectKind.ApplyPlayerPower
+                when !string.IsNullOrWhiteSpace(effect.PowerId) =>
+                new(effect.Kind, effect.Amount, PowerId: effect.PowerId),
+            _ => null
+        };
+        return expected is not null &&
+            CanonicalJson.Sha256(expected) == CanonicalJson.Sha256(effect);
+    }
+
+    internal static bool IsCrossbowTurnStartDrawBoundary(RunState run) =>
+        run.Phase == RunPhase.Combat &&
+        run.World?.Combat is
+            { Turn: >= 2, IsPlayerTurn: true, IsPlayerSideActive: true,
+              PendingChoice: null, PendingKnowledgeDemonChoice: null,
+              SemanticDeck:
+                { Mode: SemanticDeckStateV111.NatureMode, Pending: null },
+              AutomaticPipelineContinuation:
+                { PendingPostDispatchEventKind: null,
+                  OpeningStage: null,
+                  ControlledDrawRemaining: null,
+                  ControlledDrawCostRemaining: null,
+                  ControlledSemanticDrawRemaining: null,
+                  ControlledSemanticDrawRequested: null,
+                  ControlledSemanticBeforeHandDrawPending: false,
+                  ControlledRecycleStratagemPending: false,
+                  ControlledDrawHookChoicePending: false,
+                  ControlledBeforeHandDrawHookChoicePending: false,
+                  ControlledEnemyAction: null,
+                  ControlledTurnIntents: null } continuation } combat &&
+        continuation.Mechanics.IsAtStep(
+            PrototypeAutomaticStepKind.DrawPlayerHand) &&
+        continuation.Stochastic is
+            { HandDrawProgress: null,
+              ControlledEnemyAction: null,
+              ControlledTurnIntents: null,
+              CompletedSemanticHandDrawRequested: null };
+
     private static CombatState MakeControlledGeneratedCardChoice(
         CombatState combat, PrototypeQueuedOperation operation,
         string[] candidates,
@@ -108,7 +315,17 @@ public sealed partial class PrototypeGameEngine
     /// is repeated. Repeated generation exposes a new ticket each time.
     /// </summary>
     internal static RunState ResumeControlledGeneratedCard(
-        RunState state, int selectedIndex)
+        RunState state, int selectedIndex) =>
+        ResumeControlledGeneratedCardCore(
+            state, selectedIndex, resumeAutomaticPipeline: true);
+
+    internal static RunState ResumeControlledGeneratedCardForSemanticHandoff(
+        RunState state, int selectedIndex) =>
+        ResumeControlledGeneratedCardCore(
+            state, selectedIndex, resumeAutomaticPipeline: false);
+
+    private static RunState ResumeControlledGeneratedCardCore(
+        RunState state, int selectedIndex, bool resumeAutomaticPipeline)
     {
         if (!ControlledChanceGuardV111.Active)
             throw new InvalidOperationException(
@@ -167,7 +384,8 @@ public sealed partial class PrototypeGameEngine
             Player = resolved.Player,
             World = world with { Combat = resolved.Combat }
         };
-        updated = ResumeAutomaticPipelineContinuation(updated);
+        if (resumeAutomaticPipeline)
+            updated = ResumeAutomaticPipelineContinuation(updated);
         return updated;
     }
 }

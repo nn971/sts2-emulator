@@ -30,7 +30,11 @@ public static class PrototypeNativeGloryBosses
     public const string WitheringPresenceId = "proto.native.glory.withering_presence";
     public const string WitherId = "proto.status.wither";
 
-    public static PrototypeCardDefinition[] Cards { get; } =
+    public static PrototypeCardDefinition[] Cards => CardDefinitions
+        .Select(PrototypeDefinitionCopiesV111.CloneCardDefinition)
+        .ToArray();
+
+    private static readonly PrototypeCardDefinition[] CardDefinitions =
     [
         new(WitherId, "Wither", -1, PrototypeCardTarget.None, [],
             Rarity: PrototypeCardRarity.Status, Type: PrototypeCardType.Status,
@@ -38,7 +42,11 @@ public static class PrototypeNativeGloryBosses
             EndTurnDamageIfInHand: 3, MaxUpgradeLevel: 0)
     ];
 
-    public static PrototypePowerDefinition[] Powers { get; } =
+    public static PrototypePowerDefinition[] Powers => PowerDefinitions
+        .Select(PrototypeDefinitionCopiesV111.ClonePowerDefinition)
+        .ToArray();
+
+    private static readonly PrototypePowerDefinition[] PowerDefinitions =
     [
         new(HexId, "Hex", 0, [], DoesNotStack: true, IsDebuff: true,
             SourceBoundToEnemy: true,
@@ -60,7 +68,11 @@ public static class PrototypeNativeGloryBosses
             DoesNotStack: true)
     ];
 
-    public static PrototypeEnemyDefinition[] Enemies { get; } =
+    public static PrototypeEnemyDefinition[] Enemies => EnemyDefinitions
+        .Select(PrototypeDefinitionCopiesV111.CloneEnemyDefinition)
+        .ToArray();
+
+    private static readonly PrototypeEnemyDefinition[] EnemyDefinitions =
     [
         new(FlailKnightId, "Flail Knight", 101, 0,
         [
@@ -257,7 +269,12 @@ public static class PrototypeNativeGloryBosses
         ])
     ];
 
-    public static PrototypeEncounterDefinition[] Encounters { get; } =
+    public static PrototypeEncounterDefinition[] Encounters =>
+        EncounterDefinitions
+            .Select(PrototypeDefinitionCopiesV111.CloneEncounterDefinition)
+            .ToArray();
+
+    private static readonly PrototypeEncounterDefinition[] EncounterDefinitions =
     [
         new(KnightsEncounterId, PrototypeRoomType.Elite,
             [FlailKnightId, SpectralKnightId, MagiKnightId],

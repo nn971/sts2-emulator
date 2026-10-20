@@ -83,7 +83,7 @@ public sealed record ControlledRunActionTraceV111(
                 : isCombatDraw ? "combat"
                 : isBossDraw ? "combat" : "map";
             var validStream = isShopPurchaseDraw
-                ? IsShopPurchaseStream(request)
+                ? IsSupportedShopPurchaseStream(request)
                 : request.StreamId == prefixStream;
             var validSite = ActionId == "start_run"
                 ? ControlledEventChoiceReplayV111.IsRunActionSite(
@@ -133,7 +133,7 @@ public sealed record ControlledRunActionTraceV111(
         }
     }
 
-    private static bool IsShopPurchaseStream(
+    internal static bool IsSupportedShopPurchaseStream(
         RandomIndexRequestV111 request) => request.SiteId switch
     {
         NativeGloryAncientsV111.BeautifulBraceletShuffleSiteId or

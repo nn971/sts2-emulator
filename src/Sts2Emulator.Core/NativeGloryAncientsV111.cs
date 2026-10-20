@@ -58,7 +58,7 @@ public static class NativeGloryAncientsV111
 
     // CurseCardPool entries with CanBeGeneratedByModifiers, ordered by the
     // source ModelId order used by Distinguished Cape's sorted pool.
-    public static string[] ModifierGeneratedCurseIds { get; } =
+    private static readonly string[] ModifierGeneratedCurseIdValues =
     [
         ClumsyCardId,
         DebtCardId,
@@ -72,7 +72,10 @@ public static class NativeGloryAncientsV111
         WritheCardId
     ];
 
-    public static PrototypeRelicDefinition[] Relics { get; } =
+    public static string[] ModifierGeneratedCurseIds =>
+        (string[])ModifierGeneratedCurseIdValues.Clone();
+
+    private static readonly PrototypeRelicDefinition[] RelicDefinitions =
     [
         new(PreservedFogId, "Preserved Fog",
             AcquisitionDeckChoice: new(
@@ -389,7 +392,12 @@ public static class NativeGloryAncientsV111
         };
     }
 
-    public static PrototypeCardDefinition[] Cards { get; } =
+    public static PrototypeRelicDefinition[] Relics =>
+        RelicDefinitions
+            .Select(PrototypeDefinitionCopiesV111.CloneRelicDefinition)
+            .ToArray();
+
+    private static readonly PrototypeCardDefinition[] CardDefinitions =
     [
         new(ApparitionCardId, "Apparition", 1,
             PrototypeCardTarget.None,
@@ -462,4 +470,9 @@ public static class NativeGloryAncientsV111
             Type: PrototypeCardType.Attack,
             CanBeGeneratedInCombat: false)
     ];
+
+    public static PrototypeCardDefinition[] Cards =>
+        CardDefinitions
+            .Select(PrototypeDefinitionCopiesV111.CloneCardDefinition)
+            .ToArray();
 }

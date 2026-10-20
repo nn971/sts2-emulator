@@ -119,7 +119,13 @@ public sealed class ControlledLiveRecycleV111Tests
             ControlledPlayableCombatEngineV111.Restore(
                 ControlledPlayableCombatEngineV111.Save(right)).Fingerprint);
         var tampered = pending.Fork();
-        tampered.Recycle!.Shuffled[0] = -1234;
+        var recycle = tampered.Recycle!;
+        var shuffled = recycle.Shuffled;
+        shuffled[0] = -1234;
+        tampered = tampered with
+        {
+            Recycle = recycle with { Shuffled = shuffled }
+        };
         Assert.Throws<InvalidDataException>(() =>
             ControlledPlayableCombatEngineV111.Restore(
                 JsonSerializer.Serialize(tampered)));
@@ -169,7 +175,10 @@ public sealed class ControlledLiveRecycleV111Tests
         Assert.True(two.Complete);
         Assert.Equal(new long[] { 3, 1, 2 }, two.Shuffled);
         var modified = two.Fork();
-        modified.Transcript[0] = modified.Transcript[0] with { SelectedIndex = 0 };
+        var modifiedTranscript = modified.Transcript;
+        modifiedTranscript[0] = modifiedTranscript[0] with
+        { SelectedIndex = 0 };
+        modified = modified with { Transcript = modifiedTranscript };
         Assert.Throws<InvalidDataException>(() =>
             ControlledRecycleShuffleEngineV111.Validate(modified));
     }

@@ -9,7 +9,19 @@ public sealed record ReferenceNatureGloryReflectionsSessionSnapshotV111(
     string RunSnapshotJson,
     ReferenceNatureStateV111 InitialNatureState,
     ReferenceNatureStateV111 NatureState,
-    ReferenceNatureDecisionV111[] DecisionTranscript);
+    ReferenceNatureDecisionV111[] DecisionTranscript)
+{
+    private ReferenceNatureDecisionV111[]? _decisionTranscript =
+        ReferenceNatureSessionValueCopiesV111.CopyArray(DecisionTranscript);
+
+    public ReferenceNatureDecisionV111[] DecisionTranscript
+    {
+        get => ReferenceNatureSessionValueCopiesV111
+            .CopyArray(_decisionTranscript)!;
+        init => _decisionTranscript = ReferenceNatureSessionValueCopiesV111
+            .CopyArray(value);
+    }
+}
 
 /// <summary>Atomic Nature replay for the Reflections touch_mirror action.
 /// Downgrade and upgrade picks share one ordered prefix and event action.</summary>
@@ -21,6 +33,17 @@ public sealed record ReferenceNatureGloryReflectionsSessionV111(
     ReferenceNatureStateV111 NatureState,
     ReferenceNatureDecisionV111[] DecisionTranscript)
 {
+    private ReferenceNatureDecisionV111[]? _decisionTranscript =
+        ReferenceNatureSessionValueCopiesV111.CopyArray(DecisionTranscript);
+
+    public ReferenceNatureDecisionV111[] DecisionTranscript
+    {
+        get => ReferenceNatureSessionValueCopiesV111
+            .CopyArray(_decisionTranscript)!;
+        init => _decisionTranscript = ReferenceNatureSessionValueCopiesV111
+            .CopyArray(value);
+    }
+
     public const string CurrentSchemaId =
         "sts2-v111-reference-nature-glory-reflections-session-v1";
 

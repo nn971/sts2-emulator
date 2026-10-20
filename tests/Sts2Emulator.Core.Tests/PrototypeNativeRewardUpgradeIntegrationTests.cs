@@ -82,7 +82,21 @@ public sealed class PrototypeNativeRewardUpgradeIntegrationTests
         state = state with { World = state.World with { Reward = reward } };
         PrototypeStateInvariants.Validate(state);
         var fork = state.Fork();
-        fork.World!.Reward!.CardOptionUpgradeFlags![1] = false;
+        var forkWorld = fork.World!;
+        var forkReward = forkWorld.Reward!;
+        var forkFlags = forkReward.CardOptionUpgradeFlags!;
+        forkFlags[1] = false;
+        fork = fork with
+        {
+            World = forkWorld with
+            {
+                Reward = forkReward with
+                {
+                    CardOptionUpgradeFlags = forkFlags
+                }
+            }
+        };
+        Assert.False(fork.World!.Reward!.CardOptionUpgradeFlags![1]);
         Assert.True(state.World!.Reward!.CardOptionUpgradeFlags![1]);
         var engine = new PrototypeGameEngine();
         var options = engine.GetLegalActions(state)

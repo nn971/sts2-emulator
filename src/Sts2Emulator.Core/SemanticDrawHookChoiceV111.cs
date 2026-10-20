@@ -13,6 +13,15 @@ public sealed record SemanticDrawHookChoiceEventV111(
     bool BeforeHandDraw = false,
     bool AutomaticPipelineAutoplay = false)
 {
+    private SemanticDrawHookChoiceCandidateV111[]? _candidates =
+        CloneCandidates(Candidates);
+
+    public SemanticDrawHookChoiceCandidateV111[] Candidates
+    {
+        get => CloneCandidates(_candidates)!;
+        init => _candidates = CloneCandidates(value);
+    }
+
     public const string EventSchemaId =
         "sts2-v111-semantic-draw-hook-choice-v2";
     public const string AutomaticPipelineEventSchemaId =
@@ -20,31 +29,32 @@ public sealed record SemanticDrawHookChoiceEventV111(
 
     public SemanticDrawHookChoiceEventV111 Fork() => this with
     {
-        Candidates = (SemanticDrawHookChoiceCandidateV111[])Candidates.Clone()
+        Candidates = _candidates!
     };
 
     public void Validate()
     {
+        var candidates = _candidates;
         if (SchemaId != (AutomaticPipelineAutoplay
                 ? AutomaticPipelineEventSchemaId : EventSchemaId) ||
             string.IsNullOrWhiteSpace(EventId) ||
             string.IsNullOrWhiteSpace(BoundaryFingerprint) ||
             string.IsNullOrWhiteSpace(SupportFingerprint) ||
             string.IsNullOrWhiteSpace(ChoiceId) ||
-            Candidates is not { Length: > 0 } ||
-            Candidates.Any(candidate => candidate is null ||
+            candidates is not { Length: > 0 } ||
+            candidates.Any(candidate => candidate is null ||
                 string.IsNullOrWhiteSpace(candidate.ActionId) ||
                 string.IsNullOrWhiteSpace(candidate.Kind) ||
                 string.IsNullOrWhiteSpace(candidate.PayloadFingerprint)) ||
             (BeforeHandDraw && !AutomaticHandDraw) ||
             (AutomaticPipelineAutoplay &&
              (AutomaticHandDraw || BeforeHandDraw)) ||
-            Candidates.Select(candidate => candidate.ActionId).Distinct()
-                .Count() != Candidates.Length ||
+            candidates.Select(candidate => candidate.ActionId).Distinct()
+                .Count() != candidates.Length ||
             SupportFingerprint != CanonicalJson.Sha256(new
             {
                 ChoiceId,
-                Candidates
+                Candidates = candidates
             }) ||
             EventId != CreateEventId(SchemaId, BoundaryFingerprint,
                 SupportFingerprint, AutomaticHandDraw, BeforeHandDraw,
@@ -52,6 +62,10 @@ public sealed record SemanticDrawHookChoiceEventV111(
             throw new InvalidDataException(
                 "Invalid semantic draw-hook choice event.");
     }
+
+    private static SemanticDrawHookChoiceCandidateV111[]? CloneCandidates(
+        SemanticDrawHookChoiceCandidateV111[]? values) => values?.Select(
+            candidate => candidate is null ? null! : candidate with { }).ToArray();
 
     internal static string CreateEventId(string schemaId,
         string boundaryFingerprint, string supportFingerprint,
@@ -174,18 +188,31 @@ public static class SemanticDrawHookChoiceEngineV111
         return result;
     }
 
-    public static (RunState Run, SemanticDrawHookChoiceDecisionV111 Decision)
-        Resolve(RunState source, SemanticDrawHookChoiceEventV111 pending,
-            string actionId)
+    public static SemanticDrawHookChoiceDecisionV111 Select(
+        RunState source, SemanticDrawHookChoiceEventV111 pending,
+        string actionId)
+    {
+        _ = ValidateSelectedAction(source, pending, actionId, out _);
+        var decision = new SemanticDrawHookChoiceDecisionV111(
+            pending.Fork(), actionId);
+        decision.Validate();
+        return decision;
+    }
+
+    private static PrototypeAiAction ValidateSelectedAction(
+        RunState source, SemanticDrawHookChoiceEventV111 pending,
+        string actionId, out SemanticDrawHookChoiceEventV111 current)
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(pending);
+        ArgumentException.ThrowIfNullOrWhiteSpace(actionId);
         pending.Validate();
-        var current = DescribePending(source);
-        if (current is null ||
-            CanonicalJson.Sha256(current) != CanonicalJson.Sha256(pending))
+        var live = DescribePending(source);
+        if (live is null ||
+            CanonicalJson.Sha256(live) != CanonicalJson.Sha256(pending))
             throw new InvalidDataException(
                 "Stale semantic draw-hook choice event.");
+        current = live;
         var candidate = pending.Candidates.SingleOrDefault(item =>
             item.ActionId == actionId) ?? throw new InvalidOperationException(
                 "Action is outside the pending draw-hook choice support.");
@@ -198,23 +225,53 @@ public static class SemanticDrawHookChoiceEngineV111
                 candidate.PayloadFingerprint)
             throw new InvalidDataException(
                 "Draw-hook action payload changed during resolution.");
+        return action;
+    }
 
+    public static (RunState Run, SemanticDrawHookChoiceDecisionV111 Decision)
+        Resolve(RunState source, SemanticDrawHookChoiceEventV111 pending,
+            string actionId)
+    {
+        var decision = Select(source, pending, actionId);
+        var (run, replayed) = Resume(source, decision);
+        if (CanonicalJson.Sha256(decision) != CanonicalJson.Sha256(replayed))
+            throw new InvalidDataException(
+                "Semantic draw-hook replay diverged.");
+        return (run, decision);
+    }
+
+    internal static (RunState Run, SemanticDrawHookChoiceDecisionV111 Decision)
+        Resume(RunState source, SemanticDrawHookChoiceDecisionV111 decision)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(decision);
+        decision.Validate();
+        var action = ValidateSelectedAction(
+            source, decision.Event, decision.ActionId,
+            out var replayedEvent);
+        var replayedDecision = new SemanticDrawHookChoiceDecisionV111(
+            replayedEvent.Fork(), decision.ActionId);
+        replayedDecision.Validate();
         var environment = new PrototypeAiEnvironment();
         RunState advanced;
-        bool beforeHandDraw = pending.BeforeHandDraw;
+        bool beforeHandDraw = decision.Event.BeforeHandDraw;
         string site = beforeHandDraw
             ? "combat.BeforeHandDraw" : "combat.draw.CardDrawn";
         using (ControlledChanceGuardV111.Enter())
         using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
-            advanced = environment.Step(source.Fork(), actionId).State;
+            advanced = environment.Step(source.Fork(), action.ActionId).State;
         if (advanced.Phase != RunPhase.Combat ||
             advanced.World?.Combat is not { } advancedCombat)
             throw new NotSupportedException(
                 $"UNSUPPORTED_SEMANTIC_DECK site={site} " +
                 "operation=unsupported_nested_choice_result");
-        if (pending.AutomaticHandDraw &&
+        if (decision.Event.AutomaticHandDraw &&
             advancedCombat.PendingChoice is { } nextChoice)
         {
+            bool nestedBeforeHandDrawRandomPileCard =
+                decision.Event.BeforeHandDraw &&
+                nextChoice.ChoiceId == "controlled_random_pile_card" &&
+                nextChoice.ControlledRandomPileCard is not null;
             if (nextChoice.ControlledTarget is not null ||
                 nextChoice.ControlledGeneration is not null ||
                 nextChoice.ControlledPotionGeneration is not null ||
@@ -224,34 +281,38 @@ public static class SemanticDrawHookChoiceEngineV111
                 nextChoice.ControlledPoolShuffle is not null ||
                 nextChoice.ControlledRandomCost is not null ||
                 nextChoice.ControlledCardShortlist is not null ||
-                nextChoice.ControlledRandomPileCard is not null ||
+                (nextChoice.ControlledRandomPileCard is not null &&
+                 !nestedBeforeHandDrawRandomPileCard) ||
                 nextChoice.SemanticStratagemDrawSelection ||
                 nextChoice.AutomaticSemanticStratagemDrawSelection)
                 throw new NotSupportedException(
                     $"UNSUPPORTED_SEMANTIC_DECK site={site} " +
                     "operation=nested_controlled_choice");
-            advancedCombat = advancedCombat with
+            if (nestedBeforeHandDrawRandomPileCard)
+                _ = SemanticRandomPileCardEngineV111.DescribePending(advanced)
+                    ?? throw new InvalidDataException(
+                        "Nested BeforeHandDraw random pile-card choice has no semantic event.");
+            else
             {
-                PendingChoice = nextChoice with
+                advancedCombat = advancedCombat with
                 {
-                    AutomaticSemanticDrawHookChoice = true
-                }
-            };
-            advanced = advanced with
-            {
-                World = advanced.World! with { Combat = advancedCombat }
-            };
+                    PendingChoice = nextChoice with
+                    {
+                        AutomaticSemanticDrawHookChoice = true
+                    }
+                };
+                advanced = advanced with
+                {
+                    World = advanced.World! with { Combat = advancedCombat }
+                };
+            }
         }
         else if (beforeHandDraw && advancedCombat.PendingChoice is not null)
             throw new NotSupportedException(
                 $"UNSUPPORTED_SEMANTIC_DECK site={site} " +
                 "operation=nested_controlled_choice");
         PrototypeStateInvariants.Validate(advanced);
-
-        var decision = new SemanticDrawHookChoiceDecisionV111(
-            pending.Fork(), actionId);
-        decision.Validate();
-        return (advanced, decision);
+        return (advanced, replayedDecision);
     }
 
     internal static bool HasStandaloneDrawResume(

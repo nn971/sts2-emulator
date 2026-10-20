@@ -8,16 +8,19 @@ namespace Sts2Emulator.Core;
 public sealed record SemanticPilotMechanicsStateV111
 {
     private ControlledPlayableCombatV111 _openingSource = null!;
+    private SemanticPilotContinuationV111[] _history = [];
 
     public PrototypeMechanicsContinuationStateV111 Continuation { get; init; }
 
     public ControlledPlayableCombatV111 OpeningSource
     {
-        get => _openingSource;
+        get => _openingSource.Fork();
         init
         {
-            _openingSource = value;
-            Continuation = Continuation with { Origin = value.Run };
+            ArgumentNullException.ThrowIfNull(value);
+            _openingSource = value.Fork();
+            Continuation = Continuation with
+            { Origin = _openingSource.Run.Fork() };
         }
     }
 
@@ -27,7 +30,11 @@ public sealed record SemanticPilotMechanicsStateV111
         init => Continuation = Continuation with { Current = value };
     }
 
-    public SemanticPilotContinuationV111[] History { get; init; }
+    public SemanticPilotContinuationV111[] History
+    {
+        get => CopyHistory(_history);
+        init => _history = CopyHistory(value);
+    }
     public string NativeEncounterEntry { get; init; }
     public string Mode { get; init; }
     internal SemanticPilotEndTurnMechanicsProjectionV111?
@@ -47,6 +54,15 @@ public sealed record SemanticPilotMechanicsStateV111
         this.History = History;
         this.NativeEncounterEntry = NativeEncounterEntry;
         this.Mode = Mode;
+    }
+
+    private static SemanticPilotContinuationV111[] CopyHistory(
+        SemanticPilotContinuationV111[] history)
+    {
+        ArgumentNullException.ThrowIfNull(history);
+        return history.Select(transition => transition is null
+            ? null!
+            : transition.Fork()).ToArray();
     }
 }
 

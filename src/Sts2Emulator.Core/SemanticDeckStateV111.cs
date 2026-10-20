@@ -19,49 +19,238 @@ public sealed record SemanticDeckSlotV111(
         new(null, pool);
 }
 
-public sealed record SemanticDeckPoolV111(
-    string PoolId, long[] RemainingCardInstanceIds)
+public sealed record SemanticDeckPoolV111
 {
+    private long[] _remainingCardInstanceIds;
+
+    [JsonConstructor]
+    public SemanticDeckPoolV111(
+        string PoolId, long[] RemainingCardInstanceIds)
+    {
+        this.PoolId = PoolId;
+        _remainingCardInstanceIds = CloneRequired(
+            RemainingCardInstanceIds, nameof(RemainingCardInstanceIds));
+    }
+
+    public string PoolId { get; init; }
+    public long[] RemainingCardInstanceIds
+    {
+        get => (long[])_remainingCardInstanceIds.Clone();
+        init => _remainingCardInstanceIds = CloneRequired(
+            value, nameof(RemainingCardInstanceIds));
+    }
+
     public SemanticDeckPoolV111 Fork() => this with
     {
-        RemainingCardInstanceIds = (long[])RemainingCardInstanceIds.Clone()
+        RemainingCardInstanceIds = _remainingCardInstanceIds
     };
+
+    public void Deconstruct(
+        out string PoolId, out long[] RemainingCardInstanceIds)
+    {
+        PoolId = this.PoolId;
+        RemainingCardInstanceIds = this.RemainingCardInstanceIds;
+    }
+
+    private static long[] CloneRequired(long[] values, string parameterName)
+    {
+        ArgumentNullException.ThrowIfNull(values, parameterName);
+        return (long[])values.Clone();
+    }
 }
 
-public sealed record SemanticDeckPendingV111(
-    string SiteId, string Purpose, int TopOffset, string PoolId,
-    long[] CandidateCardInstanceIds, int Ordinal)
+public sealed record SemanticDeckPendingV111
 {
+    private long[] _candidateCardInstanceIds;
+
+    [JsonConstructor]
+    public SemanticDeckPendingV111(
+        string SiteId, string Purpose, int TopOffset, string PoolId,
+        long[] CandidateCardInstanceIds, int Ordinal)
+    {
+        this.SiteId = SiteId;
+        this.Purpose = Purpose;
+        this.TopOffset = TopOffset;
+        this.PoolId = PoolId;
+        _candidateCardInstanceIds = CloneRequired(
+            CandidateCardInstanceIds, nameof(CandidateCardInstanceIds));
+        this.Ordinal = Ordinal;
+    }
+
+    public string SiteId { get; init; }
+    public string Purpose { get; init; }
+    public int TopOffset { get; init; }
+    public string PoolId { get; init; }
+    public long[] CandidateCardInstanceIds
+    {
+        get => (long[])_candidateCardInstanceIds.Clone();
+        init => _candidateCardInstanceIds = CloneRequired(
+            value, nameof(CandidateCardInstanceIds));
+    }
+    public int Ordinal { get; init; }
+
     public SemanticDeckPendingV111 Fork() => this with
     {
-        CandidateCardInstanceIds = (long[])CandidateCardInstanceIds.Clone()
+        CandidateCardInstanceIds = _candidateCardInstanceIds
     };
+
+    public void Deconstruct(
+        out string SiteId, out string Purpose, out int TopOffset,
+        out string PoolId, out long[] CandidateCardInstanceIds,
+        out int Ordinal)
+    {
+        SiteId = this.SiteId;
+        Purpose = this.Purpose;
+        TopOffset = this.TopOffset;
+        PoolId = this.PoolId;
+        CandidateCardInstanceIds = this.CandidateCardInstanceIds;
+        Ordinal = this.Ordinal;
+    }
+
+    private static long[] CloneRequired(long[] values, string parameterName)
+    {
+        ArgumentNullException.ThrowIfNull(values, parameterName);
+        return (long[])values.Clone();
+    }
 }
 
-public sealed record SemanticDeckChoiceV111(
-    string EventId, string SiteId, string Purpose, int TopOffset,
-    int Ordinal, long[] CandidateCardInstanceIds,
-    int SelectedIndex, long SelectedCardInstanceId,
-    string ProbabilityStatus = "UNVERIFIED")
+public sealed record SemanticDeckChoiceV111
 {
+    private long[] _candidateCardInstanceIds;
+
+    [JsonConstructor]
+    public SemanticDeckChoiceV111(
+        string EventId, string SiteId, string Purpose, int TopOffset,
+        int Ordinal, long[] CandidateCardInstanceIds,
+        int SelectedIndex, long SelectedCardInstanceId,
+        string ProbabilityStatus = "UNVERIFIED")
+    {
+        this.EventId = EventId;
+        this.SiteId = SiteId;
+        this.Purpose = Purpose;
+        this.TopOffset = TopOffset;
+        this.Ordinal = Ordinal;
+        _candidateCardInstanceIds = CloneRequired(
+            CandidateCardInstanceIds, nameof(CandidateCardInstanceIds));
+        this.SelectedIndex = SelectedIndex;
+        this.SelectedCardInstanceId = SelectedCardInstanceId;
+        this.ProbabilityStatus = ProbabilityStatus;
+    }
+
+    public string EventId { get; init; }
+    public string SiteId { get; init; }
+    public string Purpose { get; init; }
+    public int TopOffset { get; init; }
+    public int Ordinal { get; init; }
+    public long[] CandidateCardInstanceIds
+    {
+        get => (long[])_candidateCardInstanceIds.Clone();
+        init => _candidateCardInstanceIds = CloneRequired(
+            value, nameof(CandidateCardInstanceIds));
+    }
+    public int SelectedIndex { get; init; }
+    public long SelectedCardInstanceId { get; init; }
+    public string ProbabilityStatus { get; init; }
+
     public SemanticDeckChoiceV111 Fork() => this with
     {
-        CandidateCardInstanceIds = (long[])CandidateCardInstanceIds.Clone()
+        CandidateCardInstanceIds = _candidateCardInstanceIds
     };
+
+    public void Deconstruct(
+        out string EventId, out string SiteId, out string Purpose,
+        out int TopOffset, out int Ordinal,
+        out long[] CandidateCardInstanceIds, out int SelectedIndex,
+        out long SelectedCardInstanceId, out string ProbabilityStatus)
+    {
+        EventId = this.EventId;
+        SiteId = this.SiteId;
+        Purpose = this.Purpose;
+        TopOffset = this.TopOffset;
+        Ordinal = this.Ordinal;
+        CandidateCardInstanceIds = this.CandidateCardInstanceIds;
+        SelectedIndex = this.SelectedIndex;
+        SelectedCardInstanceId = this.SelectedCardInstanceId;
+        ProbabilityStatus = this.ProbabilityStatus;
+    }
+
+    private static long[] CloneRequired(long[] values, string parameterName)
+    {
+        ArgumentNullException.ThrowIfNull(values, parameterName);
+        return (long[])values.Clone();
+    }
 }
 
 public sealed record SemanticDeckPublicCardV111(
     int TopOffset, long CardInstanceId);
 
-public sealed record SemanticDeckPublicViewV111(
-    int Count, SemanticDeckPublicCardV111[] RevealedPositions);
-
-public sealed record SemanticDeckOrderV111(long[] CardInstanceIds)
+public sealed record SemanticDeckPublicViewV111
 {
+    private SemanticDeckPublicCardV111[] _revealedPositions;
+
+    [JsonConstructor]
+    public SemanticDeckPublicViewV111(
+        int Count, SemanticDeckPublicCardV111[] RevealedPositions)
+    {
+        this.Count = Count;
+        _revealedPositions = CloneRequired(RevealedPositions);
+    }
+
+    public int Count { get; init; }
+
+    public SemanticDeckPublicCardV111[] RevealedPositions
+    {
+        get => (SemanticDeckPublicCardV111[])_revealedPositions.Clone();
+        init => _revealedPositions = CloneRequired(value);
+    }
+
+    public SemanticDeckPublicViewV111 Fork() => this with
+    {
+        RevealedPositions = _revealedPositions
+    };
+
+    public void Deconstruct(
+        out int Count, out SemanticDeckPublicCardV111[] RevealedPositions)
+    {
+        Count = this.Count;
+        RevealedPositions = this.RevealedPositions;
+    }
+
+    private static SemanticDeckPublicCardV111[] CloneRequired(
+        SemanticDeckPublicCardV111[] values)
+    {
+        ArgumentNullException.ThrowIfNull(values);
+        return (SemanticDeckPublicCardV111[])values.Clone();
+    }
+}
+
+public sealed record SemanticDeckOrderV111
+{
+    private long[] _cardInstanceIds;
+
+    [JsonConstructor]
+    public SemanticDeckOrderV111(long[] CardInstanceIds) =>
+        _cardInstanceIds = CloneRequired(CardInstanceIds);
+
+    public long[] CardInstanceIds
+    {
+        get => (long[])_cardInstanceIds.Clone();
+        init => _cardInstanceIds = CloneRequired(value);
+    }
+
     public SemanticDeckOrderV111 Fork() => this with
     {
-        CardInstanceIds = (long[])CardInstanceIds.Clone()
+        CardInstanceIds = _cardInstanceIds
     };
+
+    public void Deconstruct(out long[] CardInstanceIds) =>
+        CardInstanceIds = this.CardInstanceIds;
+
+    private static long[] CloneRequired(long[] values)
+    {
+        ArgumentNullException.ThrowIfNull(values);
+        return (long[])values.Clone();
+    }
 }
 
 /// <summary>
@@ -69,28 +258,114 @@ public sealed record SemanticDeckOrderV111(long[] CardInstanceIds)
 /// constraint state. The listed completions have equal mass only under the
 /// explicitly unverified independent-uniform-pool model.
 /// </summary>
-public sealed record SemanticDeckEnumerationV111(
-    string SchemaId, string StateFingerprint, string ConditioningPolicyId,
-    string ProbabilityStatus, string ProbabilityProvenance,
-    string CompletionCount, string OutcomeFingerprint,
-    SemanticDeckOrderV111[] Outcomes)
+public sealed record SemanticDeckEnumerationV111
 {
+    private SemanticDeckOrderV111[] _outcomes;
+
     public const string CurrentSchemaId =
         "sts2-v111-semantic-deck-enumeration-v1";
 
+    [JsonConstructor]
+    public SemanticDeckEnumerationV111(
+        string SchemaId, string StateFingerprint, string ConditioningPolicyId,
+        string ProbabilityStatus, string ProbabilityProvenance,
+        string CompletionCount, string OutcomeFingerprint,
+        SemanticDeckOrderV111[] Outcomes)
+    {
+        this.SchemaId = SchemaId;
+        this.StateFingerprint = StateFingerprint;
+        this.ConditioningPolicyId = ConditioningPolicyId;
+        this.ProbabilityStatus = ProbabilityStatus;
+        this.ProbabilityProvenance = ProbabilityProvenance;
+        this.CompletionCount = CompletionCount;
+        this.OutcomeFingerprint = OutcomeFingerprint;
+        _outcomes = CloneRequired(Outcomes);
+    }
+
+    public string SchemaId { get; init; }
+    public string StateFingerprint { get; init; }
+    public string ConditioningPolicyId { get; init; }
+    public string ProbabilityStatus { get; init; }
+    public string ProbabilityProvenance { get; init; }
+    public string CompletionCount { get; init; }
+    public string OutcomeFingerprint { get; init; }
+    public SemanticDeckOrderV111[] Outcomes
+    {
+        get => (SemanticDeckOrderV111[])_outcomes.Clone();
+        init => _outcomes = CloneRequired(value);
+    }
+
     public SemanticDeckEnumerationV111 Fork() => this with
     {
-        Outcomes = Outcomes.Select(outcome => outcome.Fork()).ToArray()
+        Outcomes = _outcomes.Select(outcome => outcome.Fork()).ToArray()
     };
+
+    public void Deconstruct(
+        out string SchemaId, out string StateFingerprint,
+        out string ConditioningPolicyId, out string ProbabilityStatus,
+        out string ProbabilityProvenance, out string CompletionCount,
+        out string OutcomeFingerprint, out SemanticDeckOrderV111[] Outcomes)
+    {
+        SchemaId = this.SchemaId;
+        StateFingerprint = this.StateFingerprint;
+        ConditioningPolicyId = this.ConditioningPolicyId;
+        ProbabilityStatus = this.ProbabilityStatus;
+        ProbabilityProvenance = this.ProbabilityProvenance;
+        CompletionCount = this.CompletionCount;
+        OutcomeFingerprint = this.OutcomeFingerprint;
+        Outcomes = this.Outcomes;
+    }
+
+    private static SemanticDeckOrderV111[] CloneRequired(
+        SemanticDeckOrderV111[] outcomes)
+    {
+        ArgumentNullException.ThrowIfNull(outcomes);
+        return (SemanticDeckOrderV111[])outcomes.Clone();
+    }
 }
 
-public sealed record SemanticDeckEventV111(
-    string SchemaId, string EventId, string SiteId, string Purpose,
-    int TopOffset, int Ordinal, string OperationKind,
-    string StreamId, string OwnerId, long[] CandidateCardInstanceIds,
-    string SupportFingerprint, string ProbabilityStatus = "UNVERIFIED")
-    : ISemanticChanceEventV111
+public sealed record SemanticDeckEventV111 : ISemanticChanceEventV111
 {
+    private long[] _candidateCardInstanceIds;
+
+    [JsonConstructor]
+    public SemanticDeckEventV111(
+        string SchemaId, string EventId, string SiteId, string Purpose,
+        int TopOffset, int Ordinal, string OperationKind,
+        string StreamId, string OwnerId, long[] CandidateCardInstanceIds,
+        string SupportFingerprint, string ProbabilityStatus = "UNVERIFIED")
+    {
+        this.SchemaId = SchemaId;
+        this.EventId = EventId;
+        this.SiteId = SiteId;
+        this.Purpose = Purpose;
+        this.TopOffset = TopOffset;
+        this.Ordinal = Ordinal;
+        this.OperationKind = OperationKind;
+        this.StreamId = StreamId;
+        this.OwnerId = OwnerId;
+        _candidateCardInstanceIds = CloneRequired(CandidateCardInstanceIds);
+        this.SupportFingerprint = SupportFingerprint;
+        this.ProbabilityStatus = ProbabilityStatus;
+    }
+
+    public string SchemaId { get; init; }
+    public string EventId { get; init; }
+    public string SiteId { get; init; }
+    public string Purpose { get; init; }
+    public int TopOffset { get; init; }
+    public int Ordinal { get; init; }
+    public string OperationKind { get; init; }
+    public string StreamId { get; init; }
+    public string OwnerId { get; init; }
+    public long[] CandidateCardInstanceIds
+    {
+        get => (long[])_candidateCardInstanceIds.Clone();
+        init => _candidateCardInstanceIds = CloneRequired(value);
+    }
+    public string SupportFingerprint { get; init; }
+    public string ProbabilityStatus { get; init; }
+
     public void Validate()
     {
         if (SchemaId != SemanticDeckStateV111.SchemaId ||
@@ -109,6 +384,33 @@ public sealed record SemanticDeckEventV111(
             ProbabilityStatus != "UNVERIFIED")
             throw new InvalidDataException(
                 "Invalid semantic deck event envelope.");
+    }
+
+    public void Deconstruct(
+        out string SchemaId, out string EventId, out string SiteId,
+        out string Purpose, out int TopOffset, out int Ordinal,
+        out string OperationKind, out string StreamId, out string OwnerId,
+        out long[] CandidateCardInstanceIds, out string SupportFingerprint,
+        out string ProbabilityStatus)
+    {
+        SchemaId = this.SchemaId;
+        EventId = this.EventId;
+        SiteId = this.SiteId;
+        Purpose = this.Purpose;
+        TopOffset = this.TopOffset;
+        Ordinal = this.Ordinal;
+        OperationKind = this.OperationKind;
+        StreamId = this.StreamId;
+        OwnerId = this.OwnerId;
+        CandidateCardInstanceIds = this.CandidateCardInstanceIds;
+        SupportFingerprint = this.SupportFingerprint;
+        ProbabilityStatus = this.ProbabilityStatus;
+    }
+
+    private static long[] CloneRequired(long[] values)
+    {
+        ArgumentNullException.ThrowIfNull(values);
+        return (long[])values.Clone();
     }
 }
 
@@ -177,26 +479,83 @@ public sealed record SemanticDeckRevealDecisionV111(
 /// slots may interleave; one shared pool supplies all remaining unresolved
 /// positions of an initial or source-triggered shuffle.
 /// </summary>
-public sealed record SemanticDeckStateV111(
-    string Mode, SemanticDeckSlotV111[] Slots,
-    SemanticDeckPoolV111[] Pools, int ShuffleEpoch = 0,
-    SemanticDeckPendingV111? Pending = null,
-    SemanticDeckChoiceV111[]? Transcript = null)
+public sealed record SemanticDeckStateV111
 {
+    private SemanticDeckSlotV111[] _slots;
+    private SemanticDeckPoolV111[] _pools;
+    private SemanticDeckChoiceV111[]? _transcript;
+
     public const string SchemaId = "sts2-v111-semantic-deck-v1";
     public const string NatureMode = "nature-deferred-v1";
     public const string NativeMode = "native-exact-v1";
 
-    [JsonIgnore] public int Count => Slots.Length;
+    [JsonConstructor]
+    public SemanticDeckStateV111(
+        string Mode, SemanticDeckSlotV111[] Slots,
+        SemanticDeckPoolV111[] Pools, int ShuffleEpoch = 0,
+        SemanticDeckPendingV111? Pending = null,
+        SemanticDeckChoiceV111[]? Transcript = null)
+    {
+        this.Mode = Mode;
+        _slots = CloneRequired(Slots, nameof(Slots));
+        _pools = CloneRequired(Pools, nameof(Pools));
+        this.ShuffleEpoch = ShuffleEpoch;
+        this.Pending = Pending;
+        _transcript = CloneOptional(Transcript);
+    }
+
+    public string Mode { get; init; }
+    public SemanticDeckSlotV111[] Slots
+    {
+        get => (SemanticDeckSlotV111[])_slots.Clone();
+        init => _slots = CloneRequired(value, nameof(Slots));
+    }
+    public SemanticDeckPoolV111[] Pools
+    {
+        get => (SemanticDeckPoolV111[])_pools.Clone();
+        init => _pools = CloneRequired(value, nameof(Pools));
+    }
+    public int ShuffleEpoch { get; init; }
+    public SemanticDeckPendingV111? Pending { get; init; }
+    public SemanticDeckChoiceV111[]? Transcript
+    {
+        get => CloneOptional(_transcript);
+        init => _transcript = CloneOptional(value);
+    }
+
+    [JsonIgnore] public int Count => _slots.Length;
     [JsonIgnore] public string Fingerprint => CanonicalJson.Sha256(this);
 
     public SemanticDeckStateV111 Fork() => this with
     {
-        Slots = (SemanticDeckSlotV111[])Slots.Clone(),
-        Pools = Pools.Select(p => p.Fork()).ToArray(),
+        Slots = (SemanticDeckSlotV111[])_slots.Clone(),
+        Pools = _pools.Select(p => p.Fork()).ToArray(),
         Pending = Pending?.Fork(),
-        Transcript = (Transcript ?? []).Select(t => t.Fork()).ToArray()
+        Transcript = (_transcript ?? []).Select(t => t.Fork()).ToArray()
     };
+
+    public void Deconstruct(
+        out string Mode, out SemanticDeckSlotV111[] Slots,
+        out SemanticDeckPoolV111[] Pools, out int ShuffleEpoch,
+        out SemanticDeckPendingV111? Pending,
+        out SemanticDeckChoiceV111[]? Transcript)
+    {
+        Mode = this.Mode;
+        Slots = this.Slots;
+        Pools = this.Pools;
+        ShuffleEpoch = this.ShuffleEpoch;
+        Pending = this.Pending;
+        Transcript = this.Transcript;
+    }
+
+    private static T[] CloneRequired<T>(T[] values, string parameterName)
+    {
+        ArgumentNullException.ThrowIfNull(values, parameterName);
+        return (T[])values.Clone();
+    }
+
+    private static T[]? CloneOptional<T>(T[]? values) =>
+        values is null ? null : (T[])values.Clone();
 }
 
 /// <summary>

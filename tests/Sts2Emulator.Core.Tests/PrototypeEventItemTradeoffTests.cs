@@ -510,11 +510,22 @@ public sealed class PrototypeEventItemTradeoffTests
                 .Observation.Event!.QueuedDeckChoices!.Length);
 
         var fork = state.Fork();
-        fork.World!.Event!.QueuedDeckChoices![0] =
-            fork.World.Event.QueuedDeckChoices[0] with
+        var forkWorld = fork.World!;
+        var forkEvent = forkWorld.Event!;
+        var forkChoices = forkEvent.QueuedDeckChoices!;
+        forkChoices[0] = forkChoices[0] with
             {
                 RemainingSelections = 999
             };
+        fork = fork with
+        {
+            World = forkWorld with
+            {
+                Event = forkEvent with { QueuedDeckChoices = forkChoices }
+            }
+        };
+        Assert.Equal(999, fork.World!.Event!.RemainingDeckChoices[0]
+            .RemainingSelections);
         Assert.NotEqual(
             999,
             state.World.Event.RemainingDeckChoices[0]

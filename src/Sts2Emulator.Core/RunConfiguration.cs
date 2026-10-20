@@ -24,31 +24,111 @@ public static class V111Build
         "v111-experimental-silent-three-act-route-v1";
 }
 
-public sealed record SimulationProfile(
-    bool FullyUnlocked, string[] UnlockedCharacters, string[] RevealedEpochs)
+public sealed record SimulationProfile
 {
+    private string[]? _unlockedCharacters;
+    private string[]? _revealedEpochs;
+    private string[]? _seenBossEncounters = [];
+
+    [JsonConstructor]
+    public SimulationProfile(
+        bool FullyUnlocked,
+        string[] UnlockedCharacters,
+        string[] RevealedEpochs)
+    {
+        this.FullyUnlocked = FullyUnlocked;
+        this.UnlockedCharacters = UnlockedCharacters;
+        this.RevealedEpochs = RevealedEpochs;
+    }
+
+    public bool FullyUnlocked { get; init; }
+    public string[] UnlockedCharacters
+    {
+        get => _unlockedCharacters is null
+            ? null! : (string[])_unlockedCharacters.Clone();
+        init => _unlockedCharacters = Clone(value);
+    }
+    public string[] RevealedEpochs
+    {
+        get => _revealedEpochs is null
+            ? null! : (string[])_revealedEpochs.Clone();
+        init => _revealedEpochs = Clone(value);
+    }
+
     /// <summary>
     /// Bosses already discovered by the player before this run. ActModel's
     /// discovery-order modification uses this history when it replaces the
     /// randomly preselected Hive/Glory boss.
     /// </summary>
-    public string[] SeenBossEncounters { get; init; } = [];
+    public string[] SeenBossEncounters
+    {
+        get => _seenBossEncounters is null
+            ? null! : (string[])_seenBossEncounters.Clone();
+        init => _seenBossEncounters = Clone(value);
+    }
 
     public static SimulationProfile Unlocked() => new(true, [], []);
-    public SimulationProfile Fork() => this with
+
+    public SimulationProfile Fork() => new(
+        FullyUnlocked, _unlockedCharacters!, _revealedEpochs!)
     {
-        UnlockedCharacters = (string[])UnlockedCharacters.Clone(),
-        RevealedEpochs = (string[])RevealedEpochs.Clone(),
-        SeenBossEncounters = (string[])SeenBossEncounters.Clone()
+        SeenBossEncounters = _seenBossEncounters!
     };
+
+    public void Deconstruct(
+        out bool FullyUnlocked,
+        out string[] UnlockedCharacters,
+        out string[] RevealedEpochs)
+    {
+        FullyUnlocked = this.FullyUnlocked;
+        UnlockedCharacters = this.UnlockedCharacters;
+        RevealedEpochs = this.RevealedEpochs;
+    }
+
+    private static string[]? Clone(string[]? values) =>
+        values is null ? null : (string[])values.Clone();
 }
 
-public sealed record RunConfiguration(
-    string CharacterId, int Ascension, ActIdentity[] Acts,
-    SimulationProfile Profile, string RulesetId = V111Build.RulesetId,
-    string BuildFingerprint = V111Build.Fingerprint,
-    string FidelityId = "v111-mechanics-prototype-rng-v1")
+public sealed record RunConfiguration
 {
+    private ActIdentity[]? _acts;
+    private SimulationProfile? _profile;
+
+    [JsonConstructor]
+    public RunConfiguration(
+        string CharacterId,
+        int Ascension,
+        ActIdentity[] Acts,
+        SimulationProfile Profile,
+        string RulesetId = V111Build.RulesetId,
+        string BuildFingerprint = V111Build.Fingerprint,
+        string FidelityId = "v111-mechanics-prototype-rng-v1")
+    {
+        this.CharacterId = CharacterId;
+        this.Ascension = Ascension;
+        this.Acts = Acts;
+        this.Profile = Profile;
+        this.RulesetId = RulesetId;
+        this.BuildFingerprint = BuildFingerprint;
+        this.FidelityId = FidelityId;
+    }
+
+    public string CharacterId { get; init; }
+    public int Ascension { get; init; }
+    public ActIdentity[] Acts
+    {
+        get => _acts is null ? null! : (ActIdentity[])_acts.Clone();
+        init => _acts = Clone(value);
+    }
+    public SimulationProfile Profile
+    {
+        get => _profile!;
+        init => _profile = value?.Fork();
+    }
+    public string RulesetId { get; init; }
+    public string BuildFingerprint { get; init; }
+    public string FidelityId { get; init; }
+
     public bool UsesExperimentalNativeWeakCombatEntry =>
         FidelityId == V111Build.NativeWeakCombatEntryFidelityId;
     public bool UsesExperimentalSilentThreeActRoute =>
@@ -61,10 +141,35 @@ public sealed record RunConfiguration(
         new(characterId, ascension, [firstAct, ActIdentity.Hive, ActIdentity.Glory],
             profile?.Fork() ?? SimulationProfile.Unlocked());
 
-    public RunConfiguration Fork() => this with
+    public RunConfiguration Fork() => new(
+        CharacterId,
+        Ascension,
+        _acts!,
+        _profile!,
+        RulesetId,
+        BuildFingerprint,
+        FidelityId);
+
+    public void Deconstruct(
+        out string CharacterId,
+        out int Ascension,
+        out ActIdentity[] Acts,
+        out SimulationProfile Profile,
+        out string RulesetId,
+        out string BuildFingerprint,
+        out string FidelityId)
     {
-        Acts = (ActIdentity[])Acts.Clone(), Profile = Profile.Fork()
-    };
+        CharacterId = this.CharacterId;
+        Ascension = this.Ascension;
+        Acts = this.Acts;
+        Profile = this.Profile;
+        RulesetId = this.RulesetId;
+        BuildFingerprint = this.BuildFingerprint;
+        FidelityId = this.FidelityId;
+    }
+
+    private static ActIdentity[]? Clone(ActIdentity[]? values) =>
+        values is null ? null : (ActIdentity[])values.Clone();
 
     public void Validate()
     {
@@ -144,15 +249,72 @@ public sealed record RunConfiguration(
     }
 }
 
-public sealed record V111CharacterDefinition(
-    string Id, int StartingHp, int StartingGold, int BaseEnergy,
-    int OrbSlots, string[] StartingDeck, string[] StartingRelics)
+public sealed record V111CharacterDefinition
 {
-    public V111CharacterDefinition Fork() => this with
+    private string[]? _startingDeck;
+    private string[]? _startingRelics;
+
+    [JsonConstructor]
+    public V111CharacterDefinition(
+        string Id,
+        int StartingHp,
+        int StartingGold,
+        int BaseEnergy,
+        int OrbSlots,
+        string[] StartingDeck,
+        string[] StartingRelics)
     {
-        StartingDeck = (string[])StartingDeck.Clone(),
-        StartingRelics = (string[])StartingRelics.Clone()
-    };
+        this.Id = Id;
+        this.StartingHp = StartingHp;
+        this.StartingGold = StartingGold;
+        this.BaseEnergy = BaseEnergy;
+        this.OrbSlots = OrbSlots;
+        this.StartingDeck = StartingDeck;
+        this.StartingRelics = StartingRelics;
+    }
+
+    public string Id { get; init; }
+    public int StartingHp { get; init; }
+    public int StartingGold { get; init; }
+    public int BaseEnergy { get; init; }
+    public int OrbSlots { get; init; }
+    public string[] StartingDeck
+    {
+        get => _startingDeck is null
+            ? null! : (string[])_startingDeck.Clone();
+        init => _startingDeck = Clone(value);
+    }
+    public string[] StartingRelics
+    {
+        get => _startingRelics is null
+            ? null! : (string[])_startingRelics.Clone();
+        init => _startingRelics = Clone(value);
+    }
+
+    public V111CharacterDefinition Fork() => new(
+        Id, StartingHp, StartingGold, BaseEnergy, OrbSlots,
+        _startingDeck!, _startingRelics!);
+
+    public void Deconstruct(
+        out string Id,
+        out int StartingHp,
+        out int StartingGold,
+        out int BaseEnergy,
+        out int OrbSlots,
+        out string[] StartingDeck,
+        out string[] StartingRelics)
+    {
+        Id = this.Id;
+        StartingHp = this.StartingHp;
+        StartingGold = this.StartingGold;
+        BaseEnergy = this.BaseEnergy;
+        OrbSlots = this.OrbSlots;
+        StartingDeck = this.StartingDeck;
+        StartingRelics = this.StartingRelics;
+    }
+
+    private static string[]? Clone(string[]? values) =>
+        values is null ? null : (string[])values.Clone();
 }
 
 public static class V111Characters
@@ -183,11 +345,51 @@ public static class V111Characters
 
 public sealed record OrbState(string Kind, int StoredValue = 0);
 public sealed record SecondaryCreatureState(int Hp, int MaxHp, int SummonAmount);
-public sealed record CharacterResourceState(
-    int Stars = 0, int Forge = 0, int OrbSlots = 0, OrbState[]? Orbs = null,
-    SecondaryCreatureState? Osty = null)
+public sealed record CharacterResourceState
 {
-    public CharacterResourceState Fork() => this with { Orbs = Orbs is null ? null : (OrbState[])Orbs.Clone() };
+    private OrbState[]? _orbs;
+
+    [System.Text.Json.Serialization.JsonConstructor]
+    public CharacterResourceState(
+        int Stars = 0,
+        int Forge = 0,
+        int OrbSlots = 0,
+        OrbState[]? Orbs = null,
+        SecondaryCreatureState? Osty = null)
+    {
+        this.Stars = Stars;
+        this.Forge = Forge;
+        this.OrbSlots = OrbSlots;
+        this.Orbs = Orbs;
+        this.Osty = Osty;
+    }
+
+    public int Stars { get; init; }
+    public int Forge { get; init; }
+    public int OrbSlots { get; init; }
+    public OrbState[]? Orbs
+    {
+        get => _orbs is null ? null : (OrbState[])_orbs.Clone();
+        init => _orbs = value is null ? null : (OrbState[])value.Clone();
+    }
+    public SecondaryCreatureState? Osty { get; init; }
+
+    public CharacterResourceState Fork() =>
+        new(Stars, Forge, OrbSlots, _orbs, Osty);
+
+    public void Deconstruct(
+        out int Stars,
+        out int Forge,
+        out int OrbSlots,
+        out OrbState[]? Orbs,
+        out SecondaryCreatureState? Osty)
+    {
+        Stars = this.Stars;
+        Forge = this.Forge;
+        OrbSlots = this.OrbSlots;
+        Orbs = this.Orbs;
+        Osty = this.Osty;
+    }
 }
 
 public static class V111RunFactory

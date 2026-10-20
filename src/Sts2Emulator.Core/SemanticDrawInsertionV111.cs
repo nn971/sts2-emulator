@@ -7,6 +7,15 @@ public sealed record SemanticDrawInsertionEventV111(
     string GeneratedCardModelId, long[] EligibleDrawPileInstanceIds,
     string ProbabilityStatus = "UNVERIFIED") : ISemanticChanceEventV111
 {
+    private long[]? _eligibleDrawPileInstanceIds =
+        CloneOptional(EligibleDrawPileInstanceIds);
+
+    public long[] EligibleDrawPileInstanceIds
+    {
+        get => CloneOptional(_eligibleDrawPileInstanceIds)!;
+        init => _eligibleDrawPileInstanceIds = CloneOptional(value);
+    }
+
     public const string EventSchemaId =
         "sts2-v111-semantic-draw-insertion-v1";
     public string SiteId => Request.SiteId;
@@ -21,8 +30,7 @@ public sealed record SemanticDrawInsertionEventV111(
         {
             OrderedCandidates = (int[])Request.OrderedCandidates.Clone()
         },
-        EligibleDrawPileInstanceIds =
-            (long[])EligibleDrawPileInstanceIds.Clone()
+        EligibleDrawPileInstanceIds = _eligibleDrawPileInstanceIds!
     };
 
     internal static RandomIndexRequestV111 CreateRequest(
@@ -77,6 +85,7 @@ public sealed record SemanticDrawInsertionEventV111(
     public void Validate()
     {
         Request.Validate();
+        var eligibleDrawPileInstanceIds = _eligibleDrawPileInstanceIds;
         var standardSite = Request.SiteId ==
             StochasticSiteRegistryV111.DrawPileRandomInsertSiteId;
         var standardOwnerMatchesStream =
@@ -104,17 +113,17 @@ public sealed record SemanticDrawInsertionEventV111(
             !supportedSite ||
             Request.StreamId is not ("prototype.combat" or "run.shuffle") ||
             Request.OperationKind != "bounded_integer" ||
-            EligibleDrawPileInstanceIds is null ||
-            EligibleDrawPileInstanceIds.Distinct().Count() !=
-                EligibleDrawPileInstanceIds.Length ||
-            Request.SupportCount != EligibleDrawPileInstanceIds.Length + 1 ||
+            eligibleDrawPileInstanceIds is null ||
+            eligibleDrawPileInstanceIds.Distinct().Count() !=
+                eligibleDrawPileInstanceIds.Length ||
+            Request.SupportCount != eligibleDrawPileInstanceIds.Length + 1 ||
             ProbabilityStatus != "UNVERIFIED")
             throw new InvalidDataException(
                 "Invalid semantic draw-insertion event.");
         var expectedSupportFingerprint = CanonicalJson.Sha256(new
         {
             Request, GeneratedCardModelId,
-            EligibleDrawPileInstanceIds
+            EligibleDrawPileInstanceIds = eligibleDrawPileInstanceIds
         });
         if (SupportFingerprint != expectedSupportFingerprint)
             throw new InvalidDataException(
@@ -129,6 +138,10 @@ public sealed record SemanticDrawInsertionEventV111(
             throw new InvalidDataException(
                 "Draw-insertion event ID is inconsistent.");
     }
+
+    private static long[]? CloneOptional(long[]? values) => values is null
+        ? null
+        : (long[])values.Clone();
 
     private static bool IsNativePositionOwner(string ownerId) =>
         (ownerId.StartsWith("card_instance:", StringComparison.Ordinal) ||

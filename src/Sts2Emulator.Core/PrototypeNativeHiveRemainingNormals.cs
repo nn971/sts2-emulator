@@ -16,7 +16,11 @@ public static class PrototypeNativeHiveRemainingNormals
     public const string TenderId = "proto.native.hive.tender";
     public const string CurlUpId = "proto.native.hive.curl_up";
 
-    public static PrototypePowerDefinition[] Powers { get; } =
+    public static PrototypePowerDefinition[] Powers => PowerDefinitions
+        .Select(PrototypeDefinitionCopiesV111.ClonePowerDefinition)
+        .ToArray();
+
+    private static readonly PrototypePowerDefinition[] PowerDefinitions =
     [
         // TenderPower.AfterCardPlayed/AfterSideTurnEnd: reduce
         // Strength/Dexterity after each completed card, restoring only
@@ -31,7 +35,11 @@ public static class PrototypeNativeHiveRemainingNormals
             EnemyBlockAfterAttackingCardPlayedPerStack: 1)
     ];
 
-    public static PrototypeEnemyDefinition[] Enemies { get; } =
+    public static PrototypeEnemyDefinition[] Enemies => EnemyDefinitions
+        .Select(PrototypeDefinitionCopiesV111.CloneEnemyDefinition)
+        .ToArray();
+
+    private static readonly PrototypeEnemyDefinition[] EnemyDefinitions =
     [
         // HunterKiller.cs: initial Tenderizing Goop, then a weighted
         // random Bite (cannot repeat) / Puncture (weight 2) branch.
@@ -99,7 +107,12 @@ public static class PrototypeNativeHiveRemainingNormals
             MoveLoopStartIndex: 0)
     ];
 
-    public static PrototypeEncounterDefinition[] Encounters { get; } =
+    public static PrototypeEncounterDefinition[] Encounters =>
+        EncounterDefinitions
+            .Select(PrototypeDefinitionCopiesV111.CloneEncounterDefinition)
+            .ToArray();
+
+    private static readonly PrototypeEncounterDefinition[] EncounterDefinitions =
     [
         new(HunterKillerNormalId, PrototypeRoomType.Combat,
             [HunterKillerId], MinAct: 2, MaxAct: 2, Weight: 0),

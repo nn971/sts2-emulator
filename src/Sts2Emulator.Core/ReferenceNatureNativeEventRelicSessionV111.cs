@@ -23,7 +23,48 @@ public sealed record ReferenceNatureNativeEventRelicSessionSnapshotV111(
     ControlledStochasticDecisionV111[] ProviderDecisions,
     ReferenceNatureNativeEventRelicDecisionV111[] DecisionTranscript,
     ControlledStochasticRequestV111? PendingRequest,
-    string[]? PendingCandidateLabels);
+    string[]? PendingCandidateLabels)
+{
+    private ControlledStochasticDecisionV111[]? _providerDecisions =
+        ReferenceNatureSessionValueCopiesV111.CopyProviderDecisions(
+            ProviderDecisions);
+    private ReferenceNatureNativeEventRelicDecisionV111[]? _decisionTranscript =
+        ReferenceNatureSessionValueCopiesV111.CopyArray(DecisionTranscript);
+    private ControlledStochasticRequestV111? _pendingRequest =
+        ReferenceNatureSessionValueCopiesV111.CopyRequest(PendingRequest);
+    private string[]? _pendingCandidateLabels =
+        ReferenceNatureSessionValueCopiesV111.CopyArray(
+            PendingCandidateLabels);
+
+    public ControlledStochasticDecisionV111[] ProviderDecisions
+    {
+        get => ReferenceNatureSessionValueCopiesV111
+            .CopyProviderDecisions(_providerDecisions)!;
+        init => _providerDecisions = ReferenceNatureSessionValueCopiesV111
+            .CopyProviderDecisions(value);
+    }
+    public ReferenceNatureNativeEventRelicDecisionV111[] DecisionTranscript
+    {
+        get => ReferenceNatureSessionValueCopiesV111
+            .CopyArray(_decisionTranscript)!;
+        init => _decisionTranscript = ReferenceNatureSessionValueCopiesV111
+            .CopyArray(value);
+    }
+    public ControlledStochasticRequestV111? PendingRequest
+    {
+        get => ReferenceNatureSessionValueCopiesV111.CopyRequest(
+            _pendingRequest);
+        init => _pendingRequest =
+            ReferenceNatureSessionValueCopiesV111.CopyRequest(value);
+    }
+    public string[]? PendingCandidateLabels
+    {
+        get => ReferenceNatureSessionValueCopiesV111
+            .CopyArray(_pendingCandidateLabels);
+        init => _pendingCandidateLabels = ReferenceNatureSessionValueCopiesV111
+            .CopyArray(value);
+    }
+}
 
 /// <summary>
 /// Atomic configured Native relic-grant continuation. Supported event
@@ -40,6 +81,46 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
     ControlledStochasticRequestV111? PendingRequest,
     string[]? PendingCandidateLabels)
 {
+    private ControlledStochasticDecisionV111[]? _providerDecisions =
+        ReferenceNatureSessionValueCopiesV111.CopyProviderDecisions(
+            ProviderDecisions);
+    private ReferenceNatureNativeEventRelicDecisionV111[]? _decisionTranscript =
+        ReferenceNatureSessionValueCopiesV111.CopyArray(DecisionTranscript);
+    private ControlledStochasticRequestV111? _pendingRequest =
+        ReferenceNatureSessionValueCopiesV111.CopyRequest(PendingRequest);
+    private string[]? _pendingCandidateLabels =
+        ReferenceNatureSessionValueCopiesV111.CopyArray(
+            PendingCandidateLabels);
+
+    public ControlledStochasticDecisionV111[] ProviderDecisions
+    {
+        get => ReferenceNatureSessionValueCopiesV111
+            .CopyProviderDecisions(_providerDecisions)!;
+        init => _providerDecisions = ReferenceNatureSessionValueCopiesV111
+            .CopyProviderDecisions(value);
+    }
+    public ReferenceNatureNativeEventRelicDecisionV111[] DecisionTranscript
+    {
+        get => ReferenceNatureSessionValueCopiesV111
+            .CopyArray(_decisionTranscript)!;
+        init => _decisionTranscript = ReferenceNatureSessionValueCopiesV111
+            .CopyArray(value);
+    }
+    public ControlledStochasticRequestV111? PendingRequest
+    {
+        get => ReferenceNatureSessionValueCopiesV111.CopyRequest(
+            _pendingRequest);
+        init => _pendingRequest =
+            ReferenceNatureSessionValueCopiesV111.CopyRequest(value);
+    }
+    public string[]? PendingCandidateLabels
+    {
+        get => ReferenceNatureSessionValueCopiesV111
+            .CopyArray(_pendingCandidateLabels);
+        init => _pendingCandidateLabels = ReferenceNatureSessionValueCopiesV111
+            .CopyArray(value);
+    }
+
     public const string CurrentSchemaId =
         "sts2-v111-reference-nature-native-event-relic-session-v1";
     private const int ToyBoxDrawCount = 5;

@@ -7,48 +7,79 @@ namespace Sts2Emulator.Core;
 /// </summary>
 public sealed record SemanticCombatDrawStochasticStateV111
 {
+    private SemanticRandomPileCardDecisionV111[]? _randomPileCardTranscript = [];
+    private SemanticDrawInsertionDecisionV111[]? _drawInsertionTranscript = [];
+    private SemanticCardSelectionDecisionV111[]? _stratagemSelectionTranscript = [];
+    private SemanticDrawHookChoiceDecisionV111[]? _drawHookChoiceTranscript = [];
+    private RandomIndexDecisionV111[]? _costTranscript = [];
+
     public SemanticRandomPileCardDecisionV111[] RandomPileCardTranscript
-        { get; init; } = [];
+    {
+        get => Clone(_randomPileCardTranscript,
+            decision => decision.Fork())!;
+        init => _randomPileCardTranscript = Clone(value,
+            decision => decision.Fork());
+    }
     public SemanticDrawInsertionDecisionV111[] DrawInsertionTranscript
-        { get; init; } = [];
+    {
+        get => Clone(_drawInsertionTranscript,
+            decision => decision.Fork())!;
+        init => _drawInsertionTranscript = Clone(value,
+            decision => decision.Fork());
+    }
     public SemanticCardSelectionDecisionV111[] StratagemSelectionTranscript
-        { get; init; } = [];
+    {
+        get => Clone(_stratagemSelectionTranscript,
+            decision => decision.Fork())!;
+        init => _stratagemSelectionTranscript = Clone(value,
+            decision => decision.Fork());
+    }
     public SemanticDrawHookChoiceDecisionV111[] DrawHookChoiceTranscript
-        { get; init; } = [];
-    public RandomIndexDecisionV111[] CostTranscript { get; init; } = [];
+    {
+        get => Clone(_drawHookChoiceTranscript,
+            decision => decision.Fork())!;
+        init => _drawHookChoiceTranscript = Clone(value,
+            decision => decision.Fork());
+    }
+    public RandomIndexDecisionV111[] CostTranscript
+    {
+        get => Clone(_costTranscript,
+            PrototypeControlledEventChoiceContinuationV111.CloneDecision)!;
+        init => _costTranscript = Clone(value,
+            PrototypeControlledEventChoiceContinuationV111.CloneDecision);
+    }
 
     public SemanticCombatDrawStochasticStateV111 Fork() => this with
     {
-        RandomPileCardTranscript = RandomPileCardTranscript
-            .Select(decision => decision.Fork()).ToArray(),
-        DrawInsertionTranscript = DrawInsertionTranscript
-            .Select(decision => decision.Fork()).ToArray(),
-        StratagemSelectionTranscript = StratagemSelectionTranscript
-            .Select(decision => decision.Fork()).ToArray(),
-        DrawHookChoiceTranscript = DrawHookChoiceTranscript
-            .Select(decision => decision.Fork()).ToArray(),
-        CostTranscript = CostTranscript.Select(decision => decision with
-        {
-            Request = decision.Request with
-            {
-                OrderedCandidates = (int[])decision.Request
-                    .OrderedCandidates.Clone()
-            }
-        }).ToArray()
+        RandomPileCardTranscript = Clone(_randomPileCardTranscript,
+            decision => decision.Fork())!,
+        DrawInsertionTranscript = Clone(_drawInsertionTranscript,
+            decision => decision.Fork())!,
+        StratagemSelectionTranscript = Clone(_stratagemSelectionTranscript,
+            decision => decision.Fork())!,
+        DrawHookChoiceTranscript = Clone(_drawHookChoiceTranscript,
+            decision => decision.Fork())!,
+        CostTranscript = Clone(_costTranscript,
+            PrototypeControlledEventChoiceContinuationV111.CloneDecision)!
     };
 
     public void Validate()
     {
-        if (CostTranscript is null || DrawInsertionTranscript is null ||
-            StratagemSelectionTranscript is null ||
-            DrawHookChoiceTranscript is null)
+        var costTranscript = CostTranscript;
+        var drawInsertionTranscript = DrawInsertionTranscript;
+        var stratagemSelectionTranscript = StratagemSelectionTranscript;
+        var drawHookChoiceTranscript = DrawHookChoiceTranscript;
+        var randomPileCardTranscript = RandomPileCardTranscript;
+        if (costTranscript is null || drawInsertionTranscript is null ||
+            stratagemSelectionTranscript is null ||
+            drawHookChoiceTranscript is null)
             throw new InvalidDataException(
                 "Invalid semantic combat draw stage.");
-        if (RandomPileCardTranscript is null)
+        if (randomPileCardTranscript is null)
             throw new InvalidDataException(
                 "Missing semantic random pile-card transcript.");
 
-        foreach (var decision in CostTranscript)
+        foreach (var decision in costTranscript)
         {
             if (decision is null)
                 throw new InvalidDataException(
@@ -59,21 +90,103 @@ public sealed record SemanticCombatDrawStochasticStateV111
                 throw new InvalidDataException(
                     "Unexpected semantic drawn-cost transcript provenance.");
         }
-        foreach (var decision in RandomPileCardTranscript)
+        foreach (var decision in randomPileCardTranscript)
             (decision ?? throw new InvalidDataException(
                 "Semantic random pile-card transcript contains a null decision."))
                 .Validate();
-        foreach (var decision in DrawInsertionTranscript)
+        foreach (var decision in drawInsertionTranscript)
             (decision ?? throw new InvalidDataException(
                 "Semantic draw-insertion transcript contains a null decision."))
                 .Validate();
-        foreach (var decision in StratagemSelectionTranscript)
+        foreach (var decision in stratagemSelectionTranscript)
             (decision ?? throw new InvalidDataException(
                 "Semantic Stratagem transcript contains a null decision."))
                 .Validate();
-        foreach (var decision in DrawHookChoiceTranscript)
+        foreach (var decision in drawHookChoiceTranscript)
             (decision ?? throw new InvalidDataException(
                 "Semantic draw-hook transcript contains a null decision."))
                 .Validate();
+    }
+
+    private static T[]? Clone<T>(T[]? transcript, Func<T, T> clone)
+        where T : class => transcript?.Select(decision =>
+            decision is null ? null! : clone(decision)).ToArray();
+}
+
+/// <summary>Consumes the typed semantic-draw histories during deterministic
+/// source replay. Mechanics determines which boundary occurs next; this owner
+/// tracks consumption across the separate provider transcript projections.</summary>
+internal sealed class SemanticCombatDrawReplayCursorV111
+{
+    private readonly SemanticDeckChoiceV111[] _deckChoices;
+    private readonly RandomIndexDecisionV111[] _costChoices;
+    private readonly SemanticRandomPileCardDecisionV111[] _pileCardChoices;
+    private readonly SemanticDrawInsertionDecisionV111[] _insertions;
+    private readonly SemanticCardSelectionDecisionV111[] _stratagemChoices;
+    private readonly SemanticDrawHookChoiceDecisionV111[] _drawHookChoices;
+    private int _deckIndex;
+    private int _costIndex;
+    private int _pileCardIndex;
+    private int _insertionIndex;
+    private int _stratagemIndex;
+    private int _drawHookIndex;
+
+    internal SemanticCombatDrawReplayCursorV111(
+        SemanticCombatDrawV111 state)
+    {
+        ArgumentNullException.ThrowIfNull(state);
+        _deckChoices = state.Transcript;
+        _costChoices = state.CostTranscript;
+        _pileCardChoices = state.RandomPileCardTranscript;
+        _insertions = state.DrawInsertionTranscript;
+        _stratagemChoices = state.StratagemSelectionTranscript;
+        _drawHookChoices = state.DrawHookChoiceTranscript;
+    }
+
+    internal bool HasRemaining =>
+        _deckIndex < _deckChoices.Length ||
+        _costIndex < _costChoices.Length ||
+        _pileCardIndex < _pileCardChoices.Length ||
+        _insertionIndex < _insertions.Length ||
+        _stratagemIndex < _stratagemChoices.Length ||
+        _drawHookIndex < _drawHookChoices.Length;
+
+    internal SemanticDeckChoiceV111 NextDeckChoice() => Take(
+        _deckChoices, ref _deckIndex,
+        "Semantic draw/cost stage mismatch in provenance replay.");
+
+    internal RandomIndexDecisionV111 NextCostChoice() => Take(
+        _costChoices, ref _costIndex,
+        "Missing semantic drawn-cost decision in replay.");
+
+    internal SemanticRandomPileCardDecisionV111 NextPileCardChoice() => Take(
+        _pileCardChoices, ref _pileCardIndex,
+        "Missing semantic random pile-card decision in replay.");
+
+    internal SemanticDrawInsertionDecisionV111 NextInsertion() => Take(
+        _insertions, ref _insertionIndex,
+        "Missing semantic draw-insertion decision in replay.");
+
+    internal SemanticCardSelectionDecisionV111 NextStratagemChoice() => Take(
+        _stratagemChoices, ref _stratagemIndex,
+        "Missing standalone Stratagem selection in replay.");
+
+    internal SemanticDrawHookChoiceDecisionV111 NextDrawHookChoice() => Take(
+        _drawHookChoices, ref _drawHookIndex,
+        "Missing nested CardDrawn hook choice in replay.");
+
+    internal void ValidateComplete()
+    {
+        if (HasRemaining)
+            throw new InvalidDataException(
+                "Semantic combat draw replay left transcript decisions unused.");
+    }
+
+    private static T Take<T>(T[] transcript, ref int index, string error)
+        where T : class
+    {
+        if (index >= transcript.Length)
+            throw new InvalidDataException(error);
+        return transcript[index++];
     }
 }

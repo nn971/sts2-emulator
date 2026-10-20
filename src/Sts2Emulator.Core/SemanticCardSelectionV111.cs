@@ -4,7 +4,25 @@ using System.Text.Json.Serialization;
 namespace Sts2Emulator.Core;
 
 public sealed record SemanticCardSelectionCandidateV111(
-    string ActionId, long[] CardInstanceIds);
+    string ActionId, long[] CardInstanceIds)
+{
+    private long[]? _cardInstanceIds = CloneOptional(CardInstanceIds);
+
+    public long[] CardInstanceIds
+    {
+        get => CloneOptional(_cardInstanceIds)!;
+        init => _cardInstanceIds = CloneOptional(value);
+    }
+
+    public SemanticCardSelectionCandidateV111 Fork() => this with
+    {
+        CardInstanceIds = _cardInstanceIds!
+    };
+
+    private static long[]? CloneOptional(long[]? values) => values is null
+        ? null
+        : (long[])values.Clone();
+}
 
 public sealed record SemanticCardSelectionEventV111(
     string SchemaId, string EventId, string BoundaryFingerprint,
@@ -14,77 +32,143 @@ public sealed record SemanticCardSelectionEventV111(
     string[] CandidateCardModelIds,
     SemanticCardSelectionCandidateV111[] Candidates)
 {
+    private long[]? _candidateCardInstanceIds =
+        CloneOptional(CandidateCardInstanceIds);
+    private string[]? _candidateCardModelIds =
+        CloneOptional(CandidateCardModelIds);
+    private SemanticCardSelectionCandidateV111[]? _candidates =
+        CloneCandidates(Candidates);
+
+    public long[] CandidateCardInstanceIds
+    {
+        get => CloneOptional(_candidateCardInstanceIds)!;
+        init => _candidateCardInstanceIds = CloneOptional(value);
+    }
+    public string[] CandidateCardModelIds
+    {
+        get => CloneOptional(_candidateCardModelIds)!;
+        init => _candidateCardModelIds = CloneOptional(value);
+    }
+    public SemanticCardSelectionCandidateV111[] Candidates
+    {
+        get => CloneCandidates(_candidates)!;
+        init => _candidates = CloneCandidates(value);
+    }
+
     public const string EventSchemaId =
         "sts2-v111-semantic-card-selection-choice-v1";
     public const string SequentialEventSchemaId =
         "sts2-v111-semantic-card-selection-choice-v2";
 
     [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
-    public long[]? SequentialSelectedCardInstanceIds { get; init; }
+    public long[]? SequentialSelectedCardInstanceIds
+    {
+        get => CloneOptional(_sequentialSelectedCardInstanceIds);
+        init => _sequentialSelectedCardInstanceIds = CloneOptional(value);
+    }
+    private long[]? _sequentialSelectedCardInstanceIds;
 
     public SemanticCardSelectionEventV111 Fork() => this with
     {
-        CandidateCardInstanceIds = (long[])CandidateCardInstanceIds.Clone(),
-        CandidateCardModelIds = (string[])CandidateCardModelIds.Clone(),
+        CandidateCardInstanceIds = _candidateCardInstanceIds!,
+        CandidateCardModelIds = _candidateCardModelIds!,
         SequentialSelectedCardInstanceIds =
-            SequentialSelectedCardInstanceIds is null ? null :
-                (long[])SequentialSelectedCardInstanceIds.Clone(),
-        Candidates = Candidates.Select(candidate => candidate with
-        {
-            CardInstanceIds = (long[])candidate.CardInstanceIds.Clone()
-        }).ToArray()
+            _sequentialSelectedCardInstanceIds,
+        Candidates = _candidates!
     };
 
     public void Validate()
     {
         bool sequential = SchemaId == SequentialEventSchemaId;
+        var candidateCardInstanceIds = _candidateCardInstanceIds;
+        var candidateCardModelIds = _candidateCardModelIds;
+        var candidates = _candidates;
+        var sequentialSelectedCardInstanceIds =
+            _sequentialSelectedCardInstanceIds;
         if (SchemaId is not (EventSchemaId or SequentialEventSchemaId) ||
-            sequential != (SequentialSelectedCardInstanceIds is not null) ||
+            sequential != (sequentialSelectedCardInstanceIds is not null) ||
             string.IsNullOrWhiteSpace(EventId) ||
             string.IsNullOrWhiteSpace(BoundaryFingerprint) ||
             string.IsNullOrWhiteSpace(SupportFingerprint) ||
             string.IsNullOrWhiteSpace(SourceZone) ||
             string.IsNullOrWhiteSpace(Resolution) ||
-            CandidateCardInstanceIds is null || CandidateCardModelIds is null ||
-            CandidateCardModelIds.Length != CandidateCardInstanceIds.Length ||
-            CandidateCardModelIds.Any(string.IsNullOrWhiteSpace) ||
-            Candidates is null ||
-            CandidateCardInstanceIds.Distinct().Count() !=
-                CandidateCardInstanceIds.Length || Candidates.Length == 0 ||
-            Candidates.Any(candidate => candidate is null ||
+            candidateCardInstanceIds is null ||
+            candidateCardModelIds is null ||
+            candidateCardModelIds.Length != candidateCardInstanceIds.Length ||
+            candidateCardModelIds.Any(string.IsNullOrWhiteSpace) ||
+            candidates is null ||
+            candidateCardInstanceIds.Distinct().Count() !=
+                candidateCardInstanceIds.Length || candidates.Length == 0 ||
+            candidates.Any(candidate => candidate is null ||
                 string.IsNullOrWhiteSpace(candidate.ActionId) ||
                 candidate.CardInstanceIds is null ||
                 candidate.CardInstanceIds.Distinct().Count() !=
                     candidate.CardInstanceIds.Length) ||
-            SequentialSelectedCardInstanceIds is { } sequentialSelected &&
+            sequentialSelectedCardInstanceIds is { } sequentialSelected &&
                 (sequentialSelected.Distinct().Count() !=
                      sequentialSelected.Length ||
-                 sequentialSelected.Any(CandidateCardInstanceIds.Contains)))
+                 sequentialSelected.Any(
+                     candidateCardInstanceIds!.Contains)))
             throw new InvalidDataException(
                 "Invalid semantic card-selection event.");
     }
+
+    private static long[]? CloneOptional(long[]? values) => values is null
+        ? null
+        : (long[])values.Clone();
+
+    private static string[]? CloneOptional(string[]? values) => values is null
+        ? null
+        : (string[])values.Clone();
+
+    private static SemanticCardSelectionCandidateV111[]? CloneCandidates(
+        SemanticCardSelectionCandidateV111[]? values) => values?.Select(
+            candidate => candidate is null ? null! : candidate.Fork()).ToArray();
 }
 
 public sealed record SemanticCardSelectionDecisionV111(
     SemanticCardSelectionEventV111 Event, string ActionId,
     long[] SelectedCardInstanceIds)
 {
+    private SemanticCardSelectionEventV111? _event = Event?.Fork();
+    private long[]? _selectedCardInstanceIds =
+        CloneOptional(SelectedCardInstanceIds);
+
+    public SemanticCardSelectionEventV111 Event
+    {
+        get => _event!.Fork();
+        init => _event = value?.Fork();
+    }
+    public long[] SelectedCardInstanceIds
+    {
+        get => CloneOptional(_selectedCardInstanceIds)!;
+        init => _selectedCardInstanceIds = CloneOptional(value);
+    }
+
     public SemanticCardSelectionDecisionV111 Fork() => this with
     {
-        Event = Event.Fork(),
-        SelectedCardInstanceIds = (long[])SelectedCardInstanceIds.Clone()
+        Event = _event!,
+        SelectedCardInstanceIds = _selectedCardInstanceIds!
     };
 
     public void Validate()
     {
-        Event.Validate();
-        var candidate = Event.Candidates.SingleOrDefault(item =>
+        var semanticEvent = _event ?? throw new InvalidDataException(
+            "Semantic card-selection decision has no event.");
+        var selectedCardInstanceIds = _selectedCardInstanceIds;
+        semanticEvent.Validate();
+        var candidate = semanticEvent.Candidates.SingleOrDefault(item =>
             item.ActionId == ActionId);
-        if (candidate is null || SelectedCardInstanceIds is null ||
-            !candidate.CardInstanceIds.SequenceEqual(SelectedCardInstanceIds))
+        if (candidate is null || selectedCardInstanceIds is null ||
+            !candidate.CardInstanceIds.SequenceEqual(
+                selectedCardInstanceIds))
             throw new InvalidDataException(
                 "Semantic card-selection decision is outside its event support.");
     }
+
+    private static long[]? CloneOptional(long[]? values) => values is null
+        ? null
+        : (long[])values.Clone();
 }
 
 /// <summary>
@@ -98,14 +182,27 @@ public sealed record SemanticCardSelectionV111(
     long[] SelectedCardInstanceIds, string Operation,
     SemanticCardSelectionDecisionV111? Decision = null)
 {
+    private long[]? _selectedCardInstanceIds =
+        CloneOptional(SelectedCardInstanceIds);
+
+    public long[] SelectedCardInstanceIds
+    {
+        get => CloneOptional(_selectedCardInstanceIds)!;
+        init => _selectedCardInstanceIds = CloneOptional(value);
+    }
+
     public const string SchemaId = "sts2-v111-semantic-card-selection-v1";
     [JsonIgnore] public string Fingerprint => CanonicalJson.Sha256(this);
     public SemanticCardSelectionV111 Fork() => this with
     {
         Origin = Origin.Fork(), Run = Run.Fork(),
-        SelectedCardInstanceIds = (long[])SelectedCardInstanceIds.Clone(),
+        SelectedCardInstanceIds = _selectedCardInstanceIds!,
         Decision = Decision?.Fork()
     };
+
+    private static long[]? CloneOptional(long[]? values) => values is null
+        ? null
+        : (long[])values.Clone();
 }
 
 public static class SemanticCardSelectionEngineV111
@@ -250,8 +347,32 @@ public static class SemanticCardSelectionEngineV111
     public static SemanticCardSelectionV111 Step(
         RunState source, string actionId)
     {
+        ArgumentNullException.ThrowIfNull(source);
         ArgumentException.ThrowIfNullOrWhiteSpace(actionId);
-        ValidatePendingBoundary(source);
+        var semanticEvent = DescribePending(
+            source, CanonicalJson.Sha256(source));
+        var decision = Select(
+            semanticEvent, semanticEvent.EventId, actionId);
+        return ResumeValidated(source, semanticEvent, decision);
+    }
+
+    public static SemanticCardSelectionV111 Resume(
+        RunState source, SemanticCardSelectionDecisionV111 decision)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        ArgumentNullException.ThrowIfNull(decision);
+        decision.Validate();
+        var current = DescribePending(source, CanonicalJson.Sha256(source));
+        ValidateDecision(current, decision);
+        return ResumeValidated(source, current, decision.Fork());
+    }
+
+    private static SemanticCardSelectionV111 ResumeValidated(
+        RunState source, SemanticCardSelectionEventV111 semanticEvent,
+        SemanticCardSelectionDecisionV111 decision)
+    {
+        decision.Validate();
+        ValidateDecision(semanticEvent, decision);
         var combat = source.World?.Combat;
         var choice = combat!.PendingChoice!;
         var deck = combat!.SemanticDeck!;
@@ -260,22 +381,12 @@ public static class SemanticCardSelectionEngineV111
             PrototypeGameEngine
                 .IsAutomaticPipelineSemanticCardSelectionContinuation(
                     combat, choice);
-        var semanticEvent = DescribePending(source,
-            CanonicalJson.Sha256(source));
         var spec = choice.Selection;
         var supportedTop = IsSupportedTopMove(spec);
         var supportedDrawRemoval = IsSupportedDrawRemoval(spec);
-
+        var actionId = decision.ActionId;
+        var selected = decision.SelectedCardInstanceIds;
         var environment = new PrototypeAiEnvironment();
-        var action = environment.Observe(source).LegalActions
-            .SingleOrDefault(a => a.ActionId == actionId) ??
-            throw new InvalidOperationException("Illegal selected-card action ID.");
-        if (action.Kind != "select_cards")
-            throw new InvalidOperationException(
-                "Expected source select_cards action.");
-        var selected = action.Payload.Deserialize<SelectCardsPayload>()
-            ?.CardInstanceIds ?? throw new InvalidDataException(
-                "Invalid selected-card action payload.");
         var selectedUnknownPosition = supportedDrawRemoval && selected.Any(id =>
             !deck.Slots.Any(slot => slot.KnownCardInstanceId == id));
 
@@ -316,12 +427,6 @@ public static class SemanticCardSelectionEngineV111
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.card_selection " +
                 "operation=unsupported_post_selection_phase");
-        var selectedAction = semanticEvent.Candidates.Single(candidate =>
-            candidate.ActionId == actionId);
-        var decision = new SemanticCardSelectionDecisionV111(
-            semanticEvent, actionId,
-            (long[])selectedAction.CardInstanceIds.Clone());
-        decision.Validate();
         var result = new SemanticCardSelectionV111(
             source.Fork(), advanced, actionId, (long[])selected.Clone(),
             supportedTop ? "move_to_draw_top" :
@@ -330,7 +435,7 @@ public static class SemanticCardSelectionEngineV111
                         ? "remove_unresolved_draw_card_identity"
                         : "remove_known_draw_card"
                     :
-                    "preserve_draw_pile", decision);
+                    "preserve_draw_pile", decision.Fork());
         Validate(result);
         return result;
     }
@@ -516,6 +621,12 @@ public static class SemanticCardSelectionEngineV111
             PrototypeGameEngine
                 .IsAutomaticPipelineSemanticCardSelectionContinuation(
                     combat, choice);
+        bool supportedAutomaticTransform =
+            spec.SourceZone == PrototypeCardZone.Hand &&
+            spec.Resolution ==
+                PrototypeCardSelectionResolutionKind.TransformRandom &&
+            PrototypeGameEngine
+                .IsPlayerTurnStartedEntropySelection(combat, choice);
         var supportedTop = IsSupportedTopMove(spec);
         var supportedDrawRemoval = IsSupportedDrawRemoval(spec);
         var supportedVisibleZoneMove =
@@ -531,6 +642,7 @@ public static class SemanticCardSelectionEngineV111
             spec.Resolution == PrototypeCardSelectionResolutionKind.MoveToHand &&
             spec.RemoveUnselectedFromSource;
         if ((!supportedTop && !supportedDrawRemoval &&
+             !supportedAutomaticTransform &&
              !supportedVisibleZoneMove && !supportedGeneratedChoicePool) ||
             (spec.RemoveUnselectedFromSource &&
              !supportedGeneratedChoicePool) ||

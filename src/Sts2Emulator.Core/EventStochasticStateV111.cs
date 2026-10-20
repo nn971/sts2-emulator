@@ -19,15 +19,42 @@ public sealed record EventCommittedRandomStateV111(
     string? NativeTinkerType = null,
     PrototypeFuturePotionOffer[]? FuturePotionOffers = null)
 {
+    private string[]? _repyChestPotionIds = Clone(RepyChestPotionIds);
+    private string[]? _repyChestRelicIds = Clone(RepyChestRelicIds);
+    private PrototypeFuturePotionOffer[]? _futurePotionOffers =
+        Clone(FuturePotionOffers);
+
+    public string[]? RepyChestPotionIds
+    {
+        get => Clone(_repyChestPotionIds);
+        init => _repyChestPotionIds = Clone(value);
+    }
+
+    public string[]? RepyChestRelicIds
+    {
+        get => Clone(_repyChestRelicIds);
+        init => _repyChestRelicIds = Clone(value);
+    }
+
+    public PrototypeFuturePotionOffer[]? FuturePotionOffers
+    {
+        get => Clone(_futurePotionOffers);
+        init => _futurePotionOffers = Clone(value);
+    }
+
     public EventCommittedRandomStateV111 Fork() => this with
     {
-        RepyChestPotionIds = RepyChestPotionIds is null
-            ? null : (string[])RepyChestPotionIds.Clone(),
-        RepyChestRelicIds = RepyChestRelicIds is null
-            ? null : (string[])RepyChestRelicIds.Clone(),
-        FuturePotionOffers = FuturePotionOffers is null
-            ? null : (PrototypeFuturePotionOffer[])FuturePotionOffers.Clone()
+        RepyChestPotionIds = _repyChestPotionIds,
+        RepyChestRelicIds = _repyChestRelicIds,
+        FuturePotionOffers = _futurePotionOffers
     };
+
+    private static string[]? Clone(string[]? values) =>
+        values is null ? null : (string[])values.Clone();
+
+    private static PrototypeFuturePotionOffer[]? Clone(
+        PrototypeFuturePotionOffer[]? values) =>
+        values is null ? null : (PrototypeFuturePotionOffer[])values.Clone();
 }
 
 /// <summary>
@@ -41,6 +68,15 @@ public sealed record EventStochasticStateV111(
     PrototypeControlledEventChoiceContinuationV111? ControlledChoice = null,
     EventCommittedRandomStateV111? CommittedRandom = null)
 {
+    private PrototypeControlledEventChoiceContinuationV111?
+        _controlledChoice = ControlledChoice?.Fork();
+
+    public PrototypeControlledEventChoiceContinuationV111? ControlledChoice
+    {
+        get => _controlledChoice?.Fork();
+        init => _controlledChoice = value?.Fork();
+    }
+
     public EventCommittedRandomStateV111 RandomOutcomes =>
         CommittedRandom ?? new EventCommittedRandomStateV111();
 
@@ -345,7 +381,7 @@ public sealed record EventStochasticStateV111(
     public EventStochasticStateV111 Fork() => this with
     {
         NativeRng = NativeRng?.Fork(),
-        ControlledChoice = ControlledChoice?.Fork(),
+        ControlledChoice = _controlledChoice,
         CommittedRandom = CommittedRandom?.Fork()
     };
 

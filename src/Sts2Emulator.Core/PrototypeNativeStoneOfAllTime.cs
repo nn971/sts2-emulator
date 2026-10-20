@@ -9,7 +9,11 @@ public static class PrototypeNativeStoneOfAllTime
     public const string EventId = "proto.native.hive.stone_of_all_time";
     public const string NativeRngEventId = "STONE_OF_ALL_TIME";
 
-    public static PrototypeEventDefinition Definition { get; } = new(
+    public static PrototypeEventDefinition Definition =>
+        PrototypeDefinitionCopiesV111.CloneEventDefinition(
+            DefinitionValue);
+
+    private static readonly PrototypeEventDefinition DefinitionValue = new(
         EventId,
         "Stone of All Time",
         [

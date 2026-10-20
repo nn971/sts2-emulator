@@ -139,16 +139,36 @@ public sealed class ControlledDrawInsertionV111Tests
                 PrototypeCombatEffectKind.CreateGeneratedCardsAtRandomDrawPositions,
                 1, CardId: "proto.silent.shiv"));
         var mutated = fixedStage.Fork();
-        mutated.Run.World!.Combat!.PendingChoice!.ControlledDrawInsertion!
-            .EligibleDrawPile[0] = -9;
+        var mutatedChoice = mutated.Run.World!.Combat!.PendingChoice!;
+        var insertion = mutatedChoice.ControlledDrawInsertion!;
+        var eligibleDrawPile = insertion.EligibleDrawPile;
+        eligibleDrawPile[0] = -9;
+        mutated = ControlledPlayableTestSupport.WithPendingChoice(
+            mutated, mutatedChoice with
+            {
+                ControlledDrawInsertion = insertion with
+                {
+                    EligibleDrawPile = eligibleDrawPile
+                }
+            });
         Assert.Throws<InvalidDataException>(() =>
             ControlledPlayableCombatEngineV111.VerifyStage(mutated));
         var modelStage = Start("nature-model-tampered",
             new PrototypeQueuedOperation(
                 PrototypeCombatEffectKind.CreateRandomFreeAttacksInDrawPile, 1));
         var corrupted = modelStage.Fork();
-        corrupted.Run.World!.Combat!.PendingChoice!.ControlledDrawInsertion!
-            .CandidateCardIds[0] = "missing.card";
+        var corruptedChoice = corrupted.Run.World!.Combat!.PendingChoice!;
+        var corruptedInsertion = corruptedChoice.ControlledDrawInsertion!;
+        var candidateIds = corruptedInsertion.CandidateCardIds;
+        candidateIds[0] = "missing.card";
+        corrupted = ControlledPlayableTestSupport.WithPendingChoice(
+            corrupted, corruptedChoice with
+            {
+                ControlledDrawInsertion = corruptedInsertion with
+                {
+                    CandidateCardIds = candidateIds
+                }
+            });
         Assert.Throws<InvalidDataException>(() =>
             ControlledPlayableCombatEngineV111.VerifyStage(corrupted));
     }

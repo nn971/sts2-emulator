@@ -11,7 +11,11 @@ public static class PrototypeNativeBrainLeech
     public const string ShareKnowledgeChoiceId = "share_knowledge";
     public const string RipChoiceId = "rip";
 
-    public static PrototypeEventDefinition Definition { get; } = new(
+    public static PrototypeEventDefinition Definition =>
+        PrototypeDefinitionCopiesV111.CloneEventDefinition(
+            DefinitionValue);
+
+    private static readonly PrototypeEventDefinition DefinitionValue = new(
         EventId,
         "Brain Leech",
         [

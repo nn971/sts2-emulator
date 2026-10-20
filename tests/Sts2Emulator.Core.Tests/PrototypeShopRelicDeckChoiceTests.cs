@@ -43,7 +43,26 @@ public sealed class PrototypeShopRelicDeckChoiceTests
             engine.Step(state, GameAction.Empty("leave_shop")));
 
         var fork = state.Fork();
-        fork.World!.Shop!.PendingDeckChoice!.CandidateCardInstanceIds[0] = 999;
+        var forkWorld = fork.World!;
+        var forkShop = forkWorld.Shop!;
+        var forkChoice = forkShop.PendingDeckChoice!;
+        var forkCandidates = forkChoice.CandidateCardInstanceIds;
+        forkCandidates[0] = 999;
+        fork = fork with
+        {
+            World = forkWorld with
+            {
+                Shop = forkShop with
+                {
+                    PendingDeckChoice = forkChoice with
+                    {
+                        CandidateCardInstanceIds = forkCandidates
+                    }
+                }
+            }
+        };
+        Assert.Equal(999,
+            fork.World!.Shop!.PendingDeckChoice!.CandidateCardInstanceIds[0]);
         Assert.Equal(1,
             state.World.Shop.PendingDeckChoice.CandidateCardInstanceIds[0]);
 

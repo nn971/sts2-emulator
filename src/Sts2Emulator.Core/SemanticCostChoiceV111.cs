@@ -8,6 +8,14 @@ public sealed record SemanticCostEventV111(
     long? TargetCardInstanceId = null, string? TargetCardModelId = null)
     : ISemanticChanceEventV111
 {
+    private int[]? _candidateCosts = CloneOptional(CandidateCosts);
+
+    public int[] CandidateCosts
+    {
+        get => CloneOptional(_candidateCosts)!;
+        init => _candidateCosts = CloneOptional(value);
+    }
+
     public const string EventSchemaId = SemanticCostChoiceV111.SchemaId;
     public string SiteId => Request.SiteId;
     public string OperationKind => Request.OperationKind;
@@ -21,21 +29,22 @@ public sealed record SemanticCostEventV111(
         {
             OrderedCandidates = (int[])Request.OrderedCandidates.Clone()
         },
-        CandidateCosts = (int[])CandidateCosts.Clone()
+        CandidateCosts = _candidateCosts!
     };
 
     public void Validate()
     {
         Request.Validate();
+        var candidateCosts = _candidateCosts;
         if (SchemaId != EventSchemaId || string.IsNullOrWhiteSpace(EventId) ||
             string.IsNullOrWhiteSpace(BoundaryFingerprint) ||
             string.IsNullOrWhiteSpace(SupportFingerprint) ||
             Request.OperationKind != "bounded_integer" ||
-            CandidateCosts is null || CandidateCosts.Length == 0 ||
-            CandidateCosts.Distinct().Count() != CandidateCosts.Length ||
-            !CandidateCosts.SequenceEqual(
-                Enumerable.Range(0, CandidateCosts.Length)) ||
-            Request.SupportCount != CandidateCosts.Length ||
+            candidateCosts is null || candidateCosts.Length == 0 ||
+            candidateCosts.Distinct().Count() != candidateCosts.Length ||
+            !candidateCosts.SequenceEqual(
+                Enumerable.Range(0, candidateCosts.Length)) ||
+            Request.SupportCount != candidateCosts.Length ||
             ProbabilityStatus != "UNVERIFIED" ||
             (TargetCardInstanceId is null) != (TargetCardModelId is null) ||
             (TargetCardInstanceId is not null &&
@@ -51,11 +60,11 @@ public sealed record SemanticCostEventV111(
             throw new InvalidDataException("Invalid semantic cost event.");
         var expectedSupportFingerprint = TargetCardInstanceId is null
             ? CanonicalJson.Sha256(new
-                { request = Request, costs = CandidateCosts })
+                { request = Request, costs = candidateCosts })
             : CanonicalJson.Sha256(new
             {
                 request = Request,
-                costs = CandidateCosts,
+                costs = candidateCosts,
                 targetCardInstanceId = TargetCardInstanceId,
                 targetCardModelId = TargetCardModelId
             });
@@ -63,6 +72,10 @@ public sealed record SemanticCostEventV111(
             throw new InvalidDataException(
                 "Semantic cost support fingerprint is inconsistent.");
     }
+
+    private static int[]? CloneOptional(int[]? values) => values is null
+        ? null
+        : (int[])values.Clone();
 }
 
 public sealed record SemanticCostDecisionV111(

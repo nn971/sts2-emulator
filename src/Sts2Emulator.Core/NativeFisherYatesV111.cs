@@ -62,6 +62,31 @@ public static class NativeFisherYatesV111
         ValidateSiteId(siteId,
             StochasticSiteRegistryV111.NativeFisherYatesSiteIds,
             "shuffle");
+        return ShuffleInPlaceCore(
+            values, streams, provider, streamId, ownerId, siteId,
+            ordinalOffset, controlledCandidateLabel);
+    }
+
+    /// <summary>
+    /// Shared descending Fisher-Yates mechanics for provider-owned shuffles.
+    /// Callers validate their own Native or legacy site contract first.
+    /// </summary>
+    internal static RandomIndexDecisionV111[] ShuffleInPlaceCore<T>(
+        IList<T> values,
+        RngBundle streams,
+        IRandomIndexProviderV111 provider,
+        string streamId,
+        string ownerId,
+        string siteId,
+        int ordinalOffset = 0,
+        Func<T, string>? controlledCandidateLabel = null)
+    {
+        ArgumentNullException.ThrowIfNull(values);
+        ArgumentNullException.ThrowIfNull(streams);
+        ArgumentNullException.ThrowIfNull(provider);
+        ArgumentException.ThrowIfNullOrWhiteSpace(streamId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(ownerId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
         if (ordinalOffset < 0)
             throw new ArgumentOutOfRangeException(nameof(ordinalOffset));
         var decisions = new List<RandomIndexDecisionV111>();
@@ -126,4 +151,44 @@ public sealed record NativeFisherYatesResultV111(
     long[] OrderedInput,
     long[] PreHookOutput,
     RandomIndexDecisionV111[] Choices,
-    string OutputStage);
+    string OutputStage)
+{
+    private long[]? _orderedInput = Clone(OrderedInput);
+    private long[]? _preHookOutput = Clone(PreHookOutput);
+    private RandomIndexDecisionV111[]? _choices = CloneDecisions(Choices);
+
+    public long[] OrderedInput
+    {
+        get => Clone(_orderedInput)!;
+        init => _orderedInput = Clone(value);
+    }
+
+    public long[] PreHookOutput
+    {
+        get => Clone(_preHookOutput)!;
+        init => _preHookOutput = Clone(value);
+    }
+
+    public RandomIndexDecisionV111[] Choices
+    {
+        get => CloneDecisions(_choices)!;
+        init => _choices = CloneDecisions(value);
+    }
+
+    public NativeFisherYatesResultV111 Fork() => this with
+    {
+        OrderedInput = _orderedInput!,
+        PreHookOutput = _preHookOutput!,
+        Choices = _choices!
+    };
+
+    private static long[]? Clone(long[]? values) => values is null
+        ? null
+        : (long[])values.Clone();
+
+    private static RandomIndexDecisionV111[]? CloneDecisions(
+        RandomIndexDecisionV111[]? values) => values?.Select(decision =>
+            decision is null ? null! :
+                PrototypeControlledEventChoiceContinuationV111
+                    .CloneDecision(decision)).ToArray();
+}

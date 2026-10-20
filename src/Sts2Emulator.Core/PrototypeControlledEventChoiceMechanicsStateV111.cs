@@ -6,6 +6,9 @@ namespace Sts2Emulator.Core;
 /// </summary>
 public sealed record PrototypeControlledEventChoiceMechanicsStateV111
 {
+    private string[] _queuedPotionIds = [];
+    private PrototypePendingEventDeckChoiceState[] _queuedDeckChoices = [];
+
     public PrototypeMechanicsContinuationStateV111 Continuation { get; init; }
 
     public RunState PartialState
@@ -18,8 +21,16 @@ public sealed record PrototypeControlledEventChoiceMechanicsStateV111
     public string ChoiceId { get; init; }
     public int NextEffectIndex { get; init; }
     public int EffectDecisionStartIndex { get; init; }
-    public string[] QueuedPotionIds { get; init; }
-    public PrototypePendingEventDeckChoiceState[] QueuedDeckChoices { get; init; }
+    public string[] QueuedPotionIds
+    {
+        get => (string[])_queuedPotionIds.Clone();
+        init => _queuedPotionIds = Clone(value);
+    }
+    public PrototypePendingEventDeckChoiceState[] QueuedDeckChoices
+    {
+        get => Clone(_queuedDeckChoices);
+        init => _queuedDeckChoices = Clone(value);
+    }
     public RewardState? DeferredReward { get; init; }
     public int DeferredHpLoss { get; init; }
     public int DeferredGoldLoss { get; init; }
@@ -51,5 +62,18 @@ public sealed record PrototypeControlledEventChoiceMechanicsStateV111
         this.DeferredHpLoss = DeferredHpLoss;
         this.DeferredGoldLoss = DeferredGoldLoss;
         this.DeferredCardId = DeferredCardId;
+    }
+
+    private static string[] Clone(string[] values)
+    {
+        ArgumentNullException.ThrowIfNull(values);
+        return (string[])values.Clone();
+    }
+
+    private static PrototypePendingEventDeckChoiceState[] Clone(
+        PrototypePendingEventDeckChoiceState[] values)
+    {
+        ArgumentNullException.ThrowIfNull(values);
+        return values.Select(choice => choice.Fork()).ToArray();
     }
 }

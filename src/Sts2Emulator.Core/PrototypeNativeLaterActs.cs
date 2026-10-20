@@ -19,7 +19,7 @@ public static class PrototypeNativeLaterActs
 
     // Pinned Hive.cs (Act.Index = 1); this is a complete native encounter
     // NAME inventory, not an implementation/integration declaration.
-    public static string[] HiveEncounterNames { get; } =
+    private static readonly string[] HiveEncounterNameValues =
     [
         "BowlbugsNormal", "BowlbugsWeak", "ChompersNormal",
         "DecimillipedeElite", "EntomancerElite", "ExoskeletonsNormal",
@@ -32,7 +32,7 @@ public static class PrototypeNativeLaterActs
     ];
 
     // Pinned Glory.cs (Act.Index = 2).
-    public static string[] GloryEncounterNames { get; } =
+    private static readonly string[] GloryEncounterNameValues =
     [
         "AxebotsNormal", "ConstructMenagerieNormal",
         "DevotedSculptorWeak", "AeonglassBoss", "FabricatorNormal",
@@ -44,7 +44,13 @@ public static class PrototypeNativeLaterActs
         "TurretOperatorWeak"
     ];
 
-    public static PrototypeCardDefinition[] Cards { get; } =
+    public static string[] HiveEncounterNames =>
+        (string[])HiveEncounterNameValues.Clone();
+
+    public static string[] GloryEncounterNames =>
+        (string[])GloryEncounterNameValues.Clone();
+
+    private static readonly PrototypeCardDefinition[] CardDefinitions =
     [
         // Source: Bugslayer.cs, Exterminate.cs, Squash.cs.
         // Event-only acquisitions; neither belongs in Silent reward pools.
@@ -64,7 +70,11 @@ public static class PrototypeNativeLaterActs
             RewardEligible: false, Type: PrototypeCardType.Attack)
     ];
 
-    public static PrototypeEventDefinition[] Events { get; } =
+    public static PrototypeCardDefinition[] Cards => CardDefinitions
+        .Select(PrototypeDefinitionCopiesV111.CloneCardDefinition)
+        .ToArray();
+
+    private static readonly PrototypeEventDefinition[] EventDefinitions =
     [
         new(HiveBugslayerId, "Bugslayer",
             [
@@ -85,7 +95,11 @@ public static class PrototypeNativeLaterActs
     // Source: ImbalancedPower.cs and HardToKillPower.cs. Imbalanced
     // reacts to a fully blocked attack; Hard to Kill caps HP loss PER hit,
     // without consuming stacks or limiting damage across a whole turn.
-    public static PrototypePowerDefinition[] Powers { get; } =
+    public static PrototypeEventDefinition[] Events => EventDefinitions
+        .Select(PrototypeDefinitionCopiesV111.CloneEventDefinition)
+        .ToArray();
+
+    private static readonly PrototypePowerDefinition[] PowerDefinitions =
     [
         new("proto.native.hive.imbalanced", "Imbalanced", 0, [],
             DoesNotStack: true),
@@ -103,7 +117,11 @@ public static class PrototypeNativeLaterActs
             DoesNotStack: true)
     ];
 
-    public static PrototypeEnemyDefinition[] Enemies { get; } =
+    public static PrototypePowerDefinition[] Powers => PowerDefinitions
+        .Select(PrototypeDefinitionCopiesV111.ClonePowerDefinition)
+        .ToArray();
+
+    private static readonly PrototypeEnemyDefinition[] EnemyDefinitions =
     [
         // Source: BowlbugEgg.cs. Bite applies player damage THEN
         // self-block, and repeats with no RNG decision.
@@ -343,7 +361,11 @@ public static class PrototypeNativeLaterActs
             HpAscensionDeltas: [new(8, 10)])
     ];
 
-    public static PrototypeEncounterDefinition[] Encounters { get; } =
+    public static PrototypeEnemyDefinition[] Enemies => EnemyDefinitions
+        .Select(PrototypeDefinitionCopiesV111.CloneEnemyDefinition)
+        .ToArray();
+
+    private static readonly PrototypeEncounterDefinition[] EncounterDefinitions =
     [
         // BowlbugsWeak.cs: fixed Rock in "odd" and a single Egg or
         // Nectar in "even". Selection is on the combat RNG substream.
@@ -396,4 +418,9 @@ public static class PrototypeNativeLaterActs
             ["proto.native.glory.devoted_sculptor"],
             MinAct: 3, MaxAct: 3, Weight: 0)
     ];
+
+    public static PrototypeEncounterDefinition[] Encounters =>
+        EncounterDefinitions
+            .Select(PrototypeDefinitionCopiesV111.CloneEncounterDefinition)
+            .ToArray();
 }

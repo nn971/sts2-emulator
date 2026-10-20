@@ -35,6 +35,155 @@ public sealed record CombatMechanicsStateV111(
     int PotionExtraTurnsPending = 0,
     bool IsPlayerSideActive = true)
 {
+    private EnemyCombatState[] _enemies = CloneEnemies(Enemies);
+    private CombatCardInstance[] _cards = CloneCards(Cards);
+    private PrototypePowerInstanceState[] _playerPowers =
+        ClonePlayerPowers(PlayerPowers);
+    private CombatRelicState[]? _relics = CloneRelics(Relics);
+    private CombatPotionState[]? _potions = ClonePotions(Potions);
+    private PrototypeToricShield[]? _toricShields = Clone(ToricShields);
+    private long[]? _transformedPersistentCardIds =
+        Clone(TransformedPersistentCardIds);
+    private PrototypeAutoPlayTargetRoll[]? _autoPlayTargetRolls =
+        Clone(AutoPlayTargetRolls);
+    private PrototypeCombatPetState[]? _pets = Clone(Pets);
+    private PendingCombatChoiceState? _pendingChoice = PendingChoice?.Fork();
+    private PrototypeAutomaticPipelineContinuationState?
+        _automaticPipelineContinuation = AutomaticPipelineContinuation?.Fork();
+    private PrototypeKnowledgeDemonChoiceState? _pendingKnowledgeDemonChoice =
+        PendingKnowledgeDemonChoice?.Fork();
+    private PrototypeCombatCounters? _counters = Counters?.Fork();
+
+    public EnemyCombatState[] Enemies
+    {
+        get => CloneEnemies(_enemies);
+        init => _enemies = CloneEnemies(value);
+    }
+
+    public CombatCardInstance[] Cards
+    {
+        get => CloneCards(_cards);
+        init => _cards = CloneCards(value);
+    }
+
+    public PrototypePowerInstanceState[] PlayerPowers
+    {
+        get => ClonePlayerPowers(_playerPowers);
+        init => _playerPowers = ClonePlayerPowers(value);
+    }
+
+    public CombatRelicState[]? Relics
+    {
+        get => CloneRelics(_relics);
+        init => _relics = CloneRelics(value);
+    }
+
+    public CombatPotionState[]? Potions
+    {
+        get => ClonePotions(_potions);
+        init => _potions = ClonePotions(value);
+    }
+
+    public PendingCombatChoiceState? PendingChoice
+    {
+        get => _pendingChoice?.Fork();
+        init => _pendingChoice = value?.Fork();
+    }
+
+    public PrototypeAutomaticPipelineContinuationState?
+        AutomaticPipelineContinuation
+    {
+        get => _automaticPipelineContinuation?.Fork();
+        init => _automaticPipelineContinuation = value?.Fork();
+    }
+
+    public PrototypeKnowledgeDemonChoiceState?
+        PendingKnowledgeDemonChoice
+    {
+        get => _pendingKnowledgeDemonChoice?.Fork();
+        init => _pendingKnowledgeDemonChoice = value?.Fork();
+    }
+
+    public PrototypeCombatCounters? Counters
+    {
+        get => _counters?.Fork();
+        init => _counters = value?.Fork();
+    }
+
+    public PrototypeToricShield[]? ToricShields
+    {
+        get => Clone(_toricShields);
+        init => _toricShields = Clone(value);
+    }
+
+    public long[]? TransformedPersistentCardIds
+    {
+        get => Clone(_transformedPersistentCardIds);
+        init => _transformedPersistentCardIds = Clone(value);
+    }
+
+    public PrototypeAutoPlayTargetRoll[]? AutoPlayTargetRolls
+    {
+        get => Clone(_autoPlayTargetRolls);
+        init => _autoPlayTargetRolls = Clone(value);
+    }
+
+    public PrototypeCombatPetState[]? Pets
+    {
+        get => Clone(_pets);
+        init => _pets = Clone(value);
+    }
+
+    public CombatMechanicsStateV111 Fork() => this with
+    {
+        CardZones = CardZones.Fork(),
+        Enemies = _enemies,
+        Cards = _cards,
+        PlayerPowers = _playerPowers,
+        Relics = _relics,
+        Potions = _potions,
+        PendingChoice = _pendingChoice,
+        Counters = _counters,
+        AutomaticPipelineContinuation = _automaticPipelineContinuation,
+        ToricShields = _toricShields,
+        TransformedPersistentCardIds = _transformedPersistentCardIds,
+        PendingKnowledgeDemonChoice = _pendingKnowledgeDemonChoice,
+        AutoPlayTargetRolls = _autoPlayTargetRolls,
+        Pets = _pets
+    };
+
+    private static EnemyCombatState[] CloneEnemies(
+        EnemyCombatState[] values)
+    {
+        ArgumentNullException.ThrowIfNull(values);
+        return values.Select(enemy => enemy.Fork()).ToArray();
+    }
+
+    private static CombatCardInstance[] CloneCards(
+        CombatCardInstance[] values)
+    {
+        ArgumentNullException.ThrowIfNull(values);
+        return values.Select(card => card.Fork()).ToArray();
+    }
+
+    private static PrototypePowerInstanceState[] ClonePlayerPowers(
+        PrototypePowerInstanceState[] values)
+    {
+        ArgumentNullException.ThrowIfNull(values);
+        return values.Select(power => power.Fork()).ToArray();
+    }
+
+    private static CombatRelicState[]? CloneRelics(
+        CombatRelicState[]? values) =>
+        values?.Select(relic => relic.Fork()).ToArray();
+
+    private static CombatPotionState[]? ClonePotions(
+        CombatPotionState[]? values) =>
+        values?.Select(potion => potion.Fork()).ToArray();
+
+    private static T[]? Clone<T>(T[]? values) =>
+        values is null ? null : (T[])values.Clone();
+
     // Compatibility projections used by the existing immutable mechanics
     // updates. The zone arrays themselves have one owner: CardZones.
     public long[] Hand

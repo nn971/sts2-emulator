@@ -11,7 +11,11 @@ public static class PrototypeNativeFutureOfPotions
     public const string TradeChoiceId = "trade_potion";
     public const string TradeAction = "trade_event_potion";
 
-    public static PrototypeEventDefinition Definition { get; } = new(
+    public static PrototypeEventDefinition Definition =>
+        PrototypeDefinitionCopiesV111.CloneEventDefinition(
+            EventDefinitionValue);
+
+    private static readonly PrototypeEventDefinition EventDefinitionValue = new(
         EventId,
         "The Future of Potions",
         [new(TradeChoiceId, "Trade a potion", [])],
@@ -21,7 +25,10 @@ public static class PrototypeNativeFutureOfPotions
         OncePerRun: true);
 
     // Inventory branches from TheFutureOfPotions.cs at the pinned source.
-    public static string[] CoveredBranches { get; } =
+    public static string[] CoveredBranches =>
+        (string[])CoveredBranchValues.Clone();
+
+    private static readonly string[] CoveredBranchValues =
     [
         "initial/POTION",
         "page/DONE",

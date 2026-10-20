@@ -424,7 +424,7 @@ public static class PrototypeNativeOvergrowthRunFactory
             stream.StreamId == "map");
         var cleanIndex = Array.FindIndex(clean.Streams, stream =>
             stream.StreamId == "map");
-        rng.Streams[index] = clean.Streams[cleanIndex].Fork();
+        rng.ReplaceStreamAt(index, clean.Streams[cleanIndex].Fork());
 
         var map = PrototypeNativeOvergrowthMap.GenerateNative(seed, ascension);
         // The A5 native curse belongs to run initialization rather

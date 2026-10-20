@@ -6,6 +6,31 @@ namespace Sts2Emulator.Core;
 /// </summary>
 public static class SemanticDrawChoiceV111
 {
+    internal static SemanticDeckEventV111 ValidateDrawBoundary(
+        RunState run)
+    {
+        ArgumentNullException.ThrowIfNull(run);
+        if (run.Phase != RunPhase.Combat ||
+            run.World?.Combat is not
+                { PendingChoice: null,
+                  PendingKnowledgeDemonChoice: null } combat)
+            throw new InvalidDataException(
+                "Semantic card draw is not at an ordinary draw boundary.");
+        var deck = SemanticDrawPileAdapterV111.ValidateNatureDeckBoundary(
+            combat,
+            "Semantic card draw has no Nature deck.",
+            "Semantic card draw has an invalid Nature deck boundary.",
+            allowPending: true, requiredPendingPurpose: "draw");
+        var pending = deck is null
+            ? null : SemanticDeckEngineV111.Inspect(deck);
+        if (pending is null)
+            throw new InvalidDataException(
+                "Semantic card draw has no pending draw event.");
+        ValidatePending(pending);
+        PrototypeStateInvariants.Validate(run);
+        return pending;
+    }
+
     internal static void ValidateBoundary(RunState run)
     {
         var combat = run.World?.Combat;
@@ -95,6 +120,7 @@ public static class SemanticDrawChoiceV111
     {
         ArgumentNullException.ThrowIfNull(decision);
         decision.Validate();
+        ValidatePending(decision.Event);
         if (pending is null ||
             CanonicalJson.Sha256(decision.Event) !=
                 CanonicalJson.Sha256(pending) ||
@@ -216,6 +242,7 @@ public static class SemanticDrawChoiceV111
         ArgumentNullException.ThrowIfNull(checkpoint);
         ArgumentNullException.ThrowIfNull(decision);
         decision.Validate();
+        ValidatePending(decision.Event);
         return SemanticDrawPileAdapterV111.ResolveNatureDeckEvent(
             checkpoint, decision.Event, decision.SelectedIndex,
             "Semantic draw choice lost its Nature deck checkpoint.",

@@ -8,30 +8,43 @@ public sealed record SemanticCardTransformEventV111(
     string[] CandidateCardIds, string SupportFingerprint,
     string ProbabilityStatus = "UNVERIFIED") : ISemanticChanceEventV111
 {
+    private string[]? _candidateCardIds = CloneOptional(CandidateCardIds);
+
+    public string[] CandidateCardIds
+    {
+        get => CloneOptional(_candidateCardIds)!;
+        init => _candidateCardIds = CloneOptional(value);
+    }
+
     public const string EventSchemaId = SemanticCardTransformChoiceV111.SchemaId;
 
     public SemanticCardTransformEventV111 Fork() => this with
     {
-        CandidateCardIds = (string[])CandidateCardIds.Clone()
+        CandidateCardIds = _candidateCardIds!
     };
 
     public void Validate()
     {
+        var candidateCardIds = _candidateCardIds;
         if (SchemaId != EventSchemaId || string.IsNullOrWhiteSpace(EventId) ||
             SiteId != SemanticCardTransformChoiceV111.SiteId ||
             StreamId != SemanticCardTransformChoiceV111.StreamId ||
             string.IsNullOrWhiteSpace(OwnerId) || Ordinal < 0 ||
             OperationKind != "choose_card_model" ||
             SourceCardInstanceId <= 0 || string.IsNullOrWhiteSpace(OriginalCardId) ||
-            CandidateCardIds is not { Length: > 0 } ||
-            CandidateCardIds.Any(string.IsNullOrWhiteSpace) ||
-            CandidateCardIds.Distinct(StringComparer.Ordinal).Count() !=
-                CandidateCardIds.Length ||
-            SupportFingerprint != CanonicalJson.Sha256(CandidateCardIds) ||
+            candidateCardIds is not { Length: > 0 } ||
+            candidateCardIds.Any(string.IsNullOrWhiteSpace) ||
+            candidateCardIds.Distinct(StringComparer.Ordinal).Count() !=
+                candidateCardIds.Length ||
+            SupportFingerprint != CanonicalJson.Sha256(candidateCardIds) ||
             ProbabilityStatus != "UNVERIFIED")
             throw new InvalidDataException(
                 "Invalid semantic card-transform event.");
     }
+
+    private static string[]? CloneOptional(string[]? values) => values is null
+        ? null
+        : (string[])values.Clone();
 }
 
 public sealed record SemanticCardTransformDecisionV111(

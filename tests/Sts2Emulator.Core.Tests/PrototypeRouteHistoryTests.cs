@@ -31,8 +31,15 @@ public sealed class PrototypeRouteHistoryTests
         var snapshot = new PrototypeAiEnvironment().Observe(state);
         Assert.Equal(state.World.CompletedRooms, snapshot.Observation.CompletedRooms);
         var fork = state.Fork();
-        fork.World!.CompletedRoomHistory![0] = new PrototypeCompletedRoomRecord(
+        var forkWorld = fork.World!;
+        var forkHistory = forkWorld.CompletedRoomHistory!;
+        forkHistory[0] = new PrototypeCompletedRoomRecord(
             1, 1, "tampered", PrototypeRoomType.Combat);
+        fork = fork with
+        {
+            World = forkWorld with { CompletedRoomHistory = forkHistory }
+        };
+        Assert.Equal("tampered", fork.World!.CompletedRooms[0].NodeId);
         Assert.Equal("f1", state.World.CompletedRooms[0].NodeId);
 
         state = state with

@@ -14,7 +14,10 @@ public static class PrototypeNativeUnderdocks
         "combat.encounter.underdocks.boss.index_draw";
 
     // Source: Underdocks.GenerateAllEncounters() and IsWeak.
-    public static string[] NativeWeakEncounterIds { get; } =
+    public static string[] NativeWeakEncounterIds =>
+        (string[])NativeWeakEncounterIdValues.Clone();
+
+    private static readonly string[] NativeWeakEncounterIdValues =
     [
         "proto.encounter.corpse_slugs_weak",
         "proto.encounter.seapunk_weak",
@@ -22,7 +25,10 @@ public static class PrototypeNativeUnderdocks
         "proto.encounter.toadpoles_weak"
     ];
 
-    public static string[] NativeNormalEncounterIds { get; } =
+    public static string[] NativeNormalEncounterIds =>
+        (string[])NativeNormalEncounterIdValues.Clone();
+
+    private static readonly string[] NativeNormalEncounterIdValues =
     [
         "proto.encounter.corpse_slugs_normal",
         "proto.encounter.cultists_normal",
@@ -36,21 +42,30 @@ public static class PrototypeNativeUnderdocks
         "proto.encounter.two_tailed_rats_normal"
     ];
 
-    public static string[] NativeEliteEncounterIds { get; } =
+    public static string[] NativeEliteEncounterIds =>
+        (string[])NativeEliteEncounterIdValues.Clone();
+
+    private static readonly string[] NativeEliteEncounterIdValues =
     [
         "proto.encounter.phantasmal_gardeners_elite",
         "proto.encounter.skulking_colony_elite",
         "proto.encounter.terror_eel_elite"
     ];
 
-    public static string[] NativeBossEncounterIds { get; } =
+    public static string[] NativeBossEncounterIds =>
+        (string[])NativeBossEncounterIdValues.Clone();
+
+    private static readonly string[] NativeBossEncounterIdValues =
     [
         "proto.encounter.waterfall_giant_boss",
         "proto.encounter.soul_fysh_boss",
         "proto.encounter.lagavulin_matriarch_boss"
     ];
 
-    public static string[] SupportedWeakEncounterIds { get; } =
+    public static string[] SupportedWeakEncounterIds =>
+        (string[])SupportedWeakEncounterIdValues.Clone();
+
+    private static readonly string[] SupportedWeakEncounterIdValues =
     [
         "proto.encounter.corpse_slugs_weak",
         "proto.encounter.seapunk_weak",
@@ -60,7 +75,10 @@ public static class PrototypeNativeUnderdocks
 
     // Full source registration set. The Act 1 route schedules 12 normal
     // selections, so this bag refills after its ten distinct encounters.
-    public static string[] SupportedNormalEncounterIds { get; } =
+    public static string[] SupportedNormalEncounterIds =>
+        (string[])SupportedNormalEncounterIdValues.Clone();
+
+    private static readonly string[] SupportedNormalEncounterIdValues =
     [
         "proto.encounter.corpse_slugs_normal",
         "proto.encounter.punch_construct_normal",
@@ -74,21 +92,31 @@ public static class PrototypeNativeUnderdocks
         "proto.encounter.gremlin_merc_normal"
     ];
 
-    public static string[] SupportedEliteEncounterIds { get; } =
+    public static string[] SupportedEliteEncounterIds =>
+        (string[])SupportedEliteEncounterIdValues.Clone();
+
+    private static readonly string[] SupportedEliteEncounterIdValues =
     [
         "proto.encounter.skulking_colony_elite",
         "proto.encounter.phantasmal_gardeners_elite",
         "proto.encounter.terror_eel_elite"
     ];
 
-    public static string[] SupportedBossEncounterIds { get; } =
+    public static string[] SupportedBossEncounterIds =>
+        (string[])SupportedBossEncounterIdValues.Clone();
+
+    private static readonly string[] SupportedBossEncounterIdValues =
     [
         "proto.encounter.soul_fysh_boss",
         "proto.encounter.lagavulin_matriarch_boss",
         "proto.encounter.waterfall_giant_boss"
     ];
 
-    public static PrototypePowerDefinition[] Powers { get; } =
+    public static PrototypePowerDefinition[] Powers => PowerDefinitions
+        .Select(PrototypeDefinitionCopiesV111.ClonePowerDefinition)
+        .ToArray();
+
+    private static readonly PrototypePowerDefinition[] PowerDefinitions =
     [
         // Steam Eruption survives the first lethal blow, replacing it
         // with a protected telegraph followed by a lethal explosion.
@@ -224,7 +252,11 @@ public static class PrototypeNativeUnderdocks
             ConsumeAfterEnemyAttack: true)
     ];
 
-    public static PrototypeEnemyDefinition[] Enemies { get; } =
+    public static PrototypeEnemyDefinition[] Enemies => EnemyDefinitions
+        .Select(PrototypeDefinitionCopiesV111.CloneEnemyDefinition)
+        .ToArray();
+
+    private static readonly PrototypeEnemyDefinition[] EnemyDefinitions =
     [
         // Waterfall Giant pressures through a predictable six-stage
         // sequence. Its Pressure Gun increases damage by five each use;
@@ -1141,7 +1173,12 @@ public static class PrototypeNativeUnderdocks
 
     // Pinned native encounter membership and formation. All encounters
     // have Weight=0 outside the opt-in Underdocks pool.
-    public static PrototypeEncounterDefinition[] Encounters { get; } =
+    public static PrototypeEncounterDefinition[] Encounters =>
+        EncounterDefinitions
+            .Select(PrototypeDefinitionCopiesV111.CloneEncounterDefinition)
+            .ToArray();
+
+    private static readonly PrototypeEncounterDefinition[] EncounterDefinitions =
     [
         new(
             "proto.encounter.waterfall_giant_boss",
@@ -1346,7 +1383,8 @@ public static class PrototypeNativeUnderdocksRunFactory
         {
             throw new InvalidOperationException("Missing combat RNG.");
         }
-        rng.Streams[combatIndex] = clean.Streams[cleanCombatIndex].Fork();
+        rng.ReplaceStreamAt(combatIndex,
+            clean.Streams[cleanCombatIndex].Fork());
         var bosses = PrototypeNativeUnderdocks.NativeBossEncounterIds;
         var boss = bosses[LegacyRandomChoiceV111.ChooseIndexRange(
             rng,

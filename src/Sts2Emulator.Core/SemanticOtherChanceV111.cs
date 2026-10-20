@@ -6,23 +6,67 @@ namespace Sts2Emulator.Core;
 /// assignment are provisional until audited against the installed game.
 /// This must never be attached to fair player observations.
 /// </summary>
-public sealed record SemanticOtherChanceStateV111(
-    RngBundle Streams,
-    RandomIndexDecisionV111[] Decisions,
-    string ProviderId = SemanticOtherChanceEngineV111.ProviderId,
-    ulong InitialCallCount = 0)
+public sealed record SemanticOtherChanceStateV111
 {
+    private RngBundle? _streams;
+    private RandomIndexDecisionV111[]? _decisions;
+
+    [System.Text.Json.Serialization.JsonConstructor]
+    public SemanticOtherChanceStateV111(
+        RngBundle Streams,
+        RandomIndexDecisionV111[] Decisions,
+        string ProviderId = SemanticOtherChanceEngineV111.ProviderId,
+        ulong InitialCallCount = 0)
+    {
+        this.Streams = Streams;
+        this.Decisions = Decisions;
+        this.ProviderId = ProviderId;
+        this.InitialCallCount = InitialCallCount;
+    }
+
+    public RngBundle Streams
+    {
+        get => _streams?.Fork()!;
+        init => _streams = value?.Fork();
+    }
+
+    public RandomIndexDecisionV111[] Decisions
+    {
+        get => CloneDecisions(_decisions)!;
+        init => _decisions = CloneDecisions(value);
+    }
+
+    public string ProviderId { get; init; }
+    public ulong InitialCallCount { get; init; }
+
     public SemanticOtherChanceStateV111 Fork() => this with
     {
-        Streams = Streams.Fork(),
-        Decisions = Decisions.Select(d => d with
-        {
-            Request = d.Request with
-            {
-                OrderedCandidates = (int[])d.Request.OrderedCandidates.Clone()
-            }
-        }).ToArray()
+        Streams = _streams?.Fork()!,
+        Decisions = CloneDecisions(_decisions)!
     };
+
+    public void Deconstruct(
+        out RngBundle Streams,
+        out RandomIndexDecisionV111[] Decisions,
+        out string ProviderId,
+        out ulong InitialCallCount)
+    {
+        Streams = this.Streams;
+        Decisions = this.Decisions;
+        ProviderId = this.ProviderId;
+        InitialCallCount = this.InitialCallCount;
+    }
+
+    private static RandomIndexDecisionV111[]? CloneDecisions(
+        RandomIndexDecisionV111[]? decisions) => decisions?.Select(
+            decision => decision is null ? null! : decision with
+            {
+                Request = decision.Request with
+                {
+                    OrderedCandidates = (int[])decision.Request
+                        .OrderedCandidates.Clone()
+                }
+            }).ToArray();
 }
 
 public static class SemanticOtherChanceEngineV111
@@ -89,19 +133,18 @@ public static class SemanticOtherChanceEngineV111
             OrderedCandidates = []
         };
         var working = previous.Fork();
-        if (working.Streams.Streams.Length != 1)
+        var workingStreams = working.Streams;
+        if (workingStreams.Streams.Length != 1)
         {
-            var costStream = working.Streams.Streams.Single(stream =>
+            var costStream = workingStreams.Streams.Single(stream =>
                 stream.StreamId == CostStreamId);
-            working = working with
-            {
-                Streams = new RngBundle([costStream.Fork()])
-            };
+            workingStreams = new RngBundle([costStream.Fork()]);
         }
         var decision = new NativeRandomIndexProviderV111()
-            .Resolve(sourceRequest, working.Streams);
+            .Resolve(sourceRequest, workingStreams);
         var next = working with
         {
+            Streams = workingStreams,
             Decisions = working.Decisions.Append(decision).ToArray()
         };
         Validate(next);

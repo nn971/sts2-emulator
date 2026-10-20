@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Sts2Emulator.Core;
 
 /// <summary>
@@ -5,54 +7,71 @@ namespace Sts2Emulator.Core;
 /// public pilot members remain compatibility projections for its current
 /// serialized representation.
 /// </summary>
-public sealed record SemanticPilotStochasticStateV111(
-    SemanticNativePolicyAuditV111? NativePolicyAudit = null,
-    SemanticSourceRouteAuditV111? SourceRouteAudit = null,
-    SemanticEndTurnStochasticStateV111? PendingEndTurn = null,
-    SemanticSeededEntryV111? SeededEntry = null)
+public sealed record SemanticPilotStochasticStateV111
 {
+    private SemanticNativePolicyAuditV111? _nativePolicyAudit;
+    private SemanticSourceRouteAuditV111? _sourceRouteAudit;
+    private SemanticEndTurnStochasticStateV111? _pendingEndTurn;
+    private SemanticSeededEntryV111? _seededEntry;
+
+    [JsonConstructor]
+    public SemanticPilotStochasticStateV111(
+        SemanticNativePolicyAuditV111? NativePolicyAudit = null,
+        SemanticSourceRouteAuditV111? SourceRouteAudit = null,
+        SemanticEndTurnStochasticStateV111? PendingEndTurn = null,
+        SemanticSeededEntryV111? SeededEntry = null)
+    {
+        _nativePolicyAudit = CloneNativePolicyAudit(NativePolicyAudit);
+        _sourceRouteAudit = CloneSourceRouteAudit(SourceRouteAudit);
+        _pendingEndTurn = PendingEndTurn?.Fork();
+        _seededEntry = SeededEntry;
+    }
+
+    public SemanticNativePolicyAuditV111? NativePolicyAudit
+    {
+        get => CloneNativePolicyAudit(_nativePolicyAudit);
+        init => _nativePolicyAudit = CloneNativePolicyAudit(value);
+    }
+    public SemanticSourceRouteAuditV111? SourceRouteAudit
+    {
+        get => CloneSourceRouteAudit(_sourceRouteAudit);
+        init => _sourceRouteAudit = CloneSourceRouteAudit(value);
+    }
+    public SemanticEndTurnStochasticStateV111? PendingEndTurn
+    {
+        get => _pendingEndTurn?.Fork();
+        init => _pendingEndTurn = value?.Fork();
+    }
+    public SemanticSeededEntryV111? SeededEntry
+    {
+        get => _seededEntry;
+        init => _seededEntry = value;
+    }
+
     public SemanticPilotStochasticStateV111 Fork() => this with
     {
-        PendingEndTurn = PendingEndTurn?.Fork(),
-        NativePolicyAudit = NativePolicyAudit is { } audit
-            ? audit with
-            {
-                Decisions = audit.Decisions.Select(decision => decision with
-                {
-                    Request = decision.Request with
-                    {
-                        OrderedCandidates = (int[])decision.Request
-                            .OrderedCandidates.Clone()
-                    }
-                }).ToArray(),
-                ProviderTrace = audit.ProviderTrace.Select(entry => entry with
-                {
-                    Event = entry.Event.Clone()
-                }).ToArray()
-            }
-            : null,
-        SourceRouteAudit = SourceRouteAudit is { } route
-            ? route with
-            {
-                ActionIds = (string[])route.ActionIds.Clone(),
-                NativeEntryDecisions = route.NativeEntryDecisions.Select(
-                    decision => decision with
-                    {
-                        Request = decision.Request with
-                        {
-                            OrderedCandidates = (int[])decision.Request
-                                .OrderedCandidates.Clone()
-                        }
-                    }).ToArray()
-            }
-            : null
+        PendingEndTurn = _pendingEndTurn?.Fork(),
+        NativePolicyAudit = CloneNativePolicyAudit(_nativePolicyAudit),
+        SourceRouteAudit = CloneSourceRouteAudit(_sourceRouteAudit),
+        SeededEntry = _seededEntry
     };
+
+    public void Deconstruct(
+        out SemanticNativePolicyAuditV111? NativePolicyAudit,
+        out SemanticSourceRouteAuditV111? SourceRouteAudit,
+        out SemanticEndTurnStochasticStateV111? PendingEndTurn,
+        out SemanticSeededEntryV111? SeededEntry)
+    {
+        NativePolicyAudit = this.NativePolicyAudit;
+        SourceRouteAudit = this.SourceRouteAudit;
+        PendingEndTurn = this.PendingEndTurn;
+        SeededEntry = this.SeededEntry;
+    }
 
     public void Validate()
     {
         NativePolicyAudit?.Validate();
-        if (PendingEndTurn is not null)
-            PendingEndTurn.Validate();
+        PendingEndTurn?.Validate();
     }
 
     internal static SemanticPilotStochasticStateV111 WithNativePolicyAudit(
@@ -70,4 +89,10 @@ public sealed record SemanticPilotStochasticStateV111(
         {
             SourceRouteAudit = sourceRouteAudit
         };
+
+    private static SemanticNativePolicyAuditV111? CloneNativePolicyAudit(
+        SemanticNativePolicyAuditV111? audit) => audit?.Fork();
+
+    private static SemanticSourceRouteAuditV111? CloneSourceRouteAudit(
+        SemanticSourceRouteAuditV111? route) => route?.Fork();
 }

@@ -79,13 +79,20 @@ public sealed partial class PrototypeGameEngine
         ArgumentNullException.ThrowIfNull(pending);
         if (pending is not
             { ChoiceId: "controlled_draw_insertion",
-              ControlledDrawInsertion: { Stage: "position",
-                  SelectedCardId: not null,
-                  SemanticDrawContinuation: not null,
-                  AfterShuffleRelic: not null },
+              ControlledDrawInsertion: { } insertion,
               OuterChoiceContinuation: { } continuation } ||
             combat.SemanticDeck is not
                 { Mode: SemanticDeckStateV111.NatureMode })
+            return false;
+
+        if (IsOpeningBlessedAntlerDrawInsertionContinuation(
+                combat, pending, insertion, continuation))
+            return true;
+
+        if (insertion is not
+            { Stage: "position", SelectedCardId: not null,
+              SemanticDrawContinuation: not null,
+              AfterShuffleRelic: not null })
             return false;
 
         bool nestedAutoplay = false;
@@ -103,6 +110,162 @@ public sealed partial class PrototypeGameEngine
             IsAtSupportedAutomaticPipelineTargetBoundary(combat);
     }
 
+    private static bool IsOpeningBlessedAntlerDrawInsertionContinuation(
+        CombatState combat, PendingCombatChoiceState pending,
+        PrototypeControlledDrawInsertionV111 insertion,
+        PrototypeChoiceResolutionContinuationState continuation)
+    {
+        const string dazedCardId = "proto.status.dazed";
+        if (combat is not { IsPlayerTurn: true, Turn: 1,
+                SemanticDeck: { Mode: SemanticDeckStateV111.NatureMode,
+                    Pending: null },
+                AutomaticPipelineContinuation: { } pipeline } ||
+            !IsAtOpeningAutomaticPipelineCursor(
+                combat, pipeline, PrototypeOpeningCombatStage.DrawHand) ||
+            pending is not
+                { SourceCardInstanceId: null,
+                  SourceCardDestination: PrototypeCardZone.DiscardPile,
+                  CandidateCardInstanceIds: { Length: 0 },
+                  Continuation: { Length: 0 },
+                  CompletionEvents: { Length: 0 },
+                  Selection: { SourceZone: PrototypeCardZone.Hand,
+                      MinSelections: 0,
+                      MaxSelections: 0,
+                      Resolution:
+                        PrototypeCardSelectionResolutionKind.MoveToDiscard,
+                      RequiredCardType: null,
+                      SelectionsPerPowerStack: 0,
+                      RandomCandidateCount: 0,
+                      RequireAttackOrPower: false,
+                      RequireEnergyCostingCard: false,
+                      SequentialOptional: false,
+                      DrawEqualToSelectionsOnCompletion: false,
+                      RemoveUnselectedFromSource: false,
+                      CopiesPerSelection: 0,
+                      CopiesPerSelectionUpgradeDelta: 0 },
+                  EventDispatchContinuation: null,
+                  CardPlaySeries: null,
+                  SelectedCardPower: null,
+                  SelectedCardKeyword: null,
+                  SelectedCardTemporaryCost: null,
+                  ControlledTarget: null,
+                  ControlledGeneration: null,
+                  ControlledPotionGeneration: null,
+                  ControlledCardTransform: null,
+                  ControlledPoolShuffle: null,
+                  ControlledRandomCost: null,
+                  ControlledDrawCost: null,
+                  ControlledCardShortlist: null,
+                  ControlledRandomPileCard: null,
+                  ControlledSemanticDraw: null,
+                  SemanticStratagemDrawSelection: false,
+                  AutomaticSemanticStratagemDrawSelection: false,
+                  StandaloneSemanticDrawHookChoice: false,
+                  AutomaticSemanticDrawHookChoice: false,
+                  MoveSourceCardOnCompletion: true,
+                  RemoveSourceCardOnCompletion: false,
+                  SourceCardAlreadyMoved: false } ||
+            insertion is not
+                { Stage: "position",
+                  Operation: { Kind:
+                      PrototypeCombatEffectKind.CreateGeneratedCardsAtRandomDrawPositions,
+                    Amount: >= 1 and <= 3,
+                    CardId: dazedCardId,
+                    SourceKind: PrototypeEffectSourceKind.Relic },
+                  SelectedCardId: dazedCardId,
+                  CandidateCardIds: { Length: 0 },
+                  SemanticDrawContinuation: null,
+                  AfterShuffleRelic: null,
+                  CompletedAfterShuffleRelics: null,
+                  RemainingAfterShuffleRelics: null,
+                  RequestSiteId:
+                    StochasticSiteRegistryV111.DrawPileRandomInsertSiteId,
+                  RequestOwnerId: "prototype.combat",
+                  RequestOrdinal: 0,
+                  PersonalHiveDamageContinuation: null,
+                  AutomaticHandDrawRemaining: null } ||
+            continuation is not
+                { Parent: null,
+                  SourceCardInstanceId: null,
+                  SourceCardDestination: PrototypeCardZone.DiscardPile,
+                  PendingDiscardEvents: { Length: 0 },
+                  PendingSlyCardInstanceIds: { Length: 0 },
+                  CompletionEvents: { Length: 0 },
+                  CardPlaySeries: null,
+                  MoveSourceCardOnCompletion: true,
+                  RemoveSourceCardOnCompletion: false,
+                  SourceCardAlreadyMoved: false,
+                  EventDispatchContinuation: { } eventDispatch,
+                  CompletePlayerHandCleanup: false })
+            return false;
+
+        var expectedOperation = new PrototypeQueuedOperation(
+            PrototypeCombatEffectKind.CreateGeneratedCardsAtRandomDrawPositions,
+            insertion.Operation.Amount, CardId: dazedCardId,
+            SourceKind: PrototypeEffectSourceKind.Relic);
+        if (CanonicalJson.Sha256(insertion.Operation) !=
+                CanonicalJson.Sha256(expectedOperation) ||
+            eventDispatch.EventDepth != 0 ||
+            eventDispatch.CombatEvent != new PrototypeCombatEvent(
+                PrototypeCombatEventKind.BeforeHandDraw) ||
+            continuation.Operations.Length !=
+                (insertion.Operation.Amount > 1 ? 1 : 0))
+            return false;
+
+        if (insertion.Operation.Amount > 1)
+        {
+            var expectedRemainingOperation = expectedOperation with
+            {
+                Amount = insertion.Operation.Amount - 1
+            };
+            if (CanonicalJson.Sha256(continuation.Operations[0]) !=
+                CanonicalJson.Sha256(expectedRemainingOperation))
+                return false;
+        }
+
+        if (eventDispatch.CurrentSubscriber is not
+                { SourceKind: PrototypeEffectSourceKind.Relic,
+                  SourcePowerApplicationOrder: null,
+                  SourcePowerEnemyId: null,
+                  RelicStateIndex: { } relicIndex,
+                  RelicTriggerIndex: 0 } subscriber ||
+            (uint)relicIndex >= (uint)combat.RelicStates.Length)
+            return false;
+
+        var relic = combat.RelicStates[relicIndex];
+        if (relic is not
+                { RelicId: NativeGloryAncientsV111.BlessedAntlerId,
+                  IsMelted: false } ||
+            relic.PersistentIndex != relicIndex ||
+            relic.ApplicationOrder != subscriber.ApplicationOrder)
+            return false;
+
+        var definition = PrototypeContent.Relic(relic.RelicId);
+        var triggers = definition.Triggers ?? [];
+        var expectedTrigger = new PrototypeRelicTriggerSpec(
+            PrototypeCombatEventKind.BeforeHandDraw,
+            [new PrototypeCombatEffectSpec(
+                PrototypeCombatEffectKind.CreateGeneratedCardsAtRandomDrawPositions,
+                3, CardId: dazedCardId)],
+            TurnEquals: 1);
+        if (triggers.Length != 1 ||
+            CanonicalJson.Sha256(triggers[0]) !=
+                CanonicalJson.Sha256(expectedTrigger) ||
+            subscriber.RelicTriggerIndex != 0)
+            return false;
+
+        var expectedSubscriber = new PrototypeEventSubscriberState(
+            relic.ApplicationOrder, triggers[0].Effects, PowerStacks: 0,
+            PrototypeEffectSourceKind.Relic,
+            RelicStateIndex: relicIndex,
+            RelicTriggerIndex: 0,
+            EveryNth: triggers[0].EveryNth,
+            MaxTriggersPerCounterWindow:
+                triggers[0].MaxTriggersPerCounterWindow);
+        return CanonicalJson.Sha256(expectedSubscriber) ==
+            CanonicalJson.Sha256(subscriber);
+    }
+
     internal static bool IsAutomaticPipelineSemanticGenerationContinuation(
         CombatState combat, PendingCombatChoiceState pending)
     {
@@ -118,7 +281,8 @@ public sealed partial class PrototypeGameEngine
             return false;
 
         return IsSupportedAutomaticPipelineAutoplayContinuation(
-            combat, continuation);
+                combat, continuation) ||
+            IsCrossbowTurnStartGenerationContinuation(combat, pending);
     }
 
     internal static bool IsAutomaticPipelineSemanticPotionGenerationContinuation(
@@ -150,13 +314,17 @@ public sealed partial class PrototypeGameEngine
               ControlledCardTransform: { } transform } ||
             combat.SemanticDeck is not
                 { Mode: SemanticDeckStateV111.NatureMode } ||
-            transform.OriginalChoice.OuterChoiceContinuation is not
-                { } continuation ||
             !ValidateControlledCardTransform(combat, transform))
             return false;
 
-        return IsSupportedAutomaticPipelineAutoplayContinuation(
-            combat, continuation);
+        if (transform.OriginalChoice.OuterChoiceContinuation is
+            { } continuation)
+            return IsSupportedAutomaticPipelineAutoplayContinuation(
+                combat, continuation);
+
+        var originalChoice = transform.OriginalChoice;
+        return IsPlayerTurnStartedEntropySelection(
+            combat with { PendingChoice = originalChoice }, originalChoice);
     }
 
     internal static bool IsAutomaticPipelineSemanticCardShortlistContinuation(
@@ -201,7 +369,178 @@ public sealed partial class PrototypeGameEngine
             { Mode: SemanticDeckStateV111.NatureMode })
             return false;
         return IsSupportedAutomaticPipelineAutoplayContinuation(
-            combat, continuation);
+                combat, continuation) ||
+            IsOpeningGeneratedPoolShuffleContinuation(
+                combat, pending, shuffle, continuation) ||
+            IsHelloWorldAutomaticBeforeHandDrawPoolShuffle(
+                combat, pending, shuffle, continuation);
+    }
+
+    internal static bool IsHelloWorldAutomaticBeforeHandDrawPoolShuffle(
+        CombatState combat, PendingCombatChoiceState pending,
+        PrototypeControlledPoolShuffleV111 shuffle,
+        PrototypeChoiceResolutionContinuationState continuation)
+    {
+        const string helloWorldPowerId = "proto.power.hello_world";
+        if (combat is not { IsPlayerTurn: true, Turn: >= 2,
+                SemanticDeck: { Mode: SemanticDeckStateV111.NatureMode,
+                    Pending: null },
+                AutomaticPipelineContinuation: { } pipeline } ||
+            !IsAtAutomaticSemanticBeforeHandDrawHookCursor(
+                pipeline, combat, pending) ||
+            pending is not
+                { SourceCardInstanceId: null,
+                  SourceCardDestination: PrototypeCardZone.DiscardPile,
+                  CandidateCardInstanceIds: { Length: 0 },
+                  Continuation: { Length: 0 },
+                  CompletionEvents: { Length: 0 },
+                  Selection: { SourceZone: PrototypeCardZone.Hand,
+                      MinSelections: 0,
+                      MaxSelections: 0,
+                      Resolution:
+                        PrototypeCardSelectionResolutionKind.MoveToDiscard,
+                      RequiredCardType: null,
+                      SelectionsPerPowerStack: 0,
+                      RandomCandidateCount: 0,
+                      RequireAttackOrPower: false,
+                      RequireEnergyCostingCard: false,
+                      SequentialOptional: false,
+                      DrawEqualToSelectionsOnCompletion: false,
+                      RemoveUnselectedFromSource: false,
+                      CopiesPerSelection: 0,
+                      CopiesPerSelectionUpgradeDelta: 0 },
+                  EventDispatchContinuation: null,
+                  CardPlaySeries: null,
+                  SelectedCardPower: null,
+                  SelectedCardKeyword: null,
+                  SelectedCardTemporaryCost: null,
+                  ControlledTarget: null,
+                  ControlledGeneration: null,
+                  ControlledPotionGeneration: null,
+                  ControlledCardTransform: null,
+                  ControlledDrawInsertion: null,
+                  ControlledRandomCost: null,
+                  ControlledDrawCost: null,
+                  ControlledCardShortlist: null,
+                  ControlledRandomPileCard: null,
+                  ControlledSemanticDraw: null,
+                  SemanticStratagemDrawSelection: false,
+                  AutomaticSemanticStratagemDrawSelection: false,
+                  StandaloneSemanticDrawHookChoice: false,
+                  AutomaticSemanticDrawHookChoice: false,
+                  MoveSourceCardOnCompletion: true,
+                  RemoveSourceCardOnCompletion: false,
+                  SourceCardAlreadyMoved: false } ||
+            shuffle.Operation.Kind !=
+                PrototypeCombatEffectKind.CreateDistinctCharacterCommonCardsInHand ||
+            shuffle.Operation.SourceKind != PrototypeEffectSourceKind.Power ||
+            shuffle.Operation.SourcePowerApplicationOrder is not
+                { } powerOrder ||
+            continuation is not
+                { Parent: null,
+                  SourceCardInstanceId: null,
+                  SourceCardDestination: PrototypeCardZone.DiscardPile,
+                  Operations: { Length: 0 },
+                  PendingDiscardEvents: { Length: 0 },
+                  PendingSlyCardInstanceIds: { Length: 0 },
+                  CompletionEvents: { Length: 0 },
+                  CardPlaySeries: null,
+                  MoveSourceCardOnCompletion: true,
+                  RemoveSourceCardOnCompletion: false,
+                  SourceCardAlreadyMoved: false,
+                  EventDispatchContinuation: { } eventDispatch,
+                  CompletePlayerHandCleanup: false } ||
+            eventDispatch.EventDepth != 0 ||
+            eventDispatch.CombatEvent != new PrototypeCombatEvent(
+                PrototypeCombatEventKind.BeforeHandDraw))
+            return false;
+
+        var power = combat.PlayerPowers.SingleOrDefault(candidate =>
+            candidate.ApplicationOrder == powerOrder);
+        if (power is not
+                { PowerId: helloWorldPowerId, Stacks: > 0,
+                  StoredValue: > 0 } ||
+            shuffle.Operation.Amount != power.Stacks)
+            return false;
+
+        var definition = PrototypeContent.Power(power.PowerId);
+        var triggers = definition.Triggers;
+        var expectedTrigger = new PrototypePowerTriggerSpec(
+            PrototypeCombatEventKind.BeforeHandDraw,
+            [new PrototypeCombatEffectSpec(
+                PrototypeCombatEffectKind.CreateDistinctCharacterCommonCardsInHand,
+                0, AmountPerPowerStack: 1)]);
+        if (!definition.SnapshotGenerationStacksAtTurnStart ||
+            triggers.Length != 1 ||
+            CanonicalJson.Sha256(triggers[0]) !=
+                CanonicalJson.Sha256(expectedTrigger) ||
+            eventDispatch.CurrentSubscriber.PowerTriggerIndex != 0)
+            return false;
+
+        var expectedOperation = new PrototypeQueuedOperation(
+            PrototypeCombatEffectKind.CreateDistinctCharacterCommonCardsInHand,
+            power.Stacks,
+            SourceKind: PrototypeEffectSourceKind.Power,
+            SourcePowerApplicationOrder: power.ApplicationOrder);
+        var sourcePool = SourcePoolForShuffle(
+            combat, expectedOperation, sourceCardInstanceId: null);
+        if (sourcePool is null)
+            return false;
+        if (CanonicalJson.Sha256(shuffle.Operation) !=
+                CanonicalJson.Sha256(expectedOperation) ||
+            shuffle.SelectedCount != Math.Min(
+                power.StoredValue, sourcePool.Length) ||
+            !shuffle.OriginalCardIds.SequenceEqual(sourcePool))
+            return false;
+
+        var expectedSubscriber = new PrototypeEventSubscriberState(
+            power.ApplicationOrder, triggers[0].Effects, power.Stacks,
+            PrototypeEffectSourceKind.Power,
+            SourcePowerApplicationOrder: power.ApplicationOrder,
+            PowerCardPayload: power.CardPayload?.Fork(),
+            RemoveSourcePowerAfterTrigger:
+                triggers[0].RemoveSourcePowerAfterTrigger,
+            EveryNth: triggers[0].EveryNth,
+            PowerTriggerIndex: 0,
+            CountdownBeforeTrigger: triggers[0].CountdownBeforeTrigger,
+            SourcePowerStoredValue: power.StoredValue);
+        return CanonicalJson.Sha256(expectedSubscriber) ==
+            CanonicalJson.Sha256(eventDispatch.CurrentSubscriber);
+    }
+
+    private static bool IsAtAutomaticSemanticBeforeHandDrawHookCursor(
+        PrototypeAutomaticPipelineContinuationState continuation,
+        CombatState combat, PendingCombatChoiceState pending)
+    {
+        if (continuation.OpeningStage is not null ||
+            continuation.PendingPostDispatchEventKind is not null ||
+            !continuation.Mechanics.IsAtStep(
+                PrototypeAutomaticStepKind.DrawPlayerHand) ||
+            continuation.ControlledDrawRemaining is not null ||
+            continuation.ControlledDrawCostRemaining is not null ||
+            continuation.ControlledSemanticDrawRemaining is not null ||
+            continuation.ControlledSemanticDrawRequested is not null ||
+            continuation.ControlledRecycleStratagemPending ||
+            continuation.ControlledDrawHookChoicePending ||
+            continuation.ControlledBeforeHandDrawHookChoicePending ||
+            continuation.ControlledEnemyAction is not null ||
+            continuation.ControlledTurnIntents is not null ||
+            continuation.Stochastic.ControlledEnemyAction is not null ||
+            continuation.Stochastic.ControlledTurnIntents is not null ||
+            continuation.Stochastic.CompletedSemanticHandDrawRequested is not null ||
+            pending.AutomaticSemanticDrawHookChoice !=
+                continuation.ControlledSemanticBeforeHandDrawPending ||
+            combat.PendingChoice?.ChoiceId != "controlled_pool_shuffle")
+            return false;
+
+        if (continuation.ControlledSemanticBeforeHandDrawPending)
+            return continuation.Stochastic.HandDrawProgress is
+                { Kind:
+                    PrototypeAutomaticHandDrawProgressKindV111.SemanticBeforeHandDraw,
+                  RequestedCount: null,
+                  RemainingCount: null };
+
+        return continuation.Stochastic.HandDrawProgress is null;
     }
 
     internal static bool IsAutomaticPipelineSemanticRandomHandCostContinuation(
@@ -235,6 +574,9 @@ public sealed partial class PrototypeGameEngine
 
         if (IsPlayerTurnStartedDiscardSelection(combat, pending) ||
             IsPlayerTurnStartedToolsOfTheTradeSelection(combat, pending) ||
+            IsPlayerTurnStartedEntropySelection(combat, pending) ||
+            IsToastyMittensTurnStartSelection(combat, pending) ||
+            IsOpeningGeneratedCardSelection(combat, pending) ||
             IsGamblingChipOpeningSelection(combat, pending))
             return true;
         if (pending.CardPlaySeries is not { IsAutoPlay: true })
@@ -243,6 +585,585 @@ public sealed partial class PrototypeGameEngine
         return IsMayhemAutoPrePlayPipelineCursor(combat) ||
             combat.IsPlayerTurn &&
             IsAtSupportedAutomaticPipelineTargetBoundary(combat);
+    }
+
+    internal static bool IsPlayerTurnStartedEntropySelection(
+        CombatState combat, PendingCombatChoiceState pending)
+    {
+        const string entropyPowerId = "proto.power.entropy";
+        if (combat is not { IsPlayerTurn: true,
+                AutomaticPipelineContinuation: { } continuation,
+                PendingKnowledgeDemonChoice: null } ||
+            combat.SemanticDeck is not
+                { Mode: SemanticDeckStateV111.NatureMode, Pending: null } ||
+            pending is not
+                { ChoiceId: "select_cards",
+                  SourceCardInstanceId: null,
+                  SourceCardDestination: PrototypeCardZone.DiscardPile,
+                  CandidateCardInstanceIds: { } candidates,
+                  Continuation: { Length: 0 },
+                  CompletionEvents: { Length: 0 },
+                  Selection: { SequentialOptional: false,
+                      DrawEqualToSelectionsOnCompletion: false,
+                      RemoveUnselectedFromSource: false },
+                  OuterChoiceContinuation: null,
+                  CardPlaySeries: null,
+                  SelectedCardPower: null,
+                  SelectedCardKeyword: null,
+                  SelectedCardTemporaryCost: null,
+                  SequentialSelectedCardInstanceIds: null,
+                  EventDispatchContinuation: { } eventDispatch,
+                  ControlledTarget: null,
+                  ControlledGeneration: null,
+                  ControlledPotionGeneration: null,
+                  ControlledCardTransform: null,
+                  ControlledDrawInsertion: null,
+                  ControlledPoolShuffle: null,
+                  ControlledRandomCost: null,
+                  ControlledDrawCost: null,
+                  ControlledCardShortlist: null,
+                  ControlledRandomPileCard: null,
+                  ControlledSemanticDraw: null,
+                  SemanticStratagemDrawSelection: false,
+                  AutomaticSemanticStratagemDrawSelection: false,
+                  StandaloneSemanticDrawHookChoice: false,
+                  AutomaticSemanticDrawHookChoice: false,
+                  MoveSourceCardOnCompletion: true,
+                  RemoveSourceCardOnCompletion: false,
+                  SourceCardAlreadyMoved: false } ||
+            pending.Selection is not
+                { SourceZone: PrototypeCardZone.Hand,
+                  Resolution:
+                    PrototypeCardSelectionResolutionKind.TransformRandom,
+                  RequiredCardType: null,
+                  SelectionsPerPowerStack: 1,
+                  RandomCandidateCount: 0,
+                  RequireAttackOrPower: false,
+                  RequireEnergyCostingCard: false } ||
+            eventDispatch is not
+                { EventDepth: 0,
+                  CombatEvent.Kind: PrototypeCombatEventKind.PlayerTurnStarted } ||
+            eventDispatch.CombatEvent != new PrototypeCombatEvent(
+                PrototypeCombatEventKind.PlayerTurnStarted) ||
+            !IsAtPlayerTurnStartedDispatchContinuation(
+                combat, continuation))
+            return false;
+
+        var subscriber = eventDispatch.CurrentSubscriber;
+        if (subscriber.SourcePowerApplicationOrder is not { } powerOrder ||
+            subscriber.SourceKind != PrototypeEffectSourceKind.Power ||
+            subscriber.SourcePowerEnemyId is not null ||
+            subscriber.PowerTriggerIndex is not { } triggerIndex)
+            return false;
+
+        var power = combat.PlayerPowers.SingleOrDefault(candidate =>
+            candidate.ApplicationOrder == powerOrder);
+        if (power is not { PowerId: entropyPowerId, Stacks: > 0 } ||
+            subscriber.ApplicationOrder != power.ApplicationOrder)
+            return false;
+
+        var definition = PrototypeContent.Power(entropyPowerId);
+        if ((uint)triggerIndex >= (uint)definition.Triggers.Length)
+            return false;
+        var trigger = definition.Triggers[triggerIndex];
+        if (trigger.EventKind != PrototypeCombatEventKind.PlayerTurnStarted ||
+            trigger.RequiresOwnerTarget || trigger.ExcludeHandDraw ||
+            trigger.RequiresPlayerTurn ||
+            trigger.RequiredSourceCardType is not null ||
+            trigger.Effects.Length != 1)
+            return false;
+
+        var expectedSubscriber = new PrototypeEventSubscriberState(
+            power.ApplicationOrder, trigger.Effects, power.Stacks,
+            PrototypeEffectSourceKind.Power,
+            SourcePowerApplicationOrder: power.ApplicationOrder,
+            PowerCardPayload: power.CardPayload?.Fork(),
+            RemoveSourcePowerAfterTrigger: trigger.RemoveSourcePowerAfterTrigger,
+            EveryNth: trigger.EveryNth,
+            PowerTriggerIndex: triggerIndex,
+            CountdownBeforeTrigger: trigger.CountdownBeforeTrigger,
+            SourcePowerStoredValue: power.StoredValue);
+        if (CanonicalJson.Sha256(expectedSubscriber) !=
+            CanonicalJson.Sha256(subscriber))
+            return false;
+
+        var chooseCards = trigger.Effects.SingleOrDefault(effect =>
+            effect.Kind == PrototypeCombatEffectKind.ChooseCards);
+        var sourceSelection = chooseCards?.Selection;
+        if (sourceSelection is not
+                { SourceZone: PrototypeCardZone.Hand,
+                  MinSelections: 0,
+                  MaxSelections: 0,
+                  Resolution:
+                    PrototypeCardSelectionResolutionKind.TransformRandom,
+                  RequiredCardType: null,
+                  SelectionsPerPowerStack: 1,
+                  RemoveUnselectedFromSource: false,
+                  RequireEnergyCostingCard: false,
+                  SequentialOptional: false,
+                  DrawEqualToSelectionsOnCompletion: false,
+                  MaxSelectionsUpgradeDelta: 0,
+                  RandomCandidateCount: 0,
+                  RequireAttackOrPower: false,
+                  CopiesPerSelection: 0,
+                  CopiesPerSelectionUpgradeDelta: 0 })
+            return false;
+
+        var expectedCandidates = combat.Hand.Where(id =>
+            !PrototypeCardRules.IsEternal(combat.Cards.Single(card =>
+                card.InstanceId == id))).ToArray();
+        int expectedMax = Math.Min(power.Stacks, expectedCandidates.Length);
+        if (expectedMax <= 0 ||
+            !candidates.SequenceEqual(expectedCandidates) ||
+            expectedCandidates.Any(id =>
+                EligibleCombatTransformPool(combat.Cards.Single(card =>
+                    card.InstanceId == id).CardId).Length == 0))
+            return false;
+
+        var expectedSelection = sourceSelection with
+        {
+            MinSelections = expectedMax,
+            MaxSelections = expectedMax
+        };
+        return pending.Selection == expectedSelection;
+    }
+
+    private static bool IsToastyMittensTurnStartSelection(
+        CombatState combat, PendingCombatChoiceState pending)
+    {
+        if (combat is not { IsPlayerTurn: true,
+                AutomaticPipelineContinuation: { } continuation,
+                PendingKnowledgeDemonChoice: null } ||
+            combat.SemanticDeck is not
+                { Mode: SemanticDeckStateV111.NatureMode, Pending: null } ||
+            pending is not
+                { ChoiceId: "select_cards",
+                  SourceCardInstanceId: null,
+                  SourceCardDestination: PrototypeCardZone.DiscardPile,
+                  CandidateCardInstanceIds: { } candidates,
+                  Continuation: { Length: 1 } queuedOperations,
+                  CompletionEvents: { Length: 0 },
+                  Selection: { SequentialOptional: false,
+                      DrawEqualToSelectionsOnCompletion: false,
+                      RemoveUnselectedFromSource: false },
+                  OuterChoiceContinuation: null,
+                  CardPlaySeries: null,
+                  SelectedCardPower: null,
+                  SelectedCardKeyword: null,
+                  SelectedCardTemporaryCost: null,
+                  SequentialSelectedCardInstanceIds: null,
+                  EventDispatchContinuation: { } eventDispatch,
+                  ControlledTarget: null,
+                  ControlledGeneration: null,
+                  ControlledPotionGeneration: null,
+                  ControlledCardTransform: null,
+                  ControlledDrawInsertion: null,
+                  ControlledPoolShuffle: null,
+                  ControlledRandomCost: null,
+                  ControlledDrawCost: null,
+                  ControlledCardShortlist: null,
+                  ControlledRandomPileCard: null,
+                  ControlledSemanticDraw: null,
+                  SemanticStratagemDrawSelection: false,
+                  AutomaticSemanticStratagemDrawSelection: false,
+                  StandaloneSemanticDrawHookChoice: false,
+                  AutomaticSemanticDrawHookChoice: false,
+                  MoveSourceCardOnCompletion: true,
+                  RemoveSourceCardOnCompletion: false,
+                  SourceCardAlreadyMoved: false } ||
+            pending.Selection is not
+                { SourceZone: PrototypeCardZone.Hand,
+                  MinSelections: 1,
+                  MaxSelections: 1,
+                  Resolution:
+                    PrototypeCardSelectionResolutionKind.MoveToExhaust,
+                  RequiredCardType: null,
+                  SelectionsPerPowerStack: 0,
+                  RemoveUnselectedFromSource: false,
+                  RequireEnergyCostingCard: false,
+                  SequentialOptional: false,
+                  DrawEqualToSelectionsOnCompletion: false,
+                  MaxSelectionsUpgradeDelta: 0,
+                  RandomCandidateCount: 0,
+                  RequireAttackOrPower: false,
+                  CopiesPerSelection: 0,
+                  CopiesPerSelectionUpgradeDelta: 0 } ||
+            eventDispatch.EventDepth != 0 ||
+            eventDispatch.CombatEvent.SourceCardInstanceId is not null ||
+            eventDispatch.CombatEvent.CardId is not null ||
+            eventDispatch.CombatEvent.TargetEnemyId is not null ||
+            eventDispatch.CombatEvent.Amount != 0 ||
+            eventDispatch.CombatEvent.PowerApplicationOrderCeiling is not null ||
+            eventDispatch.CombatEvent.FromHandDraw ||
+            eventDispatch.CombatEvent.IsAutoPlay ||
+            eventDispatch.CombatEvent.IsPoweredAttack)
+            return false;
+
+        var eventKind = eventDispatch.CombatEvent.Kind;
+        int triggerIndex;
+        if (eventKind == PrototypeCombatEventKind.OpeningPlayerTurnStarted)
+        {
+            if (!IsAtOpeningAutomaticPipelineCursor(
+                    combat, continuation,
+                    PrototypeOpeningCombatStage.BoneTeaAfterTurnStart))
+                return false;
+            triggerIndex = 0;
+        }
+        else if (eventKind == PrototypeCombatEventKind.PlayerTurnStarted)
+        {
+            if (combat.Turn < 2 ||
+                !IsAtPlayerTurnStartedDispatchContinuation(
+                    combat, continuation))
+                return false;
+            triggerIndex = 1;
+        }
+        else
+            return false;
+
+        var subscriber = eventDispatch.CurrentSubscriber;
+        if (subscriber.SourceKind != PrototypeEffectSourceKind.Relic ||
+            subscriber.SourcePowerApplicationOrder is not null ||
+            subscriber.SourcePowerEnemyId is not null ||
+            subscriber.RelicStateIndex is not { } relicIndex ||
+            subscriber.RelicTriggerIndex != triggerIndex ||
+            (uint)relicIndex >= (uint)combat.RelicStates.Length)
+            return false;
+
+        var relic = combat.RelicStates[relicIndex];
+        if (relic is not
+                { RelicId: NativeAncientRewardsV111.ToastyMittensId,
+                  IsMelted: false } ||
+            relic.PersistentIndex != relicIndex ||
+            relic.ApplicationOrder != subscriber.ApplicationOrder)
+            return false;
+
+        var definition = PrototypeContent.Relic(relic.RelicId);
+        var triggers = definition.Triggers ?? [];
+        if ((uint)triggerIndex >= (uint)triggers.Length)
+            return false;
+        var trigger = triggers[triggerIndex];
+        int? expectedMinimumTurn = triggerIndex == 0 ? null : 2;
+        if (trigger.EventKind != eventKind || trigger.EveryNth != 1 ||
+            trigger.MaxPlayerHpPercent is not null ||
+            trigger.MinPlayerHpPercent is not null ||
+            trigger.TurnEquals is not null ||
+            trigger.MinTurn != expectedMinimumTurn ||
+            trigger.RequiresZeroPlayerBlock ||
+            trigger.RequiredSourceCardType is not null ||
+            trigger.ResetCounterEachTurn ||
+            trigger.MaxTriggersPerCounterWindow is not null ||
+            trigger.MaxAttacksPlayedLastTurn is not null ||
+            trigger.RequiresEmptyHand ||
+            trigger.RequiredSourceCardTag is not null ||
+            trigger.RequiresPlayerSide)
+            return false;
+
+        var expectedEffects = new[]
+        {
+            new PrototypeCombatEffectSpec(
+                PrototypeCombatEffectKind.ChooseCards, 0,
+                Selection: new PrototypeCardSelectionSpec(
+                    PrototypeCardZone.Hand, 1, 1,
+                    PrototypeCardSelectionResolutionKind.MoveToExhaust)),
+            new PrototypeCombatEffectSpec(
+                PrototypeCombatEffectKind.ApplyPlayerPower, 1,
+                PowerId: "proto.power.strength")
+        };
+        if (CanonicalJson.Sha256(trigger.Effects) !=
+                CanonicalJson.Sha256(expectedEffects) ||
+            CanonicalJson.Sha256(new PrototypeEventSubscriberState(
+                relic.ApplicationOrder, trigger.Effects, PowerStacks: 0,
+                PrototypeEffectSourceKind.Relic,
+                RelicStateIndex: relicIndex,
+                RelicTriggerIndex: triggerIndex,
+                EveryNth: trigger.EveryNth,
+                MaxTriggersPerCounterWindow:
+                    trigger.MaxTriggersPerCounterWindow)) !=
+            CanonicalJson.Sha256(subscriber))
+            return false;
+
+        var expectedSelection = expectedEffects[0].Selection!;
+        if (pending.Selection != expectedSelection ||
+            !candidates.SequenceEqual(combat.Hand))
+            return false;
+
+        var expectedContinuation = new PrototypeQueuedOperation(
+            PrototypeCombatEffectKind.ApplyPlayerPower, 1,
+            PowerId: "proto.power.strength",
+            TargetMode: expectedEffects[1].Target,
+            SourceKind: PrototypeEffectSourceKind.Relic);
+        return CanonicalJson.Sha256(queuedOperations) ==
+            CanonicalJson.Sha256(new[] { expectedContinuation });
+    }
+
+    private static bool IsOpeningGeneratedPoolShuffleContinuation(
+        CombatState combat, PendingCombatChoiceState pending,
+        PrototypeControlledPoolShuffleV111 shuffle,
+        PrototypeChoiceResolutionContinuationState continuation)
+    {
+        if (combat is not { IsPlayerTurn: true, Turn: 1,
+                SemanticDeck: { Mode: SemanticDeckStateV111.NatureMode,
+                    Pending: null },
+                AutomaticPipelineContinuation: not null } ||
+            pending is not
+                { ChoiceId: "controlled_pool_shuffle",
+                  SourceCardInstanceId: null,
+                  SourceCardDestination: PrototypeCardZone.DiscardPile,
+                  Selection: { SourceZone: PrototypeCardZone.Hand,
+                      MinSelections: 0,
+                      MaxSelections: 0,
+                      Resolution:
+                        PrototypeCardSelectionResolutionKind.MoveToDiscard,
+                      RequiredCardType: null,
+                      SelectionsPerPowerStack: 0,
+                      RemoveUnselectedFromSource: false,
+                      RequireEnergyCostingCard: false,
+                      SequentialOptional: false,
+                      DrawEqualToSelectionsOnCompletion: false,
+                      MaxSelectionsUpgradeDelta: 0,
+                      RandomCandidateCount: 0,
+                      RequireAttackOrPower: false,
+                      CopiesPerSelection: 0,
+                      CopiesPerSelectionUpgradeDelta: 0 },
+                  CandidateCardInstanceIds: { Length: 0 },
+                  Continuation: { Length: 0 },
+                  CompletionEvents: { Length: 0 },
+                  OuterChoiceContinuation: { } pendingContinuation,
+                  EventDispatchContinuation: null,
+                  ControlledTarget: null,
+                  ControlledGeneration: null,
+                  ControlledPotionGeneration: null,
+                  ControlledCardTransform: null,
+                  ControlledDrawInsertion: null,
+                  ControlledPoolShuffle: { } pendingShuffle,
+                  ControlledRandomCost: null,
+                  ControlledDrawCost: null,
+                  ControlledCardShortlist: null,
+                  ControlledRandomPileCard: null,
+                  ControlledSemanticDraw: null } ||
+            CanonicalJson.Sha256(pendingShuffle) !=
+                CanonicalJson.Sha256(shuffle) ||
+            CanonicalJson.Sha256(pendingContinuation) !=
+                CanonicalJson.Sha256(continuation) ||
+            continuation is not
+                { Parent: null,
+                  SourceCardInstanceId: null,
+                  SourceCardDestination: PrototypeCardZone.DiscardPile,
+                  Operations: { Length: 0 },
+                  PendingDiscardEvents: { Length: 0 },
+                  PendingSlyCardInstanceIds: { Length: 0 },
+                  CompletionEvents: { Length: 0 },
+                  CardPlaySeries: null,
+                  MoveSourceCardOnCompletion: true,
+                  RemoveSourceCardOnCompletion: false,
+                  SourceCardAlreadyMoved: false,
+                  EventDispatchContinuation: { } eventDispatch,
+                  CompletePlayerHandCleanup: false })
+            return false;
+
+        return IsOpeningGeneratedChoiceSubscriber(
+                combat, eventDispatch, shuffle.Operation,
+                out var expectedOperation) &&
+            CanonicalJson.Sha256(shuffle.Operation) ==
+                CanonicalJson.Sha256(expectedOperation);
+    }
+
+    private static bool IsOpeningGeneratedCardSelection(
+        CombatState combat, PendingCombatChoiceState pending)
+    {
+        if (combat is not { IsPlayerTurn: true, Turn: 1,
+                SemanticDeck: { Mode: SemanticDeckStateV111.NatureMode,
+                    Pending: null },
+                AutomaticPipelineContinuation: not null } ||
+            pending is not
+                { ChoiceId: "select_cards",
+                  SourceCardInstanceId: null,
+                  SourceCardDestination: PrototypeCardZone.DiscardPile,
+                  CandidateCardInstanceIds: { } candidates,
+                  Continuation: { Length: 0 },
+                  CompletionEvents: { Length: 0 },
+                  Selection: { SourceZone: PrototypeCardZone.ChoicePool,
+                      MaxSelections: 1,
+                      Resolution:
+                        PrototypeCardSelectionResolutionKind.MoveToHand,
+                      RequiredCardType: null,
+                      SelectionsPerPowerStack: 0,
+                      RemoveUnselectedFromSource: true,
+                      RequireEnergyCostingCard: false,
+                      SequentialOptional: false,
+                      DrawEqualToSelectionsOnCompletion: false,
+                      MaxSelectionsUpgradeDelta: 0,
+                      RandomCandidateCount: 0,
+                      RequireAttackOrPower: false,
+                      CopiesPerSelection: 0,
+                      CopiesPerSelectionUpgradeDelta: 0 } selection,
+                  OuterChoiceContinuation: null,
+                  CardPlaySeries: null,
+                  SelectedCardPower: null,
+                  SelectedCardKeyword: null,
+                  SelectedCardTemporaryCost: null,
+                  SequentialSelectedCardInstanceIds: null,
+                  EventDispatchContinuation: { } eventDispatch,
+                  ControlledTarget: null,
+                  ControlledGeneration: null,
+                  ControlledPotionGeneration: null,
+                  ControlledCardTransform: null,
+                  ControlledDrawInsertion: null,
+                  ControlledPoolShuffle: null,
+                  ControlledRandomCost: null,
+                  ControlledDrawCost: null,
+                  ControlledCardShortlist: null,
+                  ControlledRandomPileCard: null,
+                  ControlledSemanticDraw: null,
+                  SemanticStratagemDrawSelection: false,
+                  AutomaticSemanticStratagemDrawSelection: false,
+                  StandaloneSemanticDrawHookChoice: false,
+                  AutomaticSemanticDrawHookChoice: false,
+                  MoveSourceCardOnCompletion: true,
+                  RemoveSourceCardOnCompletion: false,
+                  SourceCardAlreadyMoved: false } ||
+            !IsOpeningGeneratedChoiceSubscriber(
+                combat, eventDispatch, operation: null, out var operation) ||
+            selection.MinSelections !=
+                (operation.GeneratedChoiceMustPick ? 1 : 0) ||
+            candidates.Length != operation.Amount ||
+            !candidates.SequenceEqual(combat.ChoiceCardIds))
+            return false;
+
+        var offered = candidates.Select(id => combat.Cards.Single(card =>
+            card.InstanceId == id)).ToArray();
+        var eligible = SourcePoolForShuffle(
+            combat, operation, sourceCardInstanceId: null);
+        if (eligible is null || offered.Length != candidates.Length)
+            return false;
+        PrototypeCardKeywordOverride[]? expectedKeywords =
+            operation.GeneratedChoiceCardsRetain
+                ? [new PrototypeCardKeywordOverride(
+                    PrototypeCardKeyword.Retain, true,
+                    PrototypeCardKeywordOverrideExpiry.None)]
+                : null;
+        return offered.Select(card => card.CardId).Distinct(
+                StringComparer.Ordinal).Count() == offered.Length &&
+            offered.All(card => card.IsTemporary &&
+                card.PersistentCardInstanceId is null &&
+                card.UpgradeLevel == (operation.GeneratedChoiceCardsUpgraded
+                    ? 1 : 0) &&
+                card.TemporaryEnergyCost ==
+                    (operation.GeneratedChoiceCardsFreeThisTurn
+                        ? new PrototypeTemporaryCardCost(0,
+                            PrototypeTemporaryCardCostExpiry.EndOfTurn |
+                            PrototypeTemporaryCardCostExpiry.WhenPlayed)
+                        : null) &&
+                card.Enchantment is null &&
+                CanonicalJson.Sha256(card.KeywordOverrides) ==
+                    CanonicalJson.Sha256(expectedKeywords) &&
+                eligible.Contains(card.CardId, StringComparer.Ordinal));
+    }
+
+    private static bool IsOpeningGeneratedChoiceSubscriber(
+        CombatState combat,
+        PrototypeEventDispatchContinuationState eventDispatch,
+        PrototypeQueuedOperation? operation,
+        out PrototypeQueuedOperation expectedOperation)
+    {
+        expectedOperation = null!;
+        if (combat.Turn != 1 || eventDispatch.EventDepth != 0 ||
+            eventDispatch.CombatEvent.SourceCardInstanceId is not null ||
+            eventDispatch.CombatEvent.CardId is not null ||
+            eventDispatch.CombatEvent.TargetEnemyId is not null ||
+            eventDispatch.CombatEvent.Amount != 0 ||
+            eventDispatch.CombatEvent.PowerApplicationOrderCeiling is not null ||
+            eventDispatch.CombatEvent.FromHandDraw ||
+            eventDispatch.CombatEvent.IsAutoPlay ||
+            eventDispatch.CombatEvent.IsPoweredAttack)
+            return false;
+
+        string relicId;
+        PrototypeCombatEventKind eventKind;
+        PrototypeOpeningCombatStage openingStage;
+        PrototypeRelicTriggerSpec expectedTrigger;
+        if (eventDispatch.CombatEvent == new PrototypeCombatEvent(
+                PrototypeCombatEventKind.BeforeHandDraw))
+        {
+            relicId = "proto.relic.toolbox";
+            eventKind = PrototypeCombatEventKind.BeforeHandDraw;
+            openingStage = PrototypeOpeningCombatStage.DrawHand;
+            expectedOperation = new PrototypeQueuedOperation(
+                PrototypeCombatEffectKind.ChooseGeneratedCards, 3,
+                SourceKind: PrototypeEffectSourceKind.Relic,
+                GeneratedChoiceCardsFreeThisTurn: false);
+            expectedTrigger = new PrototypeRelicTriggerSpec(
+                eventKind,
+                [new PrototypeCombatEffectSpec(
+                    PrototypeCombatEffectKind.ChooseGeneratedCards, 3,
+                    GeneratedChoiceCardsFreeThisTurn: false)],
+                TurnEquals: 1);
+        }
+        else if (eventDispatch.CombatEvent == new PrototypeCombatEvent(
+                     PrototypeCombatEventKind.OpeningPlayerTurnStarted))
+        {
+            relicId = NativeGloryAncientsV111.ChoicesParadoxId;
+            eventKind = PrototypeCombatEventKind.OpeningPlayerTurnStarted;
+            openingStage = PrototypeOpeningCombatStage.BoneTeaAfterTurnStart;
+            expectedOperation = new PrototypeQueuedOperation(
+                PrototypeCombatEffectKind.ChooseGeneratedCards, 5,
+                SourceKind: PrototypeEffectSourceKind.Relic,
+                GeneratedChoiceMustPick: true,
+                GeneratedChoiceCharacterCards: true,
+                GeneratedChoiceCardsRetain: true,
+                GeneratedChoiceUsesNativeCardGenerationRng: true);
+            expectedTrigger = new PrototypeRelicTriggerSpec(
+                eventKind,
+                [new PrototypeCombatEffectSpec(
+                    PrototypeCombatEffectKind.ChooseGeneratedCards, 5,
+                    GeneratedChoiceMustPick: true,
+                    GeneratedChoiceCharacterCards: true,
+                    GeneratedChoiceCardsRetain: true,
+                    GeneratedChoiceUsesNativeCardGenerationRng: true)],
+                TurnEquals: 1);
+        }
+        else
+            return false;
+
+        if (combat.AutomaticPipelineContinuation is not { } pipeline ||
+            !IsAtOpeningAutomaticPipelineCursor(
+                combat, pipeline, openingStage) ||
+            eventDispatch.CombatEvent.Kind != eventKind ||
+            eventDispatch.CurrentSubscriber is not
+                { SourceKind: PrototypeEffectSourceKind.Relic,
+                  RelicStateIndex: { } relicIndex,
+                  RelicTriggerIndex: 0 } subscriber ||
+            (uint)relicIndex >= (uint)combat.RelicStates.Length)
+            return false;
+
+        var relic = combat.RelicStates[relicIndex];
+        if (relic is not
+                { IsMelted: false } ||
+            relic.RelicId != relicId ||
+            relic.PersistentIndex != relicIndex ||
+            relic.ApplicationOrder != subscriber.ApplicationOrder)
+            return false;
+
+        var definition = PrototypeContent.Relic(relic.RelicId);
+        var triggers = definition.Triggers ?? [];
+        if (triggers.Length != 1 ||
+            CanonicalJson.Sha256(triggers[0]) !=
+                CanonicalJson.Sha256(expectedTrigger) ||
+            subscriber.RelicTriggerIndex != 0 ||
+            operation is not null && CanonicalJson.Sha256(operation) !=
+                CanonicalJson.Sha256(expectedOperation))
+            return false;
+
+        var expectedSubscriber = new PrototypeEventSubscriberState(
+            relic.ApplicationOrder, triggers[0].Effects, PowerStacks: 0,
+            PrototypeEffectSourceKind.Relic,
+            RelicStateIndex: relicIndex,
+            RelicTriggerIndex: 0,
+            EveryNth: triggers[0].EveryNth,
+            MaxTriggersPerCounterWindow:
+                triggers[0].MaxTriggersPerCounterWindow);
+        return CanonicalJson.Sha256(expectedSubscriber) ==
+            CanonicalJson.Sha256(subscriber);
     }
 
     private static bool IsGamblingChipOpeningSelection(
@@ -299,7 +1220,9 @@ public sealed partial class PrototypeGameEngine
                 { SourceZone: PrototypeCardZone.Hand,
                   Resolution:
                     PrototypeCardSelectionResolutionKind.MoveToDiscard } ||
-            !IsAtGamblingChipOpeningCursor(combat, continuation) ||
+            !IsAtOpeningAutomaticPipelineCursor(
+                combat, continuation,
+                PrototypeOpeningCombatStage.BoneTeaAfterTurnStart) ||
             !TryGetGamblingChipOpeningSubscriber(
                 combat, eventDispatch, out var sourceSelection))
             return false;
@@ -332,7 +1255,9 @@ public sealed partial class PrototypeGameEngine
                 PendingKnowledgeDemonChoice: null,
                 SemanticDeck: { Mode: SemanticDeckStateV111.NatureMode },
                 AutomaticPipelineContinuation: { } cursor } ||
-            !IsAtGamblingChipOpeningCursor(combat, cursor) ||
+            !IsAtOpeningAutomaticPipelineCursor(
+                combat, cursor,
+                PrototypeOpeningCombatStage.BoneTeaAfterTurnStart) ||
             pending.ControlledSemanticDraw is not { } draw ||
             pending.OuterChoiceContinuation is not
                 { Parent: null,
@@ -424,13 +1349,13 @@ public sealed partial class PrototypeGameEngine
                   Resolution: PrototypeCardSelectionResolutionKind.MoveToDiscard });
     }
 
-    private static bool IsAtGamblingChipOpeningCursor(
+    private static bool IsAtOpeningAutomaticPipelineCursor(
         CombatState combat,
-        PrototypeAutomaticPipelineContinuationState continuation) =>
+        PrototypeAutomaticPipelineContinuationState continuation,
+        PrototypeOpeningCombatStage expectedStage) =>
+        continuation.OpeningStage == expectedStage &&
         continuation is
-            { OpeningStage:
-                PrototypeOpeningCombatStage.BoneTeaAfterTurnStart,
-              PendingPostDispatchEventKind: null,
+            { PendingPostDispatchEventKind: null,
               ControlledDrawRemaining: null,
               ControlledDrawCostRemaining: null,
               ControlledSemanticDrawRemaining: null,
@@ -762,6 +1687,133 @@ public sealed partial class PrototypeGameEngine
         return IsMayhemAutoPrePlayPipelineCursor(combat) ||
             combat.IsPlayerTurn &&
             IsAtSupportedAutomaticPipelineTargetBoundary(combat);
+    }
+
+    internal static bool IsWhisperingEarringOpeningAutoplayBoundary(
+        CombatState combat)
+    {
+        if (combat is not
+                { Turn: 1, IsPlayerTurn: true, IsPlayerSideActive: true,
+                  PendingKnowledgeDemonChoice: null,
+                  PendingChoice:
+                    { OuterChoiceContinuation: { } root } pending,
+                  SemanticDeck:
+                    { Mode: SemanticDeckStateV111.NatureMode,
+                      Pending: null },
+                  AutomaticPipelineContinuation: { } pipeline } ||
+            !IsAtOpeningAutomaticPipelineCursor(
+                combat, pipeline,
+                PrototypeOpeningCombatStage.Complete))
+            return false;
+
+        bool hasWhisperingEarring = false;
+        for (var index = 0; index < combat.RelicStates.Length; index++)
+        {
+            var relic = combat.RelicStates[index];
+            if (relic is
+                    { RelicId: NativeGloryAncientsV111.WhisperingEarringId,
+                      IsMelted: false } &&
+                relic.PersistentIndex == index)
+            {
+                hasWhisperingEarring = true;
+                break;
+            }
+        }
+        if (!hasWhisperingEarring)
+            return false;
+
+        bool hasWhisperingEarringDriver = false;
+        bool hasAutoplaySeries = false;
+        bool hasPreplayTarget = false;
+        var target = pending.ControlledTarget;
+        for (var frame = root; frame is not null; frame = frame.Parent)
+        {
+            hasAutoplaySeries |= frame.CardPlaySeries is
+                { IsAutoPlay: true };
+            if (frame.Operations is { Length: 1 } &&
+                IsWhisperingEarringDriverFrame(
+                    frame, frame.Operations[0]))
+                hasWhisperingEarringDriver = true;
+
+            if (target is
+                    { Kind: "autoplay_random_enemy",
+                      AutoPlayCardInstanceId: { } autoPlayCardId } &&
+                IsWhisperingEarringPreplayTargetFrame(
+                    frame, autoPlayCardId))
+            {
+                hasWhisperingEarringDriver = true;
+                hasPreplayTarget = true;
+            }
+        }
+
+        return hasWhisperingEarringDriver &&
+            (hasAutoplaySeries || hasPreplayTarget);
+    }
+
+    private static bool IsWhisperingEarringDriverOperation(
+        PrototypeQueuedOperation operation) =>
+        operation.Amount is >= 0 and
+            < NativeGloryAncientsV111.WhisperingEarringMaxCards &&
+        CanonicalJson.Sha256(new PrototypeQueuedOperation(
+            PrototypeCombatEffectKind.AutoPlayPlayableCardsFromHand,
+            operation.Amount,
+            SourceKind: PrototypeEffectSourceKind.Relic)) ==
+        CanonicalJson.Sha256(operation);
+
+    private static bool IsWhisperingEarringDriverFrame(
+        PrototypeChoiceResolutionContinuationState frame,
+        PrototypeQueuedOperation operation)
+    {
+        if (!IsWhisperingEarringDriverOperation(operation))
+            return false;
+        var expected = new PrototypeChoiceResolutionContinuationState(
+            SourceCardInstanceId: null,
+            SourceCardDestination: PrototypeCardZone.DiscardPile,
+            Operations: [new PrototypeQueuedOperation(
+                PrototypeCombatEffectKind.AutoPlayPlayableCardsFromHand,
+                operation.Amount,
+                SourceKind: PrototypeEffectSourceKind.Relic)],
+            PendingDiscardEvents: [],
+            PendingSlyCardInstanceIds: [],
+            CompletionEvents: []);
+        return CanonicalJson.Sha256(expected) ==
+            CanonicalJson.Sha256(frame);
+    }
+
+    private static bool IsWhisperingEarringPreplayTargetFrame(
+        PrototypeChoiceResolutionContinuationState frame,
+        long autoPlayCardId)
+    {
+        if (frame.Operations is not { Length: 2 } operations ||
+            operations[0] is not
+                { Kind: PrototypeCombatEffectKind.AutoPlayCombatCard,
+                  Amount: 0, TargetEnemyId: null,
+                  SourceKind: PrototypeEffectSourceKind.Relic,
+                  EnergySpent: { } energySpent,
+                  CardInstanceId: { } operationCardId } ||
+            operationCardId != autoPlayCardId ||
+            !IsWhisperingEarringDriverOperation(operations[1]))
+            return false;
+        var expected = new PrototypeChoiceResolutionContinuationState(
+            SourceCardInstanceId: null,
+            SourceCardDestination: PrototypeCardZone.DiscardPile,
+            Operations:
+            [
+                new PrototypeQueuedOperation(
+                    PrototypeCombatEffectKind.AutoPlayCombatCard, 0,
+                    SourceKind: PrototypeEffectSourceKind.Relic,
+                    CardInstanceId: autoPlayCardId,
+                    EnergySpent: energySpent),
+                new PrototypeQueuedOperation(
+                    PrototypeCombatEffectKind.AutoPlayPlayableCardsFromHand,
+                    operations[1].Amount,
+                    SourceKind: PrototypeEffectSourceKind.Relic)
+            ],
+            PendingDiscardEvents: [],
+            PendingSlyCardInstanceIds: [],
+            CompletionEvents: []);
+        return CanonicalJson.Sha256(expected) ==
+            CanonicalJson.Sha256(frame);
     }
 
     private static bool IsSupportedAutomaticPipelineAutoplayContinuation(

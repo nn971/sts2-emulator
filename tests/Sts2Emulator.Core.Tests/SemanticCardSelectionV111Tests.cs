@@ -231,8 +231,28 @@ public sealed class SemanticCardSelectionV111Tests
         var ok = SemanticCardSelectionEngineV111.Step(
             legal, SelectAction(legal, [handCard]));
         var modified = ok.Fork();
-        modified.Run.World!.Combat!.SemanticDeck!.Slots[0] =
-            SemanticDeckSlotV111.Known(-9000);
+        var modifiedRun = modified.Run;
+        var modifiedWorld = modifiedRun.World!;
+        var modifiedCombat = modifiedWorld.Combat!;
+        var modifiedDeck = modifiedCombat.SemanticDeck!;
+        var modifiedSlots = modifiedDeck.Slots;
+        modifiedSlots[0] = SemanticDeckSlotV111.Known(-9000);
+        modified = modified with
+        {
+            Run = modifiedRun with
+            {
+                World = modifiedWorld with
+                {
+                    Combat = modifiedCombat with
+                    {
+                        SemanticDeck = modifiedDeck with
+                        {
+                            Slots = modifiedSlots
+                        }
+                    }
+                }
+            }
+        };
         Assert.Throws<InvalidDataException>(() =>
             SemanticCardSelectionEngineV111.Restore(
                 JsonSerializer.Serialize(modified)));

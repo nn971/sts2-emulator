@@ -24,12 +24,15 @@ internal abstract class ControlledChanceRequiredExceptionV111(
     string[]? candidateLabels,
     string message) : Exception(message)
 {
+    private readonly string[]? _candidateLabels = candidateLabels is null
+        ? null : (string[])candidateLabels.Clone();
+
     public RandomIndexRequestV111 Request { get; } = request with
     {
         OrderedCandidates = (int[])request.OrderedCandidates.Clone()
     };
-    public string[]? CandidateLabels { get; } = candidateLabels is null
-        ? null : (string[])candidateLabels.Clone();
+    public string[]? CandidateLabels => _candidateLabels is null
+        ? null : (string[])_candidateLabels.Clone();
 }
 
 internal interface IControlledChanceReplayScopeV111 : IDisposable

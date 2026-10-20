@@ -8,18 +8,92 @@ public sealed record NatureBoundaryEventV111(
     int[] OrderedCandidates, int? BoundedCount, int SupportCount,
     string SupportFingerprint, string ProbabilityStatus = "UNVERIFIED",
     string? ReferenceLawId = null,
-    string[]? CandidateCardIds = null);
+    string[]? CandidateCardIds = null)
+{
+    private int[]? _orderedCandidates = Clone(OrderedCandidates);
+    private string[]? _candidateCardIds = Clone(CandidateCardIds);
+
+    public int[] OrderedCandidates
+    {
+        get => Clone(_orderedCandidates)!;
+        init => _orderedCandidates = Clone(value);
+    }
+
+    public string[]? CandidateCardIds
+    {
+        get => Clone(_candidateCardIds);
+        init => _candidateCardIds = Clone(value);
+    }
+
+    public NatureBoundaryEventV111 Fork() => this with
+    {
+        OrderedCandidates = _orderedCandidates!,
+        CandidateCardIds = _candidateCardIds
+    };
+
+    private static int[]? Clone(int[]? values) => values is null
+        ? null
+        : (int[])values.Clone();
+
+    private static string[]? Clone(string[]? values) => values is null
+        ? null
+        : (string[])values.Clone();
+}
 
 public sealed record NatureReplayChoiceV111(
     string EventId, string SiteId, string StreamId, string OwnerId,
     int Ordinal, string OperationKind, string SourceVersion,
     int[] OrderedCandidates, int? BoundedCount, int SelectedIndex,
-    string ProbabilityStatus = "UNVERIFIED");
+    string ProbabilityStatus = "UNVERIFIED")
+{
+    private int[]? _orderedCandidates = Clone(OrderedCandidates);
+
+    public int[] OrderedCandidates
+    {
+        get => Clone(_orderedCandidates)!;
+        init => _orderedCandidates = Clone(value);
+    }
+
+    public NatureReplayChoiceV111 Fork() => this with
+    {
+        OrderedCandidates = _orderedCandidates!
+    };
+
+    private static int[]? Clone(int[]? values) => values is null
+        ? null
+        : (int[])values.Clone();
+}
 
 public sealed record NatureBoundaryViewV111(
     string SchemaId, string Kind, string Mode, bool Complete,
     string Fingerprint, NatureBoundaryEventV111? Pending,
-    NatureReplayChoiceV111[] Transcript);
+    NatureReplayChoiceV111[] Transcript)
+{
+    private NatureBoundaryEventV111? _pending = Pending?.Fork();
+    private NatureReplayChoiceV111[]? _transcript = Clone(Transcript);
+
+    public NatureBoundaryEventV111? Pending
+    {
+        get => _pending?.Fork();
+        init => _pending = value?.Fork();
+    }
+
+    public NatureReplayChoiceV111[] Transcript
+    {
+        get => Clone(_transcript)!;
+        init => _transcript = Clone(value);
+    }
+
+    public NatureBoundaryViewV111 Fork() => this with
+    {
+        Pending = _pending,
+        Transcript = _transcript!
+    };
+
+    private static NatureReplayChoiceV111[]? Clone(
+        NatureReplayChoiceV111[]? values) => values?.Select(choice =>
+            choice?.Fork()!).ToArray();
+}
 
 /// <summary>Deterministic event IDs are derived from the ordered mechanics
 /// request and prior controlled outcomes, never from handle allocation.</summary>

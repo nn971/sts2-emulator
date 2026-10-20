@@ -119,10 +119,12 @@ public sealed class ControlledIntentsV111Tests
             Assert.Equal(intents.Fingerprint, restored.Fingerprint);
 
             var forged = intents.Fork();
-            forged.PriorHpTranscript![0] = forged.PriorHpTranscript[0] with
+            var priorHpTranscript = forged.PriorHpTranscript!;
+            priorHpTranscript[0] = priorHpTranscript[0] with
             {
-                SelectedIndex = forged.PriorHpTranscript[0].Request.SupportCount
+                SelectedIndex = priorHpTranscript[0].Request.SupportCount
             };
+            forged = forged with { PriorHpTranscript = priorHpTranscript };
             Assert.Throws<ArgumentException>(() =>
                 ControlledIntentsV111.Restore(JsonSerializer.Serialize(forged)));
         }
@@ -165,18 +167,26 @@ public sealed class ControlledIntentsV111Tests
             pending.Fingerprint, 0);
         Assert.True(first.Complete);
         var changed = first.Fork();
-        changed.Combat.Enemies[3] = changed.Combat.Enemies[3] with
+        var changedCombat = changed.Combat;
+        var changedEnemies = changedCombat.Enemies;
+        changedEnemies[3] = changedEnemies[3] with
         {
             PlannedMoveIndex = 9999
+        };
+        changed = changed with
+        {
+            Combat = changedCombat with { Enemies = changedEnemies }
         };
         Assert.Throws<InvalidDataException>(() =>
             ControlledIntentsV111.Restore(JsonSerializer.Serialize(changed)));
 
         var forged = first.Fork();
-        forged.Transcript[0] = forged.Transcript[0] with
+        var transcript = forged.Transcript;
+        transcript[0] = transcript[0] with
         {
-            SelectedIndex = forged.Transcript[0].Request.SupportCount
+            SelectedIndex = transcript[0].Request.SupportCount
         };
+        forged = forged with { Transcript = transcript };
         Assert.Throws<ArgumentException>(() =>
             ControlledIntentsV111.Restore(JsonSerializer.Serialize(forged)));
     }

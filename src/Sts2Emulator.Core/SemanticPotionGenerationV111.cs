@@ -7,28 +7,41 @@ public sealed record SemanticPotionGenerationEventV111(
     string[] CandidatePotionIds, string SupportFingerprint,
     string ProbabilityStatus = "UNVERIFIED") : ISemanticChanceEventV111
 {
+    private string[]? _candidatePotionIds = CloneOptional(CandidatePotionIds);
+
+    public string[] CandidatePotionIds
+    {
+        get => CloneOptional(_candidatePotionIds)!;
+        init => _candidatePotionIds = CloneOptional(value);
+    }
+
     public SemanticPotionGenerationEventV111 Fork() => this with
     {
-        CandidatePotionIds = (string[])CandidatePotionIds.Clone()
+        CandidatePotionIds = _candidatePotionIds!
     };
 
     public void Validate()
     {
+        var candidatePotionIds = _candidatePotionIds;
         if (SchemaId != SemanticPotionGenerationChoiceV111.SchemaId ||
             string.IsNullOrWhiteSpace(EventId) ||
             SiteId != SemanticPotionGenerationChoiceV111.SiteId ||
             StreamId != "prototype.combat" ||
             string.IsNullOrWhiteSpace(OwnerId) || Ordinal < 0 ||
             OperationKind != "choose_potion_model" ||
-            CandidatePotionIds is not { Length: > 0 } ||
-            CandidatePotionIds.Any(string.IsNullOrWhiteSpace) ||
-            CandidatePotionIds.Distinct(StringComparer.Ordinal).Count() !=
-                CandidatePotionIds.Length ||
-            SupportFingerprint != CanonicalJson.Sha256(CandidatePotionIds) ||
+            candidatePotionIds is not { Length: > 0 } ||
+            candidatePotionIds.Any(string.IsNullOrWhiteSpace) ||
+            candidatePotionIds.Distinct(StringComparer.Ordinal).Count() !=
+                candidatePotionIds.Length ||
+            SupportFingerprint != CanonicalJson.Sha256(candidatePotionIds) ||
             ProbabilityStatus != "UNVERIFIED")
             throw new InvalidDataException(
                 "Invalid semantic potion-generation event.");
     }
+
+    private static string[]? CloneOptional(string[]? values) => values is null
+        ? null
+        : (string[])values.Clone();
 }
 
 public sealed record SemanticPotionGenerationDecisionV111(

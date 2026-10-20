@@ -3,7 +3,37 @@ using System.Text.Json;
 namespace Sts2Emulator.Core;
 
 public sealed record NativePaelOfferAuditV111(
-    RunState State, RandomIndexDecisionV111[] Choices, string ProviderMode);
+    RunState State, RandomIndexDecisionV111[] Choices, string ProviderMode)
+{
+    private RunState? _state = State.Fork();
+    private RandomIndexDecisionV111[]? _choices = CloneDecisions(Choices);
+
+    public RunState State
+    {
+        get => (_state ?? throw new InvalidDataException(
+            "Pael offer audit has no run state.")).Fork();
+        init => _state = value.Fork();
+    }
+
+    public RandomIndexDecisionV111[] Choices
+    {
+        get => CloneDecisions(_choices)!;
+        init => _choices = CloneDecisions(value);
+    }
+
+    public NativePaelOfferAuditV111 Fork() => this with
+    {
+        State = _state ?? throw new InvalidDataException(
+            "Pael offer audit has no run state."),
+        Choices = _choices!
+    };
+
+    private static RandomIndexDecisionV111[]? CloneDecisions(
+        RandomIndexDecisionV111[]? values) => values?.Select(decision =>
+            decision is null ? null! :
+                PrototypeControlledEventChoiceContinuationV111
+                    .CloneDecision(decision)).ToArray();
+}
 
 /// <summary>Source-backed Pael reward mechanics and the three native offer pools.</summary>
 public static class NativePaelRewardsV111
@@ -23,10 +53,13 @@ public static class NativePaelRewardsV111
     public const string EyeId = "proto.native.ancient.paels_eye";
     public const string LegionId = "proto.native.ancient.paels_legion";
     public const string LegionPetId = "proto.pet.paels_legion";
-    public static readonly string[] LegionSkins = ["eyes", "horns", "spikes", "wings"];
+    private static readonly string[] LegionSkinValues =
+        ["eyes", "horns", "spikes", "wings"];
+    public static string[] LegionSkins =>
+        (string[])LegionSkinValues.Clone();
     public const string RelaxId = "proto.native.ancient.relax";
 
-    public static PrototypeCardDefinition[] Cards { get; } =
+    private static readonly PrototypeCardDefinition[] CardDefinitions =
     [
         new(RelaxId, "Relax", 3, PrototypeCardTarget.None,
         [
@@ -39,7 +72,11 @@ public static class NativePaelRewardsV111
             Type: PrototypeCardType.Skill, RewardEligible: false, CanBeGeneratedInCombat: false)
     ];
 
-    public static PrototypeRelicDefinition[] Relics { get; } =
+    public static PrototypeCardDefinition[] Cards => CardDefinitions
+        .Select(PrototypeDefinitionCopiesV111.CloneCardDefinition)
+        .ToArray();
+
+    private static readonly PrototypeRelicDefinition[] RelicDefinitions =
     [
         new(HornId, "Pael's Horn", RunTriggers:
         [
@@ -201,11 +238,19 @@ public static class NativePaelRewardsV111
         return player with { Relics = relics };
     }
 
-    public static PrototypeEventDefinition RewardDefinition { get; } =
-        new(PaelId, "Pael", Relics.Select(relic => new PrototypeEventChoiceDefinition(
+    public static PrototypeRelicDefinition[] Relics => RelicDefinitions
+        .Select(PrototypeDefinitionCopiesV111.CloneRelicDefinition)
+        .ToArray();
+
+    private static readonly PrototypeEventDefinition RewardDefinitionValue =
+        new(PaelId, "Pael", RelicDefinitions.Select(relic => new PrototypeEventChoiceDefinition(
             "take_" + relic.Id, relic.Name,
             [new(PrototypeRunEffectKind.GainRelic, RelicId: relic.Id)])).ToArray(),
             MinAct: 2, MaxAct: 2, Weight: 0);
+
+    public static PrototypeEventDefinition RewardDefinition =>
+        PrototypeDefinitionCopiesV111.CloneEventDefinition(
+            RewardDefinitionValue);
 
     public static string[][] OfferPools(PlayerState player)
     {

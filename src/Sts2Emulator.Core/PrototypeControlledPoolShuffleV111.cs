@@ -7,7 +7,7 @@ namespace Sts2Emulator.Core;
 /// </summary>
 public sealed partial class PrototypeGameEngine
 {
-    private static string[]? SourcePoolForShuffle(
+    internal static string[]? SourcePoolForShuffle(
         CombatState combat, PrototypeQueuedOperation op, long? sourceCardInstanceId)
     {
         if (op.Kind ==
@@ -230,6 +230,9 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidDataException("Saved pool shuffle is not source-reachable.");
         if (chosen < 0 || chosen > shuffle.NextSwapIndex)
             throw new ArgumentOutOfRangeException(nameof(chosen));
+        bool helloWorldAutomaticBeforeHandDraw =
+            IsHelloWorldAutomaticBeforeHandDrawPoolShuffle(
+                combat, pending, shuffle, continuation);
         var values = (string[])shuffle.CurrentCardIds.Clone();
         (values[shuffle.NextSwapIndex], values[chosen]) =
             (values[chosen], values[shuffle.NextSwapIndex]);
@@ -504,7 +507,15 @@ public sealed partial class PrototypeGameEngine
             Player = resolved.Player,
             World = world with { Combat = resolved.Combat }
         };
-        updated = ResumeAutomaticPipelineContinuation(updated);
+        if (helloWorldAutomaticBeforeHandDraw &&
+            updated.World?.Combat is
+                { PendingChoice: null,
+                  PendingKnowledgeDemonChoice: null,
+                  AutomaticPipelineContinuation:
+                    { ControlledSemanticBeforeHandDrawPending: true } })
+            updated = ResumeSemanticBeforeHandDrawActionChoice(updated);
+        else
+            updated = ResumeAutomaticPipelineContinuation(updated);
         return updated;
     }
 

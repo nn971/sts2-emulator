@@ -20,7 +20,25 @@ public sealed record SemanticIntentSupportV111(
     string OwnerId, SemanticIntentCandidateV111[] Candidates,
     int TotalRawWeight)
 {
+    private SemanticIntentCandidateV111[]? _candidates =
+        CloneOptional(Candidates);
+
+    public SemanticIntentCandidateV111[] Candidates
+    {
+        get => CloneOptional(_candidates)!;
+        init => _candidates = CloneOptional(value);
+    }
+
     public const string SchemaId = "sts2-v111-semantic-weighted-intent-v1";
+
+    public SemanticIntentSupportV111 Fork() => this with
+    {
+        Candidates = _candidates!
+    };
+
+    private static SemanticIntentCandidateV111[]? CloneOptional(
+        SemanticIntentCandidateV111[]? values) => values?.Select(candidate =>
+            candidate is null ? null! : candidate with { }).ToArray();
 }
 
 /// <summary>A Nature-facing weighted intent support event.</summary>
@@ -32,37 +50,42 @@ public sealed record SemanticIntentEventV111(
     string ProbabilityProvenance = "source-shaped-unverified",
     bool WeightsVerified = false) : ISemanticChanceEventV111
 {
+    private SemanticIntentSupportV111? _support = Support?.Fork();
+
+    public SemanticIntentSupportV111 Support
+    {
+        get => _support!.Fork();
+        init => _support = value?.Fork();
+    }
+
     public const string EventSchemaId = SemanticIntentChoiceV111.SchemaId;
     public string OperationKind => "weighted_choice";
 
     public SemanticIntentEventV111 Fork() => this with
     {
-        Support = Support with
-        {
-            Candidates = (SemanticIntentCandidateV111[])
-                Support.Candidates.Clone()
-        }
+        Support = _support!
     };
 
     public void Validate()
     {
+        var support = _support;
         if (SchemaId != EventSchemaId || string.IsNullOrWhiteSpace(EventId) ||
             string.IsNullOrWhiteSpace(BoundaryFingerprint) ||
             string.IsNullOrWhiteSpace(SupportFingerprint) ||
             string.IsNullOrWhiteSpace(SiteId) ||
             string.IsNullOrWhiteSpace(StreamId) ||
             string.IsNullOrWhiteSpace(OwnerId) || Ordinal < 0 ||
-            Support is null || Support.OwnerId != OwnerId ||
-            Support.Candidates is not { Length: > 0 } ||
-            Support.TotalRawWeight <= 0 ||
-            SupportFingerprint != CanonicalJson.Sha256(Support) ||
+            support is null || support.OwnerId != OwnerId ||
+            support.Candidates is not { Length: > 0 } ||
+            support.TotalRawWeight <= 0 ||
+            SupportFingerprint != CanonicalJson.Sha256(support) ||
             ProbabilityStatus != "UNVERIFIED" ||
             ProbabilityProvenance != "source-shaped-unverified" ||
             WeightsVerified)
             throw new InvalidDataException("Invalid semantic intent event.");
         var intentIds = new HashSet<string>(StringComparer.Ordinal);
         int ticketStart = 0;
-        foreach (var candidate in Support.Candidates)
+        foreach (var candidate in support.Candidates)
         {
             if (candidate is null ||
                 string.IsNullOrWhiteSpace(candidate.IntentId) ||
@@ -74,7 +97,7 @@ public sealed record SemanticIntentEventV111(
                     "Semantic intent candidates are malformed or unordered.");
             ticketStart = checked(ticketStart + candidate.RawWeight);
         }
-        if (ticketStart != Support.TotalRawWeight)
+        if (ticketStart != support.TotalRawWeight)
             throw new InvalidDataException(
                 "Semantic intent weights do not match their total.");
     }

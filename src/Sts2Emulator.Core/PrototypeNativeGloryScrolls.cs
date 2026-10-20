@@ -14,7 +14,11 @@ public static class PrototypeNativeGloryScrolls
     public const string NormalEncounterId =
         "proto.native.glory.encounter.scrolls_of_biting_normal";
 
-    public static PrototypePowerDefinition[] Powers { get; } =
+    public static PrototypePowerDefinition[] Powers => PowerDefinitions
+        .Select(PrototypeDefinitionCopiesV111.ClonePowerDefinition)
+        .ToArray();
+
+    private static readonly PrototypePowerDefinition[] PowerDefinitions =
     [
         // Native PaperCutsPower.AfterDamageGiven:
         // every unblocked powered attack HIT permanently reduces
@@ -23,7 +27,11 @@ public static class PrototypeNativeGloryScrolls
             PlayerMaxHpLossOnUnblockedAttackHitPerStack: 1)
     ];
 
-    public static PrototypeEnemyDefinition[] Enemies { get; } =
+    public static PrototypeEnemyDefinition[] Enemies => EnemyDefinitions
+        .Select(PrototypeDefinitionCopiesV111.CloneEnemyDefinition)
+        .ToArray();
+
+    private static readonly PrototypeEnemyDefinition[] EnemyDefinitions =
     [
         new(ScrollId, "Scroll of Biting", 37, 0,
         [
@@ -61,7 +69,12 @@ public static class PrototypeNativeGloryScrolls
         ]))
     ];
 
-    public static PrototypeEncounterDefinition[] Encounters { get; } =
+    public static PrototypeEncounterDefinition[] Encounters =>
+        EncounterDefinitions
+            .Select(PrototypeDefinitionCopiesV111.CloneEncounterDefinition)
+            .ToArray();
+
+    private static readonly PrototypeEncounterDefinition[] EncounterDefinitions =
     [
         // Source: one encounter-local Rng.NextInt(3), then all three
         // distinct opening move phases are assigned in cyclic order.

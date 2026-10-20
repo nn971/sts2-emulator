@@ -12,24 +12,66 @@ public sealed record SemanticCardShortlistEventV111(
     string ProbabilityStatus = "UNVERIFIED")
     : ISemanticChanceEventV111
 {
+    private long[]? _eligibleCardInstanceIds =
+        CloneOptional(EligibleCardInstanceIds);
+    private string[]? _eligibleCardModelIds =
+        CloneOptional(EligibleCardModelIds);
+    private long[]? _selectedCardInstanceIds =
+        CloneOptional(SelectedCardInstanceIds);
+    private long[]? _candidateCardInstanceIds =
+        CloneOptional(CandidateCardInstanceIds);
+    private string[]? _candidateCardModelIds =
+        CloneOptional(CandidateCardModelIds);
+
+    public long[] EligibleCardInstanceIds
+    {
+        get => CloneOptional(_eligibleCardInstanceIds)!;
+        init => _eligibleCardInstanceIds = CloneOptional(value);
+    }
+    public string[] EligibleCardModelIds
+    {
+        get => CloneOptional(_eligibleCardModelIds)!;
+        init => _eligibleCardModelIds = CloneOptional(value);
+    }
+    public long[] SelectedCardInstanceIds
+    {
+        get => CloneOptional(_selectedCardInstanceIds)!;
+        init => _selectedCardInstanceIds = CloneOptional(value);
+    }
+    public long[] CandidateCardInstanceIds
+    {
+        get => CloneOptional(_candidateCardInstanceIds)!;
+        init => _candidateCardInstanceIds = CloneOptional(value);
+    }
+    public string[] CandidateCardModelIds
+    {
+        get => CloneOptional(_candidateCardModelIds)!;
+        init => _candidateCardModelIds = CloneOptional(value);
+    }
+
     public const string EventSchemaId = SemanticCardShortlistChoiceV111.SchemaId;
 
     public SemanticCardShortlistEventV111 Fork() => this with
     {
-        EligibleCardInstanceIds = (long[])EligibleCardInstanceIds.Clone(),
-        EligibleCardModelIds = (string[])EligibleCardModelIds.Clone(),
-        SelectedCardInstanceIds = (long[])SelectedCardInstanceIds.Clone(),
-        CandidateCardInstanceIds = (long[])CandidateCardInstanceIds.Clone(),
-        CandidateCardModelIds = (string[])CandidateCardModelIds.Clone()
+        EligibleCardInstanceIds = _eligibleCardInstanceIds!,
+        EligibleCardModelIds = _eligibleCardModelIds!,
+        SelectedCardInstanceIds = _selectedCardInstanceIds!,
+        CandidateCardInstanceIds = _candidateCardInstanceIds!,
+        CandidateCardModelIds = _candidateCardModelIds!
     };
 
     public void Validate()
     {
-        var remaining = EligibleCardInstanceIds is null ||
-                SelectedCardInstanceIds is null
+        var eligibleCardInstanceIds = _eligibleCardInstanceIds;
+        var eligibleCardModelIds = _eligibleCardModelIds;
+        var selectedCardInstanceIds = _selectedCardInstanceIds;
+        var candidateCardInstanceIds = _candidateCardInstanceIds;
+        var candidateCardModelIds = _candidateCardModelIds;
+        var remaining = eligibleCardInstanceIds is null ||
+                selectedCardInstanceIds is null
             ? null
-            : EligibleCardInstanceIds
-                .Where(id => !SelectedCardInstanceIds.Contains(id)).ToArray();
+            : eligibleCardInstanceIds
+                .Where(id => !selectedCardInstanceIds.Contains(id)).ToArray();
         var expectedOperationKind =
             SemanticCardShortlistChoiceV111.OperationKindForSite(SiteId);
         if (SchemaId != EventSchemaId ||
@@ -40,39 +82,39 @@ public sealed record SemanticCardShortlistEventV111(
             StreamId != SemanticCardShortlistChoiceV111.StreamId ||
             string.IsNullOrWhiteSpace(OwnerId) || Ordinal < 0 ||
             OperationKind != expectedOperationKind ||
-            EligibleCardInstanceIds is not { Length: > 1 } ||
-            EligibleCardModelIds is null ||
-            EligibleCardModelIds.Length != EligibleCardInstanceIds.Length ||
-            EligibleCardModelIds.Any(string.IsNullOrWhiteSpace) ||
-            SelectedCardInstanceIds is null ||
-            CandidateCardInstanceIds is not { Length: > 0 } ||
-            CandidateCardModelIds is null ||
-            CandidateCardModelIds.Length != CandidateCardInstanceIds.Length ||
-            CandidateCardModelIds.Any(string.IsNullOrWhiteSpace) ||
-            EligibleCardInstanceIds.Any(id => id <= 0) ||
-            EligibleCardInstanceIds.Distinct().Count() !=
-                EligibleCardInstanceIds.Length ||
-            SelectedCardInstanceIds.Distinct().Count() !=
-                SelectedCardInstanceIds.Length ||
-            SelectedCardInstanceIds.Any(id =>
-                !EligibleCardInstanceIds.Contains(id)) ||
-            !CandidateCardInstanceIds.SequenceEqual(remaining!) ||
-            CandidateCardInstanceIds.Any(id => id <= 0) ||
-            CandidateCardInstanceIds.Distinct().Count() !=
-                CandidateCardInstanceIds.Length ||
+            eligibleCardInstanceIds is not { Length: > 1 } ||
+            eligibleCardModelIds is null ||
+            eligibleCardModelIds.Length != eligibleCardInstanceIds.Length ||
+            eligibleCardModelIds.Any(string.IsNullOrWhiteSpace) ||
+            selectedCardInstanceIds is null ||
+            candidateCardInstanceIds is not { Length: > 0 } ||
+            candidateCardModelIds is null ||
+            candidateCardModelIds.Length != candidateCardInstanceIds.Length ||
+            candidateCardModelIds.Any(string.IsNullOrWhiteSpace) ||
+            eligibleCardInstanceIds.Any(id => id <= 0) ||
+            eligibleCardInstanceIds.Distinct().Count() !=
+                eligibleCardInstanceIds.Length ||
+            selectedCardInstanceIds.Distinct().Count() !=
+                selectedCardInstanceIds.Length ||
+            selectedCardInstanceIds.Any(id =>
+                !eligibleCardInstanceIds.Contains(id)) ||
+            !candidateCardInstanceIds.SequenceEqual(remaining!) ||
+            candidateCardInstanceIds.Any(id => id <= 0) ||
+            candidateCardInstanceIds.Distinct().Count() !=
+                candidateCardInstanceIds.Length ||
             RequiredCount < 1 ||
-            RequiredCount >= EligibleCardInstanceIds.Length ||
+            RequiredCount >= eligibleCardInstanceIds.Length ||
             (SiteId == "combat.draw_pile.random_replay_card.select" &&
              RequiredCount != 1) ||
-            SelectedCardInstanceIds.Length >= RequiredCount ||
+            selectedCardInstanceIds.Length >= RequiredCount ||
             ProbabilityStatus != "UNVERIFIED" ||
             SupportFingerprint != CanonicalJson.Sha256(new
             {
-                eligibleCardInstanceIds = EligibleCardInstanceIds,
-                eligibleCardModelIds = EligibleCardModelIds,
-                selectedCardInstanceIds = SelectedCardInstanceIds,
-                candidateCardInstanceIds = CandidateCardInstanceIds,
-                candidateCardModelIds = CandidateCardModelIds,
+                eligibleCardInstanceIds,
+                eligibleCardModelIds,
+                selectedCardInstanceIds,
+                candidateCardInstanceIds,
+                candidateCardModelIds,
                 requiredCount = RequiredCount
             }) ||
             EventId != CanonicalJson.Sha256(new
@@ -84,6 +126,14 @@ public sealed record SemanticCardShortlistEventV111(
             throw new InvalidDataException(
                 "Invalid semantic card-shortlist event.");
     }
+
+    private static long[]? CloneOptional(long[]? values) => values is null
+        ? null
+        : (long[])values.Clone();
+
+    private static string[]? CloneOptional(string[]? values) => values is null
+        ? null
+        : (string[])values.Clone();
 }
 
 public sealed record SemanticCardShortlistDecisionV111(

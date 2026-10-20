@@ -17,7 +17,11 @@ public static class PrototypeNativeGloryElites
 
     // Burn.OnTurnEndInHand deals two unpowered damage. A status instance
     // is retained in combat piles until normal exhaust/discard handling.
-    public static PrototypeCardDefinition[] Cards { get; } =
+    public static PrototypeCardDefinition[] Cards => CardDefinitions
+        .Select(PrototypeDefinitionCopiesV111.CloneCardDefinition)
+        .ToArray();
+
+    private static readonly PrototypeCardDefinition[] CardDefinitions =
     [
         new(BurnId, "Burn", -1, PrototypeCardTarget.None, [],
             Rarity: PrototypeCardRarity.Status,
@@ -27,7 +31,11 @@ public static class PrototypeNativeGloryElites
             MaxUpgradeLevel: 0)
     ];
 
-    public static PrototypeEnemyDefinition[] Enemies { get; } =
+    public static PrototypeEnemyDefinition[] Enemies => EnemyDefinitions
+        .Select(PrototypeDefinitionCopiesV111.CloneEnemyDefinition)
+        .ToArray();
+
+    private static readonly PrototypeEnemyDefinition[] EnemyDefinitions =
     [
         // Soul Nexus: Soul Burn is the forced opener. Every subsequent
         // decision chooses uniformly among all three moves except the
@@ -102,7 +110,12 @@ public static class PrototypeNativeGloryElites
         HpAscensionDeltas: [new(8, 20)])
     ];
 
-    public static PrototypeEncounterDefinition[] Encounters { get; } =
+    public static PrototypeEncounterDefinition[] Encounters =>
+        EncounterDefinitions
+            .Select(PrototypeDefinitionCopiesV111.CloneEncounterDefinition)
+            .ToArray();
+
+    private static readonly PrototypeEncounterDefinition[] EncounterDefinitions =
     [
         new(SoulNexusEncounterId, PrototypeRoomType.Elite,
             [SoulNexusId], MinAct: 3, MaxAct: 3, Weight: 0),

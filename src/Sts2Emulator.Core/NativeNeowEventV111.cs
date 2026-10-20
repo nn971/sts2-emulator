@@ -4,7 +4,48 @@ public sealed record NativeNeowOfferAuditV111(
     string[] OfferedChoiceIds,
     RngStreamState NativeEventRng,
     RandomIndexDecisionV111[] Choices,
-    string ProviderMode);
+    string ProviderMode)
+{
+    private string[]? _offeredChoiceIds = Clone(OfferedChoiceIds);
+    private RandomIndexDecisionV111[]? _choices = CloneDecisions(Choices);
+    private RngStreamState? _nativeEventRng = NativeEventRng.Fork();
+
+    public string[] OfferedChoiceIds
+    {
+        get => Clone(_offeredChoiceIds)!;
+        init => _offeredChoiceIds = Clone(value);
+    }
+
+    public RngStreamState NativeEventRng
+    {
+        get => (_nativeEventRng ?? throw new InvalidDataException(
+            "Neow offer audit has no Native event RNG state.")).Fork();
+        init => _nativeEventRng = value.Fork();
+    }
+
+    public RandomIndexDecisionV111[] Choices
+    {
+        get => CloneDecisions(_choices)!;
+        init => _choices = CloneDecisions(value);
+    }
+
+    public NativeNeowOfferAuditV111 Fork() => this with
+    {
+        OfferedChoiceIds = _offeredChoiceIds!,
+        NativeEventRng = _nativeEventRng!,
+        Choices = _choices!
+    };
+
+    private static string[]? Clone(string[]? values) => values is null
+        ? null
+        : (string[])values.Clone();
+
+    private static RandomIndexDecisionV111[]? CloneDecisions(
+        RandomIndexDecisionV111[]? values) => values?.Select(decision =>
+            decision is null ? null! :
+                PrototypeControlledEventChoiceContinuationV111
+                    .CloneDecision(decision)).ToArray();
+}
 
 /// <summary>
 /// Neow's existing single-player offer construction routed through the

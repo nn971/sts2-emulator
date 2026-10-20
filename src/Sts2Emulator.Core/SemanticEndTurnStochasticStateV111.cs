@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Sts2Emulator.Core;
 
 /// <summary>
@@ -5,47 +7,114 @@ namespace Sts2Emulator.Core;
 /// automatic-turn continuation. SemanticEndTurnV111 keeps its established
 /// flattened fields.
 /// </summary>
-public sealed record SemanticEndTurnStochasticStateV111(
-    RandomIndexDecisionV111[] IntentTranscript,
-    RandomIndexDecisionV111[] EnemyActionTranscript,
-    SemanticTargetDecisionV111[] TargetTranscript,
-    SemanticEndTurnBoundaryChoiceV111[] BoundaryTranscript,
-    SemanticCombatDrawStochasticStateV111? HandDraw = null)
+public sealed record SemanticEndTurnStochasticStateV111
 {
+    private RandomIndexDecisionV111[]? _intentTranscript;
+    private RandomIndexDecisionV111[]? _enemyActionTranscript;
+    private SemanticTargetDecisionV111[]? _targetTranscript;
+    private SemanticEndTurnBoundaryChoiceV111[]? _boundaryTranscript;
+    private SemanticEndTurnNestedChoiceV111[]? _nestedChoiceTranscript = [];
+
+    [JsonConstructor]
+    public SemanticEndTurnStochasticStateV111(
+        RandomIndexDecisionV111[] IntentTranscript,
+        RandomIndexDecisionV111[] EnemyActionTranscript,
+        SemanticTargetDecisionV111[] TargetTranscript,
+        SemanticEndTurnBoundaryChoiceV111[] BoundaryTranscript,
+        SemanticCombatDrawStochasticStateV111? HandDraw = null)
+    {
+        _intentTranscript = Clone(IntentTranscript,
+            PrototypeControlledEventChoiceContinuationV111.CloneDecision);
+        _enemyActionTranscript = Clone(EnemyActionTranscript,
+            PrototypeControlledEventChoiceContinuationV111.CloneDecision);
+        _targetTranscript = Clone(TargetTranscript,
+            decision => decision.Fork());
+        _boundaryTranscript = Clone(BoundaryTranscript,
+            decision => decision);
+        this.HandDraw = HandDraw;
+    }
+
+    public RandomIndexDecisionV111[] IntentTranscript
+    {
+        get => Clone(_intentTranscript,
+            PrototypeControlledEventChoiceContinuationV111.CloneDecision)!;
+        init => _intentTranscript = Clone(value,
+            PrototypeControlledEventChoiceContinuationV111.CloneDecision);
+    }
+    public RandomIndexDecisionV111[] EnemyActionTranscript
+    {
+        get => Clone(_enemyActionTranscript,
+            PrototypeControlledEventChoiceContinuationV111.CloneDecision)!;
+        init => _enemyActionTranscript = Clone(value,
+            PrototypeControlledEventChoiceContinuationV111.CloneDecision);
+    }
+    public SemanticTargetDecisionV111[] TargetTranscript
+    {
+        get => Clone(_targetTranscript, decision => decision.Fork())!;
+        init => _targetTranscript = Clone(value, decision => decision.Fork());
+    }
+    public SemanticEndTurnBoundaryChoiceV111[] BoundaryTranscript
+    {
+        get => Clone(_boundaryTranscript, decision => decision)!;
+        init => _boundaryTranscript = Clone(value, decision => decision);
+    }
+    public SemanticCombatDrawStochasticStateV111? HandDraw { get; init; }
+
     /// <summary>
     /// Typed outcomes nested under the automatic pipeline. Kept as an init
     /// property so older snapshots deserialize with an empty transcript.
     /// </summary>
     public SemanticEndTurnNestedChoiceV111[] NestedChoiceTranscript
-        { get; init; } = [];
+    {
+        get => Clone(_nestedChoiceTranscript, choice => choice.Fork())!;
+        init => _nestedChoiceTranscript = Clone(value,
+            choice => choice.Fork());
+    }
 
     public SemanticEndTurnStochasticStateV111 Fork() => this with
     {
-        IntentTranscript = IntentTranscript.Select(
-            PrototypeControlledEventChoiceContinuationV111.CloneDecision)
-            .ToArray(),
-        EnemyActionTranscript = EnemyActionTranscript.Select(
-            PrototypeControlledEventChoiceContinuationV111.CloneDecision)
-            .ToArray(),
-        TargetTranscript = TargetTranscript.Select(decision =>
-            decision.Fork()).ToArray(),
-        BoundaryTranscript =
-            (SemanticEndTurnBoundaryChoiceV111[])BoundaryTranscript.Clone(),
-        NestedChoiceTranscript = NestedChoiceTranscript.Select(
-            choice => choice.Fork()).ToArray(),
+        IntentTranscript = Clone(_intentTranscript,
+            PrototypeControlledEventChoiceContinuationV111.CloneDecision)!,
+        EnemyActionTranscript = Clone(_enemyActionTranscript,
+            PrototypeControlledEventChoiceContinuationV111.CloneDecision)!,
+        TargetTranscript = Clone(_targetTranscript,
+            decision => decision.Fork())!,
+        BoundaryTranscript = Clone(_boundaryTranscript,
+            decision => decision)!,
+        NestedChoiceTranscript = Clone(_nestedChoiceTranscript,
+            choice => choice.Fork())!,
         HandDraw = HandDraw?.Fork()
     };
 
+    public void Deconstruct(
+        out RandomIndexDecisionV111[] IntentTranscript,
+        out RandomIndexDecisionV111[] EnemyActionTranscript,
+        out SemanticTargetDecisionV111[] TargetTranscript,
+        out SemanticEndTurnBoundaryChoiceV111[] BoundaryTranscript,
+        out SemanticCombatDrawStochasticStateV111? HandDraw)
+    {
+        IntentTranscript = this.IntentTranscript;
+        EnemyActionTranscript = this.EnemyActionTranscript;
+        TargetTranscript = this.TargetTranscript;
+        BoundaryTranscript = this.BoundaryTranscript;
+        HandDraw = this.HandDraw;
+    }
+
     public void Validate()
     {
-        if (IntentTranscript is null || EnemyActionTranscript is null ||
-            TargetTranscript is null || BoundaryTranscript is null ||
-            NestedChoiceTranscript is null)
+        var intentTranscript = this.IntentTranscript;
+        var enemyActionTranscript = this.EnemyActionTranscript;
+        var targetTranscript = this.TargetTranscript;
+        var boundaryTranscript = this.BoundaryTranscript;
+        var nestedChoiceTranscript = this.NestedChoiceTranscript;
+        if (intentTranscript is null || enemyActionTranscript is null ||
+            targetTranscript is null || boundaryTranscript is null ||
+            nestedChoiceTranscript is null)
             throw new InvalidDataException(
                 "Invalid semantic end-turn stages.");
         HandDraw?.Validate();
 
-        foreach (var decision in IntentTranscript)
+        foreach (var decision in intentTranscript)
         {
             ValidateDecision(decision, "Turn-intent");
             if (decision.ProviderMode != "controlled-v111" ||
@@ -54,7 +123,7 @@ public sealed record SemanticEndTurnStochasticStateV111(
                 throw new InvalidDataException(
                     "Invalid semantic turn-intent Nature decision.");
         }
-        foreach (var decision in EnemyActionTranscript)
+        foreach (var decision in enemyActionTranscript)
         {
             ValidateDecision(decision, "Enemy-action");
             if (decision.ProviderMode != "controlled-v111" ||
@@ -65,16 +134,16 @@ public sealed record SemanticEndTurnStochasticStateV111(
                 throw new InvalidDataException(
                     "Invalid semantic enemy-action Nature decision.");
         }
-        for (int i = 0; i < TargetTranscript.Length; i++)
+        for (int i = 0; i < targetTranscript.Length; i++)
         {
-            var decision = TargetTranscript[i] ?? throw new InvalidDataException(
+            var decision = targetTranscript[i] ?? throw new InvalidDataException(
                 "Semantic end-turn target transcript contains a null decision.");
             decision.Validate();
             if (decision.Event.Ordinal != i)
                 throw new InvalidDataException(
                     "Semantic end-turn target transcript ordinal is invalid.");
         }
-        foreach (var choice in NestedChoiceTranscript)
+        foreach (var choice in nestedChoiceTranscript)
             (choice ?? throw new InvalidDataException(
                 "Semantic end-turn nested-choice transcript contains a null entry."))
                 .Validate();
@@ -91,7 +160,7 @@ public sealed record SemanticEndTurnStochasticStateV111(
         int transcriptNestedDrawHookChoices = 0;
         int transcriptKnowledgeDemonChoices = 0;
         int transcriptNestedChoices = 0;
-        foreach (var boundary in BoundaryTranscript)
+        foreach (var boundary in boundaryTranscript)
         {
             (boundary ?? throw new InvalidDataException(
                 "Semantic end-turn boundary transcript contains a null entry."))
@@ -99,24 +168,24 @@ public sealed record SemanticEndTurnStochasticStateV111(
             if (boundary.Kind == "enemy_action")
             {
                 if (boundary.TranscriptIndex != transcriptEnemyActions++ ||
-                    transcriptEnemyActions > EnemyActionTranscript.Length)
+                    transcriptEnemyActions > enemyActionTranscript.Length)
                     throw new InvalidDataException(
                         "Semantic end-turn enemy-action boundary order is invalid.");
             }
             else if (boundary.Kind == "random_target")
             {
                 if (boundary.TranscriptIndex != transcriptTargets++ ||
-                    transcriptTargets > TargetTranscript.Length)
+                    transcriptTargets > targetTranscript.Length)
                     throw new InvalidDataException(
                         "Semantic end-turn target boundary order is invalid.");
             }
             else if (boundary.Kind == "semantic_draw")
             {
                 if (boundary.TranscriptIndex != transcriptNestedDraws++ ||
-                    transcriptNestedDraws > NestedChoiceTranscript.Count(choice =>
+                    transcriptNestedDraws > nestedChoiceTranscript.Count(choice =>
                         choice.Kind == "semantic_draw") ||
-                    transcriptNestedChoices >= NestedChoiceTranscript.Length ||
-                    NestedChoiceTranscript[transcriptNestedChoices++].Kind !=
+                    transcriptNestedChoices >= nestedChoiceTranscript.Length ||
+                    nestedChoiceTranscript[transcriptNestedChoices++].Kind !=
                         "semantic_draw")
                     throw new InvalidDataException(
                         "Semantic end-turn nested draw boundary order is invalid.");
@@ -124,10 +193,10 @@ public sealed record SemanticEndTurnStochasticStateV111(
             else if (boundary.Kind == "semantic_cost")
             {
                 if (boundary.TranscriptIndex != transcriptNestedCosts++ ||
-                    transcriptNestedCosts > NestedChoiceTranscript.Count(choice =>
+                    transcriptNestedCosts > nestedChoiceTranscript.Count(choice =>
                         choice.Kind == "semantic_cost") ||
-                    transcriptNestedChoices >= NestedChoiceTranscript.Length ||
-                    NestedChoiceTranscript[transcriptNestedChoices++].Kind !=
+                    transcriptNestedChoices >= nestedChoiceTranscript.Length ||
+                    nestedChoiceTranscript[transcriptNestedChoices++].Kind !=
                         "semantic_cost")
                     throw new InvalidDataException(
                         "Semantic end-turn nested cost boundary order is invalid.");
@@ -135,10 +204,10 @@ public sealed record SemanticEndTurnStochasticStateV111(
             else if (boundary.Kind == "semantic_draw_insertion")
             {
                 if (boundary.TranscriptIndex != transcriptNestedInsertions++ ||
-                    transcriptNestedInsertions > NestedChoiceTranscript.Count(
+                    transcriptNestedInsertions > nestedChoiceTranscript.Count(
                         choice => choice.Kind == "semantic_draw_insertion") ||
-                    transcriptNestedChoices >= NestedChoiceTranscript.Length ||
-                    NestedChoiceTranscript[transcriptNestedChoices++].Kind !=
+                    transcriptNestedChoices >= nestedChoiceTranscript.Length ||
+                    nestedChoiceTranscript[transcriptNestedChoices++].Kind !=
                         "semantic_draw_insertion")
                     throw new InvalidDataException(
                         "Semantic end-turn nested draw-insertion boundary order is invalid.");
@@ -148,10 +217,10 @@ public sealed record SemanticEndTurnStochasticStateV111(
                 if (boundary.TranscriptIndex !=
                         transcriptNestedGeneratedCards++ ||
                     transcriptNestedGeneratedCards >
-                        NestedChoiceTranscript.Count(choice =>
+                        nestedChoiceTranscript.Count(choice =>
                             choice.Kind == "semantic_generated_card") ||
-                    transcriptNestedChoices >= NestedChoiceTranscript.Length ||
-                    NestedChoiceTranscript[transcriptNestedChoices++].Kind !=
+                    transcriptNestedChoices >= nestedChoiceTranscript.Length ||
+                    nestedChoiceTranscript[transcriptNestedChoices++].Kind !=
                         "semantic_generated_card")
                     throw new InvalidDataException(
                         "Semantic end-turn nested generated-card boundary order is invalid.");
@@ -161,10 +230,10 @@ public sealed record SemanticEndTurnStochasticStateV111(
                 if (boundary.TranscriptIndex !=
                         transcriptNestedPotionGenerations++ ||
                     transcriptNestedPotionGenerations >
-                        NestedChoiceTranscript.Count(choice =>
+                        nestedChoiceTranscript.Count(choice =>
                             choice.Kind == "semantic_potion_generation") ||
-                    transcriptNestedChoices >= NestedChoiceTranscript.Length ||
-                    NestedChoiceTranscript[transcriptNestedChoices++].Kind !=
+                    transcriptNestedChoices >= nestedChoiceTranscript.Length ||
+                    nestedChoiceTranscript[transcriptNestedChoices++].Kind !=
                         "semantic_potion_generation")
                     throw new InvalidDataException(
                         "Semantic end-turn nested potion-generation boundary order is invalid.");
@@ -174,10 +243,10 @@ public sealed record SemanticEndTurnStochasticStateV111(
                 if (boundary.TranscriptIndex !=
                         transcriptNestedCardTransforms++ ||
                     transcriptNestedCardTransforms >
-                        NestedChoiceTranscript.Count(choice =>
+                        nestedChoiceTranscript.Count(choice =>
                             choice.Kind == "semantic_card_transform") ||
-                    transcriptNestedChoices >= NestedChoiceTranscript.Length ||
-                    NestedChoiceTranscript[transcriptNestedChoices++].Kind !=
+                    transcriptNestedChoices >= nestedChoiceTranscript.Length ||
+                    nestedChoiceTranscript[transcriptNestedChoices++].Kind !=
                         "semantic_card_transform")
                     throw new InvalidDataException(
                         "Semantic end-turn nested card-transform boundary order is invalid.");
@@ -187,10 +256,10 @@ public sealed record SemanticEndTurnStochasticStateV111(
                 if (boundary.TranscriptIndex !=
                         transcriptNestedCardShortlists++ ||
                     transcriptNestedCardShortlists >
-                        NestedChoiceTranscript.Count(choice =>
+                        nestedChoiceTranscript.Count(choice =>
                             choice.Kind == "semantic_card_shortlist") ||
-                    transcriptNestedChoices >= NestedChoiceTranscript.Length ||
-                    NestedChoiceTranscript[transcriptNestedChoices++].Kind !=
+                    transcriptNestedChoices >= nestedChoiceTranscript.Length ||
+                    nestedChoiceTranscript[transcriptNestedChoices++].Kind !=
                         "semantic_card_shortlist")
                     throw new InvalidDataException(
                         "Semantic end-turn nested card-shortlist boundary order is invalid.");
@@ -200,10 +269,10 @@ public sealed record SemanticEndTurnStochasticStateV111(
                 if (boundary.TranscriptIndex !=
                         transcriptNestedPoolShuffles++ ||
                     transcriptNestedPoolShuffles >
-                        NestedChoiceTranscript.Count(choice =>
+                        nestedChoiceTranscript.Count(choice =>
                             choice.Kind == "semantic_pool_shuffle") ||
-                    transcriptNestedChoices >= NestedChoiceTranscript.Length ||
-                    NestedChoiceTranscript[transcriptNestedChoices++].Kind !=
+                    transcriptNestedChoices >= nestedChoiceTranscript.Length ||
+                    nestedChoiceTranscript[transcriptNestedChoices++].Kind !=
                         "semantic_pool_shuffle")
                     throw new InvalidDataException(
                         "Semantic end-turn nested pool-shuffle boundary order is invalid.");
@@ -213,10 +282,10 @@ public sealed record SemanticEndTurnStochasticStateV111(
                 if (boundary.TranscriptIndex !=
                         transcriptNestedHandCostSelections++ ||
                     transcriptNestedHandCostSelections >
-                        NestedChoiceTranscript.Count(choice =>
+                        nestedChoiceTranscript.Count(choice =>
                             choice.Kind == "semantic_hand_cost_selection") ||
-                    transcriptNestedChoices >= NestedChoiceTranscript.Length ||
-                    NestedChoiceTranscript[transcriptNestedChoices++].Kind !=
+                    transcriptNestedChoices >= nestedChoiceTranscript.Length ||
+                    nestedChoiceTranscript[transcriptNestedChoices++].Kind !=
                         "semantic_hand_cost_selection")
                     throw new InvalidDataException(
                         "Semantic end-turn nested hand-cost-selection boundary order is invalid.");
@@ -226,10 +295,10 @@ public sealed record SemanticEndTurnStochasticStateV111(
                 if (boundary.TranscriptIndex !=
                         transcriptNestedCardSelections++ ||
                     transcriptNestedCardSelections >
-                        NestedChoiceTranscript.Count(choice =>
+                        nestedChoiceTranscript.Count(choice =>
                             choice.Kind == "semantic_card_selection") ||
-                    transcriptNestedChoices >= NestedChoiceTranscript.Length ||
-                    NestedChoiceTranscript[transcriptNestedChoices++].Kind !=
+                    transcriptNestedChoices >= nestedChoiceTranscript.Length ||
+                    nestedChoiceTranscript[transcriptNestedChoices++].Kind !=
                         "semantic_card_selection")
                     throw new InvalidDataException(
                         "Semantic end-turn nested card-selection boundary order is invalid.");
@@ -239,10 +308,10 @@ public sealed record SemanticEndTurnStochasticStateV111(
                 if (boundary.TranscriptIndex !=
                         transcriptNestedDrawHookChoices++ ||
                     transcriptNestedDrawHookChoices >
-                        NestedChoiceTranscript.Count(choice =>
+                        nestedChoiceTranscript.Count(choice =>
                             choice.Kind == "semantic_draw_hook_choice") ||
-                    transcriptNestedChoices >= NestedChoiceTranscript.Length ||
-                    NestedChoiceTranscript[transcriptNestedChoices++].Kind !=
+                    transcriptNestedChoices >= nestedChoiceTranscript.Length ||
+                    nestedChoiceTranscript[transcriptNestedChoices++].Kind !=
                         "semantic_draw_hook_choice")
                     throw new InvalidDataException(
                         "Semantic end-turn draw-hook boundary order is invalid.");
@@ -252,52 +321,56 @@ public sealed record SemanticEndTurnStochasticStateV111(
                 if (boundary.TranscriptIndex !=
                         transcriptKnowledgeDemonChoices++ ||
                     transcriptKnowledgeDemonChoices >
-                        NestedChoiceTranscript.Count(choice =>
+                        nestedChoiceTranscript.Count(choice =>
                             choice.Kind == "knowledge_demon_choice") ||
-                    transcriptNestedChoices >= NestedChoiceTranscript.Length ||
-                    NestedChoiceTranscript[transcriptNestedChoices++].Kind !=
+                    transcriptNestedChoices >= nestedChoiceTranscript.Length ||
+                    nestedChoiceTranscript[transcriptNestedChoices++].Kind !=
                         "knowledge_demon_choice")
                     throw new InvalidDataException(
                         "Semantic end-turn Knowledge Demon boundary order is invalid.");
             }
         }
-        if ((BoundaryTranscript.Length > 0 &&
-             (transcriptEnemyActions != EnemyActionTranscript.Length ||
-              transcriptTargets != TargetTranscript.Length ||
-              transcriptNestedDraws != NestedChoiceTranscript.Count(choice =>
+        if ((boundaryTranscript.Length > 0 &&
+             (transcriptEnemyActions != enemyActionTranscript.Length ||
+              transcriptTargets != targetTranscript.Length ||
+              transcriptNestedDraws != nestedChoiceTranscript.Count(choice =>
                   choice.Kind == "semantic_draw") ||
-              transcriptNestedCosts != NestedChoiceTranscript.Count(choice =>
+              transcriptNestedCosts != nestedChoiceTranscript.Count(choice =>
                   choice.Kind == "semantic_cost") ||
-              transcriptNestedInsertions != NestedChoiceTranscript.Count(choice =>
+              transcriptNestedInsertions != nestedChoiceTranscript.Count(choice =>
                   choice.Kind == "semantic_draw_insertion") ||
-              transcriptNestedGeneratedCards != NestedChoiceTranscript.Count(choice =>
+              transcriptNestedGeneratedCards != nestedChoiceTranscript.Count(choice =>
                   choice.Kind == "semantic_generated_card") ||
-              transcriptNestedPotionGenerations != NestedChoiceTranscript.Count(choice =>
+              transcriptNestedPotionGenerations != nestedChoiceTranscript.Count(choice =>
                   choice.Kind == "semantic_potion_generation") ||
-              transcriptNestedCardTransforms != NestedChoiceTranscript.Count(choice =>
+              transcriptNestedCardTransforms != nestedChoiceTranscript.Count(choice =>
                   choice.Kind == "semantic_card_transform") ||
-              transcriptNestedCardShortlists != NestedChoiceTranscript.Count(choice =>
+              transcriptNestedCardShortlists != nestedChoiceTranscript.Count(choice =>
                   choice.Kind == "semantic_card_shortlist") ||
-              transcriptNestedPoolShuffles != NestedChoiceTranscript.Count(choice =>
+              transcriptNestedPoolShuffles != nestedChoiceTranscript.Count(choice =>
                   choice.Kind == "semantic_pool_shuffle") ||
-              transcriptNestedHandCostSelections != NestedChoiceTranscript.Count(choice =>
+              transcriptNestedHandCostSelections != nestedChoiceTranscript.Count(choice =>
                   choice.Kind == "semantic_hand_cost_selection") ||
-              transcriptNestedCardSelections != NestedChoiceTranscript.Count(choice =>
+              transcriptNestedCardSelections != nestedChoiceTranscript.Count(choice =>
                   choice.Kind == "semantic_card_selection") ||
               transcriptNestedDrawHookChoices !=
-                  NestedChoiceTranscript.Count(choice =>
+                  nestedChoiceTranscript.Count(choice =>
                       choice.Kind == "semantic_draw_hook_choice") ||
               transcriptKnowledgeDemonChoices !=
-                  NestedChoiceTranscript.Count(choice =>
+                  nestedChoiceTranscript.Count(choice =>
                       choice.Kind == "knowledge_demon_choice") ||
-              transcriptNestedChoices != NestedChoiceTranscript.Length)) ||
-            (BoundaryTranscript.Length == 0 &&
-             (TargetTranscript.Length != 0 ||
-              NestedChoiceTranscript.Length != 0)))
+              transcriptNestedChoices != nestedChoiceTranscript.Length)) ||
+            (boundaryTranscript.Length == 0 &&
+             (targetTranscript.Length != 0 ||
+              nestedChoiceTranscript.Length != 0)))
             throw new InvalidDataException(
                 "Semantic end-turn boundary transcript is incomplete.");
 
     }
+
+    private static T[]? Clone<T>(T[]? transcript, Func<T, T> clone)
+        where T : class => transcript?.Select(decision =>
+            decision is null ? null! : clone(decision)).ToArray();
 
     private static void ValidateDecision(
         RandomIndexDecisionV111 decision, string kind)

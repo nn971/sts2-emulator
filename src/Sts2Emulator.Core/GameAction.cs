@@ -8,6 +8,14 @@ namespace Sts2Emulator.Core;
 /// </summary>
 public sealed record GameAction(string Kind, JsonElement Payload)
 {
+    private JsonElement _payload = Payload.Clone();
+
+    public JsonElement Payload
+    {
+        get => _payload;
+        init => _payload = value.Clone();
+    }
+
     public static GameAction Empty(string kind)
     {
         using var document = JsonDocument.Parse("{}");

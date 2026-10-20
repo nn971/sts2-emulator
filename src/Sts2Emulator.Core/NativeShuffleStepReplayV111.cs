@@ -138,14 +138,18 @@ public sealed class NativeShuffleStepReplayV111 : IDisposable
         if (scope is null)
         {
             var output = (long[])engineEligibleInput.Clone();
-            PrototypeRng.Shuffle(engineRng, "combat", output);
+            _ = LegacyFisherYatesV111.ShuffleInPlace(
+                output, engineRng, "combat",
+                SemanticPoolShuffleChoiceV111.RecycleSiteId, "player:0");
             return output;
         }
         if (scope._eligibilityProbe)
         {
             scope._probedEligibleInputs.Add((long[])engineEligibleInput.Clone());
             var unchanged = (long[])engineEligibleInput.Clone();
-            PrototypeRng.Shuffle(engineRng, "combat", unchanged);
+            _ = LegacyFisherYatesV111.ShuffleInPlace(
+                unchanged, engineRng, "combat",
+                SemanticPoolShuffleChoiceV111.RecycleSiteId, "player:0");
             return unchanged;
         }
         if (scope._pendingPostHook)

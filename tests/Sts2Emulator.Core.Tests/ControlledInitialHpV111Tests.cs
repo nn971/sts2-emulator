@@ -94,7 +94,13 @@ public sealed class ControlledInitialHpV111Tests
         Assert.Equal(before, current.Fingerprint);
 
         var tampered = current.Fork();
-        tampered.Pending!.OrderedCandidates[0] += 1000;
+        var pending = tampered.Pending!;
+        var candidates = pending.OrderedCandidates;
+        candidates[0] += 1000;
+        tampered = tampered with
+        {
+            Pending = pending with { OrderedCandidates = candidates }
+        };
         Assert.Throws<InvalidOperationException>(() =>
             ControlledInitialHpV111.Resolve(tampered, tampered.Fingerprint, 0));
         Assert.Equal(before, current.Fingerprint);
@@ -106,19 +112,29 @@ public sealed class ControlledInitialHpV111Tests
         var (bare, formation, streams) = Setup("owner-uniqueness-regression");
         Assert.True(formation.MonsterContexts.Length >= 2);
         var duplicate = formation.Fork();
-        duplicate.MonsterContexts[1] = duplicate.MonsterContexts[1] with
+        var duplicateContexts = duplicate.MonsterContexts;
+        duplicateContexts[1] = duplicateContexts[1] with
         {
-            CombatId = duplicate.MonsterContexts[0].CombatId
+            CombatId = duplicateContexts[0].CombatId
         };
+        duplicate = duplicate with { MonsterContexts = duplicateContexts };
         Assert.Throws<InvalidDataException>(() =>
             ControlledInitialHpV111.Begin(bare, duplicate, streams));
         var valid = ControlledInitialHpV111.Begin(bare, formation, streams);
         var altered = valid.Fork();
-        altered.Formation.MonsterContexts[1] =
-            altered.Formation.MonsterContexts[1] with
+        var alteredFormation = altered.Formation;
+        var alteredContexts = alteredFormation.MonsterContexts;
+        alteredContexts[1] = alteredContexts[1] with
             {
-                CombatId = altered.Formation.MonsterContexts[0].CombatId
+                CombatId = alteredContexts[0].CombatId
             };
+        altered = altered with
+        {
+            Formation = alteredFormation with
+            {
+                MonsterContexts = alteredContexts
+            }
+        };
         Assert.Throws<InvalidDataException>(() =>
             ControlledInitialHpV111.Restore(JsonSerializer.Serialize(altered)));
         Assert.NotNull(valid.Pending);

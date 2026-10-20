@@ -21,12 +21,15 @@ public static class PrototypeNativeHiveEvents
     // The ten native Hive.AllEvents entries, in source order. The opted-in
     // regional pool excludes Colorful Philosophers until its foreign card
     // pools and acquisition mechanics are implemented.
-    public static string[] NativeEventNames { get; } =
+    private static readonly string[] NativeEventNameValues =
     [
         "Amalgamator", "Bugslayer", "ColorfulPhilosophers",
         "ColossalFlower", "FieldOfManSizedHoles", "InfestedAutomaton",
         "LostWisp", "SpiritGrafter", "TheLanternKey", "ZenWeaver"
     ];
+
+    public static string[] NativeEventNames =>
+        (string[])NativeEventNameValues.Clone();
 
     // The isolated two-node Glory quest fixture is never a production
     // map-generation profile, and is validated independently.
@@ -147,7 +150,7 @@ public static class PrototypeNativeHiveEvents
             && (PrototypeContent.Card(card.CardId).Tags?.Contains(
                 tag, StringComparer.Ordinal) ?? false));
 
-    public static PrototypeCardDefinition[] Cards { get; } =
+    private static readonly PrototypeCardDefinition[] CardDefinitions =
     [
         // Quest card from The Lantern Key event combat; the Glory
         // continuation is explicitly deferred with native routing.
@@ -188,7 +191,11 @@ public static class PrototypeNativeHiveEvents
             RewardEligible: false, Type: PrototypeCardType.Skill)
     ];
 
-    public static PrototypeRelicDefinition[] Relics { get; } =
+    public static PrototypeCardDefinition[] Cards => CardDefinitions
+        .Select(PrototypeDefinitionCopiesV111.CloneCardDefinition)
+        .ToArray();
+
+    private static readonly PrototypeRelicDefinition[] RelicDefinitions =
     [
         // Event-only. Its native after-auto-preplay replay hook lives
         // in PrototypeNativeGloryHistoryCourse, with a per-turn Attack
@@ -209,11 +216,15 @@ public static class PrototypeNativeHiveEvents
             ])
     ];
 
+    public static PrototypeRelicDefinition[] Relics => RelicDefinitions
+        .Select(PrototypeDefinitionCopiesV111.CloneRelicDefinition)
+        .ToArray();
+
     // The Mysterious Knight inherits Flail Knight's move program.
     // Source MysteriousKnight.AfterAddedToRoom adds Strength 6 and
     // Plating 6; Plating grants opening and enemy-end Block, then
     // decays by one at later enemy-side starts in solo combat.
-    public static PrototypePowerDefinition[] Powers { get; } =
+    private static readonly PrototypePowerDefinition[] PowerDefinitions =
     [
         new(PlatingPowerId, "Plating", 0, [],
             EnemyStartingBlockPerStack: 1,
@@ -221,10 +232,15 @@ public static class PrototypeNativeHiveEvents
             EnemyStacksDecayAtSideTurnStartAfterFirst: 1)
     ];
 
-    public static PrototypeEnemyDefinition[] Enemies { get; } =
+    public static PrototypePowerDefinition[] Powers => PowerDefinitions
+        .Select(PrototypeDefinitionCopiesV111.ClonePowerDefinition)
+        .ToArray();
+
+    private static readonly PrototypeEnemyDefinition[] EnemyDefinitions =
     [
-        PrototypeNativeGloryBosses.Enemies.Single(enemy =>
-            enemy.Id == PrototypeNativeGloryBosses.FlailKnightId) with
+        PrototypeDefinitionCopiesV111.CloneEnemyDefinition(
+            PrototypeNativeGloryBosses.Enemies.Single(enemy =>
+                enemy.Id == PrototypeNativeGloryBosses.FlailKnightId)) with
         {
             Id = MysteriousKnightId,
             Name = "Mysterious Knight",
@@ -236,13 +252,22 @@ public static class PrototypeNativeHiveEvents
         }
     ];
 
-    public static PrototypeEncounterDefinition[] Encounters { get; } =
+    public static PrototypeEnemyDefinition[] Enemies => EnemyDefinitions
+        .Select(PrototypeDefinitionCopiesV111.CloneEnemyDefinition)
+        .ToArray();
+
+    private static readonly PrototypeEncounterDefinition[] EncounterDefinitions =
     [
         new(MysteriousKnightEncounterId, PrototypeRoomType.Combat,
             [MysteriousKnightId], MinAct: 2, MaxAct: 2, Weight: 0)
     ];
 
-    public static PrototypeEventDefinition[] Definitions { get; } =
+    public static PrototypeEncounterDefinition[] Encounters =>
+        EncounterDefinitions
+            .Select(PrototypeDefinitionCopiesV111.CloneEncounterDefinition)
+            .ToArray();
+
+    private static readonly PrototypeEventDefinition[] EventDefinitions =
     [
         // IsAllowed=false in native source: only the Lantern Key's
         // ModifyNextEvent hook can install this event in Glory.
@@ -351,6 +376,10 @@ public static class PrototypeNativeHiveEvents
                     PrototypePersistentDeckChoiceKind.Remove, 2))
         ], MinAct: 2, MaxAct: 2, Weight: 0)
     ];
+
+    public static PrototypeEventDefinition[] Definitions => EventDefinitions
+        .Select(PrototypeDefinitionCopiesV111.CloneEventDefinition)
+        .ToArray();
 }
 
 public sealed partial class PrototypeGameEngine

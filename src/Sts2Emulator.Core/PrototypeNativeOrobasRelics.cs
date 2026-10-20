@@ -26,7 +26,7 @@ public static class PrototypeNativeOrobasRelics
     public const string NeutralizeId = "proto.silent.neutralize";
     public const string SuppressId = "proto.silent.suppress";
 
-    public static PrototypeRelicDefinition[] Relics { get; } =
+    private static readonly PrototypeRelicDefinition[] RelicDefinitions =
     [
         new(AlchemicalCofferId, "Alchemical Coffer", ExtraPotionSlots: 4),
         new(DriftwoodId, "Driftwood"),
@@ -56,7 +56,11 @@ public static class PrototypeNativeOrobasRelics
             HandDrawBonusThroughTurn: 3)
     ];
 
-    public static PrototypeCardDefinition[] Cards { get; } =
+    public static PrototypeRelicDefinition[] Relics => RelicDefinitions
+        .Select(PrototypeDefinitionCopiesV111.CloneRelicDefinition)
+        .ToArray();
+
+    private static readonly PrototypeCardDefinition[] CardDefinitions =
     [
         // Luminesce is an Ancient-token skill, created only by Radiant Pearl.
         // It retains until played, then grants two Energy and exhausts;
@@ -69,6 +73,10 @@ public static class PrototypeNativeOrobasRelics
             Retain: true, RewardEligible: false,
             Type: PrototypeCardType.Skill, MaxUpgradeLevel: 1)
     ];
+
+    public static PrototypeCardDefinition[] Cards => CardDefinitions
+        .Select(PrototypeDefinitionCopiesV111.CloneCardDefinition)
+        .ToArray();
 
     public static bool IsTouchOfOrobasEligible(PlayerState player) =>
         player.ActiveRelics.Any(relic =>

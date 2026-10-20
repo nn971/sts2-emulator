@@ -111,12 +111,53 @@ public sealed class SemanticCombatDrawV111Tests
         var original = SemanticCombatDrawEngineV111.Begin(
             SourceCombat("semantic-real-corrupt"), 2);
         var tampered = original.Fork();
-        tampered.Run.World!.Combat!.SemanticDeck!.Pending!
-            .CandidateCardInstanceIds[0] = -999;
+        var tamperedRun = tampered.Run;
+        var tamperedWorld = tamperedRun.World!;
+        var tamperedCombat = tamperedWorld.Combat!;
+        var deck = tamperedCombat.SemanticDeck!;
+        var pending = deck.Pending!;
+        var candidateIds = pending.CandidateCardInstanceIds;
+        candidateIds[0] = -999;
+        tampered = tampered with
+        {
+            Run = tamperedRun with
+            {
+                World = tamperedWorld with
+                {
+                    Combat = tamperedCombat with
+                    {
+                        SemanticDeck = deck with
+                        {
+                            Pending = pending with
+                            {
+                                CandidateCardInstanceIds = candidateIds
+                            }
+                        }
+                    }
+                }
+            }
+        };
         Assert.Throws<InvalidDataException>(() =>
             SemanticCombatDrawEngineV111.Restore(JsonSerializer.Serialize(tampered)));
         var changed = original.Fork();
-        changed.Run.World!.Combat!.DrawPile[0] = -100;
+        var changedRun = changed.Run;
+        var changedWorld = changedRun.World!;
+        var changedCombat = changedWorld.Combat!;
+        var changedDrawPile = changedCombat.DrawPile;
+        changedDrawPile[0] = -100;
+        changed = changed with
+        {
+            Run = changedRun with
+            {
+                World = changedWorld with
+                {
+                    Combat = changedCombat with
+                    {
+                        DrawPile = changedDrawPile
+                    }
+                }
+            }
+        };
         Assert.Throws<InvalidDataException>(() =>
             SemanticCombatDrawEngineV111.Validate(changed));
         var child = SemanticCombatDrawEngineV111.Resolve(

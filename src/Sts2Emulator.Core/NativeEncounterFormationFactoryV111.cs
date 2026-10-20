@@ -36,19 +36,72 @@ public sealed record NativeEncounterFormationV111(
     int? MapColumn = null,
     int? MapRow = null)
 {
+    private PrototypeEncounterEnemySpec[] _enemies = Clone(Enemies);
+    private NativeEncounterMonsterContextV111[] _monsterContexts =
+        CloneContexts(MonsterContexts);
+
+    public PrototypeEncounterEnemySpec[] Enemies
+    {
+        get => Clone(_enemies);
+        init => _enemies = Clone(value);
+    }
+
+    public NativeEncounterMonsterContextV111[] MonsterContexts
+    {
+        get => CloneContexts(_monsterContexts);
+        init => _monsterContexts = CloneContexts(value);
+    }
+
     public NativeEncounterFormationV111 Fork() => this with
     {
-        Enemies = Enemies.Select(enemy => enemy with { }).ToArray(),
+        Enemies = _enemies,
         EncounterRng = EncounterRng.Fork(),
-        MonsterContexts = MonsterContexts.Select(context => context.Fork()).ToArray()
+        MonsterContexts = _monsterContexts
     };
+
+    private static PrototypeEncounterEnemySpec[] Clone(
+        PrototypeEncounterEnemySpec[] values)
+    {
+        ArgumentNullException.ThrowIfNull(values);
+        return (PrototypeEncounterEnemySpec[])values.Clone();
+    }
+
+    private static NativeEncounterMonsterContextV111[] CloneContexts(
+        NativeEncounterMonsterContextV111[] values)
+    {
+        ArgumentNullException.ThrowIfNull(values);
+        return values.Select(context => context.Fork()).ToArray();
+    }
 }
 
 /// <summary>Formation output plus the typed native RNG requests made while
 /// selecting its source-defined enemy indices.</summary>
 public sealed record NativeEncounterFormationAuditV111(
     NativeEncounterFormationV111 Formation,
-    RandomIndexDecisionV111[] Choices, string ProviderMode);
+    RandomIndexDecisionV111[] Choices, string ProviderMode)
+{
+    private RandomIndexDecisionV111[] _choices = CloneChoices(Choices);
+
+    public RandomIndexDecisionV111[] Choices
+    {
+        get => CloneChoices(_choices);
+        init => _choices = CloneChoices(value);
+    }
+
+    private static RandomIndexDecisionV111[] CloneChoices(
+        RandomIndexDecisionV111[] choices)
+    {
+        ArgumentNullException.ThrowIfNull(choices);
+        return choices.Select(choice => choice with
+        {
+            Request = choice.Request with
+            {
+                OrderedCandidates =
+                    (int[])choice.Request.OrderedCandidates.Clone()
+            }
+        }).ToArray();
+    }
+}
 
 /// <summary>
 /// Opt-in native RNG boundary for source-shaped encounter formations.

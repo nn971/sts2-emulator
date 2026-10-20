@@ -131,8 +131,18 @@ public sealed class ControlledGeneratedCardV111Tests
     {
         var pending = BeginGeneration("nature-gen-tamper");
         var forged = pending.Fork();
-        forged.Run.World!.Combat!.PendingChoice!.ControlledGeneration!
-            .CandidateCardIds[0] = "proto.card.not_a_real_card";
+        var forgedChoice = forged.Run.World!.Combat!.PendingChoice!;
+        var generation = forgedChoice.ControlledGeneration!;
+        var candidateIds = generation.CandidateCardIds;
+        candidateIds[0] = "proto.card.not_a_real_card";
+        forged = ControlledPlayableTestSupport.WithPendingChoice(
+            forged, forgedChoice with
+            {
+                ControlledGeneration = generation with
+                {
+                    CandidateCardIds = candidateIds
+                }
+            });
         Assert.Throws<InvalidDataException>(() =>
             ControlledPlayableCombatEngineV111.VerifyStage(forged));
         Assert.Equal("generated_card",

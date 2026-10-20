@@ -6,6 +6,14 @@ namespace Sts2Emulator.Core;
 public sealed record StochasticChanceLawQueryCoverageV111(
     string SchemaId, string QueryOperation, string[] SiteIds)
 {
+    private string[]? _siteIds = Clone(SiteIds);
+
+    public string[] SiteIds
+    {
+        get => Clone(_siteIds)!;
+        init => _siteIds = Clone(value);
+    }
+
     public const string CurrentSchemaId =
         "sts2-v111-stochastic-chance-law-query-coverage-v1";
 
@@ -18,6 +26,9 @@ public sealed record StochasticChanceLawQueryCoverageV111(
             throw new InvalidDataException(
                 "Invalid stochastic Chance Law query coverage.");
     }
+
+    private static string[]? Clone(string[]? values) =>
+        values is null ? null : (string[])values.Clone();
 }
 
 /// <summary>
@@ -34,60 +45,173 @@ public sealed record StochasticSessionCoverageV111(
     string ReferenceNatureEventChoiceSessionSchemaId,
     string[] ReferenceNatureEventChoiceSiteIds)
 {
+    private string[]? _semanticReferenceNatureSiteIds =
+        Clone(SemanticReferenceNatureSiteIds);
+    private string[]? _referenceNatureRunActionSiteIds =
+        Clone(ReferenceNatureRunActionSiteIds);
+    private string[]? _referenceNatureEventChoiceSiteIds =
+        Clone(ReferenceNatureEventChoiceSiteIds);
+    private string[]? _referenceNatureNeowOfferSiteIds = [];
+    private string[]? _referenceNatureTrashHeapSiteIds = [];
+    private string[]? _referenceNatureTabletOfTruthSiteIds = [];
+    private string[]? _referenceNatureTrialSiteIds = [];
+    private string[]? _referenceNatureNativeEventShuffleSiteIds = [];
+    private string[]? _referenceNatureNativeEventGoldSiteIds = [];
+    private string[]? _referenceNatureNativeEventRelicSiteIds = [];
+    private string[]? _referenceNatureNativeShovelSiteIds = [];
+    private string[]? _referenceNatureEndlessConveyorSiteIds = [];
+    private string[]? _referenceNatureGloryReflectionsSiteIds = [];
+    private string[]? _referenceNatureInfestedAutomatonSiteIds = [];
+    private string[]? _referenceNaturePunchOffRewardSiteIds = [];
+    private string[]? _referenceNaturePunchOffFightSiteIds = [];
+    private string[]? _referenceNatureAncientOfferSiteIds = [];
+    private string[]? _referenceNatureMerchantSiteIds = [];
+    private string[]? _referenceNatureTreasureSiteIds = [];
+    private string[]? _referenceNatureCombatRewardSiteIds = [];
+    private string[]? _referenceNatureMapGenerationSiteIds = [];
+
+    public string[] SemanticReferenceNatureSiteIds
+    {
+        get => Clone(_semanticReferenceNatureSiteIds)!;
+        init => _semanticReferenceNatureSiteIds = Clone(value);
+    }
+    public string[] ReferenceNatureRunActionSiteIds
+    {
+        get => Clone(_referenceNatureRunActionSiteIds)!;
+        init => _referenceNatureRunActionSiteIds = Clone(value);
+    }
+    public string[] ReferenceNatureEventChoiceSiteIds
+    {
+        get => Clone(_referenceNatureEventChoiceSiteIds)!;
+        init => _referenceNatureEventChoiceSiteIds = Clone(value);
+    }
+
     public string ReferenceNatureAncientOfferSessionSchemaId { get; init; } =
         ReferenceNatureAncientOfferSessionV111.CurrentSchemaId;
     public string ReferenceNatureNeowOfferSessionSchemaId { get; init; } =
         ReferenceNatureNeowOfferSessionV111.CurrentSchemaId;
-    public string[] ReferenceNatureNeowOfferSiteIds { get; init; } = [];
+    public string[] ReferenceNatureNeowOfferSiteIds
+    {
+        get => Clone(_referenceNatureNeowOfferSiteIds)!;
+        init => _referenceNatureNeowOfferSiteIds = Clone(value);
+    }
     public string ReferenceNatureTrashHeapSessionSchemaId { get; init; } =
         ReferenceNatureTrashHeapSessionV111.CurrentSchemaId;
-    public string[] ReferenceNatureTrashHeapSiteIds { get; init; } = [];
+    public string[] ReferenceNatureTrashHeapSiteIds
+    {
+        get => Clone(_referenceNatureTrashHeapSiteIds)!;
+        init => _referenceNatureTrashHeapSiteIds = Clone(value);
+    }
     public string ReferenceNatureTabletOfTruthSessionSchemaId { get; init; } =
         ReferenceNatureTabletOfTruthSessionV111.CurrentSchemaId;
-    public string[] ReferenceNatureTabletOfTruthSiteIds { get; init; } = [];
+    public string[] ReferenceNatureTabletOfTruthSiteIds
+    {
+        get => Clone(_referenceNatureTabletOfTruthSiteIds)!;
+        init => _referenceNatureTabletOfTruthSiteIds = Clone(value);
+    }
     public string ReferenceNatureTrialSessionSchemaId { get; init; } =
         ReferenceNatureTrialSessionV111.CurrentSchemaId;
-    public string[] ReferenceNatureTrialSiteIds { get; init; } = [];
+    public string[] ReferenceNatureTrialSiteIds
+    {
+        get => Clone(_referenceNatureTrialSiteIds)!;
+        init => _referenceNatureTrialSiteIds = Clone(value);
+    }
     public string ReferenceNatureNativeEventShuffleSessionSchemaId { get; init; } =
         ReferenceNatureNativeEventShuffleSessionV111.CurrentSchemaId;
-    public string[] ReferenceNatureNativeEventShuffleSiteIds { get; init; } = [];
+    public string[] ReferenceNatureNativeEventShuffleSiteIds
+    {
+        get => Clone(_referenceNatureNativeEventShuffleSiteIds)!;
+        init => _referenceNatureNativeEventShuffleSiteIds = Clone(value);
+    }
     public string ReferenceNatureNativeEventGoldSessionSchemaId { get; init; } =
         ReferenceNatureNativeEventGoldSessionV111.CurrentSchemaId;
-    public string[] ReferenceNatureNativeEventGoldSiteIds { get; init; } = [];
+    public string[] ReferenceNatureNativeEventGoldSiteIds
+    {
+        get => Clone(_referenceNatureNativeEventGoldSiteIds)!;
+        init => _referenceNatureNativeEventGoldSiteIds = Clone(value);
+    }
     public string ReferenceNatureNativeEventRelicSessionSchemaId { get; init; } =
         ReferenceNatureNativeEventRelicSessionV111.CurrentSchemaId;
-    public string[] ReferenceNatureNativeEventRelicSiteIds { get; init; } = [];
+    public string[] ReferenceNatureNativeEventRelicSiteIds
+    {
+        get => Clone(_referenceNatureNativeEventRelicSiteIds)!;
+        init => _referenceNatureNativeEventRelicSiteIds = Clone(value);
+    }
     public string ReferenceNatureNativeShovelSessionSchemaId { get; init; } =
         ReferenceNatureNativeShovelSessionV111.CurrentSchemaId;
-    public string[] ReferenceNatureNativeShovelSiteIds { get; init; } = [];
+    public string[] ReferenceNatureNativeShovelSiteIds
+    {
+        get => Clone(_referenceNatureNativeShovelSiteIds)!;
+        init => _referenceNatureNativeShovelSiteIds = Clone(value);
+    }
     public string ReferenceNatureEndlessConveyorSessionSchemaId { get; init; } =
         ReferenceNatureEndlessConveyorSessionV111.CurrentSchemaId;
-    public string[] ReferenceNatureEndlessConveyorSiteIds { get; init; } = [];
+    public string[] ReferenceNatureEndlessConveyorSiteIds
+    {
+        get => Clone(_referenceNatureEndlessConveyorSiteIds)!;
+        init => _referenceNatureEndlessConveyorSiteIds = Clone(value);
+    }
     public string ReferenceNatureGloryReflectionsSessionSchemaId { get; init; } =
         ReferenceNatureGloryReflectionsSessionV111.CurrentSchemaId;
-    public string[] ReferenceNatureGloryReflectionsSiteIds { get; init; } = [];
+    public string[] ReferenceNatureGloryReflectionsSiteIds
+    {
+        get => Clone(_referenceNatureGloryReflectionsSiteIds)!;
+        init => _referenceNatureGloryReflectionsSiteIds = Clone(value);
+    }
     public string ReferenceNatureInfestedAutomatonSessionSchemaId { get; init; } =
         ReferenceNatureInfestedAutomatonSessionV111.CurrentSchemaId;
-    public string[] ReferenceNatureInfestedAutomatonSiteIds { get; init; } = [];
+    public string[] ReferenceNatureInfestedAutomatonSiteIds
+    {
+        get => Clone(_referenceNatureInfestedAutomatonSiteIds)!;
+        init => _referenceNatureInfestedAutomatonSiteIds = Clone(value);
+    }
     public string ReferenceNaturePunchOffRewardSessionSchemaId { get; init; } =
         ReferenceNaturePunchOffRewardSessionV111.CurrentSchemaId;
-    public string[] ReferenceNaturePunchOffRewardSiteIds { get; init; } = [];
+    public string[] ReferenceNaturePunchOffRewardSiteIds
+    {
+        get => Clone(_referenceNaturePunchOffRewardSiteIds)!;
+        init => _referenceNaturePunchOffRewardSiteIds = Clone(value);
+    }
     public string ReferenceNaturePunchOffFightSessionSchemaId { get; init; } =
         ReferenceNaturePunchOffFightSessionV111.CurrentSchemaId;
-    public string[] ReferenceNaturePunchOffFightSiteIds { get; init; } = [];
-    public string[] ReferenceNatureAncientOfferSiteIds { get; init; } = [];
+    public string[] ReferenceNaturePunchOffFightSiteIds
+    {
+        get => Clone(_referenceNaturePunchOffFightSiteIds)!;
+        init => _referenceNaturePunchOffFightSiteIds = Clone(value);
+    }
+    public string[] ReferenceNatureAncientOfferSiteIds
+    {
+        get => Clone(_referenceNatureAncientOfferSiteIds)!;
+        init => _referenceNatureAncientOfferSiteIds = Clone(value);
+    }
     public string ReferenceNatureMerchantSessionSchemaId { get; init; } =
         ReferenceNatureMerchantSessionV111.CurrentSchemaId;
-    public string[] ReferenceNatureMerchantSiteIds { get; init; } = [];
+    public string[] ReferenceNatureMerchantSiteIds
+    {
+        get => Clone(_referenceNatureMerchantSiteIds)!;
+        init => _referenceNatureMerchantSiteIds = Clone(value);
+    }
     public string ReferenceNatureTreasureSessionSchemaId { get; init; } =
         ReferenceNatureTreasureSessionV111.CurrentSchemaId;
-    public string[] ReferenceNatureTreasureSiteIds { get; init; } = [];
+    public string[] ReferenceNatureTreasureSiteIds
+    {
+        get => Clone(_referenceNatureTreasureSiteIds)!;
+        init => _referenceNatureTreasureSiteIds = Clone(value);
+    }
     public string ReferenceNatureCombatRewardSessionSchemaId { get; init; } =
         ReferenceNatureCombatRewardSessionV111.CurrentSchemaId;
-    public string[] ReferenceNatureCombatRewardSiteIds { get; init; } = [];
+    public string[] ReferenceNatureCombatRewardSiteIds
+    {
+        get => Clone(_referenceNatureCombatRewardSiteIds)!;
+        init => _referenceNatureCombatRewardSiteIds = Clone(value);
+    }
     public string ReferenceNatureMapGenerationSessionSchemaId { get; init; } =
         ReferenceNatureMapGenerationSessionV111.CurrentSchemaId;
-    public string[] ReferenceNatureMapGenerationSiteIds { get; init; } = [];
+    public string[] ReferenceNatureMapGenerationSiteIds
+    {
+        get => Clone(_referenceNatureMapGenerationSiteIds)!;
+        init => _referenceNatureMapGenerationSiteIds = Clone(value);
+    }
 
     public const string CurrentSchemaId =
         "sts2-v111-stochastic-session-coverage-v1";
@@ -202,6 +326,9 @@ public sealed record StochasticSessionCoverageV111(
             throw new InvalidDataException(
                 "Stochastic session coverage contains invalid site identifiers.");
     }
+
+    private static string[]? Clone(string[]? values) =>
+        values is null ? null : (string[])values.Clone();
 }
 
 /// <summary>Legacy caller-bound index query metadata shared by Chance Law and
@@ -353,12 +480,6 @@ public static class StochasticSiteRegistryV111
             return true;
         }
 
-        if (siteId == NativeCombatRngEntryV111.DiagnosticMonsterLocalSiteId)
-        {
-            operationKind = "bounded_integer";
-            return true;
-        }
-
         var allowsChooseIndex = SupportsEngineOwnedNativeIndexBoundaryForStream(
             siteId, streamId, "choose_index");
         var allowsBoundedInteger =
@@ -380,7 +501,8 @@ public static class StochasticSiteRegistryV111
         NativeBoundedIntegerSites.Contains(siteId, StringComparer.Ordinal) ||
         NativeEventContextBoundedIntegerSites.Contains(
             siteId, StringComparer.Ordinal) ||
-        NativeFisherYatesSites.Contains(siteId, StringComparer.Ordinal);
+        NativeFisherYatesSites.Contains(siteId, StringComparer.Ordinal) ||
+        LegacyFisherYatesSites.Contains(siteId, StringComparer.Ordinal);
 
     public static string[] ControlledDrawInsertionSiteIds =>
     [
@@ -829,6 +951,10 @@ public static class StochasticSiteRegistryV111
     [
         "reward.combat_gold.index_draw"
     ];
+    private static readonly string[] NativeDiagnosticRandomIndexSites =
+    [
+        NativeCombatRngEntryV111.DiagnosticMonsterLocalSiteId
+    ];
     private static readonly string[] NativeRangedFloatSites = [];
     private static readonly string[] NativeRangedDoubleSites = [];
     private static readonly string[] NativeGaussianDoubleSites = [];
@@ -875,11 +1001,23 @@ public static class StochasticSiteRegistryV111
         RewardBossRelicOfferShuffleSiteId
     ];
 
+    private static readonly string[] LegacyFisherYatesSites =
+        NativeFisherYatesSites.Concat(new[]
+        {
+            "combat.draw.recycle.shuffle_swap_index",
+            "event.reward.card_bundle.shuffle_swap_index",
+            "relic.sand_castle.acquisition_upgrade.shuffle_swap_index",
+            "run.random_pool_distinct.shuffle_swap_index",
+            "shop.potion_offer.shuffle_swap_index",
+            "shop.relic_offer.shuffle_swap_index"
+        }).Distinct(StringComparer.Ordinal).ToArray();
+
     private static readonly string[] NativeBoundedIndexOperationSites =
     [
         .. NativeBoundedIntegerSites,
         .. NativeEventContextBoundedIntegerSites,
         .. NativeFisherYatesSites,
+        .. NativeDiagnosticRandomIndexSites,
         NativeDarvEventV111.OfferVariantSiteId,
         PrototypeNativeOvergrowthMap.PathStartColumnSiteId,
         PrototypeNativeLaterActMap.PathStartSiteId,
@@ -1010,6 +1148,8 @@ public static class StochasticSiteRegistryV111
         (string[])NativeGaussianDoubleSites.Clone();
     public static string[] NativeBoundedIntegerSiteIds =>
         (string[])NativeBoundedIntegerSites.Clone();
+    public static string[] NativeDiagnosticRandomIndexSiteIds =>
+        (string[])NativeDiagnosticRandomIndexSites.Clone();
     public static string[] NativeMerchantPriceSiteIds =>
         (string[])NativeMerchantPriceSites.Clone();
     public static string[] AncientOfferSessionSiteIds =>
@@ -1044,6 +1184,8 @@ public static class StochasticSiteRegistryV111
         (string[])NativeEventContextShuffleSites.Clone();
     public static string[] NativeFisherYatesSiteIds =>
         (string[])NativeFisherYatesSites.Clone();
+    public static string[] LegacyFisherYatesSiteIds =>
+        (string[])LegacyFisherYatesSites.Clone();
     public static string[] EndlessConveyorSessionSiteIds =>
         (string[])EndlessConveyorSessionSites.Clone();
     public static string[] NatureChoiceSiteIds =>
@@ -1111,11 +1253,15 @@ public static class StochasticSiteRegistryV111
             or "map.later_act.hive_rest_count.gaussian_int.component"
             or "map.later_act.unknown_count.gaussian_int.component";
 
+    public static bool IsLegacyFisherYatesSite(string siteId) =>
+        LegacyFisherYatesSites.Contains(siteId, StringComparer.Ordinal);
+
     public static bool IsNativeRandomIndexSite(string siteId) =>
         (IsChanceLawQuerySite(siteId)
             || NatureChoiceSites.Contains(siteId, StringComparer.Ordinal)
             || NativeFisherYatesSites.Contains(siteId, StringComparer.Ordinal)
-            || siteId == "diagnostic.monster_local.index_sample")
+            || NativeDiagnosticRandomIndexSites.Contains(
+                siteId, StringComparer.Ordinal))
         && !IsNativeUnitFloatSite(siteId)
         && !IsNativeGaussianIntSite(siteId);
 

@@ -9,7 +9,12 @@ public static class PrototypeNativeSharedEvents
     public const string ThisOrThatNativeRngEventId = "THIS_OR_THAT";
     public const string ClumsyCardId = NativeGloryAncientsV111.ClumsyCardId;
 
-    public static PrototypeEventDefinition ThisOrThatDefinition { get; } =
+    public static PrototypeEventDefinition ThisOrThatDefinition =>
+        PrototypeDefinitionCopiesV111.CloneEventDefinition(
+            ThisOrThatDefinitionValue);
+
+    private static readonly PrototypeEventDefinition
+        ThisOrThatDefinitionValue =
         new(
             ThisOrThatId,
             "This or That",

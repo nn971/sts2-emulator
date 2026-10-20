@@ -25,7 +25,7 @@ public static class PrototypeNativeOvergrowthEvents
     // The default Neow positive/curse subsets from v0.111.0 Neow.cs.
     // This intentionally excludes conditionally-added special choices
     // and unlock-filtering; their exact logic is still pending.
-    public static string[] NeowPositiveRelicNames { get; } =
+    private static readonly string[] NeowPositiveRelicNameValues =
     [
         "ArcaneScroll", "BoomingConch", "FishingRod", "GoldenPearl",
         "Kaleidoscope", "LeadPaperweight", "LostCoffer", "MassiveScroll",
@@ -33,7 +33,7 @@ public static class PrototypeNativeOvergrowthEvents
         "ScrollBoxes", "WingedBoots"
     ];
 
-    public static string[] NeowCursedRelicNames { get; } =
+    private static readonly string[] NeowCursedRelicNameValues =
     [
         "CursedPearl", "DowsingRod", "HeftyTablet", "LargeCapsule",
         "LeafyPoultice", "NeowsBones", "NeowsSacrifice",
@@ -43,20 +43,29 @@ public static class PrototypeNativeOvergrowthEvents
     // Three paired selections are appended to the positive pool before
     // its two options are drawn. The Large Capsule curse suppresses the
     // Lava Rock / Small Capsule pair entirely in v0.111.0.
-    public static string[] NeowConditionalPositiveRelicNames { get; } =
+    private static readonly string[] NeowConditionalPositiveRelicNameValues =
     [
         "LavaRock", "SmallCapsule", "NutritiousOyster",
         "StoneHumidifier", "NeowsTalisman", "Pomander"
     ];
 
-    public static string[] NeowCoveredChoiceRelicNames { get; } =
-        NeowPositiveRelicNames
-            .Concat(NeowConditionalPositiveRelicNames)
-            .Concat(NeowCursedRelicNames)
+    public static string[] NeowPositiveRelicNames =>
+        (string[])NeowPositiveRelicNameValues.Clone();
+
+    public static string[] NeowCursedRelicNames =>
+        (string[])NeowCursedRelicNameValues.Clone();
+
+    public static string[] NeowConditionalPositiveRelicNames =>
+        (string[])NeowConditionalPositiveRelicNameValues.Clone();
+
+    public static string[] NeowCoveredChoiceRelicNames =>
+        NeowPositiveRelicNameValues
+            .Concat(NeowConditionalPositiveRelicNameValues)
+            .Concat(NeowCursedRelicNameValues)
             .Where(name => name is not ("Kaleidoscope" or "MassiveScroll"))
             .ToArray();
 
-    public static string[] NeowBonesSupportedRelicNames { get; } =
+    public static string[] NeowBonesSupportedRelicNames =>
         NeowCoveredChoiceRelicNames
             .Where(name => name != "NeowsBones")
             .ToArray();
@@ -64,10 +73,10 @@ public static class PrototypeNativeOvergrowthEvents
     public static string NeowRelicId(string nativeClass) =>
         "proto.native.neow." + nativeClass.ToLowerInvariant();
 
-    public static PrototypeRelicDefinition[] NeowRelicDefinitions { get; } =
-        NeowPositiveRelicNames
-            .Concat(NeowConditionalPositiveRelicNames)
-            .Concat(NeowCursedRelicNames)
+    private static readonly PrototypeRelicDefinition[] NeowRelicDefinitionValues =
+        NeowPositiveRelicNameValues
+            .Concat(NeowConditionalPositiveRelicNameValues)
+            .Concat(NeowCursedRelicNameValues)
             .Select(name => new PrototypeRelicDefinition(
                 NeowRelicId(name),
                 name,
@@ -192,13 +201,18 @@ public static class PrototypeNativeOvergrowthEvents
                 }))
             .ToArray();
 
-    public static PrototypeEventDefinition NeowDefinition { get; } =
+    public static PrototypeRelicDefinition[] NeowRelicDefinitions =>
+        NeowRelicDefinitionValues
+            .Select(PrototypeDefinitionCopiesV111.CloneRelicDefinition)
+            .ToArray();
+
+    private static readonly PrototypeEventDefinition NeowDefinitionValue =
         new(
             NeowEventId,
             "Neow",
-            NeowPositiveRelicNames
-                .Concat(NeowConditionalPositiveRelicNames)
-                .Concat(NeowCursedRelicNames)
+            NeowPositiveRelicNameValues
+                .Concat(NeowConditionalPositiveRelicNameValues)
+                .Concat(NeowCursedRelicNameValues)
                 .Select(name => new PrototypeEventChoiceDefinition(
                     "take_" + NeowRelicId(name),
                     "Choose " + name,
@@ -385,7 +399,11 @@ public static class PrototypeNativeOvergrowthEvents
             .ToArray();
     }
 
-    public static string[] RegionEventIds { get; } =
+    public static PrototypeEventDefinition NeowDefinition =>
+        PrototypeDefinitionCopiesV111.CloneEventDefinition(
+            NeowDefinitionValue);
+
+    private static readonly string[] RegionEventIdValues =
     [
         "proto.native.event.aroma_of_chaos",
         PrototypeNativeBrainLeech.EventId,
@@ -404,7 +422,7 @@ public static class PrototypeNativeOvergrowthEvents
         "proto.native.event.wood_carvings"
     ];
 
-    public static PrototypeEventDefinition[] Definitions { get; } =
+    private static readonly PrototypeEventDefinition[] EventDefinitions =
     [
         new(
             "proto.native.event.aroma_of_chaos",
@@ -589,6 +607,14 @@ public static class PrototypeNativeOvergrowthEvents
     // These pinned source event handlers select a card with
     // FirstOrDefault; an empty candidate pool is an allowed no-op,
     // not a reason to suppress the event option.
+    public static string[] RegionEventIds =>
+        (string[])RegionEventIdValues.Clone();
+
+    public static PrototypeEventDefinition[] Definitions =>
+        EventDefinitions
+            .Select(PrototypeDefinitionCopiesV111.CloneEventDefinition)
+            .ToArray();
+
     public static bool AllowsEmptyDeckChoice(string eventId) =>
         eventId is "proto.native.event.aroma_of_chaos"
             or "proto.native.event.luminous_choir"
@@ -653,4 +679,5 @@ public static class PrototypeNativeOvergrowthEvents
 
         return true;
     }
+
 }
