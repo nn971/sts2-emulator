@@ -566,7 +566,8 @@ public sealed record SemanticPilotCombatV111(
             generatedCardPending.Validate();
             if (this.TargetPending is not null ||
                 this.PotionGenerationPending is not null ||
-                this.PendingEndTurn is not null ||
+                (this.PendingEndTurn is not null &&
+                 this.PendingEndTurn.GeneratedCardPending is null) ||
                 this.PendingInitialIntents is not null ||
                 this.UsesNativePolicyBaseline || this.CombatTerminal)
                 throw new InvalidDataException(
@@ -841,11 +842,15 @@ public sealed record SemanticPilotCombatV111(
     private bool HasPendingEndTurnNestedSemanticChoice =>
         this.PendingEndTurn is { Complete: false } endTurn &&
         endTurn.HandDraw is not { AtBoundary: false } &&
-        PrototypeGameEngine
-            .HasPendingSupportedAutomaticPipelineSemanticDraw(this.Run) &&
-        (endTurn.DrawPending is not null ||
-         endTurn.NestedCostPending is not null ||
-         endTurn.NestedDrawInsertionPending is not null);
+        ((PrototypeGameEngine
+              .HasPendingSupportedAutomaticPipelineSemanticDraw(this.Run) &&
+          (endTurn.DrawPending is not null ||
+           endTurn.NestedCostPending is not null ||
+           endTurn.NestedDrawInsertionPending is not null)) ||
+         (PrototypeGameEngine
+              .HasPendingSupportedAutomaticPipelineSemanticGeneration(
+                  this.Run) &&
+          endTurn.GeneratedCardPending is not null));
 
     public SemanticPilotCombatV111 Fork() => this with
     {
@@ -2332,12 +2337,20 @@ public static class SemanticPilotCombatEngineV111
             pending, eventId, cardId);
         var result = SemanticGenerationChoiceV111.Resume(
             current.Run, expected);
+        var nextEndTurn = current.PendingEndTurn is { } endTurn
+            ? SemanticEndTurnEngineV111.ContinueNestedAutomaticChoice(
+                endTurn, result,
+                new SemanticEndTurnNestedChoiceV111(
+                    "semantic_generated_card",
+                    GeneratedCardDecision: expected.Fork()),
+                pending.SiteId)
+            : null;
         var next = PublishRunContinuation(
-            current, result, null,
+            current, result, nextEndTurn,
             new SemanticPilotContinuationV111(
                 "semantic_generated_card",
                 GeneratedCardDecision: expected.Fork()),
-            preservePendingEndTurn: true);
+            preservePendingEndTurn: current.PendingEndTurn is null);
         return NormalizeNoncontrolledCosts(next);
     }
 
@@ -3089,6 +3102,8 @@ public static class SemanticPilotCombatEngineV111
         DescribePendingGeneratedCardEvent(SemanticPilotCombatV111 current)
     {
         ArgumentNullException.ThrowIfNull(current);
+        if (current.PendingEndTurn?.GeneratedCardPending is { } endTurnEvent)
+            return endTurnEvent;
         var combat = current.Run.World?.Combat;
         var choice = combat?.PendingChoice;
         var generation = choice?.ControlledGeneration;
@@ -3104,20 +3119,21 @@ public static class SemanticPilotCombatEngineV111
                     "Random draw-Attack model choice lacks a supported source boundary.");
             SemanticDrawInsertionChoiceV111.ValidateBoundary(current.Run);
         }
-        else
-            SemanticGenerationChoiceV111.ValidateBoundary(current.Run);
+        var ordinal = current.History.Count(transition =>
+            transition.Kind == "semantic_generated_card");
+        if (generation is not null)
+            return SemanticGenerationChoiceV111.DescribePending(
+                current.Run, current.Fingerprint, ordinal);
         var candidates = (string[])(generation?.CandidateCardIds ??
             drawInsertion!.CandidateCardIds).Clone();
         var siteId = isDrawInsertionModelChoice
             ? "combat.random_draw_attack.card_model"
-            : "combat.generated_card.select";
-        var operation = generation?.Operation.Kind ??
-            drawInsertion!.Operation.Kind;
+            : throw new InvalidDataException(
+                "Missing semantic generated-card source operation.");
+        var operation = drawInsertion!.Operation.Kind;
         var ownerId = choice!.SourceCardInstanceId is { } sourceCardId
             ? "card_instance:" + sourceCardId
             : "effect:" + operation;
-        var ordinal = current.History.Count(transition =>
-            transition.Kind == "semantic_generated_card");
         return SemanticGenerationChoiceV111.CreateEvent(
             current.Fingerprint, siteId, ownerId, ordinal, candidates);
     }

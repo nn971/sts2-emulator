@@ -81,7 +81,7 @@ public sealed record SemanticEndTurnStochasticStateV111(
 
         int transcriptEnemyActions = 0, transcriptTargets = 0;
         int transcriptNestedDraws = 0, transcriptNestedCosts = 0;
-        int transcriptNestedInsertions = 0;
+        int transcriptNestedInsertions = 0, transcriptNestedGeneratedCards = 0;
         int transcriptNestedChoices = 0;
         foreach (var boundary in BoundaryTranscript)
         {
@@ -135,6 +135,19 @@ public sealed record SemanticEndTurnStochasticStateV111(
                     throw new InvalidDataException(
                         "Semantic end-turn nested draw-insertion boundary order is invalid.");
             }
+            else if (boundary.Kind == "semantic_generated_card")
+            {
+                if (boundary.TranscriptIndex !=
+                        transcriptNestedGeneratedCards++ ||
+                    transcriptNestedGeneratedCards >
+                        NestedChoiceTranscript.Count(choice =>
+                            choice.Kind == "semantic_generated_card") ||
+                    transcriptNestedChoices >= NestedChoiceTranscript.Length ||
+                    NestedChoiceTranscript[transcriptNestedChoices++].Kind !=
+                        "semantic_generated_card")
+                    throw new InvalidDataException(
+                        "Semantic end-turn nested generated-card boundary order is invalid.");
+            }
         }
         if ((BoundaryTranscript.Length > 0 &&
              (transcriptEnemyActions != EnemyActionTranscript.Length ||
@@ -145,6 +158,8 @@ public sealed record SemanticEndTurnStochasticStateV111(
                   choice.Kind == "semantic_cost") ||
               transcriptNestedInsertions != NestedChoiceTranscript.Count(choice =>
                   choice.Kind == "semantic_draw_insertion") ||
+              transcriptNestedGeneratedCards != NestedChoiceTranscript.Count(choice =>
+                  choice.Kind == "semantic_generated_card") ||
               transcriptNestedChoices != NestedChoiceTranscript.Length)) ||
             (BoundaryTranscript.Length == 0 &&
              (TargetTranscript.Length != 0 ||
@@ -170,13 +185,20 @@ public sealed record SemanticEndTurnNestedChoiceV111(
     string Kind,
     SemanticDrawDecisionV111? DrawDecision = null,
     SemanticCostDecisionV111? CostDecision = null,
-    SemanticDrawInsertionDecisionV111? DrawInsertionDecision = null)
+    SemanticDrawInsertionDecisionV111? DrawInsertionDecision = null,
+    SemanticGeneratedCardDecisionV111? GeneratedCardDecision = null)
 {
     public SemanticEndTurnNestedChoiceV111 Fork() => this with
     {
         DrawDecision = DrawDecision?.Fork(),
         CostDecision = CostDecision?.Fork(),
-        DrawInsertionDecision = DrawInsertionDecision?.Fork()
+        DrawInsertionDecision = DrawInsertionDecision?.Fork(),
+        GeneratedCardDecision = GeneratedCardDecision is null
+            ? null
+            : GeneratedCardDecision with
+            {
+                Event = GeneratedCardDecision.Event.Fork()
+            }
     };
 
     public void Validate()
@@ -195,9 +217,16 @@ public sealed record SemanticEndTurnNestedChoiceV111(
         }
         if (Kind == "semantic_draw_insertion" &&
             DrawInsertionDecision is not null && DrawDecision is null &&
-            CostDecision is null)
+            CostDecision is null && GeneratedCardDecision is null)
         {
             DrawInsertionDecision.Validate();
+            return;
+        }
+        if (Kind == "semantic_generated_card" &&
+            GeneratedCardDecision is not null && DrawDecision is null &&
+            CostDecision is null && DrawInsertionDecision is null)
+        {
+            GeneratedCardDecision.Validate();
             return;
         }
         throw new InvalidDataException(

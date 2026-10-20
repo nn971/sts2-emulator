@@ -12,7 +12,7 @@ public sealed record SemanticEndTurnBoundaryChoiceV111(
     {
         if (Kind is not ("enemy_action" or "random_target" or
                 "semantic_draw" or "semantic_cost" or
-                "semantic_draw_insertion") ||
+                "semantic_draw_insertion" or "semantic_generated_card") ||
             TranscriptIndex < 0)
             throw new InvalidDataException(
                 "Invalid semantic end-turn boundary transcript entry.");
@@ -237,6 +237,16 @@ public sealed record SemanticEndTurnV111(
                 ? SemanticDeckEngineV111.Inspect(deck) : null;
         }
     }
+    [JsonIgnore] public SemanticGeneratedCardEventV111?
+        GeneratedCardPending => !Complete &&
+            HandDraw is not { AtBoundary: false } &&
+            PrototypeGameEngine
+                .HasPendingSupportedAutomaticPipelineSemanticGeneration(Run)
+            ? SemanticGenerationChoiceV111.DescribePending(
+                Run, Fingerprint,
+                NestedChoiceTranscript.Count(choice =>
+                    choice.Kind == "semantic_generated_card"))
+            : null;
     [JsonIgnore] public SemanticCostEventV111? NestedCostPending =>
         !Complete && HandDraw is not { AtBoundary: false } &&
             Run.World?.Combat?.PendingChoice is
@@ -345,11 +355,15 @@ public sealed record SemanticEndTurnV111(
              this.HandDraw is null && this.EnemyActionPending is null &&
              this.TargetPending is null &&
              !PrototypeGameEngine
-                .HasPendingSupportedAutomaticPipelineSemanticDraw(this.Run)) ||
+                .HasPendingSupportedAutomaticPipelineSemanticDraw(this.Run) &&
+             !PrototypeGameEngine
+                .HasPendingSupportedAutomaticPipelineSemanticGeneration(
+                    this.Run)) ||
             (!this.Complete && this.HandDraw is { AtBoundary: true } &&
              this.TargetPending is null &&
              !PrototypeGameEngine
-                .HasPendingSupportedAutomaticPipelineSemanticDraw(this.Run)) ||
+                .HasPendingSupportedAutomaticPipelineSemanticDraw(this.Run) &&
+             this.GeneratedCardPending is null) ||
             (this.Intents is not null && this.HandDraw is not null))
             throw new InvalidDataException("Invalid semantic end-turn stages.");
         if (this.Intents is { } intents)
@@ -371,7 +385,10 @@ public sealed record SemanticEndTurnV111(
                     (!PrototypeGameEngine
                         .HasPendingControlledAutomaticPipelineChoice(this.Run) &&
                      !PrototypeGameEngine
-                        .HasPendingSupportedAutomaticPipelineSemanticDraw(this.Run)))
+                        .HasPendingSupportedAutomaticPipelineSemanticDraw(this.Run) &&
+                     !PrototypeGameEngine
+                        .HasPendingSupportedAutomaticPipelineSemanticGeneration(
+                            this.Run)))
                     throw new InvalidDataException(
                         "Pending end-turn hand state differs from the draw continuation.");
             }
@@ -397,6 +414,9 @@ public sealed record SemanticEndTurnV111(
             else if (choice.ChoiceId == "controlled_draw_insertion")
                 SemanticDrawInsertionChoiceV111.ValidateBoundary(this.Run);
         }
+        if (PrototypeGameEngine
+            .HasPendingSupportedAutomaticPipelineSemanticGeneration(this.Run))
+            SemanticGenerationChoiceV111.ValidateBoundary(this.Run);
     }
 
     public SemanticEndTurnV111 Fork() => this with
@@ -485,7 +505,12 @@ public static class SemanticEndTurnEngineV111
                 .IsAtCombatRewardOrTerminalBoundary(advanced))
             return (null, advanced);
         if (PrototypeGameEngine
-                .HasPendingControlledAutomaticPipelineChoice(advanced))
+                .HasPendingControlledAutomaticPipelineChoice(advanced) ||
+            PrototypeGameEngine
+                .HasPendingSupportedAutomaticPipelineSemanticDraw(advanced) ||
+            PrototypeGameEngine
+                .HasPendingSupportedAutomaticPipelineSemanticGeneration(
+                    advanced))
         {
             var suspendedChoice = new SemanticEndTurnV111(
                 playerBoundary.Fork(), advanced.Fork(),
@@ -552,6 +577,23 @@ public static class SemanticEndTurnEngineV111
                 throw new ArgumentOutOfRangeException(nameof(selectedIndex));
             state = ResolveTarget(state, state.Fingerprint, target.EventId,
                 target.CandidateEnemyInstanceIds[selectedIndex]);
+        }
+        else if (state.GeneratedCardPending is { } generatedCard)
+        {
+            if (selectedIndex < 0 ||
+                selectedIndex >= generatedCard.CandidateCardIds.Length)
+                throw new ArgumentOutOfRangeException(nameof(selectedIndex));
+            var decision = SemanticGenerationChoiceV111.Select(
+                generatedCard, generatedCard.EventId,
+                generatedCard.CandidateCardIds[selectedIndex]);
+            var resumed = SemanticGenerationChoiceV111.Resume(
+                state.Run.Fork(), decision);
+            state = ContinueNestedAutomaticChoice(
+                state, resumed,
+                new SemanticEndTurnNestedChoiceV111(
+                    "semantic_generated_card",
+                    GeneratedCardDecision: decision.Fork()),
+                generatedCard.SiteId);
         }
         else if (state.NestedCostPending is { } nestedCost)
         {
@@ -644,6 +686,33 @@ public static class SemanticEndTurnEngineV111
             throw new InvalidOperationException("No pending semantic end-turn choice.");
         Validate(state);
         return state;
+    }
+
+    public static SemanticEndTurnV111 ResolveGeneratedCard(
+        SemanticEndTurnV111 source, string fingerprint, string eventId,
+        string cardId)
+    {
+        Validate(source);
+        if (!StringComparer.Ordinal.Equals(source.Fingerprint, fingerprint))
+            throw new InvalidOperationException(
+                "Stale semantic end-turn generated-card fingerprint.");
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(cardId);
+        var pending = source.GeneratedCardPending ??
+            throw new InvalidOperationException(
+                "No automatic-pipeline generated-card event is pending.");
+        var decision = SemanticGenerationChoiceV111.Select(
+            pending, eventId, cardId);
+        var resumed = SemanticGenerationChoiceV111.Resume(
+            source.Run.Fork(), decision);
+        var next = ContinueNestedAutomaticChoice(
+            source, resumed,
+            new SemanticEndTurnNestedChoiceV111(
+                "semantic_generated_card",
+                GeneratedCardDecision: decision.Fork()),
+            pending.SiteId);
+        Validate(next);
+        return next;
     }
 
     public static SemanticEndTurnV111 ResolveTarget(
@@ -751,6 +820,11 @@ public static class SemanticEndTurnEngineV111
             .HasPendingSupportedAutomaticPipelineSemanticDraw(resumed))
             return next with { Run = resumed };
 
+        if (PrototypeGameEngine
+                .HasPendingSupportedAutomaticPipelineSemanticGeneration(
+                    resumed))
+            return next with { Run = resumed };
+
         if (next.HandDraw is { AtBoundary: true })
             return CompleteHandDrawAtPlayerBoundary(next, resumed);
 
@@ -785,7 +859,10 @@ public static class SemanticEndTurnEngineV111
         if (source.Complete ||
             source.HandDraw is { AtBoundary: false } ||
             !PrototypeGameEngine
-                .HasPendingSupportedAutomaticPipelineSemanticDraw(source.Run))
+                .HasPendingSupportedAutomaticPipelineSemanticDraw(source.Run) &&
+            !PrototypeGameEngine
+                .HasPendingSupportedAutomaticPipelineSemanticGeneration(
+                    source.Run))
             throw new InvalidOperationException(
                 "No supported nested automatic semantic choice is pending.");
 
@@ -802,6 +879,13 @@ public static class SemanticEndTurnEngineV111
             SemanticCostChoiceV111.ValidateDecision(
                 pending, choice.CostDecision!,
                 choice.CostDecision!.SelectedIndex);
+        }
+        else if (expectedKind == "semantic_generated_card")
+        {
+            var pending = source.GeneratedCardPending;
+            SemanticGenerationChoiceV111.ValidateDecision(
+                pending, choice.GeneratedCardDecision!,
+                choice.GeneratedCardDecision!.SelectedCardId);
         }
         else
         {
@@ -918,7 +1002,12 @@ public static class SemanticEndTurnEngineV111
                 .IsAtCombatRewardOrTerminalBoundary(result))
             return CompleteAtBoundary(
                 state, result, discardSuspendedFrames: false);
-        if (result.World?.Combat?.PendingChoice?.ControlledTarget is not null)
+        if (result.World?.Combat?.PendingChoice?.ControlledTarget is not null ||
+            PrototypeGameEngine
+                .HasPendingSupportedAutomaticPipelineSemanticDraw(result) ||
+            PrototypeGameEngine
+                .HasPendingSupportedAutomaticPipelineSemanticGeneration(
+                    result))
             return state with { Run = result };
         return CompleteHandDrawAtPlayerBoundary(state, result);
     }
@@ -983,7 +1072,7 @@ public static class SemanticEndTurnEngineV111
                 "End-turn action identity differs on source replay.");
         int boundaryIndex = 0, enemyActionIndex = 0, targetIndex = 0;
         int nestedChoiceIndex = 0, nestedDrawIndex = 0, nestedCostIndex = 0,
-            nestedInsertionIndex = 0;
+            nestedInsertionIndex = 0, nestedGeneratedCardIndex = 0;
         void ReplayAvailableBoundaryChoices()
         {
             while (boundaryIndex < saved.BoundaryTranscript.Length)
@@ -1001,8 +1090,11 @@ public static class SemanticEndTurnEngineV111
                 var hasNestedCost = reproduced.NestedCostPending is not null;
                 var hasNestedInsertion =
                     reproduced.NestedDrawInsertionPending is not null;
+                var hasNestedGeneratedCard =
+                    reproduced.GeneratedCardPending is not null;
                 if (!hasEnemyAction && !hasTarget &&
-                    !hasNestedDraw && !hasNestedCost && !hasNestedInsertion)
+                    !hasNestedDraw && !hasNestedCost && !hasNestedInsertion &&
+                    !hasNestedGeneratedCard)
                     return;
 
                 var boundary = saved.BoundaryTranscript[boundaryIndex];
@@ -1093,7 +1185,7 @@ public static class SemanticEndTurnEngineV111
                         "combat.card_draw.cost");
                     nestedCostIndex++;
                 }
-                else
+                else if (boundary.Kind == "semantic_draw_insertion")
                 {
                     if (!hasNestedInsertion ||
                         boundary.TranscriptIndex != nestedInsertionIndex ||
@@ -1117,6 +1209,31 @@ public static class SemanticEndTurnEngineV111
                         StochasticSiteRegistryV111
                             .AfterShuffleRelicDrawPileInsertSiteId);
                     nestedInsertionIndex++;
+                }
+                else
+                {
+                    if (!hasNestedGeneratedCard ||
+                        boundary.TranscriptIndex != nestedGeneratedCardIndex ||
+                        nestedChoiceIndex >=
+                            saved.NestedChoiceTranscript.Length ||
+                        saved.NestedChoiceTranscript[nestedChoiceIndex] is not
+                            { Kind: "semantic_generated_card",
+                              GeneratedCardDecision: { } generatedChoice })
+                        throw new InvalidDataException(
+                            "Semantic end-turn generated-card transcript order is invalid.");
+                    var pending = reproduced.GeneratedCardPending ??
+                        throw new InvalidDataException(
+                            "Semantic end-turn replay lost its generated-card event.");
+                    SemanticGenerationChoiceV111.ValidateDecision(
+                        pending, generatedChoice,
+                        generatedChoice.SelectedCardId);
+                    var resumed = SemanticGenerationChoiceV111.Resume(
+                        reproduced.Run.Fork(), generatedChoice);
+                    reproduced = ContinueNestedAutomaticChoice(
+                        reproduced, resumed,
+                        saved.NestedChoiceTranscript[nestedChoiceIndex++],
+                        pending.SiteId);
+                    nestedGeneratedCardIndex++;
                 }
                 boundaryIndex++;
             }
@@ -1187,7 +1304,9 @@ public static class SemanticEndTurnEngineV111
                 nestedCostIndex != saved.NestedChoiceTranscript.Count(choice =>
                     choice.Kind == "semantic_cost") ||
                 nestedInsertionIndex != saved.NestedChoiceTranscript.Count(
-                    choice => choice.Kind == "semantic_draw_insertion"))
+                    choice => choice.Kind == "semantic_draw_insertion") ||
+                nestedGeneratedCardIndex != saved.NestedChoiceTranscript.Count(
+                    choice => choice.Kind == "semantic_generated_card"))
                 throw new InvalidDataException(
                     "Semantic end-turn boundary transcript omitted a decision.");
         }
