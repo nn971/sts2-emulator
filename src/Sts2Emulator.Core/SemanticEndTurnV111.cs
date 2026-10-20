@@ -1204,6 +1204,9 @@ public static class SemanticEndTurnEngineV111
         SemanticEndTurnV111 source,
         SemanticEndTurnNestedChoiceV111 choice)
     {
+        // This facade owns end-turn boundary freshness. The typed resume
+        // owner re-derives the live source event and validates the selected
+        // payload before mechanics replay.
         Validate(source);
         ArgumentNullException.ThrowIfNull(choice);
         choice.Validate();
@@ -1215,97 +1218,6 @@ public static class SemanticEndTurnEngineV111
              source.KnowledgeDemonChoicePending is null))
             throw new InvalidOperationException(
                 "No supported nested automatic semantic choice is pending.");
-
-        var expectedKind = choice.Kind;
-        if (expectedKind == "semantic_draw")
-        {
-            var pending = source.DrawPending;
-            SemanticDrawChoiceV111.ValidateDecision(
-                pending, choice.DrawDecision!);
-        }
-        else if (expectedKind == "semantic_cost")
-        {
-            var pending = source.NestedCostPending;
-            SemanticCostChoiceV111.ValidateDecision(
-                pending, choice.CostDecision!,
-                choice.CostDecision!.SelectedIndex);
-        }
-        else if (expectedKind == "semantic_generated_card")
-        {
-            var pending = source.GeneratedCardPending;
-            SemanticGenerationChoiceV111.ValidateDecision(
-                pending, choice.GeneratedCardDecision!,
-                choice.GeneratedCardDecision!.SelectedCardId);
-        }
-        else if (expectedKind == "semantic_potion_generation")
-        {
-            var pending = source.PotionGenerationPending;
-            SemanticPotionGenerationChoiceV111.ValidateDecision(
-                pending, choice.PotionGenerationDecision!,
-                choice.PotionGenerationDecision!.SelectedPotionId);
-        }
-        else if (expectedKind == "semantic_card_transform")
-        {
-            var pending = source.CardTransformPending;
-            SemanticCardTransformChoiceV111.ValidateDecision(
-                pending, choice.CardTransformDecision!,
-                choice.CardTransformDecision!.SelectedCardId);
-        }
-        else if (expectedKind == "semantic_card_shortlist")
-        {
-            var pending = source.CardShortlistPending;
-            SemanticCardShortlistChoiceV111.ValidateDecision(
-                pending, choice.CardShortlistDecision!,
-                choice.CardShortlistDecision!.SelectedCardInstanceId);
-        }
-        else if (expectedKind == "semantic_pool_shuffle")
-        {
-            var pending = source.PoolShufflePending;
-            SemanticPoolShuffleChoiceV111.ValidateDecision(
-                pending, choice.PoolShuffleDecision!);
-        }
-        else if (expectedKind == "semantic_hand_cost_selection")
-        {
-            var pending = source.NestedHandCostSelectionPending;
-            SemanticHandCostSelectionChoiceV111.ValidateDecision(
-                pending, choice.HandCostSelectionDecision!,
-                choice.HandCostSelectionDecision!.SelectedCardInstanceId);
-        }
-        else if (expectedKind == "semantic_card_selection")
-        {
-            var pending = source.NestedCardSelectionPending;
-            SemanticCardSelectionEngineV111.ValidateDecision(
-                pending, choice.CardSelectionDecision!);
-        }
-        else if (expectedKind == "semantic_draw_hook_choice")
-        {
-            var pending = source.NestedDrawHookChoicePending;
-            if (pending is null ||
-                CanonicalJson.Sha256(pending) !=
-                    CanonicalJson.Sha256(
-                        choice.DrawHookChoiceDecision!.Event))
-                throw new InvalidDataException(
-                    "Nested draw-hook choice differs from its source event.");
-            choice.DrawHookChoiceDecision.Validate();
-        }
-        else if (expectedKind == "knowledge_demon_choice")
-        {
-            var pending = source.KnowledgeDemonChoicePending;
-            var decision = choice.KnowledgeDemonChoiceDecision!;
-            if (pending is null ||
-                CanonicalJson.Sha256(pending) !=
-                    CanonicalJson.Sha256(decision.Event))
-                throw new InvalidDataException(
-                    "Nested Knowledge Demon choice differs from its source event.");
-            decision.Validate();
-        }
-        else
-        {
-            SemanticDrawInsertionChoiceV111.ValidateDecision(
-                source.NestedDrawInsertionPending,
-                choice.DrawInsertionDecision!,
-                choice.DrawInsertionDecision!.SelectedPosition);
-        }
     }
 
     private static SemanticEndTurnV111 PublishNestedAutomaticChoice(
