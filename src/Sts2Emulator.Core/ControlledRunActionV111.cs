@@ -390,15 +390,22 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                 var nativeFormationDraw =
                     ControlledRunActionEngineV111
                         .IsNativeEncounterFormationRequest(PendingRequest);
-                var nativeActOneCombatEntry = MapNodeId is { } nativeNodeId &&
+                var nativeActOneCombatRequest =
                     ControlledRunActionEngineV111
-                        .IsNativeActOneCombatEntryAction(state,
-                            GameAction.Create("choose_map_node",
-                                new ChooseMapNodePayload(nativeNodeId)));
+                        .IsNativeActOneCombatEntryRequest(PendingRequest);
+                var nativeMapAction = MapNodeId is { } nativeNodeId
+                    ? GameAction.Create("choose_map_node",
+                        new ChooseMapNodePayload(nativeNodeId))
+                    : null;
+                var nativeActOneCombatEntry = nativeMapAction is not null &&
+                    ControlledRunActionEngineV111
+                        .IsNativeActOneCombatEntryAction(
+                            state, nativeMapAction);
                 if (state.Phase != RunPhase.MapChoice
                     || state.World is not { } world
                     || state.NativeRunRng is not null &&
-                        !(nativeFormationDraw && nativeActOneCombatEntry)
+                        !(nativeActOneCombatRequest &&
+                            nativeActOneCombatEntry)
                     || string.IsNullOrWhiteSpace(MapNodeId))
                     throw new InvalidDataException(
                         "Controlled map-node frame is outside a supported entry boundary.");
@@ -472,7 +479,13 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                         && overgrowthCombatEntrySite)
                     && !(legacyUnderdocksCombatNode
                         && underdocksCombatEntrySite)
-                    && !(nativeActOneCombatNode && nativeFormationDraw))
+                    && !(nativeActOneCombatNode
+                        && nativeActOneCombatRequest
+                        && nativeMapAction is not null
+                        && ControlledRunActionEngineV111
+                            .IsNativeActOneCombatEntrySite(state,
+                                nativeMapAction,
+                                PendingRequest.SiteId)))
                     throw new InvalidDataException(
                         "Controlled map-node frame has an unsupported chance site.");
                 expectedSite = PendingRequest.SiteId;
@@ -616,6 +629,13 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                 ControlledRunActionEngineV111
                     .IsNativeEncounterFormationRequest(
                         ControlledStochasticRequestV111.FromIndex(request));
+            var isNativeActOneCombatEntryDraw = mapAction is not null &&
+                ControlledRunActionEngineV111
+                    .IsNativeActOneCombatEntrySite(
+                        state, mapAction, request.SiteId) &&
+                ControlledRunActionEngineV111
+                    .IsNativeActOneCombatEntryRequest(
+                        ControlledStochasticRequestV111.FromIndex(request));
             var prefixStream = ActionId ==
                     PrototypeNativeRestSiteActionsV111.Dig
                 || isEventEntryDraw
@@ -630,7 +650,8 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                     request.SiteId)
                 : ActionId == "choose_map_node"
                     ? isEventEntryDraw || isShopDraw || isTreasureDraw
-                        || isCombatEntryDraw || isNativeFormationDraw
+                        || isCombatEntryDraw
+                        || isNativeActOneCombatEntryDraw
                     : ControlledEventChoiceReplayV111
                         .IsRunActionShovelSite(request.SiteId);
             var prefixOwner = isBossDraw
@@ -1017,13 +1038,33 @@ public static class ControlledRunActionEngineV111
             NativeRngV111Contexts.EncounterFormationStreamId(entry, floor);
     }
 
+    internal static bool IsNativeEncounterSelectionRequest(
+        ControlledStochasticRequestV111 request)
+    {
+        if (request.IndexRequest is not { } index ||
+            index.OperationKind != "choose_index" ||
+            index.StreamId != "combat" ||
+            index.OrderedCandidates.Length == 0 ||
+            !index.OrderedCandidates.SequenceEqual(Enumerable.Range(
+                0, index.OrderedCandidates.Length)))
+            return false;
+        return index.SiteId is
+            "combat.encounter.overgrowth_elite.index_draw" or
+            "combat.encounter.overgrowth_weak.index_draw" or
+            "combat.encounter.overgrowth_normal.index_draw" or
+            "combat.encounter.underdocks.elite.index_draw" or
+            "combat.encounter.underdocks.weak.index_draw" or
+            "combat.encounter.underdocks.normal.index_draw";
+    }
+
     internal static bool IsNativeActOneCombatEntryAction(
         RunState source, GameAction action)
     {
         if (action.Kind != "choose_map_node" ||
             source.Phase != RunPhase.MapChoice ||
             source.Configuration?.UsesExperimentalNativeWeakCombatEntry != true ||
-            source.NativeRunRng is null || source.World is not { Act: 1 } world)
+            source.NativeRunRng is null || source.World is not { Act: 1 } world ||
+            world.ActOneEncounterPool?.Region != world.ActOneRegion)
             return false;
         var routeMatches = world.ActOneRegion switch
         {
@@ -1045,13 +1086,44 @@ public static class ControlledRunActionEngineV111
     }
 
     internal static bool IsNativeActOneCombatEntrySite(
-        RunState source, GameAction action, string siteId) =>
-        IsNativeActOneCombatEntryAction(source, action) &&
-        siteId == NativeEncounterFormationFactoryV111.FormationSiteId;
+        RunState source, GameAction action, string siteId)
+    {
+        if (!IsNativeActOneCombatEntryAction(source, action) ||
+            source.World is not { } world)
+            return false;
+        var nodeId = action.ReadPayload<ChooseMapNodePayload>().NodeId;
+        var node = PrototypeNativeWingedBoots.AvailableNodes(
+                world, source.Player)
+            .SingleOrDefault(candidate => candidate.NodeId == nodeId);
+        if (node is null)
+            return false;
+        if (siteId == NativeEncounterFormationFactoryV111.FormationSiteId)
+            return true;
+
+        return (world.ActOneRegion, node.RoomType, siteId) switch
+        {
+            (PrototypeActOneRegion.Overgrowth,
+                PrototypeRoomType.Elite,
+                "combat.encounter.overgrowth_elite.index_draw") => true,
+            (PrototypeActOneRegion.Overgrowth,
+                PrototypeRoomType.Combat,
+                "combat.encounter.overgrowth_weak.index_draw" or
+                "combat.encounter.overgrowth_normal.index_draw") => true,
+            (PrototypeActOneRegion.Underdocks,
+                PrototypeRoomType.Elite,
+                "combat.encounter.underdocks.elite.index_draw") => true,
+            (PrototypeActOneRegion.Underdocks,
+                PrototypeRoomType.Combat,
+                "combat.encounter.underdocks.weak.index_draw" or
+                "combat.encounter.underdocks.normal.index_draw") => true,
+            _ => false
+        };
+    }
 
     internal static bool IsNativeActOneCombatEntryRequest(
         ControlledStochasticRequestV111 request) =>
-        IsNativeEncounterFormationRequest(request);
+        IsNativeEncounterFormationRequest(request)
+        || IsNativeEncounterSelectionRequest(request);
 
     public static RunState Resolve(RunState source, int selectedIndex)
     {
