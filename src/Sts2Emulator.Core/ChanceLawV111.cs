@@ -581,7 +581,7 @@ public static partial class ChanceLawEngineV111
 
     private static readonly string[] LegacyUniformPotionModelQuerySites =
     [
-        "potion.uniform_model.index_draw"
+        PrototypeNativePotionShop.UniformModelSiteId
     ];
 
     private static readonly string[] LegacyEventRewardPotionModelQuerySites =
@@ -1910,7 +1910,7 @@ public static partial class ChanceLawEngineV111
         if (ordinal < 0)
             throw new ArgumentOutOfRangeException(nameof(ordinal));
 
-        const string siteId = "potion.uniform_model.index_draw";
+        const string siteId = PrototypeNativePotionShop.UniformModelSiteId;
         var pool = PrototypeNativePotionShop.NativePotionPoolOrder;
         if (pool.Count == 0)
             throw new InvalidOperationException(

@@ -62,6 +62,9 @@ public sealed record NativePotionModelSelectionAuditV111(
 /// </summary>
 public static class PrototypeNativePotionShop
 {
+    public const string UniformModelSiteId =
+        "potion.uniform_model.index_draw";
+
     // PotionFactory concatenates the current character's unlocked pool before
     // the shared pool. Keep that ordering for the typed model-index request:
     // a different ordering changes the selected potion for the same draw.
@@ -358,7 +361,7 @@ public static class PrototypeNativePotionShop
     {
         return NativePotionPoolOrder[LegacyRandomChoiceV111.ChooseIndexRange(
             rng,
-            "potion.uniform_model.index_draw",
+            UniformModelSiteId,
             streamId,
             ownerId + ":pool:" + CanonicalJson.Sha256(NativePotionPoolOrder),
             NativePotionPoolOrder.Count).SelectedIndex];

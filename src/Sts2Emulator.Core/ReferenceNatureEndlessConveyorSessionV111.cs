@@ -25,7 +25,7 @@ public sealed record ReferenceNatureEndlessConveyorSessionSnapshotV111(
 }
 
 /// <summary>Atomic ReferenceNature continuation for Endless Conveyor dish,
-/// card-upgrade, and Fried Eel Colorless-card boundaries.</summary>
+/// potion, card-upgrade, and Fried Eel Colorless-card boundaries.</summary>
 public sealed record ReferenceNatureEndlessConveyorSessionV111(
     string SchemaId,
     RunState Origin,
@@ -52,7 +52,8 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
     public static string[] SessionSiteIds =>
         [PrototypeNativeEndlessConveyor.DishWeightedTicketSiteId,
          PrototypeNativeEndlessConveyor.UpgradeCardSiteId,
-         PrototypeNativeEndlessConveyor.ColorlessCardSiteId];
+         PrototypeNativeEndlessConveyor.ColorlessCardSiteId,
+         PrototypeNativePotionShop.UniformModelSiteId];
 
     [JsonIgnore]
     public string Fingerprint => CanonicalJson.Sha256(this);
@@ -263,6 +264,10 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
 
     private string[] PlannedSiteIds => GetPlannedSiteIds(Origin, ActionId);
 
+    [JsonIgnore]
+    public string? LastSiteId => DecisionTranscript.Length == 0
+        ? null : PlannedSiteIds[DecisionTranscript.Length - 1];
+
     private static string[] GetPlannedSiteIds(
         RunState origin, string actionId)
     {
@@ -284,6 +289,9 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
                     .GetUpgradeCardCandidates(origin).Length > 0)
                 return [PrototypeNativeEndlessConveyor.UpgradeCardSiteId,
                     PrototypeNativeEndlessConveyor.DishWeightedTicketSiteId];
+            if (choice == "grab" &&
+                evt.NativeDishId == "SUSPICIOUS_CONDIMENT")
+                return [PrototypeNativePotionShop.UniformModelSiteId];
         }
         return [PrototypeNativeEndlessConveyor.DishWeightedTicketSiteId];
     }
@@ -300,9 +308,55 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
         PrototypeNativeEndlessConveyor.ColorlessCardSiteId =>
             ChanceLawEngineV111.QueryNativeEndlessConveyorColorlessCard(
                 origin, actionId),
+        PrototypeNativePotionShop.UniformModelSiteId =>
+            QuerySuspiciousCondimentPotion(origin, actionId),
         _ => throw new NotSupportedException(
             "Endless Conveyor session has no query for site '" + siteId + "'.")
     };
+
+    private static ChanceLawV111 QuerySuspiciousCondimentPotion(
+        RunState origin, string actionId)
+    {
+        var action = RequireAction(origin, actionId);
+        var evt = origin.World?.Event;
+        if (origin.Phase != RunPhase.Event || action.Kind != "event_choice" ||
+            action.ReadPayload<EventChoicePayload>().ChoiceId != "grab" ||
+            evt is null ||
+            evt.EventId != PrototypeNativeEndlessConveyor.EventId ||
+            evt.NativeDishId != "SUSPICIOUS_CONDIMENT" ||
+            evt.NativeDishRollPending ||
+            evt.PendingPotionReplacement is not null ||
+            evt.RemainingPotionIds.Length != 0 ||
+            string.IsNullOrWhiteSpace(origin.RunSeed) ||
+            origin.NativeRunRng is null ||
+            evt.NativeEventRng?.StreamId != NativeRngV111Contexts
+                .ForEvent(origin.RunSeed,
+                    PrototypeNativeEndlessConveyor.NativeRngEventId).StreamId ||
+            !origin.Player.PotionSlots.Any(slot => slot is null))
+            throw new InvalidOperationException(
+                "Suspicious Condiment potion law requires its legal Grab action before the queued potion is resolved.");
+
+        var ownerPrefix =
+            $"event:endless_conveyor:dish:{evt.NativeDishCount}:potion";
+        return ChanceLawEngineV111.QueryLegacyUniformPotionModel(
+            "reward", ownerPrefix,
+            GetLegacyStreamOrdinal(origin, "reward"));
+    }
+
+    private static int GetLegacyStreamOrdinal(
+        RunState origin, string streamId)
+    {
+        var streams = origin.Rng.Streams.Where(stream =>
+            stream.StreamId == streamId).ToArray();
+        if (streams.Length != 1)
+            throw new InvalidDataException(
+                $"Endless Conveyor potion request requires one '{streamId}' legacy stream.");
+        var ordinal = streams[0].CallCount ?? 0;
+        if (ordinal > int.MaxValue)
+            throw new NotSupportedException(
+                "Endless Conveyor potion request ordinal exceeds the typed request range.");
+        return (int)ordinal;
+    }
 
     private static (ChanceLawV111 Law,
         ReferenceNatureSelectionV111 Selection)[] SampleTranscript(
@@ -355,7 +409,7 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
             var (law, selection) = selections[0];
             if (law.SiteId == PrototypeNativeEndlessConveyor.DishWeightedTicketSiteId)
                 return ReplayDishSelection(origin, actionId, law, selection);
-            if (law.SiteId == PrototypeNativeEndlessConveyor.UpgradeCardSiteId)
+            if (law.OperationKind == "choose_index")
                 return ReplayIndexSelection(origin, actionId, law, selection);
             throw new InvalidDataException(
                 "Unsupported single-boundary Endless Conveyor Nature transcript.");
@@ -424,9 +478,15 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
         ReferenceNatureSelectionV111 selection)
     {
         var request = BuildIndexRequest(origin, law);
-        var selected = ReferenceNatureChanceLawDecisionV111.FromSelection(
-            law, ControlledStochasticRequestV111.FromIndex(request),
-            selection);
+        var controlledRequest =
+            ControlledStochasticRequestV111.FromIndex(request);
+        var selected = law.SiteId ==
+                PrototypeNativePotionShop.UniformModelSiteId
+            ? ReferenceNatureChanceLawDecisionV111.FromOrderedIndexSelection(
+                law, controlledRequest, selection,
+                law.Outcomes.Select(outcome => outcome.OutcomeId).ToArray())
+            : ReferenceNatureChanceLawDecisionV111.FromSelection(
+                law, controlledRequest, selection);
         var action = RequireAction(origin, actionId);
         var run = ReferenceNatureNativeEventIndexReplayV111
             .ReplayControlledIndex(
@@ -446,6 +506,14 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
                 law.SiteId, StringComparer.Ordinal))
             throw new NotSupportedException(
                 $"Endless Conveyor index replay does not support site '{law.SiteId}'.");
+        if (law.SiteId == PrototypeNativePotionShop.UniformModelSiteId)
+        {
+            var request = new RandomIndexRequestV111(
+                law.SiteId, "reward", law.OwnerId, law.Ordinal,
+                Enumerable.Range(0, law.Outcomes.Length).ToArray());
+            request.Validate();
+            return request;
+        }
         var stream = origin.World?.Event?.NativeEventRng
             ?? throw new InvalidDataException(
                 "Endless Conveyor index replay lost its Native event cursor.");
@@ -506,6 +574,31 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
                 run.Player.Deck[^1].CardId != cardId)
                 throw new InvalidDataException(
                     "Scripted Fried Eel added a different Colorless card than its Nature outcome.");
+            return;
+        }
+
+        if (law.SiteId == PrototypeNativePotionShop.UniformModelSiteId)
+        {
+            var candidates = PrototypeNativePotionShop.NativePotionPoolOrder;
+            var eventState = run.World?.Event;
+            if ((uint)selection.OutcomeIndex >= (uint)candidates.Count ||
+                law.Outcomes[selection.OutcomeIndex].OutcomeId !=
+                    "potion:" + candidates[selection.OutcomeIndex] ||
+                run.Phase != RunPhase.Event || eventState is null ||
+                eventState.EventId != PrototypeNativeEndlessConveyor.EventId ||
+                eventState.NativePageIndex != 1 ||
+                eventState.ChosenChoiceId != "grab" ||
+                eventState.NativeDishId != "SUSPICIOUS_CONDIMENT" ||
+                !eventState.NativeDishRollPending ||
+                eventState.PendingPotionReplacement?.PotionId !=
+                    candidates[selection.OutcomeIndex] ||
+                run.Player.Gold != origin.Player.Gold - 40 ||
+                !run.Player.PotionSlots.SequenceEqual(
+                    origin.Player.PotionSlots) ||
+                CanonicalJson.Sha256(run.Rng) !=
+                    CanonicalJson.Sha256(origin.Rng))
+                throw new InvalidDataException(
+                    "Scripted Suspicious Condiment action did not queue the Nature-selected potion without advancing the legacy provider.");
             return;
         }
 

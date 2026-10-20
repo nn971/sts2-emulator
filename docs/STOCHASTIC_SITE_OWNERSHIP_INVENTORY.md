@@ -173,3 +173,5 @@ The Doors of Light and Dark, Fragrant Mushroom, two Tinker Time, Battleworn Dumm
 
 
 Fisher–Yates Chance Laws for generated-card, rare-card, hand-return, and effect-recycle swaps now use exact Native `NextInt` grid masses at each saved bound. This certifies the bounded transform on the declared support only; pool completeness, stream assignment, seed frequencies, and cursor parity remain separate.
+
+The Endless Conveyor session now controls Suspicious Condiment's `potion.uniform_model.index_draw` during a legal Grab, validates the queued potion and pending reward boundary, and commits it with the Nature cursor. Resolving or skipping that potion and sampling the deferred next dish remain a separate action, as described in the [session contract](REFERENCE_NATURE_ENDLESS_CONVEYOR_D3.md#suspicious-condiment-potion-model).

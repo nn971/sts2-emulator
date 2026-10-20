@@ -1319,7 +1319,7 @@ internal static class PrototypeAiJsonlServer
                 parent,
                 fingerprint = session.Fingerprint,
                 runFingerprint = CanonicalJson.Sha256(session.Run),
-                siteId = law?.SiteId ??
+                siteId = law?.SiteId ?? session.LastSiteId ??
                     PrototypeNativeEndlessConveyor.DishWeightedTicketSiteId,
                 eventId = law?.EventId ??
                     session.DecisionTranscript.LastOrDefault()?.EventId,
@@ -1336,6 +1336,8 @@ internal static class PrototypeAiJsonlServer
                             "native_endless_conveyor_card_upgrade_random_choice",
                         PrototypeNativeEndlessConveyor.ColorlessCardSiteId =>
                             "native_endless_conveyor_colorless_card_random_choice",
+                        PrototypeNativePotionShop.UniformModelSiteId =>
+                            "native_endless_conveyor_potion_random_choice",
                         _ => "native_endless_conveyor_dish_random_choice"
                     },
                     boundaryFingerprint = law.EventId,
