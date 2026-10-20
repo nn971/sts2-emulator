@@ -422,20 +422,34 @@ public static class V111RunFactory
         if (!config.Profile.FullyUnlocked)
             throw new NotSupportedException("Restricted-profile acquisition/progression rules are not implemented; choose an explicit fully unlocked profile.");
         RunState opening;
+        var initialNatureState = input.ReferenceNatureState?.Fork();
+        var runStartChanceLaws = new List<ChanceLawV111>();
+        var runStartDecisions = new List<ReferenceNatureDecisionV111>();
         if (config.Acts[0] == ActIdentity.Overgrowth)
         {
-            opening = input.ReferenceNatureState is { } overgrowthNatureState
-                ? PrototypeNativeOvergrowthRunFactory
+            if (initialNatureState is { } overgrowthNatureState)
+            {
+                var result = PrototypeNativeOvergrowthRunFactory
                     .CreateWithReferenceNature(input.RunSeed,
-                        config.Ascension, overgrowthNatureState).Run
-                : PrototypeNativeOvergrowthRunFactory.Create(
+                        config.Ascension, overgrowthNatureState);
+                opening = result.Run;
+                runStartChanceLaws.AddRange(result.ChanceLaws);
+                runStartDecisions.AddRange(result.DecisionTranscript);
+            }
+            else
+            {
+                opening = PrototypeNativeOvergrowthRunFactory.Create(
                     input.RunSeed, config.Ascension);
+            }
         }
-        else if (input.ReferenceNatureState is { } underdocksNatureState)
+        else if (initialNatureState is { } underdocksNatureState)
         {
-            opening = PrototypeNativeUnderdocksRunFactory
+            var result = PrototypeNativeUnderdocksRunFactory
                 .CreateWithReferenceNature(input.RunSeed,
-                    config.Ascension, underdocksNatureState).Run;
+                    config.Ascension, underdocksNatureState);
+            opening = result.Run;
+            runStartChanceLaws.AddRange(result.ChanceLaws);
+            runStartDecisions.AddRange(result.DecisionTranscript);
         }
         else
         {
@@ -461,7 +475,16 @@ public static class V111RunFactory
                 opening.Rng, config, natureState);
             preparedLaterActBags = prepared.Bags;
             natureState = prepared.NatureState ?? natureState;
+            runStartChanceLaws.AddRange(prepared.ChanceLaws);
+            runStartDecisions.AddRange(prepared.DecisionTranscript);
         }
+        var runStartTranscript = initialNatureState is null
+            ? null
+            : new ReferenceNatureRunInitializationTranscriptV111(
+                initialNatureState, natureState ?? throw new InvalidDataException(
+                    "ReferenceNature run initialization lost its cursor."),
+                runStartChanceLaws.ToArray(), runStartDecisions.ToArray());
+        runStartTranscript?.Validate();
         return opening with
         {
             GameBuild = input.GameBuild, EmulatorSchema = input.EmulatorSchema,
@@ -469,6 +492,7 @@ public static class V111RunFactory
             Configuration = config.Fork(), Player = opening.Player with { Deck = deck },
             NativeRunRng = nativeRunRng,
             ReferenceNatureState = natureState,
+            ReferenceNatureRunInitializationTranscript = runStartTranscript,
             World = opening.World! with
             {
                 RulesetId = config.RulesetId,
@@ -480,10 +504,14 @@ public static class V111RunFactory
     }
 
     private static (PrototypeLaterActEncounterBagV111[] Bags,
-        ReferenceNatureStateV111? NatureState) BuildPreparedLaterActBags(
+        ReferenceNatureStateV111? NatureState, ChanceLawV111[] ChanceLaws,
+        ReferenceNatureDecisionV111[] DecisionTranscript)
+        BuildPreparedLaterActBags(
         RngBundle rng, RunConfiguration configuration,
         ReferenceNatureStateV111? natureState)
     {
+        var chanceLaws = new List<ChanceLawV111>();
+        var decisions = new List<ReferenceNatureDecisionV111>();
         string[] assigned;
         if (natureState is null)
         {
@@ -499,6 +527,8 @@ public static class V111RunFactory
                     natureState);
             assigned = result.Assignments;
             natureState = result.NatureState;
+            chanceLaws.AddRange(result.ChanceLaws);
+            decisions.AddRange(result.DecisionTranscript);
         }
         PrototypeLaterActEncounterBagV111[] bags;
         if (natureState is null)
@@ -545,7 +575,9 @@ public static class V111RunFactory
             result.Validate(configuration.Profile);
             bags = result.Bags;
             natureState = result.NatureState;
+            chanceLaws.AddRange(result.ChanceLaws);
+            decisions.AddRange(result.DecisionTranscript);
         }
-        return (bags, natureState);
+        return (bags, natureState, chanceLaws.ToArray(), decisions.ToArray());
     }
 }

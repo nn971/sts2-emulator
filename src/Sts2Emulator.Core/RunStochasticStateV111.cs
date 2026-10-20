@@ -25,7 +25,9 @@ public sealed record RunStochasticStateV111
         PrototypeControlledRunActionContinuationV111?
             ControlledRunActionChoice = null,
         SemanticOtherChanceStateV111? SemanticOtherChance = null,
-        SemanticRewardAuditV111? SemanticRewardAudit = null)
+        SemanticRewardAuditV111? SemanticRewardAudit = null,
+        ReferenceNatureRunInitializationTranscriptV111?
+            ReferenceNatureRunInitializationTranscript = null)
     {
         this.PrototypeRng = PrototypeRng;
         this.NativeRunRng = NativeRunRng;
@@ -38,6 +40,8 @@ public sealed record RunStochasticStateV111
         this.ControlledRunActionChoice = ControlledRunActionChoice;
         this.SemanticOtherChance = SemanticOtherChance;
         this.SemanticRewardAudit = SemanticRewardAudit;
+        this.ReferenceNatureRunInitializationTranscript =
+            ReferenceNatureRunInitializationTranscript?.Fork();
     }
 
     public RngBundle PrototypeRng { get; init; }
@@ -63,6 +67,8 @@ public sealed record RunStochasticStateV111
         ControlledRunActionChoice { get; init; }
     public SemanticOtherChanceStateV111? SemanticOtherChance { get; init; }
     public SemanticRewardAuditV111? SemanticRewardAudit { get; init; }
+    public ReferenceNatureRunInitializationTranscriptV111?
+        ReferenceNatureRunInitializationTranscript { get; init; }
 
     public RunStochasticStateV111 Fork() => this with
     {
@@ -75,7 +81,9 @@ public sealed record RunStochasticStateV111
         ControlledRunActionHistory = Clone(
             _controlledRunActionHistory, trace => trace.Fork()),
         ControlledRunActionChoice = ControlledRunActionChoice?.Fork(),
-        SemanticOtherChance = SemanticOtherChance?.Fork()
+        SemanticOtherChance = SemanticOtherChance?.Fork(),
+        ReferenceNatureRunInitializationTranscript =
+            ReferenceNatureRunInitializationTranscript?.Fork()
     };
 
     public void Deconstruct(
@@ -128,6 +136,29 @@ public sealed record RunStochasticStateV111
         ReferenceNature?.Validate();
         if (SemanticOtherChance is not null)
             SemanticOtherChanceEngineV111.Validate(SemanticOtherChance);
+        if (ReferenceNatureRunInitializationTranscript is { } runStart)
+        {
+            runStart.Validate();
+            var expectedBossSite = owner.Configuration?.Acts[0] switch
+            {
+                ActIdentity.Overgrowth =>
+                    "run.encounter.overgrowth_boss.index_draw",
+                ActIdentity.Underdocks =>
+                    PrototypeNativeUnderdocks.BossEncounterIndexSiteId,
+                _ => null
+            };
+            var laws = runStart.ChanceLaws;
+            if (ReferenceNature is not { } currentNature ||
+                expectedBossSite is null || laws.Length == 0 ||
+                laws[0].SiteId != expectedBossSite ||
+                currentNature.SampleCount <
+                    runStart.FinalNatureState.SampleCount ||
+                (currentNature.SampleCount ==
+                    runStart.FinalNatureState.SampleCount &&
+                 !currentNature.SameCursor(runStart.FinalNatureState)))
+                throw new InvalidDataException(
+                    "ReferenceNature cursor precedes or conflicts with its run-initialization transcript.");
+        }
         if (SemanticRewardAudit is { } reward &&
             (owner.Phase != RunPhase.Reward ||
              reward.ProviderId != SemanticRewardAuditV111.PrototypeProviderId ||
@@ -326,6 +357,15 @@ public sealed record RunStochasticStateV111
         RunStochasticStateV111 current,
         SemanticRewardAuditV111? semanticRewardAudit) =>
         current with { SemanticRewardAudit = semanticRewardAudit };
+
+    internal static RunStochasticStateV111
+        WithReferenceNatureRunInitializationTranscript(
+            RunStochasticStateV111 current,
+            ReferenceNatureRunInitializationTranscriptV111? transcript) =>
+        current with
+        {
+            ReferenceNatureRunInitializationTranscript = transcript?.Fork()
+        };
 
     private static T[]? Clone<T>(T[]? values, Func<T, T> clone)
         where T : class => values?.Select(value =>

@@ -20,7 +20,9 @@ explicitly identifies prototype RNG.
 with a committed sampler cursor and `natureRelicBagSnapshotSchemaId` for the
 opt-in v3 snapshot carrying an unordered Nature relic identity set. The v3
 schema takes precedence when both capabilities apply; ordinary v1 and cursor
-only v2 snapshots retain their established envelopes.
+only v2 snapshots retain their established envelopes. Configured Nature-seeded
+run starts add an optional initialization transcript within the existing v2
+state payload; older snapshots without it remain readable.
 
 Existing `reset`, `reset_native_overgrowth` and hypothetical adapters preserve
 their legacy identities. `reset_v111` is opt-in and accepts `seed`, `character`
@@ -36,6 +38,12 @@ second boss during prepared encounter-bag generation. Five
 character configurations can be created/serialized, but starting unsupported
 character mechanics fails. Native later-act and restricted-profile mechanics
 also fail explicitly.
+
+Configured runs with `nature_seed` retain an optional
+`reference_nature_run_initialization_transcript` in exact run snapshots. It
+records the initial and final sampler cursors plus the ordered Chance Laws and
+sampled decisions from synchronous initialization; snapshot validation replays
+that prefix. This is an audit record, not a resumable `start_run` session.
 
 For the **experimental** first whole-route slice, `reset_v111` additionally
 accepts `fidelity_id: "v111-experimental-silent-three-act-route-v1"`.

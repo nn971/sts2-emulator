@@ -289,6 +289,17 @@ public sealed partial record RunState(
 
     [System.Text.Json.Serialization.JsonIgnore(Condition =
         System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public ReferenceNatureRunInitializationTranscriptV111?
+        ReferenceNatureRunInitializationTranscript
+    {
+        get => Stochastic.ReferenceNatureRunInitializationTranscript;
+        init => Stochastic = RunStochasticStateV111
+            .WithReferenceNatureRunInitializationTranscript(
+                Stochastic, value);
+    }
+
+    [System.Text.Json.Serialization.JsonIgnore(Condition =
+        System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
     public ControlledEventChoiceTraceV111[]? ControlledEventChoiceHistory
     {
         get => Stochastic.ControlledEventChoiceHistory;
