@@ -634,7 +634,8 @@ public sealed record SemanticPilotCombatV111(
         {
             cardSelectionPending.Validate();
             SemanticCardSelectionEngineV111.ValidatePendingBoundary(this.Run);
-            if (this.PendingEndTurn is not null ||
+            if ((this.PendingEndTurn is not null &&
+                 this.PendingEndTurn.NestedCardSelectionPending is null) ||
                 this.PendingInitialIntents is not null ||
                 this.TargetPending is not null ||
                 this.GeneratedCardPending is not null ||
@@ -866,7 +867,8 @@ public sealed record SemanticPilotCombatV111(
          endTurn.CardTransformPending is not null ||
          endTurn.CardShortlistPending is not null ||
          endTurn.PoolShufflePending is not null ||
-         endTurn.NestedHandCostSelectionPending is not null);
+         endTurn.NestedHandCostSelectionPending is not null ||
+         endTurn.NestedCardSelectionPending is not null);
 
     public SemanticPilotCombatV111 Fork() => this with
     {
@@ -2247,12 +2249,20 @@ public static class SemanticPilotCombatEngineV111
             CanonicalJson.Sha256(DescribePendingCardSelectionEvent(current)))
             throw new InvalidDataException(
                 "Source card-selection event changed before resolution.");
+        var nextEndTurn = current.PendingEndTurn is { } endTurn
+            ? SemanticEndTurnEngineV111.ContinueNestedAutomaticChoice(
+                endTurn, selection.Run,
+                new SemanticEndTurnNestedChoiceV111(
+                    "semantic_card_selection",
+                    CardSelectionDecision: decision.Fork()),
+                "combat.card_selection")
+            : null;
         var next = PublishRunContinuation(
-            current, selection.Run, null,
+            current, selection.Run, nextEndTurn,
             new SemanticPilotContinuationV111(
                 "semantic_card_selection",
                 CardSelectionDecision: decision.Fork()),
-            preservePendingEndTurn: true);
+            preservePendingEndTurn: current.PendingEndTurn is null);
         Validate(next);
         return next;
     }
@@ -3243,9 +3253,13 @@ public static class SemanticPilotCombatEngineV111
         DescribePendingCardSelectionEvent(SemanticPilotCombatV111 current)
     {
         ArgumentNullException.ThrowIfNull(current);
+        if (current.PendingEndTurn?.NestedCardSelectionPending is
+            { } endTurnSelection)
+            return endTurnSelection;
         if (current.Run.World?.Combat?.PendingChoice?.ChoiceId != "select_cards")
             return null;
-        if (current.PendingEndTurn is not null ||
+        if ((current.PendingEndTurn is not null &&
+             current.PendingEndTurn.NestedCardSelectionPending is null) ||
             current.PendingInitialIntents is not null ||
             current.TargetPending is not null ||
             current.GeneratedCardPending is not null ||
