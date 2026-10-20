@@ -1121,15 +1121,10 @@ public static class ControlledPlayableCombatEngineV111
     private static ControlledPlayableCombatV111 FinishTurnIntents(
         ControlledPlayableCombatV111 state)
     {
-        var current = state.TurnIntents ??
-            throw new InvalidOperationException("No turn intents to commit.");
-        if (!current.Complete)
-            throw new InvalidOperationException("Nature intent tickets still pending.");
-        current.Validate();
         RunState result;
         using (ControlledChanceGuardV111.Enter())
             result = PrototypeGameEngine.ResumeControlledTurnAfterIntents(
-                state.Run.Fork(), current.Combat.Fork());
+                state.Run.Fork());
         return StartPendingTurn(state with
         {
             TurnIntents = null,

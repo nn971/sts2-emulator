@@ -1830,13 +1830,14 @@ public sealed partial class PrototypeGameEngine
     }
 
     /// <summary>
-    /// Resume after Nature has committed all next-turn intent tickets.
-    /// Earlier enemy actions/status hooks remain applied in the RunState.
-    /// This method performs AdvanceTurn postwork once and continues from the
-    /// next real pipeline index under the same fail-closed RNG guard.
+    /// Resume after the shared pipeline owner has recorded all next-turn
+    /// intent tickets. Earlier enemy actions/status hooks remain applied in
+    /// the RunState. This method validates and consumes that saved intent
+    /// frame, performs AdvanceTurn postwork once, and continues from the next
+    /// real pipeline index under the same fail-closed RNG guard.
     /// </summary>
     internal static RunState ResumeControlledTurnAfterIntents(
-        RunState state, CombatState committed,
+        RunState state,
         bool stopBeforeSemanticHandDraw = false)
     {
         if (!ControlledChanceGuardV111.Active)
@@ -1847,13 +1848,25 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidOperationException("No combat to resume.");
         var continuation = original.AutomaticPipelineContinuation ??
             throw new InvalidOperationException("Missing saved turn pipeline cursor.");
-        int index = continuation.NextStepIndex;
         if (continuation.Mechanics.CurrentStepKind !=
                 PrototypeAutomaticStepKind.AdvanceTurn ||
             continuation.OpeningStage is not null)
             throw new InvalidOperationException("Not an AdvanceTurn chance boundary.");
+        var intents = continuation.ControlledTurnIntents ??
+            throw new InvalidOperationException(
+                "Missing saved controlled turn-intent frame.");
+        if (intents.SiteId != ControlledTurnIntentEngineV111.SiteId ||
+            !intents.Complete)
+            throw new InvalidOperationException(
+                "AdvanceTurn requires a completed next-turn intent frame.");
+        intents.Validate();
+
+        int index = continuation.NextStepIndex;
         var advanced = CompleteAdvanceTurnAfterCommittedIntents(
-            committed with { AutomaticPipelineContinuation = null });
+            intents.Combat.Fork() with
+            {
+                AutomaticPipelineContinuation = null
+            });
         var resumed = state with
         {
             World = world with { Combat = advanced }
