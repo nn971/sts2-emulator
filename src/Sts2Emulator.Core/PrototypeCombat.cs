@@ -14378,13 +14378,14 @@ public sealed partial class PrototypeGameEngine
         var draw = pending?.ControlledSemanticDraw;
         var continuation = pending?.OuterChoiceContinuation;
         var deck = combat.SemanticDeck;
-        bool mayhemPipelineDraw = pending is not null &&
-            IsMayhemSemanticDrawContinuation(combat, pending);
+        bool supportedPipelineDraw = pending is not null &&
+            IsSupportedAutomaticPipelineSemanticDrawContinuation(
+                combat, pending);
         if (state.Phase != RunPhase.Combat ||
             combat is not { IsPlayerTurn: true,
                 PendingKnowledgeDemonChoice: null } ||
             (combat.AutomaticPipelineContinuation is not null &&
-             !mayhemPipelineDraw) ||
+             !supportedPipelineDraw) ||
             pending is not { ChoiceId: "controlled_semantic_draw" } ||
             draw is null || continuation is null ||
             deck is not { Mode: SemanticDeckStateV111.NatureMode,

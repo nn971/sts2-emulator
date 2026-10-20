@@ -341,7 +341,10 @@ public sealed record SemanticPilotCombatV111(
     [JsonIgnore] public SemanticPoolShuffleEventV111? PoolShufflePending =>
         SemanticPilotCombatEngineV111.DescribePendingPoolShuffleEvent(this);
     [JsonIgnore] public SemanticDrawInsertionEventV111? DrawInsertionPending =>
-        SemanticPilotCombatEngineV111.DescribePendingDrawInsertionEvent(this);
+        PendingEndTurn is { } endTurn
+            ? endTurn.DrawInsertionPending
+            : SemanticPilotCombatEngineV111
+                .DescribePendingDrawInsertionEvent(this);
     [JsonIgnore] public SemanticDrawHookChoiceEventV111?
         DrawHookChoicePending => PendingEndTurn?.DrawHookChoicePending;
     [JsonIgnore] public string Fingerprint => CanonicalJson.Sha256(this);
@@ -467,7 +470,8 @@ public sealed record SemanticPilotCombatV111(
                   ControlledSemanticDraw: not null })
         {
             SemanticDrawChoiceV111.ValidateBoundary(this.Run);
-            if (this.PendingEndTurn is not null ||
+            if ((this.PendingEndTurn is not null &&
+                 !this.HasPendingEndTurnNestedSemanticChoice) ||
                 this.PendingInitialIntents is not null ||
                 this.IntentPending is not null ||
                 this.DrawPending is null ||
@@ -490,7 +494,8 @@ public sealed record SemanticPilotCombatV111(
                   ControlledSemanticDraw: not null })
         {
             SemanticCostChoiceV111.ValidateDrawBoundary(this.Run);
-            if (this.PendingEndTurn is not null ||
+            if ((this.PendingEndTurn is not null &&
+                 !this.HasPendingEndTurnNestedSemanticChoice) ||
                 this.PendingInitialIntents is not null ||
                 this.IntentPending is not null ||
                 this.DrawPending is not null || this.CostPending is null ||
@@ -683,7 +688,8 @@ public sealed record SemanticPilotCombatV111(
         {
             drawInsertionPending.Validate();
             SemanticDrawInsertionChoiceV111.ValidateBoundary(this.Run);
-            if (this.PendingEndTurn is not null ||
+            if ((this.PendingEndTurn is not null &&
+                 this.PendingEndTurn.DrawInsertionPending is null) ||
                 this.PendingInitialIntents is not null ||
                 this.IntentPending is not null || this.DrawPending is not null ||
                 this.TargetPending is not null ||
@@ -831,6 +837,15 @@ public sealed record SemanticPilotCombatV111(
             throw new InvalidDataException(
                 "Terminal combat retained an unresolved chance.");
     }
+
+    private bool HasPendingEndTurnNestedSemanticChoice =>
+        this.PendingEndTurn is { Complete: false } endTurn &&
+        endTurn.HandDraw is not { AtBoundary: false } &&
+        PrototypeGameEngine
+            .HasPendingSupportedAutomaticPipelineSemanticDraw(this.Run) &&
+        (endTurn.DrawPending is not null ||
+         endTurn.NestedCostPending is not null ||
+         endTurn.NestedDrawInsertionPending is not null);
 
     public SemanticPilotCombatV111 Fork() => this with
     {
@@ -2602,6 +2617,34 @@ public static class SemanticPilotCombatEngineV111
         if (pending.EventId != eventId)
             throw new InvalidOperationException(
                 "Draw-insertion event ID is stale or mismatched.");
+        if (current.PendingEndTurn is { } endTurn)
+        {
+            var priorHandInsertionCount =
+                endTurn.HandDraw?.DrawInsertionTranscript.Length ?? 0;
+            var priorNestedChoiceCount = endTurn.NestedChoiceTranscript.Length;
+            var resolvedEndTurn = SemanticEndTurnEngineV111
+                .ResolveDrawInsertion(
+                    endTurn, endTurn.Fingerprint, eventId, position);
+            var decision = resolvedEndTurn.HandDraw is { } resolvedHand &&
+                    resolvedHand.DrawInsertionTranscript.Length >
+                        priorHandInsertionCount
+                ? resolvedHand.DrawInsertionTranscript[^1]
+                : resolvedEndTurn.NestedChoiceTranscript.Length >
+                    priorNestedChoiceCount
+                    ? resolvedEndTurn.NestedChoiceTranscript[^1]
+                        .DrawInsertionDecision
+                    : null;
+            if (decision is null)
+                throw new InvalidDataException(
+                    "End-turn draw insertion omitted its replay decision.");
+            var resolvedSession = PublishRunContinuation(
+                current, resolvedEndTurn.Run, resolvedEndTurn,
+                new SemanticPilotContinuationV111(
+                    "semantic_draw_insertion",
+                    DrawInsertionDecision: decision.Fork()));
+            Validate(resolvedSession);
+            return resolvedSession;
+        }
         var decision = SemanticDrawInsertionChoiceV111.Select(
             pending, eventId, position);
 
@@ -2777,12 +2820,20 @@ public static class SemanticPilotCombatEngineV111
                 .ResumeEffectDrawCost(
                     current.Run.Fork(), effectCostDecision.SelectedCost,
                     allowEngineOwnedPrototypeReward: true);
+            var nextEndTurn = current.PendingEndTurn is { } costEndTurn
+                ? SemanticEndTurnEngineV111.ContinueNestedAutomaticChoice(
+                    costEndTurn, effectCostResult,
+                    new SemanticEndTurnNestedChoiceV111(
+                        "semantic_cost",
+                        CostDecision: effectCostDecision.Fork()),
+                    "combat.card_draw.cost")
+                : null;
             var effectCostState = PublishRunContinuation(
-                current, effectCostResult, null,
+                current, effectCostResult, nextEndTurn,
                 new SemanticPilotContinuationV111(
                     "semantic_cost",
                     CostDecision: effectCostDecision.Fork()),
-                preservePendingEndTurn: true);
+                preservePendingEndTurn: current.PendingEndTurn is null);
             Validate(effectCostState);
             return effectCostState;
         }
@@ -2810,12 +2861,20 @@ public static class SemanticPilotCombatEngineV111
                 .ResumeControlledEffectDraw(
                     current.Run.Fork(), effectDrawDecision,
                     allowEngineOwnedPrototypeReward: true);
+            var nextEndTurn = current.PendingEndTurn is { } drawEndTurn
+                ? SemanticEndTurnEngineV111.ContinueNestedAutomaticChoice(
+                    drawEndTurn, effectDrawResult,
+                    new SemanticEndTurnNestedChoiceV111(
+                        "semantic_draw",
+                        DrawDecision: effectDrawDecision.Fork()),
+                    "combat.card_effect.draw")
+                : null;
             var effectDrawState = PublishRunContinuation(
-                current, effectDrawResult, null,
+                current, effectDrawResult, nextEndTurn,
                 new SemanticPilotContinuationV111(
                     "semantic_draw",
                     DrawDecision: effectDrawDecision.Fork()),
-                preservePendingEndTurn: true);
+                preservePendingEndTurn: current.PendingEndTurn is null);
             Validate(effectDrawState);
             return effectDrawState;
         }
@@ -3171,10 +3230,14 @@ public static class SemanticPilotCombatEngineV111
                     { ChoiceId: "controlled_draw_cost",
                       ControlledDrawCost: not null,
                       ControlledSemanticDraw: not null })
+        {
+            if (current.PendingEndTurn?.NestedCostPending is { } nestedCost)
+                return nestedCost;
             return SemanticCostChoiceV111.DescribeEffectDrawEvent(
                 current.Run, current.Fingerprint,
                 current.History.Count(transition =>
                     transition.Kind == "semantic_cost"));
+        }
         else
             return null;
         return SemanticCostChoiceV111.CreateEvent(

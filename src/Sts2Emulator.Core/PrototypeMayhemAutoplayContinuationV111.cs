@@ -19,7 +19,8 @@ public sealed partial class PrototypeGameEngine
     /// <summary>
     /// Admit a saved top-autoplay draw or a nested draw/cost frame from one
     /// of its autoplayed cards while the exact Mayhem AutoPrePlay cursor is
-    /// suspended. Other pipeline-owned semantic draws remain unsupported.
+    /// suspended. Late player-turn autoplay is admitted separately by the
+    /// shared automatic-pipeline continuation predicate.
     /// </summary>
     internal static bool IsMayhemSemanticDrawContinuation(
         CombatState combat, PendingCombatChoiceState pending)
@@ -69,6 +70,71 @@ public sealed partial class PrototypeGameEngine
              cost.EventDepth != draw.EventDepth))
             return false;
         return true;
+    }
+
+    internal static bool IsAutomaticPipelineSemanticDrawInsertionContinuation(
+        CombatState combat, PendingCombatChoiceState pending)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(pending);
+        if (pending is not
+            { ChoiceId: "controlled_draw_insertion",
+              ControlledDrawInsertion: { Stage: "position",
+                  SelectedCardId: not null,
+                  SemanticDrawContinuation: not null,
+                  AfterShuffleRelic: not null },
+              OuterChoiceContinuation: { } continuation } ||
+            combat.SemanticDeck is not
+                { Mode: SemanticDeckStateV111.NatureMode })
+            return false;
+
+        bool nestedAutoplay = false;
+        for (var frame = continuation; frame is not null;
+             frame = frame.Parent)
+            if (frame.CardPlaySeries is { IsAutoPlay: true })
+            {
+                nestedAutoplay = true;
+                break;
+            }
+        if (!nestedAutoplay) return false;
+
+        return IsMayhemAutoPrePlayPipelineCursor(combat) ||
+            combat.IsPlayerTurn &&
+            IsAtSupportedAutomaticPipelineTargetBoundary(combat);
+    }
+
+    private static bool IsLateAutoplaySemanticDrawContinuation(
+        CombatState combat, PendingCombatChoiceState pending)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(pending);
+        if (!combat.IsPlayerTurn ||
+            !IsAtSupportedAutomaticPipelineTargetBoundary(combat) ||
+            pending.ControlledSemanticDraw is not { } draw ||
+            pending.ChoiceId is not (
+                "controlled_semantic_draw" or "controlled_draw_cost") ||
+            combat.SemanticDeck is not
+                { Mode: SemanticDeckStateV111.NatureMode } ||
+            pending.OuterChoiceContinuation is not { } continuation)
+            return false;
+
+        bool nestedAutoplay = false;
+        for (var frame = continuation; frame is not null;
+             frame = frame.Parent)
+            if (frame.CardPlaySeries is { IsAutoPlay: true })
+            {
+                nestedAutoplay = true;
+                break;
+            }
+        if (!nestedAutoplay) return false;
+
+        if (pending.ChoiceId == "controlled_semantic_draw")
+            return draw.RemainingCount > 0;
+
+        return pending.ControlledDrawCost is { } cost &&
+            cost.RemainingCount == draw.RemainingCount &&
+            cost.FromHandDraw == draw.FromHandDraw &&
+            cost.EventDepth == draw.EventDepth;
     }
 
     internal static bool IsMayhemLegacyRecycleContinuation(

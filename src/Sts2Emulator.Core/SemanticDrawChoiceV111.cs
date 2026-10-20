@@ -17,7 +17,7 @@ public static class SemanticDrawChoiceV111
                 PendingKnowledgeDemonChoice: null } ||
             (combat.AutomaticPipelineContinuation is not null &&
              (choice is null ||
-              !PrototypeGameEngine.IsMayhemSemanticDrawContinuation(
+              !PrototypeGameEngine.IsSupportedAutomaticPipelineSemanticDrawContinuation(
                   combat, choice))) ||
             choice is not { ChoiceId: "controlled_semantic_draw",
                 ControlledSemanticDraw: not null,
