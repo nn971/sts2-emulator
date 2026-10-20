@@ -73,6 +73,20 @@ or establish Native source parity.
 
 | `combat.relic.jeweled_mask.random_power_draw_card` | The `MoveRandomPowerDrawCardToHandFree` branch in `PrototypeCombat.cs` rebuilds the ordered DrawPile Power support, prefers non-Innate instances, and falls back to all Power instances. Under controlled Nature, it suspends only at the saved `BeforeHandDraw` cursor. `SemanticRandomPileCardEngineV111` fingerprints each physical card identity and model; `SemanticCombatDrawV111` records the selection, resumes `ResumeSemanticRandomPileCardChoice`, and replays the hook from its original automatic hand-draw frame. `SemanticEndTurnV111` delegates the pending event to that draw owner, and the pilot publishes the selected card and resumed run. Native selection uses `run.combat_card_selection`; the retained legacy route uses `combat`. See the [automatic hand-draw contract](NATURE_SEMANTIC_AUTOMATIC_HAND_DRAW_143.md#s0-stochastic-boundary-jeweled-mask-power-selection), [random pile-card event](../src/Sts2Emulator.Core/SemanticRandomPileCardV111.cs), [draw continuation](../src/Sts2Emulator.Core/SemanticCombatDrawV111.cs), and [source operation](../src/Sts2Emulator.Core/PrototypeCombat.cs). | The Nature event remains `UNVERIFIED`; the bounded Native transform does not establish Native pool/stream fidelity, source seed frequencies, or cursor parity. The Jeweled Mask continuation has no mechanics-tested evidence yet. |
 
+### Opening `CombatStarted` stage review
+
+`ResumeOpeningCombat` dispatches `CombatStarted` before
+`OpeningPlayerTurnStarted`, then resumes the saved opening cursor through the
+ordinary event-dispatch kernel. The current modeled subscriber set consists of
+Anchor, Vajra, Philosopher's Stone, Blood Vial, Sword of Jade, Bronze Scales,
+Oddly Smooth Stone, Bag of Marbles, Radiant Pearl, Fake Anchor, Fake Strike
+Dummy, and Twisted Funnel. Their effects grant fixed block, powers, statuses,
+healing, or a fixed Luminesce card. None requests a random selection or player
+choice, and fixed card creation does not consume an RNG site. This closes the
+scoped audit noted by `PrototypeOpeningCombatPipeline`; it does not establish
+complete source coverage, Native trigger ordering, or source RNG parity. The
+row-by-row S0 audit remains open.
+
 ## State ownership crosswalk
 
 | State or path | Current representation | Target authority | Visibility and lifecycle | Migration note |
