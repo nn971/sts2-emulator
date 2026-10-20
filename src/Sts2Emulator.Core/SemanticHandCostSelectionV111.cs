@@ -151,6 +151,21 @@ public static class SemanticHandCostSelectionChoiceV111
         return decision;
     }
 
+    internal static void ValidateDecision(
+        SemanticHandCostSelectionEventV111? pending,
+        SemanticHandCostSelectionDecisionV111 decision,
+        long cardInstanceId)
+    {
+        ArgumentNullException.ThrowIfNull(decision);
+        decision.Validate();
+        if (pending is null || pending.EventId != decision.Event.EventId ||
+            CanonicalJson.Sha256(pending) !=
+                CanonicalJson.Sha256(decision.Event) ||
+            decision.SelectedCardInstanceId != cardInstanceId)
+            throw new InvalidDataException(
+                "Hand-cost decision differs from its live semantic event.");
+    }
+
     /// <summary>Revalidate the live hand-card support and resume its ordinary
     /// random-cost continuation.</summary>
     internal static RunState Resume(

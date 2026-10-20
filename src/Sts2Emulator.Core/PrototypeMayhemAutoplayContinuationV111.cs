@@ -204,6 +204,24 @@ public sealed partial class PrototypeGameEngine
             combat, continuation);
     }
 
+    internal static bool IsAutomaticPipelineSemanticRandomHandCostContinuation(
+        CombatState combat, PendingCombatChoiceState pending)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(pending);
+        if (pending is not
+            { ChoiceId: "controlled_random_hand_cost",
+              ControlledRandomCost: { } randomCost,
+              OuterChoiceContinuation: { } continuation } ||
+            combat.SemanticDeck is not
+                { Mode: SemanticDeckStateV111.NatureMode } ||
+            !ValidateControlledRandomCost(combat, randomCost))
+            return false;
+
+        return IsSupportedAutomaticPipelineAutoplayContinuation(
+            combat, continuation);
+    }
+
     private static bool IsSupportedAutomaticPipelineAutoplayContinuation(
         CombatState combat,
         PrototypeChoiceResolutionContinuationState continuation)

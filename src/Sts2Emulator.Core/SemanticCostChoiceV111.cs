@@ -285,6 +285,40 @@ public static class SemanticCostChoiceV111
 /// </summary>
 internal static class SemanticRandomHandCostChoiceV111
 {
+    internal static SemanticCostEventV111 DescribeCostEvent(
+        RunState run, string boundaryFingerprint, int ordinal)
+    {
+        ArgumentNullException.ThrowIfNull(run);
+        ArgumentException.ThrowIfNullOrWhiteSpace(boundaryFingerprint);
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+        var combat = run.World?.Combat ?? throw new InvalidDataException(
+            "Random hand-cost event lost its source combat.");
+        var randomCost = combat.PendingChoice?.ControlledRandomCost ??
+            throw new InvalidDataException(
+                "No random hand-cost choice is pending.");
+        if (randomCost.Operation.Kind != PrototypeCombatEffectKind
+                .RandomizeHandCardEnergyCostsUntilTurnEndOrPlayed)
+            throw new InvalidDataException(
+                "Random hand-cost event requires the cost-randomization operation.");
+        ValidateBoundary(run);
+        var maximumExclusive = Math.Max(1, randomCost.Operation.Amount);
+        var targetCardInstanceId = randomCost.EligibleCardInstanceIds[
+            randomCost.NextCardIndex];
+        var targetCardModelId = combat.Cards.Single(card =>
+            card.InstanceId == targetCardInstanceId).CardId;
+        var request = new RandomIndexRequestV111(
+            "combat.random_hand_card.energy_cost", "prototype.combat",
+            "effect:" + randomCost.Operation.Kind + ":hand:" +
+                CanonicalJson.Sha256(randomCost.EligibleCardInstanceIds) +
+                ":index:" + randomCost.NextCardIndex,
+            ordinal, [], OperationKind: "bounded_integer",
+            BoundedCount: maximumExclusive);
+        return SemanticCostChoiceV111.CreateEvent(
+            boundaryFingerprint, request, targetCardInstanceId,
+            targetCardModelId);
+    }
+
     internal static void ValidateBoundary(RunState run)
     {
         var combat = run.World?.Combat;
