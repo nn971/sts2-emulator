@@ -198,7 +198,7 @@ public sealed record SemanticEndTurnV111(
     }
     [JsonIgnore] public string Fingerprint => CanonicalJson.Sha256(this);
     [JsonIgnore] public SemanticTargetEventV111? TargetPending =>
-        Complete || HandDraw is not null
+        Complete || HandDraw is { AtBoundary: false }
             ? null
             : SemanticPilotCombatEngineV111.DescribePendingTargetEvent(
                 Run, Fingerprint, TargetTranscript.Length);
@@ -258,13 +258,22 @@ public sealed record SemanticEndTurnV111(
         {
             target.Validate();
             if (this.Complete || this.Intents is not null ||
-                this.HandDraw is not null ||
-                this.PlayerActionSource is not { } playerSource ||
-                playerSource.Phase != RunPhase.Combat ||
+                this.HandDraw is { AtBoundary: false } ||
                 this.Run.World?.Combat?.PendingChoice?
-                    .ControlledTarget is null)
+                    .ControlledTarget is null ||
+                !PrototypeGameEngine
+                    .HasPendingControlledAutomaticPipelineChoice(this.Run))
                 throw new InvalidDataException(
                     "Invalid automatic-pipeline target stage.");
+            if (this.PlayerActionSource is { } playerSource)
+            {
+                if (!PrototypeGameEngine
+                    .IsAtCombatPlayerDecisionBoundary(playerSource))
+                    throw new InvalidDataException(
+                        "Automatic-pipeline target lost its player-action source boundary.");
+            }
+            else
+                SemanticEndTurnEngineV111.ValidateOrigin(this.Origin);
             if (target.Ordinal != this.TargetTranscript.Length)
                 throw new InvalidDataException(
                     "Automatic-pipeline target ordinal differs from its transcript.");
@@ -290,6 +299,8 @@ public sealed record SemanticEndTurnV111(
             (!this.Complete && this.Intents is null &&
              this.HandDraw is null && this.EnemyActionPending is null &&
              this.TargetPending is null) ||
+            (!this.Complete && this.HandDraw is { AtBoundary: true } &&
+             this.TargetPending is null) ||
             (this.Intents is not null && this.HandDraw is not null))
             throw new InvalidDataException("Invalid semantic end-turn stages.");
         if (this.Intents is { } intents)
@@ -306,8 +317,13 @@ public sealed record SemanticEndTurnV111(
             hand.Validate();
             if (!this.Complete &&
                 CanonicalJson.Sha256(this.Run) != CanonicalJson.Sha256(hand.Run))
-                throw new InvalidDataException(
-                    "Pending end-turn hand state differs from the draw continuation.");
+            {
+                if (!hand.AtBoundary || this.TargetPending is null ||
+                    !PrototypeGameEngine
+                        .HasPendingControlledAutomaticPipelineChoice(this.Run))
+                    throw new InvalidDataException(
+                        "Pending end-turn hand state differs from the draw continuation.");
+            }
             if (this.Complete && this.Run.Phase == RunPhase.Combat &&
                 !this.AtPlayerBoundary)
                 throw new InvalidDataException(
@@ -558,11 +574,18 @@ public static class SemanticEndTurnEngineV111
         if (PrototypeGameEngine
                 .IsAtCombatRewardOrTerminalBoundary(resumed))
             return CompleteAtBoundary(
-                next, resumed, discardSuspendedFrames: true);
+                next, resumed,
+                discardSuspendedFrames: next.HandDraw is not
+                    { AtBoundary: true });
 
         if (PrototypeGameEngine
-                .HasPendingControlledAutomaticPipelineChoice(resumed))
+                .HasPendingControlledAutomaticPipelineChoice(resumed) &&
+            (next.HandDraw is null ||
+             resumed.World?.Combat?.PendingChoice?.ControlledTarget is not null))
             return next with { Run = resumed };
+
+        if (next.HandDraw is { AtBoundary: true })
+            return CompleteHandDrawAtPlayerBoundary(next, resumed);
 
         var combat = resumed.World?.Combat;
         if (combat?.AutomaticPipelineContinuation?.Mechanics.IsAtStep(
@@ -675,6 +698,14 @@ public static class SemanticEndTurnEngineV111
                 .IsAtCombatRewardOrTerminalBoundary(result))
             return CompleteAtBoundary(
                 state, result, discardSuspendedFrames: false);
+        if (result.World?.Combat?.PendingChoice?.ControlledTarget is not null)
+            return state with { Run = result };
+        return CompleteHandDrawAtPlayerBoundary(state, result);
+    }
+
+    private static SemanticEndTurnV111 CompleteHandDrawAtPlayerBoundary(
+        SemanticEndTurnV111 state, RunState result)
+    {
         if (!PrototypeGameEngine.IsAtCombatPlayerDecisionBoundary(result))
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.semantic_end_turn " +
@@ -730,15 +761,21 @@ public static class SemanticEndTurnEngineV111
             reproduced.PlayerActionId != saved.PlayerActionId)
             throw new InvalidDataException(
                 "End-turn action identity differs on source replay.");
-        if (saved.BoundaryTranscript.Length > 0)
+        int boundaryIndex = 0, enemyActionIndex = 0, targetIndex = 0;
+        void ReplayAvailableBoundaryChoices()
         {
-            int enemyActionIndex = 0, targetIndex = 0;
-            foreach (var boundary in saved.BoundaryTranscript)
+            while (boundaryIndex < saved.BoundaryTranscript.Length)
             {
+                var hasEnemyAction = reproduced.EnemyActionPending is not null;
+                var hasTarget = reproduced.TargetPending is not null;
+                if (!hasEnemyAction && !hasTarget) return;
+
+                var boundary = saved.BoundaryTranscript[boundaryIndex];
                 boundary.Validate();
                 if (boundary.Kind == "enemy_action")
                 {
-                    if (boundary.TranscriptIndex != enemyActionIndex ||
+                    if (!hasEnemyAction ||
+                        boundary.TranscriptIndex != enemyActionIndex ||
                         enemyActionIndex >= saved.EnemyActionTranscript.Length)
                         throw new InvalidDataException(
                             "Semantic end-turn enemy-action transcript order is invalid.");
@@ -757,7 +794,8 @@ public static class SemanticEndTurnEngineV111
                 }
                 else
                 {
-                    if (boundary.TranscriptIndex != targetIndex ||
+                    if (!hasTarget ||
+                        boundary.TranscriptIndex != targetIndex ||
                         targetIndex >= saved.TargetTranscript.Length)
                         throw new InvalidDataException(
                             "Semantic end-turn target transcript order is invalid.");
@@ -772,12 +810,11 @@ public static class SemanticEndTurnEngineV111
                         reproduced.Fingerprint, choice.Event.EventId,
                         choice.SelectedEnemyInstanceId);
                 }
+                boundaryIndex++;
             }
-            if (enemyActionIndex != saved.EnemyActionTranscript.Length ||
-                targetIndex != saved.TargetTranscript.Length)
-                throw new InvalidDataException(
-                    "Semantic end-turn boundary transcript omitted a decision.");
         }
+        if (saved.BoundaryTranscript.Length > 0)
+            ReplayAvailableBoundaryChoices();
         else
         {
             // Snapshots written before automatic target suspension only had
@@ -829,6 +866,15 @@ public static class SemanticEndTurnEngineV111
             }
             else
                 reproduced = ContinueHandDraw(reproduced, replayedHand);
+        }
+        if (saved.BoundaryTranscript.Length > 0)
+        {
+            ReplayAvailableBoundaryChoices();
+            if (boundaryIndex != saved.BoundaryTranscript.Length ||
+                enemyActionIndex != saved.EnemyActionTranscript.Length ||
+                targetIndex != saved.TargetTranscript.Length)
+                throw new InvalidDataException(
+                    "Semantic end-turn boundary transcript omitted a decision.");
         }
         if (CanonicalJson.Sha256(reproduced) != CanonicalJson.Sha256(saved))
             throw new InvalidDataException(
