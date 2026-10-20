@@ -998,7 +998,7 @@ public static class StochasticSiteRegistryV111
     public static string[] ControlledPlayableSiteIds =>
         (string[])ControlledPlayableSites.Clone();
     public static string[] ChanceLawQuerySiteIds =>
-        (string[])ChanceLawQuerySites.Clone();
+        ChanceLawQuerySites.Distinct(StringComparer.Ordinal).ToArray();
     public static string[] NativeUnitFloatSiteIds =>
         (string[])NativeUnitFloatSites.Clone();
     public static string[] NativeRangedFloatSiteIds =>
