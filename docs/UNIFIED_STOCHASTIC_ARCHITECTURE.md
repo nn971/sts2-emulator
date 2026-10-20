@@ -30,6 +30,7 @@ The engine owns the **complete simulation lifecycle** (fork, snapshot, restore, 
 - `ControlledPlayableCombatStochasticStateV111` copies its typed decision transcripts, pending request support, and recycle continuation on construction, replacement, and projection, keeping a caller from rewriting the saved provider prefix.
 - `SemanticPilotStochasticStateV111` deep-copies native-policy and source-route audit arrays, including their ordered request support, when it accepts or returns those audits. The audit remains provider-private replay evidence.
 - `RunWorldStochasticStateV111` and its Act 1, regional encounter, relic, and prepared-bag records copy persistent queue arrays on construction, replacement, projection, and fork.
+- `RunStochasticStateV111` copies its controlled event-choice and run-action history arrays, including their typed request support, on construction, replacement, projection, and fork.
 - The engine owns enemy history and eligibility filters; once an intent is resolved, the resulting committed enemy intent is mechanical state and becomes player-visible at the ordinary game boundary.
 - Native provider state and Nature state are alternative realizations: a Nature counterfactual has no obligation to match a native seed or shadow cursor.
 - A complete state fork or serialized snapshot must include both components **atomically**. No stale `CombatState.DrawPile` / `SemanticDeckStateV111` dual ownership is permitted in the target model.
@@ -158,7 +159,7 @@ The pipeline stochastic owner also provides `TryGetSemanticHandDrawProgress`, us
 
 `SemanticCombatDrawStochasticStateV111` owns typed random-pile-card, insertion, Stratagem, draw-hook, and cost transcripts. It copies decisions on construction and replacement and when a transcript projection is read, so callers cannot rewrite a suspended provider prefix through a shared array. Common replay and cross-provider mechanical equivalence remain open. `SemanticEndTurnStochasticStateV111` applies the same boundary to intent, enemy-action, target, boundary, and nested-choice chronology.
 
-Automatic-pipeline `DrawPlayerHand` progress now has one tagged owner, `PrototypeAutomaticHandDrawProgressV111`, for controlled draw, controlled draw-hook choice, controlled `BeforeHandDraw` choice, draw-cost, semantic pre-draw, semantic draw, and recycle-Stratagem modes. `CommitAutomaticHandDrawProgress` validates the ordinary draw-stage checkpoint and publishes or clears the tagged value with the current player and combat mechanics for both providers, including when a resumed hook returns to `DrawCards`. The completed semantic requested-count receipt is published through its own provider-state transition after active progress clears, including when semantic resume receives a pipeline cursor that already advanced past DrawPlayerHand; its flattened continuation member keeps the established snapshot shape. Loading verifies that the receipt is at the post-draw cursor with an idle Nature deck and rejects combinations that claim multiple active modes. Common resume flow and cross-provider mechanical equivalence remain open.
+Automatic-pipeline `DrawPlayerHand` progress now has one tagged owner, `PrototypeAutomaticHandDrawProgressV111`, for controlled draw, controlled draw-hook choice, controlled `BeforeHandDraw` choice, draw-cost, semantic pre-draw, semantic draw, and recycle-Stratagem modes. `CommitAutomaticHandDrawProgress` validates the ordinary draw-stage checkpoint and publishes or clears the tagged value with the current player and combat mechanics for both providers, including when a resumed hook returns to `DrawCards`. The completed semantic requested-count receipt is published through its own provider-state transition after active progress clears, including when semantic resume receives a pipeline cursor that already advanced past DrawPlayerHand; its flattened continuation member keeps the established snapshot shape. Loading verifies that the receipt is at the post-draw cursor with an idle Nature deck and rejects combinations that claim multiple active modes. Nested semantic choices now share `SemanticNestedChoiceResumeV111` across semantic end-turn replay and pilot resolution, while hand-draw modes, targets, boundary cursors, and cross-provider mechanical equivalence retain their separate work.
 
 Act 1 Neow offer generation now has a versioned Chance Law and an atomic `ReferenceNatureNeowOfferSessionV111` over the existing run-start state and offer generator. It conditions the positive-pool swaps on the selected curse, paired choices, and previous swaps, then replays the complete prefix through the existing scripted provider before committing the run and sampler cursor. Its bounded-index transforms are `SOURCE_VERIFIED` on their declared supports; default-pool completeness, unlock filtering, source call order, Native cursor parity, and broader S4 equivalence remain open.
 
@@ -478,6 +479,15 @@ the exact relic driver and an autoplay card-play frame. The same cursor admits
 the exact pre-play target operation. Existing typed choice owners resume nested
 card effects before the opening pipeline completes; other opening-stage
 choices remain separately gated.
+
+`SemanticNestedChoiceResumeV111` applies recorded nested draw and cost,
+insertion, generated-card and potion, transform, shortlist, pool-shuffle,
+hand-cost-selection, card-selection, draw-hook, and Knowledge Demon decisions
+through one mechanics dispatcher. Semantic end-turn restore uses it to replay
+the full nested chronology. Semantic pilot resolution shares the draw, cost,
+insertion, generation, transform, shortlist, and pool-shuffle resumes while
+retaining its own action history and end-turn wrapper. Boundary transcript
+validation and cross-provider mechanical equivalence remain open.
 
 ## Reading order
 
