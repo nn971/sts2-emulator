@@ -375,7 +375,7 @@ public sealed record SemanticCombatDrawV111(
             }
             else if (automaticBeforeHandDrawPoolShuffle &&
                      automaticBeforeHandDrawPoolShuffleChoice is
-                         { } poolShuffleChoice)
+                         { } beforeHandPoolShuffleChoice)
             {
                 if (cursor is null ||
                     !cursor.Mechanics.IsAtStep(
@@ -384,7 +384,7 @@ public sealed record SemanticCombatDrawV111(
                     cursor.ControlledSemanticDrawRemaining is not null ||
                     cursor.ControlledSemanticDrawRequested is not null ||
                     this.RequestedCount != 0 || this.RemainingCount != 0 ||
-                    !poolShuffleChoice.AutomaticSemanticDrawHookChoice ||
+                    !beforeHandPoolShuffleChoice.AutomaticSemanticDrawHookChoice ||
                     deck.Pending is not null || cost is not null)
                     throw new InvalidDataException(
                         "Semantic BeforeHandDraw pool-shuffle cursor is inconsistent.");

@@ -678,7 +678,7 @@ public static class StochasticSiteRegistryV111
         RewardBossRelicOfferShuffleSiteId,
         RewardLavaRockRelicOfferShuffleSiteId,
         NativeFisherYatesV111.SiteId,
-        ControlledRecycleShuffleV111.SiteId,
+        ControlledRecycleShuffleEngineV111.SiteId,
         "combat.effect.personal_hive.dazed.random_insert_index",
         DrawPileRandomInsertSiteId,
         AfterShuffleRelicDrawPileInsertSiteId,
@@ -849,7 +849,7 @@ public static class StochasticSiteRegistryV111
     private static readonly string[] NativeFisherYatesSites =
     [
         NativeFisherYatesV111.SiteId,
-        ControlledRecycleShuffleV111.SiteId,
+        ControlledRecycleShuffleEngineV111.SiteId,
         CombatHandReturnShuffleSiteId,
         CombatRandomRareDrawToHandShuffleSiteId,
         CombatRandomShortlistShuffleSiteId,
@@ -1194,7 +1194,7 @@ public static class StochasticSiteRegistryV111
             "run.shuffle" =>
                 operationKind == "bounded_integer" &&
                 (siteId == NativeFisherYatesV111.SiteId ||
-                 siteId == ControlledRecycleShuffleV111.SiteId ||
+                 siteId == ControlledRecycleShuffleEngineV111.SiteId ||
                  siteId == CombatHandReturnShuffleSiteId ||
                  CombatRandomPilePositionSiteIds.Contains(
                      siteId, StringComparer.Ordinal)),

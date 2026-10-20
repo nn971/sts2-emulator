@@ -51,7 +51,7 @@ public sealed record ScriptedRunActionOutcomeV111(
     private RandomBoundaryEventV111 ReadIndexEvent() => ReadEvent<
         RandomBoundaryEventV111>("index");
 
-    private T ReadEvent<T>(string operationKind)
+    private T ReadEvent<T>(string operationKind) where T : class
     {
         if (Entry.OperationKind != operationKind)
             throw new InvalidDataException(
