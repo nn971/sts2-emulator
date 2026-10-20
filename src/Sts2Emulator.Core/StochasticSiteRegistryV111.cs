@@ -211,9 +211,9 @@ internal sealed record LegacyCallerBoundIndexQuerySiteV111(
     int? ExactSupportCount = null);
 
 /// <summary>
-/// Authoritative stable site lists shared by capability negotiation and the
-/// controlled replay allowlists. Session coverage remains separate from the
-/// union of sites that can produce Nature-choice payloads.
+/// Authoritative stable site lists for capability negotiation and controlled
+/// replay allowlists. Nature-choice coverage includes session sites that are
+/// not admitted by legacy random-choice forwarding.
 /// </summary>
 public static class StochasticSiteRegistryV111
 {
@@ -939,15 +939,8 @@ public static class StochasticSiteRegistryV111
         .. ChanceLawEngineV111.TabletOfTruthSessionSiteIds,
         .. ChanceLawEngineV111.TrialSessionSiteIds,
         .. ChanceLawEngineV111.NativeEventShuffleSessionSiteIds,
-        .. ReferenceNatureNativeEventGoldSessionV111.SessionSiteIds,
-        .. ReferenceNatureNativeEventRelicSessionV111.SessionSiteIds,
-        .. ReferenceNatureNativeShovelSessionV111.SessionSiteIds,
         .. ReferenceNatureEndlessConveyorSessionV111.SessionSiteIds,
-        .. ReferenceNatureGloryReflectionsSessionV111.SessionSiteIds,
         .. ReferenceNatureInfestedAutomatonSessionV111.SessionSiteIds,
-        .. ReferenceNaturePunchOffRewardSessionV111.SessionSiteIds,
-        .. ReferenceNaturePunchOffFightSessionV111.SessionSiteIds,
-        .. AncientOfferSessionSites,
     ];
 
     private static readonly string[] NatureChoiceSites =
@@ -955,6 +948,13 @@ public static class StochasticSiteRegistryV111
             .Concat(ChanceLawEngineV111.NativeEventCardPickQuerySiteIds)
             .Concat(ChanceLawEngineV111.NativePunchOffRewardQuerySiteIds)
             .Concat(ChanceLawEngineV111.NativePunchOffFightQuerySiteIds)
+            .Concat(ReferenceNatureNativeEventGoldSessionV111.SessionSiteIds)
+            .Concat(ReferenceNatureNativeEventRelicSessionV111.SessionSiteIds)
+            .Concat(ReferenceNatureNativeShovelSessionV111.SessionSiteIds)
+            .Concat(ReferenceNatureGloryReflectionsSessionV111.SessionSiteIds)
+            .Concat(ReferenceNaturePunchOffRewardSessionV111.SessionSiteIds)
+            .Concat(ReferenceNaturePunchOffFightSessionV111.SessionSiteIds)
+            .Concat(AncientOfferSessionSites)
             .Distinct(StringComparer.Ordinal).ToArray();
 
     public static string[] SemanticReferenceNatureSiteIds =>
