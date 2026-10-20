@@ -335,8 +335,9 @@ public static class SemanticEndTurnEngineV111
     /// <summary>
     /// Start from an actual post-end-turn automatic pipeline checkpoint just
     /// before AdvanceTurn. Enemy actions and preceding hooks already ran.
-    /// Only exhausted draw piles are accepted: this guarantees that any new
-    /// semantic shuffle is source-triggered by the later recycle.
+    /// A providerless draw pile must be exhausted so any new semantic shuffle
+    /// is source-triggered by the later recycle; an idle Nature deck may
+    /// retain its unresolved physical pile.
     /// </summary>
     public static SemanticEndTurnV111 BeginAtAdvanceTurn(
         RunState source, string nativeEncounterEntry)
@@ -639,16 +640,11 @@ public static class SemanticEndTurnEngineV111
             handCheckpoint = PrototypeGameEngine.ResumeControlledTurnAfterIntents(
                 state.Run.Fork(),
                 stopBeforeSemanticHandDraw: true);
-        var combat = handCheckpoint.World?.Combat ??
-            throw new InvalidOperationException("Next-turn combat disappeared.");
-        if (combat.AutomaticPipelineContinuation?.Mechanics.IsAtStep(
-                PrototypeAutomaticStepKind.DrawPlayerHand) != true ||
-            !IsSupportedSemanticSourceDeck(combat) ||
-            combat.PendingChoice is not null ||
-            combat.PendingKnowledgeDemonChoice is not null)
-            throw new NotSupportedException(
-                "UNSUPPORTED_SEMANTIC_DECK site=combat.semantic_end_turn " +
-                "operation=hand_draw_checkpoint_requires_empty_draw_pile");
+        if (PrototypeGameEngine
+                .IsAtCombatRewardOrTerminalBoundary(handCheckpoint))
+            return CompleteAtBoundary(
+                state with { Intents = null }, handCheckpoint,
+                discardSuspendedFrames: true);
         var draw = SemanticCombatDrawEngineV111.BeginAutomaticHandDraw(
             handCheckpoint);
         return ContinueHandDraw(state with { Intents = null }, draw);
@@ -842,23 +838,15 @@ public static class SemanticEndTurnEngineV111
     public static void Validate(SemanticEndTurnV111 state) =>
         state.Validate();
 
-    /// <summary>Without a provider-owned deck, accept only a truly empty,
-    /// uncommitted draw pile with a nonempty discard. Existing Nature decks
-    /// are reused unchanged, including a nonempty unresolved pile. Source
-    /// mechanics must preserve physical card-instance membership exactly.
-    /// </summary>
+    /// <summary>Checks whether the shared draw-pile owner accepts this source
+    /// for semantic hand-draw continuation.</summary>
     private static bool IsSupportedSemanticSourceDeck(CombatState combat)
     {
-        if (combat.SemanticDeck is not { } deck)
-            return combat.DrawPile.Length == 0 &&
-                combat.DiscardPile.Length > 0;
-        SemanticDeckEngineV111.Validate(deck);
         try
         {
-            SemanticDrawPileAdapterV111.ValidateNatureDeckBoundary(
-                combat,
-                "Unsupported semantic end-turn source deck.",
-                "Unsupported semantic end-turn source deck.");
+            SemanticDrawPileAdapterV111
+                .ValidateSemanticHandDrawSourceDeck(
+                    combat, "Unsupported semantic end-turn source deck.");
             return true;
         }
         catch (InvalidDataException)
