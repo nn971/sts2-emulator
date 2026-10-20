@@ -907,7 +907,9 @@ public sealed record PrototypeQueuedOperation(
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
     bool SemanticStratagemDrawSelection = false,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
-    bool AutomaticSemanticStratagemDrawSelection = false);
+    bool AutomaticSemanticStratagemDrawSelection = false,
+    [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    int? DrawEqualSelectionCount = null);
 
 public sealed record PrototypeRunEffectSpec(
     PrototypeRunEffectKind Kind,
@@ -2220,6 +2222,10 @@ public sealed record PrototypeControlledSemanticDrawV111(
     bool StandaloneSemanticDrawSegment = false,
     bool AutomaticSemanticHandDrawSegment = false)
 {
+    [System.Text.Json.Serialization.JsonIgnore(Condition =
+        System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public int? DrawEqualSelectionCount { get; init; }
+
     public PrototypeControlledSemanticDrawV111 Fork() => this with
     {
         DrawnCardKeyword = DrawnCardKeyword is null

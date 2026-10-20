@@ -10,7 +10,7 @@ public sealed record SimulationMechanicsComparisonV111(
     bool DifferencesTruncated)
 {
     public const string SchemaId =
-        "sts2-v111-simulation-mechanics-comparison-v14";
+        "sts2-v111-simulation-mechanics-comparison-v15";
 
     public bool Equivalent => StringComparer.Ordinal.Equals(
         LeftFingerprint, RightFingerprint);
@@ -67,7 +67,8 @@ public sealed record SimulationSemanticDrawProgressProjectionV111(
     int EventDepth,
     PrototypeCardKeywordOverrideSpec? DrawnCardKeyword,
     long[]? DeferredKeywordCardInstanceIds,
-    bool StratagemSelectionPending);
+    bool StratagemSelectionPending,
+    int? DrawEqualSelectionCount);
 
 /// <summary>Provider-independent remaining-card progress for an active
 /// automatic hand draw. Provider mode and semantic requested-count metadata
@@ -572,7 +573,8 @@ public static class SimulationMechanicsProjectionEngineV111
                     ? null : draw.DrawnCardKeyword with { },
                 draw.DeferredKeywordCardInstanceIds is null
                     ? null : (long[])draw.DeferredKeywordCardInstanceIds.Clone(),
-                draw.StratagemSelectionPending);
+                draw.StratagemSelectionPending,
+                draw.DrawEqualSelectionCount);
 
     private static SimulationPendingChoiceMechanicsProjectionV111?
         ProjectPendingChoiceMechanics(PendingCombatChoiceState choice)

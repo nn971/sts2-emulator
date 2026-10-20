@@ -837,7 +837,13 @@ public sealed partial record CombatState
                     operation.DeferredDrawnCardInstanceIds is { } deferredIds &&
                     (deferredIds.Distinct().Count() != deferredIds.Length ||
                      deferredIds.Any(cardId => !combat.Cards.Any(card =>
-                         card.InstanceId == cardId)))))
+                         card.InstanceId == cardId))) ||
+                    operation.DrawEqualSelectionCount is { } selectionDrawCount &&
+                        (operation.Kind != PrototypeCombatEffectKind.DrawCards ||
+                         selectionDrawCount <= 0 ||
+                         selectionDrawCount !=
+                             (operation.DeferredDrawnCardInstanceIds?.Length ?? 0) +
+                             operation.Amount)))
                 throw new InvalidOperationException(
                     "Saved draw continuation has invalid deferred card metadata.");
             var draw = pending.ControlledSemanticDraw;
@@ -871,6 +877,11 @@ public sealed partial record CombatState
                      !supportedPipelineSemanticDraw) ||
                     combat.PendingKnowledgeDemonChoice is not null ||
                     draw.RemainingCount < 0 || draw.EventDepth < 0 ||
+                    draw.DrawEqualSelectionCount is { } selectionDrawCount &&
+                        (selectionDrawCount <= 0 ||
+                         selectionDrawCount !=
+                             (draw.DeferredKeywordCardInstanceIds?.Length ?? 0) +
+                             draw.RemainingCount) ||
                     (isSemanticDrawChoice && draw.RemainingCount == 0) ||
                     draw.DeferredKeywordCardInstanceIds?.Distinct().Count() !=
                         draw.DeferredKeywordCardInstanceIds?.Length ||

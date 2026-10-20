@@ -179,7 +179,9 @@ public sealed partial class PrototypeGameEngine
                     draw.FromHandDraw,
                     draw.EventDepth,
                     draw.DrawnCardKeyword,
-                    draw.DeferredKeywordCardInstanceIds);
+                    draw.DeferredKeywordCardInstanceIds,
+                    drawEqualSelectionCount:
+                        draw.DrawEqualSelectionCount);
                 var combatWithDraw = AttachDrawResumeContinuation(
                     combat, resumeDraw, outerContinuation);
                 return (run with
@@ -663,7 +665,8 @@ public sealed partial class PrototypeGameEngine
             resumedDraw.RemainingCount, resumedDraw.FromHandDraw,
             resumedDraw.EventDepth, resumedDraw.DrawnCardKeyword,
             resumedDraw.DeferredKeywordCardInstanceIds,
-            resumedDraw.StandaloneSemanticDrawSegment);
+            resumedDraw.StandaloneSemanticDrawSegment,
+            resumedDraw.DrawEqualSelectionCount);
         combat = AttachDrawResumeContinuation(
             combat, resumeDraw, continuation);
         if (markStandaloneHookChoice)

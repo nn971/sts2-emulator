@@ -16,11 +16,19 @@ public sealed record SemanticCardSelectionEventV111(
 {
     public const string EventSchemaId =
         "sts2-v111-semantic-card-selection-choice-v1";
+    public const string SequentialEventSchemaId =
+        "sts2-v111-semantic-card-selection-choice-v2";
+
+    [JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    public long[]? SequentialSelectedCardInstanceIds { get; init; }
 
     public SemanticCardSelectionEventV111 Fork() => this with
     {
         CandidateCardInstanceIds = (long[])CandidateCardInstanceIds.Clone(),
         CandidateCardModelIds = (string[])CandidateCardModelIds.Clone(),
+        SequentialSelectedCardInstanceIds =
+            SequentialSelectedCardInstanceIds is null ? null :
+                (long[])SequentialSelectedCardInstanceIds.Clone(),
         Candidates = Candidates.Select(candidate => candidate with
         {
             CardInstanceIds = (long[])candidate.CardInstanceIds.Clone()
@@ -29,7 +37,10 @@ public sealed record SemanticCardSelectionEventV111(
 
     public void Validate()
     {
-        if (SchemaId != EventSchemaId || string.IsNullOrWhiteSpace(EventId) ||
+        bool sequential = SchemaId == SequentialEventSchemaId;
+        if (SchemaId is not (EventSchemaId or SequentialEventSchemaId) ||
+            sequential != (SequentialSelectedCardInstanceIds is not null) ||
+            string.IsNullOrWhiteSpace(EventId) ||
             string.IsNullOrWhiteSpace(BoundaryFingerprint) ||
             string.IsNullOrWhiteSpace(SupportFingerprint) ||
             string.IsNullOrWhiteSpace(SourceZone) ||
@@ -44,7 +55,11 @@ public sealed record SemanticCardSelectionEventV111(
                 string.IsNullOrWhiteSpace(candidate.ActionId) ||
                 candidate.CardInstanceIds is null ||
                 candidate.CardInstanceIds.Distinct().Count() !=
-                    candidate.CardInstanceIds.Length))
+                    candidate.CardInstanceIds.Length) ||
+            SequentialSelectedCardInstanceIds is { } sequentialSelected &&
+                (sequentialSelected.Distinct().Count() !=
+                     sequentialSelected.Length ||
+                 sequentialSelected.Any(CandidateCardInstanceIds.Contains)))
             throw new InvalidDataException(
                 "Invalid semantic card-selection event.");
     }
@@ -100,8 +115,9 @@ public static class SemanticCardSelectionEngineV111
     {
         ValidatePendingBoundary(source);
         ArgumentException.ThrowIfNullOrWhiteSpace(boundaryFingerprint);
-        var choice = source.World!.Combat!.PendingChoice!;
-        ValidateSupportedChoice(choice);
+        var combat = source.World!.Combat!;
+        var choice = combat.PendingChoice!;
+        ValidateSupportedChoice(combat, choice);
         var actions = new PrototypeAiEnvironment().Observe(source).LegalActions
             .Where(action => action.Kind == "select_cards")
             .Select(action => new SemanticCardSelectionCandidateV111(
@@ -110,34 +126,53 @@ public static class SemanticCardSelectionEngineV111
                     ?? throw new InvalidDataException(
                         "Invalid source selected-card action payload.")))
             .ToArray();
-        var supportFingerprint = CanonicalJson.Sha256(new
-        {
-            choice.ChoiceId,
-            choice.SourceCardInstanceId,
-            choice.Selection,
-            choice.CandidateCardInstanceIds,
-            CandidateCardModelIds = choice.CandidateCardInstanceIds.Select(id =>
-                source.World!.Combat!.Cards.Single(card =>
-                    card.InstanceId == id).CardId).ToArray(),
-            Candidates = actions
-        });
+        var candidateModels = choice.CandidateCardInstanceIds.Select(id =>
+            combat.Cards.Single(card => card.InstanceId == id).CardId).ToArray();
+        var sequentialSelected = choice.Selection.SequentialOptional
+            ? (choice.SequentialSelectedCardInstanceIds ?? []).ToArray()
+            : null;
+        var schema = sequentialSelected is null
+            ? SemanticCardSelectionEventV111.EventSchemaId
+            : SemanticCardSelectionEventV111.SequentialEventSchemaId;
+        object support = sequentialSelected is null
+            ? new
+            {
+                choice.ChoiceId,
+                choice.SourceCardInstanceId,
+                choice.Selection,
+                choice.CandidateCardInstanceIds,
+                CandidateCardModelIds = candidateModels,
+                Candidates = actions
+            }
+            : new
+            {
+                choice.ChoiceId,
+                choice.SourceCardInstanceId,
+                choice.Selection,
+                choice.CandidateCardInstanceIds,
+                CandidateCardModelIds = candidateModels,
+                SequentialSelectedCardInstanceIds = sequentialSelected,
+                Candidates = actions
+            };
+        var supportFingerprint = CanonicalJson.Sha256(support);
         var eventId = CanonicalJson.Sha256(new
         {
-            SchemaId = SemanticCardSelectionEventV111.EventSchemaId,
+            SchemaId = schema,
             BoundaryFingerprint = boundaryFingerprint,
             SupportFingerprint = supportFingerprint
         });
         var semanticEvent = new SemanticCardSelectionEventV111(
-            SemanticCardSelectionEventV111.EventSchemaId, eventId,
+            schema, eventId,
             boundaryFingerprint, supportFingerprint,
             choice.SourceCardInstanceId,
             choice.Selection.SourceZone.ToString(),
             choice.Selection.Resolution.ToString(),
             choice.Selection.MinSelections, choice.Selection.MaxSelections,
             (long[])choice.CandidateCardInstanceIds.Clone(),
-            choice.CandidateCardInstanceIds.Select(id =>
-                source.World!.Combat!.Cards.Single(card =>
-                    card.InstanceId == id).CardId).ToArray(), actions);
+            candidateModels, actions)
+        {
+            SequentialSelectedCardInstanceIds = sequentialSelected
+        };
         semanticEvent.Validate();
         return semanticEvent;
     }
@@ -420,8 +455,12 @@ public static class SemanticCardSelectionEngineV111
         else if (!reward && initial.Fingerprint != to!.SemanticDeck!.Fingerprint)
             throw new InvalidDataException(
                 "Visible-zone card selection unexpectedly changed the hidden deck.");
+        var resumesGeneratedSequentialDraw =
+            IsCompletedSequentialSelectionWithGeneratedDraw(
+                from, state.SelectedCardInstanceIds);
         var resumesDraw = from.PendingChoice.Continuation.Any(operation =>
-            operation.Kind == PrototypeCombatEffectKind.DrawCards);
+            operation.Kind == PrototypeCombatEffectKind.DrawCards) ||
+            resumesGeneratedSequentialDraw;
         if (!reward && resumesDraw)
         {
             var resultCombat = to ?? throw new InvalidDataException(
@@ -450,9 +489,33 @@ public static class SemanticCardSelectionEngineV111
         }
     }
 
-    private static void ValidateSupportedChoice(PendingCombatChoiceState choice)
+    private static bool IsCompletedSequentialSelectionWithGeneratedDraw(
+        CombatState combat, long[] selectedByAction)
+    {
+        if (combat.PendingChoice is not { } choice ||
+            !choice.Selection.SequentialOptional ||
+            !choice.Selection.DrawEqualToSelectionsOnCompletion ||
+            !PrototypeGameEngine.IsAutomaticPipelineSemanticCardSelectionContinuation(
+                combat, choice))
+            return false;
+
+        var accumulated = choice.SequentialSelectedCardInstanceIds?.Length ?? 0;
+        bool completed = selectedByAction.Length == 0 ||
+            accumulated + selectedByAction.Length >=
+                choice.Selection.MaxSelections ||
+            selectedByAction.Length == choice.CandidateCardInstanceIds.Length;
+        return completed && accumulated + selectedByAction.Length > 0;
+    }
+
+    private static void ValidateSupportedChoice(
+        CombatState combat, PendingCombatChoiceState choice)
     {
         var spec = choice.Selection;
+        bool supportedSequential = spec.SequentialOptional &&
+            spec.DrawEqualToSelectionsOnCompletion &&
+            PrototypeGameEngine
+                .IsAutomaticPipelineSemanticCardSelectionContinuation(
+                    combat, choice);
         var supportedTop = IsSupportedTopMove(spec);
         var supportedDrawRemoval = IsSupportedDrawRemoval(spec);
         var supportedVisibleZoneMove =
@@ -471,8 +534,9 @@ public static class SemanticCardSelectionEngineV111
              !supportedVisibleZoneMove && !supportedGeneratedChoicePool) ||
             (spec.RemoveUnselectedFromSource &&
              !supportedGeneratedChoicePool) ||
-            spec.SequentialOptional ||
-            spec.DrawEqualToSelectionsOnCompletion ||
+            (spec.SequentialOptional && !supportedSequential) ||
+            (spec.DrawEqualToSelectionsOnCompletion &&
+             !supportedSequential) ||
             choice.OuterChoiceContinuation is not null)
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_DECK site=combat.card_selection " +

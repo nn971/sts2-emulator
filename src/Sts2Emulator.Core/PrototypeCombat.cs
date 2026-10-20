@@ -6246,7 +6246,8 @@ public sealed partial class PrototypeGameEngine
                             drawEventDepth,
                             operation.DrawnCardKeyword,
                             deferredKeywordIds,
-                            operation.StandaloneSemanticDrawSegment);
+                            operation.StandaloneSemanticDrawSegment,
+                            operation.DrawEqualSelectionCount);
                         var recycleContinuation =
                             new PrototypeChoiceResolutionContinuationState(
                                 SourceCardInstanceId: sourceCardInstanceId,
@@ -6320,7 +6321,8 @@ public sealed partial class PrototypeGameEngine
                             (operation.DeferredDrawnCardInstanceIds ?? [])
                                 .Concat(drawn.DrawnCardInstanceIds)
                                 .Distinct().ToArray(),
-                            operation.StandaloneSemanticDrawSegment);
+                            operation.StandaloneSemanticDrawSegment,
+                            operation.DrawEqualSelectionCount);
                         var continuation =
                             new PrototypeChoiceResolutionContinuationState(
                                 SourceCardInstanceId: sourceCardInstanceId,
@@ -6389,7 +6391,11 @@ public sealed partial class PrototypeGameEngine
                                             .AfterShuffleInsertions &&
                                     ExpectedStratagemSelectionCount(combat) > 0,
                                 StandaloneSemanticDrawSegment:
-                                    operation.StandaloneSemanticDrawSegment);
+                                    operation.StandaloneSemanticDrawSegment)
+                        {
+                            DrawEqualSelectionCount =
+                                operation.DrawEqualSelectionCount
+                        };
                         if (drawBoundary ==
                             PrototypeDrawCardsBoundaryKind.AfterShuffleInsertions)
                             return (player,
@@ -13296,7 +13302,8 @@ public sealed partial class PrototypeGameEngine
                 {
                     new PrototypeQueuedOperation(
                         PrototypeCombatEffectKind.DrawCards,
-                        selected.Length)
+                        selected.Length,
+                        DrawEqualSelectionCount: selected.Length)
                 }
                 .Concat(continuationOperations)
                 .ToArray();
@@ -13614,7 +13621,8 @@ public sealed partial class PrototypeGameEngine
         int eventDepth,
         PrototypeCardKeywordOverrideSpec? drawnCardKeyword,
         long[]? deferredDrawnCardInstanceIds,
-        bool standaloneSemanticDrawSegment = false)
+        bool standaloneSemanticDrawSegment = false,
+        int? drawEqualSelectionCount = null)
     {
         if (remainingCount < 0 || eventDepth < 0)
             throw new ArgumentOutOfRangeException(
@@ -13632,7 +13640,8 @@ public sealed partial class PrototypeGameEngine
                     : (long[])deferredDrawnCardInstanceIds.Clone(),
             DrawEventDepth: eventDepth,
             StandaloneSemanticDrawSegment:
-                standaloneSemanticDrawSegment);
+                standaloneSemanticDrawSegment,
+            DrawEqualSelectionCount: drawEqualSelectionCount);
     }
 
     private static CombatState AttachParentChoiceContinuation(

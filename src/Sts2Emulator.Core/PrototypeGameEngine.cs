@@ -36,7 +36,8 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
 
     /// <summary>
     /// Recognizes a source-supported semantic effect draw or its randomized
-    /// cost while an automatic pipeline is suspended in autoplay.
+    /// cost while an automatic pipeline is suspended in autoplay or at the
+    /// exact Gambling Chip opening continuation.
     /// </summary>
     internal static bool HasPendingSupportedAutomaticPipelineSemanticDraw(
         RunState run) => run.World?.Combat is { } combat &&
@@ -109,7 +110,8 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         IsMayhemSemanticDrawContinuation(combat, pending) ||
         IsLateAutoplaySemanticDrawContinuation(combat, pending) ||
         IsAutomaticPipelineSemanticDrawInsertionContinuation(
-            combat, pending);
+            combat, pending) ||
+        IsGamblingChipOpeningSemanticDrawContinuation(combat, pending);
 
     /// <summary>
     /// Identifies the automatic-pipeline cursors where a controlled target
