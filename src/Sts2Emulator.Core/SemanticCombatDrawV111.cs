@@ -646,21 +646,18 @@ public static class SemanticCombatDrawEngineV111
             cursor.PendingPostDispatchEventKind is not null)
             throw new InvalidOperationException(
                 "Semantic automatic hand draw needs a clean DrawPlayerHand checkpoint.");
-        if (sourceCombat.SemanticDeck is not null)
+        try
         {
-            try
-            {
-                SemanticDrawPileAdapterV111.ValidateNatureDeckBoundary(
-                    sourceCombat,
-                    "Semantic automatic hand draw needs a clean DrawPlayerHand checkpoint.",
-                    "Semantic automatic hand draw needs a clean DrawPlayerHand checkpoint.");
-            }
-            catch (InvalidDataException exception)
-            {
-                throw new InvalidOperationException(
-                    "Semantic automatic hand draw needs a clean DrawPlayerHand checkpoint.",
-                    exception);
-            }
+            SemanticDrawPileAdapterV111
+                .ValidateSemanticHandDrawSourceDeck(sourceCombat,
+                    "Semantic automatic hand draw has an unsupported source deck.");
+        }
+        catch (InvalidDataException exception)
+        {
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_DECK site=combat.DrawPlayerHand " +
+                "operation=unsupported_source_deck",
+                exception);
         }
         var origin = source.Fork();
         var world = origin.World!;

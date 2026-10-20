@@ -91,6 +91,28 @@ public static class SemanticDrawPileAdapterV111
     }
 
     /// <summary>
+    /// Validates the source deck accepted by the semantic automatic hand-draw
+    /// continuation. A providerless source is resumable only when recycling
+    /// must begin from an empty draw pile and a nonempty discard pile.
+    /// </summary>
+    internal static void ValidateSemanticHandDrawSourceDeck(
+        CombatState combat, string invalidBoundaryMessage)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentException.ThrowIfNullOrWhiteSpace(invalidBoundaryMessage);
+        if (combat.SemanticDeck is null)
+        {
+            if (combat.DrawPile.Length == 0 &&
+                combat.DiscardPile.Length > 0)
+                return;
+            throw new InvalidDataException(invalidBoundaryMessage);
+        }
+
+        ValidateNatureDeckBoundary(
+            combat, invalidBoundaryMessage, invalidBoundaryMessage);
+    }
+
+    /// <summary>
     /// Resolves the current top card from the shared provider/physical-pile
     /// contract. A Nature-owned unknown position returns its pending reveal;
     /// a known position is consumed from the provider state and returned by
