@@ -460,7 +460,15 @@ public sealed class SemanticPilotCombatV111Tests
             ReplayOpeningDrawHooks: true);
         var state = SemanticPilotCombatEngineV111.BeginSeeded(entry);
         Assert.True(state.AtPlayerBoundary);
-        Assert.Single(state.Run.World!.Combat!.Enemies);
+        var world = state.Run.World!;
+        Assert.Equal(2, world.Floor);
+        Assert.Equal(entry.EncounterId, Assert.Single(world.EncounterHistory!));
+        var mapNode = Assert.Single(world.Map.Nodes, node =>
+            node.NodeId == world.Map.CurrentNodeId);
+        Assert.Equal(world.Floor, mapNode.Floor);
+        Assert.Equal(PrototypeRoomType.Combat, mapNode.RoomType);
+        Assert.Equal(mapNode.NodeId, world.Combat!.CurrentMapNodeId);
+        Assert.Single(world.Combat.Enemies);
         int actions = 0, nature = 0, strikeActions = 0;
         while (!state.CombatTerminal)
         {

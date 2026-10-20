@@ -1,0 +1,25 @@
+name: nature-h1-fixed-combat-gate
+
+on:
+  push:
+    branches: ['fix/nature-h1-draw-only-combat-gate']
+  workflow_dispatch:
+
+jobs:
+  fixed-combat:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+      - name: Restore
+        run: dotnet restore Sts2Emulator.sln
+      - name: Release build
+        run: dotnet build Sts2Emulator.sln -c Release --no-restore
+      - name: Regression - real fixed Silent Shrinker Beetle victory and map ownership
+        run: >
+          dotnet test tests/Sts2Emulator.Core.Tests/Sts2Emulator.Core.Tests.csproj
+          -c Release --no-build
+          --filter "FullyQualifiedName~SourcePinnedActOneWeakCombatWinsByOrdinarySilentStrikeActions"
+          --logger "console;verbosity=normal"

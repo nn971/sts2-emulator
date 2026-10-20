@@ -723,6 +723,27 @@ public static class ControlledPlayableCombatEngineV111
                     "Fixed playable encounter is ineligible for its run entry.");
             var world = run.World ?? throw new InvalidDataException(
                 "Playable combat fixture lost its run world.");
+            if (act == 1)
+            {
+                // This deliberately conditioned fixture enters a real node of
+                // the generated map. The map, encounter history, floor, and
+                // combat's current node must describe the same room.
+                var node = world.Map.Nodes
+                    .Where(candidate =>
+                        candidate.Floor == verified.Formation.TotalFloor &&
+                        candidate.RoomType == encounter.RoomType)
+                    .OrderBy(candidate => candidate.NodeId, StringComparer.Ordinal)
+                    .FirstOrDefault() ?? throw new NotSupportedException(
+                        "UNSUPPORTED_SEMANTIC_OPENING site=act1.fixed_entry " +
+                        "operation=no_eligible_combat_map_node");
+                combat = combat with { CurrentMapNodeId = node.NodeId };
+                world = world with
+                {
+                    Floor = node.Floor,
+                    Map = world.Map with { CurrentNodeId = node.NodeId },
+                    Combat = combat
+                };
+            }
             run = run with
             {
                 World = world with
