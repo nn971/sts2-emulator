@@ -2296,25 +2296,22 @@ public static class SemanticPilotCombatEngineV111
     private static SemanticPilotCombatV111 StepCardSelection(
         SemanticPilotCombatV111 current, string actionId)
     {
-        var selection = SemanticCardSelectionEngineV111.Step(
-            current.Run, actionId);
-        var decision = selection.Decision ??
-            throw new InvalidDataException(
-                "Source card selection omitted its typed decision.");
-        if (CanonicalJson.Sha256(decision.Event) !=
-            CanonicalJson.Sha256(DescribePendingCardSelectionEvent(current)))
-            throw new InvalidDataException(
-                "Source card-selection event changed before resolution.");
+        var pending = DescribePendingCardSelectionEvent(current) ??
+            throw new InvalidOperationException(
+                "No semantic card-selection event is pending.");
+        var decision = SemanticCardSelectionEngineV111.Select(
+            pending, pending.EventId, actionId);
+        var choice = new SemanticEndTurnNestedChoiceV111(
+            "semantic_card_selection",
+            CardSelectionDecision: decision.Fork());
+        var (resumedRun, siteId) = SemanticNestedChoiceResumeV111.Resume(
+            current.Run, choice);
         var nextEndTurn = current.PendingEndTurn is { } endTurn
             ? SemanticEndTurnEngineV111.ContinueNestedAutomaticChoice(
-                endTurn, selection.Run,
-                new SemanticEndTurnNestedChoiceV111(
-                    "semantic_card_selection",
-                    CardSelectionDecision: decision.Fork()),
-                "combat.card_selection")
+                endTurn, resumedRun, choice, siteId)
             : null;
         var next = PublishRunContinuation(
-            current, selection.Run, nextEndTurn,
+            current, resumedRun, nextEndTurn,
             new SemanticPilotContinuationV111(
                 "semantic_card_selection",
                 CardSelectionDecision: decision.Fork()),
