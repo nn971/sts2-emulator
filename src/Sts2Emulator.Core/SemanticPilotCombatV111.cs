@@ -733,7 +733,8 @@ public sealed record SemanticPilotCombatV111(
         {
             handCostSelectionPending.Validate();
             SemanticRandomHandCostChoiceV111.ValidateBoundary(this.Run);
-            if (this.PendingEndTurn is not null ||
+            if ((this.PendingEndTurn is not null &&
+                 this.PendingEndTurn.NestedHandCostSelectionPending is null) ||
                 this.PendingInitialIntents is not null ||
                 this.IntentPending is not null || this.DrawPending is not null ||
                 this.TargetPending is not null ||
@@ -754,9 +755,11 @@ public sealed record SemanticPilotCombatV111(
                 { ChoiceId: "controlled_draw_cost",
                   ControlledDrawCost: not null,
                   ControlledSemanticDraw: not null };
+            var automaticHandCost = this.Run.World?.Combat?.PendingChoice?
+                .ControlledRandomCost is not null;
             if (effectDrawCost)
                 SemanticCostChoiceV111.ValidateDrawBoundary(this.Run);
-            else if (handCost)
+            else if (automaticHandCost)
                 SemanticRandomHandCostChoiceV111.ValidateBoundary(this.Run);
             if (this.IntentPending is not null || this.DrawPending is not null ||
                 this.CardSelectionPending is not null ||
@@ -772,7 +775,9 @@ public sealed record SemanticPilotCombatV111(
                     : handCost
                         ? this.Run.World?.Combat?.PendingChoice?
                             .ControlledRandomCost is null
-                        : this.PendingEndTurn?.CostPending is null))
+                        : this.PendingEndTurn?.CostPending is null) ||
+                (this.PendingEndTurn is not null && automaticHandCost &&
+                 this.PendingEndTurn.NestedCostPending is null))
                 throw new InvalidDataException(
                     "Semantic cost continuation conflicts with another boundary.");
         }
@@ -860,7 +865,8 @@ public sealed record SemanticPilotCombatV111(
          endTurn.PotionGenerationPending is not null ||
          endTurn.CardTransformPending is not null ||
          endTurn.CardShortlistPending is not null ||
-         endTurn.PoolShufflePending is not null);
+         endTurn.PoolShufflePending is not null ||
+         endTurn.NestedHandCostSelectionPending is not null);
 
     public SemanticPilotCombatV111 Fork() => this with
     {
@@ -2551,11 +2557,18 @@ public static class SemanticPilotCombatEngineV111
                 current.CostPending, decision, index);
             var result = SemanticRandomHandCostChoiceV111.Resume(
                 current.Run, pending.SiteId, index);
+            var nextEndTurn = current.PendingEndTurn is { } endTurn
+                ? SemanticEndTurnEngineV111.ContinueNestedAutomaticChoice(
+                    endTurn, result,
+                    new SemanticEndTurnNestedChoiceV111(
+                        "semantic_cost", CostDecision: decision.Fork()),
+                    pending.SiteId)
+                : null;
             var next = PublishRunContinuation(
-                current, result, null,
+                current, result, nextEndTurn,
                 new SemanticPilotContinuationV111(
                     "semantic_cost", CostDecision: decision.Fork()),
-                preservePendingEndTurn: true);
+                preservePendingEndTurn: current.PendingEndTurn is null);
             Validate(next);
             return next;
         }
@@ -2578,12 +2591,20 @@ public static class SemanticPilotCombatEngineV111
             pending, eventId, cardInstanceId);
         var result = SemanticHandCostSelectionChoiceV111.Resume(
             current.Run, decision);
+        var nextEndTurn = current.PendingEndTurn is { } endTurn
+            ? SemanticEndTurnEngineV111.ContinueNestedAutomaticChoice(
+                endTurn, result,
+                new SemanticEndTurnNestedChoiceV111(
+                    "semantic_hand_cost_selection",
+                    HandCostSelectionDecision: decision.Fork()),
+                pending.SiteId)
+            : null;
         var next = PublishRunContinuation(
-            current, result, null,
+            current, result, nextEndTurn,
             new SemanticPilotContinuationV111(
                 "semantic_hand_cost_selection",
                 HandCostSelectionDecision: decision.Fork()),
-            preservePendingEndTurn: true);
+            preservePendingEndTurn: current.PendingEndTurn is null);
         Validate(next);
         return next;
     }
@@ -3239,6 +3260,8 @@ public static class SemanticPilotCombatEngineV111
         SemanticPilotCombatV111 current)
     {
         ArgumentNullException.ThrowIfNull(current);
+        if (current.PendingEndTurn?.NestedCostPending is { } endTurnCost)
+            return endTurnCost;
         RandomIndexRequestV111 request;
         long? targetCardInstanceId = null;
         string? targetCardModelId = null;
@@ -3296,6 +3319,9 @@ public static class SemanticPilotCombatEngineV111
         DescribePendingHandCostSelectionEvent(SemanticPilotCombatV111 current)
     {
         ArgumentNullException.ThrowIfNull(current);
+        if (current.PendingEndTurn?.NestedHandCostSelectionPending is
+            { } endTurnSelection)
+            return endTurnSelection;
         var combat = current.Run.World?.Combat;
         var randomCost = combat?.PendingChoice?.ControlledRandomCost;
         if (randomCost is null ||

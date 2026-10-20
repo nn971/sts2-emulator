@@ -15,7 +15,8 @@ public sealed record SemanticEndTurnBoundaryChoiceV111(
                 "semantic_draw_insertion" or "semantic_generated_card" or
                 "semantic_potion_generation" or
                 "semantic_card_transform" or
-                "semantic_card_shortlist" or "semantic_pool_shuffle") ||
+                "semantic_card_shortlist" or "semantic_pool_shuffle" or
+                "semantic_hand_cost_selection") ||
             TranscriptIndex < 0)
             throw new InvalidDataException(
                 "Invalid semantic end-turn boundary transcript entry.");
@@ -292,18 +293,56 @@ public sealed record SemanticEndTurnV111(
                 NestedChoiceTranscript.Count(choice =>
                     choice.Kind == "semantic_pool_shuffle"))
             : null;
-    [JsonIgnore] public SemanticCostEventV111? NestedCostPending =>
-        !Complete && HandDraw is not { AtBoundary: false } &&
-            Run.World?.Combat?.PendingChoice is
-            { ChoiceId: "controlled_draw_cost",
-              ControlledDrawCost: not null,
-              ControlledSemanticDraw: not null } &&
-            PrototypeGameEngine
-                .HasPendingSupportedAutomaticPipelineSemanticDraw(Run)
-            ? SemanticCostChoiceV111.DescribeEffectDrawEvent(
-                Run, Fingerprint, NestedChoiceTranscript.Count(choice =>
-                    choice.Kind == "semantic_cost"))
-            : null;
+    [JsonIgnore] public SemanticCostEventV111? NestedCostPending
+    {
+        get
+        {
+            if (Complete || HandDraw is { AtBoundary: false }) return null;
+            if (Run.World?.Combat?.PendingChoice is
+                    { ChoiceId: "controlled_draw_cost",
+                      ControlledDrawCost: not null,
+                      ControlledSemanticDraw: not null } &&
+                PrototypeGameEngine
+                    .HasPendingSupportedAutomaticPipelineSemanticDraw(Run))
+                return SemanticCostChoiceV111.DescribeEffectDrawEvent(
+                    Run, Fingerprint, NestedChoiceTranscript.Count(choice =>
+                        choice.Kind == "semantic_cost"));
+            if (PrototypeGameEngine
+                    .HasPendingSupportedAutomaticPipelineSemanticRandomHandCost(
+                        Run) &&
+                Run.World?.Combat?.PendingChoice?.ControlledRandomCost?.Operation
+                    .Kind == PrototypeCombatEffectKind
+                        .RandomizeHandCardEnergyCostsUntilTurnEndOrPlayed)
+                return SemanticRandomHandCostChoiceV111.DescribeCostEvent(
+                    Run, Fingerprint,
+                    NestedChoiceTranscript.Count(choice =>
+                        choice.Kind == "semantic_cost"));
+            return null;
+        }
+    }
+    [JsonIgnore] public SemanticHandCostSelectionEventV111?
+        NestedHandCostSelectionPending
+    {
+        get
+        {
+            if (Complete || HandDraw is { AtBoundary: false } ||
+                !PrototypeGameEngine
+                    .HasPendingSupportedAutomaticPipelineSemanticRandomHandCost(
+                        Run) ||
+                Run.World?.Combat?.PendingChoice?.ControlledRandomCost is not
+                    { Operation.Kind: PrototypeCombatEffectKind
+                        .SetRandomHandCardEnergyCostUntilTurnEndOrPlayed } randomCost)
+                return null;
+            var combat = Run.World!.Combat!;
+            var models = randomCost.EligibleCardInstanceIds.Select(id =>
+                combat.Cards.Single(card => card.InstanceId == id).CardId)
+                .ToArray();
+            return SemanticHandCostSelectionChoiceV111.CreateEvent(
+                Fingerprint, randomCost, models,
+                NestedChoiceTranscript.Count(choice =>
+                    choice.Kind == "semantic_hand_cost_selection"));
+        }
+    }
     [JsonIgnore] public SemanticDrawInsertionEventV111?
         NestedDrawInsertionPending =>
             !Complete && HandDraw is not { AtBoundary: false } &&
@@ -474,6 +513,14 @@ public sealed record SemanticEndTurnV111(
             .HasPendingSupportedAutomaticPipelineSemanticPoolShuffle(
                 this.Run))
             SemanticPoolShuffleChoiceV111.ValidateBoundary(this.Run);
+        if (PrototypeGameEngine
+            .HasPendingSupportedAutomaticPipelineSemanticRandomHandCost(
+                this.Run))
+        {
+            SemanticRandomHandCostChoiceV111.ValidateBoundary(this.Run);
+            if (this.NestedHandCostSelectionPending is not null)
+                SemanticRandomHandCostChoiceV111.ValidateBoundary(this.Run);
+        }
     }
 
     public SemanticEndTurnV111 Fork() => this with
@@ -724,14 +771,37 @@ public static class SemanticEndTurnEngineV111
             var decision = SemanticCostChoiceV111.Select(
                 nestedCost, nestedCost.EventId,
                 nestedCost.CandidateCosts[selectedIndex]);
-            var resumed = SemanticCostChoiceV111.ResumeEffectDrawCost(
-                state.Run.Fork(), decision.SelectedCost,
-                allowEngineOwnedPrototypeReward: true);
+            var resumed = state.Run.World?.Combat?.PendingChoice?
+                    .ControlledRandomCost is not null
+                ? SemanticRandomHandCostChoiceV111.Resume(
+                    state.Run.Fork(), nestedCost.SiteId,
+                    decision.SelectedIndex)
+                : SemanticCostChoiceV111.ResumeEffectDrawCost(
+                    state.Run.Fork(), decision.SelectedCost,
+                    allowEngineOwnedPrototypeReward: true);
             state = ContinueNestedAutomaticChoice(
                 state, resumed,
                 new SemanticEndTurnNestedChoiceV111(
                     "semantic_cost", CostDecision: decision),
-                "combat.card_draw.cost");
+                nestedCost.SiteId);
+        }
+        else if (state.NestedHandCostSelectionPending is
+                 { } handCostSelection)
+        {
+            if (selectedIndex < 0 ||
+                selectedIndex >= handCostSelection.CandidateCardInstanceIds.Length)
+                throw new ArgumentOutOfRangeException(nameof(selectedIndex));
+            var decision = SemanticHandCostSelectionChoiceV111.Select(
+                handCostSelection, handCostSelection.EventId,
+                handCostSelection.CandidateCardInstanceIds[selectedIndex]);
+            var resumed = SemanticHandCostSelectionChoiceV111.Resume(
+                state.Run.Fork(), decision);
+            state = ContinueNestedAutomaticChoice(
+                state, resumed,
+                new SemanticEndTurnNestedChoiceV111(
+                    "semantic_hand_cost_selection",
+                    HandCostSelectionDecision: decision.Fork()),
+                handCostSelection.SiteId);
         }
         else if (state.HandDraw is { AtBoundary: false } handDraw &&
                  handDraw.DrawInsertionPending is not null)
@@ -942,6 +1012,32 @@ public static class SemanticEndTurnEngineV111
         return next;
     }
 
+    public static SemanticEndTurnV111 ResolveHandCostSelection(
+        SemanticEndTurnV111 source, string fingerprint, string eventId,
+        long cardInstanceId)
+    {
+        Validate(source);
+        if (!StringComparer.Ordinal.Equals(source.Fingerprint, fingerprint))
+            throw new InvalidOperationException(
+                "Stale semantic end-turn hand-cost-selection fingerprint.");
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
+        var pending = source.NestedHandCostSelectionPending ??
+            throw new InvalidOperationException(
+                "No automatic-pipeline hand-cost-selection event is pending.");
+        var decision = SemanticHandCostSelectionChoiceV111.Select(
+            pending, eventId, cardInstanceId);
+        var resumed = SemanticHandCostSelectionChoiceV111.Resume(
+            source.Run.Fork(), decision);
+        var next = ContinueNestedAutomaticChoice(
+            source, resumed,
+            new SemanticEndTurnNestedChoiceV111(
+                "semantic_hand_cost_selection",
+                HandCostSelectionDecision: decision.Fork()),
+            pending.SiteId);
+        Validate(next);
+        return next;
+    }
+
     public static SemanticEndTurnV111 ResolveTarget(
         SemanticEndTurnV111 source, string fingerprint,
         string eventId, int enemyInstanceId)
@@ -1134,6 +1230,13 @@ public static class SemanticEndTurnEngineV111
             SemanticPoolShuffleChoiceV111.ValidateDecision(
                 pending, choice.PoolShuffleDecision!);
         }
+        else if (expectedKind == "semantic_hand_cost_selection")
+        {
+            var pending = source.NestedHandCostSelectionPending;
+            SemanticHandCostSelectionChoiceV111.ValidateDecision(
+                pending, choice.HandCostSelectionDecision!,
+                choice.HandCostSelectionDecision!.SelectedCardInstanceId);
+        }
         else
         {
             SemanticDrawInsertionChoiceV111.ValidateDecision(
@@ -1318,7 +1421,8 @@ public static class SemanticEndTurnEngineV111
         int nestedChoiceIndex = 0, nestedDrawIndex = 0, nestedCostIndex = 0,
             nestedInsertionIndex = 0, nestedGeneratedCardIndex = 0,
             nestedPotionGenerationIndex = 0, nestedCardTransformIndex = 0,
-            nestedCardShortlistIndex = 0, nestedPoolShuffleIndex = 0;
+            nestedCardShortlistIndex = 0, nestedPoolShuffleIndex = 0,
+            nestedHandCostSelectionIndex = 0;
         void ReplayAvailableBoundaryChoices()
         {
             while (boundaryIndex < saved.BoundaryTranscript.Length)
@@ -1346,11 +1450,13 @@ public static class SemanticEndTurnEngineV111
                     reproduced.CardShortlistPending is not null;
                 var hasNestedPoolShuffle =
                     reproduced.PoolShufflePending is not null;
+                var hasNestedHandCostSelection =
+                    reproduced.NestedHandCostSelectionPending is not null;
                 if (!hasEnemyAction && !hasTarget &&
                     !hasNestedDraw && !hasNestedCost && !hasNestedInsertion &&
                     !hasNestedGeneratedCard && !hasNestedPotionGeneration &&
                     !hasNestedCardTransform && !hasNestedCardShortlist &&
-                    !hasNestedPoolShuffle)
+                    !hasNestedPoolShuffle && !hasNestedHandCostSelection)
                     return;
 
                 var boundary = saved.BoundaryTranscript[boundaryIndex];
@@ -1432,13 +1538,18 @@ public static class SemanticEndTurnEngineV111
                     SemanticCostChoiceV111.ValidateDecision(
                         reproduced.NestedCostPending, costChoice,
                         costChoice.SelectedIndex);
-                    var resumed = SemanticCostChoiceV111.ResumeEffectDrawCost(
-                        reproduced.Run.Fork(), costChoice.SelectedCost,
-                        allowEngineOwnedPrototypeReward: true);
+                    var resumed = reproduced.Run.World?.Combat?.PendingChoice?
+                            .ControlledRandomCost is not null
+                        ? SemanticRandomHandCostChoiceV111.Resume(
+                            reproduced.Run.Fork(), costChoice.Event.SiteId,
+                            costChoice.SelectedIndex)
+                        : SemanticCostChoiceV111.ResumeEffectDrawCost(
+                            reproduced.Run.Fork(), costChoice.SelectedCost,
+                            allowEngineOwnedPrototypeReward: true);
                     reproduced = ContinueNestedAutomaticChoice(
                         reproduced, resumed,
                         saved.NestedChoiceTranscript[nestedChoiceIndex++],
-                        "combat.card_draw.cost");
+                        costChoice.Event.SiteId);
                     nestedCostIndex++;
                 }
                 else if (boundary.Kind == "semantic_draw_insertion")
@@ -1566,7 +1677,7 @@ public static class SemanticEndTurnEngineV111
                         pending.SiteId);
                     nestedCardShortlistIndex++;
                 }
-                else
+                else if (boundary.Kind == "semantic_pool_shuffle")
                 {
                     if (!hasNestedPoolShuffle ||
                         boundary.TranscriptIndex != nestedPoolShuffleIndex ||
@@ -1589,6 +1700,32 @@ public static class SemanticEndTurnEngineV111
                         saved.NestedChoiceTranscript[nestedChoiceIndex++],
                         pending.SiteId);
                     nestedPoolShuffleIndex++;
+                }
+                else
+                {
+                    if (!hasNestedHandCostSelection ||
+                        boundary.TranscriptIndex !=
+                            nestedHandCostSelectionIndex ||
+                        nestedChoiceIndex >=
+                            saved.NestedChoiceTranscript.Length ||
+                        saved.NestedChoiceTranscript[nestedChoiceIndex] is not
+                            { Kind: "semantic_hand_cost_selection",
+                              HandCostSelectionDecision: { } handCostChoice })
+                        throw new InvalidDataException(
+                            "Semantic end-turn hand-cost-selection transcript order is invalid.");
+                    var pending = reproduced.NestedHandCostSelectionPending ??
+                        throw new InvalidDataException(
+                            "Semantic end-turn replay lost its hand-cost-selection event.");
+                    SemanticHandCostSelectionChoiceV111.ValidateDecision(
+                        pending, handCostChoice,
+                        handCostChoice.SelectedCardInstanceId);
+                    var resumed = SemanticHandCostSelectionChoiceV111.Resume(
+                        reproduced.Run.Fork(), handCostChoice);
+                    reproduced = ContinueNestedAutomaticChoice(
+                        reproduced, resumed,
+                        saved.NestedChoiceTranscript[nestedChoiceIndex++],
+                        pending.SiteId);
+                    nestedHandCostSelectionIndex++;
                 }
                 boundaryIndex++;
             }
@@ -1673,7 +1810,10 @@ public static class SemanticEndTurnEngineV111
                         choice.Kind == "semantic_card_shortlist") ||
                 nestedPoolShuffleIndex !=
                     saved.NestedChoiceTranscript.Count(choice =>
-                        choice.Kind == "semantic_pool_shuffle"))
+                        choice.Kind == "semantic_pool_shuffle") ||
+                nestedHandCostSelectionIndex !=
+                    saved.NestedChoiceTranscript.Count(choice =>
+                        choice.Kind == "semantic_hand_cost_selection"))
                 throw new InvalidDataException(
                     "Semantic end-turn boundary transcript omitted a decision.");
         }
