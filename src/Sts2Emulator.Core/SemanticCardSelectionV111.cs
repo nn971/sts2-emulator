@@ -149,13 +149,13 @@ public static class SemanticCardSelectionEngineV111
         var choice = combat?.PendingChoice;
         bool automaticStratagem =
             choice?.AutomaticSemanticStratagemDrawSelection == true;
-        bool automaticAutoplay = combat is not null && choice is not null &&
+        bool automaticPipelineChoice = combat is not null && choice is not null &&
             PrototypeGameEngine
                 .IsAutomaticPipelineSemanticCardSelectionContinuation(
                     combat, choice);
         if (source.Phase != RunPhase.Combat ||
             combat is not { PendingKnowledgeDemonChoice: null } ||
-            (!automaticStratagem && !automaticAutoplay &&
+            (!automaticStratagem && !automaticPipelineChoice &&
              !combat.IsPlayerTurn) ||
             choice is not { ChoiceId: "select_cards" } ||
             combat.SemanticDeck is not { } deck || deck.Pending is not null)
@@ -168,13 +168,13 @@ public static class SemanticCardSelectionEngineV111
                 throw new InvalidDataException(
                     "Automatic Stratagem draw cursor is inconsistent.");
         }
-        else if (!automaticAutoplay &&
+        else if (!automaticPipelineChoice &&
                  combat!.AutomaticPipelineContinuation is not null)
             throw new InvalidOperationException(
                 "Expected an ordinary semantic player-turn choice.");
         SemanticDrawPileAdapterV111.ValidateSynchronized(
             combat, requireIdle: true);
-        if (automaticStratagem || automaticAutoplay)
+        if (automaticStratagem || automaticPipelineChoice)
             PrototypeStateInvariants.Validate(source);
     }
 
@@ -221,7 +221,7 @@ public static class SemanticCardSelectionEngineV111
         var choice = combat!.PendingChoice!;
         var deck = combat!.SemanticDeck!;
         SemanticDeckEngineV111.Validate(deck);
-        var automaticAutoplay =
+        var automaticPipelineChoice =
             PrototypeGameEngine
                 .IsAutomaticPipelineSemanticCardSelectionContinuation(
                     combat, choice);
@@ -267,7 +267,7 @@ public static class SemanticCardSelectionEngineV111
                         "Automatic Stratagem selection lost its draw cursor.");
                 PrototypeStateInvariants.Validate(advanced);
             }
-            else if (automaticAutoplay)
+            else if (automaticPipelineChoice)
                 ValidateAutomaticPipelineResult(advanced);
             else
                 SemanticPilotCombatEngineV111.ValidateSemanticCombatBoundary(
@@ -324,7 +324,7 @@ public static class SemanticCardSelectionEngineV111
         ArgumentNullException.ThrowIfNull(state);
         var from = state.Origin.World?.Combat;
         var to = state.Run.World?.Combat;
-        var automaticAutoplay = from is not null &&
+        var automaticPipelineChoice = from is not null &&
             from.PendingChoice is { } sourceChoice &&
             PrototypeGameEngine
                 .IsAutomaticPipelineSemanticCardSelectionContinuation(
@@ -353,7 +353,7 @@ public static class SemanticCardSelectionEngineV111
                         "Saved automatic Stratagem selection lost its draw cursor.");
                 PrototypeStateInvariants.Validate(state.Run);
             }
-            else if (automaticAutoplay)
+            else if (automaticPipelineChoice)
                 ValidateAutomaticPipelineResult(state.Run);
             else
                 SemanticPilotCombatEngineV111.ValidateSemanticCombatBoundary(
