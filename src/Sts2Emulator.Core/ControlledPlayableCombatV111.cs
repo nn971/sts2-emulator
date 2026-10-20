@@ -673,10 +673,20 @@ public static class ControlledPlayableCombatEngineV111
         var cards = player.Deck.Select((c, i) => new CombatCardInstance(
             i + 1L, c.InstanceId, c.CardId, c.UpgradeLevel, false,
             c.PersistentState.Clone(), Enchantment: c.Enchantment)).ToArray();
+        // The source formation already assigned application-order tickets
+        // to its starting enemy powers. Allocate the player's starter relics
+        // after those tickets, using the combat mechanics owner.
+        var lastPowerOrder = verified.Combat.PlayerPowers
+            .Select(power => power.ApplicationOrder)
+            .Concat(verified.Combat.Enemies.SelectMany(enemy =>
+                enemy.PowerStates.Select(power => power.ApplicationOrder)))
+            .DefaultIfEmpty(0L).Max();
+        var firstRelicOrder = Math.Max(
+            verified.Combat.NextPowerApplicationOrder, lastPowerOrder + 1);
         var relics = player.Relics.Select((r, i) =>
         {
             var d = PrototypeContent.Relic(r.RelicId);
-            return new CombatRelicState(i, r.RelicId, i + 1L,
+            return new CombatRelicState(i, r.RelicId, firstRelicOrder + i,
                 new int[(d.Triggers ?? []).Length], r.IsMelted);
         }).ToArray();
         var potions = player.PotionSlots.Select((p, i) =>
@@ -688,6 +698,7 @@ public static class ControlledPlayableCombatEngineV111
             Cards = cards,
             NextCardInstanceId = cards.Length + 1L,
             Relics = relics,
+            NextPowerApplicationOrder = firstRelicOrder + relics.Length,
             Potions = potions,
             CurrentMapNodeId = run.World!.Map.CurrentNodeId,
             IsPlayerTurn = true
