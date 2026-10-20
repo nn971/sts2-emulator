@@ -426,6 +426,34 @@ public sealed record ReferenceNatureMerchantSessionV111(
             return ChanceLawEngineV111.QueryNativeMerchantNoEffectUnitFloat(
                 source, request.UnitFloatRequest!);
 
+        if (StochasticSiteRegistryV111.IsRunActionShopPurchaseSite(siteId) &&
+            request.IndexRequest is { } purchaseIndexRequest)
+        {
+            if (candidateLabels is not { } purchaseCandidateLabels ||
+                purchaseCandidateLabels.Length !=
+                    purchaseIndexRequest.SupportCount ||
+                purchaseCandidateLabels.Any(string.IsNullOrWhiteSpace) ||
+                purchaseCandidateLabels.Distinct(StringComparer.Ordinal)
+                    .Count() != purchaseCandidateLabels.Length)
+                throw new InvalidDataException(
+                    "Registered Shop-purchase index request lost its distinct ordered support labels.");
+
+            var eventId = CanonicalJson.Sha256(new
+            {
+                SchemaId = CurrentSchemaId,
+                MechanicsBoundary = SimulationMechanicsProjectionEngineV111
+                    .Fingerprint(source),
+                ActionFingerprint = PrototypeAiEnvironment.StableActionId(action),
+                RequestFingerprint = CanonicalJson.Sha256(
+                    purchaseIndexRequest),
+                CandidateLabels = purchaseCandidateLabels,
+                PriorPrefix = prefix.Select(decision =>
+                    CanonicalJson.Sha256(decision)).ToArray()
+            });
+            return ChanceLawEngineV111.QueryRandomIndex(
+                eventId, purchaseIndexRequest);
+        }
+
         throw new NotSupportedException(
             $"ReferenceNature merchant replay does not support stochastic site '{siteId}'.");
     }

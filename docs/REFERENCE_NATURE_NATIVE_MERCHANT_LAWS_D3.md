@@ -75,6 +75,19 @@ request prefix and ordered candidate labels. This establishes the index
 transform only; pool fidelity, trigger completeness, and Native stream
 attribution remain unverified.
 
+The same session also resolves every other registered index-valued request
+whose SiteId is in `StochasticSiteRegistryV111.RunActionShopPurchaseSiteIds`.
+It validates that the saved action is a current legal configured Shop
+purchase and that the request has one distinct, nonempty label per supported
+index.
+The generic typed-index law fingerprints the provider-independent mechanics
+boundary, action identity, exact request, ordered labels, and prior decision
+prefix. Canonical Native streams receive exact bounded-index masses;
+noncanonical streams retain `UNVERIFIED` uniform-index weights. The registry
+is the sole site list. This adds a serialized resolution path for registered
+purchase indices without certifying the source trigger, candidate pool, or
+stream assignment.
+
 ## Conditioned support by site
 
 | Site | Conditioned support |
@@ -136,8 +149,8 @@ candidate-pool completeness, stream attribution, seed frequencies, or Native
 cursor parity. Legacy merchant percentage-bin requests and hidden relic queue
 identity retain their separate `UNVERIFIED` status.
 
-Native queue construction and queue shuffling, unsupported purchase effects,
-later Treasure draws, and the listed legacy merchant requests remain outside
+Native queue construction and queue shuffling, unregistered or non-index
+purchase effects, later Treasure draws, and the listed legacy merchant requests remain outside
 the atomic Native merchant session. Those paths keep their source-owned or
 existing run-action boundary; this contract does not infer a Nature law or
 continuation for them.
@@ -158,10 +171,10 @@ shape. A snapshot carrying the tag uses
 `hello`. Ordinary queue-order pulls reject a
 Nature-owned set unless a controlled Chance Law replay selects an identity.
 Native bag construction and queue shuffling remain outside this session, and
-the completeness of the modeled eligible sets remains unverified. Other
-stochastic purchase effects, later Treasure draws, and Native cursor parity
-remain unsupported. Legacy Shop-node generation continues to use its existing
-run-action contract. The four legacy `shop.merchant.*` rows linked from the
+the completeness of the modeled eligible sets remains unverified. Unregistered
+or non-index stochastic purchase effects, later Treasure draws, and Native
+cursor parity remain unsupported. Legacy Shop-node generation continues to
+use its existing run-action contract. The four legacy `shop.merchant.*` rows linked from the
 migration matrix remain separate: three price rows use discrete integer
 percentage bins that approximate the Native unit-float price sites, and the
 legacy card-upgrade row consumes a 10,000-way ticket even though the generated
