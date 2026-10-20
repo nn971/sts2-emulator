@@ -1205,11 +1205,10 @@ public static class SemanticEndTurnEngineV111
         SemanticEndTurnNestedChoiceV111 choice)
     {
         // This facade owns end-turn boundary freshness. The typed resume
-        // owner re-derives the live source event and validates the selected
-        // payload before mechanics replay.
+        // owner validates the choice envelope, live source event, and
+        // selected payload before mechanics replay.
         Validate(source);
         ArgumentNullException.ThrowIfNull(choice);
-        choice.Validate();
         if (source.Complete ||
             source.HandDraw is { AtBoundary: false } ||
             (!PrototypeGameEngine
