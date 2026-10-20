@@ -174,12 +174,13 @@ public static class SemanticDrawHookChoiceEngineV111
         return result;
     }
 
-    public static (RunState Run, SemanticDrawHookChoiceDecisionV111 Decision)
-        Resolve(RunState source, SemanticDrawHookChoiceEventV111 pending,
-            string actionId)
+    public static SemanticDrawHookChoiceDecisionV111 Select(
+        RunState source, SemanticDrawHookChoiceEventV111 pending,
+        string actionId)
     {
         ArgumentNullException.ThrowIfNull(source);
         ArgumentNullException.ThrowIfNull(pending);
+        ArgumentException.ThrowIfNullOrWhiteSpace(actionId);
         pending.Validate();
         var current = DescribePending(source);
         if (current is null ||
@@ -199,6 +200,18 @@ public static class SemanticDrawHookChoiceEngineV111
             throw new InvalidDataException(
                 "Draw-hook action payload changed during resolution.");
 
+        var decision = new SemanticDrawHookChoiceDecisionV111(
+            pending.Fork(), actionId);
+        decision.Validate();
+        return decision;
+    }
+
+    public static (RunState Run, SemanticDrawHookChoiceDecisionV111 Decision)
+        Resolve(RunState source, SemanticDrawHookChoiceEventV111 pending,
+            string actionId)
+    {
+        var decision = Select(source, pending, actionId);
+
         var environment = new PrototypeAiEnvironment();
         RunState advanced;
         bool beforeHandDraw = pending.BeforeHandDraw;
@@ -206,7 +219,7 @@ public static class SemanticDrawHookChoiceEngineV111
             ? "combat.BeforeHandDraw" : "combat.draw.CardDrawn";
         using (ControlledChanceGuardV111.Enter())
         using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
-            advanced = environment.Step(source.Fork(), actionId).State;
+            advanced = environment.Step(source.Fork(), decision.ActionId).State;
         if (advanced.Phase != RunPhase.Combat ||
             advanced.World?.Combat is not { } advancedCombat)
             throw new NotSupportedException(
@@ -259,10 +272,6 @@ public static class SemanticDrawHookChoiceEngineV111
                 $"UNSUPPORTED_SEMANTIC_DECK site={site} " +
                 "operation=nested_controlled_choice");
         PrototypeStateInvariants.Validate(advanced);
-
-        var decision = new SemanticDrawHookChoiceDecisionV111(
-            pending.Fork(), actionId);
-        decision.Validate();
         return (advanced, decision);
     }
 
