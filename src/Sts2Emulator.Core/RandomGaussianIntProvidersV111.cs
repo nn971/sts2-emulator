@@ -24,6 +24,12 @@ public sealed record RandomGaussianIntRequestV111(
             || SourceVersion != "v0.111.0")
             throw new ArgumentException(
                 "Invalid source-pinned Gaussian-integer request.");
+
+        if (!StochasticSiteRegistryV111
+                .IsRegisteredRandomGaussianIntRequestSite(SiteId))
+            throw new ArgumentException(
+                $"Gaussian-integer site '{SiteId}' is not registered.",
+                nameof(SiteId));
     }
 }
 

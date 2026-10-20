@@ -28,6 +28,12 @@ public sealed record RandomGaussianDoubleRequestV111(
             || SourceVersion != "v0.111.0")
             throw new ArgumentException(
                 "Invalid source-pinned Gaussian-double request.");
+
+        if (!StochasticSiteRegistryV111
+                .IsRegisteredRandomGaussianDoubleRequestSite(SiteId))
+            throw new ArgumentException(
+                $"Gaussian-double site '{SiteId}' is not registered.",
+                nameof(SiteId));
     }
 }
 

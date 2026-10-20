@@ -795,6 +795,9 @@ public static class StochasticSiteRegistryV111
     [
         "reward.combat_gold.index_draw"
     ];
+    private static readonly string[] NativeRangedFloatSites = [];
+    private static readonly string[] NativeRangedDoubleSites = [];
+    private static readonly string[] NativeGaussianDoubleSites = [];
     private static readonly string[] NativeEventContextShuffleSites =
     [
         PrototypeNativeFakeMerchant.RelicOfferShuffleSiteId,
@@ -958,6 +961,12 @@ public static class StochasticSiteRegistryV111
         (string[])ChanceLawQuerySites.Clone();
     public static string[] NativeUnitFloatSiteIds =>
         (string[])NativeUnitFloatSites.Clone();
+    public static string[] NativeRangedFloatSiteIds =>
+        (string[])NativeRangedFloatSites.Clone();
+    public static string[] NativeRangedDoubleSiteIds =>
+        (string[])NativeRangedDoubleSites.Clone();
+    public static string[] NativeGaussianDoubleSiteIds =>
+        (string[])NativeGaussianDoubleSites.Clone();
     public static string[] NativeBoundedIntegerSiteIds =>
         (string[])NativeBoundedIntegerSites.Clone();
     public static string[] NativeMerchantPriceSiteIds =>
@@ -1076,8 +1085,26 @@ public static class StochasticSiteRegistryV111
     public static bool IsNativeUnitFloatSite(string siteId) =>
         NativeUnitFloatSites.Contains(siteId, StringComparer.Ordinal);
 
+    internal static bool IsRegisteredRandomUnitFloatRequestSite(
+        string siteId) => IsNativeUnitFloatSite(siteId);
+
+    internal static bool IsRegisteredRandomRangedFloatRequestSite(
+        string siteId) =>
+        NativeRangedFloatSites.Contains(siteId, StringComparer.Ordinal);
+
+    internal static bool IsRegisteredRandomRangedDoubleRequestSite(
+        string siteId) =>
+        NativeRangedDoubleSites.Contains(siteId, StringComparer.Ordinal);
+
     public static bool IsNativeGaussianIntSite(string siteId) =>
         ChanceLawEngineV111.IsNativeMapGaussianIntQuerySite(siteId);
+
+    internal static bool IsRegisteredRandomGaussianIntRequestSite(
+        string siteId) => IsNativeGaussianIntSite(siteId);
+
+    internal static bool IsRegisteredRandomGaussianDoubleRequestSite(
+        string siteId) =>
+        NativeGaussianDoubleSites.Contains(siteId, StringComparer.Ordinal);
 
     internal static bool SupportsEngineOwnedNativeBoundary(
         string siteId, string operationKind)

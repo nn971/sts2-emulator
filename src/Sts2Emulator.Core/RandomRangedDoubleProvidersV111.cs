@@ -23,6 +23,12 @@ public sealed record RandomRangedDoubleRequestV111(
             || SourceVersion != "v0.111.0")
             throw new ArgumentException(
                 "Invalid source-pinned ranged-double request.");
+
+        if (!StochasticSiteRegistryV111
+                .IsRegisteredRandomRangedDoubleRequestSite(SiteId))
+            throw new ArgumentException(
+                $"Ranged-double site '{SiteId}' is not registered.",
+                nameof(SiteId));
     }
 }
 
