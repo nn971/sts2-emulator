@@ -3,13 +3,42 @@ namespace Sts2Emulator.Core;
 public sealed record ControlledEventChoiceEnumeratedOutcomeV111(
     int SelectedIndex,
     string CandidateLabel,
-    RunState Child);
+    RunState Child)
+{
+    public ControlledEventChoiceEnumeratedOutcomeV111 Fork() => this with
+    {
+        Child = Child.Fork()
+    };
+}
 
 public sealed record ControlledEventChoiceEnumerationResultV111(
     string SchemaId,
     string EventId,
     string ChoiceId,
-    ControlledEventChoiceEnumeratedOutcomeV111[] Outcomes);
+    ControlledEventChoiceEnumeratedOutcomeV111[] Outcomes)
+{
+    private ControlledEventChoiceEnumeratedOutcomeV111[]? _outcomes =
+        CloneOutcomes(Outcomes);
+
+    public ControlledEventChoiceEnumeratedOutcomeV111[] Outcomes
+    {
+        get => CloneOutcomes(_outcomes)!;
+        init => _outcomes = CloneOutcomes(value);
+    }
+
+    public ControlledEventChoiceEnumerationResultV111 Fork() => this with
+    {
+        Outcomes = _outcomes?.Select(outcome => outcome is null
+            ? null!
+            : outcome.Fork()).ToArray()!
+    };
+
+    private static ControlledEventChoiceEnumeratedOutcomeV111[]? CloneOutcomes(
+        ControlledEventChoiceEnumeratedOutcomeV111[]? outcomes) =>
+        outcomes?.Select(outcome => outcome is null
+            ? null!
+            : outcome with { }).ToArray();
+}
 
 /// <summary>
 /// Resolves each index in one small pending event support against an
