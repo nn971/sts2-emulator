@@ -114,9 +114,9 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         IsGamblingChipOpeningSemanticDrawContinuation(combat, pending);
 
     /// <summary>
-    /// Identifies the automatic-pipeline cursors where a controlled target
-    /// may suspend: ordinary pre-AdvanceTurn combat work, or post-draw player
-    /// turn hooks and late autoplay.
+    /// Identifies automatic-pipeline cursors where controlled targets may
+    /// suspend: ordinary combat work, post-draw player hooks, late autoplay,
+    /// or the exact first-turn Whispering Earring opening continuation.
     /// </summary>
     internal static bool IsAtSupportedAutomaticPipelineTargetBoundary(
         CombatState combat)
@@ -126,6 +126,8 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             return false;
         var continuation = combat.AutomaticPipelineContinuation;
         var pipelineLength = PrototypeContent.Rules.EndTurnPipeline.Length;
+        if (continuation?.OpeningStage is not null)
+            return IsWhisperingEarringOpeningAutoplayBoundary(combat);
         if (continuation is not
             {
                 OpeningStage: null,

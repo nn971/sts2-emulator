@@ -1689,6 +1689,133 @@ public sealed partial class PrototypeGameEngine
             IsAtSupportedAutomaticPipelineTargetBoundary(combat);
     }
 
+    internal static bool IsWhisperingEarringOpeningAutoplayBoundary(
+        CombatState combat)
+    {
+        if (combat is not
+                { Turn: 1, IsPlayerTurn: true, IsPlayerSideActive: true,
+                  PendingKnowledgeDemonChoice: null,
+                  PendingChoice:
+                    { OuterChoiceContinuation: { } root } pending,
+                  SemanticDeck:
+                    { Mode: SemanticDeckStateV111.NatureMode,
+                      Pending: null },
+                  AutomaticPipelineContinuation: { } pipeline } ||
+            !IsAtOpeningAutomaticPipelineCursor(
+                combat, pipeline,
+                PrototypeOpeningCombatStage.Complete))
+            return false;
+
+        bool hasWhisperingEarring = false;
+        for (var index = 0; index < combat.RelicStates.Length; index++)
+        {
+            var relic = combat.RelicStates[index];
+            if (relic is
+                    { RelicId: NativeGloryAncientsV111.WhisperingEarringId,
+                      IsMelted: false } &&
+                relic.PersistentIndex == index)
+            {
+                hasWhisperingEarring = true;
+                break;
+            }
+        }
+        if (!hasWhisperingEarring)
+            return false;
+
+        bool hasWhisperingEarringDriver = false;
+        bool hasAutoplaySeries = false;
+        bool hasPreplayTarget = false;
+        var target = pending.ControlledTarget;
+        for (var frame = root; frame is not null; frame = frame.Parent)
+        {
+            hasAutoplaySeries |= frame.CardPlaySeries is
+                { IsAutoPlay: true };
+            if (frame.Operations is { Length: 1 } &&
+                IsWhisperingEarringDriverFrame(
+                    frame, frame.Operations[0]))
+                hasWhisperingEarringDriver = true;
+
+            if (target is
+                    { Kind: "autoplay_random_enemy",
+                      AutoPlayCardInstanceId: { } autoPlayCardId } &&
+                IsWhisperingEarringPreplayTargetFrame(
+                    frame, autoPlayCardId))
+            {
+                hasWhisperingEarringDriver = true;
+                hasPreplayTarget = true;
+            }
+        }
+
+        return hasWhisperingEarringDriver &&
+            (hasAutoplaySeries || hasPreplayTarget);
+    }
+
+    private static bool IsWhisperingEarringDriverOperation(
+        PrototypeQueuedOperation operation) =>
+        operation.Amount is >= 0 and
+            < NativeGloryAncientsV111.WhisperingEarringMaxCards &&
+        CanonicalJson.Sha256(new PrototypeQueuedOperation(
+            PrototypeCombatEffectKind.AutoPlayPlayableCardsFromHand,
+            operation.Amount,
+            SourceKind: PrototypeEffectSourceKind.Relic)) ==
+        CanonicalJson.Sha256(operation);
+
+    private static bool IsWhisperingEarringDriverFrame(
+        PrototypeChoiceResolutionContinuationState frame,
+        PrototypeQueuedOperation operation)
+    {
+        if (!IsWhisperingEarringDriverOperation(operation))
+            return false;
+        var expected = new PrototypeChoiceResolutionContinuationState(
+            SourceCardInstanceId: null,
+            SourceCardDestination: PrototypeCardZone.DiscardPile,
+            Operations: [new PrototypeQueuedOperation(
+                PrototypeCombatEffectKind.AutoPlayPlayableCardsFromHand,
+                operation.Amount,
+                SourceKind: PrototypeEffectSourceKind.Relic)],
+            PendingDiscardEvents: [],
+            PendingSlyCardInstanceIds: [],
+            CompletionEvents: []);
+        return CanonicalJson.Sha256(expected) ==
+            CanonicalJson.Sha256(frame);
+    }
+
+    private static bool IsWhisperingEarringPreplayTargetFrame(
+        PrototypeChoiceResolutionContinuationState frame,
+        long autoPlayCardId)
+    {
+        if (frame.Operations is not { Length: 2 } operations ||
+            operations[0] is not
+                { Kind: PrototypeCombatEffectKind.AutoPlayCombatCard,
+                  Amount: 0, TargetEnemyId: null,
+                  SourceKind: PrototypeEffectSourceKind.Relic,
+                  EnergySpent: { } energySpent,
+                  CardInstanceId: { } operationCardId } ||
+            operationCardId != autoPlayCardId ||
+            !IsWhisperingEarringDriverOperation(operations[1]))
+            return false;
+        var expected = new PrototypeChoiceResolutionContinuationState(
+            SourceCardInstanceId: null,
+            SourceCardDestination: PrototypeCardZone.DiscardPile,
+            Operations:
+            [
+                new PrototypeQueuedOperation(
+                    PrototypeCombatEffectKind.AutoPlayCombatCard, 0,
+                    SourceKind: PrototypeEffectSourceKind.Relic,
+                    CardInstanceId: autoPlayCardId,
+                    EnergySpent: energySpent),
+                new PrototypeQueuedOperation(
+                    PrototypeCombatEffectKind.AutoPlayPlayableCardsFromHand,
+                    operations[1].Amount,
+                    SourceKind: PrototypeEffectSourceKind.Relic)
+            ],
+            PendingDiscardEvents: [],
+            PendingSlyCardInstanceIds: [],
+            CompletionEvents: []);
+        return CanonicalJson.Sha256(expected) ==
+            CanonicalJson.Sha256(frame);
+    }
+
     private static bool IsSupportedAutomaticPipelineAutoplayContinuation(
         CombatState combat,
         PrototypeChoiceResolutionContinuationState continuation)

@@ -364,9 +364,11 @@ and records a `semantic_target` decision. Replay regenerates the same test
 loadout from seeded-entry provenance. This extension is marked
 `UNVERIFIED`; the same target-event and resolver also cover saved
 player-action auto-play targets at `combat.autoplay.random_enemy`.
-The controlled playable fixture additionally resumes auto-play targets
-through a saved automatic-pipeline cursor; the semantic end-turn event path
-does not yet expose that automatic boundary.
+The controlled playable fixture and semantic end-turn event path resume
+supported automatic auto-play targets through the saved pipeline cursor. The
+semantic pilot also admits Whispering Earring's exact first-turn opening
+target when its `Complete` cursor and relic-driver continuation are live; other
+opening-stage target contexts remain unsupported.
 
 The optional `generated_card_pool` extension wraps the existing serialized
 generation continuation. The test loadout

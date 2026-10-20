@@ -78,6 +78,8 @@
 
 **Implementation scope:** `sts2-emulator`, STS2 v0.111.0, single-player. The first vertical slice is two-site Silent combat. Keep the four-Act Silent gameplay and active native inspector developments on separate tracks. Existing versioned `controlled_*`, `nature_*`, `semantic_*` and ordinary AI protocols remain supported; no historic snapshot/probability reinterpretation.
 
+**S4 Whispering Earring opening autoplay continuation increment (2026-10-20):** The shared automatic-target boundary now admits the exact first-turn late-relic autoplay continuation saved at the following `Complete` cursor. Admission requires the live unmelted relic, the `AutoPlayPlayableCardsFromHand` driver frame, and either an active autoplay card-play series or the exact queued pre-play target operation. Existing semantic owners resume target, draw, cost, insertion, generation, transform, shortlist, and card-selection outcomes before opening completes. Other opening-stage choices and Native stream/cursor fidelity remain open. No tests or builds were run.
+
 ## Priorities and milestones
 
 | Stage | Priority | Deliverables | Acceptance gate |

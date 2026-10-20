@@ -56,13 +56,29 @@ relics that insert generated cards resolve through the existing controlled
 insertion continuation. A seeded semantic fixture can include Distilled Chaos with
 `fixture_top_autoplay_potion_id`.
 
+## Whispering Earring opening continuation
+
+On turn one, Whispering Earring's late opening stage can autoplay a card whose
+effects reach a semantic chance boundary. The continuation admits this route
+only when the saved opening cursor is `Complete`, the live combat has an
+unmelted Whispering Earring, and the nested continuation contains the exact
+`AutoPlayPlayableCardsFromHand` driver. It also validates a pre-play random
+enemy target against the queued `AutoPlayCombatCard` and remaining Earring
+driver operations. Once a card is playing, existing semantic target, draw,
+cost, insertion, generation, transform, shortlist, and card-selection owners
+resume its nested effects and then the opening pipeline.
+
+This route does not broaden opening-stage choice support generally. Native
+target stream, trigger order, and cursor parity remain separate fidelity work.
+
 ## Limits and verification
 
 The continuation resumes its saved automatic stage after all selected
 auto-play operations and nested choices finish. Semantic draw and draw-cost
 choices inside an autoplayed card preserve its card-play frame and pipeline
-cursor through the draw hooks. This covers Mayhem `AutoPrePlay` and late
-player-turn autoplay after end-turn hand draw. Nested Nature draws reuse the
+cursor through the draw hooks. This covers Mayhem `AutoPrePlay`, late
+player-turn autoplay after end-turn hand draw, and Whispering Earring's exact
+first-turn opening autoplay. Nested Nature draws reuse the
 semantic recycle and after-shuffle insertion path in `DrawCards`. End-turn
 snapshots keep draw, cost, and insertion outcomes in one ordered transcript so
 restore replays the same nested continuation. The legacy recycle ticket without

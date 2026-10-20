@@ -466,6 +466,13 @@ From turn two onward, Hello World's `BeforeHandDraw` hook now uses the existing 
 
 From turn two onward, Crossbow's `PlayerSideTurnStarted` effect can suspend on the existing typed generated-card model choice before `DrawPlayerHand`. Semantic end-turn retains the exact relic subscriber and operation at the clean draw cursor, then begins the semantic hand-draw owner after the generated Attack is selected; restore replays that trigger and selection before the draw. Later subscribers are admitted only when their saved relic triggers and effects are source-reachable deterministic energy, gold-for-energy, block, or player-power operations; unsupported random or choice effects fail closed. The generated-card event keeps its existing `prototype.combat` stream label and `UNVERIFIED` probability status; Native `run.combat_card_generation` attribution and cursor parity remain open. Other automatic-pipeline generation continuations remain unsupported.
 
+Whispering Earring's first-turn opening autoplay now uses the shared automatic
+target boundary only when its saved `OpeningStage.Complete` continuation contains
+the exact relic driver and an autoplay card-play frame. The same cursor admits
+the exact pre-play target operation. Existing typed choice owners resume nested
+card effects before the opening pipeline completes; other opening-stage
+choices remain separately gated.
+
 ## Reading order
 
 1. This architecture contract.
