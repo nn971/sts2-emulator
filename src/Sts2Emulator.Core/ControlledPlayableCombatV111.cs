@@ -83,6 +83,10 @@ public sealed record ControlledPlayableCombatV111(
         init => Mechanics = Mechanics with { Mode = value };
     }
 
+    // Stable genesis choice: full provenance replay must reconstruct the
+    // precise initial encounter, not infer it from a mutable live history.
+    public string? OpeningEncounterId { get; init; }
+
     public int NextShuffleIndex
     {
         get => Stochastic.NextShuffleIndex;
@@ -755,7 +759,10 @@ public static class ControlledPlayableCombatEngineV111
         int nextIndex = combat.DrawPile.Length - 1;
         var state = new ControlledPlayableCombatV111(
             seed, verified, run, nextIndex, [], [],
-            MakePending(nextIndex, 0));
+            MakePending(nextIndex, 0))
+        {
+            OpeningEncounterId = encounterId
+        };
         return state;
     }
 
@@ -1165,7 +1172,8 @@ public static class ControlledPlayableCombatEngineV111
             ?? throw new InvalidDataException("Null controlled playable snapshot.");
         // Full provenance replay, from source-verified controlled HP+intent
         // completion through the entire ordered shuffle and player transcript.
-        var current = Begin(stored.Origin, stored.Seed);
+        var current = Begin(stored.Origin, stored.Seed,
+            stored.OpeningEncounterId);
         foreach (var decision in stored.ShuffleTranscript)
         {
             decision.Validate();
