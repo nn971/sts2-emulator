@@ -13,14 +13,15 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             AutomaticPipelineContinuation: null };
 
     /// <summary>
-    /// Recognizes suspended enemy-action and controlled-target choices in
-    /// the automatic pipeline. End-turn and controlled-playable facades
-    /// share this pending-choice classification.
+    /// Recognizes suspended enemy-action, controlled-target, and supported
+    /// source-action choices in the automatic pipeline. End-turn and
+    /// controlled-playable facades share this classification.
     /// </summary>
     internal static bool HasPendingControlledAutomaticPipelineChoice(
         RunState run) => run.World?.Combat is { } combat &&
         (combat.AutomaticPipelineContinuation?.ControlledEnemyAction is not null ||
-         combat.PendingChoice?.ControlledTarget is not null);
+         combat.PendingChoice?.ControlledTarget is not null ||
+         combat.PendingKnowledgeDemonChoice is not null);
 
     /// <summary>
     /// Recognizes a source-supported semantic effect draw or its randomized
@@ -108,6 +109,8 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         CombatState combat)
     {
         ArgumentNullException.ThrowIfNull(combat);
+        if (combat.PendingKnowledgeDemonChoice is not null)
+            return false;
         var continuation = combat.AutomaticPipelineContinuation;
         var pipelineLength = PrototypeContent.Rules.EndTurnPipeline.Length;
         if (continuation is not

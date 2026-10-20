@@ -5,7 +5,7 @@ using System.Text;
 
 namespace Sts2Emulator.Core;
 
-/// <summary>One externally replayable action or Nature decision.</summary>
+/// <summary>One externally replayable action or provider decision.</summary>
 public sealed record SemanticPilotContinuationV111(
     string Kind, string? ActionId = null, int? SelectedIndex = null,
     SemanticIntentDecisionV111? IntentDecision = null,
@@ -22,7 +22,9 @@ public sealed record SemanticPilotContinuationV111(
     SemanticDrawHookChoiceDecisionV111? DrawHookChoiceDecision = null,
     SemanticPotionGenerationDecisionV111? PotionGenerationDecision = null,
     SemanticCardTransformDecisionV111? CardTransformDecision = null,
-    SemanticDeckRevealDecisionV111? DeckRevealDecision = null);
+    SemanticDeckRevealDecisionV111? DeckRevealDecision = null,
+    SemanticKnowledgeDemonChoiceDecisionV111?
+        KnowledgeDemonChoiceDecision = null);
 
 /// <summary>
 /// Independently replayable setup provenance. The default entry is a
@@ -347,6 +349,9 @@ public sealed record SemanticPilotCombatV111(
                 .DescribePendingDrawInsertionEvent(this);
     [JsonIgnore] public SemanticDrawHookChoiceEventV111?
         DrawHookChoicePending => PendingEndTurn?.DrawHookChoicePending;
+    [JsonIgnore] public SemanticKnowledgeDemonChoiceEventV111?
+        KnowledgeDemonChoicePending =>
+            PendingEndTurn?.KnowledgeDemonChoicePending;
     [JsonIgnore] public string Fingerprint => CanonicalJson.Sha256(this);
     [JsonIgnore] public bool AtPlayerBoundary =>
         PendingInitialIntents is null &&
@@ -360,7 +365,8 @@ public sealed record SemanticPilotCombatV111(
         ((PendingEndTurn is null && PendingInitialIntents is null &&
           CardSelectionPending is not null) ||
          (PendingEndTurn is not null && PendingInitialIntents is null &&
-          DrawHookChoicePending is not null));
+          (DrawHookChoicePending is not null ||
+           KnowledgeDemonChoicePending is not null)));
     [JsonIgnore] public bool UsesNativePolicyBaseline =>
         SeededEntry?.NativePolicyBaseline ?? false;
     [JsonIgnore] public string? SourceOpeningFingerprint =>
@@ -550,6 +556,25 @@ public sealed record SemanticPilotCombatV111(
                 this.CombatTerminal)
                 throw new InvalidDataException(
                     "CardDrawn hook action conflicts with another semantic boundary.");
+        }
+        if (this.KnowledgeDemonChoicePending is { } knowledgeDemonChoicePending)
+        {
+            knowledgeDemonChoicePending.Validate();
+            if (this.PendingEndTurn is null ||
+                this.PendingInitialIntents is not null ||
+                this.IntentPending is not null || this.DrawPending is not null ||
+                this.RandomPileCardPending is not null ||
+                this.CostPending is not null || this.TargetPending is not null ||
+                this.GeneratedCardPending is not null ||
+                this.CardSelectionPending is not null ||
+                this.PoolShufflePending is not null ||
+                this.DrawInsertionPending is not null ||
+                this.CardShortlistPending is not null ||
+                this.HandCostSelectionPending is not null ||
+                !this.AtPlayerChoiceBoundary || this.UsesNativePolicyBaseline ||
+                this.CombatTerminal)
+                throw new InvalidDataException(
+                    "Knowledge Demon action conflicts with another semantic boundary.");
         }
         if (this.TargetPending is { } targetPending)
         {
@@ -896,6 +921,10 @@ public sealed record SemanticPilotCombatV111(
             { DrawHookChoiceDecision: { } decision } => transition with
             {
                 DrawHookChoiceDecision = decision.Fork()
+            },
+            { KnowledgeDemonChoiceDecision: { } decision } => transition with
+            {
+                KnowledgeDemonChoiceDecision = decision.Fork()
             },
             { TargetDecision: { } decision } => transition with
             {
@@ -2030,9 +2059,11 @@ public static class SemanticPilotCombatEngineV111
         if (current.Fingerprint != fingerprint)
             throw new InvalidOperationException("Stale semantic player-action fingerprint.");
         if (current.AtPlayerChoiceBoundary)
-            return current.DrawHookChoicePending is not null
-                ? StepDrawHookChoice(current, actionId)
-                : StepCardSelection(current, actionId);
+            return current.KnowledgeDemonChoicePending is not null
+                ? StepKnowledgeDemonChoice(current, actionId)
+                : current.DrawHookChoicePending is not null
+                    ? StepDrawHookChoice(current, actionId)
+                    : StepCardSelection(current, actionId);
         if (!current.AtPlayerBoundary)
             throw new InvalidOperationException("Nature decision or combat terminal is pending.");
         if (current.UsesNativePolicyBaseline)
@@ -2303,6 +2334,38 @@ public static class SemanticPilotCombatEngineV111
             new SemanticPilotContinuationV111(
                 "semantic_draw_hook_choice",
                 DrawHookChoiceDecision: decision.Fork()));
+        return NormalizeNoncontrolledCosts(next);
+    }
+
+    private static SemanticPilotCombatV111 StepKnowledgeDemonChoice(
+        SemanticPilotCombatV111 current, string actionId)
+    {
+        var pending = current.KnowledgeDemonChoicePending ??
+            throw new InvalidOperationException(
+                "No Knowledge Demon action is pending.");
+        var endTurn = current.PendingEndTurn ??
+            throw new InvalidDataException(
+                "Knowledge Demon action lost its end-turn continuation.");
+        var priorNestedChoiceCount = endTurn.NestedChoiceTranscript.Length;
+        var nextEndTurn = SemanticEndTurnEngineV111.ResolveKnowledgeDemonChoice(
+            endTurn, endTurn.Fingerprint, actionId);
+        var decision = nextEndTurn.NestedChoiceTranscript.Length >
+                priorNestedChoiceCount
+            ? nextEndTurn.NestedChoiceTranscript[^1]
+                .KnowledgeDemonChoiceDecision
+            : null;
+        if (decision is null ||
+            CanonicalJson.Sha256(decision.Event) !=
+                CanonicalJson.Sha256(pending) ||
+            decision.ActionId != actionId)
+            throw new InvalidDataException(
+                "Knowledge Demon action omitted its replay decision.");
+        var next = PublishRunContinuation(
+            current, nextEndTurn.Run, nextEndTurn,
+            new SemanticPilotContinuationV111(
+                "semantic_knowledge_demon_choice", actionId,
+                KnowledgeDemonChoiceDecision: decision.Fork()));
+        Validate(next);
         return NormalizeNoncontrolledCosts(next);
     }
 
@@ -3742,6 +3805,10 @@ public static class SemanticPilotCombatEngineV111
                     transition.DrawHookChoiceDecision is not null =>
                     Step(replay, replay.Fingerprint,
                         transition.DrawHookChoiceDecision.ActionId),
+                "semantic_knowledge_demon_choice" when
+                    transition.KnowledgeDemonChoiceDecision is not null =>
+                    Step(replay, replay.Fingerprint,
+                        transition.KnowledgeDemonChoiceDecision.ActionId),
                 "semantic_target" when transition.TargetDecision is not null =>
                     ResolveRandomTarget(replay, replay.Fingerprint,
                         transition.TargetDecision.Event.EventId,
