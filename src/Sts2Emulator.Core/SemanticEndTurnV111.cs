@@ -3,14 +3,15 @@ using System.Text.Json.Serialization;
 
 namespace Sts2Emulator.Core;
 
-/// <summary>Chronological reference into the typed chance transcripts kept
-/// by a serialized automatic-pipeline continuation.</summary>
+/// <summary>Chronological reference into typed decision transcripts kept by
+/// a serialized automatic-pipeline continuation.</summary>
 public sealed record SemanticEndTurnBoundaryChoiceV111(
     string Kind, int TranscriptIndex)
 {
     public void Validate()
     {
         if (Kind is not ("enemy_action" or "random_target" or
+                "knowledge_demon_choice" or
                 "semantic_draw" or "semantic_cost" or
                 "semantic_draw_insertion" or "semantic_generated_card" or
                 "semantic_potion_generation" or
@@ -223,6 +224,9 @@ public sealed record SemanticEndTurnV111(
     [JsonIgnore] public RandomIndexRequestV111? EnemyActionPending =>
         Complete ? null : Run.World?.Combat?.AutomaticPipelineContinuation?
             .ControlledEnemyAction?.PendingRequest;
+    [JsonIgnore] public SemanticKnowledgeDemonChoiceEventV111?
+        KnowledgeDemonChoicePending => Complete ? null :
+            SemanticKnowledgeDemonChoiceEngineV111.DescribePending(Run);
     [JsonIgnore] public RandomIndexRequestV111? IntentPending =>
         Intents?.Pending;
     [JsonIgnore] public SemanticDeckEventV111? DrawPending
@@ -436,6 +440,18 @@ public sealed record SemanticEndTurnV111(
                 throw new InvalidDataException(
                     "Automatic-pipeline target ordinal differs from its transcript.");
         }
+        else if (this.KnowledgeDemonChoicePending is { } knowledgeDemon)
+        {
+            knowledgeDemon.Validate();
+            if (this.Complete || this.Intents is not null ||
+                this.HandDraw is not null ||
+                this.Run.World?.Combat?.PendingKnowledgeDemonChoice is null ||
+                this.PlayerActionSource is not { } playerSource ||
+                !PrototypeGameEngine
+                    .IsAtCombatPlayerDecisionBoundary(playerSource))
+                throw new InvalidDataException(
+                    "Invalid automatic-pipeline Knowledge Demon choice stage.");
+        }
         else if (!this.Complete ||
                  !PrototypeGameEngine
                     .IsAtCombatRewardOrTerminalBoundary(this.Run))
@@ -459,6 +475,7 @@ public sealed record SemanticEndTurnV111(
             (!this.Complete && this.Intents is null &&
              this.HandDraw is null && this.EnemyActionPending is null &&
              this.TargetPending is null &&
+             this.KnowledgeDemonChoicePending is null &&
              !PrototypeGameEngine
                 .HasPendingSupportedAutomaticPipelineSemanticChoice(this.Run)) ||
             (!this.Complete && this.HandDraw is { AtBoundary: true } &&
@@ -1254,9 +1271,10 @@ public static class SemanticEndTurnEngineV111
         choice.Validate();
         if (source.Complete ||
             source.HandDraw is { AtBoundary: false } ||
-            !PrototypeGameEngine
+            (!PrototypeGameEngine
                 .HasPendingSupportedAutomaticPipelineSemanticChoice(
-                    source.Run))
+                    source.Run) &&
+             source.KnowledgeDemonChoicePending is null))
             throw new InvalidOperationException(
                 "No supported nested automatic semantic choice is pending.");
 
@@ -1332,6 +1350,17 @@ public static class SemanticEndTurnEngineV111
                     "Nested draw-hook choice differs from its source event.");
             choice.DrawHookChoiceDecision.Validate();
         }
+        else if (expectedKind == "knowledge_demon_choice")
+        {
+            var pending = source.KnowledgeDemonChoicePending;
+            var decision = choice.KnowledgeDemonChoiceDecision!;
+            if (pending is null ||
+                CanonicalJson.Sha256(pending) !=
+                    CanonicalJson.Sha256(decision.Event))
+                throw new InvalidDataException(
+                    "Nested Knowledge Demon choice differs from its source event.");
+            decision.Validate();
+        }
         else
         {
             SemanticDrawInsertionChoiceV111.ValidateDecision(
@@ -1388,6 +1417,29 @@ public static class SemanticEndTurnEngineV111
         var state = ContinueHandDraw(source, nextHand);
         Validate(state);
         return state;
+    }
+
+    public static SemanticEndTurnV111 ResolveKnowledgeDemonChoice(
+        SemanticEndTurnV111 source, string fingerprint, string actionId)
+    {
+        Validate(source);
+        if (!StringComparer.Ordinal.Equals(source.Fingerprint, fingerprint))
+            throw new InvalidOperationException(
+                "Stale semantic end-turn fingerprint.");
+        if (source.Complete ||
+            source.KnowledgeDemonChoicePending is not { } pending)
+            throw new InvalidOperationException(
+                "No automatic Knowledge Demon choice is pending.");
+        var (resumed, decision) = SemanticKnowledgeDemonChoiceEngineV111
+            .Resolve(source.Run.Fork(), pending, actionId);
+        var next = ContinueNestedAutomaticChoice(
+            source, resumed,
+            new SemanticEndTurnNestedChoiceV111(
+                "knowledge_demon_choice",
+                KnowledgeDemonChoiceDecision: decision.Fork()),
+            "combat.ResolveEnemyActions.KnowledgeDemon");
+        Validate(next);
+        return next;
     }
 
     public static SemanticEndTurnV111 ResolveStratagemSelection(
@@ -1535,7 +1587,8 @@ public static class SemanticEndTurnEngineV111
             nestedPotionGenerationIndex = 0, nestedCardTransformIndex = 0,
             nestedCardShortlistIndex = 0, nestedPoolShuffleIndex = 0,
             nestedHandCostSelectionIndex = 0, nestedCardSelectionIndex = 0,
-            nestedDrawHookChoiceIndex = 0;
+            nestedDrawHookChoiceIndex = 0,
+            nestedKnowledgeDemonChoiceIndex = 0;
         void ReplayAvailableBoundaryChoices()
         {
             while (boundaryIndex < saved.BoundaryTranscript.Length)
@@ -1569,12 +1622,15 @@ public static class SemanticEndTurnEngineV111
                     reproduced.NestedCardSelectionPending is not null;
                 var hasNestedDrawHookChoice =
                     reproduced.NestedDrawHookChoicePending is not null;
+                var hasKnowledgeDemonChoice =
+                    reproduced.KnowledgeDemonChoicePending is not null;
                 if (!hasEnemyAction && !hasTarget &&
                     !hasNestedDraw && !hasNestedCost && !hasNestedInsertion &&
                     !hasNestedGeneratedCard && !hasNestedPotionGeneration &&
                     !hasNestedCardTransform && !hasNestedCardShortlist &&
                     !hasNestedPoolShuffle && !hasNestedHandCostSelection &&
-                    !hasNestedCardSelection && !hasNestedDrawHookChoice)
+                    !hasNestedCardSelection && !hasNestedDrawHookChoice &&
+                    !hasKnowledgeDemonChoice)
                     return;
 
                 var boundary = saved.BoundaryTranscript[boundaryIndex];
@@ -1911,6 +1967,39 @@ public static class SemanticEndTurnEngineV111
                         pending.SiteId);
                     nestedHandCostSelectionIndex++;
                 }
+                else if (boundary.Kind == "knowledge_demon_choice")
+                {
+                    if (!hasKnowledgeDemonChoice ||
+                        boundary.TranscriptIndex !=
+                            nestedKnowledgeDemonChoiceIndex ||
+                        nestedChoiceIndex >=
+                            saved.NestedChoiceTranscript.Length ||
+                        saved.NestedChoiceTranscript[nestedChoiceIndex] is not
+                            { Kind: "knowledge_demon_choice",
+                              KnowledgeDemonChoiceDecision: { } demonChoice })
+                        throw new InvalidDataException(
+                            "Semantic end-turn Knowledge Demon transcript order is invalid.");
+                    var pending = reproduced.KnowledgeDemonChoicePending ??
+                        throw new InvalidDataException(
+                            "Semantic end-turn replay lost its Knowledge Demon event.");
+                    if (CanonicalJson.Sha256(pending) !=
+                        CanonicalJson.Sha256(demonChoice.Event))
+                        throw new InvalidDataException(
+                            "Knowledge Demon choice event changed during replay.");
+                    var (resumed, replayedChoice) =
+                        SemanticKnowledgeDemonChoiceEngineV111.Resolve(
+                            reproduced.Run.Fork(), pending,
+                            demonChoice.ActionId);
+                    if (CanonicalJson.Sha256(demonChoice) !=
+                        CanonicalJson.Sha256(replayedChoice))
+                        throw new InvalidDataException(
+                            "Knowledge Demon choice replay diverged.");
+                    reproduced = ContinueNestedAutomaticChoice(
+                        reproduced, resumed,
+                        saved.NestedChoiceTranscript[nestedChoiceIndex++],
+                        "combat.ResolveEnemyActions.KnowledgeDemon");
+                    nestedKnowledgeDemonChoiceIndex++;
+                }
                 boundaryIndex++;
             }
         }
@@ -2003,7 +2092,10 @@ public static class SemanticEndTurnEngineV111
                         choice.Kind == "semantic_card_selection") ||
                 nestedDrawHookChoiceIndex !=
                     saved.NestedChoiceTranscript.Count(choice =>
-                        choice.Kind == "semantic_draw_hook_choice"))
+                        choice.Kind == "semantic_draw_hook_choice") ||
+                nestedKnowledgeDemonChoiceIndex !=
+                    saved.NestedChoiceTranscript.Count(choice =>
+                        choice.Kind == "knowledge_demon_choice"))
                 throw new InvalidDataException(
                     "Semantic end-turn boundary transcript omitted a decision.");
         }

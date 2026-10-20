@@ -1,8 +1,9 @@
 namespace Sts2Emulator.Core;
 
 /// <summary>
-/// Typed provider decisions and chronology for one semantic automatic-turn
-/// continuation. SemanticEndTurnV111 keeps its established flattened fields.
+/// Typed provider decisions, source actions, and chronology for one semantic
+/// automatic-turn continuation. SemanticEndTurnV111 keeps its established
+/// flattened fields.
 /// </summary>
 public sealed record SemanticEndTurnStochasticStateV111(
     RandomIndexDecisionV111[] IntentTranscript,
@@ -88,6 +89,7 @@ public sealed record SemanticEndTurnStochasticStateV111(
         int transcriptNestedHandCostSelections = 0;
         int transcriptNestedCardSelections = 0;
         int transcriptNestedDrawHookChoices = 0;
+        int transcriptKnowledgeDemonChoices = 0;
         int transcriptNestedChoices = 0;
         foreach (var boundary in BoundaryTranscript)
         {
@@ -245,6 +247,19 @@ public sealed record SemanticEndTurnStochasticStateV111(
                     throw new InvalidDataException(
                         "Semantic end-turn draw-hook boundary order is invalid.");
             }
+            else if (boundary.Kind == "knowledge_demon_choice")
+            {
+                if (boundary.TranscriptIndex !=
+                        transcriptKnowledgeDemonChoices++ ||
+                    transcriptKnowledgeDemonChoices >
+                        NestedChoiceTranscript.Count(choice =>
+                            choice.Kind == "knowledge_demon_choice") ||
+                    transcriptNestedChoices >= NestedChoiceTranscript.Length ||
+                    NestedChoiceTranscript[transcriptNestedChoices++].Kind !=
+                        "knowledge_demon_choice")
+                    throw new InvalidDataException(
+                        "Semantic end-turn Knowledge Demon boundary order is invalid.");
+            }
         }
         if ((BoundaryTranscript.Length > 0 &&
              (transcriptEnemyActions != EnemyActionTranscript.Length ||
@@ -272,6 +287,9 @@ public sealed record SemanticEndTurnStochasticStateV111(
               transcriptNestedDrawHookChoices !=
                   NestedChoiceTranscript.Count(choice =>
                       choice.Kind == "semantic_draw_hook_choice") ||
+              transcriptKnowledgeDemonChoices !=
+                  NestedChoiceTranscript.Count(choice =>
+                      choice.Kind == "knowledge_demon_choice") ||
               transcriptNestedChoices != NestedChoiceTranscript.Length)) ||
             (BoundaryTranscript.Length == 0 &&
              (TargetTranscript.Length != 0 ||
@@ -291,7 +309,7 @@ public sealed record SemanticEndTurnStochasticStateV111(
     }
 }
 
-/// <summary>One typed chance outcome nested beneath an automatic-pipeline
+/// <summary>One typed decision nested beneath an automatic-pipeline
 /// continuation.</summary>
 public sealed record SemanticEndTurnNestedChoiceV111(
     string Kind,
@@ -305,7 +323,9 @@ public sealed record SemanticEndTurnNestedChoiceV111(
     SemanticPoolShuffleDecisionV111? PoolShuffleDecision = null,
     SemanticHandCostSelectionDecisionV111? HandCostSelectionDecision = null,
     SemanticCardSelectionDecisionV111? CardSelectionDecision = null,
-    SemanticDrawHookChoiceDecisionV111? DrawHookChoiceDecision = null)
+    SemanticDrawHookChoiceDecisionV111? DrawHookChoiceDecision = null,
+    SemanticKnowledgeDemonChoiceDecisionV111?
+        KnowledgeDemonChoiceDecision = null)
 {
     public SemanticEndTurnNestedChoiceV111 Fork() => this with
     {
@@ -329,7 +349,8 @@ public sealed record SemanticEndTurnNestedChoiceV111(
         PoolShuffleDecision = PoolShuffleDecision?.Fork(),
         HandCostSelectionDecision = HandCostSelectionDecision?.Fork(),
         CardSelectionDecision = CardSelectionDecision?.Fork(),
-        DrawHookChoiceDecision = DrawHookChoiceDecision?.Fork()
+        DrawHookChoiceDecision = DrawHookChoiceDecision?.Fork(),
+        KnowledgeDemonChoiceDecision = KnowledgeDemonChoiceDecision?.Fork()
     };
 
     public void Validate()
@@ -344,7 +365,8 @@ public sealed record SemanticEndTurnNestedChoiceV111(
             (PoolShuffleDecision is null ? 0 : 1) +
             (HandCostSelectionDecision is null ? 0 : 1) +
             (CardSelectionDecision is null ? 0 : 1) +
-            (DrawHookChoiceDecision is null ? 0 : 1);
+            (DrawHookChoiceDecision is null ? 0 : 1) +
+            (KnowledgeDemonChoiceDecision is null ? 0 : 1);
         if (decisionCount != 1)
             throw new InvalidDataException(
                 "Nested end-turn choice must contain exactly one typed decision.");
@@ -447,6 +469,12 @@ public sealed record SemanticEndTurnNestedChoiceV111(
                 DrawHookChoiceDecision.Event.BeforeHandDraw)
                 throw new InvalidDataException(
                     "Nested draw-hook decision has the wrong source boundary.");
+            return;
+        }
+        if (Kind == "knowledge_demon_choice" &&
+            KnowledgeDemonChoiceDecision is not null)
+        {
+            KnowledgeDemonChoiceDecision.Validate();
             return;
         }
         throw new InvalidDataException(
