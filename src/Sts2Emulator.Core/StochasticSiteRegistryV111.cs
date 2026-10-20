@@ -353,12 +353,6 @@ public static class StochasticSiteRegistryV111
             return true;
         }
 
-        if (siteId == NativeCombatRngEntryV111.DiagnosticMonsterLocalSiteId)
-        {
-            operationKind = "bounded_integer";
-            return true;
-        }
-
         var allowsChooseIndex = SupportsEngineOwnedNativeIndexBoundaryForStream(
             siteId, streamId, "choose_index");
         var allowsBoundedInteger =
@@ -829,6 +823,10 @@ public static class StochasticSiteRegistryV111
     [
         "reward.combat_gold.index_draw"
     ];
+    private static readonly string[] NativeDiagnosticRandomIndexSites =
+    [
+        NativeCombatRngEntryV111.DiagnosticMonsterLocalSiteId
+    ];
     private static readonly string[] NativeRangedFloatSites = [];
     private static readonly string[] NativeRangedDoubleSites = [];
     private static readonly string[] NativeGaussianDoubleSites = [];
@@ -880,6 +878,7 @@ public static class StochasticSiteRegistryV111
         .. NativeBoundedIntegerSites,
         .. NativeEventContextBoundedIntegerSites,
         .. NativeFisherYatesSites,
+        .. NativeDiagnosticRandomIndexSites,
         NativeDarvEventV111.OfferVariantSiteId,
         PrototypeNativeOvergrowthMap.PathStartColumnSiteId,
         PrototypeNativeLaterActMap.PathStartSiteId,
@@ -1010,6 +1009,8 @@ public static class StochasticSiteRegistryV111
         (string[])NativeGaussianDoubleSites.Clone();
     public static string[] NativeBoundedIntegerSiteIds =>
         (string[])NativeBoundedIntegerSites.Clone();
+    public static string[] NativeDiagnosticRandomIndexSiteIds =>
+        (string[])NativeDiagnosticRandomIndexSites.Clone();
     public static string[] NativeMerchantPriceSiteIds =>
         (string[])NativeMerchantPriceSites.Clone();
     public static string[] AncientOfferSessionSiteIds =>
@@ -1115,7 +1116,8 @@ public static class StochasticSiteRegistryV111
         (IsChanceLawQuerySite(siteId)
             || NatureChoiceSites.Contains(siteId, StringComparer.Ordinal)
             || NativeFisherYatesSites.Contains(siteId, StringComparer.Ordinal)
-            || siteId == "diagnostic.monster_local.index_sample")
+            || NativeDiagnosticRandomIndexSites.Contains(
+                siteId, StringComparer.Ordinal))
         && !IsNativeUnitFloatSite(siteId)
         && !IsNativeGaussianIntSite(siteId);
 

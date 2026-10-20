@@ -82,6 +82,8 @@
 
 **S0 automatic random-target route review update (2026-10-20):** The scoped inventory now traces `combat.autoplay.random_enemy` through the shared target owner for Mayhem, late player-turn hooks, and the exact first-turn Whispering Earring `LateRelicAutoPlay` continuation. Earring validation binds the saved `Complete` cursor to its live relic and autoplay driver, including the queued pre-play card case. Other automatic contexts, Native source target-pool fidelity, stream attribution, and cursor parity remain open. No tests or builds were run.
 
+**S0 diagnostic monster-local request registration increment (2026-10-20):** `StochasticSiteRegistryV111` now lists the diagnostic monster-local bounded-index site explicitly and derives its operation validation from the same registry-owned set. The migration matrix identifies it as diagnostic-only, with no game-source probability claim and no Nature/session capability. The v37 census now resolves all 101 typed request constructions and maps all 185 registered site IDs to matrix rows; all 16 known SiteId forwarders map. The source-census registry, local-link, and ambient-entropy checks pass; no tests or builds were run.
+
 ## Priorities and milestones
 
 | Stage | Priority | Deliverables | Acceptance gate |
