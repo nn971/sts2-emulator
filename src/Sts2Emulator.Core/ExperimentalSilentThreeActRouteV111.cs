@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Sts2Emulator.Core;
 
 /// <summary>
@@ -491,20 +493,82 @@ public static class ExperimentalSilentThreeActRouteV111
 
 }
 
-public sealed record PrototypeLaterActEncounterBagV111(
-    int Act,
-    int OrdinaryCombatsStarted,
-    string[] RemainingWeak,
-    string[] RemainingNormal,
-    string[] RemainingElite,
-    string BossEncounterId,
-    string? SecondBossEncounterId = null,
-    string? AssignedAncientId = null)
+public sealed record PrototypeLaterActEncounterBagV111
 {
+    private string[] _remainingWeak;
+    private string[] _remainingNormal;
+    private string[] _remainingElite;
+
+    [JsonConstructor]
+    public PrototypeLaterActEncounterBagV111(
+        int Act,
+        int OrdinaryCombatsStarted,
+        string[] RemainingWeak,
+        string[] RemainingNormal,
+        string[] RemainingElite,
+        string BossEncounterId,
+        string? SecondBossEncounterId = null,
+        string? AssignedAncientId = null)
+    {
+        this.Act = Act;
+        this.OrdinaryCombatsStarted = OrdinaryCombatsStarted;
+        _remainingWeak = CloneRequired(RemainingWeak, nameof(RemainingWeak));
+        _remainingNormal = CloneRequired(
+            RemainingNormal, nameof(RemainingNormal));
+        _remainingElite = CloneRequired(RemainingElite, nameof(RemainingElite));
+        this.BossEncounterId = BossEncounterId;
+        this.SecondBossEncounterId = SecondBossEncounterId;
+        this.AssignedAncientId = AssignedAncientId;
+    }
+
+    public int Act { get; init; }
+    public int OrdinaryCombatsStarted { get; init; }
+    public string[] RemainingWeak
+    {
+        get => (string[])_remainingWeak.Clone();
+        init => _remainingWeak = CloneRequired(value, nameof(RemainingWeak));
+    }
+    public string[] RemainingNormal
+    {
+        get => (string[])_remainingNormal.Clone();
+        init => _remainingNormal = CloneRequired(
+            value, nameof(RemainingNormal));
+    }
+    public string[] RemainingElite
+    {
+        get => (string[])_remainingElite.Clone();
+        init => _remainingElite = CloneRequired(value, nameof(RemainingElite));
+    }
+    public string BossEncounterId { get; init; }
+    public string? SecondBossEncounterId { get; init; }
+    public string? AssignedAncientId { get; init; }
+
     public PrototypeLaterActEncounterBagV111 Fork() => this with
     {
-        RemainingWeak = (string[])RemainingWeak.Clone(),
-        RemainingNormal = (string[])RemainingNormal.Clone(),
-        RemainingElite = (string[])RemainingElite.Clone()
+        RemainingWeak = _remainingWeak,
+        RemainingNormal = _remainingNormal,
+        RemainingElite = _remainingElite
     };
+
+    public void Deconstruct(
+        out int Act, out int OrdinaryCombatsStarted,
+        out string[] RemainingWeak, out string[] RemainingNormal,
+        out string[] RemainingElite, out string BossEncounterId,
+        out string? SecondBossEncounterId, out string? AssignedAncientId)
+    {
+        Act = this.Act;
+        OrdinaryCombatsStarted = this.OrdinaryCombatsStarted;
+        RemainingWeak = this.RemainingWeak;
+        RemainingNormal = this.RemainingNormal;
+        RemainingElite = this.RemainingElite;
+        BossEncounterId = this.BossEncounterId;
+        SecondBossEncounterId = this.SecondBossEncounterId;
+        AssignedAncientId = this.AssignedAncientId;
+    }
+
+    private static string[] CloneRequired(string[] values, string parameterName)
+    {
+        ArgumentNullException.ThrowIfNull(values, parameterName);
+        return (string[])values.Clone();
+    }
 }
