@@ -3059,13 +3059,6 @@ public static class SemanticPilotCombatEngineV111
         }
         var drawEvent = current.DrawPending;
         var randomPileCardEvent = current.RandomPileCardPending;
-        if (expectedDeckDecision is not null)
-            SemanticDrawChoiceV111.ValidateDecision(
-                drawEvent, expectedDeckDecision);
-        if (expectedRandomPileCardDecision is not null)
-            SemanticRandomPileCardEngineV111.ValidateDecision(
-                randomPileCardEvent, expectedRandomPileCardDecision,
-                selectedIndex);
         if (current.CardShortlistPending is not null)
             throw new InvalidOperationException(
                 "Resolve the pending pile shortlist by card instance ID.");
@@ -3074,9 +3067,6 @@ public static class SemanticPilotCombatEngineV111
             expectedCostDecision is null)
             throw new InvalidOperationException(
                 "Resolve the pending hand-cost selection event by card instance ID.");
-        if (expectedCostDecision is not null)
-            SemanticCostChoiceV111.ValidateDecision(
-                costEvent, expectedCostDecision, selectedIndex);
         if (current.PendingInitialIntents is { Pending: not null } initialIntents)
         {
             var resolvedInitial = ControlledTurnIntentEngineV111.Resolve(
@@ -3128,9 +3118,6 @@ public static class SemanticPilotCombatEngineV111
             if (drawEvent is null)
                 throw new InvalidDataException(
                     "Card-effect draw continuation lost its Nature event.");
-            if (expectedDeckDecision is not null)
-                SemanticDrawChoiceV111.ValidateDecision(
-                    drawEvent, expectedDeckDecision);
             if (selectedIndex < 0 ||
                 selectedIndex >= drawEvent.CandidateCardInstanceIds.Length)
                 throw new ArgumentOutOfRangeException(nameof(selectedIndex));

@@ -6,6 +6,8 @@
 
 **S3 controlled event-enumeration result ownership increment (2026-10-21):** Controlled event enumeration results now copy the ordered outcome array and records on construction, replacement, and projection; explicit result forks also fork each child run. Positional constructors, deconstruction, and JSON members remain unchanged. `git diff --check` passed; no tests or builds were run.
 
+**S4 pilot replay validation ownership increment (2026-10-21):** Pilot replay now sends expected draw, random-pile, and cost decisions through the typed resume owners; source-event validation occurs before mechanics application there, while the pilot retains post-replay transcript comparison for exact index and outcome identity. Duplicate facade prechecks were removed without changing replay history shapes. Static review and `git diff --check` passed; no tests or builds were run.
+
 **S4 end-turn typed validation ownership increment (2026-10-21):** End-turn nested-choice preflight now checks only the facade's live boundary; choice-envelope, source-event, and selected-payload validation runs in `SemanticChoiceResumeV111` before mechanics replay. End-turn chronology and serialized decision shapes are unchanged. The three static inventory gates and `git diff --check` passed; no tests or builds were run.
 
 **S4 pilot cost validation ownership increment (2026-10-21):** Live pilot cost selection now passes its typed decision directly to the shared publication/resume path after choice construction; the common choice owner performs source-event validation before mechanics replay. Cost choice and pilot history shapes are unchanged. Static review and `git diff --check` passed; no tests or builds were run.
