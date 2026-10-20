@@ -80,6 +80,8 @@
 
 **S4 Whispering Earring opening autoplay continuation increment (2026-10-20):** The shared automatic-target boundary now admits the exact first-turn late-relic autoplay continuation saved at the following `Complete` cursor. Admission requires the live unmelted relic, the `AutoPlayPlayableCardsFromHand` driver frame, and either an active autoplay card-play series or the exact queued pre-play target operation. Existing semantic owners resume target, draw, cost, insertion, generation, transform, shortlist, and card-selection outcomes before opening completes. Other opening-stage choices and Native stream/cursor fidelity remain open. No tests or builds were run.
 
+**S0 automatic random-target route review update (2026-10-20):** The scoped inventory now traces `combat.autoplay.random_enemy` through the shared target owner for Mayhem, late player-turn hooks, and the exact first-turn Whispering Earring `LateRelicAutoPlay` continuation. Earring validation binds the saved `Complete` cursor to its live relic and autoplay driver, including the queued pre-play card case. Other automatic contexts, Native source target-pool fidelity, stream attribution, and cursor parity remain open. No tests or builds were run.
+
 ## Priorities and milestones
 
 | Stage | Priority | Deliverables | Acceptance gate |
