@@ -2533,6 +2533,31 @@ public sealed record PrototypeCombatCounters(
     PrototypeCombatCardSnapshot? LastOriginalAttackLastTurn = null,
     int MaulDamageBonus = 0)
 {
+    private string[]? _playedCardTagsThisTurn = Clone(
+        PlayedCardTagsThisTurn);
+    private long[]? _playedCardIdsThisTurn = Clone(
+        PlayedCardIdsThisTurn);
+    private long[]? _playedCardIdsLastTurn = Clone(
+        PlayedCardIdsLastTurn);
+
+    public string[]? PlayedCardTagsThisTurn
+    {
+        get => Clone(_playedCardTagsThisTurn);
+        init => _playedCardTagsThisTurn = Clone(value);
+    }
+
+    public long[]? PlayedCardIdsThisTurn
+    {
+        get => Clone(_playedCardIdsThisTurn);
+        init => _playedCardIdsThisTurn = Clone(value);
+    }
+
+    public long[]? PlayedCardIdsLastTurn
+    {
+        get => Clone(_playedCardIdsLastTurn);
+        init => _playedCardIdsLastTurn = Clone(value);
+    }
+
     public string[] PlayedTags =>
         PlayedCardTagsThisTurn ?? Array.Empty<string>();
 
@@ -2542,15 +2567,15 @@ public sealed record PrototypeCombatCounters(
 
     public PrototypeCombatCounters Fork() => this with
     {
-        PlayedCardTagsThisTurn = PlayedCardTagsThisTurn is null
-            ? null : (string[])PlayedCardTagsThisTurn.Clone(),
-        PlayedCardIdsThisTurn = PlayedCardIdsThisTurn is null
-            ? null : (long[])PlayedCardIdsThisTurn.Clone(),
-        PlayedCardIdsLastTurn = PlayedCardIdsLastTurn is null
-            ? null : (long[])PlayedCardIdsLastTurn.Clone(),
+        PlayedCardTagsThisTurn = _playedCardTagsThisTurn,
+        PlayedCardIdsThisTurn = _playedCardIdsThisTurn,
+        PlayedCardIdsLastTurn = _playedCardIdsLastTurn,
         LastOriginalAttackThisTurn = LastOriginalAttackThisTurn?.Fork(),
         LastOriginalAttackLastTurn = LastOriginalAttackLastTurn?.Fork()
     };
+
+    private static T[]? Clone<T>(T[]? values) => values is null
+        ? null : (T[])values.Clone();
 }
 
 public sealed record PrototypeToricShield(
