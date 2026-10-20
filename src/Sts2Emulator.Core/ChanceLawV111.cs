@@ -6654,6 +6654,11 @@ public sealed record ReferenceNatureDecisionV111(
         var identifiedEncounter = OutcomeId is { } encounterId &&
             encounterId.StartsWith("encounter:", StringComparison.Ordinal) &&
             encounterId.Length > "encounter:".Length;
+        var identifiedAncient = OutcomeId is { } ancientId &&
+            ancientId.StartsWith("ancient_event:", StringComparison.Ordinal) &&
+            ancientId.Length > "ancient_event:".Length;
+        var darvAssignment = OutcomeId is "darv_assignment:none" or
+            "darv_assignment:hive" or "darv_assignment:glory";
         var identifiedHpOffset = OutcomeId is { } hpOffsetId &&
             hpOffsetId.StartsWith("hp_offset:", StringComparison.Ordinal) &&
             int.TryParse(hpOffsetId["hp_offset:".Length..],
@@ -6669,6 +6674,7 @@ public sealed record ReferenceNatureDecisionV111(
             string.IsNullOrWhiteSpace(OutcomeId) || OutcomeIndex < 0 ||
             !(indexedOutcome || mapQuotaOutcome || mapGaussianOutcome ||
                 identifiedReward || identifiedEncounter ||
+                identifiedAncient || darvAssignment ||
                 identifiedHpOffset || mappedGold))
             throw new InvalidDataException(
                 "Invalid ReferenceNature decision.");

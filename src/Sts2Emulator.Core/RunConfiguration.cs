@@ -448,38 +448,61 @@ public static class V111RunFactory
         var relicBag = opening.World!.RelicBag
             ?? PrototypeNativeRelicGrabBag.CreateNative(
                 opening.Player, nativeRunRng);
+        var natureState = opening.ReferenceNatureState
+            ?? input.ReferenceNatureState;
+        PrototypeLaterActEncounterBagV111[]? preparedLaterActBags = null;
+        if (config.UsesExperimentalSilentThreeActRoute)
+        {
+            var prepared = BuildPreparedLaterActBags(
+                opening.Rng, config, natureState);
+            preparedLaterActBags = prepared.Bags;
+            natureState = prepared.NatureState ?? natureState;
+        }
         return opening with
         {
             GameBuild = input.GameBuild, EmulatorSchema = input.EmulatorSchema,
             RunId = input.RunId, DecisionIndex = input.DecisionIndex,
             Configuration = config.Fork(), Player = opening.Player with { Deck = deck },
             NativeRunRng = nativeRunRng,
-            ReferenceNatureState = opening.ReferenceNatureState
-                ?? input.ReferenceNatureState,
+            ReferenceNatureState = natureState,
             World = opening.World! with
             {
                 RulesetId = config.RulesetId,
                 ActIdentity = config.Acts[0],
                 RelicBag = relicBag,
-                PreparedLaterActEncounterBags = config.UsesExperimentalSilentThreeActRoute
-                    ? BuildPreparedLaterActBags(opening.Rng, config)
-                    : null
+                PreparedLaterActEncounterBags = preparedLaterActBags
             }
         };
     }
 
-    private static PrototypeLaterActEncounterBagV111[] BuildPreparedLaterActBags(
-        RngBundle rng, RunConfiguration configuration)
+    private static (PrototypeLaterActEncounterBagV111[] Bags,
+        ReferenceNatureStateV111? NatureState) BuildPreparedLaterActBags(
+        RngBundle rng, RunConfiguration configuration,
+        ReferenceNatureStateV111? natureState)
     {
-        var assigned = ExperimentalSilentThreeActRouteV111
-            .PrepareAncientAssignments(rng, configuration.Ascension,
-                configuration.Profile);
-        return new[] { 2, 3 }.Select((act, index) =>
+        string[] assigned;
+        if (natureState is null)
+        {
+            assigned = ExperimentalSilentThreeActRouteV111
+                .PrepareAncientAssignments(rng, configuration.Ascension,
+                    configuration.Profile);
+        }
+        else
+        {
+            var result = ExperimentalSilentThreeActRouteV111
+                .PrepareAncientAssignmentsWithReferenceNature(
+                    rng, configuration.Ascension, configuration.Profile,
+                    natureState);
+            assigned = result.Assignments;
+            natureState = result.NatureState;
+        }
+        var bags = new[] { 2, 3 }.Select((act, index) =>
             ExperimentalSilentThreeActRouteV111.InitialBag(
                 act, rng, configuration.Ascension, configuration.Profile,
                 assignAncient: false) with
             {
                 AssignedAncientId = assigned[index]
             }).ToArray();
+        return (bags, natureState);
     }
 }

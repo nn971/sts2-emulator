@@ -373,6 +373,52 @@ public static class ExperimentalSilentThreeActRouteV111
             SelectAncient(3, rng, sharedAncientAct == 3)];
     }
 
+    public static ReferenceNatureLaterActAssignmentsV111
+        PrepareAncientAssignmentsWithReferenceNature(
+            RngBundle rng, int ascension, SimulationProfile profile,
+            ReferenceNatureStateV111 initialNatureState)
+    {
+        ArgumentNullException.ThrowIfNull(rng);
+        ArgumentNullException.ThrowIfNull(profile);
+        ArgumentNullException.ThrowIfNull(initialNatureState);
+        initialNatureState.Validate();
+        var eventStreams = rng.Streams.Where(stream =>
+            stream.StreamId == "event").ToArray();
+        var eventCallCount = eventStreams.Length == 1
+            ? eventStreams[0].CallCount ?? 0 : 0;
+        if (eventStreams.Length != 1 ||
+            eventStreams[0].Codec != PrototypeRng.Codec ||
+            eventCallCount > int.MaxValue)
+            throw new InvalidDataException(
+                "ReferenceNature later-act assignment requires the legacy event stream.");
+        var initialEventStream = eventStreams[0].Fork();
+
+        var provider = new ReferenceNatureLaterActAssignmentIndexProviderV111(
+            initialNatureState);
+        string[] assignments;
+        using (StochasticProviderScopeV111.Enter(
+                   indexProvider: provider,
+                   overrideExplicitProviders: true))
+        {
+            assignments = PrepareAncientAssignments(
+                rng, ascension, profile);
+        }
+        var finalEventStream = rng.Streams.Single(stream =>
+            stream.StreamId == "event");
+        if (provider.InitialEventOrdinal != (int)eventCallCount ||
+            CanonicalJson.Sha256(initialEventStream) !=
+            CanonicalJson.Sha256(finalEventStream))
+            throw new InvalidDataException(
+                "ReferenceNature later-act assignment advanced the legacy event cursor.");
+
+        var result = new ReferenceNatureLaterActAssignmentsV111(
+            assignments, initialNatureState.Fork(), provider.NatureState,
+            provider.InitialEventOrdinal, provider.ChanceLaws,
+            provider.DecisionTranscript);
+        result.Validate(profile);
+        return result;
+    }
+
     private static string SelectAncient(int act, RngBundle rng,
         bool includeDarv = false)
     {
@@ -516,6 +562,269 @@ public static class ExperimentalSilentThreeActRouteV111
         return (encounter, updatedBag);
     }
 
+}
+
+internal sealed class ReferenceNatureLaterActAssignmentIndexProviderV111(
+    ReferenceNatureStateV111 initialNatureState) : IRandomIndexProviderV111
+{
+    private ReferenceNatureStateV111 _natureState =
+        initialNatureState?.Fork()
+        ?? throw new ArgumentNullException(nameof(initialNatureState));
+    private readonly List<ChanceLawV111> _chanceLaws = [];
+    private readonly List<ReferenceNatureDecisionV111> _decisions = [];
+    private bool? _hiveReceivesDarv;
+
+    public string Mode => ReferenceNatureV111.ProviderId;
+    public ReferenceNatureStateV111 NatureState => _natureState.Fork();
+    public int InitialEventOrdinal { get; private set; } = -1;
+    public ChanceLawV111[] ChanceLaws => _chanceLaws
+        .Select(law => law.Fork()).ToArray();
+    public ReferenceNatureDecisionV111[] DecisionTranscript =>
+        _decisions.ToArray();
+
+    public RandomIndexDecisionV111 Resolve(
+        RandomIndexRequestV111 request, RngBundle streams)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(streams);
+        request.ValidateForLegacyProvider();
+        var eventStreams = streams.Streams.Where(stream =>
+            stream.StreamId == "event").ToArray();
+        if (request.StreamId != "event" || eventStreams.Length != 1 ||
+            eventStreams[0].Codec != PrototypeRng.Codec)
+            throw new InvalidDataException(
+                "ReferenceNature later-act assignment request differs from its legacy event boundary.");
+        if (_decisions.Count == 0)
+            InitialEventOrdinal = request.Ordinal;
+
+        ChanceLawV111 law;
+        if (request.SiteId == ExperimentalSilentThreeActRouteV111
+                .DarvHiveAssignmentSiteId)
+        {
+            if (request.OwnerId != "run:darv_assignment:hive" ||
+                request.OperationKind != "bounded_integer" ||
+                request.SupportCount != 2 || _decisions.Count != 0)
+                throw new InvalidDataException(
+                    "ReferenceNature Hive Darv request differs from its source boundary.");
+            law = ChanceLawEngineV111.QueryLaterActDarvHiveAssignment(
+                request.Ordinal);
+        }
+        else if (request.SiteId == ExperimentalSilentThreeActRouteV111
+                     .DarvGloryAssignmentSiteId)
+        {
+            if (_hiveReceivesDarv is not { } hiveReceivesDarv ||
+                request.OwnerId != "run:darv_assignment:glory" ||
+                request.OperationKind != "bounded_integer" ||
+                request.SupportCount != (hiveReceivesDarv ? 1 : 2))
+                throw new InvalidDataException(
+                    "ReferenceNature Glory Darv request differs from its conditional source boundary.");
+            law = ChanceLawEngineV111.QueryLaterActDarvGloryAssignment(
+                hiveReceivesDarv, request.Ordinal);
+        }
+        else if (request.SiteId == ExperimentalSilentThreeActRouteV111
+                     .AncientAssignmentSiteId)
+        {
+            var (act, includeDarv) = ParseAncientOwner(request.OwnerId);
+            var pool = AncientPool(act, includeDarv);
+            if (request.OperationKind != "choose_index" ||
+                request.SupportCount != pool.Length ||
+                !request.OrderedCandidates.SequenceEqual(
+                    Enumerable.Range(0, pool.Length)))
+                throw new InvalidDataException(
+                    "ReferenceNature Ancient request differs from its ordered source pool.");
+            law = ChanceLawEngineV111.QueryLaterActAncientAssignment(
+                act, includeDarv, request.Ordinal);
+        }
+        else
+        {
+            throw new NotSupportedException(
+                $"ReferenceNature later-act assignment does not support '{request.SiteId}'.");
+        }
+
+        if (law.SiteId != request.SiteId ||
+            law.OwnerId != request.OwnerId ||
+            law.OperationKind != request.OperationKind ||
+            law.Ordinal != request.Ordinal ||
+            law.Outcomes.Length != request.SupportCount)
+            throw new InvalidDataException(
+                "ReferenceNature later-act Chance Law differs from its source request.");
+
+        var selection = ReferenceNatureV111.SampleValidated(
+            law, _natureState);
+        _natureState = selection.NextState;
+        _chanceLaws.Add(law.Fork());
+        _decisions.Add(new ReferenceNatureDecisionV111(
+            law.LawId, law.EventId, selection.OutcomeId,
+            selection.OutcomeIndex));
+        if (request.SiteId == ExperimentalSilentThreeActRouteV111
+                .DarvHiveAssignmentSiteId)
+            _hiveReceivesDarv = selection.OutcomeId ==
+                "darv_assignment:hive";
+
+        var decision = new RandomIndexDecisionV111(
+            request with
+            {
+                OrderedCandidates = (int[])request.OrderedCandidates.Clone()
+            }, selection.OutcomeIndex, Mode);
+        decision.Validate();
+        return decision;
+    }
+
+    private static (int Act, bool IncludeDarv) ParseAncientOwner(
+        string ownerId)
+    {
+        foreach (var act in new[] { 2, 3 })
+        foreach (var includeDarv in new[] { false, true })
+        {
+            var pool = AncientPool(act, includeDarv);
+            var expected = $"act:{act}:include_darv:{includeDarv}:pool:"
+                + CanonicalJson.Sha256(pool);
+            if (ownerId == expected)
+                return (act, includeDarv);
+        }
+        throw new InvalidDataException(
+            "ReferenceNature Ancient request has an unknown source pool.");
+    }
+}
+
+public sealed record ReferenceNatureLaterActAssignmentsV111(
+    string[] Assignments,
+    ReferenceNatureStateV111 InitialNatureState,
+    ReferenceNatureStateV111 NatureState,
+    int InitialEventOrdinal,
+    ChanceLawV111[] ChanceLaws,
+    ReferenceNatureDecisionV111[] DecisionTranscript)
+{
+    private string[]? _assignments = Clone(Assignments);
+    private ChanceLawV111[]? _chanceLaws = ChanceLaws?.Select(law =>
+        law.Fork()).ToArray();
+    private ReferenceNatureDecisionV111[]? _decisionTranscript =
+        DecisionTranscript is null ? null :
+            (ReferenceNatureDecisionV111[])DecisionTranscript.Clone();
+
+    public string[] Assignments
+    {
+        get => _assignments is null ? null! : (string[])_assignments.Clone();
+        init => _assignments = Clone(value);
+    }
+
+    public ChanceLawV111[] ChanceLaws
+    {
+        get => _chanceLaws?.Select(law => law.Fork()).ToArray()!;
+        init => _chanceLaws = value?.Select(law => law.Fork()).ToArray();
+    }
+
+    public ReferenceNatureDecisionV111[] DecisionTranscript
+    {
+        get => _decisionTranscript is null ? null! :
+            (ReferenceNatureDecisionV111[])_decisionTranscript.Clone();
+        init => _decisionTranscript = value is null ? null :
+            (ReferenceNatureDecisionV111[])value.Clone();
+    }
+
+    public ReferenceNatureLaterActAssignmentsV111 Fork() => this with
+    {
+        Assignments = _assignments!,
+        InitialNatureState = InitialNatureState.Fork(),
+        NatureState = NatureState.Fork(),
+        ChanceLaws = _chanceLaws!,
+        DecisionTranscript = _decisionTranscript!
+    };
+
+    public void Validate(SimulationProfile profile)
+    {
+        ArgumentNullException.ThrowIfNull(profile);
+        ArgumentNullException.ThrowIfNull(Assignments);
+        ArgumentNullException.ThrowIfNull(InitialNatureState);
+        ArgumentNullException.ThrowIfNull(NatureState);
+        ArgumentNullException.ThrowIfNull(ChanceLaws);
+        ArgumentNullException.ThrowIfNull(DecisionTranscript);
+        InitialNatureState.Validate();
+        NatureState.Validate();
+        var hasDarv = profile.RevealedEpochs.Contains(
+            NativeDarvEventV111.EpochId, StringComparer.Ordinal);
+        var expectedCount = hasDarv ? 4 : 2;
+        if (Assignments.Length != 2 || InitialEventOrdinal < 0 ||
+            ChanceLaws.Length != expectedCount ||
+            DecisionTranscript.Length != expectedCount)
+            throw new InvalidDataException(
+                "Invalid ReferenceNature later-act assignment result.");
+
+        var expectedState = InitialNatureState;
+        var lawIndex = 0;
+        var ordinal = InitialEventOrdinal;
+        string? hiveAssignment = null;
+        string? gloryAssignment = null;
+        if (hasDarv)
+        {
+            Check(ChanceLawEngineV111.QueryLaterActDarvHiveAssignment(
+                ordinal++), "darv_assignment:hive", "darv_assignment:none");
+            var hiveReceivesDarv = hiveAssignment == "darv_assignment:hive";
+            Check(ChanceLawEngineV111.QueryLaterActDarvGloryAssignment(
+                hiveReceivesDarv, ordinal++), "darv_assignment:glory",
+                "darv_assignment:none");
+            var gloryReceivesDarv = gloryAssignment ==
+                "darv_assignment:glory";
+            CheckAncient(2, hiveReceivesDarv, ordinal++, 0);
+            CheckAncient(3, gloryReceivesDarv, ordinal++, 1);
+        }
+        else
+        {
+            CheckAncient(2, false, ordinal++, 0);
+            CheckAncient(3, false, ordinal, 1);
+        }
+        if (!expectedState.SameCursor(NatureState))
+            throw new InvalidDataException(
+                "ReferenceNature later-act assignment cursor does not replay.");
+
+        void Check(ChanceLawV111 expectedLaw, params string[] allowedOutcomes)
+        {
+            var law = ChanceLaws[lawIndex];
+            var decision = DecisionTranscript[lawIndex];
+            law.Validate();
+            decision.Validate();
+            if (CanonicalJson.Sha256(expectedLaw) !=
+                CanonicalJson.Sha256(law))
+                throw new InvalidDataException(
+                    "ReferenceNature later-act Chance Law differs from its source query.");
+            var selection = ReferenceNatureV111.SampleValidated(
+                law, expectedState);
+            var expectedDecision = new ReferenceNatureDecisionV111(
+                law.LawId, law.EventId, selection.OutcomeId,
+                selection.OutcomeIndex);
+            if (CanonicalJson.Sha256(expectedDecision) !=
+                CanonicalJson.Sha256(decision) ||
+                !allowedOutcomes.Contains(selection.OutcomeId,
+                    StringComparer.Ordinal))
+                throw new InvalidDataException(
+                    "ReferenceNature later-act assignment transcript does not replay.");
+            expectedState = selection.NextState;
+            if (law.SiteId == ExperimentalSilentThreeActRouteV111
+                    .DarvHiveAssignmentSiteId)
+                hiveAssignment = selection.OutcomeId;
+            else if (law.SiteId == ExperimentalSilentThreeActRouteV111
+                         .DarvGloryAssignmentSiteId)
+                gloryAssignment = selection.OutcomeId;
+            lawIndex++;
+        }
+
+        void CheckAncient(int act, bool includeDarv, int drawOrdinal,
+            int assignmentIndex)
+        {
+            var pool = AncientPool(act, includeDarv);
+            var law = ChanceLawEngineV111.QueryLaterActAncientAssignment(
+                act, includeDarv, drawOrdinal);
+            Check(law, pool.Select(id => "ancient_event:" + id).ToArray());
+            var selected = DecisionTranscript[lawIndex - 1].OutcomeId;
+            var selectedId = selected["ancient_event:".Length..];
+            if (Assignments[assignmentIndex] != selectedId)
+                throw new InvalidDataException(
+                    "ReferenceNature Ancient result differs from its assignment.");
+        }
+    }
+
+    private static string[]? Clone(string[]? values) => values is null
+        ? null : (string[])values.Clone();
 }
 
 public sealed record PrototypeLaterActEncounterBagV111

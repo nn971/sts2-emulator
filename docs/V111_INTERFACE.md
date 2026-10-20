@@ -29,7 +29,9 @@ their legacy identities. `reset_v111` is opt-in and accepts `seed`, `character`
 forkable ReferenceNature cursor before `start_run`; the Python
 `Session.reset(...)` method exposes the same parameter. For the Underdocks
 route, run initialization uses it for the ordered boss-pool choice and advances
-it once. The route continues through Hive/Glory in configuration. Five
+it once. Experimental Silent three-act runs also use it for the conditional
+Hive/Glory Darv partition and local Ancient choices when `start_run` prepares
+those acts. Five
 character configurations can be created/serialized, but starting unsupported
 character mechanics fails. Native later-act and restricted-profile mechanics
 also fail explicitly.
