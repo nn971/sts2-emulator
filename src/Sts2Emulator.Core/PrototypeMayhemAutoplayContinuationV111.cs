@@ -117,19 +117,40 @@ public sealed partial class PrototypeGameEngine
             !ValidateControlledGenerationSupport(generation))
             return false;
 
-        bool nestedAutoplay = false;
+        return IsSupportedAutomaticPipelineAutoplayContinuation(
+            combat, continuation);
+    }
+
+    internal static bool IsAutomaticPipelineSemanticPotionGenerationContinuation(
+        CombatState combat, PendingCombatChoiceState pending)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(pending);
+        if (pending is not
+            { ChoiceId: "controlled_potion_generation",
+              ControlledPotionGeneration: { } generation,
+              OuterChoiceContinuation: { } continuation } ||
+            combat.SemanticDeck is not
+                { Mode: SemanticDeckStateV111.NatureMode } ||
+            !ValidateControlledPotionGeneration(
+                combat, generation, pending.SourceCardInstanceId))
+            return false;
+
+        return IsSupportedAutomaticPipelineAutoplayContinuation(
+            combat, continuation);
+    }
+
+    private static bool IsSupportedAutomaticPipelineAutoplayContinuation(
+        CombatState combat,
+        PrototypeChoiceResolutionContinuationState continuation)
+    {
         for (var frame = continuation; frame is not null;
              frame = frame.Parent)
             if (frame.CardPlaySeries is { IsAutoPlay: true })
-            {
-                nestedAutoplay = true;
-                break;
-            }
-        if (!nestedAutoplay) return false;
-
-        return IsMayhemAutoPrePlayPipelineCursor(combat) ||
-            combat.IsPlayerTurn &&
-            IsAtSupportedAutomaticPipelineTargetBoundary(combat);
+                return IsMayhemAutoPrePlayPipelineCursor(combat) ||
+                    combat.IsPlayerTurn &&
+                    IsAtSupportedAutomaticPipelineTargetBoundary(combat);
+        return false;
     }
 
     private static bool IsLateAutoplaySemanticDrawContinuation(

@@ -82,6 +82,7 @@ public sealed record SemanticEndTurnStochasticStateV111(
         int transcriptEnemyActions = 0, transcriptTargets = 0;
         int transcriptNestedDraws = 0, transcriptNestedCosts = 0;
         int transcriptNestedInsertions = 0, transcriptNestedGeneratedCards = 0;
+        int transcriptNestedPotionGenerations = 0;
         int transcriptNestedChoices = 0;
         foreach (var boundary in BoundaryTranscript)
         {
@@ -148,6 +149,19 @@ public sealed record SemanticEndTurnStochasticStateV111(
                     throw new InvalidDataException(
                         "Semantic end-turn nested generated-card boundary order is invalid.");
             }
+            else if (boundary.Kind == "semantic_potion_generation")
+            {
+                if (boundary.TranscriptIndex !=
+                        transcriptNestedPotionGenerations++ ||
+                    transcriptNestedPotionGenerations >
+                        NestedChoiceTranscript.Count(choice =>
+                            choice.Kind == "semantic_potion_generation") ||
+                    transcriptNestedChoices >= NestedChoiceTranscript.Length ||
+                    NestedChoiceTranscript[transcriptNestedChoices++].Kind !=
+                        "semantic_potion_generation")
+                    throw new InvalidDataException(
+                        "Semantic end-turn nested potion-generation boundary order is invalid.");
+            }
         }
         if ((BoundaryTranscript.Length > 0 &&
              (transcriptEnemyActions != EnemyActionTranscript.Length ||
@@ -160,6 +174,8 @@ public sealed record SemanticEndTurnStochasticStateV111(
                   choice.Kind == "semantic_draw_insertion") ||
               transcriptNestedGeneratedCards != NestedChoiceTranscript.Count(choice =>
                   choice.Kind == "semantic_generated_card") ||
+              transcriptNestedPotionGenerations != NestedChoiceTranscript.Count(choice =>
+                  choice.Kind == "semantic_potion_generation") ||
               transcriptNestedChoices != NestedChoiceTranscript.Length)) ||
             (BoundaryTranscript.Length == 0 &&
              (TargetTranscript.Length != 0 ||
@@ -186,7 +202,8 @@ public sealed record SemanticEndTurnNestedChoiceV111(
     SemanticDrawDecisionV111? DrawDecision = null,
     SemanticCostDecisionV111? CostDecision = null,
     SemanticDrawInsertionDecisionV111? DrawInsertionDecision = null,
-    SemanticGeneratedCardDecisionV111? GeneratedCardDecision = null)
+    SemanticGeneratedCardDecisionV111? GeneratedCardDecision = null,
+    SemanticPotionGenerationDecisionV111? PotionGenerationDecision = null)
 {
     public SemanticEndTurnNestedChoiceV111 Fork() => this with
     {
@@ -198,35 +215,48 @@ public sealed record SemanticEndTurnNestedChoiceV111(
             : GeneratedCardDecision with
             {
                 Event = GeneratedCardDecision.Event.Fork()
-            }
+            },
+        PotionGenerationDecision = PotionGenerationDecision?.Fork()
     };
 
     public void Validate()
     {
         if (Kind == "semantic_draw" && DrawDecision is not null &&
-            CostDecision is null && DrawInsertionDecision is null)
+            CostDecision is null && DrawInsertionDecision is null &&
+            GeneratedCardDecision is null && PotionGenerationDecision is null)
         {
             DrawDecision.Validate();
             return;
         }
         if (Kind == "semantic_cost" && CostDecision is not null &&
-            DrawDecision is null && DrawInsertionDecision is null)
+            DrawDecision is null && DrawInsertionDecision is null &&
+            GeneratedCardDecision is null && PotionGenerationDecision is null)
         {
             CostDecision.Validate();
             return;
         }
         if (Kind == "semantic_draw_insertion" &&
             DrawInsertionDecision is not null && DrawDecision is null &&
-            CostDecision is null && GeneratedCardDecision is null)
+            CostDecision is null && GeneratedCardDecision is null &&
+            PotionGenerationDecision is null)
         {
             DrawInsertionDecision.Validate();
             return;
         }
         if (Kind == "semantic_generated_card" &&
             GeneratedCardDecision is not null && DrawDecision is null &&
-            CostDecision is null && DrawInsertionDecision is null)
+            CostDecision is null && DrawInsertionDecision is null &&
+            PotionGenerationDecision is null)
         {
             GeneratedCardDecision.Validate();
+            return;
+        }
+        if (Kind == "semantic_potion_generation" &&
+            PotionGenerationDecision is not null && DrawDecision is null &&
+            CostDecision is null && DrawInsertionDecision is null &&
+            GeneratedCardDecision is null)
+        {
+            PotionGenerationDecision.Validate();
             return;
         }
         throw new InvalidDataException(

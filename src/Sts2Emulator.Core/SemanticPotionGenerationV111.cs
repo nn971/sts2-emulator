@@ -102,6 +102,26 @@ public static class SemanticPotionGenerationChoiceV111
         return semanticEvent;
     }
 
+    internal static SemanticPotionGenerationEventV111 DescribePending(
+        RunState run, string boundaryFingerprint, int ordinal)
+    {
+        ArgumentNullException.ThrowIfNull(run);
+        ArgumentException.ThrowIfNullOrWhiteSpace(boundaryFingerprint);
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+        var choice = run.World?.Combat?.PendingChoice;
+        var generation = choice?.ControlledPotionGeneration ??
+            throw new InvalidDataException(
+                "Potion-generation request has no controlled choice.");
+        ValidateBoundary(run);
+        var ownerId = "effect:" + generation.Operation.Kind + ":source:" +
+            (choice!.SourceCardInstanceId?.ToString() ?? "none") + ":pool:" +
+            CanonicalJson.Sha256(generation.CandidatePotionIds);
+        return CreateEvent(
+            boundaryFingerprint, ownerId, ordinal,
+            generation.CandidatePotionIds);
+    }
+
     internal static void ValidateBoundary(RunState run)
     {
         var combat = run.World?.Combat;
@@ -144,6 +164,21 @@ public static class SemanticPotionGenerationChoiceV111
             pending.Fork(), index, potionId);
         decision.Validate();
         return decision;
+    }
+
+    internal static void ValidateDecision(
+        SemanticPotionGenerationEventV111? pending,
+        SemanticPotionGenerationDecisionV111 decision, string selectedPotionId)
+    {
+        ArgumentNullException.ThrowIfNull(decision);
+        ArgumentException.ThrowIfNullOrWhiteSpace(selectedPotionId);
+        pending?.Validate();
+        decision.Validate();
+        if (pending is null || selectedPotionId != decision.SelectedPotionId ||
+            CanonicalJson.Sha256(pending) !=
+                CanonicalJson.Sha256(decision.Event))
+            throw new InvalidDataException(
+                "Potion-generation decision no longer matches the pending event.");
     }
 
     /// <summary>Resume the source generation effect under the shared engine

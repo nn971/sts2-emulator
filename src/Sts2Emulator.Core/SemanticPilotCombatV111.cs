@@ -588,7 +588,8 @@ public sealed record SemanticPilotCombatV111(
                 this.CardShortlistPending is not null ||
                 this.PoolShufflePending is not null ||
                 this.DrawInsertionPending is not null ||
-                this.PendingEndTurn is not null ||
+                (this.PendingEndTurn is not null &&
+                 this.PendingEndTurn.PotionGenerationPending is null) ||
                 this.PendingInitialIntents is not null ||
                 this.UsesNativePolicyBaseline || this.CombatTerminal)
                 throw new InvalidDataException(
@@ -842,15 +843,13 @@ public sealed record SemanticPilotCombatV111(
     private bool HasPendingEndTurnNestedSemanticChoice =>
         this.PendingEndTurn is { Complete: false } endTurn &&
         endTurn.HandDraw is not { AtBoundary: false } &&
-        ((PrototypeGameEngine
-              .HasPendingSupportedAutomaticPipelineSemanticDraw(this.Run) &&
-          (endTurn.DrawPending is not null ||
-           endTurn.NestedCostPending is not null ||
-           endTurn.NestedDrawInsertionPending is not null)) ||
-         (PrototypeGameEngine
-              .HasPendingSupportedAutomaticPipelineSemanticGeneration(
-                  this.Run) &&
-          endTurn.GeneratedCardPending is not null));
+        PrototypeGameEngine
+            .HasPendingSupportedAutomaticPipelineSemanticChoice(this.Run) &&
+        (endTurn.DrawPending is not null ||
+         endTurn.NestedCostPending is not null ||
+         endTurn.NestedDrawInsertionPending is not null ||
+         endTurn.GeneratedCardPending is not null ||
+         endTurn.PotionGenerationPending is not null);
 
     public SemanticPilotCombatV111 Fork() => this with
     {
@@ -2371,12 +2370,20 @@ public static class SemanticPilotCombatEngineV111
             pending, eventId, potionId);
         var result = SemanticPotionGenerationChoiceV111.Resume(
             current.Run, expected);
+        var nextEndTurn = current.PendingEndTurn is { } endTurn
+            ? SemanticEndTurnEngineV111.ContinueNestedAutomaticChoice(
+                endTurn, result,
+                new SemanticEndTurnNestedChoiceV111(
+                    "semantic_potion_generation",
+                    PotionGenerationDecision: expected.Fork()),
+                pending.SiteId)
+            : null;
         return NormalizeNoncontrolledCosts(PublishRunContinuation(
-            current, result, null,
+            current, result, nextEndTurn,
             new SemanticPilotContinuationV111(
                 "semantic_potion_generation",
                 PotionGenerationDecision: expected.Fork()),
-            preservePendingEndTurn: true));
+            preservePendingEndTurn: current.PendingEndTurn is null));
     }
 
     public static SemanticPilotCombatV111 ResolveCardTransform(
@@ -3142,23 +3149,16 @@ public static class SemanticPilotCombatEngineV111
         DescribePendingPotionGenerationEvent(SemanticPilotCombatV111 current)
     {
         ArgumentNullException.ThrowIfNull(current);
+        if (current.PendingEndTurn?.PotionGenerationPending is
+            { } endTurnEvent)
+            return endTurnEvent;
         var combat = current.Run.World?.Combat;
-        var choice = combat?.PendingChoice;
-        var generation = choice?.ControlledPotionGeneration;
+        var generation = combat?.PendingChoice?.ControlledPotionGeneration;
         if (generation is null) return null;
-        if (current.SeededEntry?.FixturePotionGenerationCardId !=
-                "proto.colorless.alchemize")
-            throw new InvalidDataException(
-                "Potion generation lacks semantic fixture provenance.");
-        SemanticPotionGenerationChoiceV111.ValidateBoundary(current.Run);
-        var ownerId = "effect:" + generation.Operation.Kind + ":source:" +
-            (choice!.SourceCardInstanceId?.ToString() ?? "none") + ":pool:" +
-            CanonicalJson.Sha256(generation.CandidatePotionIds);
         var ordinal = current.History.Count(transition =>
             transition.Kind == "semantic_potion_generation");
-        return SemanticPotionGenerationChoiceV111.CreateEvent(
-            current.Fingerprint, ownerId, ordinal,
-            generation.CandidatePotionIds);
+        return SemanticPotionGenerationChoiceV111.DescribePending(
+            current.Run, current.Fingerprint, ordinal);
     }
 
     public static SemanticCardTransformEventV111?
