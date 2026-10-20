@@ -23,6 +23,12 @@ public sealed record RandomRangedFloatRequestV111(
             || SourceVersion != "v0.111.0")
             throw new ArgumentException(
                 "Invalid source-pinned ranged-float request.");
+
+        if (!StochasticSiteRegistryV111
+                .IsRegisteredRandomRangedFloatRequestSite(SiteId))
+            throw new ArgumentException(
+                $"Ranged-float site '{SiteId}' is not registered.",
+                nameof(SiteId));
     }
 }
 

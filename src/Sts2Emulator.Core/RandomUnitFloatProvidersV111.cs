@@ -19,6 +19,12 @@ public sealed record RandomUnitFloatRequestV111(
             || Ordinal < 0
             || SourceVersion != "v0.111.0")
             throw new ArgumentException("Invalid source-pinned unit-float request.");
+
+        if (!StochasticSiteRegistryV111
+                .IsRegisteredRandomUnitFloatRequestSite(SiteId))
+            throw new ArgumentException(
+                $"Unit-float site '{SiteId}' is not registered.",
+                nameof(SiteId));
     }
 }
 
