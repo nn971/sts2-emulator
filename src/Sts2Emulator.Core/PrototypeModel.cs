@@ -2480,7 +2480,15 @@ public sealed partial record CombatState(
     public long[] DrawPile
     {
         get => Mechanics.DrawPile;
-        init => Mechanics = Mechanics with { DrawPile = value };
+        init
+        {
+            if (Stochastic.SemanticDeck is not null &&
+                !Mechanics.DrawPile.SequenceEqual(value))
+                throw new InvalidOperationException(
+                    "Nature-owned draw-pile changes require " +
+                    "SemanticDrawPileAdapterV111.");
+            Mechanics = Mechanics with { DrawPile = value };
+        }
     }
 
     public long[] DiscardPile
