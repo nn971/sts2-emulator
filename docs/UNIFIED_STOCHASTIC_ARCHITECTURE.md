@@ -460,6 +460,8 @@ Toasty Mittens' `OpeningPlayerTurnStarted` and later `PlayerTurnStarted` prompts
 
 Toolbox's turn-one generated offer now runs as a typed pool shuffle at the opening `BeforeHandDraw` subscriber, followed by the existing semantic `select_cards` event over the generated ChoicePool. Choices Paradox uses the same continuation at `OpeningPlayerTurnStarted`: the full eligible character-card pool is shuffled on the card-generation stream, five free, retained physical offers are created, and the player must take one. Each path keeps its own opening cursor until the required selection or optional Toolbox pick/skip; restore resumes the saved subscriber without redispatching it. Both admissions require the exact relic trigger, generated-card operation, source pool, and generated offer attributes. No new event schema or continuation owner is introduced.
 
+Blessed Antler's turn-one `BeforeHandDraw` hook now uses the existing typed draw-insertion event for each of its three Dazed positions. The continuation admits only the saved relic subscriber at the opening `DrawHand` cursor, validates the fixed-card operation and remaining count, then resumes the same subscriber until all insertions finish before drawing the hand. The semantic-pilot history records each position through the existing insertion owner, which commits the physical and provider states together; other opening insertion effects remain unsupported.
+
 ## Reading order
 
 1. This architecture contract.

@@ -2810,9 +2810,14 @@ public static class SemanticPilotCombatEngineV111
             pending, eventId, position);
 
         var priorCombat = current.Run.World!.Combat!;
-        var pendingInsertion = priorCombat.PendingChoice?
+        var sourceChoice = priorCombat.PendingChoice;
+        var pendingInsertion = sourceChoice?
             .ControlledDrawInsertion ?? throw new InvalidDataException(
                 "Draw-insertion choice lost its saved continuation.");
+        var resumesAutomaticPipelineInsertion = sourceChoice is not null &&
+            PrototypeGameEngine
+                .IsAutomaticPipelineSemanticDrawInsertionContinuation(
+                    priorCombat, sourceChoice);
         var resumesSemanticDraw =
             pendingInsertion.SemanticDrawContinuation is not null;
         var resumesAfterShuffleRelic =
@@ -2828,13 +2833,25 @@ public static class SemanticPilotCombatEngineV111
                 card.InstanceId == insertedInstanceId)?.CardId !=
                 pending.GeneratedCardModelId) ||
             (result.Phase == RunPhase.Combat && resultCombat is not
-                { IsPlayerTurn: true, AutomaticPipelineContinuation: null }) ||
+                { IsPlayerTurn: true }) ||
+            (result.Phase == RunPhase.Combat &&
+                resultCombat!.AutomaticPipelineContinuation is not null &&
+                (!resumesAutomaticPipelineInsertion ||
+                 !(resultCombat.PendingChoice is { } nextInsertionChoice &&
+                   PrototypeGameEngine
+                       .IsAutomaticPipelineSemanticDrawInsertionContinuation(
+                           resultCombat, nextInsertionChoice)) &&
+                 !PrototypeGameEngine
+                     .HasPendingSupportedAutomaticPipelineSemanticChoice(
+                         result))) ||
             (result.Phase != RunPhase.Combat &&
-                (!resumesSemanticDraw && !resumesAfterShuffleRelic ||
+                (!resumesSemanticDraw && !resumesAfterShuffleRelic &&
+                 !resumesAutomaticPipelineInsertion ||
                  !PrototypeGameEngine.IsAtCombatActionResultBoundary(
                     result))) ||
             (result.Phase == RunPhase.Combat && !resumesSemanticDraw &&
                 !resumesAfterShuffleRelic &&
+                !resumesAutomaticPipelineInsertion &&
                 (resultCombat!.NextCardInstanceId != insertedInstanceId + 1 ||
                  resultCombat.PendingChoice is not null ||
                  !resultCombat.DrawPile.SequenceEqual(expectedPile))) ||
@@ -2852,6 +2869,24 @@ public static class SemanticPilotCombatEngineV111
         {
             ValidateNatureDeckContinuationBoundary(
                 resultCombat!, "stale_semantic_draw_continuation");
+            ValidateSemanticCombatBoundary(result);
+        }
+        else if (result.Phase == RunPhase.Combat &&
+                 resumesAutomaticPipelineInsertion)
+        {
+            ValidateNatureDeckContinuationBoundary(
+                resultCombat!, "stale_automatic_insertion_continuation",
+                StochasticSiteRegistryV111.DrawPileRandomInsertSiteId);
+            if (resultCombat!.PendingChoice is { } nextInsertionChoice &&
+                PrototypeGameEngine
+                    .IsAutomaticPipelineSemanticDrawInsertionContinuation(
+                        resultCombat, nextInsertionChoice) &&
+                (resultCombat.NextCardInstanceId != insertedInstanceId + 1 ||
+                 !resultCombat.DrawPile.SequenceEqual(expectedPile)))
+                throw new NotSupportedException(
+                    "UNSUPPORTED_SEMANTIC_DECK site=" +
+                    StochasticSiteRegistryV111.DrawPileRandomInsertSiteId +
+                    " operation=changed_automatic_insertion_prefix");
             ValidateSemanticCombatBoundary(result);
         }
         else if (result.Phase == RunPhase.Combat)
@@ -3502,8 +3537,10 @@ public static class SemanticPilotCombatEngineV111
         var choice = combat?.PendingChoice;
         var insertion = choice?.ControlledDrawInsertion;
         if (insertion is null) return null;
-        var automaticPipelineInsertion =
-            combat?.AutomaticPipelineContinuation is not null;
+        var automaticPipelineInsertion = combat is not null && choice is not null &&
+            PrototypeGameEngine
+                .IsAutomaticPipelineSemanticDrawInsertionContinuation(
+                    combat, choice);
         if (insertion.Stage != "position") return null;
         var fixedFixtureMatches =
             insertion.Operation.Kind == PrototypeCombatEffectKind
@@ -3618,10 +3655,11 @@ public static class SemanticPilotCombatEngineV111
     }
 
     private static void ValidateNatureDeckContinuationBoundary(
-        CombatState combat, string operation)
+        CombatState combat, string operation,
+        string siteId = "combat.relic.after_shuffle")
     {
         var message = "UNSUPPORTED_SEMANTIC_DECK " +
-            "site=combat.relic.after_shuffle operation=" + operation;
+            "site=" + siteId + " operation=" + operation;
         try
         {
             SemanticDrawPileAdapterV111.ValidateNatureDeckBoundary(

@@ -79,13 +79,20 @@ public sealed partial class PrototypeGameEngine
         ArgumentNullException.ThrowIfNull(pending);
         if (pending is not
             { ChoiceId: "controlled_draw_insertion",
-              ControlledDrawInsertion: { Stage: "position",
-                  SelectedCardId: not null,
-                  SemanticDrawContinuation: not null,
-                  AfterShuffleRelic: not null },
+              ControlledDrawInsertion: { } insertion,
               OuterChoiceContinuation: { } continuation } ||
             combat.SemanticDeck is not
                 { Mode: SemanticDeckStateV111.NatureMode })
+            return false;
+
+        if (IsOpeningBlessedAntlerDrawInsertionContinuation(
+                combat, pending, insertion, continuation))
+            return true;
+
+        if (insertion is not
+            { Stage: "position", SelectedCardId: not null,
+              SemanticDrawContinuation: not null,
+              AfterShuffleRelic: not null })
             return false;
 
         bool nestedAutoplay = false;
@@ -101,6 +108,162 @@ public sealed partial class PrototypeGameEngine
         return IsMayhemAutoPrePlayPipelineCursor(combat) ||
             combat.IsPlayerTurn &&
             IsAtSupportedAutomaticPipelineTargetBoundary(combat);
+    }
+
+    private static bool IsOpeningBlessedAntlerDrawInsertionContinuation(
+        CombatState combat, PendingCombatChoiceState pending,
+        PrototypeControlledDrawInsertionV111 insertion,
+        PrototypeChoiceResolutionContinuationState continuation)
+    {
+        const string dazedCardId = "proto.status.dazed";
+        if (combat is not { IsPlayerTurn: true, Turn: 1,
+                SemanticDeck: { Mode: SemanticDeckStateV111.NatureMode,
+                    Pending: null },
+                AutomaticPipelineContinuation: { } pipeline } ||
+            !IsAtOpeningAutomaticPipelineCursor(
+                combat, pipeline, PrototypeOpeningCombatStage.DrawHand) ||
+            pending is not
+                { SourceCardInstanceId: null,
+                  SourceCardDestination: PrototypeCardZone.DiscardPile,
+                  CandidateCardInstanceIds: { Length: 0 },
+                  Continuation: { Length: 0 },
+                  CompletionEvents: { Length: 0 },
+                  Selection: { SourceZone: PrototypeCardZone.Hand,
+                      MinSelections: 0,
+                      MaxSelections: 0,
+                      Resolution:
+                        PrototypeCardSelectionResolutionKind.MoveToDiscard,
+                      RequiredCardType: null,
+                      SelectionsPerPowerStack: 0,
+                      RandomCandidateCount: 0,
+                      RequireAttackOrPower: false,
+                      RequireEnergyCostingCard: false,
+                      SequentialOptional: false,
+                      DrawEqualToSelectionsOnCompletion: false,
+                      RemoveUnselectedFromSource: false,
+                      CopiesPerSelection: 0,
+                      CopiesPerSelectionUpgradeDelta: 0 },
+                  EventDispatchContinuation: null,
+                  CardPlaySeries: null,
+                  SelectedCardPower: null,
+                  SelectedCardKeyword: null,
+                  SelectedCardTemporaryCost: null,
+                  ControlledTarget: null,
+                  ControlledGeneration: null,
+                  ControlledPotionGeneration: null,
+                  ControlledCardTransform: null,
+                  ControlledPoolShuffle: null,
+                  ControlledRandomCost: null,
+                  ControlledDrawCost: null,
+                  ControlledCardShortlist: null,
+                  ControlledRandomPileCard: null,
+                  ControlledSemanticDraw: null,
+                  SemanticStratagemDrawSelection: false,
+                  AutomaticSemanticStratagemDrawSelection: false,
+                  StandaloneSemanticDrawHookChoice: false,
+                  AutomaticSemanticDrawHookChoice: false,
+                  MoveSourceCardOnCompletion: true,
+                  RemoveSourceCardOnCompletion: false,
+                  SourceCardAlreadyMoved: false } ||
+            insertion is not
+                { Stage: "position",
+                  Operation: { Kind:
+                      PrototypeCombatEffectKind.CreateGeneratedCardsAtRandomDrawPositions,
+                    Amount: >= 1 and <= 3,
+                    CardId: dazedCardId,
+                    SourceKind: PrototypeEffectSourceKind.Relic },
+                  SelectedCardId: dazedCardId,
+                  CandidateCardIds: { Length: 0 },
+                  SemanticDrawContinuation: null,
+                  AfterShuffleRelic: null,
+                  CompletedAfterShuffleRelics: null,
+                  RemainingAfterShuffleRelics: null,
+                  RequestSiteId:
+                    StochasticSiteRegistryV111.DrawPileRandomInsertSiteId,
+                  RequestOwnerId: "prototype.combat",
+                  RequestOrdinal: 0,
+                  PersonalHiveDamageContinuation: null,
+                  AutomaticHandDrawRemaining: null } ||
+            continuation is not
+                { Parent: null,
+                  SourceCardInstanceId: null,
+                  SourceCardDestination: PrototypeCardZone.DiscardPile,
+                  PendingDiscardEvents: { Length: 0 },
+                  PendingSlyCardInstanceIds: { Length: 0 },
+                  CompletionEvents: { Length: 0 },
+                  CardPlaySeries: null,
+                  MoveSourceCardOnCompletion: true,
+                  RemoveSourceCardOnCompletion: false,
+                  SourceCardAlreadyMoved: false,
+                  EventDispatchContinuation: { } eventDispatch,
+                  CompletePlayerHandCleanup: false })
+            return false;
+
+        var expectedOperation = new PrototypeQueuedOperation(
+            PrototypeCombatEffectKind.CreateGeneratedCardsAtRandomDrawPositions,
+            insertion.Operation.Amount, CardId: dazedCardId,
+            SourceKind: PrototypeEffectSourceKind.Relic);
+        if (CanonicalJson.Sha256(insertion.Operation) !=
+                CanonicalJson.Sha256(expectedOperation) ||
+            eventDispatch.EventDepth != 0 ||
+            eventDispatch.CombatEvent != new PrototypeCombatEvent(
+                PrototypeCombatEventKind.BeforeHandDraw) ||
+            continuation.Operations.Length !=
+                (insertion.Operation.Amount > 1 ? 1 : 0))
+            return false;
+
+        if (insertion.Operation.Amount > 1)
+        {
+            var expectedRemainingOperation = expectedOperation with
+            {
+                Amount = insertion.Operation.Amount - 1
+            };
+            if (CanonicalJson.Sha256(continuation.Operations[0]) !=
+                CanonicalJson.Sha256(expectedRemainingOperation))
+                return false;
+        }
+
+        if (eventDispatch.CurrentSubscriber is not
+                { SourceKind: PrototypeEffectSourceKind.Relic,
+                  SourcePowerApplicationOrder: null,
+                  SourcePowerEnemyId: null,
+                  RelicStateIndex: { } relicIndex,
+                  RelicTriggerIndex: 0 } subscriber ||
+            (uint)relicIndex >= (uint)combat.RelicStates.Length)
+            return false;
+
+        var relic = combat.RelicStates[relicIndex];
+        if (relic is not
+                { RelicId: NativeGloryAncientsV111.BlessedAntlerId,
+                  IsMelted: false } ||
+            relic.PersistentIndex != relicIndex ||
+            relic.ApplicationOrder != subscriber.ApplicationOrder)
+            return false;
+
+        var definition = PrototypeContent.Relic(relic.RelicId);
+        var triggers = definition.Triggers ?? [];
+        var expectedTrigger = new PrototypeRelicTriggerSpec(
+            PrototypeCombatEventKind.BeforeHandDraw,
+            [new PrototypeCombatEffectSpec(
+                PrototypeCombatEffectKind.CreateGeneratedCardsAtRandomDrawPositions,
+                3, CardId: dazedCardId)],
+            TurnEquals: 1);
+        if (triggers.Length != 1 ||
+            CanonicalJson.Sha256(triggers[0]) !=
+                CanonicalJson.Sha256(expectedTrigger) ||
+            subscriber.RelicTriggerIndex != 0)
+            return false;
+
+        var expectedSubscriber = new PrototypeEventSubscriberState(
+            relic.ApplicationOrder, triggers[0].Effects, PowerStacks: 0,
+            PrototypeEffectSourceKind.Relic,
+            RelicStateIndex: relicIndex,
+            RelicTriggerIndex: 0,
+            EveryNth: triggers[0].EveryNth,
+            MaxTriggersPerCounterWindow:
+                triggers[0].MaxTriggersPerCounterWindow);
+        return CanonicalJson.Sha256(expectedSubscriber) ==
+            CanonicalJson.Sha256(subscriber);
     }
 
     internal static bool IsAutomaticPipelineSemanticGenerationContinuation(
