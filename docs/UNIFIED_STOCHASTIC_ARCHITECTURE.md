@@ -484,12 +484,14 @@ choices remain separately gated.
 insertion, generated-card and potion, transform, shortlist, pool-shuffle,
 hand-cost-selection, card-selection, draw-hook, and Knowledge Demon decisions
 through one mechanics dispatcher. Semantic end-turn restore uses it to replay
-the full nested chronology. Semantic pilot resolution shares the draw, cost,
-insertion, generation, transform, shortlist, pool-shuffle, hand-cost selection,
-and card-selection resumes while retaining its own action history and end-turn
-wrapper. Live card-selection validates the typed event and action first, then
-uses the same dispatcher that replay uses. Boundary transcript validation and
-cross-provider mechanical equivalence remain open.
+the full nested chronology, and live end-turn choices enter it through one
+resume helper before committing that chronology. Semantic pilot resolution
+shares the draw, cost, insertion, generation, transform, shortlist,
+pool-shuffle, hand-cost selection, and card-selection resumes while retaining
+its own action history and end-turn wrapper. Live card-selection validates the
+typed event and action first, then uses the same dispatcher that replay uses.
+Boundary transcript validation and cross-provider mechanical equivalence
+remain open.
 
 Live automatic-pipeline `CardDrawn` and Knowledge Demon actions now construct
 their typed decisions before invoking that same dispatcher; the end-turn owner
