@@ -115,6 +115,26 @@ public static class SemanticGenerationChoiceV111
         return semanticEvent;
     }
 
+    internal static SemanticGeneratedCardEventV111 DescribePending(
+        RunState run, string boundaryFingerprint, int ordinal)
+    {
+        ArgumentNullException.ThrowIfNull(run);
+        ArgumentException.ThrowIfNullOrWhiteSpace(boundaryFingerprint);
+        if (ordinal < 0)
+            throw new ArgumentOutOfRangeException(nameof(ordinal));
+        var choice = run.World?.Combat?.PendingChoice;
+        var generation = choice?.ControlledGeneration ??
+            throw new InvalidDataException(
+                "Generated-card request has no controlled generation choice.");
+        ValidateBoundary(run);
+        var ownerId = choice!.SourceCardInstanceId is { } sourceCardId
+            ? "card_instance:" + sourceCardId
+            : "effect:" + generation.Operation.Kind;
+        return CreateEvent(
+            boundaryFingerprint, "combat.generated_card.select", ownerId,
+            ordinal, generation.CandidateCardIds);
+    }
+
     internal static void ValidateBoundary(RunState run)
     {
         var combat = run.World?.Combat;
@@ -156,6 +176,21 @@ public static class SemanticGenerationChoiceV111
             pending.Fork(), index, cardId);
         decision.Validate();
         return decision;
+    }
+
+    internal static void ValidateDecision(
+        SemanticGeneratedCardEventV111? pending,
+        SemanticGeneratedCardDecisionV111 decision, string selectedCardId)
+    {
+        ArgumentNullException.ThrowIfNull(decision);
+        ArgumentException.ThrowIfNullOrWhiteSpace(selectedCardId);
+        pending?.Validate();
+        decision.Validate();
+        if (pending is null || selectedCardId != decision.SelectedCardId ||
+            CanonicalJson.Sha256(pending) !=
+                CanonicalJson.Sha256(decision.Event))
+            throw new InvalidDataException(
+                "Generated-card decision no longer matches the pending event.");
     }
 
     /// <summary>

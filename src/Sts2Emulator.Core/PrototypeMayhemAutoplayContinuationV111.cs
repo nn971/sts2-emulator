@@ -103,6 +103,35 @@ public sealed partial class PrototypeGameEngine
             IsAtSupportedAutomaticPipelineTargetBoundary(combat);
     }
 
+    internal static bool IsAutomaticPipelineSemanticGenerationContinuation(
+        CombatState combat, PendingCombatChoiceState pending)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(pending);
+        if (pending is not
+            { ChoiceId: "controlled_generated_card",
+              ControlledGeneration: { } generation,
+              OuterChoiceContinuation: { } continuation } ||
+            combat.SemanticDeck is not
+                { Mode: SemanticDeckStateV111.NatureMode } ||
+            !ValidateControlledGenerationSupport(generation))
+            return false;
+
+        bool nestedAutoplay = false;
+        for (var frame = continuation; frame is not null;
+             frame = frame.Parent)
+            if (frame.CardPlaySeries is { IsAutoPlay: true })
+            {
+                nestedAutoplay = true;
+                break;
+            }
+        if (!nestedAutoplay) return false;
+
+        return IsMayhemAutoPrePlayPipelineCursor(combat) ||
+            combat.IsPlayerTurn &&
+            IsAtSupportedAutomaticPipelineTargetBoundary(combat);
+    }
+
     private static bool IsLateAutoplaySemanticDrawContinuation(
         CombatState combat, PendingCombatChoiceState pending)
     {
