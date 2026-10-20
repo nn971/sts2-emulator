@@ -39,8 +39,13 @@ public sealed record SemanticCombatDrawMechanicsStateV111
         Continuation = new PrototypeMechanicsContinuationStateV111(
             PrototypeMechanicsContinuationKindV111.SemanticCombatDraw,
             Origin, Run);
-        this.RequestedCount = RequestedCount;
-        this.RemainingCount = RemainingCount;
+        // Active automatic hand draws keep their counters in the pipeline
+        // mechanics cursor. The facade's fallback fields must stay zero.
+        bool pipelineOwnsProgress =
+            SemanticCombatDrawV111.HasAutomaticPipelineDrawCursor(
+                Run, AutomaticHandDraw);
+        this.RequestedCount = pipelineOwnsProgress ? 0 : RequestedCount;
+        this.RemainingCount = pipelineOwnsProgress ? 0 : RemainingCount;
         this.FromHandDraw = FromHandDraw;
         this.AutomaticHandDraw = AutomaticHandDraw;
     }
