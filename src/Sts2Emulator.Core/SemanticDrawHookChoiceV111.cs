@@ -15,6 +15,8 @@ public sealed record SemanticDrawHookChoiceEventV111(
 {
     public const string EventSchemaId =
         "sts2-v111-semantic-draw-hook-choice-v2";
+    public const string AutomaticPipelineEventSchemaId =
+        "sts2-v111-semantic-draw-hook-choice-v3";
 
     public SemanticDrawHookChoiceEventV111 Fork() => this with
     {
@@ -23,7 +25,8 @@ public sealed record SemanticDrawHookChoiceEventV111(
 
     public void Validate()
     {
-        if (SchemaId != EventSchemaId ||
+        if (SchemaId != (AutomaticPipelineAutoplay
+                ? AutomaticPipelineEventSchemaId : EventSchemaId) ||
             string.IsNullOrWhiteSpace(EventId) ||
             string.IsNullOrWhiteSpace(BoundaryFingerprint) ||
             string.IsNullOrWhiteSpace(SupportFingerprint) ||
@@ -156,7 +159,9 @@ public static class SemanticDrawHookChoiceEngineV111
             choice.ChoiceId,
             Candidates = candidates
         });
-        var schemaId = SemanticDrawHookChoiceEventV111.EventSchemaId;
+        var schemaId = automaticPipelineAutoplay
+            ? SemanticDrawHookChoiceEventV111.AutomaticPipelineEventSchemaId
+            : SemanticDrawHookChoiceEventV111.EventSchemaId;
         var result = new SemanticDrawHookChoiceEventV111(
             schemaId,
             SemanticDrawHookChoiceEventV111.CreateEventId(
