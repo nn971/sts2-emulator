@@ -54,6 +54,9 @@ public sealed record RandomRangedDoubleDecisionV111(
             || ProbabilityStatus != "UNVERIFIED")
             throw new ArgumentException(
                 "Illegal ranged-double outcome or probability label.");
+        RandomBoundaryCursorSpanV111.Validate(
+            Request.StreamId, ProviderMode,
+            NativeCursorBefore, NativeCursorAfter);
     }
 }
 

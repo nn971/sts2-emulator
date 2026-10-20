@@ -76,6 +76,36 @@ public sealed record RandomBoundaryTranscriptEntryV111(
     }
 }
 
+internal static class RandomBoundaryCursorSpanV111
+{
+    internal static void Validate(
+        string streamId, string providerMode,
+        NativeRngSnapshot? cursorBefore,
+        NativeRngSnapshot? cursorAfter)
+    {
+        bool isNative = providerMode == "native-v111";
+        if ((cursorBefore is null) != (cursorAfter is null) ||
+            isNative != (cursorBefore is not null))
+            throw new ArgumentException(
+                "Native provider decisions require both cursor snapshots; other providers cannot claim Native cursors.");
+
+        if (!isNative)
+            return;
+
+        ValidateSnapshot(streamId, cursorBefore!);
+        ValidateSnapshot(streamId, cursorAfter!);
+    }
+
+    private static void ValidateSnapshot(
+        string streamId, NativeRngSnapshot snapshot)
+    {
+        var restored = NativeRngV111.FromSnapshot(streamId, snapshot);
+        if (NativeRngV111.ToSnapshot(restored) != snapshot)
+            throw new ArgumentException(
+                "Native cursor snapshot does not round-trip through its registered codec.");
+    }
+}
+
 public sealed class RandomBoundaryJournalV111 : IDisposable
 {
     private static readonly JsonSerializerOptions TranscriptJsonOptions =

@@ -51,6 +51,9 @@ public sealed record RandomUnitFloatDecisionV111(
             || string.IsNullOrWhiteSpace(ProviderMode)
             || ProbabilityStatus != "UNVERIFIED")
             throw new ArgumentException("Illegal unit-float outcome or probability label.");
+        RandomBoundaryCursorSpanV111.Validate(
+            Request.StreamId, ProviderMode,
+            NativeCursorBefore, NativeCursorAfter);
     }
 }
 
