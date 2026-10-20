@@ -180,18 +180,43 @@ public static class SemanticDrawInsertionChoiceV111
                     combat, choice))
             return null;
 
+        return DescribePendingEvent(
+            run, boundaryFingerprint, insertion.RequestOrdinal,
+            insertion.RequestOwnerId, insertion.RequestOwnerId,
+            appendPileIdentityToLegacyOwner: true,
+            appendPileIdentityToNativeOwner: true);
+    }
+
+    internal static SemanticDrawInsertionEventV111 DescribePendingEvent(
+        RunState run, string boundaryFingerprint, int ordinal,
+        string legacyOwnerPrefix, string nativeOwnerPrefix,
+        bool appendPileIdentityToLegacyOwner,
+        bool appendPileIdentityToNativeOwner)
+    {
+        ArgumentNullException.ThrowIfNull(run);
+        ArgumentException.ThrowIfNullOrWhiteSpace(boundaryFingerprint);
+        ArgumentException.ThrowIfNullOrWhiteSpace(legacyOwnerPrefix);
+        ArgumentException.ThrowIfNullOrWhiteSpace(nativeOwnerPrefix);
+        var combat = run.World?.Combat;
+        var insertion = combat?.PendingChoice?.ControlledDrawInsertion;
+        if (insertion is null || insertion.Stage != "position" ||
+            insertion.SelectedCardId is not { } cardId)
+            throw new InvalidDataException(
+                "Draw-insertion request has no selected card position stage.");
         ValidateBoundary(run);
         var pile = (long[])insertion.EligibleDrawPile.Clone();
-        var pileSuffix = ":card:" + insertion.SelectedCardId +
+        var pileSuffix = ":card:" + cardId +
             ":draw_pile:" + CanonicalJson.Sha256(pile);
+        var legacyOwnerId = legacyOwnerPrefix +
+            (appendPileIdentityToLegacyOwner ? pileSuffix : "");
+        var nativeOwnerId = nativeOwnerPrefix +
+            (appendPileIdentityToNativeOwner ? pileSuffix : "");
         var request = SemanticDrawInsertionEventV111.CreateRequest(
             insertion.RequestSiteId,
-            combat.NativeRng?.RunStreams is not null,
-            insertion.RequestOwnerId + pileSuffix,
-            insertion.RequestOwnerId + pileSuffix,
-            insertion.RequestOrdinal, pile.Length + 1);
+            combat!.NativeRng?.RunStreams is not null,
+            legacyOwnerId, nativeOwnerId, ordinal, pile.Length + 1);
         return SemanticDrawInsertionEventV111.CreateEvent(
-            boundaryFingerprint, request, insertion.SelectedCardId!, pile);
+            boundaryFingerprint, request, cardId, pile);
     }
 
     internal static void ValidateBoundary(RunState run)

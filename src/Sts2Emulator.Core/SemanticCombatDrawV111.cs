@@ -519,16 +519,11 @@ public static class SemanticCombatDrawEngineV111
             "After-shuffle insertion is not a valid semantic draw stage.",
             "After-shuffle insertion is not a valid semantic draw stage.");
 
-        var pile = (long[])insertion.EligibleDrawPile.Clone();
-        var cardModelId = insertion.SelectedCardId!;
-        var nativeStreamAvailable = combat!.NativeRng?.RunStreams is not null;
-        var ownerId = insertion.RequestOwnerId + ":card:" + cardModelId +
-            ":draw_pile:" + CanonicalJson.Sha256(pile);
-        var request = SemanticDrawInsertionEventV111.CreateRequest(
-            insertion.RequestSiteId, nativeStreamAvailable, ownerId, ownerId,
-            insertion.RequestOrdinal, pile.Length + 1);
-        return SemanticDrawInsertionEventV111.CreateEvent(
-            state.Fingerprint, request, cardModelId, pile);
+        return SemanticDrawInsertionChoiceV111.DescribePendingEvent(
+            run, state.Fingerprint, insertion.RequestOrdinal,
+            insertion.RequestOwnerId, insertion.RequestOwnerId,
+            appendPileIdentityToLegacyOwner: true,
+            appendPileIdentityToNativeOwner: true);
     }
 
     internal static SemanticCardSelectionEventV111?

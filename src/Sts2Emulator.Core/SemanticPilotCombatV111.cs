@@ -3371,29 +3371,21 @@ public static class SemanticPilotCombatEngineV111
             current.UsesNativePolicyBaseline || current.CombatTerminal)
             throw new InvalidDataException(
                 "Draw insertion conflicts with another semantic boundary.");
-        SemanticDrawInsertionChoiceV111.ValidateBoundary(current.Run);
-        var pile = (long[])insertion.EligibleDrawPile.Clone();
         var requestOrdinal = afterShuffleRelicMatches || personalHiveInsertion
             ? insertion.RequestOrdinal
             : current.History.Count(transition =>
                 transition.Kind == "semantic_draw_insertion");
-        var pileSuffix = ":card:" + insertion.SelectedCardId +
-            ":draw_pile:" + CanonicalJson.Sha256(pile);
-        var legacyOwnerId = afterShuffleRelicMatches || personalHiveInsertion
-            ? insertion.RequestOwnerId + pileSuffix
-            : insertion.RequestOwnerId;
-        var nativeStreamAvailable = combat!.NativeRng?.RunStreams is not null;
         var nativeOwnerPrefix = afterShuffleRelicMatches || personalHiveInsertion
             ? insertion.RequestOwnerId
             : choice!.SourceCardInstanceId is { } sourceCardInstanceId
                 ? "card_instance:" + sourceCardInstanceId
                 : "effect:" + insertion.Operation.Kind;
-        var nativeOwnerId = nativeOwnerPrefix + pileSuffix;
-        var request = SemanticDrawInsertionEventV111.CreateRequest(
-            insertion.RequestSiteId, nativeStreamAvailable, legacyOwnerId,
-            nativeOwnerId, requestOrdinal, pile.Length + 1);
-        return SemanticDrawInsertionEventV111.CreateEvent(
-            current.Fingerprint, request, insertion.SelectedCardId!, pile);
+        return SemanticDrawInsertionChoiceV111.DescribePendingEvent(
+            current.Run, current.Fingerprint, requestOrdinal,
+            insertion.RequestOwnerId, nativeOwnerPrefix,
+            appendPileIdentityToLegacyOwner:
+                afterShuffleRelicMatches || personalHiveInsertion,
+            appendPileIdentityToNativeOwner: true);
     }
 
     internal static void ValidateSemanticCombatBoundary(RunState run)
