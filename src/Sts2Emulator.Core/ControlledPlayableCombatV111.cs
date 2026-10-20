@@ -673,10 +673,19 @@ public static class ControlledPlayableCombatEngineV111
         var cards = player.Deck.Select((c, i) => new CombatCardInstance(
             i + 1L, c.InstanceId, c.CardId, c.UpgradeLevel, false,
             c.PersistentState.Clone(), Enchantment: c.Enchantment)).ToArray();
+        // Relics join the same globally ordered event-subscriber queue as
+        // source-created enemy and player powers. Preserve those source orders
+        // and allocate fresh, nonoverlapping entries for starter relics.
+        long relicOrderStart = Math.Max(
+            verified.Combat.NextPowerApplicationOrder,
+            verified.Combat.PlayerPowers
+                .Concat(verified.Combat.Enemies.SelectMany(e => e.PowerStates))
+                .Select(power => power.ApplicationOrder)
+                .DefaultIfEmpty(0).Max() + 1);
         var relics = player.Relics.Select((r, i) =>
         {
             var d = PrototypeContent.Relic(r.RelicId);
-            return new CombatRelicState(i, r.RelicId, i + 1L,
+            return new CombatRelicState(i, r.RelicId, relicOrderStart + i,
                 new int[(d.Triggers ?? []).Length], r.IsMelted);
         }).ToArray();
         var potions = player.PotionSlots.Select((p, i) =>
@@ -688,6 +697,7 @@ public static class ControlledPlayableCombatEngineV111
             Cards = cards,
             NextCardInstanceId = cards.Length + 1L,
             Relics = relics,
+            NextPowerApplicationOrder = relicOrderStart + relics.Length,
             Potions = potions,
             // Fixed Act 1 Nature fixtures own an isolated combat room, not
             // a visited node in the newly generated (and still unentered) map.
