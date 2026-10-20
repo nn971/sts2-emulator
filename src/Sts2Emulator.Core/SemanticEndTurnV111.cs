@@ -1410,15 +1410,15 @@ public static class SemanticEndTurnEngineV111
                 "No automatic CardDrawn hook action is pending.");
         if (source.NestedDrawHookChoicePending is { } nestedHookChoice)
         {
-            var (resumedRun, decision) =
-                SemanticDrawHookChoiceEngineV111.Resolve(
-                    source.Run.Fork(), nestedHookChoice, actionId);
+            var decision = SemanticDrawHookChoiceEngineV111.Select(
+                source.Run, nestedHookChoice, actionId);
+            var choice = new SemanticEndTurnNestedChoiceV111(
+                "semantic_draw_hook_choice",
+                DrawHookChoiceDecision: decision.Fork());
+            var resumed = SemanticNestedChoiceResumeV111.Resume(
+                source.Run, choice);
             var nested = ContinueNestedAutomaticChoice(
-                source, resumedRun,
-                new SemanticEndTurnNestedChoiceV111(
-                    "semantic_draw_hook_choice",
-                    DrawHookChoiceDecision: decision.Fork()),
-                "combat.draw.CardDrawn");
+                source, resumed.Run, choice, resumed.SiteId);
             Validate(nested);
             return nested;
         }
@@ -1444,14 +1444,15 @@ public static class SemanticEndTurnEngineV111
             source.KnowledgeDemonChoicePending is not { } pending)
             throw new InvalidOperationException(
                 "No automatic Knowledge Demon choice is pending.");
-        var (resumed, decision) = SemanticKnowledgeDemonChoiceEngineV111
-            .Resolve(source.Run.Fork(), pending, actionId);
+        var decision = SemanticKnowledgeDemonChoiceEngineV111.Select(
+            source.Run, pending, actionId);
+        var choice = new SemanticEndTurnNestedChoiceV111(
+            "knowledge_demon_choice",
+            KnowledgeDemonChoiceDecision: decision.Fork());
+        var resumed = SemanticNestedChoiceResumeV111.Resume(
+            source.Run, choice);
         var next = ContinueNestedAutomaticChoice(
-            source, resumed,
-            new SemanticEndTurnNestedChoiceV111(
-                "knowledge_demon_choice",
-                KnowledgeDemonChoiceDecision: decision.Fork()),
-            "combat.ResolveEnemyActions.KnowledgeDemon");
+            source, resumed.Run, choice, resumed.SiteId);
         Validate(next);
         return next;
     }
