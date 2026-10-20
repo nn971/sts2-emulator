@@ -1,0 +1,29 @@
+name: draw-only-nature-h1-gate
+
+on:
+  push:
+    branches:
+      - fix/draw-only-nature-h1-gate-20261021
+  workflow_dispatch:
+
+jobs:
+  fixed-silent-draw-only:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-dotnet@v4
+        with:
+          dotnet-version: '9.0.x'
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - name: Restore and Release build
+        run: |
+          dotnet restore Sts2Emulator.sln
+          dotnet build Sts2Emulator.sln -c Release --no-restore
+      - name: Targeted actual Silent entry and terminal replay tests
+        run: |
+          dotnet test tests/Sts2Emulator.Core.Tests/Sts2Emulator.Core.Tests.csproj -c Release --no-build --filter "FullyQualifiedName~FixedActOneWeakCombatHasCoherentRoomAndEncounterProvenance|FullyQualifiedName~SourcePinnedActOneWeakCombatWinsByOrdinarySilentStrikeActions" --logger "console;verbosity=normal"
+      - name: External JSONL legal Chance Law, draw-only, replay, 1 vs 15 processes
+        run: python -u tools/nature_draw_only_fixed_gate.py
