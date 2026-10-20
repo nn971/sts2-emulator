@@ -406,12 +406,26 @@ public static class PrototypeNativeOvergrowthRunFactory
         CreateWithAudit(
             string seed,
             int ascension = 0,
-            IRandomIndexProviderV111? neowProvider = null)
+            IRandomIndexProviderV111? neowProvider = null,
+            IRandomIndexProviderV111? startRunProvider = null)
     {
         var engine = new PrototypeGameEngine();
-        var state = engine.Step(
-            PrototypeGameFactory.Create(seed, ascension),
-            GameAction.Empty("start_run")).State;
+        RunState state;
+        if (startRunProvider is null)
+        {
+            state = engine.Step(
+                PrototypeGameFactory.Create(seed, ascension),
+                GameAction.Empty("start_run")).State;
+        }
+        else
+        {
+            using var providerScope = StochasticProviderScopeV111.Enter(
+                indexProvider: startRunProvider,
+                overrideExplicitProviders: true);
+            state = engine.Step(
+                PrototypeGameFactory.Create(seed, ascension),
+                GameAction.Empty("start_run")).State;
+        }
         var world = state.World
             ?? throw new InvalidOperationException("Run did not initialize.");
 
@@ -479,5 +493,189 @@ public static class PrototypeNativeOvergrowthRunFactory
             Phase = RunPhase.Event
         };
         return (result, neowOffers);
+    }
+
+    public static ReferenceNatureOvergrowthRunResultV111
+        CreateWithReferenceNature(string seed, int ascension,
+            ReferenceNatureStateV111 initialNatureState)
+    {
+        ArgumentNullException.ThrowIfNull(initialNatureState);
+        initialNatureState.Validate();
+        var provider = new ReferenceNatureOvergrowthBossIndexProviderV111(
+            initialNatureState);
+        var run = CreateWithAudit(seed, ascension,
+            startRunProvider: provider).State with
+        {
+            ReferenceNatureState = provider.NatureState
+        };
+        var result = new ReferenceNatureOvergrowthRunResultV111(
+            run, initialNatureState.Fork(), provider.NatureState,
+            provider.ChanceLaws, provider.DecisionTranscript);
+        result.Validate();
+        return result;
+    }
+}
+
+internal sealed class ReferenceNatureOvergrowthBossIndexProviderV111(
+    ReferenceNatureStateV111 initialNatureState) : IRandomIndexProviderV111
+{
+    private ReferenceNatureStateV111 _natureState =
+        initialNatureState?.Fork()
+        ?? throw new ArgumentNullException(nameof(initialNatureState));
+    private readonly List<ChanceLawV111> _chanceLaws = [];
+    private readonly List<ReferenceNatureDecisionV111> _decisions = [];
+
+    public string Mode => ReferenceNatureV111.ProviderId;
+    public ReferenceNatureStateV111 NatureState => _natureState.Fork();
+    public ChanceLawV111[] ChanceLaws => _chanceLaws
+        .Select(law => law.Fork()).ToArray();
+    public ReferenceNatureDecisionV111[] DecisionTranscript =>
+        _decisions.ToArray();
+
+    public RandomIndexDecisionV111 Resolve(
+        RandomIndexRequestV111 request, RngBundle streams)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(streams);
+        request.ValidateForLegacyProvider();
+        if (request.SiteId != "run.encounter.overgrowth_boss.index_draw" ||
+            request.StreamId != "combat")
+        {
+            if (request.SiteId.StartsWith("map.legacy.",
+                    StringComparison.Ordinal) && request.StreamId == "map")
+                return new LegacyPrototypeRandomIndexProviderV111()
+                    .Resolve(request, streams);
+            throw new NotSupportedException(
+                $"ReferenceNature Overgrowth start does not support '{request.SiteId}'.");
+        }
+
+        var bossPool = PrototypeContent.OvergrowthBossEncounterPool;
+        var expectedOwner = "run:act:1:boss_pool:" +
+            CanonicalJson.Sha256(bossPool);
+        var combatStreams = streams.Streams.Where(stream =>
+            stream.StreamId == "combat").ToArray();
+        if (_decisions.Count != 0 || request.OwnerId != expectedOwner ||
+            request.Ordinal != 0 || request.OperationKind != "choose_index" ||
+            request.SupportCount != bossPool.Length ||
+            !request.OrderedCandidates.SequenceEqual(
+                Enumerable.Range(0, bossPool.Length)) ||
+            combatStreams.Length != 1 ||
+            combatStreams[0].Codec != PrototypeRng.Codec)
+            throw new InvalidDataException(
+                "ReferenceNature Overgrowth boss request differs from its run-start boundary.");
+
+        var law = ChanceLawEngineV111.QueryOvergrowthBossEncounter(0);
+        if (law.SiteId != request.SiteId || law.OwnerId != request.OwnerId ||
+            law.Ordinal != request.Ordinal ||
+            law.OperationKind != request.OperationKind ||
+            law.Outcomes.Length != request.SupportCount)
+            throw new InvalidDataException(
+                "ReferenceNature Overgrowth boss law differs from its source request.");
+        var selection = ReferenceNatureV111.SampleValidated(
+            law, _natureState);
+        _natureState = selection.NextState;
+        _chanceLaws.Add(law.Fork());
+        _decisions.Add(new ReferenceNatureDecisionV111(
+            law.LawId, law.EventId, selection.OutcomeId,
+            selection.OutcomeIndex));
+        var decision = new RandomIndexDecisionV111(
+            request with
+            {
+                OrderedCandidates = (int[])request.OrderedCandidates.Clone()
+            }, selection.OutcomeIndex, Mode);
+        decision.Validate();
+        return decision;
+    }
+}
+
+public sealed record ReferenceNatureOvergrowthRunResultV111(
+    RunState Run,
+    ReferenceNatureStateV111 InitialNatureState,
+    ReferenceNatureStateV111 NatureState,
+    ChanceLawV111[] ChanceLaws,
+    ReferenceNatureDecisionV111[] DecisionTranscript)
+{
+    private RunState? _run = Run?.Fork();
+    private ChanceLawV111[]? _chanceLaws = ChanceLaws?.Select(law =>
+        law.Fork()).ToArray();
+    private ReferenceNatureDecisionV111[]? _decisionTranscript =
+        DecisionTranscript is null ? null :
+            (ReferenceNatureDecisionV111[])DecisionTranscript.Clone();
+
+    public RunState Run
+    {
+        get => _run?.Fork()!;
+        init => _run = value?.Fork();
+    }
+
+    public ChanceLawV111[] ChanceLaws
+    {
+        get => _chanceLaws?.Select(law => law.Fork()).ToArray()!;
+        init => _chanceLaws = value?.Select(law => law.Fork()).ToArray();
+    }
+
+    public ReferenceNatureDecisionV111[] DecisionTranscript
+    {
+        get => _decisionTranscript is null ? null! :
+            (ReferenceNatureDecisionV111[])_decisionTranscript.Clone();
+        init => _decisionTranscript = value is null ? null :
+            (ReferenceNatureDecisionV111[])value.Clone();
+    }
+
+    public void Validate()
+    {
+        var run = Run;
+        ArgumentNullException.ThrowIfNull(run);
+        ArgumentNullException.ThrowIfNull(InitialNatureState);
+        ArgumentNullException.ThrowIfNull(NatureState);
+        var world = run.World;
+        var laws = ChanceLaws;
+        var transcript = DecisionTranscript;
+        var encounterPool = world?.ActOneEncounterPool;
+        if (laws is null || transcript is null || laws.Length != 1 ||
+            transcript.Length != 1 ||
+            run.ReferenceNatureState is not { } savedCursor ||
+            !savedCursor.SameCursor(NatureState) ||
+            world?.ActOneRegion != PrototypeActOneRegion.Overgrowth ||
+            encounterPool is null ||
+            encounterPool.Region != PrototypeActOneRegion.Overgrowth)
+            throw new InvalidDataException(
+                "Invalid ReferenceNature Overgrowth run result.");
+
+        InitialNatureState.Validate();
+        NatureState.Validate();
+        var law = laws[0];
+        var decision = transcript[0];
+        law.Validate();
+        decision.Validate();
+        var expectedLaw = ChanceLawEngineV111
+            .QueryOvergrowthBossEncounter(0);
+        if (CanonicalJson.Sha256(expectedLaw) != CanonicalJson.Sha256(law))
+            throw new InvalidDataException(
+                "Overgrowth boss Chance Law differs from its source query.");
+        var selection = ReferenceNatureV111.SampleValidated(
+            law, InitialNatureState);
+        var expectedDecision = new ReferenceNatureDecisionV111(
+            law.LawId, law.EventId, selection.OutcomeId,
+            selection.OutcomeIndex);
+        if (CanonicalJson.Sha256(expectedDecision) !=
+                CanonicalJson.Sha256(decision) ||
+            selection.OutcomeId !=
+                "encounter:" + encounterPool.BossEncounterId ||
+            !selection.NextState.SameCursor(NatureState) ||
+            NatureState.SampleCount !=
+                checked(InitialNatureState.SampleCount + 1))
+            throw new InvalidDataException(
+                "Overgrowth boss result does not replay from its Nature cursor.");
+
+        PrototypeStateInvariants.Validate(run);
+        var initialCombat = PrototypeRng.CreateBundle(run.RunSeed).Streams
+            .Single(stream => stream.StreamId == "combat");
+        var resultCombat = run.Rng.Streams.Single(stream =>
+            stream.StreamId == "combat");
+        if (CanonicalJson.Sha256(initialCombat) !=
+            CanonicalJson.Sha256(resultCombat))
+            throw new InvalidDataException(
+                "ReferenceNature Overgrowth creation advanced the legacy combat cursor.");
     }
 }

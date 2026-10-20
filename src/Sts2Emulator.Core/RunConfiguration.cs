@@ -424,14 +424,18 @@ public static class V111RunFactory
         RunState opening;
         if (config.Acts[0] == ActIdentity.Overgrowth)
         {
-            opening = PrototypeNativeOvergrowthRunFactory.Create(
-                input.RunSeed, config.Ascension);
+            opening = input.ReferenceNatureState is { } overgrowthNatureState
+                ? PrototypeNativeOvergrowthRunFactory
+                    .CreateWithReferenceNature(input.RunSeed,
+                        config.Ascension, overgrowthNatureState).Run
+                : PrototypeNativeOvergrowthRunFactory.Create(
+                    input.RunSeed, config.Ascension);
         }
-        else if (input.ReferenceNatureState is { } initialNatureState)
+        else if (input.ReferenceNatureState is { } underdocksNatureState)
         {
             opening = PrototypeNativeUnderdocksRunFactory
                 .CreateWithReferenceNature(input.RunSeed,
-                    config.Ascension, initialNatureState).Run;
+                    config.Ascension, underdocksNatureState).Run;
         }
         else
         {

@@ -27,9 +27,9 @@ their legacy identities. `reset_v111` is opt-in and accepts `seed`, `character`
 (default `silent`), `ascension` (0–10), and `first_act` (`Overgrowth` or
 `Underdocks`). It also accepts optional unsigned `nature_seed` to attach a
 forkable ReferenceNature cursor before `start_run`; the Python
-`Session.reset(...)` method exposes the same parameter. For the Underdocks
-route, run initialization uses it for the ordered boss-pool choice and advances
-it once. Experimental Silent three-act runs also use it for the conditional
+`Session.reset(...)` method exposes the same parameter. For either Act 1 route,
+run initialization uses it for the ordered boss-pool choice and advances it
+once. Experimental Silent three-act runs also use it for the conditional
 Hive/Glory Darv partition and local Ancient choices when `start_run` prepares
 those acts, then for Hive/Glory boss-pool choices and Glory's Ascension 10
 second boss during prepared encounter-bag generation. Five
