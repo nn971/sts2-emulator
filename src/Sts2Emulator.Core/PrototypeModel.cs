@@ -21,27 +21,83 @@ public enum PrototypeActOneRegion
     Underdocks
 }
 
-public sealed record PrototypeActOneEncounterPoolState(
-    PrototypeActOneRegion Region,
-    int OrdinaryCombatsStarted,
-    string[] RemainingWeakEncounterIds,
-    string[]? RemainingNormalEncounterIds = null,
-    string[]? RemainingEliteEncounterIds = null,
-    string? BossEncounterId = null)
+public sealed record PrototypeActOneEncounterPoolState
 {
+    private string[] _remainingWeakEncounterIds;
+    private string[]? _remainingNormalEncounterIds;
+    private string[]? _remainingEliteEncounterIds;
+
+    [JsonConstructor]
+    public PrototypeActOneEncounterPoolState(
+        PrototypeActOneRegion Region,
+        int OrdinaryCombatsStarted,
+        string[] RemainingWeakEncounterIds,
+        string[]? RemainingNormalEncounterIds = null,
+        string[]? RemainingEliteEncounterIds = null,
+        string? BossEncounterId = null)
+    {
+        this.Region = Region;
+        this.OrdinaryCombatsStarted = OrdinaryCombatsStarted;
+        _remainingWeakEncounterIds = CloneRequired(
+            RemainingWeakEncounterIds, nameof(RemainingWeakEncounterIds));
+        _remainingNormalEncounterIds = CloneOptional(
+            RemainingNormalEncounterIds);
+        _remainingEliteEncounterIds = CloneOptional(
+            RemainingEliteEncounterIds);
+        this.BossEncounterId = BossEncounterId;
+    }
+
+    public PrototypeActOneRegion Region { get; init; }
+    public int OrdinaryCombatsStarted { get; init; }
+    public string[] RemainingWeakEncounterIds
+    {
+        get => (string[])_remainingWeakEncounterIds.Clone();
+        init => _remainingWeakEncounterIds = CloneRequired(
+            value, nameof(RemainingWeakEncounterIds));
+    }
+    public string[]? RemainingNormalEncounterIds
+    {
+        get => CloneOptional(_remainingNormalEncounterIds);
+        init => _remainingNormalEncounterIds = CloneOptional(value);
+    }
+    public string[]? RemainingEliteEncounterIds
+    {
+        get => CloneOptional(_remainingEliteEncounterIds);
+        init => _remainingEliteEncounterIds = CloneOptional(value);
+    }
+    public string? BossEncounterId { get; init; }
+
     public PrototypeActOneEncounterPoolState Fork() => this with
     {
-        RemainingWeakEncounterIds =
-            (string[])RemainingWeakEncounterIds.Clone(),
-        RemainingNormalEncounterIds =
-            RemainingNormalEncounterIds is null
-                ? null
-                : (string[])RemainingNormalEncounterIds.Clone(),
-        RemainingEliteEncounterIds =
-            RemainingEliteEncounterIds is null
-                ? null
-                : (string[])RemainingEliteEncounterIds.Clone()
+        RemainingWeakEncounterIds = _remainingWeakEncounterIds,
+        RemainingNormalEncounterIds = _remainingNormalEncounterIds,
+        RemainingEliteEncounterIds = _remainingEliteEncounterIds
     };
+
+    public void Deconstruct(
+        out PrototypeActOneRegion Region,
+        out int OrdinaryCombatsStarted,
+        out string[] RemainingWeakEncounterIds,
+        out string[]? RemainingNormalEncounterIds,
+        out string[]? RemainingEliteEncounterIds,
+        out string? BossEncounterId)
+    {
+        Region = this.Region;
+        OrdinaryCombatsStarted = this.OrdinaryCombatsStarted;
+        RemainingWeakEncounterIds = this.RemainingWeakEncounterIds;
+        RemainingNormalEncounterIds = this.RemainingNormalEncounterIds;
+        RemainingEliteEncounterIds = this.RemainingEliteEncounterIds;
+        BossEncounterId = this.BossEncounterId;
+    }
+
+    private static string[] CloneRequired(string[] values, string parameterName)
+    {
+        ArgumentNullException.ThrowIfNull(values, parameterName);
+        return (string[])values.Clone();
+    }
+
+    private static string[]? CloneOptional(string[]? values) =>
+        values is null ? null : (string[])values.Clone();
 }
 
 public enum PrototypeCardRarity
