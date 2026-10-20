@@ -13,14 +13,58 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             AutomaticPipelineContinuation: null };
 
     /// <summary>
-    /// The ordinary automatic pipeline can suspend before AdvanceTurn on an
-    /// enemy-action request or on a random target nested in that action. The
-    /// end-turn and controlled-playable facades share this boundary check.
+    /// Recognizes suspended enemy-action and controlled-target choices in
+    /// the automatic pipeline. End-turn and controlled-playable facades
+    /// share this pending-choice classification.
     /// </summary>
     internal static bool HasPendingControlledAutomaticPipelineChoice(
         RunState run) => run.World?.Combat is { } combat &&
         (combat.AutomaticPipelineContinuation?.ControlledEnemyAction is not null ||
          combat.PendingChoice?.ControlledTarget is not null);
+
+    /// <summary>
+    /// Identifies the automatic-pipeline cursors where a controlled target
+    /// may suspend: ordinary pre-AdvanceTurn combat work, or post-draw player
+    /// turn hooks and late autoplay.
+    /// </summary>
+    internal static bool IsAtSupportedAutomaticPipelineTargetBoundary(
+        CombatState combat)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        var continuation = combat.AutomaticPipelineContinuation;
+        var pipelineLength = PrototypeContent.Rules.EndTurnPipeline.Length;
+        if (continuation is not
+            {
+                OpeningStage: null,
+                PendingPostDispatchEventKind: null,
+                ControlledDrawRemaining: null,
+                ControlledDrawCostRemaining: null,
+                ControlledSemanticDrawRemaining: null,
+                ControlledSemanticDrawRequested: null,
+                ControlledEnemyAction: null
+            } || continuation.NextStepIndex < 0 ||
+            continuation.NextStepIndex > pipelineLength)
+            return false;
+
+        if (!combat.IsPlayerTurn)
+            return continuation.NextStepIndex < pipelineLength;
+        return continuation.NextStepIndex >=
+            PlayerTurnAutomaticPipelineTargetStartIndex();
+    }
+
+    private static int PlayerTurnAutomaticPipelineTargetStartIndex()
+    {
+        var pipeline = PrototypeContent.Rules.EndTurnPipeline;
+        for (var index = 0; index < pipeline.Length; index++)
+        {
+            if (pipeline[index].Kind ==
+                    PrototypeAutomaticStepKind.DispatchCombatEvent &&
+                pipeline[index].EventKind ==
+                    PrototypeCombatEventKind.PlayerTurnStarted)
+                return index + 1;
+        }
+        return int.MaxValue;
+    }
 
     internal static bool IsAtCombatRewardOrTerminalBoundary(RunState run) =>
         (run.Phase is RunPhase.Reward or RunPhase.Terminal) &&
