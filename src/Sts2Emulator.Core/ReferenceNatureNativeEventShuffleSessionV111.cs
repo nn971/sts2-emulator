@@ -38,12 +38,17 @@ internal sealed record NativeEventShufflePlanV111(
                 SiteId, StringComparer.Ordinal))
             throw new NotSupportedException(
                 $"Native event shuffle plan does not support site '{SiteId}'.");
+        if (IsCombatEndIndex)
+            throw new NotSupportedException(
+                "Combat-end index requests are captured from their source boundary and are not shuffle swap requests.");
         if (ordinal < 0 || ordinal >= SwapCount)
             throw new ArgumentOutOfRangeException(nameof(ordinal));
-        return new RandomIndexRequestV111(
+        var request = new RandomIndexRequestV111(
             SiteId, StreamId, OwnerId, ordinal, [],
             OperationKind: "bounded_integer",
             BoundedCount: CandidateCount - ordinal);
+        request.ValidateForNativeProvider();
+        return request;
     }
 
     public RandomIndexRequestV111 RequestForChoice(int ordinal)
@@ -54,13 +59,15 @@ internal sealed record NativeEventShufflePlanV111(
             NativeCursorBefore is null)
             throw new ArgumentOutOfRangeException(nameof(ordinal));
         var potionOrdinal = ordinal - SwapCount;
-        return new RandomIndexRequestV111(
+        var request = new RandomIndexRequestV111(
             "event.war_historian.repy.potion_offer.index_draw",
             NativePlayerRngV111.RewardsStreamId,
             $"event:war_historian_repy:potion_offer:{potionOrdinal}",
             checked(NativeCursorBefore.Counter + SwapCount + potionOrdinal),
             Enumerable.Range(0, PrototypeContent.PotionPool.Length).ToArray(),
             OperationKind: "choose_index");
+        request.ValidateForNativeProvider();
+        return request;
     }
 }
 

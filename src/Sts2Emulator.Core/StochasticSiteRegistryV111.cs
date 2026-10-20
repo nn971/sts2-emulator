@@ -303,28 +303,50 @@ public static class StochasticSiteRegistryV111
         string siteId, out LegacyCallerBoundIndexQuerySiteV111 site) =>
         LegacyCallerBoundIndexQuerySites.TryGetValue(siteId, out site!);
 
-    internal static bool TryGetRequiredRandomIndexOperationKind(
-        string siteId, out string operationKind)
+    internal static bool TryGetRequiredNativeRandomIndexOperationKind(
+        string siteId, string streamId, out string operationKind)
     {
-        if (LegacyCallerBoundIndexQuerySites.TryGetValue(siteId, out var site))
+        if (!IsNativeRandomIndexSite(siteId))
         {
-            operationKind = site.OperationKind;
-            return true;
+            operationKind = string.Empty;
+            return false;
         }
 
-        if (NativeBoundedIntegerSites.Contains(
-                siteId, StringComparer.Ordinal) ||
-            NativeEventContextBoundedIntegerSites.Contains(
-                siteId, StringComparer.Ordinal) ||
-            NativeFisherYatesSites.Contains(siteId, StringComparer.Ordinal))
+        if (NativeBoundedIndexOperationSites.Contains(
+                siteId, StringComparer.Ordinal))
         {
             operationKind = "bounded_integer";
             return true;
         }
 
-        operationKind = string.Empty;
-        return false;
+        if (siteId == NativeCombatRngEntryV111.DiagnosticMonsterLocalSiteId)
+        {
+            operationKind = "bounded_integer";
+            return true;
+        }
+
+        var allowsChooseIndex = SupportsEngineOwnedNativeIndexBoundaryForStream(
+            siteId, streamId, "choose_index");
+        var allowsBoundedInteger =
+            SupportsEngineOwnedNativeIndexBoundaryForStream(
+                siteId, streamId, "bounded_integer");
+        if (allowsChooseIndex != allowsBoundedInteger)
+        {
+            operationKind = allowsChooseIndex
+                ? "choose_index" : "bounded_integer";
+            return true;
+        }
+
+        operationKind = "choose_index";
+        return true;
     }
+
+    internal static bool RequiresLegacyBoundedRandomIndexOperation(
+        string siteId) =>
+        NativeBoundedIntegerSites.Contains(siteId, StringComparer.Ordinal) ||
+        NativeEventContextBoundedIntegerSites.Contains(
+            siteId, StringComparer.Ordinal) ||
+        NativeFisherYatesSites.Contains(siteId, StringComparer.Ordinal);
 
     public static string[] ControlledDrawInsertionSiteIds =>
     [
@@ -816,6 +838,18 @@ public static class StochasticSiteRegistryV111
         RewardBossRelicOfferShuffleSiteId
     ];
 
+    private static readonly string[] NativeBoundedIndexOperationSites =
+    [
+        .. NativeBoundedIntegerSites,
+        .. NativeEventContextBoundedIntegerSites,
+        .. NativeFisherYatesSites,
+        NativeDarvEventV111.OfferVariantSiteId,
+        PrototypeNativeOvergrowthMap.PathStartColumnSiteId,
+        PrototypeNativeLaterActMap.PathStartSiteId,
+        PrototypeNativeLaterActMap.GloryRestCountSiteId,
+        PrototypeNativePunchOff.ConstructHpOffsetSiteId
+    ];
+
     private static readonly HashSet<string> SemanticReferenceNatureSiteSet =
         new(SemanticReferenceNatureSites, StringComparer.Ordinal);
     private static readonly HashSet<string> RunActionSiteSet =
@@ -1053,13 +1087,7 @@ public static class StochasticSiteRegistryV111
             return false;
 
         if (operationKind is "choose_index" or "bounded_integer")
-        {
-            if (!IsNativeRandomIndexSite(siteId))
-                return false;
-            return !TryGetRequiredRandomIndexOperationKind(
-                    siteId, out var requiredOperationKind) ||
-                operationKind == requiredOperationKind;
-        }
+            return IsNativeRandomIndexSite(siteId);
 
         return operationKind switch
         {
@@ -1078,7 +1106,18 @@ public static class StochasticSiteRegistryV111
         if (!SupportsEngineOwnedNativeBoundary(siteId, operationKind))
             return false;
 
-        return streamId switch
+        if ((operationKind is "choose_index" or "bounded_integer") &&
+            TryGetRequiredNativeRandomIndexOperationKind(
+                siteId, streamId, out var requiredOperationKind) &&
+            operationKind != requiredOperationKind)
+            return false;
+
+        return SupportsEngineOwnedNativeBoundaryForStream(
+            siteId, streamId, operationKind);
+    }
+
+    private static bool SupportsEngineOwnedNativeBoundaryForStream(
+        string siteId, string streamId, string operationKind) => streamId switch
         {
             "run.monster_ai" => operationKind == "bounded_integer" &&
                 CombatIntentSiteIds.Contains(siteId, StringComparer.Ordinal),
@@ -1162,7 +1201,12 @@ public static class StochasticSiteRegistryV111
             },
             _ => false
         };
-    }
+
+    private static bool SupportsEngineOwnedNativeIndexBoundaryForStream(
+        string siteId, string streamId, string operationKind) =>
+        (operationKind is "choose_index" or "bounded_integer") &&
+        SupportsEngineOwnedNativeBoundaryForStream(
+            siteId, streamId, operationKind);
 
     public static bool IsNativeBoundedIntegerSite(string siteId) =>
         NativeBoundedIntegerSites.Contains(siteId, StringComparer.Ordinal);
