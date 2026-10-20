@@ -86,6 +86,8 @@
 
 **S0 Punch Off monster-local request review update (2026-10-20):** The Construct HP row now links the event callsite, the CombatId-selected Native local-stream entry, and the atomic ReferenceNature fight session. The emulator path uses bound 8, ordinal 0, and an event/CombatId owner per construct; replay verifies both ordered requests and preserves the event cursor. The bounded-transform law is source-verified under the stated uniform Native grid model, while seed/context parity remains open. No tests or builds were run.
 
+**S4 mechanics comparison random-pile-card cursor increment (2026-10-20):** The v16 provider-independent projection now preserves the operation and occurrence ordinal for a pending Jewelled Mask random draw-pile-card choice while omitting candidate identities and its support fingerprint. Stripping stochastic payload can no longer erase this mechanics suspension boundary from cross-provider comparisons. No tests or builds were run.
+
 ## Priorities and milestones
 
 | Stage | Priority | Deliverables | Acceptance gate |
