@@ -87,6 +87,7 @@ public sealed record SemanticEndTurnStochasticStateV111(
         int transcriptNestedPoolShuffles = 0;
         int transcriptNestedHandCostSelections = 0;
         int transcriptNestedCardSelections = 0;
+        int transcriptNestedDrawHookChoices = 0;
         int transcriptNestedChoices = 0;
         foreach (var boundary in BoundaryTranscript)
         {
@@ -231,6 +232,19 @@ public sealed record SemanticEndTurnStochasticStateV111(
                     throw new InvalidDataException(
                         "Semantic end-turn nested card-selection boundary order is invalid.");
             }
+            else if (boundary.Kind == "semantic_draw_hook_choice")
+            {
+                if (boundary.TranscriptIndex !=
+                        transcriptNestedDrawHookChoices++ ||
+                    transcriptNestedDrawHookChoices >
+                        NestedChoiceTranscript.Count(choice =>
+                            choice.Kind == "semantic_draw_hook_choice") ||
+                    transcriptNestedChoices >= NestedChoiceTranscript.Length ||
+                    NestedChoiceTranscript[transcriptNestedChoices++].Kind !=
+                        "semantic_draw_hook_choice")
+                    throw new InvalidDataException(
+                        "Semantic end-turn draw-hook boundary order is invalid.");
+            }
         }
         if ((BoundaryTranscript.Length > 0 &&
              (transcriptEnemyActions != EnemyActionTranscript.Length ||
@@ -255,6 +269,9 @@ public sealed record SemanticEndTurnStochasticStateV111(
                   choice.Kind == "semantic_hand_cost_selection") ||
               transcriptNestedCardSelections != NestedChoiceTranscript.Count(choice =>
                   choice.Kind == "semantic_card_selection") ||
+              transcriptNestedDrawHookChoices !=
+                  NestedChoiceTranscript.Count(choice =>
+                      choice.Kind == "semantic_draw_hook_choice") ||
               transcriptNestedChoices != NestedChoiceTranscript.Length)) ||
             (BoundaryTranscript.Length == 0 &&
              (TargetTranscript.Length != 0 ||
@@ -287,7 +304,8 @@ public sealed record SemanticEndTurnNestedChoiceV111(
     SemanticCardShortlistDecisionV111? CardShortlistDecision = null,
     SemanticPoolShuffleDecisionV111? PoolShuffleDecision = null,
     SemanticHandCostSelectionDecisionV111? HandCostSelectionDecision = null,
-    SemanticCardSelectionDecisionV111? CardSelectionDecision = null)
+    SemanticCardSelectionDecisionV111? CardSelectionDecision = null,
+    SemanticDrawHookChoiceDecisionV111? DrawHookChoiceDecision = null)
 {
     public SemanticEndTurnNestedChoiceV111 Fork() => this with
     {
@@ -310,7 +328,8 @@ public sealed record SemanticEndTurnNestedChoiceV111(
         CardShortlistDecision = CardShortlistDecision?.Fork(),
         PoolShuffleDecision = PoolShuffleDecision?.Fork(),
         HandCostSelectionDecision = HandCostSelectionDecision?.Fork(),
-        CardSelectionDecision = CardSelectionDecision?.Fork()
+        CardSelectionDecision = CardSelectionDecision?.Fork(),
+        DrawHookChoiceDecision = DrawHookChoiceDecision?.Fork()
     };
 
     public void Validate()
@@ -324,7 +343,8 @@ public sealed record SemanticEndTurnNestedChoiceV111(
             (CardShortlistDecision is null ? 0 : 1) +
             (PoolShuffleDecision is null ? 0 : 1) +
             (HandCostSelectionDecision is null ? 0 : 1) +
-            (CardSelectionDecision is null ? 0 : 1);
+            (CardSelectionDecision is null ? 0 : 1) +
+            (DrawHookChoiceDecision is null ? 0 : 1);
         if (decisionCount != 1)
             throw new InvalidDataException(
                 "Nested end-turn choice must contain exactly one typed decision.");
@@ -416,6 +436,17 @@ public sealed record SemanticEndTurnNestedChoiceV111(
             PoolShuffleDecision is null && HandCostSelectionDecision is null)
         {
             CardSelectionDecision.Validate();
+            return;
+        }
+        if (Kind == "semantic_draw_hook_choice" &&
+            DrawHookChoiceDecision is not null)
+        {
+            DrawHookChoiceDecision.Validate();
+            if (!DrawHookChoiceDecision.Event.AutomaticPipelineAutoplay ||
+                DrawHookChoiceDecision.Event.AutomaticHandDraw ||
+                DrawHookChoiceDecision.Event.BeforeHandDraw)
+                throw new InvalidDataException(
+                    "Nested draw-hook decision has the wrong source boundary.");
             return;
         }
         throw new InvalidDataException(

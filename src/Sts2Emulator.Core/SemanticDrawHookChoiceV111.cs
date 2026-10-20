@@ -4,13 +4,14 @@ public sealed record SemanticDrawHookChoiceCandidateV111(
     string ActionId, string Kind, string PayloadFingerprint);
 
 /// <summary>A source action choice opened by a draw hook while a standalone
-/// draw or automatic hand-draw stage is suspended.</summary>
+/// draw, automatic hand-draw stage, or supported autoplay is suspended.</summary>
 public sealed record SemanticDrawHookChoiceEventV111(
     string SchemaId, string EventId, string BoundaryFingerprint,
     string SupportFingerprint, string ChoiceId,
     SemanticDrawHookChoiceCandidateV111[] Candidates,
     bool AutomaticHandDraw = false,
-    bool BeforeHandDraw = false)
+    bool BeforeHandDraw = false,
+    bool AutomaticPipelineAutoplay = false)
 {
     public const string EventSchemaId =
         "sts2-v111-semantic-draw-hook-choice-v2";
@@ -33,6 +34,8 @@ public sealed record SemanticDrawHookChoiceEventV111(
                 string.IsNullOrWhiteSpace(candidate.Kind) ||
                 string.IsNullOrWhiteSpace(candidate.PayloadFingerprint)) ||
             (BeforeHandDraw && !AutomaticHandDraw) ||
+            (AutomaticPipelineAutoplay &&
+             (AutomaticHandDraw || BeforeHandDraw)) ||
             Candidates.Select(candidate => candidate.ActionId).Distinct()
                 .Count() != Candidates.Length ||
             SupportFingerprint != CanonicalJson.Sha256(new
@@ -40,17 +43,34 @@ public sealed record SemanticDrawHookChoiceEventV111(
                 ChoiceId,
                 Candidates
             }) ||
-            EventId != CanonicalJson.Sha256(new
-            {
-                SchemaId,
-                BoundaryFingerprint,
-                SupportFingerprint,
-                AutomaticHandDraw,
-                BeforeHandDraw
-            }))
+            EventId != CreateEventId(SchemaId, BoundaryFingerprint,
+                SupportFingerprint, AutomaticHandDraw, BeforeHandDraw,
+                AutomaticPipelineAutoplay))
             throw new InvalidDataException(
                 "Invalid semantic draw-hook choice event.");
     }
+
+    internal static string CreateEventId(string schemaId,
+        string boundaryFingerprint, string supportFingerprint,
+        bool automaticHandDraw, bool beforeHandDraw,
+        bool automaticPipelineAutoplay) => automaticPipelineAutoplay
+        ? CanonicalJson.Sha256(new
+        {
+            SchemaId = schemaId,
+            BoundaryFingerprint = boundaryFingerprint,
+            SupportFingerprint = supportFingerprint,
+            AutomaticHandDraw = automaticHandDraw,
+            BeforeHandDraw = beforeHandDraw,
+            AutomaticPipelineAutoplay = automaticPipelineAutoplay
+        })
+        : CanonicalJson.Sha256(new
+        {
+            SchemaId = schemaId,
+            BoundaryFingerprint = boundaryFingerprint,
+            SupportFingerprint = supportFingerprint,
+            AutomaticHandDraw = automaticHandDraw,
+            BeforeHandDraw = beforeHandDraw
+        });
 }
 
 public sealed record SemanticDrawHookChoiceDecisionV111(
@@ -82,6 +102,11 @@ public static class SemanticDrawHookChoiceEngineV111
         bool beforeHandDraw = automatic &&
             combat?.AutomaticPipelineContinuation?
                 .ControlledSemanticBeforeHandDrawPending == true;
+        bool automaticPipelineAutoplay = choice is not null &&
+            combat is not null &&
+            PrototypeGameEngine
+                .IsAutomaticPipelineSemanticDrawHookChoiceContinuation(
+                    combat, choice);
         if (choice?.StandaloneSemanticDrawHookChoice != true && !automatic)
             return null;
         if (choice is null || source.Phase != RunPhase.Combat ||
@@ -110,7 +135,8 @@ public static class SemanticDrawHookChoiceEngineV111
                       combat.AutomaticPipelineContinuation
                           .ControlledSemanticDrawRequested is not null
                     : !PrototypeGameEngine.IsSemanticAutomaticHandDraw(combat)
-                : combat.AutomaticPipelineContinuation is not null ||
+                : (!automaticPipelineAutoplay &&
+                   combat.AutomaticPipelineContinuation is not null) ||
                   !HasStandaloneDrawResume(choice)))
             throw new InvalidDataException(
                 "Semantic draw-hook choice cursor is inconsistent.");
@@ -130,18 +156,15 @@ public static class SemanticDrawHookChoiceEngineV111
             choice.ChoiceId,
             Candidates = candidates
         });
+        var schemaId = SemanticDrawHookChoiceEventV111.EventSchemaId;
         var result = new SemanticDrawHookChoiceEventV111(
-            SemanticDrawHookChoiceEventV111.EventSchemaId,
-            CanonicalJson.Sha256(new
-            {
-                SchemaId = SemanticDrawHookChoiceEventV111.EventSchemaId,
-                BoundaryFingerprint = boundary,
-                SupportFingerprint = support,
-                AutomaticHandDraw = automatic,
-                BeforeHandDraw = beforeHandDraw
-            }), boundary, support, choice.ChoiceId, candidates,
-            AutomaticHandDraw: automatic,
-            BeforeHandDraw: beforeHandDraw);
+            schemaId,
+            SemanticDrawHookChoiceEventV111.CreateEventId(
+                schemaId, boundary, support, automatic, beforeHandDraw,
+                automaticPipelineAutoplay),
+            boundary, support, choice.ChoiceId, candidates,
+            AutomaticHandDraw: automatic, BeforeHandDraw: beforeHandDraw,
+            AutomaticPipelineAutoplay: automaticPipelineAutoplay);
         result.Validate();
         return result;
     }
@@ -226,7 +249,7 @@ public static class SemanticDrawHookChoiceEngineV111
         return (advanced, decision);
     }
 
-    private static bool HasStandaloneDrawResume(
+    internal static bool HasStandaloneDrawResume(
         PendingCombatChoiceState choice)
     {
         if (choice.Continuation.Any(operation =>

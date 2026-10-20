@@ -868,7 +868,8 @@ public sealed record SemanticPilotCombatV111(
          endTurn.CardShortlistPending is not null ||
          endTurn.PoolShufflePending is not null ||
          endTurn.NestedHandCostSelectionPending is not null ||
-         endTurn.NestedCardSelectionPending is not null);
+         endTurn.NestedCardSelectionPending is not null ||
+         endTurn.NestedDrawHookChoicePending is not null);
 
     public SemanticPilotCombatV111 Fork() => this with
     {
@@ -2276,10 +2277,21 @@ public static class SemanticPilotCombatEngineV111
         var endTurn = current.PendingEndTurn ??
             throw new InvalidDataException(
                 "Draw-hook action lost its end-turn continuation.");
+        var priorNestedChoiceCount = endTurn.NestedChoiceTranscript.Length;
+        var priorHandDrawHookChoiceCount =
+            endTurn.HandDraw?.DrawHookChoiceTranscript.Length ?? 0;
         var nextEndTurn = SemanticEndTurnEngineV111.ResolveDrawHookChoice(
             endTurn, endTurn.Fingerprint, actionId);
-        var decision = nextEndTurn.HandDraw?.DrawHookChoiceTranscript
-            .LastOrDefault() ?? throw new InvalidDataException(
+        var decision = nextEndTurn.NestedChoiceTranscript.Length >
+                priorNestedChoiceCount
+            ? nextEndTurn.NestedChoiceTranscript[^1].DrawHookChoiceDecision
+            : nextEndTurn.HandDraw is { } handDraw &&
+                handDraw.DrawHookChoiceTranscript.Length >
+                    priorHandDrawHookChoiceCount
+                ? handDraw.DrawHookChoiceTranscript[^1]
+                : null;
+        if (decision is null)
+            throw new InvalidDataException(
                 "Draw-hook action omitted its replay decision.");
         if (CanonicalJson.Sha256(decision.Event) !=
                 CanonicalJson.Sha256(pending) ||

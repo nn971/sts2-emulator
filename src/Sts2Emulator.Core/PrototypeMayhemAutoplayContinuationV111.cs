@@ -240,6 +240,34 @@ public sealed partial class PrototypeGameEngine
             IsAtSupportedAutomaticPipelineTargetBoundary(combat);
     }
 
+    internal static bool IsAutomaticPipelineSemanticDrawHookChoiceContinuation(
+        CombatState combat, PendingCombatChoiceState pending)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(pending);
+        if (!pending.StandaloneSemanticDrawHookChoice ||
+            pending.AutomaticSemanticDrawHookChoice ||
+            combat.SemanticDeck is not
+                { Mode: SemanticDeckStateV111.NatureMode, Pending: null } ||
+            !SemanticDrawHookChoiceEngineV111.HasStandaloneDrawResume(pending) ||
+            pending.OuterChoiceContinuation is not { } continuation)
+            return false;
+
+        bool nestedAutoplay = false;
+        for (var frame = continuation; frame is not null;
+             frame = frame.Parent)
+            if (frame.CardPlaySeries is { IsAutoPlay: true })
+            {
+                nestedAutoplay = true;
+                break;
+            }
+        if (!nestedAutoplay) return false;
+
+        return IsMayhemAutoPrePlayPipelineCursor(combat) ||
+            combat.IsPlayerTurn &&
+            IsAtSupportedAutomaticPipelineTargetBoundary(combat);
+    }
+
     private static bool IsSupportedAutomaticPipelineAutoplayContinuation(
         CombatState combat,
         PrototypeChoiceResolutionContinuationState continuation)
