@@ -10,7 +10,7 @@ public sealed record SimulationMechanicsComparisonV111(
     bool DifferencesTruncated)
 {
     public const string SchemaId =
-        "sts2-v111-simulation-mechanics-comparison-v15";
+        "sts2-v111-simulation-mechanics-comparison-v16";
 
     public bool Equivalent => StringComparer.Ordinal.Equals(
         LeftFingerprint, RightFingerprint);
@@ -113,11 +113,17 @@ public sealed record SimulationPoolShuffleContinuationProjectionV111(
 /// operation would otherwise be lost when provider payloads are removed.</summary>
 public sealed record SimulationPendingChoiceMechanicsProjectionV111(
     SimulationRandomTargetMechanicsProgressV111? RandomTarget,
+    SimulationRandomPileCardMechanicsProgressV111? RandomPileCard,
     PrototypeQueuedOperation? GeneratedCardOperation,
     PrototypeQueuedOperation? PotionGenerationOperation,
     SimulationCardTransformMechanicsProgressV111? CardTransform,
     SimulationRandomCostMechanicsProgressV111? RandomCost,
     SimulationCardShortlistMechanicsProgressV111? CardShortlist);
+
+/// <summary>Provider-independent cursor for a random physical-card choice.
+/// Candidate identities and their support fingerprint remain provider data.</summary>
+public sealed record SimulationRandomPileCardMechanicsProgressV111(
+    string Operation, int OccurrenceOrdinal);
 
 public sealed record SimulationRandomTargetMechanicsProgressV111(
     string Kind,
@@ -585,19 +591,25 @@ public static class SimulationMechanicsProjectionEngineV111
         ProjectPendingChoiceMechanics(PendingCombatChoiceState choice)
     {
         var target = choice.ControlledTarget;
+        var randomPileCard = choice.ControlledRandomPileCard;
         var generation = choice.ControlledGeneration;
         var potionGeneration = choice.ControlledPotionGeneration;
         var transform = choice.ControlledCardTransform;
         var randomCost = choice.ControlledRandomCost;
         var shortlist = choice.ControlledCardShortlist;
-        if (target is null && generation is null && potionGeneration is null &&
-            transform is null && randomCost is null && shortlist is null)
+        if (target is null && randomPileCard is null && generation is null &&
+            potionGeneration is null && transform is null &&
+            randomCost is null && shortlist is null)
             return null;
 
         return new SimulationPendingChoiceMechanicsProjectionV111(
             target is null ? null : new SimulationRandomTargetMechanicsProgressV111(
                 target.Kind, target.SlyCardInstanceId,
                 target.AutoPlayCardInstanceId),
+            randomPileCard is null ? null :
+                new SimulationRandomPileCardMechanicsProgressV111(
+                    SemanticRandomPileCardEngineV111.MechanicsOperationId,
+                    randomPileCard.Ordinal),
             generation is null ? null : MechanicsOperation(generation.Operation),
             potionGeneration is null
                 ? null : MechanicsOperation(potionGeneration.Operation),
