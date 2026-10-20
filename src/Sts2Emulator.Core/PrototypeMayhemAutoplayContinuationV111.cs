@@ -180,6 +180,30 @@ public sealed partial class PrototypeGameEngine
             combat, continuation);
     }
 
+    internal static bool IsAutomaticPipelineSemanticPoolShuffleContinuation(
+        CombatState combat, PendingCombatChoiceState pending)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(pending);
+        if (pending is not
+            { ChoiceId: "controlled_pool_shuffle",
+              ControlledPoolShuffle: { } shuffle,
+              OuterChoiceContinuation: { } continuation } ||
+            shuffle.Operation.Kind == PrototypeCombatEffectKind.ChooseCards ||
+            !ValidateControlledPoolShuffle(
+                combat, shuffle, pending.SourceCardInstanceId))
+            return false;
+
+        if (shuffle.Operation.Kind ==
+            PrototypeCombatEffectKind.RecycleDrawPileForEffectDraw)
+            return IsMayhemLegacyRecycleContinuation(combat, pending);
+        if (combat.SemanticDeck is not
+            { Mode: SemanticDeckStateV111.NatureMode })
+            return false;
+        return IsSupportedAutomaticPipelineAutoplayContinuation(
+            combat, continuation);
+    }
+
     private static bool IsSupportedAutomaticPipelineAutoplayContinuation(
         CombatState combat,
         PrototypeChoiceResolutionContinuationState continuation)

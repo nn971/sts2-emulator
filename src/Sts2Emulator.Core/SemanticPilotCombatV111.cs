@@ -678,7 +678,11 @@ public sealed record SemanticPilotCombatV111(
             var mayhemRecycle = combat?.PendingChoice is { } pendingChoice &&
                 PrototypeGameEngine.IsMayhemLegacyRecycleContinuation(
                     combat, pendingChoice);
-            if ((this.PendingEndTurn is not null && !mayhemRecycle) ||
+            var automaticEndTurnShuffle =
+                this.PendingEndTurn?.PoolShufflePending is not null;
+            if ((!fixtureMatches && !automaticEndTurnShuffle) ||
+                (this.PendingEndTurn is not null &&
+                 !automaticEndTurnShuffle && !mayhemRecycle) ||
                 this.PendingInitialIntents is not null ||
                 this.IntentPending is not null || this.DrawPending is not null ||
                 this.TargetPending is not null ||
@@ -855,7 +859,8 @@ public sealed record SemanticPilotCombatV111(
          endTurn.GeneratedCardPending is not null ||
          endTurn.PotionGenerationPending is not null ||
          endTurn.CardTransformPending is not null ||
-         endTurn.CardShortlistPending is not null);
+         endTurn.CardShortlistPending is not null ||
+         endTurn.PoolShufflePending is not null);
 
     public SemanticPilotCombatV111 Fork() => this with
     {
@@ -2633,12 +2638,20 @@ public static class SemanticPilotCombatEngineV111
             pending, eventId, swapIndex);
         var result = SemanticPoolShuffleChoiceV111.Resume(
             current.Run, decision);
+        var nextEndTurn = current.PendingEndTurn is { } endTurn
+            ? SemanticEndTurnEngineV111.ContinueNestedAutomaticChoice(
+                endTurn, result,
+                new SemanticEndTurnNestedChoiceV111(
+                    "semantic_pool_shuffle",
+                    PoolShuffleDecision: decision.Fork()),
+                pending.SiteId)
+            : null;
         var next = PublishRunContinuation(
-            current, result, null,
+            current, result, nextEndTurn,
             new SemanticPilotContinuationV111(
                 "semantic_pool_shuffle",
                 PoolShuffleDecision: decision.Fork()),
-            preservePendingEndTurn: true);
+            preservePendingEndTurn: current.PendingEndTurn is null);
         Validate(next);
         return next;
     }
@@ -3325,6 +3338,9 @@ public static class SemanticPilotCombatEngineV111
         DescribePendingPoolShuffleEvent(SemanticPilotCombatV111 current)
     {
         ArgumentNullException.ThrowIfNull(current);
+        if (current.PendingEndTurn?.PoolShufflePending is
+            { } endTurnEvent)
+            return endTurnEvent;
         var combat = current.Run.World?.Combat;
         var choice = combat?.PendingChoice;
         var shuffle = choice?.ControlledPoolShuffle;

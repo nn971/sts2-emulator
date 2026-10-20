@@ -15,7 +15,7 @@ public sealed record SemanticEndTurnBoundaryChoiceV111(
                 "semantic_draw_insertion" or "semantic_generated_card" or
                 "semantic_potion_generation" or
                 "semantic_card_transform" or
-                "semantic_card_shortlist") ||
+                "semantic_card_shortlist" or "semantic_pool_shuffle") ||
             TranscriptIndex < 0)
             throw new InvalidDataException(
                 "Invalid semantic end-turn boundary transcript entry.");
@@ -283,6 +283,15 @@ public sealed record SemanticEndTurnV111(
                 NestedChoiceTranscript.Count(choice =>
                     choice.Kind == "semantic_card_shortlist"))
             : null;
+    [JsonIgnore] public SemanticPoolShuffleEventV111? PoolShufflePending =>
+        !Complete && HandDraw is not { AtBoundary: false } &&
+            PrototypeGameEngine
+                .HasPendingSupportedAutomaticPipelineSemanticPoolShuffle(Run)
+            ? SemanticPoolShuffleChoiceV111.DescribePending(
+                Run, Fingerprint,
+                NestedChoiceTranscript.Count(choice =>
+                    choice.Kind == "semantic_pool_shuffle"))
+            : null;
     [JsonIgnore] public SemanticCostEventV111? NestedCostPending =>
         !Complete && HandDraw is not { AtBoundary: false } &&
             Run.World?.Combat?.PendingChoice is
@@ -461,6 +470,10 @@ public sealed record SemanticEndTurnV111(
             .HasPendingSupportedAutomaticPipelineSemanticCardShortlist(
                 this.Run))
             SemanticCardShortlistChoiceV111.ValidateBoundary(this.Run);
+        if (PrototypeGameEngine
+            .HasPendingSupportedAutomaticPipelineSemanticPoolShuffle(
+                this.Run))
+            SemanticPoolShuffleChoiceV111.ValidateBoundary(this.Run);
     }
 
     public SemanticEndTurnV111 Fork() => this with
@@ -687,6 +700,22 @@ public static class SemanticEndTurnEngineV111
                     CardShortlistDecision: decision.Fork()),
                 cardShortlist.SiteId);
         }
+        else if (state.PoolShufflePending is { } poolShuffle)
+        {
+            if (selectedIndex < 0 ||
+                selectedIndex > poolShuffle.NextSwapIndex)
+                throw new ArgumentOutOfRangeException(nameof(selectedIndex));
+            var decision = SemanticPoolShuffleChoiceV111.Select(
+                poolShuffle, poolShuffle.EventId, selectedIndex);
+            var resumed = SemanticPoolShuffleChoiceV111.Resume(
+                state.Run.Fork(), decision);
+            state = ContinueNestedAutomaticChoice(
+                state, resumed,
+                new SemanticEndTurnNestedChoiceV111(
+                    "semantic_pool_shuffle",
+                    PoolShuffleDecision: decision.Fork()),
+                poolShuffle.SiteId);
+        }
         else if (state.NestedCostPending is { } nestedCost)
         {
             if (selectedIndex < 0 ||
@@ -887,6 +916,32 @@ public static class SemanticEndTurnEngineV111
         return next;
     }
 
+    public static SemanticEndTurnV111 ResolvePoolShuffle(
+        SemanticEndTurnV111 source, string fingerprint, string eventId,
+        int swapIndex)
+    {
+        Validate(source);
+        if (!StringComparer.Ordinal.Equals(source.Fingerprint, fingerprint))
+            throw new InvalidOperationException(
+                "Stale semantic end-turn pool-shuffle fingerprint.");
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
+        var pending = source.PoolShufflePending ??
+            throw new InvalidOperationException(
+                "No automatic-pipeline pool-shuffle event is pending.");
+        var decision = SemanticPoolShuffleChoiceV111.Select(
+            pending, eventId, swapIndex);
+        var resumed = SemanticPoolShuffleChoiceV111.Resume(
+            source.Run.Fork(), decision);
+        var next = ContinueNestedAutomaticChoice(
+            source, resumed,
+            new SemanticEndTurnNestedChoiceV111(
+                "semantic_pool_shuffle",
+                PoolShuffleDecision: decision.Fork()),
+            pending.SiteId);
+        Validate(next);
+        return next;
+    }
+
     public static SemanticEndTurnV111 ResolveTarget(
         SemanticEndTurnV111 source, string fingerprint,
         string eventId, int enemyInstanceId)
@@ -1073,6 +1128,12 @@ public static class SemanticEndTurnEngineV111
                 pending, choice.CardShortlistDecision!,
                 choice.CardShortlistDecision!.SelectedCardInstanceId);
         }
+        else if (expectedKind == "semantic_pool_shuffle")
+        {
+            var pending = source.PoolShufflePending;
+            SemanticPoolShuffleChoiceV111.ValidateDecision(
+                pending, choice.PoolShuffleDecision!);
+        }
         else
         {
             SemanticDrawInsertionChoiceV111.ValidateDecision(
@@ -1257,7 +1318,7 @@ public static class SemanticEndTurnEngineV111
         int nestedChoiceIndex = 0, nestedDrawIndex = 0, nestedCostIndex = 0,
             nestedInsertionIndex = 0, nestedGeneratedCardIndex = 0,
             nestedPotionGenerationIndex = 0, nestedCardTransformIndex = 0,
-            nestedCardShortlistIndex = 0;
+            nestedCardShortlistIndex = 0, nestedPoolShuffleIndex = 0;
         void ReplayAvailableBoundaryChoices()
         {
             while (boundaryIndex < saved.BoundaryTranscript.Length)
@@ -1283,10 +1344,13 @@ public static class SemanticEndTurnEngineV111
                     reproduced.CardTransformPending is not null;
                 var hasNestedCardShortlist =
                     reproduced.CardShortlistPending is not null;
+                var hasNestedPoolShuffle =
+                    reproduced.PoolShufflePending is not null;
                 if (!hasEnemyAction && !hasTarget &&
                     !hasNestedDraw && !hasNestedCost && !hasNestedInsertion &&
                     !hasNestedGeneratedCard && !hasNestedPotionGeneration &&
-                    !hasNestedCardTransform && !hasNestedCardShortlist)
+                    !hasNestedCardTransform && !hasNestedCardShortlist &&
+                    !hasNestedPoolShuffle)
                     return;
 
                 var boundary = saved.BoundaryTranscript[boundaryIndex];
@@ -1477,7 +1541,7 @@ public static class SemanticEndTurnEngineV111
                         pending.SiteId);
                     nestedCardTransformIndex++;
                 }
-                else
+                else if (boundary.Kind == "semantic_card_shortlist")
                 {
                     if (!hasNestedCardShortlist ||
                         boundary.TranscriptIndex != nestedCardShortlistIndex ||
@@ -1501,6 +1565,30 @@ public static class SemanticEndTurnEngineV111
                         saved.NestedChoiceTranscript[nestedChoiceIndex++],
                         pending.SiteId);
                     nestedCardShortlistIndex++;
+                }
+                else
+                {
+                    if (!hasNestedPoolShuffle ||
+                        boundary.TranscriptIndex != nestedPoolShuffleIndex ||
+                        nestedChoiceIndex >=
+                            saved.NestedChoiceTranscript.Length ||
+                        saved.NestedChoiceTranscript[nestedChoiceIndex] is not
+                            { Kind: "semantic_pool_shuffle",
+                              PoolShuffleDecision: { } shuffleChoice })
+                        throw new InvalidDataException(
+                            "Semantic end-turn pool-shuffle transcript order is invalid.");
+                    var pending = reproduced.PoolShufflePending ??
+                        throw new InvalidDataException(
+                            "Semantic end-turn replay lost its pool-shuffle event.");
+                    SemanticPoolShuffleChoiceV111.ValidateDecision(
+                        pending, shuffleChoice);
+                    var resumed = SemanticPoolShuffleChoiceV111.Resume(
+                        reproduced.Run.Fork(), shuffleChoice);
+                    reproduced = ContinueNestedAutomaticChoice(
+                        reproduced, resumed,
+                        saved.NestedChoiceTranscript[nestedChoiceIndex++],
+                        pending.SiteId);
+                    nestedPoolShuffleIndex++;
                 }
                 boundaryIndex++;
             }
@@ -1582,7 +1670,10 @@ public static class SemanticEndTurnEngineV111
                         choice.Kind == "semantic_card_transform") ||
                 nestedCardShortlistIndex !=
                     saved.NestedChoiceTranscript.Count(choice =>
-                        choice.Kind == "semantic_card_shortlist"))
+                        choice.Kind == "semantic_card_shortlist") ||
+                nestedPoolShuffleIndex !=
+                    saved.NestedChoiceTranscript.Count(choice =>
+                        choice.Kind == "semantic_pool_shuffle"))
                 throw new InvalidDataException(
                     "Semantic end-turn boundary transcript omitted a decision.");
         }

@@ -292,6 +292,19 @@ public static class SemanticPoolShuffleChoiceV111
         return decision;
     }
 
+    internal static void ValidateDecision(
+        SemanticPoolShuffleEventV111? pending,
+        SemanticPoolShuffleDecisionV111 decision)
+    {
+        ArgumentNullException.ThrowIfNull(decision);
+        decision.Validate();
+        if (pending is null || pending.EventId != decision.Event.EventId ||
+            CanonicalJson.Sha256(pending) !=
+                CanonicalJson.Sha256(decision.Event))
+            throw new InvalidDataException(
+                "Pool-shuffle decision differs from its live semantic event.");
+    }
+
     /// <summary>Revalidate one bounded source swap and resume the ordinary
     /// full-pool shuffle continuation.</summary>
     internal static RunState Resume(
@@ -315,6 +328,12 @@ public static class SemanticPoolShuffleChoiceV111
         using (ControlledChanceGuardV111.Enter())
             result = PrototypeGameEngine.ResumeControlledPoolShuffle(
                 checkpoint.Fork(), decision.SelectedSwapIndex);
+        if (PrototypeGameEngine
+                .IsAtCombatRewardOrTerminalBoundary(result))
+        {
+            PrototypeStateInvariants.Validate(result);
+            return result;
+        }
         if (result.Phase != RunPhase.Combat)
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_POOL site=" + decision.Event.SiteId + " " +

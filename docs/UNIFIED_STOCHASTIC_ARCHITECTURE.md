@@ -230,6 +230,12 @@ ordered physical-card support and selected prefix; the ordinary shortlist
 continuation resumes only after the saved prefix reaches its required count.
 Restore checks each pick against the live remaining support before continuing
 the autoplayed card.
+
+Automatic source-pool shuffles reached by autoplay also retain each bounded
+swap in the end-turn chronology. Restore checks the current permutation and
+swap bound at every step before resuming the original operation; random
+shortlist shuffles that lead to a separate player card selection stay on their
+existing interactive path.
 `ReferenceNatureMerchantSessionV111`,
 `ReferenceNatureTreasureSessionV111`,
 `ReferenceNatureCombatRewardSessionV111`,

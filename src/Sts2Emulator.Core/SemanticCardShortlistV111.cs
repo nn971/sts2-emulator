@@ -300,8 +300,8 @@ public static class SemanticCardShortlistChoiceV111
         using (ControlledChanceGuardV111.Enter())
             resumed = PrototypeGameEngine.ResumeControlledCardShortlist(
                 checkpoint.Fork(), decision.SelectedIndex);
-        if (randomAutoplay && resumed.Phase is
-            (RunPhase.Reward or RunPhase.Terminal))
+        if (PrototypeGameEngine
+                .IsAtCombatRewardOrTerminalBoundary(resumed))
         {
             PrototypeStateInvariants.Validate(resumed);
             return resumed;

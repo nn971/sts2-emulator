@@ -84,6 +84,7 @@ public sealed record SemanticEndTurnStochasticStateV111(
         int transcriptNestedPotionGenerations = 0;
         int transcriptNestedCardTransforms = 0;
         int transcriptNestedCardShortlists = 0;
+        int transcriptNestedPoolShuffles = 0;
         int transcriptNestedChoices = 0;
         foreach (var boundary in BoundaryTranscript)
         {
@@ -189,6 +190,19 @@ public sealed record SemanticEndTurnStochasticStateV111(
                     throw new InvalidDataException(
                         "Semantic end-turn nested card-shortlist boundary order is invalid.");
             }
+            else if (boundary.Kind == "semantic_pool_shuffle")
+            {
+                if (boundary.TranscriptIndex !=
+                        transcriptNestedPoolShuffles++ ||
+                    transcriptNestedPoolShuffles >
+                        NestedChoiceTranscript.Count(choice =>
+                            choice.Kind == "semantic_pool_shuffle") ||
+                    transcriptNestedChoices >= NestedChoiceTranscript.Length ||
+                    NestedChoiceTranscript[transcriptNestedChoices++].Kind !=
+                        "semantic_pool_shuffle")
+                    throw new InvalidDataException(
+                        "Semantic end-turn nested pool-shuffle boundary order is invalid.");
+            }
         }
         if ((BoundaryTranscript.Length > 0 &&
              (transcriptEnemyActions != EnemyActionTranscript.Length ||
@@ -207,6 +221,8 @@ public sealed record SemanticEndTurnStochasticStateV111(
                   choice.Kind == "semantic_card_transform") ||
               transcriptNestedCardShortlists != NestedChoiceTranscript.Count(choice =>
                   choice.Kind == "semantic_card_shortlist") ||
+              transcriptNestedPoolShuffles != NestedChoiceTranscript.Count(choice =>
+                  choice.Kind == "semantic_pool_shuffle") ||
               transcriptNestedChoices != NestedChoiceTranscript.Length)) ||
             (BoundaryTranscript.Length == 0 &&
              (TargetTranscript.Length != 0 ||
@@ -236,7 +252,8 @@ public sealed record SemanticEndTurnNestedChoiceV111(
     SemanticGeneratedCardDecisionV111? GeneratedCardDecision = null,
     SemanticPotionGenerationDecisionV111? PotionGenerationDecision = null,
     SemanticCardTransformDecisionV111? CardTransformDecision = null,
-    SemanticCardShortlistDecisionV111? CardShortlistDecision = null)
+    SemanticCardShortlistDecisionV111? CardShortlistDecision = null,
+    SemanticPoolShuffleDecisionV111? PoolShuffleDecision = null)
 {
     public SemanticEndTurnNestedChoiceV111 Fork() => this with
     {
@@ -256,11 +273,23 @@ public sealed record SemanticEndTurnNestedChoiceV111(
             {
                 Event = CardTransformDecision.Event.Fork()
             },
-        CardShortlistDecision = CardShortlistDecision?.Fork()
+        CardShortlistDecision = CardShortlistDecision?.Fork(),
+        PoolShuffleDecision = PoolShuffleDecision?.Fork()
     };
 
     public void Validate()
     {
+        int decisionCount = (DrawDecision is null ? 0 : 1) +
+            (CostDecision is null ? 0 : 1) +
+            (DrawInsertionDecision is null ? 0 : 1) +
+            (GeneratedCardDecision is null ? 0 : 1) +
+            (PotionGenerationDecision is null ? 0 : 1) +
+            (CardTransformDecision is null ? 0 : 1) +
+            (CardShortlistDecision is null ? 0 : 1) +
+            (PoolShuffleDecision is null ? 0 : 1);
+        if (decisionCount != 1)
+            throw new InvalidDataException(
+                "Nested end-turn choice must contain exactly one typed decision.");
         if (Kind == "semantic_draw" && DrawDecision is not null &&
             CostDecision is null && DrawInsertionDecision is null &&
             GeneratedCardDecision is null && PotionGenerationDecision is null &&
@@ -320,6 +349,15 @@ public sealed record SemanticEndTurnNestedChoiceV111(
             CardTransformDecision is null)
         {
             CardShortlistDecision.Validate();
+            return;
+        }
+        if (Kind == "semantic_pool_shuffle" &&
+            PoolShuffleDecision is not null && DrawDecision is null &&
+            CostDecision is null && DrawInsertionDecision is null &&
+            GeneratedCardDecision is null && PotionGenerationDecision is null &&
+            CardTransformDecision is null && CardShortlistDecision is null)
+        {
+            PoolShuffleDecision.Validate();
             return;
         }
         throw new InvalidDataException(
