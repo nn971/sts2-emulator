@@ -689,7 +689,9 @@ public static class ControlledPlayableCombatEngineV111
             NextCardInstanceId = cards.Length + 1L,
             Relics = relics,
             Potions = potions,
-            CurrentMapNodeId = run.World!.Map.CurrentNodeId,
+            // Fixed Act 1 Nature fixtures own an isolated combat room, not
+            // a visited node in the newly generated (and still unentered) map.
+            CurrentMapNodeId = act == 1 ? null : run.World!.Map.CurrentNodeId,
             IsPlayerTurn = true
         };
         combat = SemanticDrawPileAdapterV111.ApplyDrawPileInitialization(
@@ -710,6 +712,14 @@ public static class ControlledPlayableCombatEngineV111
             Phase = RunPhase.Combat,
             World = run.World! with
             {
+                // The conditioned Act 1 entry starts directly in a pinned
+                // encounter, before any map selection. Give that fixture its
+                // actual encounter floor and an explicitly mapless room, so
+                // the normal run invariants validate its real source history.
+                // No unrelated generated-map node is claimed to be visited.
+                Floor = act == 1 ? verified.Formation.TotalFloor : run.World!.Floor,
+                Map = act == 1 ? new MapState([]) : run.World!.Map,
+                Event = act == 1 ? null : run.World!.Event,
                 ActiveRoom = PrototypeRoomType.Combat,
                 Combat = combat
             }
