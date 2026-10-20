@@ -366,7 +366,8 @@ public sealed record SemanticPilotCombatV111(
           CardSelectionPending is not null) ||
          (PendingEndTurn is not null && PendingInitialIntents is null &&
           (DrawHookChoicePending is not null ||
-           KnowledgeDemonChoicePending is not null)));
+           KnowledgeDemonChoicePending is not null ||
+           PendingEndTurn?.NestedCardSelectionPending is not null)));
     [JsonIgnore] public bool UsesNativePolicyBaseline =>
         SeededEntry?.NativePolicyBaseline ?? false;
     [JsonIgnore] public string? SourceOpeningFingerprint =>
