@@ -67,10 +67,9 @@ public sealed record ReferenceNatureNativeShovelSessionSnapshotV111(
 }
 
 /// <summary>
-/// Atomic Shovel dig. Configured Native runs sample rarity and identity from
-/// the projected relic bag; legacy runs sample one eligible relic index.
-/// Both commit the Reward and Nature cursor together after replaying the
-/// ordinary Rest action.
+/// Atomic configured Native Shovel dig. It samples the relic rarity and
+/// identity from the projected bag, then commits the Reward and Nature cursor
+/// together after replaying the ordinary Rest action.
 /// </summary>
 public sealed record ReferenceNatureNativeShovelSessionV111(
     string SchemaId, RunState Origin, GameAction Action, RunState Run,
@@ -123,8 +122,7 @@ public sealed record ReferenceNatureNativeShovelSessionV111(
 
     public const string CurrentSchemaId =
         "sts2-v111-reference-nature-native-shovel-session-v1";
-    private const int NativeDrawRequestCount = 2;
-    private const int LegacyDrawRequestCount = 1;
+    private const int DrawRequestCount = 2;
     private const string RelicRaritySiteId =
         StochasticSiteRegistryV111.RelicGrabBagRaritySiteId;
     private const string RelicModelSiteId =
@@ -146,8 +144,7 @@ public sealed record ReferenceNatureNativeShovelSessionV111(
 
     public static string[] SessionSiteIds =>
         [StochasticSiteRegistryV111.RelicGrabBagRaritySiteId,
-            PrototypeNativeRelicGrabBag.NativeTreasureModelSiteId,
-            StochasticSiteRegistryV111.UnownedRandomRelicSelectionSiteId];
+            PrototypeNativeRelicGrabBag.NativeTreasureModelSiteId];
 
     public static ReferenceNatureNativeShovelSessionV111 Begin(
         RunState source, ulong natureSeed) => Begin(
@@ -168,13 +165,13 @@ public sealed record ReferenceNatureNativeShovelSessionV111(
         ArgumentNullException.ThrowIfNull(initialNatureState);
         ValidateOpeningBoundary(source, action);
         ReferenceNatureRunCursorV111.ValidateInitial(
-            source, initialNatureState, "Shovel dig");
+            source, initialNatureState, "Native Shovel dig");
 
         var origin = CreateNatureReplayOrigin(source);
         var replay = Replay(origin, action, []);
         if (replay.Continuation is null)
             throw new NotSupportedException(
-                "Shovel dig did not reach a supported relic draw.");
+                "Native Shovel dig did not reach a supported relic draw.");
         var session = new ReferenceNatureNativeShovelSessionV111(
             CurrentSchemaId, origin.Fork(), CloneAction(action), origin.Fork(),
             initialNatureState.Fork(), initialNatureState.Fork(), [], [],
@@ -253,7 +250,7 @@ public sealed record ReferenceNatureNativeShovelSessionV111(
             Run is null || InitialNatureState is null || NatureState is null ||
             ProviderDecisions is null || DecisionTranscript is null ||
             ProviderDecisions.Length != DecisionTranscript.Length ||
-            DecisionTranscript.Length > ExpectedDrawRequestCount(Origin) ||
+            DecisionTranscript.Length > DrawRequestCount ||
             string.IsNullOrWhiteSpace(Action.Kind))
             throw new InvalidDataException(
                 "Invalid ReferenceNature Native Shovel session envelope.");
@@ -276,15 +273,14 @@ public sealed record ReferenceNatureNativeShovelSessionV111(
         ValidateOpeningBoundary(Origin, Action);
         PrototypeStateInvariants.Validate(Origin);
         PrototypeStateInvariants.Validate(Run);
-        var allowMissingRelicBag = !IsConfiguredNativeBoundary(Origin);
         ReferenceNatureRunProjectionV111.ValidateNatureRelicBagProjection(
-            Origin, "Shovel session origin", allowMissingRelicBag);
+            Origin, "Native Shovel session origin");
         ReferenceNatureRunProjectionV111.ValidateNatureRelicBagProjection(
-            Run, "Shovel session replay", allowMissingRelicBag);
+            Run, "Native Shovel session replay");
         InitialNatureState.Validate();
         NatureState.Validate();
         ReferenceNatureRunCursorV111.ValidateInitial(
-            Origin, InitialNatureState, "Shovel dig");
+            Origin, InitialNatureState, "Native Shovel dig");
 
         var expectedNatureState = InitialNatureState.Fork();
         for (var index = 0; index < ProviderDecisions.Length; index++)
@@ -325,8 +321,7 @@ public sealed record ReferenceNatureNativeShovelSessionV111(
                 PendingCandidateLabels) ||
             CanonicalJson.Sha256(expectedNatureState) !=
                 CanonicalJson.Sha256(NatureState) ||
-            Complete && ProviderDecisions.Length !=
-                ExpectedDrawRequestCount(Origin))
+            Complete && ProviderDecisions.Length != DrawRequestCount)
             throw new InvalidDataException(
                 "Native Shovel continuation differs from its replay.");
 
@@ -395,44 +390,10 @@ public sealed record ReferenceNatureNativeShovelSessionV111(
         ControlledStochasticDecisionV111[] prefix)
     {
         request.Validate();
-        if (request.IndexRequest is { } legacyIndexRequest &&
-            legacyIndexRequest.SiteId == StochasticSiteRegistryV111
-                .UnownedRandomRelicSelectionSiteId)
-        {
-            if (!IsLegacyBoundary(source) ||
-                legacyIndexRequest.StreamId != "event" ||
-                legacyIndexRequest.OperationKind != "choose_index" ||
-                candidateLabels is null ||
-                legacyIndexRequest.SupportCount != candidateLabels.Length ||
-                !legacyIndexRequest.OrderedCandidates.SequenceEqual(
-                    Enumerable.Range(0, candidateLabels.Length)))
-                throw new InvalidDataException(
-                    "Legacy Shovel relic selection request is malformed.");
-
-            var eligible = PrototypeContent.RelicPool
-                .Where(id => !source.Player.Relics.Any(relic =>
-                    StringComparer.Ordinal.Equals(relic.RelicId, id)))
-                .ToArray();
-            var expectedOwner = "rest:shovel:pool:" +
-                CanonicalJson.Sha256(eligible);
-            if (eligible.Length == 0 ||
-                !candidateLabels.SequenceEqual(eligible,
-                    StringComparer.Ordinal) ||
-                legacyIndexRequest.OwnerId != expectedOwner)
-                throw new InvalidDataException(
-                    "Legacy Shovel support differs from its eligible relic pool.");
-
-            return ChanceLawEngineV111.QueryUnownedRelicSelectionIndex(
-                legacyIndexRequest.StreamId, legacyIndexRequest.OwnerId,
-                legacyIndexRequest.SupportCount,
-                legacyIndexRequest.Ordinal);
-        }
-
         if (request.UnitFloatRequest is { } floatRequest &&
             floatRequest.SiteId == RelicRaritySiteId)
         {
-            if (!IsConfiguredNativeBoundary(source) ||
-                floatRequest.StreamId != NativePlayerRngV111.RewardsStreamId ||
+            if (floatRequest.StreamId != NativePlayerRngV111.RewardsStreamId ||
                 floatRequest.OwnerId != PrototypeNativeRelicGrabBag
                     .NativeTreasureRarityOwnerId || candidateLabels is not null)
                 throw new InvalidDataException(
@@ -443,8 +404,7 @@ public sealed record ReferenceNatureNativeShovelSessionV111(
         if (request.IndexRequest is { } indexRequest &&
             indexRequest.SiteId == RelicModelSiteId)
         {
-            if (!IsConfiguredNativeBoundary(source) ||
-                source.World is not { } world || candidateLabels is null ||
+            if (source.World is not { } world || candidateLabels is null ||
                 indexRequest.StreamId != NativePlayerRngV111.RewardsStreamId ||
                 indexRequest.OperationKind != "choose_index" ||
                 indexRequest.SupportCount != candidateLabels.Length ||
@@ -480,7 +440,7 @@ public sealed record ReferenceNatureNativeShovelSessionV111(
         }
 
         throw new NotSupportedException(
-            $"Shovel replay does not support stochastic site '{request.SiteId}'.");
+            $"Native Shovel replay does not support stochastic site '{request.SiteId}'.");
     }
 
     private static PrototypeRelicBagState BagAfterPrefix(
@@ -543,21 +503,16 @@ public sealed record ReferenceNatureNativeShovelSessionV111(
             RequireSessionRequest);
 
     private static RunState CreateNatureReplayOrigin(RunState source) =>
-        IsConfiguredNativeBoundary(source)
-            ? ReferenceNatureRunProjectionV111.CreateNatureReplayOrigin(
-                source, createRelicBagWhenMissing: true)
-            : ReferenceNatureRunProjectionV111.CreateNatureReplayOrigin(
-                source, allowMissingRelicBag: true);
+        ReferenceNatureRunProjectionV111.CreateNatureReplayOrigin(
+            source, createRelicBagWhenMissing: true);
 
     private static bool RequireSessionRequest(
         ControlledStochasticRequestV111 request)
     {
-        if (request.SiteId is RelicRaritySiteId or RelicModelSiteId ||
-            request.SiteId == StochasticSiteRegistryV111
-                .UnownedRandomRelicSelectionSiteId)
+        if (request.SiteId is RelicRaritySiteId or RelicModelSiteId)
             return true;
         throw new NotSupportedException(
-            $"Shovel replay does not support stochastic site '{request.SiteId}'.");
+            $"Native Shovel replay does not support stochastic site '{request.SiteId}'.");
     }
 
     private static GameAction FindDigAction(RunState source)
@@ -574,10 +529,9 @@ public sealed record ReferenceNatureNativeShovelSessionV111(
         RunState source, GameAction action)
     {
         var world = source.World;
-        var configuredNative = IsConfiguredNativeBoundary(source);
-        var legacy = IsLegacyBoundary(source);
         if (source.Phase != RunPhase.Rest || world is null ||
-            (!configuredNative && !legacy) ||
+            source.NativeRunRng is null ||
+            !PrototypeGameEngine.UsesNativeRegionalSystems(world) ||
             source.ControlledRunActionChoice is not null ||
             source.ControlledEventRewardChoice is not null ||
             !PrototypeNativeRestSiteRelics.CanDig(source.Player) ||
@@ -586,22 +540,9 @@ public sealed record ReferenceNatureNativeShovelSessionV111(
                 PrototypeAiEnvironment.StableActionId(candidate) ==
                 PrototypeAiEnvironment.StableActionId(action)))
             throw new InvalidOperationException(
-                "Shovel session requires a legal Native or legacy Rest dig action.");
+                "Native Shovel session requires a legal configured Native Rest dig action.");
         PrototypeStateInvariants.Validate(source);
     }
-
-    private static int ExpectedDrawRequestCount(RunState source) =>
-        IsConfiguredNativeBoundary(source)
-            ? NativeDrawRequestCount
-            : LegacyDrawRequestCount;
-
-    private static bool IsConfiguredNativeBoundary(RunState source) =>
-        source.NativeRunRng is not null && source.World is { } world &&
-        PrototypeGameEngine.UsesNativeRegionalSystems(world);
-
-    private static bool IsLegacyBoundary(RunState source) =>
-        source.NativeRunRng is null && source.World is { } world &&
-        !PrototypeGameEngine.UsesNativeRegionalSystems(world);
 
     private static bool SameRequest(
         ControlledStochasticRequestV111? left,

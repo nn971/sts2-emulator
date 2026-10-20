@@ -2,8 +2,6 @@
 
 **Recorded:** 2026-10-16. **Status:** proposed implementation milestones, **not completed work**. **Authority:** [Unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md).
 
-**S6 Shovel ReferenceNature continuation increment (2026-10-21):** The existing atomic Shovel session now handles a legal legacy Rest dig as one `event`-stream unowned-relic index request, validates its ordered support and owner against the ordinary mechanics pool, and commits the Reward with the Nature cursor. Configured Native digs retain their rarity-plus-identity continuation. Legacy index weights remain `UNVERIFIED`; `git diff --check` passed, and no tests or builds were run.
-
 **S6 Endless Conveyor Suspicious Condiment increment (2026-10-21):** The existing ReferenceNature session now samples the `potion.uniform_model.index_draw` request when a legal Suspicious Condiment Grab queues its potion. It replays the ordinary action, verifies the selected potion and pending reward boundary, preserves the legacy `reward` stream and Native event cursor, then commits the Nature cursor. Taking or skipping the potion and resolving the deferred next-dish ticket remain a separate action/session. The full-pool model weights remain `UNVERIFIED`; `git diff --check` passed, and no tests or builds were run.
 
 **Tracking:** [S1 Chance Law and ReferenceNature issue #174](https://github.com/nn971/sts2-emulator/issues/174); [Nature pilot #143](https://github.com/nn971/sts2-emulator/issues/143); [native inspector #122](https://github.com/nn971/sts2-emulator/issues/122). The existing site ledger and this architecture's ownership crosswalk are joined in the [site and state inventory](STOCHASTIC_SITE_OWNERSHIP_INVENTORY.md); that file deliberately does not duplicate per-site rows.

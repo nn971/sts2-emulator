@@ -1282,10 +1282,7 @@ internal static class PrototypeAiJsonlServer
                 fingerprint = session.Fingerprint,
                 runFingerprint = CanonicalJson.Sha256(session.Run),
                 siteId = law?.SiteId ??
-                    (session.Origin.NativeRunRng is not null
-                        ? PrototypeNativeRelicGrabBag.NativeTreasureModelSiteId
-                        : StochasticSiteRegistryV111
-                            .UnownedRandomRelicSelectionSiteId),
+                    PrototypeNativeRelicGrabBag.NativeTreasureModelSiteId,
                 actionId = PrototypeAiEnvironment.StableActionId(session.Action),
                 boundaryId = "rest_shovel_dig",
                 runPhase = session.Run.Phase.ToString(),
@@ -1293,10 +1290,7 @@ internal static class PrototypeAiJsonlServer
                 nextOrdinal = session.NextOrdinal,
                 pending = law is null ? null : new
                 {
-                    kind = law.SiteId == StochasticSiteRegistryV111
-                        .UnownedRandomRelicSelectionSiteId
-                        ? "legacy_shovel_relic_draw"
-                        : "native_shovel_relic_draw",
+                    kind = "native_shovel_relic_draw",
                     boundaryFingerprint = law.EventId,
                     chanceLaw = law,
                     probabilityStatus = law.ProbabilityStatus

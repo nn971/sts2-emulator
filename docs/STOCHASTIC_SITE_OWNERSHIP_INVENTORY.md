@@ -159,7 +159,7 @@ The combat card-upgrade float row now has a caller-conditioned exact law for the
 
 PotionFactory rarity now has one shared exact Native threshold law for the merchant, Coffer, combat-generation, and reward streams. Its standalone query binds a typed source request without inspecting a cursor; the saved source prefix and stream parity remain separate.
 
-Relic-bag rarity now exposes the same exact raw threshold law for a declared `player.rewards` request across reward, Treasure, Shovel, event, and merchant callsites. The configured Native Shovel uses the atomic session contract to pair that request with the canonical relic-identity selection; legacy Shovel uses the same session lifecycle for its unowned-relic index draw. The legacy pool weights remain `UNVERIFIED`, and the Native law does not reveal or model the remaining relic queue identities.
+Relic-bag rarity now exposes the same exact raw threshold law for a declared `player.rewards` request across reward, Treasure, Shovel, event, and merchant callsites. The configured Native Shovel uses the atomic session contract to pair that request with the canonical relic-identity selection. The law does not reveal or model the remaining relic queue identities.
 
 Encounter card-model selection now has a direct Native bounded-index law on caller-declared support, owner, and Rewards-stream ordinal. Its support weights are exact; source pool correctness, reward prefix, stream attribution, and cursor parity remain open.
 
