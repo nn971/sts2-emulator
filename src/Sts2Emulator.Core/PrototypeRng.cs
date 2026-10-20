@@ -55,12 +55,12 @@ public static class PrototypeRng
                     CultureInfo.InvariantCulture, out var raw))
             {
                 throw new ArgumentException(
-                    $"Stream '{expected[i]}' requires a 16-character hexadecimal state.",
+                    $"Stream '{StreamIds[i]}' requires a 16-character hexadecimal state.",
                     nameof(initialStateHex));
             }
             var bytes = new byte[sizeof(ulong)];
             BinaryPrimitives.WriteUInt64LittleEndian(bytes, raw);
-            streams[i] = new RngStreamState(expected[i], Codec, bytes, 0);
+            streams[i] = new RngStreamState(StreamIds[i], Codec, bytes, 0);
         }
         return new RngBundle(streams);
     }
