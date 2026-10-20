@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Sts2Emulator.Core;
 
 /// <summary>
@@ -17,12 +19,44 @@ public enum PrototypeRelicBagOrderMode
     NatureUnordered
 }
 
-public sealed record PrototypeRelicBagState(
-    string[] Common,
-    string[] Uncommon,
-    string[] Rare,
-    string[] Shop)
+public sealed record PrototypeRelicBagState
 {
+    private string[] _common;
+    private string[] _uncommon;
+    private string[] _rare;
+    private string[] _shop;
+
+    [JsonConstructor]
+    public PrototypeRelicBagState(
+        string[] Common, string[] Uncommon, string[] Rare, string[] Shop)
+    {
+        _common = CloneRequired(Common, nameof(Common));
+        _uncommon = CloneRequired(Uncommon, nameof(Uncommon));
+        _rare = CloneRequired(Rare, nameof(Rare));
+        _shop = CloneRequired(Shop, nameof(Shop));
+    }
+
+    public string[] Common
+    {
+        get => (string[])_common.Clone();
+        init => _common = CloneRequired(value, nameof(Common));
+    }
+    public string[] Uncommon
+    {
+        get => (string[])_uncommon.Clone();
+        init => _uncommon = CloneRequired(value, nameof(Uncommon));
+    }
+    public string[] Rare
+    {
+        get => (string[])_rare.Clone();
+        init => _rare = CloneRequired(value, nameof(Rare));
+    }
+    public string[] Shop
+    {
+        get => (string[])_shop.Clone();
+        init => _shop = CloneRequired(value, nameof(Shop));
+    }
+
     // Native snapshots retain their existing shape. Nature snapshots carry
     // this optional discriminator so sorted identity sets cannot be mistaken
     // for committed queue order after a restore.
@@ -32,14 +66,30 @@ public sealed record PrototypeRelicBagState(
 
     public PrototypeRelicBagState Fork() => this with
     {
-        Common = (string[])Common.Clone(),
-        Uncommon = (string[])Uncommon.Clone(),
-        Rare = (string[])Rare.Clone(),
-        Shop = (string[])Shop.Clone()
+        Common = _common,
+        Uncommon = _uncommon,
+        Rare = _rare,
+        Shop = _shop
     };
+
+    public void Deconstruct(
+        out string[] Common, out string[] Uncommon,
+        out string[] Rare, out string[] Shop)
+    {
+        Common = this.Common;
+        Uncommon = this.Uncommon;
+        Rare = this.Rare;
+        Shop = this.Shop;
+    }
 
     public string[] Remaining =>
         Common.Concat(Uncommon).Concat(Rare).Concat(Shop).ToArray();
+
+    private static string[] CloneRequired(string[] values, string parameterName)
+    {
+        ArgumentNullException.ThrowIfNull(values, parameterName);
+        return (string[])values.Clone();
+    }
 }
 
 public static class PrototypeNativeRelicGrabBag
