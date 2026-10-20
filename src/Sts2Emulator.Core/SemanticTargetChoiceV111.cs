@@ -112,9 +112,9 @@ public static class SemanticTargetChoiceV111
         var target = choice?.ControlledTarget;
         var playerActionBoundary = combat is
             { IsPlayerTurn: true, AutomaticPipelineContinuation: null };
-        var automaticPipelineBoundary = combat is { } liveCombat &&
+        var automaticPipelineBoundary = combat is { } pipelineCombat &&
             PrototypeGameEngine
-                .IsAtSupportedAutomaticPipelineTargetBoundary(liveCombat);
+                .IsAtSupportedAutomaticPipelineTargetBoundary(pipelineCombat);
         if (run.Phase != RunPhase.Combat ||
             (!playerActionBoundary && !automaticPipelineBoundary) ||
             choice is not { ChoiceId: "controlled_random_target",
