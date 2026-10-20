@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Sts2Emulator.Core;
 
 /// <summary>
@@ -5,20 +7,70 @@ namespace Sts2Emulator.Core;
 /// room boundaries. Their existing RunWorldState fields remain the snapshot
 /// wire projection during migration.
 /// </summary>
-public sealed record RunWorldStochasticStateV111(
-    PrototypeActOneEncounterPoolState? ActOneEncounterPool = null,
-    PrototypeRelicBagState? RelicBag = null,
-    PrototypeLaterActEncounterBagV111? LaterActEncounterBag = null,
-    PrototypeLaterActEncounterBagV111[]? PreparedLaterActEncounterBags = null)
+public sealed record RunWorldStochasticStateV111
 {
+    private PrototypeActOneEncounterPoolState? _actOneEncounterPool;
+    private PrototypeRelicBagState? _relicBag;
+    private PrototypeLaterActEncounterBagV111? _laterActEncounterBag;
+    private PrototypeLaterActEncounterBagV111[]?
+        _preparedLaterActEncounterBags;
+
+    [JsonConstructor]
+    public RunWorldStochasticStateV111(
+        PrototypeActOneEncounterPoolState? ActOneEncounterPool = null,
+        PrototypeRelicBagState? RelicBag = null,
+        PrototypeLaterActEncounterBagV111? LaterActEncounterBag = null,
+        PrototypeLaterActEncounterBagV111[]? PreparedLaterActEncounterBags = null)
+    {
+        _actOneEncounterPool = ActOneEncounterPool?.Fork();
+        _relicBag = RelicBag?.Fork();
+        _laterActEncounterBag = LaterActEncounterBag?.Fork();
+        _preparedLaterActEncounterBags = CloneBags(
+            PreparedLaterActEncounterBags);
+    }
+
+    public PrototypeActOneEncounterPoolState? ActOneEncounterPool
+    {
+        get => _actOneEncounterPool?.Fork();
+        init => _actOneEncounterPool = value?.Fork();
+    }
+    public PrototypeRelicBagState? RelicBag
+    {
+        get => _relicBag?.Fork();
+        init => _relicBag = value?.Fork();
+    }
+    public PrototypeLaterActEncounterBagV111? LaterActEncounterBag
+    {
+        get => _laterActEncounterBag?.Fork();
+        init => _laterActEncounterBag = value?.Fork();
+    }
+    public PrototypeLaterActEncounterBagV111[]? PreparedLaterActEncounterBags
+    {
+        get => CloneBags(_preparedLaterActEncounterBags);
+        init => _preparedLaterActEncounterBags = CloneBags(value);
+    }
+
     public RunWorldStochasticStateV111 Fork() => this with
     {
-        ActOneEncounterPool = ActOneEncounterPool?.Fork(),
-        RelicBag = RelicBag?.Fork(),
-        LaterActEncounterBag = LaterActEncounterBag?.Fork(),
-        PreparedLaterActEncounterBags = PreparedLaterActEncounterBags?
-            .Select(bag => bag.Fork()).ToArray()
+        ActOneEncounterPool = _actOneEncounterPool?.Fork(),
+        RelicBag = _relicBag?.Fork(),
+        LaterActEncounterBag = _laterActEncounterBag?.Fork(),
+        PreparedLaterActEncounterBags = CloneBags(
+            _preparedLaterActEncounterBags)
     };
+
+    public void Deconstruct(
+        out PrototypeActOneEncounterPoolState? ActOneEncounterPool,
+        out PrototypeRelicBagState? RelicBag,
+        out PrototypeLaterActEncounterBagV111? LaterActEncounterBag,
+        out PrototypeLaterActEncounterBagV111[]?
+            PreparedLaterActEncounterBags)
+    {
+        ActOneEncounterPool = this.ActOneEncounterPool;
+        RelicBag = this.RelicBag;
+        LaterActEncounterBag = this.LaterActEncounterBag;
+        PreparedLaterActEncounterBags = this.PreparedLaterActEncounterBags;
+    }
 
     public void Validate(RunWorldState owner, RunState run)
     {
@@ -240,4 +292,8 @@ public sealed record RunWorldStochasticStateV111(
         {
             PreparedLaterActEncounterBags = bags
         };
+
+    private static PrototypeLaterActEncounterBagV111[]? CloneBags(
+        PrototypeLaterActEncounterBagV111[]? bags) => bags?.Select(bag =>
+            bag is null ? null! : bag.Fork()).ToArray();
 }
