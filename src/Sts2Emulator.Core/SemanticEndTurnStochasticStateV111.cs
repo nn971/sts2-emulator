@@ -23,40 +23,40 @@ public sealed record SemanticEndTurnStochasticStateV111
         SemanticEndTurnBoundaryChoiceV111[] BoundaryTranscript,
         SemanticCombatDrawStochasticStateV111? HandDraw = null)
     {
-        _intentTranscript = Clone(IntentTranscript,
+        _intentTranscript = CopyArray(IntentTranscript,
             PrototypeControlledEventChoiceContinuationV111.CloneDecision);
-        _enemyActionTranscript = Clone(EnemyActionTranscript,
+        _enemyActionTranscript = CopyArray(EnemyActionTranscript,
             PrototypeControlledEventChoiceContinuationV111.CloneDecision);
-        _targetTranscript = Clone(TargetTranscript,
+        _targetTranscript = CopyArray(TargetTranscript,
             decision => decision.Fork());
-        _boundaryTranscript = Clone(BoundaryTranscript,
+        _boundaryTranscript = CopyArray(BoundaryTranscript,
             decision => decision);
         this.HandDraw = HandDraw;
     }
 
     public RandomIndexDecisionV111[] IntentTranscript
     {
-        get => Clone(_intentTranscript,
+        get => CopyArray(_intentTranscript,
             PrototypeControlledEventChoiceContinuationV111.CloneDecision)!;
-        init => _intentTranscript = Clone(value,
+        init => _intentTranscript = CopyArray(value,
             PrototypeControlledEventChoiceContinuationV111.CloneDecision);
     }
     public RandomIndexDecisionV111[] EnemyActionTranscript
     {
-        get => Clone(_enemyActionTranscript,
+        get => CopyArray(_enemyActionTranscript,
             PrototypeControlledEventChoiceContinuationV111.CloneDecision)!;
-        init => _enemyActionTranscript = Clone(value,
+        init => _enemyActionTranscript = CopyArray(value,
             PrototypeControlledEventChoiceContinuationV111.CloneDecision);
     }
     public SemanticTargetDecisionV111[] TargetTranscript
     {
-        get => Clone(_targetTranscript, decision => decision.Fork())!;
-        init => _targetTranscript = Clone(value, decision => decision.Fork());
+        get => CopyArray(_targetTranscript, decision => decision.Fork())!;
+        init => _targetTranscript = CopyArray(value, decision => decision.Fork());
     }
     public SemanticEndTurnBoundaryChoiceV111[] BoundaryTranscript
     {
-        get => Clone(_boundaryTranscript, decision => decision)!;
-        init => _boundaryTranscript = Clone(value, decision => decision);
+        get => CopyArray(_boundaryTranscript, decision => decision)!;
+        init => _boundaryTranscript = CopyArray(value, decision => decision);
     }
     public SemanticCombatDrawStochasticStateV111? HandDraw { get; init; }
 
@@ -66,22 +66,22 @@ public sealed record SemanticEndTurnStochasticStateV111
     /// </summary>
     public SemanticEndTurnNestedChoiceV111[] NestedChoiceTranscript
     {
-        get => Clone(_nestedChoiceTranscript, choice => choice.Fork())!;
-        init => _nestedChoiceTranscript = Clone(value,
+        get => CopyArray(_nestedChoiceTranscript, choice => choice.Fork())!;
+        init => _nestedChoiceTranscript = CopyArray(value,
             choice => choice.Fork());
     }
 
     public SemanticEndTurnStochasticStateV111 Fork() => this with
     {
-        IntentTranscript = Clone(_intentTranscript,
+        IntentTranscript = CopyArray(_intentTranscript,
             PrototypeControlledEventChoiceContinuationV111.CloneDecision)!,
-        EnemyActionTranscript = Clone(_enemyActionTranscript,
+        EnemyActionTranscript = CopyArray(_enemyActionTranscript,
             PrototypeControlledEventChoiceContinuationV111.CloneDecision)!,
-        TargetTranscript = Clone(_targetTranscript,
+        TargetTranscript = CopyArray(_targetTranscript,
             decision => decision.Fork())!,
-        BoundaryTranscript = Clone(_boundaryTranscript,
+        BoundaryTranscript = CopyArray(_boundaryTranscript,
             decision => decision)!,
-        NestedChoiceTranscript = Clone(_nestedChoiceTranscript,
+        NestedChoiceTranscript = CopyArray(_nestedChoiceTranscript,
             choice => choice.Fork())!,
         HandDraw = HandDraw?.Fork()
     };
@@ -368,7 +368,7 @@ public sealed record SemanticEndTurnStochasticStateV111
 
     }
 
-    private static T[]? Clone<T>(T[]? transcript, Func<T, T> clone)
+    private static T[]? CopyArray<T>(T[]? transcript, Func<T, T> clone)
         where T : class => transcript?.Select(decision =>
             decision is null ? null! : clone(decision)).ToArray();
 

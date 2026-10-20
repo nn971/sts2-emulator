@@ -30,10 +30,10 @@ public sealed record RunStochasticStateV111
         this.PrototypeRng = PrototypeRng;
         this.NativeRunRng = NativeRunRng;
         this.ReferenceNature = ReferenceNature;
-        _controlledEventChoiceHistory = Clone(
+        _controlledEventChoiceHistory = CopyArray(
             ControlledEventChoiceHistory, trace => trace.Fork());
         this.ControlledEventRewardChoice = ControlledEventRewardChoice;
-        _controlledRunActionHistory = Clone(
+        _controlledRunActionHistory = CopyArray(
             ControlledRunActionHistory, trace => trace.Fork());
         this.ControlledRunActionChoice = ControlledRunActionChoice;
         this.SemanticOtherChance = SemanticOtherChance;
@@ -45,18 +45,18 @@ public sealed record RunStochasticStateV111
     public ReferenceNatureStateV111? ReferenceNature { get; init; }
     public ControlledEventChoiceTraceV111[]? ControlledEventChoiceHistory
     {
-        get => Clone(_controlledEventChoiceHistory,
+        get => CopyArray(_controlledEventChoiceHistory,
             trace => trace.Fork());
-        init => _controlledEventChoiceHistory = Clone(value,
+        init => _controlledEventChoiceHistory = CopyArray(value,
             trace => trace.Fork());
     }
     public PrototypeControlledEventRewardChoiceContinuationV111?
         ControlledEventRewardChoice { get; init; }
     public ControlledRunActionTraceV111[]? ControlledRunActionHistory
     {
-        get => Clone(_controlledRunActionHistory,
+        get => CopyArray(_controlledRunActionHistory,
             trace => trace.Fork());
-        init => _controlledRunActionHistory = Clone(value,
+        init => _controlledRunActionHistory = CopyArray(value,
             trace => trace.Fork());
     }
     public PrototypeControlledRunActionContinuationV111?
@@ -69,10 +69,10 @@ public sealed record RunStochasticStateV111
         PrototypeRng = PrototypeRng.Fork(),
         NativeRunRng = NativeRunRng?.Fork(),
         ReferenceNature = ReferenceNature?.Fork(),
-        ControlledEventChoiceHistory = Clone(
+        ControlledEventChoiceHistory = CopyArray(
             _controlledEventChoiceHistory, trace => trace.Fork()),
         ControlledEventRewardChoice = ControlledEventRewardChoice?.Fork(),
-        ControlledRunActionHistory = Clone(
+        ControlledRunActionHistory = CopyArray(
             _controlledRunActionHistory, trace => trace.Fork()),
         ControlledRunActionChoice = ControlledRunActionChoice?.Fork(),
         SemanticOtherChance = SemanticOtherChance?.Fork()
@@ -327,7 +327,7 @@ public sealed record RunStochasticStateV111
         SemanticRewardAuditV111? semanticRewardAudit) =>
         current with { SemanticRewardAudit = semanticRewardAudit };
 
-    private static T[]? Clone<T>(T[]? values, Func<T, T> clone)
+    private static T[]? CopyArray<T>(T[]? values, Func<T, T> clone)
         where T : class => values?.Select(value =>
             value is null ? null! : clone(value)).ToArray();
 }

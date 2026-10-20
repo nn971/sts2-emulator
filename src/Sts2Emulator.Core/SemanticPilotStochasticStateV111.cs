@@ -94,7 +94,7 @@ public sealed record SemanticPilotStochasticStateV111
         SemanticNativePolicyAuditV111? audit) => audit is null ? null :
         audit with
         {
-            Decisions = Clone(audit.Decisions, decision => decision with
+            Decisions = CopyArray(audit.Decisions, decision => decision with
             {
                 Request = decision.Request with
                 {
@@ -102,7 +102,7 @@ public sealed record SemanticPilotStochasticStateV111
                         .OrderedCandidates.Clone()
                 }
             })!,
-            ProviderTrace = Clone(audit.ProviderTrace, entry => entry with
+            ProviderTrace = CopyArray(audit.ProviderTrace, entry => entry with
             {
                 Event = entry.Event.Clone()
             })!
@@ -112,8 +112,8 @@ public sealed record SemanticPilotStochasticStateV111
         SemanticSourceRouteAuditV111? route) => route is null ? null :
         route with
         {
-            ActionIds = Clone(route.ActionIds, actionId => actionId)!,
-            NativeEntryDecisions = Clone(route.NativeEntryDecisions,
+            ActionIds = CopyArray(route.ActionIds, actionId => actionId)!,
+            NativeEntryDecisions = CopyArray(route.NativeEntryDecisions,
                 decision => decision with
                 {
                     Request = decision.Request with
@@ -124,7 +124,7 @@ public sealed record SemanticPilotStochasticStateV111
                 })!
         };
 
-    private static T[]? Clone<T>(T[]? values, Func<T, T> clone)
+    private static T[]? CopyArray<T>(T[]? values, Func<T, T> clone)
         where T : class => values?.Select(value =>
             value is null ? null! : clone(value)).ToArray();
 }

@@ -15,51 +15,51 @@ public sealed record SemanticCombatDrawStochasticStateV111
 
     public SemanticRandomPileCardDecisionV111[] RandomPileCardTranscript
     {
-        get => Clone(_randomPileCardTranscript,
+        get => CopyArray(_randomPileCardTranscript,
             decision => decision.Fork())!;
-        init => _randomPileCardTranscript = Clone(value,
+        init => _randomPileCardTranscript = CopyArray(value,
             decision => decision.Fork());
     }
     public SemanticDrawInsertionDecisionV111[] DrawInsertionTranscript
     {
-        get => Clone(_drawInsertionTranscript,
+        get => CopyArray(_drawInsertionTranscript,
             decision => decision.Fork())!;
-        init => _drawInsertionTranscript = Clone(value,
+        init => _drawInsertionTranscript = CopyArray(value,
             decision => decision.Fork());
     }
     public SemanticCardSelectionDecisionV111[] StratagemSelectionTranscript
     {
-        get => Clone(_stratagemSelectionTranscript,
+        get => CopyArray(_stratagemSelectionTranscript,
             decision => decision.Fork())!;
-        init => _stratagemSelectionTranscript = Clone(value,
+        init => _stratagemSelectionTranscript = CopyArray(value,
             decision => decision.Fork());
     }
     public SemanticDrawHookChoiceDecisionV111[] DrawHookChoiceTranscript
     {
-        get => Clone(_drawHookChoiceTranscript,
+        get => CopyArray(_drawHookChoiceTranscript,
             decision => decision.Fork())!;
-        init => _drawHookChoiceTranscript = Clone(value,
+        init => _drawHookChoiceTranscript = CopyArray(value,
             decision => decision.Fork());
     }
     public RandomIndexDecisionV111[] CostTranscript
     {
-        get => Clone(_costTranscript,
+        get => CopyArray(_costTranscript,
             PrototypeControlledEventChoiceContinuationV111.CloneDecision)!;
-        init => _costTranscript = Clone(value,
+        init => _costTranscript = CopyArray(value,
             PrototypeControlledEventChoiceContinuationV111.CloneDecision);
     }
 
     public SemanticCombatDrawStochasticStateV111 Fork() => this with
     {
-        RandomPileCardTranscript = Clone(_randomPileCardTranscript,
+        RandomPileCardTranscript = CopyArray(_randomPileCardTranscript,
             decision => decision.Fork())!,
-        DrawInsertionTranscript = Clone(_drawInsertionTranscript,
+        DrawInsertionTranscript = CopyArray(_drawInsertionTranscript,
             decision => decision.Fork())!,
-        StratagemSelectionTranscript = Clone(_stratagemSelectionTranscript,
+        StratagemSelectionTranscript = CopyArray(_stratagemSelectionTranscript,
             decision => decision.Fork())!,
-        DrawHookChoiceTranscript = Clone(_drawHookChoiceTranscript,
+        DrawHookChoiceTranscript = CopyArray(_drawHookChoiceTranscript,
             decision => decision.Fork())!,
-        CostTranscript = Clone(_costTranscript,
+        CostTranscript = CopyArray(_costTranscript,
             PrototypeControlledEventChoiceContinuationV111.CloneDecision)!
     };
 
@@ -108,7 +108,7 @@ public sealed record SemanticCombatDrawStochasticStateV111
                 .Validate();
     }
 
-    private static T[]? Clone<T>(T[]? transcript, Func<T, T> clone)
+    private static T[]? CopyArray<T>(T[]? transcript, Func<T, T> clone)
         where T : class => transcript?.Select(decision =>
             decision is null ? null! : clone(decision)).ToArray();
 }
