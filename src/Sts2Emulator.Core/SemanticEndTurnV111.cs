@@ -13,7 +13,8 @@ public sealed record SemanticEndTurnBoundaryChoiceV111(
         if (Kind is not ("enemy_action" or "random_target" or
                 "semantic_draw" or "semantic_cost" or
                 "semantic_draw_insertion" or "semantic_generated_card" or
-                "semantic_potion_generation") ||
+                "semantic_potion_generation" or
+                "semantic_card_transform") ||
             TranscriptIndex < 0)
             throw new InvalidDataException(
                 "Invalid semantic end-turn boundary transcript entry.");
@@ -259,6 +260,17 @@ public sealed record SemanticEndTurnV111(
                 NestedChoiceTranscript.Count(choice =>
                     choice.Kind == "semantic_potion_generation"))
             : null;
+    [JsonIgnore] public SemanticCardTransformEventV111?
+        CardTransformPending => !Complete &&
+            HandDraw is not { AtBoundary: false } &&
+            PrototypeGameEngine
+                .HasPendingSupportedAutomaticPipelineSemanticCardTransform(
+                    Run)
+            ? SemanticCardTransformChoiceV111.DescribePending(
+                Run, Fingerprint,
+                NestedChoiceTranscript.Count(choice =>
+                    choice.Kind == "semantic_card_transform"))
+            : null;
     [JsonIgnore] public SemanticCostEventV111? NestedCostPending =>
         !Complete && HandDraw is not { AtBoundary: false } &&
             Run.World?.Combat?.PendingChoice is
@@ -427,6 +439,12 @@ public sealed record SemanticEndTurnV111(
             .HasPendingSupportedAutomaticPipelineSemanticPotionGeneration(
                 this.Run))
             SemanticPotionGenerationChoiceV111.ValidateBoundary(this.Run);
+        if (PrototypeGameEngine
+            .HasPendingSupportedAutomaticPipelineSemanticCardTransform(
+                this.Run))
+            SemanticCardTransformChoiceV111.ValidateBoundary(this.Run,
+                this.Run.World!.Combat!.PendingChoice!
+                    .ControlledCardTransform!);
     }
 
     public SemanticEndTurnV111 Fork() => this with
@@ -619,6 +637,23 @@ public static class SemanticEndTurnEngineV111
                     PotionGenerationDecision: decision.Fork()),
                 generatedPotion.SiteId);
         }
+        else if (state.CardTransformPending is { } cardTransform)
+        {
+            if (selectedIndex < 0 ||
+                selectedIndex >= cardTransform.CandidateCardIds.Length)
+                throw new ArgumentOutOfRangeException(nameof(selectedIndex));
+            var decision = SemanticCardTransformChoiceV111.Select(
+                cardTransform, cardTransform.EventId,
+                cardTransform.CandidateCardIds[selectedIndex]);
+            var resumed = SemanticCardTransformChoiceV111.Resume(
+                state.Run.Fork(), decision);
+            state = ContinueNestedAutomaticChoice(
+                state, resumed,
+                new SemanticEndTurnNestedChoiceV111(
+                    "semantic_card_transform",
+                    CardTransformDecision: decision.Fork()),
+                cardTransform.SiteId);
+        }
         else if (state.NestedCostPending is { } nestedCost)
         {
             if (selectedIndex < 0 ||
@@ -761,6 +796,33 @@ public static class SemanticEndTurnEngineV111
             new SemanticEndTurnNestedChoiceV111(
                 "semantic_potion_generation",
                 PotionGenerationDecision: decision.Fork()),
+            pending.SiteId);
+        Validate(next);
+        return next;
+    }
+
+    public static SemanticEndTurnV111 ResolveCardTransform(
+        SemanticEndTurnV111 source, string fingerprint, string eventId,
+        string cardId)
+    {
+        Validate(source);
+        if (!StringComparer.Ordinal.Equals(source.Fingerprint, fingerprint))
+            throw new InvalidOperationException(
+                "Stale semantic end-turn card-transform fingerprint.");
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(cardId);
+        var pending = source.CardTransformPending ??
+            throw new InvalidOperationException(
+                "No automatic-pipeline card-transform event is pending.");
+        var decision = SemanticCardTransformChoiceV111.Select(
+            pending, eventId, cardId);
+        var resumed = SemanticCardTransformChoiceV111.Resume(
+            source.Run.Fork(), decision);
+        var next = ContinueNestedAutomaticChoice(
+            source, resumed,
+            new SemanticEndTurnNestedChoiceV111(
+                "semantic_card_transform",
+                CardTransformDecision: decision.Fork()),
             pending.SiteId);
         Validate(next);
         return next;
@@ -937,6 +999,13 @@ public static class SemanticEndTurnEngineV111
             SemanticPotionGenerationChoiceV111.ValidateDecision(
                 pending, choice.PotionGenerationDecision!,
                 choice.PotionGenerationDecision!.SelectedPotionId);
+        }
+        else if (expectedKind == "semantic_card_transform")
+        {
+            var pending = source.CardTransformPending;
+            SemanticCardTransformChoiceV111.ValidateDecision(
+                pending, choice.CardTransformDecision!,
+                choice.CardTransformDecision!.SelectedCardId);
         }
         else
         {
@@ -1121,7 +1190,7 @@ public static class SemanticEndTurnEngineV111
         int boundaryIndex = 0, enemyActionIndex = 0, targetIndex = 0;
         int nestedChoiceIndex = 0, nestedDrawIndex = 0, nestedCostIndex = 0,
             nestedInsertionIndex = 0, nestedGeneratedCardIndex = 0,
-            nestedPotionGenerationIndex = 0;
+            nestedPotionGenerationIndex = 0, nestedCardTransformIndex = 0;
         void ReplayAvailableBoundaryChoices()
         {
             while (boundaryIndex < saved.BoundaryTranscript.Length)
@@ -1143,9 +1212,12 @@ public static class SemanticEndTurnEngineV111
                     reproduced.GeneratedCardPending is not null;
                 var hasNestedPotionGeneration =
                     reproduced.PotionGenerationPending is not null;
+                var hasNestedCardTransform =
+                    reproduced.CardTransformPending is not null;
                 if (!hasEnemyAction && !hasTarget &&
                     !hasNestedDraw && !hasNestedCost && !hasNestedInsertion &&
-                    !hasNestedGeneratedCard && !hasNestedPotionGeneration)
+                    !hasNestedGeneratedCard && !hasNestedPotionGeneration &&
+                    !hasNestedCardTransform)
                     return;
 
                 var boundary = saved.BoundaryTranscript[boundaryIndex];
@@ -1286,7 +1358,7 @@ public static class SemanticEndTurnEngineV111
                         pending.SiteId);
                     nestedGeneratedCardIndex++;
                 }
-                else
+                else if (boundary.Kind == "semantic_potion_generation")
                 {
                     if (!hasNestedPotionGeneration ||
                         boundary.TranscriptIndex != nestedPotionGenerationIndex ||
@@ -1310,6 +1382,31 @@ public static class SemanticEndTurnEngineV111
                         saved.NestedChoiceTranscript[nestedChoiceIndex++],
                         pending.SiteId);
                     nestedPotionGenerationIndex++;
+                }
+                else
+                {
+                    if (!hasNestedCardTransform ||
+                        boundary.TranscriptIndex != nestedCardTransformIndex ||
+                        nestedChoiceIndex >=
+                            saved.NestedChoiceTranscript.Length ||
+                        saved.NestedChoiceTranscript[nestedChoiceIndex] is not
+                            { Kind: "semantic_card_transform",
+                              CardTransformDecision: { } transformChoice })
+                        throw new InvalidDataException(
+                            "Semantic end-turn card-transform transcript order is invalid.");
+                    var pending = reproduced.CardTransformPending ??
+                        throw new InvalidDataException(
+                            "Semantic end-turn replay lost its card-transform event.");
+                    SemanticCardTransformChoiceV111.ValidateDecision(
+                        pending, transformChoice,
+                        transformChoice.SelectedCardId);
+                    var resumed = SemanticCardTransformChoiceV111.Resume(
+                        reproduced.Run.Fork(), transformChoice);
+                    reproduced = ContinueNestedAutomaticChoice(
+                        reproduced, resumed,
+                        saved.NestedChoiceTranscript[nestedChoiceIndex++],
+                        pending.SiteId);
+                    nestedCardTransformIndex++;
                 }
                 boundaryIndex++;
             }
@@ -1385,7 +1482,10 @@ public static class SemanticEndTurnEngineV111
                     choice => choice.Kind == "semantic_generated_card") ||
                 nestedPotionGenerationIndex !=
                     saved.NestedChoiceTranscript.Count(choice =>
-                        choice.Kind == "semantic_potion_generation"))
+                        choice.Kind == "semantic_potion_generation") ||
+                nestedCardTransformIndex !=
+                    saved.NestedChoiceTranscript.Count(choice =>
+                        choice.Kind == "semantic_card_transform"))
                 throw new InvalidDataException(
                     "Semantic end-turn boundary transcript omitted a decision.");
         }

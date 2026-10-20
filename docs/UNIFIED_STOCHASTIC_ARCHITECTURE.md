@@ -216,6 +216,13 @@ continuations. A legacy recycle without a semantic deck now saves each
 conditioned discard-pile swap and resumes the same draw/effect suffix before
 the Mayhem pipeline advances. This integration does not claim source-calibrated
 draw probabilities.
+
+Autoplay can also suspend on a source-validated combat-card transform. The
+automatic-pipeline owner admits the transform only when its original selection
+retains a supported Mayhem or post-draw autoplay frame. Each replacement stays
+in the end-turn boundary chronology, including repeated transforms from one
+multi-card selection, and snapshot restore replays the saved ordered pool and
+selected model before continuing the autoplay suffix.
 `ReferenceNatureMerchantSessionV111`,
 `ReferenceNatureTreasureSessionV111`,
 `ReferenceNatureCombatRewardSessionV111`,
