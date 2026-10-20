@@ -1162,3 +1162,6 @@ Run matched source-state/seed sets; frozen player policy; fair observations/lega
 
 
 **S3 controlled-playable transcript encapsulation increment (2026-10-20):** `ControlledPlayableCombatStochasticStateV111` now deep-copies all typed decision transcripts, the pending index request and its ordered support, and the active recycle continuation on construction, replacement, projection, and fork. Flattened compatibility fields and JSON member names remain stable. The indexed-write census and `git diff --check` passed; no tests or builds were run.
+
+
+**S2 pilot audit snapshot encapsulation increment (2026-10-20):** `SemanticPilotStochasticStateV111` now deep-copies Native-policy decisions and mixed provider traces, source-route action and decision arrays, and pending end-turn stochastic chronology on construction, replacement, projection, and fork. Native request supports cannot be rewritten through a shared audit array. Constructor/deconstruction shape and serialized field names remain stable. `git diff --check` passed; no tests or builds were run.
