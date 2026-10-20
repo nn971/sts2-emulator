@@ -1051,11 +1051,20 @@ public static class SemanticDrawPileAdapterV111
                 "Card-zone commit has an invalid combat-card identity transition.");
         var next = combat with
         {
-            Mechanics = combat.Mechanics with
+            // Commit provider constraints and mechanics zones as one envelope
+            // update; the compatibility Mechanics setter rejects an unsynced
+            // draw-pile replacement while a Nature deck is attached.
+            Simulation = combat.Simulation with
             {
-                CardZones = nextCardZones
+                Mechanics = combat.Mechanics with
+                {
+                    CardZones = nextCardZones
+                },
+                Stochastic = combat.Stochastic with
+                {
+                    SemanticDeck = committedSemanticDeck
+                }
             },
-            SemanticDeck = committedSemanticDeck,
             Cards = removedCardIds.Count == 0 && addedCards.Length == 0
                 ? combat.Cards
                 : combat.Cards.Where(card =>
