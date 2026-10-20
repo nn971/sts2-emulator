@@ -14,13 +14,27 @@ public sealed record ControlledRunActionTraceV111(
     string? MapNodeId = null,
     string? ActionFingerprint = null)
 {
+    private RandomIndexDecisionV111[]? _decisions =
+        CloneDecisions(Decisions);
+    private string[][]? _candidateLabels = CloneCandidateLabels(
+        CandidateLabels);
+
+    public RandomIndexDecisionV111[] Decisions
+    {
+        get => CloneDecisions(_decisions)!;
+        init => _decisions = CloneDecisions(value);
+    }
+
+    public string[][] CandidateLabels
+    {
+        get => CloneCandidateLabels(_candidateLabels)!;
+        init => _candidateLabels = CloneCandidateLabels(value);
+    }
+
     public ControlledRunActionTraceV111 Fork() => this with
     {
-        Decisions = Decisions.Select(
-            PrototypeControlledEventChoiceContinuationV111.CloneDecision)
-            .ToArray(),
-        CandidateLabels = CandidateLabels.Select(labels =>
-            (string[])labels.Clone()).ToArray()
+        Decisions = _decisions!,
+        CandidateLabels = _candidateLabels!
     };
 
     public void Validate()
@@ -154,6 +168,16 @@ public sealed record ControlledRunActionTraceV111(
             request.StreamId == "reward",
         _ => false
     };
+
+    private static RandomIndexDecisionV111[]? CloneDecisions(
+        RandomIndexDecisionV111[]? decisions) => decisions?.Select(decision =>
+            decision is null ? null! :
+                PrototypeControlledEventChoiceContinuationV111
+                    .CloneDecision(decision)).ToArray();
+
+    private static string[][]? CloneCandidateLabels(string[][]? labels) =>
+        labels?.Select(candidateLabels => candidateLabels is null
+            ? null! : (string[])candidateLabels.Clone()).ToArray();
 }
 
 /// <summary>
