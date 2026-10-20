@@ -388,7 +388,8 @@ public static class SemanticEndTurnEngineV111
         if (!PrototypeGameEngine
                 .IsAtCombatPlayerDecisionBoundary(playerBoundary) ||
             starting is null ||
-            !IsSupportedSemanticSourceDeck(starting))
+            !SemanticDrawPileAdapterV111
+                .IsSupportedSemanticHandDrawSourceDeck(starting))
             throw new InvalidOperationException(
                 "Expected a real player-choice combat boundary.");
         var environment = new PrototypeAiEnvironment();
@@ -838,23 +839,6 @@ public static class SemanticEndTurnEngineV111
     public static void Validate(SemanticEndTurnV111 state) =>
         state.Validate();
 
-    /// <summary>Checks whether the shared draw-pile owner accepts this source
-    /// for semantic hand-draw continuation.</summary>
-    private static bool IsSupportedSemanticSourceDeck(CombatState combat)
-    {
-        try
-        {
-            SemanticDrawPileAdapterV111
-                .ValidateSemanticHandDrawSourceDeck(
-                    combat, "Unsupported semantic end-turn source deck.");
-            return true;
-        }
-        catch (InvalidDataException)
-        {
-            return false;
-        }
-    }
-
     internal static void ValidateOrigin(RunState run)
     {
         if (run.Phase != RunPhase.Combat ||
@@ -869,7 +853,8 @@ public static class SemanticEndTurnEngineV111
             checkpoint.ControlledSemanticDrawRequested is not null ||
             checkpoint.OpeningStage is not null ||
             checkpoint.PendingPostDispatchEventKind is not null ||
-            !IsSupportedSemanticSourceDeck(combat) ||
+            !SemanticDrawPileAdapterV111
+                .IsSupportedSemanticHandDrawSourceDeck(combat) ||
             combat.PendingChoice is not null ||
             combat.PendingKnowledgeDemonChoice is not null)
             throw new InvalidOperationException(
