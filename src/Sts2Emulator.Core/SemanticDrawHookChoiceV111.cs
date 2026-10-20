@@ -215,6 +215,10 @@ public static class SemanticDrawHookChoiceEngineV111
         if (pending.AutomaticHandDraw &&
             advancedCombat.PendingChoice is { } nextChoice)
         {
+            bool nestedBeforeHandDrawRandomPileCard =
+                pending.BeforeHandDraw &&
+                nextChoice.ChoiceId == "controlled_random_pile_card" &&
+                nextChoice.ControlledRandomPileCard is not null;
             if (nextChoice.ControlledTarget is not null ||
                 nextChoice.ControlledGeneration is not null ||
                 nextChoice.ControlledPotionGeneration is not null ||
@@ -224,23 +228,31 @@ public static class SemanticDrawHookChoiceEngineV111
                 nextChoice.ControlledPoolShuffle is not null ||
                 nextChoice.ControlledRandomCost is not null ||
                 nextChoice.ControlledCardShortlist is not null ||
-                nextChoice.ControlledRandomPileCard is not null ||
+                (nextChoice.ControlledRandomPileCard is not null &&
+                 !nestedBeforeHandDrawRandomPileCard) ||
                 nextChoice.SemanticStratagemDrawSelection ||
                 nextChoice.AutomaticSemanticStratagemDrawSelection)
                 throw new NotSupportedException(
                     $"UNSUPPORTED_SEMANTIC_DECK site={site} " +
                     "operation=nested_controlled_choice");
-            advancedCombat = advancedCombat with
+            if (nestedBeforeHandDrawRandomPileCard)
+                _ = SemanticRandomPileCardEngineV111.DescribePending(advanced)
+                    ?? throw new InvalidDataException(
+                        "Nested BeforeHandDraw random pile-card choice has no semantic event.");
+            else
             {
-                PendingChoice = nextChoice with
+                advancedCombat = advancedCombat with
                 {
-                    AutomaticSemanticDrawHookChoice = true
-                }
-            };
-            advanced = advanced with
-            {
-                World = advanced.World! with { Combat = advancedCombat }
-            };
+                    PendingChoice = nextChoice with
+                    {
+                        AutomaticSemanticDrawHookChoice = true
+                    }
+                };
+                advanced = advanced with
+                {
+                    World = advanced.World! with { Combat = advancedCombat }
+                };
+            }
         }
         else if (beforeHandDraw && advancedCombat.PendingChoice is not null)
             throw new NotSupportedException(
