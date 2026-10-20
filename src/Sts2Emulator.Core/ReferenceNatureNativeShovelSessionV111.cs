@@ -42,7 +42,8 @@ public sealed record ReferenceNatureNativeShovelSessionV111(
     public const string CurrentSchemaId =
         "sts2-v111-reference-nature-native-shovel-session-v1";
     private const int DrawRequestCount = 2;
-    private const string RelicRaritySiteId = "relic_grab_bag.rarity.unit_float";
+    private const string RelicRaritySiteId =
+        StochasticSiteRegistryV111.RelicGrabBagRaritySiteId;
     private const string RelicModelSiteId =
         PrototypeNativeRelicGrabBag.NativeTreasureModelSiteId;
 
@@ -61,7 +62,8 @@ public sealed record ReferenceNatureNativeShovelSessionV111(
             ProviderDecisions);
 
     public static string[] SessionSiteIds =>
-        [RelicRaritySiteId, RelicModelSiteId];
+        [StochasticSiteRegistryV111.RelicGrabBagRaritySiteId,
+            PrototypeNativeRelicGrabBag.NativeTreasureModelSiteId];
 
     public static ReferenceNatureNativeShovelSessionV111 Begin(
         RunState source, ulong natureSeed) => Begin(
