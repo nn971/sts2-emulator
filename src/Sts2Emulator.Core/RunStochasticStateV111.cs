@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Sts2Emulator.Core;
 
 /// <summary>
@@ -6,32 +8,99 @@ namespace Sts2Emulator.Core;
 /// under their existing serialized names until the snapshot wire schema is
 /// deliberately migrated.
 /// </summary>
-public sealed record RunStochasticStateV111(
-    RngBundle PrototypeRng,
-    RngBundle? NativeRunRng = null,
-    ReferenceNatureStateV111? ReferenceNature = null,
-    ControlledEventChoiceTraceV111[]? ControlledEventChoiceHistory = null,
-    PrototypeControlledEventRewardChoiceContinuationV111?
-        ControlledEventRewardChoice = null,
-    ControlledRunActionTraceV111[]? ControlledRunActionHistory = null,
-    PrototypeControlledRunActionContinuationV111?
-        ControlledRunActionChoice = null,
-    SemanticOtherChanceStateV111? SemanticOtherChance = null,
-    SemanticRewardAuditV111? SemanticRewardAudit = null)
+public sealed record RunStochasticStateV111
 {
+    private ControlledEventChoiceTraceV111[]? _controlledEventChoiceHistory;
+    private ControlledRunActionTraceV111[]? _controlledRunActionHistory;
+
+    [JsonConstructor]
+    public RunStochasticStateV111(
+        RngBundle PrototypeRng,
+        RngBundle? NativeRunRng = null,
+        ReferenceNatureStateV111? ReferenceNature = null,
+        ControlledEventChoiceTraceV111[]? ControlledEventChoiceHistory = null,
+        PrototypeControlledEventRewardChoiceContinuationV111?
+            ControlledEventRewardChoice = null,
+        ControlledRunActionTraceV111[]? ControlledRunActionHistory = null,
+        PrototypeControlledRunActionContinuationV111?
+            ControlledRunActionChoice = null,
+        SemanticOtherChanceStateV111? SemanticOtherChance = null,
+        SemanticRewardAuditV111? SemanticRewardAudit = null)
+    {
+        this.PrototypeRng = PrototypeRng;
+        this.NativeRunRng = NativeRunRng;
+        this.ReferenceNature = ReferenceNature;
+        _controlledEventChoiceHistory = Clone(
+            ControlledEventChoiceHistory, trace => trace.Fork());
+        this.ControlledEventRewardChoice = ControlledEventRewardChoice;
+        _controlledRunActionHistory = Clone(
+            ControlledRunActionHistory, trace => trace.Fork());
+        this.ControlledRunActionChoice = ControlledRunActionChoice;
+        this.SemanticOtherChance = SemanticOtherChance;
+        this.SemanticRewardAudit = SemanticRewardAudit;
+    }
+
+    public RngBundle PrototypeRng { get; init; }
+    public RngBundle? NativeRunRng { get; init; }
+    public ReferenceNatureStateV111? ReferenceNature { get; init; }
+    public ControlledEventChoiceTraceV111[]? ControlledEventChoiceHistory
+    {
+        get => Clone(_controlledEventChoiceHistory,
+            trace => trace.Fork());
+        init => _controlledEventChoiceHistory = Clone(value,
+            trace => trace.Fork());
+    }
+    public PrototypeControlledEventRewardChoiceContinuationV111?
+        ControlledEventRewardChoice { get; init; }
+    public ControlledRunActionTraceV111[]? ControlledRunActionHistory
+    {
+        get => Clone(_controlledRunActionHistory,
+            trace => trace.Fork());
+        init => _controlledRunActionHistory = Clone(value,
+            trace => trace.Fork());
+    }
+    public PrototypeControlledRunActionContinuationV111?
+        ControlledRunActionChoice { get; init; }
+    public SemanticOtherChanceStateV111? SemanticOtherChance { get; init; }
+    public SemanticRewardAuditV111? SemanticRewardAudit { get; init; }
+
     public RunStochasticStateV111 Fork() => this with
     {
         PrototypeRng = PrototypeRng.Fork(),
         NativeRunRng = NativeRunRng?.Fork(),
         ReferenceNature = ReferenceNature?.Fork(),
-        ControlledEventChoiceHistory = ControlledEventChoiceHistory?
-            .Select(trace => trace.Fork()).ToArray(),
+        ControlledEventChoiceHistory = Clone(
+            _controlledEventChoiceHistory, trace => trace.Fork()),
         ControlledEventRewardChoice = ControlledEventRewardChoice?.Fork(),
-        ControlledRunActionHistory = ControlledRunActionHistory?
-            .Select(trace => trace.Fork()).ToArray(),
+        ControlledRunActionHistory = Clone(
+            _controlledRunActionHistory, trace => trace.Fork()),
         ControlledRunActionChoice = ControlledRunActionChoice?.Fork(),
         SemanticOtherChance = SemanticOtherChance?.Fork()
     };
+
+    public void Deconstruct(
+        out RngBundle PrototypeRng,
+        out RngBundle? NativeRunRng,
+        out ReferenceNatureStateV111? ReferenceNature,
+        out ControlledEventChoiceTraceV111[]? ControlledEventChoiceHistory,
+        out PrototypeControlledEventRewardChoiceContinuationV111?
+            ControlledEventRewardChoice,
+        out ControlledRunActionTraceV111[]? ControlledRunActionHistory,
+        out PrototypeControlledRunActionContinuationV111?
+            ControlledRunActionChoice,
+        out SemanticOtherChanceStateV111? SemanticOtherChance,
+        out SemanticRewardAuditV111? SemanticRewardAudit)
+    {
+        PrototypeRng = this.PrototypeRng;
+        NativeRunRng = this.NativeRunRng;
+        ReferenceNature = this.ReferenceNature;
+        ControlledEventChoiceHistory = this.ControlledEventChoiceHistory;
+        ControlledEventRewardChoice = this.ControlledEventRewardChoice;
+        ControlledRunActionHistory = this.ControlledRunActionHistory;
+        ControlledRunActionChoice = this.ControlledRunActionChoice;
+        SemanticOtherChance = this.SemanticOtherChance;
+        SemanticRewardAudit = this.SemanticRewardAudit;
+    }
 
     public void Validate(RunState owner)
     {
@@ -257,4 +326,8 @@ public sealed record RunStochasticStateV111(
         RunStochasticStateV111 current,
         SemanticRewardAuditV111? semanticRewardAudit) =>
         current with { SemanticRewardAudit = semanticRewardAudit };
+
+    private static T[]? Clone<T>(T[]? values, Func<T, T> clone)
+        where T : class => values?.Select(value =>
+            value is null ? null! : clone(value)).ToArray();
 }
