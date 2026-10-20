@@ -510,7 +510,8 @@ public static class V111RunFactory
         else
         {
             var initialNatureState = natureState;
-            var provider = new ReferenceNatureLaterActBossIndexProviderV111(
+            var initialPrototypeRng = rng.Fork();
+            var provider = new ReferenceNatureLaterActEncounterIndexProviderV111(
                 rng, initialNatureState, configuration.Ascension);
             using (StochasticProviderScopeV111.Enter(
                        indexProvider: provider,
@@ -524,19 +525,17 @@ public static class V111RunFactory
                         AssignedAncientId = assigned[index]
                     }).ToArray();
             }
-            var legacyCombatCallCount = rng.Streams.Single(stream =>
-                stream.StreamId == "combat").CallCount;
             var expectedQueueDrawCount =
                 ExperimentalSilentThreeActRouteV111.OrdinaryRoomCount(2) + 15 +
                 ExperimentalSilentThreeActRouteV111.OrdinaryRoomCount(3) + 15;
             if (provider.QueueDrawCount != expectedQueueDrawCount ||
-                legacyCombatCallCount != checked(
-                    (ulong)provider.InitialCombatOrdinal +
-                    (ulong)expectedQueueDrawCount))
+                CanonicalJson.Sha256(initialPrototypeRng) !=
+                    CanonicalJson.Sha256(rng))
                 throw new InvalidDataException(
-                    "ReferenceNature later-act boss sampling changed the legacy combat cursor beyond queue generation.");
-            var result = new ReferenceNatureLaterActBossAssignmentsV111(
-                bags, initialNatureState, provider.NatureState,
+                    "ReferenceNature later-act bag preparation advanced the legacy prototype RNG.");
+            var result = new ReferenceNatureLaterActEncounterPreparationV111(
+                bags, initialPrototypeRng, initialNatureState,
+                provider.NatureState,
                 provider.InitialCombatOrdinal, configuration.Ascension,
                 provider.ChanceLaws, provider.DecisionTranscript);
             result.Validate(configuration.Profile);
