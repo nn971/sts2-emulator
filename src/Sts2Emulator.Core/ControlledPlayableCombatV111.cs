@@ -18,6 +18,10 @@ public sealed record ControlledPlayableCombatV111(
     RandomIndexRequestV111? Pending,
     string Mode = "controlled-v111-playable-fixture-v1")
 {
+    // Replay provenance for an explicitly conditioned encounter. This is not
+    // a provider choice and is never part of the player's fair observation.
+    public string? FixtureEncounterId { get; init; }
+
     /// <summary>
     /// Atomic mechanics/provider envelope for the playable combat fixture.
     /// Existing snapshot properties remain flattened projections.
@@ -413,6 +417,11 @@ public sealed record ControlledPlayableCombatV111(
     {
         this.Mechanics.Continuation.Validate(
             PrototypeMechanicsContinuationKindV111.ControlledPlayableCombat);
+        if (FixtureEncounterId is { } fixedEncounter &&
+            (string.IsNullOrWhiteSpace(fixedEncounter) ||
+             Run.World?.EncounterHistory?.LastOrDefault() != fixedEncounter))
+            throw new InvalidDataException(
+                "Fixed encounter replay provenance disagrees with run history.");
         this.Run.Validate();
         if (this.Mode != "controlled-v111-playable-fixture-v1" ||
             this.Run.Phase is not (RunPhase.Combat or RunPhase.Reward or RunPhase.Terminal) ||
@@ -767,7 +776,10 @@ public static class ControlledPlayableCombatEngineV111
         int nextIndex = combat.DrawPile.Length - 1;
         var state = new ControlledPlayableCombatV111(
             seed, verified, run, nextIndex, [], [],
-            MakePending(nextIndex, 0));
+            MakePending(nextIndex, 0))
+        {
+            FixtureEncounterId = encounterId
+        };
         return state;
     }
 
@@ -1177,7 +1189,8 @@ public static class ControlledPlayableCombatEngineV111
             ?? throw new InvalidDataException("Null controlled playable snapshot.");
         // Full provenance replay, from source-verified controlled HP+intent
         // completion through the entire ordered shuffle and player transcript.
-        var current = Begin(stored.Origin, stored.Seed);
+        var current = Begin(stored.Origin, stored.Seed,
+            stored.FixtureEncounterId);
         foreach (var decision in stored.ShuffleTranscript)
         {
             decision.Validate();
