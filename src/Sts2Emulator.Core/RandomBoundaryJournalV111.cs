@@ -64,6 +64,12 @@ public sealed record RandomBoundaryTranscriptEntryV111(
     int Sequence, string OperationKind, JsonElement Event,
     string SchemaId = "sts2-v111-random-boundary-transcript-v1")
 {
+    private static readonly JsonSerializerOptions TranscriptJsonOptions =
+        new(JsonSerializerDefaults.Web)
+        {
+            PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
+        };
+
     public void Validate()
     {
         if (SchemaId != "sts2-v111-random-boundary-transcript-v1" ||
@@ -73,6 +79,113 @@ public sealed record RandomBoundaryTranscriptEntryV111(
                 "gaussian_double") || Event.ValueKind != JsonValueKind.Object)
             throw new InvalidDataException(
                 "Invalid ordered random-boundary transcript entry.");
+
+        switch (OperationKind)
+        {
+            case "index":
+                ValidateEvent(DeserializeEvent<RandomBoundaryEventV111>());
+                break;
+            case "unit_float":
+                ValidateEvent(DeserializeEvent<RandomUnitFloatBoundaryEventV111>());
+                break;
+            case "ranged_float":
+                ValidateEvent(DeserializeEvent<RandomRangedFloatBoundaryEventV111>());
+                break;
+            case "ranged_double":
+                ValidateEvent(DeserializeEvent<RandomRangedDoubleBoundaryEventV111>());
+                break;
+            case "gaussian_int":
+                ValidateEvent(DeserializeEvent<RandomGaussianIntBoundaryEventV111>());
+                break;
+            case "gaussian_double":
+                ValidateEvent(DeserializeEvent<RandomGaussianDoubleBoundaryEventV111>());
+                break;
+        }
+    }
+
+    internal T DeserializeEvent<T>() where T : class =>
+        Event.Deserialize<T>(TranscriptJsonOptions) ??
+        throw new InvalidDataException(
+            "Ordered random-boundary entry has no typed event payload.");
+
+    internal string ReadProviderMode()
+    {
+        if (!Event.TryGetProperty("provider_mode", out var value) ||
+            value.ValueKind != JsonValueKind.String ||
+            string.IsNullOrWhiteSpace(value.GetString()))
+            throw new InvalidDataException(
+                "Ordered random-boundary entry has no provider mode.");
+        return value.GetString()!;
+    }
+
+    internal static JsonElement SerializeEvent(object boundaryEvent) =>
+        JsonSerializer.SerializeToElement(
+            boundaryEvent, boundaryEvent.GetType(), TranscriptJsonOptions);
+
+    private static void ValidateEvent(RandomBoundaryEventV111 value)
+    {
+        if (value.Sequence < 1 || value.Request is null)
+            throw new InvalidDataException(
+                "Ordered index boundary event has invalid metadata.");
+        var decision = new RandomIndexDecisionV111(
+            value.Request, value.SelectedIndex, value.ProviderMode,
+            value.NativeCursorBefore, value.NativeCursorAfter);
+        decision.Validate();
+        if (value.SelectedValue != decision.SelectedValue)
+            throw new InvalidDataException(
+                "Ordered index boundary value disagrees with its selected index.");
+    }
+
+    private static void ValidateEvent(
+        RandomUnitFloatBoundaryEventV111 value)
+    {
+        if (value.Sequence < 1 || value.Request is null)
+            throw new InvalidDataException(
+                "Ordered unit-float boundary event has invalid metadata.");
+        new RandomUnitFloatDecisionV111(value.Request, value.SelectedValue,
+            value.ProviderMode, value.NativeCursorBefore,
+            value.NativeCursorAfter).Validate();
+    }
+
+    private static void ValidateEvent(RandomRangedFloatBoundaryEventV111 value)
+    {
+        if (value.Sequence < 1 || value.Request is null)
+            throw new InvalidDataException(
+                "Ordered ranged-float boundary event has invalid metadata.");
+        new RandomRangedFloatDecisionV111(value.Request, value.SelectedValue,
+            value.ProviderMode, value.NativeCursorBefore,
+            value.NativeCursorAfter).Validate();
+    }
+
+    private static void ValidateEvent(RandomRangedDoubleBoundaryEventV111 value)
+    {
+        if (value.Sequence < 1 || value.Request is null)
+            throw new InvalidDataException(
+                "Ordered ranged-double boundary event has invalid metadata.");
+        new RandomRangedDoubleDecisionV111(value.Request, value.SelectedValue,
+            value.ProviderMode, value.NativeCursorBefore,
+            value.NativeCursorAfter).Validate();
+    }
+
+    private static void ValidateEvent(RandomGaussianIntBoundaryEventV111 value)
+    {
+        if (value.Sequence < 1 || value.Request is null)
+            throw new InvalidDataException(
+                "Ordered Gaussian-integer boundary event has invalid metadata.");
+        new RandomGaussianIntDecisionV111(value.Request, value.SelectedValue,
+            value.ProviderMode, value.NativeCursorBefore,
+            value.NativeCursorAfter).Validate();
+    }
+
+    private static void ValidateEvent(
+        RandomGaussianDoubleBoundaryEventV111 value)
+    {
+        if (value.Sequence < 1 || value.Request is null)
+            throw new InvalidDataException(
+                "Ordered Gaussian-double boundary event has invalid metadata.");
+        new RandomGaussianDoubleDecisionV111(value.Request,
+            value.SelectedValue, value.ProviderMode,
+            value.NativeCursorBefore, value.NativeCursorAfter).Validate();
     }
 }
 
@@ -108,11 +221,6 @@ internal static class RandomBoundaryCursorSpanV111
 
 public sealed class RandomBoundaryJournalV111 : IDisposable
 {
-    private static readonly JsonSerializerOptions TranscriptJsonOptions =
-        new(JsonSerializerDefaults.Web)
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
-        };
     private static readonly AsyncLocal<RandomBoundaryJournalV111?> Active = new();
     private readonly RandomBoundaryJournalV111? _previous;
     private readonly List<RandomBoundaryEventV111> _events = [];
@@ -292,8 +400,7 @@ public sealed class RandomBoundaryJournalV111 : IDisposable
     {
         var transcript = new RandomBoundaryTranscriptEntryV111(
             _orderedTranscript.Count + 1, operationKind,
-            JsonSerializer.SerializeToElement(
-                boundaryEvent, boundaryEvent.GetType(), TranscriptJsonOptions));
+            RandomBoundaryTranscriptEntryV111.SerializeEvent(boundaryEvent));
         transcript.Validate();
         _orderedTranscript.Add(transcript);
     }
@@ -323,12 +430,6 @@ public sealed record RandomBoundaryDiffV111(
 
 public static class RandomBoundaryComparisonV111
 {
-    private static readonly JsonSerializerOptions TranscriptJsonOptions =
-        new(JsonSerializerDefaults.Web)
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
-        };
-
     /// <summary>Compare mixed primitive operations in their actual global
     /// provider-call order while retaining each typed request comparison.</summary>
     public static RandomBoundaryDiffV111 CompareOrdered(
@@ -375,40 +476,28 @@ public static class RandomBoundaryComparisonV111
             return expected.OperationKind switch
             {
                 "index" => CompareOne(
-                    expected.Event.Deserialize<RandomBoundaryEventV111>(
-                        TranscriptJsonOptions),
-                    actual.Event.Deserialize<RandomBoundaryEventV111>(
-                        TranscriptJsonOptions),
+                    expected.DeserializeEvent<RandomBoundaryEventV111>(),
+                    actual.DeserializeEvent<RandomBoundaryEventV111>(),
                     requireNativeCursorEquality),
                 "unit_float" => CompareOne(
-                    expected.Event.Deserialize<RandomUnitFloatBoundaryEventV111>(
-                        TranscriptJsonOptions),
-                    actual.Event.Deserialize<RandomUnitFloatBoundaryEventV111>(
-                        TranscriptJsonOptions),
+                    expected.DeserializeEvent<RandomUnitFloatBoundaryEventV111>(),
+                    actual.DeserializeEvent<RandomUnitFloatBoundaryEventV111>(),
                     requireNativeCursorEquality),
                 "ranged_float" => CompareOne(
-                    expected.Event.Deserialize<RandomRangedFloatBoundaryEventV111>(
-                        TranscriptJsonOptions),
-                    actual.Event.Deserialize<RandomRangedFloatBoundaryEventV111>(
-                        TranscriptJsonOptions),
+                    expected.DeserializeEvent<RandomRangedFloatBoundaryEventV111>(),
+                    actual.DeserializeEvent<RandomRangedFloatBoundaryEventV111>(),
                     requireNativeCursorEquality),
                 "ranged_double" => CompareOne(
-                    expected.Event.Deserialize<RandomRangedDoubleBoundaryEventV111>(
-                        TranscriptJsonOptions),
-                    actual.Event.Deserialize<RandomRangedDoubleBoundaryEventV111>(
-                        TranscriptJsonOptions),
+                    expected.DeserializeEvent<RandomRangedDoubleBoundaryEventV111>(),
+                    actual.DeserializeEvent<RandomRangedDoubleBoundaryEventV111>(),
                     requireNativeCursorEquality),
                 "gaussian_int" => CompareOne(
-                    expected.Event.Deserialize<RandomGaussianIntBoundaryEventV111>(
-                        TranscriptJsonOptions),
-                    actual.Event.Deserialize<RandomGaussianIntBoundaryEventV111>(
-                        TranscriptJsonOptions),
+                    expected.DeserializeEvent<RandomGaussianIntBoundaryEventV111>(),
+                    actual.DeserializeEvent<RandomGaussianIntBoundaryEventV111>(),
                     requireNativeCursorEquality),
                 "gaussian_double" => CompareOne(
-                    expected.Event.Deserialize<RandomGaussianDoubleBoundaryEventV111>(
-                        TranscriptJsonOptions),
-                    actual.Event.Deserialize<RandomGaussianDoubleBoundaryEventV111>(
-                        TranscriptJsonOptions),
+                    expected.DeserializeEvent<RandomGaussianDoubleBoundaryEventV111>(),
+                    actual.DeserializeEvent<RandomGaussianDoubleBoundaryEventV111>(),
                     requireNativeCursorEquality),
                 _ => "operation_kind"
             };

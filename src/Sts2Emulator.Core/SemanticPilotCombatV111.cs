@@ -51,12 +51,6 @@ public sealed record SemanticNativePolicyAuditV111(
     public const string NativeProviderId =
         "engine-owned-native-v111-comparator-unverified-v1";
 
-    private static readonly JsonSerializerOptions TraceJsonOptions =
-        new(JsonSerializerDefaults.Web)
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
-        };
-
     public RandomBoundaryTranscriptEntryV111[] ProviderTrace { get; init; } = [];
 
     public void Validate()
@@ -89,78 +83,14 @@ public sealed record SemanticNativePolicyAuditV111(
                 throw new InvalidDataException(
                     "Native policy mixed trace sequence is invalid at " + index + ".");
             entry.Validate();
-            switch (entry.OperationKind)
+            ValidateNativeTraceProvenance(entry.ReadProviderMode(), index);
+            if (entry.OperationKind == "index")
             {
-                case "index":
+                var value = entry.DeserializeEvent<RandomBoundaryEventV111>();
+                traceIndices.Add(value with
                 {
-                    var value = entry.Event.Deserialize<RandomBoundaryEventV111>(
-                        TraceJsonOptions) ?? throw new InvalidDataException(
-                            "Native policy index trace has no event payload.");
-                    new RandomIndexDecisionV111(value.Request,
-                        value.SelectedIndex, value.ProviderMode,
-                        value.NativeCursorBefore, value.NativeCursorAfter).Validate();
-                    ValidateNativeTraceProvenance(value.ProviderMode, index);
-                    traceIndices.Add(value with { Sequence = traceIndices.Count + 1 });
-                    break;
-                }
-                case "unit_float":
-                {
-                    var value = entry.Event.Deserialize<RandomUnitFloatBoundaryEventV111>(
-                        TraceJsonOptions) ?? throw new InvalidDataException(
-                            "Native policy unit-float trace has no event payload.");
-                    new RandomUnitFloatDecisionV111(value.Request,
-                        value.SelectedValue, value.ProviderMode,
-                        value.NativeCursorBefore, value.NativeCursorAfter).Validate();
-                    ValidateNativeTraceProvenance(value.ProviderMode, index);
-                    break;
-                }
-                case "ranged_float":
-                {
-                    var value = entry.Event.Deserialize<RandomRangedFloatBoundaryEventV111>(
-                        TraceJsonOptions) ?? throw new InvalidDataException(
-                            "Native policy ranged-float trace has no event payload.");
-                    new RandomRangedFloatDecisionV111(value.Request,
-                        value.SelectedValue, value.ProviderMode,
-                        value.NativeCursorBefore, value.NativeCursorAfter).Validate();
-                    ValidateNativeTraceProvenance(value.ProviderMode, index);
-                    break;
-                }
-                case "ranged_double":
-                {
-                    var value = entry.Event.Deserialize<RandomRangedDoubleBoundaryEventV111>(
-                        TraceJsonOptions) ?? throw new InvalidDataException(
-                            "Native policy ranged-double trace has no event payload.");
-                    new RandomRangedDoubleDecisionV111(value.Request,
-                        value.SelectedValue, value.ProviderMode,
-                        value.NativeCursorBefore, value.NativeCursorAfter).Validate();
-                    ValidateNativeTraceProvenance(value.ProviderMode, index);
-                    break;
-                }
-                case "gaussian_int":
-                {
-                    var value = entry.Event.Deserialize<RandomGaussianIntBoundaryEventV111>(
-                        TraceJsonOptions) ?? throw new InvalidDataException(
-                            "Native policy Gaussian-integer trace has no event payload.");
-                    new RandomGaussianIntDecisionV111(value.Request,
-                        value.SelectedValue, value.ProviderMode,
-                        value.NativeCursorBefore, value.NativeCursorAfter).Validate();
-                    ValidateNativeTraceProvenance(value.ProviderMode, index);
-                    break;
-                }
-                case "gaussian_double":
-                {
-                    var value = entry.Event.Deserialize<RandomGaussianDoubleBoundaryEventV111>(
-                        TraceJsonOptions) ?? throw new InvalidDataException(
-                            "Native policy Gaussian-double trace has no event payload.");
-                    new RandomGaussianDoubleDecisionV111(value.Request,
-                        value.SelectedValue, value.ProviderMode,
-                        value.NativeCursorBefore, value.NativeCursorAfter).Validate();
-                    ValidateNativeTraceProvenance(value.ProviderMode, index);
-                    break;
-                }
-                default:
-                    throw new InvalidDataException(
-                        "Native policy mixed trace has an unsupported operation.");
+                    Sequence = traceIndices.Count + 1
+                });
             }
         }
 
