@@ -233,7 +233,8 @@ public sealed partial class PrototypeGameEngine
                 { Mode: SemanticDeckStateV111.NatureMode })
             return false;
 
-        if (IsPlayerTurnStartedDiscardSelection(combat, pending))
+        if (IsPlayerTurnStartedDiscardSelection(combat, pending) ||
+            IsPlayerTurnStartedToolsOfTheTradeSelection(combat, pending))
             return true;
         if (pending.CardPlaySeries is not { IsAutoPlay: true })
             return false;
@@ -254,6 +255,12 @@ public sealed partial class PrototypeGameEngine
             pending is not
                 { SourceCardInstanceId: null,
                   SourceCardDestination: PrototypeCardZone.DiscardPile,
+                  CandidateCardInstanceIds: { } candidates,
+                  Continuation: { Length: 0 },
+                  CompletionEvents: { Length: 0 },
+                  Selection: { SequentialOptional: false,
+                      DrawEqualToSelectionsOnCompletion: false,
+                      RemoveUnselectedFromSource: false },
                   OuterChoiceContinuation: null,
                   CardPlaySeries: null,
                   EventDispatchContinuation: null,
@@ -264,8 +271,6 @@ public sealed partial class PrototypeGameEngine
                   MoveSourceCardOnCompletion: true,
                   RemoveSourceCardOnCompletion: false,
                   SourceCardAlreadyMoved: false } ||
-            pending.Continuation.Length != 0 ||
-            pending.CompletionEvents.Length != 0 ||
             pending.Selection is not
                 { SourceZone: PrototypeCardZone.Hand,
                   Resolution: PrototypeCardSelectionResolutionKind.MoveToDiscard,
@@ -275,17 +280,7 @@ public sealed partial class PrototypeGameEngine
             !IsAtSupportedAutomaticPipelineTargetBoundary(combat))
             return false;
 
-        var playerTurnStartedIndex = -1;
-        var pipeline = PrototypeContent.Rules.EndTurnPipeline;
-        for (var index = 0; index < pipeline.Length; index++)
-            if (pipeline[index].Kind ==
-                    PrototypeAutomaticStepKind.DispatchCombatEvent &&
-                pipeline[index].EventKind ==
-                    PrototypeCombatEventKind.PlayerTurnStarted)
-            {
-                playerTurnStartedIndex = index;
-                break;
-            }
+        var playerTurnStartedIndex = PlayerTurnStartedPipelineStepIndex();
         if (playerTurnStartedIndex < 0 ||
             continuation.NextStepIndex != playerTurnStartedIndex + 1)
             return false;
@@ -299,6 +294,153 @@ public sealed partial class PrototypeGameEngine
             pending.Selection.MaxSelections == expectedCount &&
             pending.CandidateCardInstanceIds.SequenceEqual(combat.Hand);
     }
+
+    private static bool IsPlayerTurnStartedToolsOfTheTradeSelection(
+        CombatState combat, PendingCombatChoiceState pending)
+    {
+        const string toolsOfTheTradePowerId =
+            "proto.power.tools_of_the_trade";
+        if (combat is not { IsPlayerTurn: true,
+                AutomaticPipelineContinuation: { } continuation,
+                PendingKnowledgeDemonChoice: null } ||
+            combat.SemanticDeck is not
+                { Mode: SemanticDeckStateV111.NatureMode, Pending: null } ||
+            pending is not
+                { ChoiceId: "select_cards",
+                  SourceCardInstanceId: null,
+                  SourceCardDestination: PrototypeCardZone.DiscardPile,
+                  CandidateCardInstanceIds: { } candidates,
+                  Continuation: { Length: 0 },
+                  CompletionEvents: { Length: 0 },
+                  Selection: { SequentialOptional: false,
+                      DrawEqualToSelectionsOnCompletion: false,
+                      RemoveUnselectedFromSource: false },
+                  OuterChoiceContinuation: null,
+                  CardPlaySeries: null,
+                  SelectedCardPower: null,
+                  SelectedCardKeyword: null,
+                  SelectedCardTemporaryCost: null,
+                  SequentialSelectedCardInstanceIds: null,
+                  EventDispatchContinuation: { } eventDispatch,
+                  ControlledTarget: null,
+                  ControlledGeneration: null,
+                  ControlledPotionGeneration: null,
+                  ControlledCardTransform: null,
+                  ControlledDrawInsertion: null,
+                  ControlledPoolShuffle: null,
+                  ControlledRandomCost: null,
+                  ControlledDrawCost: null,
+                  ControlledCardShortlist: null,
+                  ControlledRandomPileCard: null,
+                  ControlledSemanticDraw: null,
+                  SemanticStratagemDrawSelection: false,
+                  AutomaticSemanticStratagemDrawSelection: false,
+                  StandaloneSemanticDrawHookChoice: false,
+                  AutomaticSemanticDrawHookChoice: false,
+                  MoveSourceCardOnCompletion: true,
+                  RemoveSourceCardOnCompletion: false,
+                  SourceCardAlreadyMoved: false } ||
+            eventDispatch is not
+                { EventDepth: 0,
+                  CombatEvent.Kind: PrototypeCombatEventKind.PlayerTurnStarted } ||
+            eventDispatch.CombatEvent != new PrototypeCombatEvent(
+                PrototypeCombatEventKind.PlayerTurnStarted) ||
+            !IsAtPlayerTurnStartedDispatchContinuation(
+                combat, continuation))
+            return false;
+
+        var subscriber = eventDispatch.CurrentSubscriber;
+        if (subscriber.SourcePowerApplicationOrder is not { } powerOrder ||
+            subscriber.SourceKind != PrototypeEffectSourceKind.Power ||
+            subscriber.SourcePowerEnemyId is not null ||
+            subscriber.PowerTriggerIndex is not { } triggerIndex)
+            return false;
+
+        var power = combat.PlayerPowers.SingleOrDefault(candidate =>
+            candidate.ApplicationOrder == powerOrder);
+        if (power is not { PowerId: toolsOfTheTradePowerId, Stacks: > 0 } ||
+            subscriber.ApplicationOrder != power.ApplicationOrder)
+            return false;
+
+        var definition = PrototypeContent.Power(toolsOfTheTradePowerId);
+        if ((uint)triggerIndex >= (uint)definition.Triggers.Length)
+            return false;
+        var trigger = definition.Triggers[triggerIndex];
+        if (trigger.EventKind != PrototypeCombatEventKind.PlayerTurnStarted ||
+            trigger.RequiresOwnerTarget || trigger.ExcludeHandDraw ||
+            trigger.RequiresPlayerTurn ||
+            trigger.RequiredSourceCardType is not null ||
+            trigger.Effects.Length != 1)
+            return false;
+        var expectedSubscriber = new PrototypeEventSubscriberState(
+            power.ApplicationOrder, trigger.Effects, power.Stacks,
+            PrototypeEffectSourceKind.Power,
+            SourcePowerApplicationOrder: power.ApplicationOrder,
+            PowerCardPayload: power.CardPayload?.Fork(),
+            RemoveSourcePowerAfterTrigger: trigger.RemoveSourcePowerAfterTrigger,
+            EveryNth: trigger.EveryNth,
+            PowerTriggerIndex: triggerIndex,
+            CountdownBeforeTrigger: trigger.CountdownBeforeTrigger,
+            SourcePowerStoredValue: power.StoredValue);
+        if (CanonicalJson.Sha256(expectedSubscriber) !=
+            CanonicalJson.Sha256(subscriber))
+            return false;
+
+        var chooseCards = trigger.Effects.SingleOrDefault(effect =>
+            effect.Kind == PrototypeCombatEffectKind.ChooseCards);
+        if (chooseCards?.Selection is not { } sourceSelection ||
+            sourceSelection.SourceZone != PrototypeCardZone.Hand ||
+            sourceSelection.Resolution !=
+                PrototypeCardSelectionResolutionKind.MoveToDiscard ||
+            sourceSelection.RequiredCardType is not null ||
+            sourceSelection.RandomCandidateCount != 0 ||
+            sourceSelection.RequireAttackOrPower ||
+            sourceSelection.RequireEnergyCostingCard)
+            return false;
+
+        int sourceMin = sourceSelection.MinSelections +
+            sourceSelection.SelectionsPerPowerStack * power.Stacks;
+        int sourceMax = sourceSelection.MaxSelections +
+            sourceSelection.SelectionsPerPowerStack * power.Stacks;
+        int expectedMax = Math.Min(sourceMax, combat.Hand.Length);
+        if (expectedMax <= 0)
+            return false;
+        var expectedSelection = sourceSelection with
+        {
+            MinSelections = Math.Min(sourceMin, expectedMax),
+            MaxSelections = expectedMax
+        };
+        return pending.Selection == expectedSelection &&
+            candidates.SequenceEqual(combat.Hand);
+    }
+
+    private static bool IsAtPlayerTurnStartedDispatchContinuation(
+        CombatState combat,
+        PrototypeAutomaticPipelineContinuationState continuation)
+    {
+        var playerTurnStartedIndex = PlayerTurnStartedPipelineStepIndex();
+        return combat.IsPlayerTurn && playerTurnStartedIndex >= 0 &&
+            continuation is
+                { OpeningStage: null,
+                  PendingPostDispatchEventKind:
+                    PrototypeCombatEventKind.PlayerTurnStarted,
+                  ControlledDrawRemaining: null,
+                  ControlledDrawCostRemaining: null,
+                  ControlledSemanticDrawRemaining: null,
+                  ControlledSemanticDrawRequested: null,
+                  ControlledSemanticBeforeHandDrawPending: false,
+                  ControlledRecycleStratagemPending: false,
+                  ControlledDrawHookChoicePending: false,
+                  ControlledBeforeHandDrawHookChoicePending: false,
+                  ControlledEnemyAction: null,
+                  ControlledTurnIntents: null } &&
+            continuation.NextStepIndex == playerTurnStartedIndex + 1;
+    }
+
+    private static int PlayerTurnStartedPipelineStepIndex() =>
+        Array.FindIndex(PrototypeContent.Rules.EndTurnPipeline, step =>
+            step.Kind == PrototypeAutomaticStepKind.DispatchCombatEvent &&
+            step.EventKind == PrototypeCombatEventKind.PlayerTurnStarted);
 
     internal static bool IsAutomaticPipelineSemanticDrawHookChoiceContinuation(
         CombatState combat, PendingCombatChoiceState pending)
