@@ -7,7 +7,7 @@ namespace Sts2Emulator.Core;
 /// </summary>
 public sealed partial class PrototypeGameEngine
 {
-    private static string[]? SourcePoolForShuffle(
+    internal static string[]? SourcePoolForShuffle(
         CombatState combat, PrototypeQueuedOperation op, long? sourceCardInstanceId)
     {
         if (op.Kind ==
