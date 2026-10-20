@@ -112,6 +112,21 @@ public static class SemanticDrawPileAdapterV111
             combat, invalidBoundaryMessage, invalidBoundaryMessage);
     }
 
+    internal static bool IsSupportedSemanticHandDrawSourceDeck(
+        CombatState combat)
+    {
+        try
+        {
+            ValidateSemanticHandDrawSourceDeck(
+                combat, "Unsupported semantic hand-draw source deck.");
+            return true;
+        }
+        catch (InvalidDataException)
+        {
+            return false;
+        }
+    }
+
     /// <summary>
     /// Resolves the current top card from the shared provider/physical-pile
     /// contract. A Nature-owned unknown position returns its pending reveal;
