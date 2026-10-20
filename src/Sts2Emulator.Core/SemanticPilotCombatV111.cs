@@ -2779,8 +2779,6 @@ public static class SemanticPilotCombatEngineV111
                 null, null, false, decision);
         if (pending.TargetCardInstanceId is not null)
         {
-            SemanticCostChoiceV111.ValidateDecision(
-                current.CostPending, decision, index);
             var choice = new SemanticEndTurnNestedChoiceV111(
                 "semantic_cost", CostDecision: decision.Fork());
             return ResumeAndPublishNestedChoice(
