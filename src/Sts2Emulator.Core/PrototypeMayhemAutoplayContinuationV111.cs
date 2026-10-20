@@ -159,6 +159,27 @@ public sealed partial class PrototypeGameEngine
             combat, continuation);
     }
 
+    internal static bool IsAutomaticPipelineSemanticCardShortlistContinuation(
+        CombatState combat, PendingCombatChoiceState pending)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(pending);
+        if (pending is not
+            { ChoiceId: "controlled_card_shortlist",
+              ControlledCardShortlist: { } shortlist,
+              OuterChoiceContinuation: { } continuation } ||
+            combat.SemanticDeck is not
+                { Mode: SemanticDeckStateV111.NatureMode } ||
+            shortlist.Operation.Kind is not (
+                PrototypeCombatEffectKind.AutoPlayRandomCardsFromZone or
+                PrototypeCombatEffectKind.EmpowerRandomDrawCardReplay) ||
+            !ValidateControlledCardShortlist(combat, shortlist))
+            return false;
+
+        return IsSupportedAutomaticPipelineAutoplayContinuation(
+            combat, continuation);
+    }
+
     private static bool IsSupportedAutomaticPipelineAutoplayContinuation(
         CombatState combat,
         PrototypeChoiceResolutionContinuationState continuation)

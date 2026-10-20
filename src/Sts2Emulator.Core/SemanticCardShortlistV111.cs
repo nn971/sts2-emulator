@@ -258,6 +258,21 @@ public static class SemanticCardShortlistChoiceV111
         return decision;
     }
 
+    internal static void ValidateDecision(
+        SemanticCardShortlistEventV111? pending,
+        SemanticCardShortlistDecisionV111 decision,
+        long cardInstanceId)
+    {
+        ArgumentNullException.ThrowIfNull(decision);
+        decision.Validate();
+        if (pending is null || pending.EventId != decision.Event.EventId ||
+            CanonicalJson.Sha256(pending) !=
+                CanonicalJson.Sha256(decision.Event) ||
+            decision.SelectedCardInstanceId != cardInstanceId)
+            throw new InvalidDataException(
+                "Card-shortlist decision differs from its live semantic event.");
+    }
+
     /// <summary>Revalidate the live ordered shortlist and resume the saved
     /// selection, replay, or autoplay operation.</summary>
     internal static RunState Resume(

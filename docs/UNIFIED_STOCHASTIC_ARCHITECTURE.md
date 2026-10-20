@@ -223,6 +223,13 @@ retains a supported Mayhem or post-draw autoplay frame. Each replacement stays
 in the end-turn boundary chronology, including repeated transforms from one
 multi-card selection, and snapshot restore replays the saved ordered pool and
 selected model before continuing the autoplay suffix.
+
+Source-validated random auto-play and replay-card shortlists reached by
+autoplay also use that chronology. Each without-replacement pick retains the
+ordered physical-card support and selected prefix; the ordinary shortlist
+continuation resumes only after the saved prefix reaches its required count.
+Restore checks each pick against the live remaining support before continuing
+the autoplayed card.
 `ReferenceNatureMerchantSessionV111`,
 `ReferenceNatureTreasureSessionV111`,
 `ReferenceNatureCombatRewardSessionV111`,
