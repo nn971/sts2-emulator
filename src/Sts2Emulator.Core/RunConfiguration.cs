@@ -394,6 +394,37 @@ public sealed record CharacterResourceState
 
 public static class V111RunFactory
 {
+    private static readonly System.Threading.AsyncLocal<int>
+        ControlledReferenceNatureRunStartDepth = new();
+
+    private sealed class ControlledRunStartScope(int previousDepth) : IDisposable
+    {
+        private bool _disposed;
+
+        public void Dispose()
+        {
+            if (_disposed)
+                return;
+            if (ControlledReferenceNatureRunStartDepth.Value !=
+                previousDepth + 1)
+                throw new InvalidOperationException(
+                    "Controlled ReferenceNature run-start scopes must be disposed in stack order.");
+            ControlledReferenceNatureRunStartDepth.Value = previousDepth;
+            _disposed = true;
+        }
+    }
+
+    internal static bool ControlledReferenceNatureRunStartActive =>
+        ControlledReferenceNatureRunStartDepth.Value > 0;
+
+    internal static IDisposable EnterControlledReferenceNatureRunStart()
+    {
+        var previousDepth = ControlledReferenceNatureRunStartDepth.Value;
+        ControlledReferenceNatureRunStartDepth.Value =
+            checked(previousDepth + 1);
+        return new ControlledRunStartScope(previousDepth);
+    }
+
     public static RunState Create(string seed, RunConfiguration? configuration = null)
     {
         var owned = (configuration ?? RunConfiguration.Create()).Fork();
@@ -421,8 +452,14 @@ public static class V111RunFactory
             throw new NotSupportedException($"v111 '{config.CharacterId}' mechanics are not implemented; no Silent substitution is allowed.");
         if (!config.Profile.FullyUnlocked)
             throw new NotSupportedException("Restricted-profile acquisition/progression rules are not implemented; choose an explicit fully unlocked profile.");
+        var controlledReferenceNatureUnderdocksStart =
+            ControlledReferenceNatureRunStartActive
+            && config.Acts[0] == ActIdentity.Underdocks
+            && !config.UsesExperimentalSilentThreeActRoute;
         RunState opening;
-        var initialNatureState = input.ReferenceNatureState?.Fork();
+        var initialNatureState = controlledReferenceNatureUnderdocksStart
+            ? null
+            : input.ReferenceNatureState?.Fork();
         var runStartChanceLaws = new List<ChanceLawV111>();
         var runStartDecisions = new List<ReferenceNatureDecisionV111>();
         ReferenceNatureMapGenerationAuditV111? actOneMapGeneration = null;

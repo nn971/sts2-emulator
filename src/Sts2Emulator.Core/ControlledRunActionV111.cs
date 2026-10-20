@@ -66,8 +66,13 @@ public sealed record ControlledRunActionTraceV111(
                     "Controlled run-action transcript is missing candidate labels.");
             decision.Validate();
             var request = decision.Request;
-            var isBossDraw = request.SiteId ==
+            var isOvergrowthBossDraw = request.SiteId ==
                 "run.encounter.overgrowth_boss.index_draw";
+            var isUnderdocksBossDraw = ActionId == "start_run"
+                && ControlledRunActionEngineV111
+                    .IsConfiguredNativeUnderdocksBossRequest(
+                        ControlledStochasticRequestV111.FromIndex(request));
+            var isBossDraw = isOvergrowthBossDraw || isUnderdocksBossDraw;
             var isMapDraw = request.SiteId.StartsWith(
                 "map.legacy.", StringComparison.Ordinal);
             var isEventEntryDraw = mapNodeAction
@@ -117,8 +122,11 @@ public sealed record ControlledRunActionTraceV111(
                         ? isShopPurchaseDraw
                     : ControlledEventChoiceReplayV111
                         .IsRunActionShovelSite(request.SiteId);
-            var prefixOwner = isBossDraw
+            var prefixOwner = isOvergrowthBossDraw
                 ? "run:act:1:boss_pool:" + CanonicalJson.Sha256(labels)
+                : isUnderdocksBossDraw
+                    ? "act:1:underdocks:boss_pool:" + CanonicalJson.Sha256(
+                        PrototypeNativeUnderdocks.NativeBossEncounterIds)
                 : ActionId == PrototypeNativeRestSiteActionsV111.Dig
                     ? "rest:shovel:pool:" + CanonicalJson.Sha256(labels)
                     : request.OwnerId;
@@ -140,6 +148,11 @@ public sealed record ControlledRunActionTraceV111(
                 Enumerable.Range(0, labels.Length).Select(index =>
                     index.ToString(CultureInfo.InvariantCulture)),
                 StringComparer.Ordinal);
+            var numericUnderdocksBossLabels = !isUnderdocksBossDraw
+                || labels.SequenceEqual(Enumerable.Range(0, labels.Length)
+                    .Select(index => index.ToString(
+                        CultureInfo.InvariantCulture)),
+                    StringComparer.Ordinal);
             if (decision.ProviderMode != "controlled-v111"
                 || decision.NativeCursorBefore is not null
                 || decision.NativeCursorAfter is not null
@@ -149,6 +162,7 @@ public sealed record ControlledRunActionTraceV111(
                 || !request.OrderedCandidates.SequenceEqual(prefixCandidates)
                 || (labels.Length != request.SupportCount && !omittedLabels)
                 || !numericLabels
+                || !numericUnderdocksBossLabels
                 || labels.Any(string.IsNullOrWhiteSpace))
                 throw new InvalidDataException(
                     "Controlled run-action transcript contains an invalid outcome.");
@@ -320,12 +334,16 @@ public sealed record PrototypeControlledRunActionContinuationV111(
         {
             case "start_run":
             {
+                var configuredUnderdocksStart =
+                    ControlledRunActionEngineV111
+                        .IsConfiguredNativeReferenceNatureRunStartSource(state);
                 if (state.Phase != RunPhase.RunStart
                     || state.World is not null
-                    || state.Configuration is not null)
+                    || state.Configuration is not null
+                        && !configuredUnderdocksStart)
                     throw new InvalidDataException(
-                        "Controlled run-start frame is outside the legacy run-start boundary.");
-                if (PendingRequest.SiteId ==
+                        "Controlled run-start frame is outside a supported run-start boundary.");
+                if (!configuredUnderdocksStart && PendingRequest.SiteId ==
                     "run.encounter.overgrowth_boss.index_draw")
                 {
                     expectedSite = "run.encounter.overgrowth_boss.index_draw";
@@ -337,7 +355,26 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                         0, bossPool.Length).ToArray();
                     expectedLabels = (string[])bossPool.Clone();
                 }
-                else if (ControlledEventChoiceReplayV111.IsRunActionSite(
+                else if (configuredUnderdocksStart
+                    && ControlledRunActionEngineV111
+                        .IsConfiguredNativeUnderdocksBossRequest(
+                            ControlledStochasticRequestV111.FromIndex(
+                                PendingRequest)))
+                {
+                    var bossPool = PrototypeNativeUnderdocks
+                        .NativeBossEncounterIds;
+                    expectedSite = PrototypeNativeUnderdocks
+                        .BossEncounterIndexSiteId;
+                    expectedStream = "combat";
+                    expectedOwner = "act:1:underdocks:boss_pool:"
+                        + CanonicalJson.Sha256(bossPool);
+                    expectedCandidates = Enumerable.Range(
+                        0, bossPool.Length).ToArray();
+                    expectedLabels = expectedCandidates.Select(index =>
+                        index.ToString(CultureInfo.InvariantCulture)).ToArray();
+                }
+                else if (state.Configuration is null
+                    && ControlledEventChoiceReplayV111.IsRunActionSite(
                     PendingRequest.SiteId)
                     && PendingRequest.SiteId.StartsWith(
                         "map.legacy.", StringComparison.Ordinal))
@@ -592,8 +629,13 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                     "Controlled run-action decision prefix is missing candidate labels.");
             decision.Validate();
             var request = decision.Request;
-            var isBossDraw = request.SiteId ==
+            var isOvergrowthBossDraw = request.SiteId ==
                 "run.encounter.overgrowth_boss.index_draw";
+            var isUnderdocksBossDraw = ActionId == "start_run"
+                && ControlledRunActionEngineV111
+                    .IsConfiguredNativeUnderdocksBossRequest(
+                        ControlledStochasticRequestV111.FromIndex(request));
+            var isBossDraw = isOvergrowthBossDraw || isUnderdocksBossDraw;
             var isMapDraw = request.SiteId.StartsWith(
                 "map.legacy.", StringComparison.Ordinal);
             var isEventEntryDraw = ActionId == "choose_map_node"
@@ -654,8 +696,11 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                         || isNativeActOneCombatEntryDraw
                     : ControlledEventChoiceReplayV111
                         .IsRunActionShovelSite(request.SiteId);
-            var prefixOwner = isBossDraw
+            var prefixOwner = isOvergrowthBossDraw
                 ? "run:act:1:boss_pool:" + CanonicalJson.Sha256(labels)
+                : isUnderdocksBossDraw
+                    ? "act:1:underdocks:boss_pool:" + CanonicalJson.Sha256(
+                        PrototypeNativeUnderdocks.NativeBossEncounterIds)
                 : ActionId == PrototypeNativeRestSiteActionsV111.Dig
                     ? "rest:shovel:pool:" + CanonicalJson.Sha256(labels)
                     : request.OwnerId;
@@ -676,6 +721,11 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                 Enumerable.Range(0, labels.Length).Select(index =>
                     index.ToString(CultureInfo.InvariantCulture)),
                 StringComparer.Ordinal);
+            var numericUnderdocksBossLabels = !isUnderdocksBossDraw
+                || labels.SequenceEqual(Enumerable.Range(0, labels.Length)
+                    .Select(index => index.ToString(
+                        CultureInfo.InvariantCulture)),
+                    StringComparer.Ordinal);
             if (decision.ProviderMode != "controlled-v111"
                 || decision.NativeCursorBefore is not null
                 || decision.NativeCursorAfter is not null
@@ -685,6 +735,7 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                 || !request.OrderedCandidates.SequenceEqual(prefixCandidates)
                 || (request.SupportCount != labels.Length && !omittedLabels)
                 || !numericLabels
+                || !numericUnderdocksBossLabels
                 || labels.Any(string.IsNullOrWhiteSpace))
                 throw new InvalidDataException(
                     "Controlled run-action decision prefix is malformed.");
@@ -733,6 +784,51 @@ public static class ControlledRunActionEngineV111
     public static bool IsShopPurchaseActionKind(string actionKind) =>
         actionKind is "buy_card" or "buy_potion" or
             "replace_shop_potion" or "remove_card" or "buy_relic";
+
+    internal static bool IsConfiguredNativeReferenceNatureRunStartSource(
+        RunState source)
+    {
+        var configuration = source.Configuration;
+        var acts = configuration?.Acts;
+        return source.Phase == RunPhase.RunStart
+            && source.World is null
+            && source.GameBuild == V111Build.Id
+            && source.EmulatorSchema == V111Build.StateSchema
+            && source.NativeRunRng is not null
+            && acts is { Length: 3 }
+            && acts[0] == ActIdentity.Underdocks
+            && configuration!.CharacterId == "silent"
+            && configuration.Profile.FullyUnlocked
+            && !configuration!.UsesExperimentalSilentThreeActRoute;
+    }
+
+    internal static bool IsConfiguredNativeReferenceNatureRunStartAction(
+        RunState source, GameAction action) =>
+        action.Kind == "start_run"
+        && IsConfiguredNativeReferenceNatureRunStartSource(source);
+
+    internal static bool IsConfiguredNativeReferenceNatureRunStartRequest(
+        RunState source, ControlledStochasticRequestV111 request) =>
+        IsConfiguredNativeReferenceNatureRunStartSource(source)
+        && IsConfiguredNativeUnderdocksBossRequest(request);
+
+    internal static bool IsConfiguredNativeUnderdocksBossRequest(
+        ControlledStochasticRequestV111 request)
+    {
+        if (request.IndexRequest is not { } index)
+            return false;
+        var bossPool = PrototypeNativeUnderdocks.NativeBossEncounterIds;
+        return index.SiteId == PrototypeNativeUnderdocks
+                .BossEncounterIndexSiteId
+            && index.StreamId == "combat"
+            && index.OperationKind == "choose_index"
+            && index.OwnerId == "act:1:underdocks:boss_pool:"
+                + CanonicalJson.Sha256(bossPool)
+            && index.Ordinal == 0
+            && index.SupportCount == bossPool.Length
+            && index.OrderedCandidates.SequenceEqual(
+                Enumerable.Range(0, bossPool.Length));
+    }
 
     internal static bool IsShopPurchaseAction(
         RunState source, GameAction action) =>
@@ -818,6 +914,10 @@ public static class ControlledRunActionEngineV111
             IsLegacyUnderdocksCombatEntryAction(source, action);
         var legacyActOneCombatEntryAction = overgrowthCombatEntryAction
             || underdocksCombatEntryAction;
+        var configuredNativeRunStartAction =
+            V111RunFactory.ControlledReferenceNatureRunStartActive
+            && IsConfiguredNativeReferenceNatureRunStartAction(
+                source, action);
         var shopPurchaseAction = IsShopPurchaseAction(
             source, action);
         if (source.ControlledRunActionChoice is not null
@@ -838,14 +938,25 @@ public static class ControlledRunActionEngineV111
         RunState result;
         using (ControlledChanceGuardV111.Enter())
         {
+            Func<ControlledStochasticRequestV111, bool>? requestFilter =
+                configuredNativeRunStartAction
+                    ? request =>
+                        IsConfiguredNativeReferenceNatureRunStartRequest(
+                            source, request)
+                    : nativeActOneCombatEntryAction
+                        ? IsNativeActOneCombatEntryRequest
+                        : legacyActOneCombatEntryAction
+                            ? IsLegacyActOneCombatEntryRequest : null;
             var replay = ControlledChanceContinuationExecutorV111.Resume(
                 source, [], checkpoint => engine.Step(checkpoint, action).State,
-                requestFilter: nativeActOneCombatEntryAction
-                    ? IsNativeActOneCombatEntryRequest
-                    : legacyActOneCombatEntryAction
-                        ? IsLegacyActOneCombatEntryRequest : null);
+                requestFilter: requestFilter);
             if (replay.PendingChance is { } pendingChance)
             {
+                var supportedStartRunSite = configuredNativeRunStartAction
+                    && IsConfiguredNativeReferenceNatureRunStartRequest(
+                        source,
+                        ControlledStochasticRequestV111.FromIndex(
+                            pendingChance.Request));
                 var supportedShopPurchaseSite = shopPurchaseAction
                     && StochasticSiteRegistryV111
                         .IsRunActionShopPurchaseSite(
@@ -868,7 +979,8 @@ public static class ControlledRunActionEngineV111
                             || labels.Length == 0
                                 && pendingChance.Request.SupportCount >
                                     MaximumInlineOutcomeActions);
-                if ((!supportedMapNodeSite && !supportedShopPurchaseSite)
+                if ((!supportedStartRunSite && !supportedMapNodeSite
+                        && !supportedShopPurchaseSite)
                     || !labelsValid)
                     throw new NotSupportedException(
                         "Controlled run action reached an unsupported chance request.");

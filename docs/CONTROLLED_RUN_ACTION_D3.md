@@ -16,6 +16,17 @@ the legacy relic pool is exhausted. The boundary uses ordinary run-state
 handles and does not change normal `step` behavior or configured Native
 regional merchant/treasure routes.
 
+For a configured Act 1 Underdocks start, `ReferenceNatureRunActionSessionV111`
+also suspends on the exact `combat.encounter.underdocks.boss.index_draw`
+request. It replays the existing configured initializer with the selected
+boss index, then stores the sampled law and decision in the run-initialization
+transcript with the committed Nature cursor. The request filter leaves the
+initializer's other draws on their current providers; the hidden Overgrowth
+boss draw inside the shared starter is not selected by Nature. This does not
+make configured Overgrowth start or map generation resumable, or include the
+experimental three-act prepared bags. The equal-index boss law remains
+`UNVERIFIED`.
+
 For a configured Act 1 run using the experimental Native combat-entry profile,
 the same boundary can also suspend on the regional weak, normal, or elite
 encounter-pool index and on `combat.encounter.formation.index_draw` during a
@@ -73,7 +84,7 @@ sites appear in both region groups. The controller supports:
 | Operation | Inputs | Result |
 | --- | --- | --- |
 | `controlled_run_action_begin` | current `state_handle`, legal `action_id` | Pending request, labels and controlled outcome actions |
-| `controlled_run_action_resolve` | pending `state_handle`, `selected_index` | Child run handle with the selected run-start, event-entry, Shop, Treasure, Act 1 combat-entry or Shovel result |
+| `controlled_run_action_resolve` | pending `state_handle`, `selected_index` | Child run handle with the selected legacy run-start, configured Underdocks boss, event-entry, Shop, Treasure, Act 1 combat-entry or Shovel result |
 | `controlled_run_action_inspect` | pending `state_handle` | Restore the pending request and legal outcomes after snapshot load |
 
 The JSONL server also exposes an atomic ReferenceNature envelope for these
@@ -97,8 +108,9 @@ seed. Snapshots with a Nature-owned relic identity set use
 cursor use `sts2-exact-snapshot-v2-reference-nature-state`, and snapshots
 without a cursor retain `sts2-exact-snapshot-v1`.
 
-The session supports the `start_run` boss encounter draw, legacy map
-Event-node entry draws, the legacy regional Unknown-room 1000-way ticket,
+The session supports the legacy `start_run` boss encounter draw and the
+configured Underdocks boss draw described above, legacy map Event-node entry
+draws, the legacy regional Unknown-room 1000-way ticket,
 seven `shop.*` sites in legacy Shop-node generation,
 the `treasure.relic_model.index_draw` legacy Treasure-node site, registered
 combat-stream requests and the two legacy potion-factory index requests during
@@ -150,8 +162,9 @@ when a map Event node is selected. The separate
 legacy run with no `NativeRunRng` enters an available Unknown node in a regional
 map profile; its 1000 equal request indices remain `UNVERIFIED` because they
 approximate the source unit-float mapping. Configured Native run streams and
-source cursor parity remain outside this boundary, except for the experimental
-Act 1 encounter-pool and formation continuation described above.
+source cursor parity remain outside this boundary, except for the configured
+Underdocks run-start boss choice and experimental Act 1 encounter-pool and
+formation continuations described above.
 
 The supported legacy event-entry initialization sites are:
 

@@ -6758,8 +6758,16 @@ public sealed record ReferenceNatureRunActionSessionV111(
         ReferenceNatureRunCursorV111.ValidateInitial(
             source, initialNatureState, "Run-action");
         var detachedAction = CloneAction(action);
-        var run = ControlledRunActionEngineV111.Begin(
-            source.Fork(), detachedAction);
+        var configuredNativeRunStart =
+            ControlledRunActionEngineV111
+                .IsConfiguredNativeReferenceNatureRunStartAction(
+                    source, detachedAction);
+        RunState run;
+        using (configuredNativeRunStart
+                   ? V111RunFactory.EnterControlledReferenceNatureRunStart()
+                   : null)
+            run = ControlledRunActionEngineV111.Begin(
+                source.Fork(), detachedAction);
         var session = new ReferenceNatureRunActionSessionV111(
             CurrentSchemaId, source.Fork(), detachedAction, run,
             initialNatureState.Fork(), initialNatureState.Fork(), []);
@@ -6793,19 +6801,47 @@ public sealed record ReferenceNatureRunActionSessionV111(
         Validate();
         var law = ChanceLawEngineV111.QueryControlledRunAction(Run);
         var selection = ReferenceNatureV111.SampleValidated(law, NatureState);
-        var resolvedRun = ControlledRunActionEngineV111.Resolve(
-            Run.Fork(), selection.OutcomeIndex);
+        var configuredNativeRunStart =
+            ControlledRunActionEngineV111
+                .IsConfiguredNativeReferenceNatureRunStartAction(
+                    Origin, Action);
+        RunState resolvedRun;
+        using (configuredNativeRunStart
+                   ? V111RunFactory.EnterControlledReferenceNatureRunStart()
+                   : null)
+            resolvedRun = ControlledRunActionEngineV111.Resolve(
+                Run.Fork(), selection.OutcomeIndex);
+        var decision = new ReferenceNatureDecisionV111(
+            law.LawId, law.EventId, selection.OutcomeId,
+            selection.OutcomeIndex);
         if (resolvedRun.ControlledRunActionChoice is null)
-            resolvedRun = ReferenceNatureRunCursorV111.Commit(
-                resolvedRun, selection.NextState);
+        {
+            if (configuredNativeRunStart)
+            {
+                var initializationTranscript =
+                    new ReferenceNatureRunInitializationTranscriptV111(
+                        InitialNatureState, selection.NextState,
+                        [law], [decision]);
+                initializationTranscript.Validate();
+                resolvedRun = resolvedRun with
+                {
+                    ReferenceNatureState = selection.NextState.Fork(),
+                    ReferenceNatureRunInitializationTranscript =
+                        initializationTranscript
+                };
+            }
+            else
+            {
+                resolvedRun = ReferenceNatureRunCursorV111.Commit(
+                    resolvedRun, selection.NextState);
+            }
+        }
         var next = this with
         {
             Run = resolvedRun,
             NatureState = selection.NextState,
             DecisionTranscript = DecisionTranscript.Append(
-                new ReferenceNatureDecisionV111(
-                    law.LawId, law.EventId, selection.OutcomeId,
-                    selection.OutcomeIndex)).ToArray()
+                decision).ToArray()
         };
         next.Validate();
         return next;

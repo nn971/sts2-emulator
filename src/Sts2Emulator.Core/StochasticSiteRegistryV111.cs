@@ -594,6 +594,7 @@ public static class StochasticSiteRegistryV111
     private static readonly string[] RunActionSites =
     [
         "run.encounter.overgrowth_boss.index_draw",
+        PrototypeNativeUnderdocks.BossEncounterIndexSiteId,
         "map.legacy.floor_width.index_draw",
         "map.legacy.edge_source.index_draw",
         "map.legacy.orphan_target.index_draw",

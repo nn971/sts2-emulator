@@ -4262,6 +4262,23 @@ public sealed partial class PrototypeGameEngine
             ControlledRunActionEngineV111
                 .IsNativeActOneCombatEntryAction(
                     partialState, selectedMapAction);
+        var configuredNativeRunStart = continuation.ActionId == "start_run"
+            && V111RunFactory.ControlledReferenceNatureRunStartActive
+            && ControlledRunActionEngineV111
+                .IsConfiguredNativeReferenceNatureRunStartSource(
+                    partialState);
+        Func<ControlledStochasticRequestV111, bool>? requestFilter =
+            configuredNativeRunStart
+                ? request => ControlledRunActionEngineV111
+                    .IsConfiguredNativeReferenceNatureRunStartRequest(
+                        partialState, request)
+                : legacyActOneCombatEntry
+                    ? ControlledRunActionEngineV111
+                        .IsLegacyActOneCombatEntryRequest
+                    : nativeActOneCombatEntry
+                        ? ControlledRunActionEngineV111
+                            .IsNativeActOneCombatEntryRequest
+                        : null;
         var replay = ControlledChanceContinuationExecutorV111.Resume(
             partialState,
             decisions,
@@ -4294,19 +4311,19 @@ public sealed partial class PrototypeGameEngine
                 _ => throw new NotSupportedException(
                     "Controlled run action has no resume implementation.")
             },
-            requestFilter: legacyActOneCombatEntry
-                ? ControlledRunActionEngineV111
-                    .IsLegacyActOneCombatEntryRequest
-                : nativeActOneCombatEntry
-                    ? ControlledRunActionEngineV111
-                        .IsNativeActOneCombatEntryRequest
-                    : null);
+            requestFilter: requestFilter);
         if (replay.PendingChance is { } pendingChance)
         {
             var supportedSite = continuation.ActionId switch
             {
-                "start_run" => ControlledEventChoiceReplayV111
-                    .IsRunActionSite(pendingChance.Request.SiteId),
+                "start_run" => configuredNativeRunStart
+                    ? ControlledRunActionEngineV111
+                        .IsConfiguredNativeReferenceNatureRunStartRequest(
+                            partialState,
+                            ControlledStochasticRequestV111.FromIndex(
+                                pendingChance.Request))
+                    : ControlledEventChoiceReplayV111
+                        .IsRunActionSite(pendingChance.Request.SiteId),
                 "choose_map_node" => ControlledEventChoiceReplayV111
                     .IsRunActionEventEntrySite(pendingChance.Request.SiteId)
                     || ControlledEventChoiceReplayV111
