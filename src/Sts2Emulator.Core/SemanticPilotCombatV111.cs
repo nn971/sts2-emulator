@@ -2907,7 +2907,7 @@ public static class SemanticPilotCombatEngineV111
             {
                 ValidateNatureDeckContinuationBoundary(
                     resultCombat!, "stale_after_shuffle_continuation");
-                if (resultCombat.PendingChoice?.ControlledDrawInsertion is
+                if (resultCombat!.PendingChoice?.ControlledDrawInsertion is
                         { AfterShuffleRelic: not null })
                     SemanticDrawInsertionChoiceV111.ValidateBoundary(result);
                 else if (resultCombat!.PendingChoice?.ControlledSemanticDraw is not null)
