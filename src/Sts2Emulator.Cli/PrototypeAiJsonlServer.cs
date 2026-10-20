@@ -9368,11 +9368,28 @@ internal static class PrototypeAiJsonlServer
                                 FidelityId = requestedFidelity
                             };
                         configuration.Validate();
-                        var state = V111RunFactory.Create(RequiredString(request, "seed"), configuration);
+                        var natureSeed = OptionalULong(request, "nature_seed");
+                        var state = natureSeed is { } seed
+                            ? V111RunFactory.CreateWithReferenceNature(
+                                RequiredString(request, "seed"), seed,
+                                configuration)
+                            : V111RunFactory.Create(
+                                RequiredString(request, "seed"),
+                                configuration);
                         var handle = Store(state);
-                        Write(new { requestId, ok = true, stateHandle = handle,
-                            stateSchemaId = V111Build.StateSchema, configuration.FidelityId,
-                            exactHash = CanonicalJson.Sha256(state) });
+                        var response = new Dictionary<string, object?>
+                        {
+                            ["requestId"] = requestId,
+                            ["ok"] = true,
+                            ["stateHandle"] = handle,
+                            ["stateSchemaId"] = V111Build.StateSchema,
+                            ["fidelityId"] = configuration.FidelityId,
+                            ["exactHash"] = CanonicalJson.Sha256(state)
+                        };
+                        if (natureSeed is not null)
+                            response["referenceNatureStateSchemaId"] =
+                                ReferenceNatureStateV111.CurrentSchemaId;
+                        Write(response);
                         break;
                     }
 

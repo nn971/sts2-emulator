@@ -25,14 +25,18 @@ only v2 snapshots retain their established envelopes.
 Existing `reset`, `reset_native_overgrowth` and hypothetical adapters preserve
 their legacy identities. `reset_v111` is opt-in and accepts `seed`, `character`
 (default `silent`), `ascension` (0–10), and `first_act` (`Overgrowth` or
-`Underdocks`). The route continues through Hive/Glory in configuration. Five
+`Underdocks`). It also accepts optional unsigned `nature_seed` to attach a
+forkable ReferenceNature cursor before `start_run`; the Python
+`Session.reset(...)` method exposes the same parameter. For the Underdocks
+route, run initialization uses it for the ordered boss-pool choice and advances
+it once. The route continues through Hive/Glory in configuration. Five
 character configurations can be created/serialized, but starting unsupported
 character mechanics fails. Native later-act and restricted-profile mechanics
 also fail explicitly.
 
 For the **experimental** first whole-route slice, `reset_v111` additionally
 accepts `fidelity_id: "v111-experimental-silent-three-act-route-v1"`.
-The thin Python binding exposes the same keyword. This mode permits
+The thin Python binding exposes the same `fidelity_id` keyword. This mode permits
 Silent Act 1 → Hive → Glory through the fully catalogued
 Hive/Glory encounter rosters and available regional events with provisional
 selection weights, runtime gaps and non-native combat RNG; see
@@ -50,7 +54,7 @@ snapshots encode enums as canonical numeric values; reset uses the names above.
 | Operation | Request fields | Result |
 | --- | --- | --- |
 | `v111_coverage` | none | `coverage` with native IDs, dimensions and gaps |
-| `reset_v111` | `seed`, optional configuration | `stateHandle`, `exactHash`, schema/fidelity |
+| `reset_v111` | `seed`, optional configuration and `nature_seed` | `stateHandle`, `exactHash`, schema/fidelity, optional ReferenceNature state schema |
 | `legal_actions` | `state_handle` | semantic `actions` and stable `actionId` |
 | `observe` | `state_handle`, `policy_id: prototype-fair-v0` | fair `payloadJson` |
 | `step` | `state_handle`, `action_id` | independent `child`, preserved `parent` |

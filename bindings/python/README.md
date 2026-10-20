@@ -19,6 +19,11 @@ with Session(["dotnet", "src/Sts2Emulator.Cli/bin/Release/net9.0/Sts2Emulator.Cl
     child.release()
 ```
 
+For configured Underdocks starts, pass `nature_seed` to `Session.reset(...)`
+to seed the run-owned ReferenceNature cursor before the `start_run` action.
+That startup samples the Underdocks boss-pool law and advances the cursor once;
+the law remains `UNVERIFIED` and the default reset path is unchanged.
+
 The initial Endless Conveyor dish law can be queried before resolving a map
 Event-node action:
 

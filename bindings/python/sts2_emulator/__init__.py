@@ -3303,17 +3303,23 @@ class Session:
             return result
 
     def reset(self, seed, *, mode="v111", character="silent", first_act="Overgrowth",
-              ascension=0, fidelity_id=None):
+              ascension=0, fidelity_id=None, nature_seed=None):
         if mode not in {"v111", "prototype"}:
             raise ValueError("mode must be v111 or prototype")
+        if nature_seed is not None and (
+                isinstance(nature_seed, bool) or not isinstance(nature_seed, int)
+                or nature_seed < 0 or nature_seed > 0xffffffffffffffff):
+            raise ValueError("nature_seed must be an unsigned 64-bit integer")
         if mode == "prototype" and (character != "silent" or first_act != "Overgrowth"
-                                    or fidelity_id is not None):
-            raise ValueError("Legacy prototype reset supports Silent/Overgrowth without v111 fidelity overrides")
+                                    or fidelity_id is not None or nature_seed is not None):
+            raise ValueError("Legacy prototype reset supports Silent/Overgrowth without v111 overrides")
         payload = {"seed": seed, "ascension": ascension}
         if mode == "v111":
             payload.update(character=character, first_act=first_act)
             if fidelity_id is not None:
                 payload["fidelity_id"] = fidelity_id
+            if nature_seed is not None:
+                payload["nature_seed"] = nature_seed
         result = self.call("reset_v111" if mode == "v111" else "reset", **payload)
         return State(self, result["stateHandle"])
 

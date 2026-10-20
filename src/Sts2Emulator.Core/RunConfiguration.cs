@@ -406,6 +406,14 @@ public static class V111RunFactory
         };
     }
 
+    public static RunState CreateWithReferenceNature(string seed,
+        ulong natureSeed, RunConfiguration? configuration = null) =>
+        Create(seed, configuration) with
+        {
+            ReferenceNatureState = ReferenceNatureStateV111.Create(
+                natureSeed)
+        };
+
     internal static RunState Initialize(RunState input)
     {
         var config = input.Configuration ?? throw new InvalidDataException("Missing v111 configuration.");
