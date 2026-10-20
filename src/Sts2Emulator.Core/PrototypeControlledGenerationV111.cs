@@ -113,7 +113,8 @@ public sealed partial class PrototypeGameEngine
                   CompletedSemanticHandDrawRequested: null } ||
             continuation.EventDispatchContinuation is not
                 { EventDepth: 0,
-                  RemainingSubscribers: { Length: 0 } } eventDispatch ||
+                  RemainingSubscribers: { } remainingSubscribers }
+                eventDispatch ||
             eventDispatch.CombatEvent != new PrototypeCombatEvent(
                 PrototypeCombatEventKind.PlayerSideTurnStarted) ||
             eventDispatch.CurrentSubscriber is not
@@ -152,7 +153,9 @@ public sealed partial class PrototypeGameEngine
             MaxTriggersPerCounterWindow:
                 triggers[0].MaxTriggersPerCounterWindow);
         if (CanonicalJson.Sha256(expectedSubscriber) !=
-            CanonicalJson.Sha256(subscriber))
+                CanonicalJson.Sha256(subscriber) ||
+            !AreSupportedCrossbowRemainderSubscribers(
+                combat, remainingSubscribers))
             return false;
 
         var expectedOperation = new PrototypeQueuedOperation(
@@ -189,6 +192,64 @@ public sealed partial class PrototypeGameEngine
                     (string[])generation.CandidateCardIds.Clone()));
         return CanonicalJson.Sha256(expectedPending) ==
             CanonicalJson.Sha256(pending);
+    }
+
+    private static bool AreSupportedCrossbowRemainderSubscribers(
+        CombatState combat,
+        PrototypeEventSubscriberState[] subscribers) =>
+        subscribers.All(subscriber =>
+        {
+            if (subscriber is not
+                    { SourceKind: PrototypeEffectSourceKind.Relic,
+                      RelicStateIndex: { } relicIndex,
+                      RelicTriggerIndex: { } triggerIndex } ||
+                (uint)relicIndex >= (uint)combat.RelicStates.Length)
+                return false;
+            var relic = combat.RelicStates[relicIndex];
+            if (relic.IsMelted || relic.PersistentIndex != relicIndex ||
+                relic.ApplicationOrder != subscriber.ApplicationOrder)
+                return false;
+            var triggers = PrototypeContent.Relic(relic.RelicId).Triggers ?? [];
+            if ((uint)triggerIndex >= (uint)triggers.Length)
+                return false;
+            var trigger = triggers[triggerIndex];
+            if (trigger.EventKind !=
+                    PrototypeCombatEventKind.PlayerSideTurnStarted ||
+                trigger.Effects.Length == 0 ||
+                !trigger.Effects.All(
+                    IsSupportedCrossbowRemainderEffect))
+                return false;
+            var expectedSubscriber = new PrototypeEventSubscriberState(
+                relic.ApplicationOrder, trigger.Effects, PowerStacks: 0,
+                PrototypeEffectSourceKind.Relic,
+                RelicStateIndex: relicIndex,
+                RelicTriggerIndex: triggerIndex,
+                EveryNth: trigger.EveryNth,
+                MaxTriggersPerCounterWindow:
+                    trigger.MaxTriggersPerCounterWindow);
+            return CanonicalJson.Sha256(expectedSubscriber) ==
+                CanonicalJson.Sha256(subscriber);
+        });
+
+    private static bool IsSupportedCrossbowRemainderEffect(
+        PrototypeCombatEffectSpec effect)
+    {
+        PrototypeCombatEffectSpec? expected = effect.Kind switch
+        {
+            PrototypeCombatEffectKind.GainEnergy =>
+                new(effect.Kind, effect.Amount),
+            PrototypeCombatEffectKind.GainEnergyForGold =>
+                new(effect.Kind, effect.Amount,
+                    PlayerGoldCost: effect.PlayerGoldCost),
+            PrototypeCombatEffectKind.GainPlayerBlock =>
+                new(effect.Kind, effect.Amount),
+            PrototypeCombatEffectKind.ApplyPlayerPower
+                when !string.IsNullOrWhiteSpace(effect.PowerId) =>
+                new(effect.Kind, effect.Amount, PowerId: effect.PowerId),
+            _ => null
+        };
+        return expected is not null &&
+            CanonicalJson.Sha256(expected) == CanonicalJson.Sha256(effect);
     }
 
     internal static bool IsCrossbowTurnStartDrawBoundary(RunState run) =>
