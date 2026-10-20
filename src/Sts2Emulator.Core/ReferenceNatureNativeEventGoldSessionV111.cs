@@ -54,7 +54,8 @@ public sealed record ReferenceNatureNativeEventGoldSessionV111(
     }
 
     public static string[] SessionSiteIds =>
-        [GoldUnitFloatSiteId, GoldIndexSiteId,
+        [ChanceLawEngineV111.NativeEventGoldUnitFloatSiteId,
+            ChanceLawEngineV111.NativeEventGoldIndexSiteId,
             ChanceLawEngineV111.NativeStoneOfAllTimePotionSlotSiteId,
             ChanceLawEngineV111.NativeFutureOfPotionsCardTypeSiteId];
 

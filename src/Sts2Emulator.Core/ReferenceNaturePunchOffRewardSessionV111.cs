@@ -310,7 +310,7 @@ public sealed record ReferenceNaturePunchOffRewardSessionV111(
     }
 
     public static string[] SessionSiteIds =>
-        ChanceLawEngineV111.NativePunchOffRewardQuerySiteIds;
+        [.. ChanceLawEngineV111.NativePunchOffRewardQuerySiteIds];
 
     public static ReferenceNaturePunchOffRewardSessionV111 Begin(
         RunState origin, string actionId, ulong natureSeed) => Begin(

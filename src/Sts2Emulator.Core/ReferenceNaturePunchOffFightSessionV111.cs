@@ -259,7 +259,7 @@ public sealed record ReferenceNaturePunchOffFightSessionV111(
                 .ToArray(), ActionId);
 
     public static string[] SessionSiteIds =>
-        ChanceLawEngineV111.NativePunchOffFightQuerySiteIds;
+        [.. ChanceLawEngineV111.NativePunchOffFightQuerySiteIds];
 
     public static ReferenceNaturePunchOffFightSessionV111 Begin(
         RunState origin, string actionId, ulong natureSeed) => Begin(

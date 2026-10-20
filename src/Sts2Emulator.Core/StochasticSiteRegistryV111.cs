@@ -161,6 +161,38 @@ public sealed record StochasticSessionCoverageV111(
         ValidateSiteIds(ReferenceNatureTreasureSiteIds);
         ValidateSiteIds(ReferenceNatureCombatRewardSiteIds);
         ValidateSiteIds(ReferenceNatureMapGenerationSiteIds);
+
+        var natureChoiceSites = new HashSet<string>(
+            StochasticSiteRegistryV111.NatureChoiceSiteIds,
+            StringComparer.Ordinal);
+        string[][] sessionSiteGroups =
+        [
+            SemanticReferenceNatureSiteIds,
+            ReferenceNatureRunActionSiteIds,
+            ReferenceNatureEventChoiceSiteIds,
+            ReferenceNatureAncientOfferSiteIds,
+            ReferenceNatureNeowOfferSiteIds,
+            ReferenceNatureTrashHeapSiteIds,
+            ReferenceNatureTabletOfTruthSiteIds,
+            ReferenceNatureTrialSiteIds,
+            ReferenceNatureNativeEventShuffleSiteIds,
+            ReferenceNatureNativeEventGoldSiteIds,
+            ReferenceNatureNativeEventRelicSiteIds,
+            ReferenceNatureNativeShovelSiteIds,
+            ReferenceNatureEndlessConveyorSiteIds,
+            ReferenceNatureGloryReflectionsSiteIds,
+            ReferenceNatureInfestedAutomatonSiteIds,
+            ReferenceNaturePunchOffRewardSiteIds,
+            ReferenceNaturePunchOffFightSiteIds,
+            ReferenceNatureMerchantSiteIds,
+            ReferenceNatureTreasureSiteIds,
+            ReferenceNatureCombatRewardSiteIds,
+            ReferenceNatureMapGenerationSiteIds
+        ];
+        if (sessionSiteGroups.SelectMany(siteIds => siteIds)
+            .Any(siteId => !natureChoiceSites.Contains(siteId)))
+            throw new InvalidDataException(
+                "Stochastic session coverage includes a site absent from Nature-choice capabilities.");
     }
 
     private static void ValidateSiteIds(string[] siteIds)
@@ -185,6 +217,8 @@ internal sealed record LegacyCallerBoundIndexQuerySiteV111(
 /// </summary>
 public static class StochasticSiteRegistryV111
 {
+    public const string RelicGrabBagRaritySiteId =
+        "relic_grab_bag.rarity.unit_float";
     public const string DrawPileRandomInsertSiteId =
         "combat.draw_pile.random_insert_index";
     public const string AfterShuffleRelicDrawPileInsertSiteId =
@@ -668,7 +702,7 @@ public static class StochasticSiteRegistryV111
         PrototypeNativeRelicGrabBag.QueueShuffleSiteId,
         "potion_factory.rarity_roll.unit_float",
         "potion_factory.model_within_rarity.index_draw",
-        "relic_grab_bag.rarity.unit_float",
+        RelicGrabBagRaritySiteId,
         PrototypeNativeRelicGrabBag.NativeMerchantModelSiteId,
         "relic.paels_legion.skin.index_draw",
         "shop.merchant.card_upgrade_roll.unit_float",
@@ -698,7 +732,7 @@ public static class StochasticSiteRegistryV111
         "run.potion.fill_empty_slots.model",
         "potion_factory.rarity_roll.unit_float",
         "potion_factory.model_within_rarity.index_draw",
-        "relic_grab_bag.rarity.unit_float",
+        RelicGrabBagRaritySiteId,
         PrototypeNativeRelicGrabBag.NativeMerchantModelSiteId,
         "shop.merchant.card_price_modifier.unit_float",
         "shop.merchant.potion_price_modifier.unit_float",
@@ -707,7 +741,7 @@ public static class StochasticSiteRegistryV111
 
     private static readonly string[] NativeTreasureSessionSites =
     [
-        "relic_grab_bag.rarity.unit_float",
+        RelicGrabBagRaritySiteId,
         PrototypeNativeRelicGrabBag.NativeTreasureModelSiteId
     ];
 
@@ -786,7 +820,7 @@ public static class StochasticSiteRegistryV111
         "card_rarity.upgrade_roll.unit_float",
         "card_rarity.roll.unit_float",
         "potion_factory.rarity_roll.unit_float",
-        "relic_grab_bag.rarity.unit_float",
+        RelicGrabBagRaritySiteId,
         "shop.merchant.card_upgrade_roll.unit_float",
         .. NativeMerchantPriceSites,
         .. NativeEventContextUnitFloatSites
@@ -905,8 +939,15 @@ public static class StochasticSiteRegistryV111
         .. ChanceLawEngineV111.TabletOfTruthSessionSiteIds,
         .. ChanceLawEngineV111.TrialSessionSiteIds,
         .. ChanceLawEngineV111.NativeEventShuffleSessionSiteIds,
+        .. ReferenceNatureNativeEventGoldSessionV111.SessionSiteIds,
+        .. ReferenceNatureNativeEventRelicSessionV111.SessionSiteIds,
+        .. ReferenceNatureNativeShovelSessionV111.SessionSiteIds,
         .. ReferenceNatureEndlessConveyorSessionV111.SessionSiteIds,
+        .. ReferenceNatureGloryReflectionsSessionV111.SessionSiteIds,
         .. ReferenceNatureInfestedAutomatonSessionV111.SessionSiteIds,
+        .. ReferenceNaturePunchOffRewardSessionV111.SessionSiteIds,
+        .. ReferenceNaturePunchOffFightSessionV111.SessionSiteIds,
+        .. AncientOfferSessionSites,
     ];
 
     private static readonly string[] NatureChoiceSites =
