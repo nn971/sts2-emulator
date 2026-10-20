@@ -192,8 +192,8 @@ public static class SemanticTargetChoiceV111
 
     /// <summary>
     /// Applies one stable-identity target choice through the ordinary
-    /// controlled combat continuation and verifies that targeting did not
-    /// change hidden draw-pile state.
+    /// controlled combat continuation and validates either its supported
+    /// nested semantic draw or the unchanged hidden draw-pile boundary.
     /// </summary>
     internal static RunState Resume(
         RunState checkpoint, SemanticTargetDecisionV111 decision)
@@ -216,10 +216,20 @@ public static class SemanticTargetChoiceV111
             var nextCombat = resumed.World?.Combat ??
                 throw new InvalidDataException(
                     "Automatic target continuation lost combat.");
-            SemanticDrawPileAdapterV111.RequireUnchangedDrawPile(
-                priorCombat, nextCombat,
-                "UNSUPPORTED_SEMANTIC_DECK site=combat.random_target " +
-                "operation=unmodeled_draw_pile_mutation");
+            if (nextCombat.PendingChoice is
+                { ChoiceId: "controlled_semantic_draw",
+                  ControlledSemanticDraw: not null })
+                SemanticDrawChoiceV111.ValidateBoundary(resumed);
+            else if (nextCombat.PendingChoice is
+                { ChoiceId: "controlled_draw_cost",
+                  ControlledSemanticDraw: not null,
+                  ControlledDrawCost: not null })
+                SemanticCostChoiceV111.ValidateDrawBoundary(resumed);
+            else
+                SemanticDrawPileAdapterV111.RequireUnchangedDrawPile(
+                    priorCombat, nextCombat,
+                    "UNSUPPORTED_SEMANTIC_DECK site=combat.random_target " +
+                    "operation=unmodeled_draw_pile_mutation");
         }
         else if (!PrototypeGameEngine.IsAtCombatActionResultBoundary(resumed))
             throw new NotSupportedException(
