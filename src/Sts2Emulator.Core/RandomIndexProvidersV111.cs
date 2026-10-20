@@ -38,13 +38,49 @@ public sealed record RandomIndexRequestV111(
             throw new ArgumentException(
                 $"Random-choice site '{SiteId}' is not registered.",
                 nameof(SiteId));
+    }
 
+    internal void ValidateForNativeProvider()
+    {
+        Validate();
+        if (!StochasticSiteRegistryV111.IsNativeRandomIndexSite(SiteId))
+            throw new NotSupportedException(
+                $"Native random choice does not support site '{SiteId}'.");
         if (StochasticSiteRegistryV111
-                .TryGetRequiredRandomIndexOperationKind(
-                    SiteId, out var requiredOperationKind) &&
+                .TryGetRequiredNativeRandomIndexOperationKind(
+                    SiteId, StreamId, out var requiredOperationKind) &&
             OperationKind != requiredOperationKind)
             throw new ArgumentException(
-                $"Operation kind '{OperationKind}' does not match the registered kind '{requiredOperationKind}' for site '{SiteId}'.",
+                $"Operation kind '{OperationKind}' does not match the Native kind '{requiredOperationKind}' for site '{SiteId}'.",
+                nameof(OperationKind));
+    }
+
+    internal void ValidateForLegacyProvider()
+    {
+        Validate();
+        if (!StochasticSiteRegistryV111.IsLegacyRandomChoiceSite(SiteId))
+            throw new NotSupportedException(
+                $"Legacy random choice does not support site '{SiteId}'.");
+
+        if (StochasticSiteRegistryV111.TryGetLegacyCallerBoundIndexQuerySite(
+                SiteId, out var registeredSite))
+        {
+            if (StreamId != registeredSite.StreamId ||
+                OperationKind != registeredSite.OperationKind ||
+                SupportCount < registeredSite.MinimumSupportCount ||
+                registeredSite.ExactSupportCount is { } exactSupportCount &&
+                    SupportCount != exactSupportCount)
+                throw new ArgumentException(
+                    $"Request does not match the registered legacy stream, operation, or support for site '{SiteId}'.",
+                    nameof(SiteId));
+            return;
+        }
+
+        if (StochasticSiteRegistryV111
+                .RequiresLegacyBoundedRandomIndexOperation(SiteId) &&
+            OperationKind != "bounded_integer")
+            throw new ArgumentException(
+                $"Legacy site '{SiteId}' requires a bounded-integer request.",
                 nameof(OperationKind));
     }
 }
@@ -67,7 +103,12 @@ public sealed record RandomIndexDecisionV111(
 
     public void Validate()
     {
-        Request.Validate();
+        if (ProviderMode == "native-v111")
+            Request.ValidateForNativeProvider();
+        else if (ProviderMode == "legacy-prototype-v0")
+            Request.ValidateForLegacyProvider();
+        else
+            Request.Validate();
         if (SelectedIndex < 0 || SelectedIndex >= Request.SupportCount ||
             string.IsNullOrWhiteSpace(ProviderMode) ||
             ProbabilityStatus != "UNVERIFIED")
@@ -103,11 +144,7 @@ public sealed class NativeRandomIndexProviderV111 : IRandomIndexProviderV111
     {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(streams);
-        request.Validate();
-        if (!StochasticSiteRegistryV111.IsNativeRandomIndexSite(
-                request.SiteId))
-            throw new NotSupportedException(
-                $"Native random choice does not support site '{request.SiteId}'.");
+        request.ValidateForNativeProvider();
         var matches = streams.Streams.Where(s => s.StreamId == request.StreamId).ToArray();
         if (matches.Length != 1)
             throw new InvalidOperationException("Native random stream ownership is ambiguous.");
@@ -144,11 +181,7 @@ public sealed class LegacyPrototypeRandomIndexProviderV111
     {
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(streams);
-        request.Validate();
-        if (!StochasticSiteRegistryV111.IsLegacyRandomChoiceSite(
-                request.SiteId))
-            throw new NotSupportedException(
-                $"Legacy random choice does not support site '{request.SiteId}'.");
+        request.ValidateForLegacyProvider();
         if (ControlledChanceGuardV111.Active &&
             ControlledChanceGuardV111.EngineOwnedNativeProviderActive &&
             !ControlledChanceGuardV111.IsEngineOwnedPrototypeRewardRequest(
