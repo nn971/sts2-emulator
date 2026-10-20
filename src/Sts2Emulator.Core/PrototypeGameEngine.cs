@@ -24,6 +24,17 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
          combat.PendingKnowledgeDemonChoice is not null);
 
     /// <summary>
+    /// Recognizes every supported suspended choice in the automatic pipeline,
+    /// including source-action prompts and typed semantic chance continuations.
+    /// Callers that need a particular payload should still use its specific
+    /// predicate after this boundary check.
+    /// </summary>
+    internal static bool HasPendingSupportedAutomaticPipelineChoice(
+        RunState run) =>
+        HasPendingControlledAutomaticPipelineChoice(run) ||
+        HasPendingSupportedAutomaticPipelineSemanticChoice(run);
+
+    /// <summary>
     /// Recognizes a source-supported semantic effect draw or its randomized
     /// cost while an automatic pipeline is suspended in autoplay.
     /// </summary>

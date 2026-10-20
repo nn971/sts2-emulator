@@ -495,11 +495,8 @@ public static class SemanticCardSelectionEngineV111
     private static void ValidateAutomaticPipelineResult(RunState run)
     {
         var combat = run.World?.Combat;
-        bool supportedPending =
-            PrototypeGameEngine.HasPendingControlledAutomaticPipelineChoice(
-                run) ||
-            PrototypeGameEngine
-                .HasPendingSupportedAutomaticPipelineSemanticChoice(run);
+        bool supportedPending = PrototypeGameEngine
+            .HasPendingSupportedAutomaticPipelineChoice(run);
         bool supportedPipelineCheckpoint =
             combat?.AutomaticPipelineContinuation is not null &&
             ((combat.PendingChoice is null &&

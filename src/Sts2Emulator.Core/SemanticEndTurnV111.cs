@@ -477,7 +477,8 @@ public sealed record SemanticEndTurnV111(
              this.TargetPending is null &&
              this.KnowledgeDemonChoicePending is null &&
              !PrototypeGameEngine
-                .HasPendingSupportedAutomaticPipelineSemanticChoice(this.Run)) ||
+                .HasPendingSupportedAutomaticPipelineSemanticChoice(
+                    this.Run)) ||
             (!this.Complete && this.HandDraw is { AtBoundary: true } &&
              this.TargetPending is null &&
              !PrototypeGameEngine
@@ -500,11 +501,9 @@ public sealed record SemanticEndTurnV111(
                 CanonicalJson.Sha256(this.Run) != CanonicalJson.Sha256(hand.Run))
             {
                 if (!hand.AtBoundary ||
-                    (!PrototypeGameEngine
-                        .HasPendingControlledAutomaticPipelineChoice(this.Run) &&
-                     !PrototypeGameEngine
-                        .HasPendingSupportedAutomaticPipelineSemanticChoice(
-                            this.Run)))
+                    !PrototypeGameEngine
+                        .HasPendingSupportedAutomaticPipelineChoice(
+                            this.Run))
                     throw new InvalidDataException(
                         "Pending end-turn hand state differs from the draw continuation.");
             }
@@ -651,9 +650,7 @@ public static class SemanticEndTurnEngineV111
                 .IsAtCombatRewardOrTerminalBoundary(advanced))
             return (null, advanced);
         if (PrototypeGameEngine
-                .HasPendingControlledAutomaticPipelineChoice(advanced) ||
-            PrototypeGameEngine
-                .HasPendingSupportedAutomaticPipelineSemanticChoice(advanced))
+                .HasPendingSupportedAutomaticPipelineChoice(advanced))
         {
             var suspendedChoice = new SemanticEndTurnV111(
                 playerBoundary.Fork(), advanced.Fork(),
