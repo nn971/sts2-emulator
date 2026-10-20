@@ -1159,3 +1159,6 @@ Run matched source-state/seed sets; frozen player policy; fair observations/lega
 
 
 **S4 end-turn chronology encapsulation increment (2026-10-20):** `SemanticEndTurnStochasticStateV111` now protects intent, enemy-action, target, boundary, and nested-choice arrays with deep copies on construction/replacement and when returned to callers. Existing constructor/deconstruction shapes, JSON property names, flattened facade projections, and chronological `Fork` replay remain in place. A source scan found no indexed writes through these projections; `git diff --check` passed. No tests or builds were run.
+
+
+**S3 controlled-playable transcript encapsulation increment (2026-10-20):** `ControlledPlayableCombatStochasticStateV111` now deep-copies all typed decision transcripts, the pending index request and its ordered support, and the active recycle continuation on construction, replacement, projection, and fork. Flattened compatibility fields and JSON member names remain stable. The indexed-write census and `git diff --check` passed; no tests or builds were run.
