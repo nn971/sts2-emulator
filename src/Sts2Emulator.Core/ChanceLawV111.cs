@@ -6823,12 +6823,18 @@ public sealed record ReferenceNatureRunActionSessionV111(
             && ControlledRunActionEngineV111
                 .IsLegacyActOneCombatEntryAction(Origin, Action)
             && DecisionTranscript is { Length: 0 };
+        var immediateNativeActOneCombatAction = Origin is not null
+            && Action is not null
+            && ControlledRunActionEngineV111
+                .IsNativeActOneCombatEntryAction(Origin, Action)
+            && DecisionTranscript is { Length: 0 };
         if (SchemaId != CurrentSchemaId || Origin is null || Action is null ||
             Run is null || InitialNatureState is null || NatureState is null ||
             DecisionTranscript is null || string.IsNullOrWhiteSpace(Action.Kind) ||
             (Run.ControlledRunActionChoice is null &&
              Run.ControlledRunActionHistory is not { Length: > 0 } &&
-             !immediateShopAction && !immediateActOneCombatAction))
+             !immediateShopAction && !immediateActOneCombatAction &&
+             !immediateNativeActOneCombatAction))
             throw new InvalidDataException(
                 "Invalid ReferenceNature run-action session envelope.");
         PrototypeStateInvariants.Validate(Origin);
@@ -6871,7 +6877,8 @@ public sealed record ReferenceNatureRunActionSessionV111(
         }
         else
         {
-            if (immediateShopAction || immediateActOneCombatAction)
+            if (immediateShopAction || immediateActOneCombatAction ||
+                immediateNativeActOneCombatAction)
             {
                 var replayedRun = ControlledRunActionEngineV111.Begin(
                     Origin.Fork(), CloneAction(Action));

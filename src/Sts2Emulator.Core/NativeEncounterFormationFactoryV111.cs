@@ -174,6 +174,13 @@ public static class NativeEncounterFormationFactoryV111
                 FormationSiteId, ownedStream.StreamId,
                 $"encounter:{nativeEncounterEntry}:floor:{totalFloor}",
                 ordinal, Enumerable.Range(0, maxExclusive).ToArray());
+            var candidateLabels = Enumerable.Range(0, maxExclusive)
+                .Select(index => index.ToString(
+                    System.Globalization.CultureInfo.InvariantCulture))
+                .ToArray();
+            using var eventLabels =
+                ControlledEventChoiceReplayV111.DescribeCandidates(
+                    candidateLabels);
             var decision = StochasticProviderScopeV111.ResolveIndex(
                 provider, request, ownedBundle);
             choices.Add(decision);

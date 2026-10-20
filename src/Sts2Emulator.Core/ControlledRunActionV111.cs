@@ -82,6 +82,9 @@ public sealed record ControlledRunActionTraceV111(
             var isCombatDraw = mapNodeAction
                 && ControlledEventChoiceReplayV111
                     .IsRunActionCombatSite(request.SiteId);
+            var isNativeFormationDraw = mapNodeAction &&
+                ControlledRunActionEngineV111.IsNativeEncounterFormationRequest(
+                    ControlledStochasticRequestV111.FromIndex(request));
             var isCombatPotionDraw = mapNodeAction
                 && ControlledEventChoiceReplayV111
                     .IsRunActionCombatEntryPotionSite(request.SiteId);
@@ -94,11 +97,16 @@ public sealed record ControlledRunActionTraceV111(
                 ? "event" : isShopDraw ? "shop"
                 : isTreasureDraw ? "reward"
                 : isCombatPotionDraw ? "event"
+                : isNativeFormationDraw ? request.StreamId
                 : isCombatDraw ? "combat"
                 : isBossDraw ? "combat" : "map";
             var validStream = isShopPurchaseDraw
                 ? IsSupportedShopPurchaseStream(request)
-                : request.StreamId == prefixStream;
+                : isNativeFormationDraw
+                    ? ControlledRunActionEngineV111
+                        .IsNativeEncounterFormationRequest(
+                            ControlledStochasticRequestV111.FromIndex(request))
+                    : request.StreamId == prefixStream;
             var validSite = ActionId == "start_run"
                 ? ControlledEventChoiceReplayV111.IsRunActionSite(
                     request.SiteId)
@@ -379,12 +387,21 @@ public sealed record PrototypeControlledRunActionContinuationV111(
             }
             case "choose_map_node":
             {
+                var nativeFormationDraw =
+                    ControlledRunActionEngineV111
+                        .IsNativeEncounterFormationRequest(PendingRequest);
+                var nativeActOneCombatEntry = MapNodeId is { } nativeNodeId &&
+                    ControlledRunActionEngineV111
+                        .IsNativeActOneCombatEntryAction(state,
+                            GameAction.Create("choose_map_node",
+                                new ChooseMapNodePayload(nativeNodeId)));
                 if (state.Phase != RunPhase.MapChoice
                     || state.World is not { } world
-                    || state.NativeRunRng is not null
+                    || state.NativeRunRng is not null &&
+                        !(nativeFormationDraw && nativeActOneCombatEntry)
                     || string.IsNullOrWhiteSpace(MapNodeId))
                     throw new InvalidDataException(
-                        "Controlled map-node frame is outside the supported legacy boundary.");
+                        "Controlled map-node frame is outside a supported entry boundary.");
                 var node = PrototypeNativeWingedBoots.AvailableNodes(
                         world, state.Player)
                     .SingleOrDefault(candidate => candidate.NodeId == MapNodeId);
@@ -434,12 +451,17 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                 var legacyUnderdocksCombatNode = node is not null
                     && ControlledRunActionEngineV111
                         .IsLegacyUnderdocksCombatRoom(state, node.RoomType);
+                var nativeActOneCombatNode = node is not null &&
+                    nativeActOneCombatEntry &&
+                    node.RoomType is PrototypeRoomType.Combat or
+                        PrototypeRoomType.Elite or PrototypeRoomType.Boss;
                 if (node is null
                     || (node.RoomType != PrototypeRoomType.Event
                         && !legacyShopNode && !legacyTreasureNode
                         && !legacyUnknownRoomNode
                         && !legacyOvergrowthCombatNode
-                        && !legacyUnderdocksCombatNode))
+                        && !legacyUnderdocksCombatNode
+                        && !nativeActOneCombatNode))
                     throw new InvalidDataException(
                         "Controlled map-node frame does not reference an available supported node.");
                 if (!(node.RoomType == PrototypeRoomType.Event && eventEntrySite)
@@ -449,11 +471,13 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                     && !(legacyOvergrowthCombatNode
                         && overgrowthCombatEntrySite)
                     && !(legacyUnderdocksCombatNode
-                        && underdocksCombatEntrySite))
+                        && underdocksCombatEntrySite)
+                    && !(nativeActOneCombatNode && nativeFormationDraw))
                     throw new InvalidDataException(
                         "Controlled map-node frame has an unsupported chance site.");
                 expectedSite = PendingRequest.SiteId;
-                expectedStream = combatSite ? "combat"
+                expectedStream = nativeFormationDraw ? PendingRequest.StreamId
+                    : combatSite ? "combat"
                     : combatPotionSite ? "event"
                     : shopSite ? "shop"
                     : treasureSite ? "reward" : "event";
@@ -585,12 +609,20 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                 && ControlledRunActionEngineV111
                     .IsLegacyActOneCombatEntrySite(
                         state, mapAction, request.SiteId);
+            var isNativeFormationDraw = mapAction is not null &&
+                ControlledRunActionEngineV111
+                    .IsNativeActOneCombatEntrySite(
+                        state, mapAction, request.SiteId) &&
+                ControlledRunActionEngineV111
+                    .IsNativeEncounterFormationRequest(
+                        ControlledStochasticRequestV111.FromIndex(request));
             var prefixStream = ActionId ==
                     PrototypeNativeRestSiteActionsV111.Dig
                 || isEventEntryDraw
                 ? "event" : isShopDraw ? "shop"
                 : isTreasureDraw ? "reward"
                 : isCombatPotionDraw ? "event"
+                : isNativeFormationDraw ? request.StreamId
                 : isCombatDraw ? "combat"
                 : isBossDraw ? "combat" : "map";
             var validSite = ActionId == "start_run"
@@ -598,7 +630,7 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                     request.SiteId)
                 : ActionId == "choose_map_node"
                     ? isEventEntryDraw || isShopDraw || isTreasureDraw
-                        || isCombatEntryDraw
+                        || isCombatEntryDraw || isNativeFormationDraw
                     : ControlledEventChoiceReplayV111
                         .IsRunActionShovelSite(request.SiteId);
             var prefixOwner = isBossDraw
@@ -756,6 +788,9 @@ public static class ControlledRunActionEngineV111
                             source, node.RoomType)));
         supportedMapNodeAction |=
             IsLegacyUnknownRoomEntryAction(source, action);
+        var nativeActOneCombatEntryAction =
+            IsNativeActOneCombatEntryAction(source, action);
+        supportedMapNodeAction |= nativeActOneCombatEntryAction;
         var overgrowthCombatEntryAction =
             IsLegacyOvergrowthCombatEntryAction(source, action);
         var underdocksCombatEntryAction =
@@ -784,8 +819,10 @@ public static class ControlledRunActionEngineV111
         {
             var replay = ControlledChanceContinuationExecutorV111.Resume(
                 source, [], checkpoint => engine.Step(checkpoint, action).State,
-                requestFilter: legacyActOneCombatEntryAction
-                    ? IsLegacyActOneCombatEntryRequest : null);
+                requestFilter: nativeActOneCombatEntryAction
+                    ? IsNativeActOneCombatEntryRequest
+                    : legacyActOneCombatEntryAction
+                        ? IsLegacyActOneCombatEntryRequest : null);
             if (replay.PendingChance is { } pendingChance)
             {
                 var supportedShopPurchaseSite = shopPurchaseAction
@@ -800,6 +837,8 @@ public static class ControlledRunActionEngineV111
                         || ControlledEventChoiceReplayV111
                             .IsRunActionTreasureSite(pendingChance.Request.SiteId)
                         || IsLegacyActOneCombatEntrySite(
+                            source, action, pendingChance.Request.SiteId)
+                        || IsNativeActOneCombatEntrySite(
                             source, action, pendingChance.Request.SiteId));
                 var labelsValid = pendingChance.CandidateLabels is { } labels
                     && (supportedShopPurchaseSite
@@ -842,7 +881,8 @@ public static class ControlledRunActionEngineV111
         }
         if (result.ControlledRunActionChoice is null)
         {
-            if (shopPurchaseAction || legacyActOneCombatEntryAction)
+            if (shopPurchaseAction || legacyActOneCombatEntryAction ||
+                nativeActOneCombatEntryAction)
             {
                 PrototypeStateInvariants.Validate(result);
                 return result;
@@ -953,6 +993,65 @@ public static class ControlledRunActionEngineV111
         || request.StreamId == "event"
             && ControlledEventChoiceReplayV111
                 .IsRunActionCombatEntryPotionSite(request.SiteId);
+
+    internal static bool IsNativeEncounterFormationRequest(
+        ControlledStochasticRequestV111 request)
+    {
+        if (request.IndexRequest is not { } index ||
+            index.SiteId != NativeEncounterFormationFactoryV111.FormationSiteId ||
+            index.OperationKind != "choose_index" ||
+            !index.StreamId.StartsWith("context.encounter.",
+                StringComparison.Ordinal) ||
+            !index.OwnerId.StartsWith("encounter:", StringComparison.Ordinal))
+            return false;
+        var floorSeparator = index.OwnerId.LastIndexOf(":floor:",
+            StringComparison.Ordinal);
+        if (floorSeparator <= "encounter:".Length ||
+            !int.TryParse(index.OwnerId[(floorSeparator + ":floor:".Length)..],
+                System.Globalization.NumberStyles.None,
+                System.Globalization.CultureInfo.InvariantCulture,
+                out var floor) || floor < 0)
+            return false;
+        var entry = index.OwnerId["encounter:".Length..floorSeparator];
+        return entry.Length > 0 && index.StreamId ==
+            NativeRngV111Contexts.EncounterFormationStreamId(entry, floor);
+    }
+
+    internal static bool IsNativeActOneCombatEntryAction(
+        RunState source, GameAction action)
+    {
+        if (action.Kind != "choose_map_node" ||
+            source.Phase != RunPhase.MapChoice ||
+            source.Configuration?.UsesExperimentalNativeWeakCombatEntry != true ||
+            source.NativeRunRng is null || source.World is not { Act: 1 } world)
+            return false;
+        var routeMatches = world.ActOneRegion switch
+        {
+            PrototypeActOneRegion.Overgrowth =>
+                PrototypeNativeOvergrowthMap.IsGenerationProfile(
+                    world.Map.GenerationProfileId),
+            PrototypeActOneRegion.Underdocks =>
+                world.Map.GenerationProfileId ==
+                    PrototypeNativeUnderdocks.GenerationProfileId,
+            _ => false
+        };
+        if (!routeMatches)
+            return false;
+        var nodeId = action.ReadPayload<ChooseMapNodePayload>().NodeId;
+        return PrototypeNativeWingedBoots.AvailableNodes(world, source.Player)
+            .Any(node => node.NodeId == nodeId &&
+                node.RoomType is PrototypeRoomType.Combat or
+                    PrototypeRoomType.Elite or PrototypeRoomType.Boss);
+    }
+
+    internal static bool IsNativeActOneCombatEntrySite(
+        RunState source, GameAction action, string siteId) =>
+        IsNativeActOneCombatEntryAction(source, action) &&
+        siteId == NativeEncounterFormationFactoryV111.FormationSiteId;
+
+    internal static bool IsNativeActOneCombatEntryRequest(
+        ControlledStochasticRequestV111 request) =>
+        IsNativeEncounterFormationRequest(request);
 
     public static RunState Resolve(RunState source, int selectedIndex)
     {

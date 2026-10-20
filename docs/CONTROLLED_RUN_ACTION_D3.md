@@ -16,6 +16,18 @@ the legacy relic pool is exhausted. The boundary uses ordinary run-state
 handles and does not change normal `step` behavior or configured Native
 regional merchant/treasure routes.
 
+For a configured Act 1 run using the experimental Native combat-entry profile,
+the same boundary can also suspend on `combat.encounter.formation.index_draw`
+during a Combat, Elite, or Boss map-node action. It captures only the typed
+formation index requests on the encounter-local context stream. Native
+encounter selection and all other entry requests keep their existing providers.
+The ReferenceNature run-action session samples each formation index and saves
+the Nature cursor with the committed combat. A deterministic formation can
+complete at `begin` without taking a Nature sample. These counterfactual
+choices leave the encounter-local Native cursor untouched and make no Native
+cursor-parity or calibrated-formation-law claim beyond the declared
+bounded-index transform.
+
 ## Saved state, support, and player projection
 
 The pending frame stores the exact pre-action run state, action kind, request,
@@ -113,6 +125,10 @@ acquisition effects and all other unregistered purchase hooks remain
 fail-closed. The session keeps supported Chance Law samples and run-state
 resolution atomic across fork/save/restore; it does not enable native regional
 merchant or treasure entry providers or other run/reward/map operations.
+The configured experimental Native Act 1 path adds only the encounter
+formation index requests to this same continuation; encounter-pool selection,
+initial HP, intents, opening shuffle and relic potion generation remain on
+their existing providers.
 Once committed, the session result also provides a regular `stateHandle` for
 continuing play through the ordinary run API; no state handle is published
 while a Nature choice remains pending.
@@ -132,7 +148,8 @@ when a map Event node is selected. The separate
 legacy run with no `NativeRunRng` enters an available Unknown node in a regional
 map profile; its 1000 equal request indices remain `UNVERIFIED` because they
 approximate the source unit-float mapping. Configured Native run streams and
-source cursor parity remain outside this boundary.
+source cursor parity remain outside this boundary, except for the experimental
+Act 1 formation-only continuation described above.
 
 The supported legacy event-entry initialization sites are:
 
@@ -176,7 +193,8 @@ sites above, and adds these encounter-pool selections:
 
 This entry boundary requires the matching Act 1 region and encounter pool,
 with Underdocks additionally requiring its native-shaped map profile. It
-excludes configured Native runs and later-act encounters. Generic
+excludes configured Native runs and later-act encounters, except for the
+formation-only experimental Native continuation described above. Generic
 request-index laws on canonical Native stream IDs report exact Native
 `NextInt` grid masses for the declared bound; legacy `combat` and `event`
 requests remain `UNVERIFIED`. Native stream attribution, source-pool

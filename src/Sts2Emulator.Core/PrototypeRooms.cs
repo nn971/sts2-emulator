@@ -4258,6 +4258,10 @@ public sealed partial class PrototypeGameEngine
             && ControlledRunActionEngineV111
                 .IsLegacyActOneCombatEntryAction(
                     partialState, selectedMapAction);
+        var nativeActOneCombatEntry = selectedMapAction is not null &&
+            ControlledRunActionEngineV111
+                .IsNativeActOneCombatEntryAction(
+                    partialState, selectedMapAction);
         var replay = ControlledChanceContinuationExecutorV111.Resume(
             partialState,
             decisions,
@@ -4293,7 +4297,10 @@ public sealed partial class PrototypeGameEngine
             requestFilter: legacyActOneCombatEntry
                 ? ControlledRunActionEngineV111
                     .IsLegacyActOneCombatEntryRequest
-                : null);
+                : nativeActOneCombatEntry
+                    ? ControlledRunActionEngineV111
+                        .IsNativeActOneCombatEntryRequest
+                    : null);
         if (replay.PendingChance is { } pendingChance)
         {
             var supportedSite = continuation.ActionId switch
@@ -4311,7 +4318,12 @@ public sealed partial class PrototypeGameEngine
                             partialState,
                             selectedMapAction ?? throw new InvalidDataException(
                                 "Controlled map-node frame is missing its action."),
-                            pendingChance.Request.SiteId),
+                            pendingChance.Request.SiteId)
+                    || selectedMapAction is not null &&
+                        ControlledRunActionEngineV111
+                            .IsNativeActOneCombatEntrySite(
+                                partialState, selectedMapAction,
+                                pendingChance.Request.SiteId),
                 PrototypeNativeRestSiteActionsV111.Dig =>
                     ControlledEventChoiceReplayV111
                         .IsRunActionShovelSite(pendingChance.Request.SiteId),
