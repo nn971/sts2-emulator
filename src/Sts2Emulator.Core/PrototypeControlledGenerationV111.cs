@@ -83,7 +83,8 @@ public sealed partial class PrototypeGameEngine
                   IsPlayerSideActive: true,
                   PendingKnowledgeDemonChoice: null,
                   SemanticDeck:
-                    { Mode: SemanticDeckStateV111.NatureMode } } ||
+                    { Mode: SemanticDeckStateV111.NatureMode,
+                      Pending: null } } ||
             pending.ControlledGeneration is not { } generation ||
             pending.OuterChoiceContinuation is not { } continuation ||
             !ValidateControlledGenerationSupport(generation))
@@ -253,7 +254,17 @@ public sealed partial class PrototypeGameEngine
     /// is repeated. Repeated generation exposes a new ticket each time.
     /// </summary>
     internal static RunState ResumeControlledGeneratedCard(
-        RunState state, int selectedIndex)
+        RunState state, int selectedIndex) =>
+        ResumeControlledGeneratedCardCore(
+            state, selectedIndex, resumeAutomaticPipeline: true);
+
+    internal static RunState ResumeControlledGeneratedCardForSemanticHandoff(
+        RunState state, int selectedIndex) =>
+        ResumeControlledGeneratedCardCore(
+            state, selectedIndex, resumeAutomaticPipeline: false);
+
+    private static RunState ResumeControlledGeneratedCardCore(
+        RunState state, int selectedIndex, bool resumeAutomaticPipeline)
     {
         if (!ControlledChanceGuardV111.Active)
             throw new InvalidOperationException(
@@ -268,8 +279,6 @@ public sealed partial class PrototypeGameEngine
             pending.OuterChoiceContinuation is not { } continuation)
             throw new InvalidOperationException(
                 "Pending combat choice is not a Nature card generation.");
-        bool crossbowTurnStartHandoff =
-            IsCrossbowTurnStartGenerationContinuation(combat, pending);
         var candidates = generation.CandidateCardIds;
         var source = ControlledGeneratedCardPool(generation.Operation);
         if (source is null || candidates.Length == 0 ||
@@ -314,7 +323,7 @@ public sealed partial class PrototypeGameEngine
             Player = resolved.Player,
             World = world with { Combat = resolved.Combat }
         };
-        if (!crossbowTurnStartHandoff)
+        if (resumeAutomaticPipeline)
             updated = ResumeAutomaticPipelineContinuation(updated);
         return updated;
     }

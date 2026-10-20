@@ -211,6 +211,10 @@ public static class SemanticGenerationChoiceV111
         var insertion = choice?.ControlledDrawInsertion;
         bool drawInsertionModelChoice = decision.Event.SiteId ==
             "combat.random_draw_attack.card_model";
+        bool crossbowTurnStartHandoff = !drawInsertionModelChoice &&
+            choice is not null &&
+            PrototypeGameEngine.IsCrossbowTurnStartGenerationContinuation(
+                combat, choice);
         if (drawInsertionModelChoice)
         {
             if (choice is not { ChoiceId: "controlled_draw_insertion" } ||
@@ -239,8 +243,12 @@ public static class SemanticGenerationChoiceV111
             resumed = drawInsertionModelChoice
                 ? PrototypeGameEngine.ResumeControlledDrawInsertion(
                     checkpoint.Fork(), decision.SelectedIndex)
-                : PrototypeGameEngine.ResumeControlledGeneratedCard(
-                    checkpoint.Fork(), decision.SelectedIndex);
+                : crossbowTurnStartHandoff
+                    ? PrototypeGameEngine
+                        .ResumeControlledGeneratedCardForSemanticHandoff(
+                            checkpoint.Fork(), decision.SelectedIndex)
+                    : PrototypeGameEngine.ResumeControlledGeneratedCard(
+                        checkpoint.Fork(), decision.SelectedIndex);
         if (resumed.Phase == RunPhase.Combat)
         {
             SemanticPilotCombatEngineV111.ValidateSemanticCombatBoundary(
