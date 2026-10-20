@@ -1122,6 +1122,9 @@ public static class StochasticSiteRegistryV111
         && !IsNativeGaussianIntSite(siteId);
 
     internal static bool IsRegisteredRandomIndexRequestSite(string siteId) =>
+        // Opening-fixture swaps are validated controlled requests, but are
+        // deliberately outside the native provider and Chance Law inventory.
+        siteId == ControlledPlayableCombatEngineV111.ShuffleSite ||
         IsLegacyRandomChoiceSite(siteId) ||
         IsNativeRandomIndexSite(siteId);
 
