@@ -161,8 +161,7 @@ public static class SemanticKnowledgeDemonChoiceEngineV111
         return result;
     }
 
-    public static (RunState Run,
-        SemanticKnowledgeDemonChoiceDecisionV111 Decision) Resolve(
+    public static SemanticKnowledgeDemonChoiceDecisionV111 Select(
         RunState source, SemanticKnowledgeDemonChoiceEventV111 pending,
         string actionId)
     {
@@ -188,20 +187,30 @@ public static class SemanticKnowledgeDemonChoiceEngineV111
             throw new InvalidDataException(
                 "Knowledge Demon action payload changed during resolution.");
 
+        var decision = new SemanticKnowledgeDemonChoiceDecisionV111(
+            pending.Fork(), actionId, candidate.CardId);
+        decision.Validate();
+        return decision;
+    }
+
+    public static (RunState Run,
+        SemanticKnowledgeDemonChoiceDecisionV111 Decision) Resolve(
+        RunState source, SemanticKnowledgeDemonChoiceEventV111 pending,
+        string actionId)
+    {
+        var decision = Select(source, pending, actionId);
+
         RunState resumed;
         using (ControlledChanceGuardV111.Enter())
         using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
             resumed = new PrototypeAiEnvironment().Step(
-                source.Fork(), actionId).State;
+                source.Fork(), decision.ActionId).State;
         if (resumed.Phase is not (
                 RunPhase.Combat or RunPhase.Reward or RunPhase.Terminal) ||
             resumed.World?.Combat?.PendingKnowledgeDemonChoice is not null)
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_ACTION site=knowledge_demon.choice " +
                 "operation=unexpected_resume_result");
-        var decision = new SemanticKnowledgeDemonChoiceDecisionV111(
-            pending.Fork(), actionId, candidate.CardId);
-        decision.Validate();
         return (resumed, decision);
     }
 }
