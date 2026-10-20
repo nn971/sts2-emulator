@@ -1015,7 +1015,25 @@ public sealed record PrototypeQueuedOperation(
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingDefault)]
     bool AutomaticSemanticStratagemDrawSelection = false,
     [property: System.Text.Json.Serialization.JsonIgnore(Condition = System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
-    int? DrawEqualSelectionCount = null);
+    int? DrawEqualSelectionCount = null)
+{
+    private long[]? _deferredDrawnCardInstanceIds = Clone(
+        DeferredDrawnCardInstanceIds);
+
+    public long[]? DeferredDrawnCardInstanceIds
+    {
+        get => Clone(_deferredDrawnCardInstanceIds);
+        init => _deferredDrawnCardInstanceIds = Clone(value);
+    }
+
+    public PrototypeQueuedOperation Fork() => this with
+    {
+        DeferredDrawnCardInstanceIds = _deferredDrawnCardInstanceIds
+    };
+
+    private static long[]? Clone(long[]? values) => values is null
+        ? null : (long[])values.Clone();
+}
 
 public sealed record PrototypeRunEffectSpec(
     PrototypeRunEffectKind Kind,
@@ -2192,13 +2210,8 @@ public sealed record PrototypeChoiceResolutionContinuationState(
 {
     public PrototypeChoiceResolutionContinuationState Fork() => this with
     {
-        Operations = Operations.Select(operation => operation with
-        {
-            DeferredDrawnCardInstanceIds =
-                operation.DeferredDrawnCardInstanceIds is null
-                    ? null
-                    : (long[])operation.DeferredDrawnCardInstanceIds.Clone()
-        }).ToArray(),
+        Operations = Operations.Select(operation => operation.Fork())
+            .ToArray(),
         PendingDiscardEvents =
             (PrototypeCombatEvent[])PendingDiscardEvents.Clone(),
         PendingSlyCardInstanceIds =
@@ -2330,13 +2343,7 @@ public sealed record PrototypePersonalHiveDamageContinuationV111(
 {
     public PrototypePersonalHiveDamageContinuationV111 Fork() => this with
     {
-        Operation = Operation with
-        {
-            DeferredDrawnCardInstanceIds =
-                Operation.DeferredDrawnCardInstanceIds is null
-                    ? null
-                    : (long[])Operation.DeferredDrawnCardInstanceIds.Clone()
-        },
+        Operation = Operation.Fork(),
         SplashTarget = SplashTarget.Fork()
     };
 }
@@ -2482,13 +2489,8 @@ public sealed record PendingCombatChoiceState(
     public PendingCombatChoiceState Fork() => this with
     {
         CandidateCardInstanceIds = (long[])CandidateCardInstanceIds.Clone(),
-        Continuation = Continuation.Select(operation => operation with
-        {
-            DeferredDrawnCardInstanceIds =
-                operation.DeferredDrawnCardInstanceIds is null
-                    ? null
-                    : (long[])operation.DeferredDrawnCardInstanceIds.Clone()
-        }).ToArray(),
+        Continuation = Continuation.Select(operation => operation.Fork())
+            .ToArray(),
         CompletionEvents = (PrototypeCombatEvent[])CompletionEvents.Clone(),
         SelectedCardTemporaryCost = SelectedCardTemporaryCost is null
             ? null
