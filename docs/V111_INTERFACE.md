@@ -30,11 +30,13 @@ their legacy identities. `reset_v111` is opt-in and accepts `seed`, `character`
 `Underdocks`). It also accepts optional unsigned `nature_seed` to attach a
 forkable ReferenceNature cursor before `start_run`; the Python
 `Session.reset(...)` method exposes the same parameter. For either Act 1 route,
-run initialization uses it for the ordered boss-pool choice and advances it
-once. Experimental Silent three-act runs also use it for the conditional
+run initialization uses it for the ordered boss-pool choice. Overgrowth also
+uses the same cursor for each source-shaped Act 1 map-generation request before
+the Neow offer is entered; Neow offers retain their existing Native event
+context. Experimental Silent three-act runs then use it for the conditional
 Hive/Glory Darv partition and local Ancient choices when `start_run` prepares
-those acts, then for Hive/Glory boss-pool choices and Glory's Ascension 10
-second boss during prepared encounter-bag generation. Five
+those acts, followed by Hive/Glory encounter-bag choices and Glory's Ascension
+10 second boss. Five
 character configurations can be created/serialized, but starting unsupported
 character mechanics fails. Native later-act and restricted-profile mechanics
 also fail explicitly.
@@ -42,8 +44,10 @@ also fail explicitly.
 Configured runs with `nature_seed` retain an optional
 `reference_nature_run_initialization_transcript` in exact run snapshots. It
 records the initial and final sampler cursors plus the ordered Chance Laws and
-sampled decisions from synchronous initialization; snapshot validation replays
-that prefix. This is an audit record, not a resumable `start_run` session.
+sampled decisions from synchronous initialization. Overgrowth also retains the
+typed map request prefix and a fingerprint of its generated map; snapshot
+validation replays both the sampler prefix and map generator. This is an audit
+record, not a resumable `start_run` session.
 
 For the **experimental** first whole-route slice, `reset_v111` additionally
 accepts `fidelity_id: "v111-experimental-silent-three-act-route-v1"`.

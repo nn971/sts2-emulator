@@ -148,9 +148,14 @@ public sealed record RunStochasticStateV111
                 _ => null
             };
             var laws = runStart.ChanceLaws;
+            var mapGeneration = runStart.ActOneMapGeneration;
+            var startsWithMap = laws.Length > 1 &&
+                laws[1].SiteId.StartsWith("map.overgrowth.",
+                    StringComparison.Ordinal);
             if (ReferenceNature is not { } currentNature ||
                 expectedBossSite is null || laws.Length == 0 ||
                 laws[0].SiteId != expectedBossSite ||
+                startsWithMap != (mapGeneration is not null) ||
                 currentNature.SampleCount <
                     runStart.FinalNatureState.SampleCount ||
                 (currentNature.SampleCount ==
@@ -158,6 +163,16 @@ public sealed record RunStochasticStateV111
                  !currentNature.SameCursor(runStart.FinalNatureState)))
                 throw new InvalidDataException(
                     "ReferenceNature cursor precedes or conflicts with its run-initialization transcript.");
+            if (mapGeneration is not null &&
+                (owner.Configuration?.Acts[0] != ActIdentity.Overgrowth ||
+                 mapGeneration.Seed != owner.RunSeed ||
+                 mapGeneration.Act != 1 ||
+                 mapGeneration.Ascension != owner.Ascension ||
+                 owner.World is not { } world ||
+                 CanonicalJson.Sha256(world.Map) !=
+                    mapGeneration.MapFingerprint))
+                throw new InvalidDataException(
+                    "Overgrowth map audit does not match the configured run boundary or committed map.");
         }
         if (SemanticRewardAudit is { } reward &&
             (owner.Phase != RunPhase.Reward ||

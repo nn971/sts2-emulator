@@ -52,6 +52,91 @@ public sealed record ReferenceNatureMapGenerationSessionSnapshotV111(
 }
 
 /// <summary>
+/// Compact completed-map audit retained by a run snapshot. It owns the typed
+/// request prefix and map fingerprint but leaves the authoritative map in the
+/// run's mechanics state.
+/// </summary>
+public sealed record ReferenceNatureMapGenerationAuditV111(
+    string Seed,
+    int Act,
+    int Ascension,
+    ReferenceNatureStateV111 InitialNatureState,
+    ReferenceNatureStateV111 NatureState,
+    ControlledStochasticDecisionV111[] Decisions,
+    ReferenceNatureDecisionV111[] DecisionTranscript,
+    string MapFingerprint)
+{
+    private ControlledStochasticDecisionV111[]? _decisions =
+        ReferenceNatureSessionValueCopiesV111.CopyProviderDecisions(Decisions);
+    private ReferenceNatureDecisionV111[]? _decisionTranscript =
+        ReferenceNatureSessionValueCopiesV111.CopyArray(DecisionTranscript);
+
+    public ControlledStochasticDecisionV111[] Decisions
+    {
+        get => ReferenceNatureSessionValueCopiesV111
+            .CopyProviderDecisions(_decisions)!;
+        init => _decisions = ReferenceNatureSessionValueCopiesV111
+            .CopyProviderDecisions(value);
+    }
+    public ReferenceNatureDecisionV111[] DecisionTranscript
+    {
+        get => ReferenceNatureSessionValueCopiesV111
+            .CopyArray(_decisionTranscript)!;
+        init => _decisionTranscript = ReferenceNatureSessionValueCopiesV111
+            .CopyArray(value);
+    }
+
+    public ReferenceNatureMapGenerationAuditV111 Fork() => this with
+    {
+        InitialNatureState = InitialNatureState.Fork(),
+        NatureState = NatureState.Fork(),
+        Decisions = Decisions,
+        DecisionTranscript = DecisionTranscript
+    };
+
+    public void Validate()
+    {
+        ValidateEnvelope();
+        ArgumentException.ThrowIfNullOrWhiteSpace(Seed);
+        ArgumentException.ThrowIfNullOrWhiteSpace(MapFingerprint);
+        ReferenceNatureMapGenerationSessionV111.ValidateCompletedAudit(
+            Seed, Act, Ascension, InitialNatureState, NatureState,
+            Decisions, DecisionTranscript, MapFingerprint);
+    }
+
+    public void ValidateEnvelope()
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(Seed);
+        ArgumentException.ThrowIfNullOrWhiteSpace(MapFingerprint);
+        ArgumentNullException.ThrowIfNull(InitialNatureState);
+        ArgumentNullException.ThrowIfNull(NatureState);
+        ArgumentNullException.ThrowIfNull(Decisions);
+        ArgumentNullException.ThrowIfNull(DecisionTranscript);
+        ReferenceNatureMapGenerationSessionV111.ValidateMapParameters(
+            Act, Ascension);
+        InitialNatureState.Validate();
+        NatureState.Validate();
+        var decisions = Decisions;
+        var transcript = DecisionTranscript;
+        if (decisions.Length == 0 || decisions.Length != transcript.Length ||
+            NatureState.SampleCount != checked(
+                InitialNatureState.SampleCount + decisions.Length))
+            throw new InvalidDataException(
+                "Invalid completed ReferenceNature map audit envelope.");
+        foreach (var decision in decisions)
+        {
+            ArgumentNullException.ThrowIfNull(decision);
+            decision.Validate();
+        }
+        foreach (var decision in transcript)
+        {
+            ArgumentNullException.ThrowIfNull(decision);
+            decision.Validate();
+        }
+    }
+}
+
+/// <summary>
 /// Optional atomic ReferenceNature map-generation continuation for the
 /// source-shaped Overgrowth, Hive, and Glory generators. It keeps map output
 /// private until every typed request has been sampled and replayed.
@@ -123,10 +208,18 @@ public sealed record ReferenceNatureMapGenerationSessionV111(
 
     public static ReferenceNatureMapGenerationSessionV111 Begin(
         string seed, int act, int ascension, ulong natureSeed)
+        => Begin(seed, act, ascension,
+            ReferenceNatureStateV111.Create(natureSeed));
+
+    public static ReferenceNatureMapGenerationSessionV111 Begin(
+        string seed, int act, int ascension,
+        ReferenceNatureStateV111 initialNatureState)
     {
         ArgumentException.ThrowIfNullOrWhiteSpace(seed);
+        ArgumentNullException.ThrowIfNull(initialNatureState);
         ValidateMapParameters(act, ascension);
-        var initial = ReferenceNatureStateV111.Create(natureSeed);
+        initialNatureState.Validate();
+        var initial = initialNatureState.Fork();
         var captured = Capture(seed, act, ascension, []);
         var session = new ReferenceNatureMapGenerationSessionV111(
             CurrentSchemaId, seed, act, ascension, initial, initial,
@@ -134,6 +227,17 @@ public sealed record ReferenceNatureMapGenerationSessionV111(
             captured.Value?.Fork());
         session.Validate();
         return session;
+    }
+
+    public ReferenceNatureMapGenerationAuditV111 ToAudit()
+    {
+        Validate();
+        if (!Complete)
+            throw new InvalidOperationException(
+                "An incomplete map-generation session cannot become a run audit.");
+        return new ReferenceNatureMapGenerationAuditV111(
+            Seed, Act, Ascension, InitialNatureState, NatureState, Decisions,
+            DecisionTranscript, CanonicalJson.Sha256(Map!));
     }
 
     public ReferenceNatureMapGenerationSessionV111 Fork()
@@ -303,6 +407,61 @@ public sealed record ReferenceNatureMapGenerationSessionV111(
             checkpoint => GenerateNative(
                 checkpoint.Seed, checkpoint.Act, checkpoint.Ascension));
 
+    internal static void ValidateCompletedAudit(
+        string seed, int act, int ascension,
+        ReferenceNatureStateV111 initialNatureState,
+        ReferenceNatureStateV111 natureState,
+        ControlledStochasticDecisionV111[] decisions,
+        ReferenceNatureDecisionV111[] decisionTranscript,
+        string mapFingerprint)
+    {
+        ValidateMapParameters(act, ascension);
+        if (decisions is null || decisionTranscript is null ||
+            decisions.Length == 0 ||
+            decisions.Length != decisionTranscript.Length ||
+            natureState.SampleCount != checked(
+                initialNatureState.SampleCount + decisions.Length))
+            throw new InvalidDataException(
+                "Invalid completed ReferenceNature map audit prefix.");
+        initialNatureState.Validate();
+        natureState.Validate();
+        var cursor = initialNatureState.Fork();
+        for (var index = 0; index < decisions.Length; index++)
+        {
+            var decision = decisions[index];
+            var transcript = decisionTranscript[index];
+            ArgumentNullException.ThrowIfNull(decision);
+            ArgumentNullException.ThrowIfNull(transcript);
+            decision.Validate();
+            transcript.Validate();
+            var request = decision.ToRequest();
+            var law = ChanceLawEngineV111.QueryNativeMapRequest(request);
+            var selection = ReferenceNatureV111.SampleValidated(law, cursor);
+            var expectedDecision = ReferenceNatureChanceLawDecisionV111
+                .FromSelection(law, request, selection);
+            var expectedTranscript = new ReferenceNatureDecisionV111(
+                law.LawId, law.EventId, selection.OutcomeId,
+                selection.OutcomeIndex);
+            if (CanonicalJson.Sha256(decision) !=
+                    CanonicalJson.Sha256(expectedDecision) ||
+                CanonicalJson.Sha256(transcript) !=
+                    CanonicalJson.Sha256(expectedTranscript))
+                throw new InvalidDataException(
+                    $"ReferenceNature map audit decision {index} does not replay.");
+            cursor = selection.NextState;
+        }
+        if (!cursor.SameCursor(natureState))
+            throw new InvalidDataException(
+                "ReferenceNature map audit cursor differs from its decision transcript.");
+
+        var captured = Capture(seed, act, ascension, decisions);
+        if (captured.Continuation is not null ||
+            captured.Value is null ||
+            CanonicalJson.Sha256(captured.Value) != mapFingerprint)
+            throw new InvalidDataException(
+                "ReferenceNature map audit does not replay to its committed map fingerprint.");
+    }
+
     private static MapState GenerateNative(
         string seed, int act, int ascension) => act switch
     {
@@ -312,7 +471,7 @@ public sealed record ReferenceNatureMapGenerationSessionV111(
         _ => throw new ArgumentOutOfRangeException(nameof(act))
     };
 
-    private static void ValidateMapParameters(int act, int ascension)
+    internal static void ValidateMapParameters(int act, int ascension)
     {
         if (act is < 1 or > 3)
             throw new ArgumentOutOfRangeException(nameof(act),

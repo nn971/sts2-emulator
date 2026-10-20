@@ -3,6 +3,10 @@
 `ReferenceNatureMapGenerationSessionV111` is an opt-in, resumable continuation
 for the existing source-shaped Overgrowth, Hive, and Glory map generators.
 Ordinary Native map generation keeps its current source-owned routing.
+Configured Overgrowth initialization reuses this session after the boss-pool
+choice, continuing the run-owned Nature cursor through Act 1 map generation.
+Its run snapshot retains a compact typed audit (ordered requests and committed
+map fingerprint) so replay does not duplicate the map stored in mechanics.
 
 The session reruns the selected generator from its seed under the saved ordered
 typed prefix. It captures the next index or Gaussian-integer request, queries
@@ -11,7 +15,9 @@ only after the generator finishes and the transcript, map, and Nature sampler
 cursor validate together. Fork, save, load, and stale-fingerprint checks use
 the same boundary.
 
-JSONL operations are `reference_nature_map_generation_begin`, `status`,
+The session can begin from either a new `nature_seed` or an existing
+`ReferenceNatureStateV111` cursor. JSONL operations are
+`reference_nature_map_generation_begin`, `status`,
 `resolve_next`, `fork`, `save`, `load`, and `release_many`. Begin requires
 `seed` and `nature_seed`; `act` defaults to 1 and supports 1–3, while
 `ascension` defaults to 0 and supports 0–10. Resolve and fork use

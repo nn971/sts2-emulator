@@ -503,14 +503,31 @@ public static class PrototypeNativeOvergrowthRunFactory
         initialNatureState.Validate();
         var provider = new ReferenceNatureOvergrowthBossIndexProviderV111(
             initialNatureState);
-        var run = CreateWithAudit(seed, ascension,
-            startRunProvider: provider).State with
+        var runAfterStart = CreateWithAudit(seed, ascension,
+            startRunProvider: provider).State;
+        var mapSession = ReferenceNatureMapGenerationSessionV111.Begin(
+            seed, 1, ascension, provider.NatureState);
+        while (!mapSession.Complete)
+            mapSession = mapSession.ResolveNext();
+        var map = mapSession.Map
+            ?? throw new InvalidDataException(
+                "ReferenceNature Overgrowth map generation did not complete.");
+        var run = runAfterStart with
         {
-            ReferenceNatureState = provider.NatureState
+            ReferenceNatureState = mapSession.NatureState,
+            World = runAfterStart.World! with { Map = map }
         };
+        var mapLaws = mapSession.Decisions.Select(decision =>
+            ChanceLawEngineV111.QueryNativeMapRequest(
+                decision.ToRequest())).ToArray();
         var result = new ReferenceNatureOvergrowthRunResultV111(
-            run, initialNatureState.Fork(), provider.NatureState,
-            provider.ChanceLaws, provider.DecisionTranscript);
+            run, initialNatureState.Fork(), mapSession.NatureState,
+            provider.ChanceLaws.Concat(mapLaws).ToArray(),
+            provider.DecisionTranscript.Concat(
+                mapSession.DecisionTranscript).ToArray())
+        {
+            MapGenerationAudit = mapSession.ToAudit()
+        };
         result.Validate();
         return result;
     }
@@ -601,6 +618,7 @@ public sealed record ReferenceNatureOvergrowthRunResultV111(
     private ReferenceNatureDecisionV111[]? _decisionTranscript =
         DecisionTranscript is null ? null :
             (ReferenceNatureDecisionV111[])DecisionTranscript.Clone();
+    private ReferenceNatureMapGenerationAuditV111? _mapGenerationAudit;
 
     public RunState Run
     {
@@ -622,6 +640,12 @@ public sealed record ReferenceNatureOvergrowthRunResultV111(
             (ReferenceNatureDecisionV111[])value.Clone();
     }
 
+    public ReferenceNatureMapGenerationAuditV111? MapGenerationAudit
+    {
+        get => _mapGenerationAudit?.Fork();
+        init => _mapGenerationAudit = value?.Fork();
+    }
+
     public void Validate()
     {
         var run = Run;
@@ -631,19 +655,24 @@ public sealed record ReferenceNatureOvergrowthRunResultV111(
         var world = run.World;
         var laws = ChanceLaws;
         var transcript = DecisionTranscript;
+        var mapAudit = MapGenerationAudit;
         var encounterPool = world?.ActOneEncounterPool;
-        if (laws is null || transcript is null || laws.Length != 1 ||
-            transcript.Length != 1 ||
+        if (laws is null || transcript is null || laws.Length < 2 ||
+            transcript.Length != laws.Length || mapAudit is null ||
             run.ReferenceNatureState is not { } savedCursor ||
             !savedCursor.SameCursor(NatureState) ||
             world?.ActOneRegion != PrototypeActOneRegion.Overgrowth ||
             encounterPool is null ||
-            encounterPool.Region != PrototypeActOneRegion.Overgrowth)
+            encounterPool.Region != PrototypeActOneRegion.Overgrowth ||
+            mapAudit.Seed != run.RunSeed || mapAudit.Act != 1 ||
+            mapAudit.Ascension != run.Ascension || world.Map is null ||
+            CanonicalJson.Sha256(world.Map) != mapAudit.MapFingerprint)
             throw new InvalidDataException(
                 "Invalid ReferenceNature Overgrowth run result.");
 
         InitialNatureState.Validate();
         NatureState.Validate();
+        mapAudit.Validate();
         var law = laws[0];
         var decision = transcript[0];
         law.Validate();
@@ -662,11 +691,32 @@ public sealed record ReferenceNatureOvergrowthRunResultV111(
                 CanonicalJson.Sha256(decision) ||
             selection.OutcomeId !=
                 "encounter:" + encounterPool.BossEncounterId ||
-            !selection.NextState.SameCursor(NatureState) ||
-            NatureState.SampleCount !=
-                checked(InitialNatureState.SampleCount + 1))
+            !selection.NextState.SameCursor(mapAudit.InitialNatureState))
             throw new InvalidDataException(
-                "Overgrowth boss result does not replay from its Nature cursor.");
+                "Overgrowth boss result does not replay to its map-generation cursor.");
+
+        var mapDecisions = mapAudit.DecisionTranscript;
+        var mapRequests = mapAudit.Decisions;
+        if (laws.Length != checked(mapDecisions.Length + 1) ||
+            mapRequests.Length != mapDecisions.Length)
+            throw new InvalidDataException(
+                "Overgrowth boss and map transcript lengths differ.");
+        for (var index = 0; index < mapDecisions.Length; index++)
+        {
+            var mapLaw = ChanceLawEngineV111.QueryNativeMapRequest(
+                mapRequests[index].ToRequest());
+            if (CanonicalJson.Sha256(mapLaw) !=
+                    CanonicalJson.Sha256(laws[index + 1]) ||
+                CanonicalJson.Sha256(mapDecisions[index]) !=
+                    CanonicalJson.Sha256(transcript[index + 1]))
+                throw new InvalidDataException(
+                    $"Overgrowth map law or decision {index} differs from its replayable map prefix.");
+        }
+        if (!mapAudit.NatureState.SameCursor(NatureState) ||
+            NatureState.SampleCount != checked(
+                InitialNatureState.SampleCount + laws.Length))
+            throw new InvalidDataException(
+                "Overgrowth boss and map results do not replay from their Nature cursor.");
 
         PrototypeStateInvariants.Validate(run);
         var initialCombat = PrototypeRng.CreateBundle(run.RunSeed).Streams

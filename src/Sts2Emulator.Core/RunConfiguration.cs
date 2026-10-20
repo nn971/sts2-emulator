@@ -425,6 +425,7 @@ public static class V111RunFactory
         var initialNatureState = input.ReferenceNatureState?.Fork();
         var runStartChanceLaws = new List<ChanceLawV111>();
         var runStartDecisions = new List<ReferenceNatureDecisionV111>();
+        ReferenceNatureMapGenerationAuditV111? actOneMapGeneration = null;
         if (config.Acts[0] == ActIdentity.Overgrowth)
         {
             if (initialNatureState is { } overgrowthNatureState)
@@ -435,6 +436,7 @@ public static class V111RunFactory
                 opening = result.Run;
                 runStartChanceLaws.AddRange(result.ChanceLaws);
                 runStartDecisions.AddRange(result.DecisionTranscript);
+                actOneMapGeneration = result.MapGenerationAudit?.Fork();
             }
             else
             {
@@ -483,7 +485,10 @@ public static class V111RunFactory
             : new ReferenceNatureRunInitializationTranscriptV111(
                 initialNatureState, natureState ?? throw new InvalidDataException(
                     "ReferenceNature run initialization lost its cursor."),
-                runStartChanceLaws.ToArray(), runStartDecisions.ToArray());
+                runStartChanceLaws.ToArray(), runStartDecisions.ToArray())
+            {
+                ActOneMapGeneration = actOneMapGeneration
+            };
         runStartTranscript?.Validate();
         return opening with
         {
