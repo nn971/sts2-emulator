@@ -404,30 +404,18 @@ public static class SemanticEndTurnEngineV111
         if (PrototypeGameEngine
                 .IsAtCombatRewardOrTerminalBoundary(advanced))
             return (null, advanced);
-        if (advanced.World?.Combat?.AutomaticPipelineContinuation?
-                .ControlledEnemyAction is not null)
+        if (PrototypeGameEngine
+                .HasPendingControlledAutomaticPipelineChoice(advanced))
         {
-            var suspendedEnemyAction = new SemanticEndTurnV111(
+            var suspendedChoice = new SemanticEndTurnV111(
                 playerBoundary.Fork(), advanced.Fork(),
                 nativeEncounterEntry, null, null, [])
             {
                 PlayerActionSource = playerBoundary.Fork(),
                 PlayerActionId = actions[0].ActionId
             };
-            Validate(suspendedEnemyAction);
-            return (suspendedEnemyAction, suspendedEnemyAction.Run);
-        }
-        if (advanced.World?.Combat?.PendingChoice?.ControlledTarget is not null)
-        {
-            var suspendedTarget = new SemanticEndTurnV111(
-                playerBoundary.Fork(), advanced.Fork(),
-                nativeEncounterEntry, null, null, [])
-            {
-                PlayerActionSource = playerBoundary.Fork(),
-                PlayerActionId = actions[0].ActionId
-            };
-            Validate(suspendedTarget);
-            return (suspendedTarget, suspendedTarget.Run);
+            Validate(suspendedChoice);
+            return (suspendedChoice, suspendedChoice.Run);
         }
         var state = BeginAtAdvanceTurn(advanced, nativeEncounterEntry);
         var continuation = state with
@@ -570,12 +558,11 @@ public static class SemanticEndTurnEngineV111
             return CompleteAtBoundary(
                 next, resumed, discardSuspendedFrames: true);
 
-        var combat = resumed.World?.Combat;
-        if (combat?.PendingChoice?.ControlledTarget is not null ||
-            combat?.AutomaticPipelineContinuation?
-                .ControlledEnemyAction is not null)
+        if (PrototypeGameEngine
+                .HasPendingControlledAutomaticPipelineChoice(resumed))
             return next with { Run = resumed };
 
+        var combat = resumed.World?.Combat;
         if (combat?.AutomaticPipelineContinuation?.Mechanics.IsAtStep(
                 PrototypeAutomaticStepKind.AdvanceTurn) == true)
         {

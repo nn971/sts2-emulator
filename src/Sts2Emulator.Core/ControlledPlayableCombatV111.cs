@@ -1046,7 +1046,8 @@ public static class ControlledPlayableCombatEngineV111
             var recycleState = state with { Recycle = recycle };
             return recycle.Complete ? FinishRecycle(recycleState) : recycleState;
         }
-        if (continuation.ControlledEnemyAction is not null)
+        if (PrototypeGameEngine
+                .HasPendingControlledAutomaticPipelineChoice(state.Run))
             return state;
         if (stepKind != PrototypeAutomaticStepKind.AdvanceTurn)
             return state;
