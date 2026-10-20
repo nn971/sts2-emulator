@@ -454,11 +454,28 @@ public sealed partial class PrototypeGameEngine
         bool pending = boundary is
             PrototypeDrawCardsBoundaryKind.SemanticDraw or
                 PrototypeDrawCardsBoundaryKind.ControlledDrawCost;
-        if (automatic && pending &&
-            !IsSemanticAutomaticHandDraw(drawn.Combat))
-            return (SaveAutomaticSemanticHandDrawBoundary(
-                advanced, drawn, automaticHandDrawRequested!.Value),
-                drawn.RemainingCount);
+        if (automatic && !IsSemanticAutomaticHandDraw(drawn.Combat))
+        {
+            if (pending)
+                return (SaveAutomaticSemanticHandDrawBoundary(
+                    advanced, drawn, automaticHandDrawRequested!.Value),
+                    drawn.RemainingCount);
+            // ResumeAutomaticHandDrawCards consumes the suspended progress
+            // before running DrawCards. Complete the unencumbered pipeline
+            // cursor through the ordinary shared stage owner.
+            var cursor = drawn.Combat.AutomaticPipelineContinuation;
+            if (drawn.RemainingCount != 0 ||
+                cursor?.Mechanics.IsAtStep(
+                    PrototypeAutomaticStepKind.DrawPlayerHand) != true ||
+                cursor.Stochastic.HandDrawProgress is not null ||
+                drawn.Combat.PendingChoice is not null ||
+                drawn.Combat.PendingKnowledgeDemonChoice is not null ||
+                drawn.Combat.SemanticDeck is not { Pending: null })
+                throw new InvalidDataException(
+                    "Completed semantic automatic draw lost its source cursor.");
+            return (CompleteAutomaticHandDrawStage(
+                advanced, automaticHandDrawRequested), 0);
+        }
         return automatic
             ? CommitSemanticAutomaticHandDrawProgress(
                 advanced, drawn.RemainingCount, pending)
