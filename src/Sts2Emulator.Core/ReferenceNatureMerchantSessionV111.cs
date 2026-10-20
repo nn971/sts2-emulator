@@ -181,6 +181,10 @@ public sealed record ReferenceNatureMerchantSessionV111(
                  pendingLabels.Any(string.IsNullOrWhiteSpace)))
                 throw new InvalidDataException(
                     "Invalid ReferenceNature merchant pending candidate labels.");
+            if (StochasticSiteRegistryV111.IsRunActionShopPurchaseSite(
+                    pendingRequest.SiteId))
+                ValidateRegisteredPurchaseIndexSupport(
+                    pendingRequest, PendingCandidateLabels);
         }
         else if (PendingCandidateLabels is not null)
         {
@@ -429,14 +433,9 @@ public sealed record ReferenceNatureMerchantSessionV111(
         if (StochasticSiteRegistryV111.IsRunActionShopPurchaseSite(siteId) &&
             request.IndexRequest is { } purchaseIndexRequest)
         {
-            if (candidateLabels is not { } purchaseCandidateLabels ||
-                purchaseCandidateLabels.Length !=
-                    purchaseIndexRequest.SupportCount ||
-                purchaseCandidateLabels.Any(string.IsNullOrWhiteSpace) ||
-                purchaseCandidateLabels.Distinct(StringComparer.Ordinal)
-                    .Count() != purchaseCandidateLabels.Length)
-                throw new InvalidDataException(
-                    "Registered Shop-purchase index request lost its distinct ordered support labels.");
+            var purchaseCandidateLabels =
+                ValidateRegisteredPurchaseIndexSupport(
+                    request, candidateLabels);
 
             var eventId = CanonicalJson.Sha256(new
             {
@@ -456,6 +455,20 @@ public sealed record ReferenceNatureMerchantSessionV111(
 
         throw new NotSupportedException(
             $"ReferenceNature merchant replay does not support stochastic site '{siteId}'.");
+    }
+
+    private static string[] ValidateRegisteredPurchaseIndexSupport(
+        ControlledStochasticRequestV111 request, string[]? candidateLabels)
+    {
+        if (!StochasticSiteRegistryV111.IsRunActionShopPurchaseSite(
+                request.SiteId) || request.IndexRequest is not { } indexRequest ||
+            candidateLabels is not { } labels ||
+            labels.Length != indexRequest.SupportCount ||
+            labels.Any(string.IsNullOrWhiteSpace) ||
+            labels.Distinct(StringComparer.Ordinal).Count() != labels.Length)
+            throw new InvalidDataException(
+                "Registered Shop-purchase index request lost its distinct ordered support labels.");
+        return labels;
     }
 
     private static ControlledStochasticContinuationResultV111 Replay(
