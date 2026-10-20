@@ -78,6 +78,8 @@ public sealed record SemanticRandomPileCardDecisionV111(
 
 public static class SemanticRandomPileCardEngineV111
 {
+    public const string MechanicsOperationId = "random_draw_pile_card";
+
     public static SemanticRandomPileCardEventV111? DescribePending(
         RunState run)
     {
