@@ -56,79 +56,7 @@ public sealed record ScriptedRunActionOutcomeV111(
         if (Entry.OperationKind != operationKind)
             throw new InvalidDataException(
                 "Scripted run-action operation kind does not match its payload.");
-        var value = Entry.Event.Deserialize<T>(TranscriptJsonOptions)
-            ?? throw new InvalidDataException(
-                "Scripted run-action transcript payload is empty.");
-        var correctPayload = operationKind switch
-        {
-            "index" => value is RandomBoundaryEventV111,
-            "unit_float" => value is RandomUnitFloatBoundaryEventV111,
-            "ranged_float" => value is RandomRangedFloatBoundaryEventV111,
-            "ranged_double" => value is RandomRangedDoubleBoundaryEventV111,
-            "gaussian_int" => value is RandomGaussianIntBoundaryEventV111,
-            "gaussian_double" => value is RandomGaussianDoubleBoundaryEventV111,
-            _ => false
-        };
-        if (!correctPayload)
-            throw new InvalidDataException(
-                "Scripted run-action operation kind does not match its payload type.");
-        switch (value)
-        {
-            case RandomBoundaryEventV111 item:
-                ValidateRecorded(item.Sequence, item.ProviderMode, item.Request);
-                break;
-            case RandomUnitFloatBoundaryEventV111 item:
-                ValidateRecorded(item.Sequence, item.ProviderMode, item.Request);
-                break;
-            case RandomRangedFloatBoundaryEventV111 item:
-                ValidateRecorded(item.Sequence, item.ProviderMode, item.Request);
-                break;
-            case RandomRangedDoubleBoundaryEventV111 item:
-                ValidateRecorded(item.Sequence, item.ProviderMode, item.Request);
-                break;
-            case RandomGaussianIntBoundaryEventV111 item:
-                ValidateRecorded(item.Sequence, item.ProviderMode, item.Request);
-                break;
-            case RandomGaussianDoubleBoundaryEventV111 item:
-                ValidateRecorded(item.Sequence, item.ProviderMode, item.Request);
-                break;
-            default:
-                throw new InvalidDataException(
-                    "Scripted run-action transcript payload type is invalid.");
-        }
-        return value;
-    }
-
-    private static void ValidateRecorded<TRequest>(
-        int sequence, string providerMode, TRequest request)
-    {
-        if (sequence < 1 || string.IsNullOrWhiteSpace(providerMode))
-            throw new InvalidDataException(
-                "Scripted run-action transcript event metadata is invalid.");
-        switch (request)
-        {
-            case RandomIndexRequestV111 index:
-                index.Validate();
-                break;
-            case RandomUnitFloatRequestV111 unitFloat:
-                unitFloat.Validate();
-                break;
-            case RandomRangedFloatRequestV111 rangedFloat:
-                rangedFloat.Validate();
-                break;
-            case RandomRangedDoubleRequestV111 rangedDouble:
-                rangedDouble.Validate();
-                break;
-            case RandomGaussianIntRequestV111 gaussianInt:
-                gaussianInt.Validate();
-                break;
-            case RandomGaussianDoubleRequestV111 gaussianDouble:
-                gaussianDouble.Validate();
-                break;
-            default:
-                throw new InvalidDataException(
-                    "Scripted run-action request type is invalid.");
-        }
+        return Entry.DeserializeEvent<T>();
     }
 
     private ControlledStochasticDecisionV111 IndexDecision()
@@ -199,11 +127,6 @@ public sealed record ScriptedRunActionOutcomeV111(
                 "controlled-v111"));
     }
 
-    private static readonly JsonSerializerOptions TranscriptJsonOptions =
-        new(JsonSerializerDefaults.Web)
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
-        };
 }
 
 public sealed record ScriptedRunActionSessionSnapshotV111(

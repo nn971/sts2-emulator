@@ -1,5 +1,3 @@
-using System.Text.Json;
-
 namespace Sts2Emulator.Core;
 
 /// <summary>
@@ -12,12 +10,6 @@ public sealed class ScriptedRandomBoundaryProviderV111 :
 {
     public const string TranscriptSchemaId =
         "sts2-v111-random-boundary-transcript-v1";
-
-    private static readonly JsonSerializerOptions TranscriptJsonOptions =
-        new(JsonSerializerDefaults.Web)
-        {
-            PropertyNamingPolicy = JsonNamingPolicy.SnakeCaseLower
-        };
 
     private readonly RandomBoundaryTranscriptEntryV111[] _transcript;
     private int _cursor;
@@ -49,7 +41,6 @@ public sealed class ScriptedRandomBoundaryProviderV111 :
         ArgumentNullException.ThrowIfNull(streams);
         request.Validate();
         var (entry, expected) = Read<RandomBoundaryEventV111>("index");
-        ValidateRecorded(expected);
         if (!SameRequest(request, expected.Request))
             throw RequestMismatch(entry);
         var result = new RandomIndexDecisionV111(
@@ -75,7 +66,6 @@ public sealed class ScriptedRandomBoundaryProviderV111 :
         request.Validate();
         var (entry, expected) = Read<RandomUnitFloatBoundaryEventV111>(
             "unit_float");
-        ValidateRecorded(expected);
         if (!SameRequest(request, expected.Request))
             throw RequestMismatch(entry);
         var result = new RandomUnitFloatDecisionV111(
@@ -94,7 +84,6 @@ public sealed class ScriptedRandomBoundaryProviderV111 :
         request.Validate();
         var (entry, expected) = Read<RandomRangedFloatBoundaryEventV111>(
             "ranged_float");
-        ValidateRecorded(expected);
         if (!SameRequest(request, expected.Request))
             throw RequestMismatch(entry);
         var result = new RandomRangedFloatDecisionV111(
@@ -113,7 +102,6 @@ public sealed class ScriptedRandomBoundaryProviderV111 :
         request.Validate();
         var (entry, expected) = Read<RandomRangedDoubleBoundaryEventV111>(
             "ranged_double");
-        ValidateRecorded(expected);
         if (!SameRequest(request, expected.Request))
             throw RequestMismatch(entry);
         var result = new RandomRangedDoubleDecisionV111(
@@ -132,7 +120,6 @@ public sealed class ScriptedRandomBoundaryProviderV111 :
         request.Validate();
         var (entry, expected) = Read<RandomGaussianIntBoundaryEventV111>(
             "gaussian_int");
-        ValidateRecorded(expected);
         if (!SameRequest(request, expected.Request))
             throw RequestMismatch(entry);
         var result = new RandomGaussianIntDecisionV111(
@@ -151,7 +138,6 @@ public sealed class ScriptedRandomBoundaryProviderV111 :
         request.Validate();
         var (entry, expected) = Read<RandomGaussianDoubleBoundaryEventV111>(
             "gaussian_double");
-        ValidateRecorded(expected);
         if (!SameRequest(request, expected.Request))
             throw RequestMismatch(entry);
         var result = new RandomGaussianDoubleDecisionV111(
@@ -182,9 +168,7 @@ public sealed class ScriptedRandomBoundaryProviderV111 :
                 "Scripted random-boundary operation order mismatch at entry " +
                 _cursor + ": expected " + entry.OperationKind +
                 ", received " + operationKind + ".");
-        var boundaryEvent = entry.Event.Deserialize<T>(
-            TranscriptJsonOptions) ?? throw new InvalidDataException(
-                "Scripted random-boundary entry has an empty payload.");
+        var boundaryEvent = entry.DeserializeEvent<T>();
         return (entry, boundaryEvent);
     }
 
@@ -200,55 +184,6 @@ public sealed class ScriptedRandomBoundaryProviderV111 :
         RandomBoundaryTranscriptEntryV111 entry) => new(
         "Scripted random-boundary request mismatch at entry " +
         (entry.Sequence - 1) + ".");
-
-    private static void ValidateRecorded(RandomBoundaryEventV111 entry)
-    {
-        entry.Request.Validate();
-        ValidateRecorded(entry.Sequence, entry.ProviderMode);
-    }
-
-    private static void ValidateRecorded(
-        RandomUnitFloatBoundaryEventV111 entry)
-    {
-        entry.Request.Validate();
-        ValidateRecorded(entry.Sequence, entry.ProviderMode);
-    }
-
-    private static void ValidateRecorded(
-        RandomRangedFloatBoundaryEventV111 entry)
-    {
-        entry.Request.Validate();
-        ValidateRecorded(entry.Sequence, entry.ProviderMode);
-    }
-
-    private static void ValidateRecorded(
-        RandomRangedDoubleBoundaryEventV111 entry)
-    {
-        entry.Request.Validate();
-        ValidateRecorded(entry.Sequence, entry.ProviderMode);
-    }
-
-    private static void ValidateRecorded(
-        RandomGaussianIntBoundaryEventV111 entry)
-    {
-        entry.Request.Validate();
-        ValidateRecorded(entry.Sequence, entry.ProviderMode);
-    }
-
-    private static void ValidateRecorded(
-        RandomGaussianDoubleBoundaryEventV111 entry)
-    {
-        entry.Request.Validate();
-        ValidateRecorded(entry.Sequence, entry.ProviderMode);
-    }
-
-    private static void ValidateRecorded(
-        int sequence, string providerMode)
-    {
-        if (sequence < 1 || string.IsNullOrWhiteSpace(providerMode))
-            throw new InvalidDataException(
-                "Scripted random-boundary outcome metadata is invalid.");
-    }
 
     private static bool SameRequest(
         RandomIndexRequestV111 left, RandomIndexRequestV111 right) =>
