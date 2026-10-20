@@ -59,6 +59,9 @@ public sealed record RandomGaussianDoubleDecisionV111(
             || ProbabilityStatus != "UNVERIFIED")
             throw new ArgumentException(
                 "Illegal Gaussian-double outcome or probability label.");
+        RandomBoundaryCursorSpanV111.Validate(
+            Request.StreamId, ProviderMode,
+            NativeCursorBefore, NativeCursorAfter);
     }
 }
 

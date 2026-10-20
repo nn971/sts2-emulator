@@ -72,8 +72,6 @@ public sealed record SemanticNativePolicyAuditV111(
             var decision = Decisions[index];
             if (decision is null || decision.Sequence != index + 1 ||
                 decision.ProviderMode != "native-v111" ||
-                decision.NativeCursorBefore is null ||
-                decision.NativeCursorAfter is null ||
                 decision.Request is null || decision.Request.Ordinal < 0 ||
                 string.IsNullOrWhiteSpace(decision.Request.StreamId))
                 throw new InvalidDataException(
@@ -101,11 +99,7 @@ public sealed record SemanticNativePolicyAuditV111(
                     new RandomIndexDecisionV111(value.Request,
                         value.SelectedIndex, value.ProviderMode,
                         value.NativeCursorBefore, value.NativeCursorAfter).Validate();
-                    if (value.ProviderMode != "native-v111" ||
-                        value.NativeCursorBefore is null ||
-                        value.NativeCursorAfter is null)
-                        throw new InvalidDataException(
-                            "Native policy index trace has non-native provenance.");
+                    ValidateNativeTraceProvenance(value.ProviderMode, index);
                     traceIndices.Add(value with { Sequence = traceIndices.Count + 1 });
                     break;
                 }
@@ -117,8 +111,7 @@ public sealed record SemanticNativePolicyAuditV111(
                     new RandomUnitFloatDecisionV111(value.Request,
                         value.SelectedValue, value.ProviderMode,
                         value.NativeCursorBefore, value.NativeCursorAfter).Validate();
-                    ValidateNativeTraceProvenance(value.ProviderMode,
-                        value.NativeCursorBefore, value.NativeCursorAfter, index);
+                    ValidateNativeTraceProvenance(value.ProviderMode, index);
                     break;
                 }
                 case "ranged_float":
@@ -129,8 +122,7 @@ public sealed record SemanticNativePolicyAuditV111(
                     new RandomRangedFloatDecisionV111(value.Request,
                         value.SelectedValue, value.ProviderMode,
                         value.NativeCursorBefore, value.NativeCursorAfter).Validate();
-                    ValidateNativeTraceProvenance(value.ProviderMode,
-                        value.NativeCursorBefore, value.NativeCursorAfter, index);
+                    ValidateNativeTraceProvenance(value.ProviderMode, index);
                     break;
                 }
                 case "ranged_double":
@@ -141,8 +133,7 @@ public sealed record SemanticNativePolicyAuditV111(
                     new RandomRangedDoubleDecisionV111(value.Request,
                         value.SelectedValue, value.ProviderMode,
                         value.NativeCursorBefore, value.NativeCursorAfter).Validate();
-                    ValidateNativeTraceProvenance(value.ProviderMode,
-                        value.NativeCursorBefore, value.NativeCursorAfter, index);
+                    ValidateNativeTraceProvenance(value.ProviderMode, index);
                     break;
                 }
                 case "gaussian_int":
@@ -153,8 +144,7 @@ public sealed record SemanticNativePolicyAuditV111(
                     new RandomGaussianIntDecisionV111(value.Request,
                         value.SelectedValue, value.ProviderMode,
                         value.NativeCursorBefore, value.NativeCursorAfter).Validate();
-                    ValidateNativeTraceProvenance(value.ProviderMode,
-                        value.NativeCursorBefore, value.NativeCursorAfter, index);
+                    ValidateNativeTraceProvenance(value.ProviderMode, index);
                     break;
                 }
                 case "gaussian_double":
@@ -165,8 +155,7 @@ public sealed record SemanticNativePolicyAuditV111(
                     new RandomGaussianDoubleDecisionV111(value.Request,
                         value.SelectedValue, value.ProviderMode,
                         value.NativeCursorBefore, value.NativeCursorAfter).Validate();
-                    ValidateNativeTraceProvenance(value.ProviderMode,
-                        value.NativeCursorBefore, value.NativeCursorAfter, index);
+                    ValidateNativeTraceProvenance(value.ProviderMode, index);
                     break;
                 }
                 default:
@@ -192,10 +181,9 @@ public sealed record SemanticNativePolicyAuditV111(
     }
 
     private static void ValidateNativeTraceProvenance(
-        string providerMode, NativeRngSnapshot? before,
-        NativeRngSnapshot? after, int index)
+        string providerMode, int index)
     {
-        if (providerMode != "native-v111" || before is null || after is null)
+        if (providerMode != "native-v111")
             throw new InvalidDataException(
                 "Native policy trace has non-native provenance at " + index + ".");
     }

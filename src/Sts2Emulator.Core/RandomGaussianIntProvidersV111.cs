@@ -54,6 +54,9 @@ public sealed record RandomGaussianIntDecisionV111(
             || ProbabilityStatus != "UNVERIFIED")
             throw new ArgumentException(
                 "Illegal Gaussian-integer outcome or probability label.");
+        RandomBoundaryCursorSpanV111.Validate(
+            Request.StreamId, ProviderMode,
+            NativeCursorBefore, NativeCursorAfter);
     }
 }
 

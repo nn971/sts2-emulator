@@ -113,6 +113,9 @@ public sealed record RandomIndexDecisionV111(
             string.IsNullOrWhiteSpace(ProviderMode) ||
             ProbabilityStatus != "UNVERIFIED")
             throw new ArgumentException("Illegal random-choice outcome or probability label.");
+        RandomBoundaryCursorSpanV111.Validate(
+            Request.StreamId, ProviderMode,
+            NativeCursorBefore, NativeCursorAfter);
     }
 }
 

@@ -54,6 +54,9 @@ public sealed record RandomRangedFloatDecisionV111(
             || ProbabilityStatus != "UNVERIFIED")
             throw new ArgumentException(
                 "Illegal ranged-float outcome or probability label.");
+        RandomBoundaryCursorSpanV111.Validate(
+            Request.StreamId, ProviderMode,
+            NativeCursorBefore, NativeCursorAfter);
     }
 }
 
