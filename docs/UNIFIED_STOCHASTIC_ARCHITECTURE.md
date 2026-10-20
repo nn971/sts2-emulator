@@ -27,6 +27,8 @@ The engine owns the **complete simulation lifecycle** (fork, snapshot, restore, 
 - The engine owns **which physical card instances are in the draw pile** and every known/public placement or movement consequence.
 - The active provider owns **the private ordering, committed permutation, or unresolved order constraints** and updates them on mechanical insert/remove/reveal/shuffle operations.
 - `SemanticDeckStateV111` and its pool, pending-event, transcript, event, and order values copy mutable arrays on construction and replacement and return defensive copies from array properties. Callers therefore cannot change Nature's hidden order constraints or candidate support through a shared array reference.
+- `ControlledPlayableCombatStochasticStateV111` copies its typed decision transcripts, pending request support, and recycle continuation on construction, replacement, and projection, keeping a caller from rewriting the saved provider prefix.
+- `SemanticPilotStochasticStateV111` deep-copies native-policy and source-route audit arrays, including their ordered request support, when it accepts or returns those audits. The audit remains provider-private replay evidence.
 - The engine owns enemy history and eligibility filters; once an intent is resolved, the resulting committed enemy intent is mechanical state and becomes player-visible at the ordinary game boundary.
 - Native provider state and Nature state are alternative realizations: a Nature counterfactual has no obligation to match a native seed or shadow cursor.
 - A complete state fork or serialized snapshot must include both components **atomically**. No stale `CombatState.DrawPile` / `SemanticDeckStateV111` dual ownership is permitted in the target model.
