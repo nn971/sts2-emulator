@@ -12,6 +12,16 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
             PendingChoice: null, PendingKnowledgeDemonChoice: null,
             AutomaticPipelineContinuation: null };
 
+    /// <summary>
+    /// The ordinary automatic pipeline can suspend before AdvanceTurn on an
+    /// enemy-action request or on a random target nested in that action. The
+    /// end-turn and controlled-playable facades share this boundary check.
+    /// </summary>
+    internal static bool HasPendingControlledAutomaticPipelineChoice(
+        RunState run) => run.World?.Combat is { } combat &&
+        (combat.AutomaticPipelineContinuation?.ControlledEnemyAction is not null ||
+         combat.PendingChoice?.ControlledTarget is not null);
+
     internal static bool IsAtCombatRewardOrTerminalBoundary(RunState run) =>
         (run.Phase is RunPhase.Reward or RunPhase.Terminal) &&
         IsAtCombatActionResultBoundary(run);
