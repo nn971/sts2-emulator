@@ -634,15 +634,10 @@ public static class SemanticEndTurnEngineV111
 
     private static SemanticEndTurnV111 CompleteIntents(SemanticEndTurnV111 state)
     {
-        var intents = state.Intents ??
-            throw new InvalidOperationException("No source intent checkpoint.");
-        if (!intents.Complete)
-            throw new InvalidOperationException("Enemy intent tickets are pending.");
-        intents.Validate();
         RunState handCheckpoint;
         using (ControlledChanceGuardV111.Enter())
             handCheckpoint = PrototypeGameEngine.ResumeControlledTurnAfterIntents(
-                state.Run.Fork(), intents.Combat.Fork(),
+                state.Run.Fork(),
                 stopBeforeSemanticHandDraw: true);
         var combat = handCheckpoint.World?.Combat ??
             throw new InvalidOperationException("Next-turn combat disappeared.");
