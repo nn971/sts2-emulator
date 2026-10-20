@@ -140,6 +140,25 @@ public sealed partial class PrototypeGameEngine
             combat, continuation);
     }
 
+    internal static bool IsAutomaticPipelineSemanticCardTransformContinuation(
+        CombatState combat, PendingCombatChoiceState pending)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(pending);
+        if (pending is not
+            { ChoiceId: "controlled_card_transform",
+              ControlledCardTransform: { } transform } ||
+            combat.SemanticDeck is not
+                { Mode: SemanticDeckStateV111.NatureMode } ||
+            transform.OriginalChoice.OuterChoiceContinuation is not
+                { } continuation ||
+            !ValidateControlledCardTransform(combat, transform))
+            return false;
+
+        return IsSupportedAutomaticPipelineAutoplayContinuation(
+            combat, continuation);
+    }
+
     private static bool IsSupportedAutomaticPipelineAutoplayContinuation(
         CombatState combat,
         PrototypeChoiceResolutionContinuationState continuation)

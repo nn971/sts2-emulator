@@ -617,7 +617,8 @@ public sealed record SemanticPilotCombatV111(
                 this.CardShortlistPending is not null ||
                 this.PoolShufflePending is not null ||
                 this.DrawInsertionPending is not null ||
-                this.PendingEndTurn is not null ||
+                (this.PendingEndTurn is not null &&
+                 this.PendingEndTurn.CardTransformPending is null) ||
                 this.PendingInitialIntents is not null ||
                 this.UsesNativePolicyBaseline || this.CombatTerminal)
                 throw new InvalidDataException(
@@ -849,7 +850,8 @@ public sealed record SemanticPilotCombatV111(
          endTurn.NestedCostPending is not null ||
          endTurn.NestedDrawInsertionPending is not null ||
          endTurn.GeneratedCardPending is not null ||
-         endTurn.PotionGenerationPending is not null);
+         endTurn.PotionGenerationPending is not null ||
+         endTurn.CardTransformPending is not null);
 
     public SemanticPilotCombatV111 Fork() => this with
     {
@@ -2403,13 +2405,20 @@ public static class SemanticPilotCombatEngineV111
             pending, eventId, cardId);
         var result = SemanticCardTransformChoiceV111.Resume(
             current.Run, expected);
-
+        var nextEndTurn = current.PendingEndTurn is { } endTurn
+            ? SemanticEndTurnEngineV111.ContinueNestedAutomaticChoice(
+                endTurn, result,
+                new SemanticEndTurnNestedChoiceV111(
+                    "semantic_card_transform",
+                    CardTransformDecision: expected.Fork()),
+                pending.SiteId)
+            : null;
         return NormalizeNoncontrolledCosts(PublishRunContinuation(
-            current, result, null,
+            current, result, nextEndTurn,
             new SemanticPilotContinuationV111(
                 "semantic_card_transform",
                 CardTransformDecision: expected.Fork()),
-            preservePendingEndTurn: true));
+            preservePendingEndTurn: current.PendingEndTurn is null));
     }
 
     private static SemanticPilotCombatV111 StepNativePolicyBaseline(
@@ -3165,26 +3174,23 @@ public static class SemanticPilotCombatEngineV111
         DescribePendingCardTransformEvent(SemanticPilotCombatV111 current)
     {
         ArgumentNullException.ThrowIfNull(current);
+        if (current.PendingEndTurn?.CardTransformPending is
+            { } endTurnEvent)
+            return endTurnEvent;
         var combat = current.Run.World?.Combat;
         var choice = combat?.PendingChoice;
         var transform = choice?.ControlledCardTransform;
         if (transform is null) return null;
-        if (current.PendingEndTurn is not null ||
+        if ((current.PendingEndTurn is not null &&
+             current.PendingEndTurn.CardTransformPending is null) ||
             current.PendingInitialIntents is not null ||
             current.UsesNativePolicyBaseline || current.CombatTerminal)
             throw new InvalidDataException(
                 "Card-transform choice conflicts with another semantic boundary.");
-        SemanticCardTransformChoiceV111.ValidateBoundary(
-            current.Run, transform);
-        var sourceId = transform.SelectedCardInstanceIds[
-            transform.NextTransformIndex];
-        var originalCardId = combat!.Cards.Single(card =>
-            card.InstanceId == sourceId).CardId;
         var ordinal = current.History.Count(transition =>
             transition.Kind == "semantic_card_transform");
-        return SemanticCardTransformChoiceV111.CreateEvent(
-            current.Fingerprint, ordinal, sourceId, originalCardId,
-            transform.CandidateCardIds);
+        return SemanticCardTransformChoiceV111.DescribePending(
+            current.Run, current.Fingerprint, ordinal);
     }
 
     public static SemanticCardSelectionEventV111?

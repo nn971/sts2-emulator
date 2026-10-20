@@ -112,6 +112,25 @@ public static class SemanticCardTransformChoiceV111
         return semanticEvent;
     }
 
+    internal static SemanticCardTransformEventV111 DescribePending(
+        RunState run, string boundaryFingerprint, int ordinal)
+    {
+        ArgumentNullException.ThrowIfNull(run);
+        ArgumentException.ThrowIfNullOrWhiteSpace(boundaryFingerprint);
+        var combat = run.World?.Combat ?? throw new InvalidDataException(
+            "Card-transform choice lost its source combat.");
+        var transform = combat.PendingChoice?.ControlledCardTransform ??
+            throw new InvalidDataException(
+                "No controlled card transform is pending.");
+        ValidateBoundary(run, transform);
+        var sourceId = transform.SelectedCardInstanceIds[
+            transform.NextTransformIndex];
+        var originalCardId = combat.Cards.Single(card =>
+            card.InstanceId == sourceId).CardId;
+        return CreateEvent(boundaryFingerprint, ordinal, sourceId,
+            originalCardId, transform.CandidateCardIds);
+    }
+
     internal static void ValidateBoundary(
         RunState run, PrototypeControlledCardTransformV111 transform)
     {
@@ -149,6 +168,21 @@ public static class SemanticCardTransformChoiceV111
             pending.Fork(), index, cardId);
         decision.Validate();
         return decision;
+    }
+
+    internal static void ValidateDecision(
+        SemanticCardTransformEventV111? pending,
+        SemanticCardTransformDecisionV111 decision, string cardId)
+    {
+        ArgumentNullException.ThrowIfNull(decision);
+        ArgumentException.ThrowIfNullOrWhiteSpace(cardId);
+        decision.Validate();
+        if (pending is null || pending.EventId != decision.Event.EventId ||
+            CanonicalJson.Sha256(pending) !=
+                CanonicalJson.Sha256(decision.Event) ||
+            decision.SelectedCardId != cardId)
+            throw new InvalidDataException(
+                "Card-transform decision differs from its live semantic event.");
     }
 
     /// <summary>Revalidate the live replacement pool and apply one outcome
