@@ -1,3 +1,5 @@
+using System.Text.Json.Serialization;
+
 namespace Sts2Emulator.Core;
 
 /// <summary>
@@ -15,6 +17,7 @@ public sealed record CombatCardZonesV111
     private long[]? _playPile;
     private long[]? _choicePool;
 
+    [JsonConstructor]
     public CombatCardZonesV111(
         long[] Hand,
         long[] DrawPile,
