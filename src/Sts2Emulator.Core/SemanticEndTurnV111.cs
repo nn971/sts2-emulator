@@ -1235,6 +1235,23 @@ public static class SemanticEndTurnEngineV111
                 .HasPendingSupportedAutomaticPipelineSemanticChoice(resumed))
             return next with { Run = resumed };
 
+        if (source.Run.World?.Combat is
+                { PendingChoice: { } pending } sourceCombat &&
+            PrototypeGameEngine
+                .IsCrossbowTurnStartGenerationContinuation(
+                    sourceCombat, pending))
+        {
+            if (!PrototypeGameEngine
+                    .IsCrossbowTurnStartDrawBoundary(resumed))
+                throw new NotSupportedException(
+                    "UNSUPPORTED_SEMANTIC_DECK " +
+                    "site=combat.semantic_end_turn " +
+                    "operation=crossbow_draw_handoff_boundary");
+            var draw = SemanticCombatDrawEngineV111.BeginAutomaticHandDraw(
+                resumed);
+            return ContinueHandDraw(next, draw);
+        }
+
         if (next.HandDraw is { AtBoundary: true })
             return CompleteHandDrawAtPlayerBoundary(next, resumed);
 
@@ -1484,6 +1501,12 @@ public static class SemanticEndTurnEngineV111
             return CompleteAtBoundary(
                 state with { Intents = null }, handCheckpoint,
                 discardSuspendedFrames: true);
+        if (handCheckpoint.World?.Combat is
+                { PendingChoice: { } pending } combat &&
+            PrototypeGameEngine
+                .IsCrossbowTurnStartGenerationContinuation(
+                    combat, pending))
+            return state with { Run = handCheckpoint, Intents = null };
         var draw = SemanticCombatDrawEngineV111.BeginAutomaticHandDraw(
             handCheckpoint);
         return ContinueHandDraw(state with { Intents = null }, draw);

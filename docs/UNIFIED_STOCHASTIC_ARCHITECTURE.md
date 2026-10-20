@@ -464,6 +464,8 @@ Blessed Antler's turn-one `BeforeHandDraw` hook now uses the existing typed draw
 
 From turn two onward, Hello World's `BeforeHandDraw` hook now uses the existing typed full-pool shuffle for its distinct character Common-card generation. The operation count follows the live power stacks, while the selected count follows the saved turn-start stack snapshot, capped by the eligible pool size. Native run-stream snapshots use `run.combat_card_generation`, matching the source shuffle call. Each swap remains in the existing nested end-turn pool-shuffle chronology, and restore resumes the saved subscriber before the hand draw continues. Admission checks the exact Hello World trigger and source pool; other automatic `BeforeHandDraw` shuffle hooks remain unsupported.
 
+From turn two onward, Crossbow's `PlayerSideTurnStarted` effect can suspend on the existing typed generated-card model choice before `DrawPlayerHand`. Semantic end-turn retains the exact relic subscriber and operation at the clean draw cursor, then begins the semantic hand-draw owner after the generated Attack is selected; restore replays that trigger and selection before the draw. Admission requires the exact Crossbow trigger and ordered Attack pool, with no later event subscribers. The generated-card event keeps its existing `prototype.combat` stream label and `UNVERIFIED` probability status; Native `run.combat_card_generation` attribution and cursor parity remain open. Other automatic-pipeline generation continuations remain unsupported.
+
 ## Reading order
 
 1. This architecture contract.
