@@ -1153,3 +1153,6 @@ Run matched source-state/seed sets; frozen player policy; fair observations/lega
 
 
 **S3 Nature deck array encapsulation increment (2026-10-20):** `SemanticDeckStateV111` and its nested pool, pending, transcript, event, and order records now copy mutable arrays on construction and replacement and return defensive copies from array properties. Constructor and deconstruction shapes, JSON property names, record `with` updates, and independent `Fork` behavior are preserved. A source scan found no indexed writes through these array projections. `git diff --check` passed; no tests or builds were run.
+
+
+**S3 semantic draw transcript encapsulation increment (2026-10-20):** `SemanticCombatDrawStochasticStateV111` now copies its typed decision arrays on construction and replacement and returns cloned decisions from its transcript properties. Suspended cost requests and typed choice support can no longer be edited through a shared continuation array. Existing flattened snapshots and `Fork` behavior are preserved. The permitted indexed-write census and `git diff --check` passed; no tests or builds were run.
