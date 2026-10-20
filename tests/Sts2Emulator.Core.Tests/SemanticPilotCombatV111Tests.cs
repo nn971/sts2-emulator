@@ -451,6 +451,30 @@ public sealed class SemanticPilotCombatV111Tests
     }
 
     [Fact]
+    public void FixedActOneWeakCombatHasCoherentRoomAndEncounterProvenance()
+    {
+        var entry = new SemanticSeededEntryV111(
+            "nature-p0-weak-real-victory", 1,
+            "proto.encounter.shrinker_beetle_weak",
+            "ShrinkerBeetleWeak", 2, 0, 1, 3, 1,
+            ReplayOpeningDrawHooks: true);
+        var session = SemanticPilotCombatEngineV111.BeginSeeded(entry);
+        var world = session.Run.World!;
+        Assert.Equal(2, world.Floor);
+        Assert.Equal(PrototypeRoomType.Combat, world.ActiveRoom);
+        Assert.Equal(entry.EncounterId, Assert.Single(world.EncounterIds));
+        Assert.Empty(world.Map.Nodes);
+        Assert.Null(world.Map.CurrentNodeId);
+        Assert.Null(world.Event);
+        Assert.Null(world.Combat!.CurrentMapNodeId);
+        Assert.True(session.AtPlayerBoundary);
+        session.Run.Validate();
+        Assert.Equal(session.Fingerprint,
+            SemanticPilotCombatEngineV111.Restore(
+                SemanticPilotCombatEngineV111.Save(session)).Fingerprint);
+    }
+
+    [Fact]
     public void SourcePinnedActOneWeakCombatWinsByOrdinarySilentStrikeActions()
     {
         var entry = new SemanticSeededEntryV111(
