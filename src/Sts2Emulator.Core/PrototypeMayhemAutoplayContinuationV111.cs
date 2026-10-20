@@ -222,6 +222,24 @@ public sealed partial class PrototypeGameEngine
             combat, continuation);
     }
 
+    internal static bool IsAutomaticPipelineSemanticCardSelectionContinuation(
+        CombatState combat, PendingCombatChoiceState pending)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        ArgumentNullException.ThrowIfNull(pending);
+        if (pending is not
+            { ChoiceId: "select_cards",
+              CardPlaySeries: { IsAutoPlay: true },
+              OuterChoiceContinuation: null } ||
+            combat.SemanticDeck is not
+                { Mode: SemanticDeckStateV111.NatureMode })
+            return false;
+
+        return IsMayhemAutoPrePlayPipelineCursor(combat) ||
+            combat.IsPlayerTurn &&
+            IsAtSupportedAutomaticPipelineTargetBoundary(combat);
+    }
+
     private static bool IsSupportedAutomaticPipelineAutoplayContinuation(
         CombatState combat,
         PrototypeChoiceResolutionContinuationState continuation)

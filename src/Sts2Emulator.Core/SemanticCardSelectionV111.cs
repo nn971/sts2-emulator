@@ -149,9 +149,14 @@ public static class SemanticCardSelectionEngineV111
         var choice = combat?.PendingChoice;
         bool automaticStratagem =
             choice?.AutomaticSemanticStratagemDrawSelection == true;
+        bool automaticAutoplay = combat is not null && choice is not null &&
+            PrototypeGameEngine
+                .IsAutomaticPipelineSemanticCardSelectionContinuation(
+                    combat, choice);
         if (source.Phase != RunPhase.Combat ||
             combat is not { PendingKnowledgeDemonChoice: null } ||
-            (!automaticStratagem && !combat.IsPlayerTurn) ||
+            (!automaticStratagem && !automaticAutoplay &&
+             !combat.IsPlayerTurn) ||
             choice is not { ChoiceId: "select_cards" } ||
             combat.SemanticDeck is not { } deck || deck.Pending is not null)
             throw new InvalidOperationException(
@@ -163,13 +168,48 @@ public static class SemanticCardSelectionEngineV111
                 throw new InvalidDataException(
                     "Automatic Stratagem draw cursor is inconsistent.");
         }
-        else if (combat!.AutomaticPipelineContinuation is not null)
+        else if (!automaticAutoplay &&
+                 combat!.AutomaticPipelineContinuation is not null)
             throw new InvalidOperationException(
                 "Expected an ordinary semantic player-turn choice.");
         SemanticDrawPileAdapterV111.ValidateSynchronized(
             combat, requireIdle: true);
-        if (automaticStratagem)
+        if (automaticStratagem || automaticAutoplay)
             PrototypeStateInvariants.Validate(source);
+    }
+
+    public static SemanticCardSelectionDecisionV111 Select(
+        SemanticCardSelectionEventV111 pending, string eventId,
+        string actionId)
+    {
+        ArgumentNullException.ThrowIfNull(pending);
+        pending.Validate();
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(actionId);
+        if (pending.EventId != eventId)
+            throw new InvalidOperationException(
+                "Card-selection event ID is stale or mismatched.");
+        var candidate = pending.Candidates.SingleOrDefault(item =>
+            item.ActionId == actionId) ?? throw new InvalidOperationException(
+                "Action is outside the pending card-selection support.");
+        var decision = new SemanticCardSelectionDecisionV111(
+            pending.Fork(), actionId,
+            (long[])candidate.CardInstanceIds.Clone());
+        decision.Validate();
+        return decision;
+    }
+
+    internal static void ValidateDecision(
+        SemanticCardSelectionEventV111? pending,
+        SemanticCardSelectionDecisionV111 decision)
+    {
+        ArgumentNullException.ThrowIfNull(decision);
+        decision.Validate();
+        if (pending is null || pending.EventId != decision.Event.EventId ||
+            CanonicalJson.Sha256(pending) !=
+                CanonicalJson.Sha256(decision.Event))
+            throw new InvalidDataException(
+                "Card-selection decision differs from its live semantic event.");
     }
 
     public static SemanticCardSelectionV111 Step(
@@ -181,6 +221,10 @@ public static class SemanticCardSelectionEngineV111
         var choice = combat!.PendingChoice!;
         var deck = combat!.SemanticDeck!;
         SemanticDeckEngineV111.Validate(deck);
+        var automaticAutoplay =
+            PrototypeGameEngine
+                .IsAutomaticPipelineSemanticCardSelectionContinuation(
+                    combat, choice);
         var semanticEvent = DescribePending(source,
             CanonicalJson.Sha256(source));
         var spec = choice.Selection;
@@ -223,6 +267,8 @@ public static class SemanticCardSelectionEngineV111
                         "Automatic Stratagem selection lost its draw cursor.");
                 PrototypeStateInvariants.Validate(advanced);
             }
+            else if (automaticAutoplay)
+                ValidateAutomaticPipelineResult(advanced);
             else
                 SemanticPilotCombatEngineV111.ValidateSemanticCombatBoundary(
                     advanced);
@@ -278,6 +324,11 @@ public static class SemanticCardSelectionEngineV111
         ArgumentNullException.ThrowIfNull(state);
         var from = state.Origin.World?.Combat;
         var to = state.Run.World?.Combat;
+        var automaticAutoplay = from is not null &&
+            from.PendingChoice is { } sourceChoice &&
+            PrototypeGameEngine
+                .IsAutomaticPipelineSemanticCardSelectionContinuation(
+                    from, sourceChoice);
         var reward = state.Run.Phase == RunPhase.Reward &&
             state.Run.World?.Reward is not null && to is null;
         if (from?.PendingChoice?.ChoiceId != "select_cards" ||
@@ -302,6 +353,8 @@ public static class SemanticCardSelectionEngineV111
                         "Saved automatic Stratagem selection lost its draw cursor.");
                 PrototypeStateInvariants.Validate(state.Run);
             }
+            else if (automaticAutoplay)
+                ValidateAutomaticPipelineResult(state.Run);
             else
                 SemanticPilotCombatEngineV111.ValidateSemanticCombatBoundary(
                     state.Run);
@@ -438,4 +491,24 @@ public static class SemanticCardSelectionEngineV111
         spec.Resolution is PrototypeCardSelectionResolutionKind.MoveToHand or
             PrototypeCardSelectionResolutionKind.MoveToDiscard or
             PrototypeCardSelectionResolutionKind.MoveToExhaust;
+
+    private static void ValidateAutomaticPipelineResult(RunState run)
+    {
+        var combat = run.World?.Combat;
+        bool supportedPending =
+            PrototypeGameEngine.HasPendingControlledAutomaticPipelineChoice(
+                run) ||
+            PrototypeGameEngine
+                .HasPendingSupportedAutomaticPipelineSemanticChoice(run);
+        bool supportedPipelineCheckpoint =
+            combat?.AutomaticPipelineContinuation is not null &&
+            ((combat.PendingChoice is null &&
+              combat.PendingKnowledgeDemonChoice is null) || supportedPending);
+        if (!PrototypeGameEngine.IsAtCombatPlayerDecisionBoundary(run) &&
+            !supportedPipelineCheckpoint)
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_DECK site=combat.card_selection " +
+                "operation=unsupported_automatic_pipeline_result");
+        PrototypeStateInvariants.Validate(run);
+    }
 }
