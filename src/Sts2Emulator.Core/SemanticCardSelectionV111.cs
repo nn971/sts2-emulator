@@ -516,6 +516,12 @@ public static class SemanticCardSelectionEngineV111
             PrototypeGameEngine
                 .IsAutomaticPipelineSemanticCardSelectionContinuation(
                     combat, choice);
+        bool supportedAutomaticTransform =
+            spec.SourceZone == PrototypeCardZone.Hand &&
+            spec.Resolution ==
+                PrototypeCardSelectionResolutionKind.TransformRandom &&
+            PrototypeGameEngine
+                .IsPlayerTurnStartedEntropySelection(combat, choice);
         var supportedTop = IsSupportedTopMove(spec);
         var supportedDrawRemoval = IsSupportedDrawRemoval(spec);
         var supportedVisibleZoneMove =
@@ -531,6 +537,7 @@ public static class SemanticCardSelectionEngineV111
             spec.Resolution == PrototypeCardSelectionResolutionKind.MoveToHand &&
             spec.RemoveUnselectedFromSource;
         if ((!supportedTop && !supportedDrawRemoval &&
+             !supportedAutomaticTransform &&
              !supportedVisibleZoneMove && !supportedGeneratedChoicePool) ||
             (spec.RemoveUnselectedFromSource &&
              !supportedGeneratedChoicePool) ||
