@@ -84,6 +84,8 @@
 
 **S0 diagnostic monster-local request registration increment (2026-10-20):** `StochasticSiteRegistryV111` now lists the diagnostic monster-local bounded-index site explicitly and derives its operation validation from the same registry-owned set. The migration matrix identifies it as diagnostic-only, with no game-source probability claim and no Nature/session capability, and links directly to the request entry and registry code for review. The v37 census now resolves all 101 typed request constructions and maps all 185 registered site IDs to matrix rows; all 16 known SiteId forwarders map. Its S0 locator finds row text or linked-document context for all five review facets on all 185 rows; these are review pointers, not proof of complete source evidence. The source-census registry, local-link, and ambient-entropy checks pass; no tests or builds were run.
 
+**S0 Punch Off monster-local request review update (2026-10-20):** The Construct HP row now links the event callsite, the CombatId-selected Native local-stream entry, and the atomic ReferenceNature fight session. The emulator path uses bound 8, ordinal 0, and an event/CombatId owner per construct; replay verifies both ordered requests and preserves the event cursor. The bounded-transform law is source-verified under the stated uniform Native grid model, while seed/context parity remains open. No tests or builds were run.
+
 ## Priorities and milestones
 
 | Stage | Priority | Deliverables | Acceptance gate |
