@@ -2460,15 +2460,13 @@ public static class SemanticPilotCombatEngineV111
                 "No semantic generated-card event is pending.");
         var expected = SemanticGenerationChoiceV111.Select(
             pending, eventId, cardId);
-        var result = SemanticGenerationChoiceV111.Resume(
-            current.Run, expected);
+        var choice = new SemanticEndTurnNestedChoiceV111(
+            "semantic_generated_card", GeneratedCardDecision: expected.Fork());
+        var (result, siteId) = SemanticNestedChoiceResumeV111.Resume(
+            current.Run, choice);
         var nextEndTurn = current.PendingEndTurn is { } endTurn
             ? SemanticEndTurnEngineV111.ContinueNestedAutomaticChoice(
-                endTurn, result,
-                new SemanticEndTurnNestedChoiceV111(
-                    "semantic_generated_card",
-                    GeneratedCardDecision: expected.Fork()),
-                pending.SiteId)
+                endTurn, result, choice, siteId)
             : null;
         var next = PublishRunContinuation(
             current, result, nextEndTurn,
@@ -2494,15 +2492,14 @@ public static class SemanticPilotCombatEngineV111
                 "No semantic potion-generation event is pending.");
         var expected = SemanticPotionGenerationChoiceV111.Select(
             pending, eventId, potionId);
-        var result = SemanticPotionGenerationChoiceV111.Resume(
-            current.Run, expected);
+        var choice = new SemanticEndTurnNestedChoiceV111(
+            "semantic_potion_generation",
+            PotionGenerationDecision: expected.Fork());
+        var (result, siteId) = SemanticNestedChoiceResumeV111.Resume(
+            current.Run, choice);
         var nextEndTurn = current.PendingEndTurn is { } endTurn
             ? SemanticEndTurnEngineV111.ContinueNestedAutomaticChoice(
-                endTurn, result,
-                new SemanticEndTurnNestedChoiceV111(
-                    "semantic_potion_generation",
-                    PotionGenerationDecision: expected.Fork()),
-                pending.SiteId)
+                endTurn, result, choice, siteId)
             : null;
         return NormalizeNoncontrolledCosts(PublishRunContinuation(
             current, result, nextEndTurn,
@@ -2527,15 +2524,13 @@ public static class SemanticPilotCombatEngineV111
                 "No semantic card-transform event is pending.");
         var expected = SemanticCardTransformChoiceV111.Select(
             pending, eventId, cardId);
-        var result = SemanticCardTransformChoiceV111.Resume(
-            current.Run, expected);
+        var choice = new SemanticEndTurnNestedChoiceV111(
+            "semantic_card_transform", CardTransformDecision: expected.Fork());
+        var (result, siteId) = SemanticNestedChoiceResumeV111.Resume(
+            current.Run, choice);
         var nextEndTurn = current.PendingEndTurn is { } endTurn
             ? SemanticEndTurnEngineV111.ContinueNestedAutomaticChoice(
-                endTurn, result,
-                new SemanticEndTurnNestedChoiceV111(
-                    "semantic_card_transform",
-                    CardTransformDecision: expected.Fork()),
-                pending.SiteId)
+                endTurn, result, choice, siteId)
             : null;
         return NormalizeNoncontrolledCosts(PublishRunContinuation(
             current, result, nextEndTurn,
@@ -2664,14 +2659,13 @@ public static class SemanticPilotCombatEngineV111
         {
             SemanticCostChoiceV111.ValidateDecision(
                 current.CostPending, decision, index);
-            var result = SemanticRandomHandCostChoiceV111.Resume(
-                current.Run, pending.SiteId, index);
+            var choice = new SemanticEndTurnNestedChoiceV111(
+                "semantic_cost", CostDecision: decision.Fork());
+            var (result, siteId) = SemanticNestedChoiceResumeV111.Resume(
+                current.Run, choice);
             var nextEndTurn = current.PendingEndTurn is { } endTurn
                 ? SemanticEndTurnEngineV111.ContinueNestedAutomaticChoice(
-                    endTurn, result,
-                    new SemanticEndTurnNestedChoiceV111(
-                        "semantic_cost", CostDecision: decision.Fork()),
-                    pending.SiteId)
+                    endTurn, result, choice, siteId)
                 : null;
             var next = PublishRunContinuation(
                 current, result, nextEndTurn,
@@ -2698,15 +2692,14 @@ public static class SemanticPilotCombatEngineV111
                 "No random hand-card cost selection is pending.");
         var decision = SemanticHandCostSelectionChoiceV111.Select(
             pending, eventId, cardInstanceId);
-        var result = SemanticHandCostSelectionChoiceV111.Resume(
-            current.Run, decision);
+        var choice = new SemanticEndTurnNestedChoiceV111(
+            "semantic_hand_cost_selection",
+            HandCostSelectionDecision: decision.Fork());
+        var (result, siteId) = SemanticNestedChoiceResumeV111.Resume(
+            current.Run, choice);
         var nextEndTurn = current.PendingEndTurn is { } endTurn
             ? SemanticEndTurnEngineV111.ContinueNestedAutomaticChoice(
-                endTurn, result,
-                new SemanticEndTurnNestedChoiceV111(
-                    "semantic_hand_cost_selection",
-                    HandCostSelectionDecision: decision.Fork()),
-                pending.SiteId)
+                endTurn, result, choice, siteId)
             : null;
         var next = PublishRunContinuation(
             current, result, nextEndTurn,
@@ -2732,15 +2725,13 @@ public static class SemanticPilotCombatEngineV111
                 "No random card-pile shortlist is pending.");
         var decision = SemanticCardShortlistChoiceV111.Select(
             pending, eventId, cardInstanceId);
-        var result = SemanticCardShortlistChoiceV111.Resume(
-            current.Run, decision);
+        var choice = new SemanticEndTurnNestedChoiceV111(
+            "semantic_card_shortlist", CardShortlistDecision: decision.Fork());
+        var (result, siteId) = SemanticNestedChoiceResumeV111.Resume(
+            current.Run, choice);
         var nextEndTurn = current.PendingEndTurn is { } endTurn
             ? SemanticEndTurnEngineV111.ContinueNestedAutomaticChoice(
-                endTurn, result,
-                new SemanticEndTurnNestedChoiceV111(
-                    "semantic_card_shortlist",
-                    CardShortlistDecision: decision.Fork()),
-                pending.SiteId)
+                endTurn, result, choice, siteId)
             : null;
         var next = PublishRunContinuation(
             current, result, nextEndTurn,
@@ -2766,15 +2757,13 @@ public static class SemanticPilotCombatEngineV111
                 "No generated-card pool shuffle is pending.");
         var decision = SemanticPoolShuffleChoiceV111.Select(
             pending, eventId, swapIndex);
-        var result = SemanticPoolShuffleChoiceV111.Resume(
-            current.Run, decision);
+        var choice = new SemanticEndTurnNestedChoiceV111(
+            "semantic_pool_shuffle", PoolShuffleDecision: decision.Fork());
+        var (result, siteId) = SemanticNestedChoiceResumeV111.Resume(
+            current.Run, choice);
         var nextEndTurn = current.PendingEndTurn is { } endTurn
             ? SemanticEndTurnEngineV111.ContinueNestedAutomaticChoice(
-                endTurn, result,
-                new SemanticEndTurnNestedChoiceV111(
-                    "semantic_pool_shuffle",
-                    PoolShuffleDecision: decision.Fork()),
-                pending.SiteId)
+                endTurn, result, choice, siteId)
             : null;
         var next = PublishRunContinuation(
             current, result, nextEndTurn,
@@ -2846,8 +2835,11 @@ public static class SemanticPilotCombatEngineV111
         var resumesAfterShuffleRelic =
             pendingInsertion.AfterShuffleRelic is not null;
         var insertedInstanceId = priorCombat.NextCardInstanceId;
-        var result = SemanticDrawInsertionChoiceV111.Resume(
-            current.Run, decision);
+        var choice = new SemanticEndTurnNestedChoiceV111(
+            "semantic_draw_insertion",
+            DrawInsertionDecision: decision.Fork());
+        var (result, _) = SemanticNestedChoiceResumeV111.Resume(
+            current.Run, choice);
         var resultCombat = result.World?.Combat;
         var expectedPile = priorCombat.DrawPile.ToList();
         expectedPile.Insert(position, insertedInstanceId);
@@ -3035,17 +3027,14 @@ public static class SemanticPilotCombatEngineV111
                     costEvent.CandidateCosts[selectedIndex]);
             SemanticCostChoiceV111.ValidateDecision(
                 costEvent, effectCostDecision, selectedIndex);
-            var effectCostResult = SemanticCostChoiceV111
-                .ResumeEffectDrawCost(
-                    current.Run.Fork(), effectCostDecision.SelectedCost,
-                    allowEngineOwnedPrototypeReward: true);
+            var choice = new SemanticEndTurnNestedChoiceV111(
+                "semantic_cost", CostDecision: effectCostDecision.Fork());
+            var (effectCostResult, siteId) =
+                SemanticNestedChoiceResumeV111.Resume(
+                    current.Run, choice);
             var nextEndTurn = current.PendingEndTurn is { } costEndTurn
                 ? SemanticEndTurnEngineV111.ContinueNestedAutomaticChoice(
-                    costEndTurn, effectCostResult,
-                    new SemanticEndTurnNestedChoiceV111(
-                        "semantic_cost",
-                        CostDecision: effectCostDecision.Fork()),
-                    "combat.card_draw.cost")
+                    costEndTurn, effectCostResult, choice, siteId)
                 : null;
             var effectCostState = PublishRunContinuation(
                 current, effectCostResult, nextEndTurn,
@@ -3076,17 +3065,14 @@ public static class SemanticPilotCombatEngineV111
                     CanonicalJson.Sha256(effectDrawDecision))
                 throw new InvalidOperationException(
                     "Semantic card-effect draw decision is stale or outside support.");
-            var effectDrawResult = SemanticDrawChoiceV111
-                .ResumeControlledEffectDraw(
-                    current.Run.Fork(), effectDrawDecision,
-                    allowEngineOwnedPrototypeReward: true);
+            var choice = new SemanticEndTurnNestedChoiceV111(
+                "semantic_draw", DrawDecision: effectDrawDecision.Fork());
+            var (effectDrawResult, siteId) =
+                SemanticNestedChoiceResumeV111.Resume(
+                    current.Run, choice);
             var nextEndTurn = current.PendingEndTurn is { } drawEndTurn
                 ? SemanticEndTurnEngineV111.ContinueNestedAutomaticChoice(
-                    drawEndTurn, effectDrawResult,
-                    new SemanticEndTurnNestedChoiceV111(
-                        "semantic_draw",
-                        DrawDecision: effectDrawDecision.Fork()),
-                    "combat.card_effect.draw")
+                    drawEndTurn, effectDrawResult, choice, siteId)
                 : null;
             var effectDrawState = PublishRunContinuation(
                 current, effectDrawResult, nextEndTurn,
