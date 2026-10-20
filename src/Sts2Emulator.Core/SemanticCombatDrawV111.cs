@@ -321,7 +321,20 @@ public sealed record SemanticCombatDrawV111(
             (!this.AutomaticHandDraw &&
              combat.AutomaticPipelineContinuation is not null) ||
             combat.PendingKnowledgeDemonChoice is not null)
-            throw new InvalidDataException("Invalid semantic combat draw stage.");
+            throw new InvalidDataException(
+                "Invalid semantic combat draw stage. " +
+                $"requested={this.RequestedCount} remaining={this.RemainingCount} " +
+                $"storedRequested={this.Mechanics.RequestedCount} " +
+                $"storedRemaining={this.Mechanics.RemainingCount} " +
+                $"auto={this.AutomaticHandDraw} " +
+                $"originPhase={this.Origin.Phase} " +
+                $"originPending={this.Origin.World?.Combat?.PendingChoice?.ChoiceId} " +
+                $"originCursor={this.Origin.World?.Combat?.AutomaticPipelineContinuation?.NextStepIndex} " +
+                $"originSemantic={this.Origin.World?.Combat?.SemanticDeck is not null} " +
+                $"runPhase={this.Run.Phase} " +
+                $"runCursor={this.Run.World?.Combat?.AutomaticPipelineContinuation?.NextStepIndex} " +
+                $"runSemantic={this.Run.World?.Combat?.SemanticDeck is not null} " +
+                $"runPending={this.Run.World?.Combat?.PendingChoice?.ChoiceId}");
         if (this.AutomaticHandDraw && originCombat.SemanticDeck is not null)
             SemanticDrawPileAdapterV111.ValidateNatureDeckBoundary(
                 originCombat,
