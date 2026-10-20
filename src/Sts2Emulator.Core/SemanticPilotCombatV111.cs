@@ -3100,8 +3100,9 @@ public static class SemanticPilotCombatEngineV111
                 SemanticCostChoiceV111.Select(
                     costEvent, costEvent.EventId,
                     costEvent.CandidateCosts[selectedIndex]);
-            SemanticCostChoiceV111.ValidateDecision(
-                costEvent, effectCostDecision, selectedIndex);
+            if (effectCostDecision.SelectedIndex != selectedIndex)
+                throw new InvalidDataException(
+                    "Semantic card-effect draw cost chose a different bounded index.");
             var choice = new SemanticEndTurnNestedChoiceV111(
                 "semantic_cost", CostDecision: effectCostDecision.Fork());
             var effectCostState = ResumeAndPublishNestedChoice(
