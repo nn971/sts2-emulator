@@ -23,6 +23,23 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
          combat.PendingChoice?.ControlledTarget is not null);
 
     /// <summary>
+    /// Recognizes a source-supported semantic effect draw or its randomized
+    /// cost while an automatic pipeline is suspended in autoplay.
+    /// </summary>
+    internal static bool HasPendingSupportedAutomaticPipelineSemanticDraw(
+        RunState run) => run.World?.Combat is { } combat &&
+        combat.PendingChoice is { } pending &&
+        IsSupportedAutomaticPipelineSemanticDrawContinuation(
+            combat, pending);
+
+    internal static bool IsSupportedAutomaticPipelineSemanticDrawContinuation(
+        CombatState combat, PendingCombatChoiceState pending) =>
+        IsMayhemSemanticDrawContinuation(combat, pending) ||
+        IsLateAutoplaySemanticDrawContinuation(combat, pending) ||
+        IsAutomaticPipelineSemanticDrawInsertionContinuation(
+            combat, pending);
+
+    /// <summary>
     /// Identifies the automatic-pipeline cursors where a controlled target
     /// may suspend: ordinary pre-AdvanceTurn combat work, or post-draw player
     /// turn hooks and late autoplay.

@@ -60,17 +60,20 @@ insertion continuation. A seeded semantic fixture can include Distilled Chaos wi
 
 The continuation resumes its saved automatic stage after all selected
 auto-play operations and nested choices finish. Semantic draw and draw-cost
-choices reached inside a Mayhem-autoplayed card preserve its card-play frame
-and pipeline cursor through the draw hooks. Nested Nature draws reuse the
-semantic recycle and after-shuffle insertion path in `DrawCards`; the legacy
-recycle ticket without a semantic deck remains unsupported. Other unrelated
-controlled chance sites remain separate. The read-only Chance Law reports
+choices inside an autoplayed card preserve its card-play frame and pipeline
+cursor through the draw hooks. This covers Mayhem `AutoPrePlay` and late
+player-turn autoplay after end-turn hand draw. Nested Nature draws reuse the
+semantic recycle and after-shuffle insertion path in `DrawCards`. End-turn
+snapshots keep draw, cost, and insertion outcomes in one ordered transcript so
+restore replays the same nested continuation. The legacy recycle ticket without
+a semantic deck remains unsupported. Other unrelated controlled chance sites
+remain separate. The read-only Chance Law reports
 exact Native `NextInt` 53-bit grid masses and `SOURCE_VERIFIED` for the
 bounded-index transform on the declared ordered shortlist support. Native
 pool completeness, stream assignment, seed frequencies, and cursor parity
 remain open.
 
-The Release solution build succeeded with zero warnings and errors for this
-change. Tests and mechanics regressions were not run, so controlled mechanics
-remain unverified. See the [desired RNG migration row](DESIRED_RNG_MIGRATION_STATUS.md)
+The earlier Mayhem autoplay integration had a Release build with zero warnings
+and errors. This late-autoplay extension has not been built or tested, so its
+controlled mechanics remain unverified. See the [desired RNG migration row](DESIRED_RNG_MIGRATION_STATUS.md)
 for the current site status.

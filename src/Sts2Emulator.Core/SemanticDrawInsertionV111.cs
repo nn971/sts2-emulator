@@ -165,6 +165,35 @@ public sealed record SemanticDrawInsertionDecisionV111(
 
 public static class SemanticDrawInsertionChoiceV111
 {
+    internal static SemanticDrawInsertionEventV111?
+        DescribeAutomaticSemanticDrawContinuation(
+            RunState run, string boundaryFingerprint)
+    {
+        ArgumentNullException.ThrowIfNull(run);
+        ArgumentException.ThrowIfNullOrWhiteSpace(boundaryFingerprint);
+        var combat = run.World?.Combat;
+        var choice = combat?.PendingChoice;
+        var insertion = choice?.ControlledDrawInsertion;
+        if (combat is null || choice is null || insertion is null ||
+            !PrototypeGameEngine
+                .IsAutomaticPipelineSemanticDrawInsertionContinuation(
+                    combat, choice))
+            return null;
+
+        ValidateBoundary(run);
+        var pile = (long[])insertion.EligibleDrawPile.Clone();
+        var pileSuffix = ":card:" + insertion.SelectedCardId +
+            ":draw_pile:" + CanonicalJson.Sha256(pile);
+        var request = SemanticDrawInsertionEventV111.CreateRequest(
+            insertion.RequestSiteId,
+            combat.NativeRng?.RunStreams is not null,
+            insertion.RequestOwnerId + pileSuffix,
+            insertion.RequestOwnerId + pileSuffix,
+            insertion.RequestOrdinal, pile.Length + 1);
+        return SemanticDrawInsertionEventV111.CreateEvent(
+            boundaryFingerprint, request, insertion.SelectedCardId!, pile);
+    }
+
     internal static void ValidateBoundary(RunState run)
     {
         var combat = run.World?.Combat;
@@ -222,6 +251,19 @@ public static class SemanticDrawInsertionChoiceV111
             pending.Fork(), position);
         decision.Validate();
         return decision;
+    }
+
+    internal static void ValidateDecision(
+        SemanticDrawInsertionEventV111? pending,
+        SemanticDrawInsertionDecisionV111 decision, int sourcePosition)
+    {
+        ArgumentNullException.ThrowIfNull(decision);
+        decision.Validate();
+        if (pending is null || sourcePosition != decision.SelectedPosition ||
+            CanonicalJson.Sha256(pending) !=
+                CanonicalJson.Sha256(decision.Event))
+            throw new InvalidOperationException(
+                "Draw-insertion decision is stale or outside current support.");
     }
 
     /// <summary>Resume the ordinary insertion continuation under the shared

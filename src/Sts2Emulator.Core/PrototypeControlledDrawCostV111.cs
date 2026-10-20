@@ -157,7 +157,7 @@ public sealed partial class PrototypeGameEngine
                 PendingKnowledgeDemonChoice: null } ||
             (combat.AutomaticPipelineContinuation is not null &&
              (pending is null ||
-              !IsMayhemSemanticDrawContinuation(combat, pending))) ||
+              !IsSupportedAutomaticPipelineSemanticDrawContinuation(combat, pending))) ||
             pending is not { ChoiceId: "controlled_draw_cost" } ||
             cost is null || draw is null || continuation is null ||
             draw.RemainingCount != cost.RemainingCount ||
