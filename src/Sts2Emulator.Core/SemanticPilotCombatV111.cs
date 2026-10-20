@@ -705,8 +705,31 @@ public sealed record SemanticPilotCombatV111(
             var mayhemRecycle = combat?.PendingChoice is { } pendingChoice &&
                 PrototypeGameEngine.IsMayhemLegacyRecycleContinuation(
                     combat, pendingChoice);
+            var automaticPipelinePoolShuffle =
+                combat?.PendingChoice is { } automaticPoolShuffleChoice &&
+                PrototypeGameEngine
+                    .IsAutomaticPipelineSemanticPoolShuffleContinuation(
+                        combat, automaticPoolShuffleChoice);
             var automaticEndTurnShuffle =
                 this.PendingEndTurn?.PoolShufflePending is not null;
+            bool handReturnShuffle = poolShufflePending.SourceOperationKind ==
+                nameof(PrototypeCombatEffectKind.ReturnHandToDrawAndShuffle);
+            bool recycleShuffle = poolShufflePending.SourceOperationKind ==
+                nameof(PrototypeCombatEffectKind.RecycleDrawPileForEffectDraw);
+            bool randomRareToHandShuffle =
+                poolShufflePending.SourceOperationKind ==
+                    nameof(PrototypeCombatEffectKind.MoveRandomRareDrawCardsToHand);
+            bool randomShortlistShuffle = poolShufflePending.SourceOperationKind ==
+                nameof(PrototypeCombatEffectKind.ChooseCards);
+            var fixtureMatches = automaticPipelinePoolShuffle ||
+                handReturnShuffle || recycleShuffle ||
+                (randomRareToHandShuffle
+                    ? this.SeededEntry?.FixtureSelectionCardId ==
+                        "proto.colorless.anointed"
+                    : randomShortlistShuffle
+                        ? this.SeededEntry?.FixtureSelectionCardId is not null
+                        : this.SeededEntry?.FixturePoolGenerationPotionId ==
+                            "proto.potion.colorless");
             if ((!fixtureMatches && !automaticEndTurnShuffle) ||
                 (this.PendingEndTurn is not null &&
                  !automaticEndTurnShuffle && !mayhemRecycle) ||
@@ -3507,7 +3530,12 @@ public static class SemanticPilotCombatEngineV111
         bool mayhemRecycle = recycle && combat is not null && choice is not null &&
             PrototypeGameEngine.IsMayhemLegacyRecycleContinuation(
                 combat, choice);
-        var fixtureMatches = handReturn || recycle || (randomRareToHand
+        bool automaticPipelinePoolShuffle = combat is not null &&
+            choice is not null && PrototypeGameEngine
+                .IsAutomaticPipelineSemanticPoolShuffleContinuation(
+                    combat, choice);
+        var fixtureMatches = automaticPipelinePoolShuffle || handReturn ||
+            recycle || (randomRareToHand
             ? current.SeededEntry?.FixtureSelectionCardId ==
                 "proto.colorless.anointed"
             : randomShortlist

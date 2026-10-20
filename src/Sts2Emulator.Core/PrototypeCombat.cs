@@ -2761,7 +2761,9 @@ public sealed partial class PrototypeGameEngine
                             pending.ControlledDrawInsertion is not null ||
                             pending.ControlledRandomCost is not null ||
                             pending.ControlledCardShortlist is not null ||
-                            pending.ControlledPoolShuffle is not null ||
+                            (pending.ControlledPoolShuffle is not null &&
+                             !IsAutomaticPipelineSemanticPoolShuffleContinuation(
+                                 combat, pending)) ||
                             pending.ControlledRandomPileCard is not null ||
                             pending.SemanticStratagemDrawSelection ||
                             pending.AutomaticSemanticStratagemDrawSelection)

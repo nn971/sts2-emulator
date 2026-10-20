@@ -210,7 +210,10 @@ public static class SemanticPoolShuffleChoiceV111
                 ? "run.shuffle" : "prototype.combat"
             : randomShortlist && combat.NativeRng?.RunStreams is not null
                 ? "run.combat_card_selection"
-                : shuffle.Operation.GeneratedChoiceUsesNativeCardGenerationRng &&
+                : (shuffle.Operation.GeneratedChoiceUsesNativeCardGenerationRng ||
+                   shuffle.Operation.Kind ==
+                       PrototypeCombatEffectKind
+                           .CreateDistinctCharacterCommonCardsInHand) &&
                   combat.NativeRng?.RunStreams is not null
                     ? "run.combat_card_generation" : "prototype.combat";
         var sourceCardId = choice!.SourceCardInstanceId;
@@ -323,6 +326,9 @@ public static class SemanticPoolShuffleChoiceV111
                 "Full-pool shuffle is missing its source operation.");
         ValidateBoundary(checkpoint);
         ValidateLiveSupport(combat, choice!, shuffle, decision.Event);
+        bool helloWorldAutomaticBeforeHandDraw =
+            PrototypeGameEngine.IsHelloWorldAutomaticBeforeHandDrawPoolShuffle(
+                combat, choice!, shuffle, choice!.OuterChoiceContinuation!);
 
         RunState result;
         using (ControlledChanceGuardV111.Enter())
@@ -345,6 +351,19 @@ public static class SemanticPoolShuffleChoiceV111
             ValidateBoundary(result);
         else if (resultCombat.PendingChoice?.ControlledDrawInsertion is not null)
             SemanticDrawInsertionChoiceV111.ValidateBoundary(result);
+        else if (resultCombat.PendingChoice?.ControlledRandomPileCard is not null)
+        {
+            if (SemanticRandomPileCardEngineV111.DescribePending(result) is null)
+                throw new InvalidDataException(
+                    "Resumed hand draw lost its random pile-card event.");
+        }
+        else if (resultCombat.PendingChoice?
+                     .AutomaticSemanticDrawHookChoice == true)
+        {
+            if (SemanticDrawHookChoiceEngineV111.DescribePending(result) is null)
+                throw new InvalidDataException(
+                    "Resumed hand draw lost its draw-hook action event.");
+        }
         else if (resultCombat.PendingChoice?.ChoiceId == "select_cards")
         {
             SemanticCardSelectionEngineV111.ValidatePendingBoundary(result);
@@ -361,6 +380,7 @@ public static class SemanticPoolShuffleChoiceV111
         bool recycle = shuffle.Operation.Kind ==
             PrototypeCombatEffectKind.RecycleDrawPileForEffectDraw;
         if (!randomRareToHand && !handReturn && !recycle &&
+            !helloWorldAutomaticBeforeHandDraw &&
             (!combat.DrawPile.SequenceEqual(resultCombat.DrawPile) ||
              CanonicalJson.Sha256(combat.SemanticDeck) !=
                  CanonicalJson.Sha256(resultCombat.SemanticDeck)))

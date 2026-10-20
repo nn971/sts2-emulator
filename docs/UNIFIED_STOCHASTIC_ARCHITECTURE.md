@@ -462,6 +462,8 @@ Toolbox's turn-one generated offer now runs as a typed pool shuffle at the openi
 
 Blessed Antler's turn-one `BeforeHandDraw` hook now uses the existing typed draw-insertion event for each of its three Dazed positions. The continuation admits only the saved relic subscriber at the opening `DrawHand` cursor, validates the fixed-card operation and remaining count, then resumes the same subscriber until all insertions finish before drawing the hand. The semantic-pilot history records each position through the existing insertion owner, which commits the physical and provider states together; other opening insertion effects remain unsupported.
 
+From turn two onward, Hello World's `BeforeHandDraw` hook now uses the existing typed full-pool shuffle for its distinct character Common-card generation. The operation count follows the live power stacks, while the selected count follows the saved turn-start stack snapshot, capped by the eligible pool size. Native run-stream snapshots use `run.combat_card_generation`, matching the source shuffle call. Each swap remains in the existing nested end-turn pool-shuffle chronology, and restore resumes the saved subscriber before the hand draw continues. Admission checks the exact Hello World trigger and source pool; other automatic `BeforeHandDraw` shuffle hooks remain unsupported.
+
 ## Reading order
 
 1. This architecture contract.
