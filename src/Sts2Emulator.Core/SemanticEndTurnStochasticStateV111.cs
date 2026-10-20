@@ -83,6 +83,7 @@ public sealed record SemanticEndTurnStochasticStateV111(
         int transcriptNestedInsertions = 0, transcriptNestedGeneratedCards = 0;
         int transcriptNestedPotionGenerations = 0;
         int transcriptNestedCardTransforms = 0;
+        int transcriptNestedCardShortlists = 0;
         int transcriptNestedChoices = 0;
         foreach (var boundary in BoundaryTranscript)
         {
@@ -175,6 +176,19 @@ public sealed record SemanticEndTurnStochasticStateV111(
                     throw new InvalidDataException(
                         "Semantic end-turn nested card-transform boundary order is invalid.");
             }
+            else if (boundary.Kind == "semantic_card_shortlist")
+            {
+                if (boundary.TranscriptIndex !=
+                        transcriptNestedCardShortlists++ ||
+                    transcriptNestedCardShortlists >
+                        NestedChoiceTranscript.Count(choice =>
+                            choice.Kind == "semantic_card_shortlist") ||
+                    transcriptNestedChoices >= NestedChoiceTranscript.Length ||
+                    NestedChoiceTranscript[transcriptNestedChoices++].Kind !=
+                        "semantic_card_shortlist")
+                    throw new InvalidDataException(
+                        "Semantic end-turn nested card-shortlist boundary order is invalid.");
+            }
         }
         if ((BoundaryTranscript.Length > 0 &&
              (transcriptEnemyActions != EnemyActionTranscript.Length ||
@@ -191,6 +205,8 @@ public sealed record SemanticEndTurnStochasticStateV111(
                   choice.Kind == "semantic_potion_generation") ||
               transcriptNestedCardTransforms != NestedChoiceTranscript.Count(choice =>
                   choice.Kind == "semantic_card_transform") ||
+              transcriptNestedCardShortlists != NestedChoiceTranscript.Count(choice =>
+                  choice.Kind == "semantic_card_shortlist") ||
               transcriptNestedChoices != NestedChoiceTranscript.Length)) ||
             (BoundaryTranscript.Length == 0 &&
              (TargetTranscript.Length != 0 ||
@@ -219,7 +235,8 @@ public sealed record SemanticEndTurnNestedChoiceV111(
     SemanticDrawInsertionDecisionV111? DrawInsertionDecision = null,
     SemanticGeneratedCardDecisionV111? GeneratedCardDecision = null,
     SemanticPotionGenerationDecisionV111? PotionGenerationDecision = null,
-    SemanticCardTransformDecisionV111? CardTransformDecision = null)
+    SemanticCardTransformDecisionV111? CardTransformDecision = null,
+    SemanticCardShortlistDecisionV111? CardShortlistDecision = null)
 {
     public SemanticEndTurnNestedChoiceV111 Fork() => this with
     {
@@ -238,7 +255,8 @@ public sealed record SemanticEndTurnNestedChoiceV111(
             : CardTransformDecision with
             {
                 Event = CardTransformDecision.Event.Fork()
-            }
+            },
+        CardShortlistDecision = CardShortlistDecision?.Fork()
     };
 
     public void Validate()
@@ -246,7 +264,7 @@ public sealed record SemanticEndTurnNestedChoiceV111(
         if (Kind == "semantic_draw" && DrawDecision is not null &&
             CostDecision is null && DrawInsertionDecision is null &&
             GeneratedCardDecision is null && PotionGenerationDecision is null &&
-            CardTransformDecision is null)
+            CardTransformDecision is null && CardShortlistDecision is null)
         {
             DrawDecision.Validate();
             return;
@@ -254,7 +272,7 @@ public sealed record SemanticEndTurnNestedChoiceV111(
         if (Kind == "semantic_cost" && CostDecision is not null &&
             DrawDecision is null && DrawInsertionDecision is null &&
             GeneratedCardDecision is null && PotionGenerationDecision is null &&
-            CardTransformDecision is null)
+            CardTransformDecision is null && CardShortlistDecision is null)
         {
             CostDecision.Validate();
             return;
@@ -262,7 +280,8 @@ public sealed record SemanticEndTurnNestedChoiceV111(
         if (Kind == "semantic_draw_insertion" &&
             DrawInsertionDecision is not null && DrawDecision is null &&
             CostDecision is null && GeneratedCardDecision is null &&
-            PotionGenerationDecision is null && CardTransformDecision is null)
+            PotionGenerationDecision is null && CardTransformDecision is null &&
+            CardShortlistDecision is null)
         {
             DrawInsertionDecision.Validate();
             return;
@@ -270,7 +289,8 @@ public sealed record SemanticEndTurnNestedChoiceV111(
         if (Kind == "semantic_generated_card" &&
             GeneratedCardDecision is not null && DrawDecision is null &&
             CostDecision is null && DrawInsertionDecision is null &&
-            PotionGenerationDecision is null && CardTransformDecision is null)
+            PotionGenerationDecision is null && CardTransformDecision is null &&
+            CardShortlistDecision is null)
         {
             GeneratedCardDecision.Validate();
             return;
@@ -278,7 +298,8 @@ public sealed record SemanticEndTurnNestedChoiceV111(
         if (Kind == "semantic_potion_generation" &&
             PotionGenerationDecision is not null && DrawDecision is null &&
             CostDecision is null && DrawInsertionDecision is null &&
-            GeneratedCardDecision is null && CardTransformDecision is null)
+            GeneratedCardDecision is null && CardTransformDecision is null &&
+            CardShortlistDecision is null)
         {
             PotionGenerationDecision.Validate();
             return;
@@ -286,9 +307,19 @@ public sealed record SemanticEndTurnNestedChoiceV111(
         if (Kind == "semantic_card_transform" &&
             CardTransformDecision is not null && DrawDecision is null &&
             CostDecision is null && DrawInsertionDecision is null &&
-            GeneratedCardDecision is null && PotionGenerationDecision is null)
+            GeneratedCardDecision is null && PotionGenerationDecision is null &&
+            CardShortlistDecision is null)
         {
             CardTransformDecision.Validate();
+            return;
+        }
+        if (Kind == "semantic_card_shortlist" &&
+            CardShortlistDecision is not null && DrawDecision is null &&
+            CostDecision is null && DrawInsertionDecision is null &&
+            GeneratedCardDecision is null && PotionGenerationDecision is null &&
+            CardTransformDecision is null)
+        {
+            CardShortlistDecision.Validate();
             return;
         }
         throw new InvalidDataException(

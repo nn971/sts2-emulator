@@ -479,6 +479,8 @@ public sealed record SemanticPilotCombatV111(
                 this.CostPending is not null ||
                 this.TargetPending is not null ||
                 this.GeneratedCardPending is not null ||
+                this.PotionGenerationPending is not null ||
+                this.CardTransformPending is not null ||
                 this.CardSelectionPending is not null ||
                 this.PoolShufflePending is not null ||
                 this.DrawInsertionPending is not null ||
@@ -708,7 +710,8 @@ public sealed record SemanticPilotCombatV111(
         {
             cardShortlistPending.Validate();
             SemanticCardShortlistChoiceV111.ValidateBoundary(this.Run);
-            if (this.PendingEndTurn is not null ||
+            if ((this.PendingEndTurn is not null &&
+                 this.PendingEndTurn.CardShortlistPending is null) ||
                 this.PendingInitialIntents is not null ||
                 this.IntentPending is not null || this.DrawPending is not null ||
                 this.TargetPending is not null ||
@@ -851,7 +854,8 @@ public sealed record SemanticPilotCombatV111(
          endTurn.NestedDrawInsertionPending is not null ||
          endTurn.GeneratedCardPending is not null ||
          endTurn.PotionGenerationPending is not null ||
-         endTurn.CardTransformPending is not null);
+         endTurn.CardTransformPending is not null ||
+         endTurn.CardShortlistPending is not null);
 
     public SemanticPilotCombatV111 Fork() => this with
     {
@@ -2595,12 +2599,20 @@ public static class SemanticPilotCombatEngineV111
             pending, eventId, cardInstanceId);
         var result = SemanticCardShortlistChoiceV111.Resume(
             current.Run, decision);
+        var nextEndTurn = current.PendingEndTurn is { } endTurn
+            ? SemanticEndTurnEngineV111.ContinueNestedAutomaticChoice(
+                endTurn, result,
+                new SemanticEndTurnNestedChoiceV111(
+                    "semantic_card_shortlist",
+                    CardShortlistDecision: decision.Fork()),
+                pending.SiteId)
+            : null;
         var next = PublishRunContinuation(
-            current, result, null,
+            current, result, nextEndTurn,
             new SemanticPilotContinuationV111(
                 "semantic_card_shortlist",
                 CardShortlistDecision: decision.Fork()),
-            preservePendingEndTurn: true);
+            preservePendingEndTurn: current.PendingEndTurn is null);
         Validate(next);
         return next;
     }
@@ -3300,6 +3312,9 @@ public static class SemanticPilotCombatEngineV111
         DescribePendingCardShortlistEvent(SemanticPilotCombatV111 current)
     {
         ArgumentNullException.ThrowIfNull(current);
+        if (current.PendingEndTurn?.CardShortlistPending is
+            { } endTurnEvent)
+            return endTurnEvent;
         var ordinal = current.History.Count(transition =>
             transition.Kind == "semantic_card_shortlist");
         return SemanticCardShortlistChoiceV111.DescribePending(

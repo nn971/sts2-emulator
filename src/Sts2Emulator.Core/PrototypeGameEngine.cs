@@ -50,12 +50,19 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         IsAutomaticPipelineSemanticCardTransformContinuation(
             combat, pending);
 
+    internal static bool HasPendingSupportedAutomaticPipelineSemanticCardShortlist(
+        RunState run) => run.World?.Combat is { } combat &&
+        combat.PendingChoice is { } pending &&
+        IsAutomaticPipelineSemanticCardShortlistContinuation(
+            combat, pending);
+
     internal static bool HasPendingSupportedAutomaticPipelineSemanticChoice(
         RunState run) =>
         HasPendingSupportedAutomaticPipelineSemanticDraw(run) ||
         HasPendingSupportedAutomaticPipelineSemanticGeneration(run) ||
         HasPendingSupportedAutomaticPipelineSemanticPotionGeneration(run) ||
-        HasPendingSupportedAutomaticPipelineSemanticCardTransform(run);
+        HasPendingSupportedAutomaticPipelineSemanticCardTransform(run) ||
+        HasPendingSupportedAutomaticPipelineSemanticCardShortlist(run);
 
     internal static bool IsSupportedAutomaticPipelineSemanticDrawContinuation(
         CombatState combat, PendingCombatChoiceState pending) =>

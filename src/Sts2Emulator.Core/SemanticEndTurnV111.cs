@@ -14,7 +14,8 @@ public sealed record SemanticEndTurnBoundaryChoiceV111(
                 "semantic_draw" or "semantic_cost" or
                 "semantic_draw_insertion" or "semantic_generated_card" or
                 "semantic_potion_generation" or
-                "semantic_card_transform") ||
+                "semantic_card_transform" or
+                "semantic_card_shortlist") ||
             TranscriptIndex < 0)
             throw new InvalidDataException(
                 "Invalid semantic end-turn boundary transcript entry.");
@@ -271,6 +272,17 @@ public sealed record SemanticEndTurnV111(
                 NestedChoiceTranscript.Count(choice =>
                     choice.Kind == "semantic_card_transform"))
             : null;
+    [JsonIgnore] public SemanticCardShortlistEventV111?
+        CardShortlistPending => !Complete &&
+            HandDraw is not { AtBoundary: false } &&
+            PrototypeGameEngine
+                .HasPendingSupportedAutomaticPipelineSemanticCardShortlist(
+                    Run)
+            ? SemanticCardShortlistChoiceV111.DescribePending(
+                Run, Fingerprint,
+                NestedChoiceTranscript.Count(choice =>
+                    choice.Kind == "semantic_card_shortlist"))
+            : null;
     [JsonIgnore] public SemanticCostEventV111? NestedCostPending =>
         !Complete && HandDraw is not { AtBoundary: false } &&
             Run.World?.Combat?.PendingChoice is
@@ -445,6 +457,10 @@ public sealed record SemanticEndTurnV111(
             SemanticCardTransformChoiceV111.ValidateBoundary(this.Run,
                 this.Run.World!.Combat!.PendingChoice!
                     .ControlledCardTransform!);
+        if (PrototypeGameEngine
+            .HasPendingSupportedAutomaticPipelineSemanticCardShortlist(
+                this.Run))
+            SemanticCardShortlistChoiceV111.ValidateBoundary(this.Run);
     }
 
     public SemanticEndTurnV111 Fork() => this with
@@ -654,6 +670,23 @@ public static class SemanticEndTurnEngineV111
                     CardTransformDecision: decision.Fork()),
                 cardTransform.SiteId);
         }
+        else if (state.CardShortlistPending is { } cardShortlist)
+        {
+            if (selectedIndex < 0 ||
+                selectedIndex >= cardShortlist.CandidateCardInstanceIds.Length)
+                throw new ArgumentOutOfRangeException(nameof(selectedIndex));
+            var decision = SemanticCardShortlistChoiceV111.Select(
+                cardShortlist, cardShortlist.EventId,
+                cardShortlist.CandidateCardInstanceIds[selectedIndex]);
+            var resumed = SemanticCardShortlistChoiceV111.Resume(
+                state.Run.Fork(), decision);
+            state = ContinueNestedAutomaticChoice(
+                state, resumed,
+                new SemanticEndTurnNestedChoiceV111(
+                    "semantic_card_shortlist",
+                    CardShortlistDecision: decision.Fork()),
+                cardShortlist.SiteId);
+        }
         else if (state.NestedCostPending is { } nestedCost)
         {
             if (selectedIndex < 0 ||
@@ -823,6 +856,32 @@ public static class SemanticEndTurnEngineV111
             new SemanticEndTurnNestedChoiceV111(
                 "semantic_card_transform",
                 CardTransformDecision: decision.Fork()),
+            pending.SiteId);
+        Validate(next);
+        return next;
+    }
+
+    public static SemanticEndTurnV111 ResolveCardShortlist(
+        SemanticEndTurnV111 source, string fingerprint, string eventId,
+        long cardInstanceId)
+    {
+        Validate(source);
+        if (!StringComparer.Ordinal.Equals(source.Fingerprint, fingerprint))
+            throw new InvalidOperationException(
+                "Stale semantic end-turn card-shortlist fingerprint.");
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
+        var pending = source.CardShortlistPending ??
+            throw new InvalidOperationException(
+                "No automatic-pipeline card-shortlist event is pending.");
+        var decision = SemanticCardShortlistChoiceV111.Select(
+            pending, eventId, cardInstanceId);
+        var resumed = SemanticCardShortlistChoiceV111.Resume(
+            source.Run.Fork(), decision);
+        var next = ContinueNestedAutomaticChoice(
+            source, resumed,
+            new SemanticEndTurnNestedChoiceV111(
+                "semantic_card_shortlist",
+                CardShortlistDecision: decision.Fork()),
             pending.SiteId);
         Validate(next);
         return next;
@@ -1007,6 +1066,13 @@ public static class SemanticEndTurnEngineV111
                 pending, choice.CardTransformDecision!,
                 choice.CardTransformDecision!.SelectedCardId);
         }
+        else if (expectedKind == "semantic_card_shortlist")
+        {
+            var pending = source.CardShortlistPending;
+            SemanticCardShortlistChoiceV111.ValidateDecision(
+                pending, choice.CardShortlistDecision!,
+                choice.CardShortlistDecision!.SelectedCardInstanceId);
+        }
         else
         {
             SemanticDrawInsertionChoiceV111.ValidateDecision(
@@ -1190,7 +1256,8 @@ public static class SemanticEndTurnEngineV111
         int boundaryIndex = 0, enemyActionIndex = 0, targetIndex = 0;
         int nestedChoiceIndex = 0, nestedDrawIndex = 0, nestedCostIndex = 0,
             nestedInsertionIndex = 0, nestedGeneratedCardIndex = 0,
-            nestedPotionGenerationIndex = 0, nestedCardTransformIndex = 0;
+            nestedPotionGenerationIndex = 0, nestedCardTransformIndex = 0,
+            nestedCardShortlistIndex = 0;
         void ReplayAvailableBoundaryChoices()
         {
             while (boundaryIndex < saved.BoundaryTranscript.Length)
@@ -1214,10 +1281,12 @@ public static class SemanticEndTurnEngineV111
                     reproduced.PotionGenerationPending is not null;
                 var hasNestedCardTransform =
                     reproduced.CardTransformPending is not null;
+                var hasNestedCardShortlist =
+                    reproduced.CardShortlistPending is not null;
                 if (!hasEnemyAction && !hasTarget &&
                     !hasNestedDraw && !hasNestedCost && !hasNestedInsertion &&
                     !hasNestedGeneratedCard && !hasNestedPotionGeneration &&
-                    !hasNestedCardTransform)
+                    !hasNestedCardTransform && !hasNestedCardShortlist)
                     return;
 
                 var boundary = saved.BoundaryTranscript[boundaryIndex];
@@ -1383,7 +1452,7 @@ public static class SemanticEndTurnEngineV111
                         pending.SiteId);
                     nestedPotionGenerationIndex++;
                 }
-                else
+                else if (boundary.Kind == "semantic_card_transform")
                 {
                     if (!hasNestedCardTransform ||
                         boundary.TranscriptIndex != nestedCardTransformIndex ||
@@ -1407,6 +1476,31 @@ public static class SemanticEndTurnEngineV111
                         saved.NestedChoiceTranscript[nestedChoiceIndex++],
                         pending.SiteId);
                     nestedCardTransformIndex++;
+                }
+                else
+                {
+                    if (!hasNestedCardShortlist ||
+                        boundary.TranscriptIndex != nestedCardShortlistIndex ||
+                        nestedChoiceIndex >=
+                            saved.NestedChoiceTranscript.Length ||
+                        saved.NestedChoiceTranscript[nestedChoiceIndex] is not
+                            { Kind: "semantic_card_shortlist",
+                              CardShortlistDecision: { } shortlistChoice })
+                        throw new InvalidDataException(
+                            "Semantic end-turn card-shortlist transcript order is invalid.");
+                    var pending = reproduced.CardShortlistPending ??
+                        throw new InvalidDataException(
+                            "Semantic end-turn replay lost its card-shortlist event.");
+                    SemanticCardShortlistChoiceV111.ValidateDecision(
+                        pending, shortlistChoice,
+                        shortlistChoice.SelectedCardInstanceId);
+                    var resumed = SemanticCardShortlistChoiceV111.Resume(
+                        reproduced.Run.Fork(), shortlistChoice);
+                    reproduced = ContinueNestedAutomaticChoice(
+                        reproduced, resumed,
+                        saved.NestedChoiceTranscript[nestedChoiceIndex++],
+                        pending.SiteId);
+                    nestedCardShortlistIndex++;
                 }
                 boundaryIndex++;
             }
@@ -1485,7 +1579,10 @@ public static class SemanticEndTurnEngineV111
                         choice.Kind == "semantic_potion_generation") ||
                 nestedCardTransformIndex !=
                     saved.NestedChoiceTranscript.Count(choice =>
-                        choice.Kind == "semantic_card_transform"))
+                        choice.Kind == "semantic_card_transform") ||
+                nestedCardShortlistIndex !=
+                    saved.NestedChoiceTranscript.Count(choice =>
+                        choice.Kind == "semantic_card_shortlist"))
                 throw new InvalidDataException(
                     "Semantic end-turn boundary transcript omitted a decision.");
         }
