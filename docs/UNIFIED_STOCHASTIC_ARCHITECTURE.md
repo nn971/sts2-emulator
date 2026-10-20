@@ -489,6 +489,11 @@ insertion, generation, transform, shortlist, and pool-shuffle resumes while
 retaining its own action history and end-turn wrapper. Boundary transcript
 validation and cross-provider mechanical equivalence remain open.
 
+Live automatic-pipeline `CardDrawn` and Knowledge Demon actions now construct
+their typed decisions before invoking that same dispatcher; the end-turn owner
+then appends each decision to its existing chronological boundary transcript.
+Standalone and automatic hand-draw hook progress remains with the draw facade.
+
 ## Reading order
 
 1. This architecture contract.
