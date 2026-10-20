@@ -413,9 +413,23 @@ public static class V111RunFactory
             throw new NotSupportedException($"v111 '{config.CharacterId}' mechanics are not implemented; no Silent substitution is allowed.");
         if (!config.Profile.FullyUnlocked)
             throw new NotSupportedException("Restricted-profile acquisition/progression rules are not implemented; choose an explicit fully unlocked profile.");
-        var opening = config.Acts[0] == ActIdentity.Overgrowth
-            ? PrototypeNativeOvergrowthRunFactory.Create(input.RunSeed, config.Ascension)
-            : PrototypeNativeUnderdocksRunFactory.Create(input.RunSeed, config.Ascension);
+        RunState opening;
+        if (config.Acts[0] == ActIdentity.Overgrowth)
+        {
+            opening = PrototypeNativeOvergrowthRunFactory.Create(
+                input.RunSeed, config.Ascension);
+        }
+        else if (input.ReferenceNatureState is { } initialNatureState)
+        {
+            opening = PrototypeNativeUnderdocksRunFactory
+                .CreateWithReferenceNature(input.RunSeed,
+                    config.Ascension, initialNatureState).Run;
+        }
+        else
+        {
+            opening = PrototypeNativeUnderdocksRunFactory.Create(
+                input.RunSeed, config.Ascension);
+        }
         // Restlessness is a historical training adapter addition, not a native
         // A0 starter. Keep it only in the explicit legacy factories.
         var deck = config.Ascension < 5
@@ -432,6 +446,8 @@ public static class V111RunFactory
             RunId = input.RunId, DecisionIndex = input.DecisionIndex,
             Configuration = config.Fork(), Player = opening.Player with { Deck = deck },
             NativeRunRng = nativeRunRng,
+            ReferenceNatureState = opening.ReferenceNatureState
+                ?? input.ReferenceNatureState,
             World = opening.World! with
             {
                 RulesetId = config.RulesetId,

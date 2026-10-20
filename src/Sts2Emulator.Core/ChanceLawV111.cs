@@ -6651,6 +6651,9 @@ public sealed record ReferenceNatureDecisionV111(
                 outcomeId.Length > "relic:".Length ||
              outcomeId.StartsWith("potion:", StringComparison.Ordinal) &&
                 outcomeId.Length > "potion:".Length);
+        var identifiedEncounter = OutcomeId is { } encounterId &&
+            encounterId.StartsWith("encounter:", StringComparison.Ordinal) &&
+            encounterId.Length > "encounter:".Length;
         var identifiedHpOffset = OutcomeId is { } hpOffsetId &&
             hpOffsetId.StartsWith("hp_offset:", StringComparison.Ordinal) &&
             int.TryParse(hpOffsetId["hp_offset:".Length..],
@@ -6665,7 +6668,8 @@ public sealed record ReferenceNatureDecisionV111(
             string.IsNullOrWhiteSpace(EventId) ||
             string.IsNullOrWhiteSpace(OutcomeId) || OutcomeIndex < 0 ||
             !(indexedOutcome || mapQuotaOutcome || mapGaussianOutcome ||
-                identifiedReward || identifiedHpOffset || mappedGold))
+                identifiedReward || identifiedEncounter ||
+                identifiedHpOffset || mappedGold))
             throw new InvalidDataException(
                 "Invalid ReferenceNature decision.");
     }

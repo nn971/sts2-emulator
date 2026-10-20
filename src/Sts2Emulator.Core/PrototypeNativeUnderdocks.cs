@@ -1360,7 +1360,31 @@ public static class PrototypeNativeUnderdocks
 /// </summary>
 public static class PrototypeNativeUnderdocksRunFactory
 {
-    public static RunState Create(string seed, int ascension = 0)
+    public static RunState Create(string seed, int ascension = 0) =>
+        CreateCore(seed, ascension, null);
+
+    public static ReferenceNatureUnderdocksRunResultV111
+        CreateWithReferenceNature(
+            string seed, int ascension,
+            ReferenceNatureStateV111 initialNatureState)
+    {
+        ArgumentNullException.ThrowIfNull(initialNatureState);
+        initialNatureState.Validate();
+        var provider = new ReferenceNatureUnderdocksBossIndexProviderV111(
+            initialNatureState);
+        var run = CreateCore(seed, ascension, provider) with
+        {
+            ReferenceNatureState = provider.NatureState
+        };
+        var result = new ReferenceNatureUnderdocksRunResultV111(
+            run, initialNatureState.Fork(), provider.NatureState,
+            provider.ChanceLaws, provider.DecisionTranscript);
+        result.Validate();
+        return result;
+    }
+
+    private static RunState CreateCore(string seed, int ascension,
+        IRandomIndexProviderV111? bossIndexProvider)
     {
         // The existing native-shaped Act 1 starter handles Neow, 13-card
         // starter deck, Ascension, potion slots and the shared map geometry.
@@ -1386,12 +1410,29 @@ public static class PrototypeNativeUnderdocksRunFactory
         rng.ReplaceStreamAt(combatIndex,
             clean.Streams[cleanCombatIndex].Fork());
         var bosses = PrototypeNativeUnderdocks.NativeBossEncounterIds;
-        var boss = bosses[LegacyRandomChoiceV111.ChooseIndexRange(
-            rng,
-            PrototypeNativeUnderdocks.BossEncounterIndexSiteId,
-            "combat",
-            "act:1:underdocks:boss_pool:" + CanonicalJson.Sha256(bosses),
-            bosses.Length).SelectedIndex];
+        RandomIndexDecisionV111 bossDecision;
+        if (bossIndexProvider is null)
+        {
+            bossDecision = LegacyRandomChoiceV111.ChooseIndexRange(
+                rng,
+                PrototypeNativeUnderdocks.BossEncounterIndexSiteId,
+                "combat",
+                "act:1:underdocks:boss_pool:" + CanonicalJson.Sha256(bosses),
+                bosses.Length);
+        }
+        else
+        {
+            using var providerScope = StochasticProviderScopeV111.Enter(
+                indexProvider: bossIndexProvider,
+                overrideExplicitProviders: true);
+            bossDecision = LegacyRandomChoiceV111.ChooseIndexRange(
+                rng,
+                PrototypeNativeUnderdocks.BossEncounterIndexSiteId,
+                "combat",
+                "act:1:underdocks:boss_pool:" + CanonicalJson.Sha256(bosses),
+                bosses.Length, ordinal: 0);
+        }
+        var boss = bosses[bossDecision.SelectedIndex];
 
         // Both native Act 1 regions use the same StandardActMap room
         // constraints, with a distinct region profile for routing.
@@ -1422,5 +1463,164 @@ public static class PrototypeNativeUnderdocksRunFactory
                 Map = map
             }
         };
+    }
+}
+
+internal sealed class ReferenceNatureUnderdocksBossIndexProviderV111(
+    ReferenceNatureStateV111 initialNatureState) : IRandomIndexProviderV111
+{
+    private ReferenceNatureStateV111 _natureState =
+        initialNatureState?.Fork()
+        ?? throw new ArgumentNullException(nameof(initialNatureState));
+    private readonly List<ChanceLawV111> _chanceLaws = [];
+    private readonly List<ReferenceNatureDecisionV111> _decisions = [];
+
+    public string Mode => ReferenceNatureV111.ProviderId;
+    public ReferenceNatureStateV111 NatureState => _natureState.Fork();
+    public ChanceLawV111[] ChanceLaws => _chanceLaws
+        .Select(law => law.Fork()).ToArray();
+    public ReferenceNatureDecisionV111[] DecisionTranscript =>
+        _decisions.ToArray();
+
+    public RandomIndexDecisionV111 Resolve(
+        RandomIndexRequestV111 request, RngBundle streams)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(streams);
+        request.ValidateForLegacyProvider();
+        var bosses = PrototypeNativeUnderdocks.NativeBossEncounterIds;
+        var expectedOwner = "act:1:underdocks:boss_pool:" +
+            CanonicalJson.Sha256(bosses);
+        var combatStreams = streams.Streams.Where(stream =>
+            stream.StreamId == "combat").ToArray();
+        if (_decisions.Count != 0 ||
+            request.SiteId != PrototypeNativeUnderdocks
+                .BossEncounterIndexSiteId ||
+            request.StreamId != "combat" ||
+            request.OwnerId != expectedOwner || request.Ordinal != 0 ||
+            request.OperationKind != "choose_index" ||
+            request.SupportCount != bosses.Length ||
+            !request.OrderedCandidates.SequenceEqual(
+                Enumerable.Range(0, bosses.Length)) ||
+            combatStreams.Length != 1 ||
+            combatStreams[0].Codec != PrototypeRng.Codec)
+            throw new InvalidDataException(
+                "Underdocks boss request differs from its run-start boundary.");
+
+        var law = ChanceLawEngineV111.QueryUnderdocksBossEncounter(0);
+        if (law.SiteId != request.SiteId ||
+            law.OperationKind != request.OperationKind ||
+            law.OwnerId != request.OwnerId ||
+            law.Ordinal != request.Ordinal ||
+            law.Outcomes.Length != request.SupportCount)
+            throw new InvalidDataException(
+                "Underdocks boss Chance Law differs from its source request.");
+        var selection = ReferenceNatureV111.SampleValidated(
+            law, _natureState);
+        _natureState = selection.NextState;
+        _chanceLaws.Add(law.Fork());
+        _decisions.Add(new ReferenceNatureDecisionV111(
+            law.LawId, law.EventId, selection.OutcomeId,
+            selection.OutcomeIndex));
+        var decision = new RandomIndexDecisionV111(
+            request with
+            {
+                OrderedCandidates = (int[])request.OrderedCandidates.Clone()
+            }, selection.OutcomeIndex, Mode);
+        decision.Validate();
+        return decision;
+    }
+}
+
+public sealed record ReferenceNatureUnderdocksRunResultV111(
+    RunState Run,
+    ReferenceNatureStateV111 InitialNatureState,
+    ReferenceNatureStateV111 NatureState,
+    ChanceLawV111[] ChanceLaws,
+    ReferenceNatureDecisionV111[] DecisionTranscript)
+{
+    private RunState? _run = Run?.Fork();
+    private ChanceLawV111[]? _chanceLaws = ChanceLaws?.Select(law =>
+        law.Fork()).ToArray();
+    private ReferenceNatureDecisionV111[]? _decisionTranscript =
+        DecisionTranscript is null ? null :
+            (ReferenceNatureDecisionV111[])DecisionTranscript.Clone();
+
+    public RunState Run
+    {
+        get => _run?.Fork()!;
+        init => _run = value?.Fork();
+    }
+
+    public ChanceLawV111[] ChanceLaws
+    {
+        get => _chanceLaws?.Select(law => law.Fork()).ToArray()!;
+        init => _chanceLaws = value?.Select(law => law.Fork()).ToArray();
+    }
+
+    public ReferenceNatureDecisionV111[] DecisionTranscript
+    {
+        get => _decisionTranscript is null ? null! :
+            (ReferenceNatureDecisionV111[])_decisionTranscript.Clone();
+        init => _decisionTranscript = value is null ? null :
+            (ReferenceNatureDecisionV111[])value.Clone();
+    }
+
+    public void Validate()
+    {
+        var run = Run;
+        ArgumentNullException.ThrowIfNull(run);
+        ArgumentNullException.ThrowIfNull(InitialNatureState);
+        ArgumentNullException.ThrowIfNull(NatureState);
+        var laws = ChanceLaws;
+        var transcript = DecisionTranscript;
+        var world = run.World;
+        if (laws is null || transcript is null ||
+            laws.Length != 1 || transcript.Length != 1 ||
+            run.ReferenceNatureState is not { } savedCursor ||
+            !savedCursor.SameCursor(NatureState) ||
+            world is null ||
+            world.ActOneRegion != PrototypeActOneRegion.Underdocks ||
+            world.ActOneEncounterPool is not { } encounterPool ||
+            encounterPool.Region != PrototypeActOneRegion.Underdocks ||
+            string.IsNullOrWhiteSpace(encounterPool.BossEncounterId))
+            throw new InvalidDataException(
+                "Invalid ReferenceNature Underdocks run result.");
+        PrototypeStateInvariants.Validate(run);
+        InitialNatureState.Validate();
+        NatureState.Validate();
+        var law = laws[0];
+        var decision = transcript[0];
+        law.Validate();
+        decision.Validate();
+        var expectedLaw = ChanceLawEngineV111.QueryUnderdocksBossEncounter(0);
+        if (CanonicalJson.Sha256(expectedLaw) !=
+            CanonicalJson.Sha256(law))
+            throw new InvalidDataException(
+                "Underdocks boss Chance Law differs from its source query.");
+        var selection = ReferenceNatureV111.SampleValidated(
+            law, InitialNatureState);
+        var expectedDecision = new ReferenceNatureDecisionV111(
+            law.LawId, law.EventId, selection.OutcomeId,
+            selection.OutcomeIndex);
+        if (CanonicalJson.Sha256(expectedDecision) !=
+                CanonicalJson.Sha256(decision) ||
+            !StringComparer.Ordinal.Equals(
+                selection.OutcomeId,
+                "encounter:" + encounterPool.BossEncounterId) ||
+            !selection.NextState.SameCursor(NatureState) ||
+            NatureState.SampleCount !=
+                checked(InitialNatureState.SampleCount + 1))
+            throw new InvalidDataException(
+                "Underdocks boss result does not replay from its Nature cursor.");
+
+        var cleanCombat = PrototypeRng.CreateBundle(run.RunSeed).Streams
+            .Single(stream => stream.StreamId == "combat");
+        var resultCombat = run.Rng.Streams
+            .Single(stream => stream.StreamId == "combat");
+        if (CanonicalJson.Sha256(cleanCombat) !=
+            CanonicalJson.Sha256(resultCombat))
+            throw new InvalidDataException(
+                "ReferenceNature Underdocks creation advanced the legacy combat cursor.");
     }
 }
