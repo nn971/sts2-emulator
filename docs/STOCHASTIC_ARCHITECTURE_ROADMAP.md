@@ -1165,3 +1165,6 @@ Run matched source-state/seed sets; frozen player policy; fair observations/lega
 
 
 **S2 pilot audit snapshot encapsulation increment (2026-10-20):** `SemanticPilotStochasticStateV111` now deep-copies Native-policy decisions and mixed provider traces, source-route action and decision arrays, and pending end-turn stochastic chronology on construction, replacement, projection, and fork. Native request supports cannot be rewritten through a shared audit array. Constructor/deconstruction shape and serialized field names remain stable. `git diff --check` passed; no tests or builds were run.
+
+
+**S3 run-world queue encapsulation increment (2026-10-20):** `RunWorldStochasticStateV111` and its Act 1, later-act, and relic bag records now copy persistent queue arrays and prepared bag collections on construction, replacement, projection, and fork. Existing constructor/deconstruction shapes, JSON members, `OrderMode` discrimination, and flattened `RunWorldState` projections remain in place. The permitted indexed-write census and `git diff --check` passed; no tests or builds were run.
