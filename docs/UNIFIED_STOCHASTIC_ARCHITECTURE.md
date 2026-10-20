@@ -437,7 +437,7 @@ approximations at other bounds remain `UNVERIFIED`.
 
 ## Current S4 continuation support
 
-Semantic end-turn now admits a source `CardDrawn` hook action reached inside an autoplayed card's semantic effect draw, but only at the supported Mayhem or late player-turn cursor. The hook event records its automatic-pipeline context, and the end-turn transcript preserves its order with nested draw, cost, insertion, selection, and other autoplay outcomes. Full restore replays the source action before resuming the pipeline. Existing standalone and automatic hand-draw hook choices retain their prior event identity and transcript behavior; other pipeline-owned action choices remain open.
+Semantic end-turn now admits a source `CardDrawn` hook action reached inside an autoplayed card's semantic effect draw, but only at the supported Mayhem or late player-turn cursor. The hook event uses a new schema version for its automatic-pipeline context, and the end-turn transcript preserves its order with nested draw, cost, insertion, selection, and other autoplay outcomes. Full restore replays the source action before resuming the pipeline. Existing standalone and automatic hand-draw hook choices retain their prior event schema and identity; other pipeline-owned action choices remain open.
 
 ## Reading order
 
