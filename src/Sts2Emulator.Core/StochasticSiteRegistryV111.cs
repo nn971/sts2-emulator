@@ -1123,7 +1123,10 @@ public static class StochasticSiteRegistryV111
 
     internal static bool IsRegisteredRandomIndexRequestSite(string siteId) =>
         IsLegacyRandomChoiceSite(siteId) ||
-        IsNativeRandomIndexSite(siteId);
+        IsNativeRandomIndexSite(siteId) ||
+        // Finite fixture continuations have registered controlled site IDs
+        // without claiming native source RNG provenance.
+        ControlledPlayableSites.Contains(siteId, StringComparer.Ordinal);
 
     public static bool IsNativeUnitFloatSite(string siteId) =>
         NativeUnitFloatSites.Contains(siteId, StringComparer.Ordinal);
