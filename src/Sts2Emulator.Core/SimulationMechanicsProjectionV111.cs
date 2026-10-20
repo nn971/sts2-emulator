@@ -10,7 +10,7 @@ public sealed record SimulationMechanicsComparisonV111(
     bool DifferencesTruncated)
 {
     public const string SchemaId =
-        "sts2-v111-simulation-mechanics-comparison-v12";
+        "sts2-v111-simulation-mechanics-comparison-v13";
 
     public bool Equivalent => StringComparer.Ordinal.Equals(
         LeftFingerprint, RightFingerprint);
@@ -54,9 +54,20 @@ public sealed record SimulationPendingDeckOperationProjectionV111(
 /// Candidate supports and selected provider outcomes remain outside the view.
 /// </summary>
 public sealed record SimulationDrawContinuationProjectionV111(
-    PrototypeControlledSemanticDrawV111? SemanticDraw,
+    SimulationSemanticDrawProgressProjectionV111? SemanticDraw,
     SimulationDrawCostContinuationProjectionV111? DrawCost,
     SimulationDrawInsertionContinuationProjectionV111? DrawInsertion);
+
+/// <summary>Provider-independent progress for a suspended semantic draw.
+/// Provider segment tags are omitted while effect timing, deferred keyword
+/// application, and Stratagem stage remain visible.</summary>
+public sealed record SimulationSemanticDrawProgressProjectionV111(
+    int RemainingCount,
+    bool FromHandDraw,
+    int EventDepth,
+    PrototypeCardKeywordOverrideSpec? DrawnCardKeyword,
+    long[]? DeferredKeywordCardInstanceIds,
+    bool StratagemSelectionPending);
 
 /// <summary>Provider-independent remaining-card progress for an active
 /// automatic hand draw. Provider mode and semantic requested-count metadata
@@ -220,7 +231,9 @@ public static class SimulationMechanicsProjectionEngineV111
                 insertionProgress is not null)
                 pendingDrawContinuation =
                     new SimulationDrawContinuationProjectionV111(
-                        semanticDraw, costProgress, insertionProgress);
+                        semanticDraw is null
+                            ? null : ProjectSemanticDrawProgress(semanticDraw),
+                        costProgress, insertionProgress);
 
             var pipeline = combat.AutomaticPipelineContinuation;
             if (pipeline is not null)
@@ -493,6 +506,18 @@ public static class SimulationMechanicsProjectionEngineV111
         DeferredDrawnCardInstanceIds = operation.DeferredDrawnCardInstanceIds
             is null ? null : (long[])operation.DeferredDrawnCardInstanceIds.Clone()
     };
+
+    private static SimulationSemanticDrawProgressProjectionV111
+        ProjectSemanticDrawProgress(
+            PrototypeControlledSemanticDrawV111 draw) => new(
+                draw.RemainingCount,
+                draw.FromHandDraw,
+                draw.EventDepth,
+                draw.DrawnCardKeyword is null
+                    ? null : draw.DrawnCardKeyword with { },
+                draw.DeferredKeywordCardInstanceIds is null
+                    ? null : (long[])draw.DeferredKeywordCardInstanceIds.Clone(),
+                draw.StratagemSelectionPending);
 
     private static SimulationPendingChoiceMechanicsProjectionV111?
         ProjectPendingChoiceMechanics(PendingCombatChoiceState choice)
