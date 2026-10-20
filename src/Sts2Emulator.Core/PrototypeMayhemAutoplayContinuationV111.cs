@@ -228,16 +228,76 @@ public sealed partial class PrototypeGameEngine
         ArgumentNullException.ThrowIfNull(combat);
         ArgumentNullException.ThrowIfNull(pending);
         if (pending is not
-            { ChoiceId: "select_cards",
-              CardPlaySeries: { IsAutoPlay: true },
-              OuterChoiceContinuation: null } ||
+            { ChoiceId: "select_cards", OuterChoiceContinuation: null } ||
             combat.SemanticDeck is not
                 { Mode: SemanticDeckStateV111.NatureMode })
+            return false;
+
+        if (IsPlayerTurnStartedDiscardSelection(combat, pending))
+            return true;
+        if (pending.CardPlaySeries is not { IsAutoPlay: true })
             return false;
 
         return IsMayhemAutoPrePlayPipelineCursor(combat) ||
             combat.IsPlayerTurn &&
             IsAtSupportedAutomaticPipelineTargetBoundary(combat);
+    }
+
+    private static bool IsPlayerTurnStartedDiscardSelection(
+        CombatState combat, PendingCombatChoiceState pending)
+    {
+        if (combat is not { IsPlayerTurn: true,
+                AutomaticPipelineContinuation: { } continuation,
+                PendingKnowledgeDemonChoice: null } ||
+            combat.SemanticDeck is not
+                { Mode: SemanticDeckStateV111.NatureMode, Pending: null } ||
+            pending is not
+                { SourceCardInstanceId: null,
+                  SourceCardDestination: PrototypeCardZone.DiscardPile,
+                  OuterChoiceContinuation: null,
+                  CardPlaySeries: null,
+                  EventDispatchContinuation: null,
+                  SelectedCardPower: null,
+                  SelectedCardKeyword: null,
+                  SelectedCardTemporaryCost: null,
+                  SequentialSelectedCardInstanceIds: null,
+                  MoveSourceCardOnCompletion: true,
+                  RemoveSourceCardOnCompletion: false,
+                  SourceCardAlreadyMoved: false } ||
+            pending.Continuation.Length != 0 ||
+            pending.CompletionEvents.Length != 0 ||
+            pending.Selection is not
+                { SourceZone: PrototypeCardZone.Hand,
+                  Resolution: PrototypeCardSelectionResolutionKind.MoveToDiscard,
+                  SequentialOptional: false,
+                  DrawEqualToSelectionsOnCompletion: false,
+                  RemoveUnselectedFromSource: false } ||
+            !IsAtSupportedAutomaticPipelineTargetBoundary(combat))
+            return false;
+
+        var playerTurnStartedIndex = -1;
+        var pipeline = PrototypeContent.Rules.EndTurnPipeline;
+        for (var index = 0; index < pipeline.Length; index++)
+            if (pipeline[index].Kind ==
+                    PrototypeAutomaticStepKind.DispatchCombatEvent &&
+                pipeline[index].EventKind ==
+                    PrototypeCombatEventKind.PlayerTurnStarted)
+            {
+                playerTurnStartedIndex = index;
+                break;
+            }
+        if (playerTurnStartedIndex < 0 ||
+            continuation.NextStepIndex != playerTurnStartedIndex + 1)
+            return false;
+
+        var discardCount = combat.PlayerPowers.Sum(power =>
+            PrototypeContent.Power(power.PowerId)
+                .DiscardAfterPlayerTurnStartPerStack * power.Stacks);
+        var expectedCount = Math.Min(discardCount, combat.Hand.Length);
+        return expectedCount > 0 &&
+            pending.Selection.MinSelections == expectedCount &&
+            pending.Selection.MaxSelections == expectedCount &&
+            pending.CandidateCardInstanceIds.SequenceEqual(combat.Hand);
     }
 
     internal static bool IsAutomaticPipelineSemanticDrawHookChoiceContinuation(
