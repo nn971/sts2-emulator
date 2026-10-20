@@ -496,13 +496,53 @@ public static class V111RunFactory
             assigned = result.Assignments;
             natureState = result.NatureState;
         }
-        var bags = new[] { 2, 3 }.Select((act, index) =>
-            ExperimentalSilentThreeActRouteV111.InitialBag(
-                act, rng, configuration.Ascension, configuration.Profile,
-                assignAncient: false) with
+        PrototypeLaterActEncounterBagV111[] bags;
+        if (natureState is null)
+        {
+            bags = new[] { 2, 3 }.Select((act, index) =>
+                ExperimentalSilentThreeActRouteV111.InitialBag(
+                    act, rng, configuration.Ascension,
+                    configuration.Profile, assignAncient: false) with
+                {
+                    AssignedAncientId = assigned[index]
+                }).ToArray();
+        }
+        else
+        {
+            var initialNatureState = natureState;
+            var provider = new ReferenceNatureLaterActBossIndexProviderV111(
+                rng, initialNatureState, configuration.Ascension);
+            using (StochasticProviderScopeV111.Enter(
+                       indexProvider: provider,
+                       overrideExplicitProviders: true))
             {
-                AssignedAncientId = assigned[index]
-            }).ToArray();
+                bags = new[] { 2, 3 }.Select((act, index) =>
+                    ExperimentalSilentThreeActRouteV111.InitialBag(
+                        act, rng, configuration.Ascension,
+                        configuration.Profile, assignAncient: false) with
+                    {
+                        AssignedAncientId = assigned[index]
+                    }).ToArray();
+            }
+            var legacyCombatCallCount = rng.Streams.Single(stream =>
+                stream.StreamId == "combat").CallCount;
+            var expectedQueueDrawCount =
+                ExperimentalSilentThreeActRouteV111.OrdinaryRoomCount(2) + 15 +
+                ExperimentalSilentThreeActRouteV111.OrdinaryRoomCount(3) + 15;
+            if (provider.QueueDrawCount != expectedQueueDrawCount ||
+                legacyCombatCallCount != checked(
+                    (ulong)provider.InitialCombatOrdinal +
+                    (ulong)expectedQueueDrawCount))
+                throw new InvalidDataException(
+                    "ReferenceNature later-act boss sampling changed the legacy combat cursor beyond queue generation.");
+            var result = new ReferenceNatureLaterActBossAssignmentsV111(
+                bags, initialNatureState, provider.NatureState,
+                provider.InitialCombatOrdinal, configuration.Ascension,
+                provider.ChanceLaws, provider.DecisionTranscript);
+            result.Validate(configuration.Profile);
+            bags = result.Bags;
+            natureState = result.NatureState;
+        }
         return (bags, natureState);
     }
 }

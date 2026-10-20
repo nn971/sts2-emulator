@@ -827,6 +827,376 @@ public sealed record ReferenceNatureLaterActAssignmentsV111(
         ? null : (string[])values.Clone();
 }
 
+internal sealed class ReferenceNatureLaterActBossIndexProviderV111
+    : IRandomIndexProviderV111
+{
+    private readonly int _ascension;
+    private ReferenceNatureStateV111 _natureState;
+    private readonly List<ChanceLawV111> _chanceLaws = [];
+    private readonly List<ReferenceNatureDecisionV111> _decisions = [];
+    private int _queueDrawCount;
+
+    public ReferenceNatureLaterActBossIndexProviderV111(
+        RngBundle streams, ReferenceNatureStateV111 initialNatureState,
+        int ascension)
+    {
+        ArgumentNullException.ThrowIfNull(streams);
+        ArgumentNullException.ThrowIfNull(initialNatureState);
+        if (ascension < 0 || ascension > 10)
+            throw new ArgumentOutOfRangeException(nameof(ascension));
+        initialNatureState.Validate();
+        var combatStreams = streams.Streams.Where(stream =>
+            stream.StreamId == "combat").ToArray();
+        var initialOrdinal = combatStreams.Length == 1
+            ? combatStreams[0].CallCount ?? 0 : ulong.MaxValue;
+        if (combatStreams.Length != 1 ||
+            combatStreams[0].Codec != PrototypeRng.Codec ||
+            initialOrdinal > int.MaxValue - 60)
+            throw new InvalidDataException(
+                "ReferenceNature later-act bosses require a valid legacy combat cursor.");
+        _natureState = initialNatureState.Fork();
+        _ascension = ascension;
+        InitialCombatOrdinal = (int)initialOrdinal;
+    }
+
+    public string Mode => ReferenceNatureV111.ProviderId;
+    public int InitialCombatOrdinal { get; }
+    public int QueueDrawCount => _queueDrawCount;
+    public ReferenceNatureStateV111 NatureState => _natureState.Fork();
+    public ChanceLawV111[] ChanceLaws => _chanceLaws
+        .Select(law => law.Fork()).ToArray();
+    public ReferenceNatureDecisionV111[] DecisionTranscript =>
+        _decisions.ToArray();
+
+    public RandomIndexDecisionV111 Resolve(
+        RandomIndexRequestV111 request, RngBundle streams)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(streams);
+        request.ValidateForLegacyProvider();
+        var combatStreams = streams.Streams.Where(stream =>
+            stream.StreamId == "combat").ToArray();
+        if (request.StreamId != "combat" || combatStreams.Length != 1 ||
+            combatStreams[0].Codec != PrototypeRng.Codec)
+            throw new InvalidDataException(
+                "ReferenceNature later-act encounter request differs from its legacy combat boundary.");
+
+        if (IsQueueSite(request.SiteId))
+        {
+            ValidateQueueRequest(request);
+            return new LegacyPrototypeRandomIndexProviderV111()
+                .Resolve(request, streams);
+        }
+
+        ChanceLawV111 law;
+        if (request.SiteId == ExperimentalSilentThreeActRouteV111
+                .BossIndexSiteId)
+        {
+            var act = ResolveBossAct(request);
+            var expectedDecisionCount = act - 2;
+            if (_decisions.Count != expectedDecisionCount ||
+                request.Ordinal != ExpectedBossOrdinal(act))
+                throw new InvalidDataException(
+                    "ReferenceNature later-act boss order or combat ordinal differs from run-start preparation.");
+            law = ChanceLawEngineV111.QueryLaterActBossPool(
+                act, request.Ordinal);
+            ValidateOrderedSupport(request, law.Outcomes.Length);
+        }
+        else if (request.SiteId == ExperimentalSilentThreeActRouteV111
+                     .SecondBossIndexSiteId)
+        {
+            if (_ascension < 10 || _decisions.Count != 2 ||
+                request.Ordinal != checked(ExpectedBossOrdinal(3) + 1))
+                throw new InvalidDataException(
+                    "ReferenceNature Glory second-boss request differs from its Ascension 10 run-start boundary.");
+            var firstBoss = ResolveFirstBoss(request.OwnerId);
+            law = ChanceLawEngineV111.QueryLaterActSecondBoss(
+                firstBoss, _ascension, request.Ordinal);
+            ValidateOrderedSupport(request, law.Outcomes.Length);
+        }
+        else
+        {
+            throw new NotSupportedException(
+                $"ReferenceNature later-act bag preparation does not support '{request.SiteId}'.");
+        }
+
+        if (law.SiteId != request.SiteId ||
+            law.OwnerId != request.OwnerId ||
+            law.OperationKind != request.OperationKind ||
+            law.Ordinal != request.Ordinal ||
+            law.Outcomes.Length != request.SupportCount)
+            throw new InvalidDataException(
+                "ReferenceNature later-act boss Chance Law differs from its source request.");
+
+        var selection = ReferenceNatureV111.SampleValidated(
+            law, _natureState);
+        _natureState = selection.NextState;
+        _chanceLaws.Add(law.Fork());
+        _decisions.Add(new ReferenceNatureDecisionV111(
+            law.LawId, law.EventId, selection.OutcomeId,
+            selection.OutcomeIndex));
+        var decision = new RandomIndexDecisionV111(
+            request with
+            {
+                OrderedCandidates = (int[])request.OrderedCandidates.Clone()
+            }, selection.OutcomeIndex, Mode);
+        decision.Validate();
+        return decision;
+    }
+
+    private void ValidateQueueRequest(RandomIndexRequestV111 request)
+    {
+        if (_queueDrawCount >=
+            ExperimentalSilentThreeActRouteV111.OrdinaryRoomCount(2) + 15 +
+            ExperimentalSilentThreeActRouteV111.OrdinaryRoomCount(3) + 15)
+            throw new InvalidDataException(
+                "ReferenceNature later-act preparation made too many queue requests.");
+        var act = _queueDrawCount <
+            ExperimentalSilentThreeActRouteV111.OrdinaryRoomCount(2) + 15
+            ? 2 : 3;
+        var actOffset = act == 2 ? 0
+            : ExperimentalSilentThreeActRouteV111.OrdinaryRoomCount(2) + 15;
+        var draw = _queueDrawCount - actOffset;
+        var roomCount = ExperimentalSilentThreeActRouteV111
+            .OrdinaryRoomCount(act);
+        var queueId = draw < 2 ? "weak"
+            : draw < roomCount ? "normal" : "elite";
+        var queueDraw = queueId switch
+        {
+            "weak" => draw,
+            "normal" => draw - 2,
+            _ => draw - roomCount
+        };
+        var expectedSite = $"combat.encounter.later_act.{queueId}.index_draw";
+        var expectedOwnerPrefix =
+            $"act:{act}:queue:{queueId}:draw:{queueDraw}:pool:";
+        if (request.SiteId != expectedSite ||
+            request.OperationKind != "choose_index" ||
+            request.Ordinal != checked(InitialCombatOrdinal +
+                _queueDrawCount + _decisions.Count) ||
+            !request.OrderedCandidates.SequenceEqual(
+                Enumerable.Range(0, request.SupportCount)) ||
+            !request.OwnerId.StartsWith(expectedOwnerPrefix,
+                StringComparison.Ordinal) ||
+            request.OwnerId.Length != expectedOwnerPrefix.Length + 64 ||
+            !request.OwnerId[expectedOwnerPrefix.Length..].All(
+                Uri.IsHexDigit))
+            throw new InvalidDataException(
+                "ReferenceNature later-act queue request differs from its ordered preparation boundary.");
+        _queueDrawCount++;
+    }
+
+    private int ResolveBossAct(RandomIndexRequestV111 request)
+    {
+        foreach (var act in new[] { 2, 3 })
+        {
+            var pool = ExperimentalSilentThreeActRouteV111.Pool(
+                act, PrototypeRoomType.Boss, weak: false);
+            var owner = $"act:{act}:boss_pool:"
+                + CanonicalJson.Sha256(pool);
+            if (request.OwnerId == owner)
+                return act;
+        }
+        throw new InvalidDataException(
+            "ReferenceNature later-act boss request has an unknown ordered pool.");
+    }
+
+    private static string ResolveFirstBoss(string ownerId)
+    {
+        const string prefix = "act:3:first_boss:";
+        const string suffix = ":alternatives:";
+        if (!ownerId.StartsWith(prefix, StringComparison.Ordinal))
+            throw new InvalidDataException(
+                "ReferenceNature second-boss request has an invalid owner.");
+        var suffixIndex = ownerId.IndexOf(suffix, prefix.Length,
+            StringComparison.Ordinal);
+        if (suffixIndex < 0 || ownerId.Length != suffixIndex +
+            suffix.Length + 64 || !ownerId[(suffixIndex + suffix.Length)..]
+                .All(Uri.IsHexDigit))
+            throw new InvalidDataException(
+                "ReferenceNature second-boss request has an invalid alternatives fingerprint.");
+        var firstBoss = ownerId[prefix.Length..suffixIndex];
+        var expected = ChanceLawEngineV111.QueryLaterActSecondBoss(
+            firstBoss, _ascension, 0);
+        if (expected.OwnerId != ownerId)
+            throw new InvalidDataException(
+                "ReferenceNature second-boss request alternatives differ from its source pool.");
+        return firstBoss;
+    }
+
+    private int ExpectedBossOrdinal(int act)
+    {
+        var actTwoQueueDraws =
+            ExperimentalSilentThreeActRouteV111.OrdinaryRoomCount(2) + 15;
+        return checked(InitialCombatOrdinal + actTwoQueueDraws +
+            (act == 2 ? 0 : 1 +
+                ExperimentalSilentThreeActRouteV111.OrdinaryRoomCount(3) +
+                15));
+    }
+
+    private static bool IsQueueSite(string siteId) => siteId is
+        "combat.encounter.later_act.weak.index_draw" or
+        "combat.encounter.later_act.normal.index_draw" or
+        "combat.encounter.later_act.elite.index_draw";
+
+    private static void ValidateOrderedSupport(
+        RandomIndexRequestV111 request, int expectedCount)
+    {
+        if (request.OperationKind != "choose_index" ||
+            request.SupportCount != expectedCount ||
+            !request.OrderedCandidates.SequenceEqual(
+                Enumerable.Range(0, expectedCount)))
+            throw new InvalidDataException(
+                "ReferenceNature later-act boss support differs from the source-ordered pool.");
+    }
+}
+
+public sealed record ReferenceNatureLaterActBossAssignmentsV111(
+    PrototypeLaterActEncounterBagV111[] Bags,
+    ReferenceNatureStateV111 InitialNatureState,
+    ReferenceNatureStateV111 NatureState,
+    int InitialCombatOrdinal,
+    int Ascension,
+    ChanceLawV111[] ChanceLaws,
+    ReferenceNatureDecisionV111[] DecisionTranscript)
+{
+    private PrototypeLaterActEncounterBagV111[]? _bags = Bags?.Select(
+        bag => bag.Fork()).ToArray();
+    private ChanceLawV111[]? _chanceLaws = ChanceLaws?.Select(law =>
+        law.Fork()).ToArray();
+    private ReferenceNatureDecisionV111[]? _decisionTranscript =
+        DecisionTranscript is null ? null :
+            (ReferenceNatureDecisionV111[])DecisionTranscript.Clone();
+
+    public PrototypeLaterActEncounterBagV111[] Bags
+    {
+        get => _bags?.Select(bag => bag.Fork()).ToArray()!;
+        init => _bags = value?.Select(bag => bag.Fork()).ToArray();
+    }
+
+    public ChanceLawV111[] ChanceLaws
+    {
+        get => _chanceLaws?.Select(law => law.Fork()).ToArray()!;
+        init => _chanceLaws = value?.Select(law => law.Fork()).ToArray();
+    }
+
+    public ReferenceNatureDecisionV111[] DecisionTranscript
+    {
+        get => _decisionTranscript is null ? null! :
+            (ReferenceNatureDecisionV111[])_decisionTranscript.Clone();
+        init => _decisionTranscript = value is null ? null :
+            (ReferenceNatureDecisionV111[])value.Clone();
+    }
+
+    public void Validate(SimulationProfile profile)
+    {
+        ArgumentNullException.ThrowIfNull(profile);
+        ArgumentNullException.ThrowIfNull(Bags);
+        ArgumentNullException.ThrowIfNull(InitialNatureState);
+        ArgumentNullException.ThrowIfNull(NatureState);
+        ArgumentNullException.ThrowIfNull(ChanceLaws);
+        ArgumentNullException.ThrowIfNull(DecisionTranscript);
+        InitialNatureState.Validate();
+        NatureState.Validate();
+        var expectedDecisionCount = Ascension >= 10 ? 3 : 2;
+        if (Bags.Length != 2 || InitialCombatOrdinal < 0 ||
+            Ascension is < 0 or > 10 ||
+            ChanceLaws.Length != expectedDecisionCount ||
+            DecisionTranscript.Length != expectedDecisionCount)
+            throw new InvalidDataException(
+                "Invalid ReferenceNature later-act boss assignment result.");
+        var hiveBag = Bags.SingleOrDefault(bag => bag.Act == 2)
+            ?? throw new InvalidDataException(
+                "ReferenceNature boss result is missing the Hive bag.");
+        var gloryBag = Bags.SingleOrDefault(bag => bag.Act == 3)
+            ?? throw new InvalidDataException(
+                "ReferenceNature boss result is missing the Glory bag.");
+        if (hiveBag.RemainingWeak.Length != 2 ||
+            hiveBag.RemainingNormal.Length !=
+                ExperimentalSilentThreeActRouteV111.OrdinaryRoomCount(2) - 2 ||
+            hiveBag.RemainingElite.Length != 15 ||
+            gloryBag.RemainingWeak.Length != 2 ||
+            gloryBag.RemainingNormal.Length !=
+                ExperimentalSilentThreeActRouteV111.OrdinaryRoomCount(3) - 2 ||
+            gloryBag.RemainingElite.Length != 15)
+            throw new InvalidDataException(
+                "ReferenceNature later-act boss result has incomplete encounter queues.");
+
+        var expectedState = InitialNatureState;
+        var index = 0;
+        var actTwoOrdinal = checked(InitialCombatOrdinal +
+            ExperimentalSilentThreeActRouteV111.OrdinaryRoomCount(2) + 15);
+        var actThreeOrdinal = checked(actTwoOrdinal + 1 +
+            ExperimentalSilentThreeActRouteV111.OrdinaryRoomCount(3) + 15);
+        var rawHiveBoss = Check(ChanceLawEngineV111.QueryLaterActBossPool(
+            2, actTwoOrdinal));
+        var rawGloryBoss = Check(ChanceLawEngineV111.QueryLaterActBossPool(
+            3, actThreeOrdinal));
+        var expectedHiveBoss = FirstUndiscoveredBoss(2, profile) ?? rawHiveBoss;
+        var expectedGloryBoss = FirstUndiscoveredBoss(3, profile) ?? rawGloryBoss;
+        if (hiveBag.BossEncounterId != expectedHiveBoss ||
+            gloryBag.BossEncounterId != expectedGloryBoss)
+            throw new InvalidDataException(
+                "ReferenceNature later-act boss outcomes differ from the prepared bags.");
+
+        if (Ascension >= 10)
+        {
+            var secondBoss = Check(
+                ChanceLawEngineV111.QueryLaterActSecondBoss(
+                    gloryBag.BossEncounterId, Ascension,
+                    checked(actThreeOrdinal + 1)));
+            if (gloryBag.SecondBossEncounterId != secondBoss)
+                throw new InvalidDataException(
+                    "ReferenceNature second-boss outcome differs from the prepared Glory bag.");
+        }
+        else if (gloryBag.SecondBossEncounterId is not null)
+        {
+            throw new InvalidDataException(
+                "Glory has a second boss below Ascension 10.");
+        }
+
+        if (!expectedState.SameCursor(NatureState) ||
+            NatureState.SampleCount != checked(
+                InitialNatureState.SampleCount + expectedDecisionCount))
+            throw new InvalidDataException(
+                "ReferenceNature later-act boss cursor does not replay.");
+
+        string Check(ChanceLawV111 expectedLaw)
+        {
+            var law = ChanceLaws[index];
+            var decision = DecisionTranscript[index];
+            law.Validate();
+            decision.Validate();
+            if (CanonicalJson.Sha256(expectedLaw) !=
+                CanonicalJson.Sha256(law))
+                throw new InvalidDataException(
+                    "ReferenceNature later-act boss Chance Law differs from its source query.");
+            var selection = ReferenceNatureV111.SampleValidated(
+                law, expectedState);
+            var expectedDecision = new ReferenceNatureDecisionV111(
+                law.LawId, law.EventId, selection.OutcomeId,
+                selection.OutcomeIndex);
+            if (CanonicalJson.Sha256(expectedDecision) !=
+                CanonicalJson.Sha256(decision))
+                throw new InvalidDataException(
+                    "ReferenceNature later-act boss transcript does not replay.");
+            expectedState = selection.NextState;
+            index++;
+            return selection.OutcomeId["encounter:".Length..];
+        }
+    }
+
+    private static string? FirstUndiscoveredBoss(
+        int act, SimulationProfile profile)
+    {
+        var discoveryOrder = act == 2
+            ? ExperimentalSilentThreeActRouteV111.HiveBossDiscoveryOrder
+            : ExperimentalSilentThreeActRouteV111.GloryBossDiscoveryOrder;
+        return discoveryOrder.FirstOrDefault(id =>
+            !profile.SeenBossEncounters.Contains(id, StringComparer.Ordinal));
+    }
+}
+
 public sealed record PrototypeLaterActEncounterBagV111
 {
     private string[] _remainingWeak;

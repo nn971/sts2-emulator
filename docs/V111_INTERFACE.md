@@ -31,7 +31,8 @@ forkable ReferenceNature cursor before `start_run`; the Python
 route, run initialization uses it for the ordered boss-pool choice and advances
 it once. Experimental Silent three-act runs also use it for the conditional
 Hive/Glory Darv partition and local Ancient choices when `start_run` prepares
-those acts. Five
+those acts, then for Hive/Glory boss-pool choices and Glory's Ascension 10
+second boss during prepared encounter-bag generation. Five
 character configurations can be created/serialized, but starting unsupported
 character mechanics fails. Native later-act and restricted-profile mechanics
 also fail explicitly.
