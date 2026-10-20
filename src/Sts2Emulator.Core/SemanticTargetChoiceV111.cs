@@ -113,8 +113,7 @@ public static class SemanticTargetChoiceV111
         var automatic = combat?.AutomaticPipelineContinuation;
         var playerActionBoundary = combat is
             { IsPlayerTurn: true, AutomaticPipelineContinuation: null };
-        var automaticPipelineBoundary = combat is { IsPlayerTurn: false } &&
-            automatic is
+        var automaticPipelineBoundary = automatic is
             {
                 OpeningStage: null,
                 PendingPostDispatchEventKind: null,
@@ -124,8 +123,14 @@ public static class SemanticTargetChoiceV111
                 ControlledSemanticDrawRequested: null,
                 ControlledEnemyAction: null
             } && automatic.NextStepIndex >= 0 &&
-            automatic.NextStepIndex <
-                PrototypeContent.Rules.EndTurnPipeline.Length;
+            automatic.NextStepIndex <=
+                PrototypeContent.Rules.EndTurnPipeline.Length &&
+            ((combat is { IsPlayerTurn: false } &&
+              automatic.NextStepIndex <
+                  PrototypeContent.Rules.EndTurnPipeline.Length) ||
+             (combat is { IsPlayerTurn: true } &&
+              automatic.NextStepIndex >=
+                  PlayerTurnAutomaticPipelineStartIndex()));
         if (run.Phase != RunPhase.Combat ||
             (!playerActionBoundary && !automaticPipelineBoundary) ||
             choice is not { ChoiceId: "controlled_random_target",
@@ -178,6 +183,20 @@ public static class SemanticTargetChoiceV111
             liveCombat.DrawPile.Length != 0)
             throw new InvalidDataException(
                 "A semantic target without a provider deck must have an empty draw pile.");
+    }
+
+    private static int PlayerTurnAutomaticPipelineStartIndex()
+    {
+        var pipeline = PrototypeContent.Rules.EndTurnPipeline;
+        for (var index = 0; index < pipeline.Length; index++)
+        {
+            if (pipeline[index].Kind ==
+                    PrototypeAutomaticStepKind.DispatchCombatEvent &&
+                pipeline[index].EventKind ==
+                    PrototypeCombatEventKind.PlayerTurnStarted)
+                return index + 1;
+        }
+        return int.MaxValue;
     }
 
     public static SemanticTargetDecisionV111 Select(
