@@ -1168,3 +1168,6 @@ Run matched source-state/seed sets; frozen player policy; fair observations/lega
 
 
 **S3 run-world queue encapsulation increment (2026-10-20):** `RunWorldStochasticStateV111` and its Act 1, later-act, and relic bag records now copy persistent queue arrays and prepared bag collections on construction, replacement, projection, and fork. Existing constructor/deconstruction shapes, JSON members, `OrderMode` discrimination, and flattened `RunWorldState` projections remain in place. The permitted indexed-write census and `git diff --check` passed; no tests or builds were run.
+
+
+**S3 run stochastic history encapsulation increment (2026-10-20):** `RunStochasticStateV111` now deep-copies controlled event-choice and run-action history arrays, including ordered request support, on construction, replacement, projection, and fork. Existing positional constructor/deconstruction shape, JSON names, and flattened `RunState` projections remain stable. The indexed-write census and `git diff --check` passed; no tests or builds were run.
