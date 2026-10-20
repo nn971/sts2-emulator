@@ -273,10 +273,15 @@ public static class SimulationMechanicsProjectionEngineV111
 
             combat = combat with
             {
-                // DrawPile is mechanics-owned membership paired with a
-                // provider-owned hidden order. Keep the identities in the
-                // zone while removing Native order from this comparison.
-                DrawPile = combat.DrawPile.Order().ToArray(),
+                // Keep mechanics-owned membership while removing Native
+                // order from this comparison-only projection.
+                Mechanics = combat.Mechanics with
+                {
+                    CardZones = combat.Mechanics.CardZones with
+                    {
+                        DrawPile = combat.DrawPile.Order().ToArray()
+                    }
+                },
                 PendingChoice = WithoutProviderPayload(
                     combat.PendingChoice),
                 AutomaticPipelineContinuation = pipeline
