@@ -144,7 +144,8 @@ public static class NativeEncounterFormationFactoryV111
         int? mapRow = null,
         Func<Func<int, int>,
             (PrototypeEncounterEnemySpec[] Enemies, int? OpeningOffset)>?
-            sourceResolver = null)
+            sourceResolver = null,
+        IRandomIndexProviderV111? indexProvider = null)
     {
         ArgumentNullException.ThrowIfNull(encounter);
         ArgumentException.ThrowIfNullOrWhiteSpace(nativeEncounterEntry);
@@ -162,7 +163,7 @@ public static class NativeEncounterFormationFactoryV111
         var ownedStream = NativeRngV111Contexts.ForEncounterFormation(
             seed, nativeEncounterEntry, totalFloor);
         var ownedBundle = new RngBundle([ownedStream]);
-        var provider = new NativeRandomIndexProviderV111();
+        var provider = indexProvider ?? new NativeRandomIndexProviderV111();
         var choices = new List<RandomIndexDecisionV111>();
         var ordinal = 0;
         Func<int, int> nextIndex = maxExclusive =>
@@ -205,5 +206,226 @@ public static class NativeEncounterFormationFactoryV111
             openingOffset, seed, currentActIndex, mapColumn, mapRow);
         return new NativeEncounterFormationAuditV111(
             result, choices.ToArray(), provider.Mode);
+    }
+
+    public static ReferenceNatureNativeEncounterFormationResultV111
+        GenerateWithReferenceNature(
+            string seed, PrototypeEncounterDefinition encounter,
+            string nativeEncounterEntry, int totalFloor, int currentActIndex,
+            long firstMonsterCombatId,
+            ReferenceNatureStateV111 initialNatureState,
+            int? mapColumn = null, int? mapRow = null,
+            Func<Func<int, int>,
+                (PrototypeEncounterEnemySpec[] Enemies,
+                    int? OpeningOffset)>? sourceResolver = null)
+    {
+        ArgumentNullException.ThrowIfNull(initialNatureState);
+        initialNatureState.Validate();
+        var provider = new ReferenceNatureEncounterFormationIndexProviderV111(
+            nativeEncounterEntry, totalFloor, initialNatureState);
+        var audit = GenerateWithAudit(
+            seed, encounter, nativeEncounterEntry, totalFloor,
+            currentActIndex, firstMonsterCombatId, mapColumn, mapRow,
+            sourceResolver, provider);
+        var result = new ReferenceNatureNativeEncounterFormationResultV111(
+            audit, initialNatureState.Fork(), provider.NatureState,
+            provider.ChanceLaws, provider.DecisionTranscript);
+        result.Validate();
+        return result;
+    }
+}
+
+/// <summary>
+/// ReferenceNature resolves only the source-shaped encounter-local index
+/// calls. The caller-provided source resolver still owns their order and
+/// dynamic supports. The Native local stream is retained at its initial
+/// cursor; this counterfactual path does not advance it for Nature outcomes.
+/// </summary>
+internal sealed class ReferenceNatureEncounterFormationIndexProviderV111
+    : IRandomIndexProviderV111
+{
+    private readonly string _encounterEntry;
+    private readonly int _totalFloor;
+    private readonly List<ChanceLawV111> _chanceLaws = [];
+    private readonly List<ReferenceNatureDecisionV111> _decisions = [];
+    private ReferenceNatureStateV111 _natureState;
+
+    public ReferenceNatureEncounterFormationIndexProviderV111(
+        string encounterEntry, int totalFloor,
+        ReferenceNatureStateV111 initialNatureState)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(encounterEntry);
+        if (totalFloor < 0)
+            throw new ArgumentOutOfRangeException(nameof(totalFloor));
+        ArgumentNullException.ThrowIfNull(initialNatureState);
+        initialNatureState.Validate();
+        _encounterEntry = encounterEntry;
+        _totalFloor = totalFloor;
+        _natureState = initialNatureState.Fork();
+    }
+
+    public string Mode => ReferenceNatureV111.ProviderId;
+    public ReferenceNatureStateV111 NatureState => _natureState.Fork();
+    public ChanceLawV111[] ChanceLaws => _chanceLaws
+        .Select(law => law.Fork()).ToArray();
+    public ReferenceNatureDecisionV111[] DecisionTranscript =>
+        _decisions.ToArray();
+
+    public RandomIndexDecisionV111 Resolve(
+        RandomIndexRequestV111 request, RngBundle streams)
+    {
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(streams);
+        request.ValidateForNativeProvider();
+        var expectedStream = NativeRngV111Contexts
+            .EncounterFormationStreamId(_encounterEntry, _totalFloor);
+        var expectedOwner =
+            $"encounter:{_encounterEntry}:floor:{_totalFloor}";
+        if (request.SiteId != NativeEncounterFormationFactoryV111
+                .FormationSiteId ||
+            request.StreamId != expectedStream ||
+            request.OwnerId != expectedOwner ||
+            request.OperationKind != "choose_index" ||
+            request.Ordinal != _decisions.Count ||
+            request.SupportCount < 1 ||
+            !request.OrderedCandidates.SequenceEqual(
+                Enumerable.Range(0, request.SupportCount)) ||
+            streams.Streams.Count(stream =>
+                stream.StreamId == request.StreamId) != 1 ||
+            streams.Streams.Single(stream =>
+                stream.StreamId == request.StreamId).Codec !=
+                    NativeRngV111.Codec)
+            throw new InvalidDataException(
+                "Native encounter formation request differs from its source-local boundary.");
+
+        var law = ChanceLawEngineV111.QueryNativeEncounterFormationIndex(
+            _encounterEntry, _totalFloor, request.SupportCount,
+            request.Ordinal);
+        if (law.SiteId != request.SiteId ||
+            law.OperationKind != request.OperationKind ||
+            law.OwnerId != request.OwnerId || law.Ordinal != request.Ordinal)
+            throw new InvalidDataException(
+                "Native encounter formation Chance Law changed its typed request.");
+        var selection = ReferenceNatureV111.SampleValidated(
+            law, _natureState);
+        _natureState = selection.NextState;
+        _chanceLaws.Add(law.Fork());
+        _decisions.Add(new ReferenceNatureDecisionV111(
+            law.LawId, law.EventId, selection.OutcomeId,
+            selection.OutcomeIndex));
+        var result = new RandomIndexDecisionV111(
+            request with
+            {
+                OrderedCandidates = (int[])request.OrderedCandidates.Clone()
+            }, selection.OutcomeIndex, Mode);
+        result.Validate();
+        return result;
+    }
+}
+
+public sealed record ReferenceNatureNativeEncounterFormationResultV111(
+    NativeEncounterFormationAuditV111 Audit,
+    ReferenceNatureStateV111 InitialNatureState,
+    ReferenceNatureStateV111 NatureState,
+    ChanceLawV111[] ChanceLaws,
+    ReferenceNatureDecisionV111[] DecisionTranscript)
+{
+    private ChanceLawV111[]? _chanceLaws = ChanceLaws?.Select(law =>
+        law.Fork()).ToArray();
+    private ReferenceNatureDecisionV111[]? _decisionTranscript =
+        DecisionTranscript is null ? null :
+            (ReferenceNatureDecisionV111[])DecisionTranscript.Clone();
+
+    public ChanceLawV111[] ChanceLaws
+    {
+        get => _chanceLaws?.Select(law => law.Fork()).ToArray()!;
+        init => _chanceLaws = value?.Select(law => law.Fork()).ToArray();
+    }
+
+    public ReferenceNatureDecisionV111[] DecisionTranscript
+    {
+        get => _decisionTranscript is null ? null! :
+            (ReferenceNatureDecisionV111[])_decisionTranscript.Clone();
+        init => _decisionTranscript = value is null ? null :
+            (ReferenceNatureDecisionV111[])value.Clone();
+    }
+
+    public void Validate()
+    {
+        ArgumentNullException.ThrowIfNull(Audit);
+        ArgumentNullException.ThrowIfNull(Audit.Formation);
+        ArgumentNullException.ThrowIfNull(InitialNatureState);
+        ArgumentNullException.ThrowIfNull(NatureState);
+        if (Audit.ProviderMode != ReferenceNatureV111.ProviderId ||
+            ChanceLaws is null || DecisionTranscript is null ||
+            Audit.Choices.Length != ChanceLaws.Length ||
+            Audit.Choices.Length != DecisionTranscript.Length)
+            throw new InvalidDataException(
+                "Invalid ReferenceNature encounter formation result.");
+        InitialNatureState.Validate();
+        NatureState.Validate();
+        var formation = Audit.Formation;
+        var expectedStream = NativeRngV111Contexts
+            .EncounterFormationStreamId(
+                formation.NativeEncounterEntry, formation.TotalFloor);
+        var expectedOwner =
+            $"encounter:{formation.NativeEncounterEntry}:floor:{formation.TotalFloor}";
+        if (string.IsNullOrWhiteSpace(formation.RunSeed) ||
+            CanonicalJson.Sha256(formation.EncounterRng) !=
+            CanonicalJson.Sha256(NativeRngV111Contexts.ForEncounterFormation(
+                formation.RunSeed, formation.NativeEncounterEntry,
+                formation.TotalFloor)))
+            throw new InvalidDataException(
+                "ReferenceNature formation must retain the initial Native encounter cursor.");
+        var expectedState = InitialNatureState.Fork();
+        for (var index = 0; index < ChanceLaws.Length; index++)
+        {
+            var law = ChanceLaws[index];
+            var choice = Audit.Choices[index];
+            var decision = DecisionTranscript[index];
+            law.Validate();
+            choice.Validate();
+            decision.Validate();
+            var request = choice.Request;
+            if (request.SiteId != NativeEncounterFormationFactoryV111
+                    .FormationSiteId ||
+                request.OperationKind != "choose_index" ||
+                request.Ordinal != index ||
+                !request.OrderedCandidates.SequenceEqual(
+                    Enumerable.Range(0, request.SupportCount)) ||
+                request.SiteId != law.SiteId ||
+                request.OperationKind != law.OperationKind ||
+                request.OwnerId != law.OwnerId ||
+                request.StreamId != expectedStream ||
+                request.OwnerId != expectedOwner ||
+                request.Ordinal != law.Ordinal ||
+                request.SupportCount != law.Outcomes.Length ||
+                choice.ProviderMode != ReferenceNatureV111.ProviderId)
+                throw new InvalidDataException(
+                    "ReferenceNature formation audit differs from its Chance Law request.");
+            var expectedLaw = ChanceLawEngineV111
+                .QueryNativeEncounterFormationIndex(
+                    formation.NativeEncounterEntry, formation.TotalFloor,
+                    request.SupportCount, request.Ordinal);
+            if (CanonicalJson.Sha256(expectedLaw) !=
+                CanonicalJson.Sha256(law))
+                throw new InvalidDataException(
+                    "ReferenceNature formation Chance Law differs from its source query.");
+            var selection = ReferenceNatureV111.SampleValidated(
+                law, expectedState);
+            var expectedDecision = new ReferenceNatureDecisionV111(
+                law.LawId, law.EventId, selection.OutcomeId,
+                selection.OutcomeIndex);
+            if (CanonicalJson.Sha256(expectedDecision) !=
+                CanonicalJson.Sha256(decision) ||
+                choice.SelectedIndex != selection.OutcomeIndex)
+                throw new InvalidDataException(
+                    "ReferenceNature formation transcript does not replay.");
+            expectedState = selection.NextState;
+        }
+        if (CanonicalJson.Sha256(expectedState) !=
+            CanonicalJson.Sha256(NatureState))
+            throw new InvalidDataException(
+                "ReferenceNature formation cursor differs from its transcript.");
     }
 }
