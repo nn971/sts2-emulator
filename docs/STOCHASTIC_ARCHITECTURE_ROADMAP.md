@@ -1156,3 +1156,6 @@ Run matched source-state/seed sets; frozen player policy; fair observations/lega
 
 
 **S3 semantic draw transcript encapsulation increment (2026-10-20):** `SemanticCombatDrawStochasticStateV111` now copies its typed decision arrays on construction and replacement and returns cloned decisions from its transcript properties. Suspended cost requests and typed choice support can no longer be edited through a shared continuation array. Existing flattened snapshots and `Fork` behavior are preserved. The permitted indexed-write census and `git diff --check` passed; no tests or builds were run.
+
+
+**S4 end-turn chronology encapsulation increment (2026-10-20):** `SemanticEndTurnStochasticStateV111` now protects intent, enemy-action, target, boundary, and nested-choice arrays with deep copies on construction/replacement and when returned to callers. Existing constructor/deconstruction shapes, JSON property names, flattened facade projections, and chronological `Fork` replay remain in place. A source scan found no indexed writes through these projections; `git diff --check` passed. No tests or builds were run.
