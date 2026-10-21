@@ -1072,6 +1072,20 @@ public static class ControlledRunActionEngineV111
         return Begin(source, GameAction.Empty("start_run"));
     }
 
+    public static RunState BeginLegacyActTransition(RunState source)
+    {
+        ArgumentNullException.ThrowIfNull(source);
+        if (source.Phase != RunPhase.ActTransition
+            || source.ControlledRunActionChoice is not null
+            || source.Configuration is not null
+            || source.NativeRunRng is not null
+            || source.World is not { } world
+            || world.Act >= PrototypeContent.Rules.Acts)
+            throw new InvalidOperationException(
+                "Controlled act transition requires an unsuspended legacy prototype transition before the final act.");
+        return Begin(source, GameAction.Empty("continue_act"));
+    }
+
     public static RunState BeginShovelDig(RunState source)
     {
         ArgumentNullException.ThrowIfNull(source);

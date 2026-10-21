@@ -16,6 +16,8 @@ providers. Shop generation requires non-native regional systems and a legacy
 run RNG. Ordinary legacy Treasure generation uses that same route. Native-
 regional Treasure and Shovel fallbacks require `NativeRunRng` to be absent and
 retain the legacy reward rarity-ticket and conditional relic-index requests.
+`ControlledRunActionEngineV111.BeginLegacyActTransition` is the explicit
+entry point for the unconfigured prototype transition route.
 Legacy Treasure selection is not offered when Silver Crucible suppresses the
 first treasure or its relic pool is exhausted. Treasure fallback entry still
 records its rarity ticket when no eligible identity remains and then completes
