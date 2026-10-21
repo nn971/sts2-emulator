@@ -268,8 +268,8 @@ public static class ControlledIntentsV111
             state.Formation.Enemies.Length != state.Combat.Enemies.Length ||
             state.Formation.MonsterContexts.Length != state.Combat.Enemies.Length)
             throw new InvalidDataException("Invalid controlled intent continuation owner/stage.");
-        var niche = state.ReferenceStreams.Streams.Single(s => s.StreamId == "run.niche");
-        var intent = state.ReferenceStreams.Streams.Single(s => s.StreamId == "run.monster_ai");
+        var niche = state.ReferenceStreams.GetStream("run.niche");
+        var intent = state.ReferenceStreams.GetStream("run.monster_ai");
         _ = NativeRngV111.ToSnapshot(niche);
         _ = NativeRngV111.ToSnapshot(intent);
         if (state.BaselineCombat.Enemies.Length != state.Combat.Enemies.Length)

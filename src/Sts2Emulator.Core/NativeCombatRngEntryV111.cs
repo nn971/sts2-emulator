@@ -143,10 +143,10 @@ public static class NativeCombatRngEntryV111
         var fresh = new NativeCombatRngV111(
             nativeRunStreams.Fork(), formation.Fork());
         // Validate these streams before any RNG draw.
-        _ = NativeRngV111.ToSnapshot(fresh.RunStreams.Streams.Single(
-            stream => stream.StreamId == "run.niche"));
-        _ = NativeRngV111.ToSnapshot(fresh.RunStreams.Streams.Single(
-            stream => stream.StreamId == "run.monster_ai"));
+        _ = NativeRngV111.ToSnapshot(
+            fresh.RunStreams.GetStream("run.niche"));
+        _ = NativeRngV111.ToSnapshot(
+            fresh.RunStreams.GetStream("run.monster_ai"));
         _ = NativeRngV111.ToSnapshot(fresh.Formation.EncounterRng);
 
         var enemies = combat.Enemies.Select(enemy => enemy.Fork()).ToArray();

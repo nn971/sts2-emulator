@@ -359,8 +359,7 @@ public sealed record RunStochasticStateV111
              reward.ProviderId != SemanticRewardAuditV111.PrototypeProviderId ||
              reward.ProbabilityStatus != "UNVERIFIED" ||
              reward.AfterCalls < reward.BeforeCalls ||
-             owner.Rng.Streams.Single(x =>
-                 x.StreamId == "reward").CallCount != reward.AfterCalls))
+             owner.Rng.GetStream("reward").CallCount != reward.AfterCalls))
             throw new InvalidDataException(
                 "Invalid source-timed reward RNG audit.");
         if (owner.World is { } world)

@@ -7755,10 +7755,7 @@ public sealed partial class PrototypeGameEngine
                             ? "combat"
                             : "run.combat_potion_generation";
                         var streams = native?.RunStreams.Fork() ?? rng;
-                        var stream = streams.Streams.SingleOrDefault(item =>
-                            item.StreamId == streamId) ??
-                            throw new InvalidOperationException(
-                                "Combat potion generation stream is missing.");
+                        var stream = streams.GetStream(streamId);
                         var callOrdinal = StochasticProviderScopeV111
                             .GetNextOrdinal(streams, streamId) is { } scopedOrdinal
                                 ? (ulong)scopedOrdinal
@@ -10319,9 +10316,7 @@ public sealed partial class PrototypeGameEngine
             ? "combat"
             : SemanticOtherChanceEngineV111.CostStreamId;
         var streams = native?.RunStreams.Fork() ?? legacyRng;
-        var stream = streams.Streams.SingleOrDefault(item =>
-            item.StreamId == streamId) ?? throw new NotSupportedException(
-                "Random draw-cost provider stream is missing.");
+        var stream = streams.GetStream(streamId);
         var callCount = StochasticProviderScopeV111.GetNextOrdinal(
             streams, streamId) is { } scopedOrdinal
                 ? (ulong)scopedOrdinal
@@ -13768,10 +13763,7 @@ public sealed partial class PrototypeGameEngine
             ? legacyStreamId
             : "run.combat_targets";
         var streams = native?.RunStreams.Fork() ?? legacyRng;
-        var stream = streams.Streams.SingleOrDefault(item =>
-            item.StreamId == streamId) ??
-            throw new InvalidOperationException(
-                "Random target provider stream is missing.");
+        var stream = streams.GetStream(streamId);
         IRandomIndexProviderV111 provider = native is null
             ? new LegacyPrototypeRandomIndexProviderV111()
             : new NativeRandomIndexProviderV111();
@@ -13836,10 +13828,7 @@ public sealed partial class PrototypeGameEngine
                 ? "run.combat_card_selection"
                 : "run.combat_energy_costs";
         var streams = native?.RunStreams.Fork() ?? legacyRng;
-        var stream = streams.Streams.SingleOrDefault(item =>
-            item.StreamId == streamId) ??
-            throw new InvalidOperationException(
-                "Random hand-cost provider stream is missing.");
+        var stream = streams.GetStream(streamId);
         var callOrdinal = StochasticProviderScopeV111.GetNextOrdinal(
             streams, streamId) is { } scopedOrdinal
                 ? (ulong)scopedOrdinal
@@ -13905,10 +13894,7 @@ public sealed partial class PrototypeGameEngine
             ? legacyStreamId
             : nativeStreamId;
         var streams = native?.RunStreams.Fork() ?? legacyRng;
-        var stream = streams.Streams.SingleOrDefault(item =>
-            item.StreamId == streamId) ??
-            throw new InvalidOperationException(
-                "Random combat-card provider stream is missing.");
+        var stream = streams.GetStream(streamId);
         var callOrdinal = StochasticProviderScopeV111.GetNextOrdinal(
             streams, streamId) is { } scopedOrdinal
                 ? (ulong)scopedOrdinal
@@ -13994,10 +13980,7 @@ public sealed partial class PrototypeGameEngine
             ? legacyStreamId
             : nativeStreamId;
         var streams = native?.RunStreams.Fork() ?? legacyRng;
-        var stream = streams.Streams.SingleOrDefault(item =>
-            item.StreamId == streamId) ??
-            throw new InvalidOperationException(
-                "Random combat-card pool provider stream is missing.");
+        var stream = streams.GetStream(streamId);
         var callOrdinal = StochasticProviderScopeV111.GetNextOrdinal(
             streams, streamId) is { } scopedOrdinal
                 ? (ulong)scopedOrdinal

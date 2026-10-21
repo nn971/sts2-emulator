@@ -237,7 +237,7 @@ public static class ControlledInitialHpV111
                 state.Pending is null))
                 throw new InvalidDataException("Controlled HP pending stage mismatch.");
         }
-        _ = NativeRngV111.ToSnapshot(state.ReferenceStreams.Streams.Single(
-            s => s.StreamId == "run.niche"));
+        _ = NativeRngV111.ToSnapshot(
+            state.ReferenceStreams.GetStream("run.niche"));
     }
 }

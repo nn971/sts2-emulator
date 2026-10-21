@@ -16,10 +16,7 @@ internal sealed class SelectiveScriptedIndexReplayProviderV111(
     {
         if (_siteIds.Contains(request.SiteId))
             return script.Resolve(request, streams);
-        var stream = streams.Streams.SingleOrDefault(item =>
-            item.StreamId == request.StreamId)
-            ?? throw new InvalidOperationException(
-                "Selective replay request has no matching stream.");
+        var stream = streams.GetStream(request.StreamId);
         IRandomIndexProviderV111 fallback =
             stream.Codec == PrototypeRng.Codec
                 ? new LegacyPrototypeRandomIndexProviderV111()
