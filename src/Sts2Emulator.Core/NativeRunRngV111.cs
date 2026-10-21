@@ -96,9 +96,12 @@ public static class NativeRunRngV111
         value = NativeRngV111.NextInt(advanced, streamId, maxExclusive);
         if (state.World?.Combat?.NativeRng is { } active)
         {
-            var combat = state.World.Combat with
+            var sourceCombat = state.World.Combat;
+            var combat = sourceCombat with
             {
-                NativeRng = active with { RunStreams = advanced.Fork() }
+                Stochastic = CombatStochasticStateV111.WithNativeRng(
+                    sourceCombat.Stochastic,
+                    active with { RunStreams = advanced.Fork() })
             };
             return state with
             {
@@ -176,13 +179,19 @@ public static class NativeRunRngV111
             || state.NativeRunRng is null)
             throw new InvalidOperationException(
                 "No native combat RNG to release.");
+        var sourceCombat = state.World.Combat;
+        var combat = sourceCombat with
+        {
+            Stochastic = CombatStochasticStateV111.WithNativeRng(
+                sourceCombat.Stochastic, null)
+        };
         var result = state with
         {
             Stochastic = RunStochasticStateV111.WithNativeRunRng(
                 state.Stochastic, active.RunStreams.Fork()),
             World = state.World with
             {
-                Combat = state.World.Combat with { NativeRng = null }
+                Combat = combat
             }
         };
         Validate(result);

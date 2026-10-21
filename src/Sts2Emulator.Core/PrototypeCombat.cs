@@ -3447,7 +3447,12 @@ public sealed partial class PrototypeGameEngine
             formation[index] = ApplyEnemyIntentOutcome(
                 enemy, chosen.MoveIndex, chosen.NextAiStateId);
         }
-        return combat with { Enemies = formation, NativeRng = ownedNative };
+        return combat with
+        {
+            Enemies = formation,
+            Stochastic = CombatStochasticStateV111.WithNativeRng(
+                combat.Stochastic, ownedNative)
+        };
     }
 
     /// <summary>
@@ -7062,19 +7067,22 @@ public sealed partial class PrototypeGameEngine
                                 ? combat.Hand.Append(selectedId).ToArray()
                                 : combat.DiscardPile.Append(selectedId).ToArray()
                     };
-                    combat = SemanticDrawPileAdapterV111
-                        .ApplyDrawPileRemoval(
+                    var committedDraw =
+                        SemanticDrawPileAdapterV111.ApplyDrawPileRemoval(
                             combat,
                             [selectedId],
                             combat.Mechanics.CardZones
-                                .WithZoneChanges(zoneChanges)) with
+                                .WithZoneChanges(zoneChanges));
+                    combat = committedDraw with
                     {
-                        NativeRng = nativeRunStreams is null
-                            ? combat.NativeRng
-                            : combat.NativeRng! with
-                            {
-                                RunStreams = nativeRunStreams
-                            }
+                        Stochastic = CombatStochasticStateV111.WithNativeRng(
+                            committedDraw.Stochastic,
+                            nativeRunStreams is null
+                                ? committedDraw.NativeRng
+                                : committedDraw.NativeRng! with
+                                {
+                                    RunStreams = nativeRunStreams
+                                })
                     };
                     break;
                 }
@@ -7786,10 +7794,13 @@ public sealed partial class PrototypeGameEngine
                         if (native is not null)
                             combat = combat with
                             {
-                                NativeRng = native with
-                                {
-                                    RunStreams = streams
-                                }
+                                Stochastic =
+                                    CombatStochasticStateV111.WithNativeRng(
+                                        combat.Stochastic,
+                                        native with
+                                        {
+                                            RunStreams = streams
+                                        })
                             };
                         var generated = pool[decision.SelectedIndex];
                         var slots = (PotionInstance?[])player.PotionSlots.Clone();
@@ -10351,7 +10362,8 @@ public sealed partial class PrototypeGameEngine
             ? combat
             : combat with
             {
-                NativeRng = native with { RunStreams = streams }
+                Stochastic = CombatStochasticStateV111.WithNativeRng(
+                    combat.Stochastic, native with { RunStreams = streams })
             };
         return SetCardTemporaryEnergyCost(
             updated, cardInstanceId,
@@ -13784,7 +13796,8 @@ public sealed partial class PrototypeGameEngine
             ? combat
             : combat with
             {
-                NativeRng = native with { RunStreams = streams }
+                Stochastic = CombatStochasticStateV111.WithNativeRng(
+                    combat.Stochastic, native with { RunStreams = streams })
             };
         return (updated, decision.SelectedIndex);
     }
@@ -13868,7 +13881,8 @@ public sealed partial class PrototypeGameEngine
             ? combat
             : combat with
             {
-                NativeRng = native with { RunStreams = streams }
+                Stochastic = CombatStochasticStateV111.WithNativeRng(
+                    combat.Stochastic, native with { RunStreams = streams })
             };
         return (updated, decision.SelectedIndex);
     }
@@ -13949,7 +13963,8 @@ public sealed partial class PrototypeGameEngine
             ? combat
             : combat with
             {
-                NativeRng = native with { RunStreams = streams }
+                Stochastic = CombatStochasticStateV111.WithNativeRng(
+                    combat.Stochastic, native with { RunStreams = streams })
             };
         return (updated, decision.SelectedIndex);
     }
@@ -14010,7 +14025,8 @@ public sealed partial class PrototypeGameEngine
             ? combat
             : combat with
             {
-                NativeRng = native with { RunStreams = streams }
+                Stochastic = CombatStochasticStateV111.WithNativeRng(
+                    combat.Stochastic, native with { RunStreams = streams })
             };
     }
 
@@ -14063,7 +14079,8 @@ public sealed partial class PrototypeGameEngine
             ? combat
             : combat with
             {
-                NativeRng = native with { RunStreams = streams }
+                Stochastic = CombatStochasticStateV111.WithNativeRng(
+                    combat.Stochastic, native with { RunStreams = streams })
             };
         return (updated, decision.SelectedIndex);
     }
@@ -14142,7 +14159,8 @@ public sealed partial class PrototypeGameEngine
             ? combat
             : combat with
             {
-                NativeRng = native with { RunStreams = streams }
+                Stochastic = CombatStochasticStateV111.WithNativeRng(
+                    combat.Stochastic, native with { RunStreams = streams })
             };
         return (updated, decision.SelectedIndex);
     }

@@ -1960,9 +1960,20 @@ public static class SemanticPilotCombatEngineV111
             RouteMapNodeId = actualNodeId
         };
         var baselineCombat = combat.Fork() with { SemanticDeck = null };
+        var nativeFreeBaselineCombat = baselineCombat with
+        {
+            Stochastic = CombatStochasticStateV111.WithNativeRng(
+                baselineCombat.Stochastic, null)
+        };
+        var nativeFreeBaselineFork = baselineCombat.Fork();
+        nativeFreeBaselineFork = nativeFreeBaselineFork with
+        {
+            Stochastic = CombatStochasticStateV111.WithNativeRng(
+                nativeFreeBaselineFork.Stochastic, null)
+        };
         var origin = new ControlledIntentStateV111(
-            baselineCombat.Fork() with { NativeRng = null },
-            baselineCombat with { NativeRng = null },
+            nativeFreeBaselineFork,
+            nativeFreeBaselineCombat,
             nativeCombat.Formation.Fork(), nativeCombat.RunStreams.Fork(),
             combat.Enemies.Length, [], null,
             Mode: "controlled-v111-source-route-origin-v1",
@@ -2030,8 +2041,9 @@ public static class SemanticPilotCombatEngineV111
         {
             semanticCombat = combat with
             {
-                NativeRng = null,
-                SemanticDeck = null
+                Stochastic = CombatStochasticStateV111.WithSemanticDeck(
+                    CombatStochasticStateV111.WithNativeRng(
+                        combat.Stochastic, null), null)
             };
             semanticRun = run with
             {
@@ -2105,8 +2117,10 @@ public static class SemanticPilotCombatEngineV111
             SemanticDrawPileAdapterV111.ApplyCommittedPhysicalMutation(
                 combat with
                 {
-                    NativeRng = new NativeCombatRngV111(
-                        nativeStreams.Fork(), formation.Fork())
+                    Stochastic = CombatStochasticStateV111.WithNativeRng(
+                        combat.Stochastic,
+                        new NativeCombatRngV111(
+                            nativeStreams.Fork(), formation.Fork()))
                 }, combat.DrawPile, exactDeck);
         NativeCombatRngEntryV111.Validate(nativeCombat);
         var nativeRun = run with

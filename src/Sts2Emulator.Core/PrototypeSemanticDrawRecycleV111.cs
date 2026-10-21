@@ -62,7 +62,9 @@ public sealed partial class PrototypeGameEngine
             ApplyPerfectFitShuffleOrder(combat, shuffle.PreHookOutput));
         var advanced = combat with
         {
-            NativeRng = native with { RunStreams = nativeStreams }
+            Stochastic = CombatStochasticStateV111.WithNativeRng(
+                combat.Stochastic,
+                native with { RunStreams = nativeStreams })
         };
         return SemanticDrawPileAdapterV111.CommitNativeRecycle(
             advanced, postHook);

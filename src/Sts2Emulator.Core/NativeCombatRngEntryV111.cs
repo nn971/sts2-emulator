@@ -182,7 +182,12 @@ public static class NativeCombatRngEntryV111
             usedHp.Add(hp);
         }
 
-        var attached = combat with { Enemies = enemies, NativeRng = fresh };
+        var attached = combat with
+        {
+            Enemies = enemies,
+            Stochastic = CombatStochasticStateV111.WithNativeRng(
+                combat.Stochastic, fresh)
+        };
         Validate(attached);
         return new NativeInitialHpAuditV111(
             attached, decisions.ToArray(), chooser.Mode);
@@ -364,7 +369,8 @@ public static class NativeCombatRngEntryV111
         var updated = combat with
         {
             Enemies = updatedEnemies,
-            NativeRng = native
+            Stochastic = CombatStochasticStateV111.WithNativeRng(
+                combat.Stochastic, native)
         };
         Validate(updated);
         return updated;
@@ -486,7 +492,8 @@ public static class NativeCombatRngEntryV111
         var result = combat with
         {
             Enemies = before.Enemies.Append(updatedSpawn).ToArray(),
-            NativeRng = native
+            Stochastic = CombatStochasticStateV111.WithNativeRng(
+                combat.Stochastic, native)
         };
         Validate(result);
         return result;
@@ -528,7 +535,8 @@ public static class NativeCombatRngEntryV111
         {
             Enemies = permutation.Select(index =>
                 combat.Enemies[index].Fork()).ToArray(),
-            NativeRng = native with
+            Stochastic = CombatStochasticStateV111.WithNativeRng(
+                combat.Stochastic, native with
             {
                 Formation = native.Formation with
                 {
@@ -537,7 +545,7 @@ public static class NativeCombatRngEntryV111
                     MonsterContexts = permutation.Select(index =>
                         native.Formation.MonsterContexts[index].Fork()).ToArray()
                 }
-            }
+            })
         };
         Validate(reordered);
         if (reordered.Enemies[1].EnemyId
@@ -643,7 +651,11 @@ public static class NativeCombatRngEntryV111
         {
             Formation = formation with { MonsterContexts = contexts }
         };
-        var advanced = combat with { NativeRng = native };
+        var advanced = combat with
+        {
+            Stochastic = CombatStochasticStateV111.WithNativeRng(
+                combat.Stochastic, native)
+        };
         Validate(advanced);
         return advanced;
     }

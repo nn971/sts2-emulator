@@ -95,7 +95,13 @@ public static class ControlledIntentsV111
         NativeCombatRngEntryV111.Validate(nativePrepared);
         var native = nativePrepared.NativeRng ??
             throw new InvalidOperationException("Intent boundary requires a native-owned combat source.");
-        return BeginPrepared(nativePrepared.Fork() with { NativeRng = null },
+        var combatWithoutNativeRng = nativePrepared.Fork();
+        combatWithoutNativeRng = combatWithoutNativeRng with
+        {
+            Stochastic = CombatStochasticStateV111.WithNativeRng(
+                combatWithoutNativeRng.Stochastic, null)
+        };
+        return BeginPrepared(combatWithoutNativeRng,
             native.Formation, native.RunStreams, null);
     }
 

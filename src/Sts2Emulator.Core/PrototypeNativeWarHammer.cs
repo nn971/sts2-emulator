@@ -56,12 +56,14 @@ public sealed partial class PrototypeGameEngine
                 var combat = state.World?.Combat;
                 if (activeNativeRng is not null && combat is not null)
                 {
-                    combat = combat with
+                    var sourceCombat = combat;
+                    combat = sourceCombat with
                     {
-                        NativeRng = activeNativeRng with
+                        Stochastic = CombatStochasticStateV111.WithNativeRng(
+                            sourceCombat.Stochastic, activeNativeRng with
                         {
                             RunStreams = nativeStreams.Fork()
-                        }
+                        })
                     };
                 }
                 state = state with
