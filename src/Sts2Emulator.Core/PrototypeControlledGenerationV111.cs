@@ -7,7 +7,7 @@ public sealed partial class PrototypeGameEngine
     /// Only these five simple one-at-a-time generation effects support an
     /// explicitly resumable Nature ticket. Other random sites fail closed.
     /// </summary>
-    private static string[]? ControlledGeneratedCardPool(
+    internal static string[]? GeneratedCardModelPool(
         PrototypeQueuedOperation operation) => operation.Kind switch
     {
         PrototypeCombatEffectKind.CreateRandomFreeCharacterCardInHand =>
@@ -69,7 +69,7 @@ public sealed partial class PrototypeGameEngine
     internal static bool ValidateControlledGenerationSupport(
         PrototypeControlledGeneratedCardV111 choice) =>
         choice.Operation.Amount > 0 &&
-        ControlledGeneratedCardPool(choice.Operation) is { } expected &&
+        GeneratedCardModelPool(choice.Operation) is { } expected &&
         expected.Length > 0 &&
         choice.CandidateCardIds.SequenceEqual(expected);
 
@@ -341,7 +341,7 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidOperationException(
                 "Pending combat choice is not a Nature card generation.");
         var candidates = generation.CandidateCardIds;
-        var source = ControlledGeneratedCardPool(generation.Operation);
+        var source = GeneratedCardModelPool(generation.Operation);
         if (source is null || candidates.Length == 0 ||
             !candidates.SequenceEqual(source) ||
             generation.Operation.Amount <= 0)

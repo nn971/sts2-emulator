@@ -5616,7 +5616,7 @@ public sealed partial class PrototypeGameEngine
             if (ControlledChanceGuardV111.Active &&
                 !ControlledChanceGuardV111.EngineOwnedNativeProviderActive &&
                 operation.Amount > 0 &&
-                ControlledGeneratedCardPool(operation) is { } generationPool)
+                GeneratedCardModelPool(operation) is { } generationPool)
             {
                 if (generationPool.Length == 0)
                     throw new NotSupportedException(
@@ -6799,18 +6799,9 @@ public sealed partial class PrototypeGameEngine
                 {
                     // Chaos makes any eligible character card free for
                     // the current turn, independently of its normal cost.
-                    var pool = PrototypeContent.RewardCardPool
-                        .Where(id =>
-                        {
-                            var candidate = PrototypeContent.Card(id);
-                            return candidate.MechanicsImplemented
-                                && candidate.CanBeGeneratedInCombat
-                                && !candidate.MultiplayerOnly
-                                && candidate.Type is PrototypeCardType.Attack
-                                    or PrototypeCardType.Skill
-                                    or PrototypeCardType.Power;
-                        })
-                        .ToArray();
+                    var pool = GeneratedCardModelPool(operation)
+                        ?? throw new InvalidOperationException(
+                            "Free character-card generation has no source pool.");
                     if (operation.Amount > 0 && pool.Length == 0)
                         throw new NotSupportedException(
                             "Chaos has no supported single-player card pool.");
@@ -6834,16 +6825,9 @@ public sealed partial class PrototypeGameEngine
 
                 case PrototypeCombatEffectKind.AddRandomZeroCostCardsToHand:
                 {
-                    var pool = PrototypeContent.RewardCardPool
-                        .Where(id =>
-                        {
-                            var definition = PrototypeContent.Card(id);
-                            return definition.MechanicsImplemented
-                                && definition.CanBeGeneratedInCombat
-                                && !definition.MultiplayerOnly
-                                && definition.Cost.Kind == PrototypeCardCostKind.Fixed
-                                && definition.Cost.Amount == 0;
-                        }).ToArray();
+                    var pool = GeneratedCardModelPool(operation)
+                        ?? throw new InvalidOperationException(
+                            "Zero-cost card generation has no source pool.");
                     if (pool.Length == 0 && operation.Amount > 0)
                     {
                         throw new NotSupportedException(
@@ -7637,19 +7621,9 @@ public sealed partial class PrototypeGameEngine
                         _ => throw new ArgumentOutOfRangeException()
                     };
                     var skills = cardType == PrototypeCardType.Skill;
-                    var sourcePool = cardType == PrototypeCardType.Attack
-                        ? PrototypeContent.RewardCardPool
-                        : PrototypeContent.NativeSilentCardPool;
-                    var pool = sourcePool.Where(id =>
-                    {
-                        var definition = PrototypeContent.Card(id);
-                        return definition.Type == cardType
-                            && definition.MechanicsImplemented
-                            && definition.CanBeGeneratedInCombat
-                            && definition.Rarity is PrototypeCardRarity.Common
-                                or PrototypeCardRarity.Uncommon or PrototypeCardRarity.Rare
-                            && !definition.MultiplayerOnly;
-                    }).ToArray();
+                    var pool = GeneratedCardModelPool(operation)
+                        ?? throw new InvalidOperationException(
+                            "Typed character-card generation has no source pool.");
                     if (pool.Length == 0 && operation.Amount > 0)
                     {
                         throw new NotSupportedException(
