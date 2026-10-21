@@ -2205,11 +2205,8 @@ public static class SemanticPilotCombatEngineV111
             throw new InvalidOperationException("Nature decision or combat terminal is pending.");
         if (current.UsesNativePolicyBaseline)
             return StepNativePolicyBaseline(current, actionId);
-        var environment = new PrototypeAiEnvironment();
-        var frame = environment.Observe(current.Run);
-        var action = frame.LegalActions.SingleOrDefault(a =>
-            a.ActionId == actionId) ?? throw new InvalidOperationException(
-                "Illegal semantic player action.");
+        var (environment, action) = ResolveLegalPlayerAction(
+            current.Run, actionId, "Illegal semantic player action.");
         var source = current.Run.Fork();
         SemanticEndTurnV111? endTurn = null;
         RunState result;
@@ -2657,11 +2654,9 @@ public static class SemanticPilotCombatEngineV111
     private static SemanticPilotCombatV111 StepNativePolicyBaseline(
         SemanticPilotCombatV111 current, string actionId)
     {
-        var environment = new PrototypeAiEnvironment();
-        var frame = environment.Observe(current.Run);
-        if (frame.LegalActions.Count(a => a.ActionId == actionId) != 1)
-            throw new InvalidOperationException(
-                "Illegal or ambiguous native-policy player action.");
+        var (environment, _) = ResolveLegalPlayerAction(
+            current.Run, actionId,
+            "Illegal or ambiguous native-policy player action.");
         RunState result;
         using var boundaries = RandomBoundaryJournalV111.Begin();
         using (ControlledChanceGuardV111.Enter())
@@ -2708,6 +2703,22 @@ public static class SemanticPilotCombatEngineV111
         };
         Validate(next);
         return next;
+    }
+
+    private static (PrototypeAiEnvironment Environment,
+        PrototypeAiAction Action) ResolveLegalPlayerAction(
+            RunState run, string actionId, string invalidActionMessage)
+    {
+        ArgumentNullException.ThrowIfNull(run);
+        ArgumentException.ThrowIfNullOrWhiteSpace(actionId);
+        var environment = new PrototypeAiEnvironment();
+        var matches = environment.Observe(run).LegalActions
+            .Where(action => action.ActionId == actionId)
+            .Take(2)
+            .ToArray();
+        if (matches.Length != 1)
+            throw new InvalidOperationException(invalidActionMessage);
+        return (environment, matches[0]);
     }
 
     private static SemanticRewardAuditV111 RecordRewardAudit(

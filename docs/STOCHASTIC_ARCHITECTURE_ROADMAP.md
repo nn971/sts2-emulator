@@ -8,6 +8,8 @@
 
 **S3 named RNG bundle access increment (2026-10-22):** `RngBundle` now resolves streams by stable ID and replaces them only when the replacement keeps that ID. Prototype and Native RNG advancement plus the stream-reset and speculative-replacement paths use named access instead of retaining array positions. The serialized stream arrays and RNG behavior remain unchanged. Static source review and `git diff --check` only; no tests or builds were run.
 
+**S4 semantic/Native-policy action-boundary increment (2026-10-22):** The semantic pilot and Native-policy baseline now share one helper that resolves exactly one action ID from the current fair player action menu. Each route retains its provider-specific action execution, stochastic trace, and result-boundary checks, while both receive the same validated action menu boundary. Static source review and `git diff --check` only; no tests or builds were run.
+
 **S3 named RNG result publication increment (2026-10-22):** Native event-context commits, configured event offer audits, combat formation state, map audit snapshots, and the private energy-cost provider now read their resulting stream by its owner ID from `RngBundle`. Runtime bundle consumers no longer publish a stream by assuming it occupies slot zero; serialized stream arrays remain unchanged. Static source review and `git diff --check` only; no tests or builds were run.
 
 **S3 named speculative RNG copy-back increment (2026-10-22):** Potion model generation now copies speculative stream advances back into the original `RngBundle` by stream ID, not by parallel array position. The same streams advance with unchanged provider calls and cursor values. Static source review and `git diff --check` only; no tests or builds were run.
