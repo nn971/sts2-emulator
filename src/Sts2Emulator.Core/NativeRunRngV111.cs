@@ -36,24 +36,28 @@ public static class NativeRunRngV111
     /// No RNG advances on validation.
     /// </summary>
     public static void Validate(RunState state)
+        => Validate(state, state?.Stochastic.NativeRunRng);
+
+    internal static void Validate(RunState state, RngBundle? runRng)
     {
         ArgumentNullException.ThrowIfNull(state);
-        if (state.NativeRunRng is null)
+        var combat = state.World?.Combat;
+        var active = combat?.Stochastic.NativeRng;
+        if (runRng is null)
         {
-            if (state.World?.Combat?.NativeRng is not null)
+            if (active is not null)
                 throw new InvalidOperationException(
                     "Native combat RNG requires persistent run RNG ownership.");
             return;
         }
 
-        ValidateBundle(state.NativeRunRng);
-        var active = state.World?.Combat?.NativeRng;
+        ValidateBundle(runRng);
         if (active is null)
             return;
-        NativeCombatRngEntryV111.Validate(state.World!.Combat!);
+        NativeCombatRngEntryV111.Validate(combat!, active);
         foreach (var stream in active.RunStreams.Streams)
         {
-            var runStream = state.NativeRunRng.GetStream(stream.StreamId);
+            var runStream = runRng.GetStream(stream.StreamId);
             if (NativeRngV111.ToSnapshot(stream)
                 != NativeRngV111.ToSnapshot(runStream))
                 throw new InvalidOperationException(

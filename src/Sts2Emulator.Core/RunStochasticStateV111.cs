@@ -175,7 +175,7 @@ public sealed record RunStochasticStateV111
             foreach (var trace in controlledRunActionHistory)
                 trace.Validate();
         }
-        NativeRunRngV111.Validate(owner);
+        NativeRunRngV111.Validate(owner, NativeRunRng);
         ReferenceNature?.Validate();
         if (ReferenceNatureRunInitializationPending)
         {
