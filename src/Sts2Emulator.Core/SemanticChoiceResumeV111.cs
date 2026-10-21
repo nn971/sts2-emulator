@@ -58,10 +58,16 @@ internal static class SemanticChoiceResumeV111
 
         RunState advanced;
         int remaining;
-        using (ControlledChanceGuardV111.Enter())
+        if (fromHandDraw && run.World?.Combat is { } automaticCombat &&
+            PrototypeGameEngine.IsSemanticAutomaticHandDraw(
+                automaticCombat))
             (advanced, remaining) = PrototypeGameEngine
-                .BeginSemanticCombatDraw(
-                    run, remainingCount, fromHandDraw);
+                .ResumeSemanticAutomaticHandDraw(run, remainingCount);
+        else
+            using (ControlledChanceGuardV111.Enter())
+                (advanced, remaining) = PrototypeGameEngine
+                    .BeginSemanticCombatDraw(
+                        run, remainingCount, fromHandDraw);
         SemanticDrawChoiceV111.ValidateRecordedChoice(
             advanced, ownedDecision.Event, ownedDecision.SelectedIndex);
         return (advanced, remaining, ownedDecision.Event.SiteId);
