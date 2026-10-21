@@ -342,12 +342,10 @@ public sealed record ReferenceNatureGloryReflectionsSessionV111(
 
     private static ulong GetLegacyEventCallCount(RunState run)
     {
-        var streams = run.Rng.Streams.Where(stream =>
-            stream.StreamId == "event").ToArray();
-        if (streams.Length != 1)
+        if (!run.Rng.TryGetStream("event", out var stream))
             throw new InvalidDataException(
                 "Reflections fallback requires one legacy event stream.");
-        return streams[0].CallCount ?? 0;
+        return stream.CallCount ?? 0;
     }
 
     public static string Save(

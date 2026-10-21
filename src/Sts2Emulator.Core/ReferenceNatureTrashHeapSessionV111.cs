@@ -96,12 +96,10 @@ internal static class TrashHeapChoicePlanBuilderV111
 
     private static int GetLegacyEventOrdinal(RunState origin)
     {
-        var streams = origin.Rng.Streams.Where(stream =>
-            stream.StreamId == "event").ToArray();
-        if (streams.Length != 1)
+        if (!origin.Rng.TryGetStream("event", out var stream))
             throw new InvalidDataException(
                 "Trash Heap fallback requires one legacy event stream.");
-        var ordinal = streams[0].CallCount ?? 0;
+        var ordinal = stream.CallCount ?? 0;
         if (ordinal > int.MaxValue)
             throw new NotSupportedException(
                 "Trash Heap legacy event ordinal exceeds the typed request range.");

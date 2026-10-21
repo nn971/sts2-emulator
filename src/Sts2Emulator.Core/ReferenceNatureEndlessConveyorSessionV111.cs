@@ -524,12 +524,10 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
     private static int GetLegacyStreamOrdinal(
         RunState origin, string streamId)
     {
-        var streams = origin.Rng.Streams.Where(stream =>
-            stream.StreamId == streamId).ToArray();
-        if (streams.Length != 1)
+        if (!origin.Rng.TryGetStream(streamId, out var stream))
             throw new InvalidDataException(
                 $"Endless Conveyor potion request requires one '{streamId}' legacy stream.");
-        var ordinal = streams[0].CallCount ?? 0;
+        var ordinal = stream.CallCount ?? 0;
         if (ordinal > int.MaxValue)
             throw new NotSupportedException(
                 "Endless Conveyor potion request ordinal exceeds the typed request range.");

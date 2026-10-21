@@ -885,12 +885,10 @@ internal static class NativeEventShufflePlanBuilderV111
 
     private static int GetLegacyEventOrdinal(RunState origin)
     {
-        var streams = origin.Rng.Streams.Where(stream =>
-            stream.StreamId == "event").ToArray();
-        if (streams.Length != 1)
+        if (!origin.Rng.TryGetStream("event", out var stream))
             throw new InvalidDataException(
                 "Native event shuffle fallback requires one legacy event stream.");
-        var ordinal = streams[0].CallCount ?? 0;
+        var ordinal = stream.CallCount ?? 0;
         if (ordinal > int.MaxValue)
             throw new NotSupportedException(
                 "Native event shuffle legacy ordinal exceeds the typed request range.");
@@ -899,12 +897,10 @@ internal static class NativeEventShufflePlanBuilderV111
 
     internal static int GetLegacyRewardOrdinal(RunState origin)
     {
-        var streams = origin.Rng.Streams.Where(stream =>
-            stream.StreamId == "reward").ToArray();
-        if (streams.Length != 1)
+        if (!origin.Rng.TryGetStream("reward", out var stream))
             throw new InvalidDataException(
                 "Native-regional Repy replay requires one legacy reward stream.");
-        var ordinal = streams[0].CallCount ?? 0;
+        var ordinal = stream.CallCount ?? 0;
         if (ordinal > int.MaxValue)
             throw new NotSupportedException(
                 "Native-regional Repy reward ordinal exceeds the typed request range.");
@@ -1808,12 +1804,10 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
 
     private static ulong GetLegacyEventCallCount(RunState run)
     {
-        var streams = run.Rng.Streams.Where(stream =>
-            stream.StreamId == "event").ToArray();
-        if (streams.Length != 1)
+        if (!run.Rng.TryGetStream("event", out var stream))
             throw new InvalidDataException(
                 "Native event shuffle replay requires one legacy event stream.");
-        return streams[0].CallCount ?? 0;
+        return stream.CallCount ?? 0;
     }
 
     private static string? SelectiveReplaySite(
