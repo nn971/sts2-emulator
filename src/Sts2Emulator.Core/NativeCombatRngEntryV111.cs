@@ -130,7 +130,7 @@ public static class NativeCombatRngEntryV111
         ArgumentNullException.ThrowIfNull(combat);
         ArgumentNullException.ThrowIfNull(formation);
         ArgumentNullException.ThrowIfNull(nativeRunStreams);
-        if (combat.NativeRng is not null)
+        if (combat.Stochastic.NativeRng is not null)
             throw new InvalidOperationException(
                 "Native RNG ownership is already attached to this combat.");
 
@@ -321,7 +321,7 @@ public static class NativeCombatRngEntryV111
     {
         ArgumentNullException.ThrowIfNull(combat);
         ArgumentNullException.ThrowIfNull(currentEgg);
-        var native = combat.NativeRng?.Fork() ??
+        var native = combat.Stochastic.NativeRng?.Fork() ??
             throw new InvalidOperationException(
                 "Native Tough Egg hatching requires native combat ownership.");
         if (native.Formation.NativeEncounterEntry != "OvicopterNormal"
@@ -404,7 +404,8 @@ public static class NativeCombatRngEntryV111
         ArgumentNullException.ThrowIfNull(combat);
         ArgumentNullException.ThrowIfNull(currentEnemies);
         ArgumentNullException.ThrowIfNull(spawned);
-        if (combat.NativeRng is null)
+        var nativeOwner = combat.Stochastic.NativeRng;
+        if (nativeOwner is null)
             throw new InvalidOperationException(
                 "Native creature creation requires native combat ownership.");
 
@@ -413,7 +414,7 @@ public static class NativeCombatRngEntryV111
             Enemies = currentEnemies.Select(enemy => enemy.Fork()).ToArray()
         };
         Validate(before);
-        var native = combat.NativeRng.Fork();
+        var native = nativeOwner.Fork();
         var formation = native.Formation;
         if (formation.RunSeed is null
             || formation.NativeActIndex is null
@@ -517,8 +518,9 @@ public static class NativeCombatRngEntryV111
     public static CombatState SortGremlinMercDeathPair(CombatState combat)
     {
         ArgumentNullException.ThrowIfNull(combat);
-        if (combat.NativeRng?.Formation.NativeEncounterEntry
-            != "GremlinMercNormal")
+        if (combat.Stochastic.NativeRng is not { } currentNative ||
+            currentNative.Formation.NativeEncounterEntry
+                != "GremlinMercNormal")
             throw new NotSupportedException(
                 "Only native GremlinMercNormal's audited death pair can reorder.");
         Validate(combat);
@@ -533,7 +535,7 @@ public static class NativeCombatRngEntryV111
             || combat.Enemies[2].EnemyId != "proto.enemy.sneaky_gremlin")
             throw new InvalidOperationException(
                 "Gremlin Merc pair must be created Fat then Sneaky.");
-        var native = combat.NativeRng.Fork();
+        var native = currentNative.Fork();
         var permutation = Enumerable.Range(0, combat.Enemies.Length)
             .OrderBy(index => combat.Enemies[index].FormationPosition)
             .ToArray();
@@ -558,8 +560,9 @@ public static class NativeCombatRngEntryV111
                 != "proto.enemy.sneaky_gremlin"
             || reordered.Enemies[2].EnemyId
                 != "proto.enemy.fat_gremlin"
-            || reordered.NativeRng!.Formation.MonsterContexts[1].CombatId
-                != combat.NativeRng.Formation.MonsterContexts[2].CombatId)
+            || reordered.Stochastic.NativeRng!.Formation.MonsterContexts[1]
+                .CombatId
+                != currentNative.Formation.MonsterContexts[2].CombatId)
             throw new InvalidOperationException(
                 "Gremlin Merc native addition order was not preserved.");
         return reordered;
@@ -573,7 +576,7 @@ public static class NativeCombatRngEntryV111
     public static CombatState CommitIntents(CombatState combat)
     {
         ArgumentNullException.ThrowIfNull(combat);
-        if (combat.NativeRng is null)
+        if (combat.Stochastic.NativeRng is null)
             throw new InvalidOperationException(
                 "Only a native-RNG combat can use this isolated intent API.");
         return PrototypeGameEngine.CommitEnemyIntents(
@@ -583,7 +586,7 @@ public static class NativeCombatRngEntryV111
     public static NativeIntentAuditV111 CommitIntentsWithAudit(CombatState combat)
     {
         ArgumentNullException.ThrowIfNull(combat);
-        if (combat.NativeRng is null)
+        if (combat.Stochastic.NativeRng is null)
             throw new InvalidOperationException("Native intent audit requires attached native RNG.");
         var result = PrototypeGameEngine.CommitEnemyIntentsWithAudit(
             combat, RngBundle.Empty, CommittedIntentSiteId);
@@ -625,7 +628,7 @@ public static class NativeCombatRngEntryV111
         if (ordinal < 0)
             throw new ArgumentOutOfRangeException(nameof(ordinal));
         Validate(combat);
-        var native = combat.NativeRng?.Fork() ??
+        var native = combat.Stochastic.NativeRng?.Fork() ??
             throw new InvalidOperationException(
                 "Combat has no native RNG owner.");
         var index = Array.FindIndex(native.Formation.MonsterContexts,
