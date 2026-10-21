@@ -636,12 +636,14 @@ JSONL accepts the matching
 `<side>_reference_nature_{merchant,treasure,combat_reward,native_shovel,native_event_relic,native_event_gold,infested_automaton,glory_reflections,trial,trash_heap,tablet_of_truth,native_event_shuffle,endless_conveyor,punch_off_fight,punch_off_reward}_handle`
 inputs. This adds replay-capture coverage without changing the action or
 provider owners.
-`FromReferenceNatureRunActionSession` adds a completed unconfigured prototype
-`continue_act` path: it replays and validates the session, checks that the
-appended controlled action trace covers the complete saved Chance Law
-transcript, and materializes those typed decisions as the interval boundary
-trace. It rejects other run-action routes and sessions whose specialized
-continuations do not publish a complete trace. JSONL accepts
+`FromReferenceNatureRunActionSession` accepts a completed ReferenceNature
+run action when the appended controlled action trace identifies the exact
+saved action and covers every saved Nature decision. It replays and validates
+the session, preserves the prior action-history prefix, and materializes the
+trace's typed decisions as the interval boundary trace. Completed deterministic
+actions with no appended trace and an empty Nature transcript remain valid;
+specialized continuations whose trace omits part of the prefix are rejected.
+JSONL accepts
 `<side>_reference_nature_run_action_handle` for this path.
 The JSONL `provider_replay_compare` operation constructs a current capture for
 each side either from a completed scripted-run or scripted-action handle, or

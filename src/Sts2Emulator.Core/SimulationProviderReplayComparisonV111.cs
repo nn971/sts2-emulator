@@ -242,8 +242,8 @@ public sealed record SimulationProviderReplayCaptureV111(
     }
 
     /// <summary>
-    /// Builds a capture from a completed unconfigured prototype act transition
-    /// whose action history contains the complete controlled map prefix.
+    /// Builds a capture from a completed ReferenceNature run action when its
+    /// controlled action trace contains the complete typed provider prefix.
     /// </summary>
     public static SimulationProviderReplayCaptureV111
         FromReferenceNatureRunActionSession(
@@ -255,15 +255,16 @@ public sealed record SimulationProviderReplayCaptureV111(
         if (!session.Complete || session.Run is null)
             throw new InvalidOperationException(
                 "Provider replay capture requires a completed ReferenceNature run action.");
-        if (session.Action.Kind != "continue_act" ||
-            session.Origin.Phase != RunPhase.ActTransition ||
-            session.Origin.Configuration is not null ||
-            session.Origin.NativeRunRng is not null)
-            throw new NotSupportedException(
-                "ReferenceNature run-action capture currently covers only unconfigured prototype act transitions.");
-
         var originHistory = session.Origin.ControlledRunActionHistory ?? [];
         var resultHistory = session.Run.ControlledRunActionHistory ?? [];
+        if (resultHistory.Length < originHistory.Length)
+            throw new InvalidDataException(
+                "ReferenceNature run-action history lost its origin prefix.");
+        for (var index = 0; index < originHistory.Length; index++)
+            if (CanonicalJson.Sha256(originHistory[index]) !=
+                CanonicalJson.Sha256(resultHistory[index]))
+                throw new InvalidDataException(
+                    "ReferenceNature run-action history changed before the captured action.");
         if (resultHistory.Length == originHistory.Length &&
             session.DecisionTranscript.Length == 0)
             return FromScriptedDecisions(
@@ -273,21 +274,21 @@ public sealed record SimulationProviderReplayCaptureV111(
         if (resultHistory.Length != originHistory.Length + 1)
             throw new NotSupportedException(
                 "ReferenceNature action trace does not isolate one committed run action.");
-        for (var index = 0; index < originHistory.Length; index++)
-            if (CanonicalJson.Sha256(originHistory[index]) !=
-                CanonicalJson.Sha256(resultHistory[index]))
-                throw new InvalidDataException(
-                    "ReferenceNature run-action history changed before the captured action.");
 
         var trace = resultHistory[^1];
         trace.Validate();
-        if (trace.ActionId != "continue_act" ||
-            trace.MapNodeId is not null ||
-            trace.ActionFingerprint is not null ||
-            (trace.Decisions.Length != session.DecisionTranscript.Length &&
-                trace.TypedDecisions is null))
+        var mapNodeId = session.Action.Kind == "choose_map_node"
+            ? session.Action.ReadPayload<ChooseMapNodePayload>().NodeId
+            : null;
+        var actionFingerprint = ControlledRunActionEngineV111
+                .IsShopPurchaseAction(session.Origin, session.Action)
+            ? PrototypeAiEnvironment.StableActionId(session.Action)
+            : null;
+        if (trace.ActionId != session.Action.Kind ||
+            trace.MapNodeId != mapNodeId ||
+            trace.ActionFingerprint != actionFingerprint)
             throw new NotSupportedException(
-                "ReferenceNature run-action trace does not cover its decision transcript.");
+                "ReferenceNature run-action trace does not identify its saved action.");
 
         var decisions = trace.TypedDecisions ?? trace.Decisions
             .Select((decision, index) => ControlledStochasticDecisionV111
@@ -295,7 +296,7 @@ public sealed record SimulationProviderReplayCaptureV111(
             .ToArray();
         if (decisions.Length != session.DecisionTranscript.Length)
             throw new NotSupportedException(
-                "ReferenceNature run-action trace omits a sampled provider request.");
+                "ReferenceNature run-action trace does not cover every sampled provider request.");
         return FromScriptedDecisions(
             session.Origin, [session.Action], decisions, session.Run,
             SimulationProviderReplayCaptureProvenanceV111
