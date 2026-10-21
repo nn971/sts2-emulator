@@ -14,6 +14,8 @@ public sealed record RunStochasticStateV111
     private ControlledRunActionTraceV111[]? _controlledRunActionHistory;
     private ReferenceNatureMapGenerationAuditV111[]?
         _referenceNatureMapGenerationHistory;
+    private ReferenceNatureAncientOfferSessionSnapshotV111[]?
+        _referenceNatureAncientOfferHistory;
 
     [JsonConstructor]
     public RunStochasticStateV111(
@@ -32,7 +34,9 @@ public sealed record RunStochasticStateV111
             ReferenceNatureRunInitializationTranscript = null,
         bool ReferenceNatureRunInitializationPending = false,
         ReferenceNatureMapGenerationAuditV111[]?
-            ReferenceNatureMapGenerationHistory = null)
+            ReferenceNatureMapGenerationHistory = null,
+        ReferenceNatureAncientOfferSessionSnapshotV111[]?
+            ReferenceNatureAncientOfferHistory = null)
     {
         this.PrototypeRng = PrototypeRng;
         this.NativeRunRng = NativeRunRng;
@@ -52,6 +56,8 @@ public sealed record RunStochasticStateV111
         _referenceNatureMapGenerationHistory = Clone(
             ReferenceNatureMapGenerationHistory,
             audit => audit.Fork());
+        _referenceNatureAncientOfferHistory = Clone(
+            ReferenceNatureAncientOfferHistory, audit => audit.Fork());
     }
 
     public RngBundle PrototypeRng { get; init; }
@@ -88,6 +94,18 @@ public sealed record RunStochasticStateV111
         init => _referenceNatureMapGenerationHistory = Clone(value,
             audit => audit.Fork());
     }
+    /// <summary>
+    /// Completed Nature offer sessions from configured experimental act
+    /// transitions, retained so run snapshots can replay their decisions.
+    /// </summary>
+    public ReferenceNatureAncientOfferSessionSnapshotV111[]?
+        ReferenceNatureAncientOfferHistory
+    {
+        get => Clone(_referenceNatureAncientOfferHistory,
+            audit => audit.Fork());
+        init => _referenceNatureAncientOfferHistory = Clone(value,
+            audit => audit.Fork());
+    }
 
     public RunStochasticStateV111 Fork() => this with
     {
@@ -105,7 +123,9 @@ public sealed record RunStochasticStateV111
             ReferenceNatureRunInitializationTranscript?.Fork(),
         ReferenceNatureMapGenerationHistory = Clone(
             _referenceNatureMapGenerationHistory,
-            audit => audit.Fork())
+            audit => audit.Fork()),
+        ReferenceNatureAncientOfferHistory = Clone(
+            _referenceNatureAncientOfferHistory, audit => audit.Fork())
     };
 
     public void Deconstruct(
@@ -250,6 +270,77 @@ public sealed record RunStochasticStateV111
                 !currentNature.SameCursor(finalMapCursor))
                 throw new InvalidDataException(
                     "ReferenceNature cursor precedes or conflicts with its later-act map audit history.");
+        }
+        if (ReferenceNatureAncientOfferHistory is { Length: > 0 }
+            ancientOfferHistory)
+        {
+            var mapHistory = ReferenceNatureMapGenerationHistory;
+            if (ancientOfferHistory.Length > 2 || mapHistory is not
+                    { Length: > 0 } ||
+                owner.Configuration is not
+                    { UsesExperimentalSilentThreeActRoute: true,
+                      CharacterId: "silent" } ||
+                owner.World is not { } currentWorld ||
+                ReferenceNature is not { } currentNature)
+                throw new InvalidDataException(
+                    "Ancient-offer audits require a configured experimental run with map audits and a ReferenceNature cursor.");
+            var previousAct = 1;
+            foreach (var audit in ancientOfferHistory)
+            {
+                if (audit is null)
+                    throw new InvalidDataException(
+                        "Ancient-offer audit history contains a null entry.");
+                var session = ReferenceNatureAncientOfferSessionV111.Restore(
+                    audit);
+                var origin = session.Origin;
+                var originWorld = origin.World;
+                var act = originWorld?.Act ?? 0;
+                var assignedAncientId = originWorld?.LaterActEncounterBag?
+                    .AssignedAncientId;
+                var mappedSiteId = ReferenceNatureAncientOfferSessionV111
+                    .SiteForAssignedAncientId(assignedAncientId);
+                var mapAudit = mapHistory.SingleOrDefault(
+                    candidate => candidate.Act == act);
+                if (!session.Complete || act is < 2 or > 3 ||
+                    act <= previousAct || act > currentWorld.Act ||
+                    origin.RunSeed != owner.RunSeed ||
+                    origin.Ascension != owner.Ascension ||
+                    CanonicalJson.Sha256(origin.Configuration) !=
+                        CanonicalJson.Sha256(owner.Configuration) ||
+                    mappedSiteId != session.SiteId ||
+                    originWorld?.Event is not null ||
+                    originWorld?.Map.CurrentNodeId is not null ||
+                    origin.Phase != RunPhase.MapChoice || mapAudit is null ||
+                    CanonicalJson.Sha256(originWorld!.Map) !=
+                        mapAudit.MapFingerprint ||
+                    !session.InitialNatureState.SameCursor(
+                        mapAudit.NatureState) ||
+                    !session.InitialNatureState.SameCursor(
+                        origin.ReferenceNatureState) ||
+                    !session.NatureState.SameCursor(
+                        session.Run.ReferenceNatureState) ||
+                    session.Run.World?.Event?.EventId != assignedAncientId)
+                    throw new InvalidDataException(
+                        "Ancient-offer audit differs from its configured map boundary or Nature cursor.");
+                var nextMapAudit = mapHistory.FirstOrDefault(
+                    candidate => candidate.Act > act);
+                if (nextMapAudit is not null &&
+                    (nextMapAudit.InitialNatureState.SampleCount <
+                        session.NatureState.SampleCount ||
+                     nextMapAudit.InitialNatureState.SampleCount ==
+                        session.NatureState.SampleCount &&
+                     !nextMapAudit.InitialNatureState.SameCursor(
+                         session.NatureState)))
+                    throw new InvalidDataException(
+                        "Ancient-offer audits do not precede the next act's map cursor.");
+                if (currentNature.SampleCount < session.NatureState.SampleCount ||
+                    currentNature.SampleCount ==
+                        session.NatureState.SampleCount &&
+                    !currentNature.SameCursor(session.NatureState))
+                    throw new InvalidDataException(
+                        "ReferenceNature cursor precedes or conflicts with its Ancient-offer audit history.");
+                previousAct = act;
+            }
         }
         if (SemanticRewardAudit is { } reward &&
             (owner.Phase != RunPhase.Reward ||
@@ -471,6 +562,16 @@ public sealed record RunStochasticStateV111
         current with
         {
             ReferenceNatureMapGenerationHistory = Clone(history,
+                audit => audit.Fork())
+        };
+
+    internal static RunStochasticStateV111
+        WithReferenceNatureAncientOfferHistory(
+            RunStochasticStateV111 current,
+            ReferenceNatureAncientOfferSessionSnapshotV111[]? history) =>
+        current with
+        {
+            ReferenceNatureAncientOfferHistory = Clone(history,
                 audit => audit.Fork())
         };
 

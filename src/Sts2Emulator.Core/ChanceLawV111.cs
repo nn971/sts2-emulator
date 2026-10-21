@@ -7020,7 +7020,9 @@ public sealed record ReferenceNatureRunActionSessionV111(
                 .CompleteActTransitionStep(Origin, nextAncientOffer.Run);
             next = next.CompleteExperimentalActTransition(
                 completedStep, mapGeneration,
-                nextAncientOffer.NatureState);
+                nextAncientOffer.NatureState,
+                ReferenceNatureAncientOfferSessionV111.SaveSnapshot(
+                    nextAncientOffer));
         }
         next.Validate();
         return next;
@@ -7067,17 +7069,12 @@ public sealed record ReferenceNatureRunActionSessionV111(
         CompleteExperimentalActTransition(
             RunState continued,
             ReferenceNatureMapGenerationSessionV111 mapGeneration,
-            ReferenceNatureStateV111 finalNatureState)
+            ReferenceNatureStateV111 finalNatureState,
+            ReferenceNatureAncientOfferSessionSnapshotV111?
+                ancientOfferAudit = null)
     {
-        var mapHistory = continued.ReferenceNatureMapGenerationHistory
-            ?? Array.Empty<ReferenceNatureMapGenerationAuditV111>();
-        continued = continued with
-        {
-            ReferenceNatureMapGenerationHistory = mapHistory.Append(
-                mapGeneration.ToAudit()).ToArray()
-        };
-        continued = ReferenceNatureRunCursorV111.Commit(
-            continued, finalNatureState);
+        continued = CommitExperimentalActTransitionState(
+            continued, mapGeneration, finalNatureState, ancientOfferAudit);
         return this with
         {
             Run = continued,
@@ -7087,27 +7084,34 @@ public sealed record ReferenceNatureRunActionSessionV111(
         };
     }
 
+    private static RunState CommitExperimentalActTransitionState(
+        RunState continued,
+        ReferenceNatureMapGenerationSessionV111 mapGeneration,
+        ReferenceNatureStateV111 finalNatureState,
+        ReferenceNatureAncientOfferSessionSnapshotV111?
+            ancientOfferAudit)
+    {
+        var mapHistory = continued.ReferenceNatureMapGenerationHistory
+            ?? Array.Empty<ReferenceNatureMapGenerationAuditV111>();
+        var ancientOfferHistory = continued.ReferenceNatureAncientOfferHistory
+            ?? Array.Empty<ReferenceNatureAncientOfferSessionSnapshotV111>();
+        continued = continued with
+        {
+            ReferenceNatureMapGenerationHistory = mapHistory.Append(
+                mapGeneration.ToAudit()).ToArray(),
+            ReferenceNatureAncientOfferHistory = ancientOfferAudit is null
+                ? continued.ReferenceNatureAncientOfferHistory
+                : ancientOfferHistory.Append(ancientOfferAudit.Fork()).ToArray()
+        };
+        return ReferenceNatureRunCursorV111.Commit(
+            continued, finalNatureState);
+    }
+
     private static string? AssignedAncientOfferSite(RunState state)
     {
         var ancientId = state.World?.LaterActEncounterBag?.AssignedAncientId;
-        return ancientId switch
-        {
-            null => null,
-            NativeOrobasEventV111.EventId =>
-                NativeOrobasEventV111.OfferSiteId,
-            NativePaelRewardsV111.PaelId => NativePaelRewardsV111.OfferSiteId,
-            NativeAncientRewardsV111.TezcataraId =>
-                NativeAncientRewardsV111.TezcataraOfferSiteId,
-            NativeDarvEventV111.EventId =>
-                NativeDarvEventV111.OfferVariantSiteId,
-            NativeNonupeipeEventV111.EventId =>
-                NativeNonupeipeEventV111.ShuffleSiteId,
-            NativeTanxEventV111.EventId => NativeTanxEventV111.ShuffleSiteId,
-            NativeVakuuEventV111.EventId =>
-                NativeVakuuEventV111.ShuffleSiteId,
-            _ => throw new NotSupportedException(
-                $"Assigned Ancient '{ancientId}' has no resumable offer session.")
-        };
+        return ReferenceNatureAncientOfferSessionV111
+            .SiteForAssignedAncientId(ancientId);
     }
 
     private ReferenceNatureRunActionSessionV111
@@ -7573,6 +7577,8 @@ public sealed record ReferenceNatureRunActionSessionV111(
             var siteId = AssignedAncientOfferSite(transitionState);
             RunState transitioned;
             var finalNatureState = mapGeneration.NatureState;
+            ReferenceNatureAncientOfferSessionSnapshotV111?
+                ancientOfferAudit = null;
             if (siteId is null)
             {
                 if (transcriptIndex != DecisionTranscript.Length)
@@ -7599,6 +7605,8 @@ public sealed record ReferenceNatureRunActionSessionV111(
                 }
                 transitioned = offer.Run;
                 finalNatureState = offer.NatureState;
+                ancientOfferAudit =
+                    ReferenceNatureAncientOfferSessionV111.SaveSnapshot(offer);
             }
             if (transcriptIndex != DecisionTranscript.Length ||
                 !finalNatureState.SameCursor(NatureState))
@@ -7606,15 +7614,8 @@ public sealed record ReferenceNatureRunActionSessionV111(
                     "Completed experimental act-transition transcript is incomplete.");
             var expectedRun = engine.CompleteActTransitionStep(
                 Origin, transitioned);
-            var mapHistory = expectedRun.ReferenceNatureMapGenerationHistory
-                ?? Array.Empty<ReferenceNatureMapGenerationAuditV111>();
-            expectedRun = expectedRun with
-            {
-                ReferenceNatureMapGenerationHistory = mapHistory.Append(
-                    mapGeneration.ToAudit()).ToArray()
-            };
-            expectedRun = ReferenceNatureRunCursorV111.Commit(
-                expectedRun, NatureState);
+            expectedRun = CommitExperimentalActTransitionState(
+                expectedRun, mapGeneration, NatureState, ancientOfferAudit);
             if (CanonicalJson.Sha256(expectedRun) !=
                 CanonicalJson.Sha256(Run))
                 throw new InvalidDataException(
@@ -7864,6 +7865,14 @@ public sealed record ReferenceNatureAncientOfferSessionSnapshotV111(
         init => _decisionTranscript = Clone(value);
     }
 
+    public ReferenceNatureAncientOfferSessionSnapshotV111 Fork() => this with
+    {
+        InitialNatureState = InitialNatureState.Fork(),
+        NatureState = NatureState.Fork(),
+        DecisionTranscript = (ReferenceNatureDecisionV111[])
+            DecisionTranscript.Clone()
+    };
+
     private static ReferenceNatureDecisionV111[]? Clone(
         ReferenceNatureDecisionV111[]? transcript) => transcript is null
         ? null
@@ -8048,17 +8057,20 @@ public sealed record ReferenceNatureAncientOfferSessionV111(
                 "ReferenceNature Ancient-offer replay differs from its session envelope.");
     }
 
-    public static string Save(ReferenceNatureAncientOfferSessionV111 session)
+    public static ReferenceNatureAncientOfferSessionSnapshotV111 SaveSnapshot(
+        ReferenceNatureAncientOfferSessionV111 session)
     {
         ArgumentNullException.ThrowIfNull(session);
         session.Validate();
-        var snapshot = new ReferenceNatureAncientOfferSessionSnapshotV111(
+        return new ReferenceNatureAncientOfferSessionSnapshotV111(
             CurrentSchemaId, session.SiteId, RunSnapshot.Save(session.Origin),
             RunSnapshot.Save(session.Run), session.InitialNatureState,
             session.NatureState,
             (ReferenceNatureDecisionV111[])session.DecisionTranscript.Clone());
-        return JsonSerializer.Serialize(snapshot);
     }
+
+    public static string Save(ReferenceNatureAncientOfferSessionV111 session) =>
+        JsonSerializer.Serialize(SaveSnapshot(session));
 
     public static ReferenceNatureAncientOfferSessionV111 Restore(string json)
     {
@@ -8067,6 +8079,13 @@ public sealed record ReferenceNatureAncientOfferSessionV111(
                 ReferenceNatureAncientOfferSessionSnapshotV111>(json)
             ?? throw new InvalidDataException(
                 "Null ReferenceNature Ancient-offer snapshot.");
+        return Restore(snapshot);
+    }
+
+    public static ReferenceNatureAncientOfferSessionV111 Restore(
+        ReferenceNatureAncientOfferSessionSnapshotV111 snapshot)
+    {
+        ArgumentNullException.ThrowIfNull(snapshot);
         if (snapshot.SchemaId != CurrentSchemaId ||
             !IsSupportedSite(snapshot.SiteId) ||
             string.IsNullOrWhiteSpace(snapshot.OriginSnapshotJson) ||
@@ -8102,6 +8121,25 @@ public sealed record ReferenceNatureAncientOfferSessionV111(
         replay.Validate();
         return replay;
     }
+
+    internal static string? SiteForAssignedAncientId(string? ancientId) =>
+        ancientId switch
+        {
+            null => null,
+            NativeOrobasEventV111.EventId =>
+                NativeOrobasEventV111.OfferSiteId,
+            NativePaelRewardsV111.PaelId => NativePaelRewardsV111.OfferSiteId,
+            NativeAncientRewardsV111.TezcataraId =>
+                NativeAncientRewardsV111.TezcataraOfferSiteId,
+            NativeDarvEventV111.EventId =>
+                NativeDarvEventV111.OfferVariantSiteId,
+            NativeNonupeipeEventV111.EventId =>
+                NativeNonupeipeEventV111.ShuffleSiteId,
+            NativeTanxEventV111.EventId => NativeTanxEventV111.ShuffleSiteId,
+            NativeVakuuEventV111.EventId => NativeVakuuEventV111.ShuffleSiteId,
+            _ => throw new NotSupportedException(
+                $"Assigned Ancient '{ancientId}' has no resumable offer session.")
+        };
 
     private static RunState GenerateEvent(
         RunState origin, string siteId,
