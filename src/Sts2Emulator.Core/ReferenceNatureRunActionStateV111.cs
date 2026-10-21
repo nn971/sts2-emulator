@@ -1,7 +1,7 @@
 namespace Sts2Emulator.Core;
 
 /// <summary>
-/// Source run checkpoint and selected map action for a ReferenceNature
+/// Source run checkpoint and selected action for a ReferenceNature
 /// run-action session. The common continuation owns both run snapshots.
 /// </summary>
 public sealed record ReferenceNatureRunActionMechanicsStateV111
@@ -140,4 +140,118 @@ public sealed record ReferenceNatureRunActionStochasticStateV111
         CloneProviderDecisions(
             ControlledStochasticDecisionV111[]? decisions) => decisions?
                 .Select(decision => decision?.Fork()!).ToArray();
+}
+
+/// <summary>
+/// Shared stochastic prefix for ReferenceNature sessions that replay one
+/// source action from a saved run boundary.
+/// </summary>
+public sealed record ReferenceNatureControlledActionStochasticStateV111<TLawDecision>
+    where TLawDecision : class
+{
+    private ControlledStochasticDecisionV111[]? _providerDecisions = [];
+    private TLawDecision[]? _decisionTranscript = [];
+    private ControlledStochasticRequestV111? _pendingRequest;
+    private string[]? _pendingCandidateLabels;
+
+    public ReferenceNatureStateV111 InitialNatureState { get; init; }
+    public ReferenceNatureStateV111 NatureState { get; init; }
+
+    public ControlledStochasticDecisionV111[] ProviderDecisions
+    {
+        get => ReferenceNatureSessionValueCopiesV111
+            .CopyProviderDecisions(_providerDecisions)!;
+        init => _providerDecisions = ReferenceNatureSessionValueCopiesV111
+            .CopyProviderDecisions(value);
+    }
+
+    public TLawDecision[] DecisionTranscript
+    {
+        get => ReferenceNatureSessionValueCopiesV111
+            .CopyArray(_decisionTranscript)!;
+        init => _decisionTranscript = ReferenceNatureSessionValueCopiesV111
+            .CopyArray(value);
+    }
+
+    public ControlledStochasticRequestV111? PendingRequest
+    {
+        get => ReferenceNatureSessionValueCopiesV111.CopyRequest(
+            _pendingRequest);
+        init => _pendingRequest = ReferenceNatureSessionValueCopiesV111
+            .CopyRequest(value);
+    }
+
+    public string[]? PendingCandidateLabels
+    {
+        get => ReferenceNatureSessionValueCopiesV111
+            .CopyArray(_pendingCandidateLabels);
+        init => _pendingCandidateLabels = ReferenceNatureSessionValueCopiesV111
+            .CopyArray(value);
+    }
+
+    public ReferenceNatureControlledActionStochasticStateV111(
+        ReferenceNatureStateV111 initialNatureState,
+        ReferenceNatureStateV111 natureState,
+        ControlledStochasticDecisionV111[] providerDecisions,
+        TLawDecision[] decisionTranscript,
+        ControlledStochasticRequestV111? pendingRequest,
+        string[]? pendingCandidateLabels)
+    {
+        InitialNatureState = initialNatureState ??
+            throw new ArgumentNullException(nameof(initialNatureState));
+        NatureState = natureState ??
+            throw new ArgumentNullException(nameof(natureState));
+        ProviderDecisions = providerDecisions;
+        DecisionTranscript = decisionTranscript;
+        PendingRequest = pendingRequest;
+        PendingCandidateLabels = pendingCandidateLabels;
+    }
+
+    public ReferenceNatureControlledActionStochasticStateV111<TLawDecision>
+        Fork() => this with
+        {
+            InitialNatureState = InitialNatureState.Fork(),
+            NatureState = NatureState.Fork(),
+            ProviderDecisions = ProviderDecisions,
+            DecisionTranscript = DecisionTranscript,
+            PendingRequest = PendingRequest,
+            PendingCandidateLabels = PendingCandidateLabels
+        };
+
+    public void Validate()
+    {
+        ArgumentNullException.ThrowIfNull(InitialNatureState);
+        ArgumentNullException.ThrowIfNull(NatureState);
+        var providerDecisions = ProviderDecisions;
+        var decisionTranscript = DecisionTranscript;
+        if (providerDecisions is null || decisionTranscript is null ||
+            providerDecisions.Length != decisionTranscript.Length)
+            throw new InvalidDataException(
+                "ReferenceNature controlled-action prefixes are inconsistent.");
+
+        InitialNatureState.Validate();
+        NatureState.Validate();
+        foreach (var decision in providerDecisions)
+            (decision ?? throw new InvalidDataException(
+                "ReferenceNature controlled-action provider prefix contains a null decision."))
+                .Validate();
+
+        var request = PendingRequest;
+        var labels = PendingCandidateLabels;
+        if (request is null)
+        {
+            if (labels is not null)
+                throw new InvalidDataException(
+                    "Completed ReferenceNature controlled action has pending candidate labels.");
+            return;
+        }
+
+        request.Validate();
+        if (labels is not null &&
+            (request.IndexRequest is null ||
+             labels.Length != request.IndexRequest.SupportCount ||
+             labels.Any(string.IsNullOrWhiteSpace)))
+            throw new InvalidDataException(
+                "ReferenceNature controlled-action candidate labels are invalid.");
+    }
 }

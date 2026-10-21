@@ -51,7 +51,7 @@ public enum PrototypeMechanicsContinuationKindV111
     ControlledPlayableCombat,
     ControlledEnemyAction,
     ControlledRunAction,
-    ReferenceNatureRunAction,
     ControlledEventChoice,
-    ControlledEventRewardChoice
+    ControlledEventRewardChoice,
+    ReferenceNatureRunAction
 }

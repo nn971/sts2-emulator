@@ -391,12 +391,15 @@ Nature cursor after replay completes.
 
 ## Semantic lifecycle and provider interchangeability
 
-`ReferenceNatureRunActionSessionV111` now composes its origin/current run
-checkpoint and selected action with the Nature cursor/history and typed Native
-combat-entry provider prefix through `SimulationStateV111`. The mechanics
-owner uses `PrototypeMechanicsContinuationStateV111` for shared run identity
-and origin/current validation. Existing flattened session fields, snapshot
-schema, and nested map/preparation/Ancient continuation owners remain intact.
+`ReferenceNatureRunActionSessionV111`, `ReferenceNatureMerchantSessionV111`,
+and `ReferenceNatureCombatRewardSessionV111` compose their source/action/current
+run checkpoint with stochastic state through `SimulationStateV111`. All three
+reuse `PrototypeMechanicsContinuationStateV111` for run identity and
+origin/current validation. Merchant and combat-reward sessions share the
+generic controlled-action stochastic-prefix owner; the run-action session
+keeps its typed Native combat-entry continuation in its specialized owner.
+Existing flattened session fields and snapshot schemas remain intact, as do
+the run-action session's nested map/preparation/Ancient continuation owners.
 
 The **same game mechanics** issues semantic stochastic operations and applies their resolved outcomes regardless of provider:
 
