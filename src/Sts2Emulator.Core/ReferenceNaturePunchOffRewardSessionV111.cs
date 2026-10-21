@@ -55,9 +55,9 @@ internal static class NativePunchOffRewardPlanBuilderV111
                 "Punch Off reward law requires nonempty relic and potion pools.");
 
         var nativeStreams = origin.NativeRunRng;
-        var rewardStream = nativeStreams.Streams.SingleOrDefault(stream =>
-            stream.StreamId == NativePlayerRngV111.RewardsStreamId)
-            ?? throw new InvalidOperationException(
+        if (nativeStreams is null || !nativeStreams.TryGetStream(
+                NativePlayerRngV111.RewardsStreamId, out var rewardStream))
+            throw new InvalidOperationException(
                 "Punch Off reward law requires the Native player.rewards stream.");
         var cursorBefore = NativeRngV111.ToSnapshot(rewardStream);
         var relicOwner = "event:punch_off:relic_pool:" +
@@ -79,9 +79,11 @@ internal static class NativePunchOffRewardPlanBuilderV111
             var rewardsEntries = journal.Entries.Where(entry =>
                 entry.Request.StreamId ==
                     NativePlayerRngV111.RewardsStreamId).ToArray();
-            var projectedRewardsStream = projected.NativeRunRng?.Streams
-                .SingleOrDefault(stream => stream.StreamId ==
-                    NativePlayerRngV111.RewardsStreamId);
+            RngStreamState? projectedRewardsStream = null;
+            if (projected.NativeRunRng is { } projectedRng)
+                projectedRng.TryGetStream(
+                    NativePlayerRngV111.RewardsStreamId,
+                    out projectedRewardsStream);
             var projectedEventCursor = projected.World?.Event?.NativeEventRng
                 is { } projectedEventStream
                     ? NativeRngV111.ToSnapshot(projectedEventStream) : null;
@@ -551,9 +553,10 @@ public sealed record ReferenceNaturePunchOffRewardSessionV111(
 
     private static int CurrentRewardCursor(RunState origin)
     {
-        var stream = origin.NativeRunRng?.Streams.SingleOrDefault(item =>
-            item.StreamId == NativePlayerRngV111.RewardsStreamId)
-            ?? throw new InvalidOperationException(
+        if (origin.NativeRunRng is not { } nativeRunRng ||
+            !nativeRunRng.TryGetStream(
+                NativePlayerRngV111.RewardsStreamId, out var stream))
+            throw new InvalidOperationException(
                 "Punch Off ReferenceNature session has no player.rewards stream.");
         return NativeRngV111.ToSnapshot(stream).Counter;
     }
@@ -594,8 +597,10 @@ public sealed record ReferenceNaturePunchOffRewardSessionV111(
             throw new InvalidDataException(
                 "Punch Off reward action did not consume its complete selected reward prefix.");
         var entries = journal.Entries;
-        var rewardsStream = run.NativeRunRng?.Streams.SingleOrDefault(item =>
-            item.StreamId == NativePlayerRngV111.RewardsStreamId);
+        RngStreamState? rewardsStream = null;
+        if (run.NativeRunRng is { } nativeRunRng)
+            nativeRunRng.TryGetStream(
+                NativePlayerRngV111.RewardsStreamId, out rewardsStream);
         var originRewards = relicPlan.RewardsCursorBefore;
         var eventStream = run.World?.Event?.NativeEventRng;
         var relicId = relicPlan.RelicCandidates[transcript[0].OutcomeIndex];

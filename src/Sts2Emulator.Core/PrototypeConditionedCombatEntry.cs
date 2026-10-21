@@ -69,8 +69,7 @@ public static class PrototypeConditionedCombatEntry
             var candidate = hypotheticalMapState.Fork();
             var combatStream = PrototypeRng.CreateBundle(
                 $"local-combat-condition-v1:{independentSearchSeed.ToLowerInvariant()}:{trial}")
-                .Streams.Single(stream =>
-                    StringComparer.Ordinal.Equals(stream.StreamId, "combat"));
+                .GetStream("combat");
             candidate.Rng.ReplaceStream("combat", combatStream);
 
             var result = environment.Step(candidate, actionId).State;

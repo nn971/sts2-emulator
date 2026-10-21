@@ -511,8 +511,7 @@ public sealed record ReferenceNatureLaterActPreparationSessionV111(
                 encounterProvider.PendingLaw, null);
         }
 
-        var eventStream = initialPrototypeRng.Streams.Single(stream =>
-            stream.StreamId == "event");
+        var eventStream = initialPrototypeRng.GetStream("event");
         var assignmentsResult = new ReferenceNatureLaterActAssignmentsV111(
             assignments, initialNatureState,
             assignmentProvider.NatureState,
@@ -522,8 +521,7 @@ public sealed record ReferenceNatureLaterActPreparationSessionV111(
         assignmentsResult.Validate(profile);
         var bagDecisions = encounterProvider.DecisionTranscript;
         var bagLaws = encounterProvider.ChanceLaws;
-        var combatStream = initialPrototypeRng.Streams.Single(stream =>
-            stream.StreamId == "combat");
+        var combatStream = initialPrototypeRng.GetStream("combat");
         var bagResult = new ReferenceNatureLaterActEncounterPreparationV111(
             bags, initialPrototypeRng, assignmentProvider.NatureState,
             encounterProvider.NatureState,

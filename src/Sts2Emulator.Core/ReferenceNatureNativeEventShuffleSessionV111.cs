@@ -278,9 +278,9 @@ internal static class NativeEventShufflePlanBuilderV111
             nativeRngEventId = string.Empty;
             var nativeStreams = origin.World?.Combat?.NativeRng?.RunStreams
                 ?? origin.NativeRunRng;
-            var niche = nativeStreams?.Streams.SingleOrDefault(stream =>
-                stream.StreamId == "run.niche")
-                ?? throw new InvalidOperationException(
+            if (nativeStreams is null ||
+                !nativeStreams.TryGetStream("run.niche", out var niche))
+                throw new InvalidOperationException(
                     "Fishing Rod upgrade requires the Native run.niche stream.");
             nativeCursorBefore = NativeRngV111.ToSnapshot(niche);
         }
@@ -1006,9 +1006,9 @@ internal static class NativeEventShufflePlanBuilderV111
         ArgumentNullException.ThrowIfNull(scriptedPrefix);
         var beforeStreams = origin.World?.Combat?.NativeRng?.RunStreams
             ?? origin.NativeRunRng;
-        var beforeNiche = beforeStreams?.Streams.SingleOrDefault(stream =>
-            stream.StreamId == "run.niche")
-            ?? throw new InvalidOperationException(
+        if (beforeStreams is null ||
+            !beforeStreams.TryGetStream("run.niche", out var beforeNiche))
+            throw new InvalidOperationException(
                 "Fishing Rod replay requires the Native run.niche stream.");
         var beforeCursor = NativeRngV111.ToSnapshot(beforeNiche);
         var (run, entries) = CaptureCombatEndPrefix(
@@ -1048,8 +1048,9 @@ internal static class NativeEventShufflePlanBuilderV111
         });
         var expectedNativeTail = siteRequests.Length -
             scriptedPrefix.Count;
-        var niche = run.NativeRunRng?.Streams.SingleOrDefault(stream =>
-            stream.StreamId == "run.niche");
+        RngStreamState? niche = null;
+        if (run.NativeRunRng is { } runStreams)
+            runStreams.TryGetStream("run.niche", out niche);
         var actualAdvance = niche is null ? ulong.MaxValue : unchecked(
             (uint)(NativeRngV111.ToSnapshot(niche).Counter -
                 beforeCursor.Counter));
@@ -1078,9 +1079,8 @@ internal static class NativeEventShufflePlanBuilderV111
         ArgumentNullException.ThrowIfNull(origin);
         ArgumentNullException.ThrowIfNull(action);
         ArgumentNullException.ThrowIfNull(scriptedPrefix);
-        var beforeStream = origin.Rng.Streams.SingleOrDefault(stream =>
-            stream.StreamId == "combat")
-            ?? throw new InvalidOperationException(
+        if (!origin.Rng.TryGetStream("combat", out var beforeStream))
+            throw new InvalidOperationException(
                 "Improvement replay requires the legacy combat stream.");
         var beforeCallCount = beforeStream.CallCount ?? 0;
         var legacyProvider = new LegacyPrototypeRandomIndexProviderV111();
@@ -1110,8 +1110,8 @@ internal static class NativeEventShufflePlanBuilderV111
         }).All(valid => valid);
         var expectedLegacyTail = siteRequests.Length -
             scriptedPrefix.Count;
-        var afterStream = run.Rng.Streams.SingleOrDefault(stream =>
-            stream.StreamId == "combat");
+        RngStreamState? afterStream = null;
+        run.Rng.TryGetStream("combat", out afterStream);
         var actualAdvance = afterStream is null ? ulong.MaxValue :
             unchecked((afterStream.CallCount ?? 0) - beforeCallCount);
         var expectedModes = siteRequests.Select((entry, index) =>
@@ -1140,9 +1140,8 @@ internal static class NativeEventShufflePlanBuilderV111
         ArgumentNullException.ThrowIfNull(origin);
         ArgumentNullException.ThrowIfNull(action);
         ArgumentNullException.ThrowIfNull(scriptedPrefix);
-        var beforeStream = origin.Rng.Streams.SingleOrDefault(stream =>
-            stream.StreamId == "reward")
-            ?? throw new InvalidOperationException(
+        if (!origin.Rng.TryGetStream("reward", out var beforeStream))
+            throw new InvalidOperationException(
                 "Pael's Tooth replay requires the legacy reward stream.");
         var beforeCallCount = beforeStream.CallCount ?? 0;
         var toothId = NativePaelRewardsV111.ToothId;
@@ -1191,8 +1190,8 @@ internal static class NativeEventShufflePlanBuilderV111
         var scriptedCount = Math.Min(scriptedPrefix.Count,
             siteRequests.Length);
         var expectedLegacyDraws = rewardEvents.Length - scriptedCount;
-        var afterStream = run.Rng.Streams.SingleOrDefault(stream =>
-            stream.StreamId == "reward");
+        RngStreamState? afterStream = null;
+        run.Rng.TryGetStream("reward", out afterStream);
         var actualAdvance = afterStream is null ? ulong.MaxValue :
             unchecked((afterStream.CallCount ?? 0) - beforeCallCount);
         var expectedModes = siteRequests.Select((entry, index) =>

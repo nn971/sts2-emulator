@@ -132,8 +132,9 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
                 "An unscripted run-stream expectation requires one stream and its pre-draw cursor.");
         if (expectedUnscriptedStreamId is { } unscriptedStreamId)
         {
-            var stream = origin.NativeRunRng?.Streams.SingleOrDefault(item =>
-                item.StreamId == unscriptedStreamId);
+            RngStreamState? stream = null;
+            if (origin.NativeRunRng is { } nativeRunRng)
+                nativeRunRng.TryGetStream(unscriptedStreamId, out stream);
             if (stream is null ||
                 NativeRngV111.ToSnapshot(stream) !=
                     expectedUnscriptedCursorBefore)
@@ -231,8 +232,9 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
             scripted.AssertComplete();
         if (expectedRunNicheCursor is not null)
         {
-            var runNiche = run.NativeRunRng?.Streams.SingleOrDefault(stream =>
-                stream.StreamId == "run.niche");
+            RngStreamState? runNiche = null;
+            if (run.NativeRunRng is { } nativeRunRng)
+                nativeRunRng.TryGetStream("run.niche", out runNiche);
             if (run.Phase != RunPhase.Reward ||
                 run.World?.Combat is not null || runNiche is null ||
                 NativeRngV111.ToSnapshot(runNiche) !=
@@ -258,8 +260,9 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
             var streamId = expectedUnscriptedStreamId
                 ?? throw new InvalidDataException(
                     "Scripted player-stream replay is missing its stream identity.");
-            var finalStream = run.NativeRunRng?.Streams.SingleOrDefault(item =>
-                item.StreamId == streamId);
+            RngStreamState? finalStream = null;
+            if (run.NativeRunRng is { } nativeRunRng)
+                nativeRunRng.TryGetStream(streamId, out finalStream);
             var finalCursor = finalStream is null ? null :
                 NativeRngV111.ToSnapshot(finalStream);
             var streamEvents = replayIndexEvents.Where(entry =>
@@ -547,10 +550,7 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
                     request.SiteId, StringComparer.Ordinal))
                 return scripted.Resolve(request, streams);
 
-            var stream = streams.Streams.SingleOrDefault(item =>
-                item.StreamId == request.StreamId)
-                ?? throw new InvalidOperationException(
-                    "Replay random request has no matching stream.");
+            var stream = streams.GetStream(request.StreamId);
             IRandomIndexProviderV111 fallback =
                 stream.Codec == PrototypeRng.Codec
                     ? new LegacyPrototypeRandomIndexProviderV111()
@@ -572,10 +572,7 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
             if (request.SiteId == scriptedSiteId)
                 return scripted.Resolve(request, streams);
 
-            var stream = streams.Streams.SingleOrDefault(item =>
-                item.StreamId == request.StreamId)
-                ?? throw new InvalidOperationException(
-                    "Replay unit-float request has no matching stream.");
+            var stream = streams.GetStream(request.StreamId);
             IRandomUnitFloatProviderV111 fallback =
                 stream.Codec == PrototypeRng.Codec
                     ? throw new InvalidOperationException(
