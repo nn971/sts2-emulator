@@ -3,19 +3,19 @@
 This opt-in D3 boundary saves the legacy `start_run` action at its Act 1 boss
 encounter draw, map choices that enter an Event node at supported legacy event
 entry draws, legacy Shop-node offer generation, eligible legacy Treasure-node
-relic selection, Native-regional Treasure entry through retained legacy reward
-requests when `NativeRunRng` is absent, eligible legacy regional Unknown-node
-entry, legal legacy Act 1 Overgrowth and Underdocks Combat/Elite node entry,
-and the Shovel dig action at its unowned-relic draw. Combat entry controls
+relic selection, Native-regional Treasure and Shovel Dig through retained
+legacy reward requests when `NativeRunRng` is absent, eligible legacy regional
+Unknown-node entry, legal legacy Act 1 Overgrowth and Underdocks Combat/Elite
+node entry, and legacy Shovel dig at its unowned-relic draw. Combat entry controls
 registered `combat`-stream requests and the two legacy
 potion-factory index sites used by pre-combat relic hooks through ordinary
 room initialization; other requests and streams retain their existing
 providers. Shop generation requires non-native regional systems and a legacy
-run RNG. Ordinary legacy Treasure generation uses that same route; the
-Native-regional fallback requires `NativeRunRng` to be absent and retains the
-legacy reward rarity-ticket and conditional relic-index requests. Legacy
-Treasure selection is not offered when Silver Crucible suppresses the first
-treasure or its relic pool is exhausted. The Native-regional fallback still
+run RNG. Ordinary legacy Treasure generation uses that same route. Native-
+regional Treasure and Shovel fallbacks require `NativeRunRng` to be absent and
+retain the legacy reward rarity-ticket and conditional relic-index requests.
+Legacy Treasure selection is not offered when Silver Crucible suppresses the
+first treasure or its relic pool is exhausted. Treasure fallback entry still
 records its rarity ticket when no eligible identity remains and then completes
 without a model-index request. The boundary uses ordinary run-state
 handles and does not change normal `step` behavior or configured Native
@@ -104,9 +104,9 @@ The JSONL server advertises `controlledRunActionSchemaId`. Its `hello`
 response exposes `controlledRunActionSiteGroups`, with registry-owned arrays
 for run-start/map generation, Event-node entry, legacy Shop-node generation,
 legacy and Native-regional fallback Treasure-node selection, Shovel dig, and
-region-specific Overgrowth and Underdocks combat entry. Shared formation, HP,
-intent, shuffle and potion sites appear in both region groups. The controller
-supports:
+Native-regional fallback Shovel Dig, and region-specific Overgrowth and
+Underdocks combat entry. Shared formation, HP, intent, shuffle and potion sites
+appear in both region groups. The controller supports:
 
 | Operation | Inputs | Result |
 | --- | --- | --- |
@@ -140,8 +140,8 @@ configured Underdocks boss draw described above, legacy map Event-node entry
 draws, the legacy regional Unknown-room 1000-way ticket,
 seven `shop.*` sites in legacy Shop-node generation,
 the `treasure.relic_model.index_draw` legacy Treasure-node site, the Native-
-regional fallback's `relic_grab_bag.rarity.ticket` and conditional
-`treasure.relic_grab_bag.model.index_draw` sites, registered
+regional Treasure/Shovel fallbacks' `relic_grab_bag.rarity.ticket` and
+conditional `treasure.relic_grab_bag.model.index_draw` sites, registered
 combat-stream requests and the two legacy potion-factory index requests during
 legal legacy Overgrowth or Underdocks Combat/Elite node entry, and Shovel's
 unowned-relic draw. Combat entry covers each region's encounter-pool
@@ -214,10 +214,11 @@ The supported legacy Shop-node generation sites are:
 - `shop.relic_offer.price.index_draw`
 
 The supported legacy Treasure-node site is `treasure.relic_model.index_draw`.
-The Native-regional fallback accepts `relic_grab_bag.rarity.ticket`, followed
-by `treasure.relic_grab_bag.model.index_draw` only when the selected rarity
-has eligible relics. The fallback uses sorted Nature relic support and
-equal-index `UNVERIFIED` legacy request weights.
+The Native-regional Treasure and Shovel fallbacks accept
+`relic_grab_bag.rarity.ticket`, followed by
+`treasure.relic_grab_bag.model.index_draw` only when the selected rarity has
+eligible relics. Both use sorted Nature relic support and equal-index
+`UNVERIFIED` legacy request weights.
 
 The supported legacy Overgrowth combat-entry sites are:
 

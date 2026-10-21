@@ -1,8 +1,9 @@
 # Native Shovel ReferenceNature continuation
 
-**Snapshot:** 2026-10-19. **Status:** implemented for one legal configured
-Native Rest `dig` action; source-pool fidelity and Native cursor parity remain
-open.
+**Snapshot:** 2026-10-21. **Status:** the dedicated session is implemented for
+one legal configured Native Rest `dig` action; the generic run-action session
+also handles the Native-regional fallback when `NativeRunRng` is absent.
+Source-pool fidelity and Native cursor parity remain open.
 
 ## Boundary
 
@@ -37,10 +38,12 @@ playable run through `begin_reference_nature_native_shovel()`.
 
 ## Scope limits
 
-The session handles one configured Native Shovel dig. Legacy Shovel retains
-the existing run-action continuation. Other Native relic acquisitions retain
-their existing event, merchant, Treasure, or reward boundaries. The session
-does not claim complete source relic eligibility, hidden queue identity
+The session handles one configured Native Shovel dig. Legacy Shovel and the
+Native-regional fallback with no `NativeRunRng` use the generic run-action
+continuation; the fallback controls the retained rarity ticket and conditional
+identity request. Other Native relic acquisitions retain their existing event,
+merchant, Treasure, or reward boundaries. Neither session claims complete
+source relic eligibility, hidden queue identity
 probabilities, source call-order completeness, seeded Native result parity,
 or Native cursor parity. The Native reference mod and Fidelity Inspector are
 still required for those source-evidence checks.

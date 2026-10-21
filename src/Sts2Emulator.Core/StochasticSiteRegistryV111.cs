@@ -655,7 +655,9 @@ public static class StochasticSiteRegistryV111
 
     private static readonly string[] RunActionShovelSites =
     [
-        UnownedRandomRelicSelectionSiteId
+        UnownedRandomRelicSelectionSiteId,
+        "relic_grab_bag.rarity.ticket",
+        PrototypeNativeRelicGrabBag.NativeTreasureModelSiteId
     ];
 
     private static readonly string[] RunActionOvergrowthCombatEncounterSites =

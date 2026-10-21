@@ -6860,8 +6860,11 @@ public sealed record ReferenceNatureRunActionSessionV111(
             ControlledRunActionEngineV111
                 .IsConfiguredNativeReferenceNatureRunStartAction(
                     source, detachedAction);
-        var origin = ControlledRunActionEngineV111
-            .IsLegacyNativeTreasureEntryAction(source, detachedAction)
+        var natureRelicBagPull = ControlledRunActionEngineV111
+                .IsLegacyNativeTreasureEntryAction(source, detachedAction)
+            || ControlledRunActionEngineV111
+                .IsLegacyNativeShovelDigAction(source, detachedAction);
+        var origin = natureRelicBagPull
             ? ReferenceNatureRunProjectionV111.CreateNatureReplayOrigin(
                 source, createRelicBagWhenMissing: true)
             : source.Fork();
@@ -7360,12 +7363,14 @@ public sealed record ReferenceNatureRunActionSessionV111(
         PrototypeStateInvariants.Validate(Origin);
         PrototypeStateInvariants.Validate(Run);
         if (ControlledRunActionEngineV111
-            .IsLegacyNativeTreasureEntryAction(Origin, Action))
+                .IsLegacyNativeTreasureEntryAction(Origin, Action)
+            || ControlledRunActionEngineV111
+                .IsLegacyNativeShovelDigAction(Origin, Action))
         {
             ReferenceNatureRunProjectionV111.ValidateNatureRelicBagProjection(
-                Origin, "legacy Native Treasure run-action origin");
+                Origin, "Native-regional relic-bag run-action origin");
             ReferenceNatureRunProjectionV111.ValidateNatureRelicBagProjection(
-                Run, "legacy Native Treasure run-action replay");
+                Run, "Native-regional relic-bag run-action replay");
         }
         var actionMapNodeId = Action.Kind == "choose_map_node"
             ? Action.ReadPayload<ChooseMapNodePayload>().NodeId

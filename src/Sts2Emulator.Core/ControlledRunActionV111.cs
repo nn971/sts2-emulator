@@ -96,10 +96,16 @@ public sealed record ControlledRunActionTraceV111(
             var isShopPurchaseDraw = shopPurchaseAction
                 && StochasticSiteRegistryV111
                     .IsRunActionShopPurchaseSite(request.SiteId);
-            var prefixStream = ActionId ==
+            var isNativeShovelFallbackDraw = ActionId ==
                     PrototypeNativeRestSiteActionsV111.Dig
+                && (request.SiteId is "relic_grab_bag.rarity.ticket"
+                    or PrototypeNativeRelicGrabBag.NativeTreasureModelSiteId);
+            var prefixStream = (ActionId ==
+                    PrototypeNativeRestSiteActionsV111.Dig
+                    && !isNativeShovelFallbackDraw)
                 || isEventEntryDraw
                 ? "event" : isShopDraw ? "shop"
+                : isNativeShovelFallbackDraw ? "reward"
                 : isTreasureDraw ? "reward"
                 : isCombatPotionDraw ? "event"
                 : isNativeFormationDraw ? request.StreamId
@@ -128,6 +134,7 @@ public sealed record ControlledRunActionTraceV111(
                     ? "act:1:underdocks:boss_pool:" + CanonicalJson.Sha256(
                         PrototypeNativeUnderdocks.NativeBossEncounterIds)
                 : ActionId == PrototypeNativeRestSiteActionsV111.Dig
+                    && !isNativeShovelFallbackDraw
                     ? "rest:shovel:pool:" + CanonicalJson.Sha256(labels)
                     : request.OwnerId;
             var prefixCandidates = request.OperationKind == "bounded_integer"
@@ -141,12 +148,14 @@ public sealed record ControlledRunActionTraceV111(
                 && request.SupportCount >
                     ControlledRunActionEngineV111.MaximumInlineOutcomeActions
                 && labels.Length == 0;
-            var nativeTreasureLabels = IsLegacyNativeTreasureLabelSupport(
+            var nativeRelicBagLabels = IsLegacyNativeRelicBagLabelSupport(
                 request, labels);
             var numericLabels = !(isMapDraw || isEventEntryDraw || isShopDraw
-                || isTreasureDraw || isCombatDraw || isCombatPotionDraw
+                || isTreasureDraw || isNativeShovelFallbackDraw
+                || isCombatDraw || isCombatPotionDraw
                 || isShopPurchaseDraw)
-                || nativeTreasureLabels || omittedLabels || labels.SequenceEqual(
+                || nativeRelicBagLabels
+                || omittedLabels || labels.SequenceEqual(
                 Enumerable.Range(0, labels.Length).Select(index =>
                     index.ToString(CultureInfo.InvariantCulture)),
                 StringComparer.Ordinal);
@@ -171,7 +180,7 @@ public sealed record ControlledRunActionTraceV111(
         }
     }
 
-    internal static bool IsLegacyNativeTreasureLabelSupport(
+    internal static bool IsLegacyNativeRelicBagLabelSupport(
         RandomIndexRequestV111 request, string[] labels)
     {
         var rarityTicket = request.SiteId ==
@@ -449,18 +458,36 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                 if (state.Phase != RunPhase.Rest
                     || !PrototypeNativeRestSiteRelics.CanDig(state.Player))
                     throw new InvalidDataException(
-                        "Controlled Shovel frame is outside the legacy rest-site boundary.");
-                expectedSite = StochasticSiteRegistryV111
-                    .UnownedRandomRelicSelectionSiteId;
-                expectedStream = "event";
-                expectedLabels = PrototypeContent.RelicPool
-                    .Where(id => !state.Player.Relics.Any(relic =>
-                        StringComparer.Ordinal.Equals(relic.RelicId, id)))
-                    .ToArray();
-                expectedOwner = "rest:shovel:pool:"
-                    + CanonicalJson.Sha256(expectedLabels);
-                expectedCandidates = Enumerable.Range(
-                    0, expectedLabels.Length).ToArray();
+                        "Controlled Shovel frame is outside the rest-site boundary.");
+                var nativeShovelFallback = state.NativeRunRng is null
+                    && state.World is { } shovelWorld
+                    && PrototypeGameEngine
+                        .UsesNativeRegionalSystems(shovelWorld);
+                if (nativeShovelFallback)
+                {
+                    var request = ResolveLegacyNativeRelicBagRequest(
+                        state, PendingRequest, Decisions,
+                        DecisionCandidateLabels, "Native-regional Shovel");
+                    expectedSite = request.SiteId;
+                    expectedStream = request.StreamId;
+                    expectedOwner = request.OwnerId;
+                    expectedCandidates = request.OrderedCandidates;
+                    expectedLabels = request.CandidateLabels;
+                }
+                else
+                {
+                    expectedSite = StochasticSiteRegistryV111
+                        .UnownedRandomRelicSelectionSiteId;
+                    expectedStream = "event";
+                    expectedLabels = PrototypeContent.RelicPool
+                        .Where(id => !state.Player.Relics.Any(relic =>
+                            StringComparer.Ordinal.Equals(relic.RelicId, id)))
+                        .ToArray();
+                    expectedOwner = "rest:shovel:pool:"
+                        + CanonicalJson.Sha256(expectedLabels);
+                    expectedCandidates = Enumerable.Range(
+                        0, expectedLabels.Length).ToArray();
+                }
                 break;
             }
             case "choose_map_node":
@@ -605,55 +632,15 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                             CultureInfo.InvariantCulture)).ToArray();
                 if (treasureSite && legacyNativeTreasureNode)
                 {
-                    expectedStream = "reward";
-                    if (PendingRequest.SiteId ==
-                        "relic_grab_bag.rarity.ticket")
-                    {
-                        expectedSite = "relic_grab_bag.rarity.ticket";
-                        expectedOwner = PrototypeNativeRelicGrabBag
-                            .NativeTreasureRarityOwnerId + ":reward";
-                        expectedCandidates = [];
-                        expectedLabels = PrototypeNativeRelicGrabBag
-                            .LegacyRarityTicketLabels();
-                        if (PendingRequest.OperationKind != "bounded_integer" ||
-                            PendingRequest.SupportCount != 100 ||
-                            PendingRequest.BoundedCount != 100 ||
-                            PendingRequest.OrderedCandidates.Length != 0 ||
-                            Decisions.Length != 0)
-                            throw new InvalidDataException(
-                                "Legacy Native Treasure rarity request differs from its source boundary.");
-                    }
-                    else if (PendingRequest.SiteId ==
-                        PrototypeNativeRelicGrabBag.NativeTreasureModelSiteId)
-                    {
-                        expectedSite =
-                            PrototypeNativeRelicGrabBag.NativeTreasureModelSiteId;
-                        var requestedRarity =
-                            RequireLegacyNativeTreasureRarity(Decisions,
-                                DecisionCandidateLabels);
-                        var bag = world.RelicBag ??
-                            PrototypeNativeRelicGrabBag
-                                .CreateNatureUnordered(state.Player);
-                        var plan = PrototypeNativeRelicGrabBag.PlanNaturePull(
-                            bag, requestedRarity, merchant: false,
-                            state.Player);
-                        var candidateIds = plan.CandidateIds;
-                        if (candidateIds.Length == 0 ||
-                            PendingRequest.OperationKind != "choose_index")
-                            throw new InvalidDataException(
-                                "Legacy Native Treasure relic request has no eligible source support.");
-                        expectedOwner = PrototypeNativeRelicGrabBag
-                            .TreasureModelOwnerId(world, requestedRarity,
-                                candidateIds);
-                        expectedCandidates = Enumerable.Range(
-                            0, candidateIds.Length).ToArray();
-                        expectedLabels = candidateIds;
-                    }
-                    else
-                    {
-                        throw new InvalidDataException(
-                            "Native-regional Treasure reached an unregistered fallback request.");
-                    }
+                    var request = ResolveLegacyNativeRelicBagRequest(
+                        state, PendingRequest, Decisions,
+                        DecisionCandidateLabels,
+                        "Native-regional Treasure");
+                    expectedSite = request.SiteId;
+                    expectedStream = request.StreamId;
+                    expectedOwner = request.OwnerId;
+                    expectedCandidates = request.OrderedCandidates;
+                    expectedLabels = request.CandidateLabels;
                 }
                 else if (treasureSite)
                 {
@@ -747,6 +734,10 @@ public sealed record PrototypeControlledRunActionContinuationV111(
             var isTreasureDraw = ActionId == "choose_map_node"
                 && ControlledEventChoiceReplayV111
                     .IsRunActionTreasureSite(request.SiteId);
+            var isNativeShovelFallbackDraw = ActionId ==
+                    PrototypeNativeRestSiteActionsV111.Dig
+                && (request.SiteId is "relic_grab_bag.rarity.ticket"
+                    or PrototypeNativeRelicGrabBag.NativeTreasureModelSiteId);
             var isCombatDraw = ActionId == "choose_map_node"
                 && ControlledEventChoiceReplayV111
                     .IsRunActionCombatSite(request.SiteId);
@@ -778,10 +769,12 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                 ControlledRunActionEngineV111
                     .IsNativeActOneCombatEntryRequest(
                         ControlledStochasticRequestV111.FromIndex(request));
-            var prefixStream = ActionId ==
+            var prefixStream = (ActionId ==
                     PrototypeNativeRestSiteActionsV111.Dig
+                    && !isNativeShovelFallbackDraw)
                 || isEventEntryDraw
                 ? "event" : isShopDraw ? "shop"
+                : isNativeShovelFallbackDraw ? "reward"
                 : isTreasureDraw ? "reward"
                 : isCombatPotionDraw ? "event"
                 : isNativeFormationDraw ? request.StreamId
@@ -802,6 +795,7 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                     ? "act:1:underdocks:boss_pool:" + CanonicalJson.Sha256(
                         PrototypeNativeUnderdocks.NativeBossEncounterIds)
                 : ActionId == PrototypeNativeRestSiteActionsV111.Dig
+                    && !isNativeShovelFallbackDraw
                     ? "rest:shovel:pool:" + CanonicalJson.Sha256(labels)
                     : request.OwnerId;
             var prefixCandidates = request.OperationKind == "bounded_integer"
@@ -815,12 +809,13 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                 && request.SupportCount >
                     ControlledRunActionEngineV111.MaximumInlineOutcomeActions
                 && labels.Length == 0;
-            var nativeTreasureLabels =
+            var nativeRelicBagLabels =
                 ControlledRunActionTraceV111
-                    .IsLegacyNativeTreasureLabelSupport(request, labels);
+                    .IsLegacyNativeRelicBagLabelSupport(request, labels);
             var numericLabels = !(isMapDraw || isEventEntryDraw || isShopDraw
-                || isTreasureDraw || isCombatDraw || isCombatPotionDraw)
-                || nativeTreasureLabels
+                || isTreasureDraw || isNativeShovelFallbackDraw
+                || isCombatDraw || isCombatPotionDraw)
+                || nativeRelicBagLabels
                 || omittedLabels || labels.SequenceEqual(
                 Enumerable.Range(0, labels.Length).Select(index =>
                     index.ToString(CultureInfo.InvariantCulture)),
@@ -848,7 +843,7 @@ public sealed record PrototypeControlledRunActionContinuationV111(
         PrototypeStateInvariants.Validate(state);
     }
 
-    private static PrototypeRelicRarity RequireLegacyNativeTreasureRarity(
+    private static PrototypeRelicRarity RequireLegacyNativeRelicBagRarity(
         RandomIndexDecisionV111[] decisions, string[][] decisionLabels)
     {
         var expectedLabels = PrototypeNativeRelicGrabBag
@@ -857,7 +852,7 @@ public sealed record PrototypeControlledRunActionContinuationV111(
             !decisionLabels[0].SequenceEqual(expectedLabels,
                 StringComparer.Ordinal))
             throw new InvalidDataException(
-                "Legacy Native Treasure identity request lacks its rarity ticket prefix.");
+                "Legacy Native relic-bag identity request lacks its rarity ticket prefix.");
         var rarityDecision = decisions[0];
         rarityDecision.Validate();
         var request = rarityDecision.Request;
@@ -872,7 +867,7 @@ public sealed record PrototypeControlledRunActionContinuationV111(
             rarityDecision.SelectedIndex < 0 ||
             rarityDecision.SelectedIndex >= expectedLabels.Length)
             throw new InvalidDataException(
-                "Legacy Native Treasure rarity ticket differs from its source request.");
+                "Legacy Native relic-bag rarity ticket differs from its source request.");
         return rarityDecision.SelectedIndex <
                 PrototypeNativeRelicGrabBag.CommonRarityWeight / 100
             ? PrototypeRelicRarity.Common
@@ -881,6 +876,59 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                  PrototypeNativeRelicGrabBag.UncommonRarityWeight) / 100
                 ? PrototypeRelicRarity.Uncommon
                 : PrototypeRelicRarity.Rare;
+    }
+
+    private static (string SiteId, string StreamId, string OwnerId,
+        int[] OrderedCandidates, string[] CandidateLabels)
+        ResolveLegacyNativeRelicBagRequest(
+            RunState state, RandomIndexRequestV111 request,
+            RandomIndexDecisionV111[] decisions,
+            string[][] decisionCandidateLabels, string boundary)
+    {
+        var expectedLabels = PrototypeNativeRelicGrabBag
+            .LegacyRarityTicketLabels();
+        ReferenceNatureRunProjectionV111.ValidateNatureRelicBagProjection(
+            state, $"{boundary} replay");
+        if (request.SiteId == "relic_grab_bag.rarity.ticket")
+        {
+            if (request.StreamId != "reward" ||
+                request.OwnerId != PrototypeNativeRelicGrabBag
+                    .NativeTreasureRarityOwnerId + ":reward" ||
+                request.OperationKind != "bounded_integer" ||
+                request.SupportCount != expectedLabels.Length ||
+                request.BoundedCount != expectedLabels.Length ||
+                request.OrderedCandidates.Length != 0 ||
+                decisions.Length != 0)
+                throw new InvalidDataException(
+                    $"{boundary} rarity request differs from its source boundary.");
+            return (request.SiteId, "reward",
+                PrototypeNativeRelicGrabBag.NativeTreasureRarityOwnerId
+                    + ":reward", [], expectedLabels);
+        }
+
+        if (request.SiteId != PrototypeNativeRelicGrabBag
+                .NativeTreasureModelSiteId ||
+            request.StreamId != "reward" ||
+            request.OperationKind != "choose_index")
+            throw new InvalidDataException(
+                $"{boundary} reached an unregistered relic-bag fallback request.");
+
+        var rarity = RequireLegacyNativeRelicBagRarity(
+            decisions, decisionCandidateLabels);
+        var world = state.World ?? throw new InvalidDataException(
+            $"{boundary} lost its run world.");
+        var bag = world.RelicBag ??
+            PrototypeNativeRelicGrabBag.CreateNatureUnordered(state.Player);
+        var plan = PrototypeNativeRelicGrabBag.PlanNaturePull(
+            bag, rarity, merchant: false, state.Player);
+        var candidates = plan.CandidateIds;
+        if (candidates.Length == 0)
+            throw new InvalidDataException(
+                $"{boundary} relic request has no eligible source support.");
+        return (request.SiteId, "reward",
+            PrototypeNativeRelicGrabBag.TreasureModelOwnerId(
+                world, rarity, candidates),
+            Enumerable.Range(0, candidates.Length).ToArray(), candidates);
     }
 }
 
@@ -1105,6 +1153,7 @@ public static class ControlledRunActionEngineV111
             throw new InvalidOperationException(
                 "Controlled run action requires a current legal action.");
         var replaySource = IsLegacyNativeTreasureEntryAction(source, action)
+            || IsLegacyNativeShovelDigAction(source, action)
             ? ReferenceNatureRunProjectionV111.CreateNatureReplayOrigin(
                 source, createRelicBagWhenMissing: true)
             : source.Fork();
@@ -1134,6 +1183,11 @@ public static class ControlledRunActionEngineV111
                     && StochasticSiteRegistryV111
                         .IsRunActionShopPurchaseSite(
                             pendingChance.Request.SiteId);
+                var supportedShovelSite = action.Kind ==
+                        PrototypeNativeRestSiteActionsV111.Dig
+                    && StochasticSiteRegistryV111
+                        .IsRunActionShovelSite(
+                            pendingChance.Request.SiteId);
                 var supportedMapNodeSite = supportedMapNodeAction
                     && (ControlledEventChoiceReplayV111
                             .IsRunActionEventEntrySite(pendingChance.Request.SiteId)
@@ -1153,7 +1207,8 @@ public static class ControlledRunActionEngineV111
                                 && pendingChance.Request.SupportCount >
                                     MaximumInlineOutcomeActions);
                 if ((!supportedStartRunSite && !supportedMapNodeSite
-                        && !supportedShopPurchaseSite)
+                        && !supportedShopPurchaseSite
+                        && !supportedShovelSite)
                     || !labelsValid)
                     throw new NotSupportedException(
                         "Controlled run action reached an unsupported chance request.");
@@ -1294,6 +1349,15 @@ public static class ControlledRunActionEngineV111
             .Any(node => node.NodeId == nodeId
                 && node.RoomType == PrototypeRoomType.Treasure);
     }
+
+    internal static bool IsLegacyNativeShovelDigAction(
+        RunState source, GameAction action) =>
+        action.Kind == PrototypeNativeRestSiteActionsV111.Dig
+        && source.Phase == RunPhase.Rest
+        && source.NativeRunRng is null
+        && source.World is { } world
+        && PrototypeGameEngine.UsesNativeRegionalSystems(world)
+        && PrototypeNativeRestSiteRelics.CanDig(source.Player);
 
     internal static bool IsLegacyActOneCombatEntryAction(
         RunState source, GameAction action) =>
