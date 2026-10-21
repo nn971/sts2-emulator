@@ -6530,6 +6530,24 @@ public sealed record ReferenceNatureSessionSnapshotV111(
     ReferenceNatureStateV111 NatureState);
 
 /// <summary>
+/// The sampler cursor held by the atomic semantic ReferenceNature session.
+/// </summary>
+public sealed record ReferenceNatureSessionStochasticStateV111(
+    ReferenceNatureStateV111 NatureState)
+{
+    public ReferenceNatureSessionStochasticStateV111 Fork() => this with
+    {
+        NatureState = NatureState.Fork()
+    };
+
+    public void Validate()
+    {
+        ArgumentNullException.ThrowIfNull(NatureState);
+        NatureState.Validate();
+    }
+}
+
+/// <summary>
 /// Atomic ReferenceNature simulation state: semantic mechanics continuation
 /// and the independent sampler cursor share one fork/save/restore boundary.
 /// </summary>
@@ -6538,6 +6556,30 @@ public sealed record ReferenceNatureSessionV111(
     ReferenceNatureStateV111 NatureState)
 {
     public const string CurrentSchemaId = "sts2-v111-reference-nature-session-v1";
+
+    [JsonIgnore]
+    public SimulationStateV111<SemanticPilotCombatV111,
+        ReferenceNatureSessionStochasticStateV111> Simulation { get; init; } =
+        new(Combat, new ReferenceNatureSessionStochasticStateV111(NatureState));
+
+    public SemanticPilotCombatV111 Combat
+    {
+        get => Simulation.Mechanics;
+        init => Simulation = Simulation with { Mechanics = value };
+    }
+
+    [JsonIgnore]
+    public ReferenceNatureSessionStochasticStateV111 Stochastic
+    {
+        get => Simulation.Stochastic;
+        init => Simulation = Simulation with { Stochastic = value };
+    }
+
+    public ReferenceNatureStateV111 NatureState
+    {
+        get => Stochastic.NatureState;
+        init => Stochastic = Stochastic with { NatureState = value };
+    }
 
     [JsonIgnore]
     public string Fingerprint => CanonicalJson.Sha256(this);
@@ -6576,7 +6618,14 @@ public sealed record ReferenceNatureSessionV111(
     public ReferenceNatureSessionV111 Fork()
     {
         Validate();
-        return this with { Combat = Combat.Fork(), NatureState = NatureState.Fork() };
+        return this with
+        {
+            Simulation = Simulation with
+            {
+                Mechanics = Combat.Fork(),
+                Stochastic = Stochastic.Fork()
+            }
+        };
     }
 
     public ReferenceNatureSessionV111 ResolveNext()
@@ -6607,10 +6656,10 @@ public sealed record ReferenceNatureSessionV111(
 
     public void Validate()
     {
-        if (SchemaId != CurrentSchemaId || Combat is null || NatureState is null)
+        if (SchemaId != CurrentSchemaId || Combat is null || Stochastic is null)
             throw new InvalidDataException("Invalid ReferenceNature session envelope.");
         Combat.Validate();
-        NatureState.Validate();
+        Stochastic.Validate();
         if (Combat.CombatTerminal &&
             !NatureState.SameCursor(Combat.Run.ReferenceNatureState))
             throw new InvalidDataException(

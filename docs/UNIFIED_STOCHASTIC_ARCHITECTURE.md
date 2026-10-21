@@ -413,6 +413,10 @@ Conveyor, Punch Off fight/reward, and Native event-shuffle sessions compose it
 directly with `PrototypeMechanicsContinuationStateV111` under the
 `ReferenceNatureRunSession` continuation kind; each retains its event-specific
 law replay and run-cursor checks.
+The base semantic `ReferenceNatureSessionV111` composes the
+`SemanticPilotCombatV111` checkpoint with its independent sampler cursor
+through `SimulationStateV111`, while retaining the established `Combat` and
+`NatureState` snapshot members.
 Map-generation and later-act preparation sessions use the same stochastic
 owner while retaining their generator checkpoints, request prefixes, laws,
 and outputs in their existing fields. The completed map audit and the
