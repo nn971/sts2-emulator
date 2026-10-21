@@ -67,9 +67,10 @@ public sealed record ReferenceNatureCombatRewardSessionSnapshotV111(
 }
 
 /// <summary>
-/// Atomic configured Native combat victory and reward generation driven by
-/// conditional Chance Laws. Each prefix replays the legal combat action from
-/// its checkpoint; only the completed reward state and Nature cursor publish.
+/// Atomic combat victory and reward generation driven by conditional Chance
+/// Laws for registered Native and retained Prototype requests. Each prefix
+/// replays the legal combat action from its checkpoint; only the completed
+/// reward state and Nature cursor publish.
 /// </summary>
 public sealed record ReferenceNatureCombatRewardSessionV111(
     string SchemaId, RunState Origin, GameAction Action, RunState Run,
@@ -134,18 +135,18 @@ public sealed record ReferenceNatureCombatRewardSessionV111(
 
     [JsonIgnore]
     public ChanceLawV111? PendingLaw => PendingRequest is null ? null :
-        QueryLaw(Origin, PendingRequest, PendingCandidateLabels,
+        QueryLaw(Origin, Action, PendingRequest, PendingCandidateLabels,
             ProviderDecisions);
 
     public static ReferenceNatureCombatRewardSessionV111 Begin(
         RunState source, GameAction action, ulong seed) =>
         Begin(source, action, ReferenceNatureRunCursorV111.Begin(
-            source, seed, "Native combat reward"));
+            source, seed, "Combat reward"));
 
     public static ReferenceNatureCombatRewardSessionV111 Begin(
         RunState source, GameAction action) =>
         Begin(source, action, ReferenceNatureRunCursorV111.Begin(
-            source, null, "Native combat reward"));
+            source, null, "Combat reward"));
 
     private static ReferenceNatureCombatRewardSessionV111 Begin(
         RunState source, GameAction action,
@@ -156,7 +157,7 @@ public sealed record ReferenceNatureCombatRewardSessionV111(
         ArgumentNullException.ThrowIfNull(initialNatureState);
         ValidateOpeningBoundary(source, action);
         ReferenceNatureRunCursorV111.ValidateInitial(
-            source, initialNatureState, "Native combat reward");
+            source, initialNatureState, "Combat reward");
 
         var natureOrigin = CreateNatureReplayOrigin(source);
         var replay = Replay(natureOrigin, action, []);
@@ -201,8 +202,8 @@ public sealed record ReferenceNatureCombatRewardSessionV111(
             throw new InvalidOperationException(
                 "ReferenceNature combat reward session is already complete.");
 
-        var law = QueryLaw(Origin, PendingRequest!, PendingCandidateLabels,
-            ProviderDecisions);
+        var law = QueryLaw(Origin, Action, PendingRequest!,
+            PendingCandidateLabels, ProviderDecisions);
         var selection = ReferenceNatureV111.SampleValidated(law, NatureState);
         var providerDecision = ReferenceNatureChanceLawDecisionV111.FromSelection(
             law, PendingRequest!, selection, Origin, PendingCandidateLabels);
@@ -265,14 +266,17 @@ public sealed record ReferenceNatureCombatRewardSessionV111(
         ValidateOpeningBoundary(Origin, Action);
         PrototypeStateInvariants.Validate(Origin);
         PrototypeStateInvariants.Validate(Run);
-        ReferenceNatureRunProjectionV111.ValidateNatureRelicBagProjection(
-            Origin, "Native combat reward session origin");
-        ReferenceNatureRunProjectionV111.ValidateNatureRelicBagProjection(
-            Run, "Native combat reward session replay");
+        if (RequiresNatureRelicBagProjection(Origin))
+        {
+            ReferenceNatureRunProjectionV111.ValidateNatureRelicBagProjection(
+                Origin, "Combat reward session origin");
+            ReferenceNatureRunProjectionV111.ValidateNatureRelicBagProjection(
+                Run, "Combat reward session replay");
+        }
         InitialNatureState.Validate();
         NatureState.Validate();
         ReferenceNatureRunCursorV111.ValidateInitial(
-            Origin, InitialNatureState, "Native combat reward");
+            Origin, InitialNatureState, "Combat reward");
 
         var expectedNatureState = InitialNatureState.Fork();
         for (var index = 0; index < ProviderDecisions.Length; index++)
@@ -291,7 +295,7 @@ public sealed record ReferenceNatureCombatRewardSessionV111(
                 throw new InvalidDataException(
                     "ReferenceNature combat reward provider transcript changed its request.");
 
-            var law = QueryLaw(Origin, request, labels, prefix);
+            var law = QueryLaw(Origin, Action, request, labels, prefix);
             var selection = ReferenceNatureV111.SampleValidated(
                 law, expectedNatureState);
             var expectedTranscript = new ReferenceNatureCombatRewardLawDecisionV111(
@@ -379,11 +383,32 @@ public sealed record ReferenceNatureCombatRewardSessionV111(
     }
 
     private static ChanceLawV111 QueryLaw(
-        RunState source, ControlledStochasticRequestV111 request,
+        RunState source, GameAction action,
+        ControlledStochasticRequestV111 request,
         string[]? candidateLabels,
         ControlledStochasticDecisionV111[] prefix)
     {
         request.Validate();
+        if (source.NativeRunRng is null)
+        {
+            if (request.IndexRequest is not { } legacyRequest ||
+                !LegacyRewardSessionSites.Contains(
+                    legacyRequest.SiteId, StringComparer.Ordinal) ||
+                legacyRequest.StreamId != "reward")
+                throw new NotSupportedException(
+                    $"ReferenceNature legacy combat reward replay does not support stochastic site '{request.SiteId}'.");
+            var boundaryId = CanonicalJson.Sha256(new
+            {
+                boundary = "legacy-prototype-combat-reward",
+                actionId = PrototypeAiEnvironment.StableActionId(action),
+                requestFingerprint = CanonicalJson.Sha256(legacyRequest),
+                candidateLabels,
+                prefixFingerprint = CanonicalJson.Sha256(prefix)
+            });
+            return ChanceLawEngineV111.QueryRandomIndex(
+                boundaryId, legacyRequest);
+        }
+
         if (request.UnitFloatRequest is { } floatRequest)
         {
             if (floatRequest.SiteId == "reward.potion_odds.unit_float")
@@ -579,8 +604,28 @@ public sealed record ReferenceNatureCombatRewardSessionV111(
             request => SessionSites.Contains(
                 request.SiteId, StringComparer.Ordinal));
 
-    private static readonly string[] SessionSites =
+    private static readonly string[] LegacyRewardSessionSites =
     [
+        "reward.potion_odds.ticket",
+        "reward.combat_gold.index_draw",
+        "reward.random_potion.drop.ticket",
+        "reward.random_potion.model",
+        "reward.elite_relic.model",
+        "reward.card_rarity.ticket",
+        "reward.card_model.index_draw",
+        "card_rarity.roll.ticket",
+        "card_rarity.upgrade_roll.ticket",
+        "potion.rarity_roll.ticket",
+        "potion.model_within_rarity.index_draw",
+        PrototypeNativePotionShop.UniformModelSiteId,
+        "relic_grab_bag.rarity.ticket",
+        PrototypeNativeRelicGrabBag.NativeTreasureModelSiteId,
+        StochasticSiteRegistryV111.RewardBossRelicOfferShuffleSiteId,
+        StochasticSiteRegistryV111.RewardLavaRockRelicOfferShuffleSiteId
+    ];
+
+    private static readonly string[] SessionSites = new[]
+    {
         "reward.potion_odds.unit_float",
         "reward.combat_gold.index_draw",
         "potion_factory.rarity_roll.unit_float",
@@ -592,25 +637,35 @@ public sealed record ReferenceNatureCombatRewardSessionV111(
         PrototypeNativeRelicGrabBag.NativeTreasureModelSiteId,
         StochasticSiteRegistryV111.RewardBossRelicOfferShuffleSiteId,
         StochasticSiteRegistryV111.RewardLavaRockRelicOfferShuffleSiteId
-    ];
+    }.Concat(LegacyRewardSessionSites)
+        .Distinct(StringComparer.Ordinal).ToArray();
 
     public static string[] SessionSiteIds => (string[])SessionSites.Clone();
 
     private static RunState CreateNatureReplayOrigin(RunState source)
-        => ReferenceNatureRunProjectionV111.CreateNatureReplayOrigin(
+    {
+        if (!RequiresNatureRelicBagProjection(source))
+            return source.Fork();
+        return ReferenceNatureRunProjectionV111.CreateNatureReplayOrigin(
             source, createRelicBagWhenMissing: true);
+    }
+
+    private static bool RequiresNatureRelicBagProjection(RunState source) =>
+        source.NativeRunRng is not null ||
+        (source.World is { } world &&
+            PrototypeGameEngine.UsesNativeRegionalSystems(world));
 
     private static void ValidateOpeningBoundary(
         RunState source, GameAction action)
     {
         if (source.Phase != RunPhase.Combat || source.World is not { } world ||
-            source.NativeRunRng is null ||
+            (source.NativeRunRng is not null &&
+                !PrototypeGameEngine.UsesNativeRegionalSystems(world)) ||
             source.ControlledRunActionChoice is not null ||
-            !PrototypeGameEngine.UsesNativeRegionalSystems(world) ||
             world.ActiveRoom is not (PrototypeRoomType.Combat or
                 PrototypeRoomType.Elite or PrototypeRoomType.Boss))
             throw new InvalidOperationException(
-                "ReferenceNature combat reward session requires a configured Native combat boundary.");
+                "ReferenceNature combat reward session requires a configured Native or retained Prototype combat boundary.");
         if (!new PrototypeGameEngine().GetLegalActions(source).Any(candidate =>
                 PrototypeAiEnvironment.StableActionId(candidate) ==
                 PrototypeAiEnvironment.StableActionId(action)))

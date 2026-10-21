@@ -1,17 +1,17 @@
-# Native combat reward ReferenceNature session
+# Combat reward ReferenceNature session
 
 `ReferenceNatureCombatRewardSessionV111` is an opt-in atomic continuation for
-the complete Native combat victory and reward-generation boundary. Begin with
-a current legal combat action in a configured Native Combat, Elite, or Boss
-room. The action must immediately win and enter `RunPhase.Reward` under the
-ordinary engine. The session replays that action from its original checkpoint
-for each selected prefix and publishes the resulting reward state only after
-all captured requests have been resolved. While pending, the returned run
-remains at the pre-action checkpoint and retains its previously committed
-ReferenceNature cursor.
+combat victory and reward generation. Begin with a current legal combat
+action in a Combat, Elite, or Boss room. The action must immediately win and
+enter `RunPhase.Reward` under the ordinary engine. The session replays that
+action from its original checkpoint for each selected prefix and publishes
+the resulting reward state only after the controlled prefix has resolved.
+While pending, the returned run remains at the pre-action checkpoint and
+retains its previously committed ReferenceNature cursor.
 
-The session filters the shared typed provider scope to these Native reward
-sites. Requests outside the list retain their ordinary providers.
+The session filters the shared typed provider scope to the Native reward
+sites below. Requests outside both site lists retain their ordinary
+providers.
 
 | Site | Conditioned choice |
 | --- | --- |
@@ -36,6 +36,35 @@ replaying the existing rarity fallback and bag-removal mechanics. Every
 selected float is mapped to a representative that preserves the sampled
 mechanic outcome.
 
+When `NativeRunRng` is absent, the same session also captures these registered
+legacy reward-stream index requests:
+
+| Site | Conditioned choice |
+| --- | --- |
+| `reward.potion_odds.ticket` | Legacy pity ticket |
+| `reward.combat_gold.index_draw` | Legacy bounded gold amount |
+| `reward.random_potion.drop.ticket` | Potion offered/not offered |
+| `reward.random_potion.model` | Legacy reward-potion pool index |
+| `reward.elite_relic.model` | Legacy Elite relic pool index |
+| `reward.card_rarity.ticket` | Legacy reward-card rarity ticket |
+| `reward.card_model.index_draw` | Legacy reward-card pool index |
+| `card_rarity.roll.ticket` | Legacy encounter-card rarity ticket |
+| `card_rarity.upgrade_roll.ticket` | Legacy card-upgrade ticket |
+| `potion.rarity_roll.ticket` | Legacy potion rarity ticket |
+| `potion.model_within_rarity.index_draw` | Legacy rarity-filtered potion index |
+| `potion.uniform_model.index_draw` | Legacy full-pool potion index |
+| `relic_grab_bag.rarity.ticket` | Legacy relic rarity ticket |
+| `treasure.relic_grab_bag.model.index_draw` | Legacy combat reward relic identity index |
+| `reward.boss_relic_offer.shuffle_swap_index` | Legacy Boss relic offer swap |
+| `reward.lava_rock.relic_offer.shuffle_swap_index` | Legacy Lava Rock offer swap |
+
+These retained requests use equal-index `UNVERIFIED` laws bound to the typed
+request, candidate labels, active action, and ordered replay prefix. They do
+not establish the legacy stream's probability mapping or Native parity. Other
+stochastic requests retain their existing providers and are not controlled by
+this session. Legacy replay keeps the original run projection; configured Native
+relic-bag projection and its identity law remain as described above.
+
 JSONL operations are `reference_nature_combat_reward_begin`, `status`,
 `resolve_next`, `fork`, `save`, `load`, and `release_many`. Begin accepts a
 `state_handle`, a current legal winning `action_id`, and an optional unsigned
@@ -48,6 +77,7 @@ The pending Nature view uses `nature_choice_observe` with
 The session is advertised by `ReferenceNatureCombatRewardSessionSchemaId` and
 `ReferenceNatureCombatRewardSiteIds` in the validated stochastic session
 coverage. `ReferenceNatureRunCursorV111` commits the sampled cursor together
-with the completed reward state. The session does not cover legacy reward
-generation, victory actions that do not immediately produce a complete
-reward, or Native queue-shuffle construction before the combat boundary.
+with the completed reward state. The session does not cover unregistered
+stochastic reward hooks, victory actions that do not immediately produce a
+complete reward, or Native queue-shuffle construction before the combat
+boundary.
