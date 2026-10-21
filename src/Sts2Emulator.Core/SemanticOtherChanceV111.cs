@@ -84,8 +84,7 @@ public static class SemanticOtherChanceEngineV111
     {
         ArgumentNullException.ThrowIfNull(afterOpening);
         NativeRunRngV111.ValidateBundle(afterOpening);
-        var costStream = afterOpening.Streams.Single(stream =>
-            stream.StreamId == CostStreamId);
+        var costStream = afterOpening.GetStream(CostStreamId);
         var streams = new RngBundle([costStream.Fork()]);
         var initialCallCount = costStream.CallCount ??
             throw new InvalidDataException(
@@ -136,8 +135,7 @@ public static class SemanticOtherChanceEngineV111
         var workingStreams = working.Streams;
         if (workingStreams.Streams.Length != 1)
         {
-            var costStream = workingStreams.Streams.Single(stream =>
-                stream.StreamId == CostStreamId);
+            var costStream = workingStreams.GetStream(CostStreamId);
             workingStreams = new RngBundle([costStream.Fork()]);
         }
         var decision = new NativeRandomIndexProviderV111()
@@ -153,8 +151,7 @@ public static class SemanticOtherChanceEngineV111
 
     private static ulong WorkingCostStreamCallCount(
         SemanticOtherChanceStateV111 state) =>
-        state.Streams.Streams.Single(stream =>
-            stream.StreamId == CostStreamId).CallCount ??
+        state.Streams.GetStream(CostStreamId).CallCount ??
         throw new InvalidDataException(
             "Native cost stream is missing its call counter.");
 
@@ -170,17 +167,10 @@ public static class SemanticOtherChanceEngineV111
                 "Engine-owned cost provider has no stream collection.");
         if (state.Streams.Streams.Length == 1)
         {
-            RngStreamState costStream;
-            try
-            {
-                costStream = state.Streams.GetStream(CostStreamId);
-            }
-            catch (InvalidOperationException exception)
-            {
+            if (!state.Streams.TryGetStream(
+                    CostStreamId, out var costStream))
                 throw new InvalidDataException(
-                    "Engine-owned cost provider must own only its named cost stream.",
-                    exception);
-            }
+                    "Engine-owned cost provider must own only its named cost stream.");
             _ = NativeRngV111.ToSnapshot(costStream);
         }
         else

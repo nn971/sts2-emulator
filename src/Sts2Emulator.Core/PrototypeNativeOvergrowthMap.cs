@@ -573,15 +573,13 @@ internal sealed class ReferenceNatureOvergrowthBossIndexProviderV111(
         var bossPool = PrototypeContent.OvergrowthBossEncounterPool;
         var expectedOwner = "run:act:1:boss_pool:" +
             CanonicalJson.Sha256(bossPool);
-        var combatStreams = streams.Streams.Where(stream =>
-            stream.StreamId == "combat").ToArray();
         if (_decisions.Count != 0 || request.OwnerId != expectedOwner ||
             request.Ordinal != 0 || request.OperationKind != "choose_index" ||
             request.SupportCount != bossPool.Length ||
             !request.OrderedCandidates.SequenceEqual(
                 Enumerable.Range(0, bossPool.Length)) ||
-            combatStreams.Length != 1 ||
-            combatStreams[0].Codec != PrototypeRng.Codec)
+            !streams.TryGetStream("combat", out var combatStream) ||
+            combatStream.Codec != PrototypeRng.Codec)
             throw new InvalidDataException(
                 "ReferenceNature Overgrowth boss request differs from its run-start boundary.");
 
@@ -732,10 +730,9 @@ public sealed record ReferenceNatureOvergrowthRunResultV111(
                 "Overgrowth boss and map results do not replay from their Nature cursor.");
 
         PrototypeStateInvariants.Validate(run);
-        var initialCombat = PrototypeRng.CreateBundle(run.RunSeed).Streams
-            .Single(stream => stream.StreamId == "combat");
-        var resultCombat = run.Rng.Streams.Single(stream =>
-            stream.StreamId == "combat");
+        var initialCombat = PrototypeRng.CreateBundle(run.RunSeed)
+            .GetStream("combat");
+        var resultCombat = run.Rng.GetStream("combat");
         if (CanonicalJson.Sha256(initialCombat) !=
             CanonicalJson.Sha256(resultCombat))
             throw new InvalidDataException(

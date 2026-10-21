@@ -2721,12 +2721,15 @@ public static class SemanticPilotCombatEngineV111
     private static SemanticRewardAuditV111 RecordRewardAudit(
         RunState source, RunState result)
     {
-        static ulong Count(RunState run) =>
-            run.Rng.Streams.Single(x =>
-                x.StreamId == "reward" &&
-                x.Codec == PrototypeRng.Codec).CallCount
-            ?? throw new InvalidDataException(
+        static ulong Count(RunState run)
+        {
+            if (!run.Rng.TryGetStream("reward", out var stream) ||
+                stream.Codec != PrototypeRng.Codec)
+                throw new InvalidDataException(
+                    "Reward RNG stream is missing or has an unsupported codec.");
+            return stream.CallCount ?? throw new InvalidDataException(
                 "Reward RNG stream has no saved call count.");
+        }
         var before = Count(source);
         var after = Count(result);
         if (after < before)

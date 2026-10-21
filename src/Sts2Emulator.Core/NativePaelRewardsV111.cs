@@ -151,8 +151,9 @@ public static class NativePaelRewardsV111
     internal static PlayerState InitializeLegion(PlayerState player, int index, RngBundle rng)
     {
         var relics = (RelicInstance[])player.Relics.Clone();
-        var source = rng.Streams.FirstOrDefault(stream => stream.StreamId == "reward")
-            ?? throw new InvalidOperationException("Pael's Legion skin selection requires the reward RNG state.");
+        if (!rng.TryGetStream("reward", out var source))
+            throw new InvalidOperationException(
+                "Pael's Legion skin selection requires the reward RNG state.");
         var seed = Convert.ToHexString(source.StateBytes) + ":paels-legion:" + index;
         var skinRng = PrototypeRng.CreateBundle(seed);
         var skin = LegionSkins[LegacyRandomChoiceV111.ChooseIndexRange(

@@ -1482,8 +1482,6 @@ internal sealed class ReferenceNatureUnderdocksBossIndexProviderV111(
         var bosses = PrototypeNativeUnderdocks.NativeBossEncounterIds;
         var expectedOwner = "act:1:underdocks:boss_pool:" +
             CanonicalJson.Sha256(bosses);
-        var combatStreams = streams.Streams.Where(stream =>
-            stream.StreamId == "combat").ToArray();
         if (_decisions.Count != 0 ||
             request.SiteId != PrototypeNativeUnderdocks
                 .BossEncounterIndexSiteId ||
@@ -1493,8 +1491,8 @@ internal sealed class ReferenceNatureUnderdocksBossIndexProviderV111(
             request.SupportCount != bosses.Length ||
             !request.OrderedCandidates.SequenceEqual(
                 Enumerable.Range(0, bosses.Length)) ||
-            combatStreams.Length != 1 ||
-            combatStreams[0].Codec != PrototypeRng.Codec)
+            !streams.TryGetStream("combat", out var combatStream) ||
+            combatStream.Codec != PrototypeRng.Codec)
             throw new InvalidDataException(
                 "Underdocks boss request differs from its run-start boundary.");
 

@@ -1,3 +1,5 @@
+using System.Diagnostics.CodeAnalysis;
+
 namespace Sts2Emulator.Core;
 
 /// <summary>
@@ -83,6 +85,25 @@ public sealed record RngBundle
     {
         var index = RequireStreamIndex(streamId);
         return _streams![index];
+    }
+
+    /// <summary>
+    /// Looks up a stream by its stable owner name without requiring that the
+    /// bundle contain it. Array positions remain an implementation detail.
+    /// </summary>
+    public bool TryGetStream(
+        string streamId, [NotNullWhen(true)] out RngStreamState? stream)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(streamId);
+        var index = Array.FindIndex(_streams!, item =>
+            StringComparer.Ordinal.Equals(item.StreamId, streamId));
+        if (index < 0)
+        {
+            stream = null;
+            return false;
+        }
+        stream = _streams![index];
+        return true;
     }
 
     public void Deconstruct(out RngStreamState[] Streams) =>

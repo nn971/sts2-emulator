@@ -386,16 +386,15 @@ public static class ExperimentalSilentThreeActRouteV111
         ArgumentNullException.ThrowIfNull(profile);
         ArgumentNullException.ThrowIfNull(initialNatureState);
         initialNatureState.Validate();
-        var eventStreams = rng.Streams.Where(stream =>
-            stream.StreamId == "event").ToArray();
-        var eventCallCount = eventStreams.Length == 1
-            ? eventStreams[0].CallCount ?? 0 : 0;
-        if (eventStreams.Length != 1 ||
-            eventStreams[0].Codec != PrototypeRng.Codec ||
+        if (!rng.TryGetStream("event", out var eventStream))
+            throw new InvalidDataException(
+                "ReferenceNature later-act assignment requires the legacy event stream.");
+        var eventCallCount = eventStream.CallCount ?? 0;
+        if (eventStream.Codec != PrototypeRng.Codec ||
             eventCallCount > int.MaxValue)
             throw new InvalidDataException(
                 "ReferenceNature later-act assignment requires the legacy event stream.");
-        var initialEventStream = eventStreams[0].Fork();
+        var initialEventStream = eventStream.Fork();
 
         var provider = new ReferenceNatureLaterActAssignmentIndexProviderV111(
             initialNatureState);
@@ -407,8 +406,7 @@ public static class ExperimentalSilentThreeActRouteV111
             assignments = PrepareAncientAssignments(
                 rng, ascension, profile);
         }
-        var finalEventStream = rng.Streams.Single(stream =>
-            stream.StreamId == "event");
+        var finalEventStream = rng.GetStream("event");
         if (provider.InitialEventOrdinal != (int)eventCallCount ||
             CanonicalJson.Sha256(initialEventStream) !=
             CanonicalJson.Sha256(finalEventStream))
@@ -630,10 +628,9 @@ internal sealed class ReferenceNatureLaterActAssignmentIndexProviderV111
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(streams);
         request.ValidateForLegacyProvider();
-        var eventStreams = streams.Streams.Where(stream =>
-            stream.StreamId == "event").ToArray();
-        if (request.StreamId != "event" || eventStreams.Length != 1 ||
-            eventStreams[0].Codec != PrototypeRng.Codec)
+        if (request.StreamId != "event" ||
+            !streams.TryGetStream("event", out var eventStream) ||
+            eventStream.Codec != PrototypeRng.Codec)
             throw new InvalidDataException(
                 "ReferenceNature later-act assignment request differs from its legacy event boundary.");
         if (_decisions.Count == 0)
@@ -915,15 +912,12 @@ internal sealed class ReferenceNatureLaterActEncounterIndexProviderV111
         if (ascension < 0 || ascension > 10)
             throw new ArgumentOutOfRangeException(nameof(ascension));
         initialNatureState.Validate();
-        var combatStreams = streams.Streams.Where(stream =>
-            stream.StreamId == "combat").ToArray();
-        var initialOrdinal = combatStreams.Length == 1
-            ? combatStreams[0].CallCount ?? 0 : ulong.MaxValue;
-        if (combatStreams.Length != 1 ||
-            combatStreams[0].Codec != PrototypeRng.Codec ||
-            initialOrdinal > int.MaxValue - 60)
+        if (!streams.TryGetStream("combat", out var combatStream) ||
+            combatStream.Codec != PrototypeRng.Codec ||
+            (combatStream.CallCount ?? 0) > int.MaxValue - 60)
             throw new InvalidDataException(
                 "ReferenceNature later-act bosses require a valid legacy combat cursor.");
+        var initialOrdinal = combatStream.CallCount ?? 0;
         _natureState = initialNatureState.Fork();
         _ascension = ascension;
         _expectedPrefix = expectedPrefix is null ? null :
@@ -953,10 +947,9 @@ internal sealed class ReferenceNatureLaterActEncounterIndexProviderV111
         ArgumentNullException.ThrowIfNull(request);
         ArgumentNullException.ThrowIfNull(streams);
         request.ValidateForLegacyProvider();
-        var combatStreams = streams.Streams.Where(stream =>
-            stream.StreamId == "combat").ToArray();
-        if (request.StreamId != "combat" || combatStreams.Length != 1 ||
-            combatStreams[0].Codec != PrototypeRng.Codec)
+        if (request.StreamId != "combat" ||
+            !streams.TryGetStream("combat", out var combatStream) ||
+            combatStream.Codec != PrototypeRng.Codec)
             throw new InvalidDataException(
                 "ReferenceNature later-act encounter request differs from its legacy combat boundary.");
         if (request.Ordinal != checked(InitialCombatOrdinal +
@@ -1233,9 +1226,8 @@ public sealed record ReferenceNatureLaterActEncounterPreparationV111(
             DecisionTranscript.Length != expectedDecisionCount)
             throw new InvalidDataException(
                 "Invalid ReferenceNature later-act encounter preparation result.");
-        var initialCombat = InitialPrototypeRng.Streams.SingleOrDefault(
-            stream => stream.StreamId == "combat");
-        if (initialCombat is null ||
+        if (!InitialPrototypeRng.TryGetStream(
+                "combat", out var initialCombat) ||
             initialCombat.Codec != PrototypeRng.Codec ||
             initialCombat.CallCount != (ulong)InitialCombatOrdinal)
             throw new InvalidDataException(
