@@ -226,7 +226,7 @@ public static class SemanticHandCostSelectionChoiceV111
                 eventState.CandidateCardModelIds))
             throw new InvalidDataException(
                 "Hand-cost decision no longer matches its live support.");
-        return SemanticRandomHandCostChoiceV111.Resume(
-            checkpoint, eventState.SiteId, decision.SelectedIndex);
+        return SemanticRandomHandCostChoiceV111.ResumeSelectedHandCard(
+            checkpoint, decision.SelectedCardInstanceId);
     }
 }

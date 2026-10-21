@@ -362,8 +362,23 @@ internal static class SemanticRandomHandCostChoiceV111
 
     internal static RunState Resume(
         RunState checkpoint, string siteId, int selectedIndex)
+        => ResumeCore(checkpoint, siteId, savedRun =>
+            PrototypeGameEngine.ResumeControlledRandomCost(
+                savedRun, selectedIndex));
+
+    internal static RunState ResumeSelectedHandCard(
+        RunState checkpoint, long selectedCardInstanceId) =>
+        ResumeCore(checkpoint, "combat.random_hand_card.select",
+            savedRun => PrototypeGameEngine
+                .ResumeControlledRandomCostByCard(
+                    savedRun, selectedCardInstanceId));
+
+    private static RunState ResumeCore(
+        RunState checkpoint, string siteId,
+        Func<RunState, RunState> resume)
     {
         ArgumentNullException.ThrowIfNull(checkpoint);
+        ArgumentNullException.ThrowIfNull(resume);
         ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
         var expectedOperation = siteId switch
         {
@@ -386,8 +401,7 @@ internal static class SemanticRandomHandCostChoiceV111
 
         RunState resumed;
         using (ControlledChanceGuardV111.Enter())
-            resumed = PrototypeGameEngine.ResumeControlledRandomCost(
-                checkpoint.Fork(), selectedIndex);
+            resumed = resume(checkpoint.Fork());
         var nextCombat = resumed.World?.Combat;
         if (resumed.Phase != RunPhase.Combat || nextCombat is null)
             throw new NotSupportedException(

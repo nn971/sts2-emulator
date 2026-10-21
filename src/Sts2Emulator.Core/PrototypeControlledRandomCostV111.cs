@@ -130,6 +130,47 @@ public sealed partial class PrototypeGameEngine
         return updated;
     }
 
+    internal static RunState ResumeControlledRandomCostByCard(
+        RunState state, long selectedCardInstanceId)
+    {
+        if (!ControlledChanceGuardV111.Active)
+            throw new InvalidOperationException(
+                "Controlled cost needs RNG guard.");
+        var world = RequireWorld(state);
+        var combat = world.Combat ??
+            throw new InvalidOperationException(
+                "Missing controlled combat.");
+        var pending = combat.PendingChoice ??
+            throw new InvalidOperationException(
+                "No controlled cost choice.");
+        if (pending.ChoiceId != "controlled_random_hand_cost" ||
+            pending.ControlledRandomCost is not { } choice ||
+            pending.OuterChoiceContinuation is not { } continuation ||
+            choice.Operation.Kind != PrototypeCombatEffectKind
+                .SetRandomHandCardEnergyCostUntilTurnEndOrPlayed ||
+            !ValidateControlledRandomCost(combat, choice))
+            throw new InvalidDataException(
+                "Saved single-card random-cost support is invalid.");
+        if (!choice.EligibleCardInstanceIds.Contains(selectedCardInstanceId))
+            throw new InvalidOperationException(
+                "Selected hand-card identity is outside the saved cost support.");
+
+        combat = SetCardTemporaryEnergyCost(combat, selectedCardInstanceId,
+            new PrototypeTemporaryCardCost(
+                Math.Max(0, choice.Operation.Amount),
+                PrototypeTemporaryCardCostExpiry.EndOfTurn |
+                    PrototypeTemporaryCardCostExpiry.WhenPlayed));
+        combat = combat with { PendingChoice = null };
+        var resolved = ResumeChoiceResolutionContinuation(
+            state.Player, combat, state.Rng, continuation);
+        var updated = state with
+        {
+            Player = resolved.Player,
+            World = world with { Combat = resolved.Combat }
+        };
+        return ResumeAutomaticPipelineContinuation(updated);
+    }
+
     /// <summary>Narrow test entry using the actual operations kernel for
     /// effects outside the initial Silent starter fixture.</summary>
     internal static RunState BeginControlledRandomCostFixture(
