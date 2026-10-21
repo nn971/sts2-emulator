@@ -402,8 +402,10 @@ internal static class NativeEventShufflePlanBuilderV111
             nativeCursorBefore = captures[0].NativeCursorBefore;
             var capturedCursor = nativeCursorBefore ?? throw new InvalidOperationException(
                 "War Hammer shuffle capture is missing its Native cursor.");
-            var finalNicheCursor = projected.NativeRunRng?.Streams
-                .SingleOrDefault(stream => stream.StreamId == "run.niche");
+            var finalNicheCursor = projected.NativeRunRng is { } finalNativeRng &&
+                finalNativeRng.TryGetStream("run.niche", out var finalNicheStream)
+                ? finalNicheStream
+                : null;
             if (plannedCandidateIds is not null &&
                 !orderedCandidateIds.SequenceEqual(
                     plannedCandidateIds, StringComparer.Ordinal))
@@ -509,12 +511,18 @@ internal static class NativeEventShufflePlanBuilderV111
                     origin.Fork(), replayAction).State;
                 var captures = shuffleProbe.ShuffleCaptures.Where(capture =>
                     capture.SiteId == siteId).ToArray();
-                var rewardStreamBefore = origin.NativeRunRng?.Streams
-                    .SingleOrDefault(stream => stream.StreamId ==
-                        NativePlayerRngV111.RewardsStreamId);
-                var rewardStreamAfter = projected.NativeRunRng?.Streams
-                    .SingleOrDefault(stream => stream.StreamId ==
-                        NativePlayerRngV111.RewardsStreamId);
+                var rewardStreamBefore = origin.NativeRunRng is { } originNativeRng &&
+                    originNativeRng.TryGetStream(
+                        NativePlayerRngV111.RewardsStreamId,
+                        out var rewardStreamBeforeValue)
+                    ? rewardStreamBeforeValue
+                    : null;
+                var rewardStreamAfter = projected.NativeRunRng is { } projectedNativeRng &&
+                    projectedNativeRng.TryGetStream(
+                        NativePlayerRngV111.RewardsStreamId,
+                        out var rewardStreamAfterValue)
+                    ? rewardStreamAfterValue
+                    : null;
                 var rewardRequests = journal.Entries.Where(entry =>
                     entry.Request.StreamId ==
                         NativePlayerRngV111.RewardsStreamId).ToArray();

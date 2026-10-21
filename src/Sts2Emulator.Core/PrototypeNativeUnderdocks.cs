@@ -1612,10 +1612,9 @@ public sealed record ReferenceNatureUnderdocksRunResultV111(
             throw new InvalidDataException(
                 "Underdocks boss result does not replay from its Nature cursor.");
 
-        var cleanCombat = PrototypeRng.CreateBundle(run.RunSeed).Streams
-            .Single(stream => stream.StreamId == "combat");
-        var resultCombat = run.Rng.Streams
-            .Single(stream => stream.StreamId == "combat");
+        var cleanCombat = PrototypeRng.CreateBundle(run.RunSeed)
+            .GetStream("combat");
+        var resultCombat = run.Rng.GetStream("combat");
         if (CanonicalJson.Sha256(cleanCombat) !=
             CanonicalJson.Sha256(resultCombat))
             throw new InvalidDataException(
