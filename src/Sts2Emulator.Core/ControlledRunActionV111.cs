@@ -51,7 +51,7 @@ public sealed record ControlledRunActionTraceV111(
         var mapNodeAction = ActionId == "choose_map_node";
         var shopPurchaseAction =
             ControlledRunActionEngineV111.IsShopPurchaseActionKind(ActionId);
-        if (ActionId is not ("start_run"
+        if (ActionId is not ("start_run" or "continue_act"
                 or PrototypeNativeRestSiteActionsV111.Dig
                 or "choose_map_node")
                 && !shopPurchaseAction
@@ -136,7 +136,11 @@ public sealed record ControlledRunActionTraceV111(
             var validSite = ActionId == "start_run"
                 ? ControlledEventChoiceReplayV111.IsRunActionSite(
                     request.SiteId)
-                : mapNodeAction
+                : ActionId == "continue_act"
+                    ? isMapDraw
+                        && ControlledEventChoiceReplayV111.IsRunActionSite(
+                            request.SiteId)
+                    : mapNodeAction
                     ? isEventEntryDraw || isShopDraw || isTreasureDraw
                         || isCombatDraw || isCombatPotionDraw
                     : shopPurchaseAction
@@ -543,6 +547,36 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                 }
                 break;
             }
+            case "continue_act":
+            {
+                if (state.Phase != RunPhase.ActTransition
+                    || state.Configuration is not null
+                    || state.NativeRunRng is not null
+                    || state.World is not { } world
+                    || world.Act >= PrototypeContent.Rules.Acts
+                    || !new PrototypeGameEngine().GetLegalActions(state)
+                        .Any(action => action.Kind == "continue_act")
+                    || !ControlledEventChoiceReplayV111.IsRunActionSite(
+                        PendingRequest.SiteId)
+                    || !PendingRequest.SiteId.StartsWith(
+                        "map.legacy.", StringComparison.Ordinal))
+                    throw new InvalidDataException(
+                        "Controlled act-transition frame is outside the legacy prototype map boundary.");
+                expectedSite = PendingRequest.SiteId;
+                expectedStream = "map";
+                expectedOwner = PendingRequest.OwnerId;
+                expectedCandidates = PendingRequest.OperationKind ==
+                    "bounded_integer"
+                    ? []
+                    : (int[])PendingRequest.OrderedCandidates.Clone();
+                expectedLabels = PendingRequest.SupportCount >
+                    ControlledRunActionEngineV111.MaximumInlineOutcomeActions
+                    ? []
+                    : Enumerable.Range(0, PendingRequest.SupportCount)
+                        .Select(index => index.ToString(
+                            CultureInfo.InvariantCulture)).ToArray();
+                break;
+            }
             case PrototypeNativeRestSiteActionsV111.Dig:
             {
                 if (state.Phase != RunPhase.Rest
@@ -782,6 +816,7 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                     "Controlled run-action frame uses an unsupported action.");
         }
         if ((!mapNodeRequest && MapNodeId is not null)
+            || (!shopPurchaseRequest && RunAction is not null)
             || PendingRequest.SiteId != expectedSite
             || PendingRequest.StreamId != expectedStream
             || PendingRequest.OwnerId != expectedOwner
@@ -873,7 +908,11 @@ public sealed record PrototypeControlledRunActionContinuationV111(
             var validSite = ActionId == "start_run"
                 ? ControlledEventChoiceReplayV111.IsRunActionSite(
                     request.SiteId)
-                : ActionId == "choose_map_node"
+                : ActionId == "continue_act"
+                    ? isMapDraw
+                        && ControlledEventChoiceReplayV111.IsRunActionSite(
+                            request.SiteId)
+                    : ActionId == "choose_map_node"
                     ? isEventEntryDraw || isShopDraw || isTreasureDraw
                         || isCombatEntryDraw
                         || isNativeActOneCombatEntryDraw
@@ -1227,11 +1266,20 @@ public static class ControlledRunActionEngineV111
                 source, action);
         var shopPurchaseAction = IsShopPurchaseAction(
             source, action);
+        var supportedLegacyActTransitionAction =
+            action.Kind == "continue_act"
+            && source.Phase == RunPhase.ActTransition
+            && source.Configuration is null
+            && source.NativeRunRng is null
+            && source.World is { } transitionWorld
+            && transitionWorld.Act < PrototypeContent.Rules.Acts;
         if (source.ControlledRunActionChoice is not null
-            || (action.Kind is not ("start_run"
+            || (action.Kind is not ("start_run" or "continue_act"
                 or PrototypeNativeRestSiteActionsV111.Dig
                 or "choose_map_node")
                 && !shopPurchaseAction)
+            || action.Kind == "continue_act"
+                && !supportedLegacyActTransitionAction
             || action.Kind == "choose_map_node" && !supportedMapNodeAction)
             throw new InvalidOperationException(
                 "Controlled run action requires an unsuspended supported action.");
@@ -1269,6 +1317,13 @@ public static class ControlledRunActionEngineV111
                         source,
                         ControlledStochasticRequestV111.FromIndex(
                             pendingChance.Request));
+                var supportedActTransitionSite =
+                    supportedLegacyActTransitionAction
+                    && ControlledEventChoiceReplayV111.IsRunActionSite(
+                        pendingChance.Request.SiteId)
+                    && pendingChance.Request.SiteId.StartsWith(
+                        "map.legacy.", StringComparison.Ordinal)
+                    && pendingChance.Request.StreamId == "map";
                 var supportedShopPurchaseSite = shopPurchaseAction
                     && StochasticSiteRegistryV111
                         .IsRunActionShopPurchaseSite(
@@ -1296,7 +1351,8 @@ public static class ControlledRunActionEngineV111
                             || labels.Length == 0
                                 && pendingChance.Request.SupportCount >
                                     MaximumInlineOutcomeActions);
-                if ((!supportedStartRunSite && !supportedMapNodeSite
+                if ((!supportedStartRunSite && !supportedActTransitionSite
+                        && !supportedMapNodeSite
                         && !supportedShopPurchaseSite
                         && !supportedShovelSite)
                     || !labelsValid)
@@ -1334,7 +1390,8 @@ public static class ControlledRunActionEngineV111
         }
         if (result.ControlledRunActionChoice is null)
         {
-            if (shopPurchaseAction || legacyActOneCombatEntryAction ||
+            if (shopPurchaseAction || supportedLegacyActTransitionAction ||
+                legacyActOneCombatEntryAction ||
                 nativeActOneCombatEntryAction)
             {
                 PrototypeStateInvariants.Validate(result);

@@ -4351,6 +4351,13 @@ public sealed partial class PrototypeGameEngine
                 "start_run" => StartRun(
                     checkpoint,
                     GameAction.Empty("start_run")),
+                "continue_act" => new PrototypeGameEngine().Step(
+                    checkpoint with
+                    {
+                        DecisionIndex = checked(state.DecisionIndex - 1)
+                    },
+                    GameAction.Empty("continue_act"))
+                    .State,
                 PrototypeNativeRestSiteActionsV111.Dig =>
                     BeginRestDigReward(checkpoint),
                 "choose_map_node" => new PrototypeGameEngine().Step(
@@ -4388,6 +4395,11 @@ public sealed partial class PrototypeGameEngine
                                 pendingChance.Request))
                     : ControlledEventChoiceReplayV111
                         .IsRunActionSite(pendingChance.Request.SiteId),
+                "continue_act" => ControlledEventChoiceReplayV111
+                        .IsRunActionSite(pendingChance.Request.SiteId)
+                    && pendingChance.Request.SiteId.StartsWith(
+                        "map.legacy.", StringComparison.Ordinal)
+                    && pendingChance.Request.StreamId == "map",
                 "choose_map_node" => ControlledEventChoiceReplayV111
                     .IsRunActionEventEntrySite(pendingChance.Request.SiteId)
                     || ControlledEventChoiceReplayV111

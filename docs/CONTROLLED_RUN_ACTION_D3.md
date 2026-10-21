@@ -1,8 +1,10 @@
 # Controlled run-action continuation
 
 This opt-in D3 boundary saves the legacy `start_run` action at its Act 1 boss
-encounter draw, map choices that enter an Event node at supported legacy event
-entry draws, legacy Shop-node offer generation, eligible legacy Treasure-node
+encounter draw and unconfigured prototype `continue_act` at registered
+`map.legacy.*` draws during later-act map generation. It also saves map choices
+that enter an Event node at supported legacy event-entry draws, legacy
+Shop-node offer generation, eligible legacy Treasure-node
 relic selection, Native-regional Treasure and Shovel Dig through retained
 legacy reward requests when `NativeRunRng` is absent, eligible legacy regional
 Unknown-node entry, legal legacy Act 1 Overgrowth and Underdocks Combat/Elite
@@ -144,7 +146,9 @@ seed. Snapshots with a Nature-owned relic identity set use
 cursor use `sts2-exact-snapshot-v2-reference-nature-state`, and snapshots
 without a cursor retain `sts2-exact-snapshot-v1`.
 
-The session supports the legacy `start_run` boss encounter draw and the
+The session supports legacy `start_run` boss encounter and initial-map draws,
+unconfigured prototype `continue_act` map-generation draws on the registered
+legacy map sites, and the
 configured Underdocks boss draw described above, legacy map Event-node entry
 draws, the legacy regional Unknown-room 1000-way ticket,
 seven `shop.*` sites in legacy Shop-node generation,
@@ -192,10 +196,12 @@ committed session's `.state` property.
 
 ## Unsupported routes and remaining limits
 
-Legacy run-start map continuation covers the listed `map.legacy.*` request
-sites during initial legacy map generation. Configured Overgrowth uses the
-composed Native map-generation session described above. Later-act map
-regeneration remains outside these continuations. Event-entry continuation covers legacy
+Legacy run-start and unconfigured prototype act-transition continuations cover
+the listed `map.legacy.*` request sites during initial and later-act legacy map
+generation. Configured Overgrowth starts and configured experimental Hive/Glory
+act transitions use the composed ReferenceNature map-generation session
+described above. Ordinary Native map regeneration remains outside these continuations.
+Event-entry continuation covers legacy
 `event.selection.weighted_ticket` and listed legacy event initialization draws
 when a map Event node is selected. The separate
 `event.unknown_room.odds.ticket` request is supported only when an unconfigured
