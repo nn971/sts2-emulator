@@ -42,6 +42,142 @@ public sealed record ReferenceNatureLaterActPreparationSessionSnapshotV111(
 }
 
 /// <summary>
+/// Source generator inputs and completed encounter-bag output for the
+/// later-act preparation continuation.
+/// </summary>
+public sealed record ReferenceNatureLaterActPreparationMechanicsStateV111
+{
+    private RngBundle? _initialPrototypeRng;
+    private SimulationProfile? _profile;
+    private PrototypeLaterActEncounterBagV111[]? _bags;
+
+    public RngBundle InitialPrototypeRng
+    {
+        get => _initialPrototypeRng?.Fork()!;
+        init => _initialPrototypeRng = value?.Fork();
+    }
+
+    public int Ascension { get; init; }
+
+    public SimulationProfile Profile
+    {
+        get => _profile?.Fork()!;
+        init => _profile = value?.Fork();
+    }
+
+    public PrototypeLaterActEncounterBagV111[]? Bags
+    {
+        get => _bags?.Select(bag => bag.Fork()).ToArray();
+        init => _bags = value?.Select(bag => bag.Fork()).ToArray();
+    }
+
+    public ReferenceNatureLaterActPreparationMechanicsStateV111(
+        RngBundle initialPrototypeRng, int ascension,
+        SimulationProfile profile, PrototypeLaterActEncounterBagV111[]? bags)
+    {
+        InitialPrototypeRng = initialPrototypeRng;
+        Ascension = ascension;
+        Profile = profile;
+        Bags = bags;
+    }
+
+    public ReferenceNatureLaterActPreparationMechanicsStateV111 Fork() =>
+        this with
+        {
+            InitialPrototypeRng = InitialPrototypeRng,
+            Profile = Profile,
+            Bags = Bags
+        };
+
+    public void Validate()
+    {
+        ArgumentNullException.ThrowIfNull(InitialPrototypeRng);
+        ArgumentNullException.ThrowIfNull(Profile);
+        if (Ascension is < 0 or > 10)
+            throw new InvalidDataException(
+                "Invalid later-act preparation mechanics checkpoint.");
+        PrototypeRng.ValidateBundle(InitialPrototypeRng,
+            allowEmpty: false);
+    }
+}
+
+/// <summary>
+/// ReferenceNature cursor and typed law/request prefix for later-act
+/// generator preparation.
+/// </summary>
+public sealed record ReferenceNatureLaterActPreparationStochasticStateV111
+{
+    private ChanceLawV111[]? _chanceLaws;
+    private RandomIndexRequestV111? _pendingRequest;
+    private ChanceLawV111? _pendingLaw;
+
+    public ReferenceNatureStochasticStateV111<ReferenceNatureDecisionV111>
+        Cursor { get; init; }
+
+    public ChanceLawV111[] ChanceLaws
+    {
+        get => _chanceLaws?.Select(law => law.Fork()).ToArray()!;
+        init => _chanceLaws = value?.Select(law => law.Fork()).ToArray();
+    }
+
+    public RandomIndexRequestV111? PendingRequest
+    {
+        get => Copy(_pendingRequest);
+        init => _pendingRequest = Copy(value);
+    }
+
+    public ChanceLawV111? PendingLaw
+    {
+        get => _pendingLaw?.Fork();
+        init => _pendingLaw = value?.Fork();
+    }
+
+    public ReferenceNatureLaterActPreparationStochasticStateV111(
+        ReferenceNatureStochasticStateV111<ReferenceNatureDecisionV111> cursor,
+        ChanceLawV111[] chanceLaws,
+        RandomIndexRequestV111? pendingRequest,
+        ChanceLawV111? pendingLaw)
+    {
+        Cursor = cursor ?? throw new ArgumentNullException(nameof(cursor));
+        ChanceLaws = chanceLaws;
+        PendingRequest = pendingRequest;
+        PendingLaw = pendingLaw;
+    }
+
+    public ReferenceNatureLaterActPreparationStochasticStateV111 Fork() =>
+        this with
+        {
+            Cursor = Cursor.Fork(),
+            ChanceLaws = ChanceLaws,
+            PendingRequest = PendingRequest,
+            PendingLaw = PendingLaw
+        };
+
+    public void Validate()
+    {
+        ArgumentNullException.ThrowIfNull(Cursor);
+        Cursor.Validate();
+        var laws = ChanceLaws;
+        ArgumentNullException.ThrowIfNull(laws);
+        foreach (var law in laws)
+        {
+            ArgumentNullException.ThrowIfNull(law);
+            law.Validate();
+        }
+        PendingRequest?.Validate();
+        PendingLaw?.Validate();
+    }
+
+    private static RandomIndexRequestV111? Copy(
+        RandomIndexRequestV111? request) => request is null ? null :
+        request with
+        {
+            OrderedCandidates =
+                (int[])request.OrderedCandidates.Clone()
+        };
+}
+
+/// <summary>
 /// Resumable Nature continuation for the existing experimental Hive/Glory
 /// Ancient assignments and encounter-bag generators. It replays those
 /// generators from their original RNG bundle under a typed Nature prefix.
@@ -58,19 +194,41 @@ public sealed record ReferenceNatureLaterActPreparationSessionV111(
     RandomIndexRequestV111? PendingRequest,
     PrototypeLaterActEncounterBagV111[]? Bags)
 {
-    private RngBundle? _initialPrototypeRng = InitialPrototypeRng?.Fork();
-    private SimulationProfile? _profile = Profile?.Fork();
-    private ChanceLawV111[]? _chanceLaws = ChanceLaws?.Select(law =>
-        law.Fork()).ToArray();
-    private ChanceLawV111? _pendingLaw = PendingLaw?.Fork();
-    private RandomIndexRequestV111? _pendingRequest = Copy(PendingRequest);
-    private PrototypeLaterActEncounterBagV111[]? _bags = Bags?.Select(bag =>
-        bag.Fork()).ToArray();
+    [JsonIgnore]
+    public SimulationStateV111<
+        ReferenceNatureLaterActPreparationMechanicsStateV111,
+        ReferenceNatureLaterActPreparationStochasticStateV111>
+        Simulation { get; init; } = new(
+            new ReferenceNatureLaterActPreparationMechanicsStateV111(
+                InitialPrototypeRng, Ascension, Profile, Bags),
+            new ReferenceNatureLaterActPreparationStochasticStateV111(
+                new ReferenceNatureStochasticStateV111<
+                    ReferenceNatureDecisionV111>(InitialNatureState,
+                    NatureState, DecisionTranscript),
+                ChanceLaws, PendingRequest, pendingLaw: null));
+
+    [JsonIgnore]
+    public ReferenceNatureLaterActPreparationMechanicsStateV111 Mechanics
+    {
+        get => Simulation.Mechanics;
+        init => Simulation = Simulation with { Mechanics = value };
+    }
+
+    [JsonIgnore]
+    public ReferenceNatureLaterActPreparationStochasticStateV111
+        StochasticState
+    {
+        get => Simulation.Stochastic;
+        init => Simulation = Simulation with { Stochastic = value };
+    }
 
     [JsonIgnore]
     public ReferenceNatureStochasticStateV111<ReferenceNatureDecisionV111>
-        Stochastic { get; init; } = new(InitialNatureState, NatureState,
-            DecisionTranscript);
+        Stochastic
+    {
+        get => StochasticState.Cursor;
+        init => StochasticState = StochasticState with { Cursor = value };
+    }
 
     public ReferenceNatureStateV111 InitialNatureState
     {
@@ -89,20 +247,32 @@ public sealed record ReferenceNatureLaterActPreparationSessionV111(
 
     public RngBundle InitialPrototypeRng
     {
-        get => _initialPrototypeRng?.Fork()!;
-        init => _initialPrototypeRng = value?.Fork();
+        get => Mechanics.InitialPrototypeRng;
+        init => Mechanics = Mechanics with { InitialPrototypeRng = value };
     }
 
     public SimulationProfile Profile
     {
-        get => _profile?.Fork()!;
-        init => _profile = value?.Fork();
+        get => Mechanics.Profile;
+        init => Mechanics = Mechanics with { Profile = value };
+    }
+
+    public int Ascension
+    {
+        get => Mechanics.Ascension;
+        init => Mechanics = Mechanics with { Ascension = value };
+    }
+
+    public PrototypeLaterActEncounterBagV111[]? Bags
+    {
+        get => Mechanics.Bags;
+        init => Mechanics = Mechanics with { Bags = value };
     }
 
     public ChanceLawV111[] ChanceLaws
     {
-        get => _chanceLaws?.Select(law => law.Fork()).ToArray()!;
-        init => _chanceLaws = value?.Select(law => law.Fork()).ToArray();
+        get => StochasticState.ChanceLaws;
+        init => StochasticState = StochasticState with { ChanceLaws = value };
     }
 
     public ReferenceNatureDecisionV111[] DecisionTranscript
@@ -113,14 +283,11 @@ public sealed record ReferenceNatureLaterActPreparationSessionV111(
 
     public RandomIndexRequestV111? PendingRequest
     {
-        get => Copy(_pendingRequest);
-        init => _pendingRequest = Copy(value);
-    }
-
-    public PrototypeLaterActEncounterBagV111[]? Bags
-    {
-        get => _bags?.Select(bag => bag.Fork()).ToArray();
-        init => _bags = value?.Select(bag => bag.Fork()).ToArray();
+        get => StochasticState.PendingRequest;
+        init => StochasticState = StochasticState with
+        {
+            PendingRequest = value
+        };
     }
 
     [JsonIgnore]
@@ -135,8 +302,11 @@ public sealed record ReferenceNatureLaterActPreparationSessionV111(
     [JsonIgnore]
     public ChanceLawV111? PendingLaw
     {
-        get => _pendingLaw?.Fork();
-        private init => _pendingLaw = value?.Fork();
+        get => StochasticState.PendingLaw;
+        private init => StochasticState = StochasticState with
+        {
+            PendingLaw = value
+        };
     }
 
     public static ReferenceNatureLaterActPreparationSessionV111 Begin(
@@ -150,12 +320,11 @@ public sealed record ReferenceNatureLaterActPreparationSessionV111(
         Validate();
         return this with
         {
-            InitialPrototypeRng = InitialPrototypeRng.Fork(),
-            Profile = Profile.Fork(),
-            Stochastic = Stochastic.Fork(),
-            ChanceLaws = ChanceLaws,
-            PendingRequest = PendingRequest,
-            Bags = Bags
+            Simulation = Simulation with
+            {
+                Mechanics = Mechanics.Fork(),
+                Stochastic = StochasticState.Fork()
+            }
         };
     }
 
@@ -179,12 +348,11 @@ public sealed record ReferenceNatureLaterActPreparationSessionV111(
 
     public void Validate()
     {
-        if (SchemaId != CurrentSchemaId || InitialPrototypeRng is null ||
-            Profile is null || ChanceLaws is null ||
-            Ascension is < 0 or > 10)
+        if (SchemaId != CurrentSchemaId)
             throw new InvalidDataException(
                 "Invalid ReferenceNature later-act preparation session.");
-        Stochastic.Validate();
+        Mechanics.Validate();
+        StochasticState.Validate();
         var capture = Capture(InitialPrototypeRng, Ascension, Profile,
             InitialNatureState, DecisionTranscript);
         if (!NatureState.SameCursor(capture.NatureState) ||
@@ -384,12 +552,5 @@ public sealed record ReferenceNatureLaterActPreparationSessionV111(
         RandomIndexRequestV111? left, RandomIndexRequestV111? right) =>
         left is null ? right is null : right is not null &&
         CanonicalJson.Sha256(left) == CanonicalJson.Sha256(right);
-
-    private static RandomIndexRequestV111? Copy(
-        RandomIndexRequestV111? request) => request is null ? null :
-        request with
-        {
-            OrderedCandidates = (int[])request.OrderedCandidates.Clone()
-        };
 
 }

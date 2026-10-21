@@ -145,6 +145,104 @@ public sealed record ReferenceNatureMapGenerationAuditV111(
 }
 
 /// <summary>
+/// Generator inputs and completed map output owned by the map continuation.
+/// </summary>
+public sealed record ReferenceNatureMapGenerationMechanicsStateV111
+{
+    private MapState? _map;
+
+    public string Seed { get; init; }
+    public int Act { get; init; }
+    public int Ascension { get; init; }
+
+    public MapState? Map
+    {
+        get => _map?.Fork();
+        init => _map = value?.Fork();
+    }
+
+    public ReferenceNatureMapGenerationMechanicsStateV111(
+        string seed, int act, int ascension, MapState? map)
+    {
+        Seed = seed;
+        Act = act;
+        Ascension = ascension;
+        Map = map;
+    }
+
+    public ReferenceNatureMapGenerationMechanicsStateV111 Fork() => this with
+    {
+        Map = Map
+    };
+
+    public void Validate()
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(Seed);
+        ReferenceNatureMapGenerationSessionV111.ValidateMapParameters(
+            Act, Ascension);
+    }
+}
+
+/// <summary>
+/// Typed provider prefix and ReferenceNature cursor for map generation.
+/// </summary>
+public sealed record ReferenceNatureMapGenerationStochasticStateV111
+{
+    private ControlledStochasticDecisionV111[]? _decisions;
+    private ControlledStochasticRequestV111? _pendingRequest;
+
+    public ReferenceNatureStochasticStateV111<ReferenceNatureDecisionV111>
+        Cursor { get; init; }
+
+    public ControlledStochasticDecisionV111[] Decisions
+    {
+        get => ReferenceNatureSessionValueCopiesV111
+            .CopyProviderDecisions(_decisions)!;
+        init => _decisions = ReferenceNatureSessionValueCopiesV111
+            .CopyProviderDecisions(value);
+    }
+
+    public ControlledStochasticRequestV111? PendingRequest
+    {
+        get => ReferenceNatureSessionValueCopiesV111.CopyRequest(
+            _pendingRequest);
+        init => _pendingRequest = ReferenceNatureSessionValueCopiesV111
+            .CopyRequest(value);
+    }
+
+    public ReferenceNatureMapGenerationStochasticStateV111(
+        ReferenceNatureStochasticStateV111<ReferenceNatureDecisionV111> cursor,
+        ControlledStochasticDecisionV111[] decisions,
+        ControlledStochasticRequestV111? pendingRequest)
+    {
+        Cursor = cursor ?? throw new ArgumentNullException(nameof(cursor));
+        Decisions = decisions;
+        PendingRequest = pendingRequest;
+    }
+
+    public ReferenceNatureMapGenerationStochasticStateV111 Fork() => this with
+    {
+        Cursor = Cursor.Fork(),
+        Decisions = Decisions,
+        PendingRequest = PendingRequest
+    };
+
+    public void Validate()
+    {
+        ArgumentNullException.ThrowIfNull(Cursor);
+        Cursor.Validate();
+        var decisions = Decisions;
+        ArgumentNullException.ThrowIfNull(decisions);
+        foreach (var decision in decisions)
+        {
+            ArgumentNullException.ThrowIfNull(decision);
+            decision.Validate();
+        }
+        PendingRequest?.Validate();
+    }
+}
+
+/// <summary>
 /// Optional atomic ReferenceNature map-generation continuation for the
 /// source-shaped Overgrowth, Hive, and Glory generators. It keeps map output
 /// private until every typed request has been sampled and replayed.
@@ -161,16 +259,63 @@ public sealed record ReferenceNatureMapGenerationSessionV111(
     ControlledStochasticRequestV111? PendingRequest,
     MapState? Map)
 {
-    private ControlledStochasticDecisionV111[]? _decisions =
-        ReferenceNatureSessionValueCopiesV111.CopyProviderDecisions(Decisions);
-    private ControlledStochasticRequestV111? _pendingRequest =
-        ReferenceNatureSessionValueCopiesV111.CopyRequest(PendingRequest);
-    private MapState? _map = Map?.Fork();
+    [JsonIgnore]
+    public SimulationStateV111<ReferenceNatureMapGenerationMechanicsStateV111,
+        ReferenceNatureMapGenerationStochasticStateV111> Simulation { get; init; } =
+        new(
+            new ReferenceNatureMapGenerationMechanicsStateV111(
+                Seed, Act, Ascension, Map),
+            new ReferenceNatureMapGenerationStochasticStateV111(
+                new ReferenceNatureStochasticStateV111<
+                    ReferenceNatureDecisionV111>(InitialNatureState,
+                    NatureState, DecisionTranscript),
+                Decisions, PendingRequest));
+
+    [JsonIgnore]
+    public ReferenceNatureMapGenerationMechanicsStateV111 Mechanics
+    {
+        get => Simulation.Mechanics;
+        init => Simulation = Simulation with { Mechanics = value };
+    }
+
+    [JsonIgnore]
+    public ReferenceNatureMapGenerationStochasticStateV111 StochasticState
+    {
+        get => Simulation.Stochastic;
+        init => Simulation = Simulation with { Stochastic = value };
+    }
 
     [JsonIgnore]
     public ReferenceNatureStochasticStateV111<ReferenceNatureDecisionV111>
-        Stochastic { get; init; } = new(InitialNatureState, NatureState,
-            DecisionTranscript);
+        Stochastic
+    {
+        get => StochasticState.Cursor;
+        init => StochasticState = StochasticState with { Cursor = value };
+    }
+
+    public string Seed
+    {
+        get => Mechanics.Seed;
+        init => Mechanics = Mechanics with { Seed = value };
+    }
+
+    public int Act
+    {
+        get => Mechanics.Act;
+        init => Mechanics = Mechanics with { Act = value };
+    }
+
+    public int Ascension
+    {
+        get => Mechanics.Ascension;
+        init => Mechanics = Mechanics with { Ascension = value };
+    }
+
+    public MapState? Map
+    {
+        get => Mechanics.Map;
+        init => Mechanics = Mechanics with { Map = value };
+    }
 
     public ReferenceNatureStateV111 InitialNatureState
     {
@@ -186,10 +331,8 @@ public sealed record ReferenceNatureMapGenerationSessionV111(
 
     public ControlledStochasticDecisionV111[] Decisions
     {
-        get => ReferenceNatureSessionValueCopiesV111
-            .CopyProviderDecisions(_decisions)!;
-        init => _decisions = ReferenceNatureSessionValueCopiesV111
-            .CopyProviderDecisions(value);
+        get => StochasticState.Decisions;
+        init => StochasticState = StochasticState with { Decisions = value };
     }
     public ReferenceNatureDecisionV111[] DecisionTranscript
     {
@@ -198,15 +341,11 @@ public sealed record ReferenceNatureMapGenerationSessionV111(
     }
     public ControlledStochasticRequestV111? PendingRequest
     {
-        get => ReferenceNatureSessionValueCopiesV111.CopyRequest(
-            _pendingRequest);
-        init => _pendingRequest =
-            ReferenceNatureSessionValueCopiesV111.CopyRequest(value);
-    }
-    public MapState? Map
-    {
-        get => _map?.Fork();
-        init => _map = value?.Fork();
+        get => StochasticState.PendingRequest;
+        init => StochasticState = StochasticState with
+        {
+            PendingRequest = value
+        };
     }
 
     public const string CurrentSchemaId =
@@ -266,10 +405,11 @@ public sealed record ReferenceNatureMapGenerationSessionV111(
         Validate();
         return this with
         {
-            Stochastic = Stochastic.Fork(),
-            Decisions = Decisions.Select(decision => decision.Fork()).ToArray(),
-            PendingRequest = PendingRequest?.Fork(),
-            Map = Map?.Fork()
+            Simulation = Simulation with
+            {
+                Mechanics = Mechanics.Fork(),
+                Stochastic = StochasticState.Fork()
+            }
         };
     }
 
@@ -279,8 +419,8 @@ public sealed record ReferenceNatureMapGenerationSessionV111(
         if (Complete)
             throw new InvalidOperationException(
                 "ReferenceNature map-generation session is already complete.");
-        var checkpoint = new MapGenerationCheckpointV111(
-            Seed, Act, Ascension);
+        var checkpoint = new ReferenceNatureMapGenerationMechanicsStateV111(
+            Seed, Act, Ascension, Map: null);
         var capturedPrefix = Capture(Seed, Act, Ascension, Decisions);
         var continuation = capturedPrefix.Continuation ??
             throw new InvalidDataException(
@@ -300,7 +440,7 @@ public sealed record ReferenceNatureMapGenerationSessionV111(
                 law.LawId, law.EventId, selection.OutcomeId,
                 selection.OutcomeIndex)).ToArray();
         var replay = ControlledChanceContinuationExecutorV111.ResolveTyped<
-            MapGenerationCheckpointV111, MapState>(
+            ReferenceNatureMapGenerationMechanicsStateV111, MapState>(
                 checkpoint, continuation, typedDecision,
                 mapCheckpoint => GenerateNative(
                     mapCheckpoint.Seed, mapCheckpoint.Act,
@@ -319,24 +459,25 @@ public sealed record ReferenceNatureMapGenerationSessionV111(
 
     public void Validate()
     {
-        if (SchemaId != CurrentSchemaId ||
-            string.IsNullOrWhiteSpace(Seed) || Decisions is null)
+        if (SchemaId != CurrentSchemaId)
             throw new InvalidDataException(
                 "Invalid ReferenceNature map-generation session envelope.");
-        Stochastic.Validate();
-        ValidateMapParameters(Act, Ascension);
-        if (Decisions.Length != DecisionTranscript.Length ||
+        Mechanics.Validate();
+        StochasticState.Validate();
+        var decisions = Decisions;
+        var decisionTranscript = DecisionTranscript;
+        if (decisions.Length != decisionTranscript.Length ||
             NatureState.SampleCount != checked(
-                InitialNatureState.SampleCount + Decisions.Length) ||
+                InitialNatureState.SampleCount + decisions.Length) ||
             Complete != (PendingRequest is null))
             throw new InvalidDataException(
                 "ReferenceNature map cursor, transcript, and completion state differ.");
 
         var expectedNatureState = InitialNatureState.Fork();
-        for (var index = 0; index < Decisions.Length; index++)
+        for (var index = 0; index < decisions.Length; index++)
         {
-            var decision = Decisions[index];
-            var transcript = DecisionTranscript[index];
+            var decision = decisions[index];
+            var transcript = decisionTranscript[index];
             if (decision is null || transcript is null)
                 throw new InvalidDataException(
                     "Map-generation transcript contains a null decision.");
@@ -363,7 +504,7 @@ public sealed record ReferenceNatureMapGenerationSessionV111(
             throw new InvalidDataException(
                 "ReferenceNature map sampler cursor differs from its transcript.");
 
-        var captured = Capture(Seed, Act, Ascension, Decisions);
+        var captured = Capture(Seed, Act, Ascension, decisions);
         if (!SameRequest(captured.Continuation?.PendingRequest, PendingRequest) ||
             (captured.Value is null) != (Map is null) ||
             captured.Value is not null &&
@@ -408,15 +549,13 @@ public sealed record ReferenceNatureMapGenerationSessionV111(
         return session;
     }
 
-    private sealed record MapGenerationCheckpointV111(
-        string Seed, int Act, int Ascension);
-
     private static ControlledStochasticTypedContinuationResultV111<MapState>
         Capture(
         string seed, int act, int ascension,
         ControlledStochasticDecisionV111[] decisions)
         => ControlledChanceContinuationExecutorV111.CaptureTyped(
-            new MapGenerationCheckpointV111(seed, act, ascension),
+            new ReferenceNatureMapGenerationMechanicsStateV111(
+                seed, act, ascension, Map: null),
             ControlledStochasticContinuationStateV111.MixedPrimitiveSchemaId,
             decisions,
             checkpoint => GenerateNative(

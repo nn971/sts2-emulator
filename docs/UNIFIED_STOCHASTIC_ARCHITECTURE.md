@@ -417,10 +417,13 @@ The base semantic `ReferenceNatureSessionV111` composes the
 `SemanticPilotCombatV111` checkpoint with its independent sampler cursor
 through `SimulationStateV111`, while retaining the established `Combat` and
 `NatureState` snapshot members.
-Map-generation and later-act preparation sessions use the same stochastic
-owner while retaining their generator checkpoints, request prefixes, laws,
-and outputs in their existing fields. The completed map audit and the
-run-initialization transcript reuse it for their cursor and decision history;
+Map-generation and later-act preparation sessions now compose their
+source-specific generator mechanics and stochastic prefix owners through
+`SimulationStateV111`. Their mechanics owners hold generator inputs and
+completed map/bag outputs; their stochastic owners combine the shared cursor
+owner with typed provider prefixes and pending requests/laws. The completed
+map audit and the run-initialization transcript reuse it for their cursor and
+decision history;
 the map fingerprint, Chance Laws, and nested preparation metadata keep their
 existing owners. The Ancient-offer session and later-act assignment and
 encounter-preparation results use it as well. The Ancient-offer session also
