@@ -7524,19 +7524,7 @@ public sealed partial class PrototypeGameEngine
 
                 case PrototypeCombatEffectKind.CreateRandomFreeAttacksInDrawPile:
                 {
-                    var pool = PrototypeContent.NativeSilentCardPool
-                        .Where(id =>
-                        {
-                            var card = PrototypeContent.Card(id);
-                            return card.Type == PrototypeCardType.Attack
-                                && card.Rarity is PrototypeCardRarity.Common
-                                    or PrototypeCardRarity.Uncommon
-                                    or PrototypeCardRarity.Rare
-                                && card.MechanicsImplemented
-                                && !card.MultiplayerOnly
-                                && card.CanBeGeneratedInCombat;
-                        })
-                        .ToArray();
+                    var pool = RandomDrawAttackModelPool();
                     if (pool.Length == 0 && operation.Amount > 0)
                     {
                         throw new NotSupportedException(

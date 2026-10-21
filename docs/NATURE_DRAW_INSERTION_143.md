@@ -5,7 +5,7 @@ This slice adds two source-shaped chance sequences to the real `PrototypeGameEng
 1. `CreateGeneratedCardsAtRandomDrawPositions`: a **bounded position** ticket, `combat.draw_pile.random_insert_index`, for each fixed-model generated card.
 2. `CreateRandomFreeAttacksInDrawPile`: a **source-ordered card-model** ticket, `combat.random_draw_attack.card_model`, followed by a bounded insertion-position ticket for each generated Attack.
 
-The first site permits indices from 0 through the current draw-pile count inclusive, matching the normal `PrototypeRng.NextInt(rng, "combat", draw.Count + 1)` call. The second selects an eligible Attack from the existing ordered `NativeSilentCardPool` filter and then inserts that temporary zero-cost card at Nature's selected index. Card instances and `NextCardInstanceId` are created only at the second stage; partial card-model selection leaves the deck unchanged.
+The first site permits indices from 0 through the current draw-pile count inclusive, matching the normal `PrototypeRng.NextInt(rng, "combat", draw.Count + 1)` call. The second selects an eligible Attack from the existing ordered `NativeSilentCardPool` filter and then inserts that temporary zero-cost card at Nature's selected index. Ordinary Native sampling, Nature suspension, and replay validation now use the same `RandomDrawAttackModelPool` resolver. Card instances and `NextCardInstanceId` are created only at the second stage; partial card-model selection leaves the deck unchanged.
 
 Native combat routes the model draw through `run.combat_card_generation` and
 the random position through `run.shuffle`; `CardPileCmd` uses

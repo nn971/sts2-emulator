@@ -7,7 +7,7 @@ namespace Sts2Emulator.Core;
 /// </summary>
 public sealed partial class PrototypeGameEngine
 {
-    internal static string[] ControlledRandomDrawAttackPool() =>
+    internal static string[] RandomDrawAttackModelPool() =>
         PrototypeContent.NativeSilentCardPool.Where(id =>
         {
             var card = PrototypeContent.Card(id);
@@ -57,7 +57,7 @@ public sealed partial class PrototypeGameEngine
         }
         else
         {
-            pool = ControlledRandomDrawAttackPool();
+            pool = RandomDrawAttackModelPool();
             if (pool.Length == 0)
                 throw new NotSupportedException(
                     "UNSUPPORTED_CONTROLLED_CHANCE site=combat.random_draw_attack empty_pool");
@@ -254,7 +254,7 @@ public sealed partial class PrototypeGameEngine
                 StochasticSiteRegistryV111.DrawPileRandomInsertSiteId ||
             choice.RequestOwnerId != "prototype.combat" ||
             choice.RequestOrdinal < 0 ||
-            !choice.CandidateCardIds.SequenceEqual(ControlledRandomDrawAttackPool()))
+            !choice.CandidateCardIds.SequenceEqual(RandomDrawAttackModelPool()))
             return false;
         return choice.Stage switch
         {
