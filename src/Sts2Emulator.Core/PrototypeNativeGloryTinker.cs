@@ -154,7 +154,13 @@ public sealed partial class PrototypeGameEngine
                     Event = evt with
                     {
                         NativePageIndex = 2,
-                        NativeTinkerType = choice,
+                        Stochastic =
+                            EventStochasticStateV111.WithCommittedRandom(
+                                evt.Stochastic,
+                                evt.Stochastic.RandomOutcomes with
+                                {
+                                    NativeTinkerType = choice
+                                }),
                         OfferedChoiceIds = riders.Take(2).ToArray()
                     }
                 }

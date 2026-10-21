@@ -90,7 +90,12 @@ public static class PrototypeNativeFutureOfPotions
         {
             Event = eventState with
             {
-                NativeFuturePotionOffers = offers.ToArray()
+                Stochastic = EventStochasticStateV111.WithCommittedRandom(
+                    eventState.Stochastic,
+                    eventState.Stochastic.RandomOutcomes with
+                    {
+                        FuturePotionOffers = offers.ToArray()
+                    })
             }
         };
         return state with { World = world };
@@ -216,7 +221,13 @@ public sealed partial class PrototypeGameEngine
                 {
                     ChosenChoiceId =
                         PrototypeNativeFutureOfPotions.TradeChoiceId,
-                    NativeFuturePotionOffers = null,
+                    Stochastic =
+                        EventStochasticStateV111.WithCommittedRandom(
+                            eventState.Stochastic,
+                            eventState.Stochastic.RandomOutcomes with
+                            {
+                                FuturePotionOffers = null
+                            }),
                     PendingReward = reward
                 }
             }

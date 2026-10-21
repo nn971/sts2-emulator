@@ -40,11 +40,13 @@ public sealed partial class PrototypeGameEngine
                 {
                     ChosenChoiceId = choice,
                     NativePageIndex = page,
-                    NativeEventRng = evt.NativeEventRng
-                        ?? NativeEventContextRngV111.CreateAtEntry(
-                            state,
-                            PrototypeNativeGloryEvents
-                                .BattlewornDummyNativeRngEventId)
+                    Stochastic = EventStochasticStateV111.WithNativeRng(
+                        evt.Stochastic,
+                        evt.NativeEventRng
+                            ?? NativeEventContextRngV111.CreateAtEntry(
+                                state,
+                                PrototypeNativeGloryEvents
+                                    .BattlewornDummyNativeRngEventId))
                 }
             }
         }, PrototypeRoomType.Combat, PrototypeContent.Encounter(encounterId));

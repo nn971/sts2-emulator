@@ -477,10 +477,16 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
         RunState origin, RunState probedRun)
     {
         var previous = origin.World?.Event;
-        var current = new EventState(PrototypeNativeEndlessConveyor.EventId)
+        var current = new EventState(PrototypeNativeEndlessConveyor.EventId);
+        current = current with
         {
-            NativeDishCount = previous?.NativeDishCount ?? 0,
-            NativeLastDishId = previous?.NativeLastDishId
+            Stochastic = EventStochasticStateV111.WithCommittedRandom(
+                current.Stochastic,
+                current.Stochastic.RandomOutcomes with
+                {
+                    NativeDishCount = previous?.NativeDishCount ?? 0,
+                    NativeLastDishId = previous?.NativeLastDishId
+                })
         };
         var world = probedRun.World
             ?? throw new InvalidDataException(

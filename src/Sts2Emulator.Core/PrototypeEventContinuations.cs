@@ -171,7 +171,16 @@ public sealed partial class PrototypeGameEngine
                     World = world with
                     {
                         NextCardInstanceId = world.NextCardInstanceId + 1,
-                        Event = eventState with { DeferredCardId = null }
+                        Event = eventState with
+                        {
+                            Stochastic =
+                                EventStochasticStateV111.WithCommittedRandom(
+                                    eventState.Stochastic,
+                                    eventState.Stochastic.RandomOutcomes with
+                                    {
+                                        DeferredCardId = null
+                                    })
+                        }
                     }
                 };
                 continue;
@@ -269,7 +278,11 @@ public sealed partial class PrototypeGameEngine
                         {
                             Event = eventState with
                             {
-                                ControlledChoice = continuation
+                                Stochastic =
+                                    EventStochasticStateV111
+                                        .WithControlledChoice(
+                                            eventState.Stochastic,
+                                            continuation)
                             }
                         }
                     };
@@ -374,7 +387,16 @@ public sealed partial class PrototypeGameEngine
                             {
                                 Event = eventState with
                                 {
-                                    NativeDishRollPending = false
+                                    Stochastic =
+                                        EventStochasticStateV111
+                                            .WithCommittedRandom(
+                                                eventState.Stochastic,
+                                                eventState.Stochastic
+                                                    .RandomOutcomes with
+                                                    {
+                                                        NativeDishRollPending =
+                                                            false
+                                                    })
                                 }
                             }
                         });

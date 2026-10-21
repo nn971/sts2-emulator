@@ -89,7 +89,8 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
             {
                 Event = eventState with
                 {
-                    NativeEventRngProviderMode = "scripted-v111"
+                    Stochastic = EventStochasticStateV111.WithProviderMode(
+                        eventState.Stochastic, "scripted-v111")
                 }
             }
         };
@@ -333,7 +334,8 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
             {
                 Event = eventState with
                 {
-                    NativeEventRngProviderMode = "scripted-v111"
+                    Stochastic = EventStochasticStateV111.WithProviderMode(
+                        eventState.Stochastic, "scripted-v111")
                 }
             }
         };
@@ -435,7 +437,8 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
             {
                 Event = eventState with
                 {
-                    NativeEventRngProviderMode = "scripted-v111"
+                    Stochastic = EventStochasticStateV111.WithProviderMode(
+                        eventState.Stochastic, "scripted-v111")
                 }
             }
         };
@@ -530,7 +533,8 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
             {
                 Event = eventState with
                 {
-                    NativeEventRngProviderMode = "scripted-v111"
+                    Stochastic = EventStochasticStateV111.WithProviderMode(
+                        eventState.Stochastic, "scripted-v111")
                 }
             }
         };

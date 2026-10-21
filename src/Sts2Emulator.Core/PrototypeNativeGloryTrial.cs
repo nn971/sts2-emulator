@@ -43,10 +43,12 @@ public sealed partial class PrototypeGameEngine
         {
             evt = evt with
             {
-                NativeEventRng = evt.NativeEventRng
-                    ?? NativeEventContextRngV111.CreateAtEntry(
-                        state,
-                        PrototypeNativeGloryEvents.TrialNativeRngEventId)
+                Stochastic = EventStochasticStateV111.WithNativeRng(
+                    evt.Stochastic,
+                    evt.NativeEventRng
+                        ?? NativeEventContextRngV111.CreateAtEntry(
+                            state,
+                            PrototypeNativeGloryEvents.TrialNativeRngEventId))
             };
             world = world with { Event = evt };
             state = state with { World = world };

@@ -844,9 +844,14 @@ public sealed partial class PrototypeGameEngine
             {
                 Event = evt with
                 {
-                    NativeEventGold = primaryGold,
-                    NativeEventSecondaryGold = secondaryGold
-                        ?? evt.NativeEventSecondaryGold
+                    Stochastic = EventStochasticStateV111.WithCommittedRandom(
+                        evt.Stochastic,
+                        evt.Stochastic.RandomOutcomes with
+                        {
+                            NativeEventGold = primaryGold,
+                            NativeEventSecondaryGold = secondaryGold
+                                ?? evt.NativeEventSecondaryGold
+                        })
                 }
             }
         };
@@ -1138,7 +1143,14 @@ public sealed partial class PrototypeGameEngine
             {
                 Event = world.Event! with
                 {
-                    NativeEventPotionSlot = slots[draw.SelectedIndex]
+                    Stochastic =
+                        EventStochasticStateV111.WithCommittedRandom(
+                            world.Event!.Stochastic,
+                            world.Event!.Stochastic.RandomOutcomes with
+                            {
+                                NativeEventPotionSlot =
+                                    slots[draw.SelectedIndex]
+                            })
                 }
             };
             state = state with { World = world };
@@ -1529,7 +1541,10 @@ public sealed partial class PrototypeGameEngine
             {
                 Event = resume.PartialState.World!.Event! with
                 {
-                    ControlledChoice = resume
+                    Stochastic =
+                        EventStochasticStateV111.WithControlledChoice(
+                            resume.PartialState.World!.Event!.Stochastic,
+                            resume)
                 }
             };
         state = resume is null
@@ -1554,7 +1569,12 @@ public sealed partial class PrototypeGameEngine
             {
                 World = resultWorld with
                 {
-                    Event = resultWorld.Event! with { ControlledChoice = null }
+                    Event = resultWorld.Event! with
+                    {
+                        Stochastic =
+                            EventStochasticStateV111.WithControlledChoice(
+                                resultWorld.Event!.Stochastic, null)
+                    }
                 }
             };
         }
@@ -1569,7 +1589,12 @@ public sealed partial class PrototypeGameEngine
             {
                 World = resultWorld with
                 {
-                    Event = resultWorld.Event! with { ControlledChoice = null }
+                    Event = resultWorld.Event! with
+                    {
+                        Stochastic =
+                            EventStochasticStateV111.WithControlledChoice(
+                                resultWorld.Event!.Stochastic, null)
+                    }
                 }
             };
         }
@@ -1610,7 +1635,11 @@ public sealed partial class PrototypeGameEngine
                         {
                             Event = eventState with
                             {
-                                ControlledChoice = continuation
+                                Stochastic =
+                                    EventStochasticStateV111
+                                        .WithControlledChoice(
+                                            eventState.Stochastic,
+                                            continuation)
                             }
                         }
                     };
@@ -1952,7 +1981,12 @@ public sealed partial class PrototypeGameEngine
                 World = world.Fork() with
                 {
                     NextCardInstanceId = nextId,
-                    Event = eventState with { ControlledChoice = null }
+                    Event = eventState with
+                    {
+                        Stochastic =
+                            EventStochasticStateV111.WithControlledChoice(
+                                eventState.Stochastic, null)
+                    }
                 }
             };
             var effectStartQueuedPotionIds = queuedPotionIds.ToArray();
@@ -2492,7 +2526,12 @@ public sealed partial class PrototypeGameEngine
                 {
                     World = rootWorld with
                     {
-                        Event = rootEvent with { ControlledChoice = continuation }
+                        Event = rootEvent with
+                        {
+                            Stochastic =
+                                EventStochasticStateV111.WithControlledChoice(
+                                    rootEvent.Stochastic, continuation)
+                        }
                     }
                 };
             }
@@ -2524,8 +2563,14 @@ public sealed partial class PrototypeGameEngine
                     PendingReward = deferredReward,
                     DeferredHpLoss = deferredHpLoss,
                     DeferredGoldLoss = deferredGoldLoss,
-                    DeferredCardId = deferredCardId,
-                    ControlledChoice = null
+                    Stochastic =
+                        EventStochasticStateV111.WithControlledChoice(
+                            EventStochasticStateV111.WithCommittedRandom(
+                                eventState.Stochastic,
+                                eventState.Stochastic.RandomOutcomes with
+                                {
+                                    DeferredCardId = deferredCardId
+                                }), null)
                 }
             }
         };

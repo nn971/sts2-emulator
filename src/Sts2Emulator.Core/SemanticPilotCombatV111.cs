@@ -1959,7 +1959,12 @@ public static class SemanticPilotCombatEngineV111
             RouteNeowChoiceId = neowChoice,
             RouteMapNodeId = actualNodeId
         };
-        var baselineCombat = combat.Fork() with { SemanticDeck = null };
+        var baselineCombat = combat.Fork();
+        baselineCombat = baselineCombat with
+        {
+            Stochastic = CombatStochasticStateV111.WithSemanticDeck(
+                baselineCombat.Stochastic, null)
+        };
         var nativeFreeBaselineCombat = baselineCombat with
         {
             Stochastic = CombatStochasticStateV111.WithNativeRng(

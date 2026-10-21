@@ -74,10 +74,12 @@ public static class NativeEventContextRngV111
             {
                 Event = eventState with
                 {
-                    NativeEventRng = bundle.GetStream(nativeStream.StreamId),
-                    NativeEventRngProviderMode =
+                    Stochastic = EventStochasticStateV111.WithProviderMode(
+                        EventStochasticStateV111.WithNativeRng(
+                            eventState.Stochastic,
+                            bundle.GetStream(nativeStream.StreamId)),
                         ProviderModeAfterResolution(
-                            eventState, decision.ProviderMode)
+                            eventState, decision.ProviderMode))
                 }
             }
         }, decision.SelectedIndex);
@@ -138,10 +140,12 @@ public static class NativeEventContextRngV111
             {
                 Event = eventState with
                 {
-                    NativeEventRng = bundle.GetStream(nativeStream.StreamId),
-                    NativeEventRngProviderMode =
+                    Stochastic = EventStochasticStateV111.WithProviderMode(
+                        EventStochasticStateV111.WithNativeRng(
+                            eventState.Stochastic,
+                            bundle.GetStream(nativeStream.StreamId)),
                         ProviderModeAfterResolution(
-                            eventState, decision.ProviderMode)
+                            eventState, decision.ProviderMode))
                 }
             }
         }, decision.SelectedIndex);
@@ -194,10 +198,12 @@ public static class NativeEventContextRngV111
             {
                 Event = eventState with
                 {
-                    NativeEventRng = bundle.GetStream(nativeStream.StreamId),
-                    NativeEventRngProviderMode =
+                    Stochastic = EventStochasticStateV111.WithProviderMode(
+                        EventStochasticStateV111.WithNativeRng(
+                            eventState.Stochastic,
+                            bundle.GetStream(nativeStream.StreamId)),
                         ProviderModeAfterResolution(
-                            eventState, decision.ProviderMode)
+                            eventState, decision.ProviderMode))
                 }
             }
         }, decision.SelectedValue);
@@ -255,10 +261,11 @@ public static class NativeEventContextRngV111
             {
                 Event = eventState with
                 {
-                    NativeEventRng = shuffledStream,
-                    NativeEventRngProviderMode =
+                    Stochastic = EventStochasticStateV111.WithProviderMode(
+                        EventStochasticStateV111.WithNativeRng(
+                            eventState.Stochastic, shuffledStream),
                         ProviderModeAfterShuffle(
-                            eventState, nativeStream, shuffledStream)
+                            eventState, nativeStream, shuffledStream))
                 }
             }
         };

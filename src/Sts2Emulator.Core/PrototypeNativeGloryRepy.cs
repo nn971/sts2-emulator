@@ -183,14 +183,20 @@ public sealed partial class PrototypeGameEngine
                         ownerId,
                         potions.Length).SelectedIndex;
             }
-            evt = RequireWorld(state).Event! with
+            evt = evt with
             {
-                RepyChestPotionIds =
-                [
-                    potions[PotionIndex(0)],
-                    potions[PotionIndex(1)]
-                ],
-                RepyChestRelicIds = offers,
+                Stochastic =
+                    EventStochasticStateV111.WithCommittedRandom(
+                        evt.Stochastic,
+                        evt.Stochastic.RandomOutcomes with
+                        {
+                            RepyChestPotionIds =
+                            [
+                                potions[PotionIndex(0)],
+                                potions[PotionIndex(1)]
+                            ],
+                            RepyChestRelicIds = offers
+                        }),
                 RepyChestGroupsResolved = 0
             };
             state = state with

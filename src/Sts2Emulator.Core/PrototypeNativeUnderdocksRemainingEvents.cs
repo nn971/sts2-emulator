@@ -63,10 +63,15 @@ public static class PrototypeNativeEndlessConveyor
                 {
                     Event = current with
                     {
-                        NativeDishCount = nextRoll,
-                        NativeLastDishId = "SEAPUNK_SALAD",
-                        NativeDishId = "SEAPUNK_SALAD",
-                        NativeEventRngProviderMode = null
+                        Stochastic = EventStochasticStateV111.WithProviderMode(
+                            EventStochasticStateV111.WithCommittedRandom(
+                                current.Stochastic,
+                                current.Stochastic.RandomOutcomes with
+                                {
+                                    NativeDishCount = nextRoll,
+                                    NativeLastDishId = "SEAPUNK_SALAD",
+                                    NativeDishId = "SEAPUNK_SALAD"
+                                }), null)
                     }
                 }
             };
@@ -123,10 +128,15 @@ public static class PrototypeNativeEndlessConveyor
             {
                 Event = current with
                 {
-                    NativeDishCount = nextRoll,
-                    NativeDishId = selected,
-                    NativeLastDishId = selected,
-                    NativeEventRngProviderMode = null
+                    Stochastic = EventStochasticStateV111.WithProviderMode(
+                        EventStochasticStateV111.WithCommittedRandom(
+                            current.Stochastic,
+                            current.Stochastic.RandomOutcomes with
+                            {
+                                NativeDishCount = nextRoll,
+                                NativeDishId = selected,
+                                NativeLastDishId = selected
+                            }), null)
                 }
             }
         };
@@ -207,9 +217,15 @@ public static class PrototypeNativeEndlessConveyor
             return false;
         var precedingRollCount = initialEntryBoundary
             ? 0 : current.NativeDishCount - 1;
-        var precedingEvent = new EventState(EventId) with
+        var precedingEvent = new EventState(EventId);
+        precedingEvent = precedingEvent with
         {
-            NativeDishCount = precedingRollCount
+            Stochastic = EventStochasticStateV111.WithCommittedRandom(
+                precedingEvent.Stochastic,
+                precedingEvent.Stochastic.RandomOutcomes with
+                {
+                    NativeDishCount = precedingRollCount
+                })
         };
         var candidates = GetWeightedDishCandidates(
             state, precedingEvent);
@@ -324,7 +340,9 @@ public sealed partial class PrototypeGameEngine
                     Event = evt with
                     {
                         ChosenChoiceId = choice,
-                        NativeEventRngProviderMode = null
+                        Stochastic =
+                            EventStochasticStateV111.WithProviderMode(
+                                evt.Stochastic, null)
                     }
                 }
             };
@@ -477,7 +495,12 @@ public sealed partial class PrototypeGameEngine
             NativePageIndex = 1,
             QueuedDeckChoices = pendingCards,
             QueuedPotionIds = pendingPotions,
-            NativeDishRollPending = true
+            Stochastic = EventStochasticStateV111.WithCommittedRandom(
+                evt.Stochastic,
+                evt.Stochastic.RandomOutcomes with
+                {
+                    NativeDishRollPending = true
+                })
         };
         return AdvanceEventContinuations(state with
         {
