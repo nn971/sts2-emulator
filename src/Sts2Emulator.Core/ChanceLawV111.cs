@@ -8444,6 +8444,7 @@ public sealed record ReferenceNatureAncientOfferSessionV111(
     ReferenceNatureStateV111 InitialNatureState,
     ReferenceNatureStateV111 NatureState,
     ReferenceNatureDecisionV111[] DecisionTranscript)
+    : IReferenceNatureRunSetupSessionV111
 {
     [JsonIgnore]
     public SimulationStateV111<PrototypeMechanicsContinuationStateV111,
@@ -8520,6 +8521,19 @@ public sealed record ReferenceNatureAncientOfferSessionV111(
     public ChanceLawV111? PendingLaw => Complete ? null :
         ChanceLawEngineV111.QueryAncientOfferSessionStep(
             Origin, SiteId, DecisionTranscript);
+
+    [JsonIgnore]
+    public ControlledStochasticDecisionV111[] ProviderDecisions
+    {
+        get
+        {
+            if (!Complete)
+                throw new InvalidOperationException(
+                    "Provider decisions require a completed Ancient-offer prefix.");
+            return BuildProviderDecisions(
+                Origin, SiteId, DecisionTranscript);
+        }
+    }
 
     public static ReferenceNatureAncientOfferSessionV111 Begin(
         RunState source, string siteId, ulong seed) =>
@@ -8738,18 +8752,8 @@ public sealed record ReferenceNatureAncientOfferSessionV111(
         RunState origin, string siteId,
         ReferenceNatureDecisionV111[] transcript)
     {
-        var scripted = BuildReplayChoices(origin, siteId, transcript);
-        var decisions = scripted.Select(choice =>
-        {
-            var decision = new RandomIndexDecisionV111(
-                choice.Request with
-                {
-                    OrderedCandidates = (int[])
-                        choice.Request.OrderedCandidates.Clone()
-                }, choice.SelectedIndex, "controlled-v111");
-            decision.Validate();
-            return ControlledStochasticDecisionV111.FromIndex(decision);
-        }).ToArray();
+        var decisions = BuildProviderDecisions(
+            origin, siteId, transcript);
         // Session validation replays the generator repeatedly; keep those
         // audit-only calls out of any enclosing source-boundary journal.
         using var replayJournal = RandomBoundaryJournalV111.Begin();
@@ -8760,6 +8764,24 @@ public sealed record ReferenceNatureAncientOfferSessionV111(
             throw new InvalidOperationException(
                 "Ancient offer generator did not consume the complete Nature transcript.");
         return run;
+    }
+
+    private static ControlledStochasticDecisionV111[] BuildProviderDecisions(
+        RunState origin, string siteId,
+        ReferenceNatureDecisionV111[] transcript)
+    {
+        var scripted = BuildReplayChoices(origin, siteId, transcript);
+        return scripted.Select(choice =>
+        {
+            var decision = new RandomIndexDecisionV111(
+                choice.Request with
+                {
+                    OrderedCandidates = (int[])
+                        choice.Request.OrderedCandidates.Clone()
+                }, choice.SelectedIndex, "controlled-v111");
+            decision.Validate();
+            return ControlledStochasticDecisionV111.FromIndex(decision);
+        }).ToArray();
     }
 
     private static AncientOfferReplayChoiceV111[] BuildReplayChoices(

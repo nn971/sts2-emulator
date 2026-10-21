@@ -132,6 +132,8 @@ public static class SimulationProviderReplayCaptureProvenanceV111
         "reference-nature-controlled-action-replay-validated-v1";
     public const string ReferenceNatureNeowOfferReplayValidated =
         "reference-nature-neow-offer-replay-validated-v1";
+    public const string ReferenceNatureRunSetupReplayValidated =
+        "reference-nature-run-setup-replay-validated-v1";
 
     public static bool IsKnown(string? provenance) => provenance is
         CallerSupplied or ScriptedRunReplayValidated or
@@ -139,7 +141,8 @@ public static class SimulationProviderReplayCaptureProvenanceV111
         ReferenceNatureRunActionReplayValidated or
         ReferenceNatureEventChoiceReplayValidated or
         ReferenceNatureControlledActionReplayValidated or
-        ReferenceNatureNeowOfferReplayValidated;
+        ReferenceNatureNeowOfferReplayValidated or
+        ReferenceNatureRunSetupReplayValidated;
 }
 
 /// <summary>
@@ -150,6 +153,19 @@ public interface IReferenceNatureControlledActionSessionV111
 {
     RunState Origin { get; }
     GameAction Action { get; }
+    RunState Run { get; }
+    bool Complete { get; }
+    ControlledStochasticDecisionV111[] ProviderDecisions { get; }
+    void Validate();
+}
+
+/// <summary>
+/// Common replay-validated shape for a completed ReferenceNature run-setup
+/// interval that has stochastic outcomes but no player action.
+/// </summary>
+public interface IReferenceNatureRunSetupSessionV111
+{
+    RunState Origin { get; }
     RunState Run { get; }
     bool Complete { get; }
     ControlledStochasticDecisionV111[] ProviderDecisions { get; }
@@ -390,40 +406,44 @@ public sealed record SimulationProviderReplayCaptureV111(
     public static SimulationProviderReplayCaptureV111
         FromReferenceNatureNeowOfferSession(
             ReferenceNatureNeowOfferSessionV111 session)
+        => FromReferenceNatureRunSetupSession(session);
+
+    /// <summary>
+    /// Builds a capture for a completed Ancient-offer run-setup interval.
+    /// </summary>
+    public static SimulationProviderReplayCaptureV111
+        FromReferenceNatureAncientOfferSession(
+            ReferenceNatureAncientOfferSessionV111 session)
+        => FromReferenceNatureRunSetupSession(session);
+
+    /// <summary>
+    /// Builds a capture for a completed no-player-action ReferenceNature
+    /// setup interval from its revalidated typed stochastic prefix.
+    /// </summary>
+    public static SimulationProviderReplayCaptureV111
+        FromReferenceNatureRunSetupSession(
+            IReferenceNatureRunSetupSessionV111 session)
     {
         ArgumentNullException.ThrowIfNull(session);
-        ReferenceNatureNeowOfferSessionV111 replay;
+        bool complete;
+        RunState origin;
+        RunState run;
+        ControlledStochasticDecisionV111[] decisions;
         using (RandomBoundaryJournalV111.Begin())
-            replay = ReferenceNatureNeowOfferSessionV111.Restore(
-                ReferenceNatureNeowOfferSessionV111.Save(session));
-        if (!replay.Complete)
-            throw new InvalidOperationException(
-                "Provider replay capture requires a completed ReferenceNature Neow offer.");
-
-        var plan = NeowOfferDecisionPlanBuilderV111.Build(
-            replay.Origin.RunSeed, replay.Origin.Ascension,
-            replay.DecisionTranscript.Select(decision =>
-                decision.OutcomeIndex).ToArray());
-        if (!plan.Complete || plan.Steps.Length !=
-                replay.DecisionTranscript.Length)
-            throw new InvalidDataException(
-                "ReferenceNature Neow offer plan does not cover its saved transcript.");
-        var decisions = plan.Steps.Select(step =>
         {
-            var selectedIndex = step.SelectedIndex ??
-                throw new InvalidDataException(
-                    "Completed ReferenceNature Neow offer has a pending request.");
-            var indexDecision = new RandomIndexDecisionV111(
-                step.Request, selectedIndex, "controlled-v111");
-            var decision = ControlledStochasticDecisionV111.FromIndex(
-                indexDecision, step.OutcomeIds);
-            decision.Validate();
-            return decision;
-        }).ToArray();
+            session.Validate();
+            complete = session.Complete;
+            origin = session.Origin.Fork();
+            run = session.Run.Fork();
+            decisions = complete ? session.ProviderDecisions : [];
+        }
+        if (!complete)
+            throw new InvalidOperationException(
+                "Provider replay capture requires a completed ReferenceNature run-setup session.");
         return FromScriptedDecisions(
-            replay.Origin, [], decisions, replay.Run,
+            origin, [], decisions, run,
             SimulationProviderReplayCaptureProvenanceV111
-                .ReferenceNatureNeowOfferReplayValidated);
+                .ReferenceNatureRunSetupReplayValidated);
     }
 
     /// <summary>

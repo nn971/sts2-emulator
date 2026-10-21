@@ -198,6 +198,7 @@ public sealed record ReferenceNatureNeowOfferSessionV111(
     ReferenceNatureStateV111 InitialNatureState,
     ReferenceNatureStateV111 NatureState,
     ReferenceNatureDecisionV111[] DecisionTranscript)
+    : IReferenceNatureRunSetupSessionV111
 {
     [JsonIgnore]
     public SimulationStateV111<PrototypeMechanicsContinuationStateV111,
@@ -276,6 +277,34 @@ public sealed record ReferenceNatureNeowOfferSessionV111(
         Origin.RunSeed, Origin.Ascension,
         DecisionTranscript.Select(decision => decision.OutcomeIndex)
             .ToArray()).Complete;
+
+    [JsonIgnore]
+    public ControlledStochasticDecisionV111[] ProviderDecisions
+    {
+        get
+        {
+            var plan = NeowOfferDecisionPlanBuilderV111.Build(
+                Origin.RunSeed, Origin.Ascension,
+                DecisionTranscript.Select(decision =>
+                    decision.OutcomeIndex).ToArray());
+            if (!plan.Complete || plan.Steps.Length !=
+                    DecisionTranscript.Length)
+                throw new InvalidOperationException(
+                    "Provider decisions require a completed Neow-offer prefix.");
+            return plan.Steps.Select(step =>
+            {
+                var selectedIndex = step.SelectedIndex ??
+                    throw new InvalidDataException(
+                        "Completed Neow-offer plan has a pending request.");
+                var indexDecision = new RandomIndexDecisionV111(
+                    step.Request, selectedIndex, "controlled-v111");
+                var decision = ControlledStochasticDecisionV111.FromIndex(
+                    indexDecision);
+                decision.Validate();
+                return decision;
+            }).ToArray();
+        }
+    }
 
     public static ReferenceNatureNeowOfferSessionV111 Begin(
         RunState origin, ulong natureSeed)
