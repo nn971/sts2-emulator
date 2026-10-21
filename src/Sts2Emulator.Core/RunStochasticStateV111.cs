@@ -212,6 +212,8 @@ public sealed record RunStochasticStateV111
                 expectedBossSite is null || laws.Length == 0 ||
                 laws[0].SiteId != expectedBossSite ||
                 startsWithMap != (mapGeneration is not null) ||
+                !StringComparer.Ordinal.Equals(
+                    currentNature.Seed, runStart.FinalNatureState.Seed) ||
                 currentNature.SampleCount <
                     runStart.FinalNatureState.SampleCount ||
                 (currentNature.SampleCount ==
@@ -254,7 +256,10 @@ public sealed record RunStochasticStateV111
                         "Later-act map audit history differs from its run or act order.");
                 audit.Validate();
                 if (previousMapCursor is { } previousCursor &&
-                    (audit.InitialNatureState.SampleCount <
+                    (!StringComparer.Ordinal.Equals(
+                        audit.InitialNatureState.Seed,
+                        previousCursor.Seed) ||
+                     audit.InitialNatureState.SampleCount <
                         previousCursor.SampleCount ||
                      audit.InitialNatureState.SampleCount ==
                         previousCursor.SampleCount &&
@@ -265,7 +270,9 @@ public sealed record RunStochasticStateV111
                 previousMapCursor = audit.NatureState;
             }
             var finalMapCursor = mapHistory[^1].NatureState;
-            if (currentNature.SampleCount < finalMapCursor.SampleCount ||
+            if (!StringComparer.Ordinal.Equals(
+                    currentNature.Seed, finalMapCursor.Seed) ||
+                currentNature.SampleCount < finalMapCursor.SampleCount ||
                 currentNature.SampleCount == finalMapCursor.SampleCount &&
                 !currentNature.SameCursor(finalMapCursor))
                 throw new InvalidDataException(
@@ -325,7 +332,10 @@ public sealed record RunStochasticStateV111
                 var nextMapAudit = mapHistory.FirstOrDefault(
                     candidate => candidate.Act > act);
                 if (nextMapAudit is not null &&
-                    (nextMapAudit.InitialNatureState.SampleCount <
+                    (!StringComparer.Ordinal.Equals(
+                        nextMapAudit.InitialNatureState.Seed,
+                        session.NatureState.Seed) ||
+                     nextMapAudit.InitialNatureState.SampleCount <
                         session.NatureState.SampleCount ||
                      nextMapAudit.InitialNatureState.SampleCount ==
                         session.NatureState.SampleCount &&
@@ -333,7 +343,9 @@ public sealed record RunStochasticStateV111
                          session.NatureState)))
                     throw new InvalidDataException(
                         "Ancient-offer audits do not precede the next act's map cursor.");
-                if (currentNature.SampleCount < session.NatureState.SampleCount ||
+                if (!StringComparer.Ordinal.Equals(
+                        currentNature.Seed, session.NatureState.Seed) ||
+                    currentNature.SampleCount < session.NatureState.SampleCount ||
                     currentNature.SampleCount ==
                         session.NatureState.SampleCount &&
                     !currentNature.SameCursor(session.NatureState))
