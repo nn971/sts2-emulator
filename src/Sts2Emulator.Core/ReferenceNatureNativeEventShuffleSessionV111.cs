@@ -1270,6 +1270,7 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
     ReferenceNatureStateV111 InitialNatureState,
     ReferenceNatureStateV111 NatureState,
     ReferenceNatureDecisionV111[] DecisionTranscript)
+    : IReferenceNatureControlledActionSessionV111
 {
     private string[] _plannedCandidateIds = [];
 
@@ -1327,6 +1328,64 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
     {
         get => Stochastic.DecisionTranscript;
         init => Stochastic = Stochastic with { DecisionTranscript = value };
+    }
+
+    [JsonIgnore]
+    public GameAction Action => NativeEventShufflePlanBuilderV111.Build(
+        Origin, SiteId, ActionId, PlannedCandidateIds).ReplayAction;
+
+    [JsonIgnore]
+    public ControlledStochasticDecisionV111[] ProviderDecisions
+    {
+        get
+        {
+            if (!Complete)
+                throw new InvalidOperationException(
+                    "A pending Native event-shuffle session has no completed provider prefix.");
+            var plan = NativeEventShufflePlanBuilderV111.Build(
+                Origin, SiteId, ActionId, PlannedCandidateIds);
+            var combatEndPrefix = plan.IsCombatEndIndex
+                ? BuildCombatEndIndexPrefix(plan) : null;
+            var natureState = InitialNatureState.Fork();
+            var priorIndices = new List<int>();
+            var decisions = new List<ControlledStochasticDecisionV111>(
+                DecisionTranscript.Length);
+            for (var ordinal = 0;
+                 ordinal < DecisionTranscript.Length; ordinal++)
+            {
+                var prior = priorIndices.ToArray();
+                var request = combatEndPrefix is null
+                    ? plan.RequestForChoice(ordinal)
+                    : combatEndPrefix.Decisions[ordinal].Request;
+                var law = plan.IsCombatEndIndex
+                    ? QueryCombatEndLaw(plan, request)
+                    : QueryBoundaryLaw(plan, Origin, ordinal, prior,
+                        ActionId, PlannedCandidateIds);
+                var selection = ReferenceNatureV111.SampleValidated(
+                    law, natureState);
+                var expected = new ReferenceNatureDecisionV111(
+                    law.LawId, law.EventId, selection.OutcomeId,
+                    selection.OutcomeIndex);
+                if (CanonicalJson.Sha256(expected) !=
+                    CanonicalJson.Sha256(DecisionTranscript[ordinal]))
+                    throw new InvalidDataException(
+                        "Native event-shuffle provider prefix differs from its Nature transcript.");
+                var outcomeIds = law.Outcomes.Select(
+                    outcome => outcome.OutcomeId).ToArray();
+                var mapped = ReferenceNatureChanceLawDecisionV111
+                    .FromOrderedIndexSelection(law,
+                        ControlledStochasticRequestV111.FromIndex(request),
+                        selection, outcomeIds);
+                var indexDecision = mapped.IndexDecision ??
+                    throw new InvalidDataException(
+                        "Native event-shuffle provider replay requires an index decision.");
+                decisions.Add(ControlledStochasticDecisionV111.FromIndex(
+                    indexDecision, outcomeIds));
+                priorIndices.Add(selection.OutcomeIndex);
+                natureState = selection.NextState;
+            }
+            return decisions.ToArray();
+        }
     }
 
     public const string CurrentSchemaId =

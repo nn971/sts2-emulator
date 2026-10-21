@@ -624,14 +624,14 @@ establish Native source-hook parity or law fidelity.
 `FromReferenceNatureControlledActionSession` uses one shared interface for
 completed Merchant, Treasure, combat-reward, Native Shovel, Native event-relic,
 Native event-gold, Infested Automaton, Glory Reflections, Trial, Trash Heap,
-and Tablet of Truth sessions. Each session first replays its own action and
-typed stochastic prefix; the capture then records that prefix through the same
-journal. Native event-gold reuses its validated typed prefix; Infested
-Automaton, Glory Reflections, Trial, Trash Heap, and Tablet of Truth derive
-typed decisions from their existing validated Chance Law decisions and exact
-ordered outcome supports.
+Tablet of Truth, and Native event-shuffle sessions. Each session first replays
+its own action and typed stochastic prefix; the capture then records that
+prefix through the same journal. Native event-gold reuses its validated typed
+prefix. Infested Automaton, Glory Reflections, Trial, Trash Heap, Tablet of
+Truth, and Native event-shuffle derive typed decisions from their existing
+validated Chance Law decisions, exact requests, and ordered outcome supports.
 JSONL accepts the matching
-`<side>_reference_nature_{merchant,treasure,combat_reward,native_shovel,native_event_relic,native_event_gold,infested_automaton,glory_reflections,trial,trash_heap,tablet_of_truth}_handle`
+`<side>_reference_nature_{merchant,treasure,combat_reward,native_shovel,native_event_relic,native_event_gold,infested_automaton,glory_reflections,trial,trash_heap,tablet_of_truth,native_event_shuffle}_handle`
 inputs. This adds replay-capture coverage without changing the action or
 provider owners.
 `FromReferenceNatureRunActionSession` adds a completed unconfigured prototype

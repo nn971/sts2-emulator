@@ -2921,6 +2921,7 @@ internal static class PrototypeAiJsonlServer
                                 "<side>_reference_nature_native_event_gold_handle",
                                 "<side>_reference_nature_infested_automaton_handle",
                                 "<side>_reference_nature_glory_reflections_handle",
+                                "<side>_reference_nature_native_event_shuffle_handle",
                                 "<side>_origin_snapshot, <side>_actions, <side>_boundaries, and <side>_result_snapshot"
                             },
                             simulationProviderReplayComparisonScope =
@@ -9745,6 +9746,8 @@ internal static class PrototypeAiJsonlServer
                                 side + "_reference_nature_infested_automaton_handle";
                             var referenceNatureGloryReflectionsHandleName =
                                 side + "_reference_nature_glory_reflections_handle";
+                            var referenceNatureNativeEventShuffleHandleName =
+                                side + "_reference_nature_native_event_shuffle_handle";
                             var originName = side + "_origin_snapshot";
                             var actionsName = side + "_actions";
                             var boundariesName = side + "_boundaries";
@@ -9812,6 +9815,10 @@ internal static class PrototypeAiJsonlServer
                                 request.TryGetProperty(
                                     referenceNatureGloryReflectionsHandleName,
                                     out var referenceNatureGloryReflectionsHandleElement);
+                            bool hasReferenceNatureNativeEventShuffleHandle =
+                                request.TryGetProperty(
+                                    referenceNatureNativeEventShuffleHandleName,
+                                    out var referenceNatureNativeEventShuffleHandleElement);
                             if (hasScriptedRunHandle ||
                                 hasScriptedActionHandle ||
                                 hasSemanticNativeHandle ||
@@ -9827,7 +9834,8 @@ internal static class PrototypeAiJsonlServer
                                 hasReferenceNatureNativeEventRelicHandle ||
                                 hasReferenceNatureNativeEventGoldHandle ||
                                 hasReferenceNatureInfestedAutomatonHandle ||
-                                hasReferenceNatureGloryReflectionsHandle)
+                                hasReferenceNatureGloryReflectionsHandle ||
+                                hasReferenceNatureNativeEventShuffleHandle)
                             {
                                 if ((hasScriptedRunHandle ? 1 : 0) +
                                     (hasScriptedActionHandle ? 1 : 0) +
@@ -9844,7 +9852,8 @@ internal static class PrototypeAiJsonlServer
                                     (hasReferenceNatureNativeEventRelicHandle ? 1 : 0) +
                                     (hasReferenceNatureNativeEventGoldHandle ? 1 : 0) +
                                     (hasReferenceNatureInfestedAutomatonHandle ? 1 : 0) +
-                                    (hasReferenceNatureGloryReflectionsHandle ? 1 : 0) > 1)
+                                    (hasReferenceNatureGloryReflectionsHandle ? 1 : 0) +
+                                    (hasReferenceNatureNativeEventShuffleHandle ? 1 : 0) > 1)
                                     throw new ArgumentException(
                                         "Provide only one replay handle for " +
                                         side + ".");
@@ -9895,9 +9904,12 @@ internal static class PrototypeAiJsonlServer
                                 else if (hasReferenceNatureInfestedAutomatonHandle)
                                     (handleElement, handleName) =
                                         (referenceNatureInfestedAutomatonHandleElement, referenceNatureInfestedAutomatonHandleName);
-                                else
+                                else if (hasReferenceNatureGloryReflectionsHandle)
                                     (handleElement, handleName) =
                                         (referenceNatureGloryReflectionsHandleElement, referenceNatureGloryReflectionsHandleName);
+                                else
+                                    (handleElement, handleName) =
+                                        (referenceNatureNativeEventShuffleHandleElement, referenceNatureNativeEventShuffleHandleName);
                                 if (handleElement.ValueKind !=
                                         JsonValueKind.String ||
                                     string.IsNullOrWhiteSpace(
@@ -10049,6 +10061,15 @@ internal static class PrototypeAiJsonlServer
                                                 gloryReflections)
                                         : throw new InvalidOperationException(
                                             "Unknown ReferenceNature Glory Reflections handle: " +
+                                            handle);
+                                if (hasReferenceNatureNativeEventShuffleHandle)
+                                    return referenceNatureNativeEventShuffleRunStateHandles
+                                        .TryGetValue(handle, out var nativeEventShuffle)
+                                        ? SimulationProviderReplayCaptureV111
+                                            .FromReferenceNatureControlledActionSession(
+                                                nativeEventShuffle)
+                                        : throw new InvalidOperationException(
+                                            "Unknown ReferenceNature Native event-shuffle handle: " +
                                             handle);
                                 return semanticStates.TryGetValue(handle,
                                         out var semanticNative)
