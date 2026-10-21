@@ -18,12 +18,13 @@ public sealed record CombatStochasticStateV111(
     public void Validate(CombatState owner)
     {
         ArgumentNullException.ThrowIfNull(owner);
-        NativeCombatRngEntryV111.Validate(owner);
-        if (owner.SemanticDeck is not { } semanticDeck) return;
+        NativeCombatRngEntryV111.Validate(owner, NativeRng);
+        if (SemanticDeck is not { } semanticDeck) return;
 
-        SemanticDrawPileAdapterV111.ValidateSynchronized(owner);
+        SemanticDrawPileAdapterV111.ValidateSynchronized(
+            owner, semanticDeck);
         if (semanticDeck.Mode == SemanticDeckStateV111.NativeMode &&
-            owner.NativeRng is null)
+            NativeRng is null)
             throw new InvalidOperationException(
                 "Native exact semantic deck has no native combat RNG owner.");
     }

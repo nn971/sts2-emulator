@@ -213,7 +213,13 @@ public static class NativeCombatRngEntryV111
     public static void Validate(CombatState combat)
     {
         ArgumentNullException.ThrowIfNull(combat);
-        var native = combat.NativeRng;
+        Validate(combat, combat.Stochastic.NativeRng);
+    }
+
+    internal static void Validate(
+        CombatState combat, NativeCombatRngV111? native)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
         if (native is null)
             return;
         var expected = NativeRngV111.CreateBundle("validation-schema")

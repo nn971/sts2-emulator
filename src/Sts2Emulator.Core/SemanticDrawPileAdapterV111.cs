@@ -37,8 +37,17 @@ public static class SemanticDrawPileAdapterV111
     public static void ValidateSynchronized(CombatState combat, bool requireIdle = false)
     {
         ArgumentNullException.ThrowIfNull(combat);
-        ValidateProviderCorrespondence(combat.SemanticDeck, combat.DrawPile);
-        if (requireIdle && combat.SemanticDeck?.Pending is not null)
+        ValidateSynchronized(
+            combat, combat.Stochastic.SemanticDeck, requireIdle);
+    }
+
+    internal static void ValidateSynchronized(
+        CombatState combat, SemanticDeckStateV111? semanticDeck,
+        bool requireIdle = false)
+    {
+        ArgumentNullException.ThrowIfNull(combat);
+        ValidateProviderCorrespondence(semanticDeck, combat.DrawPile);
+        if (requireIdle && semanticDeck?.Pending is not null)
             throw new InvalidDataException(
                 "Cannot mutate a draw pile with a pending semantic reveal.");
     }
