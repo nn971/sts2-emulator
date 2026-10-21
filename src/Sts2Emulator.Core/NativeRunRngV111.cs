@@ -24,7 +24,9 @@ public static class NativeRunRngV111
                 "Cannot introduce a run RNG owner after native combat has begun.");
         return state with
         {
-            NativeRunRng = NativeRngV111.CreateBundle(state.RunSeed)
+            Stochastic = RunStochasticStateV111.WithNativeRunRng(
+                state.Stochastic,
+                NativeRngV111.CreateBundle(state.RunSeed))
         };
     }
 
@@ -100,11 +102,16 @@ public static class NativeRunRngV111
             };
             return state with
             {
-                NativeRunRng = advanced,
+                Stochastic = RunStochasticStateV111.WithNativeRunRng(
+                    state.Stochastic, advanced),
                 World = state.World with { Combat = combat }
             };
         }
-        return state with { NativeRunRng = advanced };
+        return state with
+        {
+            Stochastic = RunStochasticStateV111.WithNativeRunRng(
+                state.Stochastic, advanced)
+        };
     }
 
     /// <summary>
@@ -149,7 +156,8 @@ public static class NativeRunRngV111
         ValidateBundle(combat.NativeRng.RunStreams);
         var updated = state with
         {
-            NativeRunRng = combat.NativeRng.RunStreams.Fork(),
+            Stochastic = RunStochasticStateV111.WithNativeRunRng(
+                state.Stochastic, combat.NativeRng.RunStreams.Fork()),
             World = state.World with { Combat = combat.Fork() }
         };
         Validate(updated);
@@ -170,7 +178,8 @@ public static class NativeRunRngV111
                 "No native combat RNG to release.");
         var result = state with
         {
-            NativeRunRng = active.RunStreams.Fork(),
+            Stochastic = RunStochasticStateV111.WithNativeRunRng(
+                state.Stochastic, active.RunStreams.Fork()),
             World = state.World with
             {
                 Combat = state.World.Combat with { NativeRng = null }
@@ -221,6 +230,10 @@ public static class NativeRunRngV111
         }
         var source = live?.RunStreams ?? afterRunStreams;
         ValidateBundle(source);
-        return after with { NativeRunRng = source.Fork() };
+        return after with
+        {
+            Stochastic = RunStochasticStateV111.WithNativeRunRng(
+                after.Stochastic, source.Fork())
+        };
     }
 }
