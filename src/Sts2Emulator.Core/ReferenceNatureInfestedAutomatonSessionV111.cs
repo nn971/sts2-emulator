@@ -35,15 +35,60 @@ public sealed record ReferenceNatureInfestedAutomatonSessionV111(
     ReferenceNatureStateV111 NatureState,
     ReferenceNatureDecisionV111[] DecisionTranscript)
 {
-    private ReferenceNatureDecisionV111[]? _decisionTranscript =
-        ReferenceNatureSessionValueCopiesV111.CopyArray(DecisionTranscript);
+    [System.Text.Json.Serialization.JsonIgnore]
+    public SimulationStateV111<PrototypeMechanicsContinuationStateV111,
+        ReferenceNatureStochasticStateV111<ReferenceNatureDecisionV111>>
+        Simulation { get; init; } = new(
+            new PrototypeMechanicsContinuationStateV111(
+                PrototypeMechanicsContinuationKindV111.ReferenceNatureRunSession,
+                Origin, Run),
+            new ReferenceNatureStochasticStateV111<
+                ReferenceNatureDecisionV111>(InitialNatureState, NatureState,
+                DecisionTranscript));
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public PrototypeMechanicsContinuationStateV111 Mechanics
+    {
+        get => Simulation.Mechanics;
+        init => Simulation = Simulation with { Mechanics = value };
+    }
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public ReferenceNatureStochasticStateV111<ReferenceNatureDecisionV111>
+        Stochastic
+    {
+        get => Simulation.Stochastic;
+        init => Simulation = Simulation with { Stochastic = value };
+    }
+
+    public RunState Origin
+    {
+        get => Mechanics.Origin!;
+        init => Mechanics = Mechanics with { Origin = value };
+    }
+
+    public RunState Run
+    {
+        get => Mechanics.Current;
+        init => Mechanics = Mechanics with { Current = value };
+    }
+
+    public ReferenceNatureStateV111 InitialNatureState
+    {
+        get => Stochastic.InitialNatureState;
+        init => Stochastic = Stochastic with { InitialNatureState = value };
+    }
+
+    public ReferenceNatureStateV111 NatureState
+    {
+        get => Stochastic.NatureState;
+        init => Stochastic = Stochastic with { NatureState = value };
+    }
 
     public ReferenceNatureDecisionV111[] DecisionTranscript
     {
-        get => ReferenceNatureSessionValueCopiesV111
-            .CopyArray(_decisionTranscript)!;
-        init => _decisionTranscript = ReferenceNatureSessionValueCopiesV111
-            .CopyArray(value);
+        get => Stochastic.DecisionTranscript;
+        init => Stochastic = Stochastic with { DecisionTranscript = value };
     }
 
     public const string CurrentSchemaId =
@@ -102,12 +147,8 @@ public sealed record ReferenceNatureInfestedAutomatonSessionV111(
         Validate();
         return this with
         {
-            Origin = Origin.Fork(),
-            Run = Run.Fork(),
-            InitialNatureState = InitialNatureState.Fork(),
-            NatureState = NatureState.Fork(),
-            DecisionTranscript = (ReferenceNatureDecisionV111[])
-                DecisionTranscript.Clone()
+            Mechanics = Mechanics.Fork(),
+            Stochastic = Stochastic.Fork()
         };
     }
 
@@ -181,15 +222,17 @@ public sealed record ReferenceNatureInfestedAutomatonSessionV111(
     {
         if (SchemaId != CurrentSchemaId ||
             ChoiceId is not ("study" or "touch_core") ||
-            Origin is null || Run is null || InitialNatureState is null ||
-            NatureState is null || DecisionTranscript is null ||
-            DecisionTranscript.Length > 1)
+            Origin is null || Run is null)
+            throw new InvalidDataException(
+                "Invalid ReferenceNature Infested Automaton session envelope.");
+        Mechanics.Validate(
+            PrototypeMechanicsContinuationKindV111.ReferenceNatureRunSession);
+        Stochastic.Validate();
+        if (DecisionTranscript.Length > 1)
             throw new InvalidDataException(
                 "Invalid ReferenceNature Infested Automaton session envelope.");
         PrototypeStateInvariants.Validate(Origin);
         PrototypeStateInvariants.Validate(Run);
-        InitialNatureState.Validate();
-        NatureState.Validate();
         _ = NativeEventInfestedAutomatonCardPickPlanBuilderV111.Build(
             Origin, PrototypeNativeHiveEvents.InfestedAutomatonCardOfferSiteId,
             0, ChoiceId);
