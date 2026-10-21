@@ -1786,7 +1786,7 @@ internal static class PrototypeAiJsonlServer
                     streamId = intent.StreamId,
                     ownerId = intent.OwnerId,
                     ordinal = intent.Ordinal,
-                    operationKind = intent.OperationKind,
+                    operationKind = semanticEvent.OperationKind,
                     supportCount = intent.SupportCount,
                     eligibleIndices = Enumerable.Range(0, intent.SupportCount),
                     semanticIntentSupportSchemaId = SemanticIntentSupportV111.SchemaId,
@@ -1811,8 +1811,8 @@ internal static class PrototypeAiJsonlServer
                     totalRawWeight = support.TotalRawWeight,
                     semanticSupportFingerprint = CanonicalJson.Sha256(support),
                     weightsVerified = false,
-                    probabilityStatus = "UNVERIFIED",
-                    probabilityProvenance = "source-shaped-unverified",
+                    probabilityStatus = chanceLaw.ProbabilityStatus,
+                    probabilityProvenance = chanceLaw.ProbabilityProvenance,
                     supportFingerprint = CanonicalJson.Sha256(intent),
                     sourceScope = "source_filtered_semantic_eligible_moves"
                 };
