@@ -1,6 +1,6 @@
 # Native event relic ReferenceNature continuation
 
-**Snapshot:** 2026-10-21. **Status:** implemented for supported configured Native event-choice relic draws, Neow Small Capsule and Large Capsule pickups, Neow's Bones relic offers, Punch Off's `nab` relic offer, Round Tea Party, Trial, Battleworn Dummy setting-three victory, and Pael's Wing; identity-pool fidelity and Native cursor parity remain open.
+**Snapshot:** 2026-10-21. **Status:** implemented for supported configured Native event-choice relic draws, Neow Small Capsule and Large Capsule pickups, Neow's Bones, Hefty Tablet, and Lead Paperweight offers, Punch Off's `nab` relic offer, Round Tea Party, Trial, Battleworn Dummy setting-three victory, and Pael's Wing; identity-pool fidelity and Native cursor parity remain open.
 
 ## Boundary
 
@@ -36,13 +36,23 @@ uses `run.random_pool_distinct.shuffle_swap_index`; its equal-index law on
 `reward` remains `UNVERIFIED` and makes no claim of Native source or cursor
 parity.
 
+The session also captures Hefty Tablet's `OfferThreeRareCards` and Lead
+Paperweight's `OfferTwoColorlessCards` after either relic is selected from a
+Neow opening offer or Neow relic reward. The ordinary resolver fully shuffles
+the configured Rare or implemented Colorless pool on legacy `reward`; the
+session reconstructs that exact ordered pool and owner, validates every
+descending bounded-integer swap, and commits the nested card reward with the
+Nature cursor. These equal-index laws remain `UNVERIFIED`; Native source pool
+fidelity and cursor parity are not established.
+
 The session also captures Neow's Small Capsule when selected from the opening
 Neow options or from a Neow relic reward. Its `OfferRandomRelic` follow-up uses
 one `unowned_relic_selection` bounded index on `player.rewards`; the request
 owner fingerprints the configured relic pool after excluding the acquired
 Small Capsule and all previously owned relics. The selected event choice or
 reward and the Nature cursor commit together. Neow pickup effects other than
-the documented Bones and Small Capsule paths remain outside this boundary.
+the documented Bones, Hefty Tablet, Lead Paperweight, and Small Capsule paths
+remain outside this boundary.
 
 The same session captures configured Native Punch Off's legal page-zero `nab`
 choice. After appending its Injury, the ordinary action creates the one-relic
@@ -70,12 +80,12 @@ Event selection happens before this boundary and keeps its current provider.
 The session rejects unsupported event choices and Neow pickups, Battleworn
 actions outside the setting-three victory boundary, Pael's Wing actions that
 do not draw a relic, and stochastic sites outside the declared request set.
-Event choices with another fixed relic effect are excluded because their effect
-ordering changes the live owned relic support; the exact Small Capsule pickup
-is admitted with its post-acquisition support reconstructed from the selected
-relic. Until all expected requests resolve, its published run remains at the
-projected origin. On completion it commits the event result and Nature cursor
-together.
+Event choices with another fixed relic effect remain excluded because their
+effect ordering can change live support. The documented Neow pickup branches
+are admitted only when their full effect prefix matches a supported reward and
+pool builder. Until all expected requests resolve, the published run remains
+at the projected origin. On completion it commits the event result and Nature
+cursor together.
 
 ## Law and replay
 
