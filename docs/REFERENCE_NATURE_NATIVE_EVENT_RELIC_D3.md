@@ -1,6 +1,6 @@
 # Native event relic ReferenceNature continuation
 
-**Snapshot:** 2026-10-21. **Status:** implemented for supported configured Native event-choice relic draws, Neow Small Capsule and Large Capsule pickups, Neow's Bones relic offer, Hefty Tablet and Lead Paperweight card offers, Scroll Boxes card bundles, Punch Off's `nab` relic offer, Round Tea Party, Trial, Battleworn Dummy setting-three victory, and Pael's Wing; source-pool fidelity and Native cursor parity remain open.
+**Snapshot:** 2026-10-21. **Status:** implemented for supported configured Native event-choice relic draws, Neow Small Capsule and Large Capsule pickups, Neow's Bones relic offer, Hefty Tablet and Lead Paperweight card offers, Lost Coffer card and potion offers, Scroll Boxes card bundles, Punch Off's `nab` relic offer, Round Tea Party, Trial, Battleworn Dummy setting-three victory, and Pael's Wing; source-pool fidelity and Native cursor parity remain open.
 
 ## Boundary
 
@@ -55,14 +55,24 @@ first with owner `Event:<NeowEventId>:common_bundle`, then Uncommons with owner
 equal-index laws remain `UNVERIFIED`, and Native pool fidelity and cursor
 parity are not established.
 
+Lost Coffer's `OfferThreeCardsAndPotion` is also captured when the relic is
+selected from a Neow opening offer or Neow relic reward. The session derives
+the current Act's selectable reward-card count and potion-prevention condition,
+then replays the source-ordered `reward.card_rarity.ticket` and
+`reward.card_model.index_draw` requests for each card, followed by
+`event.reward.offer_potion.model.index_draw` when potion acquisition is
+allowed. Every pending request and candidate-label prefix is checked against
+the ordinary Neow action replay. These legacy `reward` index laws remain
+`UNVERIFIED`; reward-pool fidelity and Native cursor parity are open.
+
 The session also captures Neow's Small Capsule when selected from the opening
 Neow options or from a Neow relic reward. Its `OfferRandomRelic` follow-up uses
 one `unowned_relic_selection` bounded index on `player.rewards`; the request
 owner fingerprints the configured relic pool after excluding the acquired
 Small Capsule and all previously owned relics. The selected event choice or
 reward and the Nature cursor commit together. Neow pickup effects other than
-the documented Bones, Hefty Tablet, Lead Paperweight, Scroll Boxes, and Small
-Capsule paths remain outside this boundary.
+the documented Bones, Hefty Tablet, Lead Paperweight, Lost Coffer, Scroll
+Boxes, and Small Capsule paths remain outside this boundary.
 
 The same session captures configured Native Punch Off's legal page-zero `nab`
 choice. After appending its Injury, the ordinary action creates the one-relic
