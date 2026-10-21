@@ -616,11 +616,18 @@ initial player boundary, so route setup and initial-intent decisions are
 excluded; its boundary trace contains only subsequent player-action outcomes.
 The JSONL operation accepts `<side>_semantic_native_policy_handle` for this
 capture path. It does not establish Native source-hook parity or law fidelity.
+`FromReferenceNatureRunActionSession` adds a completed unconfigured prototype
+`continue_act` path: it replays and validates the session, checks that the
+appended controlled action trace covers the complete saved Chance Law
+transcript, and materializes those typed decisions as the interval boundary
+trace. It rejects other run-action routes and sessions whose specialized
+continuations do not publish a complete trace. JSONL accepts
+`<side>_reference_nature_run_action_handle` for this path.
 The JSONL `provider_replay_compare` operation constructs a current capture for
 each side either from a completed scripted-run or scripted-action handle, or
-from a replay-validated semantic Native-policy handle, or from exact
-origin/result snapshots plus action and boundary arrays, with optional Native
-cursor equality and a mechanics-difference bound.
+from replay-validated semantic Native-policy or ReferenceNature run-action
+handles, or from exact origin/result snapshots plus action and boundary arrays,
+with optional Native cursor equality and a mechanics-difference bound.
 `hello` advertises its capture and result schemas, operation, and inputs. These
 provider traces are privileged diagnostic data and are not part of the fair
 player observation.

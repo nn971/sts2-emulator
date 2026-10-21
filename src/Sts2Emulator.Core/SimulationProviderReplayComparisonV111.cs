@@ -124,10 +124,13 @@ public static class SimulationProviderReplayCaptureProvenanceV111
         "scripted-action-replay-validated-v1";
     public const string SemanticNativePolicyReplayValidated =
         "semantic-native-policy-replay-validated-v1";
+    public const string ReferenceNatureRunActionReplayValidated =
+        "reference-nature-run-action-replay-validated-v1";
 
     public static bool IsKnown(string? provenance) => provenance is
         CallerSupplied or ScriptedRunReplayValidated or
-        ScriptedActionReplayValidated or SemanticNativePolicyReplayValidated;
+        ScriptedActionReplayValidated or SemanticNativePolicyReplayValidated or
+        ReferenceNatureRunActionReplayValidated;
 }
 
 /// <summary>
@@ -216,6 +219,67 @@ public sealed record SimulationProviderReplayCaptureV111(
             session.Origin, [session.Action], session.Decisions, session.Run,
             SimulationProviderReplayCaptureProvenanceV111
                 .ScriptedActionReplayValidated);
+    }
+
+    /// <summary>
+    /// Builds a capture from a completed unconfigured prototype act transition
+    /// whose action history contains the complete controlled map prefix.
+    /// </summary>
+    public static SimulationProviderReplayCaptureV111
+        FromReferenceNatureRunActionSession(
+            ReferenceNatureRunActionSessionV111 session)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        using (RandomBoundaryJournalV111.Begin())
+            session.Validate();
+        if (!session.Complete || session.Run is null)
+            throw new InvalidOperationException(
+                "Provider replay capture requires a completed ReferenceNature run action.");
+        if (session.Action.Kind != "continue_act" ||
+            session.Origin.Phase != RunPhase.ActTransition ||
+            session.Origin.Configuration is not null ||
+            session.Origin.NativeRunRng is not null)
+            throw new NotSupportedException(
+                "ReferenceNature run-action capture currently covers only unconfigured prototype act transitions.");
+
+        var originHistory = session.Origin.ControlledRunActionHistory ?? [];
+        var resultHistory = session.Run.ControlledRunActionHistory ?? [];
+        if (resultHistory.Length == originHistory.Length &&
+            session.DecisionTranscript.Length == 0)
+            return FromScriptedDecisions(
+                session.Origin, [session.Action], [], session.Run,
+                SimulationProviderReplayCaptureProvenanceV111
+                    .ReferenceNatureRunActionReplayValidated);
+        if (resultHistory.Length != originHistory.Length + 1)
+            throw new NotSupportedException(
+                "ReferenceNature action trace does not isolate one committed run action.");
+        for (var index = 0; index < originHistory.Length; index++)
+            if (CanonicalJson.Sha256(originHistory[index]) !=
+                CanonicalJson.Sha256(resultHistory[index]))
+                throw new InvalidDataException(
+                    "ReferenceNature run-action history changed before the captured action.");
+
+        var trace = resultHistory[^1];
+        trace.Validate();
+        if (trace.ActionId != "continue_act" ||
+            trace.MapNodeId is not null ||
+            trace.ActionFingerprint is not null ||
+            (trace.Decisions.Length != session.DecisionTranscript.Length &&
+                trace.TypedDecisions is null))
+            throw new NotSupportedException(
+                "ReferenceNature run-action trace does not cover its decision transcript.");
+
+        var decisions = trace.TypedDecisions ?? trace.Decisions
+            .Select((decision, index) => ControlledStochasticDecisionV111
+                .FromIndex(decision, trace.CandidateLabels[index]))
+            .ToArray();
+        if (decisions.Length != session.DecisionTranscript.Length)
+            throw new NotSupportedException(
+                "ReferenceNature run-action trace omits a sampled provider request.");
+        return FromScriptedDecisions(
+            session.Origin, [session.Action], decisions, session.Run,
+            SimulationProviderReplayCaptureProvenanceV111
+                .ReferenceNatureRunActionReplayValidated);
     }
 
     /// <summary>
