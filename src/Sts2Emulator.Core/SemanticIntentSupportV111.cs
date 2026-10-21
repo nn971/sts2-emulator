@@ -126,6 +126,25 @@ public sealed record SemanticIntentDecisionV111(
     }
 }
 
+/// <summary>A semantic intent outcome paired with its retained primitive
+/// ticket position in an automatic end-turn transcript.</summary>
+public sealed record SemanticIntentTranscriptEntryV111(
+    int TranscriptIndex, SemanticIntentDecisionV111 Decision)
+{
+    public SemanticIntentTranscriptEntryV111 Fork() => this with
+    {
+        Decision = Decision.Fork()
+    };
+
+    public void Validate()
+    {
+        if (TranscriptIndex < 0 || Decision is null)
+            throw new InvalidDataException(
+                "Invalid semantic intent transcript entry.");
+        Decision.Validate();
+    }
+}
+
 public static class SemanticIntentChoiceV111
 {
     public const string SchemaId = "sts2-v111-semantic-intent-event-v1";

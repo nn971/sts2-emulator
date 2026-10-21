@@ -10,6 +10,8 @@ namespace Sts2Emulator.Core;
 public sealed record SemanticEndTurnStochasticStateV111
 {
     private RandomIndexDecisionV111[]? _intentTranscript;
+    private SemanticIntentTranscriptEntryV111[]?
+        _semanticIntentTranscript = [];
     private RandomIndexDecisionV111[]? _enemyActionTranscript;
     private SemanticTargetDecisionV111[]? _targetTranscript;
     private SemanticEndTurnBoundaryChoiceV111[]? _boundaryTranscript;
@@ -21,7 +23,8 @@ public sealed record SemanticEndTurnStochasticStateV111
         RandomIndexDecisionV111[] EnemyActionTranscript,
         SemanticTargetDecisionV111[] TargetTranscript,
         SemanticEndTurnBoundaryChoiceV111[] BoundaryTranscript,
-        SemanticCombatDrawStochasticStateV111? HandDraw = null)
+        SemanticCombatDrawStochasticStateV111? HandDraw = null,
+        SemanticIntentTranscriptEntryV111[]? SemanticIntentTranscript = null)
     {
         _intentTranscript = CopyTranscript(IntentTranscript,
             PrototypeControlledEventChoiceContinuationV111.CloneDecision);
@@ -32,6 +35,8 @@ public sealed record SemanticEndTurnStochasticStateV111
         _boundaryTranscript = CopyTranscript(BoundaryTranscript,
             decision => decision);
         this.HandDraw = HandDraw;
+        _semanticIntentTranscript = CopyTranscript(SemanticIntentTranscript,
+            decision => decision.Fork()) ?? [];
     }
 
     public RandomIndexDecisionV111[] IntentTranscript
@@ -40,6 +45,13 @@ public sealed record SemanticEndTurnStochasticStateV111
             PrototypeControlledEventChoiceContinuationV111.CloneDecision)!;
         init => _intentTranscript = CopyTranscript(value,
             PrototypeControlledEventChoiceContinuationV111.CloneDecision);
+    }
+    public SemanticIntentTranscriptEntryV111[] SemanticIntentTranscript
+    {
+        get => CopyTranscript(_semanticIntentTranscript,
+            decision => decision.Fork())!;
+        init => _semanticIntentTranscript = CopyTranscript(value,
+            decision => decision.Fork()) ?? [];
     }
     public RandomIndexDecisionV111[] EnemyActionTranscript
     {
@@ -75,6 +87,8 @@ public sealed record SemanticEndTurnStochasticStateV111
     {
         IntentTranscript = CopyTranscript(_intentTranscript,
             PrototypeControlledEventChoiceContinuationV111.CloneDecision)!,
+        SemanticIntentTranscript = CopyTranscript(_semanticIntentTranscript,
+            decision => decision.Fork())!,
         EnemyActionTranscript = CopyTranscript(_enemyActionTranscript,
             PrototypeControlledEventChoiceContinuationV111.CloneDecision)!,
         TargetTranscript = CopyTranscript(_targetTranscript,
@@ -122,6 +136,35 @@ public sealed record SemanticEndTurnStochasticStateV111
                 decision.NativeCursorAfter is not null)
                 throw new InvalidDataException(
                     "Invalid semantic turn-intent Nature decision.");
+        }
+        var semanticIntentTranscript = this.SemanticIntentTranscript;
+        var previousSemanticIntentIndex = -1;
+        foreach (var entry in semanticIntentTranscript)
+        {
+            (entry ?? throw new InvalidDataException(
+                "Semantic intent transcript contains a null entry."))
+                .Validate();
+            if (entry.TranscriptIndex <= previousSemanticIntentIndex ||
+                entry.TranscriptIndex >= intentTranscript.Length)
+                throw new InvalidDataException(
+                    "Semantic intent transcript indexes are unordered or outside the primitive transcript.");
+            previousSemanticIntentIndex = entry.TranscriptIndex;
+
+            var primitive = intentTranscript[entry.TranscriptIndex];
+            var semanticEvent = entry.Decision.Event;
+            var selectedCandidate = semanticEvent.Support.Candidates
+                .SingleOrDefault(candidate =>
+                    candidate.IntentId == entry.Decision.IntentId);
+            if (selectedCandidate is null ||
+                primitive.Request.SiteId != semanticEvent.SiteId ||
+                primitive.Request.StreamId != semanticEvent.StreamId ||
+                primitive.Request.OwnerId != semanticEvent.OwnerId ||
+                primitive.Request.Ordinal != semanticEvent.Ordinal ||
+                primitive.Request.SupportCount !=
+                    semanticEvent.Support.TotalRawWeight ||
+                primitive.SelectedIndex != selectedCandidate.TicketStart)
+                throw new InvalidDataException(
+                    "Semantic intent outcome differs from its retained primitive ticket.");
         }
         foreach (var decision in enemyActionTranscript)
         {

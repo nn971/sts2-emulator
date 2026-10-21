@@ -179,6 +179,15 @@ public sealed record SemanticEndTurnV111(
         init => Stochastic = Stochastic with { IntentTranscript = value };
     }
 
+    public SemanticIntentTranscriptEntryV111[] SemanticIntentTranscript
+    {
+        get => Stochastic.SemanticIntentTranscript;
+        init => Stochastic = Stochastic with
+        {
+            SemanticIntentTranscript = value
+        };
+    }
+
     public RunState? PlayerActionSource
     {
         get => Mechanics.PlayerActionSource;
@@ -229,6 +238,22 @@ public sealed record SemanticEndTurnV111(
             SemanticKnowledgeDemonChoiceEngineV111.DescribePending(Run);
     [JsonIgnore] public RandomIndexRequestV111? IntentPending =>
         Intents?.Pending;
+    [JsonIgnore] public SemanticIntentEventV111? IntentChoicePending
+    {
+        get
+        {
+            var intents = Intents;
+            if (Complete || intents is null)
+                return null;
+            var request = intents.Pending;
+            if (request is null)
+                return null;
+            var support = ControlledTurnIntentEngineV111
+                .DescribePendingSemanticIntent(intents);
+            return support is null ? null : SemanticIntentChoiceV111.CreateEvent(
+                Fingerprint, request, support);
+        }
+    }
     [JsonIgnore] public SemanticDeckEventV111? DrawPending
     {
         get
@@ -459,6 +484,7 @@ public sealed record SemanticEndTurnV111(
             SemanticEndTurnEngineV111.ValidateOrigin(this.Origin);
         }
         this.EnemyActionEventPending?.Validate();
+        this.IntentChoicePending?.Validate();
         this.DrawInsertionPending?.Validate();
         this.NestedDrawHookChoicePending?.Validate();
         if (string.IsNullOrWhiteSpace(this.NativeEncounterEntry) ||
@@ -890,6 +916,39 @@ public static class SemanticEndTurnEngineV111
             throw new InvalidOperationException("No pending semantic end-turn choice.");
         Validate(state);
         return state;
+    }
+
+    public static SemanticEndTurnV111 ResolveIntent(
+        SemanticEndTurnV111 source, string fingerprint, string eventId,
+        string intentId)
+    {
+        Validate(source);
+        if (!StringComparer.Ordinal.Equals(source.Fingerprint, fingerprint))
+            throw new InvalidOperationException(
+                "Stale semantic end-turn intent fingerprint.");
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(intentId);
+        var pending = source.IntentChoicePending ??
+            throw new InvalidOperationException(
+                "No weighted semantic intent choice is pending.");
+        if (pending.EventId != eventId)
+            throw new InvalidOperationException(
+                "Semantic intent event ID is stale or mismatched.");
+        var selection = SemanticIntentChoiceV111.Select(pending, intentId);
+        var transcriptIndex = source.IntentTranscript.Length;
+        var advanced = Resolve(
+            source, fingerprint, selection.SourceTicket);
+        if (advanced.IntentTranscript.Length != transcriptIndex + 1)
+            throw new InvalidDataException(
+                "Semantic intent resolution did not append one primitive ticket.");
+        var next = advanced with
+        {
+            SemanticIntentTranscript = advanced.SemanticIntentTranscript.Append(
+                new SemanticIntentTranscriptEntryV111(
+                    transcriptIndex, selection.Decision.Fork())).ToArray()
+        };
+        Validate(next);
+        return next;
     }
 
     public static SemanticEndTurnV111 ResolveGeneratedCard(
@@ -1547,8 +1606,12 @@ public static class SemanticEndTurnEngineV111
                     choice.SelectedIndex);
             }
         }
-        foreach (var choice in saved.IntentTranscript)
+        var semanticIntentsByIndex = saved.SemanticIntentTranscript.ToDictionary(
+            entry => entry.TranscriptIndex);
+        for (var intentIndex = 0;
+             intentIndex < saved.IntentTranscript.Length; intentIndex++)
         {
+            var choice = saved.IntentTranscript[intentIndex];
             choice.Validate();
             if (reproduced.IntentPending is not { } request ||
                 choice.ProviderMode != "controlled-v111" ||
@@ -1557,8 +1620,24 @@ public static class SemanticEndTurnEngineV111
                     CanonicalJson.Sha256(choice.Request))
                 throw new InvalidDataException(
                     "Semantic end-turn intent transcript diverged.");
-            reproduced = Resolve(
-                reproduced, reproduced.Fingerprint, choice.SelectedIndex);
+            if (semanticIntentsByIndex.TryGetValue(
+                    intentIndex, out var semanticChoice))
+            {
+                var pending = reproduced.IntentChoicePending ??
+                    throw new InvalidDataException(
+                        "Semantic end-turn replay lost its weighted intent event.");
+                if (CanonicalJson.Sha256(pending) !=
+                    CanonicalJson.Sha256(semanticChoice.Decision.Event))
+                    throw new InvalidDataException(
+                        "Semantic end-turn intent identity support diverged.");
+                reproduced = ResolveIntent(
+                    reproduced, reproduced.Fingerprint, pending.EventId,
+                    semanticChoice.Decision.IntentId);
+            }
+            else
+                reproduced = Resolve(
+                    reproduced, reproduced.Fingerprint,
+                    choice.SelectedIndex);
         }
         if (saved.HandDraw is { } savedHand)
         {
