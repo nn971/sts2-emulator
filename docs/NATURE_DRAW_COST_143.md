@@ -36,13 +36,24 @@ A future opt-in semantic deck schema must own its own unresolved constraints,
 forced-top placements, peeks, reveals, and per-card draw identities.
 Legacy swap transcripts must remain independently replayable.
 
+That paragraph describes the original fixture patch. The current semantic
+deck and draw owners provide the separate provider-owned path described in
+the [unified stochastic architecture](UNIFIED_STOCHASTIC_ARCHITECTURE.md);
+the fixture snapshot and its legacy swap transcript remain compatible.
+
 ## Coverage and limitations
 
-Only actual automatic end-turn `DrawPlayerHand` and its resumable discard
-recycles support these cost tickets. Opening hand/ordinary card-effect draws
-still fail closed when a cost RNG call is encountered, because their outer
-continuations have not yet been migrated. Randomness inside nested
-`CardDrawn` choice hooks still requires an additional continuation stage.
+The original legacy controlled-playable fixture boundary covers automatic
+end-turn `DrawPlayerHand` and resumable discard recycles. The current semantic
+path also supports standalone semantic draws and nested card-effect draws
+under a Nature-owned semantic deck. Their saved draw and outer card-play
+continuations retain the remaining draw count, deferred keywords, and effect
+queue across a drawn-card cost; supported `CardDrawn` action choices use the
+existing hook-choice continuation. Automatic-pipeline support uses these
+same draw and cost owners at its admitted cursors. Unsupported semantic
+boundaries still fail closed, and standalone draws without a semantic provider
+remain unsupported.
+
 Tests use explicit Snecko/Slither fixture modifications; the mutable fixture
 cannot claim native reward provenance or a normal origin-restorable snapshot.
 The Chance Law reports exact Native `NextInt` grid masses and
@@ -50,6 +61,7 @@ The Chance Law reports exact Native `NextInt` grid masses and
 Native stream assignment, seed frequencies, cursor parity, and fixture
 provenance remain separate.
 
-Next work should implement the new semantic provider-owned deck protocol,
-then align mid-action card draws and nested `CardDrawn` hooks with that
-state. Preserve complete native RNG stream/seed audits in parallel.
+The remaining work is broader resume consolidation and cross-provider
+mechanical equivalence. Native stream assignment, seed frequencies, cursor
+parity, and fixture provenance remain separate audits and are not established
+by this semantic continuation.
