@@ -662,13 +662,17 @@ public sealed record PrototypeRelicBagPullPlanV111
             ControlledEventChoiceReplayV111.IsActive &&
             ControlledEventChoiceReplayV111.IsEventChoiceSite(
                 NativeTreasureModelSiteId);
-        var naturePull = nativeRunRng is not null &&
-            (ControlledStochasticChanceReplayV111.IsActive ||
-             nativeEventChoicePull);
-        var bag = world.RelicBag ?? (nativeRunRng is null
-            ? Create(player, rng)
-            : naturePull
-                ? CreateNatureUnordered(player)
+        var legacyNaturePull = !merchant && nativeRunRng is null &&
+            PrototypeGameEngine.UsesNativeRegionalSystems(world) &&
+            ControlledStochasticChanceReplayV111.IsActive;
+        var naturePull = legacyNaturePull ||
+            (nativeRunRng is not null &&
+                (ControlledStochasticChanceReplayV111.IsActive ||
+                 nativeEventChoicePull));
+        var bag = world.RelicBag ?? (naturePull
+            ? CreateNatureUnordered(player)
+            : nativeRunRng is null
+                ? Create(player, rng)
                 : CreateNative(player, nativeRunRng));
         if (!Enum.IsDefined(bag.OrderMode))
             throw new InvalidOperationException(
@@ -684,7 +688,7 @@ public sealed record PrototypeRelicBagPullPlanV111
             ? RollRarity(rng, merchant)
             : RollRarityNative(nativeRunRng, merchant, rarityOwnerId));
         (PrototypeRelicBagState Bag, string? Id) pull;
-        if (!merchant && nativeRunRng is not null && naturePull)
+        if (!merchant && naturePull)
         {
             var plan = PlanPull(bag, rarity, merchant: false, player);
             if (plan.CandidateIds.Length == 0)
@@ -696,8 +700,6 @@ public sealed record PrototypeRelicBagPullPlanV111
                 var candidates = plan.CandidateIds
                     .OrderBy(id => id, StringComparer.Ordinal).ToArray();
                 var ownerId = TreasureModelOwnerId(world, rarity, candidates);
-                var ordinal = NativePlayerRngV111.NextOrdinal(
-                    nativeRunRng, NativePlayerRngV111.RewardsStreamId);
                 int selectedIndex;
                 using (nativeEventChoicePull
                     ? ControlledEventChoiceReplayV111
@@ -705,10 +707,18 @@ public sealed record PrototypeRelicBagPullPlanV111
                     : ControlledStochasticChanceReplayV111
                         .DescribeCandidates(candidates))
                 {
-                    selectedIndex = NativeRandomChoiceV111.ChooseIndexRange(
-                        nativeRunRng, NativeTreasureModelSiteId,
-                        NativePlayerRngV111.RewardsStreamId, ownerId,
-                        candidates.Length, ordinal).SelectedIndex;
+                    selectedIndex = nativeRunRng is null
+                        ? LegacyRandomChoiceV111.ChooseIndexRange(
+                            rng, NativeTreasureModelSiteId, "reward",
+                            ownerId, candidates.Length).SelectedIndex
+                        : NativeRandomChoiceV111.ChooseIndexRange(
+                            nativeRunRng, NativeTreasureModelSiteId,
+                            NativePlayerRngV111.RewardsStreamId, ownerId,
+                            candidates.Length,
+                            NativePlayerRngV111.NextOrdinal(
+                                nativeRunRng,
+                                NativePlayerRngV111.RewardsStreamId))
+                            .SelectedIndex;
                 }
                 pull = PullSelected(
                     bag, plan with { CandidateIds = candidates },

@@ -62,8 +62,10 @@ These retained requests use equal-index `UNVERIFIED` laws bound to the typed
 request, candidate labels, active action, and ordered replay prefix. They do
 not establish the legacy stream's probability mapping or Native parity. Other
 stochastic requests retain their existing providers and are not controlled by
-this session. Legacy replay keeps the original run projection; configured Native
-relic-bag projection and its identity law remain as described above.
+this session. In a Native regional run with no `NativeRunRng`, the session
+canonicalizes the relic bag and controls the retained rarity ticket and
+identity index on `reward`; the rest of the legacy run's RNG ownership stays
+unchanged.
 
 JSONL operations are `reference_nature_combat_reward_begin`, `status`,
 `resolve_next`, `fork`, `save`, `load`, and `release_many`. Begin accepts a
