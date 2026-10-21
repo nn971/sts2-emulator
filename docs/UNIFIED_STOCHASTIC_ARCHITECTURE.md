@@ -423,11 +423,12 @@ encounter-preparation results use it as well. The Ancient-offer session also
 composes it with `SimulationStateV111` and the shared run mechanics checkpoint.
 Underdocks and Overgrowth run results and native encounter-formation results
 keep their mechanics, laws, map audit, and Native formation audit alongside the
-shared cursor/transcript owner. The controlled event-choice session reuses the
-shared run mechanics checkpoint; its ordered mixed player-action and Nature
-steps remain the authoritative chronology. Flattened serialized properties
-remain stable; snapshot types continue to own their explicit flat
-representations.
+shared cursor/transcript owner. The controlled event-choice session composes
+the shared run mechanics checkpoint with a stochastic owner for its cursors
+and ordered mixed player-action/Nature steps. Its Nature-decision transcript
+is projected from those steps, so the chronology has one stored history.
+Flattened serialized properties remain stable; snapshot types continue to own
+their explicit flat representations.
 
 The **same game mechanics** issues semantic stochastic operations and applies their resolved outcomes regardless of provider:
 

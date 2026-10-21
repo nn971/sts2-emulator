@@ -8938,6 +8938,71 @@ public sealed record ReferenceNatureControlledEventChoiceStepV111(
     };
 }
 
+/// <summary>
+/// Nature cursors and the single ordered event-choice chronology. The steps
+/// include both player actions and Nature samples, so the typed Nature
+/// transcript is a projection rather than a second stored history.
+/// </summary>
+public sealed record ReferenceNatureControlledEventChoiceStochasticStateV111
+{
+    private ReferenceNatureControlledEventChoiceStepV111[]? _steps;
+
+    public ReferenceNatureStateV111 InitialNatureState { get; init; }
+    public ReferenceNatureStateV111 NatureState { get; init; }
+
+    public ReferenceNatureControlledEventChoiceStepV111[] Steps
+    {
+        get => Clone(_steps)!;
+        init => _steps = Clone(value);
+    }
+
+    [JsonIgnore]
+    public ReferenceNatureDecisionV111[] DecisionTranscript => Steps
+        .Where(step => step.Kind == "nature")
+        .Select(step => step.NatureDecision!)
+        .ToArray();
+
+    public ReferenceNatureControlledEventChoiceStochasticStateV111(
+        ReferenceNatureStateV111 initialNatureState,
+        ReferenceNatureStateV111 natureState,
+        ReferenceNatureControlledEventChoiceStepV111[] steps)
+    {
+        InitialNatureState = initialNatureState ??
+            throw new ArgumentNullException(nameof(initialNatureState));
+        NatureState = natureState ??
+            throw new ArgumentNullException(nameof(natureState));
+        Steps = steps;
+    }
+
+    public ReferenceNatureControlledEventChoiceStochasticStateV111 Fork() =>
+        this with
+        {
+            InitialNatureState = InitialNatureState.Fork(),
+            NatureState = NatureState.Fork(),
+            Steps = Steps.Select(step => step.Fork()).ToArray()
+        };
+
+    public void Validate()
+    {
+        ArgumentNullException.ThrowIfNull(InitialNatureState);
+        ArgumentNullException.ThrowIfNull(NatureState);
+        var steps = Steps;
+        ArgumentNullException.ThrowIfNull(steps);
+        InitialNatureState.Validate();
+        NatureState.Validate();
+        foreach (var step in steps)
+        {
+            ArgumentNullException.ThrowIfNull(step);
+            step.Validate();
+        }
+    }
+
+    private static ReferenceNatureControlledEventChoiceStepV111[]? Clone(
+        ReferenceNatureControlledEventChoiceStepV111[]? steps) => steps is null
+            ? null
+            : steps.Select(step => step?.Fork()!).ToArray();
+}
+
 public sealed record ReferenceNatureControlledEventChoiceSnapshotV111(
     string SchemaId, string OriginSnapshotJson, string ChoiceId,
     string RunSnapshotJson, ReferenceNatureStateV111 InitialNatureState,
@@ -8971,9 +9036,28 @@ public sealed record ReferenceNatureControlledEventChoiceSessionV111(
     ReferenceNatureControlledEventChoiceStepV111[] Steps)
 {
     [JsonIgnore]
-    public PrototypeMechanicsContinuationStateV111 Mechanics { get; init; } =
-        new(PrototypeMechanicsContinuationKindV111.ReferenceNatureRunSession,
-            Origin, Run);
+    public SimulationStateV111<PrototypeMechanicsContinuationStateV111,
+        ReferenceNatureControlledEventChoiceStochasticStateV111>
+        Simulation { get; init; } = new(
+            new PrototypeMechanicsContinuationStateV111(
+                PrototypeMechanicsContinuationKindV111.ReferenceNatureRunSession,
+                Origin, Run),
+            new ReferenceNatureControlledEventChoiceStochasticStateV111(
+                InitialNatureState, NatureState, Steps));
+
+    [JsonIgnore]
+    public PrototypeMechanicsContinuationStateV111 Mechanics
+    {
+        get => Simulation.Mechanics;
+        init => Simulation = Simulation with { Mechanics = value };
+    }
+
+    [JsonIgnore]
+    public ReferenceNatureControlledEventChoiceStochasticStateV111 Stochastic
+    {
+        get => Simulation.Stochastic;
+        init => Simulation = Simulation with { Stochastic = value };
+    }
 
     public RunState Origin
     {
@@ -8987,22 +9071,26 @@ public sealed record ReferenceNatureControlledEventChoiceSessionV111(
         init => Mechanics = Mechanics with { Current = value };
     }
 
-    private ReferenceNatureControlledEventChoiceStepV111[]? _steps =
-        Clone(Steps);
+    public ReferenceNatureStateV111 InitialNatureState
+    {
+        get => Stochastic.InitialNatureState;
+        init => Stochastic = Stochastic with { InitialNatureState = value };
+    }
+
+    public ReferenceNatureStateV111 NatureState
+    {
+        get => Stochastic.NatureState;
+        init => Stochastic = Stochastic with { NatureState = value };
+    }
 
     public ReferenceNatureControlledEventChoiceStepV111[] Steps
     {
-        get => Clone(_steps)!;
-        init => _steps = Clone(value);
+        get => Stochastic.Steps;
+        init => Stochastic = Stochastic with { Steps = value };
     }
 
     public const string CurrentSchemaId =
         "sts2-v111-reference-nature-event-choice-session-v1";
-
-    private static ReferenceNatureControlledEventChoiceStepV111[]? Clone(
-        ReferenceNatureControlledEventChoiceStepV111[]? steps) => steps is null
-        ? null
-        : steps.Select(step => step.Fork()).ToArray();
 
     [JsonIgnore]
     public string Fingerprint => CanonicalJson.Sha256(this);
@@ -9033,10 +9121,8 @@ public sealed record ReferenceNatureControlledEventChoiceSessionV111(
     public bool Complete => !NaturePending && !CanAdvancePlayer;
 
     [JsonIgnore]
-    public ReferenceNatureDecisionV111[] DecisionTranscript => Steps
-        .Where(step => step.Kind == "nature")
-        .Select(step => step.NatureDecision!)
-        .ToArray();
+    public ReferenceNatureDecisionV111[] DecisionTranscript =>
+        Stochastic.DecisionTranscript;
 
     public static ReferenceNatureControlledEventChoiceSessionV111 Begin(
         RunState source, string choiceId, ulong seed) =>
@@ -9101,9 +9187,7 @@ public sealed record ReferenceNatureControlledEventChoiceSessionV111(
         return this with
         {
             Mechanics = Mechanics.Fork(),
-            InitialNatureState = InitialNatureState.Fork(),
-            NatureState = NatureState.Fork(),
-            Steps = Steps.Select(step => step.Fork()).ToArray()
+            Stochastic = Stochastic.Fork()
         };
     }
 
@@ -9183,6 +9267,7 @@ public sealed record ReferenceNatureControlledEventChoiceSessionV111(
                 "Invalid ReferenceNature controlled event-choice envelope.");
         Mechanics.Validate(
             PrototypeMechanicsContinuationKindV111.ReferenceNatureRunSession);
+        Stochastic.Validate();
         PrototypeStateInvariants.Validate(Origin);
         PrototypeStateInvariants.Validate(Run);
         if (NeedsNatureCallingBellBag(Origin, ChoiceId))
@@ -9194,17 +9279,12 @@ public sealed record ReferenceNatureControlledEventChoiceSessionV111(
                 .ValidateNatureRelicBagProjection(
                     Run, "Native Calling Bell event-choice replay");
         }
-        InitialNatureState.Validate();
-        NatureState.Validate();
         var decisions = DecisionTranscript;
         if (!ReferenceNatureRunCursorV111.MatchesRunSession(
                 Origin, Run, InitialNatureState, NatureState,
                 decisions.Length, Complete))
             throw new InvalidDataException(
                 "ReferenceNature event-choice cursor differs from the run envelope.");
-        foreach (var step in Steps)
-            step.Validate();
-
         var effect = Run.World?.Event?.ControlledChoice;
         var reward = Run.ControlledEventRewardChoice;
         if (effect is not null && reward is not null)
