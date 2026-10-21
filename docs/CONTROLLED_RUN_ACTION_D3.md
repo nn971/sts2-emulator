@@ -3,16 +3,21 @@
 This opt-in D3 boundary saves the legacy `start_run` action at its Act 1 boss
 encounter draw, map choices that enter an Event node at supported legacy event
 entry draws, legacy Shop-node offer generation, eligible legacy Treasure-node
-relic selection, eligible legacy regional Unknown-node entry, legal legacy
-Act 1 Overgrowth and Underdocks Combat/Elite node entry, and the Shovel dig
-action at its unowned-relic draw. Combat entry
-controls registered `combat`-stream requests and the two legacy
+relic selection, Native-regional Treasure entry through retained legacy reward
+requests when `NativeRunRng` is absent, eligible legacy regional Unknown-node
+entry, legal legacy Act 1 Overgrowth and Underdocks Combat/Elite node entry,
+and the Shovel dig action at its unowned-relic draw. Combat entry controls
+registered `combat`-stream requests and the two legacy
 potion-factory index sites used by pre-combat relic hooks through ordinary
 room initialization; other requests and streams retain their existing
-providers. Shop and Treasure
-generation require non-native regional systems and a legacy run RNG. Treasure
-selection is not offered when Silver Crucible suppresses the first treasure or
-the legacy relic pool is exhausted. The boundary uses ordinary run-state
+providers. Shop generation requires non-native regional systems and a legacy
+run RNG. Ordinary legacy Treasure generation uses that same route; the
+Native-regional fallback requires `NativeRunRng` to be absent and retains the
+legacy reward rarity-ticket and conditional relic-index requests. Legacy
+Treasure selection is not offered when Silver Crucible suppresses the first
+treasure or its relic pool is exhausted. The Native-regional fallback still
+records its rarity ticket when no eligible identity remains and then completes
+without a model-index request. The boundary uses ordinary run-state
 handles and does not change normal `step` behavior or configured Native
 regional merchant/treasure routes.
 
@@ -98,14 +103,15 @@ stale-request guard.
 The JSONL server advertises `controlledRunActionSchemaId`. Its `hello`
 response exposes `controlledRunActionSiteGroups`, with registry-owned arrays
 for run-start/map generation, Event-node entry, legacy Shop-node generation,
-legacy Treasure-node selection, Shovel dig, and region-specific Overgrowth
-and Underdocks combat entry. Shared formation, HP, intent, shuffle and potion
-sites appear in both region groups. The controller supports:
+legacy and Native-regional fallback Treasure-node selection, Shovel dig, and
+region-specific Overgrowth and Underdocks combat entry. Shared formation, HP,
+intent, shuffle and potion sites appear in both region groups. The controller
+supports:
 
 | Operation | Inputs | Result |
 | --- | --- | --- |
 | `controlled_run_action_begin` | current `state_handle`, legal `action_id` | Pending request, labels and controlled outcome actions |
-| `controlled_run_action_resolve` | pending `state_handle`, `selected_index` | Child run handle with the selected legacy run-start, configured boss, event-entry, Shop, Treasure, Act 1 combat-entry or Shovel result |
+| `controlled_run_action_resolve` | pending `state_handle`, `selected_index` | Child run handle with the selected run-start, configured boss, event-entry, Shop, legacy or fallback Treasure, Act 1 combat-entry or Shovel result |
 | `controlled_run_action_inspect` | pending `state_handle` | Restore the pending request and legal outcomes after snapshot load |
 
 The JSONL server also exposes an atomic ReferenceNature envelope for these
@@ -133,7 +139,9 @@ The session supports the legacy `start_run` boss encounter draw and the
 configured Underdocks boss draw described above, legacy map Event-node entry
 draws, the legacy regional Unknown-room 1000-way ticket,
 seven `shop.*` sites in legacy Shop-node generation,
-the `treasure.relic_model.index_draw` legacy Treasure-node site, registered
+the `treasure.relic_model.index_draw` legacy Treasure-node site, the Native-
+regional fallback's `relic_grab_bag.rarity.ticket` and conditional
+`treasure.relic_grab_bag.model.index_draw` sites, registered
 combat-stream requests and the two legacy potion-factory index requests during
 legal legacy Overgrowth or Underdocks Combat/Elite node entry, and Shovel's
 unowned-relic draw. Combat entry covers each region's encounter-pool
@@ -206,6 +214,10 @@ The supported legacy Shop-node generation sites are:
 - `shop.relic_offer.price.index_draw`
 
 The supported legacy Treasure-node site is `treasure.relic_model.index_draw`.
+The Native-regional fallback accepts `relic_grab_bag.rarity.ticket`, followed
+by `treasure.relic_grab_bag.model.index_draw` only when the selected rarity
+has eligible relics. The fallback uses sorted Nature relic support and
+equal-index `UNVERIFIED` legacy request weights.
 
 The supported legacy Overgrowth combat-entry sites are:
 
@@ -257,8 +269,9 @@ The Python binding exposes `State.begin_controlled_run_start()`,
 `State.begin_controlled_run_action(action_id)`,
 `State.begin_controlled_shovel_dig()`,
 `State.resume_controlled_run_action()` and `ControlledRunActionChoice.resolve()`.
-Use a legacy random profile for run-start, map generation, Event/Treasure
-entry, and Shovel flows. Shop purchase actions can also start from a
+Use a legacy random profile for run-start, map generation, ordinary legacy
+Event/Treasure entry, and Shovel flows. Native-regional Treasure fallback is
+available when `NativeRunRng` is absent. Shop purchase actions can also start from a
 configured native Shop state, but only the registered index-only acquisition
 sites above are controlled; configured native Shop entry and relic-bag
 generation remain outside this controller. The configured Native merchant

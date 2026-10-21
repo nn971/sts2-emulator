@@ -648,7 +648,9 @@ public static class StochasticSiteRegistryV111
 
     private static readonly string[] RunActionTreasureSites =
     [
-        "treasure.relic_model.index_draw"
+        "treasure.relic_model.index_draw",
+        "relic_grab_bag.rarity.ticket",
+        PrototypeNativeRelicGrabBag.NativeTreasureModelSiteId
     ];
 
     private static readonly string[] RunActionShovelSites =

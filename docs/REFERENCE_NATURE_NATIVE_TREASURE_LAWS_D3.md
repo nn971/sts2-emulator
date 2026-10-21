@@ -1,9 +1,9 @@
 # Native treasure relic Chance Law and session (D3 contract)
 
-This contract covers read-only laws and an opt-in atomic Nature continuation
-for configured native Treasure entry. It extends versioned
-`chance_law_query` and `stochasticSessionCoverage`; the player observation
-schema is unchanged.
+This contract covers read-only laws and opt-in atomic Nature continuations for
+configured Native Treasure entry and the Native-regional fallback when
+`NativeRunRng` is absent. It extends versioned `chance_law_query` and
+`stochasticSessionCoverage`; the player observation schema is unchanged.
 
 ## Boundary and law
 
@@ -39,6 +39,17 @@ Native bag snapshots retain their current shape. A snapshot carrying this tag
 uses `sts2-exact-snapshot-v3-nature-relic-bag-order`. Ordinary queue-order pulls
 reject Nature-owned sets until a matching controlled Chance Law continuation
 selects an identity.
+
+When a Native-regional run has no `NativeRunRng`, the generic
+`ReferenceNatureRunActionSessionV111` instead controls the retained Prototype
+fallback emitted by the same Treasure room entry. It samples
+`relic_grab_bag.rarity.ticket` on `reward`, then conditionally
+`treasure.relic_grab_bag.model.index_draw` on `reward`. The 100 ticket labels
+encode the existing 50/33/17 partition; identity labels are the sorted
+eligible IDs from the shared fallback plan. The run-action continuation
+reconstructs the pending owner and support from the rarity decision and
+Nature-unordered bag. These retained request-index laws use equal weights and
+remain `UNVERIFIED`.
 
 The law combines the relic-rarity draw's nominal 50/33/17 Common/Uncommon/Rare
 partition with the conditional equal support of each still-hidden queue
@@ -83,8 +94,8 @@ Nature receives stable outcome IDs, sorted support, and conditioning
 fingerprints. The ordinary player view receives the relic only after the
 normal Treasure mechanics commits it; it never receives remaining queue order
 or RNG state. Ordinary Native execution keeps its source rarity roll and
-queue-front pull. The session can construct Nature's eligible pools without a
-committed Native bag. Skipped chests, non-native profiles, and unavailable
-Treasure nodes fail closed. Native queue-shuffle cursor parity, other
-continued bag draws after this session, other Treasure draws after purchases,
-and source probability calibration remain open.
+queue-front pull. Both sessions can construct Nature's eligible pools without
+a committed Native bag. Silver Crucible skips remain outside Treasure entry.
+The generic run-action fallback does not change the configured Native
+Treasure session; other Treasure draws after purchases, Native queue-shuffle
+cursor parity, and source probability calibration remain open.

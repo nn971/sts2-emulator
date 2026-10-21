@@ -141,10 +141,12 @@ public sealed record ControlledRunActionTraceV111(
                 && request.SupportCount >
                     ControlledRunActionEngineV111.MaximumInlineOutcomeActions
                 && labels.Length == 0;
+            var nativeTreasureLabels = IsLegacyNativeTreasureLabelSupport(
+                request, labels);
             var numericLabels = !(isMapDraw || isEventEntryDraw || isShopDraw
                 || isTreasureDraw || isCombatDraw || isCombatPotionDraw
                 || isShopPurchaseDraw)
-                || omittedLabels || labels.SequenceEqual(
+                || nativeTreasureLabels || omittedLabels || labels.SequenceEqual(
                 Enumerable.Range(0, labels.Length).Select(index =>
                     index.ToString(CultureInfo.InvariantCulture)),
                 StringComparer.Ordinal);
@@ -167,6 +169,37 @@ public sealed record ControlledRunActionTraceV111(
                 throw new InvalidDataException(
                     "Controlled run-action transcript contains an invalid outcome.");
         }
+    }
+
+    internal static bool IsLegacyNativeTreasureLabelSupport(
+        RandomIndexRequestV111 request, string[] labels)
+    {
+        var rarityTicket = request.SiteId ==
+                "relic_grab_bag.rarity.ticket"
+            && request.StreamId == "reward"
+            && request.OwnerId == PrototypeNativeRelicGrabBag
+                .NativeTreasureRarityOwnerId + ":reward"
+            && request.OperationKind == "bounded_integer"
+            && request.SupportCount == 100
+            && request.BoundedCount == 100
+            && request.OrderedCandidates.Length == 0
+            && labels.SequenceEqual(
+                PrototypeNativeRelicGrabBag.LegacyRarityTicketLabels(),
+                StringComparer.Ordinal);
+        var identity = request.SiteId == PrototypeNativeRelicGrabBag
+                .NativeTreasureModelSiteId
+            && request.StreamId == "reward"
+            && request.OperationKind == "choose_index"
+            && request.SupportCount == labels.Length
+            && labels.Length > 0
+            && request.OrderedCandidates.SequenceEqual(
+                Enumerable.Range(0, labels.Length))
+            && labels.Distinct(StringComparer.Ordinal).Count() ==
+                labels.Length
+            && labels.SequenceEqual(labels.OrderBy(
+                label => label, StringComparer.Ordinal),
+                StringComparer.Ordinal);
+        return rarityTicket || identity;
     }
 
     internal static bool IsSupportedShopPurchaseStream(
@@ -486,6 +519,11 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                     && PrototypeGameEngine.UsesNativeRegionalSystems(world);
                 var legacyShopNode = node?.RoomType == PrototypeRoomType.Shop
                     && !PrototypeGameEngine.UsesNativeRegionalSystems(world);
+                var legacyNativeTreasureNode = node?.RoomType ==
+                        PrototypeRoomType.Treasure
+                    && state.NativeRunRng is null
+                    && PrototypeGameEngine.UsesNativeRegionalSystems(world)
+                    && !PrototypeGameEngine.WillSkipNextTreasure(state.Player);
                 var availableRelics = node?.RoomType == PrototypeRoomType.Treasure
                     ? PrototypeContent.RelicPool
                         .Where(id => !state.Player.Relics.Any(relic =>
@@ -497,6 +535,8 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                     && !PrototypeGameEngine.UsesNativeRegionalSystems(world)
                     && !PrototypeGameEngine.WillSkipNextTreasure(state.Player)
                     && availableRelics.Length > 0;
+                var supportedTreasureNode = legacyTreasureNode ||
+                    legacyNativeTreasureNode;
                 var legacyOvergrowthCombatNode = node is not null
                     && ControlledRunActionEngineV111
                         .IsLegacyOvergrowthCombatRoom(state, node.RoomType);
@@ -509,7 +549,7 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                         PrototypeRoomType.Elite or PrototypeRoomType.Boss;
                 if (node is null
                     || (node.RoomType != PrototypeRoomType.Event
-                        && !legacyShopNode && !legacyTreasureNode
+                        && !legacyShopNode && !supportedTreasureNode
                         && !legacyUnknownRoomNode
                         && !legacyOvergrowthCombatNode
                         && !legacyUnderdocksCombatNode
@@ -518,7 +558,7 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                         "Controlled map-node frame does not reference an available supported node.");
                 if (!(node.RoomType == PrototypeRoomType.Event && eventEntrySite)
                     && !(legacyShopNode && shopSite)
-                    && !(legacyTreasureNode && treasureSite)
+                    && !(supportedTreasureNode && treasureSite)
                     && !(legacyUnknownRoomNode && unknownRoomSite)
                     && !(legacyOvergrowthCombatNode
                         && overgrowthCombatEntrySite)
@@ -563,7 +603,59 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                     : Enumerable.Range(0, PendingRequest.SupportCount)
                         .Select(index => index.ToString(
                             CultureInfo.InvariantCulture)).ToArray();
-                if (treasureSite)
+                if (treasureSite && legacyNativeTreasureNode)
+                {
+                    expectedStream = "reward";
+                    if (PendingRequest.SiteId ==
+                        "relic_grab_bag.rarity.ticket")
+                    {
+                        expectedSite = "relic_grab_bag.rarity.ticket";
+                        expectedOwner = PrototypeNativeRelicGrabBag
+                            .NativeTreasureRarityOwnerId + ":reward";
+                        expectedCandidates = [];
+                        expectedLabels = PrototypeNativeRelicGrabBag
+                            .LegacyRarityTicketLabels();
+                        if (PendingRequest.OperationKind != "bounded_integer" ||
+                            PendingRequest.SupportCount != 100 ||
+                            PendingRequest.BoundedCount != 100 ||
+                            PendingRequest.OrderedCandidates.Length != 0 ||
+                            Decisions.Length != 0)
+                            throw new InvalidDataException(
+                                "Legacy Native Treasure rarity request differs from its source boundary.");
+                    }
+                    else if (PendingRequest.SiteId ==
+                        PrototypeNativeRelicGrabBag.NativeTreasureModelSiteId)
+                    {
+                        expectedSite =
+                            PrototypeNativeRelicGrabBag.NativeTreasureModelSiteId;
+                        var requestedRarity =
+                            RequireLegacyNativeTreasureRarity(Decisions,
+                                DecisionCandidateLabels);
+                        var bag = world.RelicBag ??
+                            PrototypeNativeRelicGrabBag
+                                .CreateNatureUnordered(state.Player);
+                        var plan = PrototypeNativeRelicGrabBag.PlanNaturePull(
+                            bag, requestedRarity, merchant: false,
+                            state.Player);
+                        var candidateIds = plan.CandidateIds;
+                        if (candidateIds.Length == 0 ||
+                            PendingRequest.OperationKind != "choose_index")
+                            throw new InvalidDataException(
+                                "Legacy Native Treasure relic request has no eligible source support.");
+                        expectedOwner = PrototypeNativeRelicGrabBag
+                            .TreasureModelOwnerId(world, requestedRarity,
+                                candidateIds);
+                        expectedCandidates = Enumerable.Range(
+                            0, candidateIds.Length).ToArray();
+                        expectedLabels = candidateIds;
+                    }
+                    else
+                    {
+                        throw new InvalidDataException(
+                            "Native-regional Treasure reached an unregistered fallback request.");
+                    }
+                }
+                else if (treasureSite)
                 {
                     expectedSite = "treasure.relic_model.index_draw";
                     expectedStream = "reward";
@@ -723,8 +815,12 @@ public sealed record PrototypeControlledRunActionContinuationV111(
                 && request.SupportCount >
                     ControlledRunActionEngineV111.MaximumInlineOutcomeActions
                 && labels.Length == 0;
+            var nativeTreasureLabels =
+                ControlledRunActionTraceV111
+                    .IsLegacyNativeTreasureLabelSupport(request, labels);
             var numericLabels = !(isMapDraw || isEventEntryDraw || isShopDraw
                 || isTreasureDraw || isCombatDraw || isCombatPotionDraw)
+                || nativeTreasureLabels
                 || omittedLabels || labels.SequenceEqual(
                 Enumerable.Range(0, labels.Length).Select(index =>
                     index.ToString(CultureInfo.InvariantCulture)),
@@ -750,6 +846,41 @@ public sealed record PrototypeControlledRunActionContinuationV111(
         }
 
         PrototypeStateInvariants.Validate(state);
+    }
+
+    private static PrototypeRelicRarity RequireLegacyNativeTreasureRarity(
+        RandomIndexDecisionV111[] decisions, string[][] decisionLabels)
+    {
+        var expectedLabels = PrototypeNativeRelicGrabBag
+            .LegacyRarityTicketLabels();
+        if (decisions.Length != 1 || decisionLabels.Length != 1 ||
+            !decisionLabels[0].SequenceEqual(expectedLabels,
+                StringComparer.Ordinal))
+            throw new InvalidDataException(
+                "Legacy Native Treasure identity request lacks its rarity ticket prefix.");
+        var rarityDecision = decisions[0];
+        rarityDecision.Validate();
+        var request = rarityDecision.Request;
+        if (request.SiteId != "relic_grab_bag.rarity.ticket" ||
+            request.StreamId != "reward" ||
+            request.OwnerId != PrototypeNativeRelicGrabBag
+                .NativeTreasureRarityOwnerId + ":reward" ||
+            request.OperationKind != "bounded_integer" ||
+            request.SupportCount != expectedLabels.Length ||
+            request.BoundedCount != expectedLabels.Length ||
+            request.OrderedCandidates.Length != 0 ||
+            rarityDecision.SelectedIndex < 0 ||
+            rarityDecision.SelectedIndex >= expectedLabels.Length)
+            throw new InvalidDataException(
+                "Legacy Native Treasure rarity ticket differs from its source request.");
+        return rarityDecision.SelectedIndex <
+                PrototypeNativeRelicGrabBag.CommonRarityWeight / 100
+            ? PrototypeRelicRarity.Common
+            : rarityDecision.SelectedIndex <
+                (PrototypeNativeRelicGrabBag.CommonRarityWeight +
+                 PrototypeNativeRelicGrabBag.UncommonRarityWeight) / 100
+                ? PrototypeRelicRarity.Uncommon
+                : PrototypeRelicRarity.Rare;
     }
 }
 
@@ -941,6 +1072,8 @@ public static class ControlledRunActionEngineV111
                             source, node.RoomType)));
         supportedMapNodeAction |=
             IsLegacyUnknownRoomEntryAction(source, action);
+        supportedMapNodeAction |=
+            IsLegacyNativeTreasureEntryAction(source, action);
         var nativeActOneCombatEntryAction =
             IsNativeActOneCombatEntryAction(source, action);
         supportedMapNodeAction |= nativeActOneCombatEntryAction;
@@ -971,6 +1104,10 @@ public static class ControlledRunActionEngineV111
                     PrototypeAiEnvironment.StableActionId(candidate), actionId)))
             throw new InvalidOperationException(
                 "Controlled run action requires a current legal action.");
+        var replaySource = IsLegacyNativeTreasureEntryAction(source, action)
+            ? ReferenceNatureRunProjectionV111.CreateNatureReplayOrigin(
+                source, createRelicBagWhenMissing: true)
+            : source.Fork();
         RunState result;
         using (ControlledChanceGuardV111.Enter())
         {
@@ -984,7 +1121,7 @@ public static class ControlledRunActionEngineV111
                         : legacyActOneCombatEntryAction
                             ? IsLegacyActOneCombatEntryRequest : null;
             var replay = ControlledChanceContinuationExecutorV111.Resume(
-                source, [], checkpoint => engine.Step(checkpoint, action).State,
+                replaySource, [], checkpoint => engine.Step(checkpoint, action).State,
                 requestFilter: requestFilter);
             if (replay.PendingChance is { } pendingChance)
             {
@@ -1021,9 +1158,9 @@ public static class ControlledRunActionEngineV111
                     throw new NotSupportedException(
                         "Controlled run action reached an unsupported chance request.");
 
-                var partialState = source.Fork() with
+                var partialState = replaySource.Fork() with
                 {
-                    DecisionIndex = checked(source.DecisionIndex + 1)
+                    DecisionIndex = checked(replaySource.DecisionIndex + 1)
                 };
                 var continuation =
                     new PrototypeControlledRunActionContinuationV111(
@@ -1140,6 +1277,22 @@ public static class ControlledRunActionEngineV111
         return PrototypeNativeWingedBoots.AvailableNodes(world, source.Player)
             .Any(node => node.NodeId == nodeId
                 && node.RoomType == PrototypeRoomType.Unknown);
+    }
+
+    internal static bool IsLegacyNativeTreasureEntryAction(
+        RunState source, GameAction action)
+    {
+        if (action.Kind != "choose_map_node"
+            || source.Phase != RunPhase.MapChoice
+            || source.NativeRunRng is not null
+            || source.World is not { } world
+            || !PrototypeGameEngine.UsesNativeRegionalSystems(world)
+            || PrototypeGameEngine.WillSkipNextTreasure(source.Player))
+            return false;
+        var nodeId = action.ReadPayload<ChooseMapNodePayload>().NodeId;
+        return PrototypeNativeWingedBoots.AvailableNodes(world, source.Player)
+            .Any(node => node.NodeId == nodeId
+                && node.RoomType == PrototypeRoomType.Treasure);
     }
 
     internal static bool IsLegacyActOneCombatEntryAction(

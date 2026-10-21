@@ -6860,14 +6860,19 @@ public sealed record ReferenceNatureRunActionSessionV111(
             ControlledRunActionEngineV111
                 .IsConfiguredNativeReferenceNatureRunStartAction(
                     source, detachedAction);
+        var origin = ControlledRunActionEngineV111
+            .IsLegacyNativeTreasureEntryAction(source, detachedAction)
+            ? ReferenceNatureRunProjectionV111.CreateNatureReplayOrigin(
+                source, createRelicBagWhenMissing: true)
+            : source.Fork();
         RunState run;
         using (configuredNativeRunStart
                    ? V111RunFactory.EnterControlledReferenceNatureRunStart()
                    : null)
             run = ControlledRunActionEngineV111.Begin(
-                source.Fork(), detachedAction);
+                origin.Fork(), detachedAction);
         var session = new ReferenceNatureRunActionSessionV111(
-            CurrentSchemaId, source.Fork(), detachedAction, run,
+            CurrentSchemaId, origin, detachedAction, run,
             initialNatureState.Fork(), initialNatureState.Fork(), []);
         if (session.Complete)
             session = session with
@@ -7354,6 +7359,14 @@ public sealed record ReferenceNatureRunActionSessionV111(
                 "Invalid ReferenceNature run-action session envelope.");
         PrototypeStateInvariants.Validate(Origin);
         PrototypeStateInvariants.Validate(Run);
+        if (ControlledRunActionEngineV111
+            .IsLegacyNativeTreasureEntryAction(Origin, Action))
+        {
+            ReferenceNatureRunProjectionV111.ValidateNatureRelicBagProjection(
+                Origin, "legacy Native Treasure run-action origin");
+            ReferenceNatureRunProjectionV111.ValidateNatureRelicBagProjection(
+                Run, "legacy Native Treasure run-action replay");
+        }
         var actionMapNodeId = Action.Kind == "choose_map_node"
             ? Action.ReadPayload<ChooseMapNodePayload>().NodeId
             : null;

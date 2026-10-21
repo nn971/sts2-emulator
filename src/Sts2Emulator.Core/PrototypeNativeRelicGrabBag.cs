@@ -116,6 +116,14 @@ public static class PrototypeNativeRelicGrabBag
         (PrototypeRelicRarity.Rare, RareRarityWeight)
     ];
 
+    internal static string[] LegacyRarityTicketLabels() =>
+        Enumerable.Range(0, 100).Select(ticket =>
+            (ticket < CommonRarityWeight / 100 ? "common:" :
+                ticket < (CommonRarityWeight + UncommonRarityWeight) / 100
+                    ? "uncommon:" : "rare:")
+            + ticket.ToString(System.Globalization.CultureInfo.InvariantCulture))
+            .ToArray();
+
     // Pinned v0.111.0 relic models' Rarity properties. Event-only
     // and source-absent legacy prototype relics are not eligible here.
     private static readonly Dictionary<string, PrototypeRelicRarity> Rarities =
@@ -449,11 +457,7 @@ public sealed record PrototypeRelicBagPullPlanV111
         var commonTicketCount = CommonRarityWeight / 100;
         var uncommonTicketEnd = (CommonRarityWeight +
             UncommonRarityWeight) / 100;
-        var ticketLabels = Enumerable.Range(0, 100).Select(ticket =>
-            (ticket < commonTicketCount ? "common:" :
-                ticket < uncommonTicketEnd ? "uncommon:" : "rare:")
-                + ticket.ToString(System.Globalization.CultureInfo.InvariantCulture))
-            .ToArray();
+        var ticketLabels = LegacyRarityTicketLabels();
         int roll;
         using (ControlledEventChoiceReplayV111.DescribeCandidates(
             ticketLabels))
