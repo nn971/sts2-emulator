@@ -194,6 +194,22 @@ public sealed partial record RunState(
         init => Simulation = Simulation with { Stochastic = value };
     }
 
+    [System.Text.Json.Serialization.JsonIgnore]
+    public SemanticOtherChanceStateV111? SemanticOtherChance
+    {
+        get => Stochastic.SemanticOtherChance;
+        init => Stochastic = RunStochasticStateV111.WithSemanticOtherChance(
+            Stochastic, value);
+    }
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public SemanticRewardAuditV111? SemanticRewardAudit
+    {
+        get => Stochastic.SemanticRewardAudit;
+        init => Stochastic = RunStochasticStateV111.WithSemanticRewardAudit(
+            Stochastic, value);
+    }
+
     public string GameBuild
     {
         get => Mechanics.GameBuild;
