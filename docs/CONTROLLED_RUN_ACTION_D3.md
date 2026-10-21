@@ -58,14 +58,23 @@ the same boundary can also suspend on the regional weak, normal, or elite
 encounter-pool index and on `combat.encounter.formation.index_draw` during a
 Combat, Elite, or Boss map-node action. Pool selection uses the existing
 ordered support and `combat` request stream; formation uses the encounter-local
-context stream. Other entry requests keep their existing providers. The
-ReferenceNature run-action session samples each encountered index and saves
-the Nature cursor with the committed combat. A fixed pool assignment and
-formation can complete at `begin` without taking a Nature sample. These
-counterfactual choices leave their provider cursors untouched. Pool-selection
-weights and Native source-pool fidelity remain `UNVERIFIED`; formation makes
-no Native cursor-parity or calibrated-formation-law claim beyond the declared
-bounded-index transform.
+context stream. When a combat-entry relic can generate a potion into an open
+slot, this same run-action owner also captures the Native
+`potion_factory.rarity_roll.unit_float` and
+`potion_factory.model_within_rarity.index_draw` requests on
+`run.combat_potion_generation`. It binds each rarity/model pair to the chosen
+map node and potion slot, and conditions the model support on the preceding
+rarity outcome. The run-action snapshot retains the typed provider prefix and
+reconstructs it by replay on load; the committed run-action history keeps the
+mixed typed decisions and its existing index projection. Other entry requests
+keep their existing providers. A fixed pool assignment and formation can
+complete at `begin` without taking a Nature sample when no other supported
+draw is reached. These counterfactual choices leave their corresponding
+provider cursors untouched.
+Pool-selection weights and Native source-pool fidelity remain `UNVERIFIED`;
+PotionFactory laws verify only the declared `NextFloat`/`NextInt` transforms
+and conditioned pool, not source-pool completeness, stream attribution or
+cursor parity.
 
 ## Saved state, support, and player projection
 
@@ -121,7 +130,7 @@ supported run-action continuations:
 | --- | --- | --- |
 | `reference_nature_run_action_begin` | current `state_handle`, optional `nature_seed`, optional legal `action_id` (Shovel dig is the only default) | Session handle with pending law and sampler cursor |
 | `reference_nature_run_action_status` | run-action session handle | Current pending or committed boundary; ordinary `stateHandle` after commit |
-| `reference_nature_run_action_resolve_next` | handle and current session `fingerprint` | Child session after one sampled index is resolved through ordinary run mechanics |
+| `reference_nature_run_action_resolve_next` | handle and current session `fingerprint` | Child session after one sampled typed outcome is resolved through ordinary run mechanics |
 | `reference_nature_run_action_fork` | run-action session handle | Independent child session |
 | `reference_nature_run_action_save` | run-action session handle | Replay-validated snapshot payload |
 | `reference_nature_run_action_load` | snapshot | New session handle after transcript replay |
@@ -169,9 +178,10 @@ fail-closed. The session keeps supported Chance Law samples and run-state
 resolution atomic across fork/save/restore; it does not enable native regional
 merchant or treasure entry providers or other run/reward/map operations.
 The configured experimental Native Act 1 path adds the supported encounter
-pool and formation index requests to this same continuation; initial HP,
-intents, opening shuffle and relic potion generation remain on their existing
-providers.
+pool and formation index requests to this same continuation. When a
+pre-combat potion relic has an open slot, its PotionFactory rarity and model
+requests use the typed continuation above; initial HP, intents, opening shuffle
+and other combat-entry requests remain on their existing providers.
 Once committed, the session result also provides a regular `stateHandle` for
 continuing play through the ordinary run API; no state handle is published
 while a Nature choice remains pending.

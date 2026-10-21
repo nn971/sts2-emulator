@@ -18,6 +18,7 @@ public sealed record ControlledRunActionTraceV111(
         CloneDecisions(Decisions);
     private string[][]? _candidateLabels = CloneCandidateLabels(
         CandidateLabels);
+    private ControlledStochasticDecisionV111[]? _typedDecisions;
 
     public RandomIndexDecisionV111[] Decisions
     {
@@ -31,14 +32,22 @@ public sealed record ControlledRunActionTraceV111(
         init => _candidateLabels = CloneCandidateLabels(value);
     }
 
+    public ControlledStochasticDecisionV111[]? TypedDecisions
+    {
+        get => CloneTypedDecisions(_typedDecisions);
+        init => _typedDecisions = CloneTypedDecisions(value);
+    }
+
     public ControlledRunActionTraceV111 Fork() => this with
     {
         Decisions = _decisions!,
-        CandidateLabels = _candidateLabels!
+        CandidateLabels = _candidateLabels!,
+        TypedDecisions = _typedDecisions
     };
 
     public void Validate()
     {
+        var typedDecisions = _typedDecisions;
         var mapNodeAction = ActionId == "choose_map_node";
         var shopPurchaseAction =
             ControlledRunActionEngineV111.IsShopPurchaseActionKind(ActionId);
@@ -52,11 +61,17 @@ public sealed record ControlledRunActionTraceV111(
             || shopPurchaseAction != (ActionFingerprint is not null)
             || shopPurchaseAction && string.IsNullOrWhiteSpace(ActionFingerprint)
             || Decisions is null || CandidateLabels is null
-            || Decisions.Length == 0
+            || (typedDecisions is null && Decisions.Length == 0)
+            || typedDecisions is { Length: 0 }
             || Decisions.Length != CandidateLabels.Length
             || ProbabilityStatus != "UNVERIFIED")
             throw new InvalidDataException(
                 "Malformed controlled run-action transcript.");
+        if (typedDecisions is not null)
+        {
+            ValidateTypedTranscript(typedDecisions);
+            return;
+        }
         for (var index = 0; index < Decisions.Length; index++)
         {
             var decision = Decisions[index];
@@ -180,6 +195,77 @@ public sealed record ControlledRunActionTraceV111(
         }
     }
 
+    private void ValidateTypedTranscript(
+        ControlledStochasticDecisionV111[] typedDecisions)
+    {
+        if (ActionId != "choose_map_node" ||
+            string.IsNullOrWhiteSpace(MapNodeId) ||
+            ActionFingerprint is not null)
+            throw new InvalidDataException(
+                "Typed controlled run-action transcripts are supported only for map-node entry.");
+
+        foreach (var decision in typedDecisions)
+        {
+            if (decision is null)
+                throw new InvalidDataException(
+                    "Typed controlled run-action transcript contains a null decision.");
+            decision.Validate();
+            if (decision.IndexDecision is { } indexDecision)
+            {
+                var request = ControlledStochasticRequestV111.FromIndex(
+                    indexDecision.Request);
+                var nativeEncounter =
+                    ControlledRunActionEngineV111
+                        .IsNativeActOneCombatEntryRequest(request);
+                var nativePotionModel = request.SiteId ==
+                    "potion_factory.model_within_rarity.index_draw" &&
+                    request.StreamId == "run.combat_potion_generation";
+                if (indexDecision.ProviderMode != "controlled-v111" ||
+                    indexDecision.NativeCursorBefore is not null ||
+                    indexDecision.NativeCursorAfter is not null ||
+                    !(nativeEncounter || nativePotionModel) ||
+                    nativePotionModel &&
+                        (decision.CandidateLabels is not null ||
+                         request.OperationKind != "choose_index") ||
+                    decision.CandidateLabels is { } labels &&
+                        labels.Length != request.SupportCount)
+                    throw new InvalidDataException(
+                        "Typed controlled run-action index decision is outside Native Act 1 combat entry.");
+            }
+            else if (decision.UnitFloatDecision is { } floatDecision)
+            {
+                if (floatDecision.Request.SiteId !=
+                        "potion_factory.rarity_roll.unit_float" ||
+                    floatDecision.Request.StreamId !=
+                        "run.combat_potion_generation" ||
+                    floatDecision.ProviderMode != "controlled-v111" ||
+                    floatDecision.NativeCursorBefore is not null ||
+                    floatDecision.NativeCursorAfter is not null ||
+                    decision.CandidateLabels is not null)
+                    throw new InvalidDataException(
+                        "Typed controlled run-action unit-float decision is outside Native Act 1 potion generation.");
+            }
+            else
+            {
+                throw new InvalidDataException(
+                    "Typed controlled run-action transcript has an unsupported provider primitive.");
+            }
+        }
+
+        var indexDecisions = typedDecisions.Where(decision =>
+                decision.IndexDecision is not null).ToArray();
+        var expectedDecisions = indexDecisions.Select(decision =>
+            decision.IndexDecision!).ToArray();
+        var expectedLabels = indexDecisions.Select(decision =>
+            decision.CandidateLabels ?? Array.Empty<string>()).ToArray();
+        if (CanonicalJson.Sha256(expectedDecisions) !=
+                CanonicalJson.Sha256(Decisions) ||
+            CanonicalJson.Sha256(expectedLabels) !=
+                CanonicalJson.Sha256(CandidateLabels))
+            throw new InvalidDataException(
+                "Typed controlled run-action compatibility projection differs from its mixed transcript.");
+    }
+
     internal static bool IsLegacyNativeRelicBagLabelSupport(
         RandomIndexRequestV111 request, string[] labels)
     {
@@ -242,6 +328,10 @@ public sealed record ControlledRunActionTraceV111(
     private static string[][]? CloneCandidateLabels(string[][]? labels) =>
         labels?.Select(candidateLabels => candidateLabels is null
             ? null! : (string[])candidateLabels.Clone()).ToArray();
+
+    private static ControlledStochasticDecisionV111[]? CloneTypedDecisions(
+        ControlledStochasticDecisionV111[]? decisions) => decisions?
+            .Select(decision => decision?.Fork()!).ToArray();
 }
 
 /// <summary>

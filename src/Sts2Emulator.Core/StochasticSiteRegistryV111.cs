@@ -686,7 +686,9 @@ public static class StochasticSiteRegistryV111
     private static readonly string[] RunActionCombatEntryPotionSites =
     [
         "potion.rarity_roll.ticket",
-        "potion.model_within_rarity.index_draw"
+        "potion.model_within_rarity.index_draw",
+        "potion_factory.rarity_roll.unit_float",
+        "potion_factory.model_within_rarity.index_draw"
     ];
 
     private static readonly string[] ControlledEventChoiceSites =
