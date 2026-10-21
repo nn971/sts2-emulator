@@ -248,6 +248,7 @@ public sealed record SimulationProviderReplayCaptureV111(
                 "Native policy entry replay is missing its provider trace.");
         var initialTrace = initialAudit.ProviderTrace;
         var completeTrace = finalAudit.ProviderTrace;
+        var initial = replay;
         if (initialTrace.Length > completeTrace.Length)
             throw new InvalidDataException(
                 "Native policy entry trace is longer than the saved session trace.");
