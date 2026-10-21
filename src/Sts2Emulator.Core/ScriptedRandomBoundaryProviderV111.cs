@@ -157,7 +157,7 @@ public sealed class ScriptedRandomBoundaryProviderV111 :
     }
 
     private (RandomBoundaryTranscriptEntryV111 Entry, T Event) Read<T>(
-        string operationKind)
+        string operationKind) where T : class
     {
         if (_cursor >= _transcript.Length)
             throw new InvalidOperationException(

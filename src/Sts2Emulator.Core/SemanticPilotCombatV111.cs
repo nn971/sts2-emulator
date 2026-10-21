@@ -2883,7 +2883,7 @@ public static class SemanticPilotCombatEngineV111
             var resolvedEndTurn = SemanticEndTurnEngineV111
                 .ResolveDrawInsertion(
                     endTurn, endTurn.Fingerprint, eventId, position);
-            var decision = resolvedEndTurn.HandDraw is { } resolvedHand &&
+            var endTurnDecision = resolvedEndTurn.HandDraw is { } resolvedHand &&
                     resolvedHand.DrawInsertionTranscript.Length >
                         priorHandInsertionCount
                 ? resolvedHand.DrawInsertionTranscript[^1]
@@ -2892,14 +2892,14 @@ public static class SemanticPilotCombatEngineV111
                     ? resolvedEndTurn.NestedChoiceTranscript[^1]
                         .DrawInsertionDecision
                     : null;
-            if (decision is null)
+            if (endTurnDecision is null)
                 throw new InvalidDataException(
                     "End-turn draw insertion omitted its replay decision.");
             var resolvedSession = PublishRunContinuation(
                 current, resolvedEndTurn.Run, resolvedEndTurn,
                 new SemanticPilotContinuationV111(
                     "semantic_draw_insertion",
-                    DrawInsertionDecision: decision.Fork()));
+                    DrawInsertionDecision: endTurnDecision.Fork()));
             Validate(resolvedSession);
             return resolvedSession;
         }
@@ -2995,10 +2995,10 @@ public static class SemanticPilotCombatEngineV111
             {
                 ValidateNatureDeckContinuationBoundary(
                     resultCombat!, "stale_after_shuffle_continuation");
-                if (resultCombat.PendingChoice?.ControlledDrawInsertion is
+                if (resultCombat!.PendingChoice?.ControlledDrawInsertion is
                         { AfterShuffleRelic: not null })
                     SemanticDrawInsertionChoiceV111.ValidateBoundary(result);
-                else if (resultCombat.PendingChoice?.ControlledSemanticDraw is not null)
+                else if (resultCombat!.PendingChoice?.ControlledSemanticDraw is not null)
                     SemanticDrawChoiceV111.ValidateBoundary(result);
                 else if (resultCombat.PendingChoice is
                          { ChoiceId: "controlled_draw_cost",

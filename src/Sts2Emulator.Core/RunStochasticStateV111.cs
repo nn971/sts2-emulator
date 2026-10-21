@@ -41,10 +41,10 @@ public sealed record RunStochasticStateV111
         this.PrototypeRng = PrototypeRng;
         this.NativeRunRng = NativeRunRng;
         this.ReferenceNature = ReferenceNature;
-        _controlledEventChoiceHistory = Clone(
+        _controlledEventChoiceHistory = CopyTranscript(
             ControlledEventChoiceHistory, trace => trace.Fork());
         this.ControlledEventRewardChoice = ControlledEventRewardChoice;
-        _controlledRunActionHistory = Clone(
+        _controlledRunActionHistory = CopyTranscript(
             ControlledRunActionHistory, trace => trace.Fork());
         this.ControlledRunActionChoice = ControlledRunActionChoice;
         this.SemanticOtherChance = SemanticOtherChance;
@@ -53,10 +53,10 @@ public sealed record RunStochasticStateV111
             ReferenceNatureRunInitializationTranscript?.Fork();
         this.ReferenceNatureRunInitializationPending =
             ReferenceNatureRunInitializationPending;
-        _referenceNatureMapGenerationHistory = Clone(
+        _referenceNatureMapGenerationHistory = CopyTranscript(
             ReferenceNatureMapGenerationHistory,
             audit => audit.Fork());
-        _referenceNatureAncientOfferHistory = Clone(
+        _referenceNatureAncientOfferHistory = CopyTranscript(
             ReferenceNatureAncientOfferHistory, audit => audit.Fork());
     }
 
@@ -65,18 +65,18 @@ public sealed record RunStochasticStateV111
     public ReferenceNatureStateV111? ReferenceNature { get; init; }
     public ControlledEventChoiceTraceV111[]? ControlledEventChoiceHistory
     {
-        get => Clone(_controlledEventChoiceHistory,
+        get => CopyTranscript(_controlledEventChoiceHistory,
             trace => trace.Fork());
-        init => _controlledEventChoiceHistory = Clone(value,
+        init => _controlledEventChoiceHistory = CopyTranscript(value,
             trace => trace.Fork());
     }
     public PrototypeControlledEventRewardChoiceContinuationV111?
         ControlledEventRewardChoice { get; init; }
     public ControlledRunActionTraceV111[]? ControlledRunActionHistory
     {
-        get => Clone(_controlledRunActionHistory,
+        get => CopyTranscript(_controlledRunActionHistory,
             trace => trace.Fork());
-        init => _controlledRunActionHistory = Clone(value,
+        init => _controlledRunActionHistory = CopyTranscript(value,
             trace => trace.Fork());
     }
     public PrototypeControlledRunActionContinuationV111?
@@ -89,9 +89,9 @@ public sealed record RunStochasticStateV111
     public ReferenceNatureMapGenerationAuditV111[]?
         ReferenceNatureMapGenerationHistory
     {
-        get => Clone(_referenceNatureMapGenerationHistory,
+        get => CopyTranscript(_referenceNatureMapGenerationHistory,
             audit => audit.Fork());
-        init => _referenceNatureMapGenerationHistory = Clone(value,
+        init => _referenceNatureMapGenerationHistory = CopyTranscript(value,
             audit => audit.Fork());
     }
     /// <summary>
@@ -101,9 +101,9 @@ public sealed record RunStochasticStateV111
     public ReferenceNatureAncientOfferSessionSnapshotV111[]?
         ReferenceNatureAncientOfferHistory
     {
-        get => Clone(_referenceNatureAncientOfferHistory,
+        get => CopyTranscript(_referenceNatureAncientOfferHistory,
             audit => audit.Fork());
-        init => _referenceNatureAncientOfferHistory = Clone(value,
+        init => _referenceNatureAncientOfferHistory = CopyTranscript(value,
             audit => audit.Fork());
     }
 
@@ -112,19 +112,19 @@ public sealed record RunStochasticStateV111
         PrototypeRng = PrototypeRng.Fork(),
         NativeRunRng = NativeRunRng?.Fork(),
         ReferenceNature = ReferenceNature?.Fork(),
-        ControlledEventChoiceHistory = Clone(
+        ControlledEventChoiceHistory = CopyTranscript(
             _controlledEventChoiceHistory, trace => trace.Fork()),
         ControlledEventRewardChoice = ControlledEventRewardChoice?.Fork(),
-        ControlledRunActionHistory = Clone(
+        ControlledRunActionHistory = CopyTranscript(
             _controlledRunActionHistory, trace => trace.Fork()),
         ControlledRunActionChoice = ControlledRunActionChoice?.Fork(),
         SemanticOtherChance = SemanticOtherChance?.Fork(),
         ReferenceNatureRunInitializationTranscript =
             ReferenceNatureRunInitializationTranscript?.Fork(),
-        ReferenceNatureMapGenerationHistory = Clone(
+        ReferenceNatureMapGenerationHistory = CopyTranscript(
             _referenceNatureMapGenerationHistory,
             audit => audit.Fork()),
-        ReferenceNatureAncientOfferHistory = Clone(
+        ReferenceNatureAncientOfferHistory = CopyTranscript(
             _referenceNatureAncientOfferHistory, audit => audit.Fork())
     };
 
@@ -573,7 +573,7 @@ public sealed record RunStochasticStateV111
             ReferenceNatureMapGenerationAuditV111[]? history) =>
         current with
         {
-            ReferenceNatureMapGenerationHistory = Clone(history,
+            ReferenceNatureMapGenerationHistory = CopyTranscript(history,
                 audit => audit.Fork())
         };
 
@@ -583,11 +583,11 @@ public sealed record RunStochasticStateV111
             ReferenceNatureAncientOfferSessionSnapshotV111[]? history) =>
         current with
         {
-            ReferenceNatureAncientOfferHistory = Clone(history,
+            ReferenceNatureAncientOfferHistory = CopyTranscript(history,
                 audit => audit.Fork())
         };
 
-    private static T[]? Clone<T>(T[]? values, Func<T, T> clone)
+    private static T[]? CopyTranscript<T>(T[]? values, Func<T, T> clone)
         where T : class => values?.Select(value =>
             value is null ? null! : clone(value)).ToArray();
 }

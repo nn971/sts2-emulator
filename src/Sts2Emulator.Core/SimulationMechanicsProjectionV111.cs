@@ -268,7 +268,7 @@ public static class SimulationMechanicsProjectionEngineV111
                             turnIntents.NextEnemyIndex);
                 if (stochastic.ControlledEnemyAction is { } enemyAction)
                 {
-                    if (!ControlledEnemyActionReplayV111
+                    if (!PrototypeControlledEnemyActionContinuationV111
                             .TryGetMechanicsOperation(
                                 enemyAction.PendingRequest.SiteId,
                                 out var operation))
@@ -297,13 +297,7 @@ public static class SimulationMechanicsProjectionEngineV111
             {
                 // Keep mechanics-owned membership while removing Native
                 // order from this comparison-only projection.
-                Mechanics = combat.Mechanics with
-                {
-                    CardZones = combat.Mechanics.CardZones with
-                    {
-                        DrawPile = combat.DrawPile.Order().ToArray()
-                    }
-                },
+                DrawPile = combat.DrawPile.Order().ToArray(),
                 PendingChoice = WithoutProviderPayload(
                     combat.PendingChoice),
                 AutomaticPipelineContinuation = pipeline
