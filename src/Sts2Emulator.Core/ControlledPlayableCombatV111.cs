@@ -21,6 +21,9 @@ public sealed record ControlledPlayableCombatV111(
     // Replay provenance for an explicitly conditioned encounter. This is not
     // a provider choice and is never part of the player's fair observation.
     public string? FixtureEncounterId { get; init; }
+    // Distinct source-conditioned persistent starter deck recipe. It must be
+    // replayed before the initial engine shuffle, just like encounter ID.
+    public string? FixtureDeckPresetId { get; init; }
 
     /// <summary>
     /// Atomic mechanics/provider envelope for the playable combat fixture.
@@ -793,7 +796,8 @@ public static class ControlledPlayableCombatEngineV111
             seed, verified, run, nextIndex, [], [],
             MakePending(nextIndex, 0))
         {
-            FixtureEncounterId = encounterId
+            FixtureEncounterId = encounterId,
+            FixtureDeckPresetId = fixtureDeckPresetId
         };
         return state;
     }
@@ -1205,7 +1209,7 @@ public static class ControlledPlayableCombatEngineV111
         // Full provenance replay, from source-verified controlled HP+intent
         // completion through the entire ordered shuffle and player transcript.
         var current = Begin(stored.Origin, stored.Seed,
-            stored.FixtureEncounterId);
+            stored.FixtureEncounterId, stored.FixtureDeckPresetId);
         foreach (var decision in stored.ShuffleTranscript)
         {
             decision.Validate();
