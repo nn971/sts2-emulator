@@ -217,7 +217,7 @@ public static class SemanticPotionGenerationChoiceV111
         RunState resumed;
         using (ControlledChanceGuardV111.Enter())
             resumed = PrototypeGameEngine.ResumeControlledPotionGeneration(
-                checkpoint.Fork(), decision.SelectedIndex);
+                checkpoint.Fork(), decision.SelectedPotionId);
         if (resumed.Phase != RunPhase.Combat)
             throw new NotSupportedException(
                 "UNSUPPORTED_SEMANTIC_POTION site=combat.potion_generation " +

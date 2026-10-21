@@ -227,7 +227,7 @@ public static class SemanticCardTransformChoiceV111
         RunState resumed;
         using (ControlledChanceGuardV111.Enter())
             resumed = PrototypeGameEngine.ResumeControlledCardTransform(
-                checkpoint.Fork(), decision.SelectedIndex);
+                checkpoint.Fork(), decision.SelectedCardId);
         if (resumed.Phase == RunPhase.Combat)
             SemanticPilotCombatEngineV111.ValidateSemanticCombatBoundary(
                 resumed);

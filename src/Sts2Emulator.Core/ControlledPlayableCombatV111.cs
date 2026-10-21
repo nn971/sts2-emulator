@@ -958,7 +958,19 @@ public static class ControlledPlayableCombatEngineV111
                 "Missing random-potion Nature ticket.");
         var (result, choice) = ResolveIndexAndRun(
             state, request, selectedIndex,
-            PrototypeGameEngine.ResumeControlledPotionGeneration);
+            (checkpoint, replayedIndex) =>
+            {
+                var pending = checkpoint.World?.Combat?.PendingChoice;
+                var generation = pending?.ControlledPotionGeneration ??
+                    throw new InvalidDataException(
+                        "Potion-generation continuation lost its source support.");
+                var candidates = generation.CandidatePotionIds;
+                if (replayedIndex < 0 || replayedIndex >= candidates.Length)
+                    throw new InvalidDataException(
+                        "Potion-generation provider index is outside its source support.");
+                return PrototypeGameEngine.ResumeControlledPotionGeneration(
+                    checkpoint, candidates[replayedIndex]);
+            });
         var next = state.Fork() with
         {
             Run = result,
@@ -977,7 +989,19 @@ public static class ControlledPlayableCombatEngineV111
                 "Missing random card-transform Nature ticket.");
         var (result, choice) = ResolveIndexAndRun(
             state, request, selectedIndex,
-            PrototypeGameEngine.ResumeControlledCardTransform);
+            (checkpoint, replayedIndex) =>
+            {
+                var pending = checkpoint.World?.Combat?.PendingChoice;
+                var transform = pending?.ControlledCardTransform ??
+                    throw new InvalidDataException(
+                        "Card-transform continuation lost its source support.");
+                var candidates = transform.CandidateCardIds;
+                if (replayedIndex < 0 || replayedIndex >= candidates.Length)
+                    throw new InvalidDataException(
+                        "Card-transform provider index is outside its source support.");
+                return PrototypeGameEngine.ResumeControlledCardTransform(
+                    checkpoint, candidates[replayedIndex]);
+            });
         var next = state.Fork() with
         {
             Run = result,

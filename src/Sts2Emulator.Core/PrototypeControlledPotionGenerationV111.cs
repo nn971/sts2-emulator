@@ -63,7 +63,7 @@ public sealed partial class PrototypeGameEngine
     }
 
     internal static RunState ResumeControlledPotionGeneration(
-        RunState state, int selectedIndex)
+        RunState state, string selectedPotionId)
     {
         if (!ControlledChanceGuardV111.Active)
             throw new InvalidOperationException(
@@ -82,11 +82,11 @@ public sealed partial class PrototypeGameEngine
                 combat, generation, pending.SourceCardInstanceId))
             throw new InvalidDataException(
                 "Saved potion generation is not source-reachable.");
-        if (selectedIndex < 0 ||
-            selectedIndex >= generation.CandidatePotionIds.Length)
-            throw new ArgumentOutOfRangeException(nameof(selectedIndex));
-
-        var selectedPotionId = generation.CandidatePotionIds[selectedIndex];
+        ArgumentException.ThrowIfNullOrWhiteSpace(selectedPotionId);
+        if (!generation.CandidatePotionIds.Contains(
+                selectedPotionId, StringComparer.Ordinal))
+            throw new InvalidOperationException(
+                "Selected potion identity is outside the saved source pool.");
         _ = PrototypeContent.Potion(selectedPotionId);
         var slots = (PotionInstance?[])state.Player.PotionSlots.Clone();
         var firstEmpty = Array.FindIndex(slots, potion => potion is null);

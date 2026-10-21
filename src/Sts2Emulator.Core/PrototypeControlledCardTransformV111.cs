@@ -119,7 +119,7 @@ public sealed partial class PrototypeGameEngine
     }
 
     internal static RunState ResumeControlledCardTransform(
-        RunState state, int selectedIndex)
+        RunState state, string selectedCardId)
     {
         if (!ControlledChanceGuardV111.Active)
             throw new InvalidOperationException(
@@ -135,13 +135,15 @@ public sealed partial class PrototypeGameEngine
         if (!ValidateControlledCardTransform(combat, transform))
             throw new InvalidDataException(
                 "Controlled transform continuation is not source-reachable.");
-        if (selectedIndex < 0 ||
-            selectedIndex >= transform.CandidateCardIds.Length)
-            throw new ArgumentOutOfRangeException(nameof(selectedIndex));
+        ArgumentException.ThrowIfNullOrWhiteSpace(selectedCardId);
+        if (!transform.CandidateCardIds.Contains(
+                selectedCardId, StringComparer.Ordinal))
+            throw new InvalidOperationException(
+                "Selected transform identity is outside the saved source pool.");
 
         var replacements = (string[])transform.ReplacementCardIds.Clone();
         replacements[transform.NextTransformIndex] =
-            transform.CandidateCardIds[selectedIndex];
+            selectedCardId;
         var nextIndex = transform.NextTransformIndex + 1;
         if (nextIndex < transform.SelectedCardInstanceIds.Length)
         {
