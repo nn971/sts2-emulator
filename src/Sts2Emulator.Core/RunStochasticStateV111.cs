@@ -27,7 +27,8 @@ public sealed record RunStochasticStateV111
         SemanticOtherChanceStateV111? SemanticOtherChance = null,
         SemanticRewardAuditV111? SemanticRewardAudit = null,
         ReferenceNatureRunInitializationTranscriptV111?
-            ReferenceNatureRunInitializationTranscript = null)
+            ReferenceNatureRunInitializationTranscript = null,
+        bool ReferenceNatureRunInitializationPending = false)
     {
         this.PrototypeRng = PrototypeRng;
         this.NativeRunRng = NativeRunRng;
@@ -42,6 +43,8 @@ public sealed record RunStochasticStateV111
         this.SemanticRewardAudit = SemanticRewardAudit;
         this.ReferenceNatureRunInitializationTranscript =
             ReferenceNatureRunInitializationTranscript?.Fork();
+        this.ReferenceNatureRunInitializationPending =
+            ReferenceNatureRunInitializationPending;
     }
 
     public RngBundle PrototypeRng { get; init; }
@@ -69,6 +72,7 @@ public sealed record RunStochasticStateV111
     public SemanticRewardAuditV111? SemanticRewardAudit { get; init; }
     public ReferenceNatureRunInitializationTranscriptV111?
         ReferenceNatureRunInitializationTranscript { get; init; }
+    public bool ReferenceNatureRunInitializationPending { get; init; }
 
     public RunStochasticStateV111 Fork() => this with
     {
@@ -134,6 +138,20 @@ public sealed record RunStochasticStateV111
         }
         NativeRunRngV111.Validate(owner);
         ReferenceNature?.Validate();
+        if (ReferenceNatureRunInitializationPending)
+        {
+            var history = ControlledRunActionHistory;
+            if (owner.Configuration?.UsesExperimentalSilentThreeActRoute != true ||
+                owner.World?.Act != 1 ||
+                owner.World.PreparedLaterActEncounterBags is not null ||
+                owner.World.LaterActEncounterBag is not null ||
+                ReferenceNatureRunInitializationTranscript is not null ||
+                ControlledRunActionChoice is not null ||
+                history is not { Length: > 0 } ||
+                history[^1].ActionId != "start_run")
+                throw new InvalidDataException(
+                    "Pending ReferenceNature run initialization differs from its experimental start boundary.");
+        }
         if (SemanticOtherChance is not null)
             SemanticOtherChanceEngineV111.Validate(SemanticOtherChance);
         if (ReferenceNatureRunInitializationTranscript is { } runStart)
@@ -381,6 +399,11 @@ public sealed record RunStochasticStateV111
         {
             ReferenceNatureRunInitializationTranscript = transcript?.Fork()
         };
+
+    internal static RunStochasticStateV111
+        WithReferenceNatureRunInitializationPending(
+            RunStochasticStateV111 current, bool pending) =>
+        current with { ReferenceNatureRunInitializationPending = pending };
 
     private static T[]? Clone<T>(T[]? values, Func<T, T> clone)
         where T : class => values?.Select(value =>

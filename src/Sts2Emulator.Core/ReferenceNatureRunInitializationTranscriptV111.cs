@@ -1,9 +1,9 @@
 namespace Sts2Emulator.Core;
 
 /// <summary>
-/// Validated ReferenceNature choices made synchronously while a configured
-/// run is initialized. The transcript is retained with run provider state so
-/// a snapshot can replay the sampler prefix after initialization has ended.
+/// Validated ReferenceNature choices made while a configured run is initialized.
+/// The transcript is retained with run provider state so a snapshot can replay
+/// the sampler prefix and, for experimental starts, rebuild the prepared bags.
 /// </summary>
 public sealed record ReferenceNatureRunInitializationTranscriptV111(
     ReferenceNatureStateV111 InitialNatureState,
@@ -17,6 +17,7 @@ public sealed record ReferenceNatureRunInitializationTranscriptV111(
         DecisionTranscript is null ? null :
             (ReferenceNatureDecisionV111[])DecisionTranscript.Clone();
     private ReferenceNatureMapGenerationAuditV111? _actOneMapGeneration;
+    private RngBundle? _laterActPreparationInitialPrototypeRng;
 
     public ChanceLawV111[] ChanceLaws
     {
@@ -35,6 +36,13 @@ public sealed record ReferenceNatureRunInitializationTranscriptV111(
         get => _actOneMapGeneration?.Fork();
         init => _actOneMapGeneration = value?.Fork();
     }
+    [System.Text.Json.Serialization.JsonIgnore(Condition =
+        System.Text.Json.Serialization.JsonIgnoreCondition.WhenWritingNull)]
+    public RngBundle? LaterActPreparationInitialPrototypeRng
+    {
+        get => _laterActPreparationInitialPrototypeRng?.Fork();
+        init => _laterActPreparationInitialPrototypeRng = value?.Fork();
+    }
 
     public ReferenceNatureRunInitializationTranscriptV111 Fork() => this with
     {
@@ -42,7 +50,9 @@ public sealed record ReferenceNatureRunInitializationTranscriptV111(
         FinalNatureState = FinalNatureState.Fork(),
         ChanceLaws = ChanceLaws,
         DecisionTranscript = DecisionTranscript,
-        ActOneMapGeneration = ActOneMapGeneration
+        ActOneMapGeneration = ActOneMapGeneration,
+        LaterActPreparationInitialPrototypeRng =
+            LaterActPreparationInitialPrototypeRng
     };
 
     public void Validate(bool replayMapGeneration = false)

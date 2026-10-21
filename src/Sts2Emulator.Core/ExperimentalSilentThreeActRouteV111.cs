@@ -568,15 +568,31 @@ public static class ExperimentalSilentThreeActRouteV111
 
 }
 
-internal sealed class ReferenceNatureLaterActAssignmentIndexProviderV111(
-    ReferenceNatureStateV111 initialNatureState) : IRandomIndexProviderV111
+internal sealed class ReferenceNatureLaterActAssignmentIndexProviderV111
+    : IRandomIndexProviderV111
 {
-    private ReferenceNatureStateV111 _natureState =
-        initialNatureState?.Fork()
-        ?? throw new ArgumentNullException(nameof(initialNatureState));
+    private readonly ReferenceNatureDecisionV111[]? _expectedPrefix;
+    private readonly bool _suspendAfterPrefix;
+    private ReferenceNatureStateV111 _natureState;
     private readonly List<ChanceLawV111> _chanceLaws = [];
     private readonly List<ReferenceNatureDecisionV111> _decisions = [];
     private bool? _hiveReceivesDarv;
+
+    public ReferenceNatureLaterActAssignmentIndexProviderV111(
+        ReferenceNatureStateV111 initialNatureState,
+        ReferenceNatureDecisionV111[]? expectedPrefix = null,
+        bool suspendAfterPrefix = false)
+    {
+        _natureState = initialNatureState?.Fork()
+            ?? throw new ArgumentNullException(nameof(initialNatureState));
+        _expectedPrefix = expectedPrefix is null ? null :
+            (ReferenceNatureDecisionV111[])expectedPrefix.Clone();
+        _suspendAfterPrefix = suspendAfterPrefix;
+        if (suspendAfterPrefix && expectedPrefix is null)
+            throw new ArgumentException(
+                "A resumable assignment provider requires its selected prefix.",
+                nameof(expectedPrefix));
+    }
 
     public string Mode => ReferenceNatureV111.ProviderId;
     public ReferenceNatureStateV111 NatureState => _natureState.Fork();
@@ -585,6 +601,8 @@ internal sealed class ReferenceNatureLaterActAssignmentIndexProviderV111(
         .Select(law => law.Fork()).ToArray();
     public ReferenceNatureDecisionV111[] DecisionTranscript =>
         _decisions.ToArray();
+    public RandomIndexRequestV111? PendingRequest { get; private set; }
+    public ChanceLawV111? PendingLaw { get; private set; }
 
     public RandomIndexDecisionV111 Resolve(
         RandomIndexRequestV111 request, RngBundle streams)
@@ -653,25 +671,43 @@ internal sealed class ReferenceNatureLaterActAssignmentIndexProviderV111(
             throw new InvalidDataException(
                 "ReferenceNature later-act Chance Law differs from its source request.");
 
+        if (_suspendAfterPrefix &&
+            _decisions.Count == _expectedPrefix!.Length)
+        {
+            PendingRequest = request with
+            {
+                OrderedCandidates = (int[])request.OrderedCandidates.Clone()
+            };
+            PendingLaw = law.Fork();
+            throw new ReferenceNatureLaterActPendingChoiceException();
+        }
+
         var selection = ReferenceNatureV111.SampleValidated(
             law, _natureState);
+        var natureDecision = new ReferenceNatureDecisionV111(
+            law.LawId, law.EventId, selection.OutcomeId,
+            selection.OutcomeIndex);
+        if (_expectedPrefix is not null &&
+            (_decisions.Count >= _expectedPrefix.Length ||
+             CanonicalJson.Sha256(natureDecision) != CanonicalJson.Sha256(
+                 _expectedPrefix[_decisions.Count])))
+            throw new InvalidDataException(
+                "ReferenceNature later-act assignment replay differs from its saved prefix.");
         _natureState = selection.NextState;
         _chanceLaws.Add(law.Fork());
-        _decisions.Add(new ReferenceNatureDecisionV111(
-            law.LawId, law.EventId, selection.OutcomeId,
-            selection.OutcomeIndex));
+        _decisions.Add(natureDecision);
         if (request.SiteId == ExperimentalSilentThreeActRouteV111
                 .DarvHiveAssignmentSiteId)
             _hiveReceivesDarv = selection.OutcomeId ==
                 "darv_assignment:hive";
 
-        var decision = new RandomIndexDecisionV111(
+        var randomDecision = new RandomIndexDecisionV111(
             request with
             {
                 OrderedCandidates = (int[])request.OrderedCandidates.Clone()
             }, selection.OutcomeIndex, Mode);
-        decision.Validate();
-        return decision;
+        randomDecision.Validate();
+        return randomDecision;
     }
 
     private static (int Act, bool IncludeDarv) ParseAncientOwner(
@@ -835,6 +871,8 @@ internal sealed class ReferenceNatureLaterActEncounterIndexProviderV111
     : IRandomIndexProviderV111
 {
     private readonly int _ascension;
+    private readonly ReferenceNatureDecisionV111[]? _expectedPrefix;
+    private readonly bool _suspendAfterPrefix;
     private ReferenceNatureStateV111 _natureState;
     private readonly List<ChanceLawV111> _chanceLaws = [];
     private readonly List<ReferenceNatureDecisionV111> _decisions = [];
@@ -843,7 +881,8 @@ internal sealed class ReferenceNatureLaterActEncounterIndexProviderV111
 
     public ReferenceNatureLaterActEncounterIndexProviderV111(
         RngBundle streams, ReferenceNatureStateV111 initialNatureState,
-        int ascension)
+        int ascension, ReferenceNatureDecisionV111[]? expectedPrefix = null,
+        bool suspendAfterPrefix = false)
     {
         ArgumentNullException.ThrowIfNull(streams);
         ArgumentNullException.ThrowIfNull(initialNatureState);
@@ -861,6 +900,13 @@ internal sealed class ReferenceNatureLaterActEncounterIndexProviderV111
                 "ReferenceNature later-act bosses require a valid legacy combat cursor.");
         _natureState = initialNatureState.Fork();
         _ascension = ascension;
+        _expectedPrefix = expectedPrefix is null ? null :
+            (ReferenceNatureDecisionV111[])expectedPrefix.Clone();
+        _suspendAfterPrefix = suspendAfterPrefix;
+        if (suspendAfterPrefix && expectedPrefix is null)
+            throw new ArgumentException(
+                "A resumable encounter provider requires its selected prefix.",
+                nameof(expectedPrefix));
         InitialCombatOrdinal = (int)initialOrdinal;
     }
 
@@ -872,6 +918,8 @@ internal sealed class ReferenceNatureLaterActEncounterIndexProviderV111
         .Select(law => law.Fork()).ToArray();
     public ReferenceNatureDecisionV111[] DecisionTranscript =>
         _decisions.ToArray();
+    public RandomIndexRequestV111? PendingRequest { get; private set; }
+    public ChanceLawV111? PendingLaw { get; private set; }
 
     public RandomIndexDecisionV111 Resolve(
         RandomIndexRequestV111 request, RngBundle streams)
@@ -937,13 +985,31 @@ internal sealed class ReferenceNatureLaterActEncounterIndexProviderV111
             throw new InvalidDataException(
                 "ReferenceNature later-act boss Chance Law differs from its source request.");
 
+        if (_suspendAfterPrefix &&
+            _decisions.Count == _expectedPrefix!.Length)
+        {
+            PendingRequest = request with
+            {
+                OrderedCandidates = (int[])request.OrderedCandidates.Clone()
+            };
+            PendingLaw = law.Fork();
+            throw new ReferenceNatureLaterActPendingChoiceException();
+        }
+
         var selection = ReferenceNatureV111.SampleValidated(
             law, _natureState);
+        var natureDecision = new ReferenceNatureDecisionV111(
+            law.LawId, law.EventId, selection.OutcomeId,
+            selection.OutcomeIndex);
+        if (_expectedPrefix is not null &&
+            (_decisions.Count >= _expectedPrefix.Length ||
+             CanonicalJson.Sha256(natureDecision) != CanonicalJson.Sha256(
+                 _expectedPrefix[_decisions.Count])))
+            throw new InvalidDataException(
+                "ReferenceNature later-act encounter replay differs from its saved prefix.");
         _natureState = selection.NextState;
         _chanceLaws.Add(law.Fork());
-        _decisions.Add(new ReferenceNatureDecisionV111(
-            law.LawId, law.EventId, selection.OutcomeId,
-            selection.OutcomeIndex));
+        _decisions.Add(natureDecision);
         if (request.SiteId == ExperimentalSilentThreeActRouteV111
                 .BossIndexSiteId ||
             request.SiteId == ExperimentalSilentThreeActRouteV111
@@ -951,13 +1017,13 @@ internal sealed class ReferenceNatureLaterActEncounterIndexProviderV111
             _bossChoiceCount++;
         else
             _queueDrawCount++;
-        var decision = new RandomIndexDecisionV111(
+        var randomDecision = new RandomIndexDecisionV111(
             request with
             {
                 OrderedCandidates = (int[])request.OrderedCandidates.Clone()
             }, selection.OutcomeIndex, Mode);
-        decision.Validate();
-        return decision;
+        randomDecision.Validate();
+        return randomDecision;
     }
 
     private void ValidateQueueRequest(RandomIndexRequestV111 request)

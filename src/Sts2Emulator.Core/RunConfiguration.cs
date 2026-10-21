@@ -454,8 +454,7 @@ public static class V111RunFactory
             throw new NotSupportedException("Restricted-profile acquisition/progression rules are not implemented; choose an explicit fully unlocked profile.");
         var controlledReferenceNatureRunStart =
             ControlledReferenceNatureRunStartActive
-            && (config.Acts[0] is ActIdentity.Overgrowth or ActIdentity.Underdocks)
-            && !config.UsesExperimentalSilentThreeActRoute;
+            && (config.Acts[0] is ActIdentity.Overgrowth or ActIdentity.Underdocks);
         var controlledReferenceNatureOvergrowthStart =
             controlledReferenceNatureRunStart
             && config.Acts[0] == ActIdentity.Overgrowth;
@@ -519,12 +518,15 @@ public static class V111RunFactory
         PrototypeLaterActEncounterBagV111[]? preparedLaterActBags = null;
         if (config.UsesExperimentalSilentThreeActRoute)
         {
-            var prepared = BuildPreparedLaterActBags(
-                opening.Rng, config, natureState);
-            preparedLaterActBags = prepared.Bags;
-            natureState = prepared.NatureState ?? natureState;
-            runStartChanceLaws.AddRange(prepared.ChanceLaws);
-            runStartDecisions.AddRange(prepared.DecisionTranscript);
+            if (!controlledReferenceNatureRunStart)
+            {
+                var prepared = BuildPreparedLaterActBags(
+                    opening.Rng, config, natureState);
+                preparedLaterActBags = prepared.Bags;
+                natureState = prepared.NatureState ?? natureState;
+                runStartChanceLaws.AddRange(prepared.ChanceLaws);
+                runStartDecisions.AddRange(prepared.DecisionTranscript);
+            }
         }
         var runStartTranscript = initialNatureState is null
             ? null
@@ -533,7 +535,10 @@ public static class V111RunFactory
                     "ReferenceNature run initialization lost its cursor."),
                 runStartChanceLaws.ToArray(), runStartDecisions.ToArray())
             {
-                ActOneMapGeneration = actOneMapGeneration
+                ActOneMapGeneration = actOneMapGeneration,
+                LaterActPreparationInitialPrototypeRng =
+                    config.UsesExperimentalSilentThreeActRoute
+                        ? opening.Rng.Fork() : null
             };
         runStartTranscript?.Validate();
         return opening with
@@ -544,6 +549,9 @@ public static class V111RunFactory
             NativeRunRng = nativeRunRng,
             ReferenceNatureState = natureState,
             ReferenceNatureRunInitializationTranscript = runStartTranscript,
+            ReferenceNatureRunInitializationPending =
+                controlledReferenceNatureRunStart &&
+                config.UsesExperimentalSilentThreeActRoute,
             World = opening.World! with
             {
                 RulesetId = config.RulesetId,

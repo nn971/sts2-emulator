@@ -806,8 +806,7 @@ public static class ControlledRunActionEngineV111
             && acts is { Length: 3 }
             && (acts[0] is ActIdentity.Overgrowth or ActIdentity.Underdocks)
             && configuration!.CharacterId == "silent"
-            && configuration.Profile.FullyUnlocked
-            && !configuration!.UsesExperimentalSilentThreeActRoute;
+            && configuration.Profile.FullyUnlocked;
     }
 
     internal static bool IsConfiguredNativeReferenceNatureOvergrowthRunStartSource(

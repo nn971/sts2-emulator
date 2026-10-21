@@ -769,19 +769,26 @@ internal static class PrototypeAiJsonlServer
         {
             var continuation = session.Run.ControlledRunActionChoice;
             var mapGeneration = session.MapGeneration;
+            var laterActPreparation = session.LaterActPreparation;
             var chanceLaw = session.PendingLaw;
             var runFingerprint = CanonicalJson.Sha256(session.Run);
-            var boundaryFingerprint = mapGeneration is not null
+            var boundaryFingerprint = laterActPreparation is not null
+                ? laterActPreparation.Fingerprint
+                : mapGeneration is not null
                 ? mapGeneration.Fingerprint
                 : continuation is null ? null
                 : ChanceLawEngineV111.ControlledRunActionBoundaryFingerprint(
                     session.Run);
-            object? pendingRequest = mapGeneration is not null
+            object? pendingRequest = laterActPreparation is not null
+                ? laterActPreparation.PendingRequest
+                : mapGeneration is not null
                 ? mapGeneration.PendingRequest
                 : continuation?.PendingRequest;
             object? pending = chanceLaw is null ? null : new
             {
-                kind = mapGeneration is not null
+                kind = laterActPreparation is not null
+                    ? "run_action_later_act_preparation"
+                    : mapGeneration is not null
                     ? "run_action_map_generation"
                     : "run_action_random_choice",
                 eventId = chanceLaw.EventId,

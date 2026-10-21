@@ -85,6 +85,14 @@ public sealed record RunWorldStochasticStateV111
         {
             var darvRevealed = configuration.Profile.RevealedEpochs.Contains(
                 NativeDarvEventV111.EpochId, StringComparer.Ordinal);
+            if (run.ReferenceNatureRunInitializationPending &&
+                owner.PreparedLaterActEncounterBags is null)
+            {
+                if (owner.Act != 1 || owner.LaterActEncounterBag is not null)
+                    throw new InvalidOperationException(
+                        "Pending run initialization has an invalid Act 1 encounter-bag boundary.");
+                return;
+            }
             ValidatePreparedLaterActEncounterBags(
                 owner, run.Ascension, darvRevealed);
             if (owner.Act > 1)

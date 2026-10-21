@@ -72,6 +72,64 @@ public static class RunSnapshot
         PrototypeStateInvariants.Validate(state);
         state.ReferenceNatureRunInitializationTranscript?.Validate(
             replayMapGeneration: true);
+        if (!state.ReferenceNatureRunInitializationPending &&
+            state.Configuration?.UsesExperimentalSilentThreeActRoute == true &&
+            state.World?.Act == 1 &&
+            state.ReferenceNatureRunInitializationTranscript is { } transcript)
+            ValidateExperimentalLaterActPreparation(state, transcript);
+    }
+
+    private static void ValidateExperimentalLaterActPreparation(
+        RunState state,
+        ReferenceNatureRunInitializationTranscriptV111 transcript)
+    {
+        var initialPrototypeRng =
+            transcript.LaterActPreparationInitialPrototypeRng;
+        if (initialPrototypeRng is null)
+            return;
+        var mapAudit = transcript.ActOneMapGeneration;
+        if ((state.Configuration!.Acts[0] == ActIdentity.Overgrowth) !=
+            (mapAudit is not null))
+            throw new InvalidDataException(
+                "Experimental run-start map audit differs from its configured Act 1 region.");
+        var mapDecisionCount = mapAudit?.DecisionTranscript.Length ?? 0;
+        var preparationStartIndex = checked(1 + mapDecisionCount);
+        var decisions = transcript.DecisionTranscript;
+        var laws = transcript.ChanceLaws;
+        if (decisions.Length < preparationStartIndex ||
+            laws.Length != decisions.Length)
+            throw new InvalidDataException(
+                "Experimental run-start transcript omits its later-act preparation prefix.");
+
+        var natureState = mapAudit?.NatureState ??
+            ReferenceNatureV111.SampleValidated(
+                laws[0], transcript.InitialNatureState).NextState;
+        var preparation = ReferenceNatureLaterActPreparationSessionV111.Begin(
+            initialPrototypeRng, state.Ascension,
+            state.Configuration!.Profile,
+            natureState);
+        var preparationDecisions = decisions
+            .Skip(preparationStartIndex).ToArray();
+        foreach (var expected in preparationDecisions)
+        {
+            if (preparation.Complete)
+                throw new InvalidDataException(
+                    "Experimental run-start preparation ended before its transcript.");
+            preparation = preparation.ResolveNext();
+            if (CanonicalJson.Sha256(preparation.DecisionTranscript[^1]) !=
+                CanonicalJson.Sha256(expected))
+                throw new InvalidDataException(
+                    "Experimental run-start preparation differs from its generator replay.");
+        }
+
+        var world = state.World ?? throw new InvalidDataException(
+            "Experimental run-start snapshot lost its world.");
+        if (!preparation.Complete ||
+            !preparation.NatureState.SameCursor(transcript.FinalNatureState) ||
+            CanonicalJson.Sha256(preparation.Bags) != CanonicalJson.Sha256(
+                world.PreparedLaterActEncounterBags))
+            throw new InvalidDataException(
+                "Experimental run-start bags or Nature cursor differ from generator replay.");
     }
 }
 

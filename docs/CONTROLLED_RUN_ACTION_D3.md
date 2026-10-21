@@ -23,8 +23,9 @@ boss index, then stores the sampled law and decision in the run-initialization
 transcript with the committed Nature cursor. The request filter leaves the
 initializer's other draws on their current providers; the hidden Overgrowth
 boss draw inside the shared starter is not selected by Nature. The configured
-Underdocks path does not include experimental three-act prepared bags. The
-equal-index boss law remains `UNVERIFIED`.
+experimental three-act path continues from that boss through Ancient
+assignment and Hive/Glory encounter-bag preparation. The equal-index boss and
+later-act laws remain `UNVERIFIED`.
 
 For configured Act 1 Overgrowth, the same session suspends first on the
 Overgrowth boss index and then composes the existing
@@ -36,6 +37,16 @@ cursor together. JSONL reports map requests with pending kind
 `run_action_map_generation`. Other initializer draws retain their current
 providers. Boss equal-index probability, Gaussian quota masses, Native map
 fidelity, and Native cursor parity remain open.
+
+On the experimental three-act route, Overgrowth continues from the completed
+map into the existing Ancient-assignment and later-act bag generators.
+Underdocks begins that preparation immediately after its boss choice. Each
+resolve samples one assignment or bag choice; the run publishes only after all
+prepared bags are complete. JSONL reports these requests with pending kind
+`run_action_later_act_preparation`. The saved session replays the existing
+generators from the ordered prefix, and the run snapshot carries a pending
+initialization marker while the outer session owns the uncommitted Nature
+cursor and partial bags.
 
 For a configured Act 1 run using the experimental Native combat-entry profile,
 the same boundary can also suspend on the regional weak, normal, or elite
@@ -94,7 +105,7 @@ sites appear in both region groups. The controller supports:
 | Operation | Inputs | Result |
 | --- | --- | --- |
 | `controlled_run_action_begin` | current `state_handle`, legal `action_id` | Pending request, labels and controlled outcome actions |
-| `controlled_run_action_resolve` | pending `state_handle`, `selected_index` | Child run handle with the selected legacy run-start, configured Underdocks boss, event-entry, Shop, Treasure, Act 1 combat-entry or Shovel result |
+| `controlled_run_action_resolve` | pending `state_handle`, `selected_index` | Child run handle with the selected legacy run-start, configured boss, event-entry, Shop, Treasure, Act 1 combat-entry or Shovel result |
 | `controlled_run_action_inspect` | pending `state_handle` | Restore the pending request and legal outcomes after snapshot load |
 
 The JSONL server also exposes an atomic ReferenceNature envelope for these
@@ -163,18 +174,18 @@ committed session's `.state` property.
 
 ## Unsupported routes and remaining limits
 
-Run-start map continuation covers the listed `map.legacy.*` request sites
-during initial legacy map generation. It does not cover later-act map
-regeneration or native map generation. Event-entry continuation covers legacy
+Legacy run-start map continuation covers the listed `map.legacy.*` request
+sites during initial legacy map generation. Configured Overgrowth uses the
+composed Native map-generation session described above. Later-act map
+regeneration remains outside these continuations. Event-entry continuation covers legacy
 `event.selection.weighted_ticket` and listed legacy event initialization draws
 when a map Event node is selected. The separate
 `event.unknown_room.odds.ticket` request is supported only when an unconfigured
 legacy run with no `NativeRunRng` enters an available Unknown node in a regional
 map profile; its 1000 equal request indices remain `UNVERIFIED` because they
-approximate the source unit-float mapping. Configured Native run streams and
-source cursor parity remain outside this boundary, except for the configured
-Underdocks run-start boss choice and experimental Act 1 encounter-pool and
-formation continuations described above.
+approximate the source unit-float mapping. Other configured Native run streams
+and source cursor parity remain outside this boundary, apart from the
+configured run-start and Act 1 encounter continuations described above.
 
 The supported legacy event-entry initialization sites are:
 

@@ -183,6 +183,9 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
     public IReadOnlyList<GameAction> GetLegalActions(RunState state)
     {
         RunConfiguration.ValidateState(state);
+        if (state.ReferenceNatureRunInitializationPending)
+            throw new InvalidOperationException(
+                "A ReferenceNature run-start session must finish before run actions are available.");
         if (state.ControlledEventRewardChoice is { } rewardChoice)
         {
             var request = rewardChoice.PendingRequest;
@@ -237,6 +240,9 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
     public TransitionResult Step(RunState state, GameAction action)
     {
         RunConfiguration.ValidateState(state);
+        if (state.ReferenceNatureRunInitializationPending)
+            throw new InvalidOperationException(
+                "A ReferenceNature run-start session must finish before run actions are available.");
         using var providerScope = StochasticProviderScopeV111.Enter(
             new NativeRandomIndexProviderV111(),
             new NativeRandomUnitFloatProviderV111(),
