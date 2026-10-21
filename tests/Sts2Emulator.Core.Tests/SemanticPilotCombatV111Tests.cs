@@ -153,6 +153,51 @@ public sealed class SemanticPilotCombatV111Tests
     }
 
     [Fact]
+    public void NatureBoundaryPublicViewReusesFairPlayerObservationWithoutHiddenDrawOrder()
+    {
+        var state = SemanticPilotCombatEngineV111.BeginSeeded(
+            Seeded("semantic-nature-public-observation-test"));
+        for (var stage = 0; state.DrawPending is null; stage++)
+        {
+            Assert.True(stage < 200);
+            if (state.IntentPending is { } intent)
+            {
+                var support = ControlledTurnIntentEngineV111
+                    .DescribePendingSemanticIntent(state.PendingEndTurn!.Intents!)!;
+                state = SemanticPilotCombatEngineV111.ResolveIntent(
+                    state, state.Fingerprint, support.Candidates[0].IntentId);
+            }
+            else if (state.AtPlayerBoundary && !state.CombatTerminal)
+            {
+                var endTurn = Assert.Single(new PrototypeAiEnvironment()
+                    .Observe(state.Run).LegalActions,
+                    action => action.Kind == "end_turn");
+                state = SemanticPilotCombatEngineV111.Step(
+                    state, state.Fingerprint, endTurn.ActionId);
+            }
+            else
+                Assert.Fail("Expected Nature or player boundary before draw.");
+        }
+        var environment = new PrototypeAiEnvironment();
+        var beforeFingerprint = state.Fingerprint;
+        var observed = environment.ObservePublic(state.Run);
+        Assert.IsType<PrototypeAiCombat>(observed.Combat);
+        Assert.Equal(state.Run.Player.Hp, observed.Hp);
+        Assert.Equal(state.Run.World!.Combat!.DrawPile.Length,
+            observed.Combat!.DrawPileCount);
+
+        var replay = SemanticPilotCombatEngineV111.Restore(
+            SemanticPilotCombatEngineV111.Save(state));
+        Assert.Equal(CanonicalJson.Serialize(observed),
+            CanonicalJson.Serialize(environment.ObservePublic(replay.Run)));
+        Assert.Equal(beforeFingerprint, state.Fingerprint);
+        var visible = CanonicalJson.Serialize(observed);
+        Assert.DoesNotContain("semanticDeck", visible, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("rng", visible, StringComparison.OrdinalIgnoreCase);
+        Assert.DoesNotContain("drawPileOrder", visible, StringComparison.OrdinalIgnoreCase);
+    }
+
+    [Fact]
     public void SemanticDrawResolvesByEventAndCardIdentityAndReplaysTypedDecision()
     {
         var state = SemanticPilotCombatEngineV111.BeginSeeded(
