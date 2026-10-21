@@ -179,10 +179,12 @@ public sealed record RunStochasticStateV111
         if (ReferenceNatureRunInitializationPending)
         {
             var history = ControlledRunActionHistory;
+            var world = owner.World;
+            var worldStochastic = world?.Stochastic;
             if (owner.Configuration?.UsesExperimentalSilentThreeActRoute != true ||
-                owner.World?.Act != 1 ||
-                owner.World.PreparedLaterActEncounterBags is not null ||
-                owner.World.LaterActEncounterBag is not null ||
+                world?.Act != 1 ||
+                worldStochastic?.PreparedLaterActEncounterBags is not null ||
+                worldStochastic?.LaterActEncounterBag is not null ||
                 ReferenceNatureRunInitializationTranscript is not null ||
                 ControlledRunActionChoice is not null ||
                 history is not { Length: > 0 } ||
@@ -359,7 +361,7 @@ public sealed record RunStochasticStateV111
              reward.ProviderId != SemanticRewardAuditV111.PrototypeProviderId ||
              reward.ProbabilityStatus != "UNVERIFIED" ||
              reward.AfterCalls < reward.BeforeCalls ||
-             owner.Rng.GetStream("reward").CallCount != reward.AfterCalls))
+             PrototypeRng.GetStream("reward").CallCount != reward.AfterCalls))
             throw new InvalidDataException(
                 "Invalid source-timed reward RNG audit.");
         if (owner.World is { } world)
@@ -372,10 +374,16 @@ public sealed record RunStochasticStateV111
         if (ControlledRunActionChoice is not { } controlledRunActionChoice)
             return;
         controlledRunActionChoice.Validate();
+        var resumedOwner = owner with
+        {
+            Stochastic = owner.Stochastic with
+            {
+                ControlledRunActionChoice = null
+            }
+        };
         if (owner.DecisionIndex <
                 controlledRunActionChoice.PartialState.DecisionIndex
-            || CanonicalJson.Sha256(owner with
-                { ControlledRunActionChoice = null }) !=
+            || CanonicalJson.Sha256(resumedOwner) !=
             CanonicalJson.Sha256(
                 controlledRunActionChoice.PartialState))
             throw new InvalidOperationException(
@@ -391,7 +399,14 @@ public sealed record RunStochasticStateV111
         var world = owner.World;
         var rewardEvent = world?.Event;
         var reward = world?.Reward;
-        if (world?.Event?.ControlledChoice is not null
+        var resumedOwner = owner with
+        {
+            Stochastic = owner.Stochastic with
+            {
+                ControlledEventRewardChoice = null
+            }
+        };
+        if (world?.Event?.Stochastic.ControlledChoice is not null
             || owner.Phase != RunPhase.Reward
             || rewardEvent is null
             || rewardEvent.EventId != controlledEventRewardChoice.EventId
@@ -400,8 +415,7 @@ public sealed record RunStochasticStateV111
             || reward?.SourceRoom !=
                 "Event:" + controlledEventRewardChoice.EventId
             || reward?.AddRandomCurseAfterReward != true
-            || CanonicalJson.Sha256(owner with
-                { ControlledEventRewardChoice = null }) !=
+            || CanonicalJson.Sha256(resumedOwner) !=
             CanonicalJson.Sha256(
                 controlledEventRewardChoice.PartialState))
             throw new InvalidOperationException(
