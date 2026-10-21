@@ -356,9 +356,11 @@ Nature-owned sets unless a controlled Chance Law replay selects an identity.
 `PrototypeNativeRelicGrabBag.PlanPull` is now the shared source fallback
 resolver used by ordinary relic pulls and native Treasure laws. It retains
 queue order for Native while exposing the selected fallback
-tier and eligible identities separately; `PullSelected` can remove a legal
-chosen identity while preserving all other queue entries. This is the shared
-mechanics apply path for controlled relic identity resolution. The merchant,
+tier and eligible identities separately. `PlanNaturePull` derives canonical
+sorted support only from a `NatureUnordered` bag, and `PullNatureSelected`
+revalidates that support before applying the selected removal. Event-relic,
+Shovel, and combat-reward replay use those operations to rebuild later
+supports from the earlier selected identities. The merchant,
 Treasure, and combat reward sessions own their relic identity choices during
 their respective room/reward boundaries; queue construction, later Treasure
 draws after purchases, and subsequent purchase effects remain outside those
@@ -373,8 +375,8 @@ chosen identity through the shared pull plan; the matching Chance Law query
 conditions on previous same-shop relic selections without exposing Native
 queue order. During Treasure replay, `Draw` exposes the Nature-only typed site
 `treasure.relic_grab_bag.model.index_draw` after the rarity float, labels the
-sorted fallback support, and applies the selected identity through the same
-pull plan. The merchant and Treasure sessions consume their respective sites
+sorted fallback support, and applies the selected identity through the shared
+Nature pull owner. The merchant and Treasure sessions consume their respective sites
 as steps in their atomic room-entry continuations; the merchant purchase path
 also consumes the same identity site for each of Toy Box's five wax relics.
 The combat reward session consumes the same identity site after each

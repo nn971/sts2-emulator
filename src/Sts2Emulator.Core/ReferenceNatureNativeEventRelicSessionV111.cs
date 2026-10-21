@@ -429,10 +429,9 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
 
             var rarity = ParseRarity(indexRequest.OwnerId);
             var bag = BagAfterPrefix(source, prefix);
-            var plan = PrototypeNativeRelicGrabBag.PlanPull(
+            var plan = PrototypeNativeRelicGrabBag.PlanNaturePull(
                 bag, rarity, merchant: false, source.Player);
-            var expectedCandidates = plan.CandidateIds.OrderBy(
-                id => id, StringComparer.Ordinal).ToArray();
+            var expectedCandidates = plan.CandidateIds;
             var expectedOwner = PrototypeNativeRelicGrabBag.TreasureModelOwnerId(
                 world, rarity, expectedCandidates);
             if (plan.SelectedTier is null ||
@@ -507,10 +506,9 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
             if (indexDecision.SelectedIndex >= labels.Length)
                 throw new InvalidDataException(
                     "Native event relic prefix selected outside its candidate labels.");
-            var plan = PrototypeNativeRelicGrabBag.PlanPull(
+            var plan = PrototypeNativeRelicGrabBag.PlanNaturePull(
                 bag, rarity, merchant: false, source.Player);
-            var expected = plan.CandidateIds.OrderBy(
-                id => id, StringComparer.Ordinal).ToArray();
+            var expected = plan.CandidateIds;
             if (plan.SelectedTier is null ||
                 !labels.SequenceEqual(expected, StringComparer.Ordinal) ||
                 indexDecision.Request.OwnerId !=
@@ -518,9 +516,9 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
                         source.World!, rarity, expected))
                 throw new InvalidDataException(
                     "Native event relic prefix differs from its canonical bag draw.");
-            (bag, _) = PrototypeNativeRelicGrabBag.PullSelected(
-                bag, plan with { CandidateIds = expected }, merchant: false,
-                source.Player, labels[indexDecision.SelectedIndex]);
+            (bag, _) = PrototypeNativeRelicGrabBag.PullNatureSelected(
+                bag, rarity, labels, indexDecision.SelectedIndex,
+                merchant: false, source.Player);
         }
         return bag;
     }

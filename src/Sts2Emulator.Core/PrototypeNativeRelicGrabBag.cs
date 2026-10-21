@@ -538,6 +538,54 @@ public sealed record PrototypeRelicBagPullPlanV111
         return new PrototypeRelicBagPullPlanV111(rarity, null, []);
     }
 
+    /// <summary>
+    /// Plans a Nature identity pull over the canonical, unordered remainder
+    /// of a relic bag. Native queue order must never be used as Nature support.
+    /// </summary>
+    public static PrototypeRelicBagPullPlanV111 PlanNaturePull(
+        PrototypeRelicBagState bag, PrototypeRelicRarity rarity,
+        bool merchant, PlayerState player)
+    {
+        ArgumentNullException.ThrowIfNull(bag);
+        if (bag.OrderMode != PrototypeRelicBagOrderMode.NatureUnordered)
+            throw new InvalidDataException(
+                "Nature relic identity support requires an unordered relic bag.");
+        var plan = PlanPull(bag, rarity, merchant, player);
+        return plan with
+        {
+            CandidateIds = plan.CandidateIds
+                .OrderBy(id => id, StringComparer.Ordinal).ToArray()
+        };
+    }
+
+    /// <summary>
+    /// Replays one selected identity against the current Nature bag support
+    /// and applies that removal through the shared relic-bag owner.
+    /// </summary>
+    public static (PrototypeRelicBagState Bag, string Id)
+        PullNatureSelected(
+            PrototypeRelicBagState bag, PrototypeRelicRarity rarity,
+            string[] candidateIds, int selectedIndex, bool merchant,
+            PlayerState player)
+    {
+        ArgumentNullException.ThrowIfNull(candidateIds);
+        ArgumentNullException.ThrowIfNull(player);
+        var plan = PlanNaturePull(bag, rarity, merchant, player);
+        if (plan.SelectedTier is null ||
+            !candidateIds.SequenceEqual(
+                plan.CandidateIds, StringComparer.Ordinal) ||
+            (uint)selectedIndex >= (uint)plan.CandidateIds.Length)
+            throw new InvalidDataException(
+                "Nature relic selection differs from the current canonical bag support.");
+        var selectedId = plan.CandidateIds[selectedIndex];
+        var (nextBag, pulledId) = PullSelected(
+            bag, plan, merchant, player, selectedId);
+        if (!StringComparer.Ordinal.Equals(pulledId, selectedId))
+            throw new InvalidDataException(
+                "Nature relic selection did not remove its selected identity.");
+        return (nextBag, selectedId);
+    }
+
     /// <summary>Removes one legal identity selected from PlanPull's currently
     /// active fallback tier while preserving all other queue entries.</summary>
     public static (PrototypeRelicBagState Bag, string? Id) PullSelected(
@@ -690,15 +738,15 @@ public sealed record PrototypeRelicBagPullPlanV111
         (PrototypeRelicBagState Bag, string? Id) pull;
         if (!merchant && naturePull)
         {
-            var plan = PlanPull(bag, rarity, merchant: false, player);
+            var plan = PlanNaturePull(
+                bag, rarity, merchant: false, player);
             if (plan.CandidateIds.Length == 0)
             {
                 pull = (bag, null);
             }
             else
             {
-                var candidates = plan.CandidateIds
-                    .OrderBy(id => id, StringComparer.Ordinal).ToArray();
+                var candidates = plan.CandidateIds;
                 var ownerId = TreasureModelOwnerId(world, rarity, candidates);
                 int selectedIndex;
                 using (nativeEventChoicePull
@@ -720,9 +768,10 @@ public sealed record PrototypeRelicBagPullPlanV111
                                 NativePlayerRngV111.RewardsStreamId))
                             .SelectedIndex;
                 }
-                pull = PullSelected(
-                    bag, plan with { CandidateIds = candidates },
-                    merchant: false, player, candidates[selectedIndex]);
+                var selected = PullNatureSelected(
+                    bag, rarity, candidates, selectedIndex,
+                    merchant: false, player);
+                pull = (selected.Bag, selected.Id);
             }
         }
         else if (merchant && nativeRunRng is not null &&
@@ -731,15 +780,15 @@ public sealed record PrototypeRelicBagPullPlanV111
             if (merchantOfferOrdinal < 0 || merchantOfferOrdinal >= 3)
                 throw new ArgumentOutOfRangeException(
                     nameof(merchantOfferOrdinal));
-            var plan = PlanPull(bag, rarity, merchant: true, player);
+            var plan = PlanNaturePull(
+                bag, rarity, merchant: true, player);
             if (plan.CandidateIds.Length == 0)
             {
                 pull = (bag, null);
             }
             else
             {
-                var candidates = plan.CandidateIds
-                    .OrderBy(id => id, StringComparer.Ordinal).ToArray();
+                var candidates = plan.CandidateIds;
                 var ownerId = MerchantModelOwnerId(
                     world, merchantOfferOrdinal, rarity, candidates);
                 var ordinal = NativePlayerRngV111.NextOrdinal(
@@ -753,10 +802,10 @@ public sealed record PrototypeRelicBagPullPlanV111
                         NativePlayerRngV111.ShopsStreamId, ownerId,
                         candidates.Length, ordinal).SelectedIndex;
                 }
-                pull = PullSelected(
-                    bag,
-                    plan with { CandidateIds = candidates },
-                    merchant: true, player, candidates[selectedIndex]);
+                var selected = PullNatureSelected(
+                    bag, rarity, candidates, selectedIndex,
+                    merchant: true, player);
+                pull = (selected.Bag, selected.Id);
             }
         }
         else

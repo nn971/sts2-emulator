@@ -554,11 +554,17 @@ public sealed record ReferenceNatureCombatRewardSessionV111(
                     !Enum.IsDefined(priorRarity))
                     throw new InvalidDataException(
                         "Combat reward relic prefix has an invalid rarity.");
-                var plan = PrototypeNativeRelicGrabBag.PlanPull(
+                var priorPlan = PrototypeNativeRelicGrabBag.PlanNaturePull(
                     bag, priorRarity, merchant: false, source.Player);
-                (bag, _) = PrototypeNativeRelicGrabBag.PullSelected(
-                    bag, plan, merchant: false, source.Player,
-                    priorLabels[indexDecision.SelectedIndex]);
+                if (indexDecision.Request.OwnerId !=
+                    PrototypeNativeRelicGrabBag.TreasureModelOwnerId(
+                        world, priorRarity, priorPlan.CandidateIds))
+                    throw new InvalidDataException(
+                        "Combat reward relic prefix differs from its canonical bag request.");
+                (bag, _) = PrototypeNativeRelicGrabBag.PullNatureSelected(
+                    bag, priorRarity, priorLabels,
+                    indexDecision.SelectedIndex, merchant: false,
+                    source.Player);
             }
             return ChanceLawEngineV111.QueryNativeCombatRewardRelicSelection(
                 source, indexRequest, rarity, bag, candidateLabels);

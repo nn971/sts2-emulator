@@ -5200,10 +5200,9 @@ public static partial class ChanceLawEngineV111
 
         var bag = world.RelicBag ??
             PrototypeNativeRelicGrabBag.CreateNatureUnordered(run.Player);
-        var plan = PrototypeNativeRelicGrabBag.PlanPull(
+        var plan = PrototypeNativeRelicGrabBag.PlanNaturePull(
             bag, rarity, merchant: false, run.Player);
-        var expectedCandidates = plan.CandidateIds.OrderBy(
-            id => id, StringComparer.Ordinal).ToArray();
+        var expectedCandidates = plan.CandidateIds;
         var ownerId = PrototypeNativeRelicGrabBag.TreasureModelOwnerId(
             world, rarity, candidateIds);
         if (plan.SelectedTier is null || request.OwnerId != ownerId ||
@@ -5269,10 +5268,9 @@ public static partial class ChanceLawEngineV111
             throw new ArgumentException(
                 "Native combat reward relic identity request is malformed.");
 
-        var plan = PrototypeNativeRelicGrabBag.PlanPull(
+        var plan = PrototypeNativeRelicGrabBag.PlanNaturePull(
             bag, rarity, merchant: false, run.Player);
-        var expectedCandidates = plan.CandidateIds.OrderBy(
-            id => id, StringComparer.Ordinal).ToArray();
+        var expectedCandidates = plan.CandidateIds;
         var ownerId = PrototypeNativeRelicGrabBag.TreasureModelOwnerId(
             world, rarity, candidateIds);
         if (plan.SelectedTier is null || request.OwnerId != ownerId ||
