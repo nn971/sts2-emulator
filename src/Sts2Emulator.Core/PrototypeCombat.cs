@@ -1734,8 +1734,9 @@ public sealed partial class PrototypeGameEngine
             if (!ControlledChanceGuardV111.Active)
                 throw new InvalidOperationException(
                     "Controlled BeforeHandDraw choice requires the RNG guard.");
-            return ResumeAutomaticPipeline(
+            var resumed = ResumeAutomaticPipeline(
                 state, beforeDraw.AutomaticPipelineContinuation!.NextStepIndex);
+            return ResumeAutomaticPipelineContinuation(resumed);
         }
 
         if (resumeSemanticBeforeHandDraw)
