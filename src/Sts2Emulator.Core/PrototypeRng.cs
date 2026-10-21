@@ -126,16 +126,7 @@ public static class PrototypeRng
 
     private static ulong NextUInt64(RngBundle bundle, string streamId)
     {
-        var index = Array.FindIndex(
-            bundle.Streams,
-            stream => StringComparer.Ordinal.Equals(stream.StreamId, streamId));
-
-        if (index < 0)
-        {
-            throw new KeyNotFoundException($"Prototype RNG stream '{streamId}' is missing.");
-        }
-
-        var stream = bundle.Streams[index];
+        var stream = bundle.GetStream(streamId);
         if (!StringComparer.Ordinal.Equals(stream.Codec, Codec) || stream.StateBytes.Length != sizeof(ulong))
         {
             throw new InvalidOperationException(
@@ -152,7 +143,7 @@ public static class PrototypeRng
 
         var bytes = new byte[sizeof(ulong)];
         BinaryPrimitives.WriteUInt64LittleEndian(bytes, state);
-        bundle.ReplaceStreamAt(index, stream with
+        bundle.ReplaceStream(streamId, stream with
         {
             StateBytes = bytes,
             CallCount = (stream.CallCount ?? 0) + 1

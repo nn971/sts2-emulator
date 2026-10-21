@@ -102,8 +102,7 @@ public static class NativeRngV111
     {
         ControlledChanceGuardV111.RequireMigrated(
             "native_rng." + streamId, "next_uint64");
-        var index = RequireStream(bundle, streamId);
-        var current = ToSnapshot(bundle.Streams[index]);
+        var current = ToSnapshot(bundle.GetStream(streamId));
         var result = unchecked(BitOperations.RotateLeft(unchecked(current.State1 * 5), 7) * 9);
         var temporary = current.State1 << 17;
         var c = current.State2 ^ current.State0;
@@ -112,7 +111,7 @@ public static class NativeRngV111
         var a = current.State0 ^ d;
         c ^= temporary;
         d = BitOperations.RotateLeft(d, 45);
-        bundle.ReplaceStreamAt(index, FromSnapshot(streamId,
+        bundle.ReplaceStream(streamId, FromSnapshot(streamId,
             new(unchecked(current.Counter + 1), a, b, c, d)));
         return result;
     }
@@ -210,14 +209,6 @@ public static class NativeRngV111
             if (remaining <= 0) return value;
         }
         return fallback;
-    }
-
-    private static int RequireStream(RngBundle bundle, string id)
-    {
-        var matches = bundle.Streams.Select((stream, index) => (stream, index))
-            .Where(x => x.stream.StreamId == id).ToArray();
-        return matches.Length == 1 ? matches[0].index
-            : throw new InvalidDataException($"Expected exactly one RNG stream '{id}'.");
     }
 
     public static ulong RunSeed(string seed)

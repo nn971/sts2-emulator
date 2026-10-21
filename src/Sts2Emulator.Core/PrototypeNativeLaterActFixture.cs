@@ -196,11 +196,7 @@ public static class PrototypeNativeLaterActFixture
         // act-local stream and leaves this bundle untouched.
         var rng = state.Rng.Fork();
         var clean = PrototypeRng.CreateBundle(seed);
-        var index = Array.FindIndex(rng.Streams,
-            stream => stream.StreamId == "map");
-        var cleanIndex = Array.FindIndex(clean.Streams,
-            stream => stream.StreamId == "map");
-        rng.ReplaceStreamAt(index, clean.Streams[cleanIndex].Fork());
+        rng.ReplaceStream("map", clean.GetStream("map").Fork());
 
         var map = PrototypeNativeLaterActMap.GenerateNative(seed, act, ascension);
         var keyId = PrototypeNativeHiveEvents.LanternKeyCardId;

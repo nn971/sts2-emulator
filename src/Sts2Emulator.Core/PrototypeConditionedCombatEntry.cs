@@ -71,14 +71,7 @@ public static class PrototypeConditionedCombatEntry
                 $"local-combat-condition-v1:{independentSearchSeed.ToLowerInvariant()}:{trial}")
                 .Streams.Single(stream =>
                     StringComparer.Ordinal.Equals(stream.StreamId, "combat"));
-            var index = Array.FindIndex(
-                candidate.Rng.Streams,
-                stream => StringComparer.Ordinal.Equals(stream.StreamId, "combat"));
-            if (index < 0)
-            {
-                throw new InvalidOperationException("Combat RNG stream is missing.");
-            }
-            candidate.Rng.ReplaceStreamAt(index, combatStream);
+            candidate.Rng.ReplaceStream("combat", combatStream);
 
             var result = environment.Step(candidate, actionId).State;
             if (result.Phase != RunPhase.Combat)

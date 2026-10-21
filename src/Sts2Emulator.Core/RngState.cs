@@ -74,15 +74,52 @@ public sealed record RngBundle
     public RngBundle Fork() =>
         new(_streams!.Select(stream => stream.Fork()).ToArray());
 
+    /// <summary>
+    /// Gets a stream by its stable owner name. Array positions are an
+    /// implementation detail; callers should bind RNG operations to the
+    /// stream ID that owns them.
+    /// </summary>
+    public RngStreamState GetStream(string streamId)
+    {
+        var index = RequireStreamIndex(streamId);
+        return _streams![index];
+    }
+
     public void Deconstruct(out RngStreamState[] Streams) =>
         Streams = this.Streams;
 
+    internal void ReplaceStream(string streamId, RngStreamState stream)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(streamId);
+        ArgumentNullException.ThrowIfNull(stream);
+        if (!StringComparer.Ordinal.Equals(stream.StreamId, streamId))
+            throw new InvalidOperationException(
+                $"Cannot replace RNG stream '{streamId}' with stream '{stream.StreamId}'.");
+        var index = RequireStreamIndex(streamId);
+        var replacement = (RngStreamState[])_streams!.Clone();
+        replacement[index] = stream;
+        _streams = CloneAndValidate(replacement, nameof(Streams));
+    }
+
+    // Retained for malformed-state and fork-isolation fixtures. Runtime
+    // production paths use ReplaceStream so the named owner is checked.
     internal void ReplaceStreamAt(int index, RngStreamState stream)
     {
         ArgumentNullException.ThrowIfNull(stream);
         var replacement = (RngStreamState[])_streams!.Clone();
         replacement[index] = stream;
         _streams = CloneAndValidate(replacement, nameof(Streams));
+    }
+
+    internal int RequireStreamIndex(string streamId)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(streamId);
+        var index = Array.FindIndex(_streams!, stream =>
+            StringComparer.Ordinal.Equals(stream.StreamId, streamId));
+        return index >= 0
+            ? index
+            : throw new KeyNotFoundException(
+                $"RNG stream '{streamId}' is missing.");
     }
 
     private static RngStreamState[] CloneAndValidate(

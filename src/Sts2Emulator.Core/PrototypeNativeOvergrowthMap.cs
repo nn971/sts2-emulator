@@ -435,11 +435,7 @@ public static class PrototypeNativeOvergrowthRunFactory
         // separate act_1_map context stream and leaves prototype RNG alone.
         var rng = state.Rng.Fork();
         var clean = PrototypeRng.CreateBundle(seed);
-        var index = Array.FindIndex(rng.Streams, stream =>
-            stream.StreamId == "map");
-        var cleanIndex = Array.FindIndex(clean.Streams, stream =>
-            stream.StreamId == "map");
-        rng.ReplaceStreamAt(index, clean.Streams[cleanIndex].Fork());
+        rng.ReplaceStream("map", clean.GetStream("map").Fork());
 
         var map = generateNativeMap
             ? PrototypeNativeOvergrowthMap.GenerateNative(seed, ascension)

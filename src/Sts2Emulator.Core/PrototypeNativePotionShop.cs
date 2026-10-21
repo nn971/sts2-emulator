@@ -348,7 +348,8 @@ public static class PrototypeNativePotionShop
         var initialStreams = rng.Streams;
         var workingStreams = workingRng.Streams;
         for (var streamIndex = 0; streamIndex < initialStreams.Length; streamIndex++)
-            rng.ReplaceStreamAt(streamIndex, workingStreams[streamIndex].Fork());
+            rng.ReplaceStream(initialStreams[streamIndex].StreamId,
+                workingStreams[streamIndex].Fork());
         return new NativePotionModelSelectionAuditV111(
             selected.ToArray(), choices.ToArray(), rarityRolls.ToArray(),
             effectiveIndexProvider.Mode, effectiveFloatProvider.Mode);

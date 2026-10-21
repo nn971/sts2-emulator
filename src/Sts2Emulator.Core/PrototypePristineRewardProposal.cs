@@ -46,14 +46,7 @@ public static class PrototypePristineRewardProposal
                 + "64-bit stream state encoded as 16 hexadecimal characters.");
         }
 
-        var index = Array.FindIndex(
-            source.Rng.Streams,
-            stream => StringComparer.Ordinal.Equals(stream.StreamId, "reward"));
-        if (index < 0)
-        {
-            throw new InvalidOperationException("Reward RNG stream is missing.");
-        }
-        var existing = source.Rng.Streams[index];
+        var existing = source.Rng.GetStream("reward");
         if (existing.Codec != PrototypeRng.Codec
             || existing.StateBytes.Length != sizeof(ulong)
             || existing.CallCount != 0)
@@ -74,7 +67,7 @@ public static class PrototypePristineRewardProposal
         var candidate = source.Fork();
         var bytes = new byte[sizeof(ulong)];
         BinaryPrimitives.WriteUInt64LittleEndian(bytes, newInitialState);
-        candidate.Rng.ReplaceStreamAt(index, existing with
+        candidate.Rng.ReplaceStream("reward", existing with
         {
             StateBytes = bytes,
             CallCount = 0

@@ -1399,16 +1399,7 @@ public static class PrototypeNativeUnderdocksRunFactory
         // rolling this region's selected boss, avoiding a hidden extra
         // Overgrowth draw.
         var clean = PrototypeRng.CreateBundle(seed);
-        var combatIndex = Array.FindIndex(rng.Streams, stream =>
-            stream.StreamId == "combat");
-        var cleanCombatIndex = Array.FindIndex(clean.Streams, stream =>
-            stream.StreamId == "combat");
-        if (combatIndex < 0 || cleanCombatIndex < 0)
-        {
-            throw new InvalidOperationException("Missing combat RNG.");
-        }
-        rng.ReplaceStreamAt(combatIndex,
-            clean.Streams[cleanCombatIndex].Fork());
+        rng.ReplaceStream("combat", clean.GetStream("combat").Fork());
         var bosses = PrototypeNativeUnderdocks.NativeBossEncounterIds;
         RandomIndexDecisionV111 bossDecision;
         if (bossIndexProvider is null)

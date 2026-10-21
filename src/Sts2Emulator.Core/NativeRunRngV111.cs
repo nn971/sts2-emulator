@@ -51,8 +51,7 @@ public static class NativeRunRngV111
         NativeCombatRngEntryV111.Validate(state.World!.Combat!);
         foreach (var stream in active.RunStreams.Streams)
         {
-            var runStream = state.NativeRunRng.Streams.Single(
-                item => item.StreamId == stream.StreamId);
+            var runStream = state.NativeRunRng.GetStream(stream.StreamId);
             if (NativeRngV111.ToSnapshot(stream)
                 != NativeRngV111.ToSnapshot(runStream))
                 throw new InvalidOperationException(
