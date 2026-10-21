@@ -34,6 +34,7 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
     ReferenceNatureStateV111 InitialNatureState,
     ReferenceNatureStateV111 NatureState,
     ReferenceNatureDecisionV111[] DecisionTranscript)
+    : IReferenceNatureControlledActionSessionV111
 {
     [JsonIgnore]
     public SimulationStateV111<PrototypeMechanicsContinuationStateV111,
@@ -89,6 +90,81 @@ public sealed record ReferenceNatureEndlessConveyorSessionV111(
     {
         get => Stochastic.DecisionTranscript;
         init => Stochastic = Stochastic with { DecisionTranscript = value };
+    }
+
+    [JsonIgnore]
+    public GameAction Action => RequireAction(Origin, ActionId);
+
+    [JsonIgnore]
+    public ControlledStochasticDecisionV111[] ProviderDecisions
+    {
+        get
+        {
+            if (!Complete)
+                throw new InvalidOperationException(
+                    "A pending Endless Conveyor session has no completed provider prefix.");
+            var selections = SampleTranscript(
+                Origin, ActionId, InitialNatureState,
+                DecisionTranscript, PlannedSiteIds);
+            if (IsLegacyNativeFallback(Origin))
+            {
+                var probed = ProbeLegacyAction(Origin, ActionId);
+                return selections.Select(entry =>
+                {
+                    var matches = probed.Requests.Where(request =>
+                        request.SiteId == entry.Law.SiteId).ToArray();
+                    if (matches.Length != 1)
+                        throw new InvalidDataException(
+                            "Endless Conveyor prefix no longer reaches one request for '"
+                            + entry.Law.SiteId + "'.");
+                    var request = matches[0];
+                    ValidateLegacyFallbackRequest(
+                        Origin, probed.Run, request, entry.Law.SiteId);
+                    if (request.OwnerId != entry.Law.OwnerId ||
+                        request.Ordinal != entry.Law.Ordinal ||
+                        request.OperationKind != entry.Law.OperationKind ||
+                        request.SupportCount != entry.Law.Outcomes.Length)
+                        throw new InvalidDataException(
+                            "Endless Conveyor prefix request differs from its sampled law.");
+                    var decision = new RandomIndexDecisionV111(
+                        request, entry.Selection.OutcomeIndex,
+                        "controlled-v111");
+                    decision.Validate();
+                    return ControlledStochasticDecisionV111.FromIndex(
+                        decision);
+                }).ToArray();
+            }
+
+            return selections.Select(entry =>
+            {
+                if (entry.Law.SiteId ==
+                    PrototypeNativeEndlessConveyor.DishWeightedTicketSiteId)
+                {
+                    var conditioningRun = Origin.Phase == RunPhase.MapChoice
+                        ? Origin
+                        : CaptureDishPreDrawState(Origin, ActionId);
+                    var request = BuildUnitFloatRequest(
+                        Origin, entry.Law);
+                    return ReferenceNatureChanceLawDecisionV111.FromSelection(
+                        entry.Law,
+                        ControlledStochasticRequestV111.FromUnitFloat(request),
+                        entry.Selection, conditioningRun);
+                }
+
+                var indexRequest = BuildIndexRequest(Origin, entry.Law);
+                var controlledRequest =
+                    ControlledStochasticRequestV111.FromIndex(indexRequest);
+                return entry.Law.SiteId ==
+                    PrototypeNativePotionShop.UniformModelSiteId
+                    ? ReferenceNatureChanceLawDecisionV111
+                        .FromOrderedIndexSelection(entry.Law,
+                            controlledRequest, entry.Selection,
+                            entry.Law.Outcomes.Select(outcome =>
+                                outcome.OutcomeId).ToArray())
+                    : ReferenceNatureChanceLawDecisionV111.FromSelection(
+                        entry.Law, controlledRequest, entry.Selection);
+            }).ToArray();
+        }
     }
 
     public const string CurrentSchemaId =

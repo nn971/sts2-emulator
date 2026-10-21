@@ -249,6 +249,7 @@ public sealed record ReferenceNaturePunchOffFightSessionV111(
     ReferenceNatureStateV111 InitialNatureState,
     ReferenceNatureStateV111 NatureState,
     ReferenceNatureDecisionV111[] DecisionTranscript)
+    : IReferenceNatureControlledActionSessionV111
 {
     [System.Text.Json.Serialization.JsonIgnore]
     public SimulationStateV111<PrototypeMechanicsContinuationStateV111,
@@ -304,6 +305,61 @@ public sealed record ReferenceNaturePunchOffFightSessionV111(
     {
         get => Stochastic.DecisionTranscript;
         init => Stochastic = Stochastic with { DecisionTranscript = value };
+    }
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public GameAction Action => new PrototypeGameEngine()
+        .GetLegalActions(Origin)
+        .SingleOrDefault(candidate =>
+            PrototypeAiEnvironment.StableActionId(candidate) == ActionId)
+        ?? throw new InvalidOperationException(
+            "Punch Off fight action is no longer legal at its saved origin.");
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public ControlledStochasticDecisionV111[] ProviderDecisions
+    {
+        get
+        {
+            if (!Complete)
+                throw new InvalidOperationException(
+                    "A pending Punch Off fight session has no completed provider prefix.");
+            var plan = NativePunchOffFightPlanBuilderV111.Build(
+                Origin, ActionId, 0, []);
+            var natureState = InitialNatureState.Fork();
+            var priorIndices = new List<int>();
+            var decisions = new ControlledStochasticDecisionV111[2];
+            for (var ordinal = 0; ordinal < decisions.Length; ordinal++)
+            {
+                var prior = priorIndices.ToArray();
+                var law = ChanceLawEngineV111.QueryNativePunchOffFight(
+                    Origin, PrototypeNativePunchOff.ConstructHpOffsetSiteId,
+                    ordinal, prior, ActionId);
+                var selection = ReferenceNatureV111.SampleValidated(
+                    law, natureState);
+                var expected = new ReferenceNatureDecisionV111(
+                    law.LawId, law.EventId, selection.OutcomeId,
+                    selection.OutcomeIndex);
+                if (CanonicalJson.Sha256(expected) !=
+                    CanonicalJson.Sha256(DecisionTranscript[ordinal]))
+                    throw new InvalidDataException(
+                        "Punch Off fight provider prefix differs from its Nature transcript.");
+                var labels = law.Outcomes.Select(outcome =>
+                    outcome.OutcomeId).ToArray();
+                var mapped = ReferenceNatureChanceLawDecisionV111
+                    .FromOrderedIndexSelection(law,
+                        ControlledStochasticRequestV111.FromIndex(
+                            plan.Requests[ordinal]), selection, labels);
+                var indexDecision = mapped.IndexDecision ??
+                    throw new InvalidDataException(
+                        "Punch Off fight provider replay requires an index decision.");
+                decisions[ordinal] =
+                    ControlledStochasticDecisionV111.FromIndex(
+                        indexDecision, labels);
+                priorIndices.Add(selection.OutcomeIndex);
+                natureState = selection.NextState;
+            }
+            return decisions;
+        }
     }
 
     public const string CurrentSchemaId =

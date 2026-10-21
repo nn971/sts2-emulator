@@ -2922,6 +2922,9 @@ internal static class PrototypeAiJsonlServer
                                 "<side>_reference_nature_infested_automaton_handle",
                                 "<side>_reference_nature_glory_reflections_handle",
                                 "<side>_reference_nature_native_event_shuffle_handle",
+                                "<side>_reference_nature_endless_conveyor_handle",
+                                "<side>_reference_nature_punch_off_fight_handle",
+                                "<side>_reference_nature_punch_off_reward_handle",
                                 "<side>_origin_snapshot, <side>_actions, <side>_boundaries, and <side>_result_snapshot"
                             },
                             simulationProviderReplayComparisonScope =
@@ -9748,6 +9751,12 @@ internal static class PrototypeAiJsonlServer
                                 side + "_reference_nature_glory_reflections_handle";
                             var referenceNatureNativeEventShuffleHandleName =
                                 side + "_reference_nature_native_event_shuffle_handle";
+                            var referenceNatureEndlessConveyorHandleName =
+                                side + "_reference_nature_endless_conveyor_handle";
+                            var referenceNaturePunchOffFightHandleName =
+                                side + "_reference_nature_punch_off_fight_handle";
+                            var referenceNaturePunchOffRewardHandleName =
+                                side + "_reference_nature_punch_off_reward_handle";
                             var originName = side + "_origin_snapshot";
                             var actionsName = side + "_actions";
                             var boundariesName = side + "_boundaries";
@@ -9819,6 +9828,18 @@ internal static class PrototypeAiJsonlServer
                                 request.TryGetProperty(
                                     referenceNatureNativeEventShuffleHandleName,
                                     out var referenceNatureNativeEventShuffleHandleElement);
+                            bool hasReferenceNatureEndlessConveyorHandle =
+                                request.TryGetProperty(
+                                    referenceNatureEndlessConveyorHandleName,
+                                    out var referenceNatureEndlessConveyorHandleElement);
+                            bool hasReferenceNaturePunchOffFightHandle =
+                                request.TryGetProperty(
+                                    referenceNaturePunchOffFightHandleName,
+                                    out var referenceNaturePunchOffFightHandleElement);
+                            bool hasReferenceNaturePunchOffRewardHandle =
+                                request.TryGetProperty(
+                                    referenceNaturePunchOffRewardHandleName,
+                                    out var referenceNaturePunchOffRewardHandleElement);
                             if (hasScriptedRunHandle ||
                                 hasScriptedActionHandle ||
                                 hasSemanticNativeHandle ||
@@ -9835,7 +9856,10 @@ internal static class PrototypeAiJsonlServer
                                 hasReferenceNatureNativeEventGoldHandle ||
                                 hasReferenceNatureInfestedAutomatonHandle ||
                                 hasReferenceNatureGloryReflectionsHandle ||
-                                hasReferenceNatureNativeEventShuffleHandle)
+                                hasReferenceNatureNativeEventShuffleHandle ||
+                                hasReferenceNatureEndlessConveyorHandle ||
+                                hasReferenceNaturePunchOffFightHandle ||
+                                hasReferenceNaturePunchOffRewardHandle)
                             {
                                 if ((hasScriptedRunHandle ? 1 : 0) +
                                     (hasScriptedActionHandle ? 1 : 0) +
@@ -9853,7 +9877,10 @@ internal static class PrototypeAiJsonlServer
                                     (hasReferenceNatureNativeEventGoldHandle ? 1 : 0) +
                                     (hasReferenceNatureInfestedAutomatonHandle ? 1 : 0) +
                                     (hasReferenceNatureGloryReflectionsHandle ? 1 : 0) +
-                                    (hasReferenceNatureNativeEventShuffleHandle ? 1 : 0) > 1)
+                                    (hasReferenceNatureNativeEventShuffleHandle ? 1 : 0) +
+                                    (hasReferenceNatureEndlessConveyorHandle ? 1 : 0) +
+                                    (hasReferenceNaturePunchOffFightHandle ? 1 : 0) +
+                                    (hasReferenceNaturePunchOffRewardHandle ? 1 : 0) > 1)
                                     throw new ArgumentException(
                                         "Provide only one replay handle for " +
                                         side + ".");
@@ -9907,9 +9934,18 @@ internal static class PrototypeAiJsonlServer
                                 else if (hasReferenceNatureGloryReflectionsHandle)
                                     (handleElement, handleName) =
                                         (referenceNatureGloryReflectionsHandleElement, referenceNatureGloryReflectionsHandleName);
-                                else
+                                else if (hasReferenceNatureNativeEventShuffleHandle)
                                     (handleElement, handleName) =
                                         (referenceNatureNativeEventShuffleHandleElement, referenceNatureNativeEventShuffleHandleName);
+                                else if (hasReferenceNatureEndlessConveyorHandle)
+                                    (handleElement, handleName) =
+                                        (referenceNatureEndlessConveyorHandleElement, referenceNatureEndlessConveyorHandleName);
+                                else if (hasReferenceNaturePunchOffFightHandle)
+                                    (handleElement, handleName) =
+                                        (referenceNaturePunchOffFightHandleElement, referenceNaturePunchOffFightHandleName);
+                                else
+                                    (handleElement, handleName) =
+                                        (referenceNaturePunchOffRewardHandleElement, referenceNaturePunchOffRewardHandleName);
                                 if (handleElement.ValueKind !=
                                         JsonValueKind.String ||
                                     string.IsNullOrWhiteSpace(
@@ -10070,6 +10106,33 @@ internal static class PrototypeAiJsonlServer
                                                 nativeEventShuffle)
                                         : throw new InvalidOperationException(
                                             "Unknown ReferenceNature Native event-shuffle handle: " +
+                                            handle);
+                                if (hasReferenceNatureEndlessConveyorHandle)
+                                    return referenceNatureEndlessConveyorRunStateHandles
+                                        .TryGetValue(handle, out var endlessConveyor)
+                                        ? SimulationProviderReplayCaptureV111
+                                            .FromReferenceNatureControlledActionSession(
+                                                endlessConveyor)
+                                        : throw new InvalidOperationException(
+                                            "Unknown ReferenceNature Endless Conveyor handle: " +
+                                            handle);
+                                if (hasReferenceNaturePunchOffFightHandle)
+                                    return referenceNaturePunchOffFightRunStateHandles
+                                        .TryGetValue(handle, out var punchOffFight)
+                                        ? SimulationProviderReplayCaptureV111
+                                            .FromReferenceNatureControlledActionSession(
+                                                punchOffFight)
+                                        : throw new InvalidOperationException(
+                                            "Unknown ReferenceNature Punch Off fight handle: " +
+                                            handle);
+                                if (hasReferenceNaturePunchOffRewardHandle)
+                                    return referenceNaturePunchOffRewardRunStateHandles
+                                        .TryGetValue(handle, out var punchOffReward)
+                                        ? SimulationProviderReplayCaptureV111
+                                            .FromReferenceNatureControlledActionSession(
+                                                punchOffReward)
+                                        : throw new InvalidOperationException(
+                                            "Unknown ReferenceNature Punch Off reward handle: " +
                                             handle);
                                 return semanticStates.TryGetValue(handle,
                                         out var semanticNative)

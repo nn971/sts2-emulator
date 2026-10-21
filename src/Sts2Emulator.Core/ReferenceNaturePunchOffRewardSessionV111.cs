@@ -289,6 +289,7 @@ public sealed record ReferenceNaturePunchOffRewardSessionV111(
     ReferenceNatureStateV111 InitialNatureState,
     ReferenceNatureStateV111 NatureState,
     ReferenceNatureDecisionV111[] DecisionTranscript)
+    : IReferenceNatureControlledActionSessionV111
 {
     [System.Text.Json.Serialization.JsonIgnore]
     public SimulationStateV111<PrototypeMechanicsContinuationStateV111,
@@ -344,6 +345,67 @@ public sealed record ReferenceNaturePunchOffRewardSessionV111(
     {
         get => Stochastic.DecisionTranscript;
         init => Stochastic = Stochastic with { DecisionTranscript = value };
+    }
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public GameAction Action => new PrototypeGameEngine()
+        .GetLegalActions(Origin)
+        .SingleOrDefault(candidate =>
+            PrototypeAiEnvironment.StableActionId(candidate) == ActionId)
+        ?? throw new InvalidOperationException(
+            "Punch Off reward action is no longer legal at its saved origin.");
+
+    [System.Text.Json.Serialization.JsonIgnore]
+    public ControlledStochasticDecisionV111[] ProviderDecisions
+    {
+        get
+        {
+            if (!Complete)
+                throw new InvalidOperationException(
+                    "A pending Punch Off reward session has no completed provider prefix.");
+            var natureState = InitialNatureState.Fork();
+            var priorIndices = new List<int>();
+            var decisions = new ControlledStochasticDecisionV111[2];
+            for (var index = 0; index < decisions.Length; index++)
+            {
+                var siteId = index == 0
+                    ? PrototypeNativePunchOff.RelicRewardSiteId
+                    : PrototypeNativePunchOff.PotionRewardSiteId;
+                var ordinal = index == 0
+                    ? CurrentRewardCursor(Origin)
+                    : unchecked(CurrentRewardCursor(Origin) + 1);
+                var prior = priorIndices.ToArray();
+                var plan = NativePunchOffRewardPlanBuilderV111.Build(
+                    Origin, siteId, ordinal, prior, ActionId);
+                var law = ChanceLawEngineV111.QueryNativePunchOffReward(
+                    Origin, siteId, ordinal, prior, ActionId);
+                var selection = ReferenceNatureV111.SampleValidated(
+                    law, natureState);
+                var expected = new ReferenceNatureDecisionV111(
+                    law.LawId, law.EventId, selection.OutcomeId,
+                    selection.OutcomeIndex);
+                if (CanonicalJson.Sha256(expected) !=
+                    CanonicalJson.Sha256(DecisionTranscript[index]))
+                    throw new InvalidDataException(
+                        "Punch Off reward provider prefix differs from its Nature transcript.");
+                var labels = law.Outcomes.Select(outcome =>
+                    outcome.OutcomeId).ToArray();
+                var mapped = ReferenceNatureChanceLawDecisionV111
+                    .FromOrderedIndexSelection(law,
+                        ControlledStochasticRequestV111.FromIndex(
+                            NativePunchOffRewardPlanBuilderV111.Request(plan)),
+                        selection, labels);
+                var indexDecision = mapped.IndexDecision ??
+                    throw new InvalidDataException(
+                        "Punch Off reward provider replay requires an index decision.");
+                decisions[index] =
+                    ControlledStochasticDecisionV111.FromIndex(
+                        indexDecision, labels);
+                priorIndices.Add(selection.OutcomeIndex);
+                natureState = selection.NextState;
+            }
+            return decisions;
+        }
     }
 
     public const string CurrentSchemaId =
