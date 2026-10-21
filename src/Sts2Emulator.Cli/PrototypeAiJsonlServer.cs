@@ -2908,7 +2908,8 @@ internal static class PrototypeAiJsonlServer
                                 "<side>_scripted_run_handle",
                                 "<side>_scripted_run_action_handle",
                                 "<side>_semantic_native_policy_handle",
-                                "<side>_reference_nature_run_action_handle (legacy continue_act)",
+                                "<side>_reference_nature_run_action_handle",
+                                "<side>_reference_nature_neow_offer_handle (setup interval; no player actions)",
                                 "<side>_reference_nature_event_choice_handle",
                                 "<side>_reference_nature_merchant_handle",
                                 "<side>_reference_nature_treasure_handle",
@@ -9725,6 +9726,8 @@ internal static class PrototypeAiJsonlServer
                                 side + "_semantic_native_policy_handle";
                             var referenceNatureRunActionHandleName =
                                 side + "_reference_nature_run_action_handle";
+                            var referenceNatureNeowOfferHandleName =
+                                side + "_reference_nature_neow_offer_handle";
                             var referenceNatureEventChoiceHandleName =
                                 side + "_reference_nature_event_choice_handle";
                             var referenceNatureMerchantHandleName =
@@ -9776,6 +9779,10 @@ internal static class PrototypeAiJsonlServer
                                 request.TryGetProperty(
                                     referenceNatureRunActionHandleName,
                                     out var referenceNatureRunActionHandleElement);
+                            bool hasReferenceNatureNeowOfferHandle =
+                                request.TryGetProperty(
+                                    referenceNatureNeowOfferHandleName,
+                                    out var referenceNatureNeowOfferHandleElement);
                             bool hasReferenceNatureEventChoiceHandle =
                                 request.TryGetProperty(
                                     referenceNatureEventChoiceHandleName,
@@ -9844,6 +9851,7 @@ internal static class PrototypeAiJsonlServer
                                 hasScriptedActionHandle ||
                                 hasSemanticNativeHandle ||
                                 hasReferenceNatureRunActionHandle ||
+                                hasReferenceNatureNeowOfferHandle ||
                                 hasReferenceNatureEventChoiceHandle ||
                                 hasReferenceNatureMerchantHandle ||
                                 hasReferenceNatureTreasureHandle ||
@@ -9865,6 +9873,7 @@ internal static class PrototypeAiJsonlServer
                                     (hasScriptedActionHandle ? 1 : 0) +
                                     (hasSemanticNativeHandle ? 1 : 0) +
                                     (hasReferenceNatureRunActionHandle ? 1 : 0) +
+                                    (hasReferenceNatureNeowOfferHandle ? 1 : 0) +
                                     (hasReferenceNatureEventChoiceHandle ? 1 : 0) +
                                     (hasReferenceNatureMerchantHandle ? 1 : 0) +
                                     (hasReferenceNatureTreasureHandle ? 1 : 0) +
@@ -9898,6 +9907,9 @@ internal static class PrototypeAiJsonlServer
                                 else if (hasReferenceNatureRunActionHandle)
                                     (handleElement, handleName) =
                                         (referenceNatureRunActionHandleElement, referenceNatureRunActionHandleName);
+                                else if (hasReferenceNatureNeowOfferHandle)
+                                    (handleElement, handleName) =
+                                        (referenceNatureNeowOfferHandleElement, referenceNatureNeowOfferHandleName);
                                 else if (hasReferenceNatureEventChoiceHandle)
                                     (handleElement, handleName) =
                                         (referenceNatureEventChoiceHandleElement, referenceNatureEventChoiceHandleName);
@@ -9988,6 +10000,15 @@ internal static class PrototypeAiJsonlServer
                                                 referenceNatureRunAction)
                                         : throw new InvalidOperationException(
                                             "Unknown ReferenceNature run-action handle: " +
+                                            handle);
+                                if (hasReferenceNatureNeowOfferHandle)
+                                    return referenceNatureNeowOfferStates
+                                        .TryGetValue(handle, out var neowOffer)
+                                        ? SimulationProviderReplayCaptureV111
+                                            .FromReferenceNatureNeowOfferSession(
+                                                neowOffer)
+                                        : throw new InvalidOperationException(
+                                            "Unknown ReferenceNature Neow-offer handle: " +
                                             handle);
                                 if (hasReferenceNatureEventChoiceHandle)
                                     return referenceNatureEventChoiceStates

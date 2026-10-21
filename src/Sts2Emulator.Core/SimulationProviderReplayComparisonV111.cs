@@ -130,13 +130,16 @@ public static class SimulationProviderReplayCaptureProvenanceV111
         "reference-nature-event-choice-replay-validated-v1";
     public const string ReferenceNatureControlledActionReplayValidated =
         "reference-nature-controlled-action-replay-validated-v1";
+    public const string ReferenceNatureNeowOfferReplayValidated =
+        "reference-nature-neow-offer-replay-validated-v1";
 
     public static bool IsKnown(string? provenance) => provenance is
         CallerSupplied or ScriptedRunReplayValidated or
         ScriptedActionReplayValidated or SemanticNativePolicyReplayValidated or
         ReferenceNatureRunActionReplayValidated or
         ReferenceNatureEventChoiceReplayValidated or
-        ReferenceNatureControlledActionReplayValidated;
+        ReferenceNatureControlledActionReplayValidated or
+        ReferenceNatureNeowOfferReplayValidated;
 }
 
 /// <summary>
@@ -377,6 +380,50 @@ public sealed record SimulationProviderReplayCaptureV111(
             replay.Origin, actions, decisions, replay.Run,
             SimulationProviderReplayCaptureProvenanceV111
                 .ReferenceNatureEventChoiceReplayValidated);
+    }
+
+    /// <summary>
+    /// Builds a capture for the run-setup interval owned by a completed Neow
+    /// offer session. The interval has no player actions; its request plan is
+    /// reconstructed from the validated selected prefix.
+    /// </summary>
+    public static SimulationProviderReplayCaptureV111
+        FromReferenceNatureNeowOfferSession(
+            ReferenceNatureNeowOfferSessionV111 session)
+    {
+        ArgumentNullException.ThrowIfNull(session);
+        ReferenceNatureNeowOfferSessionV111 replay;
+        using (RandomBoundaryJournalV111.Begin())
+            replay = ReferenceNatureNeowOfferSessionV111.Restore(
+                ReferenceNatureNeowOfferSessionV111.Save(session));
+        if (!replay.Complete)
+            throw new InvalidOperationException(
+                "Provider replay capture requires a completed ReferenceNature Neow offer.");
+
+        var plan = NeowOfferDecisionPlanBuilderV111.Build(
+            replay.Origin.RunSeed, replay.Origin.Ascension,
+            replay.DecisionTranscript.Select(decision =>
+                decision.OutcomeIndex).ToArray());
+        if (!plan.Complete || plan.Steps.Length !=
+                replay.DecisionTranscript.Length)
+            throw new InvalidDataException(
+                "ReferenceNature Neow offer plan does not cover its saved transcript.");
+        var decisions = plan.Steps.Select(step =>
+        {
+            var selectedIndex = step.SelectedIndex ??
+                throw new InvalidDataException(
+                    "Completed ReferenceNature Neow offer has a pending request.");
+            var indexDecision = new RandomIndexDecisionV111(
+                step.Request, selectedIndex, "controlled-v111");
+            var decision = ControlledStochasticDecisionV111.FromIndex(
+                indexDecision, step.OutcomeIds);
+            decision.Validate();
+            return decision;
+        }).ToArray();
+        return FromScriptedDecisions(
+            replay.Origin, [], decisions, replay.Run,
+            SimulationProviderReplayCaptureProvenanceV111
+                .ReferenceNatureNeowOfferReplayValidated);
     }
 
     /// <summary>

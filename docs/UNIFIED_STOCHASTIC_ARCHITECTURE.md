@@ -645,6 +645,12 @@ actions with no appended trace and an empty Nature transcript remain valid;
 specialized continuations whose trace omits part of the prefix are rejected.
 JSONL accepts
 `<side>_reference_nature_run_action_handle` for this path.
+`FromReferenceNatureNeowOfferSession` captures the run-setup interval owned by
+a completed Neow offer session. It reconstructs the exact ordered request
+plan from the session's validated outcome prefix, including each conditional
+offer and positive-pool shuffle swap, and records it with no player actions.
+JSONL accepts `<side>_reference_nature_neow_offer_handle` for this setup
+interval.
 The JSONL `provider_replay_compare` operation constructs a current capture for
 each side either from a completed scripted-run or scripted-action handle, or
 from replay-validated semantic Native-policy, ReferenceNature event-choice,
