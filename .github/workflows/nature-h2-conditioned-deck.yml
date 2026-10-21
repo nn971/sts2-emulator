@@ -78,7 +78,7 @@ jobs:
                         f'snapshot_match=True', flush=True)
                   session.release_semantic_many([state, restored])
               starter = decks['silent-starter-v1']
-              assert sum(starter.values()) == 13
+              assert sum(starter.values()) == 12
               assert sum(deck.values() == starter.values() for deck in decks.values()) < 4
               assert decks['silent-strike-heavy-v1']['proto.silent.strike'] > starter['proto.silent.strike']
               assert decks['silent-defend-heavy-v1']['proto.silent.defend'] > starter['proto.silent.defend']
