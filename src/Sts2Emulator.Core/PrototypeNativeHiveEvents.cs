@@ -40,6 +40,8 @@ public static class PrototypeNativeHiveEvents
         "proto.native.glory.war_historian_repy";
     public const string WarHistorianRepyRelicShuffleSiteId =
         "event.war_historian.repy.relic_offer.shuffle_swap_index";
+    public const string WarHistorianRepyPotionOfferSiteId =
+        "event.war_historian.repy.potion_offer.index_draw";
     public const string HistoryCourseId =
         "proto.native.glory.history_course";
 

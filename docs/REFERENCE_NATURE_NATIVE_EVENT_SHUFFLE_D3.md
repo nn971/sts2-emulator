@@ -9,8 +9,9 @@ are the Light option in Doors of Light and Dark, Fragrant Mushroom's eligible
 card shuffle, Tinker Time's type and rider offer stages, and Battleworn
 Dummy's setting 2 upgrade shuffle. It also covers Fake Merchant's six-of-nine
 relic stock shuffle when a configured Event-node action's ordinary event
-selection resolves to Fake Merchant, and War Historian Repy's relic offer
-when its initial chest action is selected in configured native regional mode.
+selection resolves to Fake Merchant, and War Historian Repy's relic and potion
+offers from its initial chest action in configured Native and Native-regional
+legacy-provider modes.
 The run-stream resolvers cover one War Hammer after an action immediately
 wins an ordinary Elite fight and Fishing Rod's triggered combat-end upgrade
 indices after an ordinary combat victory. The same saved replay also covers
@@ -57,9 +58,11 @@ zero or one eligible card remain outside this continuation.
 
 Repy accepts only the page-zero `unlock_chest` action, before any chest reward
 is generated. It reuses the source-shaped ordered unowned relic pool and
-captures the `player.rewards` cursor before the shuffle. Admission probes the
-ordinary action and requires exactly one matching relic shuffle followed by
-two potion draws. The session conditions both potion index laws on the full
+probes the ordinary action for one complete relic shuffle followed by two
+potion draws. Configured Native runs capture the `player.rewards` cursor.
+Native-regional runs without `NativeRunRng` capture the legacy `reward` call
+ordinal, the generic distinct-pool shuffle request, and both event-specific
+potion requests. The session conditions each potion index law on the full
 relic-swap prefix and any earlier potion index. The player-stream assignment
 remains a source hypothesis, and the event has no Native event RNG context at
 this boundary.
@@ -104,11 +107,14 @@ can have unequal weights. The supported Native-regional fallback laws use
 equal weights over the saved legacy `event` request support and remain
 `UNVERIFIED`; their typed ordinal is the saved event call count plus the swap
 offset. These statuses do not establish stream
-attribution, seed frequencies, or seeded parity. Repy's two potion laws expose
+attribution, seed frequencies, or seeded parity. Repy's legacy `reward`
+shuffle and potion laws also use equal-index `UNVERIFIED` weights and derive
+request ordinals from the saved reward call count plus their prefix offset.
+Repy's two potion laws expose
 indices into the configured potion pool, use stable potion-and-index
 identities, and include the full preceding shuffle and potion prefix. Their
-bounded-index transform is `SOURCE_VERIFIED` on that declared support; the
-`player.rewards` stream assignment remains a hypothesis.
+configured Native bounded-index transform is `SOURCE_VERIFIED` on that
+declared support; the `player.rewards` stream assignment remains a hypothesis.
 
 Fishing Rod's pending law is the exact Native `NextInt` mass over the current
 captured request's index support. Its outcome identifies an index; the
@@ -136,13 +142,13 @@ law is conditioned on the legal map action and the ordinary event-selection
 result being Fake Merchant, then on the ordered nine-relic stock pool and
 preceding swap indices.
 Repy's law is conditioned on its initial chest action, ordered unowned relic
-pool, captured `player.rewards` cursor, and preceding swap indices. Its source
-stream attribution remains a hypothesis; its bounded-index transform law is
-`SOURCE_VERIFIED` under the uniform-grid model. Its two potion-index laws use
-the full relic-swap prefix and preceding potion indices; the potion picks
-remain independent with replacement in the configured support and use the
-same `SOURCE_VERIFIED` bounded-index transform. These statuses do not verify
-stream attribution, seed frequencies, or seeded parity.
+pool, provider cursor or legacy reward ordinal, and preceding swap indices.
+Configured Native bounded-index transforms are `SOURCE_VERIFIED` under the
+uniform-grid model; Native-regional fallback laws remain `UNVERIFIED`. Its two
+potion-index laws use the full relic-swap prefix and preceding potion indices;
+the potion picks remain independent with replacement in the configured
+support. These statuses do not verify stream attribution, seed frequencies, or
+seeded parity.
 
 `ReferenceNatureNativeEventShuffleSessionV111` stores the original run and
 sampler cursor while outcomes are pending. Once every swap has been sampled,
@@ -183,8 +189,9 @@ Tooth return remain legacy draws and advance the legacy cursor; those draws do
 not enter the Tooth Nature prefix.
 
 For Repy, replay scripts the relic Fisher–Yates requests and both potion
-index requests as one typed prefix. The `player.rewards` cursor remains at its
-captured entry state, while request ordinals preserve the source call order
+index requests as one typed prefix. Configured Native runs retain the
+`player.rewards` cursor at its captured entry state; Native-regional fallback
+retains the legacy `reward` call count. Request ordinals preserve source order
 across the scripted shuffle and potion picks. The event RNG field remains
 absent and no `scripted-v111` event-context marker is added. This models the
 emulator's current stream hypothesis; it does not establish Native source

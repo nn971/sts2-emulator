@@ -170,13 +170,15 @@ public sealed partial class PrototypeGameEngine
                 return nativeRunRng is { } nativeRewardRng
                     ? NativePlayerRngV111.ChooseIndex(
                         nativeRewardRng,
-                        "event.war_historian.repy.potion_offer.index_draw",
+                        PrototypeNativeHiveEvents
+                            .WarHistorianRepyPotionOfferSiteId,
                         NativePlayerRngV111.RewardsStreamId,
                         ownerId,
                         potions.Length)
                     : LegacyRandomChoiceV111.ChooseIndexRange(
                         state.Rng,
-                        "event.war_historian.repy.potion_offer.index_draw",
+                        PrototypeNativeHiveEvents
+                            .WarHistorianRepyPotionOfferSiteId,
                         "reward",
                         ownerId,
                         potions.Length).SelectedIndex;

@@ -208,7 +208,8 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
                             return true;
                         return isRepyRelicShuffle &&
                             request.SiteId ==
-                                "event.war_historian_repy.potion_offer.index_draw";
+                                PrototypeNativeHiveEvents
+                                    .WarHistorianRepyPotionOfferSiteId;
                     },
                     indexFallbackProvider: isRepyRelicShuffle
                         ? new NativeRandomIndexProviderV111() : null);
@@ -290,7 +291,8 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
                     .Take(2).Where((entry, index) =>
                     entry.ProviderMode != "controlled-v111" ||
                     entry.Request.SiteId !=
-                        "event.war_historian_repy.potion_offer.index_draw" ||
+                        PrototypeNativeHiveEvents
+                            .WarHistorianRepyPotionOfferSiteId ||
                     entry.Request.OwnerId !=
                         $"event:war_historian_repy:potion_offer:{index}" ||
                     entry.Request.OperationKind != "choose_index" ||
@@ -300,7 +302,8 @@ internal static class ReferenceNatureNativeEventIndexReplayV111
                     .Where((entry, index) =>
                         entry.ProviderMode != "native-v111" ||
                         entry.Request.SiteId !=
-                            "event.war_historian_repy.potion_offer.index_draw" ||
+                            PrototypeNativeHiveEvents
+                                .WarHistorianRepyPotionOfferSiteId ||
                         entry.Request.OwnerId !=
                             $"event:war_historian_repy:potion_offer:{index + 2}" ||
                         entry.Request.OperationKind != "choose_index" ||

@@ -18,7 +18,8 @@ internal sealed record NativeEventShufflePlanV111(
     bool PreserveEventRng = true,
     string? ExpectedUnscriptedStreamId = null,
     int ExpectedUnscriptedDrawCount = 0,
-    int? LegacyEventOrdinalBase = null)
+    int? LegacyEventOrdinalBase = null,
+    int? LegacyRewardOrdinalBase = null)
 {
     public bool IsFishingRodUpgrade =>
         SiteId == PrototypeGameEngine.FishingRodUpgradeSiteId;
@@ -44,13 +45,23 @@ internal sealed record NativeEventShufflePlanV111(
                 "Combat-end index requests are captured from their source boundary and are not shuffle swap requests.");
         if (ordinal < 0 || ordinal >= SwapCount)
             throw new ArgumentOutOfRangeException(nameof(ordinal));
+        var requestSiteId = LegacyRewardOrdinalBase is not null
+            ? StochasticSiteRegistryV111.RandomPoolDistinctShuffleSiteId
+            : SiteId;
+        var requestOwnerId = LegacyRewardOrdinalBase is not null
+            ? PrototypeRooms.DistinctPoolShuffleOwnerId(
+                "reward", 2, OrderedCandidateIds)
+            : OwnerId;
         var request = new RandomIndexRequestV111(
-            SiteId, StreamId, OwnerId,
-            LegacyEventOrdinalBase is { } legacyOrdinalBase
+            requestSiteId, StreamId, requestOwnerId,
+            LegacyRewardOrdinalBase is { } legacyRewardOrdinalBase
+                ? checked(legacyRewardOrdinalBase + ordinal)
+                : LegacyEventOrdinalBase is { } legacyOrdinalBase
                 ? checked(legacyOrdinalBase + ordinal) : ordinal, [],
             OperationKind: "bounded_integer",
             BoundedCount: CandidateCount - ordinal);
-        if (LegacyEventOrdinalBase is null)
+        if (LegacyEventOrdinalBase is null &&
+            LegacyRewardOrdinalBase is null)
             request.ValidateForNativeProvider();
         else
             request.ValidateForLegacyProvider();
@@ -62,11 +73,24 @@ internal sealed record NativeEventShufflePlanV111(
         if (ordinal < SwapCount)
             return Request(ordinal);
         if (!IsRepyChestOffer || ordinal >= TotalChoiceCount ||
-            NativeCursorBefore is null)
+            NativeCursorBefore is null && LegacyRewardOrdinalBase is null)
             throw new ArgumentOutOfRangeException(nameof(ordinal));
         var potionOrdinal = ordinal - SwapCount;
+        if (LegacyRewardOrdinalBase is { } legacyRewardOrdinalBase)
+        {
+            var legacyRequest = new RandomIndexRequestV111(
+                PrototypeNativeHiveEvents.WarHistorianRepyPotionOfferSiteId,
+                "reward",
+                $"event:war_historian_repy:potion_offer:{potionOrdinal}",
+                checked(legacyRewardOrdinalBase + SwapCount + potionOrdinal),
+                Enumerable.Range(0, PrototypeContent.PotionPool.Length)
+                    .ToArray(),
+                OperationKind: "choose_index");
+            legacyRequest.ValidateForLegacyProvider();
+            return legacyRequest;
+        }
         var request = new RandomIndexRequestV111(
-            "event.war_historian.repy.potion_offer.index_draw",
+            PrototypeNativeHiveEvents.WarHistorianRepyPotionOfferSiteId,
             NativePlayerRngV111.RewardsStreamId,
             $"event:war_historian_repy:potion_offer:{potionOrdinal}",
             checked(NativeCursorBefore.Counter + SwapCount + potionOrdinal),
@@ -175,6 +199,11 @@ internal static class NativeEventShufflePlanBuilderV111
                 "No native event shuffle is pending at this event page.")
         };
         ArgumentException.ThrowIfNullOrWhiteSpace(siteId);
+        if (evt.EventId == PrototypeNativeHiveEvents.WarHistorianRepyId &&
+            siteId == PrototypeNativeHiveEvents
+                .WarHistorianRepyPotionOfferSiteId)
+            siteId = PrototypeNativeHiveEvents
+                .WarHistorianRepyRelicShuffleSiteId;
         var legacyEventShuffleFallback = origin.NativeRunRng is null &&
             activeEvent is not null &&
             PrototypeGameEngine.UsesNativeRegionalSystems(world) &&
@@ -182,17 +211,20 @@ internal static class NativeEventShufflePlanBuilderV111
             activeEvent.NativeEventRngProviderMode is null &&
             StochasticSiteRegistryV111.NativeEventContextShuffleSiteIds
                 .Contains(siteId, StringComparer.Ordinal);
+        int? legacyRewardOrdinalBase = null;
+        var legacyRepyFallback = origin.NativeRunRng is null &&
+            siteId == PrototypeNativeHiveEvents
+                .WarHistorianRepyRelicShuffleSiteId && activeEvent is not null &&
+            PrototypeGameEngine.UsesNativeRegionalSystems(world) &&
+            activeEvent.NativeEventRng is null &&
+            activeEvent.NativeEventRngProviderMode is null;
         if (origin.NativeRunRng is null && !improvementVictoryAction &&
-                !paelsToothVictoryAction && !legacyEventShuffleFallback ||
+                !paelsToothVictoryAction && !legacyEventShuffleFallback &&
+                !legacyRepyFallback ||
             string.IsNullOrWhiteSpace(origin.RunSeed) &&
-                !legacyEventShuffleFallback)
+                !legacyEventShuffleFallback && !legacyRepyFallback)
             throw new InvalidOperationException(
                 "Native shuffle Nature choices require configured Native RNG, a supported legacy event shuffle, or an admitted combat-end fallback.");
-        if (evt.EventId == PrototypeNativeHiveEvents.WarHistorianRepyId &&
-            siteId == "event.war_historian.repy.potion_offer.index_draw")
-            siteId = PrototypeNativeHiveEvents
-                .WarHistorianRepyRelicShuffleSiteId;
-
         var battlewornVictoryAction =
             origin.Phase == RunPhase.Combat &&
             evt.EventId == PrototypeNativeGloryEvents.BattlewornDummyId &&
@@ -411,77 +443,129 @@ internal static class NativeEventShufflePlanBuilderV111
                 throw new InvalidOperationException(
                     "War Historian Repy chest action is not legal in the current event state.");
 
-            using var shuffleProbe = NativeEventRandomProbeV111.Begin();
-            using var journal = RandomBoundaryJournalV111.Begin();
-            using var eventJournal = NativeEngineEventJournalV111.Begin();
-            var projected = new PrototypeGameEngine().Step(
-                origin.Fork(), replayAction).State;
-            var captures = shuffleProbe.ShuffleCaptures.Where(capture =>
-                capture.SiteId == siteId).ToArray();
             var candidates =
                 PrototypeNativeHiveEvents.WarHistorianRepyRelicOfferCandidates(
                     origin.Player);
-            var rewardStreamBefore = origin.NativeRunRng?.Streams
-                .SingleOrDefault(stream => stream.StreamId ==
-                    NativePlayerRngV111.RewardsStreamId);
-            var rewardStreamAfter = projected.NativeRunRng?.Streams
-                .SingleOrDefault(stream => stream.StreamId ==
-                    NativePlayerRngV111.RewardsStreamId);
-            var rewardRequests = journal.Entries.Where(entry =>
-                entry.Request.StreamId ==
-                    NativePlayerRngV111.RewardsStreamId).ToArray();
             var expectedSwapCount = Math.Max(0, candidates.Length - 1);
-            if (captures.Length != 1 || rewardStreamBefore is null ||
-                rewardStreamAfter is null ||
-                captures[0].NativeStreamId !=
-                    NativePlayerRngV111.RewardsStreamId ||
-                captures[0].NativeCursorBefore is null ||
-                captures[0].OwnerId !=
-                    "event:war_historian_repy:relic_offer" ||
-                !captures[0].OrderedCandidateIds.SequenceEqual(
-                    candidates, StringComparer.Ordinal) ||
-                NativeRngV111.ToSnapshot(rewardStreamBefore) !=
-                    captures[0].NativeCursorBefore ||
-                projected.Phase != RunPhase.Reward ||
-                projected.World?.Event is not
-                    {
-                        EventId: PrototypeNativeHiveEvents.WarHistorianRepyId,
-                        NativePageIndex: 2,
-                        ChosenChoiceId: "unlock_chest",
-                        NativeEventRng: null,
-                        NativeEventRngProviderMode: null,
-                        RepyChestPotionIds.Length: 2,
-                        RepyChestRelicIds.Length: 2,
-                        RepyChestGroupsResolved: 1
-                    } ||
-                rewardRequests.Length != expectedSwapCount + 2 ||
-                rewardRequests.Take(expectedSwapCount).Where((entry, index) =>
-                    entry.Request.SiteId != siteId ||
-                    entry.Request.OwnerId !=
+            if (legacyRepyFallback)
+            {
+                var rewardOrdinal = GetLegacyRewardOrdinal(origin);
+                RunState projected;
+                RandomBoundaryEventV111[] rewardRequests;
+                using (var journal = RandomBoundaryJournalV111.Begin())
+                using (NativeEngineEventJournalV111.Begin())
+                {
+                    projected = new PrototypeGameEngine().Step(
+                        origin.Fork(), replayAction).State;
+                    rewardRequests = journal.Entries.Where(entry =>
+                        entry.Request.StreamId == "reward").ToArray();
+                }
+                var legacyOwner = PrototypeRooms.DistinctPoolShuffleOwnerId(
+                    "reward", 2, candidates);
+                if (candidates.Length < 2 ||
+                    PrototypeContent.PotionPool.Length == 0 ||
+                    rewardRequests.Length != expectedSwapCount + 2 ||
+                    rewardRequests.Take(expectedSwapCount).Where((entry, index) =>
+                        entry.Request.SiteId !=
+                            StochasticSiteRegistryV111
+                                .RandomPoolDistinctShuffleSiteId ||
+                        entry.Request.OwnerId != legacyOwner ||
+                        entry.Request.Ordinal != checked(rewardOrdinal + index) ||
+                        entry.Request.OperationKind != "bounded_integer" ||
+                        entry.Request.BoundedCount != candidates.Length - index ||
+                        entry.ProviderMode != "legacy-prototype-v0" ||
+                        entry.NativeCursorBefore is not null ||
+                        entry.NativeCursorAfter is not null).Any() ||
+                    rewardRequests.Skip(expectedSwapCount).Where((entry, index) =>
+                        entry.Request.SiteId !=
+                            PrototypeNativeHiveEvents
+                                .WarHistorianRepyPotionOfferSiteId ||
+                        entry.Request.OwnerId !=
+                            $"event:war_historian_repy:potion_offer:{index}" ||
+                        entry.Request.Ordinal != checked(rewardOrdinal +
+                            expectedSwapCount + index) ||
+                        entry.Request.OperationKind != "choose_index" ||
+                        entry.Request.SupportCount !=
+                            PrototypeContent.PotionPool.Length ||
+                        entry.ProviderMode != "legacy-prototype-v0" ||
+                        entry.NativeCursorBefore is not null ||
+                        entry.NativeCursorAfter is not null).Any() ||
+                    GetLegacyRewardOrdinal(projected) !=
+                        checked(rewardOrdinal + expectedSwapCount + 2) ||
+                    !IsCompletedRepyChest(projected))
+                    throw new InvalidOperationException(
+                        "Native-regional War Historian Repy must emit exactly its reward relic-shuffle and two potion requests.");
+                orderedCandidateIds = candidates;
+                ownerId = legacyOwner;
+                legacyRewardOrdinalBase = rewardOrdinal;
+                nativeRngEventId = string.Empty;
+            }
+            else
+            {
+                using var shuffleProbe = NativeEventRandomProbeV111.Begin();
+                using var journal = RandomBoundaryJournalV111.Begin();
+                using var eventJournal = NativeEngineEventJournalV111.Begin();
+                var projected = new PrototypeGameEngine().Step(
+                    origin.Fork(), replayAction).State;
+                var captures = shuffleProbe.ShuffleCaptures.Where(capture =>
+                    capture.SiteId == siteId).ToArray();
+                var rewardStreamBefore = origin.NativeRunRng?.Streams
+                    .SingleOrDefault(stream => stream.StreamId ==
+                        NativePlayerRngV111.RewardsStreamId);
+                var rewardStreamAfter = projected.NativeRunRng?.Streams
+                    .SingleOrDefault(stream => stream.StreamId ==
+                        NativePlayerRngV111.RewardsStreamId);
+                var rewardRequests = journal.Entries.Where(entry =>
+                    entry.Request.StreamId ==
+                        NativePlayerRngV111.RewardsStreamId).ToArray();
+                if (captures.Length != 1 || rewardStreamBefore is null ||
+                    rewardStreamAfter is null ||
+                    captures[0].NativeStreamId !=
+                        NativePlayerRngV111.RewardsStreamId ||
+                    captures[0].NativeCursorBefore is null ||
+                    captures[0].OwnerId !=
                         "event:war_historian_repy:relic_offer" ||
-                    entry.Request.Ordinal != index ||
-                    entry.Request.OperationKind != "bounded_integer" ||
-                    entry.Request.BoundedCount != candidates.Length - index ||
-                    entry.ProviderMode != "native-v111").Any() ||
-                rewardRequests.Skip(expectedSwapCount).Where((entry, index) =>
-                    entry.Request.SiteId !=
-                        "event.war_historian_repy.potion_offer.index_draw" ||
-                    entry.Request.OwnerId !=
-                        $"event:war_historian_repy:potion_offer:{index}" ||
-                    entry.Request.OperationKind != "choose_index" ||
-                    entry.Request.SupportCount !=
-                        PrototypeContent.PotionPool.Length ||
-                    entry.ProviderMode != "native-v111").Any() ||
-                unchecked((uint)(NativeRngV111.ToSnapshot(
-                    rewardStreamAfter).Counter -
-                    NativeRngV111.ToSnapshot(rewardStreamBefore).Counter)) !=
-                    unchecked((uint)(expectedSwapCount + 2)))
-                throw new InvalidOperationException(
-                    "War Historian Repy chest action must perform exactly one relic shuffle and two player.rewards potion draws.");
-            orderedCandidateIds = captures[0].OrderedCandidateIds;
+                    !captures[0].OrderedCandidateIds.SequenceEqual(
+                        candidates, StringComparer.Ordinal) ||
+                    NativeRngV111.ToSnapshot(rewardStreamBefore) !=
+                        captures[0].NativeCursorBefore ||
+                    !IsCompletedRepyChest(projected) ||
+                    rewardRequests.Length != expectedSwapCount + 2 ||
+                    rewardRequests.Take(expectedSwapCount).Where((entry, index) =>
+                        entry.Request.SiteId != siteId ||
+                        entry.Request.OwnerId !=
+                            "event:war_historian_repy:relic_offer" ||
+                        entry.Request.Ordinal != index ||
+                        entry.Request.OperationKind != "bounded_integer" ||
+                        entry.Request.BoundedCount != candidates.Length - index ||
+                        entry.ProviderMode != "native-v111").Any() ||
+                    rewardRequests.Skip(expectedSwapCount).Where((entry, index) =>
+                        entry.Request.SiteId !=
+                            PrototypeNativeHiveEvents
+                                .WarHistorianRepyPotionOfferSiteId ||
+                        entry.Request.OwnerId !=
+                            $"event:war_historian_repy:potion_offer:{index}" ||
+                        entry.Request.OperationKind != "choose_index" ||
+                        entry.Request.SupportCount !=
+                            PrototypeContent.PotionPool.Length ||
+                        entry.ProviderMode != "native-v111").Any() ||
+                    unchecked((uint)(NativeRngV111.ToSnapshot(
+                        rewardStreamAfter).Counter -
+                        NativeRngV111.ToSnapshot(rewardStreamBefore).Counter)) !=
+                        unchecked((uint)(expectedSwapCount + 2)))
+                    throw new InvalidOperationException(
+                        "War Historian Repy chest action must perform exactly one relic shuffle and two player.rewards potion draws.");
+                orderedCandidateIds = captures[0].OrderedCandidateIds;
+                ownerId = captures[0].OwnerId;
+                nativeCursorBefore = captures[0].NativeCursorBefore;
+                if (plannedCandidateIds is not null &&
+                    !orderedCandidateIds.SequenceEqual(
+                        plannedCandidateIds, StringComparer.Ordinal))
+                    throw new InvalidOperationException(
+                        "War Historian Repy Nature candidate order changed since session entry.");
+                nativeRngEventId = string.Empty;
+            }
             candidateCount = orderedCandidateIds.Length;
-            ownerId = captures[0].OwnerId;
-            nativeCursorBefore = captures[0].NativeCursorBefore;
             if (plannedCandidateIds is not null &&
                 !orderedCandidateIds.SequenceEqual(
                     plannedCandidateIds, StringComparer.Ordinal))
@@ -658,6 +742,12 @@ internal static class NativeEventShufflePlanBuilderV111
             streamSnapshot = null;
             streamId = "reward";
         }
+        else if (isRepyShuffle && legacyRepyFallback)
+        {
+            legacyRewardOrdinalBase = GetLegacyRewardOrdinal(origin);
+            streamSnapshot = null;
+            streamId = "reward";
+        }
         else if (isRepyShuffle)
         {
             if (nativeCursorBefore is null)
@@ -789,7 +879,8 @@ internal static class NativeEventShufflePlanBuilderV111
             ExpectedUnscriptedStreamId: isRepyShuffle
                 ? NativePlayerRngV111.RewardsStreamId : null,
             ExpectedUnscriptedDrawCount: 0,
-            LegacyEventOrdinalBase: legacyEventOrdinalBase);
+            LegacyEventOrdinalBase: legacyEventOrdinalBase,
+            LegacyRewardOrdinalBase: legacyRewardOrdinalBase);
     }
 
     private static int GetLegacyEventOrdinal(RunState origin)
@@ -805,6 +896,34 @@ internal static class NativeEventShufflePlanBuilderV111
                 "Native event shuffle legacy ordinal exceeds the typed request range.");
         return (int)ordinal;
     }
+
+    internal static int GetLegacyRewardOrdinal(RunState origin)
+    {
+        var streams = origin.Rng.Streams.Where(stream =>
+            stream.StreamId == "reward").ToArray();
+        if (streams.Length != 1)
+            throw new InvalidDataException(
+                "Native-regional Repy replay requires one legacy reward stream.");
+        var ordinal = streams[0].CallCount ?? 0;
+        if (ordinal > int.MaxValue)
+            throw new NotSupportedException(
+                "Native-regional Repy reward ordinal exceeds the typed request range.");
+        return (int)ordinal;
+    }
+
+    internal static bool IsCompletedRepyChest(RunState run) =>
+        run.Phase == RunPhase.Reward && run.World?.Combat is null &&
+        run.World?.Event is
+        {
+            EventId: PrototypeNativeHiveEvents.WarHistorianRepyId,
+            NativePageIndex: 2,
+            ChosenChoiceId: "unlock_chest",
+            NativeEventRng: null,
+            NativeEventRngProviderMode: null,
+            RepyChestPotionIds.Length: 2,
+            RepyChestRelicIds.Length: 2,
+            RepyChestGroupsResolved: 1
+        };
 
     private static void ValidateLegacyEventShuffleBoundary(
         RunState origin, GameAction action, string siteId, string ownerId,
@@ -1546,6 +1665,51 @@ public sealed record ReferenceNatureNativeEventShuffleSessionV111(
         RunState origin, NativeEventShufflePlanV111 plan,
         RandomIndexDecisionV111[] decisions)
     {
+        if (plan.LegacyRewardOrdinalBase is not null)
+        {
+            var selected = decisions.Select(decision =>
+                ControlledStochasticDecisionV111.FromIndex(decision)).ToArray();
+            var requests = selected.Select(decision => decision.ToRequest())
+                .ToArray();
+            ControlledStochasticContinuationResultV111 replay;
+            RandomBoundaryEventV111[] entries;
+            using (var journal = RandomBoundaryJournalV111.Begin())
+            using (NativeEngineEventJournalV111.Begin())
+            {
+                replay = ControlledChanceContinuationExecutorV111
+                    .CaptureStochastic(
+                        origin,
+                        ControlledStochasticContinuationStateV111
+                            .CurrentSchemaId,
+                        selected,
+                        run => new PrototypeGameEngine().Step(
+                            run, plan.ReplayAction).State,
+                        request => requests.Any(selectedRequest =>
+                            ControlledStochasticChanceReplayV111.SameRequest(
+                                request, selectedRequest)));
+                entries = journal.Entries.Where(entry =>
+                    entry.Request.StreamId == "reward").ToArray();
+            }
+            if (replay.Suspended || replay.Run is not { } resolved ||
+                entries.Length != requests.Length ||
+                entries.Where((entry, index) =>
+                    requests[index].IndexRequest is not { } expectedRequest ||
+                    CanonicalJson.Sha256(entry.Request) !=
+                        CanonicalJson.Sha256(expectedRequest) ||
+                    entry.ProviderMode != "controlled-v111" ||
+                    entry.NativeCursorBefore is not null ||
+                    entry.NativeCursorAfter is not null).Any() ||
+                NativeEventShufflePlanBuilderV111.GetLegacyRewardOrdinal(
+                    resolved) !=
+                    NativeEventShufflePlanBuilderV111.GetLegacyRewardOrdinal(
+                        origin) ||
+                resolved.NativeRunRng is not null ||
+                !NativeEventShufflePlanBuilderV111
+                    .IsCompletedRepyChest(resolved))
+                throw new InvalidDataException(
+                    "Native-regional Repy replay must consume only its selected reward request prefix without advancing the saved provider.");
+            return resolved;
+        }
         if (plan.LegacyEventOrdinalBase is null)
             return ReferenceNatureNativeEventIndexReplayV111.Replay(
                 origin, decisions, plan.ReplayAction,
@@ -1725,7 +1889,7 @@ public static partial class ChanceLawEngineV111
     public static string[] NativeEventShuffleSessionSiteIds =>
     [
         .. ChanceLawEngineV111.NativeEventShufflePlanSiteIds,
-        "event.war_historian.repy.potion_offer.index_draw"
+        PrototypeNativeHiveEvents.WarHistorianRepyPotionOfferSiteId
     ];
 
     public static ChanceLawV111 QueryNativeEventShuffle(
@@ -1868,7 +2032,11 @@ public static partial class ChanceLawEngineV111
             boundary = "native_event.repy_potion_offer_index",
             conditioning
         });
-        var weights = NativeNextIntGridWeights(potionPool.Length);
+        var nativeIndexLaw = NativeRngV111.IsCanonicalStreamId(
+            request.StreamId);
+        var weights = nativeIndexLaw
+            ? NativeNextIntGridWeights(potionPool.Length)
+            : Enumerable.Repeat(1L, potionPool.Length).ToArray();
         var outcomes = potionPool.Select((potionId, index) =>
             new ChanceLawOutcomeV111(
                 $"potion:{potionId}:index:{index}", weights[index])).ToArray();
@@ -1876,8 +2044,12 @@ public static partial class ChanceLawEngineV111
             eventId, request.SiteId, request.OperationKind,
             request.OwnerId, request.Ordinal,
             NativeRepyChestOfferConditioningPolicyId, conditioning,
-            NativeBoundedIndexSourceVerifiedProvenance, outcomes,
-            ChanceLawV111.SourceVerifiedStatus);
+            nativeIndexLaw
+                ? NativeBoundedIndexSourceVerifiedProvenance
+                : "uniform-saved-index-support-unverified", outcomes,
+            nativeIndexLaw
+                ? ChanceLawV111.SourceVerifiedStatus
+                : ChanceLawV111.UnverifiedStatus);
     }
 
     public static ChanceLawV111 QueryNativeEndlessConveyorDishEntry(
