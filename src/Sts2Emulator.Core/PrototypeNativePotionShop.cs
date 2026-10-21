@@ -64,6 +64,9 @@ public static class PrototypeNativePotionShop
 {
     public const string UniformModelSiteId =
         "potion.uniform_model.index_draw";
+    public const string RarityRollSiteId = "potion.rarity_roll.ticket";
+    public const string ModelWithinRaritySiteId =
+        "potion.model_within_rarity.index_draw";
 
     // PotionFactory concatenates the current character's unlocked pool before
     // the shared pool. Keep that ordering for the typed model-index request:
@@ -220,7 +223,7 @@ public static class PrototypeNativePotionShop
         string ownerId = "potion:weighted_offer")
     {
         var roll = LegacyRandomChoiceV111.ChooseBoundedInteger(
-            rng, "potion.rarity_roll.ticket", streamId, ownerId, 100)
+            rng, RarityRollSiteId, streamId, ownerId, 100)
             .SelectedIndex;
         return roll < 10
             ? PrototypeNativePotionRarity.Rare
@@ -246,7 +249,7 @@ public static class PrototypeNativePotionShop
 
         return candidates[LegacyRandomChoiceV111.ChooseIndexRange(
             rng,
-            "potion.model_within_rarity.index_draw",
+            ModelWithinRaritySiteId,
             streamId,
             ownerId + ":rarity:" + rarity + ":pool:"
                 + CanonicalJson.Sha256(candidates),

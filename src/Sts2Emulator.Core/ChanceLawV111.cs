@@ -497,7 +497,7 @@ public static partial class ChanceLawEngineV111
     private static readonly string[] LegacyRarityTicketQuerySites =
     [
         "card_rarity.roll.ticket",
-        "potion.rarity_roll.ticket",
+        PrototypeNativePotionShop.RarityRollSiteId,
         "relic_grab_bag.rarity.ticket"
     ];
 
@@ -576,7 +576,7 @@ public static partial class ChanceLawEngineV111
 
     private static readonly string[] LegacyPotionModelWithinRarityQuerySites =
     [
-        "potion.model_within_rarity.index_draw"
+        PrototypeNativePotionShop.ModelWithinRaritySiteId
     ];
 
     private static readonly string[] LegacyUniformPotionModelQuerySites =
@@ -1076,7 +1076,7 @@ public static partial class ChanceLawEngineV111
         if (ordinal < 0)
             throw new ArgumentOutOfRangeException(nameof(ordinal));
 
-        const string siteId = "potion.rarity_roll.ticket";
+        const string siteId = PrototypeNativePotionShop.RarityRollSiteId;
         var outcomes = LegacyRarityOutcomes(65, 25, 10);
         var conditioning = new
         {
@@ -1874,7 +1874,7 @@ public static partial class ChanceLawEngineV111
             .ToArray();
         var conditioning = new
         {
-            siteId = "potion.model_within_rarity.index_draw",
+            siteId = PrototypeNativePotionShop.ModelWithinRaritySiteId,
             streamId,
             ownerId,
             ownerPrefix,
@@ -1886,7 +1886,8 @@ public static partial class ChanceLawEngineV111
             poolFingerprint
         };
         return CreateLegacyCategoricalLaw(
-            "potion.model_within_rarity.index_draw", streamId, ownerId,
+            PrototypeNativePotionShop.ModelWithinRaritySiteId, streamId,
+            ownerId,
             ordinal, "legacy-potion-model-within-rarity-pool-v1",
             conditioning,
             "Equal index weights over the remaining source-ordered legacy " +

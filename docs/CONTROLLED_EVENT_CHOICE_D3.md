@@ -62,7 +62,11 @@ models. The pending event-effect frame still records its typed ticket-index
 support; the direct category law does not replace that saved continuation.
 The generic legacy `event.reward.random_potion.model` site also has a direct
 pool query keyed by `event_id` and the selected choice `action_id`; it does not
-cover Wellspring or Whispering Hollow's separate Native-shaped routes.
+cover Wellspring or Whispering Hollow's separate Native-shaped routes. Their
+typed `potion.uniform_model`, `potion.rarity_roll.ticket`, and
+`potion.model_within_rarity` requests are now handled by the saved event-choice
+continuation below; their equal-index weights and source-pool behavior remain
+unverified.
 The legacy `event.reward.random_rare_card.model` site has the same direct
 query inputs and returns the current prototype Rare-card reward pool.
 The custom event reward potion option also has a direct pool query; callers
@@ -73,6 +77,12 @@ The supported event-choice sites are:
 - `event.random_upgrade.card_instance`
 - `event.reward.random_rare_card.model`
 - `event.reward.random_potion.model` on the legacy uniform-pool route
+- `potion.uniform_model.index_draw` for the Wellspring `bottle` choice and
+  `potion.rarity_roll.ticket` followed by
+  `potion.model_within_rarity.index_draw` for the two Whispering Hollow
+  `gold` choice potions. These Native-shaped event routes use the existing
+  controlled event-choice continuation; their equal-index laws and source
+  pool behavior remain `UNVERIFIED`.
 - `event.reward.offer_potion.model.index_draw`
 - `event.reward.card_bundle.shuffle_swap_index`
 - `reward.card_rarity.ticket` and `reward.card_model.index_draw` while
