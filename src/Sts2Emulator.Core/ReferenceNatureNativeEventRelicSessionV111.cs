@@ -68,9 +68,9 @@ public sealed record ReferenceNatureNativeEventRelicSessionSnapshotV111(
 
 /// <summary>
 /// Atomic configured Native relic-grant continuation. Supported event
-/// random-relic effects, Neow pickup triggers, event-specific relic rewards,
-/// Battleworn's setting-three reward, Pael's Wing, and Toy Box pulls share one
-/// typed ReferenceNature transcript.
+/// random-relic effects, Neow pickup triggers and card-bundle shuffles,
+/// event-specific relic rewards, Battleworn's setting-three reward, Pael's
+/// Wing, and Toy Box pulls share one typed ReferenceNature transcript.
 /// </summary>
 public sealed record ReferenceNatureNativeEventRelicSessionV111(
     string SchemaId, RunState Origin, GameAction Action, RunState Run,
@@ -132,6 +132,8 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
         StochasticSiteRegistryV111.UnownedRandomRelicSelectionSiteId;
     private const string NeowPickupShuffleSiteId =
         StochasticSiteRegistryV111.RandomPoolDistinctShuffleSiteId;
+    private const string NeowCardBundleShuffleSiteId =
+        StochasticSiteRegistryV111.EventRewardCardBundleShuffleSiteId;
 
     [JsonIgnore]
     public string Fingerprint => CanonicalJson.Sha256(this);
@@ -151,7 +153,8 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
         [StochasticSiteRegistryV111.RelicGrabBagRaritySiteId,
             PrototypeNativeRelicGrabBag.NativeTreasureModelSiteId,
             StochasticSiteRegistryV111.UnownedRandomRelicSelectionSiteId,
-            StochasticSiteRegistryV111.RandomPoolDistinctShuffleSiteId];
+            StochasticSiteRegistryV111.RandomPoolDistinctShuffleSiteId,
+            StochasticSiteRegistryV111.EventRewardCardBundleShuffleSiteId];
 
     public static ReferenceNatureNativeEventRelicSessionV111 Begin(
         RunState source, GameAction action, ulong natureSeed) => Begin(
@@ -264,6 +267,8 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
                     ExpectedPunchOffUnownedRelicRequestCount(
                         Origin, Action) +
                     ExpectedNeowPickupShuffleRequestCount(
+                        Origin, Action) +
+                    ExpectedNeowCardBundleShuffleRequestCount(
                         Origin, Action) ||
             string.IsNullOrWhiteSpace(Action.Kind))
             throw new InvalidDataException(
@@ -337,6 +342,8 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
             ExpectedPunchOffUnownedRelicRequestCount(Origin, Action);
         var expectedNeowPickupShuffleRequestCount =
             ExpectedNeowPickupShuffleRequestCount(Origin, Action);
+        var expectedNeowCardBundleShuffleRequestCount =
+            ExpectedNeowCardBundleShuffleRequestCount(Origin, Action);
         var rarityRequestCount = ProviderDecisions.Count(decision =>
             decision.UnitFloatDecision?.Request.SiteId == RelicRaritySiteId);
         var identityRequestCount = ProviderDecisions.Count(decision =>
@@ -346,6 +353,9 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
         var neowPickupShuffleRequestCount = ProviderDecisions.Count(
             decision => decision.IndexDecision?.Request.SiteId ==
                 NeowPickupShuffleSiteId);
+        var neowCardBundleShuffleRequestCount = ProviderDecisions.Count(
+            decision => decision.IndexDecision?.Request.SiteId ==
+                NeowCardBundleShuffleSiteId);
         if ((replay.Continuation is null) != Complete ||
             !SameRequest(replay.Continuation?.PendingRequest, PendingRequest) ||
             !SameLabels(replay.Continuation?.PendingCandidateLabels,
@@ -365,9 +375,14 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
                 expectedNeowPickupShuffleRequestCount ||
             Complete && neowPickupShuffleRequestCount !=
                 expectedNeowPickupShuffleRequestCount ||
+            neowCardBundleShuffleRequestCount >
+                expectedNeowCardBundleShuffleRequestCount ||
+            Complete && neowCardBundleShuffleRequestCount !=
+                expectedNeowCardBundleShuffleRequestCount ||
             ProviderDecisions.Length != rarityRequestCount +
                 identityRequestCount + unownedRelicRequestCount +
-                neowPickupShuffleRequestCount)
+                neowPickupShuffleRequestCount +
+                neowCardBundleShuffleRequestCount)
             throw new InvalidDataException(
                 "Native event relic continuation differs from its replay.");
 
@@ -515,6 +530,33 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
                 }), neowPickupShuffleRequest);
         }
 
+        if (request.IndexRequest is { } neowCardBundleShuffleRequest &&
+            neowCardBundleShuffleRequest.SiteId == NeowCardBundleShuffleSiteId)
+        {
+            var expected = NeowCardBundleShuffleBoundary(
+                source, action, prefix);
+            if (expected is null || candidateLabels is not null ||
+                neowCardBundleShuffleRequest.StreamId != "reward" ||
+                neowCardBundleShuffleRequest.OperationKind !=
+                    "bounded_integer" ||
+                neowCardBundleShuffleRequest.SupportCount !=
+                    expected.Value.SupportCount ||
+                neowCardBundleShuffleRequest.OrderedCandidates.Length != 0 ||
+                neowCardBundleShuffleRequest.OwnerId != expected.Value.OwnerId)
+                throw new InvalidDataException(
+                    "Neow Scroll Boxes shuffle differs from its current ordered pool.");
+
+            return ChanceLawEngineV111.QueryRandomIndex(
+                CanonicalJson.Sha256(new
+                {
+                    boundary = expected.Value.BoundaryId,
+                    eventId = PrototypeNativeOvergrowthEvents.NeowEventId,
+                    actionId = PrototypeAiEnvironment.StableActionId(action),
+                    prefixFingerprint = CanonicalJson.Sha256(prefix),
+                    request = neowCardBundleShuffleRequest
+                }), neowCardBundleShuffleRequest);
+        }
+
         if (request.IndexRequest is { } indexRequest &&
             indexRequest.SiteId == RelicModelSiteId)
         {
@@ -658,7 +700,8 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
     private static bool IsSessionRequest(
         ControlledStochasticRequestV111 request) =>
         request.SiteId is RelicRaritySiteId or RelicModelSiteId or
-            UnownedRelicSiteId or NeowPickupShuffleSiteId;
+            UnownedRelicSiteId or NeowPickupShuffleSiteId or
+            NeowCardBundleShuffleSiteId;
 
     private static bool RequireSessionRequest(
         ControlledStochasticRequestV111 request)
@@ -684,10 +727,13 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
             ExpectedEventRelicDrawCount(source, action) +
                 ExpectedNeowUnownedRelicRequestCount(source, action) +
                 ExpectedNeowPickupShuffleRequestCount(
+                    source, action) +
+                ExpectedNeowCardBundleShuffleRequestCount(
                     source, action) > 0 &&
             (!HasUnsupportedFixedRelicEffect(eventState.EventId, choiceId) ||
              ExpectedNeowUnownedRelicRequestCount(source, action) > 0 ||
-             ExpectedNeowPickupShuffleRequestCount(source, action) > 0);
+             ExpectedNeowPickupShuffleRequestCount(source, action) > 0 ||
+             ExpectedNeowCardBundleShuffleRequestCount(source, action) > 0);
         var punchOffUnownedRelicOffer =
             ExpectedPunchOffUnownedRelicRequestCount(source, action) > 0;
         var eventRelicChoice = source.Phase == RunPhase.Event &&
@@ -697,7 +743,8 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
                 controlledEventRelicChoice || punchOffUnownedRelicOffer);
         var neowRelicPickup = NeowRelicPickupDrawCount(source, action) > 0 ||
             ExpectedNeowUnownedRelicRequestCount(source, action) > 0 ||
-            ExpectedNeowPickupShuffleRequestCount(source, action) > 0;
+            ExpectedNeowPickupShuffleRequestCount(source, action) > 0 ||
+            ExpectedNeowCardBundleShuffleRequestCount(source, action) > 0;
         var battlewornRelicVictory =
             IsBattlewornSettingThreeCombat(source);
         var paelWingRelicReward = IsPaelWingRelicReward(source, action);
@@ -770,6 +817,110 @@ public sealed record ReferenceNatureNativeEventRelicSessionV111(
         if (plan is null || plan.Value.Pool.Length < 2)
             return 0;
         return plan.Value.Pool.Length - 1;
+    }
+
+    private static int ExpectedNeowCardBundleShuffleRequestCount(
+        RunState source, GameAction action)
+    {
+        var pools = NeowCardBundleShufflePools(source, action);
+        if (pools is null)
+            return 0;
+        return pools.Value.Commons.Length - 1 +
+            pools.Value.Uncommons.Length - 1;
+    }
+
+    private static (string[] Commons, string[] Uncommons)?
+        NeowCardBundleShufflePools(RunState source, GameAction action)
+    {
+        var effects = NeowPickupEffects(source, action);
+        if (effects is not { Length: 2 } ||
+            effects[0].Kind != PrototypeRunEffectKind.GainRelic ||
+            effects[0].RelicId != PrototypeNativeOvergrowthEvents.NeowRelicId(
+                "ScrollBoxes") ||
+            effects[1].Kind != PrototypeRunEffectKind.OfferCardBundles)
+            return null;
+
+        var commons = PrototypeContent.NativeSilentRewardCardPool
+            .Where(id => PrototypeContent.Card(id).Rarity ==
+                PrototypeCardRarity.Common).ToArray();
+        var uncommons = PrototypeContent.NativeSilentRewardCardPool
+            .Where(id => PrototypeContent.Card(id).Rarity ==
+                PrototypeCardRarity.Uncommon).ToArray();
+        return commons.Length >= 4 && uncommons.Length >= 2
+            ? (commons, uncommons)
+            : null;
+    }
+
+    private static (int SupportCount, string OwnerId, string BoundaryId)?
+        NeowCardBundleShuffleBoundary(
+            RunState source, GameAction action,
+            ControlledStochasticDecisionV111[] prefix)
+    {
+        var pools = NeowCardBundleShufflePools(source, action);
+        if (pools is null)
+            return null;
+
+        var orderedPools = new[]
+        {
+            pools.Value.Commons,
+            pools.Value.Uncommons
+        };
+        var eventPrefix = "Event:" +
+            PrototypeNativeOvergrowthEvents.NeowEventId;
+        var owners = new[]
+        {
+            eventPrefix + ":common_bundle",
+            eventPrefix + ":uncommon_bundle"
+        };
+        var boundaryIds = new[]
+        {
+            "native-neow-scroll-boxes-common-bundle",
+            "native-neow-scroll-boxes-uncommon-bundle"
+        };
+        var poolsInProgress = orderedPools
+            .Select(pool => (string[])pool.Clone()).ToArray();
+        var poolIndex = 0;
+        var nextEnd = poolsInProgress[poolIndex].Length - 1;
+        foreach (var savedDecision in prefix.Where(decision =>
+            decision.IndexDecision?.Request.SiteId ==
+                NeowCardBundleShuffleSiteId))
+        {
+            if (nextEnd == 0)
+            {
+                poolIndex++;
+                if (poolIndex >= poolsInProgress.Length)
+                    throw new InvalidDataException(
+                        "Neow Scroll Boxes shuffle prefix exceeds its two pools.");
+                nextEnd = poolsInProgress[poolIndex].Length - 1;
+            }
+
+            var decision = savedDecision.IndexDecision!;
+            var expectedBound = nextEnd + 1;
+            var pool = poolsInProgress[poolIndex];
+            if (savedDecision.CandidateLabels is not null ||
+                decision.Request.StreamId != "reward" ||
+                decision.Request.OperationKind != "bounded_integer" ||
+                decision.Request.OwnerId != owners[poolIndex] ||
+                decision.Request.SupportCount != expectedBound ||
+                decision.Request.OrderedCandidates.Length != 0 ||
+                decision.SelectedIndex < 0 ||
+                decision.SelectedIndex >= expectedBound)
+                throw new InvalidDataException(
+                    "Neow Scroll Boxes shuffle prefix differs from its ordered pools.");
+
+            (pool[nextEnd], pool[decision.SelectedIndex]) =
+                (pool[decision.SelectedIndex], pool[nextEnd]);
+            nextEnd--;
+        }
+
+        if (nextEnd == 0 && poolIndex == 0)
+        {
+            poolIndex++;
+            nextEnd = poolsInProgress[poolIndex].Length - 1;
+        }
+        return nextEnd > 0
+            ? (nextEnd + 1, owners[poolIndex], boundaryIds[poolIndex])
+            : null;
     }
 
     private static (string BoundaryId, string[] Pool, string OwnerId)?

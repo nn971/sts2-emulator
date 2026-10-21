@@ -225,13 +225,13 @@ public sealed partial class PrototypeGameEngine
                     commons,
                     state.Rng,
                     "reward",
-                    "event.reward.card_bundle.shuffle_swap_index",
+                    StochasticSiteRegistryV111.EventRewardCardBundleShuffleSiteId,
                     prefix + ":common_bundle");
                 _ = LegacyFisherYatesV111.ShuffleInPlace(
                     uncommons,
                     state.Rng,
                     "reward",
-                    "event.reward.card_bundle.shuffle_swap_index",
+                    StochasticSiteRegistryV111.EventRewardCardBundleShuffleSiteId,
                     prefix + ":uncommon_bundle");
                 return new RewardState(
                     SourceRoom: prefix,

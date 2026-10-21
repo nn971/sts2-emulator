@@ -354,6 +354,8 @@ public static class StochasticSiteRegistryV111
         "relic.unowned_random_selection.index_draw";
     public const string RandomPoolDistinctShuffleSiteId =
         "run.random_pool_distinct.shuffle_swap_index";
+    public const string EventRewardCardBundleShuffleSiteId =
+        "event.reward.card_bundle.shuffle_swap_index";
     public const string CombatEffectRandomTargetSiteId =
         "combat.effect.random_enemy";
     public const string CombatSlyAutoplayRandomTargetSiteId =
@@ -443,7 +445,7 @@ public static class StochasticSiteRegistryV111
                 "map", "choose_index", 1),
             ["map.legacy.room_assignment.index_draw"] = new(
                 "map", "choose_index", 1),
-            ["event.reward.card_bundle.shuffle_swap_index"] = new(
+            [EventRewardCardBundleShuffleSiteId] = new(
                 "reward", "bounded_integer", 2),
             ["relic.sand_castle.acquisition_upgrade.shuffle_swap_index"] =
                 new("event", "bounded_integer", 2),
@@ -689,7 +691,7 @@ public static class StochasticSiteRegistryV111
         "event.reward.random_rare_card.model",
         "event.reward.random_potion.model",
         "event.reward.offer_potion.model.index_draw",
-        "event.reward.card_bundle.shuffle_swap_index",
+        EventRewardCardBundleShuffleSiteId,
         PrototypeNativeRelicGrabBag.QueueShuffleSiteId,
         "relic_grab_bag.rarity.ticket",
         PrototypeNativeRelicGrabBag.NativeTreasureModelSiteId,
@@ -1012,7 +1014,7 @@ public static class StochasticSiteRegistryV111
         NativeFisherYatesSites.Concat(new[]
         {
             "combat.draw.recycle.shuffle_swap_index",
-            "event.reward.card_bundle.shuffle_swap_index",
+            EventRewardCardBundleShuffleSiteId,
             "relic.sand_castle.acquisition_upgrade.shuffle_swap_index",
             RandomPoolDistinctShuffleSiteId,
             "shop.potion_offer.shuffle_swap_index",
