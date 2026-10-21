@@ -349,7 +349,7 @@ public static class SemanticCardShortlistChoiceV111
         RunState resumed;
         using (ControlledChanceGuardV111.Enter())
             resumed = PrototypeGameEngine.ResumeControlledCardShortlist(
-                checkpoint.Fork(), decision.SelectedIndex);
+                checkpoint.Fork(), decision.SelectedCardInstanceId);
         if (PrototypeGameEngine
                 .IsAtCombatRewardOrTerminalBoundary(resumed))
         {

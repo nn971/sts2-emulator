@@ -172,7 +172,7 @@ public sealed partial class PrototypeGameEngine
     }
 
     internal static RunState ResumeControlledCardShortlist(
-        RunState state, int selectedIndex)
+        RunState state, long selectedCardInstanceId)
     {
         if (!ControlledChanceGuardV111.Active)
             throw new InvalidOperationException(
@@ -190,11 +190,12 @@ public sealed partial class PrototypeGameEngine
             !ValidateControlledCardShortlist(combat, shortlist))
             throw new InvalidDataException(
                 "Saved card shortlist is not source-reachable.");
-        if (selectedIndex < 0 ||
-            selectedIndex >= shortlist.RemainingCandidateCardInstanceIds.Length)
-            throw new ArgumentOutOfRangeException(nameof(selectedIndex));
+        if (!shortlist.RemainingCandidateCardInstanceIds.Contains(
+                selectedCardInstanceId))
+            throw new InvalidOperationException(
+                "Selected card identity is outside the remaining shortlist support.");
 
-        var selected = shortlist.RemainingCandidateCardInstanceIds[selectedIndex];
+        var selected = selectedCardInstanceId;
         var selectedPrefix = shortlist.SelectedCandidateCardInstanceIds
             .Append(selected).ToArray();
         var remaining = shortlist.RemainingCandidateCardInstanceIds

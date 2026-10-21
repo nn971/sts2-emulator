@@ -257,8 +257,8 @@ public sealed partial class PrototypeGameEngine
             currentEvent is null ||
             CanonicalJson.Sha256(currentEvent) !=
                 CanonicalJson.Sha256(decision.Event) ||
-            decision.SelectedIndex < 0 ||
-            decision.SelectedIndex >= pending.CandidateCardInstanceIds.Length)
+            !pending.CandidateCardInstanceIds.Contains(
+                decision.SelectedCardInstanceId))
             throw new InvalidDataException(
                 "Stale or malformed semantic automatic-hook choice.");
 
@@ -274,7 +274,10 @@ public sealed partial class PrototypeGameEngine
             candidates.Length == 0)
             throw new InvalidDataException(
                 "Jeweled Mask support changed before the Nature outcome.");
-        var selectedId = candidates[decision.SelectedIndex];
+        if (!candidates.Contains(decision.SelectedCardInstanceId))
+            throw new InvalidDataException(
+                "Jeweled Mask selected identity is outside current support.");
+        var selectedId = decision.SelectedCardInstanceId;
         if (combat.SemanticDeck is null)
             throw new InvalidDataException(
                 "Random pile-card choice lost its semantic deck.");
