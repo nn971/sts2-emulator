@@ -26,6 +26,13 @@ internal static class PrototypeAiJsonlServer
         {
             PropertyNamingPolicy = System.Text.Json.JsonNamingPolicy.SnakeCaseLower
         };
+    private static readonly JsonSerializerOptions StrictSnakeCaseJsonOptions =
+        new(SnakeCaseJsonOptions)
+        {
+            UnmappedMemberHandling =
+                System.Text.Json.Serialization.JsonUnmappedMemberHandling
+                    .Disallow
+        };
 
     public static void Run(TextReader input, TextWriter output)
     {
@@ -2887,6 +2894,20 @@ internal static class PrototypeAiJsonlServer
                             },
                             simulationMechanicsComparisonScope =
                                 "provider-independent-mechanics-after-matched-semantic-outcomes",
+                            simulationProviderReplayCaptureSchemaId =
+                                SimulationProviderReplayCaptureV111
+                                    .CurrentSchemaId,
+                            simulationProviderReplayComparisonSchemaId =
+                                SimulationProviderReplayComparisonV111
+                                    .CurrentSchemaId,
+                            simulationProviderReplayComparisonOperations =
+                                new[] { "provider_replay_compare" },
+                            simulationProviderReplayComparisonInputs = new[]
+                            {
+                                "each side: <side>_origin_snapshot, <side>_actions, <side>_boundaries, and <side>_result_snapshot"
+                            },
+                            simulationProviderReplayComparisonScope =
+                                "privileged-provider-trace-and-mechanics-diagnostic; not a fair player observation",
                             semanticNatureChoiceViewSessionKinds =
                                 stochasticCapabilities
                                     .SemanticNatureChoiceViewSessionKinds,
@@ -9670,6 +9691,63 @@ internal static class PrototypeAiJsonlServer
                         break;
                     }
 
+                    case "provider_replay_compare":
+                    {
+                        SimulationProviderReplayCaptureV111
+                            ReadProviderReplayCapture(string side)
+                        {
+                            var originName = side + "_origin_snapshot";
+                            var actionsName = side + "_actions";
+                            var boundariesName = side + "_boundaries";
+                            var resultName = side + "_result_snapshot";
+                            var actionsElement = RequiredArray(
+                                request, actionsName);
+                            var boundariesElement = RequiredArray(
+                                request, boundariesName);
+                            var actions = JsonSerializer.Deserialize<
+                                GameAction[]>(actionsElement.GetRawText(),
+                                    StrictSnakeCaseJsonOptions)
+                                ?? throw new InvalidDataException(
+                                    actionsName + " decoded to null.");
+                            var boundaries = JsonSerializer.Deserialize<
+                                RandomBoundaryTranscriptEntryV111[]>(
+                                    boundariesElement.GetRawText(),
+                                    StrictSnakeCaseJsonOptions)
+                                ?? throw new InvalidDataException(
+                                    boundariesName + " decoded to null.");
+                            return SimulationProviderReplayCaptureV111.Create(
+                                RunSnapshot.Load(RequiredString(
+                                    request, originName)),
+                                actions, boundaries,
+                                RunSnapshot.Load(RequiredString(
+                                    request, resultName)));
+                        }
+
+                        var left = ReadProviderReplayCapture("left");
+                        var right = ReadProviderReplayCapture("right");
+                        var comparison =
+                            SimulationProviderReplayComparisonEngineV111
+                                .Compare(
+                                    left, right,
+                                    OptionalBool(request,
+                                        "require_native_cursor_equality"),
+                                    OptionalInt(request,
+                                        "maximum_differences") ?? 64);
+                        Write(new
+                        {
+                            requestId,
+                            ok = true,
+                            schemaId =
+                                SimulationProviderReplayComparisonV111
+                                    .CurrentSchemaId,
+                            captureSchemaId =
+                                SimulationProviderReplayCaptureV111
+                                    .CurrentSchemaId,
+                            comparison
+                        });
+                        break;
+                    }
+
                     case "step_batch":
                     {
                         if (!request.TryGetProperty("steps", out var steps) || steps.ValueKind != JsonValueKind.Array)
@@ -10422,6 +10500,15 @@ internal static class PrototypeAiJsonlServer
 
         return value.GetString()
             ?? throw new InvalidOperationException($"Request field '{name}' is null.");
+    }
+
+    private static JsonElement RequiredArray(JsonElement request, string name)
+    {
+        if (!request.TryGetProperty(name, out var value) ||
+            value.ValueKind != JsonValueKind.Array)
+            throw new InvalidOperationException(
+                $"Request field '{name}' must be an array.");
+        return value;
     }
 
     private static long RequiredLong(JsonElement request, string name)
