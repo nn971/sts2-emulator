@@ -194,6 +194,15 @@ public sealed record ReferenceNatureLaterActPreparationSessionV111(
     RandomIndexRequestV111? PendingRequest,
     PrototypeLaterActEncounterBagV111[]? Bags)
 {
+    private ControlledStochasticDecisionV111[]? _providerDecisions = [];
+
+    [JsonIgnore]
+    public ControlledStochasticDecisionV111[] ProviderDecisions
+    {
+        get => CloneProviderDecisions(_providerDecisions)!;
+        init => _providerDecisions = CloneProviderDecisions(value) ?? [];
+    }
+
     [JsonIgnore]
     public SimulationStateV111<
         ReferenceNatureLaterActPreparationMechanicsStateV111,
@@ -320,6 +329,7 @@ public sealed record ReferenceNatureLaterActPreparationSessionV111(
         Validate();
         return this with
         {
+            ProviderDecisions = ProviderDecisions,
             Simulation = Simulation with
             {
                 Mechanics = Mechanics.Fork(),
@@ -365,7 +375,9 @@ public sealed record ReferenceNatureLaterActPreparationSessionV111(
                 CanonicalJson.Sha256(capture.PendingLaw) ||
             (Bags is null) != (capture.Bags is null) ||
             Bags is not null && CanonicalJson.Sha256(Bags) !=
-                CanonicalJson.Sha256(capture.Bags))
+                CanonicalJson.Sha256(capture.Bags) ||
+            CanonicalJson.Sha256(ProviderDecisions) !=
+                CanonicalJson.Sha256(capture.ProviderDecisions))
             throw new InvalidDataException(
                 "ReferenceNature later-act preparation differs from its generator replay.");
         if (NatureState.SampleCount != checked(
@@ -407,7 +419,7 @@ public sealed record ReferenceNatureLaterActPreparationSessionV111(
             snapshot.DecisionTranscript);
     }
 
-    private static ReferenceNatureLaterActPreparationSessionV111 Rebuild(
+    internal static ReferenceNatureLaterActPreparationSessionV111 Rebuild(
         RngBundle initialPrototypeRng, int ascension,
         SimulationProfile profile,
         ReferenceNatureStateV111 initialNatureState,
@@ -422,7 +434,8 @@ public sealed record ReferenceNatureLaterActPreparationSessionV111(
                 decisionTranscript.Clone(), capture.PendingRequest,
             capture.Bags)
         {
-            PendingLaw = capture.PendingLaw
+            PendingLaw = capture.PendingLaw,
+            ProviderDecisions = capture.ProviderDecisions
         };
         session.Validate();
         return session;
@@ -473,7 +486,8 @@ public sealed record ReferenceNatureLaterActPreparationSessionV111(
             return new CaptureResult(assignmentProvider.NatureState,
                 assignmentProvider.ChanceLaws,
                 assignmentProvider.PendingRequest,
-                assignmentProvider.PendingLaw, null);
+                assignmentProvider.PendingLaw, null,
+                assignmentProvider.ProviderDecisions);
         }
 
         if (assignmentProvider.DecisionTranscript.Length != assignmentCount ||
@@ -508,7 +522,9 @@ public sealed record ReferenceNatureLaterActPreparationSessionV111(
                 assignmentProvider.ChanceLaws.Concat(
                     encounterProvider.ChanceLaws).ToArray(),
                 encounterProvider.PendingRequest,
-                encounterProvider.PendingLaw, null);
+                encounterProvider.PendingLaw, null,
+                assignmentProvider.ProviderDecisions.Concat(
+                    encounterProvider.ProviderDecisions).ToArray());
         }
 
         var eventStream = initialPrototypeRng.GetStream("event");
@@ -536,7 +552,9 @@ public sealed record ReferenceNatureLaterActPreparationSessionV111(
                 "Completed later-act generator prefix differs from its session transcript.");
         return new CaptureResult(bagResult.NatureState,
             assignmentsResult.ChanceLaws.Concat(bagResult.ChanceLaws).ToArray(),
-            null, null, bagResult.Bags);
+            null, null, bagResult.Bags,
+            assignmentProvider.ProviderDecisions.Concat(
+                encounterProvider.ProviderDecisions).ToArray());
     }
 
     private sealed record CaptureResult(
@@ -544,7 +562,13 @@ public sealed record ReferenceNatureLaterActPreparationSessionV111(
         ChanceLawV111[] ChanceLaws,
         RandomIndexRequestV111? PendingRequest,
         ChanceLawV111? PendingLaw,
-        PrototypeLaterActEncounterBagV111[]? Bags);
+        PrototypeLaterActEncounterBagV111[]? Bags,
+        ControlledStochasticDecisionV111[] ProviderDecisions);
+
+    private static ControlledStochasticDecisionV111[]?
+        CloneProviderDecisions(
+            ControlledStochasticDecisionV111[]? decisions) => decisions?
+                .Select(decision => decision?.Fork()!).ToArray();
 
     private static bool SameRequest(
         RandomIndexRequestV111? left, RandomIndexRequestV111? right) =>

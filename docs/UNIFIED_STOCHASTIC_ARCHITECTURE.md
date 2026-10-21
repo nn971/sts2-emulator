@@ -645,8 +645,10 @@ validates the session, preserves the prior action-history prefix, and
 materializes the typed prefix as the interval boundary trace. Completed
 deterministic actions with no appended trace and an empty Nature transcript
 remain valid. It rejects specialized continuations with incomplete traces and
-experimental starts with later-act preparation, which this capture path does
-not currently assemble.
+experimental starts whose saved later-act prefix does not replay completely.
+That prefix is rebuilt from the saved initial prototype RNG, configuration,
+and Nature transcript through the existing later-act generator; no new
+snapshot field is required.
 JSONL accepts
 `<side>_reference_nature_run_action_handle` for this path.
 `FromReferenceNatureRunSetupSession` shares one capture path for completed

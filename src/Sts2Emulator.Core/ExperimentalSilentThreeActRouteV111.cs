@@ -599,6 +599,8 @@ internal sealed class ReferenceNatureLaterActAssignmentIndexProviderV111
     private ReferenceNatureStateV111 _natureState;
     private readonly List<ChanceLawV111> _chanceLaws = [];
     private readonly List<ReferenceNatureDecisionV111> _decisions = [];
+    private readonly List<ControlledStochasticDecisionV111>
+        _providerDecisions = [];
     private bool? _hiveReceivesDarv;
 
     public ReferenceNatureLaterActAssignmentIndexProviderV111(
@@ -624,6 +626,8 @@ internal sealed class ReferenceNatureLaterActAssignmentIndexProviderV111
         .Select(law => law.Fork()).ToArray();
     public ReferenceNatureDecisionV111[] DecisionTranscript =>
         _decisions.ToArray();
+    public ControlledStochasticDecisionV111[] ProviderDecisions =>
+        _providerDecisions.Select(decision => decision.Fork()).ToArray();
     public RandomIndexRequestV111? PendingRequest { get; private set; }
     public ChanceLawV111? PendingLaw { get; private set; }
 
@@ -729,6 +733,8 @@ internal sealed class ReferenceNatureLaterActAssignmentIndexProviderV111
                 OrderedCandidates = (int[])request.OrderedCandidates.Clone()
             }, selection.OutcomeIndex, Mode);
         randomDecision.Validate();
+        _providerDecisions.Add(
+            ControlledStochasticDecisionV111.FromIndex(randomDecision));
         return randomDecision;
     }
 
@@ -904,6 +910,8 @@ internal sealed class ReferenceNatureLaterActEncounterIndexProviderV111
     private ReferenceNatureStateV111 _natureState;
     private readonly List<ChanceLawV111> _chanceLaws = [];
     private readonly List<ReferenceNatureDecisionV111> _decisions = [];
+    private readonly List<ControlledStochasticDecisionV111>
+        _providerDecisions = [];
     private int _queueDrawCount;
     private int _bossChoiceCount;
 
@@ -943,6 +951,8 @@ internal sealed class ReferenceNatureLaterActEncounterIndexProviderV111
         .Select(law => law.Fork()).ToArray();
     public ReferenceNatureDecisionV111[] DecisionTranscript =>
         _decisions.ToArray();
+    public ControlledStochasticDecisionV111[] ProviderDecisions =>
+        _providerDecisions.Select(decision => decision.Fork()).ToArray();
     public RandomIndexRequestV111? PendingRequest { get; private set; }
     public ChanceLawV111? PendingLaw { get; private set; }
 
@@ -1047,6 +1057,8 @@ internal sealed class ReferenceNatureLaterActEncounterIndexProviderV111
                 OrderedCandidates = (int[])request.OrderedCandidates.Clone()
             }, selection.OutcomeIndex, Mode);
         randomDecision.Validate();
+        _providerDecisions.Add(
+            ControlledStochasticDecisionV111.FromIndex(randomDecision));
         return randomDecision;
     }
 

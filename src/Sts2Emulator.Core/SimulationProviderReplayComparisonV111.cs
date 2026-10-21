@@ -335,19 +335,26 @@ public sealed record SimulationProviderReplayCaptureV111(
     {
         var initialization = session.Run
             .ReferenceNatureRunInitializationTranscript;
-        if (session.Action.Kind != "start_run" ||
-            session.Origin.Configuration?.Acts[0] != ActIdentity.Overgrowth ||
-            initialization is null ||
-            initialization.ActOneMapGeneration is not { } mapGeneration)
-            return null;
-        if (initialization.LaterActPreparationInitialPrototypeRng is not null)
+        var configuration = session.Origin.Configuration;
+        if (session.Action.Kind != "start_run" || configuration is null ||
+            configuration.Acts.Length == 0 || initialization is null)
             return null;
         initialization.Validate(replayMapGeneration: true);
         if (!initialization.DecisionTranscript.SequenceEqual(
                 session.DecisionTranscript))
             return null;
 
-        var bossLaw = ChanceLawEngineV111.QueryOvergrowthBossEncounter(0);
+        var overgrowth = configuration.Acts[0] == ActIdentity.Overgrowth;
+        var bossLaw = overgrowth
+            ? ChanceLawEngineV111.QueryOvergrowthBossEncounter(0)
+            : configuration.Acts[0] == ActIdentity.Underdocks
+                ? ChanceLawEngineV111.QueryUnderdocksBossEncounter(0)
+                : null;
+        if (bossLaw is null)
+            return null;
+        if (CanonicalJson.Sha256(initialization.ChanceLaws[0]) !=
+            CanonicalJson.Sha256(bossLaw))
+            return null;
         var expectedBossRequest = new RandomIndexRequestV111(
             bossLaw.SiteId, "combat", bossLaw.OwnerId, bossLaw.Ordinal,
             Enumerable.Range(0, bossLaw.Outcomes.Length).ToArray(),
@@ -364,8 +371,46 @@ public sealed record SimulationProviderReplayCaptureV111(
             ControlledStochasticDecisionV111.FromIndex(
                 trace.Decisions[0], trace.CandidateLabels[0])
         };
-        prefix.AddRange(mapGeneration.Decisions.Select(decision =>
-            decision.Fork()));
+        var laterActInitialNatureState = ReferenceNatureV111
+            .SampleValidated(bossLaw, initialization.InitialNatureState)
+            .NextState;
+        var prefixDecisionCount = 1;
+        if (initialization.ActOneMapGeneration is { } mapGeneration)
+        {
+            if (!overgrowth)
+                return null;
+            var mapDecisions = mapGeneration.Decisions;
+            prefix.AddRange(mapDecisions.Select(decision =>
+                decision.Fork()));
+            prefixDecisionCount = checked(prefixDecisionCount +
+                mapDecisions.Length);
+            laterActInitialNatureState = mapGeneration.NatureState;
+        }
+
+        if (initialization.LaterActPreparationInitialPrototypeRng is
+                { } prototypeRng)
+        {
+            if (!configuration.UsesExperimentalSilentThreeActRoute)
+                return null;
+            var laterDecisionTranscript = initialization.DecisionTranscript
+                .Skip(prefixDecisionCount).ToArray();
+            var laterPreparation =
+                ReferenceNatureLaterActPreparationSessionV111.Rebuild(
+                    prototypeRng, session.Origin.Ascension,
+                    configuration.Profile, laterActInitialNatureState,
+                    laterDecisionTranscript);
+            if (!laterPreparation.Complete ||
+                !laterPreparation.DecisionTranscript.SequenceEqual(
+                    laterDecisionTranscript))
+                return null;
+            var expectedLaterLaws = initialization.ChanceLaws
+                .Skip(prefixDecisionCount).ToArray();
+            if (CanonicalJson.Sha256(laterPreparation.ChanceLaws) !=
+                CanonicalJson.Sha256(expectedLaterLaws))
+                return null;
+            prefix.AddRange(laterPreparation.ProviderDecisions.Select(
+                decision => decision.Fork()));
+        }
         return prefix.Count == session.DecisionTranscript.Length
             ? prefix.ToArray()
             : null;
