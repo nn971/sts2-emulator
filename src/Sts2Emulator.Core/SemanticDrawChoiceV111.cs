@@ -178,6 +178,19 @@ public static class SemanticDrawChoiceV111
         return decision;
     }
 
+    internal static SemanticDrawDecisionV111 ValidateRecordedChoice(
+        RunState run, SemanticDeckEventV111 pending,
+        long selectedCardInstanceId)
+    {
+        ArgumentNullException.ThrowIfNull(pending);
+        var selectedIndex = Array.IndexOf(
+            pending.CandidateCardInstanceIds, selectedCardInstanceId);
+        if (selectedIndex < 0)
+            throw new InvalidDataException(
+                "Selected card identity is outside the semantic draw event.");
+        return ValidateRecordedChoice(run, pending, selectedIndex);
+    }
+
     /// <summary>
     /// Resumes a controlled card-effect draw through the ordinary engine and
     /// verifies its committed transcript when the continuation stays in combat.
@@ -200,23 +213,24 @@ public static class SemanticDrawChoiceV111
             using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
                 resumed = PrototypeGameEngine
                     .ResumeControlledSemanticEffectDraw(
-                        checkpoint, decision.SelectedIndex);
+                        checkpoint, decision.SelectedCardInstanceId);
         }
         else
         {
             using (ControlledChanceGuardV111.Enter())
                 resumed = PrototypeGameEngine
                     .ResumeControlledSemanticEffectDraw(
-                        checkpoint, decision.SelectedIndex);
+                        checkpoint, decision.SelectedCardInstanceId);
         }
 
         ValidateEffectDrawResult(
-            resumed, decision.Event, decision.SelectedIndex);
+            resumed, decision.Event, decision.SelectedCardInstanceId);
         return resumed;
     }
 
     private static void ValidateEffectDrawResult(
-        RunState run, SemanticDeckEventV111 pending, int selectedIndex)
+        RunState run, SemanticDeckEventV111 pending,
+        long selectedCardInstanceId)
     {
         if (run.Phase == RunPhase.Combat)
         {
@@ -224,7 +238,7 @@ public static class SemanticDrawChoiceV111
                 .ValidateSemanticCombatBoundary(run);
             PrototypeStateInvariants.Validate(run);
             ValidateRecordedChoice(
-                run, pending, selectedIndex);
+                run, pending, selectedCardInstanceId);
         }
         else if (!PrototypeGameEngine.IsAtCombatActionResultBoundary(run))
             throw new NotSupportedException(
@@ -244,7 +258,7 @@ public static class SemanticDrawChoiceV111
         decision.Validate();
         ValidatePending(decision.Event);
         return SemanticDrawPileAdapterV111.ResolveNatureDeckEvent(
-            checkpoint, decision.Event, decision.SelectedIndex,
+            checkpoint, decision.Event, decision.SelectedCardInstanceId,
             "Semantic draw choice lost its Nature deck checkpoint.",
             "Semantic draw choice request changed before commit.");
     }

@@ -704,6 +704,28 @@ public static class SemanticDeckEngineV111
         });
     }
 
+    /// <summary>
+    /// Resolves a semantic draw or reveal by its physical card identity.
+    /// The ordered index remains in the provider transcript, derived from
+    /// the saved support at this boundary.
+    /// </summary>
+    public static SemanticDeckStateV111 Resolve(
+        SemanticDeckStateV111 state, string fingerprint,
+        long selectedCardInstanceId)
+    {
+        Validate(state);
+        if (!StringComparer.Ordinal.Equals(state.Fingerprint, fingerprint))
+            throw new InvalidOperationException("Stale semantic deck fingerprint.");
+        var pending = state.Pending ??
+            throw new InvalidOperationException("No semantic card reveal pending.");
+        var selectedIndex = Array.IndexOf(
+            pending.CandidateCardInstanceIds, selectedCardInstanceId);
+        if (selectedIndex < 0)
+            throw new InvalidOperationException(
+                "Card instance is outside the pending semantic deck support.");
+        return Resolve(state, fingerprint, selectedIndex);
+    }
+
     public static (SemanticDeckStateV111 Deck, long CardInstanceId) DrawKnown(
         SemanticDeckStateV111 state)
     {
@@ -1374,7 +1396,7 @@ public static class SemanticDeckRevealChoiceV111
         var combat = world.Combat ?? throw new InvalidDataException(
             "Semantic deck reveal lost its combat state.");
         var nextCombat = SemanticDrawPileAdapterV111.ResolveNatureDeckEvent(
-            combat, decision.Event, decision.SelectedIndex,
+            combat, decision.Event, decision.SelectedCardInstanceId,
             "Semantic deck reveal lost its provider state.",
             "Semantic deck-reveal decision no longer matches its live request.");
         var resumed = checkpoint with

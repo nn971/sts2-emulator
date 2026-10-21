@@ -1007,7 +1007,7 @@ public static class SemanticDrawPileAdapterV111
     /// </summary>
     internal static CombatState ResolveNatureDeckEvent(
         CombatState checkpoint, SemanticDeckEventV111 expectedEvent,
-        int selectedIndex, string missingDeckMessage,
+        long selectedCardInstanceId, string missingDeckMessage,
         string staleEventMessage)
     {
         ArgumentNullException.ThrowIfNull(checkpoint);
@@ -1015,9 +1015,10 @@ public static class SemanticDrawPileAdapterV111
         ArgumentException.ThrowIfNullOrWhiteSpace(missingDeckMessage);
         ArgumentException.ThrowIfNullOrWhiteSpace(staleEventMessage);
         expectedEvent.Validate();
-        if (selectedIndex < 0 ||
-            selectedIndex >= expectedEvent.CandidateCardInstanceIds.Length)
-            throw new ArgumentOutOfRangeException(nameof(selectedIndex));
+        if (!expectedEvent.CandidateCardInstanceIds.Contains(
+                selectedCardInstanceId))
+            throw new InvalidOperationException(
+                "Selected card identity is outside the expected semantic deck support.");
 
         var deck = ValidateNatureDeckBoundary(
             checkpoint, missingDeckMessage, staleEventMessage,
@@ -1029,7 +1030,7 @@ public static class SemanticDrawPileAdapterV111
             throw new InvalidDataException(staleEventMessage);
 
         var resolvedDeck = SemanticDeckEngineV111.Resolve(
-            deck, deck.Fingerprint, selectedIndex);
+            deck, deck.Fingerprint, selectedCardInstanceId);
         return ApplyCommittedPhysicalMutation(
             checkpoint, checkpoint.DrawPile, resolvedDeck);
     }

@@ -14399,7 +14399,7 @@ public sealed partial class PrototypeGameEngine
     /// the same DrawCards invocation, then resume the saved effect queue.
     /// </summary>
     internal static RunState ResumeControlledSemanticEffectDraw(
-        RunState state, int selectedIndex)
+        RunState state, long selectedCardInstanceId)
     {
         if (!ControlledChanceGuardV111.Active)
             throw new InvalidOperationException(
@@ -14434,7 +14434,7 @@ public sealed partial class PrototypeGameEngine
             throw new InvalidDataException(
                 "Semantic card-effect draw lost its pending event.");
         var decision = SemanticDrawChoiceV111.Select(
-            request, selectedIndex);
+            request, request.EventId, selectedCardInstanceId);
         combat = SemanticDrawChoiceV111.Commit(
             combat with { PendingChoice = null }, decision);
         if (continuation.Operations.FirstOrDefault()?.Kind ==
