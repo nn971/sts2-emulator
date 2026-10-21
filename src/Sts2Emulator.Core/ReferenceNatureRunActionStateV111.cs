@@ -1,8 +1,9 @@
 namespace Sts2Emulator.Core;
 
 /// <summary>
-/// Source run checkpoint and selected action for a ReferenceNature
-/// run-action session. The common continuation owns both run snapshots.
+/// Source run checkpoint, selected action, and current run for ReferenceNature
+/// sessions that replay an ordinary run action. The common continuation owns
+/// both run snapshots.
 /// </summary>
 public sealed record ReferenceNatureRunActionMechanicsStateV111
 {

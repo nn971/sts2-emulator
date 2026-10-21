@@ -80,44 +80,83 @@ public sealed record ReferenceNatureTreasureSessionV111(
     ControlledStochasticRequestV111? PendingRequest,
     string[]? PendingCandidateLabels)
 {
-    private ControlledStochasticDecisionV111[]? _providerDecisions =
-        ReferenceNatureSessionValueCopiesV111.CopyProviderDecisions(
-            ProviderDecisions);
-    private ReferenceNatureTreasureLawDecisionV111[]? _decisionTranscript =
-        ReferenceNatureSessionValueCopiesV111.CopyArray(DecisionTranscript);
-    private ControlledStochasticRequestV111? _pendingRequest =
-        ReferenceNatureSessionValueCopiesV111.CopyRequest(PendingRequest);
-    private string[]? _pendingCandidateLabels =
-        ReferenceNatureSessionValueCopiesV111.CopyArray(
-            PendingCandidateLabels);
+    [JsonIgnore]
+    public SimulationStateV111<ReferenceNatureRunActionMechanicsStateV111,
+        ReferenceNatureControlledActionStochasticStateV111<
+            ReferenceNatureTreasureLawDecisionV111>> Simulation { get; init; } =
+        new(
+            new ReferenceNatureRunActionMechanicsStateV111(
+                Origin, Action, Run),
+            new ReferenceNatureControlledActionStochasticStateV111<
+                ReferenceNatureTreasureLawDecisionV111>(
+                InitialNatureState, NatureState, ProviderDecisions,
+                DecisionTranscript, PendingRequest, PendingCandidateLabels));
+
+    [JsonIgnore]
+    public ReferenceNatureRunActionMechanicsStateV111 Mechanics
+    {
+        get => Simulation.Mechanics;
+        init => Simulation = Simulation with { Mechanics = value };
+    }
+
+    [JsonIgnore]
+    public ReferenceNatureControlledActionStochasticStateV111<
+        ReferenceNatureTreasureLawDecisionV111> Stochastic
+    {
+        get => Simulation.Stochastic;
+        init => Simulation = Simulation with { Stochastic = value };
+    }
+
+    public RunState Origin
+    {
+        get => Mechanics.Origin;
+        init => Mechanics = Mechanics with { Origin = value };
+    }
+
+    public GameAction Action
+    {
+        get => Mechanics.Action;
+        init => Mechanics = Mechanics with { Action = value };
+    }
+
+    public RunState Run
+    {
+        get => Mechanics.Run;
+        init => Mechanics = Mechanics with { Run = value };
+    }
+
+    public ReferenceNatureStateV111 InitialNatureState
+    {
+        get => Stochastic.InitialNatureState;
+        init => Stochastic = Stochastic with { InitialNatureState = value };
+    }
+
+    public ReferenceNatureStateV111 NatureState
+    {
+        get => Stochastic.NatureState;
+        init => Stochastic = Stochastic with { NatureState = value };
+    }
 
     public ControlledStochasticDecisionV111[] ProviderDecisions
     {
-        get => ReferenceNatureSessionValueCopiesV111
-            .CopyProviderDecisions(_providerDecisions)!;
-        init => _providerDecisions = ReferenceNatureSessionValueCopiesV111
-            .CopyProviderDecisions(value);
+        get => Stochastic.ProviderDecisions;
+        init => Stochastic = Stochastic with { ProviderDecisions = value };
     }
     public ReferenceNatureTreasureLawDecisionV111[] DecisionTranscript
     {
-        get => ReferenceNatureSessionValueCopiesV111
-            .CopyArray(_decisionTranscript)!;
-        init => _decisionTranscript = ReferenceNatureSessionValueCopiesV111
-            .CopyArray(value);
+        get => Stochastic.DecisionTranscript;
+        init => Stochastic = Stochastic with { DecisionTranscript = value };
     }
     public ControlledStochasticRequestV111? PendingRequest
     {
-        get => ReferenceNatureSessionValueCopiesV111.CopyRequest(
-            _pendingRequest);
-        init => _pendingRequest =
-            ReferenceNatureSessionValueCopiesV111.CopyRequest(value);
+        get => Stochastic.PendingRequest;
+        init => Stochastic = Stochastic with { PendingRequest = value };
     }
     public string[]? PendingCandidateLabels
     {
-        get => ReferenceNatureSessionValueCopiesV111
-            .CopyArray(_pendingCandidateLabels);
-        init => _pendingCandidateLabels = ReferenceNatureSessionValueCopiesV111
-            .CopyArray(value);
+        get => Stochastic.PendingCandidateLabels;
+        init => Stochastic = Stochastic with
+        { PendingCandidateLabels = value };
     }
 
     public const string CurrentSchemaId =
@@ -178,18 +217,8 @@ public sealed record ReferenceNatureTreasureSessionV111(
         Validate();
         return this with
         {
-            Origin = Origin.Fork(),
-            Action = CloneAction(Action),
-            Run = Run.Fork(),
-            InitialNatureState = InitialNatureState.Fork(),
-            NatureState = NatureState.Fork(),
-            ProviderDecisions = ProviderDecisions
-                .Select(decision => decision.Fork()).ToArray(),
-            DecisionTranscript = (ReferenceNatureTreasureLawDecisionV111[])
-                DecisionTranscript.Clone(),
-            PendingRequest = PendingRequest?.Fork(),
-            PendingCandidateLabels = PendingCandidateLabels is null ? null :
-                (string[])PendingCandidateLabels.Clone()
+            Mechanics = Mechanics.Fork(),
+            Stochastic = Stochastic.Fork()
         };
     }
 
@@ -238,28 +267,13 @@ public sealed record ReferenceNatureTreasureSessionV111(
     public void Validate()
     {
         if (SchemaId != CurrentSchemaId || Origin is null || Action is null ||
-            Run is null || InitialNatureState is null || NatureState is null ||
-            ProviderDecisions is null || DecisionTranscript is null ||
-            ProviderDecisions.Length != DecisionTranscript.Length ||
+            Run is null ||
             string.IsNullOrWhiteSpace(Action.Kind))
             throw new InvalidDataException(
                 "Invalid ReferenceNature treasure session envelope.");
-        if (PendingRequest is { } pendingRequest)
-        {
-            pendingRequest.Validate();
-            if (PendingCandidateLabels is { } pendingLabels &&
-                (pendingRequest.IndexRequest is null ||
-                 pendingLabels.Length !=
-                    pendingRequest.IndexRequest.SupportCount ||
-                 pendingLabels.Any(string.IsNullOrWhiteSpace)))
-                throw new InvalidDataException(
-                    "Invalid ReferenceNature treasure pending candidate labels.");
-        }
-        else if (PendingCandidateLabels is not null)
-        {
-            throw new InvalidDataException(
-                "Completed ReferenceNature treasure session has pending candidate labels.");
-        }
+        Mechanics.Continuation.Validate(
+            PrototypeMechanicsContinuationKindV111.ReferenceNatureRunAction);
+        Stochastic.Validate();
         ValidateOpeningBoundary(Origin, Action);
         PrototypeStateInvariants.Validate(Origin);
         PrototypeStateInvariants.Validate(Run);
@@ -267,8 +281,6 @@ public sealed record ReferenceNatureTreasureSessionV111(
             Origin, "Native Treasure session origin");
         ReferenceNatureRunProjectionV111.ValidateNatureRelicBagProjection(
             Run, "Native Treasure session replay");
-        InitialNatureState.Validate();
-        NatureState.Validate();
         ReferenceNatureRunCursorV111.ValidateInitial(
             Origin, InitialNatureState, "Native treasure");
 
