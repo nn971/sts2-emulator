@@ -194,24 +194,54 @@ public sealed record ScriptedRunActionSessionV111(
     ControlledStochasticDecisionV111[] Decisions,
     ControlledStochasticContinuationStateV111? Continuation)
 {
-    private GameAction? _action = Action is null
-        ? null
-        : CloneAction(Action);
-    private ControlledStochasticDecisionV111[]? _decisions =
-        CloneDecisions(Decisions);
+    [JsonIgnore]
+    public SimulationStateV111<ScriptedRunActionMechanicsStateV111,
+        ScriptedRunActionStochasticStateV111> Simulation { get; init; } = new(
+            new ScriptedRunActionMechanicsStateV111(Origin, Action, Run),
+            new ScriptedRunActionStochasticStateV111(Decisions, Continuation));
+
+    [JsonIgnore]
+    public ScriptedRunActionMechanicsStateV111 Mechanics
+    {
+        get => Simulation.Mechanics;
+        init => Simulation = Simulation with { Mechanics = value };
+    }
+
+    [JsonIgnore]
+    public ScriptedRunActionStochasticStateV111 Stochastic
+    {
+        get => Simulation.Stochastic;
+        init => Simulation = Simulation with { Stochastic = value };
+    }
+
+    public RunState Origin
+    {
+        get => Mechanics.Origin;
+        init => Mechanics = Mechanics with { Origin = value };
+    }
 
     public GameAction Action
     {
-        get => _action is null ? null! : CloneAction(_action);
-        init => _action = value is null ? null : CloneAction(value);
+        get => Mechanics.Action;
+        init => Mechanics = Mechanics with { Action = value };
+    }
+
+    public RunState? Run
+    {
+        get => Mechanics.Run;
+        init => Mechanics = Mechanics with { Run = value };
     }
 
     public ControlledStochasticDecisionV111[] Decisions
     {
-        get => _decisions is null
-            ? null!
-            : (ControlledStochasticDecisionV111[])_decisions.Clone();
-        init => _decisions = CloneDecisions(value);
+        get => Stochastic.Decisions;
+        init => Stochastic = Stochastic with { Decisions = value };
+    }
+
+    public ControlledStochasticContinuationStateV111? Continuation
+    {
+        get => Stochastic.Continuation;
+        init => Stochastic = Stochastic with { Continuation = value };
     }
 
     public const string CurrentSchemaId =
@@ -297,6 +327,8 @@ public sealed record ScriptedRunActionSessionV111(
 
     public void Validate()
     {
+        Mechanics.Validate();
+        Stochastic.Validate();
         if (SchemaId != CurrentSchemaId || Origin is null || Action is null ||
             Decisions is null || string.IsNullOrWhiteSpace(Action.Kind) ||
             (Run is null) == (Continuation is null))
@@ -304,16 +336,8 @@ public sealed record ScriptedRunActionSessionV111(
                 "Invalid scripted run-action session envelope.");
         ValidateOpeningBoundary(Origin, Action);
         PrototypeStateInvariants.Validate(Origin);
-        foreach (var decision in Decisions)
-        {
-            if (decision is null)
-                throw new InvalidDataException(
-                    "Scripted run-action session contains a null decision.");
-            decision.Validate();
-        }
         if (Continuation is { } continuation)
         {
-            continuation.Validate();
             if (continuation.SchemaId !=
                     ControlledStochasticContinuationStateV111.MixedPrimitiveSchemaId ||
                 CanonicalJson.Sha256(continuation.Decisions) !=
@@ -427,10 +451,4 @@ public sealed record ScriptedRunActionSessionV111(
     {
         Payload = action.Payload.Clone()
     };
-
-    private static ControlledStochasticDecisionV111[]? CloneDecisions(
-        ControlledStochasticDecisionV111[]? decisions) =>
-        decisions?.Select(decision => decision is null
-            ? null!
-            : decision.Fork()).ToArray();
 }

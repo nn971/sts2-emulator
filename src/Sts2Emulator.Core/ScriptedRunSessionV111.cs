@@ -79,13 +79,48 @@ public sealed record ScriptedRunSessionV111(
     ScriptedRunActionRecordV111[] CompletedActions,
     ScriptedRunActionSessionV111? ActiveAction)
 {
-    private ScriptedRunActionRecordV111[]? _completedActions =
-        Clone(CompletedActions);
+    [JsonIgnore]
+    public SimulationStateV111<ScriptedRunMechanicsStateV111,
+        ScriptedRunStochasticStateV111> Simulation { get; init; } = new(
+            new ScriptedRunMechanicsStateV111(Origin, Run),
+            new ScriptedRunStochasticStateV111(CompletedActions, ActiveAction));
+
+    [JsonIgnore]
+    public ScriptedRunMechanicsStateV111 Mechanics
+    {
+        get => Simulation.Mechanics;
+        init => Simulation = Simulation with { Mechanics = value };
+    }
+
+    [JsonIgnore]
+    public ScriptedRunStochasticStateV111 Stochastic
+    {
+        get => Simulation.Stochastic;
+        init => Simulation = Simulation with { Stochastic = value };
+    }
+
+    public RunState Origin
+    {
+        get => Mechanics.Origin;
+        init => Mechanics = Mechanics with { Origin = value };
+    }
+
+    public RunState Run
+    {
+        get => Mechanics.Run;
+        init => Mechanics = Mechanics with { Run = value };
+    }
 
     public ScriptedRunActionRecordV111[] CompletedActions
     {
-        get => Clone(_completedActions)!;
-        init => _completedActions = Clone(value);
+        get => Stochastic.CompletedActions;
+        init => Stochastic = Stochastic with { CompletedActions = value };
+    }
+
+    public ScriptedRunActionSessionV111? ActiveAction
+    {
+        get => Stochastic.ActiveAction;
+        init => Stochastic = Stochastic with { ActiveAction = value };
     }
 
     public const string CurrentSchemaId =
@@ -177,7 +212,7 @@ public sealed record ScriptedRunSessionV111(
         {
             Origin = Origin.Fork(),
             Run = Run.Fork(),
-            CompletedActions = _completedActions!
+            CompletedActions = CompletedActions
                 .Select(action => action.Fork()).ToArray(),
             ActiveAction = ActiveAction?.Fork()
         };
@@ -185,7 +220,9 @@ public sealed record ScriptedRunSessionV111(
 
     public void Validate()
     {
-        var completedActions = _completedActions;
+        Mechanics.Validate();
+        Stochastic.Validate();
+        var completedActions = CompletedActions;
         if (SchemaId != CurrentSchemaId || Origin is null || Run is null ||
             completedActions is null)
             throw new InvalidDataException(
@@ -216,7 +253,6 @@ public sealed record ScriptedRunSessionV111(
 
         if (ActiveAction is { } active)
         {
-            active.Validate();
             if (active.Complete ||
                 CanonicalJson.Sha256(active.Origin) !=
                     CanonicalJson.Sha256(replayedRun))
@@ -237,7 +273,7 @@ public sealed record ScriptedRunSessionV111(
         var snapshot = new ScriptedRunSessionSnapshotV111(
             CurrentSchemaId, RunSnapshot.Save(session.Origin),
             RunSnapshot.Save(session.Run),
-            session._completedActions!
+            session.CompletedActions
                 .Select(action => action.Fork()).ToArray(),
             session.ActiveAction is null
                 ? null
@@ -291,7 +327,7 @@ public sealed record ScriptedRunSessionV111(
         return session with
         {
             Run = actionSession.Run.Fork(),
-            CompletedActions = session._completedActions!
+            CompletedActions = session.CompletedActions
                 .Append(record).ToArray(),
             ActiveAction = null
         };
@@ -301,9 +337,4 @@ public sealed record ScriptedRunSessionV111(
     {
         Payload = action.Payload.Clone()
     };
-
-    private static ScriptedRunActionRecordV111[]? Clone(
-        ScriptedRunActionRecordV111[]? actions) => actions is null
-            ? null
-            : (ScriptedRunActionRecordV111[])actions.Clone();
 }

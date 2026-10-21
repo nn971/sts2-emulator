@@ -27,6 +27,7 @@ public sealed record PrototypeMechanicsContinuationStateV111(
             PrototypeMechanicsContinuationKindV111.SemanticCombatDraw or
             PrototypeMechanicsContinuationKindV111.SemanticPilot or
             PrototypeMechanicsContinuationKindV111.ReferenceNatureRunSession or
+            PrototypeMechanicsContinuationKindV111.ScriptedRunSession or
             PrototypeMechanicsContinuationKindV111.ReferenceNatureRunAction;
         if (!Enum.IsDefined(Kind) || Kind != expectedKind ||
             requiresOrigin != (Origin is not null) ||
@@ -55,5 +56,6 @@ public enum PrototypeMechanicsContinuationKindV111
     ControlledEventChoice,
     ControlledEventRewardChoice,
     ReferenceNatureRunAction,
-    ReferenceNatureRunSession
+    ReferenceNatureRunSession,
+    ScriptedRunSession
 }
