@@ -7280,15 +7280,17 @@ public sealed record ReferenceNatureRunActionSessionV111(
                 "potion_factory.model_within_rarity.index_draw")
         {
             var rarityDecision = continuation.Decisions.LastOrDefault(
-                decision => decision.UnitFloatDecision?.Request.SiteId ==
-                    "potion_factory.rarity_roll.unit_float" &&
-                    decision.UnitFloatDecision.Request.OwnerId ==
+                decision => decision.UnitFloatDecision is { } floatDecision &&
+                    floatDecision.Request.SiteId ==
+                        "potion_factory.rarity_roll.unit_float" &&
+                    floatDecision.Request.OwnerId ==
                         potionModelRequest.OwnerId)?.UnitFloatDecision;
             if (rarityDecision is null ||
                 continuation.Decisions.Any(decision =>
-                    decision.IndexDecision?.Request.SiteId ==
+                    decision.IndexDecision is { } indexDecision &&
+                    indexDecision.Request.SiteId ==
                         potionModelRequest.SiteId &&
-                    decision.IndexDecision.Request.OwnerId ==
+                    indexDecision.Request.OwnerId ==
                         potionModelRequest.OwnerId))
                 throw new InvalidDataException(
                     "Native combat-entry potion model request lacks its unique preceding rarity outcome.");
