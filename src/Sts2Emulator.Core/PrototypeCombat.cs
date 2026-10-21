@@ -504,8 +504,9 @@ public sealed partial class PrototypeGameEngine
         if (nativeStreams is not null && combat.NativeRng is not null)
             NativeRunRngV111.Validate(advanced);
         advanced = ApplyOpeningRoyalPoison(advanced);
-        return ResumeOpeningCombat(
-            advanced, PrototypeOpeningCombatStage.PlayerSideStart);
+        return ResumeAutomaticPipelineContinuation(
+            SetOpeningCombatContinuation(advanced,
+                PrototypeOpeningCombatStage.PlayerSideStart));
     }
 
     private static PrototypeEncounterDefinition?

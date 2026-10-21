@@ -82,13 +82,8 @@ public sealed partial class PrototypeGameEngine
             world = RequireWorld(state);
             combat = world.Combat!;
             if (combat.PendingChoice is not null)
-                return state with { World = world with { Combat = combat with
-                {
-                    AutomaticPipelineContinuation = new(
-                        PrototypeContent.Rules.EndTurnPipeline.Length,
-                        OpeningStage:
-                            OpeningCombatStages[stageIndex + 1])
-                } } };
+                return SetOpeningCombatContinuation(
+                    state, OpeningCombatStages[stageIndex + 1]);
         }
         var finishedWorld = RequireWorld(state);
         if (finishedWorld.Combat is { } finishedCombat
@@ -96,6 +91,28 @@ public sealed partial class PrototypeGameEngine
             return EnterCombatReward(state);
         return state with { World = finishedWorld with { Combat = finishedWorld.Combat! with
         { AutomaticPipelineContinuation = null } } };
+    }
+
+    private static RunState SetOpeningCombatContinuation(
+        RunState state, PrototypeOpeningCombatStage nextStage)
+    {
+        var world = RequireWorld(state);
+        var combat = world.Combat ??
+            throw new InvalidOperationException(
+                "Opening combat disappeared before its cursor was saved.");
+        return state with
+        {
+            World = world with
+            {
+                Combat = combat with
+                {
+                    AutomaticPipelineContinuation =
+                        new PrototypeAutomaticPipelineContinuationState(
+                            PrototypeContent.Rules.EndTurnPipeline.Length,
+                            OpeningStage: nextStage)
+                }
+            }
+        };
     }
 
     private static RunState DrawOpeningHand(RunState state)
