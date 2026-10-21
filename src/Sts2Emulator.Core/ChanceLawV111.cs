@@ -3040,6 +3040,39 @@ public static partial class ChanceLawEngineV111
                 : ChanceLawV111.UnverifiedStatus);
     }
 
+    internal static ChanceLawV111 QueryUniformLabeledIndexSupport(
+        string eventId, RandomIndexRequestV111 request,
+        string[] candidateLabels, string conditioningPolicyId,
+        string probabilityProvenance)
+    {
+        ArgumentException.ThrowIfNullOrWhiteSpace(eventId);
+        ArgumentNullException.ThrowIfNull(request);
+        ArgumentNullException.ThrowIfNull(candidateLabels);
+        ArgumentException.ThrowIfNullOrWhiteSpace(conditioningPolicyId);
+        ArgumentException.ThrowIfNullOrWhiteSpace(probabilityProvenance);
+        request.Validate();
+        if (request.OperationKind != "choose_index" ||
+            candidateLabels.Length != request.SupportCount ||
+            candidateLabels.Any(string.IsNullOrWhiteSpace) ||
+            candidateLabels.Distinct(StringComparer.Ordinal).Count() !=
+                candidateLabels.Length)
+            throw new ArgumentException(
+                "Labeled index support must match the request and contain distinct labels.",
+                nameof(candidateLabels));
+
+        var outcomes = candidateLabels.Select((label, index) =>
+            new ChanceLawOutcomeV111(
+                $"{label}:index:{index.ToString(CultureInfo.InvariantCulture)}",
+                1L)).ToArray();
+        return Create(eventId, request.SiteId, request.OperationKind,
+            request.OwnerId, request.Ordinal, conditioningPolicyId,
+            CanonicalJson.Sha256(new
+            {
+                RequestFingerprint = CanonicalJson.Sha256(request),
+                CandidateLabels = candidateLabels
+            }), probabilityProvenance, outcomes);
+    }
+
     /// <summary>
     /// Query the bounded-index transform used by Fishing Rod's persistent
     /// combat-end upgrade. The caller supplies the declared support size;

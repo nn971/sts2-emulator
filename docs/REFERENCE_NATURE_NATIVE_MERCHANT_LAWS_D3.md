@@ -3,7 +3,9 @@
 This contract defines read-only Chance Law queries and an atomic
 ReferenceNature session for configured Native Shop entry, offer and price
 outcomes, the Alchemical Coffer potion-generation effect, and registered
-Native player reward-index draws reached from Shop purchases. It uses the
+Native player reward-index draws reached from Shop purchases. It also
+continues Toy Box's five configured Native relic-bag pulls when Toy Box is
+bought. It uses the
 versioned `chance_law_query` coverage and
 `ReferenceNatureMerchantSessionV111`; player observation fields stay unchanged.
 
@@ -75,6 +77,15 @@ request prefix and ordered candidate labels. This establishes the index
 transform only; pool fidelity, trigger completeness, and Native stream
 attribution remain unverified.
 
+Buying Toy Box composes five `relic_grab_bag.rarity.unit_float` and
+`treasure.relic_grab_bag.model.index_draw` request pairs into the same purchase
+session. Each rarity law uses the exact rounded Native `NextFloat()` threshold
+masses. Each identity law uses the sorted remaining support captured from the
+Nature-owned unordered bag and conditions on the preceding pulls; its equal
+identity weights remain `UNVERIFIED`. Replay checks every request, owner, and
+ordered label prefix before committing the purchase and all five rewards with
+the Nature cursor. The Native reward cursor remains unchanged.
+
 The same session also resolves every other registered index-valued request
 whose SiteId is in `StochasticSiteRegistryV111.RunActionShopPurchaseSiteIds`.
 It validates that the saved action is a current legal configured Shop
@@ -99,8 +110,9 @@ stream assignment.
 | `shop.colorless_card_model.index_draw` | Ordered implemented single-player Colorless models; ordinal 0 is Uncommon and ordinal 1 is Rare, with exact Native bounded-index grid masses |
 | `potion_factory.rarity_roll.unit_float` | Common, Uncommon, Rare using the PotionFactory's inclusive float thresholds and exact rounded Native `NextFloat` grid masses; standalone law queries bind the declared supported stream and owner |
 | `potion_factory.model_within_rarity.index_draw` | Ordered potion models in the requested tier after supplied exclusions, with exact Native bounded-index grid masses on the merchant branch |
-| `relic_grab_bag.rarity.unit_float` | Common, Uncommon, Rare using the grab bag's float thresholds and exact rounded Native `NextFloat` grid masses; the third merchant relic offer is forced Shop rarity and has no draw |
+| `relic_grab_bag.rarity.unit_float` | Common, Uncommon, Rare using the grab bag's float thresholds and exact rounded Native `NextFloat` grid masses; the third merchant relic offer is forced Shop rarity and has no draw; Toy Box purchase uses this draw for each wax relic |
 | `shop.merchant.relic_model.index_draw` | Eligible relic identities from the first nonempty fallback tier after the selected rarity, with earlier same-shop selections removed and queue order hidden |
+| `treasure.relic_grab_bag.model.index_draw` | Toy Box purchase only: sorted eligible identities remaining after prior wax pulls; equal identity weights are `UNVERIFIED` |
 | `shop.merchant.card_price_modifier.unit_float` | Exact Native grid masses for the rounded card price under the 0.95–1.05 modifier; `card_id`, `colorless_offer`, and optional `sale_reprice` identify the source branch |
 | `shop.merchant.potion_price_modifier.unit_float` | Exact Native grid masses for the rounded potion price under the 0.95–1.05 modifier for the supplied `potion_id` |
 | `shop.merchant.relic_price_modifier.unit_float` | Exact Native grid masses for the rounded relic price under the 0.85–1.15 modifier for the supplied `relic_id` |
@@ -151,7 +163,7 @@ cursor parity. Legacy merchant percentage-bin requests and hidden relic queue
 identity retain their separate `UNVERIFIED` status.
 
 Native queue construction and queue shuffling, unregistered or non-index
-purchase effects, later Treasure draws, and the listed legacy merchant requests remain outside
+purchase effects, other later Treasure draws, and the listed legacy merchant requests remain outside
 the atomic Native merchant session. Those paths keep their source-owned or
 existing run-action boundary; this contract does not infer a Nature law or
 continuation for them.

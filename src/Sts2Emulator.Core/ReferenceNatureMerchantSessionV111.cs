@@ -476,10 +476,61 @@ public sealed record ReferenceNatureMerchantSessionV111(
         }
         if (siteId == "relic_grab_bag.rarity.unit_float")
         {
+            if (IsToyBoxPurchase(source, action))
+            {
+                var relicRequest = request.UnitFloatRequest!;
+                if (relicRequest.OwnerId != PrototypeNativeRelicGrabBag
+                        .NativeTreasureRarityOwnerId)
+                    throw new InvalidDataException(
+                        "Toy Box relic acquisition has an unexpected rarity owner.");
+                var law = ChanceLawEngineV111.QueryNativeRelicRarity(
+                    relicRequest);
+                return law with
+                {
+                    EventId = PurchaseRequestEventId(source, action,
+                        request, candidateLabels, prefix)
+                };
+            }
             var ordinal = ParseOrdinal(request.OwnerId,
                 ":merchant_relic:", ":merchant");
             return ChanceLawEngineV111.QueryNativeMerchantOffer(
                 source, siteId, ordinal);
+        }
+        if (siteId == PrototypeNativeRelicGrabBag.NativeTreasureModelSiteId &&
+            IsToyBoxPurchase(source, action))
+        {
+            var indexRequest = request.IndexRequest!;
+            if (indexRequest.StreamId !=
+                    NativePlayerRngV111.RewardsStreamId ||
+                candidateLabels is not { Length: > 0 } ||
+                candidateLabels.Length != indexRequest.SupportCount ||
+                candidateLabels.Any(string.IsNullOrWhiteSpace) ||
+                !candidateLabels.SequenceEqual(candidateLabels.OrderBy(
+                    label => label, StringComparer.Ordinal),
+                    StringComparer.Ordinal) ||
+                candidateLabels.Distinct(StringComparer.Ordinal).Count() !=
+                    candidateLabels.Length)
+                throw new InvalidDataException(
+                    "Toy Box relic identity request lost its sorted candidate support.");
+            var labels = candidateLabels;
+            var rarityText = SegmentAfter(indexRequest.OwnerId,
+                ":rarity:", ":pool:");
+            if (!Enum.TryParse<PrototypeRelicRarity>(rarityText,
+                    ignoreCase: false, out var rarity) ||
+                !Enum.IsDefined(rarity) || source.World is not { } world ||
+                indexRequest.OwnerId !=
+                    PrototypeNativeRelicGrabBag.TreasureModelOwnerId(
+                        world, rarity, labels) ||
+                !indexRequest.OrderedCandidates.SequenceEqual(
+                    Enumerable.Range(0, labels.Length)))
+                throw new InvalidDataException(
+                    "Toy Box relic identity request differs from its rarity-conditioned support.");
+
+            return ChanceLawEngineV111.QueryUniformLabeledIndexSupport(
+                PurchaseRequestEventId(source, action, request, labels,
+                    prefix), indexRequest, labels,
+                "native-toy-box-relic-identity-over-unordered-bag-v1",
+                "Uniform identity over the captured remaining Native relic-bag support; queue identity and source-pool completeness remain unverified.");
         }
         if (siteId == PrototypeNativeRelicGrabBag.NativeMerchantModelSiteId)
         {
@@ -601,6 +652,34 @@ public sealed record ReferenceNatureMerchantSessionV111(
             !offer.Sold && offer.ItemId ==
                 PrototypeNativeOrobasRelics.AlchemicalCofferId);
     }
+
+    private static bool IsToyBoxPurchase(
+        RunState source, GameAction action)
+    {
+        if (source.Phase != RunPhase.Shop || action.Kind != "buy_relic" ||
+            source.World?.Shop is not { } shop)
+            return false;
+        var payload = action.ReadPayload<BuyOfferPayload>();
+        return shop.RelicOffers.Any(offer => offer.OfferId == payload.OfferId &&
+            !offer.Sold && offer.ItemId == NativeAncientRewardsV111.ToyBoxId);
+    }
+
+    private static string PurchaseRequestEventId(
+        RunState source, GameAction action,
+        ControlledStochasticRequestV111 request,
+        string[]? candidateLabels,
+        ControlledStochasticDecisionV111[] prefix) =>
+        CanonicalJson.Sha256(new
+        {
+            SchemaId = CurrentSchemaId,
+            MechanicsBoundary = SimulationMechanicsProjectionEngineV111
+                .Fingerprint(source),
+            ActionFingerprint = PrototypeAiEnvironment.StableActionId(action),
+            RequestFingerprint = CanonicalJson.Sha256(request),
+            CandidateLabels = candidateLabels,
+            PriorPrefix = prefix.Select(decision =>
+                CanonicalJson.Sha256(decision)).ToArray()
+        });
 
     private static (PrototypeCardType CardType, int Ordinal)
         ParseMerchantCardOwner(string owner)

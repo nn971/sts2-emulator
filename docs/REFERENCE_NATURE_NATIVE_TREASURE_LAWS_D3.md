@@ -72,8 +72,10 @@ stream-prefix validation, and cursor behavior remain open.
 Constructing the sorted Nature pools does not replay Native's run-start queue
 shuffles. Sequential conditional identity sampling represents each supported
 pull from the hidden uniformly shuffled queue without exposing or committing
-its order. Continued relic-bag pulls require a provider-owned residual-set
-continuation; ordinary Native execution must retain its source-created order.
+its order. The merchant session now reuses its purchase continuation for Toy
+Box's five relic-bag pulls; other continued pulls still require a matching
+provider-owned residual-set continuation. Ordinary Native execution retains
+its source-created order.
 
 ## Projection and unsupported scope
 
@@ -83,6 +85,6 @@ normal Treasure mechanics commits it; it never receives remaining queue order
 or RNG state. Ordinary Native execution keeps its source rarity roll and
 queue-front pull. The session can construct Nature's eligible pools without a
 committed Native bag. Skipped chests, non-native profiles, and unavailable
-Treasure nodes fail closed. Native queue-shuffle cursor parity, continued bag
-draws after the session, later Treasure draws after purchases, and source
-probability calibration remain open.
+Treasure nodes fail closed. Native queue-shuffle cursor parity, other
+continued bag draws after this session, other Treasure draws after purchases,
+and source probability calibration remain open.

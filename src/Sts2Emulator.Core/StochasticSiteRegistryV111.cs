@@ -860,6 +860,7 @@ public static class StochasticSiteRegistryV111
         "potion_factory.model_within_rarity.index_draw",
         RelicGrabBagRaritySiteId,
         PrototypeNativeRelicGrabBag.NativeMerchantModelSiteId,
+        PrototypeNativeRelicGrabBag.NativeTreasureModelSiteId,
         "shop.merchant.card_price_modifier.unit_float",
         "shop.merchant.potion_price_modifier.unit_float",
         "shop.merchant.relic_price_modifier.unit_float"
