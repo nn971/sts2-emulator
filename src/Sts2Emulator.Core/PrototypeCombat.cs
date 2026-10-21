@@ -1696,8 +1696,33 @@ public sealed partial class PrototypeGameEngine
     internal static RunState ResumeAutomaticPipelineContinuation(
         RunState state,
         bool resumeSemanticBeforeHandDraw = false,
-        bool stopBeforeSemanticHandDraw = false)
+        bool stopBeforeSemanticHandDraw = false,
+        PrototypeControlledEnemyActionContinuationV111?
+            controlledEnemyActionReplay = null)
     {
+        if (controlledEnemyActionReplay is { } enemyActionReplay)
+        {
+            if (!ControlledChanceGuardV111.Active)
+                throw new InvalidOperationException(
+                    "Controlled enemy-action replay requires the RNG guard.");
+            enemyActionReplay.Validate(
+                PrototypeContent.Rules.EndTurnPipeline.Length);
+            if (state.World?.Combat is not
+                { PendingChoice: null,
+                  PendingKnowledgeDemonChoice: null,
+                  AutomaticPipelineContinuation: { } enemyActionCursor } ||
+                enemyActionCursor.OpeningStage is not null ||
+                enemyActionCursor.PendingPostDispatchEventKind is not null ||
+                enemyActionCursor.NextStepIndex != enemyActionReplay.StepIndex ||
+                enemyActionCursor.Stochastic !=
+                    new PrototypeAutomaticPipelineStochasticStateV111() ||
+                state.World?.Combat?.SemanticDeck?.Pending is not null ||
+                CanonicalJson.Sha256(ClearAutomaticPipelineContinuation(state)) !=
+                CanonicalJson.Sha256(enemyActionReplay.Checkpoint))
+                throw new InvalidDataException(
+                    "Enemy-action replay does not match the saved pipeline cursor.");
+        }
+
         if (state.World?.Combat is
             { PendingChoice: null,
               PendingKnowledgeDemonChoice: null,
@@ -1761,7 +1786,9 @@ public sealed partial class PrototypeGameEngine
                 : ResumeAutomaticPipeline(state, continuation.NextStepIndex,
                     continuation.PendingPostDispatchEventKind,
                     stopBeforeSemanticHandDraw:
-                        stopBeforeSemanticHandDraw);
+                        stopBeforeSemanticHandDraw,
+                    controlledEnemyActionReplay:
+                        controlledEnemyActionReplay);
         }
         return state.Phase == RunPhase.Combat &&
             state.World?.Combat is
@@ -1946,9 +1973,25 @@ public sealed partial class PrototypeGameEngine
         {
             Decisions = replay.Decisions.Append(decision).ToArray()
         };
-        return ResumeAutomaticPipeline(
-            replay.Checkpoint.Fork(), replay.StepIndex,
-            controlledEnemyActionReplay: resumed);
+        var checkpoint = replay.Checkpoint.Fork();
+        var checkpointWorld = RequireWorld(checkpoint);
+        var checkpointCombat = checkpointWorld.Combat ??
+            throw new InvalidDataException(
+                "Enemy-action replay checkpoint has no active combat.");
+        checkpoint = checkpoint with
+        {
+            World = checkpointWorld with
+            {
+                Combat = checkpointCombat with
+                {
+                    AutomaticPipelineContinuation =
+                        new PrototypeAutomaticPipelineContinuationState(
+                            replay.StepIndex)
+                }
+            }
+        };
+        return ResumeAutomaticPipelineContinuation(
+            checkpoint, controlledEnemyActionReplay: resumed);
     }
 
     /// <summary>
