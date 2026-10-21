@@ -315,17 +315,18 @@ public sealed partial class PrototypeGameEngine
     /// is repeated. Repeated generation exposes a new ticket each time.
     /// </summary>
     internal static RunState ResumeControlledGeneratedCard(
-        RunState state, int selectedIndex) =>
+        RunState state, string selectedCardId) =>
         ResumeControlledGeneratedCardCore(
-            state, selectedIndex, resumeAutomaticPipeline: true);
+            state, selectedCardId, resumeAutomaticPipeline: true);
 
     internal static RunState ResumeControlledGeneratedCardForSemanticHandoff(
-        RunState state, int selectedIndex) =>
+        RunState state, string selectedCardId) =>
         ResumeControlledGeneratedCardCore(
-            state, selectedIndex, resumeAutomaticPipeline: false);
+            state, selectedCardId, resumeAutomaticPipeline: false);
 
     private static RunState ResumeControlledGeneratedCardCore(
-        RunState state, int selectedIndex, bool resumeAutomaticPipeline)
+        RunState state, string selectedCardId,
+        bool resumeAutomaticPipeline)
     {
         if (!ControlledChanceGuardV111.Active)
             throw new InvalidOperationException(
@@ -347,8 +348,10 @@ public sealed partial class PrototypeGameEngine
             generation.Operation.Amount <= 0)
             throw new InvalidDataException(
                 "Saved generation pool is not reachable from source rules.");
-        if (selectedIndex < 0 || selectedIndex >= candidates.Length)
-            throw new ArgumentOutOfRangeException(nameof(selectedIndex));
+        ArgumentException.ThrowIfNullOrWhiteSpace(selectedCardId);
+        if (!candidates.Contains(selectedCardId, StringComparer.Ordinal))
+            throw new InvalidOperationException(
+                "Selected generated-card identity is outside the saved source pool.");
 
         var op = generation.Operation;
         PrototypeTemporaryCardCost? free = op.Kind switch
@@ -374,7 +377,7 @@ public sealed partial class PrototypeGameEngine
         combat = AddGeneratedCardCopies(
             combat with { PendingChoice = null },
             new PrototypeCombatCardSnapshot(
-                candidates[selectedIndex], upgrade, PrototypeJson.EmptyObject(),
+                selectedCardId, upgrade, PrototypeJson.EmptyObject(),
                 TemporaryEnergyCost: free), 1);
 
         var resolved = ResumeChoiceResolutionContinuation(

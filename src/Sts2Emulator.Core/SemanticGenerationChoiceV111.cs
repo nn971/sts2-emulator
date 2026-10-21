@@ -253,15 +253,18 @@ public static class SemanticGenerationChoiceV111
         RunState resumed;
         using (ControlledChanceGuardV111.Enter())
         using (ControlledChanceGuardV111.AllowEngineOwnedPrototypeReward())
-            resumed = drawInsertionModelChoice
-                ? PrototypeGameEngine.ResumeControlledDrawInsertion(
-                    checkpoint.Fork(), decision.SelectedIndex)
-                : crossbowTurnStartHandoff
-                    ? PrototypeGameEngine
-                        .ResumeControlledGeneratedCardForSemanticHandoff(
-                            checkpoint.Fork(), decision.SelectedIndex)
-                    : PrototypeGameEngine.ResumeControlledGeneratedCard(
-                        checkpoint.Fork(), decision.SelectedIndex);
+        {
+            if (drawInsertionModelChoice)
+                resumed = PrototypeGameEngine.ResumeControlledDrawInsertion(
+                    checkpoint.Fork(), decision.SelectedIndex);
+            else if (crossbowTurnStartHandoff)
+                resumed = PrototypeGameEngine
+                    .ResumeControlledGeneratedCardForSemanticHandoff(
+                        checkpoint.Fork(), decision.SelectedCardId);
+            else
+                resumed = PrototypeGameEngine.ResumeControlledGeneratedCard(
+                    checkpoint.Fork(), decision.SelectedCardId);
+        }
         if (resumed.Phase == RunPhase.Combat)
         {
             SemanticPilotCombatEngineV111.ValidateSemanticCombatBoundary(

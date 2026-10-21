@@ -929,7 +929,17 @@ public static class ControlledPlayableCombatEngineV111
             throw new InvalidOperationException("Missing generated-card Nature ticket.");
         var (result, choice) = ResolveIndexAndRun(
             state, request, selectedIndex,
-            PrototypeGameEngine.ResumeControlledGeneratedCard);
+            (checkpoint, replayedIndex) =>
+            {
+                var candidates = checkpoint.World?.Combat?.PendingChoice?.ControlledGeneration?.CandidateCardIds ??
+                    throw new InvalidDataException(
+                        "Generated-card continuation lost its ordered model support.");
+                if (replayedIndex < 0 || replayedIndex >= candidates.Length)
+                    throw new InvalidDataException(
+                        "Generated-card provider index is outside its source support.");
+                return PrototypeGameEngine.ResumeControlledGeneratedCard(
+                    checkpoint, candidates[replayedIndex]);
+            });
         var next = state.Fork() with
         {
             Run = result,
