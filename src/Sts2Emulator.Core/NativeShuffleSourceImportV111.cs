@@ -164,7 +164,8 @@ public static class NativeShuffleSourceImportV111
                 NativeRngV111.FromSnapshot("run.shuffle", before)]);
             int expected = NativeRngV111.NextInt(rng, "run.shuffle", bound);
             if (expected != selected ||
-                NativeRngV111.ToSnapshot(rng.Streams.Single()) != after)
+                NativeRngV111.ToSnapshot(
+                    rng.GetStream("run.shuffle")) != after)
                 throw new ArgumentException(
                     "Native source RNG output/xoshiro transition mismatch.");
             indices.Add(selected);
