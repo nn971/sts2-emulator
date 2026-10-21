@@ -208,7 +208,8 @@ public static class PrototypeNativeLaterActFixture
         return state with
         {
             Player = state.Player with { Deck = deck },
-            Rng = rng,
+            Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                state.Stochastic, rng),
             World = world with
             {
                 Act = act,

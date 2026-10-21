@@ -17,6 +17,10 @@ public static class PrototypeFactorizedRunFactory
         var streams = PrototypeRng.CreateFactorizedInitialBundle(initialStateHex);
         var original = PrototypeGameFactory.Create(
             "experimental-factorized-prior-v1", ascension);
-        return original with { Rng = streams };
+        return original with
+        {
+            Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                original.Stochastic, streams)
+        };
     }
 }

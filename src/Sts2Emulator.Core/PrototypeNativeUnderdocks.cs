@@ -1434,7 +1434,8 @@ public static class PrototypeNativeUnderdocksRunFactory
         };
         return baseState with
         {
-            Rng = rng,
+            Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                baseState.Stochastic, rng),
             World = world with
             {
                 ActOneRegion = PrototypeActOneRegion.Underdocks,

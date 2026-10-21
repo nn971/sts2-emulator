@@ -1168,7 +1168,8 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         return state with
         {
             Player = player,
-            Rng = rng,
+            Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                state.Stochastic, rng),
             World = world,
             Phase = RunPhase.MapChoice
         };

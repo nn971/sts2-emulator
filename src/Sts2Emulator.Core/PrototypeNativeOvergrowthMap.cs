@@ -475,7 +475,8 @@ public static class PrototypeNativeOvergrowthRunFactory
                 PotionSlots = new PotionInstance?[nativePotionSlots],
                 Deck = state.Player.Deck.Append(additionalStarterCard).ToArray()
             },
-            Rng = rng,
+            Stochastic = RunStochasticStateV111.WithPrototypeRng(
+                state.Stochastic, rng),
             World = world with
             {
                 Map = map,
