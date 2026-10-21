@@ -6271,7 +6271,9 @@ internal static class PrototypeAiJsonlServer
                             OptionalString(request,
                                 "fixture_potion_generation_card_id"),
                             OptionalString(request,
-                                "fixture_top_autoplay_potion_id"));
+                                "fixture_top_autoplay_potion_id"),
+                            OptionalString(request,
+                                "fixture_deck_preset_id"));
                         var next = SemanticPilotCombatEngineV111.BeginSeeded(entry);
                         var handle = StoreSemantic(next);
                         Write(new { requestId, ok = true,

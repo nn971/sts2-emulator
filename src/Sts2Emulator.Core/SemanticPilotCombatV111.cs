@@ -155,7 +155,9 @@ public sealed record SemanticSeededEntryV111(
     string? FixtureSelectionPotionId = null,
     string? FixturePotionGenerationCardId = null,
     [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingDefault)]
-    string? FixtureTopAutoplayPotionId = null);
+    string? FixtureTopAutoplayPotionId = null,
+    [property: JsonIgnore(Condition = JsonIgnoreCondition.WhenWritingNull)]
+    string? FixtureDeckPresetId = null);
 
 /// <summary>
 /// First external playable semantic boundary. Initial opening order is
@@ -1052,6 +1054,11 @@ public static class SemanticPilotCombatEngineV111
             entry.FirstMonsterCombatId < 1)
             throw new ArgumentOutOfRangeException(nameof(entry),
                 "Seeded Nature combat requires a positive floor and monster IDs.");
+        if (entry.FixtureDeckPresetId is not null &&
+            (entry.Act != 1 || entry.NativePolicyBaseline || entry.SourceRouteEntry))
+            throw new NotSupportedException(
+                "UNSUPPORTED_SEMANTIC_LOADOUT site=combat.conditioned_deck " +
+                "operation=only_isolated_act1_without_native_comparator");
         if (entry.FixtureNatureDrawCosts &&
             (entry.FixtureDrawCostRelicId != "proto.relic.snecko_eye" ||
              entry.OtherChanceProviderId is not null))
@@ -1167,7 +1174,7 @@ public static class SemanticPilotCombatEngineV111
                 intents, intents.Fingerprint, decision.SelectedIndex);
         }
         var opening = ControlledPlayableCombatEngineV111.Begin(
-            intents, entry.Seed, entry.EncounterId);
+            intents, entry.Seed, entry.EncounterId, entry.FixtureDeckPresetId);
         while (!opening.AtPlayerBoundary)
         {
             var pending = opening.Pending ??
