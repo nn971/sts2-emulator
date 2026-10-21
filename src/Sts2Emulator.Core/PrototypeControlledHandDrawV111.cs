@@ -38,9 +38,8 @@ public sealed partial class PrototypeGameEngine
             cursor = new PrototypeAutomaticPipelineContinuationState(
                 stageIndex);
         }
-        if (cursor.NextStepIndex != stageIndex ||
-            cursor.Mechanics.CurrentStepKind !=
-                PrototypeAutomaticStepKind.DrawPlayerHand ||
+        if (!cursor.Mechanics.IsAtStep(
+                PrototypeAutomaticStepKind.DrawPlayerHand) ||
             cursor.OpeningStage is not null ||
             cursor.PendingPostDispatchEventKind is not null)
             throw new InvalidDataException(

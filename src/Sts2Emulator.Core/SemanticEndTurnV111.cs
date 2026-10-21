@@ -1588,9 +1588,8 @@ public static class SemanticEndTurnEngineV111
         if (run.Phase != RunPhase.Combat ||
             run.World?.Combat is not { } combat ||
             combat.AutomaticPipelineContinuation is not { } checkpoint ||
-            checkpoint.NextStepIndex < 0 ||
-            checkpoint.Mechanics.CurrentStepKind !=
-                PrototypeAutomaticStepKind.AdvanceTurn ||
+            !checkpoint.Mechanics.IsAtStep(
+                PrototypeAutomaticStepKind.AdvanceTurn) ||
             checkpoint.ControlledDrawRemaining is not null ||
             checkpoint.ControlledDrawCostRemaining is not null ||
             checkpoint.ControlledSemanticDrawRemaining is not null ||

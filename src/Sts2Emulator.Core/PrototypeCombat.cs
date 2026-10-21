@@ -1814,10 +1814,8 @@ public sealed partial class PrototypeGameEngine
                         PrototypeOpeningCombatStage.InitialEnemyIntents);
 
             bool atInitialIntentStage = initialIntent &&
-                pipeline?.OpeningStage ==
-                    PrototypeOpeningCombatStage.InitialEnemyIntents &&
-                pipeline.NextStepIndex ==
-                    PrototypeContent.Rules.EndTurnPipeline.Length;
+                pipeline?.Mechanics.IsAtOpeningBoundary(
+                    PrototypeOpeningCombatStage.InitialEnemyIntents) == true;
             bool atAdvanceTurn = !initialIntent && pipeline is not null &&
                 pipeline.Mechanics.IsAtStep(
                     PrototypeAutomaticStepKind.AdvanceTurn) &&
@@ -1877,7 +1875,8 @@ public sealed partial class PrototypeGameEngine
                 "AdvanceTurn requires a completed next-turn intent frame.");
         intents.Validate();
 
-        int index = continuation.NextStepIndex;
+        var nextCursor = continuation.Mechanics.AdvancePastStep(
+            PrototypeAutomaticStepKind.AdvanceTurn);
         var advanced = CompleteAdvanceTurnAfterCommittedIntents(
             intents.Combat.Fork() with
             {
@@ -1887,7 +1886,7 @@ public sealed partial class PrototypeGameEngine
         {
             World = world with { Combat = advanced }
         };
-        return ResumeAutomaticPipeline(resumed, index + 1,
+        return ResumeAutomaticPipeline(resumed, nextCursor.NextStepIndex,
             stopBeforeSemanticHandDraw: stopBeforeSemanticHandDraw);
     }
 

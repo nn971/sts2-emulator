@@ -1353,7 +1353,6 @@ public sealed partial class PrototypeGameEngine
         CombatState combat,
         PrototypeAutomaticPipelineContinuationState continuation,
         PrototypeOpeningCombatStage expectedStage) =>
-        continuation.OpeningStage == expectedStage &&
         continuation is
             { PendingPostDispatchEventKind: null,
               ControlledDrawRemaining: null,
@@ -1366,8 +1365,7 @@ public sealed partial class PrototypeGameEngine
               ControlledBeforeHandDrawHookChoicePending: false,
               ControlledEnemyAction: null,
               ControlledTurnIntents: null } &&
-        continuation.NextStepIndex ==
-            PrototypeContent.Rules.EndTurnPipeline.Length &&
+        continuation.Mechanics.IsAtOpeningBoundary(expectedStage) &&
         continuation.Stochastic is
             { HandDrawProgress: null,
               ControlledEnemyAction: null,
@@ -1888,12 +1886,8 @@ public sealed partial class PrototypeGameEngine
             pipeline is null)
             return false;
 
-        bool openingContinuation =
-            pipeline.OpeningStage ==
-                PrototypeOpeningCombatStage.AfterAutoPrePlayPolicy &&
-            pipeline.NextStepIndex ==
-                PrototypeContent.Rules.EndTurnPipeline.Length &&
-            pipeline.PendingPostDispatchEventKind is null;
+        bool openingContinuation = pipeline.Mechanics.IsAtOpeningBoundary(
+            PrototypeOpeningCombatStage.AfterAutoPrePlayPolicy);
 
         bool turnContinuation = pipeline.Mechanics.IsImmediatelyAfterDispatch(
             PrototypeCombatEventKind.AutoPrePlayPhaseEntered);

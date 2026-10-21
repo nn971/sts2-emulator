@@ -125,7 +125,6 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
         if (combat.PendingKnowledgeDemonChoice is not null)
             return false;
         var continuation = combat.AutomaticPipelineContinuation;
-        var pipelineLength = PrototypeContent.Rules.EndTurnPipeline.Length;
         if (continuation?.OpeningStage is not null)
             return IsWhisperingEarringOpeningAutoplayBoundary(combat);
         if (continuation is not
@@ -137,28 +136,13 @@ public sealed partial class PrototypeGameEngine : IDeterministicEngine
                 ControlledSemanticDrawRemaining: null,
                 ControlledSemanticDrawRequested: null,
                 ControlledEnemyAction: null
-            } || continuation.NextStepIndex < 0 ||
-            continuation.NextStepIndex > pipelineLength)
+            } || !continuation.Mechanics.HasValidIndex)
             return false;
 
         if (!combat.IsPlayerTurn)
-            return continuation.NextStepIndex < pipelineLength;
-        return continuation.NextStepIndex >=
-            PlayerTurnAutomaticPipelineTargetStartIndex();
-    }
-
-    private static int PlayerTurnAutomaticPipelineTargetStartIndex()
-    {
-        var pipeline = PrototypeContent.Rules.EndTurnPipeline;
-        for (var index = 0; index < pipeline.Length; index++)
-        {
-            if (pipeline[index].Kind ==
-                    PrototypeAutomaticStepKind.DispatchCombatEvent &&
-                pipeline[index].EventKind ==
-                    PrototypeCombatEventKind.PlayerTurnStarted)
-                return index + 1;
-        }
-        return int.MaxValue;
+            return continuation.Mechanics.HasRemainingSteps;
+        return continuation.Mechanics.HasPassedDispatch(
+            PrototypeCombatEventKind.PlayerTurnStarted);
     }
 
     internal static bool IsAtCombatRewardOrTerminalBoundary(RunState run) =>

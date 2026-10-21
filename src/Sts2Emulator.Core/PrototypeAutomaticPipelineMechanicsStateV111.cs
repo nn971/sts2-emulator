@@ -33,6 +33,46 @@ public sealed record PrototypeAutomaticPipelineMechanicsStateV111(
         TryGetCurrentStepKind(out var stepKind) &&
         stepKind == expectedStep;
 
+    public bool HasValidIndex
+    {
+        get
+        {
+            var pipeline = PrototypeContent.Rules.EndTurnPipeline;
+            return NextStepIndex >= 0 && NextStepIndex <= pipeline.Length;
+        }
+    }
+
+    public bool HasRemainingSteps =>
+        OpeningStage is null && PendingPostDispatchEventKind is null &&
+        HasValidIndex &&
+        NextStepIndex < PrototypeContent.Rules.EndTurnPipeline.Length;
+
+    public bool IsAtOpeningBoundary(PrototypeOpeningCombatStage stage) =>
+        OpeningStage == stage && PendingPostDispatchEventKind is null &&
+        NextStepIndex == PrototypeContent.Rules.EndTurnPipeline.Length;
+
+    /// <summary>
+    /// True when the ordinary cursor has passed the specified event dispatch.
+    /// Opening and post-dispatch continuations remain separate boundaries.
+    /// </summary>
+    public bool HasPassedDispatch(PrototypeCombatEventKind eventKind)
+    {
+        if (OpeningStage is not null ||
+            PendingPostDispatchEventKind is not null ||
+            !HasValidIndex)
+            return false;
+        var pipeline = PrototypeContent.Rules.EndTurnPipeline;
+        for (var index = 0; index < pipeline.Length; index++)
+        {
+            if (pipeline[index] is
+                { Kind: PrototypeAutomaticStepKind.DispatchCombatEvent,
+                  EventKind: { } dispatchedEvent } &&
+                dispatchedEvent == eventKind)
+                return NextStepIndex > index;
+        }
+        return false;
+    }
+
     /// <summary>
     /// True when the cursor points immediately after the requested ordinary
     /// pipeline step, with no opening or post-dispatch boundary active.

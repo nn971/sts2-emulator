@@ -660,8 +660,9 @@ public sealed record PrototypeAutomaticPipelineStochasticStateV111(
                 (!initialIntentStage &&
                  !continuation.Mechanics.IsAtStep(
                     PrototypeAutomaticStepKind.AdvanceTurn)) ||
-                (initialIntentStage && continuation.NextStepIndex !=
-                    PrototypeContent.Rules.EndTurnPipeline.Length) ||
+                (initialIntentStage &&
+                 !continuation.Mechanics.IsAtOpeningBoundary(
+                    PrototypeOpeningCombatStage.InitialEnemyIntents)) ||
                 continuation.PendingPostDispatchEventKind is not null ||
                 ControlledEnemyAction is not null ||
                 ControlledDrawRemaining is not null ||
